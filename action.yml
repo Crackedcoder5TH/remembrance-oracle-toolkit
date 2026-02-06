@@ -1,0 +1,50 @@
+name: 'Remembrance Oracle'
+description: 'AI code memory — stores only proven code and serves the most relevant, highest-coherency snippets'
+author: 'Crackedcoder5TH'
+
+inputs:
+  command:
+    description: 'Command to run: submit, query, validate, stats, feedback, prune'
+    required: true
+    default: 'stats'
+  file:
+    description: 'Path to code file (for submit/validate)'
+    required: false
+  test-file:
+    description: 'Path to test file (for submit/validate)'
+    required: false
+  description:
+    description: 'Description (for submit/query)'
+    required: false
+  tags:
+    description: 'Comma-separated tags (for submit/query)'
+    required: false
+  language:
+    description: 'Language (for submit/query)'
+    required: false
+  entry-id:
+    description: 'Entry ID (for feedback/inspect)'
+    required: false
+  success:
+    description: 'Whether the code worked (for feedback)'
+    required: false
+  min-coherency:
+    description: 'Minimum coherency score (0-1)'
+    required: false
+    default: '0.5'
+  limit:
+    description: 'Max results (for query)'
+    required: false
+    default: '5'
+
+outputs:
+  result:
+    description: 'Command output as JSON'
+  accepted:
+    description: 'Whether submitted code was accepted (submit only)'
+  coherency-score:
+    description: 'Coherency score of submitted/validated code'
+
+runs:
+  using: 'node20'
+  main: 'src/action.js'

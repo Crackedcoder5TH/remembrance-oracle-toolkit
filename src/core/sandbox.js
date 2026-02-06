@@ -171,6 +171,74 @@ ${testCode}
 }
 
 /**
+ * Execute TypeScript code in a sandboxed subprocess.
+ * Uses Node 22's --experimental-strip-types to strip TS syntax.
+ */
+function sandboxTypeScript(code, testCode, options = {}) {
+  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY } = options;
+  const sandboxDir = createSandboxDir();
+
+  try {
+    const preloadPath = path.join(sandboxDir, '_preload.js');
+    const preload = `
+const Module = require('module');
+const _origLoad = Module._load;
+const blocked = new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2']);
+Module._load = function(request, parent, isMain) {
+  if (blocked.has(request)) throw new Error('Module "' + request + '" is blocked in sandbox');
+  return _origLoad(request, parent, isMain);
+};
+`;
+    fs.writeFileSync(preloadPath, preload, 'utf-8');
+
+    const wrapper = `
+'use strict';
+// Run user code
+${code}
+;
+// Run tests
+${testCode}
+`;
+
+    const filePath = path.join(sandboxDir, 'test.ts');
+    fs.writeFileSync(filePath, wrapper, 'utf-8');
+
+    const memFlag = `--max-old-space-size=${maxMemory}`;
+    const result = execSync(
+      `node ${memFlag} --experimental-strip-types --require "${preloadPath}" "${filePath}"`,
+      {
+        timeout,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: sandboxDir,
+        env: {
+          PATH: process.env.PATH,
+          NODE_PATH: '',
+          HOME: sandboxDir,
+          NODE_NO_WARNINGS: '1',
+        },
+      }
+    );
+
+    return {
+      passed: true,
+      output: result || 'All assertions passed',
+      sandboxed: true,
+    };
+  } catch (err) {
+    const isTimeout = err.killed || err.signal === 'SIGTERM';
+    return {
+      passed: false,
+      output: isTimeout ? 'Execution timed out' : (err.stderr || err.stdout || err.message),
+      sandboxed: true,
+      timedOut: isTimeout,
+    };
+  } finally {
+    cleanupSandboxDir(sandboxDir);
+  }
+}
+
+/**
  * Universal sandboxed executor.
  */
 function sandboxExecute(code, testCode, language, options = {}) {
@@ -178,6 +246,9 @@ function sandboxExecute(code, testCode, language, options = {}) {
 
   if (lang === 'javascript' || lang === 'js') {
     return sandboxJS(code, testCode, options);
+  }
+  if (lang === 'typescript' || lang === 'ts') {
+    return sandboxTypeScript(code, testCode, options);
   }
   if (lang === 'python' || lang === 'py') {
     return sandboxPython(code, testCode, options);
@@ -189,6 +260,7 @@ function sandboxExecute(code, testCode, language, options = {}) {
 module.exports = {
   sandboxExecute,
   sandboxJS,
+  sandboxTypeScript,
   sandboxPython,
   createSandboxDir,
   cleanupSandboxDir,

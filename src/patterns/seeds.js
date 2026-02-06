@@ -426,6 +426,350 @@ assert calls == 1, f"should cache: {calls}"`,
     tags: ['utility', 'cache', 'memoize', 'decorator', 'performance'],
     patternType: 'utility',
   },
+
+  // ─── TypeScript patterns ───
+  {
+    name: 'debounce-ts',
+    code: `function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {
+  let timer: ReturnType<typeof setTimeout>;
+  return ((...args: Parameters<T>) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  }) as T;
+}`,
+    testCode: `let count = 0;
+const inc = debounce(() => { count++; }, 50);
+inc(); inc(); inc();
+setTimeout(() => {
+  if (count !== 0) throw new Error("should not fire yet: " + count);
+  setTimeout(() => {
+    if (count !== 1) throw new Error("should fire once: " + count);
+  }, 60);
+}, 20);`,
+    language: 'typescript',
+    description: 'Debounce with TypeScript generics — preserves argument types',
+    tags: ['utility', 'async', 'debounce', 'rate-limit', 'typescript', 'generic'],
+    patternType: 'utility',
+  },
+  {
+    name: 'result-type-ts',
+    code: `type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
+
+function Ok<T>(value: T): Result<T, never> {
+  return { ok: true, value };
+}
+
+function Err<E>(error: E): Result<never, E> {
+  return { ok: false, error };
+}
+
+function unwrap<T, E>(result: Result<T, E>): T {
+  if (result.ok) return result.value;
+  throw result.error;
+}`,
+    testCode: `const ok = Ok(42);
+if (!ok.ok || ok.value !== 42) throw new Error("Ok failed");
+const err = Err(new Error("boom"));
+if (err.ok) throw new Error("Err should not be ok");
+try { unwrap(err); throw new Error("should throw"); } catch(e) { if (e.message !== "boom") throw e; }
+if (unwrap(Ok("hello")) !== "hello") throw new Error("unwrap ok");`,
+    language: 'typescript',
+    description: 'Result type (Rust-style Ok/Err) for typed error handling',
+    tags: ['utility', 'error-handling', 'typescript', 'type-safety', 'result'],
+    patternType: 'utility',
+  },
+  {
+    name: 'typed-event-emitter-ts',
+    code: `type EventMap = Record<string, any>;
+
+class TypedEmitter<T extends EventMap> {
+  private listeners: { [K in keyof T]?: Array<(payload: T[K]) => void> } = {};
+
+  on<K extends keyof T>(event: K, fn: (payload: T[K]) => void): void {
+    (this.listeners[event] = this.listeners[event] || []).push(fn);
+  }
+
+  off<K extends keyof T>(event: K, fn: (payload: T[K]) => void): void {
+    const fns = this.listeners[event];
+    if (fns) this.listeners[event] = fns.filter(f => f !== fn);
+  }
+
+  emit<K extends keyof T>(event: K, payload: T[K]): void {
+    for (const fn of this.listeners[event] || []) fn(payload);
+  }
+}`,
+    testCode: `const em = new TypedEmitter();
+let got = null;
+const handler = (v) => { got = v; };
+em.on('test', handler);
+em.emit('test', 42);
+if (got !== 42) throw new Error("emit failed: " + got);
+em.off('test', handler);
+em.emit('test', 99);
+if (got !== 42) throw new Error("off failed: " + got);`,
+    language: 'typescript',
+    description: 'Type-safe event emitter with generics for event map',
+    tags: ['utility', 'events', 'typescript', 'generic', 'type-safe'],
+    patternType: 'design-pattern',
+  },
+
+  // ─── Go patterns (pre-verified, not sandbox-executable) ───
+  {
+    name: 'binary-search-go',
+    code: `func BinarySearch(arr []int, target int) int {
+	lo, hi := 0, len(arr)-1
+	for lo <= hi {
+		mid := lo + (hi-lo)/2
+		if arr[mid] == target {
+			return mid
+		} else if arr[mid] < target {
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
+	return -1
+}`,
+    testCode: null,
+    language: 'go',
+    description: 'Binary search on sorted slice — O(log n)',
+    tags: ['search', 'algorithm', 'slice', 'sorted', 'binary-search'],
+    patternType: 'algorithm',
+  },
+  {
+    name: 'merge-sort-go',
+    code: `func MergeSort(arr []int) []int {
+	if len(arr) <= 1 {
+		return arr
+	}
+	mid := len(arr) / 2
+	left := MergeSort(arr[:mid])
+	right := MergeSort(arr[mid:])
+	return merge(left, right)
+}
+
+func merge(a, b []int) []int {
+	result := make([]int, 0, len(a)+len(b))
+	i, j := 0, 0
+	for i < len(a) && j < len(b) {
+		if a[i] <= b[j] {
+			result = append(result, a[i])
+			i++
+		} else {
+			result = append(result, b[j])
+			j++
+		}
+	}
+	result = append(result, a[i:]...)
+	result = append(result, b[j:]...)
+	return result
+}`,
+    testCode: null,
+    language: 'go',
+    description: 'Merge sort — stable O(n log n) sorting for slices',
+    tags: ['sort', 'algorithm', 'slice', 'stable', 'merge-sort'],
+    patternType: 'algorithm',
+  },
+  {
+    name: 'retry-go',
+    code: `func Retry(attempts int, delay time.Duration, fn func() error) error {
+	var err error
+	for i := 0; i < attempts; i++ {
+		err = fn()
+		if err == nil {
+			return nil
+		}
+		if i < attempts-1 {
+			time.Sleep(delay)
+			delay *= 2
+		}
+	}
+	return fmt.Errorf("failed after %d attempts: %w", attempts, err)
+}`,
+    testCode: null,
+    language: 'go',
+    description: 'Retry with exponential backoff — robust error recovery',
+    tags: ['utility', 'async', 'retry', 'backoff', 'error-handling'],
+    patternType: 'utility',
+  },
+  {
+    name: 'lru-cache-go',
+    code: `type LRUCache struct {
+	capacity int
+	items    map[string]*node
+	head     *node
+	tail     *node
+}
+
+type node struct {
+	key        string
+	value      interface{}
+	prev, next *node
+}
+
+func NewLRUCache(capacity int) *LRUCache {
+	head := &node{}
+	tail := &node{}
+	head.next = tail
+	tail.prev = head
+	return &LRUCache{capacity: capacity, items: make(map[string]*node), head: head, tail: tail}
+}
+
+func (c *LRUCache) Get(key string) (interface{}, bool) {
+	if n, ok := c.items[key]; ok {
+		c.moveToFront(n)
+		return n.value, true
+	}
+	return nil, false
+}
+
+func (c *LRUCache) Put(key string, value interface{}) {
+	if n, ok := c.items[key]; ok {
+		n.value = value
+		c.moveToFront(n)
+		return
+	}
+	n := &node{key: key, value: value}
+	c.items[key] = n
+	c.addToFront(n)
+	if len(c.items) > c.capacity {
+		back := c.tail.prev
+		c.remove(back)
+		delete(c.items, back.key)
+	}
+}
+
+func (c *LRUCache) moveToFront(n *node) { c.remove(n); c.addToFront(n) }
+func (c *LRUCache) addToFront(n *node) { n.prev = c.head; n.next = c.head.next; c.head.next.prev = n; c.head.next = n }
+func (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev }`,
+    testCode: null,
+    language: 'go',
+    description: 'LRU cache with O(1) get/put using doubly-linked list + hashmap',
+    tags: ['data-structure', 'cache', 'lru', 'map', 'eviction'],
+    patternType: 'data-structure',
+  },
+
+  // ─── Rust patterns (pre-verified, not sandbox-executable) ───
+  {
+    name: 'binary-search-rs',
+    code: `fn binary_search(arr: &[i32], target: i32) -> Option<usize> {
+    let (mut lo, mut hi) = (0usize, arr.len());
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        match arr[mid].cmp(&target) {
+            std::cmp::Ordering::Equal => return Some(mid),
+            std::cmp::Ordering::Less => lo = mid + 1,
+            std::cmp::Ordering::Greater => hi = mid,
+        }
+    }
+    None
+}`,
+    testCode: null,
+    language: 'rust',
+    description: 'Binary search returning Option<usize> — idiomatic Rust',
+    tags: ['search', 'algorithm', 'slice', 'sorted', 'binary-search'],
+    patternType: 'algorithm',
+  },
+  {
+    name: 'merge-sort-rs',
+    code: `fn merge_sort(arr: &mut Vec<i32>) {
+    let len = arr.len();
+    if len <= 1 { return; }
+    let mid = len / 2;
+    let mut left = arr[..mid].to_vec();
+    let mut right = arr[mid..].to_vec();
+    merge_sort(&mut left);
+    merge_sort(&mut right);
+    let (mut i, mut j, mut k) = (0, 0, 0);
+    while i < left.len() && j < right.len() {
+        if left[i] <= right[j] { arr[k] = left[i]; i += 1; }
+        else { arr[k] = right[j]; j += 1; }
+        k += 1;
+    }
+    while i < left.len() { arr[k] = left[i]; i += 1; k += 1; }
+    while j < right.len() { arr[k] = right[j]; j += 1; k += 1; }
+}`,
+    testCode: null,
+    language: 'rust',
+    description: 'In-place merge sort for Vec<i32> — stable O(n log n)',
+    tags: ['sort', 'algorithm', 'vec', 'stable', 'merge-sort'],
+    patternType: 'algorithm',
+  },
+  {
+    name: 'retry-rs',
+    code: `use std::thread;
+use std::time::Duration;
+
+fn retry<F, T, E>(attempts: u32, initial_delay: Duration, mut f: F) -> Result<T, E>
+where
+    F: FnMut() -> Result<T, E>,
+{
+    let mut delay = initial_delay;
+    for i in 0..attempts {
+        match f() {
+            Ok(val) => return Ok(val),
+            Err(e) => {
+                if i == attempts - 1 { return Err(e); }
+                thread::sleep(delay);
+                delay *= 2;
+            }
+        }
+    }
+    unreachable!()
+}`,
+    testCode: null,
+    language: 'rust',
+    description: 'Generic retry with exponential backoff — works with any Result<T, E>',
+    tags: ['utility', 'async', 'retry', 'backoff', 'error-handling', 'generic'],
+    patternType: 'utility',
+  },
+  {
+    name: 'lru-cache-rs',
+    code: `use std::collections::HashMap;
+
+struct LruCache<K: std::hash::Hash + Eq + Clone, V> {
+    capacity: usize,
+    map: HashMap<K, (V, usize)>,
+    counter: usize,
+}
+
+impl<K: std::hash::Hash + Eq + Clone, V> LruCache<K, V> {
+    fn new(capacity: usize) -> Self {
+        LruCache { capacity, map: HashMap::new(), counter: 0 }
+    }
+
+    fn get(&mut self, key: &K) -> Option<&V> {
+        if let Some(entry) = self.map.get_mut(key) {
+            self.counter += 1;
+            entry.1 = self.counter;
+            Some(&entry.0)
+        } else {
+            None
+        }
+    }
+
+    fn put(&mut self, key: K, value: V) {
+        self.counter += 1;
+        if self.map.contains_key(&key) {
+            self.map.insert(key, (value, self.counter));
+            return;
+        }
+        if self.map.len() >= self.capacity {
+            let lru_key = self.map.iter()
+                .min_by_key(|(_, (_, ts))| *ts)
+                .map(|(k, _)| k.clone())
+                .unwrap();
+            self.map.remove(&lru_key);
+        }
+        self.map.insert(key, (value, self.counter));
+    }
+}`,
+    testCode: null,
+    language: 'rust',
+    description: 'Generic LRU cache with HashMap — evicts least recently used',
+    tags: ['data-structure', 'cache', 'lru', 'hashmap', 'eviction', 'generic'],
+    patternType: 'data-structure',
+  },
 ];
 
 /**

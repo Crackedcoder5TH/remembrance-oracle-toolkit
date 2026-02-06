@@ -16,6 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { RemembranceOracle } = require('./api/oracle');
+const { c, colorScore, colorDecision, colorStatus, colorDiff, colorSource } = require('./cli/colors');
 
 const oracle = new RemembranceOracle();
 
@@ -38,42 +39,43 @@ function main() {
 
   if (!cmd || cmd === 'help') {
     console.log(`
-Remembrance Oracle Toolkit
+${c.boldCyan('Remembrance Oracle Toolkit')}
 
-Commands:
-  submit     Submit code for validation and storage
-  query      Query for relevant, proven code
-  resolve    Smart retrieval — pull, evolve, or generate decision
-  validate   Validate code without storing
-  stats      Show store statistics
-  inspect    Inspect a stored entry
-  feedback   Report if pulled code worked
-  prune      Remove low-coherency entries
-  diff       Compare two entries or patterns side by side
-  export     Export top patterns as standalone JSON or markdown
-  search     Fuzzy search across patterns and history
-  register   Register code as a named pattern in the library
-  patterns   Show pattern library statistics
-  seed       Seed the library with built-in proven patterns
+${c.bold('Commands:')}
+  ${c.cyan('submit')}     Submit code for validation and storage
+  ${c.cyan('query')}      Query for relevant, proven code
+  ${c.cyan('resolve')}    Smart retrieval — pull, evolve, or generate decision
+  ${c.cyan('validate')}   Validate code without storing
+  ${c.cyan('stats')}      Show store statistics
+  ${c.cyan('inspect')}    Inspect a stored entry
+  ${c.cyan('feedback')}   Report if pulled code worked
+  ${c.cyan('prune')}      Remove low-coherency entries
+  ${c.cyan('diff')}       Compare two entries or patterns side by side
+  ${c.cyan('export')}     Export top patterns as standalone JSON or markdown
+  ${c.cyan('search')}     Fuzzy search across patterns and history
+  ${c.cyan('register')}   Register code as a named pattern in the library
+  ${c.cyan('patterns')}   Show pattern library statistics
+  ${c.cyan('seed')}       Seed the library with built-in proven patterns
 
-Options:
-  --file <path>          Code file to submit/validate/register
-  --test <path>          Test file for validation
-  --name <name>          Pattern name (for register)
-  --description <text>   Description for query/submit/resolve
-  --tags <comma,list>    Tags for query/submit/resolve
-  --language <lang>      Language filter
-  --id <id>              Entry ID for inspect/feedback
-  --success              Mark feedback as successful
-  --failure              Mark feedback as failed
-  --min-coherency <n>    Minimum coherency threshold
-  --limit <n>            Max results for query
+${c.bold('Options:')}
+  ${c.yellow('--file')} <path>          Code file to submit/validate/register
+  ${c.yellow('--test')} <path>          Test file for validation
+  ${c.yellow('--name')} <name>          Pattern name (for register)
+  ${c.yellow('--description')} <text>   Description for query/submit/resolve
+  ${c.yellow('--tags')} <comma,list>    Tags for query/submit/resolve
+  ${c.yellow('--language')} <lang>      Language filter
+  ${c.yellow('--id')} <id>              Entry ID for inspect/feedback
+  ${c.yellow('--success')}              Mark feedback as successful
+  ${c.yellow('--failure')}              Mark feedback as failed
+  ${c.yellow('--min-coherency')} <n>    Minimum coherency threshold
+  ${c.yellow('--limit')} <n>            Max results for query
+  ${c.yellow('--no-color')}             Disable colored output
     `);
     return;
   }
 
   if (cmd === 'submit') {
-    if (!args.file) { console.error('Error: --file required'); process.exit(1); }
+    if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
     const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
     const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
     const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
@@ -85,12 +87,16 @@ Options:
       author: args.author || process.env.USER || 'cli-user',
     });
     if (result.accepted) {
-      console.log(`Accepted! ID: ${result.entry.id}`);
-      console.log(`Coherency: ${result.entry.coherencyScore.total}`);
-      console.log(`Breakdown:`, JSON.stringify(result.entry.coherencyScore.breakdown, null, 2));
+      console.log(`${colorStatus(true)}! ID: ${c.cyan(result.entry.id)}`);
+      console.log(`Coherency: ${colorScore(result.entry.coherencyScore.total)}`);
+      const breakdown = result.entry.coherencyScore.breakdown;
+      console.log(`Breakdown:`);
+      for (const [key, val] of Object.entries(breakdown)) {
+        console.log(`  ${c.dim(key + ':')} ${colorScore(val)}`);
+      }
     } else {
-      console.log(`Rejected: ${result.reason}`);
-      console.log(`Score: ${result.validation.coherencyScore?.total}`);
+      console.log(`${colorStatus(false)}: ${c.red(result.reason)}`);
+      console.log(`Score: ${colorScore(result.validation.coherencyScore?.total)}`);
     }
     return;
   }
@@ -105,13 +111,13 @@ Options:
       minCoherency: parseFloat(args['min-coherency']) || 0.5,
     });
     if (results.length === 0) {
-      console.log('No matching entries found.');
+      console.log(c.yellow('No matching entries found.'));
     } else {
-      console.log(`Found ${results.length} result(s):\n`);
+      console.log(`Found ${c.bold(String(results.length))} result(s):\n`);
       for (const r of results) {
-        console.log(`--- [${r.id}] (coherency: ${r.coherencyScore}, relevance: ${r.relevanceScore}) ---`);
-        console.log(`Language: ${r.language} | Tags: ${r.tags.join(', ') || 'none'}`);
-        console.log(`Description: ${r.description || 'none'}`);
+        console.log(`${c.dim('---')} [${c.cyan(r.id)}] (coherency: ${colorScore(r.coherencyScore)}, relevance: ${colorScore(r.relevanceScore)}) ${c.dim('---')}`);
+        console.log(`Language: ${c.blue(r.language)} | Tags: ${r.tags.map(t => c.magenta(t)).join(', ') || c.dim('none')}`);
+        console.log(`Description: ${r.description || c.dim('none')}`);
         console.log(r.code);
         console.log('');
       }
@@ -120,52 +126,62 @@ Options:
   }
 
   if (cmd === 'validate') {
-    if (!args.file) { console.error('Error: --file required'); process.exit(1); }
+    if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
     const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
     const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
     const { validateCode } = require('./core/validator');
     const result = validateCode(code, { language: args.language, testCode });
-    console.log(`Valid: ${result.valid}`);
-    console.log(`Coherency: ${result.coherencyScore.total}`);
-    console.log(`Breakdown:`, JSON.stringify(result.coherencyScore.breakdown, null, 2));
+    console.log(`Valid: ${result.valid ? c.boldGreen('true') : c.boldRed('false')}`);
+    console.log(`Coherency: ${colorScore(result.coherencyScore.total)}`);
+    console.log(`Breakdown:`);
+    for (const [key, val] of Object.entries(result.coherencyScore.breakdown)) {
+      console.log(`  ${c.dim(key + ':')} ${colorScore(val)}`);
+    }
     if (result.errors.length > 0) {
-      console.log(`Errors:`, result.errors);
+      console.log(`${c.boldRed('Errors:')}`);
+      for (const err of result.errors) {
+        console.log(`  ${c.red('•')} ${err}`);
+      }
     }
     return;
   }
 
   if (cmd === 'stats') {
     const stats = oracle.stats();
-    console.log('Remembrance Oracle Stats:');
-    console.log(`  Total entries: ${stats.totalEntries}`);
-    console.log(`  Languages: ${stats.languages.join(', ') || 'none'}`);
-    console.log(`  Avg coherency: ${stats.avgCoherency}`);
+    console.log(c.boldCyan('Remembrance Oracle Stats:'));
+    console.log(`  Total entries: ${c.bold(String(stats.totalEntries))}`);
+    console.log(`  Languages: ${stats.languages.map(l => c.blue(l)).join(', ') || c.dim('none')}`);
+    console.log(`  Avg coherency: ${colorScore(stats.avgCoherency)}`);
     if (stats.topTags.length > 0) {
-      console.log(`  Top tags: ${stats.topTags.map(t => `${t.tag}(${t.count})`).join(', ')}`);
+      console.log(`  Top tags: ${stats.topTags.map(t => `${c.magenta(t.tag)}(${t.count})`).join(', ')}`);
     }
     return;
   }
 
   if (cmd === 'inspect') {
-    if (!args.id) { console.error('Error: --id required'); process.exit(1); }
+    if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
     const entry = oracle.inspect(args.id);
-    if (!entry) { console.log('Entry not found.'); return; }
+    if (!entry) { console.log(c.yellow('Entry not found.')); return; }
     console.log(JSON.stringify(entry, null, 2));
     return;
   }
 
   if (cmd === 'feedback') {
-    if (!args.id) { console.error('Error: --id required'); process.exit(1); }
+    if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
     const succeeded = args.success === true || args.success === 'true';
     const result = oracle.feedback(args.id, succeeded);
-    console.log(result.success ? `Updated reliability: ${result.newReliability}` : result.error);
+    if (result.success) {
+      console.log(`Updated reliability: ${colorScore(result.newReliability)}`);
+    } else {
+      console.log(c.red(result.error));
+    }
     return;
   }
 
   if (cmd === 'prune') {
     const min = parseFloat(args['min-coherency']) || 0.4;
     const result = oracle.prune(min);
-    console.log(`Pruned ${result.removed} entries. ${result.remaining} remaining.`);
+    console.log(`Pruned ${c.boldRed(String(result.removed))} entries. ${c.boldGreen(String(result.remaining))} remaining.`);
     return;
   }
 
@@ -177,23 +193,23 @@ Options:
       language: args.language,
       minCoherency: parseFloat(args['min-coherency']) || undefined,
     });
-    console.log(`Decision: ${result.decision.toUpperCase()}`);
-    console.log(`Confidence: ${result.confidence}`);
-    console.log(`Reasoning: ${result.reasoning}`);
+    console.log(`Decision: ${colorDecision(result.decision)}`);
+    console.log(`Confidence: ${colorScore(result.confidence)}`);
+    console.log(`Reasoning: ${c.dim(result.reasoning)}`);
     if (result.pattern) {
-      console.log(`\nPattern: ${result.pattern.name} [${result.pattern.id}]`);
-      console.log(`Language: ${result.pattern.language} | Type: ${result.pattern.patternType} | Coherency: ${result.pattern.coherencyScore}`);
-      console.log(`Tags: ${(result.pattern.tags || []).join(', ')}`);
+      console.log(`\nPattern: ${c.bold(result.pattern.name)} [${c.cyan(result.pattern.id)}]`);
+      console.log(`Language: ${c.blue(result.pattern.language)} | Type: ${c.magenta(result.pattern.patternType)} | Coherency: ${colorScore(result.pattern.coherencyScore)}`);
+      console.log(`Tags: ${(result.pattern.tags || []).map(t => c.magenta(t)).join(', ')}`);
       console.log(`\n${result.pattern.code}`);
     }
     if (result.alternatives?.length > 0) {
-      console.log(`\nAlternatives: ${result.alternatives.map(a => `${a.name}(${a.composite?.toFixed(3)})`).join(', ')}`);
+      console.log(`\n${c.dim('Alternatives:')} ${result.alternatives.map(a => `${c.cyan(a.name)}(${colorScore(a.composite?.toFixed(3))})`).join(', ')}`);
     }
     return;
   }
 
   if (cmd === 'register') {
-    if (!args.file) { console.error('Error: --file required'); process.exit(1); }
+    if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
     const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
     const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
     const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
@@ -207,46 +223,44 @@ Options:
       author: args.author || process.env.USER || 'cli-user',
     });
     if (result.registered) {
-      console.log(`Pattern registered: ${result.pattern.name} [${result.pattern.id}]`);
-      console.log(`Type: ${result.pattern.patternType} | Complexity: ${result.pattern.complexity}`);
-      console.log(`Coherency: ${result.pattern.coherencyScore.total}`);
+      console.log(`${c.boldGreen('Pattern registered:')} ${c.bold(result.pattern.name)} [${c.cyan(result.pattern.id)}]`);
+      console.log(`Type: ${c.magenta(result.pattern.patternType)} | Complexity: ${c.blue(result.pattern.complexity)}`);
+      console.log(`Coherency: ${colorScore(result.pattern.coherencyScore.total)}`);
     } else {
-      console.log(`Rejected: ${result.reason}`);
+      console.log(`${colorStatus(false)}: ${c.red(result.reason)}`);
     }
     return;
   }
 
   if (cmd === 'patterns') {
     const stats = oracle.patternStats();
-    console.log('Pattern Library:');
-    console.log(`  Total patterns: ${stats.totalPatterns}`);
-    console.log(`  Avg coherency: ${stats.avgCoherency}`);
+    console.log(c.boldCyan('Pattern Library:'));
+    console.log(`  Total patterns: ${c.bold(String(stats.totalPatterns))}`);
+    console.log(`  Avg coherency: ${colorScore(stats.avgCoherency)}`);
     if (Object.keys(stats.byType).length > 0) {
-      console.log(`  By type: ${Object.entries(stats.byType).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+      console.log(`  By type: ${Object.entries(stats.byType).map(([k, v]) => `${c.magenta(k)}(${v})`).join(', ')}`);
     }
     if (Object.keys(stats.byLanguage).length > 0) {
-      console.log(`  By language: ${Object.entries(stats.byLanguage).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+      console.log(`  By language: ${Object.entries(stats.byLanguage).map(([k, v]) => `${c.blue(k)}(${v})`).join(', ')}`);
     }
     if (Object.keys(stats.byComplexity).length > 0) {
-      console.log(`  By complexity: ${Object.entries(stats.byComplexity).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+      console.log(`  By complexity: ${Object.entries(stats.byComplexity).map(([k, v]) => `${c.cyan(k)}(${v})`).join(', ')}`);
     }
     return;
   }
 
   if (cmd === 'diff') {
     const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
-    if (ids.length < 2) { console.error('Usage: oracle diff <id-a> <id-b>'); process.exit(1); }
+    if (ids.length < 2) { console.error(`Usage: ${c.cyan('oracle diff')} <id-a> <id-b>`); process.exit(1); }
     const result = oracle.diff(ids[0], ids[1]);
-    if (result.error) { console.error(result.error); process.exit(1); }
-    console.log(`--- ${result.a.name} [${result.a.id}]  coherency: ${result.a.coherency}`);
-    console.log(`+++ ${result.b.name} [${result.b.id}]  coherency: ${result.b.coherency}`);
+    if (result.error) { console.error(c.boldRed(result.error)); process.exit(1); }
+    console.log(`${c.red('---')} ${c.bold(result.a.name)} [${c.cyan(result.a.id)}]  coherency: ${colorScore(result.a.coherency)}`);
+    console.log(`${c.green('+++')} ${c.bold(result.b.name)} [${c.cyan(result.b.id)}]  coherency: ${colorScore(result.b.coherency)}`);
     console.log('');
     for (const d of result.diff) {
-      if (d.type === 'removed') console.log(`- ${d.line}`);
-      else if (d.type === 'added') console.log(`+ ${d.line}`);
-      else console.log(`  ${d.line}`);
+      console.log(colorDiff(d.type, d.line));
     }
-    console.log(`\n${result.stats.added} added, ${result.stats.removed} removed, ${result.stats.same} unchanged`);
+    console.log(`\n${c.green(String(result.stats.added) + ' added')}, ${c.red(String(result.stats.removed) + ' removed')}, ${c.dim(String(result.stats.same) + ' unchanged')}`);
     return;
   }
 
@@ -261,7 +275,7 @@ Options:
     });
     if (args.file) {
       fs.writeFileSync(path.resolve(args.file), output, 'utf-8');
-      console.log(`Exported to ${args.file}`);
+      console.log(`${c.boldGreen('Exported')} to ${c.cyan(args.file)}`);
     } else {
       console.log(output);
     }
@@ -270,20 +284,19 @@ Options:
 
   if (cmd === 'search') {
     const term = args.description || args._rest || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
-    if (!term) { console.error('Error: provide a search term. Usage: oracle search <term>'); process.exit(1); }
+    if (!term) { console.error(c.boldRed('Error:') + ` provide a search term. Usage: ${c.cyan('oracle search <term>')}`); process.exit(1); }
     const results = oracle.search(term, {
       limit: parseInt(args.limit) || 10,
       language: args.language,
     });
     if (results.length === 0) {
-      console.log('No matches found.');
+      console.log(c.yellow('No matches found.'));
     } else {
-      console.log(`Found ${results.length} match(es) for "${term}":\n`);
+      console.log(`Found ${c.bold(String(results.length))} match(es) for ${c.cyan('"' + term + '"')}:\n`);
       for (const r of results) {
         const label = r.name || r.description || 'untitled';
-        const src = r.source === 'pattern' ? 'PAT' : 'HIS';
-        console.log(`  [${src}] ${label}  (coherency: ${r.coherency ?? '?'}, match: ${r.matchScore.toFixed(2)})`);
-        console.log(`         ${r.language} | ${r.tags.join(', ') || 'no tags'} | ${r.id}`);
+        console.log(`  [${colorSource(r.source)}] ${c.bold(label)}  (coherency: ${colorScore(r.coherency)}, match: ${colorScore(r.matchScore)})`);
+        console.log(`         ${c.blue(r.language)} | ${r.tags.map(t => c.magenta(t)).join(', ') || c.dim('no tags')} | ${c.dim(r.id)}`);
       }
     }
     return;
@@ -292,12 +305,12 @@ Options:
   if (cmd === 'seed') {
     const { seedLibrary } = require('./patterns/seeds');
     const results = seedLibrary(oracle);
-    console.log(`Seeded ${results.registered} patterns (${results.skipped} skipped, ${results.failed} failed)`);
-    console.log(`Library now has ${oracle.patternStats().totalPatterns} patterns`);
+    console.log(`Seeded ${c.boldGreen(String(results.registered))} patterns (${c.dim(results.skipped + ' skipped')}, ${results.failed > 0 ? c.boldRed(String(results.failed)) : c.dim(String(results.failed))} failed)`);
+    console.log(`Library now has ${c.bold(String(oracle.patternStats().totalPatterns))} patterns`);
     return;
   }
 
-  console.error(`Unknown command: ${cmd}. Run 'remembrance-oracle help' for usage.`);
+  console.error(`${c.boldRed('Unknown command:')} ${cmd}. Run ${c.cyan("'remembrance-oracle help'")} for usage.`);
   process.exit(1);
 }
 

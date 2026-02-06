@@ -278,6 +278,58 @@ class RemembranceOracle {
   retirePatterns(minScore) {
     return this.patterns.retire(minScore);
   }
+
+  /**
+   * Fuzzy text search across patterns + history.
+   * Fast grep-style lookup — no decision engine overhead.
+   */
+  search(term, options = {}) {
+    const { limit = 10, language } = options;
+    const lower = term.toLowerCase();
+    const words = lower.split(/\s+/).filter(w => w.length > 1);
+
+    const score = (text) => {
+      const t = text.toLowerCase();
+      // Exact substring match is best
+      if (t.includes(lower)) return 1.0;
+      // Count how many query words appear
+      const hits = words.filter(w => t.includes(w)).length;
+      return words.length > 0 ? hits / words.length : 0;
+    };
+
+    // Search patterns
+    const patternResults = this.patterns.getAll(language ? { language } : {}).map(p => {
+      const nameScore = score(p.name) * 1.5;
+      const descScore = score(p.description);
+      const tagScore = score(p.tags.join(' '));
+      const codeScore = score(p.code) * 0.3;
+      const best = Math.max(nameScore, descScore, tagScore, codeScore);
+      return { source: 'pattern', id: p.id, name: p.name, description: p.description, language: p.language, tags: p.tags, coherency: p.coherencyScore?.total, code: p.code, matchScore: best };
+    }).filter(r => r.matchScore > 0);
+
+    // Search history
+    const historyResults = this.store.getAll(language ? { language } : {}).map(e => {
+      const descScore = score(e.description);
+      const tagScore = score(e.tags.join(' '));
+      const codeScore = score(e.code) * 0.3;
+      const best = Math.max(descScore, tagScore, codeScore);
+      return { source: 'history', id: e.id, name: null, description: e.description, language: e.language, tags: e.tags, coherency: e.coherencyScore?.total, code: e.code, matchScore: best };
+    }).filter(r => r.matchScore > 0);
+
+    // Merge, dedupe by code hash, sort by match score then coherency
+    const seen = new Set();
+    const merged = [...patternResults, ...historyResults]
+      .sort((a, b) => b.matchScore - a.matchScore || (b.coherency ?? 0) - (a.coherency ?? 0))
+      .filter(r => {
+        const key = r.code.slice(0, 100);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, limit);
+
+    return merged;
+  }
 }
 
 module.exports = { RemembranceOracle };

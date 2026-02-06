@@ -49,6 +49,7 @@ Commands:
   inspect    Inspect a stored entry
   feedback   Report if pulled code worked
   prune      Remove low-coherency entries
+  search     Fuzzy search across patterns and history
   register   Register code as a named pattern in the library
   patterns   Show pattern library statistics
   seed       Seed the library with built-in proven patterns
@@ -226,6 +227,27 @@ Options:
     }
     if (Object.keys(stats.byComplexity).length > 0) {
       console.log(`  By complexity: ${Object.entries(stats.byComplexity).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+    }
+    return;
+  }
+
+  if (cmd === 'search') {
+    const term = args.description || args._rest || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
+    if (!term) { console.error('Error: provide a search term. Usage: oracle search <term>'); process.exit(1); }
+    const results = oracle.search(term, {
+      limit: parseInt(args.limit) || 10,
+      language: args.language,
+    });
+    if (results.length === 0) {
+      console.log('No matches found.');
+    } else {
+      console.log(`Found ${results.length} match(es) for "${term}":\n`);
+      for (const r of results) {
+        const label = r.name || r.description || 'untitled';
+        const src = r.source === 'pattern' ? 'PAT' : 'HIS';
+        console.log(`  [${src}] ${label}  (coherency: ${r.coherency ?? '?'}, match: ${r.matchScore.toFixed(2)})`);
+        console.log(`         ${r.language} | ${r.tags.join(', ') || 'no tags'} | ${r.id}`);
+      }
     }
     return;
   }

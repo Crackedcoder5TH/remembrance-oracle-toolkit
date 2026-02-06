@@ -280,6 +280,71 @@ class RemembranceOracle {
   }
 
   /**
+   * Export top patterns as a standalone portable file.
+   * Output is a self-contained JSON or markdown file any AI can read
+   * without the toolkit installed.
+   */
+  export(options = {}) {
+    const {
+      format = 'json',
+      limit = 20,
+      minCoherency = 0.5,
+      language,
+      tags,
+    } = options;
+
+    let patterns = this.patterns.getAll({ language, minCoherency });
+    if (tags && tags.length > 0) {
+      const filterTags = new Set(tags.map(t => t.toLowerCase()));
+      patterns = patterns.filter(p => p.tags.some(t => filterTags.has(t.toLowerCase())));
+    }
+
+    // Sort by coherency descending, take top N
+    patterns = patterns
+      .sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0))
+      .slice(0, limit);
+
+    if (format === 'markdown' || format === 'md') {
+      return this._exportMarkdown(patterns);
+    }
+    return this._exportJSON(patterns);
+  }
+
+  _exportJSON(patterns) {
+    return JSON.stringify({
+      exported: new Date().toISOString(),
+      count: patterns.length,
+      patterns: patterns.map(p => ({
+        name: p.name,
+        code: p.code,
+        language: p.language,
+        description: p.description,
+        tags: p.tags,
+        patternType: p.patternType,
+        complexity: p.complexity,
+        coherency: p.coherencyScore?.total,
+      })),
+    }, null, 2);
+  }
+
+  _exportMarkdown(patterns) {
+    const lines = [
+      '# Remembrance Oracle — Exported Patterns',
+      '',
+      `Exported: ${new Date().toISOString()} | ${patterns.length} patterns`,
+      '',
+    ];
+    for (const p of patterns) {
+      lines.push(`## ${p.name} (${p.coherencyScore?.total ?? '?'})`);
+      lines.push(`**${p.language}** | ${p.patternType} | ${p.complexity} | ${(p.tags || []).join(', ')}`);
+      lines.push(`> ${p.description}`);
+      lines.push('```' + (p.language || '') + '\n' + p.code + '\n```');
+      lines.push('');
+    }
+    return lines.join('\n');
+  }
+
+  /**
    * Fuzzy text search across patterns + history.
    * Fast grep-style lookup — no decision engine overhead.
    */

@@ -49,6 +49,7 @@ Commands:
   inspect    Inspect a stored entry
   feedback   Report if pulled code worked
   prune      Remove low-coherency entries
+  export     Export top patterns as standalone JSON or markdown
   search     Fuzzy search across patterns and history
   register   Register code as a named pattern in the library
   patterns   Show pattern library statistics
@@ -227,6 +228,24 @@ Options:
     }
     if (Object.keys(stats.byComplexity).length > 0) {
       console.log(`  By complexity: ${Object.entries(stats.byComplexity).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+    }
+    return;
+  }
+
+  if (cmd === 'export') {
+    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : undefined;
+    const output = oracle.export({
+      format: args.format || (args.file && args.file.endsWith('.md') ? 'markdown' : 'json'),
+      limit: parseInt(args.limit) || 20,
+      minCoherency: parseFloat(args['min-coherency']) || 0.5,
+      language: args.language,
+      tags,
+    });
+    if (args.file) {
+      fs.writeFileSync(path.resolve(args.file), output, 'utf-8');
+      console.log(`Exported to ${args.file}`);
+    } else {
+      console.log(output);
     }
     return;
   }

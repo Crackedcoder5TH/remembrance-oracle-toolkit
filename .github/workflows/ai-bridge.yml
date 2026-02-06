@@ -1,0 +1,42 @@
+name: Oracle AI Bridge
+
+on:
+  repository_dispatch:
+    types: [oracle-command]
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  handle-dispatch:
+    name: Handle AI Command (dispatch)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'repository_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Process command
+        run: |
+          echo '${{ toJson(github.event.client_payload) }}' | node src/connectors/github-handler.js
+
+  handle-issue:
+    name: Handle AI Command (issue)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'oracle-command')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Process issue command
+        run: node src/connectors/github-handler.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}

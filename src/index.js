@@ -13,8 +13,12 @@ const { computeCoherencyScore, detectLanguage } = require('./core/coherency');
 const { validateCode } = require('./core/validator');
 const { rankEntries, computeRelevance } = require('./core/relevance');
 const { VerifiedHistoryStore } = require('./store/history');
+const { AIConnector } = require('./connectors/connector');
+const providers = require('./connectors/providers');
+const githubBridge = require('./connectors/github-bridge');
 
 module.exports = {
+  // Core
   RemembranceOracle,
   computeCoherencyScore,
   detectLanguage,
@@ -22,4 +26,27 @@ module.exports = {
   rankEntries,
   computeRelevance,
   VerifiedHistoryStore,
+
+  // AI Connectors
+  AIConnector,
+
+  // Provider tool definitions (give these to the AI so it can call Oracle)
+  OPENAI_TOOLS: providers.OPENAI_TOOLS,
+  ANTHROPIC_TOOLS: providers.ANTHROPIC_TOOLS,
+  GEMINI_TOOLS: providers.GEMINI_TOOLS,
+  MCP_TOOLS: providers.MCP_TOOLS,
+
+  // Provider translators
+  fromOpenAI: providers.fromOpenAI,
+  toOpenAI: providers.toOpenAI,
+  fromAnthropic: providers.fromAnthropic,
+  toAnthropic: providers.toAnthropic,
+  fromGemini: providers.fromGemini,
+  toGemini: providers.toGemini,
+  fromMCP: providers.fromMCP,
+  toMCP: providers.toMCP,
+
+  // GitHub bridge
+  parseIssueCommand: githubBridge.parseIssueCommand,
+  formatAsComment: githubBridge.formatAsComment,
 };

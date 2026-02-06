@@ -1,0 +1,110 @@
+name: Remembrance Oracle
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      command:
+        description: 'Oracle command (query, stats, prune)'
+        required: false
+        default: 'stats'
+      query_description:
+        description: 'Description for code query'
+        required: false
+      query_tags:
+        description: 'Comma-separated tags for query'
+        required: false
+      query_language:
+        description: 'Language filter for query'
+        required: false
+      min_coherency:
+        description: 'Minimum coherency score (0-1)'
+        required: false
+        default: '0.5'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Validate Oracle
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test tests/
+
+  oracle-command:
+    name: Run Oracle Command
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Oracle
+        run: |
+          CMD="${{ github.event.inputs.command }}"
+          if [ "$CMD" = "query" ]; then
+            ARGS="query"
+            [ -n "${{ github.event.inputs.query_description }}" ] && ARGS="$ARGS --description \"${{ github.event.inputs.query_description }}\""
+            [ -n "${{ github.event.inputs.query_tags }}" ] && ARGS="$ARGS --tags ${{ github.event.inputs.query_tags }}"
+            [ -n "${{ github.event.inputs.query_language }}" ] && ARGS="$ARGS --language ${{ github.event.inputs.query_language }}"
+            ARGS="$ARGS --min-coherency ${{ github.event.inputs.min_coherency }}"
+            eval "node src/cli.js $ARGS"
+          elif [ "$CMD" = "stats" ]; then
+            node src/cli.js stats
+          elif [ "$CMD" = "prune" ]; then
+            node src/cli.js prune --min-coherency ${{ github.event.inputs.min_coherency }}
+          else
+            echo "Unknown command: $CMD"
+            exit 1
+          fi
+
+  validate-on-push:
+    name: Validate Submitted Code
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check for new code submissions
+        run: |
+          # Find any new files in submissions/ directory
+          if [ -d "submissions" ]; then
+            for file in submissions/*.js submissions/*.py; do
+              [ -f "$file" ] || continue
+              echo "Validating: $file"
+              TEST_FILE="${file%.js}.test.js"
+              [ ! -f "$TEST_FILE" ] && TEST_FILE="${file%.py}.test.py"
+
+              if [ -f "$TEST_FILE" ]; then
+                node src/cli.js submit --file "$file" --test "$TEST_FILE"
+              else
+                node src/cli.js validate --file "$file"
+              fi
+            done
+          fi
+
+      - name: Commit verified history
+        run: |
+          if [ -f ".remembrance/verified-history.json" ]; then
+            git config user.name "Remembrance Oracle"
+            git config user.email "oracle@remembrance.bot"
+            git add .remembrance/verified-history.json
+            git diff --cached --quiet || git commit -m "Update verified code history"
+            git push
+          fi

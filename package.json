@@ -1,0 +1,32 @@
+{
+  "name": "remembrance-oracle-toolkit",
+  "version": "1.0.0",
+  "description": "AI-powered code memory system that stores verified code with coherency scores and serves the most relevant, proven snippets to any AI that queries it.",
+  "main": "src/index.js",
+  "bin": {
+    "remembrance-oracle": "src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "node src/index.js",
+    "validate": "node src/cli.js validate",
+    "query": "node src/cli.js query",
+    "lint": "node --check src/**/*.js"
+  },
+  "keywords": [
+    "ai",
+    "code-memory",
+    "oracle",
+    "coherency",
+    "code-retrieval",
+    "github-action"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

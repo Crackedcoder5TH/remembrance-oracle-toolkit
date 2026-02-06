@@ -14,10 +14,13 @@ const { validateCode } = require('../core/validator');
 const { computeCoherencyScore } = require('../core/coherency');
 const { rankEntries } = require('../core/relevance');
 const { VerifiedHistoryStore } = require('../store/history');
+const { PatternLibrary } = require('../patterns/library');
 
 class RemembranceOracle {
   constructor(options = {}) {
     this.store = options.store || new VerifiedHistoryStore(options.baseDir);
+    const storeDir = this.store.storeDir || require('path').join(options.baseDir || process.cwd(), '.remembrance');
+    this.patterns = options.patterns || new PatternLibrary(storeDir);
     this.threshold = options.threshold || 0.6;
   }
 
@@ -141,6 +144,139 @@ class RemembranceOracle {
    */
   prune(minCoherency = 0.4) {
     return this.store.prune(minCoherency);
+  }
+
+  // ─── Pattern Library Methods ───
+
+  /**
+   * Smart code retrieval — coherency-driven pull vs generate.
+   *
+   * 1. Checks pattern library for a match
+   * 2. If PULL: returns the pattern directly
+   * 3. If EVOLVE: returns the pattern + signals it needs improvement
+   * 4. If GENERATE: signals that new code is needed
+   *
+   * Also checks the verified history store and merges results.
+   */
+  resolve(request = {}) {
+    const {
+      description = '',
+      tags = [],
+      language,
+      minCoherency,
+    } = request;
+
+    // Ask the pattern library decision engine
+    const decision = this.patterns.decide({ description, tags, language, minCoherency });
+
+    // Also query the verified history for supplemental results
+    const historyResults = this.query({ description, tags, language, limit: 3, minCoherency: 0.5 });
+
+    return {
+      decision: decision.decision,
+      confidence: decision.confidence,
+      reasoning: decision.reasoning,
+      pattern: decision.pattern ? {
+        id: decision.pattern.id,
+        name: decision.pattern.name,
+        code: decision.pattern.code,
+        language: decision.pattern.language,
+        patternType: decision.pattern.patternType,
+        complexity: decision.pattern.complexity,
+        coherencyScore: decision.pattern.coherencyScore?.total,
+        tags: decision.pattern.tags,
+      } : null,
+      alternatives: decision.alternatives,
+      historyMatches: historyResults,
+    };
+  }
+
+  /**
+   * Register a pattern in the library (must pass validation first).
+   */
+  registerPattern(pattern) {
+    // Validate the code first
+    const validation = validateCode(pattern.code, {
+      language: pattern.language,
+      testCode: pattern.testCode,
+      threshold: this.threshold,
+    });
+
+    if (!validation.valid) {
+      return {
+        registered: false,
+        validation,
+        reason: validation.errors.join('; '),
+      };
+    }
+
+    // Register in both the pattern library AND verified history
+    const registered = this.patterns.register({
+      ...pattern,
+      testPassed: validation.testPassed,
+      reliability: 0.5,
+    });
+
+    // Also store in verified history for query compatibility
+    this.store.add({
+      code: pattern.code,
+      language: validation.coherencyScore.language,
+      description: pattern.description || pattern.name,
+      tags: [...(pattern.tags || []), pattern.patternType || 'pattern'].filter(Boolean),
+      author: pattern.author || 'oracle-pattern-library',
+      coherencyScore: validation.coherencyScore,
+      testPassed: validation.testPassed,
+      testOutput: validation.testOutput,
+    });
+
+    return {
+      registered: true,
+      pattern: registered,
+      validation,
+    };
+  }
+
+  /**
+   * Evolve an existing pattern into a better version.
+   */
+  evolvePattern(parentId, newCode, metadata = {}) {
+    const evolved = this.patterns.evolve(parentId, newCode, metadata);
+    if (!evolved) return { evolved: false, error: `Pattern ${parentId} not found` };
+
+    // Also store evolution in verified history
+    this.store.add({
+      code: newCode,
+      language: evolved.language,
+      description: evolved.description,
+      tags: evolved.tags,
+      author: metadata.author || 'oracle-evolution',
+      coherencyScore: evolved.coherencyScore,
+    });
+
+    return { evolved: true, pattern: evolved };
+  }
+
+  /**
+   * Report pattern usage feedback.
+   */
+  patternFeedback(id, succeeded) {
+    const updated = this.patterns.recordUsage(id, succeeded);
+    if (!updated) return { success: false, error: `Pattern ${id} not found` };
+    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount };
+  }
+
+  /**
+   * Get pattern library stats.
+   */
+  patternStats() {
+    return this.patterns.summary();
+  }
+
+  /**
+   * Retire low-performing patterns.
+   */
+  retirePatterns(minScore) {
+    return this.patterns.retire(minScore);
   }
 }
 

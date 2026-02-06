@@ -16,6 +16,9 @@ const { VerifiedHistoryStore } = require('./store/history');
 const { AIConnector } = require('./connectors/connector');
 const providers = require('./connectors/providers');
 const githubBridge = require('./connectors/github-bridge');
+const { PatternLibrary, classifyPattern, inferComplexity, THRESHOLDS } = require('./patterns/library');
+const { parseCode, astCoherencyBoost } = require('./core/parsers/ast');
+const { sandboxExecute } = require('./core/sandbox');
 
 module.exports = {
   // Core
@@ -49,4 +52,17 @@ module.exports = {
   // GitHub bridge
   parseIssueCommand: githubBridge.parseIssueCommand,
   formatAsComment: githubBridge.formatAsComment,
+
+  // Pattern Library
+  PatternLibrary,
+  classifyPattern,
+  inferComplexity,
+  THRESHOLDS,
+
+  // AST parsing
+  parseCode,
+  astCoherencyBoost,
+
+  // Sandbox execution
+  sandboxExecute,
 };

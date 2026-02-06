@@ -9,6 +9,8 @@
  * - Historical reliability (how often has it worked?)
  */
 
+const { astCoherencyBoost } = require('./parsers/ast');
+
 const WEIGHTS = {
   syntaxValid: 0.25,
   completeness: 0.20,
@@ -107,9 +109,20 @@ function computeCoherencyScore(code, metadata = {}) {
     return sum + (scores[key] * weight);
   }, 0);
 
+  // AST-based boost/penalty
+  const ast = astCoherencyBoost(code, language);
+  const total = Math.max(0, Math.min(1, weighted + ast.boost));
+
   return {
-    total: Math.round(weighted * 1000) / 1000,
+    total: Math.round(total * 1000) / 1000,
     breakdown: scores,
+    astAnalysis: {
+      boost: ast.boost,
+      valid: ast.parsed.valid,
+      functions: ast.parsed.functions.length,
+      classes: ast.parsed.classes.length,
+      complexity: ast.parsed.complexity,
+    },
     language,
   };
 }

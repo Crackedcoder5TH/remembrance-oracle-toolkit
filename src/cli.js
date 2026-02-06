@@ -285,17 +285,21 @@ ${c.bold('Options:')}
   if (cmd === 'search') {
     const term = args.description || args._rest || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
     if (!term) { console.error(c.boldRed('Error:') + ` provide a search term. Usage: ${c.cyan('oracle search <term>')}`); process.exit(1); }
+    const mode = args.mode || 'hybrid';
     const results = oracle.search(term, {
       limit: parseInt(args.limit) || 10,
       language: args.language,
+      mode,
     });
     if (results.length === 0) {
       console.log(c.yellow('No matches found.'));
     } else {
-      console.log(`Found ${c.bold(String(results.length))} match(es) for ${c.cyan('"' + term + '"')}:\n`);
+      const modeLabel = mode === 'semantic' ? c.magenta('[semantic]') : mode === 'hybrid' ? c.cyan('[hybrid]') : '';
+      console.log(`Found ${c.bold(String(results.length))} match(es) for ${c.cyan('"' + term + '"')} ${modeLabel}:\n`);
       for (const r of results) {
         const label = r.name || r.description || 'untitled';
-        console.log(`  [${colorSource(r.source)}] ${c.bold(label)}  (coherency: ${colorScore(r.coherency)}, match: ${colorScore(r.matchScore)})`);
+        const concepts = r.matchedConcepts?.length > 0 ? c.dim(` (${r.matchedConcepts.join(', ')})`) : '';
+        console.log(`  [${colorSource(r.source)}] ${c.bold(label)}  (coherency: ${colorScore(r.coherency)}, match: ${colorScore(r.matchScore)})${concepts}`);
         console.log(`         ${c.blue(r.language)} | ${r.tags.map(t => c.magenta(t)).join(', ') || c.dim('no tags')} | ${c.dim(r.id)}`);
       }
     }

@@ -13,6 +13,7 @@
 const { validateCode } = require('../core/validator');
 const { computeCoherencyScore } = require('../core/coherency');
 const { rankEntries } = require('../core/relevance');
+const { semanticSearch: semanticSearchEngine } = require('../core/embeddings');
 const { VerifiedHistoryStore } = require('../store/history');
 const { PatternLibrary } = require('../patterns/library');
 
@@ -404,45 +405,69 @@ class RemembranceOracle {
   }
 
   /**
-   * Fuzzy text search across patterns + history.
-   * Fast grep-style lookup — no decision engine overhead.
+   * Hybrid search across patterns + history.
+   * Combines keyword matching with semantic concept expansion.
+   *
+   * "function that prevents calling too often" → matches throttle/debounce
+   * even without keyword overlap, because the concept cluster activates.
    */
   search(term, options = {}) {
-    const { limit = 10, language } = options;
+    const { limit = 10, language, mode = 'hybrid' } = options;
+
+    // Gather all items from both sources
+    const items = this._gatherSearchItems(language);
+
+    if (mode === 'semantic') {
+      return this._semanticOnly(items, term, limit);
+    }
+
+    // Hybrid: blend keyword + semantic scores
     const lower = term.toLowerCase();
     const words = lower.split(/\s+/).filter(w => w.length > 1);
 
-    const score = (text) => {
+    const keywordScore = (text) => {
       const t = text.toLowerCase();
-      // Exact substring match is best
       if (t.includes(lower)) return 1.0;
-      // Count how many query words appear
       const hits = words.filter(w => t.includes(w)).length;
       return words.length > 0 ? hits / words.length : 0;
     };
 
-    // Search patterns
-    const patternResults = this.patterns.getAll(language ? { language } : {}).map(p => {
-      const nameScore = score(p.name) * 1.5;
-      const descScore = score(p.description);
-      const tagScore = score(p.tags.join(' '));
-      const codeScore = score(p.code) * 0.3;
-      const best = Math.max(nameScore, descScore, tagScore, codeScore);
-      return { source: 'pattern', id: p.id, name: p.name, description: p.description, language: p.language, tags: p.tags, coherency: p.coherencyScore?.total, code: p.code, matchScore: best };
+    // Get semantic scores for all items
+    const semanticResults = semanticSearchEngine(items, term, { limit: items.length, minScore: 0, language });
+    const semanticMap = new Map(semanticResults.map(r => [r.id, r.semanticScore]));
+
+    const scored = items.map(item => {
+      // Keyword signal
+      const nameKw = keywordScore(item.name || '') * 1.5;
+      const descKw = keywordScore(item.description || '');
+      const tagKw = keywordScore((item.tags || []).join(' '));
+      const codeKw = keywordScore(item.code || '') * 0.3;
+      const kwScore = Math.max(nameKw, descKw, tagKw, codeKw);
+
+      // Semantic signal
+      const semScore = semanticMap.get(item.id) || 0;
+
+      // Blend: 50% keyword + 50% semantic
+      const matchScore = kwScore * 0.50 + semScore * 0.50;
+
+      return {
+        source: item.source,
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        language: item.language,
+        tags: item.tags,
+        coherency: item.coherency,
+        code: item.code,
+        matchScore,
+        keywordScore: kwScore,
+        semanticScore: semScore,
+      };
     }).filter(r => r.matchScore > 0);
 
-    // Search history
-    const historyResults = this.store.getAll(language ? { language } : {}).map(e => {
-      const descScore = score(e.description);
-      const tagScore = score(e.tags.join(' '));
-      const codeScore = score(e.code) * 0.3;
-      const best = Math.max(descScore, tagScore, codeScore);
-      return { source: 'history', id: e.id, name: null, description: e.description, language: e.language, tags: e.tags, coherency: e.coherencyScore?.total, code: e.code, matchScore: best };
-    }).filter(r => r.matchScore > 0);
-
-    // Merge, dedupe by code hash, sort by match score then coherency
+    // Dedupe by code prefix, sort by score then coherency
     const seen = new Set();
-    const merged = [...patternResults, ...historyResults]
+    return scored
       .sort((a, b) => b.matchScore - a.matchScore || (b.coherency ?? 0) - (a.coherency ?? 0))
       .filter(r => {
         const key = r.code.slice(0, 100);
@@ -451,8 +476,55 @@ class RemembranceOracle {
         return true;
       })
       .slice(0, limit);
+  }
 
-    return merged;
+  /**
+   * Pure semantic search — concept-driven, no keyword matching.
+   * Best for natural language queries like "I need something that
+   * prevents a function from being called too frequently".
+   */
+  _semanticOnly(items, query, limit) {
+    const results = semanticSearchEngine(items, query, { limit: items.length, minScore: 0.05 });
+
+    const seen = new Set();
+    return results
+      .filter(r => {
+        const key = r.code.slice(0, 100);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, limit)
+      .map(r => ({
+        source: r.source,
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        language: r.language,
+        tags: r.tags,
+        coherency: r.coherency,
+        code: r.code,
+        matchScore: r.semanticScore,
+        matchedConcepts: r.matchedConcepts,
+      }));
+  }
+
+  /**
+   * Gather search-ready items from both patterns and history.
+   */
+  _gatherSearchItems(language) {
+    const filters = language ? { language } : {};
+    const patterns = this.patterns.getAll(filters).map(p => ({
+      source: 'pattern', id: p.id, name: p.name, description: p.description,
+      language: p.language, tags: p.tags, coherency: p.coherencyScore?.total,
+      code: p.code,
+    }));
+    const history = this.store.getAll(filters).map(e => ({
+      source: 'history', id: e.id, name: null, description: e.description,
+      language: e.language, tags: e.tags, coherency: e.coherencyScore?.total,
+      code: e.code,
+    }));
+    return [...patterns, ...history];
   }
 }
 

@@ -20,6 +20,7 @@ const githubBridge = require('./connectors/github-bridge');
 const { PatternLibrary, classifyPattern, inferComplexity, THRESHOLDS } = require('./patterns/library');
 const { parseCode, astCoherencyBoost } = require('./core/parsers/ast');
 const { sandboxExecute } = require('./core/sandbox');
+const { semanticSearch, semanticSimilarity, expandQuery, identifyConcepts } = require('./core/embeddings');
 
 module.exports = {
   // Core
@@ -67,4 +68,10 @@ module.exports = {
 
   // Sandbox execution
   sandboxExecute,
+
+  // Semantic search
+  semanticSearch,
+  semanticSimilarity,
+  expandQuery,
+  identifyConcepts,
 };

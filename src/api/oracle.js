@@ -22,6 +22,16 @@ class RemembranceOracle {
     const storeDir = this.store.storeDir || require('path').join(options.baseDir || process.cwd(), '.remembrance');
     this.patterns = options.patterns || new PatternLibrary(storeDir);
     this.threshold = options.threshold || 0.6;
+
+    // Auto-seed on first run if library is empty
+    if (options.autoSeed !== false && this.patterns.getAll().length === 0) {
+      try {
+        const { seedLibrary } = require('../patterns/seeds');
+        seedLibrary(this);
+      } catch {
+        // Seeding is best-effort — don't fail construction
+      }
+    }
   }
 
   /**

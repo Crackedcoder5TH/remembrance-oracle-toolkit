@@ -13,6 +13,7 @@ const { computeCoherencyScore, detectLanguage } = require('./core/coherency');
 const { validateCode } = require('./core/validator');
 const { rankEntries, computeRelevance } = require('./core/relevance');
 const { VerifiedHistoryStore } = require('./store/history');
+const { SQLiteStore } = require('./store/sqlite');
 const { AIConnector } = require('./connectors/connector');
 const providers = require('./connectors/providers');
 const githubBridge = require('./connectors/github-bridge');
@@ -29,6 +30,7 @@ module.exports = {
   rankEntries,
   computeRelevance,
   VerifiedHistoryStore,
+  SQLiteStore,
 
   // AI Connectors
   AIConnector,

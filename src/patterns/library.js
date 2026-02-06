@@ -11,7 +11,8 @@
  *   - GENERATE: if no pattern is good enough, flag for new generation
  *   - EVOLVE: if a pattern exists but can be improved, fork + upgrade
  *
- * Storage: .remembrance/pattern-library.json
+ * Backend: SQLite (shared with history store) when available, falls back to JSON.
+ * Storage: .remembrance/oracle.db (SQLite) or .remembrance/pattern-library.json (JSON)
  */
 
 const fs = require('fs');
@@ -37,30 +38,71 @@ const THRESHOLDS = {
   retire: 0.30,     // Below this: pattern should be retired
 };
 
+/**
+ * Try to get or create a shared SQLite instance.
+ */
+function tryGetSQLite(storeDir) {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    if (!DatabaseSync) return null;
+    const { SQLiteStore } = require('../store/sqlite');
+
+    // Re-use the VerifiedHistoryStore's shared instance if it exists
+    const { VerifiedHistoryStore } = require('../store/history');
+    if (VerifiedHistoryStore._sqliteInstances && VerifiedHistoryStore._sqliteInstances.has(storeDir)) {
+      return VerifiedHistoryStore._sqliteInstances.get(storeDir);
+    }
+
+    // storeDir may be a .remembrance dir (from Oracle flow) or a raw dir (from tests).
+    // SQLiteStore expects a baseDir and creates .remembrance inside it.
+    // If storeDir already ends with .remembrance, go one level up.
+    const baseDir = path.basename(storeDir) === '.remembrance'
+      ? path.dirname(storeDir)
+      : storeDir;
+    const instance = new SQLiteStore(baseDir);
+    if (!VerifiedHistoryStore._sqliteInstances) {
+      VerifiedHistoryStore._sqliteInstances = new Map();
+    }
+    VerifiedHistoryStore._sqliteInstances.set(storeDir, instance);
+    return instance;
+  } catch {}
+  return null;
+}
+
 class PatternLibrary {
   constructor(storeDir) {
     this.storeDir = storeDir;
     this.libraryPath = path.join(storeDir, PATTERN_FILE);
-    this._ensure();
+    this._backend = 'json';
+
+    const sqlite = tryGetSQLite(storeDir);
+    if (sqlite) {
+      this._sqlite = sqlite;
+      this._backend = 'sqlite';
+    } else {
+      this._ensureJSON();
+    }
   }
 
-  _ensure() {
+  get backend() { return this._backend; }
+
+  _ensureJSON() {
     if (!fs.existsSync(this.storeDir)) {
       fs.mkdirSync(this.storeDir, { recursive: true });
     }
     if (!fs.existsSync(this.libraryPath)) {
-      this._write({
+      this._writeJSON({
         patterns: [],
         meta: { created: new Date().toISOString(), version: 1, decisions: 0 },
       });
     }
   }
 
-  _read() {
+  _readJSON() {
     return JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
   }
 
-  _write(data) {
+  _writeJSON(data) {
     fs.writeFileSync(this.libraryPath, JSON.stringify(data, null, 2), 'utf-8');
   }
 
@@ -68,18 +110,166 @@ class PatternLibrary {
     return crypto.createHash('sha256').update(str).digest('hex').slice(0, 16);
   }
 
-  /**
-   * Register a new pattern in the library.
-   * The pattern is scored on coherency before storage.
-   */
+  // ─── Public API ───
+
   register(pattern) {
-    const data = this._read();
     const coherency = computeCoherencyScore(pattern.code, {
       language: pattern.language,
       testPassed: pattern.testPassed,
       historicalReliability: pattern.reliability ?? 0.5,
     });
 
+    if (this._backend === 'sqlite') {
+      const record = this._sqlite.addPattern({
+        name: pattern.name,
+        code: pattern.code,
+        language: pattern.language || coherency.language,
+        patternType: pattern.patternType || classifyPattern(pattern.code, pattern.name),
+        complexity: pattern.complexity || inferComplexity(pattern.code),
+        description: pattern.description || '',
+        tags: pattern.tags || [],
+        coherencyScore: coherency,
+        variants: pattern.variants || [],
+        testCode: pattern.testCode || null,
+      });
+      this._sqlite.incrementDecisions();
+      return record;
+    }
+
+    return this._registerJSON(pattern, coherency);
+  }
+
+  decide(request) {
+    const { description = '', tags = [], language, minCoherency } = request;
+    const patterns = this.getAll();
+
+    if (patterns.length === 0) {
+      return {
+        decision: 'generate',
+        pattern: null,
+        confidence: 1.0,
+        reasoning: 'Pattern library is empty — generation required',
+        alternatives: [],
+      };
+    }
+
+    const scored = patterns.map(p => {
+      const relevance = computeRelevance(
+        { description, tags, language },
+        {
+          description: `${p.name} ${p.description}`,
+          tags: p.tags,
+          language: p.language,
+          coherencyScore: p.coherencyScore,
+        }
+      );
+
+      const nameBonus = description.toLowerCase().includes(p.name.toLowerCase()) ? 0.15 : 0;
+      const focusBonus = p.complexity === 'atomic' ? 0.08 : p.complexity === 'composite' ? 0.04 : 0;
+      const coherency = p.coherencyScore?.total ?? 0;
+      const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
+      const composite = relevance.relevance * 0.40 + coherency * 0.25 + reliability * 0.15 + nameBonus + focusBonus;
+
+      return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
+    }).sort((a, b) => b.composite - a.composite);
+
+    const best = scored[0];
+    const threshold = minCoherency ?? THRESHOLDS.pull;
+
+    if (best.composite >= threshold && best.relevance >= 0.3) {
+      return {
+        decision: 'pull',
+        pattern: best.pattern,
+        confidence: best.composite,
+        reasoning: `Pattern "${best.pattern.name}" matches with composite score ${best.composite.toFixed(3)} (relevance=${best.relevance.toFixed(3)}, coherency=${best.coherency.toFixed(3)}, reliability=${best.reliability.toFixed(3)})`,
+        alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+      };
+    }
+
+    if (best.composite >= THRESHOLDS.evolve && best.relevance >= 0.2) {
+      return {
+        decision: 'evolve',
+        pattern: best.pattern,
+        confidence: best.composite,
+        reasoning: `Pattern "${best.pattern.name}" is a partial match (${best.composite.toFixed(3)}) — can be evolved to fit`,
+        alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+      };
+    }
+
+    return {
+      decision: 'generate',
+      pattern: scored.length > 0 ? scored[0].pattern : null,
+      confidence: 1.0 - (best.composite || 0),
+      reasoning: `Best match "${best.pattern.name}" scored too low (${best.composite.toFixed(3)}) — new pattern needed`,
+      alternatives: scored.slice(0, 3).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+    };
+  }
+
+  recordUsage(id, succeeded) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.recordPatternUsage(id, succeeded);
+    }
+    return this._recordUsageJSON(id, succeeded);
+  }
+
+  evolve(parentId, newCode, metadata = {}) {
+    if (this._backend === 'sqlite') {
+      return this._evolveSQLite(parentId, newCode, metadata);
+    }
+    return this._evolveJSON(parentId, newCode, metadata);
+  }
+
+  retire(minScore = THRESHOLDS.retire) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.retirePatterns(minScore);
+    }
+    return this._retireJSON(minScore);
+  }
+
+  getAll(filters = {}) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.getAllPatterns(filters);
+    }
+    return this._getAllJSON(filters);
+  }
+
+  summary() {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.patternSummary();
+    }
+    return this._summaryJSON();
+  }
+
+  // ─── SQLite evolution ───
+
+  _evolveSQLite(parentId, newCode, metadata) {
+    const parent = this._sqlite.getPattern(parentId);
+    if (!parent) return null;
+
+    const evolved = this.register({
+      ...metadata,
+      name: metadata.name || `${parent.name} (evolved)`,
+      code: newCode,
+      language: metadata.language || parent.language,
+      patternType: metadata.patternType || parent.patternType,
+      tags: metadata.tags || parent.tags,
+      description: metadata.description || `Evolved from: ${parent.description}`,
+    });
+
+    const now = new Date().toISOString();
+    evolved.evolutionHistory = [...(parent.evolutionHistory || []), { parentId, evolvedAt: now }];
+    parent.evolutionHistory = [...(parent.evolutionHistory || []), { childId: evolved.id, evolvedAt: now }];
+
+    this._sqlite.updatePattern(evolved.id, { evolutionHistory: evolved.evolutionHistory });
+    this._sqlite.updatePattern(parentId, { evolutionHistory: parent.evolutionHistory });
+
+    return evolved;
+  }
+
+  // ─── JSON implementations (fallback) ───
+
+  _registerJSON(pattern, coherency) {
+    const data = this._readJSON();
     const id = this._hash(pattern.code + pattern.name + Date.now());
     const record = {
       id,
@@ -99,130 +289,25 @@ class PatternLibrary {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-
     data.patterns.push(record);
     data.meta.decisions++;
-    this._write(data);
+    this._writeJSON(data);
     return record;
   }
 
-  /**
-   * The core decision engine.
-   *
-   * Given a request, decides:
-   *   - PULL (use existing pattern as-is)
-   *   - EVOLVE (fork an existing pattern and improve)
-   *   - GENERATE (no good pattern exists, create new)
-   *
-   * Returns: { decision, pattern?, confidence, reasoning }
-   */
-  decide(request) {
-    const { description = '', tags = [], language, minCoherency } = request;
-    const data = this._read();
-
-    if (data.patterns.length === 0) {
-      return {
-        decision: 'generate',
-        pattern: null,
-        confidence: 1.0,
-        reasoning: 'Pattern library is empty — generation required',
-        alternatives: [],
-      };
-    }
-
-    // Score all patterns against the request.
-    // Match on metadata (name, description, tags) NOT code body,
-    // so focused atomic patterns beat large modules on relevance.
-    const scored = data.patterns.map(p => {
-      const relevance = computeRelevance(
-        { description, tags, language },
-        {
-          description: `${p.name} ${p.description}`,
-          tags: p.tags,
-          language: p.language,
-          coherencyScore: p.coherencyScore,
-        }
-      );
-
-      // Bonus: exact name match
-      const nameBonus = description.toLowerCase().includes(p.name.toLowerCase()) ? 0.15 : 0;
-
-      // Bonus: focused patterns (atomic/composite) beat architectural blobs
-      const focusBonus = p.complexity === 'atomic' ? 0.08 : p.complexity === 'composite' ? 0.04 : 0;
-
-      // Composite score: relevance + coherency + reliability + bonuses
-      const coherency = p.coherencyScore?.total ?? 0;
-      const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
-      const composite = relevance.relevance * 0.40 + coherency * 0.25 + reliability * 0.15 + nameBonus + focusBonus;
-
-      return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
-    }).sort((a, b) => b.composite - a.composite);
-
-    const best = scored[0];
-    const threshold = minCoherency ?? THRESHOLDS.pull;
-
-    // Decision logic
-    if (best.composite >= threshold && best.relevance >= 0.3) {
-      return {
-        decision: 'pull',
-        pattern: best.pattern,
-        confidence: best.composite,
-        reasoning: `Pattern "${best.pattern.name}" matches with composite score ${best.composite.toFixed(3)} (relevance=${best.relevance.toFixed(3)}, coherency=${best.coherency.toFixed(3)}, reliability=${best.reliability.toFixed(3)})`,
-        alternatives: scored.slice(1, 4).map(s => ({
-          id: s.pattern.id,
-          name: s.pattern.name,
-          composite: s.composite,
-        })),
-      };
-    }
-
-    if (best.composite >= THRESHOLDS.evolve && best.relevance >= 0.2) {
-      return {
-        decision: 'evolve',
-        pattern: best.pattern,
-        confidence: best.composite,
-        reasoning: `Pattern "${best.pattern.name}" is a partial match (${best.composite.toFixed(3)}) — can be evolved to fit`,
-        alternatives: scored.slice(1, 4).map(s => ({
-          id: s.pattern.id,
-          name: s.pattern.name,
-          composite: s.composite,
-        })),
-      };
-    }
-
-    return {
-      decision: 'generate',
-      pattern: scored.length > 0 ? scored[0].pattern : null,
-      confidence: 1.0 - (best.composite || 0),
-      reasoning: `Best match "${best.pattern.name}" scored too low (${best.composite.toFixed(3)}) — new pattern needed`,
-      alternatives: scored.slice(0, 3).map(s => ({
-        id: s.pattern.id,
-        name: s.pattern.name,
-        composite: s.composite,
-      })),
-    };
-  }
-
-  /**
-   * Record that a pattern was used and whether it worked.
-   */
-  recordUsage(id, succeeded) {
-    const data = this._read();
+  _recordUsageJSON(id, succeeded) {
+    const data = this._readJSON();
     const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
-
     pattern.usageCount++;
     if (succeeded) pattern.successCount++;
     pattern.updatedAt = new Date().toISOString();
-    this._write(data);
+    this._writeJSON(data);
     return pattern;
   }
 
-  /**
-   * Evolve a pattern — create a new version linked to the original.
-   */
-  evolve(parentId, newCode, metadata = {}) {
-    const data = this._read();
+  _evolveJSON(parentId, newCode, metadata) {
+    const data = this._readJSON();
     const parent = data.patterns.find(p => p.id === parentId);
     if (!parent) return null;
 
@@ -236,13 +321,11 @@ class PatternLibrary {
       description: metadata.description || `Evolved from: ${parent.description}`,
     });
 
-    // Link evolution history
     evolved.evolutionHistory = [...(parent.evolutionHistory || []), { parentId, evolvedAt: new Date().toISOString() }];
     parent.evolutionHistory = [...(parent.evolutionHistory || []), { childId: evolved.id, evolvedAt: new Date().toISOString() }];
     parent.updatedAt = new Date().toISOString();
 
-    // Re-read to get evolved record, update, write
-    const freshData = this._read();
+    const freshData = this._readJSON();
     const evolvedRecord = freshData.patterns.find(p => p.id === evolved.id);
     const parentRecord = freshData.patterns.find(p => p.id === parentId);
     if (evolvedRecord) evolvedRecord.evolutionHistory = evolved.evolutionHistory;
@@ -250,31 +333,24 @@ class PatternLibrary {
       parentRecord.evolutionHistory = parent.evolutionHistory;
       parentRecord.updatedAt = parent.updatedAt;
     }
-    this._write(freshData);
-
+    this._writeJSON(freshData);
     return evolved;
   }
 
-  /**
-   * Retire low-performing patterns.
-   */
-  retire(minScore = THRESHOLDS.retire) {
-    const data = this._read();
+  _retireJSON(minScore = THRESHOLDS.retire) {
+    const data = this._readJSON();
     const before = data.patterns.length;
     data.patterns = data.patterns.filter(p => {
       const coherency = p.coherencyScore?.total ?? 0;
       const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
       return (coherency * 0.6 + reliability * 0.4) >= minScore;
     });
-    this._write(data);
+    this._writeJSON(data);
     return { retired: before - data.patterns.length, remaining: data.patterns.length };
   }
 
-  /**
-   * Get all patterns, optionally filtered.
-   */
-  getAll(filters = {}) {
-    const data = this._read();
+  _getAllJSON(filters = {}) {
+    const data = this._readJSON();
     let patterns = data.patterns;
     if (filters.language) {
       patterns = patterns.filter(p => p.language?.toLowerCase() === filters.language.toLowerCase());
@@ -291,10 +367,7 @@ class PatternLibrary {
     return patterns;
   }
 
-  /**
-   * Get library summary stats.
-   */
-  summary() {
+  _summaryJSON() {
     const patterns = this.getAll();
     return {
       totalPatterns: patterns.length,

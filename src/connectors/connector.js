@@ -44,8 +44,14 @@ class AIConnector {
         return this._stats();
       case 'prune':
         return this._prune(params);
+      case 'resolve':
+        return this._resolve(params);
+      case 'register-pattern':
+        return this._registerPattern(params);
+      case 'pattern-stats':
+        return this._patternStats();
       default:
-        return { error: `Unknown action: ${action}`, availableActions: ['submit', 'query', 'feedback', 'inspect', 'stats', 'prune'] };
+        return { error: `Unknown action: ${action}`, availableActions: ['submit', 'query', 'feedback', 'inspect', 'stats', 'prune', 'resolve', 'register-pattern', 'pattern-stats'] };
     }
   }
 
@@ -108,6 +114,49 @@ class AIConnector {
 
   _prune(params) {
     return { action: 'prune', ...this.oracle.prune(params.minCoherency ?? 0.4) };
+  }
+
+  _resolve(params) {
+    const result = this.oracle.resolve({
+      description: params.description || params.query || '',
+      tags: params.tags || [],
+      language: params.language,
+      minCoherency: params.minCoherency ?? params.min_coherency,
+    });
+    return {
+      action: 'resolve',
+      decision: result.decision,
+      confidence: result.confidence,
+      reasoning: result.reasoning,
+      pattern: result.pattern,
+      alternatives: result.alternatives,
+      historyMatches: result.historyMatches?.slice(0, 3),
+    };
+  }
+
+  _registerPattern(params) {
+    const result = this.oracle.registerPattern({
+      name: params.name,
+      code: params.code,
+      language: params.language,
+      description: params.description,
+      tags: params.tags || [],
+      testCode: params.testCode || params.test_code,
+      author: `${this.provider}/${this.modelId}`,
+    });
+    return {
+      action: 'register-pattern',
+      registered: result.registered,
+      id: result.pattern?.id,
+      name: result.pattern?.name,
+      coherencyScore: result.pattern?.coherencyScore?.total,
+      patternType: result.pattern?.patternType,
+      reason: result.reason || null,
+    };
+  }
+
+  _patternStats() {
+    return { action: 'pattern-stats', ...this.oracle.patternStats() };
   }
 }
 

@@ -130,23 +130,30 @@ class PatternLibrary {
       };
     }
 
-    // Score all patterns against the request
+    // Score all patterns against the request.
+    // Match on metadata (name, description, tags) NOT code body,
+    // so focused atomic patterns beat large modules on relevance.
     const scored = data.patterns.map(p => {
       const relevance = computeRelevance(
         { description, tags, language },
         {
-          description: p.description,
+          description: `${p.name} ${p.description}`,
           tags: p.tags,
           language: p.language,
-          code: p.code,
           coherencyScore: p.coherencyScore,
         }
       );
 
-      // Composite score: relevance + coherency + reliability
+      // Bonus: exact name match
+      const nameBonus = description.toLowerCase().includes(p.name.toLowerCase()) ? 0.15 : 0;
+
+      // Bonus: focused patterns (atomic/composite) beat architectural blobs
+      const focusBonus = p.complexity === 'atomic' ? 0.08 : p.complexity === 'composite' ? 0.04 : 0;
+
+      // Composite score: relevance + coherency + reliability + bonuses
       const coherency = p.coherencyScore?.total ?? 0;
       const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
-      const composite = relevance.relevance * 0.45 + coherency * 0.35 + reliability * 0.20;
+      const composite = relevance.relevance * 0.40 + coherency * 0.25 + reliability * 0.15 + nameBonus + focusBonus;
 
       return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
     }).sort((a, b) => b.composite - a.composite);

@@ -43,17 +43,22 @@ Remembrance Oracle Toolkit
 Commands:
   submit     Submit code for validation and storage
   query      Query for relevant, proven code
+  resolve    Smart retrieval — pull, evolve, or generate decision
   validate   Validate code without storing
   stats      Show store statistics
   inspect    Inspect a stored entry
   feedback   Report if pulled code worked
   prune      Remove low-coherency entries
+  register   Register code as a named pattern in the library
+  patterns   Show pattern library statistics
+  seed       Seed the library with built-in proven patterns
 
 Options:
-  --file <path>          Code file to submit/validate
+  --file <path>          Code file to submit/validate/register
   --test <path>          Test file for validation
-  --description <text>   Description for query/submit
-  --tags <comma,list>    Tags for query/submit
+  --name <name>          Pattern name (for register)
+  --description <text>   Description for query/submit/resolve
+  --tags <comma,list>    Tags for query/submit/resolve
   --language <lang>      Language filter
   --id <id>              Entry ID for inspect/feedback
   --success              Mark feedback as successful
@@ -158,6 +163,78 @@ Options:
     const min = parseFloat(args['min-coherency']) || 0.4;
     const result = oracle.prune(min);
     console.log(`Pruned ${result.removed} entries. ${result.remaining} remaining.`);
+    return;
+  }
+
+  if (cmd === 'resolve') {
+    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const result = oracle.resolve({
+      description: args.description || '',
+      tags,
+      language: args.language,
+      minCoherency: parseFloat(args['min-coherency']) || undefined,
+    });
+    console.log(`Decision: ${result.decision.toUpperCase()}`);
+    console.log(`Confidence: ${result.confidence}`);
+    console.log(`Reasoning: ${result.reasoning}`);
+    if (result.pattern) {
+      console.log(`\nPattern: ${result.pattern.name} [${result.pattern.id}]`);
+      console.log(`Language: ${result.pattern.language} | Type: ${result.pattern.patternType} | Coherency: ${result.pattern.coherencyScore}`);
+      console.log(`Tags: ${(result.pattern.tags || []).join(', ')}`);
+      console.log(`\n${result.pattern.code}`);
+    }
+    if (result.alternatives?.length > 0) {
+      console.log(`\nAlternatives: ${result.alternatives.map(a => `${a.name}(${a.composite?.toFixed(3)})`).join(', ')}`);
+    }
+    return;
+  }
+
+  if (cmd === 'register') {
+    if (!args.file) { console.error('Error: --file required'); process.exit(1); }
+    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const result = oracle.registerPattern({
+      name: args.name || path.basename(args.file, path.extname(args.file)),
+      code,
+      language: args.language,
+      description: args.description || '',
+      tags,
+      testCode,
+      author: args.author || process.env.USER || 'cli-user',
+    });
+    if (result.registered) {
+      console.log(`Pattern registered: ${result.pattern.name} [${result.pattern.id}]`);
+      console.log(`Type: ${result.pattern.patternType} | Complexity: ${result.pattern.complexity}`);
+      console.log(`Coherency: ${result.pattern.coherencyScore.total}`);
+    } else {
+      console.log(`Rejected: ${result.reason}`);
+    }
+    return;
+  }
+
+  if (cmd === 'patterns') {
+    const stats = oracle.patternStats();
+    console.log('Pattern Library:');
+    console.log(`  Total patterns: ${stats.totalPatterns}`);
+    console.log(`  Avg coherency: ${stats.avgCoherency}`);
+    if (Object.keys(stats.byType).length > 0) {
+      console.log(`  By type: ${Object.entries(stats.byType).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+    }
+    if (Object.keys(stats.byLanguage).length > 0) {
+      console.log(`  By language: ${Object.entries(stats.byLanguage).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+    }
+    if (Object.keys(stats.byComplexity).length > 0) {
+      console.log(`  By complexity: ${Object.entries(stats.byComplexity).map(([k,v]) => `${k}(${v})`).join(', ')}`);
+    }
+    return;
+  }
+
+  if (cmd === 'seed') {
+    const { seedLibrary } = require('./patterns/seeds');
+    const results = seedLibrary(oracle);
+    console.log(`Seeded ${results.registered} patterns (${results.skipped} skipped, ${results.failed} failed)`);
+    console.log(`Library now has ${oracle.patternStats().totalPatterns} patterns`);
     return;
   }
 

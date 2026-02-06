@@ -37,8 +37,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - run: node --test tests/
+          node-version: '22'
+      - name: Run tests
+        run: node --test tests/*.test.js
+      - name: Report CI feedback — pass
+        if: success()
+        run: node src/cli.js ci-feedback --status pass || true
+      - name: Report CI feedback — fail
+        if: failure()
+        run: node src/cli.js ci-feedback --status fail || true
 
   oracle-command:
     name: Run Oracle Command
@@ -48,7 +55,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Run Oracle
         run: |
@@ -79,7 +86,7 @@ jobs:
           fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Check for new code submissions
         run: |
@@ -99,12 +106,18 @@ jobs:
             done
           fi
 
-      - name: Commit verified history
+      - name: Report CI feedback — tests passed
+        if: success()
+        run: node src/cli.js ci-feedback --status pass || true
+
+      - name: Report CI feedback — tests failed
+        if: failure()
+        run: node src/cli.js ci-feedback --status fail || true
+
+      - name: Commit verified history and feedback
         run: |
-          if [ -f ".remembrance/verified-history.json" ]; then
-            git config user.name "Remembrance Oracle"
-            git config user.email "oracle@remembrance.bot"
-            git add .remembrance/verified-history.json
-            git diff --cached --quiet || git commit -m "Update verified code history"
-            git push
-          fi
+          git config user.name "Remembrance Oracle"
+          git config user.email "oracle@remembrance.bot"
+          git add .remembrance/ 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Update verified code history and CI feedback"
+          git push || true

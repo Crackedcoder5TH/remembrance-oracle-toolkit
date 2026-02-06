@@ -56,6 +56,8 @@ ${c.bold('Commands:')}
   ${c.cyan('register')}   Register code as a named pattern in the library
   ${c.cyan('patterns')}   Show pattern library statistics
   ${c.cyan('seed')}       Seed the library with built-in proven patterns
+  ${c.cyan('ci-feedback')} Report CI test results back to tracked patterns
+  ${c.cyan('ci-stats')}    Show CI feedback tracking statistics
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -70,6 +72,8 @@ ${c.bold('Options:')}
   ${c.yellow('--min-coherency')} <n>    Minimum coherency threshold
   ${c.yellow('--limit')} <n>            Max results for query
   ${c.yellow('--no-color')}             Disable colored output
+  ${c.yellow('--mode')} <hybrid|semantic> Search mode (default: hybrid)
+  ${c.yellow('--status')} <pass|fail>    CI test result for ci-feedback
     `);
     return;
   }
@@ -303,6 +307,58 @@ ${c.bold('Options:')}
         console.log(`         ${c.blue(r.language)} | ${r.tags.map(t => c.magenta(t)).join(', ') || c.dim('no tags')} | ${c.dim(r.id)}`);
       }
     }
+    return;
+  }
+
+  if (cmd === 'ci-feedback') {
+    const { CIFeedbackReporter } = require('./ci/feedback');
+    const reporter = new CIFeedbackReporter(oracle);
+    const status = args.status;
+    if (!status) { console.error(c.boldRed('Error:') + ` --status required (pass or fail). Usage: ${c.cyan('oracle ci-feedback --status pass')}`); process.exit(1); }
+    const result = reporter.reportResults(status, {
+      testOutput: args.output || '',
+      commitSha: process.env.GITHUB_SHA || process.env.CI_COMMIT_SHA || '',
+      ciProvider: process.env.GITHUB_ACTIONS ? 'github' : process.env.CI ? 'ci' : 'local',
+    });
+    if (result.reported === 0) {
+      console.log(c.yellow(result.message));
+    } else {
+      console.log(`${c.boldGreen('Reported')} ${result.reported} pattern(s) as ${status === 'pass' ? c.boldGreen('PASS') : c.boldRed('FAIL')}:`);
+      for (const u of result.updated) {
+        console.log(`  ${c.cyan(u.id)} ${u.name ? c.bold(u.name) : ''} → reliability: ${colorScore(u.newReliability)}`);
+      }
+    }
+    if (result.errors.length > 0) {
+      console.log(`${c.boldRed('Errors:')} ${result.errors.map(e => `${e.id}: ${e.error}`).join(', ')}`);
+    }
+    return;
+  }
+
+  if (cmd === 'ci-stats') {
+    const { CIFeedbackReporter } = require('./ci/feedback');
+    const reporter = new CIFeedbackReporter(oracle);
+    const stats = reporter.stats();
+    console.log(c.boldCyan('CI Feedback Stats:'));
+    console.log(`  Tracked patterns: ${c.bold(String(stats.trackedPatterns))}`);
+    console.log(`  Unreported: ${stats.unreported > 0 ? c.boldYellow(String(stats.unreported)) : c.dim('0')}`);
+    console.log(`  Reported: ${c.boldGreen(String(stats.reported))}`);
+    console.log(`  Total feedback events: ${c.bold(String(stats.totalFeedbackEvents))}`);
+    if (stats.recentFeedback.length > 0) {
+      console.log(`\n${c.bold('Recent feedback:')}`);
+      for (const fb of stats.recentFeedback) {
+        const statusColor = fb.status === 'pass' ? c.boldGreen : c.boldRed;
+        console.log(`  ${c.dim(fb.timestamp)} ${statusColor(fb.status)} — ${fb.patternsReported} pattern(s) ${fb.commitSha ? c.dim(fb.commitSha.slice(0, 8)) : ''}`);
+      }
+    }
+    return;
+  }
+
+  if (cmd === 'ci-track') {
+    const { CIFeedbackReporter } = require('./ci/feedback');
+    const reporter = new CIFeedbackReporter(oracle);
+    if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+    const record = reporter.trackPull({ id: args.id, name: args.name || null, source: args.source || 'manual' });
+    console.log(`${c.boldGreen('Tracking:')} ${c.cyan(record.id)} ${record.name ? c.bold(record.name) : ''}`);
     return;
   }
 

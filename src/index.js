@@ -21,6 +21,7 @@ const { PatternLibrary, classifyPattern, inferComplexity, THRESHOLDS } = require
 const { parseCode, astCoherencyBoost } = require('./core/parsers/ast');
 const { sandboxExecute } = require('./core/sandbox');
 const { semanticSearch, semanticSimilarity, expandQuery, identifyConcepts } = require('./core/embeddings');
+const { CIFeedbackReporter, wrapWithTracking } = require('./ci/feedback');
 
 module.exports = {
   // Core
@@ -74,4 +75,8 @@ module.exports = {
   semanticSimilarity,
   expandQuery,
   identifyConcepts,
+
+  // CI Feedback
+  CIFeedbackReporter,
+  wrapWithTracking,
 };

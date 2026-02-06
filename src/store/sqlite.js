@@ -43,6 +43,10 @@ class SQLiteStore {
   }
 
   _initSchema() {
+    // Enable WAL mode for concurrent read performance and crash safety
+    this.db.exec(`PRAGMA journal_mode = WAL`);
+    this.db.exec(`PRAGMA busy_timeout = 5000`);
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS entries (
         id TEXT PRIMARY KEY,
@@ -59,6 +63,7 @@ class SQLiteStore {
         times_used INTEGER DEFAULT 0,
         times_succeeded INTEGER DEFAULT 0,
         historical_score REAL DEFAULT 1.0,
+        version INTEGER DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -83,6 +88,7 @@ class SQLiteStore {
         usage_count INTEGER DEFAULT 0,
         success_count INTEGER DEFAULT 0,
         evolution_history TEXT DEFAULT '[]',
+        version INTEGER DEFAULT 1,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -96,6 +102,19 @@ class SQLiteStore {
         key TEXT PRIMARY KEY,
         value TEXT
       );
+
+      CREATE TABLE IF NOT EXISTS audit_log (
+        seq INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TEXT NOT NULL,
+        action TEXT NOT NULL,
+        target_table TEXT NOT NULL,
+        target_id TEXT NOT NULL,
+        detail TEXT DEFAULT '{}',
+        actor TEXT DEFAULT 'system'
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_log(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_table, target_id);
     `);
 
     // Initialize meta if not present
@@ -183,6 +202,42 @@ class SQLiteStore {
     return crypto.createHash('sha256').update(input).digest('hex').slice(0, 16);
   }
 
+  // ─── Audit log ───
+
+  /**
+   * Append to the immutable audit log.
+   * This is an append-only record of all mutations for:
+   * - Crash recovery / forensics
+   * - Multi-process conflict detection
+   * - Historical analysis of pattern evolution
+   */
+  _audit(action, table, id, detail = {}, actor = 'system') {
+    this.db.prepare(`
+      INSERT INTO audit_log (timestamp, action, target_table, target_id, detail, actor)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(new Date().toISOString(), action, table, id, JSON.stringify(detail), actor);
+  }
+
+  /**
+   * Get audit log entries, optionally filtered.
+   */
+  getAuditLog(options = {}) {
+    const { limit = 50, table, id, action, since } = options;
+    let sql = 'SELECT * FROM audit_log WHERE 1=1';
+    const params = [];
+    if (table) { sql += ' AND target_table = ?'; params.push(table); }
+    if (id) { sql += ' AND target_id = ?'; params.push(id); }
+    if (action) { sql += ' AND action = ?'; params.push(action); }
+    if (since) { sql += ' AND timestamp >= ?'; params.push(since); }
+    sql += ' ORDER BY seq DESC LIMIT ?';
+    params.push(limit);
+    return this.db.prepare(sql).all(...params).map(r => ({
+      seq: r.seq, timestamp: r.timestamp, action: r.action,
+      table: r.target_table, id: r.target_id,
+      detail: JSON.parse(r.detail || '{}'), actor: r.actor,
+    }));
+  }
+
   // ─── Entry (history) methods — same interface as VerifiedHistoryStore ───
 
   addEntry(entry) {
@@ -192,8 +247,8 @@ class SQLiteStore {
     this.db.prepare(`
       INSERT INTO entries (id, code, language, description, tags, author,
         coherency_total, coherency_json, test_passed, test_output, validated_at,
-        times_used, times_succeeded, historical_score, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 1.0, ?, ?)
+        times_used, times_succeeded, historical_score, version, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 1.0, 1, ?, ?)
     `).run(
       id, entry.code, entry.language || 'unknown', entry.description || '',
       JSON.stringify(entry.tags || []), entry.author || 'anonymous',
@@ -201,6 +256,10 @@ class SQLiteStore {
       entry.testPassed == null ? null : (entry.testPassed ? 1 : 0),
       entry.testOutput || null, now, now, now
     );
+
+    this._audit('add', 'entries', id, {
+      language: entry.language, coherency: entry.coherencyScore?.total,
+    }, entry.author || 'anonymous');
 
     return this._rowToEntry(this.db.prepare('SELECT * FROM entries WHERE id = ?').get(id));
   }
@@ -243,20 +302,27 @@ class SQLiteStore {
     const timesUsed = row.times_used + 1;
     const timesSucceeded = row.times_succeeded + (succeeded ? 1 : 0);
     const historicalScore = timesUsed > 0 ? timesSucceeded / timesUsed : 0.5;
+    const version = (row.version || 1) + 1;
     const now = new Date().toISOString();
 
     this.db.prepare(`
-      UPDATE entries SET times_used = ?, times_succeeded = ?, historical_score = ?, updated_at = ?
-      WHERE id = ?
-    `).run(timesUsed, timesSucceeded, historicalScore, now, id);
+      UPDATE entries SET times_used = ?, times_succeeded = ?, historical_score = ?,
+        version = ?, updated_at = ?
+      WHERE id = ? AND version = ?
+    `).run(timesUsed, timesSucceeded, historicalScore, version, now, id, row.version || 1);
 
+    this._audit('usage', 'entries', id, { succeeded, timesUsed, historicalScore });
     return this._rowToEntry(this.db.prepare('SELECT * FROM entries WHERE id = ?').get(id));
   }
 
   pruneEntries(minCoherency = 0.4) {
     const before = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    const pruned = this.db.prepare('SELECT id FROM entries WHERE coherency_total < ?').all(minCoherency);
     this.db.prepare('DELETE FROM entries WHERE coherency_total < ?').run(minCoherency);
     const after = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    for (const { id } of pruned) {
+      this._audit('prune', 'entries', id, { minCoherency });
+    }
     return { removed: before - after, remaining: after };
   }
 
@@ -305,8 +371,8 @@ class SQLiteStore {
     this.db.prepare(`
       INSERT INTO patterns (id, name, code, language, pattern_type, complexity,
         description, tags, coherency_total, coherency_json, variants, test_code,
-        usage_count, success_count, evolution_history, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, '[]', ?, ?)
+        usage_count, success_count, evolution_history, version, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, '[]', 1, ?, ?)
     `).run(
       id, pattern.name, pattern.code, pattern.language || 'unknown',
       pattern.patternType || 'utility', pattern.complexity || 'composite',
@@ -315,6 +381,11 @@ class SQLiteStore {
       JSON.stringify(pattern.variants || []), pattern.testCode || null,
       now, now
     );
+
+    this._audit('add', 'patterns', id, {
+      name: pattern.name, language: pattern.language,
+      coherency: pattern.coherencyScore?.total,
+    });
 
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
   }
@@ -381,12 +452,15 @@ class SQLiteStore {
 
     const usageCount = row.usage_count + 1;
     const successCount = row.success_count + (succeeded ? 1 : 0);
+    const version = (row.version || 1) + 1;
     const now = new Date().toISOString();
 
     this.db.prepare(`
-      UPDATE patterns SET usage_count = ?, success_count = ?, updated_at = ? WHERE id = ?
-    `).run(usageCount, successCount, now, id);
+      UPDATE patterns SET usage_count = ?, success_count = ?, version = ?, updated_at = ?
+      WHERE id = ? AND version = ?
+    `).run(usageCount, successCount, version, now, id, row.version || 1);
 
+    this._audit('usage', 'patterns', id, { succeeded, usageCount, successCount });
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
   }
 
@@ -399,6 +473,9 @@ class SQLiteStore {
       const composite = coherency * 0.6 + reliability * 0.4;
       if (composite < minScore) {
         this.db.prepare('DELETE FROM patterns WHERE id = ?').run(row.id);
+        this._audit('retire', 'patterns', row.id, {
+          name: row.name, coherency, reliability, composite,
+        });
         retired++;
       }
     }

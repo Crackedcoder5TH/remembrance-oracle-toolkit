@@ -58,6 +58,7 @@ ${c.bold('Commands:')}
   ${c.cyan('seed')}       Seed the library with built-in proven patterns
   ${c.cyan('ci-feedback')} Report CI test results back to tracked patterns
   ${c.cyan('ci-stats')}    Show CI feedback tracking statistics
+  ${c.cyan('audit')}       View append-only audit log of all mutations
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -359,6 +360,30 @@ ${c.bold('Options:')}
     if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
     const record = reporter.trackPull({ id: args.id, name: args.name || null, source: args.source || 'manual' });
     console.log(`${c.boldGreen('Tracking:')} ${c.cyan(record.id)} ${record.name ? c.bold(record.name) : ''}`);
+    return;
+  }
+
+  if (cmd === 'audit') {
+    const sqliteStore = oracle.store.getSQLiteStore();
+    if (!sqliteStore) {
+      console.log(c.yellow('Audit log requires SQLite backend.'));
+      return;
+    }
+    const entries = sqliteStore.getAuditLog({
+      limit: parseInt(args.limit) || 20,
+      table: args.table,
+      id: args.id,
+      action: args.action,
+    });
+    if (entries.length === 0) {
+      console.log(c.yellow('No audit log entries found.'));
+    } else {
+      console.log(c.boldCyan(`Audit Log (${entries.length} entries):\n`));
+      for (const e of entries) {
+        const actionColor = e.action === 'add' ? c.green : e.action === 'prune' || e.action === 'retire' ? c.red : c.yellow;
+        console.log(`  ${c.dim(e.timestamp)} ${actionColor(e.action.padEnd(7))} ${c.cyan(e.table.padEnd(8))} ${c.dim(e.id)} ${c.dim(JSON.stringify(e.detail))}`);
+      }
+    }
     return;
   }
 

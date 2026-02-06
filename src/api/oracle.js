@@ -280,6 +280,55 @@ class RemembranceOracle {
   }
 
   /**
+   * Diff two entries or patterns side by side.
+   * Returns a unified-style diff showing what changed.
+   */
+  diff(idA, idB) {
+    const a = this.patterns.getAll().find(p => p.id === idA) || this.store.get(idA);
+    const b = this.patterns.getAll().find(p => p.id === idB) || this.store.get(idB);
+    if (!a) return { error: `Entry ${idA} not found` };
+    if (!b) return { error: `Entry ${idB} not found` };
+
+    const linesA = a.code.split('\n');
+    const linesB = b.code.split('\n');
+    const diffLines = [];
+
+    // Simple LCS-based diff
+    const lcs = buildLCS(linesA, linesB);
+    let i = 0, j = 0, k = 0;
+    while (k < lcs.length) {
+      while (i < linesA.length && linesA[i] !== lcs[k]) {
+        diffLines.push({ type: 'removed', line: linesA[i] });
+        i++;
+      }
+      while (j < linesB.length && linesB[j] !== lcs[k]) {
+        diffLines.push({ type: 'added', line: linesB[j] });
+        j++;
+      }
+      diffLines.push({ type: 'same', line: lcs[k] });
+      i++; j++; k++;
+    }
+    while (i < linesA.length) { diffLines.push({ type: 'removed', line: linesA[i++] }); }
+    while (j < linesB.length) { diffLines.push({ type: 'added', line: linesB[j++] }); }
+
+    const nameA = a.name || a.description || idA;
+    const nameB = b.name || b.description || idB;
+    const coherencyA = a.coherencyScore?.total ?? '?';
+    const coherencyB = b.coherencyScore?.total ?? '?';
+
+    return {
+      a: { id: idA, name: nameA, language: a.language, coherency: coherencyA },
+      b: { id: idB, name: nameB, language: b.language, coherency: coherencyB },
+      diff: diffLines,
+      stats: {
+        added: diffLines.filter(d => d.type === 'added').length,
+        removed: diffLines.filter(d => d.type === 'removed').length,
+        same: diffLines.filter(d => d.type === 'same').length,
+      },
+    };
+  }
+
+  /**
    * Export top patterns as a standalone portable file.
    * Output is a self-contained JSON or markdown file any AI can read
    * without the toolkit installed.
@@ -395,6 +444,24 @@ class RemembranceOracle {
 
     return merged;
   }
+}
+
+function buildLCS(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  const result = [];
+  let i = m, j = n;
+  while (i > 0 && j > 0) {
+    if (a[i - 1] === b[j - 1]) { result.unshift(a[i - 1]); i--; j--; }
+    else if (dp[i - 1][j] > dp[i][j - 1]) i--;
+    else j--;
+  }
+  return result;
 }
 
 module.exports = { RemembranceOracle };

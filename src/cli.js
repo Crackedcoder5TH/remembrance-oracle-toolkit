@@ -49,6 +49,7 @@ Commands:
   inspect    Inspect a stored entry
   feedback   Report if pulled code worked
   prune      Remove low-coherency entries
+  diff       Compare two entries or patterns side by side
   export     Export top patterns as standalone JSON or markdown
   search     Fuzzy search across patterns and history
   register   Register code as a named pattern in the library
@@ -229,6 +230,23 @@ Options:
     if (Object.keys(stats.byComplexity).length > 0) {
       console.log(`  By complexity: ${Object.entries(stats.byComplexity).map(([k,v]) => `${k}(${v})`).join(', ')}`);
     }
+    return;
+  }
+
+  if (cmd === 'diff') {
+    const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
+    if (ids.length < 2) { console.error('Usage: oracle diff <id-a> <id-b>'); process.exit(1); }
+    const result = oracle.diff(ids[0], ids[1]);
+    if (result.error) { console.error(result.error); process.exit(1); }
+    console.log(`--- ${result.a.name} [${result.a.id}]  coherency: ${result.a.coherency}`);
+    console.log(`+++ ${result.b.name} [${result.b.id}]  coherency: ${result.b.coherency}`);
+    console.log('');
+    for (const d of result.diff) {
+      if (d.type === 'removed') console.log(`- ${d.line}`);
+      else if (d.type === 'added') console.log(`+ ${d.line}`);
+      else console.log(`  ${d.line}`);
+    }
+    console.log(`\n${result.stats.added} added, ${result.stats.removed} removed, ${result.stats.same} unchanged`);
     return;
   }
 

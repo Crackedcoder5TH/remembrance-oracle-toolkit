@@ -16,6 +16,7 @@ const { rankEntries } = require('../core/relevance');
 const { semanticSearch: semanticSearchEngine } = require('../core/embeddings');
 const { VerifiedHistoryStore } = require('../store/history');
 const { PatternLibrary } = require('../patterns/library');
+const { PatternRecycler } = require('../core/recycler');
 
 class RemembranceOracle {
   constructor(options = {}) {
@@ -24,6 +25,13 @@ class RemembranceOracle {
     this.patterns = options.patterns || new PatternLibrary(storeDir);
     this.threshold = options.threshold || 0.6;
     this._listeners = [];
+    this.recycler = new PatternRecycler(this, {
+      maxHealAttempts: options.maxHealAttempts || 3,
+      maxSerfLoops: options.maxSerfLoops || 5,
+      generateVariants: options.generateVariants !== false,
+      variantLanguages: options.variantLanguages || ['python', 'typescript'],
+      verbose: options.verbose || false,
+    });
 
     // Auto-seed on first run if library is empty
     if (options.autoSeed !== false && this.patterns.getAll().length === 0) {
@@ -316,6 +324,32 @@ class RemembranceOracle {
    */
   retirePatterns(minScore) {
     return this.patterns.retire(minScore);
+  }
+
+  /**
+   * Recycle failed patterns — heal via SERF and re-validate.
+   * Call this after a batch of registerPattern() calls to recover failures.
+   */
+  recycle(options = {}) {
+    return this.recycler.recycleFailed(options);
+  }
+
+  /**
+   * Run the full exponential growth pipeline on a set of seeds.
+   *
+   * 1. Registers each seed through the oracle
+   * 2. Captures failures
+   * 3. Heals failures via SERF reflection
+   * 4. Generates language variants from successes
+   * 5. Generates approach alternatives from successes
+   * 6. Recurses to the specified depth
+   *
+   * @param {Array} seeds - Array of pattern objects
+   * @param {object} options - { depth, maxVariantsPerPattern, verbose }
+   * @returns {object} Full report with waves, counts, and totals
+   */
+  processSeeds(seeds, options = {}) {
+    return this.recycler.processSeeds(seeds, options);
   }
 
   /**

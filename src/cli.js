@@ -455,6 +455,30 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'recycle') {
+    const { PatternRecycler } = require('./core/recycler');
+    const { SEEDS } = require('./patterns/seeds');
+    const { EXTENDED_SEEDS } = require('./patterns/seeds-extended');
+
+    const depth = parseInt(args.depth) || 2;
+    const allSeeds = [...SEEDS, ...EXTENDED_SEEDS];
+
+    console.log(c.boldCyan('Pattern Recycler') + ' — exponential growth engine\n');
+    console.log(`Processing ${c.bold(String(allSeeds.length))} seeds at depth ${c.bold(String(depth))}...\n`);
+
+    // Create recycler with verbose output
+    oracle.recycler.verbose = true;
+    oracle.recycler.generateVariants = true;
+    oracle.recycler.variantLanguages = (args.languages || 'python,typescript').split(',').map(s => s.trim());
+
+    const report = oracle.processSeeds(allSeeds, { depth });
+
+    console.log('\n' + c.boldCyan('─'.repeat(50)));
+    console.log(PatternRecycler.formatReport(report));
+    console.log(c.boldCyan('─'.repeat(50)));
+    return;
+  }
+
   if (cmd === 'nearest') {
     const term = args.description || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
     if (!term) { console.error(c.boldRed('Error:') + ` provide a query. Usage: ${c.cyan('oracle nearest <term>')}`); process.exit(1); }

@@ -230,7 +230,7 @@ const TOOLS = [
   },
   {
     name: 'oracle_sync',
-    description: 'Sync patterns with the global store (~/.remembrance/). Bidirectional by default: pushes local patterns to global, then pulls global patterns to local.',
+    description: 'Sync patterns with your personal store (~/.remembrance/personal/). Bidirectional by default. Personal store is private — grows automatically across projects.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -241,8 +241,34 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_share',
+    description: 'Share patterns to the community store (~/.remembrance/community/). Explicit action — only shares test-backed patterns above 0.7 coherency. Community patterns can be pulled by anyone.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patterns: { type: 'array', items: { type: 'string' }, description: 'Pattern names to share (default: all eligible)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags' },
+        minCoherency: { type: 'number', description: 'Minimum coherency to share (default: 0.7)' },
+        dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_community',
+    description: 'Browse or pull from the community store (~/.remembrance/community/). Use action "stats" to view, "pull" to pull patterns into local.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['stats', 'pull'], description: 'Action to perform (default: stats)' },
+        language: { type: 'string', description: 'Filter by language when pulling' },
+        maxPull: { type: 'number', description: 'Max patterns to pull (default: all)' },
+        dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
+      },
+    },
+  },
+  {
     name: 'oracle_global_stats',
-    description: 'Get statistics about the global pattern store (~/.remembrance/). Shows total patterns, languages, and how many are available that are not in the local project.',
+    description: 'Get combined statistics for personal + community stores. Shows totals and breakdown by store type.',
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -470,10 +496,34 @@ class MCPServer {
           break;
         }
 
+        case 'oracle_share': {
+          result = this.oracle.share({
+            patterns: args.patterns,
+            tags: args.tags,
+            minCoherency: args.minCoherency || 0.7,
+            dryRun: args.dryRun || false,
+          });
+          break;
+        }
+
+        case 'oracle_community': {
+          const action = args.action || 'stats';
+          if (action === 'pull') {
+            result = this.oracle.pullCommunity({
+              language: args.language,
+              maxPull: args.maxPull || Infinity,
+              dryRun: args.dryRun || false,
+            });
+          } else {
+            result = this.oracle.communityStats();
+          }
+          break;
+        }
+
         case 'oracle_global_stats': {
           const gStats = this.oracle.globalStats();
           const federated = this.oracle.federatedSearch();
-          result = { ...gStats, globalOnly: federated.globalOnly };
+          result = { ...gStats, globalOnly: federated.globalOnly, personalOnly: federated.personalOnly, communityOnly: federated.communityOnly };
           break;
         }
 

@@ -188,7 +188,7 @@ describe('MCPServer', () => {
     assert.equal(data.promoted, false);
   });
 
-  it('lists all 16 tools including candidate tools', () => {
+  it('lists all tools including candidate and community tools', () => {
     server = new MCPServer();
     const res = server.handleRequest({ id: 15, method: 'tools/list' });
     const names = res.result.tools.map(t => t.name);
@@ -196,6 +196,8 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_generate'));
     assert.ok(names.includes('oracle_promote'));
     assert.ok(names.includes('oracle_auto_promote'));
-    assert.equal(res.result.tools.length, 20);
+    assert.ok(names.includes('oracle_share'));
+    assert.ok(names.includes('oracle_community'));
+    assert.equal(res.result.tools.length, 22);
   });
 });

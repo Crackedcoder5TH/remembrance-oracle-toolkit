@@ -421,8 +421,8 @@ class RemembranceOracle {
   // ─── Cross-Project Persistence ───
 
   /**
-   * Sync local patterns to the global store (~/.remembrance/).
-   * Proven patterns accumulate across all projects.
+   * Sync local patterns to personal store (~/.remembrance/personal/).
+   * Proven patterns accumulate across all projects, privately.
    */
   syncToGlobal(options = {}) {
     const { syncToGlobal } = require('../core/persistence');
@@ -432,7 +432,7 @@ class RemembranceOracle {
   }
 
   /**
-   * Pull patterns from the global store into this project.
+   * Pull patterns from personal store into this project.
    */
   syncFromGlobal(options = {}) {
     const { syncFromGlobal } = require('../core/persistence');
@@ -442,7 +442,7 @@ class RemembranceOracle {
   }
 
   /**
-   * Bidirectional sync: push local → global, pull global → local.
+   * Bidirectional sync with personal store.
    */
   sync(options = {}) {
     const { syncBidirectional } = require('../core/persistence');
@@ -452,7 +452,28 @@ class RemembranceOracle {
   }
 
   /**
-   * Search both local and global stores.
+   * Share patterns to the community store.
+   * Explicit action — only shares test-backed patterns above 0.7 coherency.
+   */
+  share(options = {}) {
+    const { shareToCommuntiy } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { shared: 0, error: 'No SQLite store available' };
+    return shareToCommuntiy(sqliteStore, options);
+  }
+
+  /**
+   * Pull patterns from the community store into this project.
+   */
+  pullCommunity(options = {}) {
+    const { pullFromCommunity } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { pulled: 0, error: 'No SQLite store available' };
+    return pullFromCommunity(sqliteStore, options);
+  }
+
+  /**
+   * Search across local + personal + community stores.
    * Returns merged results, deduplicated, sorted by coherency.
    */
   federatedSearch(query = {}) {
@@ -463,11 +484,27 @@ class RemembranceOracle {
   }
 
   /**
-   * Get global store statistics.
+   * Get combined global store statistics (personal + community).
    */
   globalStats() {
     const { globalStats } = require('../core/persistence');
     return globalStats();
+  }
+
+  /**
+   * Get personal store statistics only.
+   */
+  personalStats() {
+    const { personalStats } = require('../core/persistence');
+    return personalStats();
+  }
+
+  /**
+   * Get community store statistics only.
+   */
+  communityStats() {
+    const { communityStats } = require('../core/persistence');
+    return communityStats();
   }
 
   /**

@@ -34,6 +34,7 @@ const { harvest, harvestFunctions, splitFunctions } = require('./ci/harvest');
 const { installHooks, uninstallHooks, runPreCommitCheck } = require('./ci/hooks');
 const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES } = require('./core/covenant');
 const { reflectionLoop, formatReflectionResult, observeCoherence, serfScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
+const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyError, computeConfidence, ERROR_CATEGORIES } = require('./core/debug-oracle');
 
 module.exports = {
   // Core
@@ -156,4 +157,12 @@ module.exports = {
   // CI Feedback
   CIFeedbackReporter,
   wrapWithTracking,
+
+  // Debug Oracle
+  DebugOracle,
+  debugFingerprint,
+  normalizeError,
+  classifyError,
+  computeConfidence,
+  ERROR_CATEGORIES,
 };

@@ -517,6 +517,338 @@ function _storeStats(store, dir, label) {
   };
 }
 
+// ─── Debug Pattern Community Layer ───
+
+/**
+ * Share debug patterns to the community store.
+ * Higher bar than regular patterns: requires confidence >= 0.5 and at least 1 successful resolution.
+ */
+function shareDebugPatterns(localStore, options = {}) {
+  const { verbose = false, dryRun = false, minConfidence = 0.5, category, language } = options;
+  const communityStore = openCommunityStore();
+  if (!communityStore) {
+    return { shared: 0, skipped: 0, total: 0, error: 'No SQLite available' };
+  }
+
+  // Ensure debug_patterns table exists on community store
+  _ensureDebugSchema(communityStore);
+
+  let sql = 'SELECT * FROM debug_patterns WHERE confidence >= ?';
+  const params = [minConfidence];
+  if (category) { sql += ' AND error_category = ?'; params.push(category); }
+  if (language) { sql += ' AND language = ?'; params.push(language); }
+  sql += ' ORDER BY confidence DESC';
+
+  let localDebug;
+  try {
+    localDebug = localStore.db.prepare(sql).all(...params);
+  } catch {
+    return { shared: 0, skipped: 0, total: 0, error: 'No debug_patterns table in local store' };
+  }
+
+  // Index existing community debug patterns by fingerprint+language
+  let communityDebug;
+  try {
+    communityDebug = communityStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
+  } catch {
+    communityDebug = [];
+  }
+  const communityIndex = new Set(communityDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
+
+  const report = { shared: 0, skipped: 0, duplicates: 0, total: localDebug.length, details: [] };
+
+  for (const dp of localDebug) {
+    const key = `${dp.fingerprint_hash}:${dp.language}`;
+    if (communityIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    // Must have at least 1 successful resolution
+    if (dp.times_resolved < 1 && dp.generation_method === 'capture') {
+      report.skipped++;
+      if (verbose) console.log(`  [NO-RESOLVE] ${dp.error_class}: not yet proven`);
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        _transferDebugPattern(dp, communityStore);
+      } catch (err) {
+        if (verbose) console.log(`  [SKIP] ${dp.id}: ${err.message}`);
+        report.skipped++;
+        continue;
+      }
+    }
+
+    report.shared++;
+    if (verbose) {
+      console.log(`  [SHARE-DEBUG→] ${dp.error_class}:${dp.error_category} (${dp.language}) confidence: ${dp.confidence}`);
+    }
+    report.details.push({
+      errorClass: dp.error_class, category: dp.error_category,
+      language: dp.language, confidence: dp.confidence, direction: 'to-community',
+    });
+  }
+
+  return report;
+}
+
+/**
+ * Pull debug patterns from community store into local.
+ */
+function pullDebugPatterns(localStore, options = {}) {
+  const { verbose = false, dryRun = false, minConfidence = 0.3, category, language, limit = Infinity } = options;
+  const communityStore = openCommunityStore();
+  if (!communityStore) {
+    return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
+  }
+
+  _ensureDebugSchema(localStore);
+
+  let communityDebug;
+  try {
+    let sql = 'SELECT * FROM debug_patterns WHERE confidence >= ?';
+    const params = [minConfidence];
+    if (category) { sql += ' AND error_category = ?'; params.push(category); }
+    if (language) { sql += ' AND language = ?'; params.push(language); }
+    sql += ' ORDER BY confidence DESC';
+    communityDebug = communityStore.db.prepare(sql).all(...params);
+  } catch {
+    return { pulled: 0, skipped: 0, total: 0, error: 'No debug_patterns in community store' };
+  }
+
+  let localDebug;
+  try {
+    localDebug = localStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
+  } catch {
+    localDebug = [];
+  }
+  const localIndex = new Set(localDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
+
+  const report = { pulled: 0, skipped: 0, duplicates: 0, total: communityDebug.length, details: [] };
+
+  for (const dp of communityDebug) {
+    if (report.pulled >= limit) break;
+
+    const key = `${dp.fingerprint_hash}:${dp.language}`;
+    if (localIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        _transferDebugPattern(dp, localStore);
+      } catch (err) {
+        if (verbose) console.log(`  [SKIP] ${dp.id}: ${err.message}`);
+        report.skipped++;
+        continue;
+      }
+    }
+
+    report.pulled++;
+    if (verbose) {
+      console.log(`  [←DEBUG] ${dp.error_class}:${dp.error_category} (${dp.language}) confidence: ${dp.confidence}`);
+    }
+    report.details.push({
+      errorClass: dp.error_class, category: dp.error_category,
+      language: dp.language, confidence: dp.confidence, direction: 'from-community',
+    });
+  }
+
+  return report;
+}
+
+/**
+ * Sync debug patterns to personal store (private).
+ */
+function syncDebugToPersonal(localStore, options = {}) {
+  const { verbose = false, dryRun = false, minConfidence = 0.2 } = options;
+  const personalStore = openPersonalStore();
+  if (!personalStore) {
+    return { synced: 0, skipped: 0, total: 0, error: 'No SQLite available' };
+  }
+
+  _ensureDebugSchema(personalStore);
+
+  let localDebug;
+  try {
+    localDebug = localStore.db.prepare(
+      'SELECT * FROM debug_patterns WHERE confidence >= ? ORDER BY confidence DESC'
+    ).all(minConfidence);
+  } catch {
+    return { synced: 0, skipped: 0, total: 0, error: 'No debug_patterns table' };
+  }
+
+  let personalDebug;
+  try {
+    personalDebug = personalStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
+  } catch {
+    personalDebug = [];
+  }
+  const personalIndex = new Set(personalDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
+
+  const report = { synced: 0, skipped: 0, duplicates: 0, total: localDebug.length, details: [] };
+
+  for (const dp of localDebug) {
+    const key = `${dp.fingerprint_hash}:${dp.language}`;
+    if (personalIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        _transferDebugPattern(dp, personalStore);
+      } catch {
+        report.skipped++;
+        continue;
+      }
+    }
+
+    report.synced++;
+    if (verbose) {
+      console.log(`  [SYNC-DEBUG→] ${dp.error_class}:${dp.error_category} (${dp.language})`);
+    }
+  }
+
+  return report;
+}
+
+/**
+ * Federated debug search: search across local + personal + community.
+ * Returns merged results, deduplicated, sorted by confidence.
+ */
+function federatedDebugSearch(localStore, params = {}) {
+  const { errorMessage, stackTrace, language, limit = 10 } = params;
+
+  const personalStore = openPersonalStore();
+  const communityStore = openCommunityStore();
+
+  const results = [];
+  const seen = new Set();
+
+  // Search each tier
+  for (const [store, source] of [[localStore, 'local'], [personalStore, 'personal'], [communityStore, 'community']]) {
+    if (!store) continue;
+    try {
+      const { DebugOracle } = require('./debug-oracle');
+      const debugOracle = new DebugOracle(store);
+      const matches = debugOracle.search({ errorMessage, stackTrace, language, limit });
+      for (const match of matches) {
+        const key = `${match.fingerprintHash}:${match.language}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        results.push({ ...match, source });
+      }
+    } catch {
+      // Store doesn't have debug_patterns table yet, skip
+    }
+  }
+
+  return results
+    .sort((a, b) => b.matchScore - a.matchScore || b.confidence - a.confidence)
+    .slice(0, limit);
+}
+
+/**
+ * Get debug stats across all tiers.
+ */
+function debugGlobalStats() {
+  const stats = { local: null, personal: null, community: null };
+
+  try {
+    const personalStore = openPersonalStore();
+    if (personalStore) {
+      const { DebugOracle } = require('./debug-oracle');
+      stats.personal = new DebugOracle(personalStore).stats();
+    }
+  } catch {}
+
+  try {
+    const communityStore = openCommunityStore();
+    if (communityStore) {
+      const { DebugOracle } = require('./debug-oracle');
+      stats.community = new DebugOracle(communityStore).stats();
+    }
+  } catch {}
+
+  const totalPatterns = (stats.personal?.totalPatterns || 0) + (stats.community?.totalPatterns || 0);
+  const totalApplied = (stats.personal?.totalApplied || 0) + (stats.community?.totalApplied || 0);
+  const totalResolved = (stats.personal?.totalResolved || 0) + (stats.community?.totalResolved || 0);
+
+  return {
+    available: totalPatterns > 0,
+    totalPatterns,
+    totalApplied,
+    totalResolved,
+    resolutionRate: totalApplied > 0 ? Math.round(totalResolved / totalApplied * 1000) / 1000 : 0,
+    personal: stats.personal,
+    community: stats.community,
+  };
+}
+
+// ─── Debug Helpers ───
+
+function _ensureDebugSchema(store) {
+  try {
+    store.db.exec(`
+      CREATE TABLE IF NOT EXISTS debug_patterns (
+        id TEXT PRIMARY KEY,
+        error_signature TEXT NOT NULL,
+        error_message TEXT NOT NULL,
+        error_class TEXT DEFAULT 'UnknownError',
+        error_category TEXT DEFAULT 'runtime',
+        stack_fingerprint TEXT DEFAULT '',
+        fingerprint_hash TEXT NOT NULL,
+        fix_code TEXT NOT NULL,
+        fix_description TEXT DEFAULT '',
+        language TEXT DEFAULT 'javascript',
+        tags TEXT DEFAULT '[]',
+        coherency_total REAL DEFAULT 0,
+        coherency_json TEXT DEFAULT '{}',
+        times_applied INTEGER DEFAULT 0,
+        times_resolved INTEGER DEFAULT 0,
+        confidence REAL DEFAULT 0.2,
+        parent_debug TEXT,
+        generation_method TEXT DEFAULT 'capture',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_debug_fingerprint ON debug_patterns(fingerprint_hash);
+      CREATE INDEX IF NOT EXISTS idx_debug_category ON debug_patterns(error_category);
+      CREATE INDEX IF NOT EXISTS idx_debug_confidence ON debug_patterns(confidence);
+    `);
+  } catch {}
+}
+
+function _transferDebugPattern(dp, targetStore) {
+  _ensureDebugSchema(targetStore);
+  const crypto = require('crypto');
+  const id = crypto.createHash('sha256')
+    .update(dp.fix_code + dp.fingerprint_hash + dp.language + Date.now())
+    .digest('hex').slice(0, 16);
+  const now = new Date().toISOString();
+
+  targetStore.db.prepare(`
+    INSERT OR IGNORE INTO debug_patterns (
+      id, error_signature, error_message, error_class, error_category,
+      stack_fingerprint, fingerprint_hash, fix_code, fix_description,
+      language, tags, coherency_total, coherency_json,
+      times_applied, times_resolved, confidence,
+      parent_debug, generation_method, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, dp.error_signature, dp.error_message, dp.error_class, dp.error_category,
+    dp.stack_fingerprint || '', dp.fingerprint_hash, dp.fix_code, dp.fix_description || '',
+    dp.language, dp.tags || '[]', dp.coherency_total || 0, dp.coherency_json || '{}',
+    dp.times_applied || 0, dp.times_resolved || 0, dp.confidence || 0.2,
+    dp.parent_debug, dp.generation_method || 'shared', now, now
+  );
+}
+
 module.exports = {
   getGlobalDir,
   hasGlobalStore,
@@ -532,6 +864,11 @@ module.exports = {
   globalStats,
   personalStats,
   communityStats,
+  shareDebugPatterns,
+  pullDebugPatterns,
+  syncDebugToPersonal,
+  federatedDebugSearch,
+  debugGlobalStats,
   GLOBAL_DIR,
   PERSONAL_DIR,
   COMMUNITY_DIR,

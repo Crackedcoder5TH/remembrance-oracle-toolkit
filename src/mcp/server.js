@@ -284,6 +284,79 @@ const TOOLS = [
       required: ['code'],
     },
   },
+  {
+    name: 'oracle_debug_capture',
+    description: 'Capture an error→fix pair as a debug pattern. Automatically generates language variants and error variants for exponential growth.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        errorMessage: { type: 'string', description: 'The error message' },
+        stackTrace: { type: 'string', description: 'Optional stack trace' },
+        fixCode: { type: 'string', description: 'The code that fixes the error' },
+        fixDescription: { type: 'string', description: 'Human description of the fix' },
+        language: { type: 'string', description: 'Programming language' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Tags for categorization' },
+      },
+      required: ['errorMessage', 'fixCode'],
+    },
+  },
+  {
+    name: 'oracle_debug_search',
+    description: 'Search for debug patterns (error→fix pairs) matching an error message. Searches across local, personal, and community stores for the best fixes ranked by confidence.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        errorMessage: { type: 'string', description: 'The error to find fixes for' },
+        stackTrace: { type: 'string', description: 'Optional stack trace for better matching' },
+        language: { type: 'string', description: 'Preferred language for fixes' },
+        limit: { type: 'number', description: 'Max results (default: 5)' },
+        federated: { type: 'boolean', description: 'Search all tiers — local, personal, community (default: true)' },
+      },
+      required: ['errorMessage'],
+    },
+  },
+  {
+    name: 'oracle_debug_feedback',
+    description: 'Report whether an applied debug fix resolved the error. Successful resolutions increase confidence and trigger cascading variant generation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Debug pattern ID' },
+        resolved: { type: 'boolean', description: 'Whether the fix resolved the error' },
+      },
+      required: ['id', 'resolved'],
+    },
+  },
+  {
+    name: 'oracle_debug_grow',
+    description: 'Generate debug pattern variants from all high-confidence patterns. Exponential growth engine — language variants, error variants, and cascade amplification.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        minConfidence: { type: 'number', description: 'Minimum confidence to process (default: 0.5)' },
+        maxPatterns: { type: 'number', description: 'Max patterns to process (default: all)' },
+        languages: { type: 'array', items: { type: 'string' }, description: 'Languages for variants (default: [python, typescript, go])' },
+      },
+    },
+  },
+  {
+    name: 'oracle_debug_stats',
+    description: 'Get debug oracle statistics — total patterns, confidence, resolution rates, breakdown by category and language.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'oracle_debug_share',
+    description: 'Share proven debug patterns to the community store. Requires confidence >= 0.5 and at least 1 successful resolution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        minConfidence: { type: 'number', description: 'Minimum confidence to share (default: 0.5)' },
+        category: { type: 'string', description: 'Filter by error category' },
+        language: { type: 'string', description: 'Filter by language' },
+        dryRun: { type: 'boolean', description: 'Preview without sharing (default: false)' },
+      },
+    },
+  },
 ];
 
 class MCPServer {
@@ -535,6 +608,52 @@ class MCPServer {
           });
           break;
         }
+
+        case 'oracle_debug_capture':
+          result = this.oracle.debugCapture({
+            errorMessage: args.errorMessage,
+            stackTrace: args.stackTrace || '',
+            fixCode: args.fixCode,
+            fixDescription: args.fixDescription || '',
+            language: args.language || 'javascript',
+            tags: args.tags || [],
+          });
+          break;
+
+        case 'oracle_debug_search':
+          result = this.oracle.debugSearch({
+            errorMessage: args.errorMessage,
+            stackTrace: args.stackTrace || '',
+            language: args.language,
+            limit: args.limit || 5,
+            federated: args.federated !== false,
+          });
+          break;
+
+        case 'oracle_debug_feedback':
+          result = this.oracle.debugFeedback(args.id, args.resolved);
+          break;
+
+        case 'oracle_debug_grow':
+          result = this.oracle.debugGrow({
+            minConfidence: args.minConfidence || 0.5,
+            maxPatterns: args.maxPatterns || Infinity,
+            languages: args.languages,
+          });
+          break;
+
+        case 'oracle_debug_stats':
+          result = this.oracle.debugStats();
+          break;
+
+        case 'oracle_debug_share':
+          result = this.oracle.debugShare({
+            minConfidence: args.minConfidence || 0.5,
+            category: args.category,
+            language: args.language,
+            dryRun: args.dryRun || false,
+          });
+          break;
 
         default:
           return {

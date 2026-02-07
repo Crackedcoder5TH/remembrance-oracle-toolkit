@@ -17,6 +17,7 @@ const { semanticSearch: semanticSearchEngine } = require('../core/embeddings');
 const { VerifiedHistoryStore } = require('../store/history');
 const { PatternLibrary } = require('../patterns/library');
 const { PatternRecycler } = require('../core/recycler');
+const { DebugOracle } = require('../core/debug-oracle');
 
 class RemembranceOracle {
   constructor(options = {}) {
@@ -34,6 +35,9 @@ class RemembranceOracle {
       variantLanguages: options.variantLanguages || ['python', 'typescript'],
       verbose: options.verbose || false,
     });
+
+    // Debug Oracle — exponential debugging intelligence
+    this._debugOracle = null; // Lazy-initialized on first debug call
 
     // Auto-seed on first run if library is empty
     if (options.autoSeed !== false && this.patterns.getAll().length === 0) {
@@ -860,6 +864,154 @@ class RemembranceOracle {
       code: e.code,
     }));
     return [...patterns, ...history];
+  }
+
+  // ─── Debug Oracle — Exponential Debugging Intelligence ───
+
+  /**
+   * Get or create the DebugOracle instance (lazy-initialized).
+   */
+  _getDebugOracle() {
+    if (!this._debugOracle) {
+      const sqliteStore = this.store.getSQLiteStore();
+      if (!sqliteStore) return null;
+      this._debugOracle = new DebugOracle(sqliteStore, {
+        verbose: this.recycler?.verbose || false,
+        variantLanguages: this.recycler?.variantLanguages || ['python', 'typescript'],
+      });
+    }
+    return this._debugOracle;
+  }
+
+  /**
+   * Capture an error→fix pair as a debug pattern.
+   * Automatically generates language variants and error variants.
+   *
+   * @param {object} params
+   *   - errorMessage: The error message
+   *   - stackTrace: Optional stack trace
+   *   - fixCode: The code that fixes the error
+   *   - fixDescription: Human description of the fix
+   *   - language: Programming language
+   *   - tags: Array of tags
+   * @returns {object} { captured, pattern, variants }
+   */
+  debugCapture(params) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { captured: false, error: 'No SQLite store available' };
+    const result = debug.capture(params);
+    if (result.captured) {
+      this._emit({ type: 'debug_capture', id: result.pattern?.id, errorClass: result.pattern?.errorClass });
+    }
+    return result;
+  }
+
+  /**
+   * Search for debug patterns matching an error.
+   * Searches local store, personal store, and community store.
+   *
+   * @param {object} params
+   *   - errorMessage: The error to find fixes for
+   *   - stackTrace: Optional stack trace
+   *   - language: Preferred language
+   *   - limit: Max results (default 5)
+   *   - federated: Search all tiers (default true)
+   * @returns {Array} Matching debug patterns, ranked by confidence
+   */
+  debugSearch(params) {
+    const { federated = true, ...searchParams } = params;
+
+    if (federated) {
+      const sqliteStore = this.store.getSQLiteStore();
+      if (!sqliteStore) return [];
+      const { federatedDebugSearch } = require('../core/persistence');
+      return federatedDebugSearch(sqliteStore, searchParams);
+    }
+
+    const debug = this._getDebugOracle();
+    if (!debug) return [];
+    return debug.search(searchParams);
+  }
+
+  /**
+   * Report whether an applied fix resolved the error.
+   * Updates confidence and triggers cascading variant generation on success.
+   */
+  debugFeedback(id, resolved) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { success: false, error: 'No SQLite store available' };
+    const result = debug.reportOutcome(id, resolved);
+    if (result.success) {
+      this._emit({ type: 'debug_feedback', id, resolved, confidence: result.confidence });
+    }
+    return result;
+  }
+
+  /**
+   * Grow the debug pattern library exponentially.
+   * Generates language variants and error variants from high-confidence patterns.
+   */
+  debugGrow(options = {}) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { processed: 0, error: 'No SQLite store available' };
+    return debug.grow(options);
+  }
+
+  /**
+   * Get all debug patterns, optionally filtered.
+   */
+  debugPatterns(filters = {}) {
+    const debug = this._getDebugOracle();
+    if (!debug) return [];
+    return debug.getAll(filters);
+  }
+
+  /**
+   * Get debug pattern library statistics.
+   */
+  debugStats() {
+    const debug = this._getDebugOracle();
+    if (!debug) return { totalPatterns: 0, error: 'No SQLite store available' };
+    return debug.stats();
+  }
+
+  /**
+   * Share debug patterns to community store.
+   * Higher bar: requires confidence >= 0.5 and at least 1 successful resolution.
+   */
+  debugShare(options = {}) {
+    const { shareDebugPatterns } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { shared: 0, error: 'No SQLite store available' };
+    return shareDebugPatterns(sqliteStore, options);
+  }
+
+  /**
+   * Pull debug patterns from community store.
+   */
+  debugPullCommunity(options = {}) {
+    const { pullDebugPatterns } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { pulled: 0, error: 'No SQLite store available' };
+    return pullDebugPatterns(sqliteStore, options);
+  }
+
+  /**
+   * Sync debug patterns to personal store.
+   */
+  debugSyncPersonal(options = {}) {
+    const { syncDebugToPersonal } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { synced: 0, error: 'No SQLite store available' };
+    return syncDebugToPersonal(sqliteStore, options);
+  }
+
+  /**
+   * Get combined debug stats across all tiers.
+   */
+  debugGlobalStats() {
+    const { debugGlobalStats } = require('../core/persistence');
+    return debugGlobalStats();
   }
 }
 

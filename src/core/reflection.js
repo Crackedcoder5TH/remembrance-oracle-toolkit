@@ -362,6 +362,20 @@ function serfScore(candidate, previous) {
 
 // ─── Generate 5 Candidates ───
 
+/**
+ * Combined "heal" transform — applies all 5 strategies in sequence.
+ * This is the full healing pass: simplify → secure → readable → unify → correct.
+ */
+function applyHeal(code, lang) {
+  let result = code;
+  result = applySimplify(result, lang);
+  result = applySecure(result, lang);
+  result = applyReadable(result, lang);
+  result = applyUnify(result, lang);
+  result = applyCorrect(result, lang);
+  return result;
+}
+
 function generateCandidates(code, language) {
   const lang = language || detectLanguage(code);
   const transforms = [
@@ -370,6 +384,7 @@ function generateCandidates(code, language) {
     { strategy: 'readable', fn: applyReadable },
     { strategy: 'unify', fn: applyUnify },
     { strategy: 'correct', fn: applyCorrect },
+    { strategy: 'heal', fn: applyHeal },
   ];
 
   return transforms.map(({ strategy, fn }) => {
@@ -396,6 +411,7 @@ function generateWhisper(original, final, improvements, loops) {
     readable: 'The future self who reads this code will understand it instantly. Clarity was the gift that kept giving.',
     unify: 'Unity brought harmony. The code now speaks with one voice, one convention, one rhythm.',
     correct: 'Every edge case was a door left open. The healed version closes them gently, with grace.',
+    heal: 'All five threads wove together into one garment. The full healing pass brought the code to its highest form.',
     reflection: 'The code was already close to its healed form. The reflection confirmed its coherence.',
   };
 
@@ -589,6 +605,7 @@ module.exports = {
   applyReadable,
   applyUnify,
   applyCorrect,
+  applyHeal,
   // Expose dimension scorers for testing
   scoreSimplicity,
   scoreReadability,

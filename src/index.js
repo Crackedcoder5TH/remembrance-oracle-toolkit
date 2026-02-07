@@ -24,7 +24,7 @@ const { semanticSearch, semanticSimilarity, expandQuery, identifyConcepts } = re
 const { CIFeedbackReporter, wrapWithTracking } = require('./ci/feedback');
 const { vectorSimilarity, embedDocument, nearestTerms } = require('./core/vectors');
 const { MCPServer, startMCPServer } = require('./mcp/server');
-const { createDashboardServer, startDashboard } = require('./dashboard/server');
+const { createDashboardServer, startDashboard, createRateLimiter } = require('./dashboard/server');
 const { WebSocketServer } = require('./core/websocket');
 const { VersionManager, semanticDiff, extractFunctions } = require('./core/versioning');
 const { AuthManager, authMiddleware, ROLES, canWrite, canManageUsers, canRead } = require('./auth/auth');
@@ -93,6 +93,7 @@ module.exports = {
   // Dashboard
   createDashboardServer,
   startDashboard,
+  createRateLimiter,
 
   // WebSocket
   WebSocketServer,

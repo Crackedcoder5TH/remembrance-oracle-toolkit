@@ -23,6 +23,7 @@ class RemembranceOracle {
     const storeDir = this.store.storeDir || require('path').join(options.baseDir || process.cwd(), '.remembrance');
     this.patterns = options.patterns || new PatternLibrary(storeDir);
     this.threshold = options.threshold || 0.6;
+    this._listeners = [];
 
     // Auto-seed on first run if library is empty
     if (options.autoSeed !== false && this.patterns.getAll().length === 0) {
@@ -79,6 +80,8 @@ class RemembranceOracle {
       testOutput: validation.testOutput,
     });
 
+    this._emit({ type: 'entry_added', id: entry.id, language: validation.coherencyScore.language, description });
+
     return {
       accepted: true,
       entry,
@@ -132,6 +135,8 @@ class RemembranceOracle {
     if (!updated) {
       return { success: false, error: `Entry ${id} not found` };
     }
+    this._emit({ type: 'feedback', id, succeeded, newReliability: updated.reliability.historicalScore });
+
     return {
       success: true,
       newReliability: updated.reliability.historicalScore,
@@ -157,6 +162,21 @@ class RemembranceOracle {
    */
   prune(minCoherency = 0.4) {
     return this.store.prune(minCoherency);
+  }
+
+  /**
+   * Subscribe to Oracle events (submit, register, evolve, feedback).
+   * Returns an unsubscribe function.
+   */
+  on(listener) {
+    this._listeners.push(listener);
+    return () => { this._listeners = this._listeners.filter(l => l !== listener); };
+  }
+
+  _emit(event) {
+    for (const listener of this._listeners) {
+      try { listener(event); } catch { /* listener errors don't break oracle */ }
+    }
   }
 
   // ─── Pattern Library Methods ───
@@ -244,6 +264,8 @@ class RemembranceOracle {
       testOutput: validation.testOutput,
     });
 
+    this._emit({ type: 'pattern_registered', id: registered.id, name: pattern.name, language: registered.language });
+
     return {
       registered: true,
       pattern: registered,
@@ -267,6 +289,8 @@ class RemembranceOracle {
       author: metadata.author || 'oracle-evolution',
       coherencyScore: evolved.coherencyScore,
     });
+
+    this._emit({ type: 'pattern_evolved', id: evolved.id, name: evolved.name, parentId });
 
     return { evolved: true, pattern: evolved };
   }
@@ -406,6 +430,74 @@ class RemembranceOracle {
       lines.push('');
     }
     return lines.join('\n');
+  }
+
+  /**
+   * Import patterns from an exported JSON string or object.
+   * Counterpart to export() — enables team sharing of pattern libraries.
+   *
+   * @param {string|object} data — JSON string or parsed object from export()
+   * @param {object} options — { skipValidation, dryRun, author }
+   * @returns {{ imported: number, skipped: number, errors: string[], results: Array }}
+   */
+  import(data, options = {}) {
+    const { skipValidation = false, dryRun = false, author = 'oracle-import' } = options;
+    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    const patterns = parsed.patterns || [];
+
+    const results = [];
+    let imported = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const p of patterns) {
+      if (!p.code || !p.name) {
+        errors.push(`Skipped pattern without code or name: ${p.name || '(unnamed)'}`);
+        skipped++;
+        continue;
+      }
+
+      // Check for duplicate by name
+      const existing = this.patterns.getAll().find(
+        ep => ep.name === p.name && ep.language === p.language
+      );
+      if (existing) {
+        results.push({ name: p.name, status: 'duplicate', id: existing.id });
+        skipped++;
+        continue;
+      }
+
+      if (dryRun) {
+        results.push({ name: p.name, status: 'would_import', language: p.language });
+        imported++;
+        continue;
+      }
+
+      const regResult = this.registerPattern({
+        name: p.name,
+        code: p.code,
+        language: p.language || 'javascript',
+        description: p.description || p.name,
+        tags: [...(p.tags || []), 'imported'],
+        patternType: p.patternType || 'utility',
+        complexity: p.complexity || 'moderate',
+        author,
+        testCode: p.testCode,
+      });
+
+      if (regResult.registered) {
+        results.push({ name: p.name, status: 'imported', id: regResult.pattern.id });
+        imported++;
+      } else {
+        results.push({ name: p.name, status: 'rejected', reason: regResult.reason });
+        errors.push(`${p.name}: ${regResult.reason}`);
+        skipped++;
+      }
+    }
+
+    this._emit({ type: 'import_complete', imported, skipped });
+
+    return { imported, skipped, errors, results };
   }
 
   /**

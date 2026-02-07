@@ -272,9 +272,10 @@ describe('serfScore', () => {
 // ─── Generate Candidates ───
 
 describe('generateCandidates', () => {
-  it('generates 5 candidates', () => {
+  it('generates 6 candidates (5 individual + heal)', () => {
     const candidates = generateCandidates('var x = 1;', 'javascript');
-    assert.equal(candidates.length, 5);
+    assert.equal(candidates.length, 6);
+    assert.ok(candidates.some(c => c.strategy === 'heal'));
   });
 
   it('each candidate has strategy, code, and changed flag', () => {

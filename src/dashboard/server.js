@@ -17,6 +17,44 @@ const http = require('http');
 const url = require('url');
 const { RemembranceOracle } = require('../api/oracle');
 
+/**
+ * Simple in-memory rate limiter.
+ * Tracks requests per IP in a sliding window.
+ */
+function createRateLimiter(options = {}) {
+  const { windowMs = 60000, maxRequests = 100 } = options;
+  const hits = new Map(); // ip → [timestamps]
+
+  // Cleanup old entries every minute
+  const cleanup = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, timestamps] of hits) {
+      const valid = timestamps.filter(t => now - t < windowMs);
+      if (valid.length === 0) hits.delete(ip);
+      else hits.set(ip, valid);
+    }
+  }, windowMs);
+  if (cleanup.unref) cleanup.unref();
+
+  return function rateLimitMiddleware(req, res, next) {
+    const ip = req.socket.remoteAddress || '127.0.0.1';
+    const now = Date.now();
+    const timestamps = (hits.get(ip) || []).filter(t => now - t < windowMs);
+    timestamps.push(now);
+    hits.set(ip, timestamps);
+
+    res.setHeader('X-RateLimit-Limit', maxRequests);
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, maxRequests - timestamps.length));
+
+    if (timestamps.length > maxRequests) {
+      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': Math.ceil(windowMs / 1000) });
+      res.end(JSON.stringify({ error: 'Too many requests' }));
+      return;
+    }
+    next();
+  };
+}
+
 function createDashboardServer(oracle, options = {}) {
   const oracleInstance = oracle || new RemembranceOracle();
 
@@ -46,6 +84,12 @@ function createDashboardServer(oracle, options = {}) {
     // Versioning module not available
   }
 
+  // Rate limiter (optional — when rateLimit is enabled)
+  let rateLimiter = null;
+  if (options.rateLimit !== false && options.auth !== false) {
+    rateLimiter = createRateLimiter(options.rateLimitOptions || {});
+  }
+
   // WebSocket server (optional)
   let wsServer = null;
 
@@ -64,13 +108,22 @@ function createDashboardServer(oracle, options = {}) {
       return;
     }
 
-    // Auth middleware — skip for dashboard HTML, health, and login
-    const publicPaths = ['/', '/api/health', '/api/login'];
-    if (authMw && !publicPaths.includes(pathname)) {
-      authMw(req, res, () => handleRequest(req, res, parsed, pathname));
+    // Rate limiting (applied before auth)
+    const proceed = () => {
+      // Auth middleware — skip for dashboard HTML, health, and login
+      const publicPaths = ['/', '/api/health', '/api/login'];
+      if (authMw && !publicPaths.includes(pathname)) {
+        authMw(req, res, () => handleRequest(req, res, parsed, pathname));
+      } else {
+        req.user = null;
+        handleRequest(req, res, parsed, pathname);
+      }
+    };
+
+    if (rateLimiter) {
+      rateLimiter(req, res, proceed);
     } else {
-      req.user = null;
-      handleRequest(req, res, parsed, pathname);
+      proceed();
     }
   });
 
@@ -278,6 +331,13 @@ function createDashboardServer(oracle, options = {}) {
       wsServer.broadcast(event);
     }
   };
+
+  // Auto-forward Oracle events to WebSocket clients
+  if (oracleInstance && oracleInstance.on) {
+    oracleInstance.on((event) => {
+      if (wsServer) wsServer.broadcast(event);
+    });
+  }
 
   server.wsServer = wsServer;
   server.authManager = authManager;
@@ -656,4 +716,4 @@ function getDashboardHTML() {
 </html>`;
 }
 
-module.exports = { createDashboardServer, startDashboard, getDashboardHTML };
+module.exports = { createDashboardServer, startDashboard, getDashboardHTML, createRateLimiter };

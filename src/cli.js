@@ -70,6 +70,7 @@ ${c.bold('Commands:')}
   ${c.cyan('auto-seed')}   Auto-discover and seed patterns from test suite
   ${c.cyan('covenant')}    Check code against the Covenant seal (The Kingdom's Weave)
   ${c.cyan('reflect')}     SERF reflection loop — iteratively heal and refine code
+  ${c.cyan('import')}      Import patterns from an exported JSON file
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -571,6 +572,24 @@ ${c.bold('Options:')}
       }
     } catch (err) {
       console.error(c.red('Auto-seed error: ' + err.message));
+    }
+    return;
+  }
+
+  if (cmd === 'import') {
+    if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle import --file patterns.json [--dry-run]')}`); process.exit(1); }
+    const data = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const dryRun = args['dry-run'] === true;
+    const result = oracle.import(data, { dryRun, author: args.author || 'cli-import' });
+    if (dryRun) console.log(c.dim('(dry run — no changes written)\n'));
+    console.log(`${c.boldGreen('Imported:')} ${result.imported}  |  ${c.yellow('Skipped:')} ${result.skipped}`);
+    for (const r of result.results) {
+      const icon = r.status === 'imported' || r.status === 'would_import' ? c.green('+') : r.status === 'duplicate' ? c.yellow('=') : c.red('x');
+      console.log(`  ${icon} ${r.name} — ${r.status}${r.reason ? ' (' + r.reason.slice(0, 60) + ')' : ''}`);
+    }
+    if (result.errors.length > 0) {
+      console.log(`\n${c.boldRed('Errors:')}`);
+      for (const e of result.errors) console.log(`  ${c.red(e)}`);
     }
     return;
   }

@@ -122,6 +122,29 @@ const TOOLS = [
       required: ['query'],
     },
   },
+  {
+    name: 'oracle_versions',
+    description: 'Get version history for a pattern, showing all saved snapshots.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'Pattern ID to get history for' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_semantic_diff',
+    description: 'Perform a semantic diff between two code entries, showing function-level changes and structural analysis.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        idA: { type: 'string', description: 'ID of the first entry/pattern' },
+        idB: { type: 'string', description: 'ID of the second entry/pattern' },
+      },
+      required: ['idA', 'idB'],
+    },
+  },
 ];
 
 class MCPServer {
@@ -240,6 +263,24 @@ class MCPServer {
         case 'oracle_nearest': {
           const { nearestTerms } = require('../core/vectors');
           result = nearestTerms(args.query || '', args.limit || 10);
+          break;
+        }
+
+        case 'oracle_versions': {
+          const { VersionManager } = require('../core/versioning');
+          const sqliteStore = this.oracle.store.getSQLiteStore();
+          const vm = new VersionManager(sqliteStore);
+          result = vm.getHistory(args.patternId);
+          break;
+        }
+
+        case 'oracle_semantic_diff': {
+          const { semanticDiff } = require('../core/versioning');
+          const entryA = this.oracle.patterns.getAll().find(p => p.id === args.idA) || this.oracle.store.get(args.idA);
+          const entryB = this.oracle.patterns.getAll().find(p => p.id === args.idB) || this.oracle.store.get(args.idB);
+          if (!entryA) throw new Error(`Entry ${args.idA} not found`);
+          if (!entryB) throw new Error(`Entry ${args.idB} not found`);
+          result = semanticDiff(entryA.code, entryB.code, entryA.language);
           break;
         }
 

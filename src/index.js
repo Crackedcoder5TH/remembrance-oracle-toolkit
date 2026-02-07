@@ -25,6 +25,10 @@ const { CIFeedbackReporter, wrapWithTracking } = require('./ci/feedback');
 const { vectorSimilarity, embedDocument, nearestTerms } = require('./core/vectors');
 const { MCPServer, startMCPServer } = require('./mcp/server');
 const { createDashboardServer, startDashboard } = require('./dashboard/server');
+const { WebSocketServer } = require('./core/websocket');
+const { VersionManager, semanticDiff, extractFunctions } = require('./core/versioning');
+const { AuthManager, authMiddleware, ROLES, canWrite, canManageUsers, canRead } = require('./auth/auth');
+const { discoverPatterns, autoSeed } = require('./ci/auto-seed');
 
 module.exports = {
   // Core
@@ -87,6 +91,26 @@ module.exports = {
   // Dashboard
   createDashboardServer,
   startDashboard,
+
+  // WebSocket
+  WebSocketServer,
+
+  // Versioning
+  VersionManager,
+  semanticDiff,
+  extractFunctions,
+
+  // Auth
+  AuthManager,
+  authMiddleware,
+  ROLES,
+  canWrite,
+  canManageUsers,
+  canRead,
+
+  // Auto-seed
+  discoverPatterns,
+  autoSeed,
 
   // Semantic search
   semanticSearch,

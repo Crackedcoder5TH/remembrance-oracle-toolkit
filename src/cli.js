@@ -64,6 +64,10 @@ ${c.bold('Commands:')}
   ${c.cyan('deps')}        Show dependency tree for a pattern
   ${c.cyan('mcp')}         Start MCP server (JSON-RPC over stdin/stdout)
   ${c.cyan('dashboard')}   Start web dashboard (default port 3333)
+  ${c.cyan('versions')}    Show version history for a pattern
+  ${c.cyan('sdiff')}       Semantic diff between two patterns
+  ${c.cyan('users')}       Manage users (list, add, delete)
+  ${c.cyan('auto-seed')}   Auto-discover and seed patterns from test suite
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -458,6 +462,114 @@ ${c.bold('Options:')}
     const { startDashboard } = require('./dashboard/server');
     const port = parseInt(args.port) || 3333;
     startDashboard(oracle, { port });
+    return;
+  }
+
+  if (cmd === 'versions') {
+    const id = args.id || process.argv[3];
+    if (!id) { console.error(`Usage: ${c.cyan('oracle versions')} <pattern-id>`); process.exit(1); }
+    try {
+      const { VersionManager } = require('./core/versioning');
+      const sqliteStore = oracle.store.getSQLiteStore();
+      const vm = new VersionManager(sqliteStore);
+      const history = vm.getHistory(id);
+      if (history.length === 0) {
+        console.log(c.yellow('No version history found for this pattern.'));
+      } else {
+        console.log(`${c.boldCyan('Version History')} for ${c.cyan(id)}:\n`);
+        for (const v of history) {
+          console.log(`  ${c.bold('v' + v.version)} — ${c.dim(v.timestamp)}`);
+          if (v.metadata.reason) console.log(`    ${c.dim('Reason:')} ${v.metadata.reason}`);
+          console.log(`    ${c.dim(v.code.split('\n').length + ' lines')}`);
+        }
+      }
+    } catch (err) {
+      console.error(c.red('Versioning requires SQLite: ' + err.message));
+    }
+    return;
+  }
+
+  if (cmd === 'sdiff') {
+    const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
+    if (ids.length < 2) { console.error(`Usage: ${c.cyan('oracle sdiff')} <id-a> <id-b>`); process.exit(1); }
+    try {
+      const { semanticDiff } = require('./core/versioning');
+      const a = oracle.patterns.getAll().find(p => p.id === ids[0]) || oracle.store.get(ids[0]);
+      const b = oracle.patterns.getAll().find(p => p.id === ids[1]) || oracle.store.get(ids[1]);
+      if (!a) { console.error(c.red(`Entry ${ids[0]} not found`)); process.exit(1); }
+      if (!b) { console.error(c.red(`Entry ${ids[1]} not found`)); process.exit(1); }
+      const result = semanticDiff(a.code, b.code, a.language);
+      console.log(`${c.boldCyan('Semantic Diff:')}`);
+      console.log(`  Similarity: ${colorScore(result.similarity)} (${c.dim(result.changeType)})`);
+      console.log(`  Functions: ${c.green('+' + result.summary.added)} ${c.red('-' + result.summary.removed)} ${c.yellow('~' + result.summary.modified)} ${c.dim('=' + result.summary.unchanged)}`);
+      if (result.structuralChanges.length > 0) {
+        console.log(`\n  ${c.bold('Structural Changes:')}`);
+        for (const ch of result.structuralChanges) {
+          const color = ch.type.includes('added') ? c.green : ch.type.includes('removed') ? c.red : c.yellow;
+          console.log(`    ${color(ch.type)}: ${c.dim(ch.detail)}`);
+        }
+      }
+    } catch (err) {
+      console.error(c.red(err.message));
+    }
+    return;
+  }
+
+  if (cmd === 'users') {
+    try {
+      const { AuthManager } = require('./auth/auth');
+      const sqliteStore = oracle.store.getSQLiteStore();
+      const auth = new AuthManager(sqliteStore);
+      const subCmd = process.argv[3];
+
+      if (subCmd === 'add') {
+        const username = args.username || args.name;
+        const password = args.password;
+        const role = args.role || 'contributor';
+        if (!username || !password) { console.error(`Usage: ${c.cyan('oracle users add')} --username <name> --password <pass> [--role admin|contributor|viewer]`); process.exit(1); }
+        const user = auth.createUser(username, password, role);
+        console.log(`${c.boldGreen('User created:')} ${c.bold(user.username)} (${user.role})`);
+        console.log(`  API Key: ${c.cyan(user.apiKey)}`);
+      } else if (subCmd === 'delete') {
+        const id = args.id;
+        if (!id) { console.error(`Usage: ${c.cyan('oracle users delete')} --id <user-id>`); process.exit(1); }
+        const deleted = auth.deleteUser(id);
+        console.log(deleted ? c.boldGreen('User deleted.') : c.yellow('User not found.'));
+      } else {
+        // List users
+        const users = auth.listUsers();
+        console.log(c.boldCyan(`Users (${users.length}):\n`));
+        for (const u of users) {
+          console.log(`  ${c.bold(u.username)} [${c.cyan(u.id.slice(0, 8))}] role: ${c.magenta(u.role)} key: ${c.dim(u.apiKey.slice(0, 12) + '...')}`);
+        }
+      }
+    } catch (err) {
+      console.error(c.red('Auth error: ' + err.message));
+    }
+    return;
+  }
+
+  if (cmd === 'auto-seed') {
+    try {
+      const { autoSeed } = require('./ci/auto-seed');
+      const baseDir = args.dir || process.cwd();
+      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const result = autoSeed(oracle, baseDir, { language: args.language, dryRun });
+      if (dryRun) {
+        console.log(c.boldCyan('Auto-Seed Dry Run:'));
+        console.log(`  Discovered ${c.bold(String(result.discovered))} source file(s) with tests`);
+        for (const p of result.patterns) {
+          console.log(`  ${c.cyan(p.name)} (${c.blue(p.language)}) — ${p.functions.slice(0, 5).join(', ')}`);
+        }
+      } else {
+        console.log(`${c.boldGreen('Auto-seeded:')} ${result.registered} registered, ${result.skipped} skipped, ${result.failed} failed`);
+        for (const p of result.patterns) {
+          console.log(`  ${c.cyan(p.name)} [${c.dim(p.id)}] coherency: ${colorScore(p.coherency)}`);
+        }
+      }
+    } catch (err) {
+      console.error(c.red('Auto-seed error: ' + err.message));
+    }
     return;
   }
 

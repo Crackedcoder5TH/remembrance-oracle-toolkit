@@ -1,0 +1,343 @@
+name: Oracle Auto-Seed
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'lib/**'
+      - 'tests/**'
+      - 'test/**'
+      - '__tests__/**'
+      - '**/*.test.*'
+      - '**/*.spec.*'
+  workflow_dispatch:
+    inputs:
+      test_glob:
+        description: 'Glob pattern for test files'
+        required: false
+        default: ''
+      language:
+        description: 'Language filter (javascript, typescript, python, go, rust)'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Dry run — discover patterns without registering'
+        required: false
+        default: 'false'
+
+jobs:
+  auto-seed:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+        if: hashFiles('**/*.go') != ''
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        if: hashFiles('**/*.rs') != ''
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+        if: hashFiles('**/*.py') != ''
+
+      - name: Install Remembrance Oracle
+        run: |
+          npm install remembrance-oracle-toolkit || npm install
+          echo "Oracle installed successfully"
+
+      - name: Discover and seed patterns
+        id: seed
+        env:
+          TEST_GLOB: ${{ github.event.inputs.test_glob || '' }}
+          LANGUAGE: ${{ github.event.inputs.language || '' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+          const { glob } = require('node:fs');
+
+          // Configuration
+          const testGlob = process.env.TEST_GLOB;
+          const languageFilter = process.env.LANGUAGE;
+          const dryRun = process.env.DRY_RUN === 'true';
+
+          // Default test patterns by language
+          const TEST_PATTERNS = {
+            javascript: ['**/*.test.js', '**/*.spec.js', 'tests/**/*.js', 'test/**/*.js', '__tests__/**/*.js'],
+            typescript: ['**/*.test.ts', '**/*.spec.ts', 'tests/**/*.ts', 'test/**/*.ts', '__tests__/**/*.ts'],
+            python: ['**/test_*.py', '**/*_test.py', 'tests/**/*.py', 'test/**/*.py'],
+            go: ['**/*_test.go'],
+            rust: ['**/tests/**/*.rs', 'src/**/*.rs'],
+          };
+
+          // Source file patterns
+          const SOURCE_PATTERNS = {
+            javascript: ['src/**/*.js', 'lib/**/*.js', '*.js'],
+            typescript: ['src/**/*.ts', 'lib/**/*.ts', '*.ts'],
+            python: ['src/**/*.py', 'lib/**/*.py', '*.py'],
+            go: ['**/*.go'],
+            rust: ['src/**/*.rs', 'lib/**/*.rs'],
+          };
+
+          // Function extractors by language
+          const EXTRACTORS = {
+            javascript: (code) => {
+              const fns = [];
+              const re = /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^=])\s*=>|(\w+)\s*\([^)]*\)\s*\{)/gm;
+              let m;
+              while ((m = re.exec(code)) !== null) {
+                const name = m[1] || m[2] || m[3];
+                if (name && !['if', 'for', 'while', 'switch', 'catch'].includes(name)) {
+                  fns.push(name);
+                }
+              }
+              return [...new Set(fns)];
+            },
+            typescript: (code) => EXTRACTORS.javascript(code),
+            python: (code) => {
+              const fns = [];
+              const re = /^def\s+(\w+)\s*\(/gm;
+              let m;
+              while ((m = re.exec(code)) !== null) {
+                if (!m[1].startsWith('_')) fns.push(m[1]);
+              }
+              return [...new Set(fns)];
+            },
+            go: (code) => {
+              const fns = [];
+              const re = /^func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(/gm;
+              let m;
+              while ((m = re.exec(code)) !== null) {
+                if (m[1][0] === m[1][0].toUpperCase()) fns.push(m[1]); // exported only
+              }
+              return [...new Set(fns)];
+            },
+            rust: (code) => {
+              const fns = [];
+              const re = /^pub\s+fn\s+(\w+)\s*[\(<]/gm;
+              let m;
+              while ((m = re.exec(code)) !== null) {
+                fns.push(m[1]);
+              }
+              return [...new Set(fns)];
+            },
+          };
+
+          function detectLanguage(filePath) {
+            const ext = path.extname(filePath);
+            const map = { '.js': 'javascript', '.ts': 'typescript', '.py': 'python', '.go': 'go', '.rs': 'rust' };
+            return map[ext] || null;
+          }
+
+          function findFiles(patterns) {
+            const results = [];
+            for (const pattern of patterns) {
+              try {
+                // Simple recursive file finder
+                const parts = pattern.split('/');
+                const walk = (dir, depth) => {
+                  if (!fs.existsSync(dir)) return;
+                  const entries = fs.readdirSync(dir, { withFileTypes: true });
+                  for (const entry of entries) {
+                    if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+                    const fullPath = path.join(dir, entry.name);
+                    if (entry.isDirectory()) {
+                      walk(fullPath, depth + 1);
+                    } else if (entry.isFile()) {
+                      // Simple glob match
+                      const rel = path.relative('.', fullPath);
+                      if (matchGlob(rel, pattern)) {
+                        results.push(fullPath);
+                      }
+                    }
+                  }
+                };
+                walk('.', 0);
+              } catch {}
+            }
+            return [...new Set(results)];
+          }
+
+          function matchGlob(filePath, pattern) {
+            const regexStr = pattern
+              .replace(/\*\*/g, '{{GLOBSTAR}}')
+              .replace(/\*/g, '[^/]*')
+              .replace(/{{GLOBSTAR}}/g, '.*')
+              .replace(/\./g, '\\\\.')
+              .replace(/\?/g, '.');
+            return new RegExp('^' + regexStr + '$').test(filePath);
+          }
+
+          function extractTestRelationships(testCode, language) {
+            const tested = [];
+            // Look for import/require statements to find what's being tested
+            const requireRe = /require\(['\"]([^'\"]+)['\"]\)/g;
+            const importRe = /import\s+.*?\s+from\s+['\"]([^'\"]+)['\"]/g;
+            let m;
+            while ((m = requireRe.exec(testCode)) !== null) {
+              if (!m[1].startsWith('.')) continue;
+              tested.push(m[1]);
+            }
+            while ((m = importRe.exec(testCode)) !== null) {
+              if (!m[1].startsWith('.')) continue;
+              tested.push(m[1]);
+            }
+            return tested;
+          }
+
+          async function main() {
+            console.log('Oracle Auto-Seed: Discovering patterns from test suite...');
+            const discovered = [];
+            const languages = languageFilter
+              ? [languageFilter]
+              : Object.keys(TEST_PATTERNS);
+
+            for (const lang of languages) {
+              const testPatterns = testGlob ? [testGlob] : (TEST_PATTERNS[lang] || []);
+              const testFiles = findFiles(testPatterns);
+              console.log('  ' + lang + ': found ' + testFiles.length + ' test file(s)');
+
+              for (const testFile of testFiles) {
+                try {
+                  const testCode = fs.readFileSync(testFile, 'utf-8');
+                  const imports = extractTestRelationships(testCode, lang);
+
+                  for (const imp of imports) {
+                    const sourceFile = path.resolve(path.dirname(testFile), imp);
+                    // Try with common extensions
+                    const exts = ['', '.js', '.ts', '.py', '.go', '.rs'];
+                    let resolvedPath = null;
+                    for (const ext of exts) {
+                      const candidate = sourceFile + ext;
+                      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+                        resolvedPath = candidate;
+                        break;
+                      }
+                      // Try index file
+                      const indexCandidate = path.join(sourceFile, 'index' + ext);
+                      if (fs.existsSync(indexCandidate)) {
+                        resolvedPath = indexCandidate;
+                        break;
+                      }
+                    }
+
+                    if (resolvedPath) {
+                      const code = fs.readFileSync(resolvedPath, 'utf-8');
+                      const detectedLang = detectLanguage(resolvedPath) || lang;
+                      const extractor = EXTRACTORS[detectedLang] || EXTRACTORS.javascript;
+                      const functionNames = extractor(code);
+
+                      discovered.push({
+                        sourceFile: path.relative('.', resolvedPath),
+                        testFile: path.relative('.', testFile),
+                        language: detectedLang,
+                        code,
+                        testCode,
+                        functions: functionNames,
+                        name: path.basename(resolvedPath, path.extname(resolvedPath)),
+                      });
+                    }
+                  }
+                } catch (err) {
+                  console.error('  Warning: Error processing ' + testFile + ': ' + err.message);
+                }
+              }
+            }
+
+            console.log('\\nDiscovered ' + discovered.length + ' source file(s) with tests');
+
+            if (dryRun) {
+              console.log('\\nDRY RUN — would register:');
+              for (const d of discovered) {
+                console.log('  ' + d.name + ' (' + d.language + ') — ' + d.functions.length + ' function(s): ' + d.functions.slice(0, 5).join(', '));
+              }
+              return;
+            }
+
+            // Register as patterns
+            let registered = 0;
+            let skipped = 0;
+            let failed = 0;
+
+            try {
+              const { RemembranceOracle } = require('./src/api/oracle');
+              const oracle = new RemembranceOracle({ autoSeed: false });
+
+              for (const d of discovered) {
+                try {
+                  const tags = [
+                    ...d.functions.slice(0, 5),
+                    d.language,
+                    'auto-seeded',
+                    'ci'
+                  ];
+
+                  const result = oracle.registerPattern({
+                    name: d.name,
+                    code: d.code,
+                    language: d.language,
+                    description: 'Auto-seeded from ' + d.sourceFile + ' (tested by ' + d.testFile + ')',
+                    tags,
+                    testCode: d.testCode,
+                  });
+
+                  if (result.registered) {
+                    registered++;
+                    console.log('  Registered: ' + d.name + ' (coherency: ' + (result.validation?.coherencyScore?.total || 0).toFixed(3) + ')');
+                  } else {
+                    skipped++;
+                    console.log('  Skipped: ' + d.name + ' — ' + (result.reason || 'below threshold'));
+                  }
+                } catch (err) {
+                  failed++;
+                  console.error('  Failed: ' + d.name + ' — ' + err.message);
+                }
+              }
+
+              console.log('\\nResults: ' + registered + ' registered, ' + skipped + ' skipped, ' + failed + ' failed');
+            } catch (err) {
+              console.error('Failed to initialize Oracle: ' + err.message);
+              console.error('Make sure remembrance-oracle-toolkit is installed.');
+              process.exit(1);
+            }
+          }
+
+          main().catch(err => { console.error(err); process.exit(1); });
+          "
+
+      - name: Report results
+        if: always()
+        run: |
+          echo "Auto-seed workflow completed"
+          if [ -d ".remembrance" ]; then
+            echo "Oracle store exists at .remembrance/"
+            node -e "
+            try {
+              const { RemembranceOracle } = require('./src/api/oracle');
+              const oracle = new RemembranceOracle({ autoSeed: false });
+              const stats = oracle.patternStats();
+              console.log('Pattern library: ' + stats.totalPatterns + ' patterns');
+              console.log('Languages: ' + Object.keys(stats.byLanguage || {}).join(', '));
+            } catch(e) {
+              console.log('Could not read stats: ' + e.message);
+            }
+            "
+          fi

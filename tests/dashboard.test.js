@@ -18,7 +18,7 @@ describe('Dashboard', () => {
   let port;
 
   it('starts server and serves HTML', async () => {
-    server = createDashboardServer();
+    server = createDashboardServer(undefined, { auth: false });
     await new Promise(resolve => server.listen(0, resolve));
     port = server.address().port;
 
@@ -90,5 +90,53 @@ describe('getDashboardHTML', () => {
     assert.ok(html.includes('<!DOCTYPE html>'));
     assert.ok(html.includes('Remembrance Oracle'));
     assert.ok(html.includes('</html>'));
+  });
+
+  it('includes WebSocket client code', () => {
+    const html = getDashboardHTML();
+    assert.ok(html.includes('connectWS'));
+    assert.ok(html.includes('ws-indicator'));
+    assert.ok(html.includes('WebSocket'));
+  });
+
+  it('includes toast notification system', () => {
+    const html = getDashboardHTML();
+    assert.ok(html.includes('showToast'));
+    assert.ok(html.includes('toast'));
+  });
+});
+
+describe('Dashboard server features', () => {
+  let server;
+  let port;
+
+  it('has broadcast method', () => {
+    server = createDashboardServer(undefined, { auth: false });
+    assert.ok(typeof server.broadcast === 'function');
+  });
+
+  it('has wsServer attached', async () => {
+    await new Promise(resolve => server.listen(0, resolve));
+    port = server.address().port;
+    assert.ok(server.wsServer !== undefined);
+  });
+
+  it('serves /api/health', async () => {
+    const res = await fetch(`http://localhost:${port}/api/health`);
+    assert.equal(res.status, 200);
+    const data = JSON.parse(res.data);
+    assert.equal(data.status, 'ok');
+    assert.ok('wsClients' in data);
+  });
+
+  it('serves /api/versions (empty)', async () => {
+    const res = await fetch(`http://localhost:${port}/api/versions?id=nonexistent`);
+    assert.equal(res.status, 200);
+    const data = JSON.parse(res.data);
+    assert.ok(Array.isArray(data));
+  });
+
+  after(() => {
+    if (server) server.close();
   });
 });

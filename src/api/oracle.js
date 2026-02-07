@@ -418,6 +418,58 @@ class RemembranceOracle {
     return { synthesis: synthReport, promotion: promoteReport };
   }
 
+  // ─── Cross-Project Persistence ───
+
+  /**
+   * Sync local patterns to the global store (~/.remembrance/).
+   * Proven patterns accumulate across all projects.
+   */
+  syncToGlobal(options = {}) {
+    const { syncToGlobal } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { synced: 0, error: 'No SQLite store available' };
+    return syncToGlobal(sqliteStore, options);
+  }
+
+  /**
+   * Pull patterns from the global store into this project.
+   */
+  syncFromGlobal(options = {}) {
+    const { syncFromGlobal } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { pulled: 0, error: 'No SQLite store available' };
+    return syncFromGlobal(sqliteStore, options);
+  }
+
+  /**
+   * Bidirectional sync: push local → global, pull global → local.
+   */
+  sync(options = {}) {
+    const { syncBidirectional } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { error: 'No SQLite store available' };
+    return syncBidirectional(sqliteStore, options);
+  }
+
+  /**
+   * Search both local and global stores.
+   * Returns merged results, deduplicated, sorted by coherency.
+   */
+  federatedSearch(query = {}) {
+    const { federatedQuery } = require('../core/persistence');
+    const sqliteStore = this.store.getSQLiteStore();
+    if (!sqliteStore) return { error: 'No SQLite store available' };
+    return federatedQuery(sqliteStore, query);
+  }
+
+  /**
+   * Get global store statistics.
+   */
+  globalStats() {
+    const { globalStats } = require('../core/persistence');
+    return globalStats();
+  }
+
   /**
    * Diff two entries or patterns side by side.
    * Returns a unified-style diff showing what changed.

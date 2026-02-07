@@ -105,6 +105,8 @@ ${c.bold('Commands:')}
   ${c.cyan('generate')}   Generate candidates from proven patterns (continuous growth)
   ${c.cyan('promote')}    Promote a candidate to proven with test proof
   ${c.cyan('synthesize')} Synthesize tests for candidates and auto-promote
+  ${c.cyan('sync')}       Sync patterns with global store (~/.remembrance/)
+  ${c.cyan('global')}     Show global store statistics
   ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
 
 ${c.bold('Options:')}
@@ -626,6 +628,71 @@ ${c.bold('Pipe support:')}
     const cStats = oracle.candidateStats();
     const pStats = oracle.patternStats();
     console.log(`\nLibrary: ${c.bold(String(pStats.totalPatterns))} proven + ${c.bold(String(cStats.totalCandidates))} candidates`);
+    return;
+  }
+
+  if (cmd === 'sync') {
+    const direction = process.argv[3] || 'both';
+    const verbose = args.verbose === 'true' || args.verbose === true;
+    const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+    const { GLOBAL_DIR } = require('./core/persistence');
+
+    console.log(c.boldCyan('Cross-Project Sync') + c.dim(` — global store: ${GLOBAL_DIR}\n`));
+
+    if (direction === 'push' || direction === 'to') {
+      const report = oracle.syncToGlobal({ verbose, dryRun });
+      console.log(`Pushed to global:  ${c.boldGreen(String(report.synced))} patterns`);
+      console.log(`  Duplicates:      ${c.dim(String(report.duplicates))}`);
+      console.log(`  Skipped:         ${c.dim(String(report.skipped))}`);
+    } else if (direction === 'pull' || direction === 'from') {
+      const lang = args.language;
+      const maxPull = parseInt(args['max-pull']) || Infinity;
+      const report = oracle.syncFromGlobal({ verbose, dryRun, language: lang, maxPull });
+      console.log(`Pulled from global: ${c.boldGreen(String(report.pulled))} patterns`);
+      console.log(`  Duplicates:       ${c.dim(String(report.duplicates))}`);
+      console.log(`  Skipped:          ${c.dim(String(report.skipped))}`);
+    } else {
+      const report = oracle.sync({ verbose, dryRun });
+      console.log(`${c.bold('Push')} (local → global): ${c.boldGreen(String(report.push.synced))} synced, ${c.dim(String(report.push.duplicates))} duplicates`);
+      console.log(`${c.bold('Pull')} (global → local): ${c.boldGreen(String(report.pull.pulled))} pulled, ${c.dim(String(report.pull.duplicates))} duplicates`);
+    }
+
+    if (dryRun) console.log(c.yellow('\n(dry run — no changes made)'));
+
+    // Show totals
+    const gStats = oracle.globalStats();
+    const pStats = oracle.patternStats();
+    console.log(`\nLocal:  ${c.bold(String(pStats.totalPatterns))} patterns`);
+    console.log(`Global: ${c.bold(String(gStats.totalPatterns || 0))} patterns`);
+    return;
+  }
+
+  if (cmd === 'global') {
+    const stats = oracle.globalStats();
+
+    if (jsonOut) { console.log(JSON.stringify(stats)); return; }
+
+    if (!stats.available) {
+      console.log(c.yellow('No global store found. Run ') + c.cyan('oracle sync push') + c.yellow(' to create it.'));
+      return;
+    }
+
+    console.log(c.boldCyan('Global Store') + c.dim(` — ${stats.path}\n`));
+    console.log(`  Total patterns: ${c.bold(String(stats.totalPatterns))}`);
+    console.log(`  Avg coherency:  ${colorScore(stats.avgCoherency)}`);
+    if (Object.keys(stats.byLanguage).length > 0) {
+      console.log(`  By language:    ${Object.entries(stats.byLanguage).map(([k, v]) => `${c.blue(k)}(${v})`).join(', ')}`);
+    }
+    if (Object.keys(stats.byType).length > 0) {
+      console.log(`  By type:        ${Object.entries(stats.byType).map(([k, v]) => `${c.magenta(k)}(${v})`).join(', ')}`);
+    }
+
+    // Show federated view
+    const federated = oracle.federatedSearch();
+    if (federated.globalOnly > 0) {
+      console.log(`\n  ${c.green(String(federated.globalOnly))} patterns available from global (not in local)`);
+      console.log(`  Run ${c.cyan('oracle sync pull')} to import them`);
+    }
     return;
   }
 

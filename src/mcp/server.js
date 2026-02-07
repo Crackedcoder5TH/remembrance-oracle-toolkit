@@ -229,6 +229,23 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_sync',
+    description: 'Sync patterns with the global store (~/.remembrance/). Bidirectional by default: pushes local patterns to global, then pulls global patterns to local.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        direction: { type: 'string', enum: ['push', 'pull', 'both'], description: 'Sync direction (default: both)' },
+        dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
+        language: { type: 'string', description: 'Filter by language when pulling (default: all)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_global_stats',
+    description: 'Get statistics about the global pattern store (~/.remembrance/). Shows total patterns, languages, and how many are available that are not in the local project.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'oracle_covenant',
     description: 'Check code against the Covenant seal (The Kingdom\'s Weave). Code must pass all 15 principles to be accepted.',
     inputSchema: {
@@ -443,6 +460,22 @@ class MCPServer {
             autoPromote: args.autoPromote !== false,
           });
           break;
+
+        case 'oracle_sync': {
+          const dir = args.direction || 'both';
+          const opts = { dryRun: args.dryRun || false, language: args.language };
+          if (dir === 'push') result = this.oracle.syncToGlobal(opts);
+          else if (dir === 'pull') result = this.oracle.syncFromGlobal(opts);
+          else result = this.oracle.sync(opts);
+          break;
+        }
+
+        case 'oracle_global_stats': {
+          const gStats = this.oracle.globalStats();
+          const federated = this.oracle.federatedSearch();
+          result = { ...gStats, globalOnly: federated.globalOnly };
+          break;
+        }
 
         case 'oracle_covenant': {
           const { covenantCheck } = require('../core/covenant');

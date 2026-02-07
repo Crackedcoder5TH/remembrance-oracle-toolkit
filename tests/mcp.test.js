@@ -196,6 +196,6 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_generate'));
     assert.ok(names.includes('oracle_promote'));
     assert.ok(names.includes('oracle_auto_promote'));
-    assert.equal(res.result.tools.length, 18);
+    assert.equal(res.result.tools.length, 20);
   });
 });

@@ -15,6 +15,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 const { RemembranceOracle } = require('./api/oracle');
 const { c, colorScore, colorDecision, colorStatus, colorDiff, colorSource } = require('./cli/colors');
 
@@ -33,9 +34,34 @@ function parseArgs(args) {
   return parsed;
 }
 
+/**
+ * Read all data from stdin (for pipe support).
+ * Returns empty string if stdin is a TTY (interactive terminal).
+ */
+function readStdin() {
+  if (process.stdin.isTTY) return '';
+  try {
+    return fs.readFileSync(0, 'utf-8');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Get code from --file flag or stdin pipe.
+ * Pipe takes precedence when no --file is given.
+ */
+function getCode(args) {
+  if (args.file) return fs.readFileSync(path.resolve(args.file), 'utf-8');
+  const stdin = readStdin();
+  if (stdin.trim()) return stdin;
+  return null;
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const cmd = args._command;
+  const jsonOut = args.json === true;
 
   if (!cmd || cmd === 'help') {
     console.log(`
@@ -68,9 +94,13 @@ ${c.bold('Commands:')}
   ${c.cyan('sdiff')}       Semantic diff between two patterns
   ${c.cyan('users')}       Manage users (list, add, delete)
   ${c.cyan('auto-seed')}   Auto-discover and seed patterns from test suite
+  ${c.cyan('analytics')}   Show pattern analytics and library health report
+  ${c.cyan('deploy')}      Start production-ready server (configurable via env vars)
   ${c.cyan('covenant')}    Check code against the Covenant seal (The Kingdom's Weave)
   ${c.cyan('reflect')}     SERF reflection loop — iteratively heal and refine code
   ${c.cyan('import')}      Import patterns from an exported JSON file
+  ${c.cyan('harvest')}     Bulk harvest patterns from a Git repo or local directory
+  ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -84,16 +114,23 @@ ${c.bold('Options:')}
   ${c.yellow('--failure')}              Mark feedback as failed
   ${c.yellow('--min-coherency')} <n>    Minimum coherency threshold
   ${c.yellow('--limit')} <n>            Max results for query
+  ${c.yellow('--json')}                 Output as JSON (pipe-friendly)
   ${c.yellow('--no-color')}             Disable colored output
   ${c.yellow('--mode')} <hybrid|semantic> Search mode (default: hybrid)
   ${c.yellow('--status')} <pass|fail>    CI test result for ci-feedback
+
+${c.bold('Pipe support:')}
+  ${c.dim('cat code.js | oracle submit --language javascript')}
+  ${c.dim('cat code.js | oracle validate --json')}
+  ${c.dim('cat code.js | oracle reflect | oracle submit')}
+  ${c.dim('cat code.js | oracle covenant --json')}
     `);
     return;
   }
 
   if (cmd === 'submit') {
-    if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
-    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const code = getCode(args);
+    if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
     const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
     const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
     const result = oracle.submit(code, {
@@ -103,6 +140,7 @@ ${c.bold('Options:')}
       testCode,
       author: args.author || process.env.USER || 'cli-user',
     });
+    if (jsonOut) { console.log(JSON.stringify(result)); return; }
     if (result.accepted) {
       console.log(`${colorStatus(true)}! ID: ${c.cyan(result.entry.id)}`);
       console.log(`Coherency: ${colorScore(result.entry.coherencyScore.total)}`);
@@ -127,6 +165,7 @@ ${c.bold('Options:')}
       limit: parseInt(args.limit) || 5,
       minCoherency: parseFloat(args['min-coherency']) || 0.5,
     });
+    if (jsonOut) { console.log(JSON.stringify(results)); return; }
     if (results.length === 0) {
       console.log(c.yellow('No matching entries found.'));
     } else {
@@ -143,11 +182,12 @@ ${c.bold('Options:')}
   }
 
   if (cmd === 'validate') {
-    if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
-    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const code = getCode(args);
+    if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
     const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
     const { validateCode } = require('./core/validator');
     const result = validateCode(code, { language: args.language, testCode });
+    if (jsonOut) { console.log(JSON.stringify(result)); return; }
     console.log(`Valid: ${result.valid ? c.boldGreen('true') : c.boldRed('false')}`);
     console.log(`Coherency: ${colorScore(result.coherencyScore.total)}`);
     console.log(`Breakdown:`);
@@ -308,6 +348,7 @@ ${c.bold('Options:')}
       language: args.language,
       mode,
     });
+    if (jsonOut) { console.log(JSON.stringify(results)); return; }
     if (results.length === 0) {
       console.log(c.yellow('No matches found.'));
     } else {
@@ -468,6 +509,47 @@ ${c.bold('Options:')}
     return;
   }
 
+  if (cmd === 'analytics') {
+    const { generateAnalytics, computeTagCloud } = require('./core/analytics');
+    const analytics = generateAnalytics(oracle);
+    analytics.tagCloud = computeTagCloud(oracle.patterns.getAll());
+    if (jsonOut) { console.log(JSON.stringify(analytics)); return; }
+    const ov = analytics.overview;
+    console.log(c.boldCyan('Pattern Analytics\n'));
+    console.log(`  Patterns:      ${c.bold(String(ov.totalPatterns))}`);
+    console.log(`  Entries:       ${c.bold(String(ov.totalEntries))}`);
+    console.log(`  Avg Coherency: ${colorScore(ov.avgCoherency)}`);
+    console.log(`  Quality:       ${c.bold(ov.qualityRatio + '%')} high-quality (>= 0.7)`);
+    console.log(`  Languages:     ${ov.languageList.map(l => c.blue(l)).join(', ') || c.dim('none')}`);
+    console.log(`  With Tests:    ${c.bold(String(ov.withTests))}`);
+    const h = analytics.healthReport;
+    console.log(`\n${c.bold('Health:')}`);
+    console.log(`  ${c.green('Healthy:')} ${h.healthy}  ${c.yellow('Warning:')} ${h.warning}  ${c.red('Critical:')} ${h.critical}`);
+    if (h.criticalPatterns.length > 0) {
+      for (const p of h.criticalPatterns.slice(0, 5)) {
+        console.log(`    ${c.red('!')} ${c.bold(p.name)} — coherency: ${colorScore(p.coherency)}`);
+      }
+    }
+    console.log(`\n${c.bold('Coherency Distribution:')}`);
+    const dist = analytics.coherencyDistribution;
+    const maxB = Math.max(...Object.values(dist), 1);
+    for (const [range, count] of Object.entries(dist)) {
+      const bar = '\u2588'.repeat(Math.round(count / maxB * 25));
+      const faded = '\u2591'.repeat(25 - Math.round(count / maxB * 25));
+      console.log(`  ${c.dim(range.padEnd(8))} ${c.green(bar)}${c.dim(faded)} ${c.bold(String(count))}`);
+    }
+    if (analytics.tagCloud.length > 0) {
+      console.log(`\n${c.bold('Top Tags:')} ${analytics.tagCloud.slice(0, 15).map(t => `${c.magenta(t.tag)}(${t.count})`).join(', ')}`);
+    }
+    return;
+  }
+
+  if (cmd === 'deploy') {
+    const { start } = require('./deploy');
+    start();
+    return;
+  }
+
   if (cmd === 'versions') {
     const id = args.id || process.argv[3];
     if (!id) { console.error(`Usage: ${c.cyan('oracle versions')} <pattern-id>`); process.exit(1); }
@@ -595,8 +677,8 @@ ${c.bold('Options:')}
   }
 
   if (cmd === 'reflect') {
-    if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle reflect --file code.js [--loops 3] [--target 0.9]')}`); process.exit(1); }
-    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const code = getCode(args);
+    if (!code) { console.error(c.boldRed('Error:') + ` --file required or pipe code via stdin. Usage: ${c.cyan('cat code.js | oracle reflect')}`); process.exit(1); }
     const { reflectionLoop, formatReflectionResult } = require('./core/reflection');
     const result = reflectionLoop(code, {
       language: args.language,
@@ -605,6 +687,7 @@ ${c.bold('Options:')}
       description: args.description || '',
       tags: args.tags ? args.tags.split(',').map(t => t.trim()) : [],
     });
+    if (jsonOut) { console.log(JSON.stringify(result)); return; }
     console.log(c.boldCyan('SERF Infinite Reflection Loop\n'));
     console.log(`${c.bold('I_AM:')} ${colorScore(result.serf.I_AM)} → ${c.bold('Final:')} ${colorScore(result.serf.finalCoherence)} (${result.serf.improvement >= 0 ? c.green('+' + result.serf.improvement.toFixed(3)) : c.red(result.serf.improvement.toFixed(3))})`);
     console.log(`${c.bold('Loops:')} ${result.loops}  |  ${c.bold('Full coherency:')} ${colorScore(result.fullCoherency)}\n`);
@@ -640,10 +723,11 @@ ${c.bold('Options:')}
       }
       return;
     }
-    if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle covenant --file code.js')}`); process.exit(1); }
-    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const code = getCode(args);
+    if (!code) { console.error(c.boldRed('Error:') + ` --file required or pipe code via stdin. Usage: ${c.cyan('cat code.js | oracle covenant')}`); process.exit(1); }
     const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
     const result = covenantCheck(code, { description: args.description || '', tags, language: args.language });
+    if (jsonOut) { console.log(JSON.stringify(result)); return; }
     if (result.sealed) {
       console.log(`${c.boldGreen('SEALED')} — Covenant upheld (${result.principlesPassed}/${result.totalPrinciples} principles)`);
     } else {
@@ -652,6 +736,97 @@ ${c.bold('Options:')}
         console.log(`  ${c.red('[' + v.principle + ']')} ${c.bold(v.name)}: ${v.reason}`);
         console.log(`      ${c.dim('Seal: "' + v.seal + '"')}`);
       }
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (cmd === 'hooks') {
+    const { installHooks, uninstallHooks, runPreCommitCheck } = require('./ci/hooks');
+    const subCmd = process.argv[3];
+    if (subCmd === 'install') {
+      const result = installHooks(process.cwd());
+      if (result.installed) {
+        console.log(`${c.boldGreen('Hooks installed:')} ${result.hooks.join(', ')}`);
+        console.log(`  ${c.dim('Location:')} ${result.hooksDir}`);
+        console.log(`  ${c.cyan('pre-commit')}  — Covenant check on staged files`);
+        console.log(`  ${c.cyan('post-commit')} — Auto-seed patterns from committed files`);
+      } else {
+        console.error(c.red(result.error));
+      }
+    } else if (subCmd === 'uninstall') {
+      const result = uninstallHooks(process.cwd());
+      if (result.uninstalled) {
+        console.log(`${c.boldGreen('Hooks removed:')} ${result.removed.join(', ') || 'none found'}`);
+      } else {
+        console.error(c.red(result.error));
+      }
+    } else if (subCmd === 'run') {
+      const hookName = process.argv[4];
+      if (hookName === 'pre-commit') {
+        const files = process.argv.slice(5).filter(a => !a.startsWith('--'));
+        if (files.length === 0) {
+          try {
+            const staged = execSync('git diff --cached --name-only --diff-filter=ACM', { encoding: 'utf-8' })
+              .trim().split('\n').filter(f => /\.(js|ts|py|go|rs)$/.test(f));
+            files.push(...staged);
+          } catch { /* not in a git repo */ }
+        }
+        if (files.length === 0) { console.log(c.dim('No staged source files to check.')); return; }
+        const result = runPreCommitCheck(files);
+        if (result.passed) {
+          console.log(`${c.boldGreen('All files pass Covenant check')} (${result.total} files)`);
+        } else {
+          console.log(`${c.boldRed('Covenant violations in ' + result.blocked + ' file(s):')}`);
+          for (const r of result.results.filter(r => !r.sealed)) {
+            for (const v of r.violations) {
+              console.log(`  ${c.red(r.file)}: [${c.bold(v.name)}] ${v.reason}`);
+            }
+          }
+          process.exit(1);
+        }
+      } else {
+        console.error(`Usage: ${c.cyan('oracle hooks run pre-commit [files...]')}`);
+      }
+    } else {
+      console.log(`Usage: ${c.cyan('oracle hooks')} <install|uninstall|run>`);
+    }
+    return;
+  }
+
+  if (cmd === 'harvest') {
+    const source = process.argv[3];
+    if (!source) { console.error(c.boldRed('Error:') + ` provide a source. Usage: ${c.cyan('oracle harvest <git-url-or-path> [--language js] [--dry-run] [--split function]')}`); process.exit(1); }
+    try {
+      const { harvest } = require('./ci/harvest');
+      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const result = harvest(oracle, source, {
+        language: args.language,
+        dryRun,
+        splitMode: args.split || 'file',
+        branch: args.branch,
+        maxFiles: parseInt(args['max-files']) || 200,
+      });
+      console.log(c.boldCyan(`Harvest: ${source}\n`));
+      console.log(`  Discovered: ${c.bold(String(result.harvested))}`);
+      if (!dryRun) {
+        console.log(`  Registered: ${c.boldGreen(String(result.registered))}`);
+        console.log(`  Skipped:    ${c.yellow(String(result.skipped))}`);
+        console.log(`  Failed:     ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+      }
+      if (result.patterns.length > 0) {
+        console.log(`\n${c.bold('Patterns:')}`);
+        for (const p of result.patterns.slice(0, 50)) {
+          const icon = p.status === 'registered' ? c.green('+') : p.hasTests ? c.cyan('T') : c.dim('-');
+          const testBadge = p.hasTests ? c.cyan(' [tested]') : '';
+          console.log(`  ${icon} ${c.bold(p.name)} (${c.blue(p.language)})${testBadge}${p.reason ? c.dim(' — ' + p.reason) : ''}`);
+        }
+        if (result.patterns.length > 50) {
+          console.log(c.dim(`  ... and ${result.patterns.length - 50} more`));
+        }
+      }
+    } catch (err) {
+      console.error(c.red('Harvest error: ' + err.message));
       process.exit(1);
     }
     return;

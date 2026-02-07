@@ -160,6 +160,21 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_harvest',
+    description: 'Bulk harvest patterns from a local directory. Walks source files, extracts functions, and registers them as patterns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Local directory path to harvest from' },
+        language: { type: 'string', description: 'Filter by language (javascript, python, go, rust, typescript)' },
+        dryRun: { type: 'boolean', description: 'Preview without registering (default: false)' },
+        splitMode: { type: 'string', enum: ['file', 'function'], description: 'Split patterns by file or individual function (default: file)' },
+        maxFiles: { type: 'number', description: 'Max files to process (default: 200)' },
+      },
+      required: ['path'],
+    },
+  },
+  {
     name: 'oracle_covenant',
     description: 'Check code against the Covenant seal (The Kingdom\'s Weave). Code must pass all 15 principles to be accepted.',
     inputSchema: {
@@ -325,6 +340,17 @@ class MCPServer {
             strategy: h.strategy,
             serfScore: h.serfScore,
           }));
+          break;
+        }
+
+        case 'oracle_harvest': {
+          const { harvest } = require('../ci/harvest');
+          result = harvest(this.oracle, args.path || '.', {
+            language: args.language,
+            dryRun: args.dryRun || false,
+            splitMode: args.splitMode || 'file',
+            maxFiles: args.maxFiles || 200,
+          });
           break;
         }
 

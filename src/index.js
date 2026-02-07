@@ -28,7 +28,10 @@ const { createDashboardServer, startDashboard, createRateLimiter } = require('./
 const { WebSocketServer } = require('./core/websocket');
 const { VersionManager, semanticDiff, extractFunctions } = require('./core/versioning');
 const { AuthManager, authMiddleware, ROLES, canWrite, canManageUsers, canRead } = require('./auth/auth');
+const { generateAnalytics, computeTagCloud } = require('./core/analytics');
 const { discoverPatterns, autoSeed } = require('./ci/auto-seed');
+const { harvest, harvestFunctions, splitFunctions } = require('./ci/harvest');
+const { installHooks, uninstallHooks, runPreCommitCheck } = require('./ci/hooks');
 const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES } = require('./core/covenant');
 const { reflectionLoop, formatReflectionResult, observeCoherence, serfScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
 
@@ -114,6 +117,20 @@ module.exports = {
   // Auto-seed
   discoverPatterns,
   autoSeed,
+
+  // Analytics
+  generateAnalytics,
+  computeTagCloud,
+
+  // Harvest
+  harvest,
+  harvestFunctions,
+  splitFunctions,
+
+  // Git Hooks
+  installHooks,
+  uninstallHooks,
+  runPreCommitCheck,
 
   // Covenant
   covenantCheck,

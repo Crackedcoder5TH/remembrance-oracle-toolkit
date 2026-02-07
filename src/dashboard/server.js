@@ -251,6 +251,19 @@ function createDashboardServer(oracle, options = {}) {
         return;
       }
 
+      // ─── Analytics ───
+      if (pathname === '/api/analytics') {
+        try {
+          const { generateAnalytics, computeTagCloud } = require('../core/analytics');
+          const analytics = generateAnalytics(oracleInstance);
+          analytics.tagCloud = computeTagCloud(oracleInstance.patterns.getAll());
+          sendJSON(res, analytics);
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
       // ─── Reflection loop ───
       if (pathname === '/api/reflect' && req.method === 'POST') {
         readBody(req, (body) => {
@@ -460,6 +473,7 @@ function getDashboardHTML() {
     <button class="tab" data-panel="search">Search</button>
     <button class="tab" data-panel="history">History</button>
     <button class="tab" data-panel="vectors">Vectors</button>
+    <button class="tab" data-panel="analytics">Analytics</button>
     <button class="tab" data-panel="audit">Audit Log</button>
   </div>
 
@@ -485,6 +499,10 @@ function getDashboardHTML() {
       <input type="text" id="vector-input" placeholder="Enter a term to find nearest vectors..." />
     </div>
     <div id="vector-results"><p class="empty">Type a term to explore the vector space</p></div>
+  </div>
+
+  <div id="analytics" class="panel">
+    <div id="analytics-content"><p class="loading">Loading analytics...</p></div>
   </div>
 
   <div id="audit" class="panel">
@@ -695,6 +713,68 @@ function getDashboardHTML() {
       document.getElementById('history-list').innerHTML = entries.length > 0
         ? entries.map(renderEntry).join('')
         : '<p class="empty">No entries in history</p>';
+    });
+  }, { once: true });
+
+  // Analytics tab
+  document.querySelector('[data-panel="analytics"]').addEventListener('click', function() {
+    fetch('/api/analytics').then(r=>r.json()).then(data => {
+      const ov = data.overview || {};
+      const dist = data.coherencyDistribution || {};
+      const health = data.healthReport || {};
+      const langs = data.languageBreakdown || {};
+      const cx = data.complexityBreakdown || {};
+      const tags = data.tagCloud || [];
+      const top = data.topPatterns || [];
+
+      let html = '<div class="stats-grid">';
+      html += '<div class="stat-card"><div class="stat-label">Patterns</div><div class="stat-value">' + (ov.totalPatterns||0) + '</div></div>';
+      html += '<div class="stat-card"><div class="stat-label">Avg Coherency</div><div class="stat-value">' + (ov.avgCoherency||0).toFixed(3) + '</div></div>';
+      html += '<div class="stat-card"><div class="stat-label">Quality Ratio</div><div class="stat-value">' + (ov.qualityRatio||0) + '%</div></div>';
+      html += '<div class="stat-card"><div class="stat-label">Languages</div><div class="stat-value">' + (ov.languages||0) + '</div></div>';
+      html += '<div class="stat-card"><div class="stat-label">Healthy</div><div class="stat-value" style="color:var(--green)">' + (health.healthy||0) + '</div></div>';
+      html += '<div class="stat-card"><div class="stat-label">Critical</div><div class="stat-value" style="color:var(--red)">' + (health.critical||0) + '</div></div>';
+      html += '</div>';
+
+      // Coherency distribution
+      html += '<h3 style="color:var(--accent);margin:15px 0 10px">Coherency Distribution</h3>';
+      const maxBucket = Math.max(...Object.values(dist), 1);
+      for (const [range, count] of Object.entries(dist)) {
+        html += '<div class="bar-container"><span class="bar-label">' + esc(range) + '</span>';
+        html += '<div style="flex:1;background:var(--bg3);border-radius:3px"><div class="bar" style="width:' + (count/maxBucket*100).toFixed(1) + '%"></div></div>';
+        html += '<span class="bar-value">' + count + '</span></div>';
+      }
+
+      // Language breakdown
+      html += '<h3 style="color:var(--accent);margin:15px 0 10px">Languages</h3>';
+      for (const [lang, info] of Object.entries(langs)) {
+        html += '<div class="bar-container"><span class="bar-label">' + esc(lang) + '</span>';
+        html += '<div style="flex:1;background:var(--bg3);border-radius:3px"><div class="bar" style="width:' + (info.count/(ov.totalPatterns||1)*100).toFixed(1) + '%"></div></div>';
+        html += '<span class="bar-value">' + info.count + ' (' + info.avgCoherency.toFixed(3) + ')</span></div>';
+      }
+
+      // Tag cloud
+      if (tags.length > 0) {
+        html += '<h3 style="color:var(--accent);margin:15px 0 10px">Top Tags</h3><div style="display:flex;flex-wrap:wrap;gap:6px">';
+        const maxTag = tags[0].count;
+        for (const t of tags) {
+          const size = 0.7 + (t.count/maxTag) * 0.8;
+          html += '<span class="tag" style="font-size:' + size.toFixed(2) + 'em">' + esc(t.tag) + ' (' + t.count + ')</span>';
+        }
+        html += '</div>';
+      }
+
+      // Top patterns
+      if (top.length > 0) {
+        html += '<h3 style="color:var(--accent);margin:15px 0 10px">Top Patterns</h3>';
+        for (const p of top) {
+          html += '<div class="card" style="padding:10px"><div class="card-header"><span class="card-name">' + esc(p.name) + '</span>';
+          html += '<span class="score ' + scoreClass(p.coherency) + '">' + p.coherency.toFixed(3) + '</span></div>';
+          html += '<div class="card-meta"><span class="lang">' + esc(p.language||'') + '</span> · <span class="type">' + esc(p.type||'') + '</span></div></div>';
+        }
+      }
+
+      document.getElementById('analytics-content').innerHTML = html;
     });
   }, { once: true });
 

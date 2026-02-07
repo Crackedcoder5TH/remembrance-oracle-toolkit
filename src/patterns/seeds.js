@@ -513,10 +513,12 @@ if (got !== 42) throw new Error("off failed: " + got);`,
     patternType: 'design-pattern',
   },
 
-  // ─── Go patterns (pre-verified, not sandbox-executable) ───
+  // ─── Go patterns (sandbox-executable) ───
   {
     name: 'binary-search-go',
-    code: `func BinarySearch(arr []int, target int) int {
+    code: `package sandbox
+
+func BinarySearch(arr []int, target int) int {
 	lo, hi := 0, len(arr)-1
 	for lo <= hi {
 		mid := lo + (hi-lo)/2
@@ -530,7 +532,16 @@ if (got !== 42) throw new Error("off failed: " + got);`,
 	}
 	return -1
 }`,
-    testCode: null,
+    testCode: `package sandbox
+
+import "testing"
+
+func TestBinarySearch(t *testing.T) {
+	if BinarySearch([]int{1,2,3,4,5}, 3) != 2 { t.Fatal("mid") }
+	if BinarySearch([]int{1,2,3,4,5}, 1) != 0 { t.Fatal("first") }
+	if BinarySearch([]int{1,2,3,4,5}, 6) != -1 { t.Fatal("missing") }
+	if BinarySearch([]int{}, 1) != -1 { t.Fatal("empty") }
+}`,
     language: 'go',
     description: 'Binary search on sorted slice — O(log n)',
     tags: ['search', 'algorithm', 'slice', 'sorted', 'binary-search'],
@@ -538,7 +549,9 @@ if (got !== 42) throw new Error("off failed: " + got);`,
   },
   {
     name: 'merge-sort-go',
-    code: `func MergeSort(arr []int) []int {
+    code: `package sandbox
+
+func MergeSort(arr []int) []int {
 	if len(arr) <= 1 {
 		return arr
 	}
@@ -564,7 +577,20 @@ func merge(a, b []int) []int {
 	result = append(result, b[j:]...)
 	return result
 }`,
-    testCode: null,
+    testCode: `package sandbox
+
+import (
+	"reflect"
+	"testing"
+)
+
+func TestMergeSort(t *testing.T) {
+	got := MergeSort([]int{5,3,8,1,9,2})
+	want := []int{1,2,3,5,8,9}
+	if !reflect.DeepEqual(got, want) { t.Fatalf("got %v want %v", got, want) }
+	if len(MergeSort([]int{})) != 0 { t.Fatal("empty") }
+	if MergeSort([]int{1})[0] != 1 { t.Fatal("single") }
+}`,
     language: 'go',
     description: 'Merge sort — stable O(n log n) sorting for slices',
     tags: ['sort', 'algorithm', 'slice', 'stable', 'merge-sort'],
@@ -572,7 +598,14 @@ func merge(a, b []int) []int {
   },
   {
     name: 'retry-go',
-    code: `func Retry(attempts int, delay time.Duration, fn func() error) error {
+    code: `package sandbox
+
+import (
+	"fmt"
+	"time"
+)
+
+func Retry(attempts int, delay time.Duration, fn func() error) error {
 	var err error
 	for i := 0; i < attempts; i++ {
 		err = fn()
@@ -586,7 +619,24 @@ func merge(a, b []int) []int {
 	}
 	return fmt.Errorf("failed after %d attempts: %w", attempts, err)
 }`,
-    testCode: null,
+    testCode: `package sandbox
+
+import (
+	"errors"
+	"testing"
+	"time"
+)
+
+func TestRetry(t *testing.T) {
+	count := 0
+	err := Retry(3, time.Millisecond, func() error {
+		count++
+		if count < 3 { return errors.New("fail") }
+		return nil
+	})
+	if err != nil { t.Fatalf("should succeed: %v", err) }
+	if count != 3 { t.Fatalf("attempts: %d", count) }
+}`,
     language: 'go',
     description: 'Retry with exponential backoff — robust error recovery',
     tags: ['utility', 'async', 'retry', 'backoff', 'error-handling'],
@@ -594,7 +644,9 @@ func merge(a, b []int) []int {
   },
   {
     name: 'lru-cache-go',
-    code: `type LRUCache struct {
+    code: `package sandbox
+
+type LRUCache struct {
 	capacity int
 	items    map[string]*node
 	head     *node
@@ -642,17 +694,29 @@ func (c *LRUCache) Put(key string, value interface{}) {
 func (c *LRUCache) moveToFront(n *node) { c.remove(n); c.addToFront(n) }
 func (c *LRUCache) addToFront(n *node) { n.prev = c.head; n.next = c.head.next; c.head.next.prev = n; c.head.next = n }
 func (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev }`,
-    testCode: null,
+    testCode: `package sandbox
+
+import "testing"
+
+func TestLRUCache(t *testing.T) {
+	c := NewLRUCache(2)
+	c.Put("a", 1)
+	c.Put("b", 2)
+	if v, ok := c.Get("a"); !ok || v != 1 { t.Fatal("get a") }
+	c.Put("c", 3)
+	if _, ok := c.Get("b"); ok { t.Fatal("should evict b") }
+	if v, ok := c.Get("c"); !ok || v != 3 { t.Fatal("get c") }
+}`,
     language: 'go',
     description: 'LRU cache with O(1) get/put using doubly-linked list + hashmap',
     tags: ['data-structure', 'cache', 'lru', 'map', 'eviction'],
     patternType: 'data-structure',
   },
 
-  // ─── Rust patterns (pre-verified, not sandbox-executable) ───
+  // ─── Rust patterns (sandbox-executable) ───
   {
     name: 'binary-search-rs',
-    code: `fn binary_search(arr: &[i32], target: i32) -> Option<usize> {
+    code: `pub fn binary_search(arr: &[i32], target: i32) -> Option<usize> {
     let (mut lo, mut hi) = (0usize, arr.len());
     while lo < hi {
         let mid = lo + (hi - lo) / 2;
@@ -664,7 +728,15 @@ func (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev 
     }
     None
 }`,
-    testCode: null,
+    testCode: `    use super::*;
+
+    #[test]
+    fn test_binary_search() {
+        assert_eq!(binary_search(&[1,2,3,4,5], 3), Some(2));
+        assert_eq!(binary_search(&[1,2,3,4,5], 1), Some(0));
+        assert_eq!(binary_search(&[1,2,3,4,5], 6), None);
+        assert_eq!(binary_search(&[], 1), None);
+    }`,
     language: 'rust',
     description: 'Binary search returning Option<usize> — idiomatic Rust',
     tags: ['search', 'algorithm', 'slice', 'sorted', 'binary-search'],
@@ -672,7 +744,7 @@ func (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev 
   },
   {
     name: 'merge-sort-rs',
-    code: `fn merge_sort(arr: &mut Vec<i32>) {
+    code: `pub fn merge_sort(arr: &mut Vec<i32>) {
     let len = arr.len();
     if len <= 1 { return; }
     let mid = len / 2;
@@ -689,7 +761,17 @@ func (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev 
     while i < left.len() { arr[k] = left[i]; i += 1; k += 1; }
     while j < right.len() { arr[k] = right[j]; j += 1; k += 1; }
 }`,
-    testCode: null,
+    testCode: `    use super::*;
+
+    #[test]
+    fn test_merge_sort() {
+        let mut v = vec![5,3,8,1,9,2];
+        merge_sort(&mut v);
+        assert_eq!(v, vec![1,2,3,5,8,9]);
+        let mut e: Vec<i32> = vec![];
+        merge_sort(&mut e);
+        assert!(e.is_empty());
+    }`,
     language: 'rust',
     description: 'In-place merge sort for Vec<i32> — stable O(n log n)',
     tags: ['sort', 'algorithm', 'vec', 'stable', 'merge-sort'],
@@ -697,10 +779,9 @@ func (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev 
   },
   {
     name: 'retry-rs',
-    code: `use std::thread;
-use std::time::Duration;
+    code: `use std::time::Duration;
 
-fn retry<F, T, E>(attempts: u32, initial_delay: Duration, mut f: F) -> Result<T, E>
+pub fn retry<F, T, E>(attempts: u32, initial_delay: Duration, mut f: F) -> Result<T, E>
 where
     F: FnMut() -> Result<T, E>,
 {
@@ -710,14 +791,26 @@ where
             Ok(val) => return Ok(val),
             Err(e) => {
                 if i == attempts - 1 { return Err(e); }
-                thread::sleep(delay);
+                std::thread::sleep(delay);
                 delay *= 2;
             }
         }
     }
     unreachable!()
 }`,
-    testCode: null,
+    testCode: `    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn test_retry() {
+        let mut count = 0u32;
+        let result = retry(3, Duration::from_millis(1), || -> Result<&str, &str> {
+            count += 1;
+            if count < 3 { Err("fail") } else { Ok("ok") }
+        });
+        assert_eq!(result, Ok("ok"));
+        assert_eq!(count, 3);
+    }`,
     language: 'rust',
     description: 'Generic retry with exponential backoff — works with any Result<T, E>',
     tags: ['utility', 'async', 'retry', 'backoff', 'error-handling', 'generic'],
@@ -727,18 +820,18 @@ where
     name: 'lru-cache-rs',
     code: `use std::collections::HashMap;
 
-struct LruCache<K: std::hash::Hash + Eq + Clone, V> {
+pub struct LruCache<K: std::hash::Hash + Eq + Clone, V> {
     capacity: usize,
     map: HashMap<K, (V, usize)>,
     counter: usize,
 }
 
 impl<K: std::hash::Hash + Eq + Clone, V> LruCache<K, V> {
-    fn new(capacity: usize) -> Self {
+    pub fn new(capacity: usize) -> Self {
         LruCache { capacity, map: HashMap::new(), counter: 0 }
     }
 
-    fn get(&mut self, key: &K) -> Option<&V> {
+    pub fn get(&mut self, key: &K) -> Option<&V> {
         if let Some(entry) = self.map.get_mut(key) {
             self.counter += 1;
             entry.1 = self.counter;
@@ -748,7 +841,7 @@ impl<K: std::hash::Hash + Eq + Clone, V> LruCache<K, V> {
         }
     }
 
-    fn put(&mut self, key: K, value: V) {
+    pub fn put(&mut self, key: K, value: V) {
         self.counter += 1;
         if self.map.contains_key(&key) {
             self.map.insert(key, (value, self.counter));
@@ -764,7 +857,18 @@ impl<K: std::hash::Hash + Eq + Clone, V> LruCache<K, V> {
         self.map.insert(key, (value, self.counter));
     }
 }`,
-    testCode: null,
+    testCode: `    use super::*;
+
+    #[test]
+    fn test_lru_cache() {
+        let mut c = LruCache::new(2);
+        c.put("a", 1);
+        c.put("b", 2);
+        assert_eq!(c.get(&"a"), Some(&1));
+        c.put("c", 3);
+        assert_eq!(c.get(&"b"), None);
+        assert_eq!(c.get(&"c"), Some(&3));
+    }`,
     language: 'rust',
     description: 'Generic LRU cache with HashMap — evicts least recently used',
     tags: ['data-structure', 'cache', 'lru', 'hashmap', 'eviction', 'generic'],

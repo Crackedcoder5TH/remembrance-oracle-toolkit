@@ -155,6 +155,57 @@ describe('PatternLibrary', () => {
       assert.ok(s.byLanguage);
     });
   });
+
+  describe('compose', () => {
+    it('creates a composed pattern from components', () => {
+      const a = lib.register({ name: 'comp-a', code: 'function compA() { return 1; }', tags: ['test'] });
+      const b = lib.register({ name: 'comp-b', code: 'function compB() { return 2; }', tags: ['test'] });
+      const result = lib.compose({ name: 'composed-ab', components: [a.id, b.id] });
+      assert.ok(result.composed);
+      assert.ok(result.pattern);
+      assert.ok(result.pattern.code.includes('compA'));
+      assert.ok(result.pattern.code.includes('compB'));
+      assert.ok(result.pattern.tags.includes('composed'));
+    });
+
+    it('fails for unknown component', () => {
+      const result = lib.compose({ name: 'bad', components: ['nonexistent'] });
+      assert.equal(result.composed, false);
+      assert.ok(result.reason.includes('not found'));
+    });
+
+    it('allows custom code', () => {
+      const a = lib.register({ name: 'custom-base', code: 'function base() { return 1; }', tags: ['t'] });
+      const result = lib.compose({
+        name: 'custom-composed',
+        components: [a.id],
+        code: 'function custom() { return base() + 1; }',
+      });
+      assert.ok(result.composed);
+      assert.ok(result.pattern.code.includes('custom'));
+    });
+  });
+
+  describe('resolveDependencies', () => {
+    it('resolves a dependency chain', () => {
+      const dep = lib.register({ name: 'dep-leaf', code: 'function leaf() {}', tags: ['t'] });
+      const parent = lib.register({ name: 'dep-parent', code: 'function parent() {}', tags: ['t'], requires: [dep.id] });
+      const deps = lib.resolveDependencies(parent.id);
+      assert.ok(deps.length >= 1);
+    });
+
+    it('returns single pattern for standalone', () => {
+      const p = lib.register({ name: 'standalone', code: 'function alone() {}', tags: ['t'] });
+      const deps = lib.resolveDependencies(p.id);
+      assert.equal(deps.length, 1);
+      assert.equal(deps[0].id, p.id);
+    });
+
+    it('returns empty for unknown id', () => {
+      const deps = lib.resolveDependencies('nonexistent-id');
+      assert.equal(deps.length, 0);
+    });
+  });
 });
 
 describe('classifyPattern', () => {

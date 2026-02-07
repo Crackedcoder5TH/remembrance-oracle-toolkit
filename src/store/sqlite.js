@@ -117,11 +117,15 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_table, target_id);
     `);
 
+    // Schema migration: add composition columns
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch {}
+
     // Initialize meta if not present
     const row = this.db.prepare('SELECT value FROM meta WHERE key = ?').get('version');
     if (!row) {
       const stmt = this.db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)');
-      stmt.run('version', '2');
+      stmt.run('version', '3');
       stmt.run('created', new Date().toISOString());
       stmt.run('decisions', '0');
     }
@@ -371,14 +375,16 @@ class SQLiteStore {
     this.db.prepare(`
       INSERT INTO patterns (id, name, code, language, pattern_type, complexity,
         description, tags, coherency_total, coherency_json, variants, test_code,
-        usage_count, success_count, evolution_history, version, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, '[]', 1, ?, ?)
+        usage_count, success_count, evolution_history, requires, composed_of,
+        version, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, '[]', ?, ?, 1, ?, ?)
     `).run(
       id, pattern.name, pattern.code, pattern.language || 'unknown',
       pattern.patternType || 'utility', pattern.complexity || 'composite',
       pattern.description || '', JSON.stringify(pattern.tags || []),
       pattern.coherencyScore?.total ?? 0, JSON.stringify(pattern.coherencyScore || {}),
       JSON.stringify(pattern.variants || []), pattern.testCode || null,
+      JSON.stringify(pattern.requires || []), JSON.stringify(pattern.composedOf || []),
       now, now
     );
 
@@ -512,6 +518,8 @@ class SQLiteStore {
       usageCount: row.usage_count,
       successCount: row.success_count,
       evolutionHistory: JSON.parse(row.evolution_history || '[]'),
+      requires: JSON.parse(row.requires || '[]'),
+      composedOf: JSON.parse(row.composed_of || '[]'),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -523,7 +531,7 @@ class SQLiteStore {
       evolutionHistory: 'evolution_history', patternType: 'pattern_type',
       coherencyScore: 'coherency_json', coherencyTotal: 'coherency_total',
       testCode: 'test_code', tags: 'tags', description: 'description',
-      updatedAt: 'updated_at',
+      updatedAt: 'updated_at', requires: 'requires', composedOf: 'composed_of',
     };
     return map[field] || null;
   }

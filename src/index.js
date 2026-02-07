@@ -19,9 +19,12 @@ const providers = require('./connectors/providers');
 const githubBridge = require('./connectors/github-bridge');
 const { PatternLibrary, classifyPattern, inferComplexity, THRESHOLDS } = require('./patterns/library');
 const { parseCode, astCoherencyBoost } = require('./core/parsers/ast');
-const { sandboxExecute } = require('./core/sandbox');
+const { sandboxExecute, sandboxGo, sandboxRust } = require('./core/sandbox');
 const { semanticSearch, semanticSimilarity, expandQuery, identifyConcepts } = require('./core/embeddings');
 const { CIFeedbackReporter, wrapWithTracking } = require('./ci/feedback');
+const { vectorSimilarity, embedDocument, nearestTerms } = require('./core/vectors');
+const { MCPServer, startMCPServer } = require('./mcp/server');
+const { createDashboardServer, startDashboard } = require('./dashboard/server');
 
 module.exports = {
   // Core
@@ -69,6 +72,21 @@ module.exports = {
 
   // Sandbox execution
   sandboxExecute,
+  sandboxGo,
+  sandboxRust,
+
+  // Word vectors
+  vectorSimilarity,
+  embedDocument,
+  nearestTerms,
+
+  // MCP Server
+  MCPServer,
+  startMCPServer,
+
+  // Dashboard
+  createDashboardServer,
+  startDashboard,
 
   // Semantic search
   semanticSearch,

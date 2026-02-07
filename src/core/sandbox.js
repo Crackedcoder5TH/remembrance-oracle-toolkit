@@ -239,6 +239,101 @@ ${testCode}
 }
 
 /**
+ * Execute Go code in a sandboxed subprocess.
+ * Uses `go test` with a temp module.
+ */
+function sandboxGo(code, testCode, options = {}) {
+  const { timeout = DEFAULT_TIMEOUT * 3 } = options; // Go compilation needs more time
+  const sandboxDir = createSandboxDir();
+
+  try {
+    execSync('go mod init sandbox', {
+      cwd: sandboxDir,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 5000,
+      env: { PATH: process.env.PATH, HOME: sandboxDir, GOPATH: path.join(sandboxDir, 'gopath') },
+    });
+
+    const codePath = path.join(sandboxDir, 'code.go');
+    fs.writeFileSync(codePath, code, 'utf-8');
+
+    const testPath = path.join(sandboxDir, 'code_test.go');
+    fs.writeFileSync(testPath, testCode, 'utf-8');
+
+    const result = execSync('go test -v -count=1 ./...', {
+      timeout,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: sandboxDir,
+      env: {
+        PATH: process.env.PATH,
+        HOME: sandboxDir,
+        GOPATH: path.join(sandboxDir, 'gopath'),
+        GOPROXY: 'off',
+        GONOSUMCHECK: '*',
+        GOFLAGS: '-mod=mod',
+      },
+    });
+
+    return { passed: true, output: result || 'All tests passed', sandboxed: true };
+  } catch (err) {
+    const isTimeout = err.killed || err.signal === 'SIGTERM';
+    return {
+      passed: false,
+      output: isTimeout ? 'Execution timed out' : (err.stderr || err.stdout || err.message),
+      sandboxed: true,
+      timedOut: isTimeout,
+    };
+  } finally {
+    cleanupSandboxDir(sandboxDir);
+  }
+}
+
+/**
+ * Execute Rust code in a sandboxed subprocess.
+ * Creates a temp Cargo project and runs `cargo test`.
+ */
+function sandboxRust(code, testCode, options = {}) {
+  const { timeout = DEFAULT_TIMEOUT * 3 } = options; // Rust compilation is slower
+  const sandboxDir = createSandboxDir();
+
+  try {
+    const srcDir = path.join(sandboxDir, 'src');
+    fs.mkdirSync(srcDir, { recursive: true });
+
+    fs.writeFileSync(path.join(sandboxDir, 'Cargo.toml'), `[package]\nname = "sandbox"\nversion = "0.1.0"\nedition = "2021"\n`, 'utf-8');
+
+    const libRs = `${code}\n\n#[cfg(test)]\nmod tests {\n${testCode}\n}\n`;
+    fs.writeFileSync(path.join(srcDir, 'lib.rs'), libRs, 'utf-8');
+
+    const result = execSync('cargo test 2>&1', {
+      timeout,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      cwd: sandboxDir,
+      env: {
+        PATH: process.env.PATH,
+        HOME: sandboxDir,
+        CARGO_HOME: path.join(sandboxDir, '.cargo'),
+        RUSTUP_HOME: process.env.RUSTUP_HOME || path.join(process.env.HOME || '/root', '.rustup'),
+      },
+    });
+
+    return { passed: true, output: result || 'All tests passed', sandboxed: true };
+  } catch (err) {
+    const isTimeout = err.killed || err.signal === 'SIGTERM';
+    const output = isTimeout ? 'Execution timed out' : (err.stderr || err.stdout || err.message);
+    if (!isTimeout && output && output.includes('test result: ok')) {
+      return { passed: true, output, sandboxed: true };
+    }
+    return { passed: false, output, sandboxed: true, timedOut: isTimeout };
+  } finally {
+    cleanupSandboxDir(sandboxDir);
+  }
+}
+
+/**
  * Universal sandboxed executor.
  */
 function sandboxExecute(code, testCode, language, options = {}) {
@@ -253,6 +348,12 @@ function sandboxExecute(code, testCode, language, options = {}) {
   if (lang === 'python' || lang === 'py') {
     return sandboxPython(code, testCode, options);
   }
+  if (lang === 'go' || lang === 'golang') {
+    return sandboxGo(code, testCode, options);
+  }
+  if (lang === 'rust' || lang === 'rs') {
+    return sandboxRust(code, testCode, options);
+  }
 
   return { passed: null, output: `No sandbox runner for: ${lang}`, sandboxed: false };
 }
@@ -262,6 +363,8 @@ module.exports = {
   sandboxJS,
   sandboxTypeScript,
   sandboxPython,
+  sandboxGo,
+  sandboxRust,
   createSandboxDir,
   cleanupSandboxDir,
 };

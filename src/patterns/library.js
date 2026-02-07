@@ -240,6 +240,89 @@ class PatternLibrary {
     return this._summaryJSON();
   }
 
+  // ─── Composition ───
+
+  /**
+   * Compose a new pattern from existing components.
+   * spec: { name, components: [id|name, ...], code?, description?, tags? }
+   */
+  compose(spec) {
+    const { name, components: componentIds = [], code: customCode, description, tags: extraTags = [] } = spec;
+    if (!componentIds.length) {
+      return { composed: false, reason: 'No components specified' };
+    }
+
+    const resolved = [];
+    for (const ref of componentIds) {
+      let p = null;
+      if (this._backend === 'sqlite') {
+        p = this._sqlite.getPattern(ref) || this._sqlite.getPatternByName(ref);
+      } else {
+        const data = this._readJSON();
+        p = data.patterns.find(x => x.id === ref || x.name === ref);
+      }
+      if (!p) {
+        return { composed: false, reason: `Component not found: ${ref}` };
+      }
+      resolved.push(p);
+    }
+
+    const mergedTags = [...new Set([...extraTags, ...resolved.flatMap(p => p.tags || []), 'composed'])];
+    const composedCode = customCode || resolved.map(p =>
+      `// ─── ${p.name} ───\n${p.code}`
+    ).join('\n\n');
+
+    const pattern = this.register({
+      name,
+      code: composedCode,
+      language: resolved[0].language,
+      description: description || `Composed from: ${resolved.map(p => p.name).join(', ')}`,
+      tags: mergedTags,
+      requires: resolved.map(p => p.id),
+    });
+
+    pattern.composedOf = resolved.map(p => ({ id: p.id, name: p.name }));
+    if (this._backend === 'sqlite') {
+      this._sqlite.updatePattern(pattern.id, {
+        composedOf: pattern.composedOf,
+        requires: pattern.requires || resolved.map(p => p.id),
+      });
+    }
+
+    return { composed: true, pattern, components: resolved };
+  }
+
+  /**
+   * Resolve full dependency tree for a pattern (depth-first).
+   */
+  resolveDependencies(id) {
+    const visited = new Set();
+    const result = [];
+
+    const walk = (patternId) => {
+      if (visited.has(patternId)) return;
+      visited.add(patternId);
+
+      let p;
+      if (this._backend === 'sqlite') {
+        p = this._sqlite.getPattern(patternId);
+      } else {
+        const data = this._readJSON();
+        p = data.patterns.find(x => x.id === patternId);
+      }
+      if (!p) return;
+
+      const requires = p.requires || [];
+      for (const depId of requires) {
+        walk(depId);
+      }
+      result.push(p);
+    };
+
+    walk(id);
+    return result;
+  }
+
   // ─── SQLite evolution ───
 
   _evolveSQLite(parentId, newCode, metadata) {
@@ -286,6 +369,8 @@ class PatternLibrary {
       usageCount: 0,
       successCount: 0,
       evolutionHistory: [],
+      requires: pattern.requires || [],
+      composedOf: pattern.composedOf || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

@@ -187,12 +187,13 @@ function identifyConcepts(text) {
 /**
  * Compute semantic similarity between a query and a document.
  *
- * Combines three signals:
- * 1. Concept overlap (0.45 weight) — intent-level matching
- * 2. Expanded keyword matching (0.35 weight) — synonym-aware TF-IDF
- * 3. N-gram structural similarity (0.20 weight) — character-level patterns
+ * Combines four signals:
+ * 1. Word vector similarity (0.35 weight) — semantic embedding match
+ * 2. Concept overlap (0.30 weight) — intent-level matching
+ * 3. Expanded keyword matching (0.20 weight) — synonym-aware TF-IDF
+ * 4. N-gram structural similarity (0.15 weight) — character-level patterns
  *
- * Returns: { similarity, conceptScore, keywordScore, ngramScore, matchedConcepts }
+ * Returns: { similarity, vectorScore, conceptScore, keywordScore, ngramScore, matchedConcepts }
  */
 function semanticSimilarity(query, document) {
   const queryLower = query.toLowerCase();
@@ -237,11 +238,21 @@ function semanticSimilarity(query, document) {
   const docGrams = charNgrams(docLower, 2);
   const ngramScore = cosineSim(queryGrams, docGrams);
 
-  // Weighted combination
-  const similarity = conceptScore * 0.45 + keywordScore * 0.35 + ngramScore * 0.20;
+  // 4. Word vector similarity
+  let vectorScore = 0;
+  try {
+    const { vectorSimilarity } = require('./vectors');
+    vectorScore = vectorSimilarity(queryLower, docLower);
+  } catch {
+    // vectors module not available — skip
+  }
+
+  // Weighted combination (4 signals)
+  const similarity = vectorScore * 0.35 + conceptScore * 0.30 + keywordScore * 0.20 + ngramScore * 0.15;
 
   return {
     similarity,
+    vectorScore,
     conceptScore,
     keywordScore,
     ngramScore,

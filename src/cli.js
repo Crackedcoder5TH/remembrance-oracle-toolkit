@@ -59,6 +59,11 @@ ${c.bold('Commands:')}
   ${c.cyan('ci-feedback')} Report CI test results back to tracked patterns
   ${c.cyan('ci-stats')}    Show CI feedback tracking statistics
   ${c.cyan('audit')}       View append-only audit log of all mutations
+  ${c.cyan('nearest')}     Find nearest semantic vocabulary terms
+  ${c.cyan('compose')}     Create a composed pattern from existing components
+  ${c.cyan('deps')}        Show dependency tree for a pattern
+  ${c.cyan('mcp')}         Start MCP server (JSON-RPC over stdin/stdout)
+  ${c.cyan('dashboard')}   Start web dashboard (default port 3333)
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -392,6 +397,67 @@ ${c.bold('Options:')}
     const results = seedLibrary(oracle);
     console.log(`Seeded ${c.boldGreen(String(results.registered))} patterns (${c.dim(results.skipped + ' skipped')}, ${results.failed > 0 ? c.boldRed(String(results.failed)) : c.dim(String(results.failed))} failed)`);
     console.log(`Library now has ${c.bold(String(oracle.patternStats().totalPatterns))} patterns`);
+    return;
+  }
+
+  if (cmd === 'nearest') {
+    const term = args.description || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
+    if (!term) { console.error(c.boldRed('Error:') + ` provide a query. Usage: ${c.cyan('oracle nearest <term>')}`); process.exit(1); }
+    const { nearestTerms } = require('./core/vectors');
+    const results = nearestTerms(term, parseInt(args.limit) || 10);
+    console.log(`Nearest terms for ${c.cyan('"' + term + '"')}:\n`);
+    for (const r of results) {
+      const bar = '█'.repeat(Math.round(r.similarity * 30));
+      const faded = '░'.repeat(30 - Math.round(r.similarity * 30));
+      console.log(`  ${c.bold(r.term.padEnd(20))} ${c.green(bar)}${c.dim(faded)} ${colorScore(r.similarity.toFixed(3))}`);
+    }
+    return;
+  }
+
+  if (cmd === 'compose') {
+    const components = process.argv.slice(3).filter(a => !a.startsWith('--'));
+    if (components.length < 2) { console.error(`Usage: ${c.cyan('oracle compose')} <component1> <component2> [--name <name>]`); process.exit(1); }
+    const result = oracle.patterns.compose({
+      name: args.name || `composed-${Date.now()}`,
+      components,
+      description: args.description,
+    });
+    if (result.composed) {
+      console.log(`${c.boldGreen('Composed:')} ${c.bold(result.pattern.name)} [${c.cyan(result.pattern.id)}]`);
+      console.log(`Components: ${result.components.map(p => c.cyan(p.name)).join(' + ')}`);
+      console.log(`Coherency: ${colorScore(result.pattern.coherencyScore.total)}`);
+    } else {
+      console.log(`${c.boldRed('Failed:')} ${result.reason}`);
+    }
+    return;
+  }
+
+  if (cmd === 'deps') {
+    const id = process.argv[3];
+    if (!id) { console.error(`Usage: ${c.cyan('oracle deps')} <pattern-id>`); process.exit(1); }
+    const deps = oracle.patterns.resolveDependencies(id);
+    if (deps.length === 0) {
+      console.log(c.yellow('Pattern not found or has no dependencies.'));
+    } else {
+      console.log(`Dependency tree for ${c.cyan(id)}:\n`);
+      for (let i = 0; i < deps.length; i++) {
+        const prefix = i === deps.length - 1 ? '└── ' : '├── ';
+        console.log(`  ${c.dim(prefix)}${c.bold(deps[i].name)} [${c.cyan(deps[i].id)}]`);
+      }
+    }
+    return;
+  }
+
+  if (cmd === 'mcp') {
+    const { startMCPServer } = require('./mcp/server');
+    startMCPServer(oracle);
+    return;
+  }
+
+  if (cmd === 'dashboard') {
+    const { startDashboard } = require('./dashboard/server');
+    const port = parseInt(args.port) || 3333;
+    startDashboard(oracle, { port });
     return;
   }
 

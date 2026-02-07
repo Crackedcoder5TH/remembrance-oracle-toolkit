@@ -211,6 +211,9 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_reflector_heal'));
     assert.ok(names.includes('oracle_reflector_status'));
     assert.ok(names.includes('oracle_reflector_config'));
-    assert.equal(res.result.tools.length, 35);
+    assert.ok(names.includes('oracle_reflector_multi'));
+    assert.ok(names.includes('oracle_reflector_compare'));
+    assert.ok(names.includes('oracle_reflector_drift'));
+    assert.equal(res.result.tools.length, 38);
   });
 });

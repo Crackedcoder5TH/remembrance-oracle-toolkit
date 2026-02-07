@@ -1488,6 +1488,9 @@ ${c.bold('Subcommands:')}
   ${c.cyan('workflow')}   Generate GitHub Actions workflow YAML
   ${c.cyan('evaluate')}   Evaluate a single file's coherence
   ${c.cyan('heal')}       Heal a single file via SERF reflection
+  ${c.cyan('multi')}      Multi-repo: snapshot + compare + drift + heal two repos together
+  ${c.cyan('compare')}    Compare dimensions between two repos side-by-side
+  ${c.cyan('drift')}      Detect pattern drift (diverged shared functions) between repos
 
 ${c.bold('Options:')}
   ${c.yellow('--min-coherence')} <n>  Minimum coherence threshold (default: 0.7)
@@ -1496,6 +1499,7 @@ ${c.bold('Options:')}
   ${c.yellow('--open-pr')}            Open a PR with healing changes
   ${c.yellow('--auto-merge')}         Auto-merge high-coherence PRs
   ${c.yellow('--file')} <path>        File to evaluate/heal (for evaluate/heal)
+  ${c.yellow('--repos')} <a,b>        Comma-separated repo paths (for multi/compare/drift)
   ${c.yellow('--json')}               Output as JSON
       `);
       return;
@@ -1681,6 +1685,86 @@ ${c.bold('Options:')}
       if (result.changed) {
         console.log(`\n${c.bold('Healed Code:')}\n`);
         console.log(result.healed.code);
+      }
+      return;
+    }
+
+    if (sub === 'multi') {
+      const repos = args.repos ? args.repos.split(',').map(r => path.resolve(r.trim())) : null;
+      if (!repos || repos.length < 2) {
+        console.error(c.boldRed('Error:') + ' --repos requires at least 2 comma-separated paths');
+        process.exit(1);
+      }
+      const { multiReflect, formatMultiReport } = require('./reflector/multi');
+      const opts = {
+        minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+      };
+      console.log(c.boldCyan('Running Multi-Repo Reflector...\n'));
+      const report = multiReflect(repos, opts);
+      if (jsonOut) { console.log(JSON.stringify(report, null, 2)); return; }
+      console.log(formatMultiReport(report));
+      return;
+    }
+
+    if (sub === 'compare') {
+      const repos = args.repos ? args.repos.split(',').map(r => path.resolve(r.trim())) : null;
+      if (!repos || repos.length < 2) {
+        console.error(c.boldRed('Error:') + ' --repos requires at least 2 comma-separated paths');
+        process.exit(1);
+      }
+      const { multiSnapshot, compareDimensions } = require('./reflector/multi');
+      const opts = {
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+      };
+      console.log(c.boldCyan('Comparing Dimensions...\n'));
+      const snap = multiSnapshot(repos, opts);
+      const cmp = compareDimensions(snap);
+      if (jsonOut) { console.log(JSON.stringify(cmp, null, 2)); return; }
+      console.log(`  ${c.bold(cmp.repoA.name)} avg: ${colorScore(cmp.repoA.avgCoherence)}`);
+      console.log(`  ${c.bold(cmp.repoB.name)} avg: ${colorScore(cmp.repoB.avgCoherence)}`);
+      console.log(`  Leader: ${c.boldGreen(cmp.coherenceLeader)} (delta: ${cmp.coherenceDelta >= 0 ? '+' : ''}${cmp.coherenceDelta.toFixed(3)})`);
+      console.log(`  Convergence: ${colorScore(cmp.convergenceScore)}`);
+      console.log('');
+      for (const comp of cmp.comparisons) {
+        const keys = Object.keys(comp);
+        const valA = comp[keys[1]];
+        const valB = comp[keys[2]];
+        const arrow = comp.delta > 0 ? '\u25B2' : comp.delta < 0 ? '\u25BC' : '=';
+        const sev = comp.severity === 'high' ? c.boldRed(comp.severity) : comp.severity === 'medium' ? c.yellow(comp.severity) : c.dim(comp.severity);
+        console.log(`  ${comp.dimension.padEnd(14)} ${String(valA).padStart(5)} vs ${String(valB).padStart(5)}  ${arrow} ${comp.delta >= 0 ? '+' : ''}${comp.delta.toFixed(3)}  [${sev}]`);
+      }
+      return;
+    }
+
+    if (sub === 'drift') {
+      const repos = args.repos ? args.repos.split(',').map(r => path.resolve(r.trim())) : null;
+      if (!repos || repos.length < 2) {
+        console.error(c.boldRed('Error:') + ' --repos requires at least 2 comma-separated paths');
+        process.exit(1);
+      }
+      const { detectDrift } = require('./reflector/multi');
+      const opts = {
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+      };
+      console.log(c.boldCyan('Detecting Pattern Drift...\n'));
+      const drift = detectDrift(repos, opts);
+      if (jsonOut) { console.log(JSON.stringify(drift, null, 2)); return; }
+      console.log(`  ${c.bold(drift.repoA.name)}: ${drift.repoA.functions} functions`);
+      console.log(`  ${c.bold(drift.repoB.name)}: ${drift.repoB.functions} functions`);
+      console.log('');
+      console.log(`  Shared (identical): ${c.boldGreen(String(drift.shared))}`);
+      console.log(`  Diverged:           ${drift.diverged > 0 ? c.boldRed(String(drift.diverged)) : c.dim('0')}`);
+      console.log(`  Unique to ${drift.repoA.name}: ${c.cyan(String(drift.uniqueToA))}`);
+      console.log(`  Unique to ${drift.repoB.name}: ${c.cyan(String(drift.uniqueToB))}`);
+      console.log(`  Avg drift:          ${colorScore(1 - drift.avgDrift)}`);
+      console.log(`  Convergence:        ${colorScore(drift.convergenceScore)}`);
+      if (drift.details.diverged.length > 0) {
+        console.log(`\n${c.bold('Diverged Functions:')}`);
+        for (const d of drift.details.diverged.slice(0, 20)) {
+          console.log(`  ${c.yellow(d.name)} — drift: ${d.drift.toFixed(3)} (${d.status})`);
+          console.log(`    ${c.dim(d.fileA)} vs ${c.dim(d.fileB)}`);
+        }
       }
       return;
     }

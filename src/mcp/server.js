@@ -447,6 +447,43 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'oracle_reflector_multi',
+    description: 'Run the full multi-repo reflector: snapshot both repos, compare dimensions, detect drift, and unify healing across repos.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repos: { type: 'array', items: { type: 'string' }, description: 'Array of repo root paths (at least 2)' },
+        minCoherence: { type: 'number', description: 'Coherence threshold (default: 0.7)' },
+        maxFiles: { type: 'number', description: 'Max files per repo (default: 50)' },
+      },
+      required: ['repos'],
+    },
+  },
+  {
+    name: 'oracle_reflector_compare',
+    description: 'Compare coherence dimensions between two repos side-by-side. Shows which repo leads on each dimension and the divergence severity.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repos: { type: 'array', items: { type: 'string' }, description: 'Array of 2 repo root paths' },
+        maxFiles: { type: 'number', description: 'Max files per repo (default: 50)' },
+      },
+      required: ['repos'],
+    },
+  },
+  {
+    name: 'oracle_reflector_drift',
+    description: 'Detect pattern drift between two repos. Finds shared functions that have diverged, unique functions in each repo, and computes convergence scores.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repos: { type: 'array', items: { type: 'string' }, description: 'Array of 2 repo root paths' },
+        maxFiles: { type: 'number', description: 'Max files per repo (default: 50)' },
+      },
+      required: ['repos'],
+    },
+  },
 ];
 
 class MCPServer {
@@ -825,6 +862,45 @@ class MCPServer {
           }
           if (updated) saveConfig(rootDir, cfg);
           result = cfg;
+          break;
+        }
+
+        case 'oracle_reflector_multi': {
+          const { multiReflect } = require('../reflector/multi');
+          if (!args.repos || args.repos.length < 2) throw new Error('Need at least 2 repo paths');
+          result = multiReflect(args.repos, {
+            minCoherence: args.minCoherence,
+            maxFilesPerRun: args.maxFiles,
+          });
+          // Trim large fields from response
+          if (result.drift && result.drift.details) {
+            result.drift.details.diverged = result.drift.details.diverged.slice(0, 20);
+            result.drift.details.identical = result.drift.details.identical.slice(0, 10);
+            result.drift.details.uniqueA = result.drift.details.uniqueA.slice(0, 10);
+            result.drift.details.uniqueB = result.drift.details.uniqueB.slice(0, 10);
+          }
+          break;
+        }
+
+        case 'oracle_reflector_compare': {
+          const { multiSnapshot, compareDimensions } = require('../reflector/multi');
+          if (!args.repos || args.repos.length < 2) throw new Error('Need at least 2 repo paths');
+          const snap = multiSnapshot(args.repos, { maxFilesPerRun: args.maxFiles });
+          result = compareDimensions(snap);
+          break;
+        }
+
+        case 'oracle_reflector_drift': {
+          const { detectDrift } = require('../reflector/multi');
+          if (!args.repos || args.repos.length < 2) throw new Error('Need at least 2 repo paths');
+          result = detectDrift(args.repos, { maxFilesPerRun: args.maxFiles });
+          // Trim details
+          if (result.details) {
+            result.details.diverged = result.details.diverged.slice(0, 20);
+            result.details.identical = result.details.identical.slice(0, 10);
+            result.details.uniqueA = result.details.uniqueA.slice(0, 10);
+            result.details.uniqueB = result.details.uniqueB.slice(0, 10);
+          }
           break;
         }
 

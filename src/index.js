@@ -40,6 +40,7 @@ const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, expandLangu
 const reflectorEngine = require('./reflector/engine');
 const reflectorGithub = require('./reflector/github');
 const reflectorScheduler = require('./reflector/scheduler');
+const reflectorMulti = require('./reflector/multi');
 
 module.exports = {
   // Core
@@ -204,4 +205,13 @@ module.exports = {
   reflectorLoadConfig: reflectorScheduler.loadConfig,
   reflectorSaveConfig: reflectorScheduler.saveConfig,
   reflectorGetStatus: reflectorScheduler.getStatus,
+
+  // Multi-Repo Reflector
+  reflectorMultiSnapshot: reflectorMulti.multiSnapshot,
+  reflectorCompareDimensions: reflectorMulti.compareDimensions,
+  reflectorDetectDrift: reflectorMulti.detectDrift,
+  reflectorUnifiedHeal: reflectorMulti.unifiedHeal,
+  reflectorMultiReflect: reflectorMulti.multiReflect,
+  reflectorFormatMultiReport: reflectorMulti.formatMultiReport,
+  reflectorCodeSimilarity: reflectorMulti.codeSimilarity,
 };

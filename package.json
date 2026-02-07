@@ -1,17 +1,25 @@
 {
   "name": "remembrance-oracle-toolkit",
-  "version": "1.0.0",
-  "description": "AI-powered code memory system that stores verified code with coherency scores and serves the most relevant, proven snippets to any AI that queries it.",
+  "version": "2.0.0",
+  "description": "Code memory system — stores only proven code (passes validation + coherency), scores everything 0-1, and serves the most relevant patterns to any AI or developer.",
   "main": "src/index.js",
   "bin": {
-    "remembrance-oracle": "src/cli.js"
+    "remembrance-oracle": "src/cli.js",
+    "oracle": "src/cli.js"
   },
+  "files": [
+    "src/",
+    "README.md",
+    "LICENSE",
+    "action.yml"
+  ],
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "start": "node src/index.js",
-    "validate": "node src/cli.js validate",
-    "query": "node src/cli.js query",
-    "lint": "node --check src/**/*.js"
+    "start": "node src/deploy.js",
+    "dashboard": "node src/cli.js dashboard",
+    "mcp": "node src/cli.js mcp",
+    "seed": "node src/cli.js seed",
+    "analytics": "node src/cli.js analytics --json"
   },
   "keywords": [
     "ai",
@@ -19,14 +27,27 @@
     "oracle",
     "coherency",
     "code-retrieval",
-    "github-action"
+    "pattern-library",
+    "code-quality",
+    "mcp",
+    "model-context-protocol",
+    "code-search",
+    "github-action",
+    "ai-tools",
+    "developer-tools",
+    "code-validation"
   ],
   "license": "MIT",
+  "author": "Crackedcoder5TH",
   "repository": {
     "type": "git",
     "url": "https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit"
   },
+  "homepage": "https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit#readme",
+  "bugs": {
+    "url": "https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/issues"
+  },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=22.0.0"
   }
 }

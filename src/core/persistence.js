@@ -121,7 +121,7 @@ function syncToGlobal(localStore, options = {}) {
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? 0;
+    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
@@ -177,7 +177,7 @@ function syncFromGlobal(localStore, options = {}) {
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? 0;
+    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
@@ -261,7 +261,7 @@ function shareToCommuntiy(localStore, options = {}) {
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? 0;
+    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
     if (coherency < minCoherency) {
       report.skipped++;
       if (verbose) console.log(`  [LOW] ${pattern.name}: coherency ${coherency.toFixed(3)} < ${minCoherency}`);
@@ -334,7 +334,7 @@ function pullFromCommunity(localStore, options = {}) {
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? 0;
+    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
@@ -410,15 +410,15 @@ function federatedQuery(localStore, query = {}) {
     results = results.filter(p => p.language === query.language);
   }
   if (query.minCoherency) {
-    results = results.filter(p => (p.coherency_total ?? p.coherencyTotal ?? 0) >= query.minCoherency);
+    results = results.filter(p => (p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0) >= query.minCoherency);
   }
   if (query.source) {
     results = results.filter(p => p.source === query.source);
   }
 
   results.sort((a, b) => {
-    const ca = a.coherency_total ?? a.coherencyTotal ?? 0;
-    const cb = b.coherency_total ?? b.coherencyTotal ?? 0;
+    const ca = a.coherency_total ?? a.coherencyTotal ?? a.coherencyScore?.total ?? 0;
+    const cb = b.coherency_total ?? b.coherencyTotal ?? b.coherencyScore?.total ?? 0;
     return cb - ca;
   });
 
@@ -503,7 +503,7 @@ function _storeStats(store, dir, label) {
     const type = p.pattern_type || p.patternType || 'utility';
     byLanguage[lang] = (byLanguage[lang] || 0) + 1;
     byType[type] = (byType[type] || 0) + 1;
-    totalCoherency += p.coherency_total ?? 0;
+    totalCoherency += p.coherency_total ?? p.coherencyScore?.total ?? 0;
   }
 
   return {

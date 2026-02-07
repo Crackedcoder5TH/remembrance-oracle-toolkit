@@ -30,6 +30,7 @@ const { VersionManager, semanticDiff, extractFunctions } = require('./core/versi
 const { AuthManager, authMiddleware, ROLES, canWrite, canManageUsers, canRead } = require('./auth/auth');
 const { discoverPatterns, autoSeed } = require('./ci/auto-seed');
 const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES } = require('./core/covenant');
+const { reflectionLoop, formatReflectionResult, observeCoherence, serfScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
 
 module.exports = {
   // Core
@@ -118,6 +119,15 @@ module.exports = {
   getCovenant,
   formatCovenantResult,
   COVENANT_PRINCIPLES,
+
+  // Reflection / SERF
+  reflectionLoop,
+  formatReflectionResult,
+  observeCoherence,
+  serfScore,
+  generateCandidates,
+  STRATEGIES,
+  DIMENSION_WEIGHTS,
 
   // Semantic search
   semanticSearch,

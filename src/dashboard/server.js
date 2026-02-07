@@ -198,6 +198,22 @@ function createDashboardServer(oracle, options = {}) {
         return;
       }
 
+      // ─── Reflection loop ───
+      if (pathname === '/api/reflect' && req.method === 'POST') {
+        readBody(req, (body) => {
+          const { reflectionLoop } = require('../core/reflection');
+          const result = reflectionLoop(body.code || '', {
+            language: body.language,
+            maxLoops: body.maxLoops || 3,
+            targetCoherence: body.targetCoherence || 0.9,
+            description: body.description || '',
+            tags: body.tags || [],
+          });
+          sendJSON(res, result);
+        });
+        return;
+      }
+
       // ─── Covenant check ───
       if (pathname === '/api/covenant') {
         if (req.method === 'POST') {

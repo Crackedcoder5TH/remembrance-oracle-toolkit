@@ -146,6 +146,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_reflect',
+    description: 'Run the SERF infinite reflection loop on code. Iteratively generates 5 candidates, scores them on coherence, and selects the best until coherence > 0.9 or 3 loops.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'The code to refine through reflection' },
+        language: { type: 'string', description: 'Code language' },
+        maxLoops: { type: 'number', description: 'Maximum reflection iterations (default: 3)' },
+        targetCoherence: { type: 'number', description: 'Stop when coherence exceeds this (default: 0.9)' },
+      },
+      required: ['code'],
+    },
+  },
+  {
     name: 'oracle_covenant',
     description: 'Check code against the Covenant seal (The Kingdom\'s Weave). Code must pass all 15 principles to be accepted.',
     inputSchema: {
@@ -294,6 +308,23 @@ class MCPServer {
           if (!entryA) throw new Error(`Entry ${args.idA} not found`);
           if (!entryB) throw new Error(`Entry ${args.idB} not found`);
           result = semanticDiff(entryA.code, entryB.code, entryA.language);
+          break;
+        }
+
+        case 'oracle_reflect': {
+          const { reflectionLoop } = require('../core/reflection');
+          result = reflectionLoop(args.code || '', {
+            language: args.language,
+            maxLoops: args.maxLoops || 3,
+            targetCoherence: args.targetCoherence || 0.9,
+          });
+          // Trim history code to keep response size reasonable
+          result.history = result.history.map(h => ({
+            loop: h.loop,
+            coherence: h.coherence,
+            strategy: h.strategy,
+            serfScore: h.serfScore,
+          }));
           break;
         }
 

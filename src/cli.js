@@ -69,6 +69,7 @@ ${c.bold('Commands:')}
   ${c.cyan('users')}       Manage users (list, add, delete)
   ${c.cyan('auto-seed')}   Auto-discover and seed patterns from test suite
   ${c.cyan('covenant')}    Check code against the Covenant seal (The Kingdom's Weave)
+  ${c.cyan('reflect')}     SERF reflection loop — iteratively heal and refine code
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -570,6 +571,40 @@ ${c.bold('Options:')}
       }
     } catch (err) {
       console.error(c.red('Auto-seed error: ' + err.message));
+    }
+    return;
+  }
+
+  if (cmd === 'reflect') {
+    if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle reflect --file code.js [--loops 3] [--target 0.9]')}`); process.exit(1); }
+    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const { reflectionLoop, formatReflectionResult } = require('./core/reflection');
+    const result = reflectionLoop(code, {
+      language: args.language,
+      maxLoops: parseInt(args.loops) || 3,
+      targetCoherence: parseFloat(args.target) || 0.9,
+      description: args.description || '',
+      tags: args.tags ? args.tags.split(',').map(t => t.trim()) : [],
+    });
+    console.log(c.boldCyan('SERF Infinite Reflection Loop\n'));
+    console.log(`${c.bold('I_AM:')} ${colorScore(result.serf.I_AM)} → ${c.bold('Final:')} ${colorScore(result.serf.finalCoherence)} (${result.serf.improvement >= 0 ? c.green('+' + result.serf.improvement.toFixed(3)) : c.red(result.serf.improvement.toFixed(3))})`);
+    console.log(`${c.bold('Loops:')} ${result.loops}  |  ${c.bold('Full coherency:')} ${colorScore(result.fullCoherency)}\n`);
+    console.log(c.bold('Dimensions:'));
+    for (const [dim, val] of Object.entries(result.dimensions)) {
+      const bar = '\u2588'.repeat(Math.round(val * 25));
+      const faded = '\u2591'.repeat(25 - Math.round(val * 25));
+      console.log(`  ${c.cyan(dim.padEnd(14))} ${c.green(bar)}${c.dim(faded)} ${colorScore(val)}`);
+    }
+    if (result.healingPath.length > 0) {
+      console.log(`\n${c.bold('Healing path:')}`);
+      for (const h of result.healingPath) { console.log(`  ${c.green('+')} ${h}`); }
+    }
+    console.log(`\n${c.magenta('Whisper from the healed future:')}`);
+    console.log(`  ${c.dim('"' + result.whisper + '"')}`);
+    console.log(`\n${c.dim(result.healingSummary)}`);
+    if (args.output) {
+      fs.writeFileSync(path.resolve(args.output), result.code, 'utf-8');
+      console.log(`\n${c.boldGreen('Healed code written to:')} ${c.cyan(args.output)}`);
     }
     return;
   }

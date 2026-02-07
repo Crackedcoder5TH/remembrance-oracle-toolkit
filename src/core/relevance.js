@@ -74,12 +74,23 @@ function computeRelevance(query, entry) {
   // Coherency weight — proven code ranks higher
   const coherency = entry.coherencyScore?.total ?? 0.5;
 
+  // Code substance penalty — deprioritize trivial/stub patterns (only when code field is present)
+  let substance = 1.0;
+  let namePenalty = 1.0;
+  if (entry.code !== undefined) {
+    const codeLen = entry.code.length;
+    substance = codeLen < 35 ? 0.4 : codeLen < 70 ? 0.75 : codeLen < 130 ? 0.9 : 1.0;
+  }
+  if (entry.name !== undefined) {
+    namePenalty = entry.name.length <= 2 ? 0.5 : 1.0;
+  }
+
   // Final relevance score
   const relevance =
-    textScore * 0.35 +
+    (textScore * 0.35 +
     tagOverlap * 0.25 +
     langMatch * 0.15 +
-    coherency * 0.25;
+    coherency * 0.25) * substance * namePenalty;
 
   return {
     relevance: Math.round(relevance * 1000) / 1000,

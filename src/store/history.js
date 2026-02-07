@@ -1,15 +1,16 @@
 /**
  * Verified Code History Store
  *
- * Persistent JSON file that stores ONLY code that has proven itself.
+ * Persistent store for code that has PROVEN itself (passed validation + coherency).
+ *
+ * Backend: SQLite (Node 22+ built-in) when available, falls back to flat JSON.
+ *
  * Each entry includes:
  * - The code itself
  * - Coherency score breakdown
  * - Validation proof (test results)
  * - Metadata (language, tags, description, author)
- * - Timestamps and version tracking
- *
- * Storage file: .remembrance/verified-history.json
+ * - Timestamps and reliability tracking
  */
 
 const fs = require('fs');
@@ -19,28 +20,66 @@ const crypto = require('crypto');
 const DEFAULT_STORE_DIR = '.remembrance';
 const HISTORY_FILE = 'verified-history.json';
 
+/**
+ * Try to load SQLiteStore. Returns null if node:sqlite unavailable.
+ */
+function tryLoadSQLite() {
+  try {
+    const { DatabaseSync } = require('node:sqlite');
+    if (DatabaseSync) {
+      const { SQLiteStore } = require('./sqlite');
+      return SQLiteStore;
+    }
+  } catch {}
+  return null;
+}
+
 class VerifiedHistoryStore {
   constructor(baseDir = process.cwd()) {
     this.storeDir = path.join(baseDir, DEFAULT_STORE_DIR);
-    this.historyPath = path.join(this.storeDir, HISTORY_FILE);
-    this._ensureStore();
+    this._backend = 'json'; // default
+
+    const SQLiteStoreClass = tryLoadSQLite();
+    if (SQLiteStoreClass) {
+      try {
+        // Shared SQLite instance — keyed by storeDir
+        if (!VerifiedHistoryStore._sqliteInstances) {
+          VerifiedHistoryStore._sqliteInstances = new Map();
+        }
+        if (VerifiedHistoryStore._sqliteInstances.has(this.storeDir)) {
+          this._sqlite = VerifiedHistoryStore._sqliteInstances.get(this.storeDir);
+        } else {
+          this._sqlite = new SQLiteStoreClass(baseDir);
+          VerifiedHistoryStore._sqliteInstances.set(this.storeDir, this._sqlite);
+        }
+        this._backend = 'sqlite';
+      } catch {
+        this._ensureJSONStore();
+      }
+    } else {
+      this._ensureJSONStore();
+    }
   }
 
-  _ensureStore() {
+  get backend() { return this._backend; }
+
+  // ─── JSON fallback methods ───
+
+  _ensureJSONStore() {
+    this.historyPath = path.join(this.storeDir, HISTORY_FILE);
     if (!fs.existsSync(this.storeDir)) {
       fs.mkdirSync(this.storeDir, { recursive: true });
     }
     if (!fs.existsSync(this.historyPath)) {
-      this._write({ entries: [], meta: { created: new Date().toISOString(), version: 1 } });
+      this._writeJSON({ entries: [], meta: { created: new Date().toISOString(), version: 1 } });
     }
   }
 
-  _read() {
-    const raw = fs.readFileSync(this.historyPath, 'utf-8');
-    return JSON.parse(raw);
+  _readJSON() {
+    return JSON.parse(fs.readFileSync(this.historyPath, 'utf-8'));
   }
 
-  _write(data) {
+  _writeJSON(data) {
     fs.writeFileSync(this.historyPath, JSON.stringify(data, null, 2), 'utf-8');
   }
 
@@ -48,14 +87,62 @@ class VerifiedHistoryStore {
     return crypto.createHash('sha256').update(code).digest('hex').slice(0, 16);
   }
 
-  /**
-   * Add a verified code entry to the store.
-   * Only call this AFTER validation passes.
-   */
-  add(entry) {
-    const data = this._read();
-    const id = this._hash(entry.code + Date.now().toString());
+  // ─── Public API ───
 
+  add(entry) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.addEntry(entry);
+    }
+    return this._addJSON(entry);
+  }
+
+  getAll(filters = {}) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.getAllEntries(filters);
+    }
+    return this._getAllJSON(filters);
+  }
+
+  get(id) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.getEntry(id);
+    }
+    return this._getJSON(id);
+  }
+
+  recordUsage(id, succeeded) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.recordEntryUsage(id, succeeded);
+    }
+    return this._recordUsageJSON(id, succeeded);
+  }
+
+  prune(minCoherency = 0.4) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.pruneEntries(minCoherency);
+    }
+    return this._pruneJSON(minCoherency);
+  }
+
+  summary() {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.entrySummary();
+    }
+    return this._summaryJSON();
+  }
+
+  /**
+   * Get the shared SQLite store instance (for PatternLibrary to share).
+   */
+  getSQLiteStore() {
+    return this._sqlite || null;
+  }
+
+  // ─── JSON implementations (fallback) ───
+
+  _addJSON(entry) {
+    const data = this._readJSON();
+    const id = this._hash(entry.code + Date.now().toString());
     const record = {
       id,
       code: entry.code,
@@ -77,56 +164,36 @@ class VerifiedHistoryStore {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-
     data.entries.push(record);
-    this._write(data);
+    this._writeJSON(data);
     return record;
   }
 
-  /**
-   * Get all entries, optionally filtered.
-   */
-  getAll(filters = {}) {
-    const data = this._read();
+  _getAllJSON(filters = {}) {
+    const data = this._readJSON();
     let entries = data.entries;
-
     if (filters.language) {
-      entries = entries.filter(e =>
-        e.language.toLowerCase() === filters.language.toLowerCase()
-      );
+      entries = entries.filter(e => e.language.toLowerCase() === filters.language.toLowerCase());
     }
     if (filters.minCoherency != null) {
-      entries = entries.filter(e =>
-        (e.coherencyScore?.total ?? 0) >= filters.minCoherency
-      );
+      entries = entries.filter(e => (e.coherencyScore?.total ?? 0) >= filters.minCoherency);
     }
     if (filters.tags && filters.tags.length > 0) {
       const filterTags = new Set(filters.tags.map(t => t.toLowerCase()));
-      entries = entries.filter(e =>
-        e.tags.some(t => filterTags.has(t.toLowerCase()))
-      );
+      entries = entries.filter(e => e.tags.some(t => filterTags.has(t.toLowerCase())));
     }
-
     return entries;
   }
 
-  /**
-   * Get a single entry by ID.
-   */
-  get(id) {
-    const data = this._read();
+  _getJSON(id) {
+    const data = this._readJSON();
     return data.entries.find(e => e.id === id) || null;
   }
 
-  /**
-   * Record that a snippet was used and whether it succeeded.
-   * This updates the historical reliability score.
-   */
-  recordUsage(id, succeeded) {
-    const data = this._read();
+  _recordUsageJSON(id, succeeded) {
+    const data = this._readJSON();
     const entry = data.entries.find(e => e.id === id);
     if (!entry) return null;
-
     entry.reliability.timesUsed += 1;
     if (succeeded) entry.reliability.timesSucceeded += 1;
     entry.reliability.historicalScore =
@@ -134,28 +201,19 @@ class VerifiedHistoryStore {
         ? entry.reliability.timesSucceeded / entry.reliability.timesUsed
         : 0.5;
     entry.updatedAt = new Date().toISOString();
-
-    this._write(data);
+    this._writeJSON(data);
     return entry;
   }
 
-  /**
-   * Remove entries below a coherency threshold (cleanup).
-   */
-  prune(minCoherency = 0.4) {
-    const data = this._read();
+  _pruneJSON(minCoherency = 0.4) {
+    const data = this._readJSON();
     const before = data.entries.length;
-    data.entries = data.entries.filter(e =>
-      (e.coherencyScore?.total ?? 0) >= minCoherency
-    );
-    this._write(data);
+    data.entries = data.entries.filter(e => (e.coherencyScore?.total ?? 0) >= minCoherency);
+    this._writeJSON(data);
     return { removed: before - data.entries.length, remaining: data.entries.length };
   }
 
-  /**
-   * Export the store as a summary (for sharing/README generation).
-   */
-  summary() {
+  _summaryJSON() {
     const entries = this.getAll();
     return {
       totalEntries: entries.length,

@@ -11,7 +11,7 @@ describe('RemembranceOracle', () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5 });
+    oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
   });
 
   afterEach(() => {

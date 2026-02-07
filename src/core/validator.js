@@ -12,6 +12,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { computeCoherencyScore } = require('./coherency');
+const { sandboxExecute } = require('./sandbox');
+const { covenantCheck } = require('./covenant');
 
 const MIN_COHERENCY_THRESHOLD = 0.6;
 
@@ -21,6 +23,7 @@ function validateCode(code, options = {}) {
     testCode,
     threshold = MIN_COHERENCY_THRESHOLD,
     timeout = 10000,
+    skipCovenant = false,
   } = options;
 
   const result = {
@@ -28,14 +31,34 @@ function validateCode(code, options = {}) {
     testPassed: null,
     testOutput: null,
     coherencyScore: null,
+    covenantResult: null,
     errors: [],
   };
 
-  // Step 1: Run test if provided
+  // Step 0: Covenant check — the seal above all code
+  if (!skipCovenant) {
+    const covenant = covenantCheck(code, {
+      description: options.description,
+      tags: options.tags,
+      language,
+    });
+    result.covenantResult = covenant;
+    if (!covenant.sealed) {
+      for (const v of covenant.violations) {
+        result.errors.push(`Covenant broken [${v.name}]: ${v.reason}`);
+      }
+      return result; // Rejected — does not reach coherency or testing
+    }
+  }
+
+  // Step 1: Run test if provided (sandboxed by default)
   if (testCode) {
-    const testResult = executeTest(code, testCode, language, timeout);
+    const testResult = options.sandbox !== false
+      ? sandboxExecute(code, testCode, language, { timeout })
+      : executeTest(code, testCode, language, timeout);
     result.testPassed = testResult.passed;
     result.testOutput = testResult.output;
+    result.sandboxed = testResult.sandboxed || false;
     if (!testResult.passed) {
       result.errors.push(`Test failed: ${testResult.output}`);
     }

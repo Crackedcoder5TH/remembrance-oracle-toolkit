@@ -554,10 +554,11 @@ try { factorial(-1); throw new Error('should throw'); } catch(e) { if (e.message
     description: 'Round number to specified decimal places', tags: ['math', 'utility'],
     code: `function roundTo(num, places) {
   var factor = Math.pow(10, places);
-  return Math.round(num * factor) / factor;
+  return Math.round((num + Number.EPSILON) * factor) / factor;
 }`,
     testCode: `if (roundTo(3.14159, 2) !== 3.14) throw new Error('2 places');
 if (roundTo(1.005, 2) !== 1.01) throw new Error('rounding');
+if (roundTo(2.675, 2) !== 2.68) throw new Error('banker');
 if (roundTo(5, 0) !== 5) throw new Error('integer');` },
 
   { name: 'random-int', language: 'javascript', patternType: 'utility',
@@ -1005,4 +1006,39 @@ if (r.foo !== 'bar') throw new Error('foo');
 if (r.baz !== '42') throw new Error('baz');
 if (r.name !== 'hello') throw new Error('name');
 if (Object.keys(parseCookie('')).length !== 0) throw new Error('empty');` },
+];
 
+/**
+ * Seed the pattern library with all extended patterns.
+ * Skips patterns that already exist (by name match).
+ */
+function seedExtendedLibrary(oracle, { verbose = false } = {}) {
+  const existing = oracle.patterns.getAll();
+  const existingNames = new Set(existing.map(p => p.name));
+
+  let registered = 0, skipped = 0, failed = 0;
+  const failures = [];
+
+  for (const seed of EXTENDED_SEEDS) {
+    if (existingNames.has(seed.name)) {
+      skipped++;
+      continue;
+    }
+
+    const result = oracle.registerPattern(seed);
+    if (result.registered) {
+      registered++;
+      if (verbose) {
+        console.log(`  [OK]   ${seed.name} — coherency ${result.validation.coherencyScore.total.toFixed(3)}`);
+      }
+    } else {
+      failed++;
+      failures.push({ name: seed.name, reason: result.reason });
+      console.log(`  [FAIL] ${seed.name}: ${result.reason}`);
+    }
+  }
+
+  return { registered, skipped, failed, failures, total: EXTENDED_SEEDS.length };
+}
+
+module.exports = { seedExtendedLibrary, EXTENDED_SEEDS };

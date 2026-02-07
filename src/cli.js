@@ -443,7 +443,14 @@ ${c.bold('Pipe support:')}
   if (cmd === 'seed') {
     const { seedLibrary } = require('./patterns/seeds');
     const results = seedLibrary(oracle);
-    console.log(`Seeded ${c.boldGreen(String(results.registered))} patterns (${c.dim(results.skipped + ' skipped')}, ${results.failed > 0 ? c.boldRed(String(results.failed)) : c.dim(String(results.failed))} failed)`);
+    console.log(`Core seeds: ${c.boldGreen(String(results.registered))} registered (${c.dim(results.skipped + ' skipped')}, ${results.failed > 0 ? c.boldRed(String(results.failed)) : c.dim(String(results.failed))} failed)`);
+
+    const { seedExtendedLibrary } = require('./patterns/seeds-extended');
+    const ext = seedExtendedLibrary(oracle, { verbose: !!args.verbose });
+    console.log(`Extended seeds: ${c.boldGreen(String(ext.registered))} registered (${c.dim(ext.skipped + ' skipped')}, ${ext.failed > 0 ? c.boldRed(String(ext.failed)) : c.dim(String(ext.failed))} failed)`);
+
+    const total = results.registered + ext.registered;
+    console.log(`\nTotal seeded: ${c.boldGreen(String(total))} patterns`);
     console.log(`Library now has ${c.bold(String(oracle.patternStats().totalPatterns))} patterns`);
     return;
   }

@@ -217,6 +217,18 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name: 'oracle_synthesize_tests',
+    description: 'Synthesize test code for candidate patterns. Analyzes function signatures, translates parent tests, and generates edge-case assertions. Optionally auto-promotes candidates with new tests.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        maxCandidates: { type: 'number', description: 'Max candidates to process (default: all)' },
+        dryRun: { type: 'boolean', description: 'Preview without updating candidates (default: false)' },
+        autoPromote: { type: 'boolean', description: 'Auto-promote candidates after synthesis (default: true)' },
+      },
+    },
+  },
+  {
     name: 'oracle_covenant',
     description: 'Check code against the Covenant seal (The Kingdom\'s Weave). Code must pass all 15 principles to be accepted.',
     inputSchema: {
@@ -422,6 +434,14 @@ class MCPServer {
 
         case 'oracle_auto_promote':
           result = this.oracle.autoPromote();
+          break;
+
+        case 'oracle_synthesize_tests':
+          result = this.oracle.synthesizeTests({
+            maxCandidates: args.maxCandidates,
+            dryRun: args.dryRun || false,
+            autoPromote: args.autoPromote !== false,
+          });
           break;
 
         case 'oracle_covenant': {

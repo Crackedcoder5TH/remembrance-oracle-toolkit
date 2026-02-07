@@ -396,6 +396,29 @@ class RemembranceOracle {
   }
 
   /**
+   * Synthesize tests for candidates and optionally auto-promote.
+   * This is the test synthesis pipeline:
+   *   1. Analyze each candidate's code + parent tests
+   *   2. Generate test assertions for the target language
+   *   3. Update candidate test code
+   *   4. Optionally auto-promote with synthesized tests
+   *
+   * @param {object} options - { maxCandidates?, dryRun?, autoPromote? }
+   */
+  synthesizeTests(options = {}) {
+    const { synthesizeForCandidates } = require('../core/test-synth');
+    const synthReport = synthesizeForCandidates(this, options);
+
+    // If autoPromote requested, try promoting candidates with new tests
+    let promoteReport = null;
+    if (options.autoPromote !== false) {
+      promoteReport = this.autoPromote();
+    }
+
+    return { synthesis: synthReport, promotion: promoteReport };
+  }
+
+  /**
    * Diff two entries or patterns side by side.
    * Returns a unified-style diff showing what changed.
    */

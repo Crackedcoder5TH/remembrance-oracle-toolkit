@@ -104,6 +104,7 @@ ${c.bold('Commands:')}
   ${c.cyan('candidates')} List candidate patterns (coherent but unproven)
   ${c.cyan('generate')}   Generate candidates from proven patterns (continuous growth)
   ${c.cyan('promote')}    Promote a candidate to proven with test proof
+  ${c.cyan('synthesize')} Synthesize tests for candidates and auto-promote
   ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
 
 ${c.bold('Options:')}
@@ -588,6 +589,43 @@ ${c.bold('Pipe support:')}
     } else {
       console.log(`${c.boldRed('Failed:')} ${result.reason}`);
     }
+    return;
+  }
+
+  if (cmd === 'synthesize' || cmd === 'synth') {
+    const maxCandidates = parseInt(args['max-candidates']) || Infinity;
+    const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+    const autoPromoteFlag = args['no-promote'] ? false : true;
+
+    console.log(c.boldCyan('Test Synthesis') + ' — generating tests for candidates\n');
+
+    const result = oracle.synthesizeTests({
+      maxCandidates,
+      dryRun,
+      autoPromote: autoPromoteFlag,
+    });
+
+    const syn = result.synthesis;
+    console.log(`Processed:    ${c.bold(String(syn.processed))}`);
+    console.log(`  Synthesized: ${c.boldGreen(String(syn.synthesized))}`);
+    console.log(`  Improved:    ${c.blue(String(syn.improved))}`);
+    console.log(`  Failed:      ${syn.failed > 0 ? c.boldRed(String(syn.failed)) : c.dim('0')}`);
+
+    for (const d of syn.details.filter(d => d.status === 'synthesized' || d.status === 'improved')) {
+      console.log(`  ${c.green('+')} ${c.bold(d.name)} (${c.blue(d.language)}) — ${d.testLines} test lines`);
+    }
+
+    if (result.promotion && result.promotion.promoted > 0) {
+      console.log(`\n${c.boldGreen('Auto-promoted:')} ${result.promotion.promoted} candidate(s) → proven`);
+      for (const d of result.promotion.details.filter(d => d.status === 'promoted')) {
+        console.log(`  ${c.green('+')} ${c.bold(d.name)} coherency: ${colorScore(d.coherency)}`);
+      }
+    }
+
+    // Final stats
+    const cStats = oracle.candidateStats();
+    const pStats = oracle.patternStats();
+    console.log(`\nLibrary: ${c.bold(String(pStats.totalPatterns))} proven + ${c.bold(String(cStats.totalCandidates))} candidates`);
     return;
   }
 

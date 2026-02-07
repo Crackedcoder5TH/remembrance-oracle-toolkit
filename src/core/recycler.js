@@ -818,6 +818,13 @@ class PatternRecycler {
             continue;
           }
 
+          // Viability check — reject broken transpilations before storing
+          const { isViableCode } = require('./test-synth');
+          if (!isViableCode(variant.code, variant.language)) {
+            report.skipped++;
+            continue;
+          }
+
           // Run coherency check only (no sandbox test execution)
           const coherency = computeCoherencyScore(variant.code, {
             language: variant.language,
@@ -1335,33 +1342,61 @@ function jsToPythonTest(testCode, jsFuncName, pyFuncName) {
 
   for (const line of lines) {
     // if (expr !== expected) throw → assert expr == expected
-    const throwMatch = line.match(/if\s*\((.+?)\s*(!==?)\s*(.+?)\)\s*throw/);
+    // The JS pattern: if (value !== expected) throw means "fail when not equal"
+    // So the Python assertion is: assert value == expected (assert they ARE equal)
+    const throwMatch = line.match(/if\s*\((.+?)\s*(!==?|===?)\s*(.+?)\)\s*throw/);
     if (throwMatch) {
       let [, left, op, right] = throwMatch;
       left = left.replace(new RegExp(`\\b${jsFuncName}\\b`, 'g'), pyFuncName);
-      right = right.replace(/\).*$/, ')').replace(/\s*\)\s*$/, '');
 
-      // Fix right side — remove trailing stuff after the value
-      const rightClean = right.replace(/\)\s*throw.*$/, '');
+      // Clean right side — remove trailing ) and throw... remnants
+      right = right.replace(/\)\s*throw.*$/, '').trim();
+      // If right side has extra closing paren from outer if(), remove it
+      const leftParens = (left.match(/\(/g) || []).length;
+      const leftClose = (left.match(/\)/g) || []).length;
+      const rightParens = (right.match(/\(/g) || []).length;
+      const rightClose = (right.match(/\)/g) || []).length;
+      if (rightClose > rightParens) {
+        right = right.replace(/\)\s*$/, '');
+      }
 
-      // JS arrays to Python lists
+      // JS arrays to Python lists + value translation
       left = jsArrayToPy(left);
-      const rightPy = jsArrayToPy(rightClean);
+      right = jsArrayToPy(right);
 
       // Translate values
-      const leftPy = left
-        .replace(/===/g, '==').replace(/!==/g, '!=')
+      left = left.replace(/===/g, '==').replace(/!==/g, '!=')
         .replace(/\btrue\b/g, 'True').replace(/\bfalse\b/g, 'False')
         .replace(/\bnull\b/g, 'None');
+      right = right.replace(/\btrue\b/g, 'True').replace(/\bfalse\b/g, 'False')
+        .replace(/\bnull\b/g, 'None');
 
-      const op2 = op === '!==' ? '!=' : op === '===' ? '==' : op;
-      const assertOp = op2 === '!==' || op2 === '!=' ? '!=' : '==';
+      // Remove JSON.stringify — Python compares lists directly
+      left = left.replace(/JSON\.stringify\(([^)]+)\)/g, '$1');
+      right = right.replace(/JSON\.stringify\(([^)]+)\)/g, '$1');
 
-      pyLines.push(`assert ${leftPy} ${assertOp} ${rightPy}`);
+      // Remove .toString()
+      left = left.replace(/\.toString\(\)/g, '');
+      right = right.replace(/\.toString\(\)/g, '');
+
+      // Convert string-wrapped arrays to actual Python lists
+      // e.g., '[[1,2],[3,4],[5]]' → [[1,2],[3,4],[5]]
+      right = right.replace(/^['"](\[.*\])['"]$/, '$1');
+
+      // Flip the operator: if (x !== y) throw → assert x == y
+      // if (x === y) throw → assert x != y
+      let assertOp;
+      if (op === '!==' || op === '!=') {
+        assertOp = '==';  // "throw when not equal" → "assert equal"
+      } else {
+        assertOp = '!=';  // "throw when equal" → "assert not equal"
+      }
+
+      pyLines.push(`assert ${left} ${assertOp} ${right}`);
       continue;
     }
 
-    // Direct assertion: if (!expr) throw
+    // Direct assertion: if (!expr) throw → assert expr
     const negMatch = line.match(/if\s*\(\s*!\s*(.+?)\s*\)\s*throw/);
     if (negMatch) {
       let expr = negMatch[1].replace(new RegExp(`\\b${jsFuncName}\\b`, 'g'), pyFuncName);

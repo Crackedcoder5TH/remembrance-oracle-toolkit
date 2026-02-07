@@ -29,6 +29,7 @@ const { WebSocketServer } = require('./core/websocket');
 const { VersionManager, semanticDiff, extractFunctions } = require('./core/versioning');
 const { AuthManager, authMiddleware, ROLES, canWrite, canManageUsers, canRead } = require('./auth/auth');
 const { discoverPatterns, autoSeed } = require('./ci/auto-seed');
+const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES } = require('./core/covenant');
 
 module.exports = {
   // Core
@@ -111,6 +112,12 @@ module.exports = {
   // Auto-seed
   discoverPatterns,
   autoSeed,
+
+  // Covenant
+  covenantCheck,
+  getCovenant,
+  formatCovenantResult,
+  COVENANT_PRINCIPLES,
 
   // Semantic search
   semanticSearch,

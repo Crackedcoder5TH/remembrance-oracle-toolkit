@@ -198,6 +198,26 @@ function createDashboardServer(oracle, options = {}) {
         return;
       }
 
+      // ─── Covenant check ───
+      if (pathname === '/api/covenant') {
+        if (req.method === 'POST') {
+          readBody(req, (body) => {
+            const { covenantCheck } = require('../core/covenant');
+            const result = covenantCheck(body.code || '', {
+              description: body.description || '',
+              tags: body.tags || [],
+              language: body.language,
+            });
+            sendJSON(res, result);
+          });
+          return;
+        }
+        // GET — return the 15 principles
+        const { getCovenant } = require('../core/covenant');
+        sendJSON(res, getCovenant());
+        return;
+      }
+
       // ─── Serve dashboard HTML ───
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(getDashboardHTML());

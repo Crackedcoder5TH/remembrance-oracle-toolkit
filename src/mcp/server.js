@@ -145,6 +145,19 @@ const TOOLS = [
       required: ['idA', 'idB'],
     },
   },
+  {
+    name: 'oracle_covenant',
+    description: 'Check code against the Covenant seal (The Kingdom\'s Weave). Code must pass all 15 principles to be accepted.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'The code to check against the covenant' },
+        description: { type: 'string', description: 'Optional description for metadata intent check' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Optional tags for metadata intent check' },
+      },
+      required: ['code'],
+    },
+  },
 ];
 
 class MCPServer {
@@ -281,6 +294,15 @@ class MCPServer {
           if (!entryA) throw new Error(`Entry ${args.idA} not found`);
           if (!entryB) throw new Error(`Entry ${args.idB} not found`);
           result = semanticDiff(entryA.code, entryB.code, entryA.language);
+          break;
+        }
+
+        case 'oracle_covenant': {
+          const { covenantCheck } = require('../core/covenant');
+          result = covenantCheck(args.code || '', {
+            description: args.description || '',
+            tags: args.tags || [],
+          });
           break;
         }
 

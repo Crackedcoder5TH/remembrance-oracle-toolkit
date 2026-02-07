@@ -68,6 +68,7 @@ ${c.bold('Commands:')}
   ${c.cyan('sdiff')}       Semantic diff between two patterns
   ${c.cyan('users')}       Manage users (list, add, delete)
   ${c.cyan('auto-seed')}   Auto-discover and seed patterns from test suite
+  ${c.cyan('covenant')}    Check code against the Covenant seal (The Kingdom's Weave)
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -569,6 +570,35 @@ ${c.bold('Options:')}
       }
     } catch (err) {
       console.error(c.red('Auto-seed error: ' + err.message));
+    }
+    return;
+  }
+
+  if (cmd === 'covenant') {
+    const { covenantCheck, getCovenant, formatCovenantResult } = require('./core/covenant');
+    const subCmd = process.argv[3];
+    if (subCmd === 'list' || (!subCmd && !args.file)) {
+      const principles = getCovenant();
+      console.log(c.boldCyan("The Kingdom's Weave — 15 Covenant Principles:\n"));
+      for (const p of principles) {
+        console.log(`  ${c.bold(String(p.id).padStart(2))}. ${c.cyan(p.name)}`);
+        console.log(`      ${c.dim(p.seal)}`);
+      }
+      return;
+    }
+    if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle covenant --file code.js')}`); process.exit(1); }
+    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const result = covenantCheck(code, { description: args.description || '', tags, language: args.language });
+    if (result.sealed) {
+      console.log(`${c.boldGreen('SEALED')} — Covenant upheld (${result.principlesPassed}/${result.totalPrinciples} principles)`);
+    } else {
+      console.log(`${c.boldRed('BROKEN')} — Covenant violated:\n`);
+      for (const v of result.violations) {
+        console.log(`  ${c.red('[' + v.principle + ']')} ${c.bold(v.name)}: ${v.reason}`);
+        console.log(`      ${c.dim('Seal: "' + v.seal + '"')}`);
+      }
+      process.exit(1);
     }
     return;
   }

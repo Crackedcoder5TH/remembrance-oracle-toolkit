@@ -50,11 +50,13 @@ class RemembranceOracle {
       testCode,
     } = metadata;
 
-    // Validate — code must prove itself
+    // Validate — code must prove itself (covenant first, then coherency)
     const validation = validateCode(code, {
       language,
       testCode,
       threshold: this.threshold,
+      description,
+      tags,
     });
 
     if (!validation.valid) {
@@ -206,11 +208,13 @@ class RemembranceOracle {
    * Register a pattern in the library (must pass validation first).
    */
   registerPattern(pattern) {
-    // Validate the code first
+    // Validate the code first (covenant first, then coherency)
     const validation = validateCode(pattern.code, {
       language: pattern.language,
       testCode: pattern.testCode,
       threshold: this.threshold,
+      description: pattern.description || pattern.name,
+      tags: pattern.tags,
     });
 
     if (!validation.valid) {

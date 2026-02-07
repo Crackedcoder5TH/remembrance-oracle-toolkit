@@ -371,6 +371,79 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'oracle_llm_status',
+    description: 'Check if Claude LLM engine is available for AI-powered operations.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'oracle_llm_transpile',
+    description: 'Transpile a pattern to another language using Claude. Falls back to AST transpiler if Claude is unavailable.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'ID of the pattern to transpile' },
+        targetLanguage: { type: 'string', description: 'Target language (python, typescript, go, rust, etc.)' },
+      },
+      required: ['patternId', 'targetLanguage'],
+    },
+  },
+  {
+    name: 'oracle_llm_tests',
+    description: 'Generate tests for a pattern using Claude. Falls back to static test synthesis if unavailable.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'ID of the pattern' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_llm_refine',
+    description: 'Refine a pattern using Claude to improve weak coherency dimensions. Falls back to SERF reflection.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'ID of the pattern to refine' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_llm_analyze',
+    description: 'Analyze code quality using Claude. Returns issues, suggestions, complexity, and quality score.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Code to analyze' },
+        language: { type: 'string', description: 'Programming language' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'oracle_llm_explain',
+    description: 'Explain a pattern in plain language using Claude.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'ID of the pattern to explain' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_llm_generate',
+    description: 'LLM-enhanced candidate generation. Uses Claude for higher-quality variants, falls back to regex/SERF.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        maxPatterns: { type: 'number', description: 'Max source patterns to process (default 10)' },
+        languages: { type: 'array', items: { type: 'string' }, description: 'Target languages for variants' },
+      },
+    },
+  },
 ];
 
 class MCPServer {
@@ -674,6 +747,37 @@ class MCPServer {
             category: args.category,
             language: args.language,
             dryRun: args.dryRun || false,
+          });
+          break;
+
+        case 'oracle_llm_status':
+          result = { available: this.oracle.isLLMAvailable(), engine: 'claude-bridge' };
+          break;
+
+        case 'oracle_llm_transpile':
+          result = this.oracle.llmTranspile(args.patternId, args.targetLanguage);
+          break;
+
+        case 'oracle_llm_tests':
+          result = this.oracle.llmGenerateTests(args.patternId);
+          break;
+
+        case 'oracle_llm_refine':
+          result = this.oracle.llmRefine(args.patternId);
+          break;
+
+        case 'oracle_llm_analyze':
+          result = this.oracle.llmAnalyze(args.code, args.language || 'javascript');
+          break;
+
+        case 'oracle_llm_explain':
+          result = this.oracle.llmExplain(args.patternId);
+          break;
+
+        case 'oracle_llm_generate':
+          result = this.oracle.llmGenerate({
+            maxPatterns: args.maxPatterns || 10,
+            languages: args.languages || ['python', 'typescript'],
           });
           break;
 

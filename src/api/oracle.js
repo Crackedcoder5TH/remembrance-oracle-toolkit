@@ -19,6 +19,7 @@ const { PatternLibrary } = require('../patterns/library');
 const { PatternRecycler } = require('../core/recycler');
 const { DebugOracle } = require('../core/debug-oracle');
 const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
+const { ClaudeBridge } = require('../core/claude-bridge');
 
 class RemembranceOracle {
   constructor(options = {}) {
@@ -39,6 +40,14 @@ class RemembranceOracle {
 
     // Debug Oracle — exponential debugging intelligence
     this._debugOracle = null; // Lazy-initialized on first debug call
+
+    // Claude Bridge — native LLM engine (lazy-initialized)
+    this._claude = options.claude || null;
+    this._claudeOptions = {
+      timeout: options.claudeTimeout || 60000,
+      model: options.claudeModel || null,
+      verbose: options.verbose || false,
+    };
 
     // Auto-seed on first run if library is empty
     if (options.autoSeed !== false && this.patterns.getAll().length === 0) {
@@ -1035,6 +1044,315 @@ class RemembranceOracle {
   debugGlobalStats() {
     const { debugGlobalStats } = require('../core/persistence');
     return debugGlobalStats();
+  }
+
+  // ─── Claude LLM Engine ───
+
+  /**
+   * Get or create the Claude bridge (lazy-initialized).
+   */
+  _getClaude() {
+    if (!this._claude) {
+      this._claude = new ClaudeBridge(this._claudeOptions);
+    }
+    return this._claude;
+  }
+
+  /**
+   * Check if Claude LLM is available.
+   */
+  isLLMAvailable() {
+    return this._getClaude().isAvailable();
+  }
+
+  /**
+   * Transpile a pattern to another language using Claude.
+   * Falls back to AST transpiler if Claude is unavailable.
+   *
+   * @param {string} patternId - ID of the pattern to transpile
+   * @param {string} targetLanguage - Target language
+   * @returns {object} { success, result, method }
+   */
+  llmTranspile(patternId, targetLanguage) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const result = claude.transpile(pattern, targetLanguage);
+      if (result) {
+        return { success: true, result, method: 'claude' };
+      }
+    }
+
+    // Fallback to AST transpiler
+    try {
+      const { transpile: astTranspile } = require('../core/ast-transpiler');
+      const astResult = astTranspile(pattern.code, targetLanguage);
+      if (astResult.success) {
+        return {
+          success: true,
+          result: {
+            name: `${pattern.name}-${targetLanguage.slice(0, 2)}`,
+            code: astResult.code,
+            language: targetLanguage,
+            description: `${pattern.description || pattern.name} (${targetLanguage} via AST)`,
+            tags: [...(pattern.tags || []), 'variant', targetLanguage, 'ast-generated'],
+          },
+          method: 'ast',
+        };
+      }
+    } catch { /* AST transpiler not available */ }
+
+    // Final fallback to regex
+    return { success: false, error: 'No transpilation method available', method: 'none' };
+  }
+
+  /**
+   * Generate tests for a pattern using Claude.
+   * Falls back to static test synthesis if unavailable.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, testCode, method }
+   */
+  llmGenerateTests(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) {
+      // Check candidates too
+      const candidates = this.candidates();
+      const candidate = candidates.find(c => c.id === patternId);
+      if (!candidate) return { success: false, error: `Pattern ${patternId} not found` };
+      return this._generateTestsFor(candidate);
+    }
+    return this._generateTestsFor(pattern);
+  }
+
+  _generateTestsFor(pattern) {
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const testCode = claude.generateTests(pattern);
+      if (testCode) {
+        return { success: true, testCode, method: 'claude' };
+      }
+    }
+
+    // Fallback to static test synthesis
+    try {
+      const { synthesizeForCandidates } = require('../core/test-synth');
+      return { success: false, error: 'Claude unavailable; use synthesizeTests() for static synthesis', method: 'none' };
+    } catch {
+      return { success: false, error: 'No test generation method available', method: 'none' };
+    }
+  }
+
+  /**
+   * Refine a pattern using Claude to improve weak coherency dimensions.
+   * Falls back to SERF reflection if unavailable.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, refinedCode, method }
+   */
+  llmRefine(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const refined = claude.refine(pattern, pattern.coherencyScore);
+      if (refined) {
+        return { success: true, refinedCode: refined, method: 'claude' };
+      }
+    }
+
+    // Fallback to SERF reflection
+    try {
+      const { reflectionLoop } = require('../core/reflection');
+      const result = reflectionLoop(pattern.code, {
+        language: pattern.language,
+        maxLoops: 3,
+        targetCoherence: 0.9,
+      });
+      if (result.improved) {
+        return { success: true, refinedCode: result.code, method: 'serf' };
+      }
+    } catch { /* reflection not available */ }
+
+    return { success: false, error: 'No refinement method available', method: 'none' };
+  }
+
+  /**
+   * Generate an alternative implementation using Claude.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, alternative, method }
+   */
+  llmAlternative(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const alt = claude.generateAlternative(pattern);
+      if (alt) {
+        return { success: true, alternative: alt, method: 'claude' };
+      }
+    }
+
+    return { success: false, error: 'Claude unavailable', method: 'none' };
+  }
+
+  /**
+   * Generate documentation for a pattern using Claude.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, docs, method }
+   */
+  llmDocs(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const docs = claude.generateDocs(pattern);
+      if (docs) {
+        return { success: true, docs, method: 'claude' };
+      }
+    }
+
+    return { success: false, error: 'Claude unavailable', method: 'none' };
+  }
+
+  /**
+   * Analyze code quality using Claude.
+   *
+   * @param {string} code - Code to analyze
+   * @param {string} language - Language
+   * @returns {object} { success, analysis, method }
+   */
+  llmAnalyze(code, language) {
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const analysis = claude.analyze(code, language);
+      if (analysis) {
+        return { success: true, analysis, method: 'claude' };
+      }
+    }
+
+    // Fallback to coherency scoring
+    const coherency = computeCoherencyScore(code, { language });
+    return {
+      success: true,
+      analysis: {
+        issues: [],
+        suggestions: [],
+        complexity: coherency.total > 0.7 ? 'low' : coherency.total > 0.4 ? 'medium' : 'high',
+        quality: coherency.total,
+        coherencyBreakdown: coherency,
+      },
+      method: 'coherency',
+    };
+  }
+
+  /**
+   * Explain a pattern in plain language using Claude.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, explanation, method }
+   */
+  llmExplain(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const explanation = claude.explain(pattern.code, pattern.language);
+      if (explanation) {
+        return { success: true, explanation, method: 'claude' };
+      }
+    }
+
+    // Fallback: use description
+    return {
+      success: true,
+      explanation: pattern.description || `${pattern.name}: ${pattern.patternType} pattern in ${pattern.language}`,
+      method: 'metadata',
+    };
+  }
+
+  /**
+   * LLM-enhanced candidate generation.
+   * Uses Claude to generate higher-quality variants and alternatives.
+   * Falls back to regex/SERF when Claude is unavailable.
+   *
+   * @param {object} options - { maxPatterns, languages, methods }
+   * @returns {object} Generation report with method used
+   */
+  llmGenerate(options = {}) {
+    const claude = this._getClaude();
+    const useClaude = claude.isAvailable();
+    const languages = options.languages || ['python', 'typescript'];
+    const maxPatterns = options.maxPatterns || 10;
+    const methods = options.methods || ['variant', 'alternative'];
+
+    const report = { generated: 0, stored: 0, method: useClaude ? 'claude' : 'regex', details: [] };
+
+    const patterns = this.patterns.getAll()
+      .filter(p => (p.coherencyScore?.total || 0) >= 0.6)
+      .slice(0, maxPatterns);
+
+    for (const pattern of patterns) {
+      // Language variants
+      if (methods.includes('variant')) {
+        for (const lang of languages) {
+          if (lang === pattern.language) continue;
+
+          let candidate = null;
+          if (useClaude) {
+            candidate = claude.transpile(pattern, lang);
+          }
+
+          if (candidate) {
+            try {
+              this.patterns.storeCandidate({
+                ...candidate,
+                parentPattern: pattern.id,
+                generationMethod: 'claude-variant',
+              });
+              report.generated++;
+              report.stored++;
+              report.details.push({ name: candidate.name, method: 'claude-variant', language: lang });
+            } catch { /* duplicate or invalid */ }
+          }
+        }
+      }
+
+      // Alternatives
+      if (methods.includes('alternative') && useClaude) {
+        const alt = claude.generateAlternative(pattern);
+        if (alt) {
+          try {
+            this.patterns.storeCandidate({
+              ...alt,
+              parentPattern: pattern.id,
+              generationMethod: 'claude-alternative',
+            });
+            report.generated++;
+            report.stored++;
+            report.details.push({ name: alt.name, method: 'claude-alternative' });
+          } catch { /* duplicate or invalid */ }
+        }
+      }
+    }
+
+    // If Claude wasn't available, fall back to regular generation
+    if (!useClaude) {
+      const regexReport = this.generateCandidates(options);
+      report.generated = regexReport.generated || 0;
+      report.stored = regexReport.stored || 0;
+      report.details = [{ method: 'regex-fallback', ...regexReport }];
+    }
+
+    return report;
   }
 }
 

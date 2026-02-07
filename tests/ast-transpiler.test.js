@@ -347,3 +347,259 @@ describe('inferReturnType', () => {
     assert.equal(inferReturnType([]), 'any');
   });
 });
+
+// ─── Async/Await ───
+
+describe('async/await', () => {
+  it('parses async function declaration', () => {
+    const ast = parseJS('async function fetchData(url) { return await fetch(url); }');
+    assert.equal(ast.body[0].type, 'FunctionDeclaration');
+    assert.equal(ast.body[0].async, true);
+    assert.equal(ast.body[0].name, 'fetchData');
+  });
+
+  it('parses await expression', () => {
+    const ast = parseJS('async function run() { const data = await getData(); }');
+    const varDecl = ast.body[0].body[0];
+    assert.equal(varDecl.type, 'VariableDeclaration');
+    assert.equal(varDecl.init.type, 'AwaitExpression');
+    assert.equal(varDecl.init.argument.type, 'CallExpression');
+  });
+
+  it('transpiles async function to Python', () => {
+    const result = transpile('async function fetchData(url) { return await getData(url); }', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('async def fetch_data(url):'));
+    assert.ok(result.code.includes('await getData(url)'));
+  });
+
+  it('transpiles async function to TypeScript', () => {
+    const result = transpile('async function fetchData(url) { return 42; }', 'typescript');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('async function fetchData'));
+    assert.ok(result.code.includes('Promise<number>'));
+  });
+});
+
+// ─── Destructuring ───
+
+describe('destructuring', () => {
+  it('parses object destructuring', () => {
+    const ast = parseJS('const { a, b } = obj;');
+    assert.equal(ast.body[0].type, 'ObjectDestructuring');
+    assert.deepEqual(ast.body[0].properties, ['a', 'b']);
+  });
+
+  it('parses array destructuring', () => {
+    const ast = parseJS('const [x, y] = arr;');
+    assert.equal(ast.body[0].type, 'ArrayDestructuring');
+    assert.deepEqual(ast.body[0].elements, ['x', 'y']);
+  });
+
+  it('transpiles object destructuring to Python', () => {
+    const result = transpile('const { name, age } = person;', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('name, age = person["name"], person["age"]'));
+  });
+
+  it('transpiles array destructuring to Python', () => {
+    const result = transpile('const [first, second] = items;', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('first, second = items'));
+  });
+
+  it('transpiles object destructuring to TypeScript', () => {
+    const result = transpile('const { a, b } = obj;', 'typescript');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('const { a, b } = obj;'));
+  });
+
+  it('transpiles array destructuring to TypeScript', () => {
+    const result = transpile('const [x, y] = arr;', 'typescript');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('const [x, y] = arr;'));
+  });
+});
+
+// ─── Class Declarations ───
+
+describe('class declarations', () => {
+  it('parses class declaration', () => {
+    const ast = parseJS('class Animal { speak() { return "hello"; } }');
+    assert.equal(ast.body[0].type, 'ClassDeclaration');
+    assert.equal(ast.body[0].name, 'Animal');
+    assert.equal(ast.body[0].superClass, null);
+    assert.equal(ast.body[0].methods.length, 1);
+    assert.equal(ast.body[0].methods[0].name, 'speak');
+  });
+
+  it('parses class with extends', () => {
+    const ast = parseJS('class Dog extends Animal { constructor(name) { this.name = name; } }');
+    assert.equal(ast.body[0].type, 'ClassDeclaration');
+    assert.equal(ast.body[0].name, 'Dog');
+    assert.equal(ast.body[0].superClass, 'Animal');
+    assert.equal(ast.body[0].methods[0].name, 'constructor');
+  });
+
+  it('transpiles class to Python', () => {
+    const result = transpile('class Dog extends Animal { constructor(name) { this.name = name; } bark() { return this.name; } }', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('class Dog(Animal):'));
+    assert.ok(result.code.includes('def __init__(self, name):'));
+    assert.ok(result.code.includes('self.name = name'));
+    assert.ok(result.code.includes('def bark(self):'));
+    assert.ok(result.code.includes('return self.name'));
+  });
+
+  it('transpiles class to TypeScript', () => {
+    const result = transpile('class Foo extends Bar { greet(msg) { return msg; } }', 'typescript');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('class Foo extends Bar {'));
+    assert.ok(result.code.includes('greet(msg: string)'));
+  });
+});
+
+// ─── Arrow Functions ───
+
+describe('arrow functions', () => {
+  it('parses expression-body arrow function', () => {
+    const ast = parseJS('const add = (a, b) => a + b;');
+    assert.equal(ast.body[0].type, 'VariableDeclaration');
+    assert.equal(ast.body[0].init.type, 'ArrowFunction');
+    assert.equal(ast.body[0].init.expression, true);
+    assert.equal(ast.body[0].init.params.length, 2);
+  });
+
+  it('parses block-body arrow function', () => {
+    const ast = parseJS('const fn = (x) => { return x + 1; }');
+    assert.equal(ast.body[0].init.type, 'ArrowFunction');
+    assert.equal(ast.body[0].init.expression, false);
+    assert.equal(ast.body[0].init.body.length, 1);
+  });
+
+  it('parses single-param arrow without parens', () => {
+    const ast = parseJS('const double = x => x * 2;');
+    assert.equal(ast.body[0].init.type, 'ArrowFunction');
+    assert.equal(ast.body[0].init.params[0].name, 'x');
+    assert.equal(ast.body[0].init.expression, true);
+  });
+
+  it('transpiles expression arrow to Python lambda', () => {
+    const result = transpile('const add = (a, b) => a + b;', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('lambda a, b: a + b'));
+  });
+
+  it('transpiles block-body arrow to Python def', () => {
+    const result = transpile('const fn = (x) => { return x + 1; }', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('def _anon(x):'));
+    assert.ok(result.code.includes('return x + 1'));
+    assert.ok(result.code.includes('fn = _anon'));
+  });
+
+  it('transpiles arrow to TypeScript', () => {
+    const result = transpile('const add = (a, b) => a + b;', 'typescript');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('(a, b) => a + b'));
+  });
+});
+
+// ─── Template Literals ───
+
+describe('template literals', () => {
+  it('tokenizes template literal with interpolation', () => {
+    const tokens = tokenize('`hello ${name}`');
+    assert.ok(tokens.some(t => t.type === 'template'));
+  });
+
+  it('parses template literal into TemplateLiteral node', () => {
+    const ast = parseJS('const msg = `hello ${name}`;');
+    assert.equal(ast.body[0].init.type, 'TemplateLiteral');
+    assert.deepEqual(ast.body[0].init.quasis, ['hello ', '']);
+    assert.equal(ast.body[0].init.expressions.length, 1);
+    assert.equal(ast.body[0].init.expressions[0].name, 'name');
+  });
+
+  it('transpiles template literal to Python f-string', () => {
+    const result = transpile('const msg = `hello ${name}`;', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('f"hello {name}"'));
+  });
+
+  it('transpiles template literal to TypeScript', () => {
+    const result = transpile('const msg = `count: ${total}`;', 'typescript');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('`count: ${total}`'));
+  });
+});
+
+// ─── Try/Catch/Finally ───
+
+describe('try/catch/finally', () => {
+  it('parses try/catch', () => {
+    const ast = parseJS('try { doWork(); } catch (e) { handleError(e); }');
+    assert.equal(ast.body[0].type, 'TryCatchStatement');
+    assert.ok(ast.body[0].block.length > 0);
+    assert.ok(ast.body[0].handler.length > 0);
+    assert.equal(ast.body[0].param, 'e');
+  });
+
+  it('parses try/catch/finally', () => {
+    const ast = parseJS('try { run(); } catch (e) { log(e); } finally { cleanup(); }');
+    assert.equal(ast.body[0].type, 'TryCatchStatement');
+    assert.ok(ast.body[0].handler);
+    assert.ok(ast.body[0].finalizer);
+    assert.equal(ast.body[0].finalizer.length, 1);
+  });
+
+  it('transpiles try/catch to Python', () => {
+    const result = transpile('try { doWork(); } catch (e) { handleError(e); }', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('try:'));
+    assert.ok(result.code.includes('except Exception as e:'));
+  });
+
+  it('transpiles try/catch/finally to Python', () => {
+    const result = transpile('try { run(); } catch (e) { log(e); } finally { cleanup(); }', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('try:'));
+    assert.ok(result.code.includes('except Exception as e:'));
+    assert.ok(result.code.includes('finally:'));
+  });
+
+  it('transpiles try/catch to TypeScript', () => {
+    const result = transpile('try { doWork(); } catch (e) { handleError(e); }', 'typescript');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('try {'));
+    assert.ok(result.code.includes('catch (e: unknown) {'));
+  });
+});
+
+// ─── Throw Statements ───
+
+describe('throw statements', () => {
+  it('parses throw statement', () => {
+    const ast = parseJS('throw new Error("oops");');
+    assert.equal(ast.body[0].type, 'ThrowStatement');
+    assert.equal(ast.body[0].argument.type, 'NewExpression');
+  });
+
+  it('transpiles throw new Error to Python raise Exception', () => {
+    const result = transpile('throw new Error("something failed");', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('raise Exception("something failed")'));
+  });
+
+  it('transpiles throw new TypeError to Python raise TypeError', () => {
+    const result = transpile('throw new TypeError("bad type");', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('raise TypeError("bad type")'));
+  });
+
+  it('transpiles throw to TypeScript', () => {
+    const result = transpile('throw new Error("fail");', 'typescript');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('throw new Error("fail");'));
+  });
+});

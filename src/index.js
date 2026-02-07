@@ -41,6 +41,7 @@ const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, expandLangu
 const { CloudSyncServer, createToken, verifyToken } = require('./cloud/server');
 const { LLMClient, LLMGenerator } = require('./core/llm-generator');
 const { transpile: astTranspile, parseJS, tokenize: astTokenize, toSnakeCase } = require('./core/ast-transpiler');
+const { ClaudeBridge, findClaudeCLI, extractCodeBlock: extractLLMCode } = require('./core/claude-bridge');
 const { ModulePattern, DependencyGraph, TemplateEngine, ModuleStore, scaffold, compose } = require('./patterns/multi-file');
 
 module.exports = {
@@ -208,6 +209,11 @@ module.exports = {
   parseJS,
   astTokenize,
   toSnakeCase,
+
+  // Claude Bridge (Native LLM)
+  ClaudeBridge,
+  findClaudeCLI,
+  extractLLMCode,
 
   // Multi-File Patterns
   ModulePattern,

@@ -112,6 +112,7 @@ ${c.bold('Commands:')}
   ${c.cyan('global')}     Show combined global store statistics (personal + community)
   ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
   ${c.cyan('debug')}      Debug oracle — capture/search/grow error→fix patterns exponentially
+  ${c.cyan('llm')}        Claude LLM engine — transpile/test/refine/analyze/explain
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -1484,6 +1485,151 @@ ${c.bold('Options:')}
     }
     console.log(`Usage: ${c.cyan('oracle cloud start')} [--port 3579] [--secret <key>]`);
     return;
+  }
+
+  if (cmd === 'llm') {
+    const sub = process.argv[3];
+
+    if (!sub || sub === 'help') {
+      console.log(`${c.bold('Claude LLM Engine')}\n`);
+      console.log(`  ${c.cyan('llm status')}                   Check if Claude is available`);
+      console.log(`  ${c.cyan('llm transpile')} --id <id> --to <lang>  Transpile a pattern`);
+      console.log(`  ${c.cyan('llm tests')} --id <id>          Generate tests for a pattern`);
+      console.log(`  ${c.cyan('llm refine')} --id <id>         Refine a pattern's weak dimensions`);
+      console.log(`  ${c.cyan('llm alternative')} --id <id>    Generate an alternative algorithm`);
+      console.log(`  ${c.cyan('llm docs')} --id <id>           Generate documentation`);
+      console.log(`  ${c.cyan('llm analyze')} --file <path>    Analyze code quality`);
+      console.log(`  ${c.cyan('llm explain')} --id <id>        Explain a pattern in plain language`);
+      console.log(`  ${c.cyan('llm generate')} [--max <n>]     LLM-enhanced candidate generation`);
+      return;
+    }
+
+    if (sub === 'status') {
+      const available = oracle.isLLMAvailable();
+      if (available) {
+        console.log(`${c.boldGreen('✓ Claude is available')} — native LLM engine active`);
+        console.log(`  All llm commands will use Claude for generation.`);
+      } else {
+        console.log(`${c.yellow('⚠ Claude CLI not detected')}`);
+        console.log(`  LLM commands will fall back to AST/SERF/regex methods.`);
+        console.log(`  Install Claude Code: ${c.cyan('npm install -g @anthropic-ai/claude-code')}`);
+      }
+      return;
+    }
+
+    if (sub === 'transpile') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      if (!args.to) { console.error(c.boldRed('Error:') + ' --to <language> required'); process.exit(1); }
+      const result = oracle.llmTranspile(args.id, args.to);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Transpiled')} via ${c.cyan(result.method)}`);
+        console.log(`  ${c.dim('Name:')} ${result.result.name}`);
+        console.log(`  ${c.dim('Language:')} ${result.result.language}`);
+        console.log(`\n${result.result.code}`);
+      } else {
+        console.error(`${c.boldRed('✗ Transpilation failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'tests') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmGenerateTests(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Tests generated')} via ${c.cyan(result.method)}`);
+        console.log(`\n${result.testCode}`);
+      } else {
+        console.error(`${c.boldRed('✗ Test generation failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'refine') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmRefine(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Refined')} via ${c.cyan(result.method)}`);
+        console.log(`\n${result.refinedCode}`);
+      } else {
+        console.error(`${c.boldRed('✗ Refinement failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'alternative') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmAlternative(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Alternative generated')} via ${c.cyan(result.method)}`);
+        console.log(`  ${c.dim('Name:')} ${result.alternative.name}`);
+        console.log(`\n${result.alternative.code}`);
+      } else {
+        console.error(`${c.boldRed('✗ Alternative failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'docs') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmDocs(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Docs generated')} via ${c.cyan(result.method)}`);
+        console.log(`\n${result.docs}`);
+      } else {
+        console.error(`${c.boldRed('✗ Docs failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'analyze') {
+      const code = args.file ? fs.readFileSync(args.file, 'utf8') : null;
+      if (!code) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
+      const lang = args.language || path.extname(args.file).slice(1) || 'javascript';
+      const result = oracle.llmAnalyze(code, lang);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Analysis')} via ${c.cyan(result.method)}`);
+        console.log(`  ${c.dim('Quality:')} ${colorScore(result.analysis.quality || 0)}`);
+        console.log(`  ${c.dim('Complexity:')} ${result.analysis.complexity}`);
+        if (result.analysis.issues?.length) {
+          console.log(`\n  ${c.bold('Issues:')}`);
+          result.analysis.issues.forEach(i => console.log(`    ${i.severity === 'high' ? c.red('●') : c.yellow('●')} ${i.description}`));
+        }
+        if (result.analysis.suggestions?.length) {
+          console.log(`\n  ${c.bold('Suggestions:')}`);
+          result.analysis.suggestions.forEach(s => console.log(`    ${c.cyan('→')} ${s}`));
+        }
+      } else {
+        console.error(`${c.boldRed('✗ Analysis failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'explain') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmExplain(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Explanation')} via ${c.cyan(result.method)}`);
+        console.log(`\n${result.explanation}`);
+      } else {
+        console.error(`${c.boldRed('✗ Explanation failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'generate') {
+      const max = parseInt(args.max) || 10;
+      console.log(`${c.dim('Generating LLM-enhanced candidates...')}`);
+      const result = oracle.llmGenerate({ maxPatterns: max });
+      console.log(`${c.boldGreen('✓ Generation complete')} via ${c.cyan(result.method)}`);
+      console.log(`  ${c.dim('Generated:')} ${result.generated}  ${c.dim('Stored:')} ${result.stored}`);
+      if (result.details?.length > 0 && result.details[0]?.name) {
+        result.details.forEach(d => console.log(`  ${c.cyan('→')} ${d.name} (${d.method})`));
+      }
+      return;
+    }
+
+    console.error(`${c.boldRed('Unknown llm subcommand:')} ${sub}. Run ${c.cyan('oracle llm help')} for usage.`);
+    process.exit(1);
   }
 
   console.error(`${c.boldRed('Unknown command:')} ${cmd}. Run ${c.cyan("'remembrance-oracle help'")} for usage.`);

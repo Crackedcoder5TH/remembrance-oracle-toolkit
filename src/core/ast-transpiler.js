@@ -14,7 +14,9 @@
 
 /**
  * Parse JavaScript source into a simplified AST.
- * Handles: functions, variables, if/else, for, while, return, expressions.
+ * Handles: functions, variables, if/else, for, while, return, expressions,
+ *          async/await, destructuring, classes, arrow functions, template literals,
+ *          try/catch/finally, throw.
  */
 function parseJS(source) {
   const tokens = tokenize(source);
@@ -53,17 +55,32 @@ function tokenize(source) {
       continue;
     }
 
-    // Strings
+    // Strings and template literals
     if (source[i] === '"' || source[i] === "'" || source[i] === '`') {
       const quote = source[i];
       let str = quote;
       i++;
+      let hasInterpolation = false;
       while (i < source.length && source[i] !== quote) {
-        if (source[i] === '\\') { str += source[i++]; }
+        if (source[i] === '\\') { str += source[i++]; str += source[i++]; continue; }
+        if (quote === '`' && source[i] === '$' && i + 1 < source.length && source[i + 1] === '{') {
+          hasInterpolation = true;
+          str += source[i++]; // $
+          str += source[i++]; // {
+          let depth = 1;
+          while (i < source.length && depth > 0) {
+            if (source[i] === '{') depth++;
+            else if (source[i] === '}') depth--;
+            if (depth > 0) str += source[i];
+            i++;
+          }
+          str += '}';
+          continue;
+        }
         str += source[i++];
       }
       if (i < source.length) str += source[i++];
-      tokens.push({ type: 'string', value: str });
+      tokens.push({ type: (quote === '`' && hasInterpolation) ? 'template' : 'string', value: str });
       continue;
     }
 
@@ -141,12 +158,19 @@ function parseStatement(ctx) {
   const t = peek(ctx);
 
   if (t.type === 'comment') { advance(ctx); return { type: 'Comment', value: t.value }; }
-  if (t.value === 'function') return parseFunctionDecl(ctx);
+  if (t.value === 'function') return parseFunctionDecl(ctx, false);
+  if (t.value === 'async' && ctx.tokens[ctx.pos + 1]?.value === 'function') {
+    advance(ctx); // consume 'async'
+    return parseFunctionDecl(ctx, true);
+  }
   if (t.value === 'return') return parseReturn(ctx);
   if (t.value === 'if') return parseIf(ctx);
   if (t.value === 'for') return parseFor(ctx);
   if (t.value === 'while') return parseWhile(ctx);
   if (t.value === 'const' || t.value === 'let' || t.value === 'var') return parseVarDecl(ctx);
+  if (t.value === 'class') return parseClass(ctx);
+  if (t.value === 'try') return parseTryCatch(ctx);
+  if (t.value === 'throw') return parseThrow(ctx);
   if (t.value === '}') { advance(ctx); return null; }
   if (t.value === ';') { advance(ctx); return null; }
 
@@ -156,14 +180,14 @@ function parseStatement(ctx) {
   return { type: 'ExpressionStatement', expression: expr };
 }
 
-function parseFunctionDecl(ctx) {
+function parseFunctionDecl(ctx, isAsync) {
   expect(ctx, 'function');
   const name = advance(ctx).value;
   expect(ctx, '(');
   const params = parseParamList(ctx);
   expect(ctx, ')');
   const body = parseBlock(ctx);
-  return { type: 'FunctionDeclaration', name, params, body };
+  return { type: 'FunctionDeclaration', name, params, body, async: isAsync };
 }
 
 function parseParamList(ctx) {
@@ -262,6 +286,40 @@ function parseWhile(ctx) {
 
 function parseVarDecl(ctx) {
   const kind = advance(ctx).value;
+
+  // Object destructuring: const { a, b } = expr
+  if (peek(ctx).value === '{') {
+    advance(ctx); // skip {
+    const properties = [];
+    while (peek(ctx).value !== '}' && peek(ctx).type !== 'eof') {
+      const name = advance(ctx).value;
+      properties.push(name);
+      if (peek(ctx).value === ',') advance(ctx);
+    }
+    expect(ctx, '}');
+    expect(ctx, '=');
+    const init = parseExpression(ctx);
+    if (peek(ctx).value === ';') advance(ctx);
+    return { type: 'ObjectDestructuring', kind, properties, init };
+  }
+
+  // Array destructuring: const [x, y] = expr
+  if (peek(ctx).value === '[') {
+    advance(ctx); // skip [
+    const elements = [];
+    while (peek(ctx).value !== ']' && peek(ctx).type !== 'eof') {
+      const name = advance(ctx).value;
+      elements.push(name);
+      if (peek(ctx).value === ',') advance(ctx);
+    }
+    expect(ctx, ']');
+    expect(ctx, '=');
+    const init = parseExpression(ctx);
+    if (peek(ctx).value === ';') advance(ctx);
+    return { type: 'ArrayDestructuring', kind, elements, init };
+  }
+
+  // Regular variable declaration
   const name = advance(ctx).value;
   let init = null;
   if (peek(ctx).value === '=') {
@@ -270,6 +328,63 @@ function parseVarDecl(ctx) {
   }
   if (peek(ctx).value === ';') advance(ctx);
   return { type: 'VariableDeclaration', kind, name, init };
+}
+
+function parseClass(ctx) {
+  expect(ctx, 'class');
+  const name = advance(ctx).value;
+  let superClass = null;
+  if (peek(ctx).value === 'extends') {
+    advance(ctx);
+    superClass = advance(ctx).value;
+  }
+  expect(ctx, '{');
+  const methods = [];
+  while (peek(ctx).value !== '}' && peek(ctx).type !== 'eof') {
+    if (peek(ctx).value === ';') { advance(ctx); continue; }
+    let isAsync = false;
+    if (peek(ctx).value === 'async') {
+      isAsync = true;
+      advance(ctx);
+    }
+    const methodName = advance(ctx).value;
+    expect(ctx, '(');
+    const params = parseParamList(ctx);
+    expect(ctx, ')');
+    const body = parseBlock(ctx);
+    methods.push({ name: methodName, params, body, async: isAsync });
+  }
+  if (peek(ctx).value === '}') advance(ctx);
+  return { type: 'ClassDeclaration', name, superClass, methods };
+}
+
+function parseTryCatch(ctx) {
+  expect(ctx, 'try');
+  const block = parseBlock(ctx);
+  let handler = null;
+  let param = null;
+  if (peek(ctx).value === 'catch') {
+    advance(ctx);
+    if (peek(ctx).value === '(') {
+      expect(ctx, '(');
+      param = advance(ctx).value;
+      expect(ctx, ')');
+    }
+    handler = parseBlock(ctx);
+  }
+  let finalizer = null;
+  if (peek(ctx).value === 'finally') {
+    advance(ctx);
+    finalizer = parseBlock(ctx);
+  }
+  return { type: 'TryCatchStatement', block, handler, param, finalizer };
+}
+
+function parseThrow(ctx) {
+  expect(ctx, 'throw');
+  const argument = parseExpression(ctx);
+  if (peek(ctx).value === ';') advance(ctx);
+  return { type: 'ThrowStatement', argument };
 }
 
 function parseExpression(ctx) {
@@ -311,6 +426,11 @@ function parseUnary(ctx) {
     advance(ctx);
     const arg = parseUnary(ctx);
     return { type: 'UnaryExpression', operator: 'typeof', argument: arg };
+  }
+  if (peek(ctx).value === 'await') {
+    advance(ctx);
+    const arg = parseUnary(ctx);
+    return { type: 'AwaitExpression', argument: arg };
   }
   return parsePostfix(ctx);
 }
@@ -356,7 +476,59 @@ function parsePrimary(ctx) {
   if (t.value === 'false') { advance(ctx); return { type: 'Literal', value: false, raw: 'false' }; }
   if (t.value === 'null') { advance(ctx); return { type: 'Literal', value: null, raw: 'null' }; }
   if (t.value === 'undefined') { advance(ctx); return { type: 'Literal', value: undefined, raw: 'undefined' }; }
-  if (t.type === 'identifier') { advance(ctx); return { type: 'Identifier', name: t.value }; }
+
+  // Template literal with interpolation
+  if (t.type === 'template') {
+    advance(ctx);
+    const raw = t.value.slice(1, -1); // strip backticks
+    const quasis = [];
+    const expressions = [];
+    let j = 0;
+    let current = '';
+    while (j < raw.length) {
+      if (raw[j] === '$' && j + 1 < raw.length && raw[j + 1] === '{') {
+        quasis.push(current);
+        current = '';
+        j += 2; // skip ${
+        let exprStr = '';
+        let depth = 1;
+        while (j < raw.length && depth > 0) {
+          if (raw[j] === '{') depth++;
+          else if (raw[j] === '}') { depth--; if (depth === 0) break; }
+          exprStr += raw[j++];
+        }
+        j++; // skip closing }
+        // Parse the expression string
+        const exprTokens = tokenize(exprStr);
+        const exprCtx = { tokens: exprTokens, pos: 0 };
+        if (exprTokens.length > 0) {
+          expressions.push(parseExpression(exprCtx));
+        }
+      } else {
+        current += raw[j++];
+      }
+    }
+    quasis.push(current);
+    return { type: 'TemplateLiteral', quasis, expressions };
+  }
+
+  // Identifier — check for single-param arrow: x => expr
+  if (t.type === 'identifier') {
+    advance(ctx);
+    if (peek(ctx).value === '=>') {
+      advance(ctx); // skip =>
+      const params = [{ name: t.value, defaultValue: null }];
+      if (peek(ctx).value === '{') {
+        const body = parseBlock(ctx);
+        return { type: 'ArrowFunction', params, body, expression: false };
+      } else {
+        const expr = parseExpression(ctx);
+        return { type: 'ArrowFunction', params, body: [{ type: 'ReturnStatement', argument: expr }], expression: true, expressionBody: expr };
+      }
+    }
+    return { type: 'Identifier', name: t.value };
+  }
+
   if (t.value === 'new') {
     advance(ctx);
     const callee = parsePrimary(ctx);
@@ -409,9 +581,46 @@ function parsePrimary(ctx) {
     return { type: 'ObjectExpression', properties };
   }
 
-  // Parenthesized expression
+  // Parenthesized expression or arrow function: (params) => body
   if (t.value === '(') {
-    advance(ctx);
+    const saved = ctx.pos;
+    advance(ctx); // skip (
+    const params = [];
+    let couldBeArrow = true;
+
+    while (peek(ctx).value !== ')' && peek(ctx).type !== 'eof') {
+      if (peek(ctx).type === 'identifier') {
+        const name = advance(ctx).value;
+        let defaultValue = null;
+        if (peek(ctx).value === '=') {
+          advance(ctx);
+          defaultValue = parseExpression(ctx);
+        }
+        params.push({ name, defaultValue });
+        if (peek(ctx).value === ',') advance(ctx);
+      } else {
+        couldBeArrow = false;
+        break;
+      }
+    }
+
+    if (couldBeArrow && peek(ctx).value === ')') {
+      advance(ctx); // skip )
+      if (peek(ctx).value === '=>') {
+        advance(ctx); // skip =>
+        if (peek(ctx).value === '{') {
+          const body = parseBlock(ctx);
+          return { type: 'ArrowFunction', params, body, expression: false };
+        } else {
+          const expr = parseExpression(ctx);
+          return { type: 'ArrowFunction', params, body: [{ type: 'ReturnStatement', argument: expr }], expression: true, expressionBody: expr };
+        }
+      }
+    }
+
+    // Not an arrow function — backtrack and parse as parenthesized expression
+    ctx.pos = saved;
+    advance(ctx); // skip (
     const expr = parseExpression(ctx);
     expect(ctx, ')');
     return expr;
@@ -433,17 +642,38 @@ function toPython(ast, indent = 0) {
       return ast.body.map(n => toPython(n, indent)).filter(Boolean).join('\n');
 
     case 'FunctionDeclaration': {
+      const asyncPrefix = ast.async ? 'async ' : '';
       const name = toSnakeCase(ast.name);
       const params = ast.params.map(p =>
         p.defaultValue ? `${p.name}=${toPyExpr(p.defaultValue)}` : p.name
       ).join(', ');
       const body = ast.body.map(n => toPython(n, indent + 1)).filter(Boolean).join('\n');
-      return `${pad}def ${name}(${params}):\n${body || pad + '    pass'}`;
+      return `${pad}${asyncPrefix}def ${name}(${params}):\n${body || pad + '    pass'}`;
     }
 
     case 'VariableDeclaration': {
+      // Handle block-body arrow functions as def + assignment
+      if (ast.init && ast.init.type === 'ArrowFunction' && !ast.init.expression) {
+        const arrowParams = ast.init.params.map(p =>
+          p.defaultValue ? `${p.name}=${toPyExpr(p.defaultValue)}` : p.name
+        ).join(', ');
+        const body = ast.init.body.map(n => toPython(n, indent + 1)).filter(Boolean).join('\n');
+        return `${pad}def _anon(${arrowParams}):\n${body || pad + '    pass'}\n${pad}${ast.name} = _anon`;
+      }
       const init = ast.init ? toPyExpr(ast.init) : 'None';
       return `${pad}${ast.name} = ${init}`;
+    }
+
+    case 'ObjectDestructuring': {
+      const names = ast.properties.join(', ');
+      const obj = toPyExpr(ast.init);
+      const values = ast.properties.map(p => `${obj}[${JSON.stringify(p)}]`).join(', ');
+      return `${pad}${names} = ${values}`;
+    }
+
+    case 'ArrayDestructuring': {
+      const names = ast.elements.join(', ');
+      return `${pad}${names} = ${toPyExpr(ast.init)}`;
     }
 
     case 'ReturnStatement':
@@ -487,6 +717,52 @@ function toPython(ast, indent = 0) {
       return `${pad}while ${toPyExpr(ast.test)}:\n${body}`;
     }
 
+    case 'ClassDeclaration': {
+      const superPart = ast.superClass ? `(${ast.superClass})` : '';
+      let result = `${pad}class ${ast.name}${superPart}:\n`;
+      if (ast.methods.length === 0) {
+        result += `${pad}    pass`;
+      } else {
+        result += ast.methods.map(m => {
+          const isInit = m.name === 'constructor';
+          const methodName = isInit ? '__init__' : toSnakeCase(m.name);
+          const asyncPrefix = m.async ? 'async ' : '';
+          const methodParams = ['self', ...m.params.map(p =>
+            p.defaultValue ? `${p.name}=${toPyExpr(p.defaultValue)}` : p.name
+          )].join(', ');
+          const body = m.body.map(n => toPython(n, indent + 2)).filter(Boolean).join('\n');
+          return `${pad}    ${asyncPrefix}def ${methodName}(${methodParams}):\n${body || pad + '        pass'}`;
+        }).join('\n\n');
+      }
+      return result;
+    }
+
+    case 'TryCatchStatement': {
+      let result = `${pad}try:\n`;
+      result += ast.block.map(n => toPython(n, indent + 1)).filter(Boolean).join('\n');
+      if (ast.handler) {
+        const param = ast.param ? ` as ${ast.param}` : '';
+        result += `\n${pad}except Exception${param}:\n`;
+        result += ast.handler.map(n => toPython(n, indent + 1)).filter(Boolean).join('\n');
+      }
+      if (ast.finalizer) {
+        result += `\n${pad}finally:\n`;
+        result += ast.finalizer.map(n => toPython(n, indent + 1)).filter(Boolean).join('\n');
+      }
+      return result;
+    }
+
+    case 'ThrowStatement': {
+      const arg = ast.argument;
+      if (arg && arg.type === 'NewExpression') {
+        const name = arg.callee.name || toPyExpr(arg.callee);
+        const pyName = name === 'Error' ? 'Exception' : name;
+        const args = arg.arguments.map(a => toPyExpr(a)).join(', ');
+        return `${pad}raise ${pyName}(${args})`;
+      }
+      return `${pad}raise ${toPyExpr(ast.argument)}`;
+    }
+
     case 'ExpressionStatement':
       return `${pad}${toPyExpr(ast.expression)}`;
 
@@ -509,6 +785,7 @@ function toPyExpr(node) {
       return node.raw || String(node.value);
 
     case 'Identifier':
+      if (node.name === 'this') return 'self';
       return node.name;
 
     case 'BinaryExpression': {
@@ -554,11 +831,39 @@ function toPyExpr(node) {
       if (name === 'Set') return `set(${args})`;
       if (name === 'Map') return `dict(${args})`;
       if (name === 'Array') return `[None] * ${args || '0'}`;
+      if (name === 'Error') return `Exception(${args})`;
       return `${name}(${args})`;
     }
 
     case 'SpreadElement':
       return `*${toPyExpr(node.argument)}`;
+
+    case 'AwaitExpression':
+      return `await ${toPyExpr(node.argument)}`;
+
+    case 'ArrowFunction': {
+      const params = node.params.map(p => p.name).join(', ');
+      if (node.expression && node.expressionBody) {
+        return params ? `lambda ${params}: ${toPyExpr(node.expressionBody)}` : `lambda: ${toPyExpr(node.expressionBody)}`;
+      }
+      // Block body with single return → lambda
+      if (node.body.length === 1 && node.body[0].type === 'ReturnStatement' && node.body[0].argument) {
+        return params ? `lambda ${params}: ${toPyExpr(node.body[0].argument)}` : `lambda: ${toPyExpr(node.body[0].argument)}`;
+      }
+      return params ? `lambda ${params}: None` : `lambda: None`;
+    }
+
+    case 'TemplateLiteral': {
+      let result = 'f"';
+      for (let i = 0; i < node.quasis.length; i++) {
+        result += node.quasis[i];
+        if (i < node.expressions.length) {
+          result += `{${toPyExpr(node.expressions[i])}}`;
+        }
+      }
+      result += '"';
+      return result;
+    }
 
     default:
       return node.value || node.name || '';
@@ -648,6 +953,7 @@ function toTypeScript(ast, indent = 0) {
       return ast.body.map(n => toTypeScript(n, indent)).filter(Boolean).join('\n');
 
     case 'FunctionDeclaration': {
+      const asyncPrefix = ast.async ? 'async ' : '';
       const params = ast.params.map(p => {
         const type = inferType(p.name, ast.body);
         return p.defaultValue
@@ -655,14 +961,25 @@ function toTypeScript(ast, indent = 0) {
           : `${p.name}: ${type}`;
       }).join(', ');
       const retType = inferReturnType(ast.body);
+      const wrappedRetType = ast.async ? `Promise<${retType}>` : retType;
       const body = ast.body.map(n => toTypeScript(n, indent + 1)).filter(Boolean).join('\n');
-      return `${pad}function ${ast.name}(${params}): ${retType} {\n${body}\n${pad}}`;
+      return `${pad}${asyncPrefix}function ${ast.name}(${params}): ${wrappedRetType} {\n${body}\n${pad}}`;
     }
 
     case 'VariableDeclaration': {
       const kind = ast.kind === 'var' ? 'let' : ast.kind;
       const init = ast.init ? toTsExpr(ast.init) : 'undefined';
       return `${pad}${kind} ${ast.name} = ${init};`;
+    }
+
+    case 'ObjectDestructuring': {
+      const kind = ast.kind === 'var' ? 'let' : ast.kind;
+      return `${pad}${kind} { ${ast.properties.join(', ')} } = ${toTsExpr(ast.init)};`;
+    }
+
+    case 'ArrayDestructuring': {
+      const kind = ast.kind === 'var' ? 'let' : ast.kind;
+      return `${pad}${kind} [${ast.elements.join(', ')}] = ${toTsExpr(ast.init)};`;
     }
 
     case 'ReturnStatement':
@@ -683,6 +1000,44 @@ function toTypeScript(ast, indent = 0) {
       }
       return result;
     }
+
+    case 'ClassDeclaration': {
+      const extPart = ast.superClass ? ` extends ${ast.superClass}` : '';
+      let result = `${pad}class ${ast.name}${extPart} {\n`;
+      const methodStrs = ast.methods.map(m => {
+        const asyncPrefix = m.async ? 'async ' : '';
+        const params = m.params.map(p => {
+          const type = inferType(p.name, m.body);
+          return p.defaultValue ? `${p.name}: ${type} = ${toTsExpr(p.defaultValue)}` : `${p.name}: ${type}`;
+        }).join(', ');
+        const body = m.body.map(n => toTypeScript(n, indent + 2)).filter(Boolean).join('\n');
+        return `${pad}  ${asyncPrefix}${m.name}(${params}) {\n${body}\n${pad}  }`;
+      });
+      result += methodStrs.join('\n\n');
+      result += `\n${pad}}`;
+      return result;
+    }
+
+    case 'TryCatchStatement': {
+      let result = `${pad}try {\n`;
+      result += ast.block.map(n => toTypeScript(n, indent + 1)).filter(Boolean).join('\n');
+      result += `\n${pad}}`;
+      if (ast.handler) {
+        const param = ast.param ? ` (${ast.param}: unknown)` : '';
+        result += ` catch${param} {\n`;
+        result += ast.handler.map(n => toTypeScript(n, indent + 1)).filter(Boolean).join('\n');
+        result += `\n${pad}}`;
+      }
+      if (ast.finalizer) {
+        result += ` finally {\n`;
+        result += ast.finalizer.map(n => toTypeScript(n, indent + 1)).filter(Boolean).join('\n');
+        result += `\n${pad}}`;
+      }
+      return result;
+    }
+
+    case 'ThrowStatement':
+      return `${pad}throw ${toTsExpr(ast.argument)};`;
 
     case 'ForStatement':
     case 'ForOfStatement':
@@ -716,6 +1071,27 @@ function toTsExpr(node) {
     case 'ArrayExpression': return `[${node.elements.map(e => toTsExpr(e)).join(', ')}]`;
     case 'ObjectExpression': return `{${node.properties.map(p => `${p.key}: ${toTsExpr(p.value)}`).join(', ')}}`;
     case 'NewExpression': return `new ${toTsExpr(node.callee)}(${node.arguments.map(a => toTsExpr(a)).join(', ')})`;
+    case 'SpreadElement': return `...${toTsExpr(node.argument)}`;
+    case 'AwaitExpression': return `await ${toTsExpr(node.argument)}`;
+    case 'ArrowFunction': {
+      const params = node.params.map(p => p.name).join(', ');
+      if (node.expression && node.expressionBody) {
+        return `(${params}) => ${toTsExpr(node.expressionBody)}`;
+      }
+      const body = node.body.map(n => toTypeScript(n, 1)).filter(Boolean).join('\n');
+      return `(${params}) => {\n${body}\n}`;
+    }
+    case 'TemplateLiteral': {
+      let result = '`';
+      for (let i = 0; i < node.quasis.length; i++) {
+        result += node.quasis[i];
+        if (i < node.expressions.length) {
+          result += `\${${toTsExpr(node.expressions[i])}}`;
+        }
+      }
+      result += '`';
+      return result;
+    }
     default: return node.value || node.name || '';
   }
 }

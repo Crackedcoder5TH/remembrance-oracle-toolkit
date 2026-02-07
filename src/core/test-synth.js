@@ -408,7 +408,89 @@ function makeAssertion(call, op, expected, python) {
   return `if (${call} === undefined) throw new Error("returned undefined");`;
 }
 
+// ─── Test Quality Detection ───
+
+/**
+ * Check if existing test code has broken syntax patterns.
+ * Detects: inverted assertions, JS syntax leaks in Python, syntax errors.
+ */
+function hasBrokenTestSyntax(testCode, language) {
+  if (!testCode) return false;
+  if (/assert\s+\w+\([^)]*\)\s*!=\s*/.test(testCode)) return true;
+  if (/JSON\.stringify/.test(testCode)) return true;
+  if (/\.prototype\./.test(testCode)) return true;
+  if (/===/.test(testCode)) return true;
+  if (/\|\|/.test(testCode)) return true;
+  if (language === 'python' && /\.length/.test(testCode)) return true;
+  return false;
+}
+
+/**
+ * Clean up generated test code for the target language.
+ */
+function cleanupTestCode(testCode, language) {
+  if (language === 'python') {
+    return testCode.replace(/(\w+(?:\([^)]*\))?)\.length/g, 'len($1)');
+  }
+  return testCode;
+}
+
+/**
+ * Store synthesized test code on a candidate in the database.
+ */
+function storeCandidateTest(oracle, candidateId, testCode) {
+  if (oracle.patterns._backend === 'sqlite') {
+    oracle.patterns._sqlite.db.prepare(
+      'UPDATE candidates SET test_code = ?, updated_at = ? WHERE id = ?'
+    ).run(testCode, new Date().toISOString(), candidateId);
+  }
+}
+
 // ─── Batch Test Synthesis ───
+
+/**
+ * Process a single candidate for test synthesis.
+ * Returns a detail record for the report.
+ */
+function processCandidate(candidate, oracle, dryRun) {
+  if (!isViableCode(candidate.code, candidate.language)) {
+    return { name: candidate.name, status: 'bad_code', reason: 'Code has syntax errors from transpilation', failed: true };
+  }
+
+  const parent = candidate.parentPattern
+    ? oracle.patterns.getAll().find(p => p.name === candidate.parentPattern)
+    : null;
+
+  let testCode = synthesizeTests(candidate.code, candidate.language, {
+    parentTestCode: parent?.testCode,
+    parentFuncName: parent ? extractSignature(parent.code, parent.language)?.name : null,
+  });
+
+  if (!testCode) {
+    return { name: candidate.name, status: 'no_tests', reason: 'Could not synthesize tests', failed: true };
+  }
+
+  const existing = candidate.testCode || '';
+  const isNew = !existing;
+  const isBroken = hasBrokenTestSyntax(existing, candidate.language);
+  const isBetter = !isNew && (isBroken || testCode.length > existing.length);
+
+  if (!isNew && !isBetter) {
+    return { name: candidate.name, status: 'kept_existing' };
+  }
+
+  testCode = cleanupTestCode(testCode, candidate.language);
+  if (!dryRun) storeCandidateTest(oracle, candidate.id, testCode);
+
+  return {
+    name: candidate.name,
+    status: isNew ? 'synthesized' : 'improved',
+    testLines: testCode.split('\n').length,
+    language: candidate.language,
+    synthesized: true,
+    improved: isBetter,
+  };
+}
 
 /**
  * Synthesize tests for all candidates that lack adequate tests.
@@ -420,85 +502,17 @@ function makeAssertion(call, op, expected, python) {
  */
 function synthesizeForCandidates(oracle, options = {}) {
   const { maxCandidates = Infinity, dryRun = false } = options;
-
   const candidates = oracle.candidates();
-  const report = {
-    processed: 0,
-    synthesized: 0,
-    improved: 0,
-    failed: 0,
-    details: [],
-  };
+  const report = { processed: 0, synthesized: 0, improved: 0, failed: 0, details: [] };
 
   for (const candidate of candidates.slice(0, maxCandidates)) {
     report.processed++;
+    const detail = processCandidate(candidate, oracle, dryRun);
+    report.details.push(detail);
 
-    // Skip candidates with non-viable code (broken transpilation)
-    if (!isViableCode(candidate.code, candidate.language)) {
-      report.failed++;
-      report.details.push({ name: candidate.name, status: 'bad_code', reason: 'Code has syntax errors from transpilation' });
-      continue;
-    }
-
-    // Find parent pattern for test translation
-    const parent = candidate.parentPattern
-      ? oracle.patterns.getAll().find(p => p.name === candidate.parentPattern)
-      : null;
-
-    // Synthesize test code
-    let testCode = synthesizeTests(candidate.code, candidate.language, {
-      parentTestCode: parent?.testCode,
-      parentFuncName: parent ? extractSignature(parent.code, parent.language)?.name : null,
-    });
-
-    if (!testCode) {
-      report.failed++;
-      report.details.push({ name: candidate.name, status: 'no_tests', reason: 'Could not synthesize tests' });
-      continue;
-    }
-
-    // Check if synthesized tests are better than existing
-    const existing = candidate.testCode || '';
-    const isNew = !existing;
-    // Detect broken tests: inverted assertions (assert x != y instead of ==),
-    // JS syntax leaks (JSON.stringify, .prototype, ===), or syntax errors
-    const hasBrokenTests = existing && (
-      /assert\s+\w+\([^)]*\)\s*!=\s*/.test(existing) ||
-      /JSON\.stringify/.test(existing) ||
-      /\.prototype\./.test(existing) ||
-      /===/.test(existing) ||
-      /\|\|/.test(existing) ||
-      (candidate.language === 'python' && /\.length/.test(existing))
-    );
-    const isBetter = !isNew && (hasBrokenTests || testCode.length > existing.length);
-
-    if (isNew || isBetter) {
-      report.synthesized++;
-      if (isBetter) report.improved++;
-
-      // Final cleanup: ensure Python tests don't use JS syntax
-      if (candidate.language === 'python') {
-        testCode = testCode.replace(/(\w+(?:\([^)]*\))?)\.length/g, 'len($1)');
-      }
-
-      if (!dryRun) {
-        // Update the candidate's test code in the store
-        if (oracle.patterns._backend === 'sqlite') {
-          oracle.patterns._sqlite.db.prepare(
-            'UPDATE candidates SET test_code = ?, updated_at = ? WHERE id = ?'
-          ).run(testCode, new Date().toISOString(), candidate.id);
-        }
-      }
-
-      report.details.push({
-        name: candidate.name,
-        status: isNew ? 'synthesized' : 'improved',
-        testLines: testCode.split('\n').length,
-        language: candidate.language,
-      });
-    } else {
-      report.details.push({ name: candidate.name, status: 'kept_existing' });
-    }
+    if (detail.failed) report.failed++;
+    if (detail.synthesized) report.synthesized++;
+    if (detail.improved) report.improved++;
   }
 
   return report;
@@ -514,4 +528,6 @@ module.exports = {
   jsToPyExpr,
   generateFromSignature,
   isViableCode,
+  hasBrokenTestSyntax,
+  cleanupTestCode,
 };

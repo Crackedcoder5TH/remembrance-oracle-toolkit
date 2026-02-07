@@ -256,22 +256,31 @@ function scoreUnity(code) {
 
 function scoreCorrectness(code, lang) {
   let score = 1.0;
-  // Check for balanced braces
-  const stack = [];
-  const pairs = { '(': ')', '[': ']', '{': '}' };
-  const closers = new Set([')', ']', '}']);
-  for (const ch of code) {
-    if (pairs[ch]) stack.push(pairs[ch]);
-    else if (closers.has(ch)) {
-      if (stack.pop() !== ch) { score -= 0.3; break; }
-    }
+  // Strip comments and strings before bracket counting
+  // (Regex literals can't be reliably stripped without a parser,
+  //  so we use count-based balance instead of stack-based nesting)
+  const stripped = code
+    .replace(/\/\/[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/`(?:\\[\s\S]|[^`])*`/g, '')
+    .replace(/"(?:\\.|[^"\\])*"/g, '')
+    .replace(/'(?:\\.|[^'\\])*'/g, '');
+  // Count each bracket type independently — tolerates regex char classes
+  const counts = { '(': 0, ')': 0, '[': 0, ']': 0, '{': 0, '}': 0 };
+  for (const ch of stripped) {
+    if (ch in counts) counts[ch]++;
   }
-  if (stack.length > 0) score -= 0.2;
+  const parenDiff = Math.abs(counts['('] - counts[')']);
+  const bracketDiff = Math.abs(counts['['] - counts[']']);
+  const braceDiff = Math.abs(counts['{'] - counts['}']);
+  if (parenDiff > 0) score -= Math.min(0.2, parenDiff * 0.05);
+  if (bracketDiff > 0) score -= Math.min(0.2, bracketDiff * 0.05);
+  if (braceDiff > 0) score -= Math.min(0.2, braceDiff * 0.05);
   // Check for TODO/FIXME markers
   const todos = (code.match(/\b(TODO|FIXME|HACK|XXX)\b/g) || []).length;
   score -= todos * 0.1;
-  // Check for empty catch blocks
-  if (/catch\s*\([^)]*\)\s*\{\s*\}/.test(code)) score -= 0.1;
+  // Check for empty catch blocks (with or without error binding)
+  if (/catch\s*(?:\([^)]*\))?\s*\{\s*\}/.test(code)) score -= 0.1;
   return Math.max(0, Math.min(1, score));
 }
 

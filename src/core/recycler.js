@@ -773,6 +773,148 @@ class PatternRecycler {
    * @param {object} options - { maxPatterns, languages, minCoherency, methods }
    * @returns {{ generated, stored, skipped, byMethod, byLanguage }}
    */
+  // ─── Candidate Generation Helpers (extracted for simplicity) ───
+
+  /**
+   * Score and store a candidate if it meets coherency threshold.
+   * @returns {boolean} true if stored
+   */
+  _tryStoreCandidate(candidate, report, knownNames, minCoherency, extraTags = []) {
+    report.generated++;
+
+    if (knownNames.has(candidate.name)) {
+      report.duplicates++;
+      return false;
+    }
+
+    // Viability gate for transpiled code
+    if (candidate.language !== 'javascript') {
+      const { isViableCode } = require('./test-synth');
+      if (!isViableCode(candidate.code, candidate.language)) {
+        report.skipped++;
+        return false;
+      }
+    }
+
+    const coherency = computeCoherencyScore(candidate.code, {
+      language: candidate.language,
+      testPassed: null,
+      historicalReliability: 0.5,
+    });
+
+    if (coherency.total < minCoherency) {
+      report.skipped++;
+      return false;
+    }
+
+    this.oracle.patterns.addCandidate({
+      name: candidate.name,
+      code: candidate.code,
+      language: candidate.language,
+      patternType: candidate.patternType,
+      description: candidate.description,
+      tags: [...(candidate.tags || []), 'candidate', ...extraTags],
+      coherencyTotal: coherency.total,
+      coherencyScore: coherency,
+      testCode: candidate.testCode,
+      parentPattern: candidate.parentPattern,
+      generationMethod: candidate.method,
+    });
+
+    report.stored++;
+    knownNames.add(candidate.name);
+    report.byMethod = report.byMethod || {};
+    report.byLanguage = report.byLanguage || {};
+    report.byMethod[candidate.method] = (report.byMethod[candidate.method] || 0) + 1;
+    report.byLanguage[candidate.language] = (report.byLanguage[candidate.language] || 0) + 1;
+    if (report.candidates) report.candidates.push(candidate.name);
+
+    if (this.verbose) {
+      console.log(`  [CANDIDATE] ${candidate.name} (${candidate.language}) — ${candidate.method}`);
+    }
+
+    return true;
+  }
+
+  /**
+   * Generate language variant candidates from a single pattern.
+   */
+  _generateVariants(pattern, languages, report, knownNames, minCoherency, extraTags) {
+    if (pattern.language !== 'javascript') return;
+
+    for (const lang of languages) {
+      const variant = this._transpileToLanguage(pattern, lang);
+      if (!variant) continue;
+
+      this._tryStoreCandidate({
+        name: variant.name,
+        code: variant.code,
+        language: variant.language,
+        patternType: variant.patternType,
+        description: variant.description,
+        tags: variant.tags,
+        testCode: variant.testCode,
+        parentPattern: pattern.name,
+        method: 'variant',
+      }, report, knownNames, minCoherency, extraTags);
+    }
+  }
+
+  /**
+   * Generate a SERF-refined candidate from a single pattern.
+   */
+  _generateSerfRefine(pattern, report, knownNames, minCoherency, extraTags) {
+    const refinedName = `${pattern.name}-refined`;
+    if (knownNames.has(refinedName)) return;
+
+    const reflection = reflectionLoop(pattern.code, {
+      language: pattern.language,
+      maxLoops: 2,
+      targetCoherence: 0.95,
+      description: pattern.description,
+      tags: pattern.tags,
+      cascadeBoost: this._cascadeBoost,
+    });
+
+    if (reflection.code.trim() === pattern.code.trim()) return;
+
+    this._tryStoreCandidate({
+      name: refinedName,
+      code: reflection.code,
+      language: pattern.language,
+      patternType: pattern.patternType,
+      description: `${pattern.description} (SERF refined)`,
+      tags: [...(pattern.tags || []), 'serf-refined'],
+      testCode: pattern.testCode,
+      parentPattern: pattern.name,
+      method: 'serf-refine',
+    }, report, knownNames, minCoherency, extraTags);
+  }
+
+  /**
+   * Generate approach-swap candidates from a single pattern.
+   */
+  _generateApproachSwaps(pattern, report, knownNames, minCoherency) {
+    if (pattern.language !== 'javascript') return;
+
+    const alts = this._generateApproachAlternatives(pattern);
+    for (const alt of alts) {
+      this._tryStoreCandidate({
+        name: alt.name,
+        code: alt.code,
+        language: alt.language,
+        patternType: alt.patternType,
+        description: alt.description,
+        tags: alt.tags,
+        testCode: alt.testCode,
+        parentPattern: pattern.name,
+        method: 'approach-swap',
+      }, report, knownNames, minCoherency);
+    }
+  }
+
+  // ─── Public Generation Methods ───
+
   generateCandidates(options = {}) {
     const {
       maxPatterns = Infinity,
@@ -784,177 +926,29 @@ class PatternRecycler {
     this._updateGlobalCoherence();
 
     const report = {
-      generated: 0,
-      stored: 0,
-      skipped: 0,
-      duplicates: 0,
-      byMethod: {},
-      byLanguage: {},
-      cascadeBoost: this._cascadeBoost,
-      xiGlobal: this._xiGlobal,
+      generated: 0, stored: 0, skipped: 0, duplicates: 0,
+      byMethod: {}, byLanguage: {},
+      cascadeBoost: this._cascadeBoost, xiGlobal: this._xiGlobal,
     };
 
     const proven = this.oracle.patterns.getAll();
     const existingCandidates = this.oracle.patterns.getCandidates();
-    const candidateNames = new Set(existingCandidates.map(c => c.name));
-    const patternNames = new Set(proven.map(p => p.name));
+    const knownNames = new Set([
+      ...proven.map(p => p.name),
+      ...existingCandidates.map(c => c.name),
+    ]);
 
-    // Process proven patterns — each one can spawn candidates
     const toProcess = proven.slice(0, maxPatterns);
 
     for (const pattern of toProcess) {
-      // Method 1: Language variants → candidates
-      if (methods.includes('variant') && pattern.language === 'javascript') {
-        for (const lang of languages) {
-          const variant = this._transpileToLanguage(pattern, lang);
-          if (!variant) continue;
-
-          report.generated++;
-          const candidateName = variant.name;
-
-          // Skip if already exists as pattern or candidate
-          if (patternNames.has(candidateName) || candidateNames.has(candidateName)) {
-            report.duplicates++;
-            continue;
-          }
-
-          // Viability check — reject broken transpilations before storing
-          const { isViableCode } = require('./test-synth');
-          if (!isViableCode(variant.code, variant.language)) {
-            report.skipped++;
-            continue;
-          }
-
-          // Run coherency check only (no sandbox test execution)
-          const coherency = computeCoherencyScore(variant.code, {
-            language: variant.language,
-            testPassed: null,  // No test proof — that's the point
-            historicalReliability: 0.5,
-          });
-
-          if (coherency.total >= minCoherency) {
-            this.oracle.patterns.addCandidate({
-              name: candidateName,
-              code: variant.code,
-              language: variant.language,
-              patternType: variant.patternType,
-              description: variant.description,
-              tags: [...(variant.tags || []), 'candidate'],
-              coherencyTotal: coherency.total,
-              coherencyScore: coherency,
-              testCode: variant.testCode,
-              parentPattern: pattern.name,
-              generationMethod: 'variant',
-            });
-            report.stored++;
-            candidateNames.add(candidateName);
-            report.byMethod['variant'] = (report.byMethod['variant'] || 0) + 1;
-            report.byLanguage[variant.language] = (report.byLanguage[variant.language] || 0) + 1;
-
-            if (this.verbose) {
-              console.log(`  [CANDIDATE] ${candidateName} (${variant.language}) — coherency ${coherency.total.toFixed(3)}`);
-            }
-          } else {
-            report.skipped++;
-          }
-        }
+      if (methods.includes('variant')) {
+        this._generateVariants(pattern, languages, report, knownNames, minCoherency, []);
       }
-
-      // Method 2: SERF refinement → candidates with improved coherency
       if (methods.includes('serf-refine')) {
-        const refinedName = `${pattern.name}-refined`;
-        if (!patternNames.has(refinedName) && !candidateNames.has(refinedName)) {
-
-        const reflection = reflectionLoop(pattern.code, {
-          language: pattern.language,
-          maxLoops: 2,
-          targetCoherence: 0.95,
-          description: pattern.description,
-          tags: pattern.tags,
-          cascadeBoost: this._cascadeBoost,
-        });
-
-        // Store if SERF changed the code at all (even small style improvements count)
-        if (reflection.code.trim() !== pattern.code.trim()) {
-          report.generated++;
-
-          const coherency = computeCoherencyScore(reflection.code, {
-            language: pattern.language,
-            testPassed: null,
-            historicalReliability: 0.5,
-          });
-
-          if (coherency.total >= minCoherency) {
-            this.oracle.patterns.addCandidate({
-              name: refinedName,
-              code: reflection.code,
-              language: pattern.language,
-              patternType: pattern.patternType,
-              description: `${pattern.description} (SERF refined)`,
-              tags: [...(pattern.tags || []), 'candidate', 'serf-refined'],
-              coherencyTotal: coherency.total,
-              coherencyScore: coherency,
-              testCode: pattern.testCode,
-              parentPattern: pattern.name,
-              generationMethod: 'serf-refine',
-            });
-            report.stored++;
-            candidateNames.add(refinedName);
-            report.byMethod['serf-refine'] = (report.byMethod['serf-refine'] || 0) + 1;
-            report.byLanguage[pattern.language] = (report.byLanguage[pattern.language] || 0) + 1;
-
-            if (this.verbose) {
-              console.log(`  [CANDIDATE] ${refinedName} — SERF improved coherency by +${reflection.serf.improvement.toFixed(3)}`);
-            }
-          } else {
-            report.skipped++;
-          }
-        }
-        } // end: not duplicate check
+        this._generateSerfRefine(pattern, report, knownNames, minCoherency, []);
       }
-
-      // Method 3: Approach swaps → candidates
-      if (methods.includes('approach-swap') && pattern.language === 'javascript') {
-        const alts = this._generateApproachAlternatives(pattern);
-        for (const alt of alts) {
-          report.generated++;
-
-          if (patternNames.has(alt.name) || candidateNames.has(alt.name)) {
-            report.duplicates++;
-            continue;
-          }
-
-          const coherency = computeCoherencyScore(alt.code, {
-            language: alt.language,
-            testPassed: null,
-            historicalReliability: 0.5,
-          });
-
-          if (coherency.total >= minCoherency) {
-            this.oracle.patterns.addCandidate({
-              name: alt.name,
-              code: alt.code,
-              language: alt.language,
-              patternType: alt.patternType,
-              description: alt.description,
-              tags: [...(alt.tags || []), 'candidate'],
-              coherencyTotal: coherency.total,
-              coherencyScore: coherency,
-              testCode: alt.testCode,
-              parentPattern: pattern.name,
-              generationMethod: 'approach-swap',
-            });
-            report.stored++;
-            candidateNames.add(alt.name);
-            report.byMethod['approach-swap'] = (report.byMethod['approach-swap'] || 0) + 1;
-
-            if (this.verbose) {
-              console.log(`  [CANDIDATE] ${alt.name} — approach swap`);
-            }
-          } else {
-            report.skipped++;
-          }
-        }
+      if (methods.includes('approach-swap')) {
+        this._generateApproachSwaps(pattern, report, knownNames, minCoherency);
       }
     }
 
@@ -964,11 +958,6 @@ class PatternRecycler {
   /**
    * Generate candidates from a single pattern.
    * Called automatically when a pattern is proven (registered/submitted).
-   * Runs variant + serf-refine + approach-swap for one pattern only.
-   *
-   * @param {object} pattern - A proven pattern object
-   * @param {object} options - { languages, methods, minCoherency }
-   * @returns {{ generated, stored, skipped, duplicates }}
    */
   generateFromPattern(pattern, options = {}) {
     const {
@@ -981,97 +970,16 @@ class PatternRecycler {
 
     const proven = this.oracle.patterns.getAll();
     const existingCandidates = this.oracle.patterns.getCandidates();
-    const patternNames = new Set(proven.map(p => p.name));
-    const candidateNames = new Set(existingCandidates.map(c => c.name));
+    const knownNames = new Set([
+      ...proven.map(p => p.name),
+      ...existingCandidates.map(c => c.name),
+    ]);
 
-    // Method 1: Language variants
-    if (methods.includes('variant') && pattern.language === 'javascript') {
-      for (const lang of languages) {
-        const variant = this._transpileToLanguage(pattern, lang);
-        if (!variant) continue;
-
-        report.generated++;
-        if (patternNames.has(variant.name) || candidateNames.has(variant.name)) {
-          report.duplicates++;
-          continue;
-        }
-
-        const { isViableCode } = require('./test-synth');
-        if (!isViableCode(variant.code, variant.language)) {
-          report.skipped++;
-          continue;
-        }
-
-        const coherency = computeCoherencyScore(variant.code, {
-          language: variant.language,
-          testPassed: null,
-          historicalReliability: 0.5,
-        });
-
-        if (coherency.total >= minCoherency) {
-          this.oracle.patterns.addCandidate({
-            name: variant.name,
-            code: variant.code,
-            language: variant.language,
-            patternType: variant.patternType,
-            description: variant.description,
-            tags: [...(variant.tags || []), 'candidate', 'auto-generated'],
-            coherencyTotal: coherency.total,
-            coherencyScore: coherency,
-            testCode: variant.testCode,
-            parentPattern: pattern.name,
-            generationMethod: 'variant',
-          });
-          report.stored++;
-          report.candidates.push(variant.name);
-          candidateNames.add(variant.name);
-        } else {
-          report.skipped++;
-        }
-      }
+    if (methods.includes('variant')) {
+      this._generateVariants(pattern, languages, report, knownNames, minCoherency, ['auto-generated']);
     }
-
-    // Method 2: SERF refinement
     if (methods.includes('serf-refine')) {
-      const refinedName = `${pattern.name}-refined`;
-      if (!patternNames.has(refinedName) && !candidateNames.has(refinedName)) {
-        const reflection = reflectionLoop(pattern.code, {
-          language: pattern.language,
-          maxLoops: 2,
-          targetCoherence: 0.95,
-          description: pattern.description,
-          tags: pattern.tags,
-        });
-
-        if (reflection.code.trim() !== pattern.code.trim()) {
-          report.generated++;
-          const coherency = computeCoherencyScore(reflection.code, {
-            language: pattern.language,
-            testPassed: null,
-            historicalReliability: 0.5,
-          });
-
-          if (coherency.total >= minCoherency) {
-            this.oracle.patterns.addCandidate({
-              name: refinedName,
-              code: reflection.code,
-              language: pattern.language,
-              patternType: pattern.patternType,
-              description: `${pattern.description} (SERF refined)`,
-              tags: [...(pattern.tags || []), 'candidate', 'serf-refined', 'auto-generated'],
-              coherencyTotal: coherency.total,
-              coherencyScore: coherency,
-              testCode: pattern.testCode,
-              parentPattern: pattern.name,
-              generationMethod: 'serf-refine',
-            });
-            report.stored++;
-            report.candidates.push(refinedName);
-          } else {
-            report.skipped++;
-          }
-        }
-      }
+      this._generateSerfRefine(pattern, report, knownNames, minCoherency, ['auto-generated']);
     }
 
     return report;

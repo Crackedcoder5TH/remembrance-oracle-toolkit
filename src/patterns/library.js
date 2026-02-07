@@ -65,7 +65,7 @@ function tryGetSQLite(storeDir) {
     }
     VerifiedHistoryStore._sqliteInstances.set(storeDir, instance);
     return instance;
-  } catch {}
+  } catch { /* SQLite not available — fall back to JSON */ }
   return null;
 }
 
@@ -186,7 +186,8 @@ class PatternLibrary {
       };
     }
 
-    if (best.composite >= THRESHOLDS.evolve && best.relevance >= 0.2) {
+    const evolveThreshold = Math.min(threshold, THRESHOLDS.evolve);
+    if (best.composite >= evolveThreshold && best.relevance >= 0.2) {
       return {
         decision: 'evolve',
         pattern: best.pattern,
@@ -292,7 +293,7 @@ class PatternLibrary {
     if (this._backend === 'sqlite') {
       return this._sqlite.pruneCandidates(minCoherency);
     }
-    return { removed: 0, remaining: 0 };
+    return this._pruneCandidatesJSON(minCoherency);
   }
 
   // ─── JSON candidate fallback ───
@@ -370,6 +371,14 @@ class PatternLibrary {
         ? Math.round(unpromoted.reduce((s, c) => s + (c.coherencyTotal ?? 0), 0) / unpromoted.length * 1000) / 1000
         : 0,
     };
+  }
+
+  _pruneCandidatesJSON(minCoherency) {
+    const data = this._readCandidatesJSON();
+    const before = data.candidates.length;
+    data.candidates = data.candidates.filter(c => (c.coherencyTotal ?? 0) >= minCoherency);
+    this._writeCandidatesJSON(data);
+    return { removed: before - data.candidates.length, remaining: data.candidates.length };
   }
 
   // ─── Composition ───
@@ -538,17 +547,18 @@ class PatternLibrary {
       description: metadata.description || `Evolved from: ${parent.description}`,
     });
 
-    evolved.evolutionHistory = [...(parent.evolutionHistory || []), { parentId, evolvedAt: new Date().toISOString() }];
-    parent.evolutionHistory = [...(parent.evolutionHistory || []), { childId: evolved.id, evolvedAt: new Date().toISOString() }];
-    parent.updatedAt = new Date().toISOString();
-
+    // Re-read after register() wrote — single read for both updates
+    const now = new Date().toISOString();
     const freshData = this._readJSON();
     const evolvedRecord = freshData.patterns.find(p => p.id === evolved.id);
     const parentRecord = freshData.patterns.find(p => p.id === parentId);
-    if (evolvedRecord) evolvedRecord.evolutionHistory = evolved.evolutionHistory;
+    if (evolvedRecord) {
+      evolvedRecord.evolutionHistory = [...(parent.evolutionHistory || []), { parentId, evolvedAt: now }];
+      evolved.evolutionHistory = evolvedRecord.evolutionHistory;
+    }
     if (parentRecord) {
-      parentRecord.evolutionHistory = parent.evolutionHistory;
-      parentRecord.updatedAt = parent.updatedAt;
+      parentRecord.evolutionHistory = [...(parentRecord.evolutionHistory || []), { childId: evolved.id, evolvedAt: now }];
+      parentRecord.updatedAt = now;
     }
     this._writeJSON(freshData);
     return evolved;

@@ -1470,6 +1470,22 @@ ${c.bold('Options:')}
     process.exit(1);
   }
 
+  if (cmd === 'cloud') {
+    const { CloudSyncServer } = require('./cloud/server');
+    const sub = process.argv[3];
+    if (sub === 'start') {
+      const port = parseInt(args.port) || 3579;
+      const server = new CloudSyncServer({ oracle, port, secret: args.secret });
+      server.start().then((p) => {
+        console.log(`${c.boldGreen('Cloud Sync Server')} running on ${c.cyan('http://localhost:' + p)}`);
+        console.log(`${c.dim('Endpoints: /api/auth, /api/patterns, /api/search, /api/sync, /api/debug, /ws')}`);
+      });
+      return;
+    }
+    console.log(`Usage: ${c.cyan('oracle cloud start')} [--port 3579] [--secret <key>]`);
+    return;
+  }
+
   console.error(`${c.boldRed('Unknown command:')} ${cmd}. Run ${c.cyan("'remembrance-oracle help'")} for usage.`);
   process.exit(1);
 }

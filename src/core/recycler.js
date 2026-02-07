@@ -856,7 +856,7 @@ class PatternRecycler {
       // Method 2: SERF refinement → candidates with improved coherency
       if (methods.includes('serf-refine')) {
         const refinedName = `${pattern.name}-refined`;
-        if (patternNames.has(refinedName) || candidateNames.has(refinedName)) continue;
+        if (!patternNames.has(refinedName) && !candidateNames.has(refinedName)) {
 
         const reflection = reflectionLoop(pattern.code, {
           language: pattern.language,
@@ -867,8 +867,8 @@ class PatternRecycler {
           cascadeBoost: this._cascadeBoost,
         });
 
-        // Only store if SERF actually improved the code
-        if (reflection.serf.improvement > 0.01 && reflection.code.trim() !== pattern.code.trim()) {
+        // Store if SERF changed the code at all (even small style improvements count)
+        if (reflection.code.trim() !== pattern.code.trim()) {
           report.generated++;
 
           const coherency = computeCoherencyScore(reflection.code, {
@@ -903,6 +903,7 @@ class PatternRecycler {
             report.skipped++;
           }
         }
+        } // end: not duplicate check
       }
 
       // Method 3: Approach swaps → candidates

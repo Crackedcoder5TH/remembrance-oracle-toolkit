@@ -25,6 +25,8 @@ class RemembranceOracle {
     this.patterns = options.patterns || new PatternLibrary(storeDir);
     this.threshold = options.threshold || 0.6;
     this._listeners = [];
+    this.autoGrow = options.autoGrow !== false;  // Auto-generate candidates on proven code
+    this.autoSync = options.autoSync || false;    // Auto-sync to personal store on proven code
     this.recycler = new PatternRecycler(this, {
       maxHealAttempts: options.maxHealAttempts || 3,
       maxSerfLoops: options.maxSerfLoops || 5,
@@ -187,6 +189,50 @@ class RemembranceOracle {
     }
   }
 
+  /**
+   * Auto-grow: spawn candidates from a newly proven pattern.
+   * Called automatically after registerPattern() and submit() succeed.
+   *
+   * Generates language variants + SERF refinements as unproven candidates.
+   * Also syncs the new pattern to the personal store if autoSync is enabled.
+   */
+  _autoGrowFrom(pattern) {
+    const report = { candidates: 0, synced: false };
+
+    // Auto-generate candidates (variants + SERF refinements)
+    if (this.autoGrow && pattern) {
+      try {
+        const growth = this.recycler.generateFromPattern(pattern);
+        report.candidates = growth.stored;
+        report.candidateNames = growth.candidates;
+        this._emit({
+          type: 'auto_grow',
+          pattern: pattern.name,
+          candidatesGenerated: growth.stored,
+          candidates: growth.candidates,
+        });
+      } catch {
+        // Auto-grow is best-effort — don't break the registration
+      }
+    }
+
+    // Auto-sync to personal store
+    if (this.autoSync) {
+      try {
+        const { syncToGlobal } = require('../core/persistence');
+        const sqliteStore = this.store.getSQLiteStore();
+        if (sqliteStore) {
+          syncToGlobal(sqliteStore, { minCoherency: 0.6 });
+          report.synced = true;
+        }
+      } catch {
+        // Auto-sync is best-effort
+      }
+    }
+
+    return report;
+  }
+
   // ─── Pattern Library Methods ───
 
   /**
@@ -274,10 +320,14 @@ class RemembranceOracle {
 
     this._emit({ type: 'pattern_registered', id: registered.id, name: pattern.name, language: registered.language });
 
+    // Auto-grow: spawn candidates from this newly proven pattern
+    const growthReport = this._autoGrowFrom(registered);
+
     return {
       registered: true,
       pattern: registered,
       validation,
+      growth: growthReport,
     };
   }
 

@@ -198,7 +198,7 @@ describe('Test Synthesizer', () => {
 
     beforeEach(() => {
       tmpDir = makeTempDir();
-      oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, generateVariants: false });
+      oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, generateVariants: false, autoGrow: false });
     });
 
     it('synthesizes tests for candidates', () => {

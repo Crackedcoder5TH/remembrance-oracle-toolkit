@@ -18,7 +18,7 @@ describe('PatternRecycler', () => {
 
   beforeEach(() => {
     tmpDir = makeTempDir();
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, generateVariants: false });
+    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, generateVariants: false, autoGrow: false });
     recycler = new PatternRecycler(oracle, { maxHealAttempts: 2, maxSerfLoops: 2, generateVariants: false });
   });
 
@@ -506,6 +506,77 @@ return result
       const stats = oracle.candidateStats();
       assert.equal(stats.totalCandidates, 1);
       assert.equal(stats.byMethod['serf-refine'], 1);
+    });
+  });
+
+  describe('auto-grow on register', () => {
+    it('registerPattern spawns candidates automatically', () => {
+      const growOracle = new RemembranceOracle({
+        baseDir: makeTempDir(),
+        autoSeed: false,
+        autoGrow: true,
+      });
+
+      const result = growOracle.registerPattern({
+        name: 'auto-grow-test',
+        code: 'function autoGrow(arr) { return arr.filter(x => x > 0); }',
+        testCode: 'if (autoGrow([1, -1, 2]).length !== 2) throw new Error("fail");',
+        language: 'javascript',
+        description: 'Filter positive numbers',
+        tags: ['array', 'filter'],
+        patternType: 'utility',
+      });
+
+      assert.ok(result.registered);
+      assert.ok(result.growth);
+      assert.ok(result.growth.candidates >= 0);
+    });
+
+    it('autoGrow: false disables candidate spawning', () => {
+      const noGrowOracle = new RemembranceOracle({
+        baseDir: makeTempDir(),
+        autoSeed: false,
+        autoGrow: false,
+      });
+
+      const result = noGrowOracle.registerPattern({
+        name: 'no-grow-test',
+        code: 'function noGrow(n) { return n * 2; }',
+        testCode: 'if (noGrow(3) !== 6) throw new Error("fail");',
+        language: 'javascript',
+        description: 'Double a number',
+        tags: ['math'],
+        patternType: 'utility',
+      });
+
+      assert.ok(result.registered);
+      assert.equal(result.growth.candidates, 0);
+    });
+
+    it('generateFromPattern spawns variants for a single pattern', () => {
+      const singleOracle = new RemembranceOracle({
+        baseDir: makeTempDir(),
+        autoSeed: false,
+        autoGrow: false,
+      });
+
+      singleOracle.registerPattern({
+        name: 'single-gen',
+        code: 'function identity(x) { return x; }',
+        testCode: 'if (identity(1) !== 1) throw new Error("fail");',
+        language: 'javascript',
+        description: 'Identity function',
+        tags: ['utility'],
+        patternType: 'utility',
+      });
+
+      const pattern = singleOracle.patterns.getAll()[0];
+      const report = singleOracle.recycler.generateFromPattern(pattern);
+
+      assert.ok(report);
+      assert.ok(report.generated >= 0);
+      assert.ok(report.stored >= 0);
+      assert.ok(Array.isArray(report.candidates));
     });
   });
 });

@@ -962,6 +962,122 @@ class PatternRecycler {
   }
 
   /**
+   * Generate candidates from a single pattern.
+   * Called automatically when a pattern is proven (registered/submitted).
+   * Runs variant + serf-refine + approach-swap for one pattern only.
+   *
+   * @param {object} pattern - A proven pattern object
+   * @param {object} options - { languages, methods, minCoherency }
+   * @returns {{ generated, stored, skipped, duplicates }}
+   */
+  generateFromPattern(pattern, options = {}) {
+    const {
+      languages = this.variantLanguages,
+      minCoherency = 0.5,
+      methods = ['variant', 'serf-refine'],
+    } = options;
+
+    const report = { generated: 0, stored: 0, skipped: 0, duplicates: 0, candidates: [] };
+
+    const proven = this.oracle.patterns.getAll();
+    const existingCandidates = this.oracle.patterns.getCandidates();
+    const patternNames = new Set(proven.map(p => p.name));
+    const candidateNames = new Set(existingCandidates.map(c => c.name));
+
+    // Method 1: Language variants
+    if (methods.includes('variant') && pattern.language === 'javascript') {
+      for (const lang of languages) {
+        const variant = this._transpileToLanguage(pattern, lang);
+        if (!variant) continue;
+
+        report.generated++;
+        if (patternNames.has(variant.name) || candidateNames.has(variant.name)) {
+          report.duplicates++;
+          continue;
+        }
+
+        const { isViableCode } = require('./test-synth');
+        if (!isViableCode(variant.code, variant.language)) {
+          report.skipped++;
+          continue;
+        }
+
+        const coherency = computeCoherencyScore(variant.code, {
+          language: variant.language,
+          testPassed: null,
+          historicalReliability: 0.5,
+        });
+
+        if (coherency.total >= minCoherency) {
+          this.oracle.patterns.addCandidate({
+            name: variant.name,
+            code: variant.code,
+            language: variant.language,
+            patternType: variant.patternType,
+            description: variant.description,
+            tags: [...(variant.tags || []), 'candidate', 'auto-generated'],
+            coherencyTotal: coherency.total,
+            coherencyScore: coherency,
+            testCode: variant.testCode,
+            parentPattern: pattern.name,
+            generationMethod: 'variant',
+          });
+          report.stored++;
+          report.candidates.push(variant.name);
+          candidateNames.add(variant.name);
+        } else {
+          report.skipped++;
+        }
+      }
+    }
+
+    // Method 2: SERF refinement
+    if (methods.includes('serf-refine')) {
+      const refinedName = `${pattern.name}-refined`;
+      if (!patternNames.has(refinedName) && !candidateNames.has(refinedName)) {
+        const reflection = reflectionLoop(pattern.code, {
+          language: pattern.language,
+          maxLoops: 2,
+          targetCoherence: 0.95,
+          description: pattern.description,
+          tags: pattern.tags,
+        });
+
+        if (reflection.code.trim() !== pattern.code.trim()) {
+          report.generated++;
+          const coherency = computeCoherencyScore(reflection.code, {
+            language: pattern.language,
+            testPassed: null,
+            historicalReliability: 0.5,
+          });
+
+          if (coherency.total >= minCoherency) {
+            this.oracle.patterns.addCandidate({
+              name: refinedName,
+              code: reflection.code,
+              language: pattern.language,
+              patternType: pattern.patternType,
+              description: `${pattern.description} (SERF refined)`,
+              tags: [...(pattern.tags || []), 'candidate', 'serf-refined', 'auto-generated'],
+              coherencyTotal: coherency.total,
+              coherencyScore: coherency,
+              testCode: pattern.testCode,
+              parentPattern: pattern.name,
+              generationMethod: 'serf-refine',
+            });
+            report.stored++;
+            report.candidates.push(refinedName);
+          } else {
+            report.skipped++;
+          }
+        }
+      }
+    }
+
+    return report;
+  }
+
+  /**
    * Promote a candidate to a proven pattern by providing test proof.
    * The candidate's code gets run through the full oracle pipeline with
    * the provided testCode. If it passes, it becomes a proven pattern.

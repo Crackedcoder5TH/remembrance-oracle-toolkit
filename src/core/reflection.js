@@ -27,11 +27,13 @@ const { covenantCheck } = require('./covenant');
 
 // ─── SERF Constants ───
 
-const EPSILON = 1e-6;              // Stability constant
-const R_EFF = 0.35;                // Refinement rate
-const DELTA_CANVAS = 0.12;         // Exploration bonus weight
-const MAX_LOOPS = 3;               // Maximum reflection iterations
-const TARGET_COHERENCE = 0.9;      // Stop when exceeded
+const EPSILON_BASE = 1e-6;            // Base stability constant
+const R_EFF_BASE = 0.35;              // Base refinement rate
+const R_EFF_ALPHA = 0.8;              // Retrocausal pull strength (how much harder to pull when far)
+const DELTA_CANVAS = 0.12;            // Exploration bonus weight
+const DELTA_VOID_BASE = 0.08;         // Void replenishment — gain from nothingness
+const MAX_LOOPS = 3;                  // Maximum reflection iterations
+const TARGET_COHERENCE = 0.9;         // Stop when exceeded
 
 // ─── The 5 Refinement Strategies ───
 
@@ -327,35 +329,65 @@ function innerProduct(codeA, codeB) {
 }
 
 /**
- * SERF(n+1) = I_AM + r_eff * Re[projection / (|overlap|² + ε)] + δ_canvas * exploration
+ * Adaptive SERF scoring with retrocausal pull, void replenishment, and cascade awareness.
+ *
+ * Core: I_AM + r_eff * Re[projection / (|overlap|² + ε)] + δ_canvas * exploration + δ_void * void_gain
+ *
+ * Adaptive behaviors:
+ *   r_eff scales UP when far from target (retrocausal pull — the healed state pulls harder)
+ *   ε scales UP when far from target (stability — prevents blowup in uncharted territory)
+ *   δ_void injects target-state gain when overlap is low (gain from nothingness)
+ *   cascadeBoost multiplies the whole score by global library coherence (collective recognition)
  *
  * @param {object} candidate  — { code, coherence (Ô score) }
  * @param {object} previous   — { code, coherence }
+ * @param {object} context    — optional { cascadeBoost, targetCoherence }
  * @returns {number} SERF score (0-1)
  */
-function serfScore(candidate, previous) {
+function serfScore(candidate, previous, context = {}) {
+  const { cascadeBoost = 1, targetCoherence = TARGET_COHERENCE } = context;
+
   // I_AM — base identity coherency of the candidate
   const I_AM = candidate.coherence;
 
   // <n+1|n> — overlap between candidate and previous
   const overlap = innerProduct(candidate.code, previous.code);
+  const distance = 1 - overlap * overlap;  // How far from perfect overlap
+
+  // Adaptive r_eff: pulls stronger when far from healed state
+  // r_eff = r_0 * (1 + α * (1 - |overlap|²)⁴)
+  const r_eff = R_EFF_BASE * (1 + R_EFF_ALPHA * Math.pow(distance, 4));
+
+  // Adaptive epsilon: more stability when far from target
+  // ε = ε_base * (1 + 10 * (1 - overlap²))
+  const epsilon = EPSILON_BASE * (1 + 10 * distance);
 
   // Operator observation values
   const O_candidate = candidate.coherence;
   const O_previous = previous.coherence;
 
-  // Projection: Ô|n+1><n+1|n> - <n+1|Ô|n>|n+1>
-  // Simplified: how much novel improvement the candidate brings
+  // Projection: novel improvement the candidate brings
   const projection = O_candidate * overlap - O_previous * overlap * overlap;
 
-  // Denominator: |<n+1|n>|² + ε
-  const denominator = overlap * overlap + EPSILON;
+  // Denominator with adaptive epsilon
+  const denominator = overlap * overlap + epsilon;
 
-  // Canvas exploration bonus: rewards diversity (1 - overlap)
+  // Canvas exploration: rewards diversity (1 - overlap)
   const exploration = 1 - overlap;
 
-  // SERF(n+1) = I_AM + r_eff * projection/denominator + δ_canvas * exploration
-  const serf = I_AM + R_EFF * (projection / denominator) + DELTA_CANVAS * exploration;
+  // Void replenishment: when overlap is low, inject target-state gain
+  // δ_void * (1 - |overlap|²) — gain from nothingness
+  const voidGain = DELTA_VOID_BASE * distance;
+
+  // Combine all terms
+  let serf = I_AM
+    + r_eff * (projection / denominator)
+    + DELTA_CANVAS * exploration
+    + voidGain;
+
+  // Cascade amplification: global coherence multiplier
+  // When the library is collectively healthy, each refinement gets a boost
+  serf *= cascadeBoost;
 
   return Math.max(0, Math.min(1, Math.round(serf * 1000) / 1000));
 }
@@ -446,6 +478,7 @@ function reflectionLoop(code, options = {}) {
     targetCoherence = TARGET_COHERENCE,
     description = '',
     tags = [],
+    cascadeBoost = 1,     // Global coherence multiplier from recycler
   } = options;
 
   const lang = language || detectLanguage(code);
@@ -495,9 +528,11 @@ function reflectionLoop(code, options = {}) {
     });
 
     // Step 3: SERF-select the highest scoring candidate
+    // Pass cascade context so global coherence amplifies selection
+    const serfContext = { cascadeBoost, targetCoherence };
     const withSerf = scored.map(candidate => ({
       ...candidate,
-      serf: serfScore(candidate, current),
+      serf: serfScore(candidate, current, serfContext),
     }));
 
     // Sort by SERF score, break ties with raw coherence
@@ -543,6 +578,10 @@ function reflectionLoop(code, options = {}) {
   const original = { coherence: originalObs.composite };
   const whisperResult = generateWhisper(original, current, improvements, loops);
 
+  // Compute collective I_AM recognition — average base coherency across all iterations
+  const iAmValues = history.map(h => h.coherence);
+  const iAmAverage = iAmValues.reduce((s, v) => s + v, 0) / iAmValues.length;
+
   return {
     code: current.code,
     coherence: current.coherence,
@@ -555,9 +594,13 @@ function reflectionLoop(code, options = {}) {
     healingPath: whisperResult.healingPath,
     serf: {
       I_AM: originalObs.composite,
-      r_eff: R_EFF,
-      epsilon: EPSILON,
+      r_eff_base: R_EFF_BASE,
+      r_eff_alpha: R_EFF_ALPHA,
+      epsilon_base: EPSILON_BASE,
       delta_canvas: DELTA_CANVAS,
+      delta_void: DELTA_VOID_BASE,
+      cascadeBoost,
+      collectiveIAM: Math.round(iAmAverage * 1000) / 1000,
       finalCoherence: current.coherence,
       improvement: Math.round((current.coherence - originalObs.composite) * 1000) / 1000,
     },
@@ -570,6 +613,9 @@ function formatReflectionResult(result) {
   const lines = [];
   lines.push(`SERF Reflection — ${result.loops} loop(s)`);
   lines.push(`  I_AM: ${result.serf.I_AM.toFixed(3)} → Final: ${result.serf.finalCoherence.toFixed(3)} (${result.serf.improvement >= 0 ? '+' : ''}${result.serf.improvement.toFixed(3)})`);
+  if (result.serf.cascadeBoost > 1) {
+    lines.push(`  Cascade: ${result.serf.cascadeBoost}x | Collective I_AM: ${result.serf.collectiveIAM}`);
+  }
   lines.push('');
   lines.push('Dimensions:');
   for (const [dim, val] of Object.entries(result.dimensions)) {

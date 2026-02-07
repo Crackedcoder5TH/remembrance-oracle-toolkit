@@ -342,9 +342,13 @@ describe('reflectionLoop', () => {
     assert.ok(Array.isArray(result.healingPath));
     assert.ok(result.serf);
     assert.ok(typeof result.serf.I_AM === 'number');
-    assert.ok(typeof result.serf.r_eff === 'number');
-    assert.ok(typeof result.serf.epsilon === 'number');
+    assert.ok(typeof result.serf.r_eff_base === 'number');
+    assert.ok(typeof result.serf.r_eff_alpha === 'number');
+    assert.ok(typeof result.serf.epsilon_base === 'number');
     assert.ok(typeof result.serf.delta_canvas === 'number');
+    assert.ok(typeof result.serf.delta_void === 'number');
+    assert.ok(typeof result.serf.cascadeBoost === 'number');
+    assert.ok(typeof result.serf.collectiveIAM === 'number');
     assert.ok(typeof result.serf.finalCoherence === 'number');
     assert.ok(typeof result.serf.improvement === 'number');
   });

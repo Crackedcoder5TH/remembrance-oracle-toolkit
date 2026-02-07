@@ -121,6 +121,12 @@ const APPROACH_SWAPS = [
 
 // ─── The Recycler ───
 
+// ─── Cascade Constants ───
+
+const CASCADE_BETA = 2.5;             // Exponential scaling factor for global coherence
+const CASCADE_GAMMA_BASE = 0.05;      // Base cascade amplification strength
+const VOID_SCAFFOLD_THRESHOLD = 0.3;  // Below this coherency, inject scaffolding from library
+
 class PatternRecycler {
   constructor(oracle, options = {}) {
     this.oracle = oracle;
@@ -134,6 +140,10 @@ class PatternRecycler {
     // Failed pattern buffer — patterns waiting to be recycled
     this._failed = [];
 
+    // Global coherence state — updated each cycle
+    this._xiGlobal = 0;
+    this._cascadeBoost = 1;
+
     // Stats
     this.stats = {
       captured: 0,
@@ -144,7 +154,91 @@ class PatternRecycler {
       stillFailed: 0,
       totalAttempts: 0,
       approachSwaps: 0,
+      voidReplenishments: 0,
+      cascadeBoost: 1,
+      xiGlobal: 0,
     };
+  }
+
+  /**
+   * Compute global coherence (ξ_global) across the full pattern library.
+   * This is the average coherency of all stored patterns — a measure of
+   * collective health. When high, cascade amplification kicks in.
+   *
+   * Also computes cascade boost: γ_cascade = γ_base * exp(β * ξ_global) * avg_I_AM
+   */
+  _updateGlobalCoherence() {
+    const all = this.oracle.patterns.getAll();
+    if (all.length === 0) {
+      this._xiGlobal = 0;
+      this._cascadeBoost = 1;
+      return;
+    }
+
+    // ξ_global = average coherency across all N patterns
+    const coherencies = all.map(p => p.coherencyScore?.total ?? 0);
+    const xiGlobal = coherencies.reduce((s, c) => s + c, 0) / coherencies.length;
+
+    // Average I_AM recognition: how many patterns are above threshold
+    const iAmValues = coherencies.map(c => c >= this.oracle.threshold ? c : 0);
+    const avgIAM = iAmValues.reduce((s, v) => s + v, 0) / iAmValues.length;
+
+    // Cascade: γ_cascade = 1 + γ_base * exp(β * ξ_global) * avg_I_AM
+    // When ξ_global is high (0.9+), this gives ~1.15x boost
+    // When ξ_global is low (0.3), this gives ~1.01x — almost no boost
+    const cascadeBoost = 1 + CASCADE_GAMMA_BASE * Math.exp(CASCADE_BETA * xiGlobal) * avgIAM;
+
+    this._xiGlobal = Math.round(xiGlobal * 1000) / 1000;
+    this._cascadeBoost = Math.round(cascadeBoost * 1000) / 1000;
+
+    this.stats.xiGlobal = this._xiGlobal;
+    this.stats.cascadeBoost = this._cascadeBoost;
+
+    if (this.verbose) {
+      console.log(`  [CASCADE] ξ_global=${this._xiGlobal}, boost=${this._cascadeBoost}x (N=${all.length})`);
+    }
+  }
+
+  /**
+   * Void replenishment: when a pattern is deeply stuck (very low coherency),
+   * find the nearest healthy pattern in the library and use its structure
+   * as scaffolding — inject the skeleton of a working pattern to bootstrap recovery.
+   */
+  _voidReplenish(pattern) {
+    const allPatterns = this.oracle.patterns.getAll();
+    if (allPatterns.length === 0) return null;
+
+    // Find the nearest healthy pattern by tag overlap + language match
+    const patternTags = new Set(pattern.tags || []);
+    let bestMatch = null;
+    let bestScore = -1;
+
+    for (const candidate of allPatterns) {
+      if (candidate.language !== pattern.language) continue;
+      const score = candidate.coherencyScore?.total ?? 0;
+      if (score < 0.8) continue;  // Only use high-coherency scaffolds
+
+      // Tag overlap
+      const candidateTags = new Set(candidate.tags || []);
+      const overlap = [...patternTags].filter(t => candidateTags.has(t)).length;
+      const tagScore = patternTags.size > 0 ? overlap / patternTags.size : 0;
+
+      // Combined: coherency * tag relevance
+      const combined = score * 0.4 + tagScore * 0.6;
+      if (combined > bestScore) {
+        bestScore = combined;
+        bestMatch = candidate;
+      }
+    }
+
+    if (!bestMatch) return null;
+
+    this.stats.voidReplenishments++;
+    if (this.verbose) {
+      console.log(`  [VOID] Scaffolding from ${bestMatch.name} (coherency ${bestMatch.coherencyScore?.total.toFixed(3)})`);
+    }
+
+    return bestMatch;
   }
 
   /**
@@ -189,6 +283,10 @@ class PatternRecycler {
    */
   recycleFailed(options = {}) {
     const { maxPatterns = Infinity, language = null } = options;
+
+    // Update global coherence before healing — cascade boost applies to all SERF calls
+    this._updateGlobalCoherence();
+
     const pending = this._failed
       .filter(f => f.status === 'pending')
       .filter(f => !language || f.pattern.language === language)
@@ -200,6 +298,8 @@ class PatternRecycler {
       variantsSpawned: 0,
       variantsAccepted: 0,
       exhausted: 0,
+      cascadeBoost: this._cascadeBoost,
+      xiGlobal: this._xiGlobal,
       details: [],
     };
 
@@ -244,12 +344,17 @@ class PatternRecycler {
   processSeeds(seeds, options = {}) {
     const { depth = 2, maxVariantsPerPattern = 3 } = options;
 
+    // Compute initial global coherence — this drives cascade amplification
+    this._updateGlobalCoherence();
+
     const report = {
       registered: 0,
       failed: 0,
       recycled: 0,
       variants: { spawned: 0, accepted: 0 },
       approaches: { spawned: 0, accepted: 0 },
+      xiGlobal: this._xiGlobal,
+      cascadeBoost: this._cascadeBoost,
       depth,
       waves: [],
     };
@@ -351,13 +456,22 @@ class PatternRecycler {
       // Heal any new failures from this wave
       const waveRecycle = this.recycleFailed();
       wave.healed = waveRecycle.healed;
+      wave.cascadeBoost = this._cascadeBoost;
       report.recycled += waveRecycle.healed;
       report.waves.push(wave);
+
+      // Recompute global coherence after each wave — cascade compounds
+      this._updateGlobalCoherence();
 
       currentPatterns = nextWavePatterns;
     }
 
+    // Final state
+    this._updateGlobalCoherence();
     report.total = this.oracle.patterns.getAll().length;
+    report.xiGlobal = this._xiGlobal;
+    report.cascadeBoost = this._cascadeBoost;
+    report.voidReplenishments = this.stats.voidReplenishments;
     return report;
   }
 
@@ -370,6 +484,8 @@ class PatternRecycler {
       language: pattern.language,
       originalReason: entry.failureReason,
       healed: false,
+      voidScaffold: null,
+      cascadeBoost: this._cascadeBoost,
       attempts: [],
     };
 
@@ -377,13 +493,32 @@ class PatternRecycler {
       entry.attempts++;
       this.stats.totalAttempts++;
 
-      // Run SERF reflection
-      const reflection = reflectionLoop(pattern.code, {
+      let codeToHeal = pattern.code;
+
+      // Void replenishment: when coherency is deeply stuck, inject scaffolding
+      // from the nearest healthy pattern to bootstrap recovery
+      if (attempt > 0 && entry.healHistory.length > 0) {
+        const lastCoherence = entry.healHistory[entry.healHistory.length - 1].afterCoherence;
+        if (lastCoherence < VOID_SCAFFOLD_THRESHOLD) {
+          const scaffold = this._voidReplenish(pattern);
+          if (scaffold) {
+            // Inject the scaffold's structure as a comment-guide at the top
+            // This gives SERF's transforms something healthy to work from
+            const scaffoldHint = `// Scaffold from ${scaffold.name} (coherency ${scaffold.coherencyScore?.total?.toFixed(3)})\n`;
+            codeToHeal = scaffoldHint + pattern.code;
+            detail.voidScaffold = scaffold.name;
+          }
+        }
+      }
+
+      // Run SERF reflection with cascade boost from global coherence
+      const reflection = reflectionLoop(codeToHeal, {
         language: pattern.language,
         maxLoops: this.maxSerfLoops,
         targetCoherence: this.targetCoherence,
         description: pattern.description,
         tags: pattern.tags,
+        cascadeBoost: this._cascadeBoost,
       });
 
       const attemptDetail = {
@@ -392,13 +527,17 @@ class PatternRecycler {
         afterCoherence: reflection.serf.finalCoherence,
         loops: reflection.loops,
         improvement: reflection.serf.improvement,
+        cascadeBoost: this._cascadeBoost,
       };
+
+      // Strip scaffold hint from healed code if present
+      let healedCode = reflection.code.replace(/\/\/\s*Scaffold from.*\n?/, '');
 
       // Try to register the healed code
       const healedPattern = {
         ...pattern,
         name: pattern.name,
-        code: reflection.code,
+        code: healedCode,
       };
 
       const regResult = this.oracle.registerPattern(healedPattern);
@@ -413,8 +552,11 @@ class PatternRecycler {
         entry.healHistory.push(attemptDetail);
         detail.attempts.push(attemptDetail);
 
+        // Update global coherence after successful heal — cascade compounds
+        this._updateGlobalCoherence();
+
         if (this.verbose) {
-          console.log(`  [HEALED] ${pattern.name} — attempt ${attempt + 1}, coherency ${attemptDetail.coherency.toFixed(3)}`);
+          console.log(`  [HEALED] ${pattern.name} — attempt ${attempt + 1}, coherency ${attemptDetail.coherency.toFixed(3)} (cascade ${this._cascadeBoost}x)`);
         }
         return detail;
       }
@@ -425,7 +567,7 @@ class PatternRecycler {
       detail.attempts.push(attemptDetail);
 
       // Use healed code as input for next attempt
-      pattern.code = reflection.code;
+      pattern.code = healedCode;
     }
 
     this.stats.stillFailed++;
@@ -641,11 +783,18 @@ class PatternRecycler {
     lines.push(`Depth:                ${report.depth}`);
     lines.push(`Total in library:     ${report.total}`);
     lines.push('');
+    lines.push(`Global coherence:     ${report.xiGlobal ?? '?'}`);
+    lines.push(`Cascade boost:        ${report.cascadeBoost ?? 1}x`);
+    if (report.voidReplenishments) {
+      lines.push(`Void replenishments:  ${report.voidReplenishments}`);
+    }
+    lines.push('');
 
     if (report.waves.length > 0) {
       lines.push('Waves:');
       for (const w of report.waves) {
-        lines.push(`  [${w.wave}] ${w.label}: +${w.registered} registered, ${w.failed} failed, ${w.healed} healed, ${w.variants || 0} variants`);
+        const boost = w.cascadeBoost ? ` (cascade ${w.cascadeBoost}x)` : '';
+        lines.push(`  [${w.wave}] ${w.label}: +${w.registered} registered, ${w.failed} failed, ${w.healed} healed, ${w.variants || 0} variants${boost}`);
       }
     }
 

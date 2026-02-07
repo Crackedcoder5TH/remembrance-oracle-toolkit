@@ -288,4 +288,224 @@ return result
       assert.ok(recycler.stats.captured >= 0);
     });
   });
+
+  describe('candidates — two-tier system', () => {
+    it('addCandidate stores a coherent-but-unproven pattern', () => {
+      oracle.patterns.addCandidate({
+        name: 'candidate-add',
+        code: 'function add(a, b) { return a + b; }',
+        language: 'javascript',
+        description: 'Add two numbers',
+        tags: ['math', 'candidate'],
+        coherencyTotal: 0.75,
+        coherencyScore: { total: 0.75 },
+        parentPattern: 'parent-add',
+        generationMethod: 'variant',
+      });
+
+      const candidates = oracle.patterns.getCandidates();
+      assert.equal(candidates.length, 1);
+      assert.equal(candidates[0].name, 'candidate-add');
+      assert.equal(candidates[0].parentPattern, 'parent-add');
+      assert.equal(candidates[0].generationMethod, 'variant');
+      assert.equal(candidates[0].promotedAt, null);
+    });
+
+    it('getCandidates filters by language', () => {
+      oracle.patterns.addCandidate({
+        name: 'js-cand', code: 'function f() {}', language: 'javascript',
+        coherencyTotal: 0.7, generationMethod: 'variant',
+      });
+      oracle.patterns.addCandidate({
+        name: 'py-cand', code: 'def f(): pass', language: 'python',
+        coherencyTotal: 0.7, generationMethod: 'variant',
+      });
+
+      assert.equal(oracle.patterns.getCandidates().length, 2);
+      assert.equal(oracle.patterns.getCandidates({ language: 'python' }).length, 1);
+      assert.equal(oracle.patterns.getCandidates({ language: 'javascript' }).length, 1);
+    });
+
+    it('candidateSummary returns correct stats', () => {
+      oracle.patterns.addCandidate({
+        name: 'c1', code: 'function c1() { return 1; }', language: 'javascript',
+        coherencyTotal: 0.8, generationMethod: 'variant',
+      });
+      oracle.patterns.addCandidate({
+        name: 'c2', code: 'def c2(): return 2', language: 'python',
+        coherencyTotal: 0.6, generationMethod: 'serf-refine',
+      });
+
+      const summary = oracle.patterns.candidateSummary();
+      assert.equal(summary.totalCandidates, 2);
+      assert.equal(summary.promoted, 0);
+      assert.equal(summary.byLanguage.javascript, 1);
+      assert.equal(summary.byLanguage.python, 1);
+      assert.ok(summary.avgCoherency > 0);
+    });
+
+    it('promoteCandidate marks candidate as promoted', () => {
+      const cand = oracle.patterns.addCandidate({
+        name: 'to-promote', code: 'function p() { return 42; }', language: 'javascript',
+        coherencyTotal: 0.85, generationMethod: 'variant',
+      });
+
+      const promoted = oracle.patterns.promoteCandidate(cand.id);
+      assert.ok(promoted);
+      assert.ok(promoted.promotedAt);
+
+      // Promoted candidates are no longer in the unpromoted list
+      const remaining = oracle.patterns.getCandidates();
+      assert.equal(remaining.length, 0);
+
+      // Summary should show 1 promoted
+      const summary = oracle.patterns.candidateSummary();
+      assert.equal(summary.promoted, 1);
+    });
+
+    it('generateCandidates creates candidates from proven patterns', () => {
+      // First, register a proven pattern
+      const seed = {
+        name: 'gen-double',
+        code: 'function genDouble(n) { return n * 2; }',
+        testCode: 'if (genDouble(5) !== 10) throw new Error("fail");',
+        language: 'javascript',
+        description: 'Double a number',
+        tags: ['math'],
+        patternType: 'utility',
+      };
+      oracle.registerPattern(seed);
+
+      // Generate candidates from proven patterns
+      const genRecycler = new PatternRecycler(oracle, {
+        generateVariants: true,
+        variantLanguages: ['typescript'],
+      });
+
+      const report = genRecycler.generateCandidates({
+        languages: ['typescript'],
+        methods: ['variant'],
+      });
+
+      assert.ok(report.generated >= 1);
+      assert.ok(report.stored >= 1);
+
+      // Check candidates store has the TS variant
+      const candidates = oracle.patterns.getCandidates();
+      const tsCand = candidates.find(c => c.name === 'gen-double-ts');
+      if (tsCand) {
+        assert.equal(tsCand.language, 'typescript');
+        assert.equal(tsCand.parentPattern, 'gen-double');
+        assert.equal(tsCand.generationMethod, 'variant');
+        assert.ok(tsCand.coherencyTotal > 0);
+      }
+    });
+
+    it('generateCandidates skips duplicates', () => {
+      const seed = {
+        name: 'dup-test',
+        code: 'function dupTest(x) { return x; }',
+        testCode: 'if (dupTest(1) !== 1) throw new Error("fail");',
+        language: 'javascript',
+        description: 'Identity',
+        tags: ['util'],
+        patternType: 'utility',
+      };
+      oracle.registerPattern(seed);
+
+      const genRecycler = new PatternRecycler(oracle, {
+        generateVariants: true,
+        variantLanguages: ['typescript'],
+      });
+
+      // Generate once
+      genRecycler.generateCandidates({ languages: ['typescript'], methods: ['variant'] });
+      const countAfterFirst = oracle.patterns.getCandidates().length;
+
+      // Generate again — should skip duplicates
+      const report2 = genRecycler.generateCandidates({ languages: ['typescript'], methods: ['variant'] });
+      const countAfterSecond = oracle.patterns.getCandidates().length;
+
+      assert.equal(countAfterFirst, countAfterSecond);
+      assert.ok(report2.duplicates >= 1);
+    });
+
+    it('promoteWithProof registers candidate as proven pattern', () => {
+      // Add a candidate with test code
+      const cand = oracle.patterns.addCandidate({
+        name: 'promote-me',
+        code: 'function promoteMe(n) { return n + 10; }',
+        language: 'javascript',
+        description: 'Add 10',
+        tags: ['math', 'candidate'],
+        coherencyTotal: 0.8,
+        testCode: 'if (promoteMe(5) !== 15) throw new Error("fail");',
+        parentPattern: 'some-parent',
+        generationMethod: 'variant',
+      });
+
+      const result = recycler.promoteWithProof(cand.id, 'if (promoteMe(5) !== 15) throw new Error("fail");');
+      assert.ok(result.promoted);
+      assert.ok(result.pattern);
+      assert.ok(result.coherency > 0);
+
+      // Should now exist as a proven pattern
+      const proven = oracle.patterns.getAll().find(p => p.name === 'promote-me');
+      assert.ok(proven);
+    });
+
+    it('autoPromote promotes candidates with test code', () => {
+      // Add candidate with test
+      oracle.patterns.addCandidate({
+        name: 'auto-promo',
+        code: 'function autoPromo(n) { return n * 3; }',
+        language: 'javascript',
+        description: 'Triple',
+        tags: ['math', 'candidate'],
+        coherencyTotal: 0.8,
+        testCode: 'if (autoPromo(3) !== 9) throw new Error("fail");',
+        generationMethod: 'variant',
+      });
+
+      // Add candidate without test (should not be auto-promoted)
+      oracle.patterns.addCandidate({
+        name: 'no-test-cand',
+        code: 'function noTest() { return 1; }',
+        language: 'javascript',
+        coherencyTotal: 0.7,
+        generationMethod: 'variant',
+      });
+
+      const result = recycler.autoPromote();
+      assert.equal(result.attempted, 1);  // Only the one with test
+      assert.equal(result.promoted, 1);
+
+      // Candidate without test is still a candidate
+      const remaining = oracle.patterns.getCandidates();
+      assert.equal(remaining.length, 1);
+      assert.equal(remaining[0].name, 'no-test-cand');
+    });
+
+    it('oracle.candidates() returns candidates via API', () => {
+      oracle.patterns.addCandidate({
+        name: 'api-cand', code: 'function api() {}', language: 'javascript',
+        coherencyTotal: 0.7, generationMethod: 'variant',
+      });
+
+      const results = oracle.candidates();
+      assert.equal(results.length, 1);
+      assert.equal(results[0].name, 'api-cand');
+    });
+
+    it('oracle.candidateStats() returns summary via API', () => {
+      oracle.patterns.addCandidate({
+        name: 'stat-cand', code: 'function s() {}', language: 'javascript',
+        coherencyTotal: 0.7, generationMethod: 'serf-refine',
+      });
+
+      const stats = oracle.candidateStats();
+      assert.equal(stats.totalCandidates, 1);
+      assert.equal(stats.byMethod['serf-refine'], 1);
+    });
+  });
 });

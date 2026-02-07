@@ -121,6 +121,33 @@ class SQLiteStore {
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch {}
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch {}
 
+    // Candidates table — coherent-but-unproven patterns awaiting test proof
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS candidates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        language TEXT DEFAULT 'unknown',
+        pattern_type TEXT DEFAULT 'utility',
+        complexity TEXT DEFAULT 'composite',
+        description TEXT DEFAULT '',
+        tags TEXT DEFAULT '[]',
+        coherency_total REAL DEFAULT 0,
+        coherency_json TEXT DEFAULT '{}',
+        test_code TEXT,
+        parent_pattern TEXT,
+        generation_method TEXT DEFAULT 'variant',
+        promoted_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_candidates_language ON candidates(language);
+      CREATE INDEX IF NOT EXISTS idx_candidates_coherency ON candidates(coherency_total);
+      CREATE INDEX IF NOT EXISTS idx_candidates_parent ON candidates(parent_pattern);
+      CREATE INDEX IF NOT EXISTS idx_candidates_method ON candidates(generation_method);
+    `);
+
     // Initialize meta if not present
     const row = this.db.prepare('SELECT value FROM meta WHERE key = ?').get('version');
     if (!row) {
@@ -534,6 +561,136 @@ class SQLiteStore {
       updatedAt: 'updated_at', requires: 'requires', composedOf: 'composed_of',
     };
     return map[field] || null;
+  }
+
+  // ─── Candidate methods — coherent-but-unproven patterns ───
+
+  addCandidate(candidate) {
+    const id = this._hash(candidate.code + candidate.name + Date.now());
+    const now = new Date().toISOString();
+
+    this.db.prepare(`
+      INSERT INTO candidates (id, name, code, language, pattern_type, complexity,
+        description, tags, coherency_total, coherency_json, test_code,
+        parent_pattern, generation_method, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, candidate.name, candidate.code, candidate.language || 'unknown',
+      candidate.patternType || 'utility', candidate.complexity || 'composite',
+      candidate.description || '', JSON.stringify(candidate.tags || []),
+      candidate.coherencyTotal ?? 0, JSON.stringify(candidate.coherencyScore || {}),
+      candidate.testCode || null,
+      candidate.parentPattern || null, candidate.generationMethod || 'variant',
+      now, now
+    );
+
+    this._audit('add', 'candidates', id, {
+      name: candidate.name, language: candidate.language,
+      coherency: candidate.coherencyTotal, parent: candidate.parentPattern,
+      method: candidate.generationMethod,
+    });
+
+    return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(id));
+  }
+
+  getAllCandidates(filters = {}) {
+    let sql = 'SELECT * FROM candidates WHERE promoted_at IS NULL';
+    const params = [];
+
+    if (filters.language) {
+      sql += ' AND LOWER(language) = LOWER(?)';
+      params.push(filters.language);
+    }
+    if (filters.minCoherency != null) {
+      sql += ' AND coherency_total >= ?';
+      params.push(filters.minCoherency);
+    }
+    if (filters.parentPattern) {
+      sql += ' AND parent_pattern = ?';
+      params.push(filters.parentPattern);
+    }
+    if (filters.generationMethod) {
+      sql += ' AND generation_method = ?';
+      params.push(filters.generationMethod);
+    }
+
+    sql += ' ORDER BY coherency_total DESC';
+    return this.db.prepare(sql).all(...params).map(r => this._rowToCandidate(r));
+  }
+
+  getCandidate(id) {
+    const row = this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(id);
+    return row ? this._rowToCandidate(row) : null;
+  }
+
+  getCandidateByName(name) {
+    const row = this.db.prepare('SELECT * FROM candidates WHERE LOWER(name) = LOWER(?) AND promoted_at IS NULL').get(name);
+    return row ? this._rowToCandidate(row) : null;
+  }
+
+  /**
+   * Promote a candidate to a proven pattern.
+   * Marks the candidate as promoted and returns it — caller handles
+   * registering through the full oracle pipeline with test proof.
+   */
+  promoteCandidate(id) {
+    const row = this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(id);
+    if (!row) return null;
+
+    const now = new Date().toISOString();
+    this.db.prepare('UPDATE candidates SET promoted_at = ?, updated_at = ? WHERE id = ?').run(now, now, id);
+
+    this._audit('promote', 'candidates', id, { name: row.name });
+    return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(id));
+  }
+
+  /**
+   * Remove stale candidates below a coherency floor.
+   */
+  pruneCandidates(minCoherency = 0.5) {
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
+    const pruned = this.db.prepare('SELECT id FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').all(minCoherency);
+    this.db.prepare('DELETE FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').run(minCoherency);
+    const after = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
+    for (const { id } of pruned) {
+      this._audit('prune', 'candidates', id, { minCoherency });
+    }
+    return { removed: before - after, remaining: after };
+  }
+
+  candidateSummary() {
+    const candidates = this.getAllCandidates();
+    const promoted = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NOT NULL').get().c;
+    return {
+      totalCandidates: candidates.length,
+      promoted,
+      byLanguage: countBy(candidates, 'language'),
+      byMethod: countBy(candidates, 'generationMethod'),
+      avgCoherency: candidates.length > 0
+        ? Math.round(candidates.reduce((s, c) => s + (c.coherencyTotal ?? 0), 0) / candidates.length * 1000) / 1000
+        : 0,
+    };
+  }
+
+  _rowToCandidate(row) {
+    return {
+      id: row.id,
+      name: row.name,
+      code: row.code,
+      language: row.language,
+      patternType: row.pattern_type,
+      complexity: row.complexity,
+      description: row.description,
+      tags: JSON.parse(row.tags || '[]'),
+      coherencyTotal: row.coherency_total,
+      coherencyScore: JSON.parse(row.coherency_json || '{}'),
+      testCode: row.test_code,
+      parentPattern: row.parent_pattern,
+      generationMethod: row.generation_method,
+      promotedAt: row.promoted_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
   }
 
   // ─── Meta ───

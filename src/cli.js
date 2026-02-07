@@ -100,6 +100,10 @@ ${c.bold('Commands:')}
   ${c.cyan('reflect')}     SERF reflection loop — iteratively heal and refine code
   ${c.cyan('import')}      Import patterns from an exported JSON file
   ${c.cyan('harvest')}     Bulk harvest patterns from a Git repo or local directory
+  ${c.cyan('recycle')}     Recycle failures and generate variants (exponential growth)
+  ${c.cyan('candidates')} List candidate patterns (coherent but unproven)
+  ${c.cyan('generate')}   Generate candidates from proven patterns (continuous growth)
+  ${c.cyan('promote')}    Promote a candidate to proven with test proof
   ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
 
 ${c.bold('Options:')}
@@ -476,6 +480,114 @@ ${c.bold('Pipe support:')}
     console.log('\n' + c.boldCyan('─'.repeat(50)));
     console.log(PatternRecycler.formatReport(report));
     console.log(c.boldCyan('─'.repeat(50)));
+    return;
+  }
+
+  if (cmd === 'candidates') {
+    const filters = {};
+    if (args.language) filters.language = args.language;
+    if (args['min-coherency']) filters.minCoherency = parseFloat(args['min-coherency']);
+    if (args.method) filters.generationMethod = args.method;
+
+    const candidates = oracle.candidates(filters);
+    const stats = oracle.candidateStats();
+
+    if (jsonOut) { console.log(JSON.stringify({ stats, candidates })); return; }
+
+    console.log(c.boldCyan('Candidate Patterns') + c.dim(' (coherent but unproven)\n'));
+    console.log(`  Total candidates: ${c.bold(String(stats.totalCandidates))}`);
+    console.log(`  Promoted:         ${c.boldGreen(String(stats.promoted))}`);
+    console.log(`  Avg coherency:    ${colorScore(stats.avgCoherency)}`);
+    if (Object.keys(stats.byLanguage).length > 0) {
+      console.log(`  By language:      ${Object.entries(stats.byLanguage).map(([k, v]) => `${c.blue(k)}(${v})`).join(', ')}`);
+    }
+    if (Object.keys(stats.byMethod).length > 0) {
+      console.log(`  By method:        ${Object.entries(stats.byMethod).map(([k, v]) => `${c.magenta(k)}(${v})`).join(', ')}`);
+    }
+
+    if (candidates.length > 0) {
+      console.log(`\n${c.bold('Candidates:')}`);
+      const limit = parseInt(args.limit) || 20;
+      for (const cand of candidates.slice(0, limit)) {
+        const parent = cand.parentPattern ? c.dim(` ← ${cand.parentPattern}`) : '';
+        console.log(`  ${c.cyan(cand.id.slice(0, 8))} ${c.bold(cand.name)} (${c.blue(cand.language)}) coherency: ${colorScore(cand.coherencyTotal)}${parent}`);
+      }
+      if (candidates.length > limit) {
+        console.log(c.dim(`  ... and ${candidates.length - limit} more`));
+      }
+    }
+    return;
+  }
+
+  if (cmd === 'generate') {
+    const languages = (args.languages || 'python,typescript').split(',').map(s => s.trim());
+    const methods = (args.methods || 'variant,serf-refine,approach-swap').split(',').map(s => s.trim());
+    const maxPatterns = parseInt(args['max-patterns']) || Infinity;
+    const minCoherency = parseFloat(args['min-coherency']) || 0.5;
+
+    console.log(c.boldCyan('Continuous Generation') + ' — proven → coherency → candidates\n');
+    oracle.recycler.verbose = true;
+
+    const report = oracle.generateCandidates({ maxPatterns, languages, minCoherency, methods });
+
+    console.log('\n' + c.boldCyan('─'.repeat(50)));
+    console.log(`Generated:    ${c.bold(String(report.generated))}`);
+    console.log(`  Stored:     ${c.boldGreen(String(report.stored))}`);
+    console.log(`  Skipped:    ${c.yellow(String(report.skipped))}`);
+    console.log(`  Duplicates: ${c.dim(String(report.duplicates))}`);
+    if (Object.keys(report.byMethod).length > 0) {
+      console.log(`  By method:  ${Object.entries(report.byMethod).map(([k, v]) => `${c.magenta(k)}(${v})`).join(', ')}`);
+    }
+    if (Object.keys(report.byLanguage).length > 0) {
+      console.log(`  By lang:    ${Object.entries(report.byLanguage).map(([k, v]) => `${c.blue(k)}(${v})`).join(', ')}`);
+    }
+    console.log(`\nCascade:      ${report.cascadeBoost}x  |  ξ_global: ${report.xiGlobal}`);
+
+    // Show total stats
+    const cStats = oracle.candidateStats();
+    const pStats = oracle.patternStats();
+    console.log(`\nLibrary:      ${c.bold(String(pStats.totalPatterns))} proven + ${c.bold(String(cStats.totalCandidates))} candidates`);
+    console.log(c.boldCyan('─'.repeat(50)));
+
+    // Auto-promote candidates that already have test code
+    const promo = oracle.autoPromote();
+    if (promo.promoted > 0) {
+      console.log(`\n${c.boldGreen('Auto-promoted:')} ${promo.promoted} candidate(s) → proven`);
+      for (const d of promo.details.filter(d => d.status === 'promoted')) {
+        console.log(`  ${c.green('+')} ${c.bold(d.name)} coherency: ${colorScore(d.coherency)}`);
+      }
+    }
+    return;
+  }
+
+  if (cmd === 'promote') {
+    const id = args.id || process.argv[3];
+    if (!id) { console.error(`Usage: ${c.cyan('oracle promote')} <candidate-id> [--test <test-file>]`); process.exit(1); }
+
+    // If --auto flag, run auto-promote on all candidates with tests
+    if (id === 'auto' || id === '--auto') {
+      const result = oracle.autoPromote();
+      console.log(c.boldCyan('Auto-Promote Results:\n'));
+      console.log(`  Attempted: ${c.bold(String(result.attempted))}`);
+      console.log(`  Promoted:  ${c.boldGreen(String(result.promoted))}`);
+      console.log(`  Failed:    ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+      for (const d of result.details) {
+        const icon = d.status === 'promoted' ? c.green('+') : c.red('x');
+        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status}${d.reason ? ' (' + d.reason.slice(0, 60) + ')' : ''}`);
+      }
+      return;
+    }
+
+    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    const result = oracle.promote(id, testCode);
+
+    if (result.promoted) {
+      console.log(`${c.boldGreen('Promoted:')} ${c.bold(result.pattern.name)} → proven`);
+      console.log(`  Coherency: ${colorScore(result.coherency)}`);
+      console.log(`  ID: ${c.cyan(result.pattern.id)}`);
+    } else {
+      console.log(`${c.boldRed('Failed:')} ${result.reason}`);
+    }
     return;
   }
 

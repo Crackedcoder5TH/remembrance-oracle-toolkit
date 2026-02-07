@@ -352,6 +352,49 @@ class RemembranceOracle {
     return this.recycler.processSeeds(seeds, options);
   }
 
+  // ─── Candidate Methods — coherent-but-unproven patterns ───
+
+  /**
+   * Generate candidate patterns from all proven patterns.
+   * Proven patterns → coherency loop → language variants → candidates store.
+   * This is how the library always grows.
+   *
+   * @param {object} options - { maxPatterns, languages, minCoherency, methods }
+   * @returns {object} Generation report
+   */
+  generateCandidates(options = {}) {
+    return this.recycler.generateCandidates(options);
+  }
+
+  /**
+   * Get all unpromoted candidates, optionally filtered.
+   */
+  candidates(filters = {}) {
+    return this.patterns.getCandidates(filters);
+  }
+
+  /**
+   * Get candidate summary statistics.
+   */
+  candidateStats() {
+    return this.patterns.candidateSummary();
+  }
+
+  /**
+   * Promote a candidate to proven by providing test proof.
+   * The candidate runs through the full oracle pipeline with testCode.
+   */
+  promote(candidateId, testCode) {
+    return this.recycler.promoteWithProof(candidateId, testCode);
+  }
+
+  /**
+   * Auto-promote all candidates that already have test code.
+   */
+  autoPromote() {
+    return this.recycler.autoPromote();
+  }
+
   /**
    * Diff two entries or patterns side by side.
    * Returns a unified-style diff showing what changed.

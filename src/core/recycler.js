@@ -761,6 +761,285 @@ class PatternRecycler {
     };
   }
 
+  // ─── Continuous Generation Loop ───
+  // Takes proven patterns, generates coherent variants, stores them as candidates.
+  // This is how the library always grows: proven → coherency → candidates.
+
+  /**
+   * Generate candidates from all proven patterns.
+   * Each proven pattern gets variant generation (language ports, SERF refinements).
+   * Variants that pass coherency (but skip full test validation) become candidates.
+   *
+   * @param {object} options - { maxPatterns, languages, minCoherency, methods }
+   * @returns {{ generated, stored, skipped, byMethod, byLanguage }}
+   */
+  generateCandidates(options = {}) {
+    const {
+      maxPatterns = Infinity,
+      languages = this.variantLanguages,
+      minCoherency = 0.5,
+      methods = ['variant', 'serf-refine', 'approach-swap'],
+    } = options;
+
+    this._updateGlobalCoherence();
+
+    const report = {
+      generated: 0,
+      stored: 0,
+      skipped: 0,
+      duplicates: 0,
+      byMethod: {},
+      byLanguage: {},
+      cascadeBoost: this._cascadeBoost,
+      xiGlobal: this._xiGlobal,
+    };
+
+    const proven = this.oracle.patterns.getAll();
+    const existingCandidates = this.oracle.patterns.getCandidates();
+    const candidateNames = new Set(existingCandidates.map(c => c.name));
+    const patternNames = new Set(proven.map(p => p.name));
+
+    // Process proven patterns — each one can spawn candidates
+    const toProcess = proven.slice(0, maxPatterns);
+
+    for (const pattern of toProcess) {
+      // Method 1: Language variants → candidates
+      if (methods.includes('variant') && pattern.language === 'javascript') {
+        for (const lang of languages) {
+          const variant = this._transpileToLanguage(pattern, lang);
+          if (!variant) continue;
+
+          report.generated++;
+          const candidateName = variant.name;
+
+          // Skip if already exists as pattern or candidate
+          if (patternNames.has(candidateName) || candidateNames.has(candidateName)) {
+            report.duplicates++;
+            continue;
+          }
+
+          // Run coherency check only (no sandbox test execution)
+          const coherency = computeCoherencyScore(variant.code, {
+            language: variant.language,
+            testPassed: null,  // No test proof — that's the point
+            historicalReliability: 0.5,
+          });
+
+          if (coherency.total >= minCoherency) {
+            this.oracle.patterns.addCandidate({
+              name: candidateName,
+              code: variant.code,
+              language: variant.language,
+              patternType: variant.patternType,
+              description: variant.description,
+              tags: [...(variant.tags || []), 'candidate'],
+              coherencyTotal: coherency.total,
+              coherencyScore: coherency,
+              testCode: variant.testCode,
+              parentPattern: pattern.name,
+              generationMethod: 'variant',
+            });
+            report.stored++;
+            candidateNames.add(candidateName);
+            report.byMethod['variant'] = (report.byMethod['variant'] || 0) + 1;
+            report.byLanguage[variant.language] = (report.byLanguage[variant.language] || 0) + 1;
+
+            if (this.verbose) {
+              console.log(`  [CANDIDATE] ${candidateName} (${variant.language}) — coherency ${coherency.total.toFixed(3)}`);
+            }
+          } else {
+            report.skipped++;
+          }
+        }
+      }
+
+      // Method 2: SERF refinement → candidates with improved coherency
+      if (methods.includes('serf-refine')) {
+        const refinedName = `${pattern.name}-refined`;
+        if (patternNames.has(refinedName) || candidateNames.has(refinedName)) continue;
+
+        const reflection = reflectionLoop(pattern.code, {
+          language: pattern.language,
+          maxLoops: 2,
+          targetCoherence: 0.95,
+          description: pattern.description,
+          tags: pattern.tags,
+          cascadeBoost: this._cascadeBoost,
+        });
+
+        // Only store if SERF actually improved the code
+        if (reflection.serf.improvement > 0.01 && reflection.code.trim() !== pattern.code.trim()) {
+          report.generated++;
+
+          const coherency = computeCoherencyScore(reflection.code, {
+            language: pattern.language,
+            testPassed: null,
+            historicalReliability: 0.5,
+          });
+
+          if (coherency.total >= minCoherency) {
+            this.oracle.patterns.addCandidate({
+              name: refinedName,
+              code: reflection.code,
+              language: pattern.language,
+              patternType: pattern.patternType,
+              description: `${pattern.description} (SERF refined)`,
+              tags: [...(pattern.tags || []), 'candidate', 'serf-refined'],
+              coherencyTotal: coherency.total,
+              coherencyScore: coherency,
+              testCode: pattern.testCode,
+              parentPattern: pattern.name,
+              generationMethod: 'serf-refine',
+            });
+            report.stored++;
+            candidateNames.add(refinedName);
+            report.byMethod['serf-refine'] = (report.byMethod['serf-refine'] || 0) + 1;
+            report.byLanguage[pattern.language] = (report.byLanguage[pattern.language] || 0) + 1;
+
+            if (this.verbose) {
+              console.log(`  [CANDIDATE] ${refinedName} — SERF improved coherency by +${reflection.serf.improvement.toFixed(3)}`);
+            }
+          } else {
+            report.skipped++;
+          }
+        }
+      }
+
+      // Method 3: Approach swaps → candidates
+      if (methods.includes('approach-swap') && pattern.language === 'javascript') {
+        const alts = this._generateApproachAlternatives(pattern);
+        for (const alt of alts) {
+          report.generated++;
+
+          if (patternNames.has(alt.name) || candidateNames.has(alt.name)) {
+            report.duplicates++;
+            continue;
+          }
+
+          const coherency = computeCoherencyScore(alt.code, {
+            language: alt.language,
+            testPassed: null,
+            historicalReliability: 0.5,
+          });
+
+          if (coherency.total >= minCoherency) {
+            this.oracle.patterns.addCandidate({
+              name: alt.name,
+              code: alt.code,
+              language: alt.language,
+              patternType: alt.patternType,
+              description: alt.description,
+              tags: [...(alt.tags || []), 'candidate'],
+              coherencyTotal: coherency.total,
+              coherencyScore: coherency,
+              testCode: alt.testCode,
+              parentPattern: pattern.name,
+              generationMethod: 'approach-swap',
+            });
+            report.stored++;
+            candidateNames.add(alt.name);
+            report.byMethod['approach-swap'] = (report.byMethod['approach-swap'] || 0) + 1;
+
+            if (this.verbose) {
+              console.log(`  [CANDIDATE] ${alt.name} — approach swap`);
+            }
+          } else {
+            report.skipped++;
+          }
+        }
+      }
+    }
+
+    return report;
+  }
+
+  /**
+   * Promote a candidate to a proven pattern by providing test proof.
+   * The candidate's code gets run through the full oracle pipeline with
+   * the provided testCode. If it passes, it becomes a proven pattern.
+   *
+   * @param {string} candidateId - ID of the candidate to promote
+   * @param {string} testCode - Test code to prove the candidate works
+   * @returns {{ promoted, pattern?, reason? }}
+   */
+  promoteWithProof(candidateId, testCode) {
+    const candidate = this.oracle.patterns.getCandidates().find(c => c.id === candidateId);
+    if (!candidate) {
+      return { promoted: false, reason: 'Candidate not found' };
+    }
+
+    // Run through full oracle validation with test proof
+    const result = this.oracle.registerPattern({
+      name: candidate.name,
+      code: candidate.code,
+      language: candidate.language,
+      description: candidate.description,
+      tags: (candidate.tags || []).filter(t => t !== 'candidate'),
+      patternType: candidate.patternType,
+      testCode: testCode || candidate.testCode,
+    });
+
+    if (result.registered) {
+      // Mark candidate as promoted
+      this.oracle.patterns.promoteCandidate(candidateId);
+
+      if (this.verbose) {
+        console.log(`  [PROMOTED] ${candidate.name} → proven (coherency ${result.validation.coherencyScore.total.toFixed(3)})`);
+      }
+
+      return {
+        promoted: true,
+        pattern: result.pattern,
+        coherency: result.validation.coherencyScore.total,
+      };
+    }
+
+    return {
+      promoted: false,
+      reason: result.reason,
+    };
+  }
+
+  /**
+   * Auto-promote candidates that already have testCode by running them
+   * through the full validation pipeline.
+   *
+   * @returns {{ attempted, promoted, failed, details }}
+   */
+  autoPromote() {
+    const candidates = this.oracle.patterns.getCandidates();
+    const withTests = candidates.filter(c => c.testCode);
+
+    const report = {
+      attempted: 0,
+      promoted: 0,
+      failed: 0,
+      details: [],
+    };
+
+    for (const candidate of withTests) {
+      // Skip if already exists as a proven pattern
+      const existing = this.oracle.patterns.getAll().find(p => p.name === candidate.name);
+      if (existing) {
+        this.oracle.patterns.promoteCandidate(candidate.id);
+        continue;
+      }
+
+      report.attempted++;
+      const result = this.promoteWithProof(candidate.id, candidate.testCode);
+
+      if (result.promoted) {
+        report.promoted++;
+        report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency });
+      } else {
+        report.failed++;
+        report.details.push({ name: candidate.name, status: 'failed', reason: result.reason });
+      }
+    }
+
+    return report;
+  }
+
   /**
    * Format a recycler report for display.
    */

@@ -240,6 +240,138 @@ class PatternLibrary {
     return this._summaryJSON();
   }
 
+  // ─── Candidates — coherent-but-unproven patterns ───
+
+  /**
+   * Add a candidate pattern — passes coherency but lacks test proof.
+   * These are "should work" patterns awaiting promotion via test proof.
+   */
+  addCandidate(candidate) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.addCandidate(candidate);
+    }
+    // JSON fallback: store candidates in a separate file
+    return this._addCandidateJSON(candidate);
+  }
+
+  /**
+   * Get all unpromoted candidates, optionally filtered.
+   */
+  getCandidates(filters = {}) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.getAllCandidates(filters);
+    }
+    return this._getCandidatesJSON(filters);
+  }
+
+  /**
+   * Promote a candidate by ID — marks it as promoted.
+   * Returns the candidate record for the caller to register through the oracle.
+   */
+  promoteCandidate(id) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.promoteCandidate(id);
+    }
+    return this._promoteCandidateJSON(id);
+  }
+
+  /**
+   * Get candidate stats summary.
+   */
+  candidateSummary() {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.candidateSummary();
+    }
+    return this._candidateSummaryJSON();
+  }
+
+  /**
+   * Prune low-coherency candidates.
+   */
+  pruneCandidates(minCoherency = 0.5) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.pruneCandidates(minCoherency);
+    }
+    return { removed: 0, remaining: 0 };
+  }
+
+  // ─── JSON candidate fallback ───
+
+  _candidatesPath() {
+    return path.join(this.storeDir, 'candidates.json');
+  }
+
+  _readCandidatesJSON() {
+    const p = this._candidatesPath();
+    if (!fs.existsSync(p)) return { candidates: [] };
+    return JSON.parse(fs.readFileSync(p, 'utf-8'));
+  }
+
+  _writeCandidatesJSON(data) {
+    fs.writeFileSync(this._candidatesPath(), JSON.stringify(data, null, 2), 'utf-8');
+  }
+
+  _addCandidateJSON(candidate) {
+    const data = this._readCandidatesJSON();
+    const id = this._hash(candidate.code + candidate.name + Date.now());
+    const now = new Date().toISOString();
+    const record = {
+      id,
+      name: candidate.name,
+      code: candidate.code,
+      language: candidate.language || 'unknown',
+      patternType: candidate.patternType || 'utility',
+      complexity: candidate.complexity || inferComplexity(candidate.code),
+      description: candidate.description || '',
+      tags: candidate.tags || [],
+      coherencyTotal: candidate.coherencyTotal ?? 0,
+      coherencyScore: candidate.coherencyScore || {},
+      testCode: candidate.testCode || null,
+      parentPattern: candidate.parentPattern || null,
+      generationMethod: candidate.generationMethod || 'variant',
+      promotedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    data.candidates.push(record);
+    this._writeCandidatesJSON(data);
+    return record;
+  }
+
+  _getCandidatesJSON(filters = {}) {
+    const data = this._readCandidatesJSON();
+    let candidates = data.candidates.filter(c => !c.promotedAt);
+    if (filters.language) candidates = candidates.filter(c => c.language?.toLowerCase() === filters.language.toLowerCase());
+    if (filters.minCoherency != null) candidates = candidates.filter(c => (c.coherencyTotal ?? 0) >= filters.minCoherency);
+    if (filters.parentPattern) candidates = candidates.filter(c => c.parentPattern === filters.parentPattern);
+    return candidates;
+  }
+
+  _promoteCandidateJSON(id) {
+    const data = this._readCandidatesJSON();
+    const candidate = data.candidates.find(c => c.id === id);
+    if (!candidate) return null;
+    candidate.promotedAt = new Date().toISOString();
+    candidate.updatedAt = new Date().toISOString();
+    this._writeCandidatesJSON(data);
+    return candidate;
+  }
+
+  _candidateSummaryJSON() {
+    const data = this._readCandidatesJSON();
+    const unpromoted = data.candidates.filter(c => !c.promotedAt);
+    const promoted = data.candidates.filter(c => c.promotedAt).length;
+    return {
+      totalCandidates: unpromoted.length,
+      promoted,
+      byLanguage: countBy(unpromoted, 'language'),
+      byMethod: countBy(unpromoted, 'generationMethod'),
+      avgCoherency: unpromoted.length > 0
+        ? Math.round(unpromoted.reduce((s, c) => s + (c.coherencyTotal ?? 0), 0) / unpromoted.length * 1000) / 1000
+        : 0,
+    };
+  }
+
   // ─── Composition ───
 
   /**

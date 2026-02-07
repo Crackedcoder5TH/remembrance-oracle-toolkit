@@ -175,6 +175,48 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_candidates',
+    description: 'List candidate patterns — coherent but unproven code awaiting test proof. Candidates are generated from proven patterns via language transpilation, SERF refinement, or approach swaps.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        language: { type: 'string', description: 'Filter by language' },
+        minCoherency: { type: 'number', description: 'Minimum coherency score (default: 0)' },
+        method: { type: 'string', enum: ['variant', 'serf-refine', 'approach-swap'], description: 'Filter by generation method' },
+      },
+    },
+  },
+  {
+    name: 'oracle_generate',
+    description: 'Generate candidate patterns from all proven patterns. Runs the continuous growth loop: proven → coherency → language variants → candidates store. The library is always growing.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        languages: { type: 'array', items: { type: 'string' }, description: 'Languages to generate variants in (default: [python, typescript])' },
+        methods: { type: 'array', items: { type: 'string' }, description: 'Generation methods to use (default: [variant, serf-refine, approach-swap])' },
+        maxPatterns: { type: 'number', description: 'Max proven patterns to process (default: all)' },
+        minCoherency: { type: 'number', description: 'Minimum coherency for candidates (default: 0.5)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_promote',
+    description: 'Promote a candidate to proven by providing test proof. The candidate runs through the full oracle validation pipeline with the given test code.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        candidateId: { type: 'string', description: 'ID of the candidate to promote' },
+        testCode: { type: 'string', description: 'Test code that proves the candidate works' },
+      },
+      required: ['candidateId'],
+    },
+  },
+  {
+    name: 'oracle_auto_promote',
+    description: 'Auto-promote all candidates that already have test code. Each is run through the full oracle validation pipeline.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'oracle_covenant',
     description: 'Check code against the Covenant seal (The Kingdom\'s Weave). Code must pass all 15 principles to be accepted.',
     inputSchema: {
@@ -353,6 +395,34 @@ class MCPServer {
           });
           break;
         }
+
+        case 'oracle_candidates': {
+          const filters = {};
+          if (args.language) filters.language = args.language;
+          if (args.minCoherency) filters.minCoherency = args.minCoherency;
+          if (args.method) filters.generationMethod = args.method;
+          const candidates = this.oracle.candidates(filters);
+          const stats = this.oracle.candidateStats();
+          result = { stats, candidates: candidates.slice(0, 50) };
+          break;
+        }
+
+        case 'oracle_generate':
+          result = this.oracle.generateCandidates({
+            languages: args.languages || ['python', 'typescript'],
+            methods: args.methods || ['variant', 'serf-refine', 'approach-swap'],
+            maxPatterns: args.maxPatterns || Infinity,
+            minCoherency: args.minCoherency || 0.5,
+          });
+          break;
+
+        case 'oracle_promote':
+          result = this.oracle.promote(args.candidateId, args.testCode);
+          break;
+
+        case 'oracle_auto_promote':
+          result = this.oracle.autoPromote();
+          break;
 
         case 'oracle_covenant': {
           const { covenantCheck } = require('../core/covenant');

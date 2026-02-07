@@ -132,4 +132,70 @@ describe('MCPServer', () => {
     const data = JSON.parse(res.result.content[0].text);
     assert.ok(data.decision);
   });
+
+  it('handles oracle_candidates', () => {
+    server = new MCPServer();
+    const res = server.handleRequest({
+      id: 11,
+      method: 'tools/call',
+      params: { name: 'oracle_candidates', arguments: {} },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.ok('stats' in data);
+    assert.ok('candidates' in data);
+    assert.ok(Array.isArray(data.candidates));
+  });
+
+  it('handles oracle_generate', () => {
+    server = new MCPServer();
+    const res = server.handleRequest({
+      id: 12,
+      method: 'tools/call',
+      params: {
+        name: 'oracle_generate',
+        arguments: { languages: ['typescript'], methods: ['variant'], maxPatterns: 2 },
+      },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.ok('generated' in data);
+    assert.ok('stored' in data);
+  });
+
+  it('handles oracle_auto_promote', () => {
+    server = new MCPServer();
+    const res = server.handleRequest({
+      id: 13,
+      method: 'tools/call',
+      params: { name: 'oracle_auto_promote', arguments: {} },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.ok('attempted' in data);
+    assert.ok('promoted' in data);
+  });
+
+  it('handles oracle_promote with missing candidate', () => {
+    server = new MCPServer();
+    const res = server.handleRequest({
+      id: 14,
+      method: 'tools/call',
+      params: { name: 'oracle_promote', arguments: { candidateId: 'nonexistent' } },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.equal(data.promoted, false);
+  });
+
+  it('lists all 16 tools including candidate tools', () => {
+    server = new MCPServer();
+    const res = server.handleRequest({ id: 15, method: 'tools/list' });
+    const names = res.result.tools.map(t => t.name);
+    assert.ok(names.includes('oracle_candidates'));
+    assert.ok(names.includes('oracle_generate'));
+    assert.ok(names.includes('oracle_promote'));
+    assert.ok(names.includes('oracle_auto_promote'));
+    assert.equal(res.result.tools.length, 17);
+  });
 });

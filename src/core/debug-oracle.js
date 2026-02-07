@@ -208,40 +208,62 @@ function generateFixVariants(fixCode, fixLanguage, targetLanguages) {
   return variants;
 }
 
-// Basic transpilation helpers for fix code
+// Transpilation helpers for fix code (JS → target language)
 function jsToPythonFix(code) {
   return code
-    .replace(/const |let |var /g, '')
+    .replace(/\b(?:const|let|var)\s+/g, '')
     .replace(/;$/gm, '')
-    .replace(/===|!==/g, m => m === '===' ? '==' : '!=')
+    .replace(/===/g, '==').replace(/!==/g, '!=')
     .replace(/\{$/gm, ':')
     .replace(/^\s*\}/gm, '')
-    .replace(/\/\//g, '#')
-    .replace(/null/g, 'None')
-    .replace(/undefined/g, 'None')
-    .replace(/true/g, 'True')
-    .replace(/false/g, 'False')
-    .replace(/console\.log/g, 'print')
-    .replace(/\|\|/g, 'or')
-    .replace(/&&/g, 'and');
+    .replace(/\/\/.*/g, m => '#' + m.slice(2))
+    .replace(/\bnull\b/g, 'None')
+    .replace(/\bundefined\b/g, 'None')
+    .replace(/\btrue\b/g, 'True')
+    .replace(/\bfalse\b/g, 'False')
+    .replace(/console\.log\(/g, 'print(')
+    .replace(/\s*\|\|\s*/g, ' or ')
+    .replace(/\s*&&\s*/g, ' and ')
+    .replace(/!(\w)/g, 'not $1')
+    .replace(/Math\.max\(/g, 'max(')
+    .replace(/Math\.min\(/g, 'min(')
+    .replace(/Math\.floor\(/g, 'int(')
+    .replace(/Math\.abs\(/g, 'abs(')
+    .replace(/(\w+)\.length/g, 'len($1)')
+    .replace(/\.push\(/g, '.append(')
+    .replace(/\.toUpperCase\(\)/g, '.upper()')
+    .replace(/\.toLowerCase\(\)/g, '.lower()');
 }
 
 function jsToGoFix(code) {
-  return code
-    .replace(/const (\w+) = /g, '$1 := ')
-    .replace(/let (\w+) = /g, '$1 := ')
+  let result = code
+    .replace(/\bconst\s+(\w+)\s*=\s*/g, '$1 := ')
+    .replace(/\blet\s+(\w+)\s*=\s*/g, '$1 := ')
+    .replace(/\bvar\s+(\w+)\s*=\s*/g, '$1 := ')
     .replace(/;$/gm, '')
     .replace(/console\.log\(/g, 'fmt.Println(')
-    .replace(/null/g, 'nil')
-    .replace(/undefined/g, 'nil')
-    .replace(/true/g, 'true')
-    .replace(/false/g, 'false');
+    .replace(/\bnull\b/g, 'nil')
+    .replace(/\bundefined\b/g, 'nil')
+    .replace(/===/g, '==').replace(/!==/g, '!=')
+    .replace(/(\w+)\.length/g, 'len($1)');
+  // Add fmt import if Println is used
+  if (result.includes('fmt.')) {
+    result = 'import "fmt"\n\n' + result;
+  }
+  return result;
 }
 
 function jsToTsFix(code) {
   return code
-    .replace(/function (\w+)\((\w+)\)/g, 'function $1($2: unknown)')
-    .replace(/const (\w+) = /g, 'const $1: unknown = ');
+    .replace(/function\s+(\w+)\s*\(([^)]*)\)/g, (_, name, params) => {
+      const typed = params.split(',').map(p => {
+        const pname = p.trim();
+        if (!pname) return '';
+        return `${pname}: unknown`;
+      }).filter(Boolean).join(', ');
+      return `function ${name}(${typed})`;
+    })
+    .replace(/\bvar\s+/g, 'let ');
 }
 
 // ─── Debug Oracle Class ───

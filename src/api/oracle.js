@@ -18,6 +18,7 @@ const { VerifiedHistoryStore } = require('../store/history');
 const { PatternLibrary } = require('../patterns/library');
 const { PatternRecycler } = require('../core/recycler');
 const { DebugOracle } = require('../core/debug-oracle');
+const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
 
 class RemembranceOracle {
   constructor(options = {}) {
@@ -864,6 +865,28 @@ class RemembranceOracle {
       code: e.code,
     }));
     return [...patterns, ...history];
+  }
+
+  // ─── Smart Search — Intent-Aware Intelligence ───
+
+  /**
+   * Intelligent search with intent parsing, query rewriting,
+   * contextual ranking, and cross-language expansion.
+   *
+   * @param {string} query - Raw search query (can include typos, abbreviations)
+   * @param {object} options - { language, limit, mode }
+   * @returns {object} { results, intent, rewrittenQuery, corrections, suggestions, totalMatches }
+   */
+  smartSearch(query, options = {}) {
+    return intelligentSearch(this, query, options);
+  }
+
+  /**
+   * Parse a query into structured intent without searching.
+   * Useful for UI previews and debugging.
+   */
+  parseSearchIntent(query) {
+    return parseIntent(query);
   }
 
   // ─── Debug Oracle — Exponential Debugging Intelligence ───

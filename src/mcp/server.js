@@ -285,6 +285,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_smart_search',
+    description: 'Intelligent search with intent parsing, typo correction, abbreviation expansion, cross-language support, and contextual ranking. Better than oracle_search for natural language queries.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Natural language search query (supports typos, abbreviations, intent signals)' },
+        language: { type: 'string', description: 'Preferred language (js, py, ts, go, rust, etc.)' },
+        limit: { type: 'number', description: 'Max results (default 10)' },
+        mode: { type: 'string', enum: ['hybrid', 'semantic'], description: 'Search mode (default hybrid)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
     name: 'oracle_debug_capture',
     description: 'Capture an error→fix pair as a debug pattern. Automatically generates language variants and error variants for exponential growth.',
     inputSchema: {
@@ -608,6 +622,14 @@ class MCPServer {
           });
           break;
         }
+
+        case 'oracle_smart_search':
+          result = this.oracle.smartSearch(args.query, {
+            language: args.language,
+            limit: args.limit || 10,
+            mode: args.mode || 'hybrid',
+          });
+          break;
 
         case 'oracle_debug_capture':
           result = this.oracle.debugCapture({

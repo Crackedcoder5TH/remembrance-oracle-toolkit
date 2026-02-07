@@ -204,6 +204,7 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_debug_grow'));
     assert.ok(names.includes('oracle_debug_stats'));
     assert.ok(names.includes('oracle_debug_share'));
-    assert.equal(res.result.tools.length, 28);
+    assert.ok(names.includes('oracle_smart_search'));
+    assert.equal(res.result.tools.length, 29);
   });
 });

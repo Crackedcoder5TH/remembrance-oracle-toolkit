@@ -372,21 +372,16 @@ function makeCallTest(call, python) {
  */
 function isViableCode(code, language) {
   if (language === 'python') {
-    // Reject JS syntax that leaked into Python
-    if (/for\s*\(\s*\w+\s*=/.test(code)) return false;      // for (i = 0; ...)
-    if (/\.filter\(/.test(code)) return false;                // .filter()
-    if (/\.map\(/.test(code)) return false;                   // .map()
-    if (/\.reduce\(/.test(code)) return false;                // .reduce()
+    // Reject JS syntax that leaked into Python transpilation
+    if (/for\s*\(\s*\w+\s*=/.test(code)) return false;      // C-style for (i = 0; ...)
     if (/\.prototype\./.test(code)) return false;             // .prototype.
-    if (/function\s*\(/.test(code)) return false;             // function keyword
+    if (/\bfunction\s*[\s(]/.test(code)) return false;       // function keyword
     if (/=>\s*[\{]/.test(code)) return false;                 // arrow functions
     if (/\bthis\./.test(code)) return false;                  // this.
     if (/result\s*=\s*:/.test(code)) return false;            // empty assignment with colon
     if (/\bconst\b|\blet\b|\bvar\b/.test(code)) return false; // JS declarations
-    if (/while\s*\([^)]*\)\s*\{/.test(code)) return false;   // while (...) {
     if (/\bnew\s+Date\b/.test(code)) return false;           // new Date()
     if (/Number\.EPSILON/.test(code)) return false;           // Number.EPSILON
-    if (/\bnew\s+\w+\(/.test(code)) return false;            // new Constructor()
     if (/\.getDate\(/.test(code)) return false;               // JS Date methods
     // Shadowing builtins as params: def f(val, min, max) shadows min/max
     const defMatch = code.match(/def\s+\w+\(([^)]+)\)/);

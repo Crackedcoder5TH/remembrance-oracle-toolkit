@@ -78,8 +78,9 @@ ${c.bold('Commands:')}
   ${c.cyan('prune')}      Remove low-coherency entries
   ${c.cyan('diff')}       Compare two entries or patterns side by side
   ${c.cyan('export')}     Export top patterns as standalone JSON or markdown
-  ${c.cyan('search')}     Fuzzy search across patterns and history
-  ${c.cyan('register')}   Register code as a named pattern in the library
+  ${c.cyan('search')}        Fuzzy search across patterns and history
+  ${c.cyan('smart-search')}  Intent-aware search with typo correction + ranking
+  ${c.cyan('register')}      Register code as a named pattern in the library
   ${c.cyan('patterns')}   Show pattern library statistics
   ${c.cyan('seed')}       Seed the library with built-in proven patterns
   ${c.cyan('ci-feedback')} Report CI test results back to tracked patterns
@@ -369,6 +370,54 @@ ${c.bold('Pipe support:')}
         const concepts = r.matchedConcepts?.length > 0 ? c.dim(` (${r.matchedConcepts.join(', ')})`) : '';
         console.log(`  [${colorSource(r.source)}] ${c.bold(label)}  (coherency: ${colorScore(r.coherency)}, match: ${colorScore(r.matchScore)})${concepts}`);
         console.log(`         ${c.blue(r.language)} | ${r.tags.map(t => c.magenta(t)).join(', ') || c.dim('no tags')} | ${c.dim(r.id)}`);
+      }
+    }
+    return;
+  }
+
+  if (cmd === 'smart-search') {
+    const term = args.description || args._rest || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
+    if (!term) { console.error(c.boldRed('Error:') + ` provide a search term. Usage: ${c.cyan('oracle smart-search <term>')}`); process.exit(1); }
+    const result = oracle.smartSearch(term, {
+      limit: parseInt(args.limit) || 10,
+      language: args.language,
+      mode: args.mode || 'hybrid',
+    });
+    if (jsonOut) { console.log(JSON.stringify(result)); return; }
+
+    // Show corrections/intent info
+    if (result.corrections) {
+      console.log(c.yellow(`Auto-corrected: "${term}" → "${result.corrections}"\n`));
+    }
+    if (result.intent.intents.length > 0) {
+      console.log(c.dim(`Detected intents: ${result.intent.intents.map(i => c.magenta(i.name)).join(', ')}`));
+    }
+    if (result.intent.language) {
+      console.log(c.dim(`Language: ${c.blue(result.intent.language)}`));
+    }
+    if (result.intent.constraints && Object.keys(result.intent.constraints).length > 0) {
+      console.log(c.dim(`Constraints: ${Object.entries(result.intent.constraints).map(([k, v]) => `${k}=${v}`).join(', ')}`));
+    }
+    if (result.intent.intents.length > 0 || result.intent.language || result.corrections) console.log();
+
+    if (result.results.length === 0) {
+      console.log(c.yellow('No matches found.'));
+      if (result.suggestions.length > 0) {
+        console.log(c.dim('\nSuggestions:'));
+        for (const s of result.suggestions) console.log(`  ${c.cyan('→')} ${s}`);
+      }
+    } else {
+      console.log(`Found ${c.bold(String(result.results.length))} match(es) (${result.totalMatches} total before limit):\n`);
+      for (const r of result.results) {
+        const label = r.name || r.description || 'untitled';
+        const boost = r.intentBoost > 0 ? c.green(` +${r.intentBoost}`) : '';
+        const cross = r.crossLanguage ? c.yellow(' [cross-lang]') : '';
+        console.log(`  ${c.bold(label)}  (match: ${colorScore(r.matchScore)}${boost})${cross}`);
+        console.log(`         ${c.blue(r.language || '?')} | ${(r.tags || []).map(t => c.magenta(t)).join(', ') || c.dim('no tags')} | ${c.dim(r.id || '')}`);
+      }
+      if (result.suggestions.length > 0) {
+        console.log(c.dim('\nSuggestions:'));
+        for (const s of result.suggestions) console.log(`  ${c.cyan('→')} ${s}`);
       }
     }
     return;

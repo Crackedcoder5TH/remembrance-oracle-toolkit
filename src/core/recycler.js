@@ -646,7 +646,11 @@ class PatternRecycler {
     if (!funcMatch) return null;
 
     const [, funcName, params] = funcMatch;
-    const pyName = funcName.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+    // camelCase → snake_case: handles consecutive capitals (e.g., getHTTPClient → get_http_client)
+    const pyName = funcName
+      .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+      .replace(/([a-z\d])([A-Z])/g, '$1_$2')
+      .toLowerCase();
 
     // Convert JS body to Python (deep transform)
     let body = extractBody(code);
@@ -701,8 +705,8 @@ class PatternRecycler {
     // var → let (not const — for-loop vars need reassignment)
     tsCode = tsCode.replace(/\bvar\s+/g, 'let ');
 
-    // Fix: let in for-init that's already let
-    tsCode = tsCode.replace(/for\s*\(\s*let\s+let\s+/g, 'for (let ');
+    // Fix: double `let` in for-init from var→let replacement (only in for-loop context)
+    tsCode = tsCode.replace(/for\s*\(\s*let\s+let\b/g, 'for (let');
 
     return {
       name: `${name}-ts`,
@@ -1121,9 +1125,7 @@ class PatternRecycler {
  * prototype methods, Promise/async, class syntax, arrow functions with closures.
  */
 function canTranspileToPython(code) {
-  // Reject regex literals (Python uses re module, not /regex/)
-  if (/\/[^/\n]+\/[gimsuy]*/.test(code) && !/\/\//g.test(code.replace(/\/[^/\n]+\/[gimsuy]*/g, ''))) return false;
-  // More direct: any regex literal usage
+  // Reject regex literal usage in method calls (Python uses re module)
   if (code.includes('.replace(/') || code.includes('.match(/') || code.includes('.test(/') || code.includes('.search(/')) return false;
 
   // Reject typeof (no Python equivalent in same form)
@@ -1133,29 +1135,25 @@ function canTranspileToPython(code) {
   if (/return\s+function/.test(code)) return false;
   if (/return\s*\(?\s*\w+\s*\)?\s*=>/.test(code)) return false;
 
-  // Reject new Set/Map/WeakMap (Python has equivalents but transpiling is complex)
-  if (/new\s+(?:Set|Map|WeakMap|WeakSet)/.test(code)) return false;
+  // Reject new WeakMap/WeakSet (no Python equivalents)
+  if (/new\s+(?:WeakMap|WeakSet)/.test(code)) return false;
 
-  // Reject Promise/async/await
-  if (/\b(?:Promise|async|await)\b/.test(code)) return false;
+  // Reject Promise (async/await would need asyncio, too complex)
+  if (/\bPromise\b/.test(code)) return false;
 
   // Reject class syntax
   if (/\bclass\s+\w+/.test(code)) return false;
 
-  // Reject .prototype, Object.keys/values/entries, JSON.
-  if (/\bObject\.(?:keys|values|entries|assign|create|freeze|defineProperty)/.test(code)) return false;
+  // Reject .prototype, JSON.
   if (/\bJSON\./.test(code)) return false;
+  if (/\.prototype\b/.test(code)) return false;
 
-  // Reject arrow functions in body (used as callbacks)
-  if (/=>\s*\{/.test(code) || /=>\s*[^{]/.test(code)) return false;
+  // Reject arrow functions used as callbacks (body arrow functions)
+  if (/=>\s*\{/.test(code)) return false;
+  // Reject expression arrow functions in callback position (.map(x => ...), etc.)
+  if (/\.\w+\([^)]*=>/.test(code)) return false;
 
-  // Reject spread operator
-  if (/\.\.\./.test(code)) return false;
-
-  // Reject for...of, for...in (complex iteration)
-  if (/for\s*\(\s*(?:const|let|var)\s+\w+\s+(?:of|in)\s+/.test(code)) return false;
-
-  // Reject ternary with complex nesting
+  // Reject ternary with complex nesting (3+ levels)
   const ternaries = (code.match(/\?[^:]+:/g) || []).length;
   if (ternaries > 2) return false;
 
@@ -1163,10 +1161,7 @@ function canTranspileToPython(code) {
   if (/>>>/.test(code)) return false;
 
   // Reject .split('') — empty string split doesn't work in Python
-  if (/\.split\s*\(\s*['"]['"]/.test(code)) return false;
-
-  // Reject .join('') — needs list(), not direct method
-  if (/\.join\s*\(/.test(code)) return false;
+  if (/\.split\s*\(\s*['"]\s*['"]\s*\)/.test(code)) return false;
 
   // Reject inline ternary used in return with complex conditions
   if (/return\s+\w+\s*\?.*\?/.test(code)) return false;
@@ -1175,18 +1170,12 @@ function canTranspileToPython(code) {
   if (/(?:const|let|var)\s+\w+\s*=\s*[^,;]+,\s*\w+\s*=/.test(code)) return false;
 
   // Reject while loops with assignment in condition
-  if (/while\s*\([^)]*=(?!=)/.test(code)) return false;
-
-  // Reject .toUpperCase/.toLowerCase (Python uses .upper()/.lower())
-  if (/\.toUpperCase\(\)/.test(code) || /\.toLowerCase\(\)/.test(code)) return false;
+  if (/while\s*\([^)]*\s=(?!=)/.test(code)) return false;
 
   // Reject single-line for loops (body on same line as for — hard to indent for Python)
   if (/for\s*\([^)]+\)\s+\w/.test(code) && !/for\s*\([^)]+\)\s*\{/.test(code)) return false;
 
-  // Reject || used as default assignment (ch = ch || ' ') — Python `or` semantics differ
-  if (/=\s*\w+\s*\|\|/.test(code)) return false;
-
-  // Reject .length in comparisons (Python len() shadowing issues with param names)
+  // Reject .length in comparisons when param is named 'len' (Python builtin shadowing)
   if (/\w+\.length\s*<\s*\w+/.test(code) && /function\s+\w+\([^)]*\blen\b/.test(code)) return false;
 
   return true;
@@ -1266,11 +1255,11 @@ function jsToPythonBody(body) {
     py = py.replace(/Math\.max\(/g, 'max(');
     py = py.replace(/Math\.min\(/g, 'min(');
     py = py.replace(/Math\.floor\(/g, 'int(');
-    py = py.replace(/Math\.ceil\(/g, '-(-$1 // 1)(');  // Simplified
+    py = py.replace(/Math\.ceil\(([^)]+)\)/g, '-(-$1 // 1)');
     py = py.replace(/Math\.abs\(/g, 'abs(');
     py = py.replace(/Math\.round\(/g, 'round(');
     py = py.replace(/Math\.pow\(([^,]+),\s*([^)]+)\)/g, '$1 ** $2');
-    py = py.replace(/Math\.sqrt\(/g, 'int($1 ** 0.5)('); // Simplified
+    py = py.replace(/Math\.sqrt\(([^)]+)\)/g, '$1 ** 0.5');
 
     // .push(x) → .append(x)
     py = py.replace(/\.push\(/g, '.append(');
@@ -1279,8 +1268,37 @@ function jsToPythonBody(body) {
     // .shift() → .pop(0)
     py = py.replace(/\.shift\(\)/g, '.pop(0)');
 
-    // .slice(a, b) → [a:b]
-    py = py.replace(/\.slice\((\w+)(?:,\s*(\w+))?\)/g, (_, a, b) => b ? `[${a}:${b}]` : `[${a}:]`);
+    // .toUpperCase() → .upper(), .toLowerCase() → .lower()
+    py = py.replace(/\.toUpperCase\(\)/g, '.upper()');
+    py = py.replace(/\.toLowerCase\(\)/g, '.lower()');
+
+    // .join(sep) → sep.join(arr)  (best effort — simple cases)
+    py = py.replace(/(\w+)\.join\(([^)]*)\)/g, '$2.join($1)');
+
+    // .includes(x) → x in arr
+    py = py.replace(/(\w+)\.includes\(([^)]+)\)/g, '$2 in $1');
+
+    // Object.keys(x) → list(x.keys()), Object.values(x) → list(x.values())
+    py = py.replace(/Object\.keys\((\w+)\)/g, 'list($1.keys())');
+    py = py.replace(/Object\.values\((\w+)\)/g, 'list($1.values())');
+    py = py.replace(/Object\.entries\((\w+)\)/g, 'list($1.items())');
+    py = py.replace(/Object\.assign\(\{\},\s*(\w+)\)/g, 'dict($1)');
+
+    // new Set(x) → set(x), new Map(x) → dict(x)
+    py = py.replace(/new\s+Set\(([^)]*)\)/g, 'set($1)');
+    py = py.replace(/new\s+Map\(([^)]*)\)/g, 'dict($1)');
+
+    // Array.isArray(x) → isinstance(x, list)
+    py = py.replace(/Array\.isArray\((\w+)\)/g, 'isinstance($1, list)');
+
+    // .indexOf(x) → .index(x) (note: Python throws ValueError, JS returns -1)
+    py = py.replace(/\.indexOf\(/g, '.index(');
+
+    // console.log → print
+    py = py.replace(/console\.log\(/g, 'print(');
+
+    // .slice(a, b) → [a:b]  (handles expressions like n-1, not just identifiers)
+    py = py.replace(/\.slice\(([^,)]+)(?:,\s*([^)]+))?\)/g, (_, a, b) => b ? `[${a.trim()}:${b.trim()}]` : `[${a.trim()}:]`);
 
     // .concat(b) → + b
     py = py.replace(/\.concat\((\w+)\)/g, ' + $1');
@@ -1291,23 +1309,49 @@ function jsToPythonBody(body) {
     });
 
     // for (let i = 0; i < n; i++) { → for i in range(n):
-    const forMatch = py.match(/^for\s*\(\s*(\w+)\s*=\s*(\d+)\s*;\s*\1\s*<\s*(\w+)\s*;\s*\1\+\+\s*\)\s*\{?\s*$/);
+    // Handles variable starts, < and <=, ++ and +=1
+    const forMatch = py.match(/^for\s*\(\s*(\w+)\s*=\s*(\w+)\s*;\s*\1\s*(<=?)\s*(\w+(?:\s*[-+]\s*\d+)?)\s*;\s*\1(?:\+\+|\s*\+=\s*1)\s*\)\s*\{?\s*$/);
     if (forMatch) {
-      const [, varName, start, end] = forMatch;
-      py = start === '0' ? `for ${varName} in range(${end}):` : `for ${varName} in range(${start}, ${end}):`;
+      const [, varName, start, op, end] = forMatch;
+      const rangeEnd = op === '<=' ? `${end} + 1` : end;
+      py = start === '0' ? `for ${varName} in range(${rangeEnd}):` : `for ${varName} in range(${start}, ${rangeEnd}):`;
       pyLines.push(pad + py);
       continue;
     }
 
     // for (let i = n; i >= 0; i--) → for i in range(n, -1, -1):
-    const forDownMatch = py.match(/^for\s*\(\s*(\w+)\s*=\s*(\w+)\s*;\s*\1\s*>=\s*(\w+)\s*;\s*\1--\s*\)\s*\{?\s*$/);
+    // Handles >= and >, -- and -=1
+    const forDownMatch = py.match(/^for\s*\(\s*(\w+)\s*=\s*(\w+)\s*;\s*\1\s*(>=?)\s*(\w+)\s*;\s*\1(?:--|\s*-=\s*1)\s*\)\s*\{?\s*$/);
     if (forDownMatch) {
-      const [, varName, start, end] = forDownMatch;
-      const endVal = end === '0' ? '-1' : `${end} - 1`;
+      const [, varName, start, op, end] = forDownMatch;
+      const endVal = op === '>=' ? (end === '0' ? '-1' : `${end} - 1`) : end;
       py = `for ${varName} in range(${start}, ${endVal}, -1):`;
       pyLines.push(pad + py);
       continue;
     }
+
+    // for (const x of arr) { → for x in arr:
+    const forOfMatch = py.match(/^(?:const|let|var)\s+(\w+)\s+of\s+(.+?)\s*\{?\s*$/);
+    if (forOfMatch || /^for\s*\(\s*(?:const|let|var)\s+(\w+)\s+of\s+(.+?)\s*\)\s*\{?\s*$/.test(py)) {
+      const m = py.match(/(?:const|let|var)\s+(\w+)\s+of\s+(.+?)(?:\)?\s*\{?\s*)$/);
+      if (m) {
+        py = `for ${m[1]} in ${m[2].replace(/\)\s*$/, '')}:`;
+        pyLines.push(pad + py);
+        continue;
+      }
+    }
+
+    // for (const x in obj) { → for x in obj:
+    const forInMatch = py.match(/^for\s*\(\s*(?:const|let|var)\s+(\w+)\s+in\s+(.+?)\s*\)\s*\{?\s*$/);
+    if (forInMatch) {
+      py = `for ${forInMatch[1]} in ${forInMatch[2]}:`;
+      pyLines.push(pad + py);
+      continue;
+    }
+
+    // Spread: [...arr] → [*arr], {...obj} → {**obj}
+    py = py.replace(/\[\.\.\.(\w+)\]/g, '[*$1]');
+    py = py.replace(/\{\.\.\.(\w+)\}/g, '{**$1}');
 
     // if (...) { → if ...:
     if (/^if\s*\((.+)\)\s*\{?\s*$/.test(py)) {

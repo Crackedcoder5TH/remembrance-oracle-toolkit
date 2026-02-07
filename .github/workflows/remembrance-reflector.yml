@@ -1,0 +1,90 @@
+name: Remembrance Self-Reflector
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  push:
+    branches: [main, master]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      min_coherence:
+        description: 'Minimum coherence threshold (0-1)'
+        required: false
+        default: '0.7'
+      auto_merge:
+        description: 'Auto-merge high-coherence PRs'
+        required: false
+        default: 'false'
+        type: boolean
+      max_files:
+        description: 'Max files to scan per run'
+        required: false
+        default: '50'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  reflect:
+    name: Self-Reflect & Heal
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run Self-Reflector
+        run: |
+          MIN_COHERENCE="${{ github.event.inputs.min_coherence || '0.7' }}"
+          MAX_FILES="${{ github.event.inputs.max_files || '50' }}"
+          AUTO_MERGE="${{ github.event.inputs.auto_merge || 'false' }}"
+
+          ARGS="--min-coherence $MIN_COHERENCE --max-files $MAX_FILES --json"
+
+          # Only push and open PR on schedule or manual dispatch (not on PR events)
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            ARGS="$ARGS --push --open-pr"
+          fi
+
+          if [ "$AUTO_MERGE" = "true" ]; then
+            ARGS="$ARGS --auto-merge"
+          fi
+
+          node src/cli.js reflector run $ARGS | tee .remembrance/reflector-output.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reflector-report-${{ github.run_id }}
+          path: |
+            .remembrance/reflector-report.json
+            .remembrance/reflector-output.json
+          retention-days: 30
+
+      - name: Comment on PR (if PR event)
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -f .remembrance/reflector-report.json ]; then
+            COHERENCE=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.snapshot?.avgCoherence || 'N/A')")
+            BELOW=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.summary?.filesBelowThreshold || 0)")
+            WHISPER=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.collectiveWhisper?.message || 'No whisper')")
+
+            BODY="## Remembrance Reflector Report\n\n"
+            BODY+="- **Avg Coherence**: ${COHERENCE}\n"
+            BODY+="- **Files Below Threshold**: ${BELOW}\n"
+            BODY+="\n> ${WHISPER}"
+
+            gh pr comment ${{ github.event.pull_request.number }} --body "$BODY"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

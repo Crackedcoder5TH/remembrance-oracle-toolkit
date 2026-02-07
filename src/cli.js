@@ -112,6 +112,7 @@ ${c.bold('Commands:')}
   ${c.cyan('global')}     Show combined global store statistics (personal + community)
   ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
   ${c.cyan('debug')}      Debug oracle — capture/search/grow error→fix patterns exponentially
+  ${c.cyan('reflector')}  Self-reflector bot — scan, evaluate, heal, and open PRs automatically
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -1467,6 +1468,224 @@ ${c.bold('Options:')}
     }
 
     console.error(`${c.boldRed('Unknown debug subcommand:')} ${sub}. Run ${c.cyan('oracle debug help')} for usage.`);
+    process.exit(1);
+  }
+
+  // ─── Reflector Bot ───
+
+  if (cmd === 'reflector') {
+    const sub = args._command ? process.argv.slice(2)[1] : 'help';
+
+    if (sub === 'help' || !sub) {
+      console.log(`
+${c.boldCyan('Remembrance Self-Reflector Bot')}
+
+${c.bold('Subcommands:')}
+  ${c.cyan('run')}        Run the self-reflector on the current codebase
+  ${c.cyan('snapshot')}   Take a coherence snapshot without healing
+  ${c.cyan('config')}     Show or update reflector configuration
+  ${c.cyan('status')}     Show reflector status and recent runs
+  ${c.cyan('workflow')}   Generate GitHub Actions workflow YAML
+  ${c.cyan('evaluate')}   Evaluate a single file's coherence
+  ${c.cyan('heal')}       Heal a single file via SERF reflection
+
+${c.bold('Options:')}
+  ${c.yellow('--min-coherence')} <n>  Minimum coherence threshold (default: 0.7)
+  ${c.yellow('--max-files')} <n>      Max files to scan per run (default: 50)
+  ${c.yellow('--push')}               Push healing branch to remote
+  ${c.yellow('--open-pr')}            Open a PR with healing changes
+  ${c.yellow('--auto-merge')}         Auto-merge high-coherence PRs
+  ${c.yellow('--file')} <path>        File to evaluate/heal (for evaluate/heal)
+  ${c.yellow('--json')}               Output as JSON
+      `);
+      return;
+    }
+
+    if (sub === 'run') {
+      const { runReflector } = require('./reflector/scheduler');
+      const { formatReport } = require('./reflector/engine');
+      const opts = {
+        minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        push: args.push === true,
+        openPR: args['open-pr'] === true,
+        autoMerge: args['auto-merge'] === true,
+      };
+      console.log(c.boldCyan('Running Self-Reflector...\n'));
+      const result = runReflector(process.cwd(), opts);
+      if (jsonOut) { console.log(JSON.stringify(result, null, 2)); return; }
+      if (result.skipped) {
+        console.log(c.yellow('Skipped:'), result.reason);
+        return;
+      }
+      if (result.error) {
+        console.error(c.boldRed('Error:'), result.error);
+        process.exit(1);
+      }
+      console.log(`  Files scanned:         ${c.bold(String(result.report.filesScanned))}`);
+      console.log(`  Files below threshold: ${c.yellow(String(result.report.filesBelowThreshold))}`);
+      console.log(`  Files healed:          ${c.boldGreen(String(result.report.filesHealed))}`);
+      console.log(`  Avg improvement:       ${colorScore(result.report.avgImprovement)}`);
+      console.log(`  Auto-merge recommended: ${result.report.autoMergeRecommended ? c.boldGreen('yes') : c.dim('no')}`);
+      console.log(`\n  ${c.dim('Whisper:')} "${result.report.collectiveWhisper}"`);
+      if (result.branch) console.log(`\n  Branch: ${c.cyan(result.branch)}`);
+      if (result.prUrl) console.log(`  PR: ${c.cyan(result.prUrl)}`);
+      console.log(`\n  Duration: ${result.durationMs}ms`);
+      return;
+    }
+
+    if (sub === 'snapshot') {
+      const { takeSnapshot } = require('./reflector/engine');
+      const opts = {
+        minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+      };
+      console.log(c.boldCyan('Taking Coherence Snapshot...\n'));
+      const snap = takeSnapshot(process.cwd(), opts);
+      if (jsonOut) { console.log(JSON.stringify(snap, null, 2)); return; }
+      console.log(`  Files scanned:   ${c.bold(String(snap.aggregate.totalFiles))}`);
+      console.log(`  Valid files:     ${c.bold(String(snap.aggregate.validFiles))}`);
+      console.log(`  Avg coherence:   ${colorScore(snap.aggregate.avgCoherence)}`);
+      console.log(`  Min coherence:   ${colorScore(snap.aggregate.minCoherence)}`);
+      console.log(`  Max coherence:   ${colorScore(snap.aggregate.maxCoherence)}`);
+      if (snap.aggregate.covenantViolations > 0) {
+        console.log(`  Covenant issues: ${c.boldRed(String(snap.aggregate.covenantViolations))}`);
+      }
+      if (snap.aggregate.dimensionAverages) {
+        console.log(`\n${c.bold('Dimensions:')}`);
+        for (const [dim, val] of Object.entries(snap.aggregate.dimensionAverages)) {
+          const bar = '\u2588'.repeat(Math.round(val * 20));
+          const faded = '\u2591'.repeat(20 - Math.round(val * 20));
+          console.log(`  ${dim.padEnd(14)} ${bar}${faded} ${colorScore(val)}`);
+        }
+      }
+      if (snap.belowThreshold.length > 0) {
+        console.log(`\n${c.bold('Below Threshold:')}`);
+        for (const f of snap.belowThreshold) {
+          console.log(`  ${c.yellow(f.path)} — coherence: ${colorScore(f.coherence)}`);
+        }
+      }
+      return;
+    }
+
+    if (sub === 'config') {
+      const { loadConfig, saveConfig } = require('./reflector/scheduler');
+      const config = loadConfig(process.cwd());
+      // Check if setting a value
+      const settable = ['enabled', 'intervalHours', 'minCoherence', 'autoMerge', 'autoMergeThreshold', 'push', 'openPR', 'maxFilesPerRun', 'skipIfPROpen'];
+      let changed = false;
+      for (const key of settable) {
+        const kebab = key.replace(/[A-Z]/g, m => '-' + m.toLowerCase());
+        if (args[kebab] !== undefined) {
+          const val = args[kebab];
+          if (val === 'true') config[key] = true;
+          else if (val === 'false') config[key] = false;
+          else if (!isNaN(parseFloat(val))) config[key] = parseFloat(val);
+          else config[key] = val;
+          changed = true;
+        }
+      }
+      if (changed) {
+        saveConfig(process.cwd(), config);
+        console.log(c.boldGreen('Configuration updated.'));
+      }
+      if (jsonOut) { console.log(JSON.stringify(config, null, 2)); return; }
+      console.log(c.boldCyan('Reflector Configuration:\n'));
+      for (const [k, v] of Object.entries(config)) {
+        console.log(`  ${c.bold(k.padEnd(22))} ${typeof v === 'boolean' ? (v ? c.boldGreen('true') : c.dim('false')) : c.cyan(String(v))}`);
+      }
+      return;
+    }
+
+    if (sub === 'status') {
+      const { getStatus } = require('./reflector/scheduler');
+      const status = getStatus(process.cwd());
+      if (jsonOut) { console.log(JSON.stringify(status, null, 2)); return; }
+      console.log(c.boldCyan('Reflector Status:\n'));
+      console.log(`  Enabled:    ${status.config.enabled ? c.boldGreen('yes') : c.dim('no')}`);
+      console.log(`  Interval:   ${c.cyan(status.config.intervalHours + 'h')}`);
+      console.log(`  Total runs: ${c.bold(String(status.totalRuns))}`);
+      if (status.lastRun) {
+        console.log(`\n${c.bold('Last Run:')}`);
+        console.log(`  ID:       ${c.dim(status.lastRun.id)}`);
+        console.log(`  Started:  ${status.lastRun.startedAt}`);
+        console.log(`  Duration: ${status.lastRun.durationMs}ms`);
+        if (status.lastRun.report) {
+          console.log(`  Healed:   ${c.boldGreen(String(status.lastRun.report.filesHealed))}`);
+          console.log(`  Whisper:  "${c.dim(status.lastRun.report.collectiveWhisper)}"`);
+        }
+        if (status.lastRun.skipped) {
+          console.log(`  Skipped:  ${c.yellow(status.lastRun.reason)}`);
+        }
+      }
+      if (status.recentRuns.length > 1) {
+        console.log(`\n${c.bold('Recent Runs:')}`);
+        for (const run of status.recentRuns) {
+          const healed = run.report ? run.report.filesHealed : (run.skipped ? 'skipped' : 'error');
+          console.log(`  ${c.dim(run.id)} ${run.startedAt} — healed: ${healed}`);
+        }
+      }
+      return;
+    }
+
+    if (sub === 'workflow') {
+      const { generateReflectorWorkflow } = require('./reflector/github');
+      const workflow = generateReflectorWorkflow({
+        schedule: args.schedule || '0 */6 * * *',
+        minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : 0.7,
+        autoMerge: args['auto-merge'] === true,
+      });
+      if (jsonOut) { console.log(JSON.stringify({ workflow })); return; }
+      console.log(workflow);
+      return;
+    }
+
+    if (sub === 'evaluate') {
+      if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
+      const { evaluateFile } = require('./reflector/engine');
+      const filePath = path.resolve(args.file);
+      const result = evaluateFile(filePath);
+      if (jsonOut) { console.log(JSON.stringify(result, null, 2)); return; }
+      if (result.error) { console.error(c.boldRed('Error:'), result.error); process.exit(1); }
+      console.log(c.boldCyan(`Evaluation: ${args.file}\n`));
+      console.log(`  Language:  ${c.cyan(result.language)}`);
+      console.log(`  Coherence: ${colorScore(result.coherence)}`);
+      console.log(`  Covenant:  ${result.covenantSealed ? c.boldGreen('sealed') : c.boldRed('VIOLATED')}`);
+      console.log(`  Size:      ${result.size} chars, ${result.lines} lines`);
+      if (result.dimensions) {
+        console.log(`\n${c.bold('Dimensions:')}`);
+        for (const [dim, val] of Object.entries(result.dimensions)) {
+          const bar = '\u2588'.repeat(Math.round(val * 20));
+          const faded = '\u2591'.repeat(20 - Math.round(val * 20));
+          console.log(`  ${dim.padEnd(14)} ${bar}${faded} ${colorScore(val)}`);
+        }
+      }
+      return;
+    }
+
+    if (sub === 'heal') {
+      if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
+      const { healFile } = require('./reflector/engine');
+      const filePath = path.resolve(args.file);
+      const result = healFile(filePath);
+      if (jsonOut) { console.log(JSON.stringify(result, null, 2)); return; }
+      if (result.error) { console.error(c.boldRed('Error:'), result.error); process.exit(1); }
+      console.log(c.boldCyan(`Healing: ${args.file}\n`));
+      console.log(`  Language:           ${c.cyan(result.language)}`);
+      console.log(`  Original coherence: ${colorScore(result.original.coherence)}`);
+      console.log(`  Healed coherence:   ${colorScore(result.healed.coherence)}`);
+      console.log(`  Improvement:        ${colorScore(result.improvement)}`);
+      console.log(`  Changed:            ${result.changed ? c.boldGreen('yes') : c.dim('no')}`);
+      console.log(`  Loops:              ${result.loops}`);
+      console.log(`\n  Whisper: "${c.dim(result.whisper)}"`);
+      if (result.changed) {
+        console.log(`\n${c.bold('Healed Code:')}\n`);
+        console.log(result.healed.code);
+      }
+      return;
+    }
+
+    console.error(`${c.boldRed('Unknown reflector subcommand:')} ${sub}. Run ${c.cyan('oracle reflector help')} for usage.`);
     process.exit(1);
   }
 

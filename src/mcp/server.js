@@ -371,6 +371,82 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'oracle_reflector_snapshot',
+    description: 'Take a coherence snapshot of the codebase. Evaluates all source files on 5 dimensions: simplicity, readability, security, unity, correctness.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Root directory to scan (default: current directory)' },
+        minCoherence: { type: 'number', description: 'Coherence threshold (default: 0.7)' },
+        maxFiles: { type: 'number', description: 'Max files to scan (default: 50)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_run',
+    description: 'Run the self-reflector: scan codebase, evaluate coherence, heal files below threshold via SERF, and optionally create a healing branch/PR.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Root directory to scan (default: current directory)' },
+        minCoherence: { type: 'number', description: 'Coherence threshold for healing (default: 0.7)' },
+        maxFiles: { type: 'number', description: 'Max files to scan (default: 50)' },
+        push: { type: 'boolean', description: 'Push healing branch to remote (default: false)' },
+        openPR: { type: 'boolean', description: 'Open a PR with healing changes (default: false)' },
+        autoMerge: { type: 'boolean', description: 'Auto-merge high-coherence PRs (default: false)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_evaluate',
+    description: 'Evaluate a single file\'s coherence across all SERF dimensions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file to evaluate' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'oracle_reflector_heal',
+    description: 'Heal a single file via SERF reflection loop. Returns the healed code with coherence improvement and whisper explanation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file to heal' },
+        maxLoops: { type: 'number', description: 'Max SERF loops (default: 3)' },
+        targetCoherence: { type: 'number', description: 'Target coherence (default: 0.95)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'oracle_reflector_status',
+    description: 'Get the self-reflector status: configuration, last run, and recent run history.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Root directory (default: current directory)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_config',
+    description: 'Get or update the self-reflector configuration (interval, thresholds, push/PR settings).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Root directory (default: current directory)' },
+        intervalHours: { type: 'number', description: 'Run interval in hours' },
+        minCoherence: { type: 'number', description: 'Minimum coherence threshold' },
+        autoMerge: { type: 'boolean', description: 'Auto-merge high-coherence PRs' },
+        push: { type: 'boolean', description: 'Push healing branches' },
+        openPR: { type: 'boolean', description: 'Open PRs with healing changes' },
+      },
+    },
+  },
 ];
 
 class MCPServer {
@@ -676,6 +752,81 @@ class MCPServer {
             dryRun: args.dryRun || false,
           });
           break;
+
+        case 'oracle_reflector_snapshot': {
+          const { takeSnapshot } = require('../reflector/engine');
+          result = takeSnapshot(args.path || process.cwd(), {
+            minCoherence: args.minCoherence || 0.7,
+            maxFilesPerRun: args.maxFiles || 50,
+          });
+          // Trim file-level code from response
+          result.files = result.files.map(f => ({
+            path: f.relativePath || f.path,
+            language: f.language,
+            coherence: f.coherence,
+            dimensions: f.dimensions,
+            covenantSealed: f.covenantSealed,
+            error: f.error,
+          }));
+          break;
+        }
+
+        case 'oracle_reflector_run': {
+          const { runReflector } = require('../reflector/scheduler');
+          result = runReflector(args.path || process.cwd(), {
+            minCoherence: args.minCoherence,
+            maxFilesPerRun: args.maxFiles,
+            push: args.push || false,
+            openPR: args.openPR || false,
+            autoMerge: args.autoMerge || false,
+          });
+          break;
+        }
+
+        case 'oracle_reflector_evaluate': {
+          const { evaluateFile } = require('../reflector/engine');
+          result = evaluateFile(args.filePath);
+          break;
+        }
+
+        case 'oracle_reflector_heal': {
+          const { healFile } = require('../reflector/engine');
+          result = healFile(args.filePath, {
+            maxSerfLoops: args.maxLoops || 3,
+            targetCoherence: args.targetCoherence || 0.95,
+          });
+          // Include healed code in response
+          if (result.healed) {
+            result.healedCode = result.healed.code;
+          }
+          // Remove full code objects to keep response size manageable
+          delete result.original;
+          delete result.healed;
+          break;
+        }
+
+        case 'oracle_reflector_status': {
+          const { getStatus } = require('../reflector/scheduler');
+          result = getStatus(args.path || process.cwd());
+          break;
+        }
+
+        case 'oracle_reflector_config': {
+          const { loadConfig, saveConfig } = require('../reflector/scheduler');
+          const rootDir = args.path || process.cwd();
+          const cfg = loadConfig(rootDir);
+          const updatable = ['intervalHours', 'minCoherence', 'autoMerge', 'push', 'openPR'];
+          let updated = false;
+          for (const key of updatable) {
+            if (args[key] !== undefined) {
+              cfg[key] = args[key];
+              updated = true;
+            }
+          }
+          if (updated) saveConfig(rootDir, cfg);
+          result = cfg;
+          break;
+        }
 
         default:
           return {

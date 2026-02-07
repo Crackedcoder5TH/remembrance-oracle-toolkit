@@ -37,6 +37,9 @@ const { reflectionLoop, formatReflectionResult, observeCoherence, serfScore, gen
 const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyError, computeConfidence, ERROR_CATEGORIES } = require('./core/debug-oracle');
 const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
 const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
+const reflectorEngine = require('./reflector/engine');
+const reflectorGithub = require('./reflector/github');
+const reflectorScheduler = require('./reflector/scheduler');
 
 module.exports = {
   // Core
@@ -183,4 +186,22 @@ module.exports = {
   CORRECTIONS,
   LANGUAGE_ALIASES,
   LANGUAGE_FAMILIES,
+
+  // Self-Reflector Bot
+  reflectorScanDirectory: reflectorEngine.scanDirectory,
+  reflectorEvaluateFile: reflectorEngine.evaluateFile,
+  reflectorTakeSnapshot: reflectorEngine.takeSnapshot,
+  reflectorHealFile: reflectorEngine.healFile,
+  reflectorReflect: reflectorEngine.reflect,
+  reflectorFormatReport: reflectorEngine.formatReport,
+  reflectorFormatPRBody: reflectorEngine.formatPRBody,
+  reflectorDefaultConfig: reflectorEngine.DEFAULT_CONFIG,
+  reflectorCreateHealingBranch: reflectorGithub.createHealingBranch,
+  reflectorGenerateWorkflow: reflectorGithub.generateReflectorWorkflow,
+  reflectorFindExistingPR: reflectorGithub.findExistingReflectorPR,
+  reflectorRunReflector: reflectorScheduler.runReflector,
+  reflectorStartScheduler: reflectorScheduler.startScheduler,
+  reflectorLoadConfig: reflectorScheduler.loadConfig,
+  reflectorSaveConfig: reflectorScheduler.saveConfig,
+  reflectorGetStatus: reflectorScheduler.getStatus,
 };

@@ -205,6 +205,12 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_debug_stats'));
     assert.ok(names.includes('oracle_debug_share'));
     assert.ok(names.includes('oracle_smart_search'));
-    assert.equal(res.result.tools.length, 29);
+    assert.ok(names.includes('oracle_reflector_snapshot'));
+    assert.ok(names.includes('oracle_reflector_run'));
+    assert.ok(names.includes('oracle_reflector_evaluate'));
+    assert.ok(names.includes('oracle_reflector_heal'));
+    assert.ok(names.includes('oracle_reflector_status'));
+    assert.ok(names.includes('oracle_reflector_config'));
+    assert.equal(res.result.tools.length, 35);
   });
 });

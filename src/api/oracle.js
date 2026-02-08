@@ -1065,6 +1065,42 @@ class RemembranceOracle {
     return sqliteStore.topVoters(limit);
   }
 
+  /**
+   * GitHub identity management.
+   */
+  getGitHubIdentity() {
+    if (!this._githubIdentity) {
+      const { GitHubIdentity } = require('../auth/github-oauth');
+      const sqliteStore = this.patterns._sqlite;
+      this._githubIdentity = new GitHubIdentity({ store: sqliteStore });
+    }
+    return this._githubIdentity;
+  }
+
+  async verifyGitHubToken(token) {
+    return this.getGitHubIdentity().verifyToken(token);
+  }
+
+  async startGitHubLogin() {
+    return this.getGitHubIdentity().startDeviceFlow();
+  }
+
+  async pollGitHubLogin(deviceCode) {
+    return this.getGitHubIdentity().pollDeviceFlow(deviceCode);
+  }
+
+  getVerifiedIdentity(voterId) {
+    return this.getGitHubIdentity().getIdentity(voterId);
+  }
+
+  listVerifiedIdentities(limit = 50) {
+    return this.getGitHubIdentity().listIdentities(limit);
+  }
+
+  isVerifiedVoter(voterId) {
+    return this.getGitHubIdentity().isVerified(voterId);
+  }
+
   synthesizeTests(options = {}) {
     const { synthesizeForCandidates } = require('../core/test-synth');
     const synthReport = synthesizeForCandidates(this, options);

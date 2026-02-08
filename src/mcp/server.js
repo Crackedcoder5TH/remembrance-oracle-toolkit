@@ -688,6 +688,31 @@ const TOOLS = [
     description: 'List available composition templates.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'oracle_mcp_install',
+    description: 'Auto-register the oracle MCP server in AI editors (Claude Desktop, Cursor, VS Code, Cline). Returns installation status or performs install/uninstall.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['install', 'uninstall', 'status'], description: 'Action to perform (default: status)' },
+        target: { type: 'string', description: 'Specific editor target (claude, cursor, vscode, claudeCode) — omit for all' },
+        useNpx: { type: 'boolean', description: 'Use npx instead of direct node path (default: false)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_github_identity',
+    description: 'Manage GitHub identity for verified community voting. Verify a GitHub token, check identity status, or list verified voters.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['verify', 'status', 'check', 'list'], description: 'Action to perform' },
+        token: { type: 'string', description: 'GitHub personal access token (for verify action)' },
+        voterId: { type: 'string', description: 'Voter ID to check (for check action)' },
+      },
+      required: ['action'],
+    },
+  },
 ];
 
 class MCPServer {
@@ -1162,6 +1187,46 @@ class MCPServer {
           const { PatternComposer: PC } = require('../patterns/composer');
           const comp = new PC(this.oracle);
           result = comp.templates();
+          break;
+        }
+
+        case 'oracle_mcp_install': {
+          const mcpInstall = require('../ide/mcp-install');
+          const action = args.action || 'status';
+          const opts = args.useNpx ? { command: 'npx' } : {};
+
+          if (action === 'status') {
+            result = mcpInstall.checkInstallation();
+          } else if (action === 'install') {
+            result = args.target
+              ? mcpInstall.installTo(args.target, opts)
+              : mcpInstall.installAll(opts);
+          } else if (action === 'uninstall') {
+            result = args.target
+              ? mcpInstall.uninstallFrom(args.target)
+              : mcpInstall.uninstallAll();
+          } else {
+            result = { error: 'Unknown action. Use install, uninstall, or status.' };
+          }
+          break;
+        }
+
+        case 'oracle_github_identity': {
+          const { GitHubIdentity } = require('../auth/github-oauth');
+          const sqliteStore = this.oracle.store.getSQLiteStore ? this.oracle.store.getSQLiteStore() : null;
+          const ghIdentity = new GitHubIdentity({ store: sqliteStore });
+          const action = args.action;
+
+          if (action === 'verify' && args.token) {
+            result = await ghIdentity.verifyToken(args.token);
+          } else if (action === 'check' && args.voterId) {
+            const identity = ghIdentity.getIdentity(args.voterId);
+            result = identity ? { verified: true, ...identity } : { verified: false };
+          } else if (action === 'list' || action === 'status') {
+            result = ghIdentity.listIdentities(50);
+          } else {
+            result = { error: 'Provide action (verify/check/list) with required params' };
+          }
           break;
         }
 

@@ -150,7 +150,14 @@ class CloudSyncServer {
         return await this._handleLogin(req, res);
       }
       if (path === '/api/health' && method === 'GET') {
-        return this._json(res, 200, { status: 'ok', version: '1.0.0' });
+        const patterns = this.oracle.patterns ? this.oracle.patterns.getAll().length : 0;
+        return this._json(res, 200, {
+          status: 'ok',
+          version: '1.0.0',
+          patterns,
+          uptime: process.uptime(),
+          wsClients: this.wsClients.size,
+        });
       }
 
       // All other routes require authentication
@@ -178,6 +185,109 @@ class CloudSyncServer {
       // Search
       if (path === '/api/search' && method === 'POST') {
         return await this._handleSearch(req, res);
+      }
+      if (path === '/api/search' && method === 'GET') {
+        const q = url.searchParams.get('q') || url.searchParams.get('query') || '';
+        if (!q) return this._json(res, 200, { results: [] });
+        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        const results = this.oracle.search(q, { limit });
+        return this._json(res, 200, { results });
+      }
+
+      // Resolve
+      if (path === '/api/resolve' && method === 'POST') {
+        const body = await this._readBody(req);
+        const result = this.oracle.resolve({
+          description: body.description,
+          language: body.language || 'javascript',
+          tags: body.tags || [],
+        });
+        return this._json(res, 200, result);
+      }
+
+      // Feedback
+      if (path === '/api/feedback' && method === 'POST') {
+        const body = await this._readBody(req);
+        if (!body.id) return this._json(res, 400, { error: 'id is required' });
+        const result = this.oracle.patternFeedback(body.id, body.success !== false);
+        return this._json(res, 200, result);
+      }
+
+      // Vote
+      if (path === '/api/vote' && method === 'POST') {
+        const body = await this._readBody(req);
+        if (!body.patternId) return this._json(res, 400, { error: 'patternId is required' });
+        const voter = body.voter || user.username || 'anonymous';
+        const result = this.oracle.vote(body.patternId, voter, body.vote || 1);
+        this._broadcast({ type: 'vote', patternId: body.patternId, vote: body.vote });
+        return this._json(res, 200, result);
+      }
+
+      // Top voted
+      if (path === '/api/top-voted' && method === 'GET') {
+        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        return this._json(res, 200, this.oracle.topVoted(limit));
+      }
+
+      // Reputation
+      if (path === '/api/reputation' && method === 'GET') {
+        const voterId = url.searchParams.get('voter') || url.searchParams.get('id');
+        if (voterId) {
+          return this._json(res, 200, this.oracle.getVoterReputation(voterId));
+        }
+        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        return this._json(res, 200, this.oracle.topVoters(limit));
+      }
+
+      // Context (AI injection)
+      if (path === '/api/context' && method === 'GET') {
+        const format = url.searchParams.get('format') || 'markdown';
+        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        const result = this.oracle.generateContext({ format, limit });
+        return this._json(res, 200, result);
+      }
+
+      // Reflect
+      if (path === '/api/reflect' && method === 'POST') {
+        const body = await this._readBody(req);
+        const { reflectionLoop } = require('../core/reflection');
+        const result = reflectionLoop(body.code || '', {
+          language: body.language,
+          maxLoops: body.maxLoops || 3,
+          targetCoherence: body.targetCoherence || 0.9,
+        });
+        return this._json(res, 200, result);
+      }
+
+      // Covenant check
+      if (path === '/api/covenant' && method === 'POST') {
+        const body = await this._readBody(req);
+        const { covenantCheck } = require('../core/covenant');
+        const result = covenantCheck(body.code || '', {
+          language: body.language || 'javascript',
+          description: body.description || '',
+          tags: body.tags || [],
+        });
+        return this._json(res, 200, result);
+      }
+
+      // Analytics
+      if (path === '/api/analytics' && method === 'GET') {
+        try {
+          const { generateAnalytics } = require('../core/analytics');
+          return this._json(res, 200, generateAnalytics(this.oracle));
+        } catch (err) {
+          return this._json(res, 500, { error: err.message });
+        }
+      }
+
+      // Candidates
+      if (path === '/api/candidates' && method === 'GET') {
+        try {
+          return this._json(res, 200, this.oracle.getCandidates());
+        } catch {
+          return this._json(res, 200, { candidates: [] });
+        }
       }
 
       // Stats
@@ -332,7 +442,23 @@ class CloudSyncServer {
 
   _handleStats(res) {
     const stats = this.oracle.stats();
-    this._json(res, 200, stats);
+    const patternStats = this.oracle.patternStats();
+    const total = this.oracle.patterns ? this.oracle.patterns.getAll().length : 0;
+    const byLanguage = {};
+    if (this.oracle.patterns) {
+      for (const p of this.oracle.patterns.getAll()) {
+        byLanguage[p.language] = (byLanguage[p.language] || 0) + 1;
+      }
+    }
+    this._json(res, 200, {
+      version: '1.0.0',
+      patterns: total,
+      store: stats,
+      patternStats,
+      byLanguage,
+      uptime: process.uptime(),
+      wsClients: this.wsClients.size,
+    });
   }
 
   // ─── Sync ───

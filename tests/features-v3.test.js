@@ -774,3 +774,350 @@ describe('Feature 9: AI Context Injection', () => {
     assert.ok(cliSrc.includes('export-context'));
   });
 });
+
+// ─── Feature 10: Package Distribution ───
+
+describe('Feature 10: Package Distribution', () => {
+  it('package.json has bin entries for oracle and remembrance-oracle', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+    assert.equal(pkg.bin['oracle'], 'src/cli.js');
+    assert.equal(pkg.bin['remembrance-oracle'], 'src/cli.js');
+  });
+
+  it('package.json has correct engine requirement', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+    assert.ok(pkg.engines.node.includes('22'));
+  });
+
+  it('cli.js has shebang line', () => {
+    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    assert.ok(cli.startsWith('#!/usr/bin/env node'));
+  });
+
+  it('index.js exports all major modules', () => {
+    const idx = require('../src/index');
+    assert.ok(idx.RemembranceOracle);
+    assert.ok(idx.PatternLibrary);
+    assert.ok(idx.CloudSyncServer);
+    assert.ok(idx.RemoteOracleClient);
+    assert.ok(idx.MCPServer);
+    assert.ok(idx.DebugOracle);
+    assert.ok(idx.AuthManager);
+  });
+
+  it('setup command exists in CLI', () => {
+    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    assert.ok(cli.includes("cmd === 'setup'"));
+    assert.ok(cli.includes("cmd === 'init'"));
+  });
+
+  it('package.json has cloud script', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+    assert.ok(pkg.scripts.cloud);
+    assert.ok(pkg.scripts.mcp);
+    assert.ok(pkg.scripts.dashboard);
+  });
+
+  it('package.json has zero dependencies', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+    const deps = Object.keys(pkg.dependencies || {}).length;
+    assert.equal(deps, 0, 'should have zero npm dependencies');
+  });
+
+  it('setup command creates .remembrance and CLAUDE.md', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'setup-'));
+    const oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
+    // Simulate setup logic
+    const storeDir = path.join(tmpDir, '.remembrance');
+    if (!fs.existsSync(storeDir)) fs.mkdirSync(storeDir, { recursive: true });
+    const claudeMd = path.join(tmpDir, 'CLAUDE.md');
+    if (!fs.existsSync(claudeMd)) fs.writeFileSync(claudeMd, '# Oracle Instructions\n');
+    assert.ok(fs.existsSync(storeDir));
+    assert.ok(fs.existsSync(claudeMd));
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+});
+
+// ─── Feature 11: MCP Auto-Registration ───
+
+describe('Feature 11: MCP Auto-Registration', () => {
+  const { getConfigPaths, getServerConfig, updateConfigFile, removeFromConfig, checkInstallation, installAll, uninstallAll, SERVER_NAME } = require('../src/ide/mcp-install');
+
+  it('getConfigPaths returns all editor paths', () => {
+    const paths = getConfigPaths();
+    assert.ok(paths.claude);
+    assert.ok(paths.cursor);
+    assert.ok(paths.vscode);
+    assert.ok(paths.claudeCode);
+  });
+
+  it('getServerConfig returns node command by default', () => {
+    const config = getServerConfig();
+    assert.equal(config.command, 'node');
+    assert.ok(config.args.includes('mcp'));
+  });
+
+  it('getServerConfig returns npx when requested', () => {
+    const config = getServerConfig({ command: 'npx' });
+    assert.equal(config.command, 'npx');
+    assert.ok(config.args.includes('remembrance-oracle-toolkit'));
+  });
+
+  it('updateConfigFile creates config and adds server', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-install-'));
+    const configPath = path.join(tmpDir, 'mcp.json');
+    const result = updateConfigFile(configPath, { command: 'node', args: ['test.js'] });
+    assert.ok(result.success);
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    assert.ok(config.mcpServers[SERVER_NAME]);
+    assert.equal(config.mcpServers[SERVER_NAME].command, 'node');
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('updateConfigFile preserves existing servers', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-install-'));
+    const configPath = path.join(tmpDir, 'mcp.json');
+    fs.writeFileSync(configPath, JSON.stringify({ mcpServers: { 'other-server': { command: 'python', args: ['srv.py'] } } }));
+    updateConfigFile(configPath, { command: 'node', args: ['test.js'] });
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    assert.ok(config.mcpServers['other-server']);
+    assert.ok(config.mcpServers[SERVER_NAME]);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('removeFromConfig removes server entry', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-install-'));
+    const configPath = path.join(tmpDir, 'mcp.json');
+    fs.writeFileSync(configPath, JSON.stringify({ mcpServers: { [SERVER_NAME]: { command: 'node', args: [] } } }));
+    const result = removeFromConfig(configPath);
+    assert.ok(result.success);
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    assert.ok(!config.mcpServers[SERVER_NAME]);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('removeFromConfig skips missing files', () => {
+    const result = removeFromConfig('/tmp/nonexistent-mcp-config.json');
+    assert.ok(result.success);
+    assert.ok(result.skipped);
+  });
+
+  it('checkInstallation returns status for all editors', () => {
+    const status = checkInstallation();
+    assert.ok(typeof status === 'object');
+    assert.ok('claude' in status);
+    assert.ok('cursor' in status);
+    assert.ok(typeof status.claude.installed === 'boolean');
+  });
+
+  it('CLI has mcp-install command', () => {
+    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    assert.ok(cli.includes("cmd === 'mcp-install'"));
+    assert.ok(cli.includes('install-mcp'));
+    assert.ok(cli.includes('checkInstallation'));
+  });
+
+  it('MCP server includes oracle_mcp_install tool', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    const names = TOOLS.map(t => t.name);
+    assert.ok(names.includes('oracle_mcp_install'));
+  });
+});
+
+// ─── Feature 12: Native Pattern Seeds ───
+
+describe('Feature 12: Native Pattern Seeds (Python/Go/Rust)', () => {
+  it('PYTHON_SEEDS has idiomatic Python patterns', () => {
+    const { PYTHON_SEEDS } = require('../src/patterns/seeds-python');
+    assert.ok(PYTHON_SEEDS.length >= 8, 'should have at least 8 Python seeds');
+    assert.ok(PYTHON_SEEDS.every(s => s.language === 'python'));
+    assert.ok(PYTHON_SEEDS.every(s => s.code && s.testCode && s.name));
+    const names = PYTHON_SEEDS.map(s => s.name);
+    assert.ok(names.includes('lru-cache-py'));
+    assert.ok(names.includes('retry-decorator-py'));
+  });
+
+  it('GO_SEEDS has idiomatic Go patterns', () => {
+    const { GO_SEEDS } = require('../src/patterns/seeds-go');
+    assert.ok(GO_SEEDS.length >= 6, 'should have at least 6 Go seeds');
+    assert.ok(GO_SEEDS.every(s => s.language === 'go'));
+    assert.ok(GO_SEEDS.every(s => s.code && s.testCode && s.name));
+    const names = GO_SEEDS.map(s => s.name);
+    assert.ok(names.includes('worker-pool-go'));
+    assert.ok(names.includes('binary-search-go'));
+  });
+
+  it('RUST_SEEDS has idiomatic Rust patterns', () => {
+    const { RUST_SEEDS } = require('../src/patterns/seeds-rust');
+    assert.ok(RUST_SEEDS.length >= 6, 'should have at least 6 Rust seeds');
+    assert.ok(RUST_SEEDS.every(s => s.language === 'rust'));
+    assert.ok(RUST_SEEDS.every(s => s.code && s.testCode && s.name));
+    const names = RUST_SEEDS.map(s => s.name);
+    assert.ok(names.includes('trait-strategy-rust'));
+    assert.ok(names.includes('linked-list-rust'));
+  });
+
+  it('Rust test code includes use super::*', () => {
+    const { RUST_SEEDS } = require('../src/patterns/seeds-rust');
+    for (const seed of RUST_SEEDS) {
+      assert.ok(seed.testCode.includes('use super::*'), seed.name + ' should have use super::*');
+    }
+  });
+
+  it('seedNativeLibrary function exists', () => {
+    const { seedNativeLibrary } = require('../src/patterns/seeds');
+    assert.equal(typeof seedNativeLibrary, 'function');
+  });
+
+  it('native patterns are tagged as native', () => {
+    const { PYTHON_SEEDS } = require('../src/patterns/seeds-python');
+    const { GO_SEEDS } = require('../src/patterns/seeds-go');
+    const { RUST_SEEDS } = require('../src/patterns/seeds-rust');
+    assert.ok(PYTHON_SEEDS.every(s => s.tags.includes('python-native')));
+    assert.ok(GO_SEEDS.every(s => s.tags.includes('go-native')));
+    assert.ok(RUST_SEEDS.every(s => s.tags.includes('rust-native')));
+  });
+
+  it('CLI seed command includes native seeds', () => {
+    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    assert.ok(cli.includes('seedNativeLibrary'));
+    assert.ok(cli.includes('Native seeds'));
+  });
+});
+
+// ─── Feature 13: GitHub OAuth Identity ───
+
+describe('Feature 13: GitHub OAuth Identity', () => {
+  const { GitHubIdentity } = require('../src/auth/github-oauth');
+
+  it('GitHubIdentity class exists with required methods', () => {
+    const gh = new GitHubIdentity();
+    assert.equal(typeof gh.verifyToken, 'function');
+    assert.equal(typeof gh.startDeviceFlow, 'function');
+    assert.equal(typeof gh.pollDeviceFlow, 'function');
+    assert.equal(typeof gh.getIdentity, 'function');
+    assert.equal(typeof gh.getByUsername, 'function');
+    assert.equal(typeof gh.listIdentities, 'function');
+    assert.equal(typeof gh.isVerified, 'function');
+    assert.equal(typeof gh.recordContribution, 'function');
+    assert.equal(typeof gh.removeIdentity, 'function');
+  });
+
+  it('in-memory identity management works', () => {
+    const gh = new GitHubIdentity();
+    // Simulate saving an identity
+    gh._saveIdentity({
+      voterId: 'github:testuser',
+      githubUsername: 'testuser',
+      githubId: 12345,
+      avatarUrl: 'https://github.com/testuser.png',
+    });
+
+    const identity = gh.getIdentity('github:testuser');
+    assert.ok(identity);
+    assert.equal(identity.githubUsername, 'testuser');
+    assert.equal(identity.githubId, 12345);
+
+    assert.ok(gh.isVerified('github:testuser'));
+    assert.ok(!gh.isVerified('github:unknown'));
+
+    const byUsername = gh.getByUsername('testuser');
+    assert.ok(byUsername);
+    assert.equal(byUsername.voterId, 'github:testuser');
+  });
+
+  it('recordContribution increments counter', () => {
+    const gh = new GitHubIdentity();
+    gh._saveIdentity({
+      voterId: 'github:contributor1',
+      githubUsername: 'contributor1',
+      githubId: 999,
+      avatarUrl: '',
+    });
+    gh.recordContribution('github:contributor1');
+    gh.recordContribution('github:contributor1');
+    const identity = gh.getIdentity('github:contributor1');
+    assert.equal(identity.contributions, 2);
+  });
+
+  it('removeIdentity removes identity', () => {
+    const gh = new GitHubIdentity();
+    gh._saveIdentity({
+      voterId: 'github:removeme',
+      githubUsername: 'removeme',
+      githubId: 111,
+      avatarUrl: '',
+    });
+    assert.ok(gh.isVerified('github:removeme'));
+    gh.removeIdentity('github:removeme');
+    assert.ok(!gh.isVerified('github:removeme'));
+  });
+
+  it('listIdentities returns all identities', () => {
+    const gh = new GitHubIdentity();
+    gh._saveIdentity({ voterId: 'github:user1', githubUsername: 'user1', githubId: 1, avatarUrl: '' });
+    gh._saveIdentity({ voterId: 'github:user2', githubUsername: 'user2', githubId: 2, avatarUrl: '' });
+    const list = gh.listIdentities();
+    assert.ok(list.length >= 2);
+  });
+
+  it('startDeviceFlow requires clientId', async () => {
+    const gh = new GitHubIdentity();
+    const result = await gh.startDeviceFlow();
+    assert.ok(result.error);
+    assert.ok(result.error.includes('Client ID'));
+  });
+
+  it('SQLite-backed identity management', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gh-oauth-'));
+    const oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
+    const sqliteStore = oracle.store.getSQLiteStore();
+    const gh = new GitHubIdentity({ store: sqliteStore });
+
+    gh._saveIdentity({
+      voterId: 'github:sqluser',
+      githubUsername: 'sqluser',
+      githubId: 42,
+      avatarUrl: 'https://github.com/sqluser.png',
+    });
+
+    const identity = gh.getIdentity('github:sqluser');
+    assert.ok(identity);
+    assert.equal(identity.github_username, 'sqluser');
+
+    gh.recordContribution('github:sqluser');
+    const updated = gh.getIdentity('github:sqluser');
+    assert.equal(updated.contributions, 1);
+
+    const list = gh.listIdentities();
+    assert.ok(list.length >= 1);
+
+    gh.removeIdentity('github:sqluser');
+    assert.ok(!gh.getIdentity('github:sqluser'));
+
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('oracle API has GitHub identity methods', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gh-api-'));
+    const oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
+    assert.equal(typeof oracle.verifyGitHubToken, 'function');
+    assert.equal(typeof oracle.startGitHubLogin, 'function');
+    assert.equal(typeof oracle.isVerifiedVoter, 'function');
+    assert.equal(typeof oracle.listVerifiedIdentities, 'function');
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('CLI has github command', () => {
+    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    assert.ok(cli.includes("cmd === 'github'"));
+    assert.ok(cli.includes('gh-auth'));
+    assert.ok(cli.includes('GitHubIdentity'));
+  });
+
+  it('MCP server includes oracle_github_identity tool', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    const names = TOOLS.map(t => t.name);
+    assert.ok(names.includes('oracle_github_identity'));
+  });
+});

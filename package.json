@@ -1,6 +1,6 @@
 {
   "name": "remembrance-oracle-toolkit",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Code memory system — stores only proven code (passes validation + coherency), scores everything 0-1, and serves the most relevant patterns to any AI or developer.",
   "main": "src/index.js",
   "bin": {
@@ -16,10 +16,13 @@
   "scripts": {
     "test": "node --test tests/*.test.js",
     "start": "node src/deploy.js",
+    "setup": "node src/cli.js seed",
     "dashboard": "node src/cli.js dashboard",
+    "cloud": "node src/cli.js cloud start",
     "mcp": "node src/cli.js mcp",
     "seed": "node src/cli.js seed",
-    "analytics": "node src/cli.js analytics --json"
+    "analytics": "node src/cli.js analytics --json",
+    "postinstall": "node -e \"try{require('./src/cli.js')}catch{}\""
   },
   "keywords": [
     "ai",
@@ -35,7 +38,10 @@
     "github-action",
     "ai-tools",
     "developer-tools",
-    "code-validation"
+    "code-validation",
+    "federation",
+    "remote-oracle",
+    "npx"
   ],
   "license": "MIT",
   "author": "Crackedcoder5TH",

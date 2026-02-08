@@ -229,6 +229,8 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_reputation'));
     assert.ok(names.includes('oracle_verify_transpile'));
     assert.ok(names.includes('oracle_context'));
-    assert.equal(res.result.tools.length, 57);
+    assert.ok(names.includes('oracle_mcp_install'));
+    assert.ok(names.includes('oracle_github_identity'));
+    assert.equal(res.result.tools.length, 59);
   });
 });

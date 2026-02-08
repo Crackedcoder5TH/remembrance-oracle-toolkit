@@ -130,6 +130,9 @@ ${c.bold('Commands:')}
   ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
   ${c.cyan('debug')}      Debug oracle — capture/search/grow error→fix patterns exponentially
   ${c.cyan('llm')}        Claude LLM engine — transpile/test/refine/analyze/explain
+  ${c.cyan('cloud')}      Start cloud server for remote federation (HTTP + WebSocket)
+  ${c.cyan('remote')}     Manage remote oracle connections (add/remove/list/health/search)
+  ${c.cyan('setup')}      Initialize oracle in current project (seed + configure)
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -154,6 +157,49 @@ ${c.bold('Pipe support:')}
   ${c.dim('cat code.js | oracle reflect | oracle submit')}
   ${c.dim('cat code.js | oracle covenant --json')}
     `);
+    return;
+  }
+
+  if (cmd === 'setup' || cmd === 'init') {
+    console.log(`\n${c.boldCyan('Remembrance Oracle — Setup')}\n`);
+
+    // 1. Seed the oracle
+    console.log(`${c.bold('1.')} Seeding pattern library...`);
+    const seedResult = oracle.seed();
+    console.log(`   ${c.green('✓')} ${seedResult.seeded || 0} patterns seeded\n`);
+
+    // 2. Create .remembrance dir
+    const storeDir = path.join(process.cwd(), '.remembrance');
+    if (!fs.existsSync(storeDir)) {
+      fs.mkdirSync(storeDir, { recursive: true });
+      console.log(`${c.bold('2.')} Created ${c.cyan('.remembrance/')} directory`);
+    } else {
+      console.log(`${c.bold('2.')} ${c.cyan('.remembrance/')} directory exists`);
+    }
+
+    // 3. Create CLAUDE.md if not present
+    const claudeMd = path.join(process.cwd(), 'CLAUDE.md');
+    if (!fs.existsSync(claudeMd)) {
+      const ctx = oracle.generateContext({ format: 'markdown', limit: 10 });
+      const template = `# Oracle Instructions\n\nBefore writing any function, search the oracle:\n\`\`\`bash\noracle search "<what you need>" --limit 3\noracle resolve --description "<what you need>"\n\`\`\`\n\nAfter writing code that passes tests, register it:\n\`\`\`bash\noracle register --file <code.js> --test <test.js> --name <name>\n\`\`\`\n`;
+      fs.writeFileSync(claudeMd, template);
+      console.log(`${c.bold('3.')} Created ${c.cyan('CLAUDE.md')} with oracle instructions`);
+    } else {
+      console.log(`${c.bold('3.')} ${c.cyan('CLAUDE.md')} already exists`);
+    }
+
+    // 4. Stats
+    const stats = oracle.stats();
+    const patternStats = oracle.patternStats();
+    console.log(`\n${c.boldGreen('Setup complete!')}`);
+    console.log(`  Patterns: ${patternStats.total}`);
+    console.log(`  Entries:  ${stats.totalEntries}`);
+    console.log(`\n${c.dim('Quick start:')}`);
+    console.log(`  ${c.cyan('oracle search "debounce"')}     — Find a pattern`);
+    console.log(`  ${c.cyan('oracle resolve --description "..."')} — Smart pull/evolve/generate`);
+    console.log(`  ${c.cyan('oracle mcp')}                  — Start MCP server for AI clients`);
+    console.log(`  ${c.cyan('oracle cloud start')}          — Start cloud server for federation`);
+    console.log(`  ${c.cyan('oracle dashboard')}            — Web dashboard`);
     return;
   }
 
@@ -350,6 +396,100 @@ ${c.bold('Pipe support:')}
         console.log(`  ${repStr} ${c.bold(v.id)} — votes: ${v.total_votes} | accurate: ${v.accurate_votes}`);
       }
     }
+    return;
+  }
+
+  if (cmd === 'github' || cmd === 'gh-auth') {
+    const { GitHubIdentity } = require('./auth/github-oauth');
+    const sub = process.argv[3];
+    const sqliteStore = oracle.store.getSQLiteStore();
+    const ghIdentity = new GitHubIdentity({ store: sqliteStore });
+
+    if (sub === 'verify') {
+      const token = args.token || process.env.GITHUB_TOKEN;
+      if (!token) {
+        console.log(`${c.boldRed('Error:')} Provide --token <PAT> or set GITHUB_TOKEN env var`);
+        process.exit(1);
+      }
+      ghIdentity.verifyToken(token).then((result) => {
+        if (result.success) {
+          console.log(`${c.boldGreen('✓')} Verified GitHub identity: ${c.bold(result.username)}`);
+          console.log(`  Voter ID: ${c.cyan(result.voterId)}`);
+          console.log(`  GitHub ID: ${result.githubId}`);
+          console.log(`\n  ${c.dim('Your votes will now be linked to your GitHub identity.')}`);
+        } else {
+          console.log(`${c.boldRed('✗')} Verification failed: ${result.error}`);
+        }
+      });
+      return;
+    }
+
+    if (sub === 'login') {
+      ghIdentity.startDeviceFlow().then((result) => {
+        if (result.error) {
+          console.log(`${c.boldRed('Error:')} ${result.error}`);
+          return;
+        }
+        console.log(`\n${c.boldCyan('GitHub Login')}\n`);
+        console.log(`  1. Go to: ${c.bold(result.verificationUrl)}`);
+        console.log(`  2. Enter code: ${c.boldGreen(result.userCode)}\n`);
+        console.log(`  ${c.dim('Waiting for authorization...')}`);
+
+        const poll = setInterval(async () => {
+          const pollResult = await ghIdentity.pollDeviceFlow(result.deviceCode);
+          if (pollResult.pending) return;
+          clearInterval(poll);
+          if (pollResult.success) {
+            console.log(`\n${c.boldGreen('✓')} Logged in as ${c.bold(pollResult.username)}`);
+            console.log(`  Voter ID: ${c.cyan(pollResult.voterId)}`);
+          } else {
+            console.log(`\n${c.boldRed('✗')} Login failed: ${pollResult.error}`);
+          }
+        }, (result.interval || 5) * 1000);
+
+        // Timeout after expiry
+        setTimeout(() => {
+          clearInterval(poll);
+          console.log(`\n${c.yellow('Login expired. Try again with:')} ${c.cyan('oracle github login')}`);
+        }, (result.expiresIn || 900) * 1000);
+      });
+      return;
+    }
+
+    if (sub === 'status' || sub === 'identities') {
+      const identities = ghIdentity.listIdentities(parseInt(args.limit) || 20);
+      if (identities.length === 0) {
+        console.log(c.dim('No verified GitHub identities.'));
+        console.log(`${c.dim('Link your GitHub:')} ${c.cyan('oracle github verify --token <PAT>')}`);
+        return;
+      }
+      console.log(`\n${c.boldCyan('Verified GitHub Identities')}\n`);
+      for (const id of identities) {
+        console.log(`  ${c.boldGreen('✓')} ${c.bold(id.github_username)} (${c.dim(id.voter_id)}) — ${id.contributions || 0} contributions`);
+      }
+      return;
+    }
+
+    if (sub === 'whoami') {
+      const voter = args.voter || `github:${process.env.GITHUB_USER || process.env.USER || 'unknown'}`;
+      const identity = ghIdentity.getIdentity(voter);
+      if (identity) {
+        console.log(`${c.boldGreen('✓')} ${c.bold(identity.github_username)}`);
+        console.log(`  Voter ID: ${c.cyan(identity.voter_id)}`);
+        console.log(`  Verified: ${c.dim(identity.verified_at)}`);
+        console.log(`  Contributions: ${identity.contributions || 0}`);
+      } else {
+        console.log(c.dim('No linked GitHub identity found.'));
+        console.log(`${c.dim('Verify with:')} ${c.cyan('oracle github verify --token <PAT>')}`);
+      }
+      return;
+    }
+
+    console.log(`${c.bold('GitHub Identity')}\n`);
+    console.log(`  ${c.cyan('oracle github verify')} --token <PAT>   Verify GitHub PAT and link identity`);
+    console.log(`  ${c.cyan('oracle github login')}                  OAuth device flow (browser-based)`);
+    console.log(`  ${c.cyan('oracle github status')}                 List verified identities`);
+    console.log(`  ${c.cyan('oracle github whoami')}                 Show your linked identity`);
     return;
   }
 
@@ -689,7 +829,7 @@ ${c.bold('Pipe support:')}
   }
 
   if (cmd === 'seed') {
-    const { seedLibrary } = require('./patterns/seeds');
+    const { seedLibrary, seedNativeLibrary } = require('./patterns/seeds');
     const results = seedLibrary(oracle);
     console.log(`Core seeds: ${c.boldGreen(String(results.registered))} registered (${c.dim(results.skipped + ' skipped')}, ${results.failed > 0 ? c.boldRed(String(results.failed)) : c.dim(String(results.failed))} failed)`);
 
@@ -697,7 +837,10 @@ ${c.bold('Pipe support:')}
     const ext = seedExtendedLibrary(oracle, { verbose: !!args.verbose });
     console.log(`Extended seeds: ${c.boldGreen(String(ext.registered))} registered (${c.dim(ext.skipped + ' skipped')}, ${ext.failed > 0 ? c.boldRed(String(ext.failed)) : c.dim(String(ext.failed))} failed)`);
 
-    const total = results.registered + ext.registered;
+    const native = seedNativeLibrary(oracle, { verbose: !!args.verbose });
+    console.log(`Native seeds (Python/Go/Rust): ${c.boldGreen(String(native.registered))} registered (${c.dim(native.skipped + ' skipped')}, ${native.failed > 0 ? c.boldRed(String(native.failed)) : c.dim(String(native.failed))} failed)`);
+
+    const total = results.registered + ext.registered + native.registered;
     console.log(`\nTotal seeded: ${c.boldGreen(String(total))} patterns`);
     console.log(`Library now has ${c.bold(String(oracle.patternStats().totalPatterns))} patterns`);
     return;
@@ -1153,6 +1296,66 @@ ${c.bold('Pipe support:')}
   if (cmd === 'mcp') {
     const { startMCPServer } = require('./mcp/server');
     startMCPServer(oracle);
+    return;
+  }
+
+  if (cmd === 'mcp-install' || cmd === 'install-mcp') {
+    const { installAll, uninstallAll, checkInstallation, installTo, uninstallFrom, getConfigPaths } = require('./ide/mcp-install');
+    const sub = process.argv[3];
+
+    if (sub === 'status' || sub === 'check') {
+      const status = checkInstallation();
+      console.log(`\n${c.boldCyan('MCP Installation Status')}\n`);
+      for (const [editor, info] of Object.entries(status)) {
+        const icon = info.installed ? c.boldGreen('✓') : c.dim('○');
+        console.log(`  ${icon} ${c.bold(editor.padEnd(16))} ${info.installed ? 'installed' : 'not installed'}`);
+        console.log(`    ${c.dim(info.path)}`);
+      }
+      return;
+    }
+
+    if (sub === 'remove' || sub === 'uninstall') {
+      const target = process.argv[4];
+      if (target) {
+        const result = uninstallFrom(target);
+        console.log(result.success ? `${c.green('✓')} Removed from ${c.bold(target)}` : `${c.red('✗')} ${result.error}`);
+      } else {
+        const results = uninstallAll();
+        console.log(`\n${c.boldCyan('MCP Uninstall Results')}\n`);
+        for (const [editor, result] of Object.entries(results)) {
+          if (result.skipped) continue;
+          const icon = result.success ? c.green('✓') : c.red('✗');
+          console.log(`  ${icon} ${c.bold(editor)}: ${result.success ? 'removed' : result.error}`);
+        }
+      }
+      return;
+    }
+
+    // Default: install to all
+    const target = sub && sub !== 'all' ? sub : null;
+    const useNpx = args.npx || false;
+    const opts = useNpx ? { command: 'npx' } : {};
+
+    if (target) {
+      const result = installTo(target, opts);
+      if (result.success) {
+        console.log(`${c.green('✓')} Registered MCP server in ${c.bold(target)}`);
+        console.log(`  ${c.dim(result.path)}`);
+      } else {
+        console.log(`${c.red('✗')} Failed: ${result.error}`);
+      }
+    } else {
+      const results = installAll(opts);
+      console.log(`\n${c.boldCyan('MCP Auto-Registration Results')}\n`);
+      let installed = 0;
+      for (const [editor, result] of Object.entries(results)) {
+        const icon = result.success ? c.green('✓') : c.red('✗');
+        console.log(`  ${icon} ${c.bold(editor.padEnd(16))} ${result.success ? c.dim(result.path) : result.error}`);
+        if (result.success) installed++;
+      }
+      console.log(`\n  ${c.boldGreen(installed + ' editors configured.')}`);
+      console.log(`  ${c.dim('Restart your editor to activate the oracle MCP server.')}`);
+    }
     return;
   }
 
@@ -1983,16 +2186,59 @@ ${c.bold('Options:')}
   if (cmd === 'cloud') {
     const { CloudSyncServer } = require('./cloud/server');
     const sub = process.argv[3];
-    if (sub === 'start') {
+    if (sub === 'start' || sub === 'serve') {
       const port = parseInt(args.port) || 3579;
-      const server = new CloudSyncServer({ oracle, port, secret: args.secret });
+      const host = args.host || '0.0.0.0';
+      const server = new CloudSyncServer({ oracle, port, secret: args.secret, rateLimit: parseInt(args.rateLimit) || 120 });
       server.start().then((p) => {
-        console.log(`${c.boldGreen('Cloud Sync Server')} running on ${c.cyan('http://localhost:' + p)}`);
-        console.log(`${c.dim('Endpoints: /api/auth, /api/patterns, /api/search, /api/sync, /api/debug, /ws')}`);
+        console.log(`\n${c.boldGreen('Oracle Cloud Server')} running on ${c.cyan('http://' + host + ':' + p)}\n`);
+        console.log(`  ${c.bold('API Endpoints:')}`);
+        console.log(`    ${c.cyan('GET  /api/health')}       — Server health + pattern count`);
+        console.log(`    ${c.cyan('POST /api/auth/login')}   — Authenticate (get JWT token)`);
+        console.log(`    ${c.cyan('POST /api/auth/register')} — Create account`);
+        console.log(`    ${c.cyan('GET  /api/patterns')}     — Browse patterns (paginated)`);
+        console.log(`    ${c.cyan('POST /api/search')}       — Search patterns`);
+        console.log(`    ${c.cyan('POST /api/resolve')}      — Resolve (PULL/EVOLVE/GENERATE)`);
+        console.log(`    ${c.cyan('POST /api/submit')}       — Submit proven code`);
+        console.log(`    ${c.cyan('POST /api/feedback')}     — Report usage success/failure`);
+        console.log(`    ${c.cyan('POST /api/vote')}         — Vote on pattern quality`);
+        console.log(`    ${c.cyan('GET  /api/reputation')}   — Voter reputation`);
+        console.log(`    ${c.cyan('GET  /api/stats')}        — Store statistics`);
+        console.log(`    ${c.cyan('GET  /api/context')}      — AI context injection`);
+        console.log(`    ${c.cyan('POST /api/sync/push')}    — Push patterns to this server`);
+        console.log(`    ${c.cyan('POST /api/sync/pull')}    — Pull patterns from this server`);
+        console.log(`    ${c.cyan('POST /api/reflect')}      — SERF reflection loop`);
+        console.log(`    ${c.cyan('POST /api/covenant')}     — Covenant check`);
+        console.log(`    ${c.cyan('GET  /api/analytics')}    — Analytics report`);
+        console.log(`    ${c.cyan('WS   /ws')}               — Real-time sync channel`);
+        console.log(`\n  ${c.dim('Other clients can connect with:')} ${c.cyan('oracle remote add http://<ip>:' + p)}`);
       });
       return;
     }
-    console.log(`Usage: ${c.cyan('oracle cloud start')} [--port 3579] [--secret <key>]`);
+    if (sub === 'status') {
+      const { checkRemoteHealth } = require('./cloud/client');
+      console.log(`${c.bold('Cloud Server Status')}\n`);
+      checkRemoteHealth().then((results) => {
+        if (results.length === 0) {
+          console.log(`  ${c.dim('No remote servers configured.')}`);
+          console.log(`  ${c.dim('Add one with:')} ${c.cyan('oracle remote add <url>')}`);
+          return;
+        }
+        for (const r of results) {
+          const status = r.online ? c.boldGreen('ONLINE') : c.red('OFFLINE');
+          console.log(`  ${status} ${c.bold(r.name)} (${c.dim(r.url)})`);
+          if (r.online) {
+            console.log(`    Patterns: ${r.patterns || '?'} | Latency: ${r.latencyMs}ms`);
+          }
+        }
+      });
+      return;
+    }
+    console.log(`${c.bold('Oracle Cloud Server')}\n`);
+    console.log(`  ${c.cyan('oracle cloud start')} [--port 3579] [--host 0.0.0.0] [--secret <key>]`);
+    console.log(`    ${c.dim('Start the cloud server for remote federation')}`);
+    console.log(`  ${c.cyan('oracle cloud status')}`);
+    console.log(`    ${c.dim('Check health of all configured remote servers')}`);
     return;
   }
 

@@ -39,6 +39,7 @@ const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyErro
 const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
 const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
 const { CloudSyncServer, createToken, verifyToken } = require('./cloud/server');
+const { RemoteOracleClient, registerRemote, removeRemote, listRemotes, federatedRemoteSearch, checkRemoteHealth } = require('./cloud/client');
 const { LLMClient, LLMGenerator } = require('./core/llm-generator');
 const { transpile: astTranspile, parseJS, tokenize: astTokenize, toSnakeCase } = require('./core/ast-transpiler');
 const { ClaudeBridge, findClaudeCLI, extractCodeBlock: extractLLMCode } = require('./core/claude-bridge');
@@ -200,6 +201,14 @@ module.exports = {
   CloudSyncServer,
   createToken,
   verifyToken,
+
+  // Remote Federation
+  RemoteOracleClient,
+  registerRemote,
+  removeRemote,
+  listRemotes,
+  federatedRemoteSearch,
+  checkRemoteHealth,
 
   // LLM Generation
   LLMClient,

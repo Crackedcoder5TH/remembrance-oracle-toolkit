@@ -318,11 +318,13 @@ ${c.bold('Pipe support:')}
 
   if (cmd === 'resolve') {
     const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const noHeal = args['no-heal'] || args.raw;
     const result = oracle.resolve({
       description: args.description || '',
       tags,
       language: args.language,
       minCoherency: parseFloat(args['min-coherency']) || undefined,
+      heal: !noHeal,
     });
     console.log(`Decision: ${colorDecision(result.decision)}`);
     console.log(`Confidence: ${colorScore(result.confidence)}`);
@@ -331,7 +333,23 @@ ${c.bold('Pipe support:')}
       console.log(`\nPattern: ${c.bold(result.pattern.name)} [${c.cyan(result.pattern.id)}]`);
       console.log(`Language: ${c.blue(result.pattern.language)} | Type: ${c.magenta(result.pattern.patternType)} | Coherency: ${colorScore(result.pattern.coherencyScore)}`);
       console.log(`Tags: ${(result.pattern.tags || []).map(t => c.magenta(t)).join(', ')}`);
-      console.log(`\n${result.pattern.code}`);
+      if (result.healing) {
+        console.log(`\n${c.dim('── Healing ──')}`);
+        console.log(`SERF: ${colorScore(result.healing.originalCoherence?.toFixed(3))} → ${colorScore(result.healing.finalCoherence?.toFixed(3))} (${result.healing.improvement >= 0 ? '+' : ''}${(result.healing.improvement || 0).toFixed(3)}) in ${result.healing.loops} loop(s)`);
+        if (result.healing.healingPath?.length > 0) {
+          console.log(`Path: ${c.dim(result.healing.healingPath.join(' → '))}`);
+        }
+      }
+      console.log(`\n${c.dim('── Healed Code ──')}`);
+      console.log(result.healedCode || result.pattern.code);
+    }
+    if (result.whisper) {
+      console.log(`\n${c.dim('── Whisper from the Healed Future ──')}`);
+      console.log(c.italic ? c.italic(result.whisper) : c.dim(result.whisper));
+    }
+    if (result.candidateNotes) {
+      console.log(`\n${c.dim('── Why This One ──')}`);
+      console.log(c.dim(result.candidateNotes));
     }
     if (result.alternatives?.length > 0) {
       console.log(`\n${c.dim('Alternatives:')} ${result.alternatives.map(a => `${c.cyan(a.name)}(${colorScore(a.composite?.toFixed(3))})`).join(', ')}`);

@@ -38,13 +38,14 @@ const TOOLS = [
   },
   {
     name: 'oracle_resolve',
-    description: 'Smart retrieval — decides whether to PULL existing code, EVOLVE a close match, or GENERATE new code.',
+    description: 'Smart retrieval — decides whether to PULL existing code, EVOLVE a close match, or GENERATE new code. Returns SERF-healed code, a whisper from the healed future, and candidate comparison notes.',
     inputSchema: {
       type: 'object',
       properties: {
         description: { type: 'string', description: 'What you need the code to do' },
         tags: { type: 'array', items: { type: 'string' }, description: 'Relevant tags' },
         language: { type: 'string', description: 'Preferred language' },
+        heal: { type: 'boolean', description: 'Run SERF healing on matched code (default: true)', default: true },
       },
       required: ['description'],
     },
@@ -536,6 +537,7 @@ class MCPServer {
             description: args.description || '',
             tags: args.tags || [],
             language: args.language,
+            heal: args.heal !== false,
           });
           break;
 

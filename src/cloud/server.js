@@ -587,21 +587,25 @@ class CloudSyncServer {
       }
       if (opcode === 0x0a || opcode === 0x09) return; // Pong/Ping
 
+      if (data.length < 2) return;
       const secondByte = data[1];
       const masked = (secondByte & 0x80) !== 0;
       let length = secondByte & 0x7f;
       let offset = 2;
 
       if (length === 126) {
+        if (data.length < 4) return;
         length = data.readUInt16BE(2);
         offset = 4;
       } else if (length === 127) {
+        if (data.length < 10) return;
         length = Number(data.readBigUInt64BE(2));
         offset = 10;
       }
 
       let payload;
       if (masked) {
+        if (data.length < offset + 4 + length) return;
         const mask = data.slice(offset, offset + 4);
         offset += 4;
         payload = Buffer.alloc(length);
@@ -609,6 +613,7 @@ class CloudSyncServer {
           payload[i] = data[offset + i] ^ mask[i % 4];
         }
       } else {
+        if (data.length < offset + length) return;
         payload = data.slice(offset, offset + length);
       }
 

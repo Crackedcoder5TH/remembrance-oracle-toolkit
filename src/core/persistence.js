@@ -223,7 +223,7 @@ function syncBidirectional(localStore, options = {}) {
  *   patterns: array of pattern names/IDs to share (if empty, shares all above threshold)
  *   tags: filter by tags
  */
-function shareToCommuntiy(localStore, options = {}) {
+function shareToCommunity(localStore, options = {}) {
   const { verbose = false, dryRun = false, minCoherency = 0.7, patterns: nameFilter, tags: tagFilter } = options;
   const communityStore = openCommunityStore();
   if (!communityStore) {
@@ -1008,7 +1008,7 @@ module.exports = {
   syncToGlobal,
   syncFromGlobal,
   syncBidirectional,
-  shareToCommuntiy,
+  shareToCommunity,
   pullFromCommunity,
   federatedQuery,
   globalStats,

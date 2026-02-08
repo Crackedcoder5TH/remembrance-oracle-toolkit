@@ -78,23 +78,23 @@ const decision = oracle.resolve({
 oracle mcp
 ```
 
-Connect from any MCP-compatible AI client. 13 tools available:
+Connect from any MCP-compatible AI client. 59 tools across 13 categories:
 
-| Tool | Description |
-|------|-------------|
-| `oracle_search` | Search patterns by query |
-| `oracle_resolve` | Smart pull/evolve/generate decision |
-| `oracle_submit` | Submit code for validation |
-| `oracle_reflect` | SERF reflection loop |
-| `oracle_covenant` | Covenant harm filter |
-| `oracle_harvest` | Bulk harvest from directories |
-| `oracle_register_pattern` | Register a named pattern |
-| `oracle_feedback` | Report if code worked |
-| `oracle_stats` | Store statistics |
-| `oracle_nearest` | Nearest semantic terms |
-| `oracle_versions` | Pattern version history |
-| `oracle_semantic_diff` | Structural diff between patterns |
-| `oracle_query` | Query stored entries |
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **Core** | `oracle_search`, `oracle_resolve`, `oracle_submit`, `oracle_query`, `oracle_feedback`, `oracle_stats`, `oracle_register_pattern`, `oracle_nearest`, `oracle_smart_search` | Search, submit, resolve, and track patterns |
+| **Versioning** | `oracle_versions`, `oracle_semantic_diff`, `oracle_rollback`, `oracle_verify` | Version history and structural diffing |
+| **Reflection** | `oracle_reflect`, `oracle_covenant`, `oracle_harvest`, `oracle_compose`, `oracle_compose_templates` | SERF healing, harm filter, harvesting |
+| **Candidates** | `oracle_candidates`, `oracle_generate`, `oracle_promote`, `oracle_auto_promote`, `oracle_smart_promote`, `oracle_synthesize_tests` | Candidate lifecycle and promotion |
+| **Security** | `oracle_security_scan`, `oracle_security_audit` | Vulnerability scanning |
+| **Federation** | `oracle_remote_search`, `oracle_remotes`, `oracle_full_search`, `oracle_cross_search`, `oracle_repos` | Multi-server remote search |
+| **Voting** | `oracle_vote`, `oracle_top_voted`, `oracle_reputation` | Community pattern voting |
+| **Storage** | `oracle_sync`, `oracle_share`, `oracle_community`, `oracle_global_stats` | Three-tier storage management |
+| **Debug** | `oracle_debug_capture`, `oracle_debug_search`, `oracle_debug_feedback`, `oracle_debug_grow`, `oracle_debug_stats`, `oracle_debug_share` | Error→fix pattern database |
+| **LLM** | `oracle_llm_status`, `oracle_llm_transpile`, `oracle_llm_tests`, `oracle_llm_refine`, `oracle_llm_analyze`, `oracle_llm_explain`, `oracle_llm_generate` | Claude AI integration |
+| **Transpiler** | `oracle_transpile`, `oracle_verify_transpile`, `oracle_context` | Cross-language transpilation |
+| **Reliability** | `oracle_healing_stats`, `oracle_reliability`, `oracle_report_bug` | Healing and bug tracking |
+| **Integration** | `oracle_mcp_install`, `oracle_github_identity` | IDE setup and GitHub identity |
 
 ### As a GitHub Action
 
@@ -151,34 +151,79 @@ Formula: `SERF(n+1) = I_AM + r_eff * Re[projection / (|overlap|² + ε)] + δ_ca
 ## CLI Reference
 
 ```
-Commands:
-  submit       Submit code for validation and storage
-  query        Query for relevant, proven code
-  search       Fuzzy search across patterns and history
-  resolve      Smart retrieval — pull, evolve, or generate
-  validate     Validate code without storing
-  register     Register code as a named pattern
-  patterns     Show pattern library statistics
-  stats        Show store statistics
-  seed         Seed library with built-in proven patterns
-  reflect      SERF reflection loop — heal and refine code
-  covenant     Check code against the Covenant seal
-  analytics    Pattern analytics and health report
-  harvest      Bulk harvest patterns from a repo or directory
-  hooks        Install git hooks (pre-commit covenant, post-commit seed)
-  import       Import patterns from exported JSON
-  export       Export top patterns as JSON or markdown
-  deploy       Start production server (env-configurable)
-  dashboard    Start web dashboard (default port 3333)
-  mcp          Start MCP server (JSON-RPC over stdio)
-  diff         Compare two entries side by side
-  sdiff        Semantic diff between two patterns
-  versions     Show version history for a pattern
-  users        Manage users (list, add, delete)
-  audit        View append-only audit log
-  nearest      Find nearest semantic vocabulary terms
-  compose      Create composed pattern from components
-  deps         Show dependency tree for a pattern
+Core:
+  submit        Submit code for validation and storage
+  query         Query for relevant, proven code
+  search        Fuzzy search across patterns and history
+  smart-search  Intent-aware search with typo correction + ranking
+  resolve       Smart retrieval — pull, evolve, or generate
+  validate      Validate code without storing
+  register      Register code as a named pattern
+  feedback      Report if pulled code worked
+  inspect       Inspect a stored entry
+
+Library:
+  patterns      Show pattern library statistics
+  stats         Show store statistics
+  seed          Seed the library with built-in + native patterns
+  analytics     Pattern analytics and health report
+  candidates    List candidate patterns (coherent but unproven)
+  generate      Generate candidates from proven patterns
+  promote       Promote a candidate to proven with test proof
+  synthesize    Synthesize tests for candidates and auto-promote
+
+Quality:
+  covenant      Check code against the Covenant seal
+  reflect       SERF reflection loop — heal and refine code
+  harvest       Bulk harvest patterns from a repo or directory
+  compose       Create composed pattern from components
+  deps          Show dependency tree for a pattern
+  recycle       Recycle failures and generate variants
+
+Federation:
+  cloud         Start cloud server for remote federation
+  remote        Manage remote oracle connections
+  cross-search  Search across all remotes
+  sync          Sync patterns with personal store
+  share         Share patterns to community store
+  community     Browse/pull community patterns
+  global        Show combined global store statistics
+
+Voting & Identity:
+  vote          Vote on a pattern (--id <id> --score 1-5)
+  top-voted     Show top-voted patterns
+  reputation    View/manage contributor reputation
+  github        Link GitHub identity for verified voting
+
+Transpiler & AI:
+  transpile     Transpile pattern to another language
+  context       Export AI context for a pattern
+  llm           Claude LLM engine (transpile/test/refine/analyze/explain)
+
+Debug:
+  debug         Debug oracle — capture/search/grow error→fix patterns
+  reliability   Pattern reliability statistics
+
+Integration:
+  mcp           Start MCP server (59 tools, JSON-RPC over stdio)
+  mcp-install   Auto-register MCP in AI editors (Claude, Cursor, VS Code)
+  setup         Initialize oracle in current project
+  dashboard     Start web dashboard (default port 3333)
+  deploy        Start production server (env-configurable)
+  hooks         Install git hooks (pre-commit covenant, post-commit seed)
+
+Admin:
+  users         Manage users (list, add, delete)
+  audit         View append-only audit log
+  prune         Remove low-coherency entries
+  deep-clean    Remove duplicates, stubs, and trivial patterns
+  rollback      Rollback a pattern to a previous version
+  import        Import patterns from exported JSON
+  export        Export top patterns as JSON or markdown
+  diff          Compare two entries side by side
+  sdiff         Semantic diff between two patterns
+  versions      Show version history for a pattern
+  nearest       Find nearest semantic vocabulary terms
 
 Pipe support:
   cat code.js | oracle submit --language javascript
@@ -189,15 +234,15 @@ Pipe support:
 
 ## Pattern Library
 
-The library ships with 200+ proven, tested patterns across 5 languages:
+The library ships with 600+ proven, tested patterns across 5 languages:
 
 | Language | Patterns | Categories |
 |----------|----------|------------|
-| JavaScript | 85+ | Algorithms, data structures, utilities, async, web |
-| TypeScript | 33+ | Type guards, generics, branded types, patterns |
-| Python | 37+ | Decorators, generators, comprehensions, stdlib |
-| Go | 29+ | Channels, sync, error handling, generics |
-| Rust | 24+ | Iterators, traits, error handling, smart pointers |
+| JavaScript | 390+ | Algorithms, data structures, utilities, async, web |
+| TypeScript | 150+ | Type guards, generics, branded types, patterns |
+| Python | 20+ | Decorators, generators, comprehensions, stdlib, native |
+| Rust | 12+ | Iterators, traits, error handling, smart pointers, native |
+| Go | 10+ | Channels, sync, error handling, generics, native |
 
 Grow it further:
 
@@ -279,11 +324,14 @@ src/
     sandbox.js           — Sandboxed code execution
   patterns/
     library.js           — Pattern library (decision engine + composition)
-    seeds.js             — 200+ built-in proven patterns
+    seeds.js             — 100+ built-in JS/TS patterns + native seeds loader
+    seeds-python.js      — 10 idiomatic Python patterns
+    seeds-go.js          — 8 idiomatic Go patterns
+    seeds-rust.js        — 8 idiomatic Rust patterns
   store/
     sqlite.js            — SQLite storage (WAL mode, schema v3)
     history.js           — Verified history store
-  mcp/server.js          — MCP server (13 tools, JSON-RPC 2.0)
+  mcp/server.js          — MCP server (59 tools, JSON-RPC 2.0)
   dashboard/server.js    — Web dashboard + API + WebSocket
   auth/auth.js           — Token + API key auth (3 roles)
   ci/
@@ -292,8 +340,18 @@ src/
     harvest.js           — Bulk GitHub/directory harvester
     hooks.js             — Git hook integration
   deploy.js              — Production server entry point
-  cli.js                 — CLI interface (30+ commands)
-tests/                   — 410+ tests across 19 files
+  cloud/server.js        — Cloud federation server (HTTP + WebSocket + JWT)
+  cloud/client.js        — Remote oracle client
+  ide/mcp-install.js     — Auto-register MCP in AI editors
+  auth/github-oauth.js   — GitHub OAuth identity verification
+  core/debug-oracle.js   — Debug pattern database (capture→search→grow)
+  core/persistence.js    — Three-tier storage (local/personal/community)
+  core/recycler.js       — Exponential variant generation
+  core/test-synth.js     — Test synthesis for candidate promotion
+  connectors/
+    github-bridge.js     — GitHub issue/PR integration
+  cli.js                 — CLI interface (66+ commands)
+tests/                   — 1160+ tests across 24 files
 ```
 
 ## Storage
@@ -314,7 +372,7 @@ All data lives in `.remembrance/` (SQLite with WAL mode, JSON fallback):
 ## Running Tests
 
 ```bash
-node --test tests/*.test.js   # 410+ tests
+node --test tests/*.test.js   # 1160+ tests
 ```
 
 ## License

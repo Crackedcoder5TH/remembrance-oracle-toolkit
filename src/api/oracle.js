@@ -1284,10 +1284,10 @@ class RemembranceOracle {
    * Explicit action — only shares test-backed patterns above 0.7 coherency.
    */
   share(options = {}) {
-    const { shareToCommuntiy } = require('../core/persistence');
+    const { shareToCommunity } = require('../core/persistence');
     const sqliteStore = this.store.getSQLiteStore();
     if (!sqliteStore) return { shared: 0, error: 'No SQLite store available' };
-    return shareToCommuntiy(sqliteStore, options);
+    return shareToCommunity(sqliteStore, options);
   }
 
   /**

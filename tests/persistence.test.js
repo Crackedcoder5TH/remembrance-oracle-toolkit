@@ -8,7 +8,7 @@ const {
   syncToGlobal,
   syncFromGlobal,
   syncBidirectional,
-  shareToCommuntiy,
+  shareToCommunity,
   pullFromCommunity,
   federatedQuery,
   globalStats,
@@ -123,7 +123,7 @@ describe('Cross-Project Persistence', () => {
     });
   });
 
-  describe('shareToCommuntiy', () => {
+  describe('shareToCommunity', () => {
     it('shares test-backed patterns to community store', () => {
       const { localStore } = createTestStores();
       const communityBase = makeTempDir('community');

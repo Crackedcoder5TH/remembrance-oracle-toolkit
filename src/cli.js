@@ -67,10 +67,26 @@ function readStdin() {
  * Pipe takes precedence when no --file is given.
  */
 function getCode(args) {
-  if (args.file) return fs.readFileSync(path.resolve(args.file), 'utf-8');
+  if (args.file) {
+    const filePath = path.resolve(args.file);
+    if (!fs.existsSync(filePath)) {
+      console.error(`Error: File not found: ${args.file}`);
+      process.exit(1);
+    }
+    return fs.readFileSync(filePath, 'utf-8');
+  }
   const stdin = readStdin();
   if (stdin.trim()) return stdin;
   return null;
+}
+
+function readFile(filePath, label) {
+  const resolved = path.resolve(filePath);
+  if (!fs.existsSync(resolved)) {
+    console.error(`Error: ${label || 'File'} not found: ${filePath}`);
+    process.exit(1);
+  }
+  return fs.readFileSync(resolved, 'utf-8');
 }
 
 function main() {
@@ -82,57 +98,82 @@ function main() {
     console.log(`
 ${c.boldCyan('Remembrance Oracle Toolkit')}
 
-${c.bold('Commands:')}
-  ${c.cyan('submit')}     Submit code for validation and storage
-  ${c.cyan('query')}      Query for relevant, proven code
-  ${c.cyan('resolve')}    Smart retrieval — pull, evolve, or generate decision
-  ${c.cyan('validate')}   Validate code without storing
-  ${c.cyan('stats')}      Show store statistics
-  ${c.cyan('inspect')}    Inspect a stored entry
-  ${c.cyan('feedback')}   Report if pulled code worked
-  ${c.cyan('prune')}      Remove low-coherency entries
-  ${c.cyan('deep-clean')} Remove duplicates, stubs, and trivial harvested patterns
-  ${c.cyan('compose')}    Compose multiple patterns into a module (--patterns p1,p2 or --template name or --describe "...")
-  ${c.cyan('diff')}       Compare two entries or patterns side by side
-  ${c.cyan('export')}     Export top patterns as standalone JSON or markdown
+${c.bold('Core:')}
+  ${c.cyan('submit')}        Submit code for validation and storage
+  ${c.cyan('query')}         Query for relevant, proven code
   ${c.cyan('search')}        Fuzzy search across patterns and history
   ${c.cyan('smart-search')}  Intent-aware search with typo correction + ranking
+  ${c.cyan('resolve')}       Smart retrieval — pull, evolve, or generate decision
+  ${c.cyan('validate')}      Validate code without storing
   ${c.cyan('register')}      Register code as a named pattern in the library
-  ${c.cyan('patterns')}   Show pattern library statistics
-  ${c.cyan('seed')}       Seed the library with built-in proven patterns
-  ${c.cyan('ci-feedback')} Report CI test results back to tracked patterns
-  ${c.cyan('ci-stats')}    Show CI feedback tracking statistics
-  ${c.cyan('audit')}       View append-only audit log of all mutations
-  ${c.cyan('nearest')}     Find nearest semantic vocabulary terms
-  ${c.cyan('compose')}     Create a composed pattern from existing components
-  ${c.cyan('deps')}        Show dependency tree for a pattern
-  ${c.cyan('mcp')}         Start MCP server (JSON-RPC over stdin/stdout)
-  ${c.cyan('dashboard')}   Start web dashboard (default port 3333)
-  ${c.cyan('versions')}    Show version history for a pattern
-  ${c.cyan('sdiff')}       Semantic diff between two patterns
-  ${c.cyan('users')}       Manage users (list, add, delete)
-  ${c.cyan('auto-seed')}   Auto-discover and seed patterns from test suite
-  ${c.cyan('analytics')}   Show pattern analytics and library health report
-  ${c.cyan('deploy')}      Start production-ready server (configurable via env vars)
-  ${c.cyan('covenant')}    Check code against the Covenant seal (The Kingdom's Weave)
-  ${c.cyan('reflect')}     SERF reflection loop — iteratively heal and refine code
-  ${c.cyan('import')}      Import patterns from an exported JSON file
-  ${c.cyan('harvest')}     Bulk harvest patterns from a Git repo or local directory
-  ${c.cyan('recycle')}     Recycle failures and generate variants (exponential growth)
-  ${c.cyan('candidates')} List candidate patterns (coherent but unproven)
-  ${c.cyan('generate')}   Generate candidates from proven patterns (continuous growth)
-  ${c.cyan('promote')}    Promote a candidate to proven with test proof
-  ${c.cyan('synthesize')} Synthesize tests for candidates and auto-promote
-  ${c.cyan('sync')}       Sync patterns with personal store (~/.remembrance/personal/)
-  ${c.cyan('share')}      Share patterns to community store (explicit, test-backed only)
-  ${c.cyan('community')}  Browse/pull community patterns or show stats
-  ${c.cyan('global')}     Show combined global store statistics (personal + community)
-  ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
-  ${c.cyan('debug')}      Debug oracle — capture/search/grow error→fix patterns exponentially
-  ${c.cyan('llm')}        Claude LLM engine — transpile/test/refine/analyze/explain
-  ${c.cyan('cloud')}      Start cloud server for remote federation (HTTP + WebSocket)
-  ${c.cyan('remote')}     Manage remote oracle connections (add/remove/list/health/search)
-  ${c.cyan('setup')}      Initialize oracle in current project (seed + configure)
+  ${c.cyan('feedback')}      Report if pulled code worked
+  ${c.cyan('inspect')}       Inspect a stored entry
+
+${c.bold('Library:')}
+  ${c.cyan('patterns')}      Show pattern library statistics
+  ${c.cyan('stats')}         Show store statistics
+  ${c.cyan('seed')}          Seed the library with built-in + native patterns
+  ${c.cyan('analytics')}     Show pattern analytics and library health report
+  ${c.cyan('candidates')}    List candidate patterns (coherent but unproven)
+  ${c.cyan('generate')}      Generate candidates from proven patterns
+  ${c.cyan('promote')}       Promote a candidate to proven with test proof
+  ${c.cyan('synthesize')}    Synthesize tests for candidates and auto-promote
+
+${c.bold('Quality:')}
+  ${c.cyan('covenant')}      Check code against the Covenant seal
+  ${c.cyan('reflect')}       SERF reflection loop — heal and refine code
+  ${c.cyan('harvest')}       Bulk harvest patterns from a repo or directory
+  ${c.cyan('compose')}       Create a composed pattern from existing components
+  ${c.cyan('deps')}          Show dependency tree for a pattern
+  ${c.cyan('recycle')}       Recycle failures and generate variants
+
+${c.bold('Federation:')}
+  ${c.cyan('cloud')}         Start cloud server for remote federation
+  ${c.cyan('remote')}        Manage remote oracle connections
+  ${c.cyan('cross-search')}  Search across all remotes
+  ${c.cyan('sync')}          Sync patterns with personal store
+  ${c.cyan('share')}         Share patterns to community store
+  ${c.cyan('community')}     Browse/pull community patterns
+  ${c.cyan('global')}        Show combined global store statistics
+
+${c.bold('Voting & Identity:')}
+  ${c.cyan('vote')}          Vote on a pattern (--id <id> --score 1-5)
+  ${c.cyan('top-voted')}     Show top-voted patterns
+  ${c.cyan('reputation')}    View/manage contributor reputation
+  ${c.cyan('github')}        Link GitHub identity for verified voting
+
+${c.bold('Transpiler & AI:')}
+  ${c.cyan('transpile')}     Transpile pattern to another language
+  ${c.cyan('context')}       Export AI context for a pattern
+  ${c.cyan('llm')}           Claude LLM engine — transpile/test/refine/analyze/explain
+
+${c.bold('Debug:')}
+  ${c.cyan('debug')}         Debug oracle — capture/search/grow error→fix patterns
+  ${c.cyan('reliability')}   Pattern reliability statistics
+
+${c.bold('Integration:')}
+  ${c.cyan('mcp')}           Start MCP server (59 tools, JSON-RPC over stdio)
+  ${c.cyan('mcp-install')}   Auto-register MCP in AI editors (Claude, Cursor, VS Code)
+  ${c.cyan('setup')}         Initialize oracle in current project
+  ${c.cyan('dashboard')}     Start web dashboard (default port 3333)
+  ${c.cyan('deploy')}        Start production-ready server (configurable via env vars)
+  ${c.cyan('hooks')}         Install/uninstall git hooks
+
+${c.bold('Admin:')}
+  ${c.cyan('users')}         Manage users (list, add, delete)
+  ${c.cyan('audit')}         View append-only audit log
+  ${c.cyan('prune')}         Remove low-coherency entries
+  ${c.cyan('deep-clean')}    Remove duplicates, stubs, and trivial patterns
+  ${c.cyan('rollback')}      Rollback a pattern to a previous version
+  ${c.cyan('import')}        Import patterns from exported JSON
+  ${c.cyan('export')}        Export top patterns as JSON or markdown
+  ${c.cyan('diff')}          Compare two entries side by side
+  ${c.cyan('sdiff')}         Semantic diff between two patterns
+  ${c.cyan('versions')}      Show version history for a pattern
+  ${c.cyan('nearest')}       Find nearest semantic vocabulary terms
+  ${c.cyan('auto-seed')}     Auto-discover and seed patterns from test suite
+  ${c.cyan('ci-feedback')}   Report CI test results
+  ${c.cyan('ci-stats')}      Show CI feedback tracking statistics
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register

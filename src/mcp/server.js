@@ -444,6 +444,26 @@ const TOOLS = [
       },
     },
   },
+  // Pattern Composition
+  {
+    name: 'oracle_compose',
+    description: 'Compose multiple patterns into a cohesive module. Accepts pattern names, a template name, or a natural language description.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patterns: { type: 'array', items: { type: 'string' }, description: 'Pattern names to compose' },
+        template: { type: 'string', description: 'Built-in template name (rest-api, auth-service, task-queue, data-pipeline, resilient-service)' },
+        describe: { type: 'string', description: 'Natural language description to auto-detect patterns' },
+        language: { type: 'string', description: 'Target language (default: javascript)' },
+        glue: { type: 'string', enum: ['module', 'class', 'function'], description: 'How to combine patterns (default: module)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_compose_templates',
+    description: 'List available composition templates.',
+    inputSchema: { type: 'object', properties: {} },
+  },
 ];
 
 class MCPServer {
@@ -780,6 +800,29 @@ class MCPServer {
             languages: args.languages || ['python', 'typescript'],
           });
           break;
+
+        case 'oracle_compose': {
+          const { PatternComposer } = require('../patterns/composer');
+          const composer = new PatternComposer(this.oracle);
+          if (args.template) {
+            const tmpl = composer.templates().find(t => t.name === args.template);
+            result = tmpl ? composer.compose({ patterns: tmpl.patterns, language: args.language || 'javascript', glue: args.glue || 'module' }) : { error: 'Unknown template' };
+          } else if (args.describe) {
+            result = composer.composeFromDescription(args.describe, args.language || 'javascript');
+          } else if (args.patterns) {
+            result = composer.compose({ patterns: args.patterns, language: args.language || 'javascript', glue: args.glue || 'module' });
+          } else {
+            result = { error: 'Provide patterns, template, or describe' };
+          }
+          break;
+        }
+
+        case 'oracle_compose_templates': {
+          const { PatternComposer: PC } = require('../patterns/composer');
+          const comp = new PC(this.oracle);
+          result = comp.templates();
+          break;
+        }
 
         default:
           return {

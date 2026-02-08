@@ -43,6 +43,7 @@ const { LLMClient, LLMGenerator } = require('./core/llm-generator');
 const { transpile: astTranspile, parseJS, tokenize: astTokenize, toSnakeCase } = require('./core/ast-transpiler');
 const { ClaudeBridge, findClaudeCLI, extractCodeBlock: extractLLMCode } = require('./core/claude-bridge');
 const { ModulePattern, DependencyGraph, TemplateEngine, ModuleStore, scaffold, compose } = require('./patterns/multi-file');
+const { PatternComposer, BUILT_IN_TEMPLATES } = require('./patterns/composer');
 
 module.exports = {
   // Core
@@ -222,4 +223,8 @@ module.exports = {
   ModuleStore,
   scaffold,
   compose,
+
+  // Pattern Composition
+  PatternComposer,
+  BUILT_IN_TEMPLATES,
 };

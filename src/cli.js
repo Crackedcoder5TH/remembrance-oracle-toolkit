@@ -77,6 +77,7 @@ ${c.bold('Commands:')}
   ${c.cyan('feedback')}   Report if pulled code worked
   ${c.cyan('prune')}      Remove low-coherency entries
   ${c.cyan('deep-clean')} Remove duplicates, stubs, and trivial harvested patterns
+  ${c.cyan('compose')}    Compose multiple patterns into a module (--patterns p1,p2 or --template name or --describe "...")
   ${c.cyan('diff')}       Compare two entries or patterns side by side
   ${c.cyan('export')}     Export top patterns as standalone JSON or markdown
   ${c.cyan('search')}        Fuzzy search across patterns and history
@@ -274,6 +275,44 @@ ${c.bold('Pipe support:')}
         console.log(`  [${d.reason}] ${d.name}: ${d.code}`)
       );
     }
+    return;
+  }
+
+  if (cmd === 'compose') {
+    const { PatternComposer } = require('./patterns/composer');
+    const composer = new PatternComposer(oracle);
+
+    if (args.templates || args.template === 'list') {
+      const templates = composer.templates();
+      console.log(`${c.bold('Composition Templates:')}\n`);
+      templates.forEach(t => {
+        console.log(`  ${c.cyan(t.name)}: ${t.description}`);
+        console.log(`    ${c.dim('Patterns:')} ${t.patterns.join(', ')}`);
+      });
+      return;
+    }
+
+    let result;
+    const lang = args.language || 'javascript';
+    const glue = args.glue || 'module';
+
+    if (args.template) {
+      const tmpl = composer.templates().find(t => t.name === args.template);
+      if (!tmpl) { console.error(c.boldRed('Unknown template:') + ' ' + args.template); process.exit(1); }
+      result = composer.compose({ patterns: tmpl.patterns, language: lang, glue });
+    } else if (args.describe) {
+      result = composer.composeFromDescription(args.describe, lang);
+    } else if (args.patterns) {
+      const patternNames = args.patterns.split(',').map(p => p.trim());
+      result = composer.compose({ patterns: patternNames, language: lang, glue });
+    } else {
+      console.error(c.boldRed('Usage:') + ' oracle compose --patterns p1,p2 | --template name | --describe "..." [--language js] [--glue module|class|function]');
+      process.exit(1);
+    }
+
+    console.log(`${c.boldGreen('Composed')} ${result.patterns.length} pattern(s):`);
+    result.patterns.forEach(p => console.log(`  ${c.cyan('→')} ${p.name} (${p.language})`));
+    console.log(`\n${result.code}`);
     return;
   }
 

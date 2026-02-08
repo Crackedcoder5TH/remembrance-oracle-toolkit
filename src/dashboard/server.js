@@ -16,6 +16,7 @@
 const http = require('http');
 const url = require('url');
 const { RemembranceOracle } = require('../api/oracle');
+const { safeJsonParse } = require('../core/covenant');
 
 /**
  * Simple in-memory rate limiter.
@@ -501,7 +502,8 @@ function createDashboardServer(oracle, options = {}) {
 
     wsServer.on('message', (msg) => {
       try {
-        const data = JSON.parse(msg);
+        const data = safeJsonParse(msg, null);
+        if (!data) return;
         // Handle client commands
         if (data.type === 'subscribe') {
           // Clients auto-subscribe on connect — this is a no-op acknowledgement
@@ -539,8 +541,7 @@ function readBody(req, callback) {
   let body = '';
   req.on('data', chunk => { body += chunk; });
   req.on('end', () => {
-    try { callback(JSON.parse(body)); }
-    catch { callback({}); }
+    callback(safeJsonParse(body, {}));
   });
 }
 

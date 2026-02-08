@@ -367,11 +367,31 @@ function deepSecurityScan(code, options = {}) {
   };
 }
 
+/**
+ * Safe JSON.parse that strips prototype pollution keys (__proto__, constructor.prototype).
+ * Use this for any data from external/untrusted sources (HTTP bodies, WebSocket messages, etc.).
+ *
+ * @param {string} str - JSON string to parse
+ * @param {*} [fallback={}] - Value to return on parse failure
+ * @returns {*} Parsed object with dangerous keys stripped
+ */
+function safeJsonParse(str, fallback = {}) {
+  try {
+    return JSON.parse(str, (key, value) => {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') return undefined;
+      return value;
+    });
+  } catch {
+    return fallback;
+  }
+}
+
 module.exports = {
   covenantCheck,
   getCovenant,
   formatCovenantResult,
   deepSecurityScan,
+  safeJsonParse,
   COVENANT_PRINCIPLES,
   HARM_PATTERNS,
   DEEP_SECURITY_PATTERNS,

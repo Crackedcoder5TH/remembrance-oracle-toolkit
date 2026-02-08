@@ -17,6 +17,7 @@
 
 const readline = require('readline');
 const { RemembranceOracle } = require('../api/oracle');
+const { safeJsonParse } = require('../core/covenant');
 
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_INFO = { name: 'remembrance-oracle', version: '1.0.0' };
@@ -993,7 +994,8 @@ function startMCPServer(oracle) {
 
   rl.on('line', (line) => {
     try {
-      const msg = JSON.parse(line.trim());
+      const msg = safeJsonParse(line.trim(), null);
+      if (!msg) throw new Error('Invalid JSON');
       const response = server.handleRequest(msg);
       if (response) {
         process.stdout.write(JSON.stringify(response) + '\n');

@@ -20,6 +20,7 @@
 const http = require('http');
 const crypto = require('crypto');
 const { URL } = require('url');
+const { safeJsonParse } = require('../core/covenant');
 
 // ─── JWT (minimal, no dependencies) ───
 
@@ -59,7 +60,9 @@ function hashPassword(password) {
 function verifyPassword(password, stored) {
   const [salt, hash] = stored.split(':');
   const check = crypto.scryptSync(password, salt, 64).toString('hex');
-  return hash === check;
+  // Constant-time comparison to prevent timing attacks
+  if (check.length !== hash.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(check, 'hex'), Buffer.from(hash, 'hex'));
 }
 
 // ─── Cloud Sync Server ───
@@ -422,8 +425,9 @@ class CloudSyncServer {
     // WebSocket handshake
     const key = req.headers['sec-websocket-key'];
     if (!key) { socket.destroy(); return; }
+    // SHA-1 is mandated by RFC 6455 for WebSocket handshake — not a security concern
     const accept = crypto.createHash('sha1')
-      .update(key + '258EAFA5-E914-47DA-95CA-5AB5DC11654B')
+      .update(key + '258EAFA5-E914-47DA-95CA-5AB5DC11AD48')
       .digest('base64');
 
     socket.write([
@@ -482,7 +486,8 @@ class CloudSyncServer {
         payload = data.slice(offset, offset + length);
       }
 
-      const msg = JSON.parse(payload.toString());
+      const msg = safeJsonParse(payload.toString(), null);
+      if (!msg) return;
 
       // Handle sync messages
       if (msg.type === 'sync_request') {
@@ -543,8 +548,7 @@ class CloudSyncServer {
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch { resolve({}); }
+        resolve(safeJsonParse(body, {}));
       });
     });
   }

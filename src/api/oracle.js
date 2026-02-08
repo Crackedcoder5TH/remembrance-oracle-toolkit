@@ -1222,7 +1222,8 @@ class RemembranceOracle {
    */
   import(data, options = {}) {
     const { skipValidation = false, dryRun = false, author = 'oracle-import' } = options;
-    const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+    const { safeJsonParse } = require('../core/covenant');
+    const parsed = typeof data === 'string' ? safeJsonParse(data, {}) : data;
     const patterns = parsed.patterns || [];
 
     const results = [];

@@ -313,6 +313,18 @@ class PatternLibrary {
     return this._getAllJSON(filters);
   }
 
+  update(id, updates) {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.updatePattern(id, updates);
+    }
+    // JSON fallback
+    const pattern = this._getAllJSON().find(p => p.id === id);
+    if (!pattern) return null;
+    Object.assign(pattern, updates, { updatedAt: new Date().toISOString() });
+    this._saveJSON();
+    return pattern;
+  }
+
   summary() {
     if (this._backend === 'sqlite') {
       return this._sqlite.patternSummary();

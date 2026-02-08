@@ -713,6 +713,106 @@ const TOOLS = [
       required: ['action'],
     },
   },
+
+  // ─── Open Source Registry Tools ───
+  {
+    name: 'oracle_registry_list',
+    description: 'List curated open source repositories available for pattern harvesting. Filter by language or topic.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        language: { type: 'string', description: 'Filter by language (javascript, python, go, rust, typescript)' },
+        topic: { type: 'string', description: 'Filter by topic (e.g., algorithm, utility, data-structure)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_registry_search',
+    description: 'Search curated open source repos by keyword. Scores results by name, topic, and description match.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query (e.g., "sorting algorithms", "functional utility")' },
+        language: { type: 'string', description: 'Filter by language' },
+        limit: { type: 'number', description: 'Max results (default: 10)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'oracle_registry_import',
+    description: 'Import patterns from a curated open source repo by name. Validates license, harvests code, registers patterns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Repo name from curated registry (e.g., "lodash", "javascript-algorithms")' },
+        language: { type: 'string', description: 'Filter harvested patterns by language' },
+        dryRun: { type: 'boolean', description: 'Preview without registering (default: false)' },
+        splitMode: { type: 'string', enum: ['file', 'function'], description: 'Split mode for standalone files (default: file)' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'oracle_registry_batch',
+    description: 'Batch import patterns from multiple curated repos at once. Optionally filter by language.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        language: { type: 'string', description: 'Import only repos for this language' },
+        dryRun: { type: 'boolean', description: 'Preview without registering (default: false)' },
+        maxFiles: { type: 'number', description: 'Max files per repo (default: 100)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_registry_discover',
+    description: 'Search GitHub for open source repos by topic, language, and star count. Requires network access.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query for GitHub repos' },
+        language: { type: 'string', description: 'Filter by programming language' },
+        minStars: { type: 'number', description: 'Minimum star count (default: 100)' },
+        limit: { type: 'number', description: 'Max results (default: 10)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'oracle_registry_license',
+    description: 'Check if an SPDX license is compatible for pattern harvesting. Categorizes as permissive, weak-copyleft, strong-copyleft, or unknown.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        license: { type: 'string', description: 'SPDX license identifier (e.g., MIT, GPL-3.0, Apache-2.0)' },
+        allowCopyleft: { type: 'boolean', description: 'Allow strong copyleft licenses (default: false)' },
+      },
+      required: ['license'],
+    },
+  },
+  {
+    name: 'oracle_registry_provenance',
+    description: 'Show provenance (source repo, license, commit) for imported patterns. Filter by source or license.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        source: { type: 'string', description: 'Filter by source repo name' },
+        license: { type: 'string', description: 'Filter by license type' },
+      },
+    },
+  },
+  {
+    name: 'oracle_registry_duplicates',
+    description: 'Find duplicate or near-duplicate patterns across sources. Uses code fingerprinting and token similarity.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        threshold: { type: 'number', description: 'Similarity threshold 0-1 (default: 0.85)' },
+        language: { type: 'string', description: 'Filter by language' },
+      },
+    },
+  },
 ];
 
 class MCPServer {
@@ -1227,6 +1327,70 @@ class MCPServer {
           } else {
             result = { error: 'Provide action (verify/check/list) with required params' };
           }
+          break;
+        }
+
+        // ─── Open Source Registry Handlers ───
+
+        case 'oracle_registry_list': {
+          const { listRegistry } = require('../ci/open-source-registry');
+          result = listRegistry({ language: args.language, topic: args.topic });
+          break;
+        }
+
+        case 'oracle_registry_search': {
+          const { searchRegistry } = require('../ci/open-source-registry');
+          result = searchRegistry(args.query, { language: args.language, limit: args.limit || 10 });
+          break;
+        }
+
+        case 'oracle_registry_import': {
+          const { batchImport, getRegistryEntry, checkLicense } = require('../ci/open-source-registry');
+          const entry = getRegistryEntry(args.name);
+          if (!entry) { result = { error: `"${args.name}" not found in registry` }; break; }
+          const licCheck = checkLicense(entry.license);
+          if (!licCheck.allowed) { result = { error: `License blocked: ${entry.license} — ${licCheck.reason}` }; break; }
+          result = batchImport(this.oracle, [args.name], {
+            language: args.language, dryRun: args.dryRun || false,
+            splitMode: args.splitMode || 'file', skipLicenseCheck: true,
+          });
+          break;
+        }
+
+        case 'oracle_registry_batch': {
+          const { listRegistry: listRegs, batchImport: batchImp } = require('../ci/open-source-registry');
+          const repos = listRegs({ language: args.language });
+          const names = repos.map(r => r.name);
+          result = batchImp(this.oracle, names, {
+            language: args.language, dryRun: args.dryRun || false,
+            maxFiles: args.maxFiles || 100,
+          });
+          break;
+        }
+
+        case 'oracle_registry_discover': {
+          const { discoverReposSync } = require('../ci/open-source-registry');
+          result = discoverReposSync(args.query, {
+            language: args.language, minStars: args.minStars || 100, limit: args.limit || 10,
+          });
+          break;
+        }
+
+        case 'oracle_registry_license': {
+          const { checkLicense: checkLic } = require('../ci/open-source-registry');
+          result = checkLic(args.license, { allowCopyleft: args.allowCopyleft || false });
+          break;
+        }
+
+        case 'oracle_registry_provenance': {
+          const { getProvenance: getProv } = require('../ci/open-source-registry');
+          result = getProv(this.oracle, { source: args.source, license: args.license });
+          break;
+        }
+
+        case 'oracle_registry_duplicates': {
+          const { findDuplicates: findDups } = require('../ci/open-source-registry');
+          result = findDups(this.oracle, { threshold: args.threshold || 0.85, language: args.language });
           break;
         }
 

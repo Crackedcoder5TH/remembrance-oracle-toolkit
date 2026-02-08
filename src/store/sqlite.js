@@ -128,6 +128,16 @@ class SQLiteStore {
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN upvotes INTEGER DEFAULT 0`); } catch {}
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN downvotes INTEGER DEFAULT 0`); } catch {}
 
+    // Schema migration: add provenance columns for open source tracking
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_url TEXT`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_repo TEXT`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_license TEXT`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_commit TEXT`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_file TEXT`); } catch {}
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_url TEXT`); } catch {}
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_repo TEXT`); } catch {}
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_license TEXT`); } catch {}
+
     // Votes log table — tracks individual votes to prevent duplicates
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS votes (
@@ -750,6 +760,11 @@ class SQLiteStore {
       upvotes: row.upvotes || 0,
       downvotes: row.downvotes || 0,
       voteScore: (row.upvotes || 0) - (row.downvotes || 0),
+      sourceUrl: row.source_url || null,
+      sourceRepo: row.source_repo || null,
+      sourceLicense: row.source_license || null,
+      sourceCommit: row.source_commit || null,
+      sourceFile: row.source_file || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -763,6 +778,9 @@ class SQLiteStore {
       testCode: 'test_code', tags: 'tags', description: 'description',
       updatedAt: 'updated_at', requires: 'requires', composedOf: 'composed_of',
       bugReports: 'bug_reports', code: 'code',
+      sourceUrl: 'source_url', sourceRepo: 'source_repo',
+      sourceLicense: 'source_license', sourceCommit: 'source_commit',
+      sourceFile: 'source_file',
     };
     return map[field] || null;
   }

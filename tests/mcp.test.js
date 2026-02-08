@@ -231,6 +231,14 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_context'));
     assert.ok(names.includes('oracle_mcp_install'));
     assert.ok(names.includes('oracle_github_identity'));
-    assert.equal(res.result.tools.length, 59);
+    assert.ok(names.includes('oracle_registry_list'));
+    assert.ok(names.includes('oracle_registry_search'));
+    assert.ok(names.includes('oracle_registry_import'));
+    assert.ok(names.includes('oracle_registry_batch'));
+    assert.ok(names.includes('oracle_registry_discover'));
+    assert.ok(names.includes('oracle_registry_license'));
+    assert.ok(names.includes('oracle_registry_provenance'));
+    assert.ok(names.includes('oracle_registry_duplicates'));
+    assert.equal(res.result.tools.length, 67);
   });
 });

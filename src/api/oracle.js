@@ -391,6 +391,114 @@ class RemembranceOracle {
   }
 
   /**
+   * Deep clean the pattern library: remove duplicates, trivial stubs,
+   * and low-substance harvested patterns.
+   * @param {object} options
+   * @param {number} options.minCodeLength - Minimum code length to keep (default 35)
+   * @param {number} options.minNameLength - Minimum name length to keep (default 3)
+   * @param {boolean} options.removeDuplicates - Remove exact duplicate code (default true)
+   * @param {boolean} options.removeStubs - Remove trivial stubs like function f() { return 1; } (default true)
+   * @param {boolean} options.dryRun - Preview changes without deleting (default false)
+   * @returns {{ removed: number, duplicates: number, stubs: number, tooShort: number, remaining: number, details: Array }}
+   */
+  deepClean(options = {}) {
+    const {
+      minCodeLength = 35,
+      minNameLength = 3,
+      removeDuplicates = true,
+      removeStubs = true,
+      dryRun = false,
+    } = options;
+
+    const all = this.patterns.getAll();
+    const toRemove = new Map(); // id → reason
+
+    // 1. Find exact duplicates (keep highest coherency version)
+    if (removeDuplicates) {
+      const byCode = new Map();
+      for (const p of all) {
+        const key = (p.code || '').trim();
+        if (!key) continue;
+        if (!byCode.has(key)) {
+          byCode.set(key, []);
+        }
+        byCode.get(key).push(p);
+      }
+      for (const [, group] of byCode) {
+        if (group.length <= 1) continue;
+        // Sort by coherency desc, keep first
+        group.sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0));
+        for (let i = 1; i < group.length; i++) {
+          toRemove.set(group[i].id, 'duplicate');
+        }
+      }
+    }
+
+    // 2. Find trivial stubs (empty functions, test helpers, one-expression returns under 50 chars)
+    if (removeStubs) {
+      for (const p of all) {
+        if (toRemove.has(p.id)) continue;
+        const code = (p.code || '').trim();
+        if (!code) continue;
+
+        // Empty function bodies: function f() {} or function f() { /* comment */ }
+        if (/^(?:function|const)\s+\w+[^{]*\{\s*(?:\/[/*][^}]*)?\}$/.test(code)) {
+          toRemove.set(p.id, 'stub');
+          continue;
+        }
+
+        // Only flag short code (<50 chars) as stubs
+        if (code.length < 50) {
+          // One-liner returns: function f() { return 1; } or function add(a,b) { return a + b; }
+          const isOneLiner = /^(?:function|const)\s+\w+[^{]*\{[^{}]*\}$/.test(code);
+          // Test helper names
+          const isTestHelper = /^(?:function|const)\s+(?:def-?[Tt]est|hover-?[Tt]est|safeCode|broken|only|hidden|dry|dup|evTest|mcpTest|jsFunc|realFunction|testFunc)\b/.test(code);
+          if (isOneLiner || isTestHelper) {
+            toRemove.set(p.id, 'stub');
+          }
+        }
+      }
+    }
+
+    // 3. Find too-short code from harvested patterns
+    for (const p of all) {
+      if (toRemove.has(p.id)) continue;
+      const code = (p.code || '').trim();
+      const name = (p.name || '');
+      const tags = p.tags || [];
+      const isHarvested = tags.includes('harvested');
+
+      if (isHarvested && code.length < minCodeLength && name.length < minNameLength) {
+        toRemove.set(p.id, 'too-short');
+      }
+    }
+
+    // Execute deletions
+    let duplicates = 0, stubs = 0, tooShort = 0;
+    const details = [];
+    for (const [id, reason] of toRemove) {
+      const p = all.find(x => x.id === id);
+      details.push({ id, name: p?.name, reason, code: (p?.code || '').slice(0, 60) });
+      if (reason === 'duplicate') duplicates++;
+      else if (reason === 'stub') stubs++;
+      else tooShort++;
+
+      if (!dryRun) {
+        try {
+          const db = this.patterns._sqlite?.db || this.store?.db;
+          if (db) {
+            db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
+          }
+        } catch { /* skip if store type doesn't support direct delete */ }
+      }
+    }
+
+    const remaining = all.length - toRemove.size;
+    this._emit({ type: 'deep_clean', removed: toRemove.size, duplicates, stubs, tooShort, remaining, dryRun });
+    return { removed: toRemove.size, duplicates, stubs, tooShort, remaining, details };
+  }
+
+  /**
    * Recycle failed patterns — heal via SERF and re-validate.
    * Call this after a batch of registerPattern() calls to recover failures.
    */

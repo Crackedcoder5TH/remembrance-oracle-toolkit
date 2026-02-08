@@ -18,14 +18,14 @@ function tokenize(text) {
 }
 
 function computeTF(tokens) {
-  const freq = {};
+  const freq = Object.create(null);
   for (const t of tokens) {
     freq[t] = (freq[t] || 0) + 1;
   }
   const total = tokens.length || 1;
-  const tf = {};
-  for (const [term, count] of Object.entries(freq)) {
-    tf[term] = count / total;
+  const tf = Object.create(null);
+  for (const term of Object.keys(freq)) {
+    tf[term] = freq[term] / total;
   }
   return tf;
 }
@@ -49,7 +49,7 @@ function computeRelevance(query, entry) {
     `${query.description || ''} ${(query.tags || []).join(' ')} ${query.language || ''}`
   );
   const entryTokens = tokenize(
-    `${entry.description || ''} ${(entry.tags || []).join(' ')} ${entry.language || ''} ${entry.code || ''}`
+    `${entry.description || ''} ${(entry.tags || []).join(' ')} ${entry.language || ''}`
   );
 
   const queryTF = computeTF(queryTokens);

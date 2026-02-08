@@ -76,6 +76,7 @@ ${c.bold('Commands:')}
   ${c.cyan('inspect')}    Inspect a stored entry
   ${c.cyan('feedback')}   Report if pulled code worked
   ${c.cyan('prune')}      Remove low-coherency entries
+  ${c.cyan('deep-clean')} Remove duplicates, stubs, and trivial harvested patterns
   ${c.cyan('diff')}       Compare two entries or patterns side by side
   ${c.cyan('export')}     Export top patterns as standalone JSON or markdown
   ${c.cyan('search')}        Fuzzy search across patterns and history
@@ -251,6 +252,28 @@ ${c.bold('Pipe support:')}
     const min = parseFloat(args['min-coherency']) || 0.4;
     const result = oracle.prune(min);
     console.log(`Pruned ${c.boldRed(String(result.removed))} entries. ${c.boldGreen(String(result.remaining))} remaining.`);
+    return;
+  }
+
+  if (cmd === 'deep-clean' || cmd === 'deepclean') {
+    const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+    const result = oracle.deepClean({
+      minCodeLength: parseInt(args['min-code-length']) || 35,
+      minNameLength: parseInt(args['min-name-length']) || 3,
+      dryRun,
+    });
+    console.log(`${dryRun ? c.yellow('DRY RUN — ') : ''}Deep Clean Results:`);
+    console.log(`  Duplicates removed: ${c.boldRed(String(result.duplicates))}`);
+    console.log(`  Stubs removed:      ${c.boldRed(String(result.stubs))}`);
+    console.log(`  Too short removed:  ${c.boldRed(String(result.tooShort))}`);
+    console.log(`  ${c.bold('Total removed:')}     ${c.boldRed(String(result.removed))}`);
+    console.log(`  ${c.bold('Remaining:')}         ${c.boldGreen(String(result.remaining))}`);
+    if (dryRun && result.details.length > 0) {
+      console.log(`\nPreview (first 20):`);
+      result.details.slice(0, 20).forEach(d =>
+        console.log(`  [${d.reason}] ${d.name}: ${d.code}`)
+      );
+    }
     return;
   }
 

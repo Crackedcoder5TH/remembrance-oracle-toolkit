@@ -21,7 +21,7 @@
 const { takeSnapshot, reflect, generateCollectiveWhisper } = require('./engine');
 const { repoScore } = require('./scoring');
 const { safeReflect, estimatePostHealCoherence, dryRun, createBackup } = require('./safety');
-const { loadCentralConfig, toEngineConfig, validateConfig } = require('./config');
+const { toEngineConfig, validateConfig } = require('./config');
 const { resolveConfig } = require('./modes');
 const { saveRunRecord, appendLog, computeStats } = require('./history');
 const { createHealingBranch } = require('./github');

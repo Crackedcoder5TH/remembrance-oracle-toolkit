@@ -262,8 +262,8 @@ function detectPlatform(webhookUrl) {
  * @returns {Promise<object>} Send result
  */
 async function notifyFromReport(rootDir, report, options = {}) {
-  const { loadCentralConfig } = require('./config');
-  const config = loadCentralConfig(rootDir);
+  const { resolveConfig } = require('./modes');
+  const config = resolveConfig(rootDir, { env: process.env });
 
   const webhookUrl = options.webhookUrl
     || config.notifications?.webhookUrl

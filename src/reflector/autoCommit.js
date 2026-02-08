@@ -14,7 +14,7 @@
 const { execSync } = require('child_process');
 const { join } = require('path');
 const { git, getCurrentBranch, generateBranchName, isCleanWorkingTree } = require('./github');
-const { loadCentralConfig } = require('./config');
+const { resolveConfig } = require('./modes');
 const { ensureDir, loadJSON, saveJSON, trimArray } = require('./utils');
 
 // ─── Safety Branch ───
@@ -56,7 +56,7 @@ function createSafetyBranch(rootDir, options = {}) {
  * @returns {object} { passed, steps[] }
  */
 function runTestGate(rootDir, options = {}) {
-  const config = loadCentralConfig(rootDir);
+  const config = resolveConfig(rootDir, { env: process.env });
   const {
     testCommand = config.autoCommit?.testCommand || 'npm test',
     buildCommand = config.autoCommit?.buildCommand || '',

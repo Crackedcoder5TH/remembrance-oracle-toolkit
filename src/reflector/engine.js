@@ -212,12 +212,17 @@ function healFile(filePath, config = {}) {
 
   const language = detectLanguage(code);
 
-  // Run SERF reflection loop
-  const result = reflectionLoop(code, {
+  // Run SERF reflection loop (with optional pattern examples)
+  const reflectionOpts = {
     language,
     maxLoops: opts.maxSerfLoops,
     targetCoherence: opts.targetCoherence,
-  });
+  };
+  if (opts.patternExamples && opts.patternExamples.length > 0) {
+    reflectionOpts.patternExamples = opts.patternExamples;
+    reflectionOpts.cascadeBoost = 1.05; // Slight boost for pattern-guided healing
+  }
+  const result = reflectionLoop(code, reflectionOpts);
 
   const changed = result.code !== code;
 
@@ -280,7 +285,12 @@ function reflect(rootDir, config = {}) {
       }
     }
 
-    const healing = healFile(file.path, { ...opts, rootDir });
+    // Pass pattern examples to healFile so SERF can use them
+    const healOpts = { ...opts, rootDir };
+    if (patternContext?.patternGuided && patternContext.healingContext?.examples) {
+      healOpts.patternExamples = patternContext.healingContext.examples;
+    }
+    const healing = healFile(file.path, healOpts);
     if (healing.changed && healing.improvement > 0) {
       healing.patternGuided = patternContext?.patternGuided || false;
       healings.push(healing);

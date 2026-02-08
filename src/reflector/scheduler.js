@@ -15,7 +15,8 @@ const { join } = require('path');
 const { reflect, formatReport } = require('./engine');
 const { createHealingBranch, findExistingReflectorPR } = require('./github');
 const { ensureDir, loadJSON, saveJSON, trimArray } = require('./utils');
-const { loadCentralConfig, toEngineConfig } = require('./config');
+const { toEngineConfig } = require('./config');
+const { resolveConfig } = require('./modes');
 const { saveRunRecord, createRunRecord } = require('./history');
 const { safeReflect } = require('./safety');
 
@@ -53,10 +54,10 @@ function getReportPath(rootDir) {
  * Also inherits from central config if available.
  */
 function loadConfig(rootDir) {
-  // Layer 1: Central config defaults (from reflector-central.json)
+  // Layer 1: Resolved config (central + mode + env overrides)
   let centralOverrides = {};
   try {
-    const central = loadCentralConfig(rootDir);
+    const central = resolveConfig(rootDir, { env: process.env });
     const flat = toEngineConfig(central);
     centralOverrides = {
       minCoherence: flat.minCoherence,
@@ -67,7 +68,7 @@ function loadConfig(rootDir) {
       maxFilesPerRun: flat.maxFilesPerRun,
     };
   } catch {
-    // Central config not available, use schedule defaults
+    // Config not available, use schedule defaults
   }
 
   // Layer 2: Schedule-specific config (from reflector-config.json)

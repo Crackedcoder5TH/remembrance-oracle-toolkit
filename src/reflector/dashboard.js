@@ -15,10 +15,9 @@
 const http = require('http');
 const { join } = require('path');
 const { loadHistoryV2, computeStats, generateTrendChart } = require('./history');
-const { loadCentralConfig } = require('./config');
 const { loadAutoCommitHistory, autoCommitStats } = require('./autoCommit');
 const { notificationStats } = require('./notifications');
-const { getCurrentMode } = require('./modes');
+const { getCurrentMode, resolveConfig } = require('./modes');
 const { patternHookStats } = require('./patternHook');
 
 // ─── Data Aggregation ───
@@ -32,8 +31,8 @@ const { patternHookStats } = require('./patternHook');
 function gatherDashboardData(rootDir) {
   const history = loadHistoryV2(rootDir);
   const stats = computeStats(rootDir);
-  const config = loadCentralConfig(rootDir);
-  const mode = getCurrentMode(rootDir);
+  const config = resolveConfig(rootDir, { env: process.env });
+  const mode = config._mode || getCurrentMode(rootDir);
   const autoCommit = autoCommitStats(rootDir);
   const notifications = notificationStats(rootDir);
   const patternHook = patternHookStats(rootDir);
@@ -99,7 +98,7 @@ function handleApiRequest(rootDir, path) {
     return computeStats(rootDir);
   }
   if (path === '/api/config') {
-    return loadCentralConfig(rootDir);
+    return resolveConfig(rootDir, { env: process.env });
   }
   if (path === '/api/ascii-trend') {
     return { chart: generateTrendChart(rootDir) };

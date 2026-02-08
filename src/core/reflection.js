@@ -417,7 +417,7 @@ function applyHeal(code, lang) {
   return result;
 }
 
-function generateCandidates(code, language) {
+function generateCandidates(code, language, options = {}) {
   const lang = language || detectLanguage(code);
   const transforms = [
     { strategy: 'simplify', fn: applySimplify },
@@ -428,7 +428,7 @@ function generateCandidates(code, language) {
     { strategy: 'heal', fn: applyHeal },
   ];
 
-  return transforms.map(({ strategy, fn }) => {
+  const candidates = transforms.map(({ strategy, fn }) => {
     const transformed = fn(code, lang);
     return {
       strategy,
@@ -436,6 +436,100 @@ function generateCandidates(code, language) {
       changed: transformed !== code,
     };
   });
+
+  // Pattern-guided candidate: apply proven pattern's structural conventions
+  if (options.patternExamples && options.patternExamples.length > 0) {
+    const guided = applyPatternGuidance(code, lang, options.patternExamples);
+    if (guided !== code) {
+      candidates.push({
+        strategy: 'pattern-guided',
+        code: guided,
+        changed: true,
+      });
+    }
+  }
+
+  return candidates;
+}
+
+/**
+ * Apply structural conventions from proven pattern examples to the target code.
+ * Extracts style decisions (quote style, indent, semicolons, naming) from the
+ * highest-coherency example and applies them to the target code.
+ */
+function applyPatternGuidance(code, lang, examples) {
+  if (!examples || examples.length === 0) return code;
+
+  // Pick the best example (highest coherency)
+  const best = examples.reduce((a, b) =>
+    (b.coherency ?? 0) > (a.coherency ?? 0) ? b : a, examples[0]);
+
+  if (!best.code) return code;
+
+  let result = code;
+  const exampleCode = best.code;
+
+  // 1. Adopt quote style from example
+  const exSingles = (exampleCode.match(/'/g) || []).length;
+  const exDoubles = (exampleCode.match(/"/g) || []).length;
+  if (exSingles > exDoubles * 2) {
+    // Example strongly prefers single quotes — apply to target
+    result = result.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (match, content) => {
+      if (content.includes("'")) return match;
+      return `'${content}'`;
+    });
+  } else if (exDoubles > exSingles * 2) {
+    result = result.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (match, content) => {
+      if (content.includes('"')) return match;
+      return `"${content}"`;
+    });
+  }
+
+  // 2. Adopt indentation style from example
+  const exIndent = detectIndentUnit(exampleCode);
+  const curIndent = detectIndentUnit(result);
+  if (exIndent > 0 && curIndent > 0 && exIndent !== curIndent) {
+    const lines = result.split('\n');
+    result = lines.map(line => {
+      const match = line.match(/^(\s+)/);
+      if (!match) return line;
+      const spaces = match[1].length;
+      const level = Math.round(spaces / curIndent);
+      return ' '.repeat(level * exIndent) + line.slice(match[1].length);
+    }).join('\n');
+  }
+
+  // 3. Adopt semicolon convention from example (JS/TS only)
+  if (lang === 'javascript' || lang === 'js' || lang === 'typescript' || lang === 'ts') {
+    const exHasSemis = (exampleCode.match(/;\s*$/gm) || []).length;
+    const exStatements = (exampleCode.match(/^\s*(const|let|var|return|throw)\s/gm) || []).length;
+    const exSemiRate = exStatements > 0 ? exHasSemis / exStatements : 0;
+
+    if (exSemiRate > 0.8) {
+      // Example uses semicolons — ensure target does too
+      result = applyUnify(result, lang);
+    }
+  }
+
+  // 4. Apply all standard healing on top (simplify + secure + readable)
+  result = applySimplify(result, lang);
+  result = applySecure(result, lang);
+  result = applyReadable(result, lang);
+
+  return result;
+}
+
+function detectIndentUnit(code) {
+  const indents = {};
+  for (const line of code.split('\n')) {
+    const match = line.match(/^( +)\S/);
+    if (match) {
+      const len = match[1].length;
+      if (len > 0 && len <= 8) indents[len] = (indents[len] || 0) + 1;
+    }
+  }
+  const entries = Object.entries(indents).sort((a, b) => b[1] - a[1]);
+  return entries.length > 0 ? Math.min(parseInt(entries[0][0]), 4) : 2;
 }
 
 // ─── Whisper from the Healed Future ───
@@ -453,6 +547,7 @@ function generateWhisper(original, final, improvements, loops) {
     unify: 'Unity brought harmony. The code now speaks with one voice, one convention, one rhythm.',
     correct: 'Every edge case was a door left open. The healed version closes them gently, with grace.',
     heal: 'All five threads wove together into one garment. The full healing pass brought the code to its highest form.',
+    'pattern-guided': 'A proven pattern lit the way — the library\'s wisdom flowed into the healing, and the code found its form faster.',
     reflection: 'The code was already close to its healed form. The reflection confirmed its coherence.',
   };
 
@@ -488,6 +583,7 @@ function reflectionLoop(code, options = {}) {
     description = '',
     tags = [],
     cascadeBoost = 1,     // Global coherence multiplier from recycler
+    patternExamples = [],  // Proven pattern examples to guide healing
   } = options;
 
   const lang = language || detectLanguage(code);
@@ -521,8 +617,8 @@ function reflectionLoop(code, options = {}) {
   while (loops < maxLoops && current.coherence < targetCoherence) {
     loops++;
 
-    // Step 1: Generate 5 candidates
-    const candidates = generateCandidates(current.code, lang);
+    // Step 1: Generate candidates (5 standard + optional pattern-guided)
+    const candidates = generateCandidates(current.code, lang, { patternExamples });
 
     // Step 2: Score each candidate on coherence dimensions
     const scored = candidates.map(candidate => {
@@ -661,6 +757,8 @@ module.exports = {
   applyUnify,
   applyCorrect,
   applyHeal,
+  applyPatternGuidance,
+  detectIndentUnit,
   // Expose dimension scorers for testing
   scoreSimplicity,
   scoreReadability,

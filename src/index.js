@@ -50,6 +50,11 @@ const reflectorOrchestrator = require('./reflector/orchestrator');
 const reflectorErrorHandler = require('./reflector/errorHandler');
 const reflectorCoherenceScorer = require('./reflector/coherenceScorer');
 const reflectorPRFormatter = require('./reflector/prFormatter');
+const reflectorAutoCommit = require('./reflector/autoCommit');
+const reflectorPatternHook = require('./reflector/patternHook');
+const reflectorModes = require('./reflector/modes');
+const reflectorNotifications = require('./reflector/notifications');
+const reflectorDashboard = require('./reflector/dashboard');
 
 module.exports = {
   // Core
@@ -303,4 +308,50 @@ module.exports = {
   reflectorFormatCheckRun: reflectorPRFormatter.formatCheckRun,
   reflectorProgressBar: reflectorPRFormatter.progressBar,
   reflectorScoreIndicator: reflectorPRFormatter.scoreIndicator,
+
+  // Reflector Auto-Commit Safety
+  reflectorCreateSafetyBranch: reflectorAutoCommit.createSafetyBranch,
+  reflectorRunTestGate: reflectorAutoCommit.runTestGate,
+  reflectorMergeIfPassing: reflectorAutoCommit.mergeIfPassing,
+  reflectorSafeAutoCommit: reflectorAutoCommit.safeAutoCommit,
+  reflectorAutoCommitStats: reflectorAutoCommit.autoCommitStats,
+  reflectorFormatAutoCommit: reflectorAutoCommit.formatAutoCommit,
+  reflectorLoadAutoCommitHistory: reflectorAutoCommit.loadAutoCommitHistory,
+
+  // Reflector Pattern Library Hook
+  reflectorHookBeforeHeal: reflectorPatternHook.hookBeforeHeal,
+  reflectorBatchPatternLookup: reflectorPatternHook.batchPatternLookup,
+  reflectorQueryPatternsForFile: reflectorPatternHook.queryPatternsForFile,
+  reflectorBuildHealingContext: reflectorPatternHook.buildHealingContext,
+  reflectorPatternHookStats: reflectorPatternHook.patternHookStats,
+  reflectorRecordPatternHookUsage: reflectorPatternHook.recordPatternHookUsage,
+  reflectorFormatPatternHook: reflectorPatternHook.formatPatternHook,
+  reflectorExtractFileHints: reflectorPatternHook.extractFileHints,
+
+  // Reflector Configurable Thresholds & Modes
+  reflectorPresetModes: reflectorModes.PRESET_MODES,
+  reflectorEnvOverrides: reflectorModes.ENV_OVERRIDES,
+  reflectorReadEnvOverrides: reflectorModes.readEnvOverrides,
+  reflectorResolveConfig: reflectorModes.resolveConfig,
+  reflectorShouldAutoCreatePR: reflectorModes.shouldAutoCreatePR,
+  reflectorListModes: reflectorModes.listModes,
+  reflectorSetMode: reflectorModes.setMode,
+  reflectorGetCurrentMode: reflectorModes.getCurrentMode,
+  reflectorFormatResolvedConfig: reflectorModes.formatResolvedConfig,
+
+  // Reflector Discord/Slack Notifications
+  reflectorNotify: reflectorNotifications.notify,
+  reflectorNotifyFromReport: reflectorNotifications.notifyFromReport,
+  reflectorFormatDiscordEmbed: reflectorNotifications.formatDiscordEmbed,
+  reflectorFormatSlackBlocks: reflectorNotifications.formatSlackBlocks,
+  reflectorDetectPlatform: reflectorNotifications.detectPlatform,
+  reflectorNotificationStats: reflectorNotifications.notificationStats,
+  reflectorLoadNotificationHistory: reflectorNotifications.loadNotificationHistory,
+
+  // Reflector Dashboard Integration
+  reflectorGatherDashboardData: reflectorDashboard.gatherDashboardData,
+  reflectorGenerateDashboardHTML: reflectorDashboard.generateDashboardHTML,
+  reflectorCreateReflectorDashboard: reflectorDashboard.createReflectorDashboard,
+  reflectorStartReflectorDashboard: reflectorDashboard.startReflectorDashboard,
+  reflectorHandleApiRequest: reflectorDashboard.handleApiRequest,
 };

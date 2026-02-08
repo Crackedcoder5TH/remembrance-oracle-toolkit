@@ -671,6 +671,114 @@ const TOOLS = [
       required: ['report'],
     },
   },
+  {
+    name: 'oracle_reflector_auto_commit',
+    description: 'Run the auto-commit safety pipeline: create backup branch, apply healed files, run build/test, merge only if tests pass. Returns pipeline result with test output.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        healedFiles: { type: 'array', description: 'Array of { path, code } healed files to commit' },
+        testCommand: { type: 'string', description: 'Test command to run (default: npm test)' },
+        buildCommand: { type: 'string', description: 'Build command to run before tests' },
+        dryRun: { type: 'boolean', description: 'Simulate without writing changes' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_pattern_hook',
+    description: 'Query the pattern library for similar proven patterns before healing a file. Returns matched patterns, healing context, and suggested strategy.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file to look up patterns for' },
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        maxResults: { type: 'number', description: 'Max patterns to return (default: 3)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'oracle_reflector_pattern_hook_stats',
+    description: 'Get statistics on pattern-guided healings: how many healings used pattern library matches, average improvement guided vs unguided, top patterns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_resolve_config',
+    description: 'Resolve the full reflector configuration by layering defaults, mode preset, saved config, and environment overrides. Returns the fully merged config.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        mode: { type: 'string', description: 'Preset mode: strict, balanced, or relaxed' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_set_mode',
+    description: 'Set the reflector mode for a repo (strict, balanced, relaxed). Persists to central config and applies preset thresholds.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        mode: { type: 'string', description: 'Mode name: strict, balanced, or relaxed' },
+      },
+      required: ['rootDir', 'mode'],
+    },
+  },
+  {
+    name: 'oracle_reflector_list_modes',
+    description: 'List all available reflector preset modes with descriptions and threshold settings.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'oracle_reflector_notify',
+    description: 'Send a Discord/Slack notification with healing results (coherence delta, files healed, whisper, PR link). Auto-detects platform from webhook URL.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        webhookUrl: { type: 'string', description: 'Discord or Slack webhook URL' },
+        report: { type: 'object', description: 'Reflector report to format into notification' },
+        repoName: { type: 'string', description: 'Repository name for the notification title' },
+        prUrl: { type: 'string', description: 'PR URL to include in the notification' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_notification_stats',
+    description: 'Get notification delivery statistics: total sent, success rate, last notification.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_dashboard_data',
+    description: 'Get all reflector dashboard data: coherence trend, recent healing runs, auto-commit stats, notification stats, current config mode.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+      },
+      required: ['rootDir'],
+    },
+  },
 ];
 
 class MCPServer {
@@ -1233,6 +1341,83 @@ class MCPServer {
         case 'oracle_reflector_format_pr': {
           const { formatPRComment } = require('../reflector/prFormatter');
           result = { markdown: formatPRComment(args.report || {}) };
+          break;
+        }
+
+        case 'oracle_reflector_auto_commit': {
+          const { safeAutoCommit, autoCommitStats } = require('../reflector/autoCommit');
+          if (args.healedFiles) {
+            result = safeAutoCommit(args.rootDir, args.healedFiles, {
+              testCommand: args.testCommand,
+              buildCommand: args.buildCommand,
+              dryRun: args.dryRun,
+            });
+          } else {
+            result = autoCommitStats(args.rootDir);
+          }
+          break;
+        }
+
+        case 'oracle_reflector_pattern_hook': {
+          const { hookBeforeHeal } = require('../reflector/patternHook');
+          result = hookBeforeHeal(args.filePath, {
+            rootDir: args.rootDir,
+            maxResults: args.maxResults,
+          });
+          break;
+        }
+
+        case 'oracle_reflector_pattern_hook_stats': {
+          const { patternHookStats } = require('../reflector/patternHook');
+          result = patternHookStats(args.rootDir);
+          break;
+        }
+
+        case 'oracle_reflector_resolve_config': {
+          const { resolveConfig } = require('../reflector/modes');
+          result = resolveConfig(args.rootDir, { mode: args.mode });
+          break;
+        }
+
+        case 'oracle_reflector_set_mode': {
+          const { setMode } = require('../reflector/modes');
+          result = setMode(args.rootDir, args.mode);
+          break;
+        }
+
+        case 'oracle_reflector_list_modes': {
+          const { listModes } = require('../reflector/modes');
+          result = listModes();
+          break;
+        }
+
+        case 'oracle_reflector_notify': {
+          const { formatDiscordEmbed, formatSlackBlocks, detectPlatform, notificationStats } = require('../reflector/notifications');
+          if (args.report) {
+            const platform = detectPlatform(args.webhookUrl || '');
+            const repoName = args.repoName || 'unknown';
+            const opts = { repoName, prUrl: args.prUrl };
+            result = {
+              platform,
+              discord: formatDiscordEmbed(args.report, opts),
+              slack: formatSlackBlocks(args.report, opts),
+              note: args.webhookUrl ? 'Use the notify() function directly to send. MCP returns formatted payloads.' : 'No webhookUrl provided. Returning formatted payloads for both platforms.',
+            };
+          } else {
+            result = notificationStats(args.rootDir);
+          }
+          break;
+        }
+
+        case 'oracle_reflector_notification_stats': {
+          const { notificationStats } = require('../reflector/notifications');
+          result = notificationStats(args.rootDir);
+          break;
+        }
+
+        case 'oracle_reflector_dashboard_data': {
+          const { gatherDashboardData } = require('../reflector/dashboard');
+          result = gatherDashboardData(args.rootDir);
           break;
         }
 

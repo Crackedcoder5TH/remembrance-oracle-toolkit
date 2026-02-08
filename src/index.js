@@ -41,6 +41,10 @@ const reflectorEngine = require('./reflector/engine');
 const reflectorGithub = require('./reflector/github');
 const reflectorScheduler = require('./reflector/scheduler');
 const reflectorMulti = require('./reflector/multi');
+const reflectorSafety = require('./reflector/safety');
+const reflectorScoring = require('./reflector/scoring');
+const reflectorConfig = require('./reflector/config');
+const reflectorHistory = require('./reflector/history');
 
 module.exports = {
   // Core
@@ -214,4 +218,47 @@ module.exports = {
   reflectorMultiReflect: reflectorMulti.multiReflect,
   reflectorFormatMultiReport: reflectorMulti.formatMultiReport,
   reflectorCodeSimilarity: reflectorMulti.codeSimilarity,
+
+  // Reflector Safety & Revert
+  reflectorCreateBackup: reflectorSafety.createBackup,
+  reflectorLoadBackups: reflectorSafety.loadBackupManifests,
+  reflectorGetLatestBackup: reflectorSafety.getLatestBackup,
+  reflectorDryRun: reflectorSafety.dryRun,
+  reflectorCheckApproval: reflectorSafety.checkApproval,
+  reflectorRecordApproval: reflectorSafety.recordApproval,
+  reflectorRollback: reflectorSafety.rollback,
+  reflectorLoadRollbacks: reflectorSafety.loadRollbacks,
+  reflectorCoherenceGuard: reflectorSafety.coherenceGuard,
+  reflectorSafeReflect: reflectorSafety.safeReflect,
+
+  // Reflector Deep Scoring Engine
+  reflectorDeepScore: reflectorScoring.deepScore,
+  reflectorRepoScore: reflectorScoring.repoScore,
+  reflectorCyclomaticComplexity: reflectorScoring.calculateCyclomaticComplexity,
+  reflectorCommentDensity: reflectorScoring.analyzeCommentDensity,
+  reflectorSecurityScan: reflectorScoring.securityScan,
+  reflectorNestingDepth: reflectorScoring.analyzeNestingDepth,
+  reflectorQualityMetrics: reflectorScoring.computeQualityMetrics,
+  reflectorFormatDeepScore: reflectorScoring.formatDeepScore,
+
+  // Reflector Central Configuration
+  reflectorCentralDefaults: reflectorConfig.CENTRAL_DEFAULTS,
+  reflectorLoadCentralConfig: reflectorConfig.loadCentralConfig,
+  reflectorSaveCentralConfig: reflectorConfig.saveCentralConfig,
+  reflectorSetCentralValue: reflectorConfig.setCentralValue,
+  reflectorGetCentralValue: reflectorConfig.getCentralValue,
+  reflectorResetCentralConfig: reflectorConfig.resetCentralConfig,
+  reflectorValidateConfig: reflectorConfig.validateConfig,
+  reflectorToEngineConfig: reflectorConfig.toEngineConfig,
+  reflectorListConfigKeys: reflectorConfig.listConfigKeys,
+
+  // Reflector History & Logging
+  reflectorLoadHistoryV2: reflectorHistory.loadHistoryV2,
+  reflectorSaveRunRecord: reflectorHistory.saveRunRecord,
+  reflectorCreateRunRecord: reflectorHistory.createRunRecord,
+  reflectorAppendLog: reflectorHistory.appendLog,
+  reflectorReadLogTail: reflectorHistory.readLogTail,
+  reflectorComputeStats: reflectorHistory.computeStats,
+  reflectorTrendChart: reflectorHistory.generateTrendChart,
+  reflectorTimeline: reflectorHistory.generateTimeline,
 };

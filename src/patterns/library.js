@@ -32,7 +32,7 @@ const COMPLEXITY_TIERS = ['atomic', 'composite', 'architectural'];
 
 // Decision thresholds
 const THRESHOLDS = {
-  pull: 0.70,       // Above this: pull directly from library
+  pull: 0.68,       // Above this: pull directly from library
   evolve: 0.50,     // Between evolve and pull: fork + upgrade
   generate: 0.50,   // Below this: generate new pattern
   retire: 0.30,     // Below this: pattern should be retired
@@ -171,8 +171,14 @@ class PatternLibrary {
       const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? 0.15 : 0;
       const focusBonus = p.complexity === 'atomic' ? 0.08 : p.complexity === 'composite' ? 0.04 : 0;
       const coherency = p.coherencyScore?.total ?? 0;
-      const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
-      const composite = relevance.relevance * 0.40 + coherency * 0.25 + reliability * 0.15 + nameBonus + focusBonus;
+
+      // Enhanced reliability: usage success + bug reports + healing success
+      const usageReliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
+      const bugCount = p.bugReports || 0;
+      const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * 0.1) : 1.0;
+      const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(p.id) : 1.0;
+      const reliability = usageReliability * bugPenalty * healingRate;
+      const composite = relevance.relevance * 0.35 + coherency * 0.25 + reliability * 0.20 + nameBonus + focusBonus;
 
       return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
     }).sort((a, b) => b.composite - a.composite);
@@ -210,11 +216,69 @@ class PatternLibrary {
     };
   }
 
+  /**
+   * Set a healing rate provider function for reliability scoring.
+   * Called with (patternId) → returns 0-1 rate.
+   */
+  setHealingRateProvider(fn) {
+    this._healingRateProvider = fn;
+  }
+
   recordUsage(id, succeeded) {
     if (this._backend === 'sqlite') {
       return this._sqlite.recordPatternUsage(id, succeeded);
     }
     return this._recordUsageJSON(id, succeeded);
+  }
+
+  /**
+   * Report a bug against a pattern. Increments bugReports counter.
+   * Bug reports penalize the pattern's reliability score.
+   */
+  reportBug(id, description) {
+    const pattern = this.getAll().find(p => p.id === id);
+    if (!pattern) return { success: false, reason: 'Pattern not found' };
+
+    const bugCount = (pattern.bugReports || 0) + 1;
+    if (this._backend === 'sqlite') {
+      // Store bug count in the pattern's metadata
+      this._sqlite.updatePattern(id, { bugReports: bugCount });
+    } else {
+      const pats = this._loadJSON();
+      const idx = pats.findIndex(p => p.id === id);
+      if (idx >= 0) {
+        pats[idx].bugReports = bugCount;
+        this._saveJSON(pats);
+      }
+    }
+
+    return { success: true, patternId: id, patternName: pattern.name, bugReports: bugCount, description };
+  }
+
+  /**
+   * Get full reliability breakdown for a pattern.
+   */
+  getReliability(id) {
+    const pattern = this.getAll().find(p => p.id === id);
+    if (!pattern) return null;
+
+    const usageReliability = pattern.usageCount > 0 ? pattern.successCount / pattern.usageCount : 0.5;
+    const bugCount = pattern.bugReports || 0;
+    const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * 0.1) : 1.0;
+    const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(id) : 1.0;
+    const combined = usageReliability * bugPenalty * healingRate;
+
+    return {
+      patternId: id,
+      patternName: pattern.name,
+      usageReliability: Math.round(usageReliability * 1000) / 1000,
+      usageCount: pattern.usageCount || 0,
+      successCount: pattern.successCount || 0,
+      bugReports: bugCount,
+      bugPenalty: Math.round(bugPenalty * 1000) / 1000,
+      healingRate: Math.round(healingRate * 1000) / 1000,
+      combined: Math.round(combined * 1000) / 1000,
+    };
   }
 
   evolve(parentId, newCode, metadata = {}) {

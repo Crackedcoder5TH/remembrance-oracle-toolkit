@@ -39,6 +39,10 @@ class RemembranceOracle {
       verbose: options.verbose || false,
     });
 
+    // Wire healing success rate into pattern library's reliability scoring
+    this._healingStats = new Map();
+    this.patterns.setHealingRateProvider((id) => this.getHealingSuccessRate(id));
+
     // Debug Oracle — exponential debugging intelligence
     this._debugOracle = null; // Lazy-initialized on first debug call
 
@@ -292,16 +296,60 @@ class RemembranceOracle {
     if (heal && patternData && (decision.decision === 'pull' || decision.decision === 'evolve')) {
       try {
         const lang = language || patternData.language || 'javascript';
+        const maxLoops = decision.decision === 'evolve' ? 3 : 2;
+
+        // Emit healing_start for real-time WebSocket feedback
+        this._emit({
+          type: 'healing_start',
+          patternId: patternData.id,
+          patternName: patternData.name,
+          decision: decision.decision,
+          maxLoops,
+        });
+
         healing = reflectionLoop(patternData.code, {
           language: lang,
           description,
           tags,
-          maxLoops: decision.decision === 'evolve' ? 3 : 2,
+          maxLoops,
+          onLoop: (loopData) => {
+            // Emit per-loop progress for live dashboard updates
+            this._emit({
+              type: 'healing_progress',
+              patternId: patternData.id,
+              patternName: patternData.name,
+              loop: loopData.loop,
+              maxLoops,
+              coherence: loopData.coherence,
+              strategy: loopData.strategy,
+              serfScore: loopData.serfScore,
+              changed: loopData.changed,
+            });
+          },
         });
         healedCode = healing.code;
+
+        // Emit healing_complete with final result
+        this._emit({
+          type: 'healing_complete',
+          patternId: patternData.id,
+          patternName: patternData.name,
+          decision: decision.decision,
+          loops: healing.loops,
+          originalCoherence: healing.serf?.I_AM,
+          finalCoherence: healing.serf?.finalCoherence,
+          improvement: healing.serf?.improvement,
+          healingPath: healing.healingPath,
+        });
       } catch (_) {
         // Healing is best-effort; fall back to raw code
         healedCode = patternData.code;
+        this._emit({
+          type: 'healing_failed',
+          patternId: patternData?.id,
+          patternName: patternData?.name,
+          error: _.message || 'Unknown healing error',
+        });
       }
     }
 
@@ -607,6 +655,116 @@ class RemembranceOracle {
   }
 
   /**
+   * Smart auto-promote: promotes candidates that meet ALL of:
+   *   1. Coherency >= minCoherency (default 0.9)
+   *   2. Passes covenant check
+   *   3. Passes sandbox test execution
+   *   4. Parent pattern reliability >= minConfidence (default 0.8)
+   *
+   * Returns report with promoted/skipped/vetoed candidates.
+   * Use manualOverride: true to skip confidence check.
+   */
+  smartAutoPromote(options = {}) {
+    const {
+      minCoherency = 0.9,
+      minConfidence = 0.8,
+      manualOverride = false,
+      dryRun = false,
+    } = options;
+
+    const { covenantCheck } = require('../core/covenant');
+    const { sandboxExecute } = require('../core/sandbox');
+
+    const candidates = this.patterns.getCandidates();
+    const provenPatterns = this.patterns.getAll();
+    const report = { promoted: 0, skipped: 0, vetoed: 0, total: candidates.length, details: [] };
+
+    for (const candidate of candidates) {
+      // Step 1: Coherency gate
+      const coherency = candidate.coherencyScore?.total ?? 0;
+      if (coherency < minCoherency) {
+        report.skipped++;
+        report.details.push({ name: candidate.name, status: 'skipped', reason: `coherency ${coherency.toFixed(3)} < ${minCoherency}` });
+        continue;
+      }
+
+      // Step 2: Confidence gate (parent pattern reliability)
+      if (!manualOverride && candidate.parentPattern) {
+        const parent = provenPatterns.find(p => p.id === candidate.parentPattern || p.name === candidate.parentPattern);
+        if (parent) {
+          const parentReliability = parent.usageCount > 0 ? parent.successCount / parent.usageCount : 0.5;
+          if (parentReliability < minConfidence) {
+            report.skipped++;
+            report.details.push({ name: candidate.name, status: 'skipped', reason: `parent reliability ${parentReliability.toFixed(3)} < ${minConfidence}` });
+            continue;
+          }
+        }
+      }
+
+      // Step 3: Covenant check
+      const covenant = covenantCheck(candidate.code);
+      if (!covenant.passed) {
+        report.vetoed++;
+        report.details.push({ name: candidate.name, status: 'vetoed', reason: `covenant: ${covenant.violations?.[0]?.principle || 'failed'}` });
+        continue;
+      }
+
+      // Step 4: Sandbox test execution (if test code available)
+      if (candidate.testCode) {
+        try {
+          const testResult = sandboxExecute(candidate.code, candidate.testCode, { language: candidate.language });
+          if (!testResult.passed) {
+            report.vetoed++;
+            report.details.push({ name: candidate.name, status: 'vetoed', reason: 'test execution failed' });
+            continue;
+          }
+        } catch (_) {
+          report.vetoed++;
+          report.details.push({ name: candidate.name, status: 'vetoed', reason: 'sandbox error' });
+          continue;
+        }
+      }
+
+      if (dryRun) {
+        report.promoted++;
+        report.details.push({ name: candidate.name, status: 'would-promote', coherency: coherency.toFixed(3) });
+        continue;
+      }
+
+      // Step 5: Register as proven pattern
+      const result = this.registerPattern({
+        name: candidate.name,
+        code: candidate.code,
+        language: candidate.language,
+        description: candidate.description || candidate.name,
+        tags: candidate.tags || [],
+        testCode: candidate.testCode,
+        author: candidate.author || 'smart-auto-promote',
+      });
+
+      if (result.registered) {
+        this.patterns.promoteCandidate(candidate.id);
+        report.promoted++;
+        report.details.push({ name: candidate.name, status: 'promoted', coherency: coherency.toFixed(3) });
+      } else {
+        report.vetoed++;
+        report.details.push({ name: candidate.name, status: 'vetoed', reason: result.reason || 'registration failed' });
+      }
+    }
+
+    // Emit event for real-time dashboard updates
+    this._emit({
+      type: 'auto_promote',
+      promoted: report.promoted,
+      skipped: report.skipped,
+      vetoed: report.vetoed,
+      total: report.total,
+    });
+
+    return report;
+  }
+
+  /**
    * Synthesize tests for candidates and optionally auto-promote.
    * This is the test synthesis pipeline:
    *   1. Analyze each candidate's code + parent tests
@@ -616,6 +774,228 @@ class RemembranceOracle {
    *
    * @param {object} options - { maxCandidates?, dryRun?, autoPromote? }
    */
+
+  // ─── Error Recovery & Rollback ───
+
+  /**
+   * Rollback a pattern to a previous version.
+   * Uses the versioning system to restore code from history.
+   *
+   * @param {string} patternId - Pattern ID to rollback
+   * @param {number} [targetVersion] - Version to restore (default: previous)
+   * @returns {{ success, patternId, restoredVersion, previousCode, restoredCode }}
+   */
+  rollback(patternId, targetVersion) {
+    const { VersionManager } = require('../core/versioning');
+    const vm = new VersionManager(this.patterns._sqlite);
+
+    const history = vm.getHistory(patternId);
+    if (!history || history.length === 0) {
+      return { success: false, reason: 'No version history found for this pattern' };
+    }
+
+    // If no target version specified, go to the previous one
+    const latest = history[0].version;
+    const target = targetVersion || (latest > 1 ? latest - 1 : latest);
+
+    const snapshot = vm.getVersion(patternId, target);
+    if (!snapshot) {
+      return { success: false, reason: `Version ${target} not found` };
+    }
+
+    // Get the current pattern
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) {
+      return { success: false, reason: 'Pattern not found' };
+    }
+
+    const previousCode = pattern.code;
+
+    // Update the pattern's code to the restored version
+    if (this.patterns._sqlite) {
+      this.patterns._sqlite.updatePattern(patternId, { code: snapshot.code });
+    }
+
+    // Save a new version snapshot marking this as a rollback
+    vm.saveSnapshot(patternId, snapshot.code, { action: 'rollback', restoredFrom: target });
+
+    this._emit({
+      type: 'rollback',
+      patternId,
+      patternName: pattern.name,
+      restoredVersion: target,
+      previousVersion: latest,
+    });
+
+    return {
+      success: true,
+      patternId,
+      patternName: pattern.name,
+      restoredVersion: target,
+      previousVersion: latest,
+      previousCode,
+      restoredCode: snapshot.code,
+    };
+  }
+
+  /**
+   * Test a pattern's current code against its stored test code.
+   * If it fails, auto-rollback to the last passing version.
+   *
+   * @param {string} patternId - Pattern ID to verify
+   * @returns {{ passed, patternId, rolledBack?, restoredVersion? }}
+   */
+  verifyOrRollback(patternId) {
+    const { sandboxExecute } = require('../core/sandbox');
+
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { passed: false, reason: 'Pattern not found' };
+    if (!pattern.testCode) return { passed: true, reason: 'No test code — skipped' };
+
+    try {
+      const result = sandboxExecute(pattern.code, pattern.testCode, { language: pattern.language });
+      if (result.passed) {
+        // Track healing success
+        this._trackHealingSuccess(patternId, true);
+        return { passed: true, patternId, patternName: pattern.name };
+      }
+    } catch (_) {
+      // Test failed — fall through to rollback
+    }
+
+    // Test failed — rollback to previous version
+    this._trackHealingSuccess(patternId, false);
+    const rollbackResult = this.rollback(patternId);
+    return {
+      passed: false,
+      patternId,
+      patternName: pattern.name,
+      rolledBack: rollbackResult.success,
+      restoredVersion: rollbackResult.restoredVersion,
+    };
+  }
+
+  /**
+   * Track healing success rate per pattern.
+   * Low performers get deprioritized in future healing.
+   */
+  _trackHealingSuccess(patternId, succeeded) {
+    if (!this._healingStats) this._healingStats = new Map();
+    const stats = this._healingStats.get(patternId) || { attempts: 0, successes: 0 };
+    stats.attempts++;
+    if (succeeded) stats.successes++;
+    this._healingStats.set(patternId, stats);
+  }
+
+  /**
+   * Get healing success rate for a pattern.
+   * Returns 0-1 (successes / attempts). Defaults to 1.0 if no data.
+   */
+  getHealingSuccessRate(patternId) {
+    if (!this._healingStats) return 1.0;
+    const stats = this._healingStats.get(patternId);
+    if (!stats || stats.attempts === 0) return 1.0;
+    return stats.successes / stats.attempts;
+  }
+
+  /**
+   * Get all healing stats across all patterns.
+   */
+  healingStats() {
+    if (!this._healingStats) return { patterns: 0, totalAttempts: 0, totalSuccesses: 0, details: [] };
+    const details = [];
+    let totalAttempts = 0, totalSuccesses = 0;
+    for (const [id, stats] of this._healingStats) {
+      const pattern = this.patterns.getAll().find(p => p.id === id);
+      details.push({
+        id,
+        name: pattern?.name || 'unknown',
+        attempts: stats.attempts,
+        successes: stats.successes,
+        rate: stats.attempts > 0 ? (stats.successes / stats.attempts).toFixed(3) : 'N/A',
+      });
+      totalAttempts += stats.attempts;
+      totalSuccesses += stats.successes;
+    }
+    return {
+      patterns: this._healingStats.size,
+      totalAttempts,
+      totalSuccesses,
+      overallRate: totalAttempts > 0 ? (totalSuccesses / totalAttempts).toFixed(3) : 'N/A',
+      details,
+    };
+  }
+
+  // ─── Deep Security Scan ───
+
+  /**
+   * Run a deep security scan on a pattern or raw code.
+   * Combines covenant + language-specific checks + optional external tools.
+   *
+   * @param {string|object} codeOrPatternId - Code string or pattern ID
+   * @param {object} options - { language?, runExternalTools? }
+   */
+  securityScan(codeOrPatternId, options = {}) {
+    const { deepSecurityScan } = require('../core/covenant');
+
+    let code, language, patternName;
+    if (typeof codeOrPatternId === 'string' && codeOrPatternId.length < 32) {
+      // Might be a pattern ID
+      const pattern = this.patterns.getAll().find(p => p.id === codeOrPatternId || p.name === codeOrPatternId);
+      if (pattern) {
+        code = pattern.code;
+        language = options.language || pattern.language;
+        patternName = pattern.name;
+      } else {
+        code = codeOrPatternId;
+        language = options.language || 'javascript';
+      }
+    } else {
+      code = codeOrPatternId;
+      language = options.language || 'javascript';
+    }
+
+    const result = deepSecurityScan(code, { language, runExternalTools: options.runExternalTools });
+
+    if (result.veto && patternName) {
+      this._emit({
+        type: 'security_veto',
+        patternName,
+        tool: result.externalTools.length > 0 ? result.externalTools[0].tool : 'covenant',
+        findings: result.totalFindings,
+        whisper: result.whisper,
+      });
+    }
+
+    return { ...result, patternName };
+  }
+
+  /**
+   * Scan all patterns in the library for security issues.
+   * Returns a security audit report.
+   */
+  securityAudit(options = {}) {
+    const { deepSecurityScan } = require('../core/covenant');
+    const patterns = this.patterns.getAll();
+    const report = { scanned: 0, clean: 0, advisory: 0, vetoed: 0, details: [] };
+
+    for (const p of patterns) {
+      const result = deepSecurityScan(p.code, { language: p.language, runExternalTools: options.runExternalTools });
+      report.scanned++;
+      if (result.veto) {
+        report.vetoed++;
+        report.details.push({ id: p.id, name: p.name, status: 'vetoed', findings: result.totalFindings, whisper: result.whisper });
+      } else if (result.deepFindings.length > 0) {
+        report.advisory++;
+        report.details.push({ id: p.id, name: p.name, status: 'advisory', findings: result.deepFindings.length });
+      } else {
+        report.clean++;
+      }
+    }
+
+    return report;
+  }
+
   synthesizeTests(options = {}) {
     const { synthesizeForCandidates } = require('../core/test-synth');
     const synthReport = synthesizeForCandidates(this, options);

@@ -210,6 +210,14 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_llm_analyze'));
     assert.ok(names.includes('oracle_compose'));
     assert.ok(names.includes('oracle_compose_templates'));
-    assert.equal(res.result.tools.length, 38);
+    assert.ok(names.includes('oracle_smart_promote'));
+    assert.ok(names.includes('oracle_security_scan'));
+    assert.ok(names.includes('oracle_security_audit'));
+    assert.ok(names.includes('oracle_rollback'));
+    assert.ok(names.includes('oracle_verify'));
+    assert.ok(names.includes('oracle_healing_stats'));
+    assert.ok(names.includes('oracle_reliability'));
+    assert.ok(names.includes('oracle_report_bug'));
+    assert.equal(res.result.tools.length, 46);
   });
 });

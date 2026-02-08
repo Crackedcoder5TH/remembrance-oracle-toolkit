@@ -218,6 +218,93 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {} },
   },
   {
+    name: 'oracle_smart_promote',
+    description: 'Smart auto-promote: promotes candidates meeting coherency >= threshold, covenant check, sandbox tests, and parent confidence. Stricter than basic auto-promote.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        minCoherency: { type: 'number', description: 'Min coherency to promote (default: 0.9)' },
+        minConfidence: { type: 'number', description: 'Min parent reliability (default: 0.8)' },
+        manualOverride: { type: 'boolean', description: 'Skip confidence check (default: false)' },
+        dryRun: { type: 'boolean', description: 'Preview without promoting (default: false)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_security_scan',
+    description: 'Deep security scan: covenant + language-specific vulnerability patterns + optional external tools (Semgrep, Bandit). Whispers a veto message if unsafe.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Code to scan (or pattern ID)' },
+        language: { type: 'string', description: 'Language (default: javascript)' },
+        runExternalTools: { type: 'boolean', description: 'Run Semgrep/Bandit if installed (default: false)' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'oracle_security_audit',
+    description: 'Scan all patterns in the library for security issues. Returns audit report with clean/advisory/vetoed counts.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        runExternalTools: { type: 'boolean', description: 'Run external security tools (default: false)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_rollback',
+    description: 'Rollback a pattern to a previous version. Uses versioning history to restore code.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'Pattern ID to rollback' },
+        version: { type: 'number', description: 'Target version (default: previous)' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_verify',
+    description: 'Verify a pattern passes its tests. Auto-rolls back to last passing version if tests fail.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'Pattern ID to verify' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_healing_stats',
+    description: 'Get healing success rate statistics across all patterns.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'oracle_reliability',
+    description: 'Get full reliability breakdown for a pattern (usage + bugs + healing).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'Pattern ID' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_report_bug',
+    description: 'Report a bug against a pattern. Decreases its reliability score.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'Pattern ID' },
+        description: { type: 'string', description: 'Bug description' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
     name: 'oracle_synthesize_tests',
     description: 'Synthesize test code for candidate patterns. Analyzes function signatures, translates parent tests, and generates edge-case assertions. Optionally auto-promotes candidates with new tests.',
     inputSchema: {
@@ -659,6 +746,46 @@ class MCPServer {
 
         case 'oracle_auto_promote':
           result = this.oracle.autoPromote();
+          break;
+
+        case 'oracle_smart_promote':
+          result = this.oracle.smartAutoPromote({
+            minCoherency: args.minCoherency || 0.9,
+            minConfidence: args.minConfidence || 0.8,
+            manualOverride: args.manualOverride || false,
+            dryRun: args.dryRun || false,
+          });
+          break;
+
+        case 'oracle_security_scan':
+          result = this.oracle.securityScan(args.code, {
+            language: args.language,
+            runExternalTools: args.runExternalTools || false,
+          });
+          break;
+
+        case 'oracle_security_audit':
+          result = this.oracle.securityAudit({ runExternalTools: args.runExternalTools || false });
+          break;
+
+        case 'oracle_rollback':
+          result = this.oracle.rollback(args.patternId, args.version);
+          break;
+
+        case 'oracle_verify':
+          result = this.oracle.verifyOrRollback(args.patternId);
+          break;
+
+        case 'oracle_healing_stats':
+          result = this.oracle.healingStats();
+          break;
+
+        case 'oracle_reliability':
+          result = this.oracle.patterns.getReliability(args.patternId);
+          break;
+
+        case 'oracle_report_bug':
+          result = this.oracle.patterns.reportBug(args.patternId, args.description || '');
           break;
 
         case 'oracle_synthesize_tests':

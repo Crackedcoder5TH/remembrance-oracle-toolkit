@@ -488,6 +488,7 @@ function reflectionLoop(code, options = {}) {
     description = '',
     tags = [],
     cascadeBoost = 1,     // Global coherence multiplier from recycler
+    onLoop,               // Optional callback for real-time progress
   } = options;
 
   const lang = language || detectLanguage(code);
@@ -581,6 +582,19 @@ function reflectionLoop(code, options = {}) {
       dimensions: winner.dimensions,
       fullCoherency: winner.fullCoherency,
     };
+
+    // Step 4b: Notify real-time listeners of loop progress
+    if (typeof onLoop === 'function') {
+      try {
+        onLoop({
+          loop: loops,
+          coherence: current.coherence,
+          strategy: winner.strategy,
+          serfScore: winner.serf,
+          changed: winner.changed,
+        });
+      } catch (_) { /* listener errors don't break healing */ }
+    }
   }
 
   // Step 5: Generate the whisper

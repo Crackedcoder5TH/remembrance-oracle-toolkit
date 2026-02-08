@@ -121,6 +121,9 @@ class SQLiteStore {
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch {}
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch {}
 
+    // Schema migration: add bug reports column for reliability tracking
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN bug_reports INTEGER DEFAULT 0`); } catch {}
+
     // Candidates table — coherent-but-unproven patterns awaiting test proof
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS candidates (
@@ -547,6 +550,7 @@ class SQLiteStore {
       evolutionHistory: JSON.parse(row.evolution_history || '[]'),
       requires: JSON.parse(row.requires || '[]'),
       composedOf: JSON.parse(row.composed_of || '[]'),
+      bugReports: row.bug_reports || 0,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -559,6 +563,7 @@ class SQLiteStore {
       coherencyScore: 'coherency_json', coherencyTotal: 'coherency_total',
       testCode: 'test_code', tags: 'tags', description: 'description',
       updatedAt: 'updated_at', requires: 'requires', composedOf: 'composed_of',
+      bugReports: 'bug_reports', code: 'code',
     };
     return map[field] || null;
   }

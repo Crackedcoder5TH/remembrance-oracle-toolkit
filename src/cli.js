@@ -249,6 +249,31 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'bug-report' || cmd === 'report-bug') {
+    const id = args.id || process.argv[3];
+    if (!id) { console.error(`Usage: ${c.cyan('oracle bug-report')} <pattern-id> [--description "..."]`); process.exit(1); }
+    const result = oracle.patterns.reportBug(id, args.description || '');
+    if (result.success) {
+      console.log(`${c.boldRed('Bug reported:')} ${c.bold(result.patternName)} — now has ${result.bugReports} report(s)`);
+    } else {
+      console.log(`${c.red(result.reason)}`);
+    }
+    return;
+  }
+
+  if (cmd === 'reliability') {
+    const id = args.id || process.argv[3];
+    if (!id) { console.error(`Usage: ${c.cyan('oracle reliability')} <pattern-id>`); process.exit(1); }
+    const r = oracle.patterns.getReliability(id);
+    if (!r) { console.log(c.red('Pattern not found')); return; }
+    console.log(c.boldCyan(`Reliability: ${c.bold(r.patternName)}\n`));
+    console.log(`  Usage:     ${r.successCount}/${r.usageCount} (${colorScore(r.usageReliability.toFixed(3))})`);
+    console.log(`  Bugs:      ${r.bugReports > 0 ? c.red(String(r.bugReports)) : c.dim('0')} (penalty: ${colorScore(r.bugPenalty.toFixed(3))})`);
+    console.log(`  Healing:   ${colorScore(r.healingRate.toFixed(3))}`);
+    console.log(`  Combined:  ${colorScore(r.combined.toFixed(3))}`);
+    return;
+  }
+
   if (cmd === 'prune') {
     const min = parseFloat(args['min-coherency']) || 0.4;
     const result = oracle.prune(min);
@@ -714,6 +739,26 @@ ${c.bold('Pipe support:')}
       return;
     }
 
+    // Smart auto-promote: coherency + covenant + sandbox + confidence gates
+    if (id === 'smart') {
+      const minCoherency = parseFloat(args['min-coherency']) || 0.9;
+      const minConfidence = parseFloat(args['min-confidence']) || 0.8;
+      const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+      const override = args['override'] === 'true' || args['override'] === true;
+      const result = oracle.smartAutoPromote({ minCoherency, minConfidence, dryRun, manualOverride: override });
+      console.log(c.boldCyan('Smart Auto-Promote Results:\n'));
+      console.log(`  Total candidates: ${c.bold(String(result.total))}`);
+      console.log(`  Promoted:         ${c.boldGreen(String(result.promoted))}`);
+      console.log(`  Skipped:          ${c.dim(String(result.skipped))}`);
+      console.log(`  Vetoed:           ${result.vetoed > 0 ? c.boldRed(String(result.vetoed)) : c.dim('0')}`);
+      if (dryRun) console.log(`  ${c.yellow('(dry run — no changes made)')}`);
+      for (const d of result.details) {
+        const icon = d.status === 'promoted' || d.status === 'would-promote' ? c.green('+') : d.status === 'vetoed' ? c.red('x') : c.dim('-');
+        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status}${d.reason ? ' (' + d.reason.slice(0, 80) + ')' : ''}${d.coherency ? ' [' + colorScore(d.coherency) + ']' : ''}`);
+      }
+      return;
+    }
+
     const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
     const result = oracle.promote(id, testCode);
 
@@ -1046,6 +1091,53 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'rollback') {
+    const id = args.id || process.argv[3];
+    if (!id) { console.error(`Usage: ${c.cyan('oracle rollback')} <pattern-id> [--version <n>]`); process.exit(1); }
+    const version = parseInt(args.version) || undefined;
+    const result = oracle.rollback(id, version);
+    if (result.success) {
+      console.log(`${c.boldGreen('Rolled back:')} ${c.bold(result.patternName)} → v${result.restoredVersion}`);
+      console.log(`  Previous version: v${result.previousVersion}`);
+      console.log(`  Code restored (${result.restoredCode.split('\n').length} lines)`);
+    } else {
+      console.log(`${c.boldRed('Rollback failed:')} ${result.reason}`);
+    }
+    return;
+  }
+
+  if (cmd === 'verify') {
+    const id = args.id || process.argv[3];
+    if (!id) { console.error(`Usage: ${c.cyan('oracle verify')} <pattern-id>`); process.exit(1); }
+    const result = oracle.verifyOrRollback(id);
+    if (result.passed) {
+      console.log(`${c.boldGreen('Verified:')} ${c.bold(result.patternName || id)} — tests pass`);
+    } else {
+      console.log(`${c.boldRed('Failed:')} ${c.bold(result.patternName || id)} — tests broke`);
+      if (result.rolledBack) {
+        console.log(`  ${c.yellow('Auto-rolled back')} to v${result.restoredVersion}`);
+      }
+    }
+    return;
+  }
+
+  if (cmd === 'healing-stats') {
+    const stats = oracle.healingStats();
+    console.log(c.boldCyan('Healing Success Rates:\n'));
+    console.log(`  Tracked patterns: ${c.bold(String(stats.patterns))}`);
+    console.log(`  Total attempts:   ${c.bold(String(stats.totalAttempts))}`);
+    console.log(`  Total successes:  ${c.boldGreen(String(stats.totalSuccesses))}`);
+    console.log(`  Overall rate:     ${colorScore(stats.overallRate)}`);
+    if (stats.details.length > 0) {
+      console.log('');
+      for (const d of stats.details) {
+        const icon = parseFloat(d.rate) >= 0.8 ? c.green('●') : parseFloat(d.rate) >= 0.5 ? c.yellow('●') : c.red('●');
+        console.log(`  ${icon} ${c.bold(d.name)} — ${d.successes}/${d.attempts} (${colorScore(d.rate)})`);
+      }
+    }
+    return;
+  }
+
   if (cmd === 'sdiff') {
     const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
     if (ids.length < 2) { console.error(`Usage: ${c.cyan('oracle sdiff')} <id-a> <id-b>`); process.exit(1); }
@@ -1209,6 +1301,52 @@ ${c.bold('Pipe support:')}
         console.log(`      ${c.dim('Seal: "' + v.seal + '"')}`);
       }
       process.exit(1);
+    }
+    return;
+  }
+
+  if (cmd === 'security-scan' || cmd === 'scan') {
+    const id = args.id || process.argv[3];
+    if (!id && !args.file) { console.error(`Usage: ${c.cyan('oracle security-scan')} <pattern-id> or --file <code.js>`); process.exit(1); }
+    let target = id;
+    if (args.file) target = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const external = args.external === 'true' || args.external === true;
+    const result = oracle.securityScan(target, { language: args.language, runExternalTools: external });
+    if (result.passed) {
+      console.log(`${c.boldGreen('PASSED')}${result.patternName ? ` — ${c.bold(result.patternName)}` : ''}`);
+    } else {
+      console.log(`${c.boldRed('VETOED')}${result.patternName ? ` — ${c.bold(result.patternName)}` : ''}`);
+    }
+    console.log(`  Covenant: ${result.covenant.sealed ? c.green('sealed') : c.red('broken')} (${result.covenant.principlesPassed}/15)`);
+    if (result.deepFindings.length > 0) {
+      console.log(`  Deep findings: ${c.yellow(String(result.deepFindings.length))}`);
+      for (const f of result.deepFindings) {
+        const sev = f.severity === 'high' ? c.red(f.severity) : f.severity === 'medium' ? c.yellow(f.severity) : c.dim(f.severity);
+        console.log(`    [${sev}] ${f.reason}`);
+      }
+    }
+    if (result.externalTools.length > 0) {
+      console.log(`  External tools: ${c.yellow(String(result.externalTools.length))}`);
+      for (const f of result.externalTools) console.log(`    [${f.tool}] ${f.reason}`);
+    }
+    console.log(`\n${c.dim('Whisper:')} ${result.whisper}`);
+    return;
+  }
+
+  if (cmd === 'security-audit') {
+    const external = args.external === 'true' || args.external === true;
+    const result = oracle.securityAudit({ runExternalTools: external });
+    console.log(c.boldCyan('Security Audit Report:\n'));
+    console.log(`  Scanned:  ${c.bold(String(result.scanned))}`);
+    console.log(`  Clean:    ${c.boldGreen(String(result.clean))}`);
+    console.log(`  Advisory: ${result.advisory > 0 ? c.yellow(String(result.advisory)) : c.dim('0')}`);
+    console.log(`  Vetoed:   ${result.vetoed > 0 ? c.boldRed(String(result.vetoed)) : c.dim('0')}`);
+    if (result.details.length > 0) {
+      console.log('');
+      for (const d of result.details) {
+        const icon = d.status === 'vetoed' ? c.red('x') : c.yellow('!');
+        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status} (${d.findings} finding${d.findings !== 1 ? 's' : ''})${d.whisper ? '\n    ' + c.dim(d.whisper) : ''}`);
+      }
     }
     return;
   }

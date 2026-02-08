@@ -1372,7 +1372,79 @@ pre.code-block {
       case 'stats_update':
         refreshStats();
         break;
+      case 'healing_start':
+        showHealingBanner(data);
+        break;
+      case 'healing_progress':
+        updateHealingProgress(data);
+        break;
+      case 'healing_complete':
+        completeHealingBanner(data);
+        break;
+      case 'healing_failed':
+        failHealingBanner(data);
+        break;
+      case 'auto_promote':
+        showToast('Auto-promoted: ' + (data.promoted || 0) + ' candidate(s)');
+        refreshPatterns();
+        break;
+      case 'rollback':
+        showToast('Rollback: ' + (data.patternName || '') + ' reverted to v' + (data.restoredVersion || '?'));
+        refreshPatterns();
+        break;
+      case 'security_veto':
+        showToast('Security veto: ' + (data.patternName || '') + ' — ' + (data.tool || ''));
+        break;
     }
+  }
+
+  // ─── Healing Banner (real-time feedback) ───
+  function showHealingBanner(data) {
+    var existing = document.getElementById('healing-banner');
+    if (existing) existing.remove();
+    var banner = document.createElement('div');
+    banner.id = 'healing-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#1a1a2e;color:#e0e0ff;padding:12px 20px;z-index:9999;font-family:monospace;border-bottom:2px solid #6c63ff;transition:opacity 0.5s;';
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:1.2em;">&#x2728;</span>' +
+      '<span>Healing <strong>' + esc(data.patternName || '') + '</strong> (' + esc(data.decision || '') + ')...</span>' +
+      '<span id="healing-coherence" style="color:#6c63ff;font-weight:bold;">loop 0/' + (data.maxLoops || 3) + '</span>' +
+      '<div id="healing-bar" style="flex:1;height:6px;background:#333;border-radius:3px;overflow:hidden;">' +
+      '<div id="healing-bar-fill" style="width:0%;height:100%;background:linear-gradient(90deg,#6c63ff,#a78bfa);transition:width 0.3s;"></div>' +
+      '</div></div>';
+    document.body.prepend(banner);
+  }
+
+  function updateHealingProgress(data) {
+    var label = document.getElementById('healing-coherence');
+    var fill = document.getElementById('healing-bar-fill');
+    if (label) label.textContent = 'loop ' + data.loop + '/' + data.maxLoops + ' | coherence: ' + (data.coherence || 0).toFixed(3) + ' | ' + (data.strategy || '');
+    if (fill) fill.style.width = Math.min(100, ((data.loop / (data.maxLoops || 3)) * 100)).toFixed(0) + '%';
+  }
+
+  function completeHealingBanner(data) {
+    var banner = document.getElementById('healing-banner');
+    if (!banner) return;
+    var imp = data.improvement || 0;
+    var sign = imp >= 0 ? '+' : '';
+    banner.style.borderBottomColor = '#22c55e';
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:1.2em;">&#x2705;</span>' +
+      '<span>Healed <strong>' + esc(data.patternName || '') + '</strong></span>' +
+      '<span style="color:#22c55e;font-weight:bold;">' + (data.finalCoherence || 0).toFixed(3) + ' (' + sign + imp.toFixed(3) + ') in ' + (data.loops || 0) + ' loop(s)</span>' +
+      '</div>';
+    setTimeout(function() { if (banner.parentNode) { banner.style.opacity = '0'; setTimeout(function() { banner.remove(); }, 500); } }, 5000);
+  }
+
+  function failHealingBanner(data) {
+    var banner = document.getElementById('healing-banner');
+    if (!banner) return;
+    banner.style.borderBottomColor = '#ef4444';
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:1.2em;">&#x274C;</span>' +
+      '<span>Healing failed for <strong>' + esc(data.patternName || '') + '</strong>: ' + esc(data.error || 'unknown') + '</span>' +
+      '</div>';
+    setTimeout(function() { if (banner.parentNode) { banner.style.opacity = '0'; setTimeout(function() { banner.remove(); }, 500); } }, 5000);
   }
 
   connectWS();

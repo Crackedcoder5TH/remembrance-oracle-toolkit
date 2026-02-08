@@ -625,6 +625,52 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'oracle_reflector_orchestrate',
+    description: 'Run the full orchestrated workflow: config → snapshot → deep-score → heal → safety → whisper → PR → history. Returns per-step timing and status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        dryRun: { type: 'boolean', description: 'Simulate without changes (default: false)' },
+        push: { type: 'boolean', description: 'Push healing branch' },
+        openPR: { type: 'boolean', description: 'Open a PR' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_coherence',
+    description: 'Compute real coherence score for a file using the weighted formula: 0.25*syntax + 0.20*readability + 0.15*security + 0.30*test_proof + 0.10*reliability.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Absolute path to source file' },
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'oracle_reflector_repo_coherence',
+    description: 'Compute repo-level coherence with dimensional breakdown (syntax, readability, security, test proof, reliability).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_format_pr',
+    description: 'Generate rich markdown PR body from a reflector report: coherence delta, top 3 healed changes, whisper, deep score, security findings, dimensional breakdown, approval prompt.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        report: { type: 'object', description: 'Reflector/orchestration report object' },
+      },
+      required: ['report'],
+    },
+  },
 ];
 
 class MCPServer {
@@ -1156,6 +1202,37 @@ class MCPServer {
           const { computeStats } = require('../reflector/history');
           const dir = args.rootDir || process.cwd();
           result = computeStats(dir);
+          break;
+        }
+
+        case 'oracle_reflector_orchestrate': {
+          const { orchestrate } = require('../reflector/orchestrator');
+          const dir = args.rootDir || process.cwd();
+          result = orchestrate(dir, {
+            dryRun: args.dryRun || false,
+            push: args.push || false,
+            openPR: args.openPR || false,
+          });
+          break;
+        }
+
+        case 'oracle_reflector_coherence': {
+          const { computeCoherence } = require('../reflector/coherenceScorer');
+          const dir = args.rootDir || process.cwd();
+          result = computeCoherence(args.filePath, { rootDir: dir });
+          break;
+        }
+
+        case 'oracle_reflector_repo_coherence': {
+          const { computeRepoCoherence } = require('../reflector/coherenceScorer');
+          const dir = args.rootDir || process.cwd();
+          result = computeRepoCoherence(dir);
+          break;
+        }
+
+        case 'oracle_reflector_format_pr': {
+          const { formatPRComment } = require('../reflector/prFormatter');
+          result = { markdown: formatPRComment(args.report || {}) };
           break;
         }
 

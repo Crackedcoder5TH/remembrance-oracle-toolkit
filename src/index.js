@@ -46,6 +46,10 @@ const reflectorScoring = require('./reflector/scoring');
 const reflectorConfig = require('./reflector/config');
 const reflectorHistory = require('./reflector/history');
 const reflectorUtils = require('./reflector/utils');
+const reflectorOrchestrator = require('./reflector/orchestrator');
+const reflectorErrorHandler = require('./reflector/errorHandler');
+const reflectorCoherenceScorer = require('./reflector/coherenceScorer');
+const reflectorPRFormatter = require('./reflector/prFormatter');
 
 module.exports = {
   // Core
@@ -269,4 +273,34 @@ module.exports = {
   reflectorComputeStats: reflectorHistory.computeStats,
   reflectorTrendChart: reflectorHistory.generateTrendChart,
   reflectorTimeline: reflectorHistory.generateTimeline,
+
+  // Reflector Orchestrator
+  reflectorOrchestrate: reflectorOrchestrator.orchestrate,
+  reflectorFormatOrchestration: reflectorOrchestrator.formatOrchestration,
+
+  // Reflector Error Handling
+  reflectorErrorTypes: reflectorErrorHandler.ERROR_TYPES,
+  reflectorClassifyError: reflectorErrorHandler.classifyError,
+  reflectorWithErrorHandling: reflectorErrorHandler.withErrorHandling,
+  reflectorWithRetry: reflectorErrorHandler.withRetry,
+  reflectorWithCircuitBreaker: reflectorErrorHandler.withCircuitBreaker,
+  reflectorResetCircuitBreaker: reflectorErrorHandler.resetCircuitBreaker,
+  reflectorBuildErrorReport: reflectorErrorHandler.buildErrorReport,
+
+  // Reflector Real Coherence Scoring
+  reflectorComputeCoherence: reflectorCoherenceScorer.computeCoherence,
+  reflectorComputeRepoCoherence: reflectorCoherenceScorer.computeRepoCoherence,
+  reflectorFormatCoherence: reflectorCoherenceScorer.formatCoherence,
+  reflectorScoreSyntaxValidity: reflectorCoherenceScorer.scoreSyntaxValidity,
+  reflectorScoreReadability: reflectorCoherenceScorer.scoreReadability,
+  reflectorScoreTestProof: reflectorCoherenceScorer.scoreTestProof,
+  reflectorScoreHistoricalReliability: reflectorCoherenceScorer.scoreHistoricalReliability,
+  reflectorCoherenceWeights: reflectorCoherenceScorer.DEFAULT_WEIGHTS,
+
+  // Reflector PR Comment Formatter
+  reflectorFormatPRComment: reflectorPRFormatter.formatPRComment,
+  reflectorFormatFileComment: reflectorPRFormatter.formatFileComment,
+  reflectorFormatCheckRun: reflectorPRFormatter.formatCheckRun,
+  reflectorProgressBar: reflectorPRFormatter.progressBar,
+  reflectorScoreIndicator: reflectorPRFormatter.scoreIndicator,
 };

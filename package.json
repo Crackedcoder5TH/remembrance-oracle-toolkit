@@ -5,10 +5,12 @@
   "main": "src/index.js",
   "bin": {
     "remembrance-oracle": "src/cli.js",
-    "oracle": "src/cli.js"
+    "oracle": "src/cli.js",
+    "reflector": "bin/reflector"
   },
   "files": [
     "src/",
+    "bin/",
     "README.md",
     "LICENSE",
     "action.yml"

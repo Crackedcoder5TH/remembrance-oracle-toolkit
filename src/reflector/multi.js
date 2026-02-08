@@ -31,9 +31,11 @@ const { detectLanguage } = require('../core/coherency');
 function multiSnapshot(repoPaths, config = {}) {
   const opts = { ...DEFAULT_CONFIG, ...config };
   const repos = [];
+  const _fullSnapshots = new Map(); // Cache full snapshots for reuse by other functions
 
   for (const repoPath of repoPaths) {
     const snap = takeSnapshot(repoPath, opts);
+    _fullSnapshots.set(repoPath, snap);
     repos.push({
       name: basename(repoPath),
       path: repoPath,
@@ -89,6 +91,7 @@ function multiSnapshot(repoPaths, config = {}) {
       dimensionAverages: combinedDimensions,
     },
     config: opts,
+    _fullSnapshots, // Internal: cached full snapshots for reuse by unifiedHeal
   };
 }
 
@@ -196,6 +199,54 @@ function extractFunctionSignatures(code, language) {
 }
 
 /**
+ * Extract the body of a named function from source code.
+ * Uses brace counting for JS/TS/Go/Rust, indentation for Python.
+ */
+function extractFunctionBody(code, fnName, language) {
+  const lines = code.split('\n');
+  const lang = (language || '').toLowerCase();
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Check if this line declares the target function
+    if (!line.includes(fnName)) continue;
+
+    // JS/TS/Go/Rust: brace counting
+    if (lang !== 'python' && lang !== 'py') {
+      if (line.includes('{')) {
+        let depth = 0;
+        let started = false;
+        const bodyLines = [];
+        for (let j = i; j < lines.length; j++) {
+          bodyLines.push(lines[j]);
+          for (const ch of lines[j]) {
+            if (ch === '{') { depth++; started = true; }
+            if (ch === '}') depth--;
+          }
+          if (started && depth <= 0) break;
+        }
+        if (bodyLines.length > 0) return bodyLines.join('\n');
+      }
+    } else {
+      // Python: indentation-based
+      if (line.trim().startsWith('def ') && line.trim().endsWith(':')) {
+        const baseIndent = line.match(/^(\s*)/)[1].length;
+        const bodyLines = [line];
+        for (let j = i + 1; j < lines.length; j++) {
+          if (lines[j].trim() === '') { bodyLines.push(lines[j]); continue; }
+          const indent = lines[j].match(/^(\s*)/)[1].length;
+          if (indent > baseIndent) bodyLines.push(lines[j]);
+          else break;
+        }
+        return bodyLines.join('\n');
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Simple token-based similarity between two code strings.
  * Uses Jaccard similarity on word tokens.
  */
@@ -248,12 +299,14 @@ function detectDrift(repoPaths, config = {}) {
       for (const fn of fns) {
         // Use name as key; if duplicate, keep the first occurrence
         if (!funcMap.has(fn.name)) {
+          // Extract just the function body for comparison, not the whole file
+          const fnBody = extractFunctionBody(code, fn.name, lang);
           funcMap.set(fn.name, {
             name: fn.name,
             params: fn.params,
             file: relative(rootDir, filePath),
             language: lang,
-            code,
+            code: fnBody || code, // Fallback to whole file if body extraction fails
           });
         }
       }
@@ -345,8 +398,8 @@ function detectDrift(repoPaths, config = {}) {
 function unifiedHeal(repoPaths, config = {}) {
   const opts = { ...DEFAULT_CONFIG, ...config };
 
-  // Take snapshots first
-  const multiSnap = multiSnapshot(repoPaths, opts);
+  // Take snapshots first (or reuse pre-computed ones)
+  const multiSnap = opts._preMultiSnapshot || multiSnapshot(repoPaths, opts);
 
   // Use the higher avg coherence as the target floor
   const maxAvgCoherence = Math.max(...multiSnap.repos.map(r => r.avgCoherence));
@@ -357,8 +410,8 @@ function unifiedHeal(repoPaths, config = {}) {
   for (const repo of multiSnap.repos) {
     const repoHealings = [];
 
-    // Find files below the unified threshold in this repo
-    const snap = takeSnapshot(repo.path, opts);
+    // Reuse cached snapshot from multiSnapshot if available, avoiding redundant scan
+    const snap = multiSnap._fullSnapshots?.get(repo.path) || takeSnapshot(repo.path, opts);
     const filesToHeal = snap.files
       .filter(f => !f.error && f.coherence < unifiedThreshold && f.covenantSealed)
       .sort((a, b) => a.coherence - b.coherence);
@@ -441,8 +494,8 @@ function multiReflect(repoPaths, config = {}) {
   // Step 3: Drift detection (only for 2 repos)
   const drift = repoPaths.length >= 2 ? detectDrift(repoPaths, opts) : null;
 
-  // Step 4: Unified healing
-  const healing = unifiedHeal(repoPaths, opts);
+  // Step 4: Unified healing (pass pre-computed snapshot to avoid redundant scans)
+  const healing = unifiedHeal(repoPaths, { ...opts, _preMultiSnapshot: snapshot });
 
   return {
     timestamp: snapshot.timestamp,
@@ -657,5 +710,6 @@ module.exports = {
   formatMultiPRBody,
   generateMultiWhisper,
   extractFunctionSignatures,
+  extractFunctionBody,
   codeSimilarity,
 };

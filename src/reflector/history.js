@@ -13,8 +13,9 @@
  * Uses only Node.js built-ins.
  */
 
-const { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } = require('fs');
+const { readFileSync, existsSync, appendFileSync } = require('fs');
 const { join } = require('path');
+const { ensureDir, loadJSON, saveJSON, trimArray } = require('./utils');
 
 // ─── History Storage ───
 
@@ -33,15 +34,7 @@ function getLogPath(rootDir) {
  * @returns {object} { runs[], summary }
  */
 function loadHistoryV2(rootDir) {
-  const historyPath = getHistoryV2Path(rootDir);
-  try {
-    if (existsSync(historyPath)) {
-      return JSON.parse(readFileSync(historyPath, 'utf-8'));
-    }
-  } catch {
-    // Fall through
-  }
-  return { runs: [], version: 2 };
+  return loadJSON(getHistoryV2Path(rootDir), { runs: [], version: 2 });
 }
 
 /**
@@ -54,18 +47,10 @@ function loadHistoryV2(rootDir) {
  */
 function saveRunRecord(rootDir, record, options = {}) {
   const { maxRuns = 100 } = options;
-  const dir = join(rootDir, '.remembrance');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-
   const history = loadHistoryV2(rootDir);
   history.runs.push(record);
-
-  // Trim old runs
-  while (history.runs.length > maxRuns) {
-    history.runs.shift();
-  }
-
-  writeFileSync(getHistoryV2Path(rootDir), JSON.stringify(history, null, 2), 'utf-8');
+  trimArray(history.runs, maxRuns);
+  saveJSON(getHistoryV2Path(rootDir), history);
   return record;
 }
 
@@ -150,8 +135,7 @@ function createRunRecord(report, preSnapshot, options = {}) {
  * @param {object} [data] - Optional structured data
  */
 function appendLog(rootDir, level, message, data) {
-  const dir = join(rootDir, '.remembrance');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  ensureDir(join(rootDir, '.remembrance'));
 
   const timestamp = new Date().toISOString();
   let line = `[${timestamp}] [${level}] ${message}`;

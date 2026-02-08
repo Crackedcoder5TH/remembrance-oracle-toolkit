@@ -14,6 +14,10 @@ const { readFileSync, writeFileSync, existsSync, mkdirSync } = require('fs');
 const { join } = require('path');
 const { reflect, formatReport } = require('./engine');
 const { createHealingBranch, findExistingReflectorPR } = require('./github');
+const { ensureDir, loadJSON, saveJSON, trimArray } = require('./utils');
+const { loadCentralConfig, toEngineConfig } = require('./config');
+const { saveRunRecord, createRunRecord } = require('./history');
+const { safeReflect } = require('./safety');
 
 // ─── Configuration ───
 
@@ -46,29 +50,37 @@ function getReportPath(rootDir) {
 
 /**
  * Load reflector configuration from .remembrance/reflector-config.json
+ * Also inherits from central config if available.
  */
 function loadConfig(rootDir) {
-  const configPath = getConfigPath(rootDir);
+  // Layer 1: Central config defaults (from reflector-central.json)
+  let centralOverrides = {};
   try {
-    if (existsSync(configPath)) {
-      const raw = readFileSync(configPath, 'utf-8');
-      return { ...DEFAULT_SCHEDULE_CONFIG, ...JSON.parse(raw) };
-    }
+    const central = loadCentralConfig(rootDir);
+    const flat = toEngineConfig(central);
+    centralOverrides = {
+      minCoherence: flat.minCoherence,
+      autoMergeThreshold: flat.autoMergeThreshold,
+      push: flat.push,
+      openPR: flat.openPR,
+      autoMerge: flat.autoMerge,
+      maxFilesPerRun: flat.maxFilesPerRun,
+    };
   } catch {
-    // Fall through to defaults
+    // Central config not available, use schedule defaults
   }
-  return { ...DEFAULT_SCHEDULE_CONFIG };
+
+  // Layer 2: Schedule-specific config (from reflector-config.json)
+  const scheduleOverrides = loadJSON(getConfigPath(rootDir), {});
+
+  return { ...DEFAULT_SCHEDULE_CONFIG, ...centralOverrides, ...scheduleOverrides };
 }
 
 /**
  * Save reflector configuration.
  */
 function saveConfig(rootDir, config) {
-  const configPath = getConfigPath(rootDir);
-  const dir = join(rootDir, '.remembrance');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-  return config;
+  return saveJSON(getConfigPath(rootDir), config);
 }
 
 // ─── Run History ───
@@ -77,15 +89,7 @@ function saveConfig(rootDir, config) {
  * Load run history from .remembrance/reflector-history.json
  */
 function loadHistory(rootDir) {
-  const historyPath = getHistoryPath(rootDir);
-  try {
-    if (existsSync(historyPath)) {
-      return JSON.parse(readFileSync(historyPath, 'utf-8'));
-    }
-  } catch {
-    // Fall through
-  }
-  return { runs: [] };
+  return loadJSON(getHistoryPath(rootDir), { runs: [] });
 }
 
 /**
@@ -95,16 +99,9 @@ function recordRun(rootDir, record) {
   const history = loadHistory(rootDir);
   history.runs.push(record);
 
-  // Trim to maxRunHistory
   const config = loadConfig(rootDir);
-  while (history.runs.length > config.maxRunHistory) {
-    history.runs.shift();
-  }
-
-  const historyPath = getHistoryPath(rootDir);
-  const dir = join(rootDir, '.remembrance');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
+  trimArray(history.runs, config.maxRunHistory);
+  saveJSON(getHistoryPath(rootDir), history);
   return record;
 }
 
@@ -147,10 +144,15 @@ function runReflector(rootDir, options = {}) {
     }
   }
 
-  // Run the reflector engine
-  let report;
+  // Run the reflector with safety protections (backup, approval, coherence guard)
+  let safeResult;
   try {
-    report = reflect(rootDir, config);
+    safeResult = safeReflect(rootDir, {
+      ...config,
+      dryRunMode: config.dryRun || false,
+      requireApproval: config.requireApproval || false,
+      autoRollback: config.autoRollback !== false,
+    });
   } catch (err) {
     runRecord.error = err.message;
     runRecord.finishedAt = new Date().toISOString();
@@ -159,30 +161,43 @@ function runReflector(rootDir, options = {}) {
     return runRecord;
   }
 
+  const report = safeResult.report || {};
   runRecord.report = {
-    filesScanned: report.summary.filesScanned,
-    filesBelowThreshold: report.summary.filesBelowThreshold,
-    filesHealed: report.summary.filesHealed,
-    avgImprovement: report.summary.avgImprovement,
-    autoMergeRecommended: report.summary.autoMergeRecommended,
-    collectiveWhisper: report.collectiveWhisper.message,
+    filesScanned: report.filesScanned || 0,
+    filesBelowThreshold: report.filesBelowThreshold || 0,
+    filesHealed: report.filesHealed || 0,
+    avgImprovement: report.avgImprovement || 0,
+    autoMergeRecommended: report.autoMergeRecommended || false,
+    collectiveWhisper: report.collectiveWhisper || '',
   };
+  runRecord.safety = safeResult.safety || {};
 
   // Save full report to disk
   try {
     const reportPath = getReportPath(rootDir);
-    const dir = join(rootDir, '.remembrance');
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8');
+    saveJSON(reportPath, safeResult);
     runRecord.reportPath = reportPath;
   } catch {
     // Best effort
   }
 
-  // Create healing branch if there are changes
-  if (report.healedFiles && report.healedFiles.length > 0) {
+  // Create healing branch if there are changes and not auto-rolled-back
+  const healedFiles = safeResult.healedFiles || [];
+  if (healedFiles.length > 0 && !safeResult.safety?.autoRolledBack) {
+    // Build a report-like object for createHealingBranch
+    const branchReport = {
+      rootDir,
+      healedFiles,
+      collectiveWhisper: { message: report.collectiveWhisper || '' },
+      summary: {
+        avgImprovement: report.avgImprovement || 0,
+        autoMergeRecommended: report.autoMergeRecommended || false,
+      },
+      snapshot: { totalFiles: report.filesScanned || 0, avgCoherence: 0, minCoherence: 0, maxCoherence: 0 },
+    };
+
     try {
-      const branchResult = createHealingBranch(report, {
+      const branchResult = createHealingBranch(branchReport, {
         push: config.push,
         openPR: config.openPR,
         autoMerge: config.autoMerge,
@@ -201,6 +216,35 @@ function runReflector(rootDir, options = {}) {
   runRecord.finishedAt = new Date().toISOString();
   runRecord.durationMs = Date.now() - startTime;
   recordRun(rootDir, runRecord);
+
+  // Also save to v2 history for trend tracking
+  try {
+    const v2Record = {
+      id: runRecord.id,
+      timestamp: runRecord.startedAt,
+      trigger: 'scheduled',
+      branch: runRecord.branch || null,
+      durationMs: runRecord.durationMs,
+      coherence: {
+        before: safeResult.safety?.preCoherence || 0,
+        after: safeResult.safety?.preCoherence || 0, // approx — no post-write scan
+        delta: report.avgImprovement || 0,
+      },
+      healing: {
+        filesScanned: report.filesScanned || 0,
+        filesBelowThreshold: report.filesBelowThreshold || 0,
+        filesHealed: report.filesHealed || 0,
+        totalImprovement: 0,
+        avgImprovement: report.avgImprovement || 0,
+      },
+      changes: [],
+      whisper: report.collectiveWhisper || '',
+      health: 'unknown',
+    };
+    saveRunRecord(rootDir, v2Record, { maxRuns: config.maxRunHistory || 50 });
+  } catch {
+    // Best effort — v2 history write is supplementary
+  }
 
   return runRecord;
 }

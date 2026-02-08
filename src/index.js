@@ -45,6 +45,7 @@ const reflectorSafety = require('./reflector/safety');
 const reflectorScoring = require('./reflector/scoring');
 const reflectorConfig = require('./reflector/config');
 const reflectorHistory = require('./reflector/history');
+const reflectorUtils = require('./reflector/utils');
 
 module.exports = {
   // Core
@@ -218,6 +219,13 @@ module.exports = {
   reflectorMultiReflect: reflectorMulti.multiReflect,
   reflectorFormatMultiReport: reflectorMulti.formatMultiReport,
   reflectorCodeSimilarity: reflectorMulti.codeSimilarity,
+  reflectorExtractFunctionBody: reflectorMulti.extractFunctionBody,
+
+  // Reflector Shared Utilities
+  reflectorEnsureDir: reflectorUtils.ensureDir,
+  reflectorLoadJSON: reflectorUtils.loadJSON,
+  reflectorSaveJSON: reflectorUtils.saveJSON,
+  reflectorTrimArray: reflectorUtils.trimArray,
 
   // Reflector Safety & Revert
   reflectorCreateBackup: reflectorSafety.createBackup,

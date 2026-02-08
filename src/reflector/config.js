@@ -16,8 +16,8 @@
  * Uses only Node.js built-ins.
  */
 
-const { readFileSync, writeFileSync, existsSync, mkdirSync } = require('fs');
 const { join } = require('path');
+const { loadJSON, saveJSON } = require('./utils');
 
 // ─── Default Configuration ───
 
@@ -105,15 +105,8 @@ function getCentralConfigPath(rootDir) {
  * @returns {object} Merged configuration
  */
 function loadCentralConfig(rootDir) {
-  const configPath = getCentralConfigPath(rootDir);
-  try {
-    if (existsSync(configPath)) {
-      const raw = JSON.parse(readFileSync(configPath, 'utf-8'));
-      return deepMerge(CENTRAL_DEFAULTS, raw);
-    }
-  } catch {
-    // Fall through to defaults
-  }
+  const raw = loadJSON(getCentralConfigPath(rootDir), null);
+  if (raw) return deepMerge(CENTRAL_DEFAULTS, raw);
   return deepClone(CENTRAL_DEFAULTS);
 }
 
@@ -125,11 +118,7 @@ function loadCentralConfig(rootDir) {
  * @returns {object} Saved configuration
  */
 function saveCentralConfig(rootDir, config) {
-  const configPath = getCentralConfigPath(rootDir);
-  const dir = join(rootDir, '.remembrance');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-  return config;
+  return saveJSON(getCentralConfigPath(rootDir), config);
 }
 
 /**

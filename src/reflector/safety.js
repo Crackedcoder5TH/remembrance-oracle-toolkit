@@ -11,10 +11,11 @@
  * Uses only Node.js built-ins — no external dependencies.
  */
 
-const { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } = require('fs');
+const { readFileSync, existsSync, copyFileSync } = require('fs');
 const { join, relative } = require('path');
 const { reflect, takeSnapshot, evaluateFile } = require('./engine');
 const { git, getCurrentBranch, isCleanWorkingTree, generateBranchName } = require('./github');
+const { ensureDir, loadJSON, saveJSON, trimArray } = require('./utils');
 
 // ─── Backup State ───
 
@@ -85,7 +86,7 @@ function createBackup(rootDir, options = {}) {
  */
 function createFileCopyBackup(rootDir, filePaths, manifest) {
   const backupDir = join(rootDir, '.remembrance', 'backups', manifest.id);
-  mkdirSync(backupDir, { recursive: true });
+  ensureDir(backupDir);
   manifest.backupDir = backupDir;
 
   for (const filePath of filePaths) {
@@ -95,8 +96,8 @@ function createFileCopyBackup(rootDir, filePaths, manifest) {
     const relPath = relative(rootDir, absPath);
     const backupPath = join(backupDir, relPath);
     const parentDir = join(backupDir, ...relPath.split('/').slice(0, -1));
-    if (relPath.includes('/') && !existsSync(parentDir)) {
-      mkdirSync(parentDir, { recursive: true });
+    if (relPath.includes('/')) {
+      ensureDir(parentDir);
     }
 
     try {
@@ -118,36 +119,17 @@ function createFileCopyBackup(rootDir, filePaths, manifest) {
  * Save backup manifest to disk.
  */
 function saveBackupManifest(rootDir, manifest) {
-  const dir = join(rootDir, '.remembrance');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-
-  // Load existing manifests and append
   const manifests = loadBackupManifests(rootDir);
   manifests.push(manifest);
-
-  // Keep only last 20 backups
-  while (manifests.length > 20) manifests.shift();
-
-  writeFileSync(
-    getBackupManifestPath(rootDir),
-    JSON.stringify(manifests, null, 2),
-    'utf-8'
-  );
+  trimArray(manifests, 20);
+  saveJSON(getBackupManifestPath(rootDir), manifests);
 }
 
 /**
  * Load all backup manifests.
  */
 function loadBackupManifests(rootDir) {
-  const manifestPath = getBackupManifestPath(rootDir);
-  try {
-    if (existsSync(manifestPath)) {
-      return JSON.parse(readFileSync(manifestPath, 'utf-8'));
-    }
-  } catch {
-    // Fall through
-  }
-  return [];
+  return loadJSON(getBackupManifestPath(rootDir), []);
 }
 
 /**
@@ -307,17 +289,7 @@ function checkApproval(report, config = {}) {
  */
 function recordApproval(rootDir, runId, decision) {
   const approvalPath = join(rootDir, '.remembrance', 'approvals.json');
-  const dir = join(rootDir, '.remembrance');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-
-  let approvals = [];
-  try {
-    if (existsSync(approvalPath)) {
-      approvals = JSON.parse(readFileSync(approvalPath, 'utf-8'));
-    }
-  } catch {
-    approvals = [];
-  }
+  const approvals = loadJSON(approvalPath, []);
 
   approvals.push({
     runId,
@@ -325,10 +297,8 @@ function recordApproval(rootDir, runId, decision) {
     timestamp: new Date().toISOString(),
   });
 
-  // Keep last 50
-  while (approvals.length > 50) approvals.shift();
-
-  writeFileSync(approvalPath, JSON.stringify(approvals, null, 2), 'utf-8');
+  trimArray(approvals, 50);
+  saveJSON(approvalPath, approvals);
   return { runId, decision, timestamp: new Date().toISOString() };
 }
 
@@ -435,37 +405,17 @@ function rollback(rootDir, options = {}) {
  */
 function recordRollback(rootDir, rollbackResult) {
   const rollbackPath = join(rootDir, '.remembrance', 'rollbacks.json');
-  const dir = join(rootDir, '.remembrance');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-
-  let rollbacks = [];
-  try {
-    if (existsSync(rollbackPath)) {
-      rollbacks = JSON.parse(readFileSync(rollbackPath, 'utf-8'));
-    }
-  } catch {
-    rollbacks = [];
-  }
-
+  const rollbacks = loadJSON(rollbackPath, []);
   rollbacks.push(rollbackResult);
-  while (rollbacks.length > 20) rollbacks.shift();
-
-  writeFileSync(rollbackPath, JSON.stringify(rollbacks, null, 2), 'utf-8');
+  trimArray(rollbacks, 20);
+  saveJSON(rollbackPath, rollbacks);
 }
 
 /**
  * Load rollback history.
  */
 function loadRollbacks(rootDir) {
-  const rollbackPath = join(rootDir, '.remembrance', 'rollbacks.json');
-  try {
-    if (existsSync(rollbackPath)) {
-      return JSON.parse(readFileSync(rollbackPath, 'utf-8'));
-    }
-  } catch {
-    // Fall through
-  }
-  return [];
+  return loadJSON(join(rootDir, '.remembrance', 'rollbacks.json'), []);
 }
 
 // ─── Coherence Guard ───
@@ -476,10 +426,11 @@ function loadRollbacks(rootDir) {
  *
  * @param {string} rootDir - Repository root
  * @param {object} preHealSnapshot - Snapshot taken before healing
+ * @param {object} [postHealSnapshot] - Optional post-heal snapshot (avoids redundant scan)
  * @returns {object} { dropped, delta, recommendation }
  */
-function coherenceGuard(rootDir, preHealSnapshot) {
-  const postSnap = takeSnapshot(rootDir);
+function coherenceGuard(rootDir, preHealSnapshot, postHealSnapshot) {
+  const postSnap = postHealSnapshot || takeSnapshot(rootDir);
 
   const preAvg = preHealSnapshot.aggregate
     ? preHealSnapshot.aggregate.avgCoherence
@@ -566,8 +517,8 @@ function safeReflect(rootDir, config = {}) {
     result.safety.backup = { error: err.message };
   }
 
-  // Step 3: Run the reflector
-  const report = reflect(rootDir, reflectConfig);
+  // Step 3: Run the reflector (pass preSnapshot to avoid redundant scan)
+  const report = reflect(rootDir, { ...reflectConfig, _preSnapshot: preSnapshot });
   result.report = {
     filesScanned: report.summary.filesScanned,
     filesBelowThreshold: report.summary.filesBelowThreshold,
@@ -587,8 +538,14 @@ function safeReflect(rootDir, config = {}) {
   });
 
   // Step 5: Coherence guard — check if coherence dropped
+  //   reflect() doesn't write files to disk, so re-scanning would show no change.
+  //   Instead, build a synthetic post-snapshot from the report's estimated improvement.
   if (report.healedFiles && report.healedFiles.length > 0) {
-    result.safety.coherenceGuard = coherenceGuard(rootDir, preSnapshot);
+    const estimatedPostCoherence = estimatePostHealCoherence(report);
+    const syntheticPostSnap = {
+      aggregate: { avgCoherence: estimatedPostCoherence },
+    };
+    result.safety.coherenceGuard = coherenceGuard(rootDir, preSnapshot, syntheticPostSnap);
 
     // Auto-rollback if coherence dropped and autoRollback is enabled
     if (autoRollback && result.safety.coherenceGuard.dropped && result.safety.coherenceGuard.severity === 'critical') {

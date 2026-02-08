@@ -258,8 +258,8 @@ function healFile(filePath, config = {}) {
 function reflect(rootDir, config = {}) {
   const opts = { ...DEFAULT_CONFIG, ...config };
 
-  // Step 1: Take snapshot
-  const snapshot = takeSnapshot(rootDir, opts);
+  // Step 1: Take snapshot (or reuse pre-computed one to avoid redundant scans)
+  const snapshot = opts._preSnapshot || takeSnapshot(rootDir, opts);
 
   // Step 2: Identify files needing healing
   const filesToHeal = snapshot.files

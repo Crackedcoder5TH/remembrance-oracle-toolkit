@@ -634,20 +634,43 @@ class PatternRecycler {
   }
 
   _toASTLanguage(pattern, targetLang) {
-    const { transpile: astTranspile } = require('./ast-transpiler');
+    const { transpile: astTranspile, generateGoTest, generateRustTest, verifyTranspilation } = require('./ast-transpiler');
     const result = astTranspile(pattern.code, targetLang);
     if (!result.success || !result.code) return null;
+
+    // Extract the primary function name from the pattern
+    const funcName = pattern.name ? pattern.name.replace(/-/g, '') : null;
+
+    // Generate test code for the transpiled variant
+    let testCode = null;
+    if (pattern.testCode && funcName) {
+      if (targetLang === 'go') {
+        testCode = generateGoTest(result.code, pattern.testCode, funcName);
+      } else if (targetLang === 'rust') {
+        testCode = generateRustTest(result.code, pattern.testCode, funcName);
+      }
+    }
+
+    // Attempt compilation verification (non-blocking — candidate stored either way)
+    let verified = false;
+    if (testCode) {
+      try {
+        const check = verifyTranspilation(result.code, testCode, targetLang);
+        verified = check.compiled;
+      } catch { /* compilation check failed, not fatal */ }
+    }
 
     const suffix = targetLang === 'go' ? '-go' : '-rs';
     return {
       name: `${pattern.name}${suffix}`,
       code: result.code,
       language: targetLang,
-      description: `${pattern.description || pattern.name} (${targetLang} via AST)`,
-      tags: [...(pattern.tags || []), 'variant', targetLang, 'ast-generated'],
+      description: `${pattern.description || pattern.name} (${targetLang} via AST${verified ? ', verified' : ''})`,
+      tags: [...(pattern.tags || []), 'variant', targetLang, 'ast-generated', ...(verified ? ['compile-verified'] : [])],
       patternType: pattern.patternType || 'utility',
       complexity: pattern.complexity || 'moderate',
-      testCode: null,
+      testCode,
+      verified,
     };
   }
 

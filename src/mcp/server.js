@@ -416,6 +416,19 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_verify_transpile',
+    description: 'Transpile JS code to Go/Rust, generate test code, and verify compilation. Returns transpiled code, generated tests, and compilation status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'JavaScript source code' },
+        testCode: { type: 'string', description: 'JavaScript test code for the function' },
+        targetLanguage: { type: 'string', enum: ['go', 'rust'], description: 'Target language' },
+      },
+      required: ['code', 'targetLanguage'],
+    },
+  },
+  {
     name: 'oracle_synthesize_tests',
     description: 'Synthesize test code for candidate patterns. Analyzes function signatures, translates parent tests, and generates edge-case assertions. Optionally auto-promotes candidates with new tests.',
     inputSchema: {
@@ -946,6 +959,24 @@ class MCPServer {
         case 'oracle_transpile': {
           const { transpile: astTranspile } = require('../core/ast-transpiler');
           result = astTranspile(args.code, args.targetLanguage);
+          break;
+        }
+
+        case 'oracle_verify_transpile': {
+          const { transpile: vtTranspile, generateGoTest, generateRustTest, verifyTranspilation } = require('../core/ast-transpiler');
+          const vtResult = vtTranspile(args.code, args.targetLanguage);
+          if (!vtResult.success) { result = vtResult; break; }
+          const funcMatch = args.code.match(/function\s+(\w+)/);
+          const fName = funcMatch ? funcMatch[1] : 'unknown';
+          let genTest = null;
+          if (args.testCode) {
+            genTest = args.targetLanguage === 'go' ? generateGoTest(vtResult.code, args.testCode, fName) : generateRustTest(vtResult.code, args.testCode, fName);
+          }
+          let verification = null;
+          if (genTest) {
+            verification = verifyTranspilation(vtResult.code, genTest, args.targetLanguage);
+          }
+          result = { ...vtResult, generatedTest: genTest, verification };
           break;
         }
 

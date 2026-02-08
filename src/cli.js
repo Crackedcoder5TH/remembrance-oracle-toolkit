@@ -1494,6 +1494,50 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'verify-transpile' || cmd === 'vtranspile') {
+    const { transpile: astTranspile, generateGoTest, generateRustTest, verifyTranspilation } = require('./core/ast-transpiler');
+    const targetLang = process.argv[3];
+    const filePath = args.file || process.argv[4];
+    if (!targetLang || !filePath) {
+      console.log(`Usage: oracle verify-transpile <language> --file <code.js> [--test <test.js>]`);
+      console.log(`  Languages: go, rust`);
+      return;
+    }
+    const fs = require('fs');
+    const code = fs.readFileSync(filePath, 'utf-8');
+    const jsTestCode = args.test ? fs.readFileSync(args.test, 'utf-8') : null;
+    const result = astTranspile(code, targetLang);
+    if (!result.success) { console.error(c.red(`Transpile failed: ${result.error}`)); return; }
+
+    console.log(c.boldGreen(`Transpiled to ${targetLang}:\n`));
+    console.log(result.code);
+
+    // Generate test code
+    const funcMatch = code.match(/function\s+(\w+)/);
+    const funcName = funcMatch ? funcMatch[1] : 'unknown';
+    let testCode = null;
+    if (jsTestCode) {
+      testCode = targetLang === 'go' ? generateGoTest(result.code, jsTestCode, funcName) : generateRustTest(result.code, jsTestCode, funcName);
+    }
+    if (testCode) {
+      console.log(c.boldCyan(`\nGenerated ${targetLang} test:\n`));
+      console.log(testCode);
+    }
+
+    // Verify compilation
+    if (testCode) {
+      console.log(c.dim('\nVerifying compilation...'));
+      const check = verifyTranspilation(result.code, testCode, targetLang);
+      if (check.compiled) {
+        console.log(c.boldGreen('Compilation verified! Tests passed.'));
+      } else {
+        console.log(c.boldRed('Compilation failed:'));
+        console.log(c.dim(check.output.slice(0, 500)));
+      }
+    }
+    return;
+  }
+
   if (cmd === 'security-audit') {
     const external = args.external === 'true' || args.external === true;
     const result = oracle.securityAudit({ runExternalTools: external });

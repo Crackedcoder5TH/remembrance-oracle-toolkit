@@ -80,6 +80,21 @@ const CENTRAL_DEFAULTS = {
     prTitlePrefix: 'Remembrance Pull: Healed Refinement',
   },
 
+  // ── Auto-Commit ──
+  autoCommit: {
+    enabled: false,
+    testCommand: 'node --test',
+    branchPrefix: 'remembrance/auto-heal',
+  },
+
+  // ── Notifications ──
+  notifications: {
+    enabled: false,
+    webhookUrl: '',
+    platform: '',       // 'discord', 'slack', or '' for auto-detect
+    repoName: '',       // Override repo name in notifications
+  },
+
   // ── Logging ──
   logging: {
     verbose: false,
@@ -237,6 +252,26 @@ function validateConfig(config) {
   if (config.safety) {
     if (config.safety.backupStrategy && !['git-branch', 'file-copy'].includes(config.safety.backupStrategy)) {
       issues.push('safety.backupStrategy must be "git-branch" or "file-copy"');
+    }
+  }
+
+  // Auto-commit checks
+  if (config.autoCommit) {
+    if (config.autoCommit.testCommand && typeof config.autoCommit.testCommand !== 'string') {
+      issues.push('autoCommit.testCommand must be a string');
+    }
+    if (config.autoCommit.branchPrefix && typeof config.autoCommit.branchPrefix !== 'string') {
+      issues.push('autoCommit.branchPrefix must be a string');
+    }
+  }
+
+  // Notifications checks
+  if (config.notifications) {
+    if (config.notifications.platform && !['', 'discord', 'slack'].includes(config.notifications.platform)) {
+      issues.push('notifications.platform must be "discord", "slack", or empty for auto-detect');
+    }
+    if (config.notifications.webhookUrl && typeof config.notifications.webhookUrl !== 'string') {
+      issues.push('notifications.webhookUrl must be a string');
     }
   }
 

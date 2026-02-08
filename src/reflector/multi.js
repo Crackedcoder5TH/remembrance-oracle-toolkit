@@ -484,18 +484,44 @@ function unifiedHeal(repoPaths, config = {}) {
 function multiReflect(repoPaths, config = {}) {
   const startTime = Date.now();
   const opts = { ...DEFAULT_CONFIG, ...config };
+  const errors = [];
 
   // Step 1: Multi-snapshot
-  const snapshot = multiSnapshot(repoPaths, opts);
+  let snapshot;
+  try {
+    snapshot = multiSnapshot(repoPaths, opts);
+  } catch (err) {
+    return { error: 'Multi-snapshot failed: ' + err.message, durationMs: Date.now() - startTime };
+  }
 
   // Step 2: Dimension comparison (only for 2 repos)
-  const comparison = repoPaths.length >= 2 ? compareDimensions(snapshot) : null;
+  let comparison = null;
+  if (repoPaths.length >= 2) {
+    try {
+      comparison = compareDimensions(snapshot);
+    } catch (err) {
+      errors.push({ step: 'comparison', error: err.message });
+    }
+  }
 
   // Step 3: Drift detection (only for 2 repos)
-  const drift = repoPaths.length >= 2 ? detectDrift(repoPaths, opts) : null;
+  let drift = null;
+  if (repoPaths.length >= 2) {
+    try {
+      drift = detectDrift(repoPaths, opts);
+    } catch (err) {
+      errors.push({ step: 'drift-detection', error: err.message });
+    }
+  }
 
   // Step 4: Unified healing (pass pre-computed snapshot to avoid redundant scans)
-  const healing = unifiedHeal(repoPaths, { ...opts, _preMultiSnapshot: snapshot });
+  let healing;
+  try {
+    healing = unifiedHeal(repoPaths, { ...opts, _preMultiSnapshot: snapshot });
+  } catch (err) {
+    errors.push({ step: 'unified-heal', error: err.message });
+    healing = { summary: { totalFilesHealed: 0, totalImprovement: 0 } };
+  }
 
   return {
     timestamp: snapshot.timestamp,
@@ -504,6 +530,7 @@ function multiReflect(repoPaths, config = {}) {
     comparison,
     drift,
     healing,
+    errors: errors.length > 0 ? errors : undefined,
     summary: {
       repoCount: repoPaths.length,
       combinedCoherence: snapshot.combined.avgCoherence,

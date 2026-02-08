@@ -28,9 +28,9 @@ function seedHistory() {
   const history = {
     version: 2,
     runs: [
-      { timestamp: '2025-01-01T00:00:00Z', mode: 'live', filesScanned: 10, filesHealed: 3, coherenceBefore: 0.65, coherenceAfter: 0.72, avgImprovement: 0.07, durationMs: 5000 },
-      { timestamp: '2025-01-02T00:00:00Z', mode: 'live', filesScanned: 10, filesHealed: 2, coherenceBefore: 0.72, coherenceAfter: 0.78, avgImprovement: 0.06, durationMs: 4500 },
-      { timestamp: '2025-01-03T00:00:00Z', mode: 'dry-run', filesScanned: 10, filesHealed: 0, coherenceBefore: 0.78, coherenceAfter: 0.78, avgImprovement: 0, durationMs: 3000 },
+      { timestamp: '2025-01-01T00:00:00Z', trigger: 'live', durationMs: 5000, coherence: { before: 0.65, after: 0.72 }, healing: { filesScanned: 10, filesHealed: 3, avgImprovement: 0.07 } },
+      { timestamp: '2025-01-02T00:00:00Z', trigger: 'live', durationMs: 4500, coherence: { before: 0.72, after: 0.78 }, healing: { filesScanned: 10, filesHealed: 2, avgImprovement: 0.06 } },
+      { timestamp: '2025-01-03T00:00:00Z', trigger: 'dry-run', durationMs: 3000, coherence: { before: 0.78, after: 0.78 }, healing: { filesScanned: 10, filesHealed: 0, avgImprovement: 0 } },
     ],
     log: [],
   };

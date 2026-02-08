@@ -16,6 +16,7 @@ const { join, extname, relative } = require('path');
 const { observeCoherence, reflectionLoop, generateCandidates } = require('../core/reflection');
 const { detectLanguage } = require('../core/coherency');
 const { covenantCheck } = require('../core/covenant');
+const { hookBeforeHeal, recordPatternHookUsage } = require('./patternHook');
 
 // ─── Configuration Defaults ───
 
@@ -266,12 +267,37 @@ function reflect(rootDir, config = {}) {
     .filter(f => !f.error && f.coherence < opts.minCoherence && f.covenantSealed)
     .sort((a, b) => a.coherence - b.coherence); // Worst first
 
-  // Step 3: Heal each file
+  // Step 3: Heal each file (with optional pattern hook)
   const healings = [];
   for (const file of filesToHeal) {
+    // Query pattern library for guidance before healing
+    let patternContext = null;
+    if (opts.usePatternHook !== false) {
+      try {
+        patternContext = hookBeforeHeal(file.path, { rootDir });
+      } catch {
+        // Pattern hook failure is non-fatal
+      }
+    }
+
     const healing = healFile(file.path, { ...opts, rootDir });
     if (healing.changed && healing.improvement > 0) {
+      healing.patternGuided = patternContext?.patternGuided || false;
       healings.push(healing);
+
+      // Record pattern hook usage
+      if (patternContext) {
+        try {
+          recordPatternHookUsage(rootDir, {
+            filePath: file.path,
+            patternGuided: patternContext.patternGuided,
+            patternName: patternContext.bestMatch?.name || null,
+            improvement: healing.improvement,
+          });
+        } catch {
+          // Recording failure is non-fatal
+        }
+      }
     }
   }
 

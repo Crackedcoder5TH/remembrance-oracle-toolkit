@@ -22,8 +22,10 @@ const { takeSnapshot, reflect, generateCollectiveWhisper } = require('./engine')
 const { repoScore } = require('./scoring');
 const { safeReflect, estimatePostHealCoherence, dryRun, createBackup } = require('./safety');
 const { loadCentralConfig, toEngineConfig, validateConfig } = require('./config');
+const { resolveConfig } = require('./modes');
 const { saveRunRecord, appendLog, computeStats } = require('./history');
 const { createHealingBranch } = require('./github');
+const { notifyFromReport } = require('./notifications');
 
 /**
  * Run the full orchestrated workflow.
@@ -44,15 +46,20 @@ function orchestrate(rootDir, options = {}) {
     steps,
   };
 
-  // ── Step 1: Load & Validate Config ──
+  // ── Step 1: Load & Validate Config (via modes.resolveConfig) ──
   const step1Start = Date.now();
   let config;
   try {
-    const central = loadCentralConfig(rootDir);
+    const central = resolveConfig(rootDir, {
+      mode: options.mode,
+      env: process.env,
+      overrides: options.configOverrides,
+    });
     const validation = validateConfig(central);
     config = {
       ...toEngineConfig(central),
       ...options,
+      _resolvedMode: central._mode,
     };
     steps.push({
       name: 'load-config',
@@ -239,6 +246,24 @@ function orchestrate(rootDir, options = {}) {
               safetyReport.autoRolledBack ? 'auto-rolled back' :
               'push/PR not configured',
     });
+  }
+
+  // ── Step 7b: Send Notification (fire-and-forget, async) ──
+  if (healedFiles.length > 0 && !options.dryRun) {
+    try {
+      const notifyReport = {
+        coherence: {
+          before: snapshot.aggregate.avgCoherence,
+          after: healResult.safety?.coherenceGuard?.postCoherence || snapshot.aggregate.avgCoherence,
+        },
+        report: { filesHealed: healResult.report?.filesHealed || 0 },
+        whisper,
+      };
+      // Fire-and-forget: notifyFromReport is async, orchestrate is sync
+      notifyFromReport(rootDir, notifyReport, { prUrl: result.prUrl }).catch(() => {});
+    } catch {
+      // Notification failure is non-fatal
+    }
   }
 
   // ── Step 8: Record History ──

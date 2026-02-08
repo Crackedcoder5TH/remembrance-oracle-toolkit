@@ -19,6 +19,7 @@ const { loadCentralConfig } = require('./config');
 const { loadAutoCommitHistory, autoCommitStats } = require('./autoCommit');
 const { notificationStats } = require('./notifications');
 const { getCurrentMode } = require('./modes');
+const { patternHookStats } = require('./patternHook');
 
 // ─── Data Aggregation ───
 
@@ -35,26 +36,27 @@ function gatherDashboardData(rootDir) {
   const mode = getCurrentMode(rootDir);
   const autoCommit = autoCommitStats(rootDir);
   const notifications = notificationStats(rootDir);
+  const patternHook = patternHookStats(rootDir);
 
   // Build coherence trend from history
   const trend = history.runs
     .slice(-30) // Last 30 runs
     .map(r => ({
       timestamp: r.timestamp,
-      coherence: r.coherenceAfter ?? r.coherenceBefore ?? 0,
-      filesHealed: r.filesHealed ?? 0,
-      improvement: r.avgImprovement ?? 0,
+      coherence: r.coherence?.after ?? 0,
+      filesHealed: r.healing?.filesHealed ?? 0,
+      improvement: r.healing?.avgImprovement ?? 0,
     }));
 
   // Recent healings
   const recentRuns = history.runs.slice(-10).reverse().map(r => ({
     timestamp: r.timestamp,
-    mode: r.mode || 'live',
-    filesScanned: r.filesScanned ?? 0,
-    filesHealed: r.filesHealed ?? 0,
-    coherenceBefore: r.coherenceBefore ?? 0,
-    coherenceAfter: r.coherenceAfter ?? 0,
-    avgImprovement: r.avgImprovement ?? 0,
+    mode: r.trigger || 'live',
+    filesScanned: r.healing?.filesScanned ?? 0,
+    filesHealed: r.healing?.filesHealed ?? 0,
+    coherenceBefore: r.coherence?.before ?? 0,
+    coherenceAfter: r.coherence?.after ?? 0,
+    avgImprovement: r.healing?.avgImprovement ?? 0,
     durationMs: r.durationMs ?? 0,
   }));
 
@@ -67,6 +69,7 @@ function gatherDashboardData(rootDir) {
     recentRuns,
     autoCommit,
     notifications,
+    patternHook,
     generatedAt: new Date().toISOString(),
   };
 }
@@ -88,8 +91,8 @@ function handleApiRequest(rootDir, path) {
     const history = loadHistoryV2(rootDir);
     return history.runs.slice(-50).map(r => ({
       timestamp: r.timestamp,
-      coherence: r.coherenceAfter ?? r.coherenceBefore ?? 0,
-      filesHealed: r.filesHealed ?? 0,
+      coherence: r.coherence?.after ?? r.coherence?.before ?? 0,
+      filesHealed: r.healing?.filesHealed ?? 0,
     }));
   }
   if (path === '/api/stats') {
@@ -214,6 +217,16 @@ function generateDashboardHTML(data) {
       <tr><td>Successful</td><td class="stat-green">${data.notifications?.sent ?? 0}</td></tr>
       <tr><td>Failed</td><td class="stat-red">${data.notifications?.failed ?? 0}</td></tr>
       <tr><td>Success Rate</td><td>${formatPercent(data.notifications?.successRate)}</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Pattern Hook</h2>
+    <table>
+      <tr><td>Total Healings</td><td>${data.patternHook?.totalHealings ?? 0}</td></tr>
+      <tr><td>Pattern-Guided</td><td class="stat-green">${data.patternHook?.patternGuided ?? 0}</td></tr>
+      <tr><td>Guided Rate</td><td>${formatPercent(data.patternHook?.patternGuidedRate)}</td></tr>
+      <tr><td>Avg Improvement (Guided)</td><td>${formatNum(data.patternHook?.avgImprovement?.guided)}</td></tr>
+      <tr><td>Avg Improvement (Unguided)</td><td>${formatNum(data.patternHook?.avgImprovement?.unguided)}</td></tr>
     </table>
   </div>
 </div>

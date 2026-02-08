@@ -95,7 +95,7 @@ describe('getDashboardHTML', () => {
   it('includes WebSocket client code', () => {
     const html = getDashboardHTML();
     assert.ok(html.includes('connectWS'));
-    assert.ok(html.includes('ws-indicator'));
+    assert.ok(html.includes('ws-dot'));
     assert.ok(html.includes('WebSocket'));
   });
 

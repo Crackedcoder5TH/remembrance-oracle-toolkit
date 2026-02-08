@@ -18,14 +18,14 @@ function tokenize(text) {
 }
 
 function computeTF(tokens) {
-  const freq = {};
+  const freq = Object.create(null);
   for (const t of tokens) {
     freq[t] = (freq[t] || 0) + 1;
   }
   const total = tokens.length || 1;
-  const tf = {};
-  for (const [term, count] of Object.entries(freq)) {
-    tf[term] = count / total;
+  const tf = Object.create(null);
+  for (const term of Object.keys(freq)) {
+    tf[term] = freq[term] / total;
   }
   return tf;
 }
@@ -49,7 +49,7 @@ function computeRelevance(query, entry) {
     `${query.description || ''} ${(query.tags || []).join(' ')} ${query.language || ''}`
   );
   const entryTokens = tokenize(
-    `${entry.description || ''} ${(entry.tags || []).join(' ')} ${entry.language || ''} ${entry.code || ''}`
+    `${entry.description || ''} ${(entry.tags || []).join(' ')} ${entry.language || ''}`
   );
 
   const queryTF = computeTF(queryTokens);
@@ -74,12 +74,23 @@ function computeRelevance(query, entry) {
   // Coherency weight — proven code ranks higher
   const coherency = entry.coherencyScore?.total ?? 0.5;
 
+  // Code substance penalty — deprioritize trivial/stub patterns (only when code field is present)
+  let substance = 1.0;
+  let namePenalty = 1.0;
+  if (entry.code !== undefined) {
+    const codeLen = entry.code.length;
+    substance = codeLen < 35 ? 0.4 : codeLen < 70 ? 0.75 : codeLen < 130 ? 0.9 : 1.0;
+  }
+  if (entry.name !== undefined) {
+    namePenalty = entry.name.length <= 2 ? 0.5 : 1.0;
+  }
+
   // Final relevance score
   const relevance =
-    textScore * 0.35 +
+    (textScore * 0.35 +
     tagOverlap * 0.25 +
     langMatch * 0.15 +
-    coherency * 0.25;
+    coherency * 0.25) * substance * namePenalty;
 
   return {
     relevance: Math.round(relevance * 1000) / 1000,

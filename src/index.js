@@ -28,6 +28,7 @@ const { createDashboardServer, startDashboard, createRateLimiter } = require('./
 const { WebSocketServer } = require('./core/websocket');
 const { VersionManager, semanticDiff, extractFunctions } = require('./core/versioning');
 const { AuthManager, authMiddleware, ROLES, canWrite, canManageUsers, canRead } = require('./auth/auth');
+const { TeamManager, TEAM_ROLES, TEAM_ROLE_HIERARCHY } = require('./auth/teams');
 const { generateAnalytics, computeTagCloud } = require('./core/analytics');
 const { discoverPatterns, autoSeed } = require('./ci/auto-seed');
 const { harvest, harvestFunctions, splitFunctions } = require('./ci/harvest');
@@ -37,6 +38,12 @@ const { reflectionLoop, formatReflectionResult, observeCoherence, serfScore, gen
 const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyError, computeConfidence, ERROR_CATEGORIES } = require('./core/debug-oracle');
 const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
 const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
+const { CloudSyncServer, createToken, verifyToken } = require('./cloud/server');
+const { LLMClient, LLMGenerator } = require('./core/llm-generator');
+const { transpile: astTranspile, parseJS, tokenize: astTokenize, toSnakeCase } = require('./core/ast-transpiler');
+const { ClaudeBridge, findClaudeCLI, extractCodeBlock: extractLLMCode } = require('./core/claude-bridge');
+const { ModulePattern, DependencyGraph, TemplateEngine, ModuleStore, scaffold, compose } = require('./patterns/multi-file');
+const { PatternComposer, BUILT_IN_TEMPLATES } = require('./patterns/composer');
 
 module.exports = {
   // Core
@@ -117,6 +124,11 @@ module.exports = {
   canManageUsers,
   canRead,
 
+  // Teams / Enterprise
+  TeamManager,
+  TEAM_ROLES,
+  TEAM_ROLE_HIERARCHY,
+
   // Auto-seed
   discoverPatterns,
   autoSeed,
@@ -183,4 +195,36 @@ module.exports = {
   CORRECTIONS,
   LANGUAGE_ALIASES,
   LANGUAGE_FAMILIES,
+
+  // Cloud Sync
+  CloudSyncServer,
+  createToken,
+  verifyToken,
+
+  // LLM Generation
+  LLMClient,
+  LLMGenerator,
+
+  // AST Transpilation
+  astTranspile,
+  parseJS,
+  astTokenize,
+  toSnakeCase,
+
+  // Claude Bridge (Native LLM)
+  ClaudeBridge,
+  findClaudeCLI,
+  extractLLMCode,
+
+  // Multi-File Patterns
+  ModulePattern,
+  DependencyGraph,
+  TemplateEngine,
+  ModuleStore,
+  scaffold,
+  compose,
+
+  // Pattern Composition
+  PatternComposer,
+  BUILT_IN_TEMPLATES,
 };

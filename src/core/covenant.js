@@ -89,9 +89,11 @@ const HARM_PATTERNS = [
   { pattern: /\beval\s*\(\s*(atob|Buffer\.from)\s*\(/i, principle: 10, reason: 'Obfuscated code execution' },
 
   // Principle 11: The Living Water — injection attacks
-  { pattern: /['"`]\s*\+\s*\w+\s*\+\s*['"`].*(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b/i, principle: 11, reason: 'SQL injection via string concatenation' },
-  { pattern: /(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b.*['"`]\s*\+\s*\w+/i, principle: 11, reason: 'SQL injection via string concatenation' },
-  { pattern: /\$\{.*\}.*(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b/i, principle: 11, reason: 'SQL injection via template literal' },
+  // SQL injection: require SQL keywords to be UPPERCASE or inside string context (not variable names like 'update')
+  { pattern: /['"`]\s*\+\s*\w+\s*\+\s*['"`].*(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b/, principle: 11, reason: 'SQL injection via string concatenation' },
+  { pattern: /(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b.*['"`]\s*\+\s*\w+/, principle: 11, reason: 'SQL injection via string concatenation' },
+  { pattern: /['"`][^'"`]*\$\{[^}]+\}[^'"`]*(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b/, principle: 11, reason: 'SQL injection via template literal' },
+  { pattern: /(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b[^'"`]*\$\{[^}]+\}/, principle: 11, reason: 'SQL injection via template literal' },
   { pattern: /child_process.*exec\s*\(.*\$\{/is, principle: 11, reason: 'Command injection via dynamic execution' },
   { pattern: /child_process.*exec\s*\(\s*\w+\s*\+/i, principle: 11, reason: 'Command injection via string concatenation' },
   { pattern: /innerHTML\s*=\s*(?!['"`]<)(?:\w+|\$\{)/i, principle: 11, reason: 'Potential XSS via innerHTML' },

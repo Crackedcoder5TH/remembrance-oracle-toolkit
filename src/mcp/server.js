@@ -371,6 +371,99 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'oracle_llm_status',
+    description: 'Check if Claude LLM engine is available for AI-powered operations.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'oracle_llm_transpile',
+    description: 'Transpile a pattern to another language using Claude. Falls back to AST transpiler if Claude is unavailable.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'ID of the pattern to transpile' },
+        targetLanguage: { type: 'string', description: 'Target language (python, typescript, go, rust, etc.)' },
+      },
+      required: ['patternId', 'targetLanguage'],
+    },
+  },
+  {
+    name: 'oracle_llm_tests',
+    description: 'Generate tests for a pattern using Claude. Falls back to static test synthesis if unavailable.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'ID of the pattern' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_llm_refine',
+    description: 'Refine a pattern using Claude to improve weak coherency dimensions. Falls back to SERF reflection.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'ID of the pattern to refine' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_llm_analyze',
+    description: 'Analyze code quality using Claude. Returns issues, suggestions, complexity, and quality score.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Code to analyze' },
+        language: { type: 'string', description: 'Programming language' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'oracle_llm_explain',
+    description: 'Explain a pattern in plain language using Claude.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'ID of the pattern to explain' },
+      },
+      required: ['patternId'],
+    },
+  },
+  {
+    name: 'oracle_llm_generate',
+    description: 'LLM-enhanced candidate generation. Uses Claude for higher-quality variants, falls back to regex/SERF.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        maxPatterns: { type: 'number', description: 'Max source patterns to process (default 10)' },
+        languages: { type: 'array', items: { type: 'string' }, description: 'Target languages for variants' },
+      },
+    },
+  },
+  // Pattern Composition
+  {
+    name: 'oracle_compose',
+    description: 'Compose multiple patterns into a cohesive module. Accepts pattern names, a template name, or a natural language description.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patterns: { type: 'array', items: { type: 'string' }, description: 'Pattern names to compose' },
+        template: { type: 'string', description: 'Built-in template name (rest-api, auth-service, task-queue, data-pipeline, resilient-service)' },
+        describe: { type: 'string', description: 'Natural language description to auto-detect patterns' },
+        language: { type: 'string', description: 'Target language (default: javascript)' },
+        glue: { type: 'string', enum: ['module', 'class', 'function'], description: 'How to combine patterns (default: module)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_compose_templates',
+    description: 'List available composition templates.',
+    inputSchema: { type: 'object', properties: {} },
+  },
 ];
 
 class MCPServer {
@@ -676,6 +769,60 @@ class MCPServer {
             dryRun: args.dryRun || false,
           });
           break;
+
+        case 'oracle_llm_status':
+          result = { available: this.oracle.isLLMAvailable(), engine: 'claude-bridge' };
+          break;
+
+        case 'oracle_llm_transpile':
+          result = this.oracle.llmTranspile(args.patternId, args.targetLanguage);
+          break;
+
+        case 'oracle_llm_tests':
+          result = this.oracle.llmGenerateTests(args.patternId);
+          break;
+
+        case 'oracle_llm_refine':
+          result = this.oracle.llmRefine(args.patternId);
+          break;
+
+        case 'oracle_llm_analyze':
+          result = this.oracle.llmAnalyze(args.code, args.language || 'javascript');
+          break;
+
+        case 'oracle_llm_explain':
+          result = this.oracle.llmExplain(args.patternId);
+          break;
+
+        case 'oracle_llm_generate':
+          result = this.oracle.llmGenerate({
+            maxPatterns: args.maxPatterns || 10,
+            languages: args.languages || ['python', 'typescript'],
+          });
+          break;
+
+        case 'oracle_compose': {
+          const { PatternComposer } = require('../patterns/composer');
+          const composer = new PatternComposer(this.oracle);
+          if (args.template) {
+            const tmpl = composer.templates().find(t => t.name === args.template);
+            result = tmpl ? composer.compose({ patterns: tmpl.patterns, language: args.language || 'javascript', glue: args.glue || 'module' }) : { error: 'Unknown template' };
+          } else if (args.describe) {
+            result = composer.composeFromDescription(args.describe, args.language || 'javascript');
+          } else if (args.patterns) {
+            result = composer.compose({ patterns: args.patterns, language: args.language || 'javascript', glue: args.glue || 'module' });
+          } else {
+            result = { error: 'Provide patterns, template, or describe' };
+          }
+          break;
+        }
+
+        case 'oracle_compose_templates': {
+          const { PatternComposer: PC } = require('../patterns/composer');
+          const comp = new PC(this.oracle);
+          result = comp.templates();
+          break;
+        }
 
         default:
           return {

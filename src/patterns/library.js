@@ -157,14 +157,18 @@ class PatternLibrary {
       const relevance = computeRelevance(
         { description, tags, language },
         {
+          name: p.name,
           description: `${p.name} ${p.description}`,
           tags: p.tags,
           language: p.language,
+          code: p.code,
           coherencyScore: p.coherencyScore,
         }
       );
 
-      const nameBonus = description.toLowerCase().includes(p.name.toLowerCase()) ? 0.15 : 0;
+      const normalizedDesc = description.toLowerCase().replace(/[-_]/g, ' ');
+      const normalizedName = p.name.toLowerCase().replace(/[-_]/g, ' ');
+      const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? 0.15 : 0;
       const focusBonus = p.complexity === 'atomic' ? 0.08 : p.complexity === 'composite' ? 0.04 : 0;
       const coherency = p.coherencyScore?.total ?? 0;
       const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;

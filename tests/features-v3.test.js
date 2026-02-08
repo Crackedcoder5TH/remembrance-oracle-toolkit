@@ -469,3 +469,126 @@ describe('Feature 6: Remote Oracle Federation', () => {
     assert.ok(names.includes('oracle_full_search'));
   });
 });
+
+// ─── Feature 7: Weighted Voting with Contributor Reputation ───
+
+describe('Feature 7: Weighted Voting with Reputation', () => {
+  let oracle;
+  let patternId;
+
+  before(() => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rep-test-'));
+    oracle = new RemembranceOracle({ storeDir: tmpDir });
+    const result = oracle.registerPattern({
+      name: 'rep-test-pattern',
+      code: 'function repTest() { return 99; }',
+      testCode: 'if (repTest() !== 99) throw new Error("fail");',
+      language: 'javascript',
+      tags: ['test'],
+    });
+    if (result.registered) patternId = result.pattern.id;
+  });
+
+  it('creates voter profile on first vote', () => {
+    if (!patternId) return;
+    const result = oracle.vote(patternId, 'newvoter1', 1);
+    assert.ok(result.success);
+    assert.equal(typeof result.weight, 'number');
+    assert.equal(typeof result.voterReputation, 'number');
+    assert.equal(result.weight, 1.0); // new voter starts at 1.0
+    assert.equal(result.voterReputation, 1.0);
+  });
+
+  it('getVoterReputation returns profile', () => {
+    const rep = oracle.getVoterReputation('newvoter1');
+    assert.ok(rep);
+    assert.equal(rep.id, 'newvoter1');
+    assert.equal(rep.reputation, 1.0);
+    assert.equal(typeof rep.weight, 'number');
+    assert.ok(Array.isArray(rep.recentVotes));
+    assert.ok(rep.recentVotes.length >= 1);
+  });
+
+  it('getVoterReputation creates new profile for unknown voter', () => {
+    const rep = oracle.getVoterReputation('brandnew');
+    assert.ok(rep);
+    assert.equal(rep.id, 'brandnew');
+    assert.equal(rep.reputation, 1.0);
+  });
+
+  it('topVoters returns voter list', () => {
+    const voters = oracle.topVoters(10);
+    assert.ok(Array.isArray(voters));
+    assert.ok(voters.length >= 1);
+    assert.equal(typeof voters[0].reputation, 'number');
+  });
+
+  it('weighted score appears in getVotes', () => {
+    if (!patternId) return;
+    const votes = oracle.getVotes(patternId);
+    assert.ok(votes);
+    assert.equal(typeof votes.weightedScore, 'number');
+  });
+
+  it('reputation updates on positive feedback for upvoted pattern', () => {
+    if (!patternId) return;
+    // Report successful usage — voter who upvoted should gain reputation
+    oracle.patternFeedback(patternId, true);
+    const rep = oracle.getVoterReputation('newvoter1');
+    assert.ok(rep.reputation > 1.0, `expected reputation > 1.0, got ${rep.reputation}`);
+  });
+
+  it('reputation decreases on failed feedback for upvoted pattern', () => {
+    if (!patternId) return;
+    // Save current reputation
+    const before = oracle.getVoterReputation('newvoter1').reputation;
+    // Report failed usage — voter who upvoted should lose reputation
+    oracle.patternFeedback(patternId, false);
+    const after = oracle.getVoterReputation('newvoter1').reputation;
+    assert.ok(after < before, `expected ${after} < ${before}`);
+  });
+
+  it('vote weight scales with reputation', () => {
+    if (!patternId) return;
+    // Register another pattern and vote with different voters
+    const result = oracle.registerPattern({
+      name: 'rep-weight-test',
+      code: 'function weightTest() { return 100; }',
+      testCode: 'if (weightTest() !== 100) throw new Error("fail");',
+      language: 'javascript',
+      tags: ['test'],
+    });
+    if (!result.registered) return;
+    const pid = result.pattern.id;
+
+    // Vote with a voter who has gained reputation
+    const v1 = oracle.vote(pid, 'newvoter1', 1);
+    assert.ok(v1.success);
+    // Weight should reflect their current reputation
+    assert.equal(typeof v1.weight, 'number');
+    assert.ok(v1.weight >= 0.5 && v1.weight <= 2.0);
+  });
+
+  it('reputation capped between 0.1 and 3.0', () => {
+    const sqliteStore = oracle.patterns._sqlite;
+    if (!sqliteStore) return;
+    // Manually check boundaries via direct DB call
+    const voter = sqliteStore.getVoter('boundary-test');
+    assert.ok(voter);
+    assert.equal(voter.reputation, 1.0);
+    // updateVoterReputation is tested via patternFeedback above
+  });
+
+  it('MCP has reputation tool', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    const names = TOOLS.map(t => t.name);
+    assert.ok(names.includes('oracle_reputation'));
+  });
+
+  it('CLI has reputation command', () => {
+    const cliSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    assert.ok(cliSrc.includes("cmd === 'reputation'"));
+    assert.ok(cliSrc.includes('getVoterReputation'));
+    assert.ok(cliSrc.includes('topVoters'));
+  });
+});

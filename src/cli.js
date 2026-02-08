@@ -299,6 +299,7 @@ ${c.bold('Pipe support:')}
     if (result.success) {
       console.log(`${vote > 0 ? c.boldGreen('Upvoted') : c.boldRed('Downvoted')} pattern ${c.bold(id)}`);
       console.log(`  Votes: ${c.green('+' + result.upvotes)} / ${c.red('-' + result.downvotes)} (score: ${result.voteScore})`);
+      console.log(`  Vote weight: ${c.cyan(String(result.weight))} (reputation: ${c.cyan(String(result.voterReputation))})`);
     } else {
       console.log(c.red(result.error));
     }
@@ -317,6 +318,37 @@ ${c.bold('Pipe support:')}
       const score = (p.upvotes || 0) - (p.downvotes || 0);
       const icon = score > 0 ? c.green(`+${score}`) : score < 0 ? c.red(String(score)) : c.dim('0');
       console.log(`  [${icon}] ${c.bold(p.name)} (${p.language}) — coherency: ${colorScore((p.coherencyScore?.total ?? 0).toFixed(3))}`);
+    }
+    return;
+  }
+
+  if (cmd === 'reputation' || cmd === 'rep') {
+    const sub = process.argv[3];
+    if (sub === 'check' || !sub) {
+      const voter = args.voter || process.argv[4] || process.env.USER || 'anonymous';
+      const rep = oracle.getVoterReputation(voter);
+      if (!rep) { console.log(c.dim('No reputation data.')); return; }
+      console.log(c.boldCyan(`Voter Reputation: ${c.bold(rep.id)}\n`));
+      console.log(`  Reputation: ${colorScore(String(rep.reputation))}`);
+      console.log(`  Vote weight: ${c.cyan(String(rep.weight))}`);
+      console.log(`  Total votes: ${rep.total_votes} | Accurate: ${rep.accurate_votes}`);
+      console.log(`  Contributions: ${rep.contributions}`);
+      if (rep.recentVotes.length > 0) {
+        console.log(`\n  Recent votes:`);
+        for (const v of rep.recentVotes) {
+          const dir = v.vote > 0 ? c.green('+1') : c.red('-1');
+          console.log(`    ${dir} ${c.bold(v.pattern_name || v.pattern_id)} (${v.language || '?'}) — weight: ${v.weight || 1.0}`);
+        }
+      }
+    } else if (sub === 'top' || sub === 'leaderboard') {
+      const limit = parseInt(args.limit) || 20;
+      const voters = oracle.topVoters(limit);
+      if (voters.length === 0) { console.log(c.dim('No voters yet.')); return; }
+      console.log(c.boldCyan(`Top ${voters.length} contributors by reputation:\n`));
+      for (const v of voters) {
+        const repStr = colorScore(String(v.reputation));
+        console.log(`  ${repStr} ${c.bold(v.id)} — votes: ${v.total_votes} | accurate: ${v.accurate_votes}`);
+      }
     }
     return;
   }

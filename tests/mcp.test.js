@@ -226,6 +226,7 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_remote_search'));
     assert.ok(names.includes('oracle_remotes'));
     assert.ok(names.includes('oracle_full_search'));
-    assert.equal(res.result.tools.length, 54);
+    assert.ok(names.includes('oracle_reputation'));
+    assert.equal(res.result.tools.length, 55);
   });
 });

@@ -177,8 +177,9 @@ class PatternLibrary {
       const bugCount = p.bugReports || 0;
       const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * 0.1) : 1.0;
       const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(p.id) : 1.0;
-      const voteScore = (p.upvotes || 0) - (p.downvotes || 0);
-      const voteBoost = voteScore > 0 ? Math.min(0.1, voteScore * 0.02) : Math.max(-0.1, voteScore * 0.02);
+      // Weighted vote scoring — uses reputation-weighted scores when available
+      const weightedScore = p.weightedVoteScore ?? ((p.upvotes || 0) - (p.downvotes || 0));
+      const voteBoost = weightedScore > 0 ? Math.min(0.15, weightedScore * 0.02) : Math.max(-0.15, weightedScore * 0.02);
       const reliability = usageReliability * bugPenalty * healingRate + voteBoost;
       const composite = relevance.relevance * 0.35 + coherency * 0.25 + reliability * 0.20 + nameBonus + focusBonus;
 
@@ -269,7 +270,8 @@ class PatternLibrary {
     const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * 0.1) : 1.0;
     const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(id) : 1.0;
     const voteScore = (pattern.upvotes || 0) - (pattern.downvotes || 0);
-    const voteBoost = voteScore > 0 ? Math.min(0.1, voteScore * 0.02) : Math.max(-0.1, voteScore * 0.02);
+    const weightedScore = pattern.weightedVoteScore ?? voteScore;
+    const voteBoost = weightedScore > 0 ? Math.min(0.15, weightedScore * 0.02) : Math.max(-0.15, weightedScore * 0.02);
     const combined = usageReliability * bugPenalty * healingRate + voteBoost;
 
     return {
@@ -284,6 +286,7 @@ class PatternLibrary {
       upvotes: pattern.upvotes || 0,
       downvotes: pattern.downvotes || 0,
       voteScore,
+      weightedScore: Math.round(weightedScore * 100) / 100,
       voteBoost: Math.round(voteBoost * 1000) / 1000,
       combined: Math.round(combined * 1000) / 1000,
     };

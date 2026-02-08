@@ -460,6 +460,13 @@ class RemembranceOracle {
   patternFeedback(id, succeeded) {
     const updated = this.patterns.recordUsage(id, succeeded);
     if (!updated) return { success: false, error: `Pattern ${id} not found` };
+
+    // Update voter reputation based on pattern performance
+    const sqliteStore = this.patterns._sqlite;
+    if (sqliteStore) {
+      try { sqliteStore.updateVoterReputation(id, succeeded); } catch {}
+    }
+
     return { success: true, usageCount: updated.usageCount, successCount: updated.successCount };
   }
 
@@ -1032,6 +1039,30 @@ class RemembranceOracle {
     const sqliteStore = this.patterns._sqlite;
     if (!sqliteStore) return [];
     return sqliteStore.topVoted(limit);
+  }
+
+  /**
+   * Get a voter's reputation profile.
+   */
+  getVoterReputation(voterId) {
+    const sqliteStore = this.patterns._sqlite;
+    if (!sqliteStore) return null;
+    const voter = sqliteStore.getVoter(voterId);
+    const history = sqliteStore.getVoterHistory(voterId, 10);
+    return {
+      ...voter,
+      weight: sqliteStore.getVoteWeight(voterId),
+      recentVotes: history,
+    };
+  }
+
+  /**
+   * Get top contributors by reputation.
+   */
+  topVoters(limit = 20) {
+    const sqliteStore = this.patterns._sqlite;
+    if (!sqliteStore) return [];
+    return sqliteStore.topVoters(limit);
   }
 
   synthesizeTests(options = {}) {

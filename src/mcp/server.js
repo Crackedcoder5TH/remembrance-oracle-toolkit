@@ -392,6 +392,18 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_reputation',
+    description: 'Get voter reputation profile or top contributors. Actions: check (voter profile), top (leaderboard).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['check', 'top'], description: 'Action (default: check)' },
+        voter: { type: 'string', description: 'Voter ID for check action' },
+        limit: { type: 'number', description: 'Max results for top action (default: 20)' },
+      },
+    },
+  },
+  {
     name: 'oracle_transpile',
     description: 'Transpile JavaScript code to another language using the AST-based transpiler. Supports Python, TypeScript, Go, and Rust.',
     inputSchema: {
@@ -923,6 +935,13 @@ class MCPServer {
         case 'oracle_top_voted':
           result = this.oracle.topVoted(args.limit || 20);
           break;
+
+        case 'oracle_reputation': {
+          const act = args.action || 'check';
+          if (act === 'top') result = this.oracle.topVoters(args.limit || 20);
+          else result = this.oracle.getVoterReputation(args.voter || 'anonymous');
+          break;
+        }
 
         case 'oracle_transpile': {
           const { transpile: astTranspile } = require('../core/ast-transpiler');

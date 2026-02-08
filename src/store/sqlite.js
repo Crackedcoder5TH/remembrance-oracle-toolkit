@@ -141,6 +141,22 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_votes_pattern ON votes(pattern_id);
     `);
 
+    // Voter reputation table — tracks contributor identity and weighted influence
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS voters (
+        id TEXT PRIMARY KEY,
+        reputation REAL DEFAULT 1.0,
+        total_votes INTEGER DEFAULT 0,
+        accurate_votes INTEGER DEFAULT 0,
+        contributions INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    // Add weight column to votes table
+    try { this.db.exec(`ALTER TABLE votes ADD COLUMN weight REAL DEFAULT 1.0`); } catch {}
+
     // Candidates table — coherent-but-unproven patterns awaiting test proof
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS candidates (
@@ -532,6 +548,11 @@ class SQLiteStore {
 
     const voteVal = vote > 0 ? 1 : -1;
     const now = new Date().toISOString();
+    const weight = this.getVoteWeight(voter);
+
+    // Ensure voter profile exists and update stats
+    const voterProfile = this.getVoter(voter);
+    this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
 
     // Check for existing vote
     const existing = this.db.prepare('SELECT * FROM votes WHERE pattern_id = ? AND voter = ?').get(patternId, voter);
@@ -540,7 +561,7 @@ class SQLiteStore {
         return { success: false, error: 'Already voted' };
       }
       // Change vote direction
-      this.db.prepare('UPDATE votes SET vote = ?, created_at = ? WHERE id = ?').run(voteVal, now, existing.id);
+      this.db.prepare('UPDATE votes SET vote = ?, weight = ?, created_at = ? WHERE id = ?').run(voteVal, weight, now, existing.id);
       if (voteVal === 1) {
         this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1, downvotes = MAX(0, downvotes - 1) WHERE id = ?').run(patternId);
       } else {
@@ -548,7 +569,7 @@ class SQLiteStore {
       }
     } else {
       const id = require('crypto').randomUUID();
-      this.db.prepare('INSERT INTO votes (id, pattern_id, voter, vote, created_at) VALUES (?, ?, ?, ?, ?)').run(id, patternId, voter, voteVal, now);
+      this.db.prepare('INSERT INTO votes (id, pattern_id, voter, vote, weight, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, patternId, voter, voteVal, weight, now);
       if (voteVal === 1) {
         this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1 WHERE id = ?').run(patternId);
       } else {
@@ -556,7 +577,7 @@ class SQLiteStore {
       }
     }
 
-    this._audit('vote', 'patterns', patternId, { voter, vote: voteVal });
+    this._audit('vote', 'patterns', patternId, { voter, vote: voteVal, weight });
     const updated = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
     const upvotes = updated.upvotes || 0;
     const downvotes = updated.downvotes || 0;
@@ -566,6 +587,8 @@ class SQLiteStore {
       upvotes,
       downvotes,
       voteScore: upvotes - downvotes,
+      weight,
+      voterReputation: voterProfile.reputation,
     };
   }
 
@@ -577,7 +600,15 @@ class SQLiteStore {
     if (!row) return null;
     const upvotes = row.upvotes || 0;
     const downvotes = row.downvotes || 0;
-    return { upvotes, downvotes, voteScore: upvotes - downvotes };
+
+    // Calculate weighted score from individual votes
+    const votes = this.db.prepare('SELECT vote, weight FROM votes WHERE pattern_id = ?').all(patternId);
+    let weightedScore = 0;
+    for (const v of votes) {
+      weightedScore += v.vote * (v.weight || 1.0);
+    }
+
+    return { upvotes, downvotes, voteScore: upvotes - downvotes, weightedScore: Math.round(weightedScore * 100) / 100 };
   }
 
   /**
@@ -588,6 +619,81 @@ class SQLiteStore {
       'SELECT * FROM patterns ORDER BY (COALESCE(upvotes, 0) - COALESCE(downvotes, 0)) DESC LIMIT ?'
     ).all(limit);
     return rows.map(r => this._rowToPattern(r));
+  }
+
+  /**
+   * Get or create a voter profile.
+   */
+  getVoter(voterId) {
+    let voter = this.db.prepare('SELECT * FROM voters WHERE id = ?').get(voterId);
+    if (!voter) {
+      const now = new Date().toISOString();
+      this.db.prepare('INSERT INTO voters (id, reputation, total_votes, accurate_votes, contributions, created_at, updated_at) VALUES (?, 1.0, 0, 0, 0, ?, ?)').run(voterId, now, now);
+      voter = this.db.prepare('SELECT * FROM voters WHERE id = ?').get(voterId);
+    }
+    return voter;
+  }
+
+  /**
+   * Get reputation weight for a voter. Reputation scales vote influence:
+   * - rep 0-0.5: weight 0.5 (reduced influence)
+   * - rep 0.5-1.0: weight 0.5-1.0 (normal)
+   * - rep 1.0-2.0: weight 1.0-2.0 (trusted)
+   * - rep 2.0+: weight 2.0 (cap)
+   */
+  getVoteWeight(voterId) {
+    const voter = this.getVoter(voterId);
+    return Math.min(2.0, Math.max(0.5, voter.reputation));
+  }
+
+  /**
+   * Update voter reputation based on pattern performance.
+   * Called when a pattern receives usage feedback.
+   */
+  updateVoterReputation(patternId, succeeded) {
+    const votes = this.db.prepare('SELECT voter, vote FROM votes WHERE pattern_id = ?').all(patternId);
+    const now = new Date().toISOString();
+
+    for (const v of votes) {
+      const voter = this.getVoter(v.voter);
+      let delta = 0;
+      if (succeeded && v.vote === 1) {
+        // Upvoted a pattern that succeeded — good judgment
+        delta = 0.05;
+      } else if (!succeeded && v.vote === -1) {
+        // Downvoted a pattern that failed — good judgment
+        delta = 0.05;
+      } else if (succeeded && v.vote === -1) {
+        // Downvoted a pattern that succeeded — poor judgment
+        delta = -0.03;
+      } else if (!succeeded && v.vote === 1) {
+        // Upvoted a pattern that failed — poor judgment
+        delta = -0.03;
+      }
+
+      if (delta !== 0) {
+        const newRep = Math.min(3.0, Math.max(0.1, voter.reputation + delta));
+        const accurate = delta > 0 ? voter.accurate_votes + 1 : voter.accurate_votes;
+        this.db.prepare('UPDATE voters SET reputation = ?, accurate_votes = ?, updated_at = ? WHERE id = ?')
+          .run(Math.round(newRep * 1000) / 1000, accurate, now, v.voter);
+      }
+    }
+  }
+
+  /**
+   * Get top contributors by reputation.
+   */
+  topVoters(limit = 20) {
+    return this.db.prepare('SELECT * FROM voters ORDER BY reputation DESC LIMIT ?').all(limit);
+  }
+
+  /**
+   * Get voter's vote history.
+   */
+  getVoterHistory(voterId, limit = 50) {
+    return this.db.prepare(
+      'SELECT v.*, p.name as pattern_name, p.language FROM votes v LEFT JOIN patterns p ON v.pattern_id = p.id WHERE v.voter = ? ORDER BY v.created_at DESC LIMIT ?'
+    ).all(voterId, limit);
   }
 
   retirePatterns(minScore = 0.30) {

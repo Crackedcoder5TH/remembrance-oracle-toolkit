@@ -306,6 +306,65 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_cross_search',
+    description: 'Search patterns across multiple repo oracle stores. Discovers sibling repos with .remembrance/ directories.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        description: { type: 'string', description: 'Search query' },
+        language: { type: 'string', description: 'Filter by language' },
+        limit: { type: 'number', description: 'Max results (default: 20)' },
+      },
+      required: ['description'],
+    },
+  },
+  {
+    name: 'oracle_repos',
+    description: 'List, discover, or register repos for cross-repo federated search.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list', 'discover', 'add'], description: 'Action to perform' },
+        path: { type: 'string', description: 'Repo path (for add action)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_vote',
+    description: 'Vote on a pattern (upvote or downvote). Community votes affect pattern reliability scoring.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patternId: { type: 'string', description: 'Pattern ID to vote on' },
+        voter: { type: 'string', description: 'Voter identifier (default: anonymous)' },
+        vote: { type: 'number', description: '1 for upvote, -1 for downvote' },
+      },
+      required: ['patternId', 'vote'],
+    },
+  },
+  {
+    name: 'oracle_top_voted',
+    description: 'Get top-voted patterns by community score.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Max patterns to return (default: 20)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_transpile',
+    description: 'Transpile JavaScript code to another language using the AST-based transpiler. Supports Python, TypeScript, Go, and Rust.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'JavaScript source code to transpile' },
+        targetLanguage: { type: 'string', enum: ['python', 'typescript', 'go', 'rust'], description: 'Target language' },
+      },
+      required: ['code', 'targetLanguage'],
+    },
+  },
+  {
     name: 'oracle_synthesize_tests',
     description: 'Synthesize test code for candidate patterns. Analyzes function signatures, translates parent tests, and generates edge-case assertions. Optionally auto-promotes candidates with new tests.',
     inputSchema: {
@@ -788,6 +847,32 @@ class MCPServer {
         case 'oracle_report_bug':
           result = this.oracle.patterns.reportBug(args.patternId, args.description || '');
           break;
+
+        case 'oracle_cross_search':
+          result = this.oracle.crossRepoSearch(args.description, { language: args.language, limit: args.limit || 20 });
+          break;
+
+        case 'oracle_repos': {
+          const action = args.action || 'list';
+          if (action === 'discover') result = this.oracle.discoverRepos();
+          else if (action === 'add') result = this.oracle.registerRepo(args.path || '.');
+          else result = this.oracle.listRepos();
+          break;
+        }
+
+        case 'oracle_vote':
+          result = this.oracle.vote(args.patternId, args.voter || 'anonymous', args.vote);
+          break;
+
+        case 'oracle_top_voted':
+          result = this.oracle.topVoted(args.limit || 20);
+          break;
+
+        case 'oracle_transpile': {
+          const { transpile: astTranspile } = require('../core/ast-transpiler');
+          result = astTranspile(args.code, args.targetLanguage);
+          break;
+        }
 
         case 'oracle_synthesize_tests':
           result = this.oracle.synthesizeTests({

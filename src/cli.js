@@ -21,6 +21,21 @@ const { c, colorScore, colorDecision, colorStatus, colorDiff, colorSource } = re
 
 const oracle = new RemembranceOracle();
 
+/**
+ * Speak text via system TTS (espeak on Linux, say on macOS).
+ * Non-blocking — fire-and-forget.
+ */
+function speakCLI(text) {
+  try {
+    const safeText = text.replace(/["`$\\]/g, '');
+    const { platform } = require('os');
+    const cmd = platform() === 'darwin'
+      ? `say -r 180 "${safeText}" &`
+      : `espeak -s 150 "${safeText}" 2>/dev/null &`;
+    require('child_process').exec(cmd);
+  } catch { /* TTS not available — silent fallback */ }
+}
+
 function parseArgs(args) {
   const parsed = { _command: args[0] };
   for (let i = 1; i < args.length; i++) {
@@ -274,6 +289,38 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'vote') {
+    const id = args.id || process.argv[3];
+    const direction = args.direction || process.argv[4] || 'up';
+    const voter = args.voter || process.env.USER || 'anonymous';
+    if (!id) { console.error(`Usage: ${c.cyan('oracle vote')} <pattern-id> [up|down] [--voter <name>]`); process.exit(1); }
+    const vote = direction === 'down' || direction === 'downvote' || direction === '-1' ? -1 : 1;
+    const result = oracle.vote(id, voter, vote);
+    if (result.success) {
+      console.log(`${vote > 0 ? c.boldGreen('Upvoted') : c.boldRed('Downvoted')} pattern ${c.bold(id)}`);
+      console.log(`  Votes: ${c.green('+' + result.upvotes)} / ${c.red('-' + result.downvotes)} (score: ${result.voteScore})`);
+    } else {
+      console.log(c.red(result.error));
+    }
+    return;
+  }
+
+  if (cmd === 'top-voted' || cmd === 'topvoted') {
+    const limit = parseInt(args.limit) || 20;
+    const patterns = oracle.topVoted(limit);
+    if (patterns.length === 0) {
+      console.log(c.dim('No voted patterns yet.'));
+      return;
+    }
+    console.log(c.boldCyan(`Top ${patterns.length} patterns by community votes:\n`));
+    for (const p of patterns) {
+      const score = (p.upvotes || 0) - (p.downvotes || 0);
+      const icon = score > 0 ? c.green(`+${score}`) : score < 0 ? c.red(String(score)) : c.dim('0');
+      console.log(`  [${icon}] ${c.bold(p.name)} (${p.language}) — coherency: ${colorScore((p.coherencyScore?.total ?? 0).toFixed(3))}`);
+    }
+    return;
+  }
+
   if (cmd === 'prune') {
     const min = parseFloat(args['min-coherency']) || 0.4;
     const result = oracle.prune(min);
@@ -378,6 +425,10 @@ ${c.bold('Pipe support:')}
     }
     if (result.alternatives?.length > 0) {
       console.log(`\n${c.dim('Alternatives:')} ${result.alternatives.map(a => `${c.cyan(a.name)}(${colorScore(a.composite?.toFixed(3))})`).join(', ')}`);
+    }
+    // Voice mode: speak the whisper via system TTS
+    if (args.voice && result.whisper) {
+      speakCLI(result.whisper);
     }
     return;
   }
@@ -965,6 +1016,60 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'repos') {
+    const subCmd = process.argv[3];
+    if (subCmd === 'add') {
+      const repoPath = process.argv[4] || args.path;
+      if (!repoPath) { console.error(`Usage: ${c.cyan('oracle repos add')} <path>`); process.exit(1); }
+      const result = oracle.registerRepo(repoPath);
+      console.log(`${c.boldGreen('Registered:')} ${c.bold(result.path)} (${result.totalRepos} total repos)`);
+      return;
+    }
+    if (subCmd === 'discover') {
+      const repos = oracle.discoverRepos();
+      console.log(c.boldCyan(`Discovered ${repos.length} sibling oracle stores:\n`));
+      for (const r of repos) {
+        console.log(`  ${c.green('*')} ${c.bold(path.basename(r))} — ${c.dim(r)}`);
+      }
+      return;
+    }
+    // Default: list registered repos
+    const repos = oracle.listRepos();
+    if (repos.length === 0) {
+      console.log(c.dim('No repos configured. Use ') + c.cyan('oracle repos add <path>') + c.dim(' or ') + c.cyan('oracle repos discover'));
+      return;
+    }
+    console.log(c.boldCyan(`Configured repos (${repos.length}):\n`));
+    for (const r of repos) {
+      const status = r.active ? c.green('active') : c.red('missing');
+      console.log(`  ${r.active ? c.green('*') : c.red('x')} ${c.bold(r.name)} [${status}] — ${c.dim(r.path)}`);
+    }
+    return;
+  }
+
+  if (cmd === 'cross-search' || cmd === 'xsearch') {
+    const desc = args.description || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
+    if (!desc) { console.error(`Usage: ${c.cyan('oracle cross-search')} "<query>" [--language <lang>]`); process.exit(1); }
+    const result = oracle.crossRepoSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 });
+    console.log(c.boldCyan(`Cross-repo search for "${desc}" across ${result.totalSearched} repos:\n`));
+    if (result.repos.length > 0) {
+      console.log(c.dim('  Repos searched:'));
+      for (const r of result.repos) {
+        console.log(`    ${c.bold(r.name)} — ${r.patterns} patterns, ${c.green(String(r.matches))} matches`);
+      }
+      console.log('');
+    }
+    if (result.results.length === 0) {
+      console.log(c.dim('  No matches found across repos.'));
+    } else {
+      for (const r of result.results) {
+        const score = r.coherencyScore?.total ?? 0;
+        console.log(`  [${c.blue(r._repo)}] ${c.bold(r.name)} (${r.language}) — coherency: ${colorScore(score.toFixed(3))}, match: ${colorScore(r._matchScore.toFixed(2))}`);
+      }
+    }
+    return;
+  }
+
   if (cmd === 'nearest') {
     const term = args.description || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
     if (!term) { console.error(c.boldRed('Error:') + ` provide a query. Usage: ${c.cyan('oracle nearest <term>')}`); process.exit(1); }
@@ -1330,6 +1435,30 @@ ${c.bold('Pipe support:')}
       for (const f of result.externalTools) console.log(`    [${f.tool}] ${f.reason}`);
     }
     console.log(`\n${c.dim('Whisper:')} ${result.whisper}`);
+    return;
+  }
+
+  if (cmd === 'transpile') {
+    const { transpile: astTranspile } = require('./core/ast-transpiler');
+    const targetLang = process.argv[3];
+    const filePath = args.file || process.argv[4];
+    if (!targetLang || !filePath) {
+      console.log(`Usage: oracle transpile <language> --file <code.js>`);
+      console.log(`  Languages: python, typescript, go, rust`);
+      return;
+    }
+    const fs = require('fs');
+    const code = fs.readFileSync(filePath, 'utf-8');
+    const result = astTranspile(code, targetLang);
+    if (result.success) {
+      console.log(c.boldGreen(`Transpiled to ${targetLang} (AST-based):\n`));
+      console.log(result.code);
+      if (result.imports && result.imports.length > 0) {
+        console.log(c.dim(`\nImports detected: ${result.imports.join(', ')}`));
+      }
+    } else {
+      console.error(c.red(`Transpile failed: ${result.error}`));
+    }
     return;
   }
 

@@ -996,6 +996,44 @@ class RemembranceOracle {
     return report;
   }
 
+  // ─── Community Voting ───
+
+  /**
+   * Vote on a pattern (upvote or downvote).
+   * Adjusts the pattern's reliability score based on community feedback.
+   *
+   * @param {string} patternId - Pattern ID
+   * @param {string} voter - Voter identifier
+   * @param {number} vote - 1 for upvote, -1 for downvote
+   */
+  vote(patternId, voter, vote) {
+    const sqliteStore = this.patterns._sqlite;
+    if (!sqliteStore) return { success: false, error: 'No SQLite store available' };
+    const result = sqliteStore.votePattern(patternId, voter, vote);
+    if (result.success) {
+      this._emit({ type: 'vote', patternId, voter, vote, voteScore: result.voteScore });
+    }
+    return result;
+  }
+
+  /**
+   * Get vote counts for a pattern.
+   */
+  getVotes(patternId) {
+    const sqliteStore = this.patterns._sqlite;
+    if (!sqliteStore) return null;
+    return sqliteStore.getVotes(patternId);
+  }
+
+  /**
+   * Get top-voted patterns.
+   */
+  topVoted(limit = 20) {
+    const sqliteStore = this.patterns._sqlite;
+    if (!sqliteStore) return [];
+    return sqliteStore.topVoted(limit);
+  }
+
   synthesizeTests(options = {}) {
     const { synthesizeForCandidates } = require('../core/test-synth');
     const synthReport = synthesizeForCandidates(this, options);
@@ -1096,6 +1134,40 @@ class RemembranceOracle {
   communityStats() {
     const { communityStats } = require('../core/persistence');
     return communityStats();
+  }
+
+  // ─── Cross-Repo Search ───
+
+  /**
+   * Discover oracle stores in sibling repositories.
+   */
+  discoverRepos(options = {}) {
+    const { discoverRepoStores } = require('../core/persistence');
+    return discoverRepoStores(options);
+  }
+
+  /**
+   * Register a repo path for federated search.
+   */
+  registerRepo(repoPath) {
+    const { registerRepo } = require('../core/persistence');
+    return registerRepo(repoPath);
+  }
+
+  /**
+   * List configured repos.
+   */
+  listRepos() {
+    const { listRepos } = require('../core/persistence');
+    return listRepos();
+  }
+
+  /**
+   * Search patterns across multiple repo oracle stores.
+   */
+  crossRepoSearch(description, options = {}) {
+    const { crossRepoSearch } = require('../core/persistence');
+    return crossRepoSearch(description, options);
   }
 
   /**

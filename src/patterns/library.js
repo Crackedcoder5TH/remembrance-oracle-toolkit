@@ -172,12 +172,14 @@ class PatternLibrary {
       const focusBonus = p.complexity === 'atomic' ? 0.08 : p.complexity === 'composite' ? 0.04 : 0;
       const coherency = p.coherencyScore?.total ?? 0;
 
-      // Enhanced reliability: usage success + bug reports + healing success
+      // Enhanced reliability: usage success + bug reports + healing success + community votes
       const usageReliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
       const bugCount = p.bugReports || 0;
       const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * 0.1) : 1.0;
       const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(p.id) : 1.0;
-      const reliability = usageReliability * bugPenalty * healingRate;
+      const voteScore = (p.upvotes || 0) - (p.downvotes || 0);
+      const voteBoost = voteScore > 0 ? Math.min(0.1, voteScore * 0.02) : Math.max(-0.1, voteScore * 0.02);
+      const reliability = usageReliability * bugPenalty * healingRate + voteBoost;
       const composite = relevance.relevance * 0.35 + coherency * 0.25 + reliability * 0.20 + nameBonus + focusBonus;
 
       return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
@@ -266,7 +268,9 @@ class PatternLibrary {
     const bugCount = pattern.bugReports || 0;
     const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * 0.1) : 1.0;
     const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(id) : 1.0;
-    const combined = usageReliability * bugPenalty * healingRate;
+    const voteScore = (pattern.upvotes || 0) - (pattern.downvotes || 0);
+    const voteBoost = voteScore > 0 ? Math.min(0.1, voteScore * 0.02) : Math.max(-0.1, voteScore * 0.02);
+    const combined = usageReliability * bugPenalty * healingRate + voteBoost;
 
     return {
       patternId: id,
@@ -277,6 +281,10 @@ class PatternLibrary {
       bugReports: bugCount,
       bugPenalty: Math.round(bugPenalty * 1000) / 1000,
       healingRate: Math.round(healingRate * 1000) / 1000,
+      upvotes: pattern.upvotes || 0,
+      downvotes: pattern.downvotes || 0,
+      voteScore,
+      voteBoost: Math.round(voteBoost * 1000) / 1000,
       combined: Math.round(combined * 1000) / 1000,
     };
   }

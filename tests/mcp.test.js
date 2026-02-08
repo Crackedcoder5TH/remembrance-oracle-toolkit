@@ -218,6 +218,11 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_healing_stats'));
     assert.ok(names.includes('oracle_reliability'));
     assert.ok(names.includes('oracle_report_bug'));
-    assert.equal(res.result.tools.length, 46);
+    assert.ok(names.includes('oracle_transpile'));
+    assert.ok(names.includes('oracle_vote'));
+    assert.ok(names.includes('oracle_top_voted'));
+    assert.ok(names.includes('oracle_cross_search'));
+    assert.ok(names.includes('oracle_repos'));
+    assert.equal(res.result.tools.length, 51);
   });
 });

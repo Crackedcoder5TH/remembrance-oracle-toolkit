@@ -124,6 +124,23 @@ class SQLiteStore {
     // Schema migration: add bug reports column for reliability tracking
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN bug_reports INTEGER DEFAULT 0`); } catch {}
 
+    // Schema migration: add votes columns for community voting
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN upvotes INTEGER DEFAULT 0`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN downvotes INTEGER DEFAULT 0`); } catch {}
+
+    // Votes log table — tracks individual votes to prevent duplicates
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS votes (
+        id TEXT PRIMARY KEY,
+        pattern_id TEXT NOT NULL,
+        voter TEXT NOT NULL,
+        vote INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(pattern_id, voter)
+      );
+      CREATE INDEX IF NOT EXISTS idx_votes_pattern ON votes(pattern_id);
+    `);
+
     // Candidates table — coherent-but-unproven patterns awaiting test proof
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS candidates (
@@ -500,6 +517,79 @@ class SQLiteStore {
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
   }
 
+  /**
+   * Vote on a pattern (upvote or downvote).
+   * Each voter can only vote once per pattern — subsequent votes update the existing vote.
+   *
+   * @param {string} patternId - Pattern ID
+   * @param {string} voter - Voter identifier (username, IP, etc.)
+   * @param {number} vote - 1 for upvote, -1 for downvote
+   * @returns {{ success, patternId, upvotes, downvotes, voteScore }}
+   */
+  votePattern(patternId, voter, vote) {
+    const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(patternId);
+    if (!row) return { success: false, error: 'Pattern not found' };
+
+    const voteVal = vote > 0 ? 1 : -1;
+    const now = new Date().toISOString();
+
+    // Check for existing vote
+    const existing = this.db.prepare('SELECT * FROM votes WHERE pattern_id = ? AND voter = ?').get(patternId, voter);
+    if (existing) {
+      if (existing.vote === voteVal) {
+        return { success: false, error: 'Already voted' };
+      }
+      // Change vote direction
+      this.db.prepare('UPDATE votes SET vote = ?, created_at = ? WHERE id = ?').run(voteVal, now, existing.id);
+      if (voteVal === 1) {
+        this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1, downvotes = MAX(0, downvotes - 1) WHERE id = ?').run(patternId);
+      } else {
+        this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1, upvotes = MAX(0, upvotes - 1) WHERE id = ?').run(patternId);
+      }
+    } else {
+      const id = require('crypto').randomUUID();
+      this.db.prepare('INSERT INTO votes (id, pattern_id, voter, vote, created_at) VALUES (?, ?, ?, ?, ?)').run(id, patternId, voter, voteVal, now);
+      if (voteVal === 1) {
+        this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1 WHERE id = ?').run(patternId);
+      } else {
+        this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1 WHERE id = ?').run(patternId);
+      }
+    }
+
+    this._audit('vote', 'patterns', patternId, { voter, vote: voteVal });
+    const updated = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
+    const upvotes = updated.upvotes || 0;
+    const downvotes = updated.downvotes || 0;
+    return {
+      success: true,
+      patternId,
+      upvotes,
+      downvotes,
+      voteScore: upvotes - downvotes,
+    };
+  }
+
+  /**
+   * Get vote counts for a pattern.
+   */
+  getVotes(patternId) {
+    const row = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
+    if (!row) return null;
+    const upvotes = row.upvotes || 0;
+    const downvotes = row.downvotes || 0;
+    return { upvotes, downvotes, voteScore: upvotes - downvotes };
+  }
+
+  /**
+   * Get top-voted patterns.
+   */
+  topVoted(limit = 20) {
+    const rows = this.db.prepare(
+      'SELECT * FROM patterns ORDER BY (COALESCE(upvotes, 0) - COALESCE(downvotes, 0)) DESC LIMIT ?'
+    ).all(limit);
+    return rows.map(r => this._rowToPattern(r));
+  }
+
   retirePatterns(minScore = 0.30) {
     const rows = this.db.prepare('SELECT * FROM patterns').all();
     let retired = 0;
@@ -551,6 +641,9 @@ class SQLiteStore {
       requires: JSON.parse(row.requires || '[]'),
       composedOf: JSON.parse(row.composed_of || '[]'),
       bugReports: row.bug_reports || 0,
+      upvotes: row.upvotes || 0,
+      downvotes: row.downvotes || 0,
+      voteScore: (row.upvotes || 0) - (row.downvotes || 0),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

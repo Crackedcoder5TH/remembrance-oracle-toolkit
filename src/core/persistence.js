@@ -849,6 +849,156 @@ function _transferDebugPattern(dp, targetStore) {
   );
 }
 
+// ─── Cross-Repo Federated Search ───
+
+const REPOS_CONFIG_PATH = path.join(GLOBAL_DIR, 'repos.json');
+
+/**
+ * Discover oracle stores in sibling directories and configured repo paths.
+ * Searches parent directory for siblings with `.remembrance/` dirs.
+ *
+ * @param {object} options — { includeSiblings, additionalPaths, maxDepth }
+ * @returns {string[]} Array of directory paths with oracle stores
+ */
+function discoverRepoStores(options = {}) {
+  const { includeSiblings = true, additionalPaths = [], maxDepth = 1 } = options;
+  const discovered = new Set();
+
+  // Load configured repos
+  try {
+    if (fs.existsSync(REPOS_CONFIG_PATH)) {
+      const config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
+      (config.repos || []).forEach(r => {
+        const rDir = path.resolve(r);
+        if (fs.existsSync(path.join(rDir, '.remembrance'))) {
+          discovered.add(rDir);
+        }
+      });
+    }
+  } catch { /* config read error */ }
+
+  // Add explicit paths
+  for (const p of additionalPaths) {
+    const resolved = path.resolve(p);
+    if (fs.existsSync(path.join(resolved, '.remembrance'))) {
+      discovered.add(resolved);
+    }
+  }
+
+  // Auto-discover siblings
+  if (includeSiblings) {
+    try {
+      const cwd = process.cwd();
+      const parent = path.dirname(cwd);
+      const entries = fs.readdirSync(parent, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const siblingPath = path.join(parent, entry.name);
+        if (siblingPath === cwd) continue; // Skip self
+        if (fs.existsSync(path.join(siblingPath, '.remembrance'))) {
+          discovered.add(siblingPath);
+        }
+      }
+    } catch { /* permission or read error */ }
+  }
+
+  return Array.from(discovered);
+}
+
+/**
+ * Register a repo path for cross-repo federated search.
+ */
+function registerRepo(repoPath) {
+  ensureDir(GLOBAL_DIR);
+  let config = { repos: [] };
+  try {
+    if (fs.existsSync(REPOS_CONFIG_PATH)) {
+      config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
+    }
+  } catch { /* fresh config */ }
+
+  const resolved = path.resolve(repoPath);
+  if (!config.repos.includes(resolved)) {
+    config.repos.push(resolved);
+    fs.writeFileSync(REPOS_CONFIG_PATH, JSON.stringify(config, null, 2));
+  }
+  return { registered: true, path: resolved, totalRepos: config.repos.length };
+}
+
+/**
+ * List configured repos.
+ */
+function listRepos() {
+  try {
+    if (fs.existsSync(REPOS_CONFIG_PATH)) {
+      const config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
+      return (config.repos || []).map(r => {
+        const exists = fs.existsSync(path.join(r, '.remembrance'));
+        return { path: r, name: path.basename(r), active: exists };
+      });
+    }
+  } catch { /* config error */ }
+  return [];
+}
+
+/**
+ * Search patterns across multiple repo oracle stores.
+ * Deduplicates by pattern name (first repo wins).
+ *
+ * @param {string} description — search query
+ * @param {object} options — { language, limit, repos }
+ * @returns {{ results, repos, totalSearched }}
+ */
+function crossRepoSearch(description, options = {}) {
+  const { language, limit = 20, repos: explicitRepos } = options;
+  const repoPaths = explicitRepos || discoverRepoStores();
+
+  const allResults = [];
+  const repoInfo = [];
+  const seen = new Set();
+
+  for (const repoPath of repoPaths) {
+    try {
+      const store = openStore(repoPath);
+      if (!store) continue;
+
+      const patterns = store.getPatterns ? store.getPatterns() : [];
+      const repoName = path.basename(repoPath);
+      let matchCount = 0;
+
+      for (const p of patterns) {
+        if (seen.has(p.name)) continue;
+        // Simple relevance scoring: check if description words match name/tags/description
+        const text = `${p.name} ${(p.tags || []).join(' ')} ${p.description || ''}`.toLowerCase();
+        const words = description.toLowerCase().split(/\s+/);
+        const matches = words.filter(w => text.includes(w));
+        if (matches.length === 0) continue;
+        if (language && p.language !== language) continue;
+
+        seen.add(p.name);
+        allResults.push({
+          ...p,
+          _repo: repoName,
+          _repoPath: repoPath,
+          _matchScore: matches.length / words.length,
+        });
+        matchCount++;
+      }
+
+      repoInfo.push({ name: repoName, path: repoPath, patterns: patterns.length, matches: matchCount });
+    } catch { /* store open failed — skip */ }
+  }
+
+  // Sort by match score
+  allResults.sort((a, b) => b._matchScore - a._matchScore);
+
+  return {
+    results: allResults.slice(0, limit),
+    repos: repoInfo,
+    totalSearched: repoPaths.length,
+  };
+}
+
 module.exports = {
   getGlobalDir,
   hasGlobalStore,
@@ -869,6 +1019,10 @@ module.exports = {
   syncDebugToPersonal,
   federatedDebugSearch,
   debugGlobalStats,
+  discoverRepoStores,
+  registerRepo,
+  listRepos,
+  crossRepoSearch,
   GLOBAL_DIR,
   PERSONAL_DIR,
   COMMUNITY_DIR,

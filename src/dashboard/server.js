@@ -265,6 +265,22 @@ function createDashboardServer(oracle, options = {}) {
         return;
       }
 
+      // ─── Voting ───
+      if (pathname === '/api/vote' && req.method === 'POST') {
+        readBody(req, (body) => {
+          const result = oracleInstance.vote(body.patternId, body.voter || 'dashboard', body.vote || 1);
+          sendJSON(res, result);
+        });
+        return;
+      }
+
+      if (pathname === '/api/top-voted') {
+        const limit = parseInt(parsed.query.limit) || 20;
+        const patterns = oracleInstance.topVoted(limit);
+        sendJSON(res, patterns);
+        return;
+      }
+
       // ─── Reflection loop ───
       if (pathname === '/api/reflect' && req.method === 'POST') {
         readBody(req, (body) => {
@@ -1019,13 +1035,19 @@ pre.code-block {
     <div class="nav-item" data-panel="analytics">
       <span class="nav-icon">&#9636;</span> Analytics
     </div>
+    <div class="nav-item" data-panel="charts">
+      <span class="nav-icon">&#9650;</span> Charts
+    </div>
     <div class="nav-section">System</div>
     <div class="nav-item" data-panel="admin">
       <span class="nav-icon">&#9881;</span> Admin
     </div>
   </nav>
   <div class="sidebar-footer">
-    Remembrance Oracle Toolkit v3
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span>Remembrance Oracle Toolkit v3</span>
+      <button id="voice-toggle" title="Toggle Voice Mode" style="background:none;border:none;cursor:pointer;font-size:1.2em;opacity:0.4;transition:opacity 0.2s">&#128264;</button>
+    </div>
   </div>
 </aside>
 
@@ -1169,6 +1191,44 @@ pre.code-block {
   </div>
 </div>
 
+<!-- ─── CHARTS TAB ─── -->
+<div id="panel-charts" class="panel">
+  <div class="page-header">
+    <div><div class="page-title">Visual Coherence</div><div class="page-desc">Charts: coherence trend, dimension breakdown, top patterns, vote distribution</div></div>
+    <button class="btn btn-ghost" id="refresh-charts-btn">Refresh</button>
+  </div>
+  <div class="stats-row" style="margin-bottom: 24px">
+    <div class="stat-card" style="flex:1"><div class="stat-label">Avg Coherency</div><div class="stat-value" id="chart-avg-coherency">--</div></div>
+    <div class="stat-card" style="flex:1"><div class="stat-label">Total Patterns</div><div class="stat-value" id="chart-total-patterns">--</div></div>
+    <div class="stat-card" style="flex:1"><div class="stat-label">High Quality (&gt;0.8)</div><div class="stat-value" id="chart-high-quality">--</div></div>
+    <div class="stat-card" style="flex:1"><div class="stat-label">Total Votes</div><div class="stat-value" id="chart-total-votes">--</div></div>
+  </div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+    <div class="card" style="padding:20px">
+      <div class="card-title" style="margin-bottom:12px">Coherence Distribution</div>
+      <svg id="chart-coherence-dist" width="100%" height="200" viewBox="0 0 400 200"></svg>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="card-title" style="margin-bottom:12px">Dimension Breakdown (avg)</div>
+      <svg id="chart-dimensions" width="100%" height="200" viewBox="0 0 400 200"></svg>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+    <div class="card" style="padding:20px">
+      <div class="card-title" style="margin-bottom:12px">Top 10 Patterns by Usage</div>
+      <svg id="chart-top-usage" width="100%" height="260" viewBox="0 0 400 260"></svg>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="card-title" style="margin-bottom:12px">Language Distribution</div>
+      <svg id="chart-languages" width="100%" height="260" viewBox="0 0 400 260"></svg>
+    </div>
+  </div>
+  <div class="card" style="padding:20px">
+    <div class="card-title" style="margin-bottom:12px">Coherence Sparkline (by pattern creation order)</div>
+    <svg id="chart-sparkline" width="100%" height="100" viewBox="0 0 800 100"></svg>
+  </div>
+</div>
+
 <!-- ─── ADMIN TAB ─── -->
 <div id="panel-admin" class="panel">
   <div class="page-header">
@@ -1278,6 +1338,7 @@ pre.code-block {
     document.getElementById('sidebar').classList.remove('open');
     // Lazy-load tab data
     if (panelName === 'analytics' && !window._analyticsLoaded) loadAnalytics();
+    if (panelName === 'charts' && !window._chartsLoaded) loadCharts();
     if (panelName === 'history' && !window._historyLoaded) loadHistory();
     if (panelName === 'debug' && !window._debugLoaded) loadDebugStats();
     if (panelName === 'teams' && !window._teamsLoaded) loadTeams();
@@ -1449,6 +1510,45 @@ pre.code-block {
   }
 
   connectWS();
+
+  // ─── Voice Mode (Web Speech API) ───
+  var voiceEnabled = false;
+  var voiceToggle = document.getElementById('voice-toggle');
+  voiceToggle.addEventListener('click', function() {
+    voiceEnabled = !voiceEnabled;
+    voiceToggle.style.opacity = voiceEnabled ? '1' : '0.4';
+    voiceToggle.innerHTML = voiceEnabled ? '&#128266;' : '&#128264;';
+    if (voiceEnabled) speakWhisper('Voice mode activated. I will speak whispers from the healed future.');
+  });
+
+  function speakWhisper(text) {
+    if (!voiceEnabled || !window.speechSynthesis || !text) return;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    var utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 0.95;
+    utterance.volume = 0.8;
+    // Prefer a calm, clear voice
+    var voices = window.speechSynthesis.getVoices();
+    var preferred = voices.find(function(v) { return /samantha|karen|daniel|google.*uk|zira/i.test(v.name); });
+    if (preferred) utterance.voice = preferred;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // Speak healing whispers when events arrive
+  var _origComplete = completeHealingBanner;
+  completeHealingBanner = function(data) {
+    _origComplete(data);
+    if (data.whisper) speakWhisper(data.whisper);
+    else if (data.patternName) speakWhisper('Healing complete for ' + data.patternName + '. Coherence: ' + (data.finalCoherence || 0).toFixed(2));
+  };
+
+  var _origFail = failHealingBanner;
+  failHealingBanner = function(data) {
+    _origFail(data);
+    speakWhisper('Healing failed for ' + (data.patternName || 'pattern') + '. ' + (data.error || ''));
+  };
 
   // ─── Pattern Rendering ───
   function renderPatternCard(p) {
@@ -1873,6 +1973,164 @@ pre.code-block {
       document.getElementById('analytics-content').innerHTML = '<div class="empty-state"><div class="empty-text">Failed to load analytics</div></div>';
     });
   }
+
+  // ─── Charts Tab (Visual Coherence) ───
+  function loadCharts() {
+    window._chartsLoaded = true;
+    fetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
+      var patterns = [];
+      try {
+        // Also fetch full pattern list for detailed charting
+        fetch('/api/patterns').then(function(r2) { return r2.json(); }).then(function(pats) {
+          patterns = pats || [];
+          renderAllCharts(data, patterns);
+        });
+      } catch(e) { renderAllCharts(data, []); }
+    });
+  }
+
+  function renderAllCharts(analytics, patterns) {
+    var ov = analytics.overview || {};
+    var dist = analytics.coherencyDistribution || {};
+    var langs = analytics.languageBreakdown || {};
+
+    // Summary cards
+    document.getElementById('chart-avg-coherency').textContent = (ov.avgCoherency || 0).toFixed(3);
+    document.getElementById('chart-total-patterns').textContent = ov.totalPatterns || 0;
+    document.getElementById('chart-high-quality').textContent = (ov.qualityRatio || 0) + '%';
+    var totalVotes = patterns.reduce(function(sum, p) { return sum + (p.upvotes || 0) + (p.downvotes || 0); }, 0);
+    document.getElementById('chart-total-votes').textContent = totalVotes;
+
+    // 1. Coherence Distribution Bar Chart
+    renderBarChart('chart-coherence-dist', dist, 'var(--accent)');
+
+    // 2. Dimension Breakdown
+    renderDimensionChart('chart-dimensions', patterns);
+
+    // 3. Top 10 by Usage
+    renderUsageChart('chart-top-usage', patterns);
+
+    // 4. Language Distribution
+    renderLanguageChart('chart-languages', langs);
+
+    // 5. Sparkline
+    renderSparkline('chart-sparkline', patterns);
+  }
+
+  function renderBarChart(svgId, dist, color) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var keys = Object.keys(dist);
+    if (keys.length === 0) { svg.innerHTML = '<text x="200" y="100" fill="var(--fg3)" text-anchor="middle" font-size="14">No data</text>'; return; }
+    var maxVal = Math.max.apply(null, keys.map(function(k) { return dist[k]; }).concat([1]));
+    var barW = Math.floor(360 / keys.length) - 4;
+    var html = '';
+    keys.forEach(function(k, i) {
+      var h = Math.max(2, (dist[k] / maxVal) * 160);
+      var x = 30 + i * (barW + 4);
+      var y = 180 - h;
+      html += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" fill="' + color + '" rx="3" opacity="0.85"/>';
+      html += '<text x="' + (x + barW/2) + '" y="195" fill="var(--fg3)" text-anchor="middle" font-size="9">' + k + '</text>';
+      html += '<text x="' + (x + barW/2) + '" y="' + (y - 4) + '" fill="var(--fg2)" text-anchor="middle" font-size="10">' + dist[k] + '</text>';
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderDimensionChart(svgId, patterns) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var dims = { correctness: 0, simplicity: 0, unity: 0, reliability: 0, economy: 0 };
+    var count = 0;
+    patterns.forEach(function(p) {
+      var cs = p.coherencyScore;
+      if (cs && typeof cs === 'object') {
+        Object.keys(dims).forEach(function(d) { if (cs[d] != null) dims[d] += cs[d]; });
+        count++;
+      }
+    });
+    if (count === 0) { svg.innerHTML = '<text x="200" y="100" fill="var(--fg3)" text-anchor="middle" font-size="14">No dimension data</text>'; return; }
+    var dimKeys = Object.keys(dims);
+    var barW = Math.floor(360 / dimKeys.length) - 8;
+    var colors = ['var(--green)', 'var(--accent)', 'var(--purple)', 'var(--yellow)', 'var(--cyan)'];
+    var html = '';
+    dimKeys.forEach(function(d, i) {
+      var avg = dims[d] / count;
+      var h = avg * 160;
+      var x = 30 + i * (barW + 8);
+      var y = 180 - h;
+      html += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" fill="' + colors[i] + '" rx="4" opacity="0.8"/>';
+      html += '<text x="' + (x + barW/2) + '" y="195" fill="var(--fg3)" text-anchor="middle" font-size="9">' + d.slice(0,4) + '</text>';
+      html += '<text x="' + (x + barW/2) + '" y="' + (y - 4) + '" fill="var(--fg2)" text-anchor="middle" font-size="10">' + avg.toFixed(2) + '</text>';
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderUsageChart(svgId, patterns) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var sorted = patterns.slice().sort(function(a, b) { return (b.usageCount || 0) - (a.usageCount || 0); }).slice(0, 10);
+    if (sorted.length === 0) { svg.innerHTML = '<text x="200" y="130" fill="var(--fg3)" text-anchor="middle" font-size="14">No usage data</text>'; return; }
+    var maxUsage = Math.max.apply(null, sorted.map(function(p) { return p.usageCount || 0; }).concat([1]));
+    var html = '';
+    sorted.forEach(function(p, i) {
+      var w = Math.max(2, ((p.usageCount || 0) / maxUsage) * 260);
+      var y = 10 + i * 24;
+      html += '<rect x="130" y="' + y + '" width="' + w + '" height="18" fill="var(--green)" rx="3" opacity="0.75"/>';
+      var name = (p.name || '').length > 15 ? (p.name || '').slice(0, 15) + '..' : (p.name || '');
+      html += '<text x="125" y="' + (y + 13) + '" fill="var(--fg2)" text-anchor="end" font-size="10">' + name + '</text>';
+      html += '<text x="' + (135 + w) + '" y="' + (y + 13) + '" fill="var(--fg3)" font-size="10">' + (p.usageCount || 0) + '</text>';
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderLanguageChart(svgId, langs) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var keys = Object.keys(langs);
+    if (keys.length === 0) { svg.innerHTML = '<text x="200" y="130" fill="var(--fg3)" text-anchor="middle" font-size="14">No language data</text>'; return; }
+    var total = keys.reduce(function(s, k) { return s + langs[k]; }, 0);
+    var colors = ['var(--accent)', 'var(--green)', 'var(--purple)', 'var(--yellow)', 'var(--cyan)', 'var(--red)', 'var(--orange)'];
+    var html = '';
+    var cx = 130, cy = 130, r = 100;
+    var startAngle = 0;
+    keys.forEach(function(lang, i) {
+      var pct = langs[lang] / total;
+      var angle = pct * Math.PI * 2;
+      var endAngle = startAngle + angle;
+      var x1 = cx + r * Math.cos(startAngle);
+      var y1 = cy + r * Math.sin(startAngle);
+      var x2 = cx + r * Math.cos(endAngle);
+      var y2 = cy + r * Math.sin(endAngle);
+      var largeArc = angle > Math.PI ? 1 : 0;
+      html += '<path d="M' + cx + ',' + cy + ' L' + x1 + ',' + y1 + ' A' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + x2 + ',' + y2 + ' Z" fill="' + colors[i % colors.length] + '" opacity="0.85"/>';
+      // Legend
+      html += '<rect x="260" y="' + (20 + i * 22) + '" width="14" height="14" fill="' + colors[i % colors.length] + '" rx="3"/>';
+      html += '<text x="280" y="' + (32 + i * 22) + '" fill="var(--fg2)" font-size="11">' + lang + ' (' + langs[lang] + ')</text>';
+      startAngle = endAngle;
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderSparkline(svgId, patterns) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var scores = patterns.map(function(p) { return p.coherencyScore && p.coherencyScore.total != null ? p.coherencyScore.total : 0; });
+    if (scores.length === 0) { svg.innerHTML = '<text x="400" y="50" fill="var(--fg3)" text-anchor="middle" font-size="14">No sparkline data</text>'; return; }
+    var step = 790 / Math.max(scores.length - 1, 1);
+    var points = scores.map(function(s, i) { return (5 + i * step).toFixed(1) + ',' + (90 - s * 80).toFixed(1); });
+    var html = '<polyline points="' + points.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.7"/>';
+    // Average line
+    var avg = scores.reduce(function(s, v) { return s + v; }, 0) / scores.length;
+    var avgY = (90 - avg * 80).toFixed(1);
+    html += '<line x1="5" y1="' + avgY + '" x2="795" y2="' + avgY + '" stroke="var(--green)" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>';
+    html += '<text x="798" y="' + (parseFloat(avgY) + 4) + '" fill="var(--green)" font-size="9" text-anchor="end">avg ' + avg.toFixed(2) + '</text>';
+    svg.innerHTML = html;
+  }
+
+  document.getElementById('refresh-charts-btn').addEventListener('click', function() {
+    window._chartsLoaded = false;
+    loadCharts();
+  });
 
   // ─── Admin Tab ───
   function loadAdmin() {

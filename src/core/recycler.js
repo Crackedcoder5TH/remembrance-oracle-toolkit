@@ -627,12 +627,28 @@ class PatternRecycler {
   // ─── Internal: Transpile a JS pattern to another language ───
 
   _transpileToLanguage(pattern, targetLang) {
-    const code = pattern.code;
-    const testCode = pattern.testCode;
-
     if (targetLang === 'python') return this._toPython(pattern);
     if (targetLang === 'typescript') return this._toTypeScript(pattern);
+    if (targetLang === 'go' || targetLang === 'rust') return this._toASTLanguage(pattern, targetLang);
     return null;
+  }
+
+  _toASTLanguage(pattern, targetLang) {
+    const { transpile: astTranspile } = require('./ast-transpiler');
+    const result = astTranspile(pattern.code, targetLang);
+    if (!result.success || !result.code) return null;
+
+    const suffix = targetLang === 'go' ? '-go' : '-rs';
+    return {
+      name: `${pattern.name}${suffix}`,
+      code: result.code,
+      language: targetLang,
+      description: `${pattern.description || pattern.name} (${targetLang} via AST)`,
+      tags: [...(pattern.tags || []), 'variant', targetLang, 'ast-generated'],
+      patternType: pattern.patternType || 'utility',
+      complexity: pattern.complexity || 'moderate',
+      testCode: null,
+    };
   }
 
   _toPython(pattern) {

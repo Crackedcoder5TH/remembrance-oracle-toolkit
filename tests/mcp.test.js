@@ -5,25 +5,25 @@ const { MCPServer, TOOLS } = require('../src/mcp/server');
 describe('MCPServer', () => {
   let server;
 
-  it('initializes', () => {
+  it('initializes', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({ id: 1, method: 'initialize' });
+    const res = await server.handleRequest({ id: 1, method: 'initialize' });
     assert.equal(res.jsonrpc, '2.0');
     assert.equal(res.id, 1);
     assert.ok(res.result.protocolVersion);
     assert.ok(res.result.serverInfo.name);
   });
 
-  it('responds to ping', () => {
+  it('responds to ping', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({ id: 2, method: 'ping' });
+    const res = await server.handleRequest({ id: 2, method: 'ping' });
     assert.equal(res.id, 2);
     assert.ok(res.result);
   });
 
-  it('lists tools', () => {
+  it('lists tools', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({ id: 3, method: 'tools/list' });
+    const res = await server.handleRequest({ id: 3, method: 'tools/list' });
     assert.ok(res.result.tools.length > 0);
     const names = res.result.tools.map(t => t.name);
     assert.ok(names.includes('oracle_search'));
@@ -39,9 +39,9 @@ describe('MCPServer', () => {
     }
   });
 
-  it('handles oracle_stats', () => {
+  it('handles oracle_stats', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 4,
       method: 'tools/call',
       params: { name: 'oracle_stats', arguments: {} },
@@ -53,9 +53,9 @@ describe('MCPServer', () => {
     assert.ok('patterns' in data);
   });
 
-  it('handles oracle_search', () => {
+  it('handles oracle_search', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 5,
       method: 'tools/call',
       params: { name: 'oracle_search', arguments: { query: 'sort' } },
@@ -65,9 +65,9 @@ describe('MCPServer', () => {
     assert.ok(Array.isArray(data));
   });
 
-  it('handles oracle_submit', () => {
+  it('handles oracle_submit', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 6,
       method: 'tools/call',
       params: {
@@ -83,9 +83,9 @@ describe('MCPServer', () => {
     assert.ok(res.result.content);
   });
 
-  it('handles oracle_nearest', () => {
+  it('handles oracle_nearest', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 7,
       method: 'tools/call',
       params: { name: 'oracle_nearest', arguments: { query: 'cache', limit: 3 } },
@@ -95,9 +95,9 @@ describe('MCPServer', () => {
     assert.ok(data.length <= 3);
   });
 
-  it('handles unknown tool', () => {
+  it('handles unknown tool', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 8,
       method: 'tools/call',
       params: { name: 'nonexistent_tool', arguments: {} },
@@ -105,22 +105,22 @@ describe('MCPServer', () => {
     assert.ok(res.result.isError);
   });
 
-  it('handles unknown method', () => {
+  it('handles unknown method', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({ id: 9, method: 'unknown/method' });
+    const res = await server.handleRequest({ id: 9, method: 'unknown/method' });
     assert.ok(res.error);
     assert.equal(res.error.code, -32601);
   });
 
-  it('handles notifications silently', () => {
+  it('handles notifications silently', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({ method: 'notifications/initialized' });
+    const res = await server.handleRequest({ method: 'notifications/initialized' });
     assert.equal(res, null);
   });
 
-  it('handles oracle_resolve', () => {
+  it('handles oracle_resolve', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 10,
       method: 'tools/call',
       params: {
@@ -133,9 +133,9 @@ describe('MCPServer', () => {
     assert.ok(data.decision);
   });
 
-  it('handles oracle_candidates', () => {
+  it('handles oracle_candidates', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 11,
       method: 'tools/call',
       params: { name: 'oracle_candidates', arguments: {} },
@@ -147,9 +147,9 @@ describe('MCPServer', () => {
     assert.ok(Array.isArray(data.candidates));
   });
 
-  it('handles oracle_generate', () => {
+  it('handles oracle_generate', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 12,
       method: 'tools/call',
       params: {
@@ -163,9 +163,9 @@ describe('MCPServer', () => {
     assert.ok('stored' in data);
   });
 
-  it('handles oracle_auto_promote', () => {
+  it('handles oracle_auto_promote', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 13,
       method: 'tools/call',
       params: { name: 'oracle_auto_promote', arguments: {} },
@@ -176,9 +176,9 @@ describe('MCPServer', () => {
     assert.ok('promoted' in data);
   });
 
-  it('handles oracle_promote with missing candidate', () => {
+  it('handles oracle_promote with missing candidate', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({
+    const res = await server.handleRequest({
       id: 14,
       method: 'tools/call',
       params: { name: 'oracle_promote', arguments: { candidateId: 'nonexistent' } },
@@ -188,9 +188,9 @@ describe('MCPServer', () => {
     assert.equal(data.promoted, false);
   });
 
-  it('lists all tools including candidate and community tools', () => {
+  it('lists all tools including candidate and community tools', async () => {
     server = new MCPServer();
-    const res = server.handleRequest({ id: 15, method: 'tools/list' });
+    const res = await server.handleRequest({ id: 15, method: 'tools/list' });
     const names = res.result.tools.map(t => t.name);
     assert.ok(names.includes('oracle_candidates'));
     assert.ok(names.includes('oracle_generate'));
@@ -223,6 +223,9 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_top_voted'));
     assert.ok(names.includes('oracle_cross_search'));
     assert.ok(names.includes('oracle_repos'));
-    assert.equal(res.result.tools.length, 51);
+    assert.ok(names.includes('oracle_remote_search'));
+    assert.ok(names.includes('oracle_remotes'));
+    assert.ok(names.includes('oracle_full_search'));
+    assert.equal(res.result.tools.length, 54);
   });
 });

@@ -1818,6 +1818,74 @@ ${c.bold('Options:')}
     process.exit(1);
   }
 
+  if (cmd === 'remote') {
+    const sub = process.argv[3];
+    if (sub === 'add') {
+      const url = process.argv[4] || args.url;
+      if (!url) { console.error(`Usage: ${c.cyan('oracle remote add')} <url> [--name <name>] [--token <jwt>]`); process.exit(1); }
+      const { registerRemote } = require('./cloud/client');
+      const result = registerRemote(url, { name: args.name, token: args.token });
+      console.log(`${c.boldGreen('Remote registered:')} ${c.bold(result.name)} — ${c.cyan(result.url)}`);
+      console.log(`  Total remotes: ${result.totalRemotes}`);
+      return;
+    }
+    if (sub === 'remove') {
+      const target = process.argv[4] || args.url || args.name;
+      if (!target) { console.error(`Usage: ${c.cyan('oracle remote remove')} <url-or-name>`); process.exit(1); }
+      const { removeRemote } = require('./cloud/client');
+      const result = removeRemote(target);
+      if (result.removed) console.log(c.boldGreen('Remote removed.'));
+      else console.log(c.red(result.error));
+      return;
+    }
+    if (sub === 'health') {
+      const { checkRemoteHealth } = require('./cloud/client');
+      checkRemoteHealth().then(results => {
+        if (results.length === 0) { console.log(c.dim('No remotes configured.')); return; }
+        console.log(c.boldCyan(`Remote Health Check (${results.length} remotes):\n`));
+        for (const r of results) {
+          const status = r.online ? c.boldGreen('ONLINE') : c.boldRed('OFFLINE');
+          console.log(`  ${r.online ? c.green('*') : c.red('x')} ${c.bold(r.name)} [${status}] ${c.dim(r.url)} (${r.latencyMs}ms)`);
+        }
+      });
+      return;
+    }
+    if (sub === 'search') {
+      const desc = args.description || process.argv.slice(4).filter(a => !a.startsWith('--')).join(' ');
+      if (!desc) { console.error(`Usage: ${c.cyan('oracle remote search')} "<query>" [--language <lang>]`); process.exit(1); }
+      oracle.remoteSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 }).then(result => {
+        console.log(c.boldCyan(`Remote federated search: "${desc}"\n`));
+        if (result.remotes.length > 0) {
+          for (const r of result.remotes) {
+            const status = r.error ? c.red(`error: ${r.error}`) : c.green(`${r.count} results`);
+            console.log(`  ${c.bold(r.name)} — ${status}`);
+          }
+          console.log('');
+        }
+        if (result.results.length === 0) {
+          console.log(c.dim('  No remote matches found.'));
+        } else {
+          for (const p of result.results) {
+            console.log(`  [${c.blue(p._remote || 'remote')}] ${c.bold(p.name)} (${p.language}) — coherency: ${colorScore((p.coherency || 0).toFixed(3))}`);
+          }
+        }
+      });
+      return;
+    }
+    // Default: list remotes
+    const { listRemotes } = require('./cloud/client');
+    const remotes = listRemotes();
+    if (remotes.length === 0) {
+      console.log(c.dim('No remotes configured. Use ') + c.cyan('oracle remote add <url>'));
+      return;
+    }
+    console.log(c.boldCyan(`Remote Oracle Servers (${remotes.length}):\n`));
+    for (const r of remotes) {
+      console.log(`  ${c.bold(r.name)} — ${c.cyan(r.url)} ${r.token ? c.dim('(authenticated)') : c.dim('(no token)')}`);
+    }
+    return;
+  }
+
   if (cmd === 'cloud') {
     const { CloudSyncServer } = require('./cloud/server');
     const sub = process.argv[3];

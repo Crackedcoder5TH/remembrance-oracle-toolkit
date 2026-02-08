@@ -261,3 +261,211 @@ describe('Feature 5: Federated Search Across Repos', () => {
     assert.ok(Array.isArray(repos));
   });
 });
+
+// ─── Feature 6: HTTP Remote Oracle Federation ───
+
+describe('Feature 6: Remote Oracle Federation', () => {
+  const {
+    RemoteOracleClient,
+    registerRemote,
+    removeRemote,
+    listRemotes,
+    federatedRemoteSearch,
+    checkRemoteHealth,
+  } = require('../src/cloud/client');
+
+  // Use a separate remotes config to avoid polluting the real one
+  const tmpRemotesDir = fs.mkdtempSync(path.join(os.tmpdir(), 'remote-test-'));
+  const remotesConfigPath = path.join(tmpRemotesDir, 'remotes.json');
+
+  it('RemoteOracleClient constructs correctly', () => {
+    const client = new RemoteOracleClient('http://localhost:9999', { name: 'test-remote', timeout: 5000 });
+    assert.equal(client.baseUrl, 'http://localhost:9999');
+    assert.equal(client.name, 'test-remote');
+    assert.equal(client.timeout, 5000);
+    assert.equal(client.token, null);
+  });
+
+  it('RemoteOracleClient strips trailing slash', () => {
+    const client = new RemoteOracleClient('http://localhost:9999/');
+    assert.equal(client.baseUrl, 'http://localhost:9999');
+  });
+
+  it('RemoteOracleClient stores token', () => {
+    const client = new RemoteOracleClient('http://localhost:9999', { token: 'jwt-abc' });
+    assert.equal(client.token, 'jwt-abc');
+  });
+
+  it('RemoteOracleClient.health returns offline for unreachable server', async () => {
+    const client = new RemoteOracleClient('http://127.0.0.1:19999', { timeout: 500 });
+    const health = await client.health();
+    assert.equal(health.online, false);
+    assert.equal(typeof health.latencyMs, 'number');
+  });
+
+  it('RemoteOracleClient.search handles connection error gracefully', async () => {
+    const client = new RemoteOracleClient('http://127.0.0.1:19999', { timeout: 500 });
+    const result = await client.search('test query');
+    assert.ok(Array.isArray(result.results));
+    assert.equal(result.results.length, 0);
+    assert.ok(result.error);
+  });
+
+  it('RemoteOracleClient.login handles connection error', async () => {
+    const client = new RemoteOracleClient('http://127.0.0.1:19999', { timeout: 500 });
+    const result = await client.login('user', 'pass');
+    assert.equal(result.success, false);
+    assert.ok(result.error);
+  });
+
+  it('RemoteOracleClient.stats handles connection error', async () => {
+    const client = new RemoteOracleClient('http://127.0.0.1:19999', { timeout: 500 });
+    const result = await client.stats();
+    assert.ok(result.error);
+  });
+
+  it('RemoteOracleClient.pull handles connection error', async () => {
+    const client = new RemoteOracleClient('http://127.0.0.1:19999', { timeout: 500 });
+    const result = await client.pull();
+    assert.equal(result.success, false);
+    assert.ok(result.error);
+  });
+
+  it('RemoteOracleClient.push handles connection error', async () => {
+    const client = new RemoteOracleClient('http://127.0.0.1:19999', { timeout: 500 });
+    const result = await client.push([]);
+    assert.equal(result.success, false);
+    assert.ok(result.error);
+  });
+
+  it('RemoteOracleClient.getPatterns handles connection error', async () => {
+    const client = new RemoteOracleClient('http://127.0.0.1:19999', { timeout: 500 });
+    const result = await client.getPatterns({ language: 'javascript', limit: 5 });
+    assert.ok(Array.isArray(result.patterns));
+    assert.equal(result.patterns.length, 0);
+    assert.ok(result.error);
+  });
+
+  it('registerRemote registers a server', () => {
+    const result = registerRemote('http://example.com:3579', { name: 'my-remote' });
+    assert.ok(result.registered);
+    assert.equal(result.name, 'my-remote');
+    assert.equal(result.url, 'http://example.com:3579');
+    assert.equal(result.totalRemotes >= 1, true);
+  });
+
+  it('listRemotes returns registered remotes', () => {
+    const remotes = listRemotes();
+    assert.ok(Array.isArray(remotes));
+    const found = remotes.find(r => r.url === 'http://example.com:3579');
+    assert.ok(found);
+    assert.equal(found.name, 'my-remote');
+  });
+
+  it('registerRemote updates existing remote', () => {
+    const result = registerRemote('http://example.com:3579', { name: 'updated-remote', token: 'tok123' });
+    assert.ok(result.registered);
+    assert.equal(result.name, 'updated-remote');
+    const remotes = listRemotes();
+    const found = remotes.find(r => r.url === 'http://example.com:3579');
+    assert.equal(found.name, 'updated-remote');
+    assert.equal(found.token, 'tok123');
+  });
+
+  it('removeRemote removes a server', () => {
+    const result = removeRemote('http://example.com:3579');
+    assert.ok(result.removed);
+    const remotes = listRemotes();
+    const found = remotes.find(r => r.url === 'http://example.com:3579');
+    assert.equal(found, undefined);
+  });
+
+  it('removeRemote returns false for nonexistent', () => {
+    const result = removeRemote('http://nonexistent:9999');
+    assert.equal(result.removed, false);
+    assert.ok(result.error);
+  });
+
+  it('federatedRemoteSearch returns empty when no remotes', async () => {
+    const result = await federatedRemoteSearch('test', { remotes: [] });
+    assert.ok(Array.isArray(result.results));
+    assert.equal(result.results.length, 0);
+    assert.ok(Array.isArray(result.remotes));
+    assert.ok(Array.isArray(result.errors));
+  });
+
+  it('federatedRemoteSearch handles unreachable remotes', async () => {
+    const fakeRemotes = [
+      { url: 'http://127.0.0.1:19998', name: 'fake1', token: null },
+      { url: 'http://127.0.0.1:19997', name: 'fake2', token: null },
+    ];
+    const result = await federatedRemoteSearch('sort algorithm', { remotes: fakeRemotes, timeout: 500 });
+    assert.ok(Array.isArray(result.results));
+    assert.equal(result.results.length, 0);
+    assert.equal(result.remotes.length, 2);
+    assert.ok(result.errors.length > 0);
+  });
+
+  it('checkRemoteHealth returns health for registered remotes', async () => {
+    // Register a fake remote
+    registerRemote('http://127.0.0.1:19996', { name: 'health-test' });
+    const results = await checkRemoteHealth();
+    assert.ok(Array.isArray(results));
+    const found = results.find(r => r.name === 'health-test');
+    if (found) {
+      assert.equal(found.online, false);
+      assert.equal(typeof found.latencyMs, 'number');
+    }
+    // Clean up
+    removeRemote('http://127.0.0.1:19996');
+  });
+
+  it('oracle API exposes registerRemote', () => {
+    const oracle = new RemembranceOracle({ storeDir: fs.mkdtempSync(path.join(os.tmpdir(), 'rem-test-')) });
+    const result = oracle.registerRemote('http://127.0.0.1:19995', { name: 'api-test' });
+    assert.ok(result.registered);
+    // Clean up
+    oracle.removeRemote('http://127.0.0.1:19995');
+  });
+
+  it('oracle API exposes listRemotes', () => {
+    const oracle = new RemembranceOracle({ storeDir: fs.mkdtempSync(path.join(os.tmpdir(), 'lrem-test-')) });
+    const remotes = oracle.listRemotes();
+    assert.ok(Array.isArray(remotes));
+  });
+
+  it('oracle API exposes remoteSearch', async () => {
+    const oracle = new RemembranceOracle({ storeDir: fs.mkdtempSync(path.join(os.tmpdir(), 'rsearch-test-')) });
+    const result = await oracle.remoteSearch('debounce', { language: 'javascript' });
+    assert.ok(result);
+    assert.ok(Array.isArray(result.results));
+  });
+
+  it('oracle API exposes fullFederatedSearch', async () => {
+    const oracle = new RemembranceOracle({ storeDir: fs.mkdtempSync(path.join(os.tmpdir(), 'full-test-')) });
+    const result = await oracle.fullFederatedSearch('sort');
+    assert.ok(result);
+    assert.ok(Array.isArray(result.results));
+    assert.equal(typeof result.localCount, 'number');
+    assert.equal(typeof result.repoCount, 'number');
+    assert.equal(typeof result.remoteCount, 'number');
+    assert.ok(Array.isArray(result.errors));
+  });
+
+  it('CLI has remote command', () => {
+    const cliSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    assert.ok(cliSrc.includes("cmd === 'remote'"));
+    assert.ok(cliSrc.includes('registerRemote'));
+    assert.ok(cliSrc.includes('removeRemote'));
+    assert.ok(cliSrc.includes('checkRemoteHealth'));
+    assert.ok(cliSrc.includes('remoteSearch'));
+  });
+
+  it('MCP server has remote tools', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    const names = TOOLS.map(t => t.name);
+    assert.ok(names.includes('oracle_remote_search'));
+    assert.ok(names.includes('oracle_remotes'));
+    assert.ok(names.includes('oracle_full_search'));
+  });
+});

@@ -636,13 +636,13 @@ describe('Debug Oracle', () => {
       assert.ok(debugTools.length >= 6, `expected at least 6 debug tools, got ${debugTools.length}`);
     });
 
-    it('handles oracle_debug_capture', () => {
+    it('handles oracle_debug_capture', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
       const server = new MCPServer(oracle);
 
-      const response = server.handleRequest({
+      const response = await server.handleRequest({
         jsonrpc: '2.0',
         id: 1,
         method: 'tools/call',
@@ -661,13 +661,13 @@ describe('Debug Oracle', () => {
       assert.ok(response.result.content);
     });
 
-    it('handles oracle_debug_search', () => {
+    it('handles oracle_debug_search', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
       const server = new MCPServer(oracle);
 
-      const response = server.handleRequest({
+      const response = await server.handleRequest({
         jsonrpc: '2.0',
         id: 2,
         method: 'tools/call',
@@ -683,13 +683,13 @@ describe('Debug Oracle', () => {
       assert.ok(response.result);
     });
 
-    it('handles oracle_debug_stats', () => {
+    it('handles oracle_debug_stats', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
       const server = new MCPServer(oracle);
 
-      const response = server.handleRequest({
+      const response = await server.handleRequest({
         jsonrpc: '2.0',
         id: 3,
         method: 'tools/call',
@@ -703,13 +703,13 @@ describe('Debug Oracle', () => {
       assert.ok(response.result);
     });
 
-    it('handles oracle_debug_grow', () => {
+    it('handles oracle_debug_grow', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
       const server = new MCPServer(oracle);
 
-      const response = server.handleRequest({
+      const response = await server.handleRequest({
         jsonrpc: '2.0',
         id: 4,
         method: 'tools/call',
@@ -723,7 +723,7 @@ describe('Debug Oracle', () => {
       assert.ok(response.result);
     });
 
-    it('handles oracle_debug_feedback', () => {
+    it('handles oracle_debug_feedback', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
@@ -738,7 +738,7 @@ describe('Debug Oracle', () => {
       const patterns = oracle.debugPatterns();
       const id = patterns.length > 0 ? patterns[0].id : 'test-id';
 
-      const response = server.handleRequest({
+      const response = await server.handleRequest({
         jsonrpc: '2.0',
         id: 5,
         method: 'tools/call',
@@ -752,13 +752,13 @@ describe('Debug Oracle', () => {
       assert.ok(response.result);
     });
 
-    it('handles oracle_debug_share', () => {
+    it('handles oracle_debug_share', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
       const server = new MCPServer(oracle);
 
-      const response = server.handleRequest({
+      const response = await server.handleRequest({
         jsonrpc: '2.0',
         id: 6,
         method: 'tools/call',

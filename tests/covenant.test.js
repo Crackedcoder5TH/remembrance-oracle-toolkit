@@ -269,10 +269,10 @@ describe('Covenant MCP tool', () => {
     assert.ok(covenantTool.inputSchema.required.includes('code'));
   });
 
-  it('MCP server handles oracle_covenant calls', () => {
+  it('MCP server handles oracle_covenant calls', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
-    const response = server.handleRequest({
+    const response = await server.handleRequest({
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',
@@ -286,10 +286,10 @@ describe('Covenant MCP tool', () => {
     assert.equal(result.sealed, true);
   });
 
-  it('MCP server rejects harmful code via covenant', () => {
+  it('MCP server rejects harmful code via covenant', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
-    const response = server.handleRequest({
+    const response = await server.handleRequest({
       jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',

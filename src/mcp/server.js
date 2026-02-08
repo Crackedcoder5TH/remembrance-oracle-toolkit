@@ -306,8 +306,47 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_remote_search',
+    description: 'Search patterns across registered remote oracle servers over HTTP. Queries all remotes in parallel and deduplicates results.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query' },
+        language: { type: 'string', description: 'Filter by language' },
+        limit: { type: 'number', description: 'Max results (default: 20)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'oracle_remotes',
+    description: 'Manage remote oracle servers. Actions: list, add (requires url), remove (requires url or name), health.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['list', 'add', 'remove', 'health'], description: 'Action' },
+        url: { type: 'string', description: 'Remote server URL' },
+        name: { type: 'string', description: 'Friendly name for the remote' },
+        token: { type: 'string', description: 'JWT token for authentication' },
+      },
+    },
+  },
+  {
+    name: 'oracle_full_search',
+    description: 'Ultimate federated search: local + personal + community + sibling repos + remote servers. Searches everywhere and merges results.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search query' },
+        language: { type: 'string', description: 'Filter by language' },
+        limit: { type: 'number', description: 'Max results (default: 50)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
     name: 'oracle_cross_search',
-    description: 'Search patterns across multiple repo oracle stores. Discovers sibling repos with .remembrance/ directories.',
+    description: 'Search patterns across multiple repo oracle stores (local filesystem). Discovers sibling repos with .remembrance/ directories.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -620,7 +659,7 @@ class MCPServer {
     this._initialized = false;
   }
 
-  handleRequest(msg) {
+  async handleRequest(msg) {
     const { id, method, params } = msg;
 
     // Notifications (no id)
@@ -654,7 +693,7 @@ class MCPServer {
     }
 
     if (method === 'tools/call') {
-      return this._handleToolCall(id, params);
+      return await this._handleToolCall(id, params);
     }
 
     return {
@@ -664,7 +703,7 @@ class MCPServer {
     };
   }
 
-  _handleToolCall(id, params) {
+  async _handleToolCall(id, params) {
     const { name, arguments: args = {} } = params || {};
 
     try {
@@ -846,6 +885,23 @@ class MCPServer {
 
         case 'oracle_report_bug':
           result = this.oracle.patterns.reportBug(args.patternId, args.description || '');
+          break;
+
+        case 'oracle_remote_search':
+          result = await this.oracle.remoteSearch(args.query, { language: args.language, limit: args.limit || 20 });
+          break;
+
+        case 'oracle_remotes': {
+          const act = args.action || 'list';
+          if (act === 'add') result = this.oracle.registerRemote(args.url, { name: args.name, token: args.token });
+          else if (act === 'remove') result = this.oracle.removeRemote(args.url || args.name);
+          else if (act === 'health') result = await this.oracle.checkRemoteHealth();
+          else result = this.oracle.listRemotes();
+          break;
+        }
+
+        case 'oracle_full_search':
+          result = await this.oracle.fullFederatedSearch(args.query, { language: args.language, limit: args.limit || 50 });
           break;
 
         case 'oracle_cross_search':
@@ -1077,11 +1133,11 @@ function startMCPServer(oracle) {
   const server = new MCPServer(oracle);
   const rl = readline.createInterface({ input: process.stdin, terminal: false });
 
-  rl.on('line', (line) => {
+  rl.on('line', async (line) => {
     try {
       const msg = safeJsonParse(line.trim(), null);
       if (!msg) throw new Error('Invalid JSON');
-      const response = server.handleRequest(msg);
+      const response = await server.handleRequest(msg);
       if (response) {
         process.stdout.write(JSON.stringify(response) + '\n');
       }

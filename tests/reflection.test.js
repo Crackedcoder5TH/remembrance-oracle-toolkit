@@ -418,10 +418,10 @@ describe('Reflection MCP tool', () => {
     assert.ok(tool.inputSchema.required.includes('code'));
   });
 
-  it('MCP server handles oracle_reflect calls', () => {
+  it('MCP server handles oracle_reflect calls', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
-    const response = server.handleRequest({
+    const response = await server.handleRequest({
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',

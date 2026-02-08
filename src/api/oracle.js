@@ -1138,6 +1138,98 @@ class RemembranceOracle {
 
   // ─── Cross-Repo Search ───
 
+  // ─── Remote Federation ───
+
+  /**
+   * Register a remote oracle server for federated search.
+   */
+  registerRemote(url, options = {}) {
+    const { registerRemote } = require('../cloud/client');
+    return registerRemote(url, options);
+  }
+
+  /**
+   * Remove a remote oracle server.
+   */
+  removeRemote(urlOrName) {
+    const { removeRemote } = require('../cloud/client');
+    return removeRemote(urlOrName);
+  }
+
+  /**
+   * List registered remote oracle servers.
+   */
+  listRemotes() {
+    const { listRemotes } = require('../cloud/client');
+    return listRemotes();
+  }
+
+  /**
+   * Search patterns across all registered remote oracle servers.
+   * Queries each remote in parallel, merges and deduplicates.
+   */
+  async remoteSearch(query, options = {}) {
+    const { federatedRemoteSearch } = require('../cloud/client');
+    return federatedRemoteSearch(query, options);
+  }
+
+  /**
+   * Health check all remote oracle servers.
+   */
+  async checkRemoteHealth() {
+    const { checkRemoteHealth } = require('../cloud/client');
+    return checkRemoteHealth();
+  }
+
+  /**
+   * Full federated search: local + personal + community + repos + remotes.
+   * The ultimate query that searches everywhere.
+   */
+  async fullFederatedSearch(query, options = {}) {
+    const results = { local: [], remote: [], repos: [], errors: [] };
+
+    // Local federated (local + personal + community)
+    try {
+      const fed = this.federatedSearch({ description: query, language: options.language });
+      results.local = fed.patterns || [];
+    } catch { /* local search error */ }
+
+    // Cross-repo search (sibling directories)
+    try {
+      const repos = this.crossRepoSearch(query, { language: options.language, limit: options.limit || 20 });
+      results.repos = repos.results || [];
+    } catch { /* repo search error */ }
+
+    // Remote oracle search (HTTP federation)
+    try {
+      const remote = await this.remoteSearch(query, { language: options.language, limit: options.limit || 20 });
+      results.remote = remote.results || [];
+      results.errors = remote.errors || [];
+    } catch (err) {
+      results.errors.push({ remote: 'all', error: err.message });
+    }
+
+    // Merge and deduplicate
+    const seen = new Set();
+    const merged = [];
+    for (const list of [results.local, results.repos, results.remote]) {
+      for (const p of list) {
+        const key = `${p.name}:${p.language}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(p);
+      }
+    }
+
+    return {
+      results: merged.slice(0, options.limit || 50),
+      localCount: results.local.length,
+      repoCount: results.repos.length,
+      remoteCount: results.remote.length,
+      errors: results.errors,
+    };
+  }
+
   /**
    * Discover oracle stores in sibling repositories.
    */

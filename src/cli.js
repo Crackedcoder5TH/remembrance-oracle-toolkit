@@ -1644,9 +1644,12 @@ ${c.bold('Options:')}
       console.log(`${c.dim('Generating LLM-enhanced candidates...')}`);
       const result = oracle.llmGenerate({ maxPatterns: max });
       console.log(`${c.boldGreen('✓ Generation complete')} via ${c.cyan(result.method)}`);
-      console.log(`  ${c.dim('Generated:')} ${result.generated}  ${c.dim('Stored:')} ${result.stored}`);
+      console.log(`  ${c.dim('Generated:')} ${result.generated}  ${c.dim('Stored:')} ${result.stored}  ${c.dim('Promoted:')} ${result.promoted || 0}`);
       if (result.details?.length > 0 && result.details[0]?.name) {
-        result.details.forEach(d => console.log(`  ${c.cyan('→')} ${d.name} (${d.method})`));
+        result.details.forEach(d => {
+          const badge = d.promoted ? c.boldGreen('proven') : c.yellow('candidate');
+          console.log(`  ${c.cyan('→')} ${d.name} (${d.method}) [${badge}]`);
+        });
       }
       return;
     }

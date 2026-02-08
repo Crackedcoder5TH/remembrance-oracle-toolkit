@@ -270,15 +270,21 @@ describe('Oracle llmGenerate', () => {
     registerTestPattern(oracle);
   });
 
-  it('generates LLM-enhanced candidates', () => {
+  it('generates LLM-enhanced candidates with promotion', () => {
     const result = oracle.llmGenerate({ maxPatterns: 5, languages: ['python'] });
     assert.equal(result.method, 'claude');
     assert.ok(result.generated >= 0);
+    assert.ok('promoted' in result);
   });
 
   it('falls back to regex when Claude unavailable', () => {
     mockClaude._available = false;
     const result = oracle.llmGenerate({ maxPatterns: 5 });
     assert.equal(result.method, 'regex');
+  });
+
+  it('supports autoPromote=false to skip promotion', () => {
+    const result = oracle.llmGenerate({ maxPatterns: 5, languages: ['python'], autoPromote: false });
+    assert.equal(result.promoted, 0);
   });
 });

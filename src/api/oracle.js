@@ -1401,63 +1401,118 @@ class RemembranceOracle {
     const languages = options.languages || ['python', 'typescript'];
     const maxPatterns = options.maxPatterns || 10;
     const methods = options.methods || ['variant', 'alternative'];
+    const autoPromote = options.autoPromote !== false;
 
-    const report = { generated: 0, stored: 0, method: useClaude ? 'claude' : 'regex', details: [] };
+    const report = { generated: 0, stored: 0, promoted: 0, method: useClaude ? 'claude' : 'regex', details: [] };
 
-    const patterns = this.patterns.getAll()
-      .filter(p => (p.coherencyScore?.total || 0) >= 0.6)
-      .slice(0, maxPatterns);
-
-    for (const pattern of patterns) {
-      // Language variants
-      if (methods.includes('variant')) {
-        for (const lang of languages) {
-          if (lang === pattern.language) continue;
-
-          let candidate = null;
-          if (useClaude) {
-            candidate = claude.transpile(pattern, lang);
-          }
-
-          if (candidate) {
-            try {
-              this.patterns.storeCandidate({
-                ...candidate,
-                parentPattern: pattern.id,
-                generationMethod: 'claude-variant',
-              });
-              report.generated++;
-              report.stored++;
-              report.details.push({ name: candidate.name, method: 'claude-variant', language: lang });
-            } catch { /* duplicate or invalid */ }
-          }
-        }
-      }
-
-      // Alternatives
-      if (methods.includes('alternative') && useClaude) {
-        const alt = claude.generateAlternative(pattern);
-        if (alt) {
-          try {
-            this.patterns.storeCandidate({
-              ...alt,
-              parentPattern: pattern.id,
-              generationMethod: 'claude-alternative',
-            });
-            report.generated++;
-            report.stored++;
-            report.details.push({ name: alt.name, method: 'claude-alternative' });
-          } catch { /* duplicate or invalid */ }
-        }
-      }
-    }
-
-    // If Claude wasn't available, fall back to regular generation
+    // If Claude not available, fall back to regex generation
     if (!useClaude) {
       const regexReport = this.generateCandidates(options);
       report.generated = regexReport.generated || 0;
       report.stored = regexReport.stored || 0;
       report.details = [{ method: 'regex-fallback', ...regexReport }];
+      return report;
+    }
+
+    const patterns = this.patterns.getAll()
+      .filter(p => (p.coherencyScore?.total || 0) >= 0.6)
+      .sort((a, b) => (b.coherencyScore?.total || 0) - (a.coherencyScore?.total || 0))
+      .slice(0, maxPatterns);
+
+    for (const pattern of patterns) {
+      // Language variants with tests
+      if (methods.includes('variant')) {
+        for (const lang of languages) {
+          if (lang === pattern.language) continue;
+
+          const candidate = claude.transpile(pattern, lang);
+          if (!candidate || !candidate.code) continue;
+
+          // Generate tests for the variant
+          const testResult = claude.generateTests({ ...candidate, language: lang });
+          if (testResult && testResult.testCode) {
+            candidate.testCode = testResult.testCode;
+          }
+
+          // Try to register as proven pattern (full validation)
+          if (autoPromote && candidate.testCode) {
+            try {
+              const proven = this.registerPattern({
+                name: candidate.name,
+                code: candidate.code,
+                testCode: candidate.testCode,
+                language: lang,
+                description: candidate.description,
+                tags: candidate.tags || [],
+                patternType: candidate.patternType,
+              });
+              if (proven) {
+                report.generated++;
+                report.stored++;
+                report.promoted++;
+                report.details.push({ name: candidate.name, method: 'claude-variant', language: lang, promoted: true });
+                continue;
+              }
+            } catch { /* validation failed — store as candidate instead */ }
+          }
+
+          // Store as candidate (unproven)
+          try {
+            this.patterns.storeCandidate({
+              ...candidate,
+              parentPattern: pattern.id,
+              generationMethod: 'claude-variant',
+            });
+            report.generated++;
+            report.stored++;
+            report.details.push({ name: candidate.name, method: 'claude-variant', language: lang, promoted: false });
+          } catch { /* duplicate or invalid */ }
+        }
+      }
+
+      // Alternatives (different algorithm approach)
+      if (methods.includes('alternative')) {
+        const alt = claude.generateAlternative(pattern);
+        if (!alt || !alt.code) continue;
+
+        // Generate tests for the alternative
+        const testResult = claude.generateTests(alt);
+        if (testResult && testResult.testCode) {
+          alt.testCode = testResult.testCode;
+        }
+
+        if (autoPromote && alt.testCode) {
+          try {
+            const proven = this.registerPattern({
+              name: alt.name,
+              code: alt.code,
+              testCode: alt.testCode,
+              language: pattern.language,
+              description: alt.description,
+              tags: alt.tags || [],
+              patternType: alt.patternType,
+            });
+            if (proven) {
+              report.generated++;
+              report.stored++;
+              report.promoted++;
+              report.details.push({ name: alt.name, method: 'claude-alternative', promoted: true });
+              continue;
+            }
+          } catch { /* store as candidate instead */ }
+        }
+
+        try {
+          this.patterns.storeCandidate({
+            ...alt,
+            parentPattern: pattern.id,
+            generationMethod: 'claude-alternative',
+          });
+          report.generated++;
+          report.stored++;
+          report.details.push({ name: alt.name, method: 'claude-alternative', promoted: false });
+        } catch { /* duplicate or invalid */ }
+      }
     }
 
     return report;

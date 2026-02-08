@@ -223,7 +223,7 @@ const DEEP_SECURITY_PATTERNS = {
     { pattern: /new\s+Function\s*\(.*\+/, reason: 'Dynamic Function constructor with concatenation', severity: 'high' },
     { pattern: /setTimeout\s*\(\s*['"`]/, reason: 'setTimeout with string argument acts like eval', severity: 'medium' },
     { pattern: /setInterval\s*\(\s*['"`]/, reason: 'setInterval with string argument acts like eval', severity: 'medium' },
-    { pattern: /(?:password|secret|api_key|apikey|token)\s*[:=]\s*['"][^'"]{3,}/i, reason: 'Hardcoded secret/credential detected', severity: 'high' },
+    { pattern: /(?:password|secret|api_key|apikey|token)\s*[:=]\s*['"](?!(?:test|fake|mock|dummy|example|placeholder|xxx|secret|changeme|TODO)[^'"]*['"])[^'"]{6,}/i, reason: 'Hardcoded secret/credential detected', severity: 'high' },
     { pattern: /disable.*(?:csrf|xss|cors|auth|ssl|tls|verify)/i, reason: 'Security feature explicitly disabled', severity: 'high' },
     { pattern: /rejectUnauthorized\s*:\s*false/, reason: 'TLS certificate validation disabled', severity: 'high' },
     { pattern: /NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['"]0['"]/, reason: 'TLS validation disabled globally', severity: 'high' },
@@ -238,7 +238,7 @@ const DEEP_SECURITY_PATTERNS = {
     { pattern: /\bhashlib\.md5\b/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
     { pattern: /\brandom\.\w+\s*\(/, reason: 'random module is not cryptographically secure', severity: 'low' },
     { pattern: /\bassert\s+\w+.*#.*security/i, reason: 'assert statements are stripped in optimized mode', severity: 'medium' },
-    { pattern: /(?:password|secret|api_key|token)\s*=\s*['"][^'"]{3,}/i, reason: 'Hardcoded secret/credential detected', severity: 'high' },
+    { pattern: /(?:password|secret|api_key|token)\s*=\s*['"](?!(?:test|fake|mock|dummy|example|placeholder|xxx|secret|changeme|TODO)[^'"]*['"])[^'"]{6,}/i, reason: 'Hardcoded secret/credential detected', severity: 'high' },
   ],
   go: [
     { pattern: /\bexec\.Command\s*\(\s*["'](?:sh|bash)["']/, reason: 'Shell command execution', severity: 'high' },

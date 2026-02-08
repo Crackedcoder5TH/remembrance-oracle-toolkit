@@ -181,10 +181,16 @@ function applyCorrect(code, lang) {
 function scoreSimplicity(code) {
   const lines = code.split('\n').filter(l => l.trim());
   const totalChars = code.length;
-  // Penalize excessive nesting
+  // Strip strings/comments before counting nesting to avoid false depth
+  const stripped = code
+    .replace(/\/\/[^\n]*/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/"(?:\\.|[^"\\])*"/g, '""')
+    .replace(/'(?:\\.|[^'\\])*'/g, "''")
+    .replace(/`(?:\\[\s\S]|[^`])*`/g, '``');
   let maxNesting = 0;
   let currentNesting = 0;
-  for (const ch of code) {
+  for (const ch of stripped) {
     if (ch === '{' || ch === '(') currentNesting++;
     if (ch === '}' || ch === ')') currentNesting--;
     maxNesting = Math.max(maxNesting, currentNesting);
@@ -195,8 +201,8 @@ function scoreSimplicity(code) {
   // Penalize very long lines
   const longLines = lines.filter(l => l.length > 120).length;
   score -= longLines * 0.02;
-  // Penalize excessive line count relative to content
-  if (lines.length > 0 && totalChars / lines.length < 10) score -= 0.1; // Mostly empty
+  // Penalize excessive line count relative to content (skip for small files)
+  if (lines.length > 10 && totalChars / lines.length < 10) score -= 0.1;
   return Math.max(0, Math.min(1, score));
 }
 
@@ -214,8 +220,9 @@ function scoreReadability(code) {
   if (hasTabs && hasSpaces) score -= 0.2; // Mixed indentation
   // Check for meaningful naming (penalize single-char non-loop vars)
   const singleCharVars = (code.match(/\b(const|let|var)\s+[a-z]\s*[=,;]/g) || []).length;
-  const loopVars = (code.match(/\bfor\s*\(\s*(let|var|const)?\s*[ijk]\b/g) || []).length;
-  const badVars = singleCharVars - loopVars;
+  const loopVars = (code.match(/\bfor\s*[\s(].*\b(let|var|const)?\s*\w+\b/g) || []).length;
+  const destructureVars = (code.match(/\b(const|let|var)\s*[\[{].*[a-z]\s*[,}\]]/g) || []).length;
+  const badVars = Math.max(0, singleCharVars - loopVars - destructureVars);
   if (badVars > 0) score -= badVars * 0.05;
   // Reward presence of comments proportional to code
   const commentLines = lines.filter(l => l.trim().startsWith('//') || l.trim().startsWith('#') || l.trim().startsWith('*')).length;
@@ -280,7 +287,7 @@ function scoreCorrectness(code, lang) {
   const todos = (code.match(/\b(TODO|FIXME|HACK|XXX)\b/g) || []).length;
   score -= todos * 0.1;
   // Check for empty catch blocks (with or without error binding)
-  if (/catch\s*(?:\([^)]*\))?\s*\{\s*\}/.test(code)) score -= 0.1;
+  if (/catch\s*(?:\([^)]*\))?\s*\{\s*\}/.test(stripped)) score -= 0.1;
   return Math.max(0, Math.min(1, score));
 }
 

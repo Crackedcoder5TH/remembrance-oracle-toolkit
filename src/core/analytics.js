@@ -35,7 +35,7 @@ function computeOverview(patterns, entries) {
     ? patterns.reduce((sum, p) => sum + (p.coherencyScore?.total || 0), 0) / totalPatterns
     : 0;
   const languages = new Set(patterns.map(p => p.language).filter(Boolean));
-  const withTests = patterns.filter(p => p.tags?.includes('test-backed')).length;
+  const withTests = patterns.filter(p => p.testCode || p.tags?.includes('test-backed')).length;
   const highQuality = patterns.filter(p => (p.coherencyScore?.total || 0) >= 0.7).length;
 
   return {

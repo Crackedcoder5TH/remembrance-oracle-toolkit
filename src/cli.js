@@ -1538,6 +1538,24 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'context' || cmd === 'export-context') {
+    const format = args.format || process.argv[3] || 'markdown';
+    const maxPatterns = parseInt(args.limit) || 50;
+    const includeCode = args.code === 'true' || args.code === true;
+    const output = args.output || args.file;
+
+    const ctx = oracle.generateContext({ format, maxPatterns, includeCode });
+    if (output) {
+      const fs = require('fs');
+      fs.writeFileSync(output, ctx.prompt, 'utf-8');
+      console.log(c.boldGreen(`Context exported to ${c.bold(output)}`));
+      console.log(`  Format: ${format} | Patterns: ${ctx.stats.totalPatterns} | Languages: ${Object.keys(ctx.stats.byLanguage).join(', ')}`);
+    } else {
+      console.log(ctx.prompt);
+    }
+    return;
+  }
+
   if (cmd === 'security-audit') {
     const external = args.external === 'true' || args.external === true;
     const result = oracle.securityAudit({ runExternalTools: external });

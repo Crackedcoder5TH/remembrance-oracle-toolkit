@@ -429,6 +429,18 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_context',
+    description: 'Generate an exportable AI system prompt context. Describes available patterns, categories, stats, and usage instructions. Formats: markdown, json, text.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        format: { type: 'string', enum: ['markdown', 'json', 'text'], description: 'Output format (default: markdown)' },
+        maxPatterns: { type: 'number', description: 'Max patterns to include (default: 50)' },
+        includeCode: { type: 'boolean', description: 'Include source code in output (default: false)' },
+      },
+    },
+  },
+  {
     name: 'oracle_synthesize_tests',
     description: 'Synthesize test code for candidate patterns. Analyzes function signatures, translates parent tests, and generates edge-case assertions. Optionally auto-promotes candidates with new tests.',
     inputSchema: {
@@ -979,6 +991,14 @@ class MCPServer {
           result = { ...vtResult, generatedTest: genTest, verification };
           break;
         }
+
+        case 'oracle_context':
+          result = this.oracle.generateContext({
+            format: args.format || 'markdown',
+            maxPatterns: args.maxPatterns || 50,
+            includeCode: args.includeCode || false,
+          });
+          break;
 
         case 'oracle_synthesize_tests':
           result = this.oracle.synthesizeTests({

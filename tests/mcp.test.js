@@ -228,6 +228,7 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_full_search'));
     assert.ok(names.includes('oracle_reputation'));
     assert.ok(names.includes('oracle_verify_transpile'));
-    assert.equal(res.result.tools.length, 56);
+    assert.ok(names.includes('oracle_context'));
+    assert.equal(res.result.tools.length, 57);
   });
 });

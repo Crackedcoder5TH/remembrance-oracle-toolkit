@@ -1078,6 +1078,138 @@ class RemembranceOracle {
     return { synthesis: synthReport, promotion: promoteReport };
   }
 
+  // ─── AI Context Injection ───
+
+  /**
+   * Generate an exportable AI system prompt fragment.
+   * Gives any AI full context about available verified patterns,
+   * categories, capabilities, and how to use the oracle.
+   *
+   * @param {object} options - { format: 'markdown'|'json'|'text', maxPatterns, includeCode }
+   * @returns {{ prompt: string, format: string, stats: object }}
+   */
+  generateContext(options = {}) {
+    const { format = 'markdown', maxPatterns = 50, includeCode = false } = options;
+    const storeStats = this.stats();
+    const patternStats = this.patternStats();
+    const patterns = this.patterns.getAll();
+
+    // Categorize patterns by language and type
+    const byLanguage = {};
+    const byType = {};
+    const topPatterns = [];
+
+    for (const p of patterns) {
+      const lang = p.language || 'unknown';
+      byLanguage[lang] = (byLanguage[lang] || 0) + 1;
+      const type = p.patternType || 'utility';
+      byType[type] = (byType[type] || 0) + 1;
+    }
+
+    // Get top patterns by coherency
+    const sorted = [...patterns].sort((a, b) => {
+      const aScore = a.coherencyScore?.total ?? 0;
+      const bScore = b.coherencyScore?.total ?? 0;
+      return bScore - aScore;
+    });
+
+    for (let i = 0; i < Math.min(maxPatterns, sorted.length); i++) {
+      const p = sorted[i];
+      const entry = {
+        name: p.name,
+        language: p.language,
+        type: p.patternType || 'utility',
+        coherency: (p.coherencyScore?.total ?? 0).toFixed(3),
+        tags: p.tags || [],
+        description: p.description || '',
+      };
+      if (includeCode) entry.code = p.code;
+      topPatterns.push(entry);
+    }
+
+    const stats = {
+      totalPatterns: patterns.length,
+      byLanguage,
+      byType,
+      storeEntries: storeStats.total || storeStats.totalEntries || 0,
+    };
+
+    if (format === 'json') {
+      return {
+        prompt: JSON.stringify({ oracle: { stats, patterns: topPatterns, instructions: this._contextInstructions() } }, null, 2),
+        format: 'json',
+        stats,
+      };
+    }
+
+    if (format === 'text') {
+      const lines = [
+        `REMEMBRANCE ORACLE — ${patterns.length} verified patterns`,
+        '',
+        `Languages: ${Object.entries(byLanguage).map(([k, v]) => `${k}(${v})`).join(', ')}`,
+        `Types: ${Object.entries(byType).map(([k, v]) => `${k}(${v})`).join(', ')}`,
+        '',
+        'TOP PATTERNS:',
+        ...topPatterns.map(p => `  ${p.name} [${p.language}] coherency:${p.coherency} — ${p.description || p.tags.join(', ')}`),
+        '',
+        ...this._contextInstructions().split('\n'),
+      ];
+      return { prompt: lines.join('\n'), format: 'text', stats };
+    }
+
+    // Default: markdown
+    const md = [
+      `# Remembrance Oracle — Verified Code Memory`,
+      '',
+      `This project has **${patterns.length} verified, proven code patterns** available.`,
+      '',
+      `## Available Languages`,
+      ...Object.entries(byLanguage).map(([k, v]) => `- **${k}**: ${v} patterns`),
+      '',
+      `## Pattern Types`,
+      ...Object.entries(byType).map(([k, v]) => `- **${k}**: ${v} patterns`),
+      '',
+      `## Top Patterns (by coherency)`,
+      '',
+      '| Name | Language | Coherency | Tags |',
+      '|------|----------|-----------|------|',
+      ...topPatterns.slice(0, 30).map(p => `| ${p.name} | ${p.language} | ${p.coherency} | ${p.tags.slice(0, 3).join(', ')} |`),
+      '',
+      `## How to Use`,
+      '',
+      this._contextInstructions(),
+    ];
+
+    return { prompt: md.join('\n'), format: 'markdown', stats };
+  }
+
+  /**
+   * Export context as a CLAUDE.md-compatible fragment.
+   */
+  exportContext(options = {}) {
+    const ctx = this.generateContext(options);
+    return ctx.prompt;
+  }
+
+  _contextInstructions() {
+    return [
+      'Before writing any new function:',
+      '1. Search the oracle: `node src/cli.js search "<description>" --limit 3`',
+      '2. Resolve: `node src/cli.js resolve --description "<description>" --language <lang>`',
+      '3. If PULL: use the proven code as-is',
+      '4. If EVOLVE: adapt the matched code',
+      '5. If GENERATE: write new code',
+      '',
+      'After code passes tests:',
+      '1. Register: `node src/cli.js register --file <code.js> --test <test.js> --name <name>`',
+      '2. Feedback: `node src/cli.js feedback --id <id> --success`',
+      '',
+      'Available tools (MCP): oracle_search, oracle_resolve, oracle_submit, oracle_feedback,',
+      'oracle_transpile, oracle_verify_transpile, oracle_vote, oracle_reputation,',
+      'oracle_remote_search, oracle_full_search, and more.',
+    ].join('\n');
+  }
+
   // ─── Cross-Project Persistence ───
 
   /**

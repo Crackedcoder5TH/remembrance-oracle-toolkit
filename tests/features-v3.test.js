@@ -682,3 +682,95 @@ describe('Feature 8: Transpiler Verification & Test Generation', () => {
     assert.ok(cliSrc.includes('verifyTranspilation'));
   });
 });
+
+// ─── Feature 9: Exportable AI Context Injection ───
+
+describe('Feature 9: AI Context Injection', () => {
+  let oracle;
+
+  before(() => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ctx-test-'));
+    oracle = new RemembranceOracle({ storeDir: tmpDir });
+    oracle.registerPattern({
+      name: 'ctx-test-fn',
+      code: 'function ctxTest() { return 1; }',
+      testCode: 'if (ctxTest() !== 1) throw new Error("fail");',
+      language: 'javascript',
+      tags: ['test', 'context'],
+    });
+  });
+
+  it('generateContext returns markdown by default', () => {
+    const ctx = oracle.generateContext();
+    assert.equal(ctx.format, 'markdown');
+    assert.ok(ctx.prompt.includes('# Remembrance Oracle'));
+    assert.ok(ctx.prompt.includes('Verified Code Memory'));
+    assert.ok(ctx.prompt.includes('javascript'));
+    assert.equal(typeof ctx.stats.totalPatterns, 'number');
+    assert.ok(ctx.stats.totalPatterns >= 1);
+  });
+
+  it('generateContext returns JSON format', () => {
+    const ctx = oracle.generateContext({ format: 'json' });
+    assert.equal(ctx.format, 'json');
+    const parsed = JSON.parse(ctx.prompt);
+    assert.ok(parsed.oracle);
+    assert.ok(parsed.oracle.stats);
+    assert.ok(Array.isArray(parsed.oracle.patterns));
+    assert.ok(parsed.oracle.instructions);
+  });
+
+  it('generateContext returns text format', () => {
+    const ctx = oracle.generateContext({ format: 'text' });
+    assert.equal(ctx.format, 'text');
+    assert.ok(ctx.prompt.includes('REMEMBRANCE ORACLE'));
+    assert.ok(ctx.prompt.includes('TOP PATTERNS'));
+  });
+
+  it('generateContext includes pattern stats', () => {
+    const ctx = oracle.generateContext();
+    assert.ok(ctx.stats.byLanguage.javascript >= 1);
+    assert.ok(Object.keys(ctx.stats.byType).length >= 1);
+  });
+
+  it('generateContext limits patterns', () => {
+    const ctx = oracle.generateContext({ format: 'json', maxPatterns: 2 });
+    const parsed = JSON.parse(ctx.prompt);
+    assert.ok(parsed.oracle.patterns.length <= 2);
+  });
+
+  it('generateContext includes code when requested', () => {
+    const ctx = oracle.generateContext({ format: 'json', includeCode: true });
+    const parsed = JSON.parse(ctx.prompt);
+    if (parsed.oracle.patterns.length > 0) {
+      assert.ok(parsed.oracle.patterns[0].code);
+    }
+  });
+
+  it('exportContext returns string directly', () => {
+    const prompt = oracle.exportContext();
+    assert.equal(typeof prompt, 'string');
+    assert.ok(prompt.includes('Remembrance Oracle'));
+  });
+
+  it('context includes usage instructions', () => {
+    const ctx = oracle.generateContext();
+    assert.ok(ctx.prompt.includes('Search the oracle'));
+    assert.ok(ctx.prompt.includes('oracle_search'));
+    assert.ok(ctx.prompt.includes('PULL'));
+    assert.ok(ctx.prompt.includes('GENERATE'));
+  });
+
+  it('MCP has context tool', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    const names = TOOLS.map(t => t.name);
+    assert.ok(names.includes('oracle_context'));
+  });
+
+  it('CLI has context command', () => {
+    const cliSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    assert.ok(cliSrc.includes("cmd === 'context'"));
+    assert.ok(cliSrc.includes('generateContext'));
+    assert.ok(cliSrc.includes('export-context'));
+  });
+});

@@ -270,6 +270,8 @@ function semanticSimilarity(query, document) {
  * Returns ranked results with similarity scores.
  */
 function semanticSearch(items, query, options = {}) {
+  if (!Array.isArray(items)) return [];
+  if (query == null || typeof query !== 'string') return [];
   const { limit = 10, minScore = 0.05, language } = options;
 
   let filtered = items;

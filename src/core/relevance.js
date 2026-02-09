@@ -99,6 +99,8 @@ function computeRelevance(query, entry) {
 }
 
 function rankEntries(query, entries, options = {}) {
+  if (!Array.isArray(entries)) return [];
+  if (query == null || typeof query !== 'object') return [];
   const { limit = 10, minRelevance = 0.1, minCoherency = 0.0 } = options;
 
   const scored = entries

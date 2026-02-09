@@ -18,6 +18,9 @@ const { covenantCheck } = require('./covenant');
 const MIN_COHERENCY_THRESHOLD = 0.6;
 
 function validateCode(code, options = {}) {
+  if (code == null || typeof code !== 'string') {
+    return { valid: false, testPassed: null, testOutput: null, coherencyScore: null, covenantResult: null, errors: ['Invalid input: code must be a non-null string'] };
+  }
   const {
     language,
     testCode,

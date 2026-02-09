@@ -93,6 +93,9 @@ function scoreConsistency(code) {
 }
 
 function computeCoherencyScore(code, metadata = {}) {
+  if (code == null || typeof code !== 'string') {
+    return { total: 0, breakdown: { syntaxValid: 0, completeness: 0, consistency: 0, testProof: 0, historicalReliability: 0 } };
+  }
   const language = metadata.language || detectLanguage(code);
   const testProof = metadata.testPassed ? 1.0 : metadata.testPassed === false ? 0.0 : 0.5;
   const historicalReliability = metadata.historicalReliability ?? 0.5;

@@ -140,7 +140,9 @@ class PatternLibrary {
   }
 
   decide(request) {
-    const { description = '', tags = [], language, minCoherency } = request;
+    if (request == null || typeof request !== 'object') request = {};
+    const { description: rawDesc = '', tags = [], language, minCoherency } = request;
+    const description = String(rawDesc);
     const patterns = this.getAll();
 
     if (patterns.length === 0) {
@@ -479,6 +481,9 @@ class PatternLibrary {
    * spec: { name, components: [id|name, ...], code?, description?, tags? }
    */
   compose(spec) {
+    if (spec == null || typeof spec !== 'object') {
+      return { composed: false, reason: 'Invalid input: spec must be a non-null object' };
+    }
     const { name, components: componentIds = [], code: customCode, description, tags: extraTags = [] } = spec;
     if (!componentIds.length) {
       return { composed: false, reason: 'No components specified' };

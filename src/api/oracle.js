@@ -72,6 +72,10 @@ class RemembranceOracle {
    * Returns: { accepted, entry?, validation }
    */
   submit(code, metadata = {}) {
+    if (code == null || typeof code !== 'string') {
+      return { stored: false, error: 'Invalid input: code must be a non-null string' };
+    }
+    if (metadata == null || typeof metadata !== 'object') metadata = {};
     const {
       language,
       description = '',
@@ -176,6 +180,7 @@ class RemembranceOracle {
    * Inspect a specific entry in full detail.
    */
   inspect(id) {
+    if (id == null || typeof id !== 'string') return null;
     return this.store.get(id);
   }
 
@@ -265,6 +270,7 @@ class RemembranceOracle {
    * Also checks the verified history store and merges results.
    */
   resolve(request = {}) {
+    if (request == null || typeof request !== 'object') request = {};
     const {
       description = '',
       tags = [],
@@ -1652,6 +1658,7 @@ class RemembranceOracle {
    * even without keyword overlap, because the concept cluster activates.
    */
   search(term, options = {}) {
+    if (term == null || typeof term !== 'string') return [];
     const { limit = 10, language, mode = 'hybrid' } = options;
 
     // Gather all items from both sources
@@ -1778,6 +1785,7 @@ class RemembranceOracle {
    * @returns {object} { results, intent, rewrittenQuery, corrections, suggestions, totalMatches }
    */
   smartSearch(query, options = {}) {
+    if (query == null || typeof query !== 'string') return { results: [], intent: null };
     return intelligentSearch(this, query, options);
   }
 

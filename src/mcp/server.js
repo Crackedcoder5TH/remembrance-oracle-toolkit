@@ -372,6 +372,414 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_reflector_snapshot',
+    description: 'Take a coherence snapshot of the codebase. Evaluates all source files on 5 dimensions: simplicity, readability, security, unity, correctness.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Root directory to scan (default: current directory)' },
+        minCoherence: { type: 'number', description: 'Coherence threshold (default: 0.7)' },
+        maxFiles: { type: 'number', description: 'Max files to scan (default: 50)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_run',
+    description: 'Run the self-reflector: scan codebase, evaluate coherence, heal files below threshold via SERF, and optionally create a healing branch/PR.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Root directory to scan (default: current directory)' },
+        minCoherence: { type: 'number', description: 'Coherence threshold for healing (default: 0.7)' },
+        maxFiles: { type: 'number', description: 'Max files to scan (default: 50)' },
+        push: { type: 'boolean', description: 'Push healing branch to remote (default: false)' },
+        openPR: { type: 'boolean', description: 'Open a PR with healing changes (default: false)' },
+        autoMerge: { type: 'boolean', description: 'Auto-merge high-coherence PRs (default: false)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_evaluate',
+    description: 'Evaluate a single file\'s coherence across all SERF dimensions.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file to evaluate' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'oracle_reflector_heal',
+    description: 'Heal a single file via SERF reflection loop. Returns the healed code with coherence improvement and whisper explanation.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file to heal' },
+        maxLoops: { type: 'number', description: 'Max SERF loops (default: 3)' },
+        targetCoherence: { type: 'number', description: 'Target coherence (default: 0.95)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'oracle_reflector_status',
+    description: 'Get the self-reflector status: configuration, last run, and recent run history.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Root directory (default: current directory)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_config',
+    description: 'Get or update the self-reflector configuration (interval, thresholds, push/PR settings).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Root directory (default: current directory)' },
+        intervalHours: { type: 'number', description: 'Run interval in hours' },
+        minCoherence: { type: 'number', description: 'Minimum coherence threshold' },
+        autoMerge: { type: 'boolean', description: 'Auto-merge high-coherence PRs' },
+        push: { type: 'boolean', description: 'Push healing branches' },
+        openPR: { type: 'boolean', description: 'Open PRs with healing changes' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_multi',
+    description: 'Run the full multi-repo reflector: snapshot both repos, compare dimensions, detect drift, and unify healing across repos.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repos: { type: 'array', items: { type: 'string' }, description: 'Array of repo root paths (at least 2)' },
+        minCoherence: { type: 'number', description: 'Coherence threshold (default: 0.7)' },
+        maxFiles: { type: 'number', description: 'Max files per repo (default: 50)' },
+      },
+      required: ['repos'],
+    },
+  },
+  {
+    name: 'oracle_reflector_compare',
+    description: 'Compare coherence dimensions between two repos side-by-side. Shows which repo leads on each dimension and the divergence severity.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repos: { type: 'array', items: { type: 'string' }, description: 'Array of 2 repo root paths' },
+        maxFiles: { type: 'number', description: 'Max files per repo (default: 50)' },
+      },
+      required: ['repos'],
+    },
+  },
+  {
+    name: 'oracle_reflector_drift',
+    description: 'Detect pattern drift between two repos. Finds shared functions that have diverged, unique functions in each repo, and computes convergence scores.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        repos: { type: 'array', items: { type: 'string' }, description: 'Array of 2 repo root paths' },
+        maxFiles: { type: 'number', description: 'Max files per repo (default: 50)' },
+      },
+      required: ['repos'],
+    },
+  },
+  // ─── Safety & Revert Tools ───
+  {
+    name: 'oracle_reflector_dry_run',
+    description: 'Simulate healing without modifying files. Returns projected changes, coherence improvements, and what would happen if healing were applied.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        minCoherence: { type: 'number', description: 'Min coherence threshold (default: 0.7)' },
+        maxFiles: { type: 'number', description: 'Max files to scan (default: 50)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_safe_run',
+    description: 'Run the reflector with full safety protections: backup, coherence guard, approval gate, and auto-rollback if coherence drops.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        minCoherence: { type: 'number', description: 'Min coherence threshold (default: 0.7)' },
+        requireApproval: { type: 'boolean', description: 'Require manual approval before merge (default: false)' },
+        autoRollback: { type: 'boolean', description: 'Auto-rollback on coherence drop (default: true)' },
+        dryRun: { type: 'boolean', description: 'Preview mode — no changes applied (default: false)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_rollback',
+    description: 'Rollback to a previous backup state. Reverts healing changes and verifies coherence after restore.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        backupId: { type: 'string', description: 'Specific backup ID to rollback to (default: latest)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_backups',
+    description: 'List all available backup manifests for the repository. Shows backup IDs, timestamps, and strategies.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+      },
+    },
+  },
+  // ─── Deep Scoring Engine Tools ───
+  {
+    name: 'oracle_reflector_deep_score',
+    description: 'Deep coherence analysis of a file: cyclomatic complexity, comment density, security scan, nesting depth, code quality metrics, and aggregate weighted score.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Source code to analyze' },
+        language: { type: 'string', description: 'Language (auto-detected if not provided)' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'oracle_reflector_repo_score',
+    description: 'Compute aggregate repo-level deep coherence scores: worst/best files, security findings, dimension averages, health status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        maxFiles: { type: 'number', description: 'Max files to scan (default: 50)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_security_scan',
+    description: 'Scan code for security anti-patterns: hardcoded secrets, eval, injection risks, XSS, prototype pollution, and more.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Source code to scan' },
+        language: { type: 'string', description: 'Language (auto-detected if not provided)' },
+      },
+      required: ['code'],
+    },
+  },
+  // ─── Central Configuration Tools ───
+  {
+    name: 'oracle_reflector_central_config',
+    description: 'View the central reflector configuration with all sections: thresholds, scanning, healing, safety, scoring weights, schedule, github, logging.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_central_set',
+    description: 'Set a specific config value using dot-notation. Example: key="thresholds.minCoherence", value=0.8',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        key: { type: 'string', description: 'Dot-notation key (e.g. thresholds.minCoherence)' },
+        value: { description: 'Value to set (number, boolean, string, or array)' },
+      },
+      required: ['key', 'value'],
+    },
+  },
+  // ─── History & Logging Tools ───
+  {
+    name: 'oracle_reflector_history',
+    description: 'View run history with before/after coherence scores, changes applied, and whisper text for each run.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        last: { type: 'number', description: 'Number of recent runs to return (default: 10)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_trend',
+    description: 'Generate an ASCII trend chart of coherence scores over time. Shows visual progression of codebase health.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        last: { type: 'number', description: 'Number of recent runs to chart (default: 30)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_stats',
+    description: 'Compute statistics from run history: total runs, avg coherence, trend direction, best/worst runs, total files healed.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_orchestrate',
+    description: 'Run the full orchestrated workflow: config → snapshot → deep-score → heal → safety → whisper → PR → history. Returns per-step timing and status.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+        dryRun: { type: 'boolean', description: 'Simulate without changes (default: false)' },
+        push: { type: 'boolean', description: 'Push healing branch' },
+        openPR: { type: 'boolean', description: 'Open a PR' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_coherence',
+    description: 'Compute real coherence score for a file using the weighted formula: 0.25*syntax + 0.20*readability + 0.15*security + 0.30*test_proof + 0.10*reliability.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Absolute path to source file' },
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'oracle_reflector_repo_coherence',
+    description: 'Compute repo-level coherence with dimensional breakdown (syntax, readability, security, test proof, reliability).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repo root (default: cwd)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_reflector_format_pr',
+    description: 'Generate rich markdown PR body from a reflector report: coherence delta, top 3 healed changes, whisper, deep score, security findings, dimensional breakdown, approval prompt.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        report: { type: 'object', description: 'Reflector/orchestration report object' },
+      },
+      required: ['report'],
+    },
+  },
+  {
+    name: 'oracle_reflector_auto_commit',
+    description: 'Run the auto-commit safety pipeline: create backup branch, apply healed files, run build/test, merge only if tests pass. Returns pipeline result with test output.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        healedFiles: { type: 'array', description: 'Array of { path, code } healed files to commit' },
+        testCommand: { type: 'string', description: 'Test command to run (default: npm test)' },
+        buildCommand: { type: 'string', description: 'Build command to run before tests' },
+        dryRun: { type: 'boolean', description: 'Simulate without writing changes' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_pattern_hook',
+    description: 'Query the pattern library for similar proven patterns before healing a file. Returns matched patterns, healing context, and suggested strategy.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        filePath: { type: 'string', description: 'Path to the file to look up patterns for' },
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        maxResults: { type: 'number', description: 'Max patterns to return (default: 3)' },
+      },
+      required: ['filePath'],
+    },
+  },
+  {
+    name: 'oracle_reflector_pattern_hook_stats',
+    description: 'Get statistics on pattern-guided healings: how many healings used pattern library matches, average improvement guided vs unguided, top patterns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_resolve_config',
+    description: 'Resolve the full reflector configuration by layering defaults, mode preset, saved config, and environment overrides. Returns the fully merged config.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        mode: { type: 'string', description: 'Preset mode: strict, balanced, or relaxed' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_set_mode',
+    description: 'Set the reflector mode for a repo (strict, balanced, relaxed). Persists to central config and applies preset thresholds.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        mode: { type: 'string', description: 'Mode name: strict, balanced, or relaxed' },
+      },
+      required: ['rootDir', 'mode'],
+    },
+  },
+  {
+    name: 'oracle_reflector_list_modes',
+    description: 'List all available reflector preset modes with descriptions and threshold settings.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'oracle_reflector_notify',
+    description: 'Send a Discord/Slack notification with healing results (coherence delta, files healed, whisper, PR link). Auto-detects platform from webhook URL.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+        webhookUrl: { type: 'string', description: 'Discord or Slack webhook URL' },
+        report: { type: 'object', description: 'Reflector report to format into notification' },
+        repoName: { type: 'string', description: 'Repository name for the notification title' },
+        prUrl: { type: 'string', description: 'PR URL to include in the notification' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_notification_stats',
+    description: 'Get notification delivery statistics: total sent, success rate, last notification.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
+    name: 'oracle_reflector_dashboard_data',
+    description: 'Get all reflector dashboard data: coherence trend, recent healing runs, auto-commit stats, notification stats, current config mode.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rootDir: { type: 'string', description: 'Repository root directory' },
+      },
+      required: ['rootDir'],
+    },
+  },
+  {
     name: 'oracle_llm_status',
     description: 'Check if Claude LLM engine is available for AI-powered operations.',
     inputSchema: { type: 'object', properties: {} },
@@ -769,6 +1177,342 @@ class MCPServer {
             dryRun: args.dryRun || false,
           });
           break;
+
+        case 'oracle_reflector_snapshot': {
+          const { takeSnapshot } = require('../reflector/engine');
+          result = takeSnapshot(args.path || process.cwd(), {
+            minCoherence: args.minCoherence || 0.7,
+            maxFilesPerRun: args.maxFiles || 50,
+          });
+          // Trim file-level code from response
+          result.files = result.files.map(f => ({
+            path: f.relativePath || f.path,
+            language: f.language,
+            coherence: f.coherence,
+            dimensions: f.dimensions,
+            covenantSealed: f.covenantSealed,
+            error: f.error,
+          }));
+          break;
+        }
+
+        case 'oracle_reflector_run': {
+          const { runReflector } = require('../reflector/scheduler');
+          result = runReflector(args.path || process.cwd(), {
+            minCoherence: args.minCoherence,
+            maxFilesPerRun: args.maxFiles,
+            push: args.push || false,
+            openPR: args.openPR || false,
+            autoMerge: args.autoMerge || false,
+          });
+          break;
+        }
+
+        case 'oracle_reflector_evaluate': {
+          const { evaluateFile } = require('../reflector/engine');
+          result = evaluateFile(args.filePath);
+          break;
+        }
+
+        case 'oracle_reflector_heal': {
+          const { healFile } = require('../reflector/engine');
+          result = healFile(args.filePath, {
+            maxSerfLoops: args.maxLoops || 3,
+            targetCoherence: args.targetCoherence || 0.95,
+          });
+          // Include healed code in response
+          if (result.healed) {
+            result.healedCode = result.healed.code;
+          }
+          // Remove full code objects to keep response size manageable
+          delete result.original;
+          delete result.healed;
+          break;
+        }
+
+        case 'oracle_reflector_status': {
+          const { getStatus } = require('../reflector/scheduler');
+          result = getStatus(args.path || process.cwd());
+          break;
+        }
+
+        case 'oracle_reflector_config': {
+          const { loadConfig, saveConfig } = require('../reflector/scheduler');
+          const rootDir = args.path || process.cwd();
+          const cfg = loadConfig(rootDir);
+          const updatable = ['intervalHours', 'minCoherence', 'autoMerge', 'push', 'openPR'];
+          let updated = false;
+          for (const key of updatable) {
+            if (args[key] !== undefined) {
+              cfg[key] = args[key];
+              updated = true;
+            }
+          }
+          if (updated) saveConfig(rootDir, cfg);
+          result = cfg;
+          break;
+        }
+
+        case 'oracle_reflector_multi': {
+          const { multiReflect } = require('../reflector/multi');
+          if (!args.repos || args.repos.length < 2) throw new Error('Need at least 2 repo paths');
+          result = multiReflect(args.repos, {
+            minCoherence: args.minCoherence,
+            maxFilesPerRun: args.maxFiles,
+          });
+          // Trim large fields from response
+          if (result.drift && result.drift.details) {
+            result.drift.details.diverged = result.drift.details.diverged.slice(0, 20);
+            result.drift.details.identical = result.drift.details.identical.slice(0, 10);
+            result.drift.details.uniqueA = result.drift.details.uniqueA.slice(0, 10);
+            result.drift.details.uniqueB = result.drift.details.uniqueB.slice(0, 10);
+          }
+          break;
+        }
+
+        case 'oracle_reflector_compare': {
+          const { multiSnapshot, compareDimensions } = require('../reflector/multi');
+          if (!args.repos || args.repos.length < 2) throw new Error('Need at least 2 repo paths');
+          const snap = multiSnapshot(args.repos, { maxFilesPerRun: args.maxFiles });
+          result = compareDimensions(snap);
+          break;
+        }
+
+        case 'oracle_reflector_drift': {
+          const { detectDrift } = require('../reflector/multi');
+          if (!args.repos || args.repos.length < 2) throw new Error('Need at least 2 repo paths');
+          result = detectDrift(args.repos, { maxFilesPerRun: args.maxFiles });
+          // Trim details
+          if (result.details) {
+            result.details.diverged = result.details.diverged.slice(0, 20);
+            result.details.identical = result.details.identical.slice(0, 10);
+            result.details.uniqueA = result.details.uniqueA.slice(0, 10);
+            result.details.uniqueB = result.details.uniqueB.slice(0, 10);
+          }
+          break;
+        }
+
+        case 'oracle_reflector_dry_run': {
+          const { dryRun } = require('../reflector/safety');
+          const dir = args.rootDir || process.cwd();
+          result = dryRun(dir, {
+            minCoherence: args.minCoherence,
+            maxFilesPerRun: args.maxFiles,
+          });
+          break;
+        }
+
+        case 'oracle_reflector_safe_run': {
+          const { safeReflect } = require('../reflector/safety');
+          const dir = args.rootDir || process.cwd();
+          result = safeReflect(dir, {
+            minCoherence: args.minCoherence,
+            requireApproval: args.requireApproval,
+            autoRollback: args.autoRollback !== false,
+            dryRunMode: args.dryRun === true,
+          });
+          // Strip healed file code to avoid huge responses
+          if (result.healedFiles) {
+            result.healedFiles = result.healedFiles.map(f => ({
+              path: f.path,
+              size: f.code ? f.code.length : 0,
+            }));
+          }
+          break;
+        }
+
+        case 'oracle_reflector_rollback': {
+          const { rollback: doRollback } = require('../reflector/safety');
+          const dir = args.rootDir || process.cwd();
+          result = doRollback(dir, { backupId: args.backupId, verify: true });
+          break;
+        }
+
+        case 'oracle_reflector_backups': {
+          const { loadBackupManifests } = require('../reflector/safety');
+          const dir = args.rootDir || process.cwd();
+          result = loadBackupManifests(dir);
+          break;
+        }
+
+        case 'oracle_reflector_deep_score': {
+          const { deepScore } = require('../reflector/scoring');
+          result = deepScore(args.code, { language: args.language });
+          break;
+        }
+
+        case 'oracle_reflector_repo_score': {
+          const { repoScore } = require('../reflector/scoring');
+          const dir = args.rootDir || process.cwd();
+          result = repoScore(dir, { maxFilesPerRun: args.maxFiles });
+          // Trim individual file details to avoid huge responses
+          if (result.files) {
+            result.files = result.files.map(f => ({
+              path: f.path,
+              aggregate: f.aggregate,
+              serfCoherence: f.serfCoherence,
+              security: { score: f.security.score, riskLevel: f.security.riskLevel, totalFindings: f.security.findings.length },
+            }));
+          }
+          break;
+        }
+
+        case 'oracle_reflector_security_scan': {
+          const { securityScan: doScan } = require('../reflector/scoring');
+          const { detectLanguage: detect } = require('../core/coherency');
+          const lang = args.language || detect(args.code);
+          result = doScan(args.code, lang);
+          break;
+        }
+
+        case 'oracle_reflector_central_config': {
+          const { loadCentralConfig, validateConfig } = require('../reflector/config');
+          const dir = args.rootDir || process.cwd();
+          const config = loadCentralConfig(dir);
+          const validation = validateConfig(config);
+          result = { config, validation };
+          break;
+        }
+
+        case 'oracle_reflector_central_set': {
+          const { setCentralValue, validateConfig } = require('../reflector/config');
+          const dir = args.rootDir || process.cwd();
+          const config = setCentralValue(dir, args.key, args.value);
+          const validation = validateConfig(config);
+          result = { key: args.key, value: args.value, valid: validation.valid, issues: validation.issues };
+          break;
+        }
+
+        case 'oracle_reflector_history': {
+          const { loadHistoryV2 } = require('../reflector/history');
+          const dir = args.rootDir || process.cwd();
+          const history = loadHistoryV2(dir);
+          const last = args.last || 10;
+          result = { runs: history.runs.slice(-last), total: history.runs.length };
+          break;
+        }
+
+        case 'oracle_reflector_trend': {
+          const { generateTrendChart } = require('../reflector/history');
+          const dir = args.rootDir || process.cwd();
+          result = { chart: generateTrendChart(dir, { last: args.last || 30 }) };
+          break;
+        }
+
+        case 'oracle_reflector_stats': {
+          const { computeStats } = require('../reflector/history');
+          const dir = args.rootDir || process.cwd();
+          result = computeStats(dir);
+          break;
+        }
+
+        case 'oracle_reflector_orchestrate': {
+          const { orchestrate } = require('../reflector/orchestrator');
+          const dir = args.rootDir || process.cwd();
+          result = orchestrate(dir, {
+            dryRun: args.dryRun || false,
+            push: args.push || false,
+            openPR: args.openPR || false,
+          });
+          break;
+        }
+
+        case 'oracle_reflector_coherence': {
+          const { computeCoherence } = require('../reflector/coherenceScorer');
+          const dir = args.rootDir || process.cwd();
+          result = computeCoherence(args.filePath, { rootDir: dir });
+          break;
+        }
+
+        case 'oracle_reflector_repo_coherence': {
+          const { computeRepoCoherence } = require('../reflector/coherenceScorer');
+          const dir = args.rootDir || process.cwd();
+          result = computeRepoCoherence(dir);
+          break;
+        }
+
+        case 'oracle_reflector_format_pr': {
+          const { formatPRComment } = require('../reflector/prFormatter');
+          result = { markdown: formatPRComment(args.report || {}) };
+          break;
+        }
+
+        case 'oracle_reflector_auto_commit': {
+          const { safeAutoCommit, autoCommitStats } = require('../reflector/autoCommit');
+          if (args.healedFiles) {
+            result = safeAutoCommit(args.rootDir, args.healedFiles, {
+              testCommand: args.testCommand,
+              buildCommand: args.buildCommand,
+              dryRun: args.dryRun,
+            });
+          } else {
+            result = autoCommitStats(args.rootDir);
+          }
+          break;
+        }
+
+        case 'oracle_reflector_pattern_hook': {
+          const { hookBeforeHeal } = require('../reflector/patternHook');
+          result = hookBeforeHeal(args.filePath, {
+            rootDir: args.rootDir,
+            maxResults: args.maxResults,
+          });
+          break;
+        }
+
+        case 'oracle_reflector_pattern_hook_stats': {
+          const { patternHookStats } = require('../reflector/patternHook');
+          result = patternHookStats(args.rootDir);
+          break;
+        }
+
+        case 'oracle_reflector_resolve_config': {
+          const { resolveConfig } = require('../reflector/modes');
+          result = resolveConfig(args.rootDir, { mode: args.mode });
+          break;
+        }
+
+        case 'oracle_reflector_set_mode': {
+          const { setMode } = require('../reflector/modes');
+          result = setMode(args.rootDir, args.mode);
+          break;
+        }
+
+        case 'oracle_reflector_list_modes': {
+          const { listModes } = require('../reflector/modes');
+          result = listModes();
+          break;
+        }
+
+        case 'oracle_reflector_notify': {
+          const { formatDiscordEmbed, formatSlackBlocks, detectPlatform, notificationStats } = require('../reflector/notifications');
+          if (args.report) {
+            const platform = detectPlatform(args.webhookUrl || '');
+            const repoName = args.repoName || 'unknown';
+            const opts = { repoName, prUrl: args.prUrl };
+            result = {
+              platform,
+              discord: formatDiscordEmbed(args.report, opts),
+              slack: formatSlackBlocks(args.report, opts),
+              note: args.webhookUrl ? 'Use the notify() function directly to send. MCP returns formatted payloads.' : 'No webhookUrl provided. Returning formatted payloads for both platforms.',
+            };
+          } else {
+            result = notificationStats(args.rootDir);
+          }
+          break;
+        }
+
+        case 'oracle_reflector_notification_stats': {
+          const { notificationStats } = require('../reflector/notifications');
+          result = notificationStats(args.rootDir);
+          break;
+        }
+
+        case 'oracle_reflector_dashboard_data': {
+          const { gatherDashboardData } = require('../reflector/dashboard');
+          result = gatherDashboardData(args.rootDir);
+          break;
+        }
 
         case 'oracle_llm_status':
           result = { available: this.oracle.isLLMAvailable(), engine: 'claude-bridge' };

@@ -37,9 +37,11 @@ describe('computeRelevance', () => {
   it('scores high for matching tags and language', () => {
     const query = { description: 'sort array', tags: ['sort'], language: 'javascript' };
     const entry = {
+      name: 'sort-array',
       description: 'Sort array ascending',
       tags: ['sort', 'array'],
       language: 'javascript',
+      code: 'function sortArray(arr) { return [...arr].sort((a, b) => a - b); }',
       coherencyScore: { total: 0.9 },
     };
     const result = computeRelevance(query, entry);

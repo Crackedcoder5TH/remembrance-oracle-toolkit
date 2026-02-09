@@ -19,6 +19,7 @@ const { PatternLibrary } = require('../patterns/library');
 const { PatternRecycler } = require('../core/recycler');
 const { DebugOracle } = require('../core/debug-oracle');
 const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
+const { ClaudeBridge } = require('../core/claude-bridge');
 
 class RemembranceOracle {
   constructor(options = {}) {
@@ -39,6 +40,14 @@ class RemembranceOracle {
 
     // Debug Oracle — exponential debugging intelligence
     this._debugOracle = null; // Lazy-initialized on first debug call
+
+    // Claude Bridge — native LLM engine (lazy-initialized)
+    this._claude = options.claude || null;
+    this._claudeOptions = {
+      timeout: options.claudeTimeout || 60000,
+      model: options.claudeModel || null,
+      verbose: options.verbose || false,
+    };
 
     // Auto-seed on first run if library is empty
     if (options.autoSeed !== false && this.patterns.getAll().length === 0) {
@@ -379,6 +388,114 @@ class RemembranceOracle {
    */
   retirePatterns(minScore) {
     return this.patterns.retire(minScore);
+  }
+
+  /**
+   * Deep clean the pattern library: remove duplicates, trivial stubs,
+   * and low-substance harvested patterns.
+   * @param {object} options
+   * @param {number} options.minCodeLength - Minimum code length to keep (default 35)
+   * @param {number} options.minNameLength - Minimum name length to keep (default 3)
+   * @param {boolean} options.removeDuplicates - Remove exact duplicate code (default true)
+   * @param {boolean} options.removeStubs - Remove trivial stubs like function f() { return 1; } (default true)
+   * @param {boolean} options.dryRun - Preview changes without deleting (default false)
+   * @returns {{ removed: number, duplicates: number, stubs: number, tooShort: number, remaining: number, details: Array }}
+   */
+  deepClean(options = {}) {
+    const {
+      minCodeLength = 35,
+      minNameLength = 3,
+      removeDuplicates = true,
+      removeStubs = true,
+      dryRun = false,
+    } = options;
+
+    const all = this.patterns.getAll();
+    const toRemove = new Map(); // id → reason
+
+    // 1. Find exact duplicates (keep highest coherency version)
+    if (removeDuplicates) {
+      const byCode = new Map();
+      for (const p of all) {
+        const key = (p.code || '').trim();
+        if (!key) continue;
+        if (!byCode.has(key)) {
+          byCode.set(key, []);
+        }
+        byCode.get(key).push(p);
+      }
+      for (const [, group] of byCode) {
+        if (group.length <= 1) continue;
+        // Sort by coherency desc, keep first
+        group.sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0));
+        for (let i = 1; i < group.length; i++) {
+          toRemove.set(group[i].id, 'duplicate');
+        }
+      }
+    }
+
+    // 2. Find trivial stubs (empty functions, test helpers, one-expression returns under 50 chars)
+    if (removeStubs) {
+      for (const p of all) {
+        if (toRemove.has(p.id)) continue;
+        const code = (p.code || '').trim();
+        if (!code) continue;
+
+        // Empty function bodies: function f() {} or function f() { /* comment */ }
+        if (/^(?:function|const)\s+\w+[^{]*\{\s*(?:\/[/*][^}]*)?\}$/.test(code)) {
+          toRemove.set(p.id, 'stub');
+          continue;
+        }
+
+        // Only flag short code (<50 chars) as stubs
+        if (code.length < 50) {
+          // One-liner returns: function f() { return 1; } or function add(a,b) { return a + b; }
+          const isOneLiner = /^(?:function|const)\s+\w+[^{]*\{[^{}]*\}$/.test(code);
+          // Test helper names
+          const isTestHelper = /^(?:function|const)\s+(?:def-?[Tt]est|hover-?[Tt]est|safeCode|broken|only|hidden|dry|dup|evTest|mcpTest|jsFunc|realFunction|testFunc)\b/.test(code);
+          if (isOneLiner || isTestHelper) {
+            toRemove.set(p.id, 'stub');
+          }
+        }
+      }
+    }
+
+    // 3. Find too-short code from harvested patterns
+    for (const p of all) {
+      if (toRemove.has(p.id)) continue;
+      const code = (p.code || '').trim();
+      const name = (p.name || '');
+      const tags = p.tags || [];
+      const isHarvested = tags.includes('harvested');
+
+      if (isHarvested && code.length < minCodeLength && name.length < minNameLength) {
+        toRemove.set(p.id, 'too-short');
+      }
+    }
+
+    // Execute deletions
+    let duplicates = 0, stubs = 0, tooShort = 0;
+    const details = [];
+    for (const [id, reason] of toRemove) {
+      const p = all.find(x => x.id === id);
+      details.push({ id, name: p?.name, reason, code: (p?.code || '').slice(0, 60) });
+      if (reason === 'duplicate') duplicates++;
+      else if (reason === 'stub') stubs++;
+      else tooShort++;
+
+      if (!dryRun) {
+        try {
+          const db = this.patterns._sqlite?.db || this.store?.db;
+          if (db) {
+            db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
+          }
+        } catch { /* skip if store type doesn't support direct delete */ }
+      }
+    }
+
+    const remaining = all.length - toRemove.size;
+    this._emit({ type: 'deep_clean', removed: toRemove.size, duplicates, stubs, tooShort, remaining, dryRun });
+    return { removed: toRemove.size, duplicates, stubs, tooShort, remaining, details };
   }
 
   /**
@@ -1035,6 +1152,370 @@ class RemembranceOracle {
   debugGlobalStats() {
     const { debugGlobalStats } = require('../core/persistence');
     return debugGlobalStats();
+  }
+
+  // ─── Claude LLM Engine ───
+
+  /**
+   * Get or create the Claude bridge (lazy-initialized).
+   */
+  _getClaude() {
+    if (!this._claude) {
+      this._claude = new ClaudeBridge(this._claudeOptions);
+    }
+    return this._claude;
+  }
+
+  /**
+   * Check if Claude LLM is available.
+   */
+  isLLMAvailable() {
+    return this._getClaude().isAvailable();
+  }
+
+  /**
+   * Transpile a pattern to another language using Claude.
+   * Falls back to AST transpiler if Claude is unavailable.
+   *
+   * @param {string} patternId - ID of the pattern to transpile
+   * @param {string} targetLanguage - Target language
+   * @returns {object} { success, result, method }
+   */
+  llmTranspile(patternId, targetLanguage) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const result = claude.transpile(pattern, targetLanguage);
+      if (result) {
+        return { success: true, result, method: 'claude' };
+      }
+    }
+
+    // Fallback to AST transpiler
+    try {
+      const { transpile: astTranspile } = require('../core/ast-transpiler');
+      const astResult = astTranspile(pattern.code, targetLanguage);
+      if (astResult.success) {
+        return {
+          success: true,
+          result: {
+            name: `${pattern.name}-${targetLanguage.slice(0, 2)}`,
+            code: astResult.code,
+            language: targetLanguage,
+            description: `${pattern.description || pattern.name} (${targetLanguage} via AST)`,
+            tags: [...(pattern.tags || []), 'variant', targetLanguage, 'ast-generated'],
+          },
+          method: 'ast',
+        };
+      }
+    } catch { /* AST transpiler not available */ }
+
+    // Final fallback to regex
+    return { success: false, error: 'No transpilation method available', method: 'none' };
+  }
+
+  /**
+   * Generate tests for a pattern using Claude.
+   * Falls back to static test synthesis if unavailable.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, testCode, method }
+   */
+  llmGenerateTests(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) {
+      // Check candidates too
+      const candidates = this.candidates();
+      const candidate = candidates.find(c => c.id === patternId);
+      if (!candidate) return { success: false, error: `Pattern ${patternId} not found` };
+      return this._generateTestsFor(candidate);
+    }
+    return this._generateTestsFor(pattern);
+  }
+
+  _generateTestsFor(pattern) {
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const testCode = claude.generateTests(pattern);
+      if (testCode) {
+        return { success: true, testCode, method: 'claude' };
+      }
+    }
+
+    // Fallback to static test synthesis
+    try {
+      const { synthesizeForCandidates } = require('../core/test-synth');
+      return { success: false, error: 'Claude unavailable; use synthesizeTests() for static synthesis', method: 'none' };
+    } catch {
+      return { success: false, error: 'No test generation method available', method: 'none' };
+    }
+  }
+
+  /**
+   * Refine a pattern using Claude to improve weak coherency dimensions.
+   * Falls back to SERF reflection if unavailable.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, refinedCode, method }
+   */
+  llmRefine(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const refined = claude.refine(pattern, pattern.coherencyScore);
+      if (refined) {
+        return { success: true, refinedCode: refined, method: 'claude' };
+      }
+    }
+
+    // Fallback to SERF reflection
+    try {
+      const { reflectionLoop } = require('../core/reflection');
+      const result = reflectionLoop(pattern.code, {
+        language: pattern.language,
+        maxLoops: 3,
+        targetCoherence: 0.9,
+      });
+      if (result.improved) {
+        return { success: true, refinedCode: result.code, method: 'serf' };
+      }
+    } catch { /* reflection not available */ }
+
+    return { success: false, error: 'No refinement method available', method: 'none' };
+  }
+
+  /**
+   * Generate an alternative implementation using Claude.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, alternative, method }
+   */
+  llmAlternative(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const alt = claude.generateAlternative(pattern);
+      if (alt) {
+        return { success: true, alternative: alt, method: 'claude' };
+      }
+    }
+
+    return { success: false, error: 'Claude unavailable', method: 'none' };
+  }
+
+  /**
+   * Generate documentation for a pattern using Claude.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, docs, method }
+   */
+  llmDocs(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const docs = claude.generateDocs(pattern);
+      if (docs) {
+        return { success: true, docs, method: 'claude' };
+      }
+    }
+
+    return { success: false, error: 'Claude unavailable', method: 'none' };
+  }
+
+  /**
+   * Analyze code quality using Claude.
+   *
+   * @param {string} code - Code to analyze
+   * @param {string} language - Language
+   * @returns {object} { success, analysis, method }
+   */
+  llmAnalyze(code, language) {
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const analysis = claude.analyze(code, language);
+      if (analysis) {
+        return { success: true, analysis, method: 'claude' };
+      }
+    }
+
+    // Fallback to coherency scoring
+    const coherency = computeCoherencyScore(code, { language });
+    return {
+      success: true,
+      analysis: {
+        issues: [],
+        suggestions: [],
+        complexity: coherency.total > 0.7 ? 'low' : coherency.total > 0.4 ? 'medium' : 'high',
+        quality: coherency.total,
+        coherencyBreakdown: coherency,
+      },
+      method: 'coherency',
+    };
+  }
+
+  /**
+   * Explain a pattern in plain language using Claude.
+   *
+   * @param {string} patternId - Pattern ID
+   * @returns {object} { success, explanation, method }
+   */
+  llmExplain(patternId) {
+    const pattern = this.patterns.getAll().find(p => p.id === patternId);
+    if (!pattern) return { success: false, error: `Pattern ${patternId} not found` };
+
+    const claude = this._getClaude();
+    if (claude.isAvailable()) {
+      const explanation = claude.explain(pattern.code, pattern.language);
+      if (explanation) {
+        return { success: true, explanation, method: 'claude' };
+      }
+    }
+
+    // Fallback: use description
+    return {
+      success: true,
+      explanation: pattern.description || `${pattern.name}: ${pattern.patternType} pattern in ${pattern.language}`,
+      method: 'metadata',
+    };
+  }
+
+  /**
+   * LLM-enhanced candidate generation.
+   * Uses Claude to generate higher-quality variants and alternatives.
+   * Falls back to regex/SERF when Claude is unavailable.
+   *
+   * @param {object} options - { maxPatterns, languages, methods }
+   * @returns {object} Generation report with method used
+   */
+  llmGenerate(options = {}) {
+    const claude = this._getClaude();
+    const useClaude = claude.isAvailable();
+    const languages = options.languages || ['python', 'typescript'];
+    const maxPatterns = options.maxPatterns || 10;
+    const methods = options.methods || ['variant', 'alternative'];
+    const autoPromote = options.autoPromote !== false;
+
+    const report = { generated: 0, stored: 0, promoted: 0, method: useClaude ? 'claude' : 'regex', details: [] };
+
+    // If Claude not available, fall back to regex generation
+    if (!useClaude) {
+      const regexReport = this.generateCandidates(options);
+      report.generated = regexReport.generated || 0;
+      report.stored = regexReport.stored || 0;
+      report.details = [{ method: 'regex-fallback', ...regexReport }];
+      return report;
+    }
+
+    const patterns = this.patterns.getAll()
+      .filter(p => (p.coherencyScore?.total || 0) >= 0.6)
+      .sort((a, b) => (b.coherencyScore?.total || 0) - (a.coherencyScore?.total || 0))
+      .slice(0, maxPatterns);
+
+    for (const pattern of patterns) {
+      // Language variants with tests
+      if (methods.includes('variant')) {
+        for (const lang of languages) {
+          if (lang === pattern.language) continue;
+
+          const candidate = claude.transpile(pattern, lang);
+          if (!candidate || !candidate.code) continue;
+
+          // Generate tests for the variant
+          const testResult = claude.generateTests({ ...candidate, language: lang });
+          if (testResult && testResult.testCode) {
+            candidate.testCode = testResult.testCode;
+          }
+
+          // Try to register as proven pattern (full validation)
+          if (autoPromote && candidate.testCode) {
+            try {
+              const proven = this.registerPattern({
+                name: candidate.name,
+                code: candidate.code,
+                testCode: candidate.testCode,
+                language: lang,
+                description: candidate.description,
+                tags: candidate.tags || [],
+                patternType: candidate.patternType,
+              });
+              if (proven) {
+                report.generated++;
+                report.stored++;
+                report.promoted++;
+                report.details.push({ name: candidate.name, method: 'claude-variant', language: lang, promoted: true });
+                continue;
+              }
+            } catch { /* validation failed — store as candidate instead */ }
+          }
+
+          // Store as candidate (unproven)
+          try {
+            this.patterns.storeCandidate({
+              ...candidate,
+              parentPattern: pattern.id,
+              generationMethod: 'claude-variant',
+            });
+            report.generated++;
+            report.stored++;
+            report.details.push({ name: candidate.name, method: 'claude-variant', language: lang, promoted: false });
+          } catch { /* duplicate or invalid */ }
+        }
+      }
+
+      // Alternatives (different algorithm approach)
+      if (methods.includes('alternative')) {
+        const alt = claude.generateAlternative(pattern);
+        if (!alt || !alt.code) continue;
+
+        // Generate tests for the alternative
+        const testResult = claude.generateTests(alt);
+        if (testResult && testResult.testCode) {
+          alt.testCode = testResult.testCode;
+        }
+
+        if (autoPromote && alt.testCode) {
+          try {
+            const proven = this.registerPattern({
+              name: alt.name,
+              code: alt.code,
+              testCode: alt.testCode,
+              language: pattern.language,
+              description: alt.description,
+              tags: alt.tags || [],
+              patternType: alt.patternType,
+            });
+            if (proven) {
+              report.generated++;
+              report.stored++;
+              report.promoted++;
+              report.details.push({ name: alt.name, method: 'claude-alternative', promoted: true });
+              continue;
+            }
+          } catch { /* store as candidate instead */ }
+        }
+
+        try {
+          this.patterns.storeCandidate({
+            ...alt,
+            parentPattern: pattern.id,
+            generationMethod: 'claude-alternative',
+          });
+          report.generated++;
+          report.stored++;
+          report.details.push({ name: alt.name, method: 'claude-alternative', promoted: false });
+        } catch { /* duplicate or invalid */ }
+      }
+    }
+
+    return report;
   }
 }
 

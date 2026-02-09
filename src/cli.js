@@ -76,6 +76,8 @@ ${c.bold('Commands:')}
   ${c.cyan('inspect')}    Inspect a stored entry
   ${c.cyan('feedback')}   Report if pulled code worked
   ${c.cyan('prune')}      Remove low-coherency entries
+  ${c.cyan('deep-clean')} Remove duplicates, stubs, and trivial harvested patterns
+  ${c.cyan('compose')}    Compose multiple patterns into a module (--patterns p1,p2 or --template name or --describe "...")
   ${c.cyan('diff')}       Compare two entries or patterns side by side
   ${c.cyan('export')}     Export top patterns as standalone JSON or markdown
   ${c.cyan('search')}        Fuzzy search across patterns and history
@@ -113,6 +115,7 @@ ${c.bold('Commands:')}
   ${c.cyan('hooks')}       Install/uninstall git hooks (pre-commit covenant, post-commit seed)
   ${c.cyan('debug')}      Debug oracle — capture/search/grow error→fix patterns exponentially
   ${c.cyan('reflector')}  Self-reflector bot — scan, evaluate, heal, and open PRs automatically
+  ${c.cyan('llm')}        Claude LLM engine — transpile/test/refine/analyze/explain
 
 ${c.bold('Options:')}
   ${c.yellow('--file')} <path>          Code file to submit/validate/register
@@ -251,6 +254,66 @@ ${c.bold('Pipe support:')}
     const min = parseFloat(args['min-coherency']) || 0.4;
     const result = oracle.prune(min);
     console.log(`Pruned ${c.boldRed(String(result.removed))} entries. ${c.boldGreen(String(result.remaining))} remaining.`);
+    return;
+  }
+
+  if (cmd === 'deep-clean' || cmd === 'deepclean') {
+    const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+    const result = oracle.deepClean({
+      minCodeLength: parseInt(args['min-code-length']) || 35,
+      minNameLength: parseInt(args['min-name-length']) || 3,
+      dryRun,
+    });
+    console.log(`${dryRun ? c.yellow('DRY RUN — ') : ''}Deep Clean Results:`);
+    console.log(`  Duplicates removed: ${c.boldRed(String(result.duplicates))}`);
+    console.log(`  Stubs removed:      ${c.boldRed(String(result.stubs))}`);
+    console.log(`  Too short removed:  ${c.boldRed(String(result.tooShort))}`);
+    console.log(`  ${c.bold('Total removed:')}     ${c.boldRed(String(result.removed))}`);
+    console.log(`  ${c.bold('Remaining:')}         ${c.boldGreen(String(result.remaining))}`);
+    if (dryRun && result.details.length > 0) {
+      console.log(`\nPreview (first 20):`);
+      result.details.slice(0, 20).forEach(d =>
+        console.log(`  [${d.reason}] ${d.name}: ${d.code}`)
+      );
+    }
+    return;
+  }
+
+  if (cmd === 'compose') {
+    const { PatternComposer } = require('./patterns/composer');
+    const composer = new PatternComposer(oracle);
+
+    if (args.templates || args.template === 'list') {
+      const templates = composer.templates();
+      console.log(`${c.bold('Composition Templates:')}\n`);
+      templates.forEach(t => {
+        console.log(`  ${c.cyan(t.name)}: ${t.description}`);
+        console.log(`    ${c.dim('Patterns:')} ${t.patterns.join(', ')}`);
+      });
+      return;
+    }
+
+    let result;
+    const lang = args.language || 'javascript';
+    const glue = args.glue || 'module';
+
+    if (args.template) {
+      const tmpl = composer.templates().find(t => t.name === args.template);
+      if (!tmpl) { console.error(c.boldRed('Unknown template:') + ' ' + args.template); process.exit(1); }
+      result = composer.compose({ patterns: tmpl.patterns, language: lang, glue });
+    } else if (args.describe) {
+      result = composer.composeFromDescription(args.describe, lang);
+    } else if (args.patterns) {
+      const patternNames = args.patterns.split(',').map(p => p.trim());
+      result = composer.compose({ patterns: patternNames, language: lang, glue });
+    } else {
+      console.error(c.boldRed('Usage:') + ' oracle compose --patterns p1,p2 | --template name | --describe "..." [--language js] [--glue module|class|function]');
+      process.exit(1);
+    }
+
+    console.log(`${c.boldGreen('Composed')} ${result.patterns.length} pattern(s):`);
+    result.patterns.forEach(p => console.log(`  ${c.cyan('→')} ${p.name} (${p.language})`));
+    console.log(`\n${result.code}`);
     return;
   }
 
@@ -1471,8 +1534,6 @@ ${c.bold('Options:')}
     process.exit(1);
   }
 
-  // ─── Reflector Bot ───
-
   if (cmd === 'reflector') {
     const sub = args._command ? process.argv.slice(2)[1] : 'help';
 
@@ -2087,6 +2148,171 @@ ${c.bold('Options:')}
     console.error(`${c.boldRed('Unknown reflector subcommand:')} ${sub}. Run ${c.cyan('oracle reflector help')} for usage.`);
     process.exit(1);
   }
+
+  if (cmd === 'cloud') {
+    const { CloudSyncServer } = require('./cloud/server');
+    const sub = process.argv[3];
+    if (sub === 'start') {
+      const port = parseInt(args.port) || 3579;
+      const server = new CloudSyncServer({ oracle, port, secret: args.secret });
+      server.start().then((p) => {
+        console.log(`${c.boldGreen('Cloud Sync Server')} running on ${c.cyan('http://localhost:' + p)}`);
+        console.log(`${c.dim('Endpoints: /api/auth, /api/patterns, /api/search, /api/sync, /api/debug, /ws')}`);
+      });
+      return;
+    }
+    console.log(`Usage: ${c.cyan('oracle cloud start')} [--port 3579] [--secret <key>]`);
+    return;
+  }
+
+  if (cmd === 'llm') {
+    const sub = process.argv[3];
+
+    if (!sub || sub === 'help') {
+      console.log(`${c.bold('Claude LLM Engine')}\n`);
+      console.log(`  ${c.cyan('llm status')}                   Check if Claude is available`);
+      console.log(`  ${c.cyan('llm transpile')} --id <id> --to <lang>  Transpile a pattern`);
+      console.log(`  ${c.cyan('llm tests')} --id <id>          Generate tests for a pattern`);
+      console.log(`  ${c.cyan('llm refine')} --id <id>         Refine a pattern's weak dimensions`);
+      console.log(`  ${c.cyan('llm alternative')} --id <id>    Generate an alternative algorithm`);
+      console.log(`  ${c.cyan('llm docs')} --id <id>           Generate documentation`);
+      console.log(`  ${c.cyan('llm analyze')} --file <path>    Analyze code quality`);
+      console.log(`  ${c.cyan('llm explain')} --id <id>        Explain a pattern in plain language`);
+      console.log(`  ${c.cyan('llm generate')} [--max <n>]     LLM-enhanced candidate generation`);
+      return;
+    }
+
+    if (sub === 'status') {
+      const available = oracle.isLLMAvailable();
+      if (available) {
+        console.log(`${c.boldGreen('✓ Claude is available')} — native LLM engine active`);
+        console.log(`  All llm commands will use Claude for generation.`);
+      } else {
+        console.log(`${c.yellow('⚠ Claude CLI not detected')}`);
+        console.log(`  LLM commands will fall back to AST/SERF/regex methods.`);
+        console.log(`  Install Claude Code: ${c.cyan('npm install -g @anthropic-ai/claude-code')}`);
+      }
+      return;
+    }
+
+    if (sub === 'transpile') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      if (!args.to) { console.error(c.boldRed('Error:') + ' --to <language> required'); process.exit(1); }
+      const result = oracle.llmTranspile(args.id, args.to);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Transpiled')} via ${c.cyan(result.method)}`);
+        console.log(`  ${c.dim('Name:')} ${result.result.name}`);
+        console.log(`  ${c.dim('Language:')} ${result.result.language}`);
+        console.log(`\n${result.result.code}`);
+      } else {
+        console.error(`${c.boldRed('✗ Transpilation failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'tests') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmGenerateTests(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Tests generated')} via ${c.cyan(result.method)}`);
+        console.log(`\n${result.testCode}`);
+      } else {
+        console.error(`${c.boldRed('✗ Test generation failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'refine') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmRefine(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Refined')} via ${c.cyan(result.method)}`);
+        console.log(`\n${result.refinedCode}`);
+      } else {
+        console.error(`${c.boldRed('✗ Refinement failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'alternative') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmAlternative(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Alternative generated')} via ${c.cyan(result.method)}`);
+        console.log(`  ${c.dim('Name:')} ${result.alternative.name}`);
+        console.log(`\n${result.alternative.code}`);
+      } else {
+        console.error(`${c.boldRed('✗ Alternative failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'docs') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmDocs(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Docs generated')} via ${c.cyan(result.method)}`);
+        console.log(`\n${result.docs}`);
+      } else {
+        console.error(`${c.boldRed('✗ Docs failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'analyze') {
+      const code = args.file ? fs.readFileSync(args.file, 'utf8') : null;
+      if (!code) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
+      const lang = args.language || path.extname(args.file).slice(1) || 'javascript';
+      const result = oracle.llmAnalyze(code, lang);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Analysis')} via ${c.cyan(result.method)}`);
+        console.log(`  ${c.dim('Quality:')} ${colorScore(result.analysis.quality || 0)}`);
+        console.log(`  ${c.dim('Complexity:')} ${result.analysis.complexity}`);
+        if (result.analysis.issues?.length) {
+          console.log(`\n  ${c.bold('Issues:')}`);
+          result.analysis.issues.forEach(i => console.log(`    ${i.severity === 'high' ? c.red('●') : c.yellow('●')} ${i.description}`));
+        }
+        if (result.analysis.suggestions?.length) {
+          console.log(`\n  ${c.bold('Suggestions:')}`);
+          result.analysis.suggestions.forEach(s => console.log(`    ${c.cyan('→')} ${s}`));
+        }
+      } else {
+        console.error(`${c.boldRed('✗ Analysis failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'explain') {
+      if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+      const result = oracle.llmExplain(args.id);
+      if (result.success) {
+        console.log(`${c.boldGreen('✓ Explanation')} via ${c.cyan(result.method)}`);
+        console.log(`\n${result.explanation}`);
+      } else {
+        console.error(`${c.boldRed('✗ Explanation failed:')} ${result.error}`);
+      }
+      return;
+    }
+
+    if (sub === 'generate') {
+      const max = parseInt(args.max) || 10;
+      console.log(`${c.dim('Generating LLM-enhanced candidates...')}`);
+      const result = oracle.llmGenerate({ maxPatterns: max });
+      console.log(`${c.boldGreen('✓ Generation complete')} via ${c.cyan(result.method)}`);
+      console.log(`  ${c.dim('Generated:')} ${result.generated}  ${c.dim('Stored:')} ${result.stored}  ${c.dim('Promoted:')} ${result.promoted || 0}`);
+      if (result.details?.length > 0 && result.details[0]?.name) {
+        result.details.forEach(d => {
+          const badge = d.promoted ? c.boldGreen('proven') : c.yellow('candidate');
+          console.log(`  ${c.cyan('→')} ${d.name} (${d.method}) [${badge}]`);
+        });
+      }
+      return;
+    }
+
+    console.error(`${c.boldRed('Unknown llm subcommand:')} ${sub}. Run ${c.cyan('oracle llm help')} for usage.`);
+    process.exit(1);
+  }
+
 
   console.error(`${c.boldRed('Unknown command:')} ${cmd}. Run ${c.cyan("'remembrance-oracle help'")} for usage.`);
   process.exit(1);

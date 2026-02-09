@@ -57,7 +57,7 @@ describe('gatherDashboardData', () => {
 
   it('should include trend data from history', () => {
     seedHistory();
-    const data = gatherDashboardData(TEST_ROOT);
+    const data = gatherDashboardData(TEST_ROOT, { bypassCache: true });
     assert.equal(data.trend.length, 3);
     assert.equal(data.trend[0].coherence, 0.72);
     assert.equal(data.trend[1].filesHealed, 2);
@@ -65,7 +65,7 @@ describe('gatherDashboardData', () => {
 
   it('should include recent runs in reverse order', () => {
     seedHistory();
-    const data = gatherDashboardData(TEST_ROOT);
+    const data = gatherDashboardData(TEST_ROOT, { bypassCache: true });
     assert.equal(data.recentRuns.length, 3);
     // Most recent first
     assert.equal(data.recentRuns[0].mode, 'dry-run');
@@ -74,7 +74,7 @@ describe('gatherDashboardData', () => {
 
   it('should include stats', () => {
     seedHistory();
-    const data = gatherDashboardData(TEST_ROOT);
+    const data = gatherDashboardData(TEST_ROOT, { bypassCache: true });
     assert.ok(data.stats);
     assert.equal(data.stats.totalRuns, 3);
   });
@@ -135,7 +135,7 @@ describe('generateDashboardHTML', () => {
       mode: 'balanced',
       thresholds: { minCoherence: 0.7, autoMergeThreshold: 0.9, targetCoherence: 0.95 },
       trend: [],
-      stats: { totalRuns: 5, totalFilesHealed: 12, avgCoherenceAfter: 0.82, avgImprovement: 0.06 },
+      stats: { totalRuns: 5, totalFilesHealed: 12, avgCoherence: 0.82, avgImprovement: 0.06 },
       recentRuns: [],
       autoCommit: { totalRuns: 3, merged: 2, aborted: 1, successRate: 0.667 },
       notifications: { total: 5, sent: 4, failed: 1, successRate: 0.8 },

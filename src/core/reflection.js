@@ -618,7 +618,15 @@ function reflectionLoop(code, options = {}) {
     loops++;
 
     // Step 1: Generate candidates (5 standard + optional pattern-guided)
-    const candidates = generateCandidates(current.code, lang, { patternExamples });
+    const allCandidates = generateCandidates(current.code, lang, { patternExamples });
+
+    // Deduplicate: skip candidates whose code is identical to another (avoids redundant SERF scoring)
+    const seen = new Set();
+    const candidates = allCandidates.filter(c => {
+      if (seen.has(c.code)) return false;
+      seen.add(c.code);
+      return true;
+    });
 
     // Step 2: Score each candidate on coherence dimensions
     const scored = candidates.map(candidate => {

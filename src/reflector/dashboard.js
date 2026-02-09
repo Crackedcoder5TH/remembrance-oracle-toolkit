@@ -20,15 +20,36 @@ const { notificationStats } = require('./notifications');
 const { getCurrentMode, resolveConfig } = require('./modes');
 const { patternHookStats } = require('./patternHook');
 
+// ─── Data Cache (TTL-based, avoids redundant I/O on rapid requests) ───
+
+const _cache = new Map(); // key: rootDir, value: { data, expiry }
+const CACHE_TTL_MS = 5000; // 5-second TTL
+
+function getCached(rootDir) {
+  const entry = _cache.get(rootDir);
+  if (entry && Date.now() < entry.expiry) return entry.data;
+  return null;
+}
+
+function setCache(rootDir, data) {
+  _cache.set(rootDir, { data, expiry: Date.now() + CACHE_TTL_MS });
+}
+
 // ─── Data Aggregation ───
 
 /**
  * Gather all dashboard data for a repo.
+ * Uses a 5-second TTL cache to avoid repeated I/O on rapid dashboard refreshes.
  *
  * @param {string} rootDir - Repository root
+ * @param {object} options - { bypassCache }
  * @returns {object} Dashboard data
  */
-function gatherDashboardData(rootDir) {
+function gatherDashboardData(rootDir, options = {}) {
+  if (!options.bypassCache) {
+    const cached = getCached(rootDir);
+    if (cached) return cached;
+  }
   const history = loadHistoryV2(rootDir);
   const stats = computeStats(rootDir);
   const config = resolveConfig(rootDir, { env: process.env });
@@ -59,7 +80,7 @@ function gatherDashboardData(rootDir) {
     durationMs: r.durationMs ?? 0,
   }));
 
-  return {
+  const result = {
     repo: rootDir.split('/').pop(),
     mode,
     thresholds: config.thresholds || {},
@@ -71,6 +92,9 @@ function gatherDashboardData(rootDir) {
     patternHook,
     generatedAt: new Date().toISOString(),
   };
+
+  setCache(rootDir, result);
+  return result;
 }
 
 // ─── JSON API ───
@@ -160,7 +184,7 @@ function generateDashboardHTML(data) {
 
 <div class="grid">
   <div class="card">
-    <div class="stat-value ${getCoherenceClass(data.stats?.avgCoherenceAfter)}">${formatNum(data.stats?.avgCoherenceAfter)}</div>
+    <div class="stat-value ${getCoherenceClass(data.stats?.avgCoherence)}">${formatNum(data.stats?.avgCoherence)}</div>
     <div class="stat-label">Current Avg Coherence</div>
   </div>
   <div class="card">

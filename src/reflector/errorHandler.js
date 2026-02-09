@@ -181,9 +181,15 @@ function withRetry(operationName, fn, options = {}) {
         ...context,
       });
 
-      // Synchronous sleep (blocking — acceptable for reflector's batch nature)
-      const waitUntil = Date.now() + delay;
-      while (Date.now() < waitUntil) { /* spin */ }
+      // Synchronous sleep via Atomics.wait (non-spinning, CPU-friendly)
+      try {
+        const buf = new SharedArrayBuffer(4);
+        Atomics.wait(new Int32Array(buf), 0, 0, delay);
+      } catch {
+        // Fallback for environments without SharedArrayBuffer
+        const waitUntil = Date.now() + delay;
+        while (Date.now() < waitUntil) { /* spin fallback */ }
+      }
     }
   }
 

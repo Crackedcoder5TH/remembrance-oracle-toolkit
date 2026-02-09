@@ -170,7 +170,19 @@ function createHealingBranch(report, options = {}) {
     const healingCount = report.healedFiles.length;
     const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper.message}\n\nAvg improvement: +${report.summary.avgImprovement.toFixed(3)}\nOverall health: ${report.collectiveWhisper.overallHealth}`;
 
-    git(`commit -m "${commitMsg.replace(/"/g, '\\"')}"`, cwd);
+    // Use env var to pass commit message safely (avoids shell injection via backticks/$())
+    try {
+      execSync('git commit -m "$REMEMBRANCE_COMMIT_MSG"', {
+        cwd,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 30000,
+        env: { ...process.env, REMEMBRANCE_COMMIT_MSG: commitMsg },
+      });
+    } catch (err) {
+      const stderr = err.stderr ? err.stderr.toString().trim() : '';
+      throw new Error(`git commit failed: ${stderr || err.message}`);
+    }
     result.commits = 1;
 
     // Push if requested

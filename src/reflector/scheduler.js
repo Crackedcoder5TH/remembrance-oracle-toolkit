@@ -228,14 +228,14 @@ function runReflector(rootDir, options = {}) {
       durationMs: runRecord.durationMs,
       coherence: {
         before: safeResult.safety?.preCoherence || 0,
-        after: safeResult.safety?.preCoherence || 0, // approx — no post-write scan
+        after: (safeResult.safety?.preCoherence || 0) + (report.avgImprovement || 0),
         delta: report.avgImprovement || 0,
       },
       healing: {
         filesScanned: report.filesScanned || 0,
         filesBelowThreshold: report.filesBelowThreshold || 0,
         filesHealed: report.filesHealed || 0,
-        totalImprovement: 0,
+        totalImprovement: report.totalImprovement || 0,
         avgImprovement: report.avgImprovement || 0,
       },
       changes: [],

@@ -381,7 +381,8 @@ function computeCoherence(filePath, options = {}) {
     return { error: err.message, score: 0 };
   }
 
-  const language = detectLanguage(code);
+  // Accept pre-detected language to avoid redundant regex parsing
+  const language = options.language || detectLanguage(code);
 
   // Compute each dimension
   const syntax = scoreSyntaxValidity(code, language);

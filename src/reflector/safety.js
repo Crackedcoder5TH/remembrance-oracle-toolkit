@@ -435,7 +435,9 @@ function coherenceGuard(rootDir, preHealSnapshot, postHealSnapshot) {
   const preAvg = preHealSnapshot.aggregate
     ? preHealSnapshot.aggregate.avgCoherence
     : preHealSnapshot.avgCoherence || 0;
-  const postAvg = postSnap.aggregate.avgCoherence;
+  const postAvg = postSnap.aggregate
+    ? postSnap.aggregate.avgCoherence
+    : postSnap.avgCoherence || 0;
   const delta = Math.round((postAvg - preAvg) * 1000) / 1000;
 
   const result = {

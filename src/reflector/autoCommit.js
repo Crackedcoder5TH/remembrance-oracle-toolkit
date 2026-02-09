@@ -12,6 +12,7 @@
  */
 
 const { execSync } = require('child_process');
+const fs = require('fs');
 const { join } = require('path');
 const { git, getCurrentBranch, generateBranchName, isCleanWorkingTree } = require('./github');
 const { resolveConfig } = require('./modes');
@@ -305,7 +306,7 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
 
     for (const file of healedFiles) {
       const absPath = file.absolutePath || join(rootDir, file.path);
-      require('fs').writeFileSync(absPath, file.code, 'utf-8');
+      fs.writeFileSync(absPath, file.code, 'utf-8');
       git(`add "${file.path}"`, rootDir);
     }
 

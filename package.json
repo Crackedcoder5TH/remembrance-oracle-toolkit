@@ -1,15 +1,37 @@
 {
   "name": "remembrance-oracle-toolkit",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Code memory system — stores only proven code (passes validation + coherency), scores everything 0-1, and serves the most relevant patterns to any AI or developer.",
   "main": "src/index.js",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./src/index.js",
+      "types": "./types/index.d.ts"
+    },
+    "./oracle": "./src/api/oracle.js",
+    "./coherency": "./src/core/coherency.js",
+    "./covenant": "./src/core/covenant.js",
+    "./validator": "./src/core/validator.js",
+    "./relevance": "./src/core/relevance.js",
+    "./patterns": "./src/patterns/library.js",
+    "./sandbox": "./src/core/sandbox.js",
+    "./mcp": "./src/mcp/server.js",
+    "./dashboard": "./src/dashboard/server.js",
+    "./auth": "./src/auth/auth.js",
+    "./debug": "./src/core/debug-oracle.js",
+    "./plugins": "./src/plugins/manager.js",
+    "./health": "./src/health/monitor.js"
+  },
   "bin": {
     "remembrance-oracle": "src/cli.js",
     "oracle": "src/cli.js"
   },
   "files": [
     "src/",
+    "types/",
     "README.md",
+    "QUICKSTART.md",
     "LICENSE",
     "action.yml"
   ],
@@ -22,7 +44,7 @@
     "mcp": "node src/cli.js mcp",
     "seed": "node src/cli.js seed",
     "analytics": "node src/cli.js analytics --json",
-    "postinstall": "node -e \"try{require('./src/cli.js')}catch{}\""
+    "postinstall": "node -e \"try{require('fs').mkdirSync('.remembrance',{recursive:true})}catch{}\""
   },
   "keywords": [
     "ai",
@@ -41,7 +63,9 @@
     "code-validation",
     "federation",
     "remote-oracle",
-    "npx"
+    "npx",
+    "typescript",
+    "plugin"
   ],
   "license": "MIT",
   "author": "Crackedcoder5TH",
@@ -54,6 +78,7 @@
     "url": "https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/issues"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
   }
 }

@@ -164,10 +164,11 @@ ${c.bold('Debug:')}
 ${c.bold('Integration:')}
   ${c.cyan('mcp')}           Start MCP server (67 tools, JSON-RPC over stdio)
   ${c.cyan('mcp-install')}   Auto-register MCP in AI editors (Claude, Cursor, VS Code)
-  ${c.cyan('setup')}         Initialize oracle in current project
+  ${c.cyan('setup')}         Initialize oracle in current project (alias: init)
   ${c.cyan('dashboard')}     Start web dashboard (default port 3333)
   ${c.cyan('deploy')}        Start production-ready server (configurable via env vars)
   ${c.cyan('hooks')}         Install/uninstall git hooks
+  ${c.cyan('plugin')}        Manage plugins (load, list, unload)
 
 ${c.bold('Admin:')}
   ${c.cyan('users')}         Manage users (list, add, delete)
@@ -216,8 +217,13 @@ ${c.bold('Pipe support:')}
 
     // 1. Seed the oracle
     console.log(`${c.bold('1.')} Seeding pattern library...`);
-    const seedResult = oracle.seed();
-    console.log(`   ${c.green('✓')} ${seedResult.seeded || 0} patterns seeded\n`);
+    const { seedLibrary: initSeedLibrary, seedNativeLibrary: initSeedNative } = require('./patterns/seeds');
+    const { seedExtendedLibrary: initSeedExtended } = require('./patterns/seeds-extended');
+    const initCore = initSeedLibrary(oracle);
+    const initExt = initSeedExtended(oracle);
+    const initNative = initSeedNative(oracle);
+    const totalSeeded = initCore.registered + initExt.registered + initNative.registered;
+    console.log(`   ${c.green('\u2713')} ${totalSeeded} patterns seeded\n`);
 
     // 2. Create .remembrance dir
     const storeDir = path.join(process.cwd(), '.remembrance');
@@ -241,9 +247,9 @@ ${c.bold('Pipe support:')}
 
     // 4. Stats
     const stats = oracle.stats();
-    const patternStats = oracle.patternStats();
+    const setupPatternStats = oracle.patternStats();
     console.log(`\n${c.boldGreen('Setup complete!')}`);
-    console.log(`  Patterns: ${patternStats.total}`);
+    console.log(`  Patterns: ${setupPatternStats.totalPatterns || setupPatternStats.total || 0}`);
     console.log(`  Entries:  ${stats.totalEntries}`);
     console.log(`\n${c.dim('Quick start:')}`);
     console.log(`  ${c.cyan('oracle search "debounce"')}     — Find a pattern`);
@@ -278,6 +284,12 @@ ${c.bold('Pipe support:')}
     } else {
       console.log(`${colorStatus(false)}: ${c.red(result.reason)}`);
       console.log(`Score: ${colorScore(result.validation.coherencyScore?.total)}`);
+      // Show actionable feedback
+      if (result.validation.feedback) {
+        const { formatFeedback } = require('./core/feedback');
+        console.log(`\n${c.boldCyan('What to fix:')}`);
+        console.log(formatFeedback(result.validation.feedback));
+      }
     }
     return;
   }
@@ -323,7 +335,13 @@ ${c.bold('Pipe support:')}
     if (result.errors.length > 0) {
       console.log(`${c.boldRed('Errors:')}`);
       for (const err of result.errors) {
-        console.log(`  ${c.red('•')} ${err}`);
+        console.log(`  ${c.red('\u2022')} ${err}`);
+      }
+      // Show actionable feedback
+      if (result.feedback) {
+        const { formatFeedback } = require('./core/feedback');
+        console.log(`\n${c.boldCyan('What to fix:')}`);
+        console.log(formatFeedback(result.feedback));
       }
     }
     return;
@@ -1406,6 +1424,51 @@ ${c.bold('Pipe support:')}
       }
       console.log(`\n  ${c.boldGreen(installed + ' editors configured.')}`);
       console.log(`  ${c.dim('Restart your editor to activate the oracle MCP server.')}`);
+    }
+    return;
+  }
+
+  if (cmd === 'plugin') {
+    const { PluginManager } = require('./plugins/manager');
+    const pm = new PluginManager(oracle, { pluginDir: path.join(process.cwd(), '.remembrance', 'plugins') });
+    const sub = process.argv[3];
+
+    if (sub === 'load') {
+      const pluginPath = process.argv[4];
+      if (!pluginPath) { console.error(c.boldRed('Error:') + ' provide a plugin path'); process.exit(1); }
+      try {
+        const manifest = pm.load(pluginPath);
+        console.log(`${c.green('\u2713')} Loaded plugin ${c.bold(manifest.name)} v${manifest.version}`);
+        if (manifest.description) console.log(`  ${c.dim(manifest.description)}`);
+      } catch (e) {
+        console.error(`${c.red('\u2717')} ${e.message}`);
+      }
+    } else if (sub === 'list') {
+      const list = pm.list();
+      if (list.length === 0) {
+        console.log(c.dim('No plugins loaded'));
+      } else {
+        console.log(`\n${c.boldCyan('Loaded Plugins')}\n`);
+        for (const p of list) {
+          const status = p.enabled ? c.green('enabled') : c.dim('disabled');
+          console.log(`  ${c.bold(p.name)} v${p.version} [${status}]`);
+          if (p.description) console.log(`    ${c.dim(p.description)}`);
+        }
+      }
+    } else if (sub === 'unload') {
+      const name = process.argv[4];
+      if (!name) { console.error(c.boldRed('Error:') + ' provide plugin name'); process.exit(1); }
+      try {
+        pm.unload(name);
+        console.log(`${c.green('\u2713')} Unloaded plugin ${c.bold(name)}`);
+      } catch (e) {
+        console.error(`${c.red('\u2717')} ${e.message}`);
+      }
+    } else {
+      console.log(`\n${c.boldCyan('Plugin Commands')}\n`);
+      console.log(`  ${c.cyan('oracle plugin load <path>')}   — Load a plugin`);
+      console.log(`  ${c.cyan('oracle plugin list')}          — List loaded plugins`);
+      console.log(`  ${c.cyan('oracle plugin unload <name>')} — Unload a plugin`);
     }
     return;
   }

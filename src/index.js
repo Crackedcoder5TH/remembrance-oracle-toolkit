@@ -34,6 +34,7 @@ const { discoverPatterns, autoSeed } = require('./ci/auto-seed');
 const { harvest, harvestFunctions, splitFunctions } = require('./ci/harvest');
 const { installHooks, uninstallHooks, runPreCommitCheck } = require('./ci/hooks');
 const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES } = require('./core/covenant');
+const { actionableFeedback, formatFeedback, covenantFeedback, coherencyFeedback } = require('./core/feedback');
 const { reflectionLoop, formatReflectionResult, observeCoherence, serfScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
 const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyError, computeConfidence, ERROR_CATEGORIES } = require('./core/debug-oracle');
 const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
@@ -45,6 +46,8 @@ const { transpile: astTranspile, parseJS, tokenize: astTokenize, toSnakeCase } =
 const { ClaudeBridge, findClaudeCLI, extractCodeBlock: extractLLMCode } = require('./core/claude-bridge');
 const { ModulePattern, DependencyGraph, TemplateEngine, ModuleStore, scaffold, compose } = require('./patterns/multi-file');
 const { PatternComposer, BUILT_IN_TEMPLATES } = require('./patterns/composer');
+const { PluginManager, HookEmitter, VALID_HOOKS } = require('./plugins/manager');
+const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } = require('./health/monitor');
 
 module.exports = {
   // Core
@@ -154,6 +157,12 @@ module.exports = {
   formatCovenantResult,
   COVENANT_PRINCIPLES,
 
+  // Actionable Feedback
+  actionableFeedback,
+  formatFeedback,
+  covenantFeedback,
+  coherencyFeedback,
+
   // Reflection / SERF
   reflectionLoop,
   formatReflectionResult,
@@ -236,4 +245,14 @@ module.exports = {
   // Pattern Composition
   PatternComposer,
   BUILT_IN_TEMPLATES,
+
+  // Plugin System
+  PluginManager,
+  HookEmitter,
+  VALID_HOOKS,
+
+  // Health & Metrics
+  healthCheck,
+  metricsSnapshot,
+  coherencyDistribution,
 };

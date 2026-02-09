@@ -14,12 +14,13 @@ const os = require('os');
 const { computeCoherencyScore } = require('./coherency');
 const { sandboxExecute } = require('./sandbox');
 const { covenantCheck } = require('./covenant');
+const { actionableFeedback, formatFeedback } = require('./feedback');
 
 const MIN_COHERENCY_THRESHOLD = 0.6;
 
 function validateCode(code, options = {}) {
   if (code == null || typeof code !== 'string') {
-    return { valid: false, testPassed: null, testOutput: null, coherencyScore: null, covenantResult: null, errors: ['Invalid input: code must be a non-null string'] };
+    return { valid: false, testPassed: null, testOutput: null, coherencyScore: null, covenantResult: null, errors: ['Invalid input: code must be a non-null string'], feedback: null };
   }
   const {
     language,
@@ -36,6 +37,7 @@ function validateCode(code, options = {}) {
     coherencyScore: null,
     covenantResult: null,
     errors: [],
+    feedback: null,
   };
 
   // Step 0: Covenant check — the seal above all code
@@ -50,6 +52,8 @@ function validateCode(code, options = {}) {
       for (const v of covenant.violations) {
         result.errors.push(`Covenant broken [${v.name}]: ${v.reason}`);
       }
+      // Generate actionable feedback for covenant violations
+      result.feedback = actionableFeedback(code, result);
       return result; // Rejected — does not reach coherency or testing
     }
   }
@@ -82,6 +86,12 @@ function validateCode(code, options = {}) {
   }
 
   result.valid = result.errors.length === 0;
+
+  // Generate actionable feedback for any failures
+  if (!result.valid) {
+    result.feedback = actionableFeedback(code, result);
+  }
+
   return result;
 }
 

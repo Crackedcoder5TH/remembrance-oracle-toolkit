@@ -132,7 +132,18 @@ function createDashboardServer(oracle, options = {}) {
     try {
       // ─── Health ───
       if (pathname === '/api/health') {
-        sendJSON(res, { status: 'ok', wsClients: wsServer ? wsServer.clients.size : 0 });
+        const { health: healthCheck } = require('../health/monitor');
+        const healthResult = healthCheck(oracleInstance);
+        healthResult.wsClients = wsServer ? wsServer.clients.size : 0;
+        const statusCode = healthResult.status === 'healthy' ? 200 : healthResult.status === 'degraded' ? 200 : 503;
+        sendJSON(res, healthResult, statusCode);
+        return;
+      }
+
+      // ─── Metrics ───
+      if (pathname === '/api/metrics') {
+        const { metrics: metricsSnapshot } = require('../health/monitor');
+        sendJSON(res, metricsSnapshot(oracleInstance));
         return;
       }
 

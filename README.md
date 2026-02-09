@@ -6,24 +6,36 @@
 npx remembrance-oracle-toolkit search "binary search"
 ```
 
-## Quick Start
+> **New to the oracle?** Read the [30-Second Quickstart](QUICKSTART.md) to be running in under a minute.
 
-### Install
+## Quick Start
 
 ```bash
 npm install -g remembrance-oracle-toolkit
+oracle seed                    # Load 600+ proven patterns
+oracle search "rate limiting"  # Find code
+oracle submit --file mycode.js --test mytest.js  # Store proven code
 ```
 
-Or use directly:
+Or without installing:
 
 ```bash
-npx remembrance-oracle-toolkit help
+npx remembrance-oracle-toolkit search "binary search"
+```
+
+### TypeScript Support
+
+Full type definitions ship with the package:
+
+```typescript
+import { RemembranceOracle, Pattern, ValidationResult } from 'remembrance-oracle-toolkit';
+const oracle = new RemembranceOracle({ threshold: 0.7 });
 ```
 
 ### 30-Second Tour
 
 ```bash
-# Seed the library with 200+ proven patterns
+# Seed the library with 600+ proven patterns
 oracle seed
 
 # Search for code
@@ -350,9 +362,91 @@ src/
   core/test-synth.js     — Test synthesis for candidate promotion
   connectors/
     github-bridge.js     — GitHub issue/PR integration
+  plugins/manager.js     — Plugin system (hooks, lifecycle, isolation)
+  health/monitor.js      — Health checks + metrics collection
   cli.js                 — CLI interface (66+ commands)
-tests/                   — 1160+ tests across 24 files
+tests/                   — 1228+ tests across 38 files
+types/index.d.ts         — Full TypeScript type definitions
 ```
+
+## Plugin System
+
+Extend the oracle with custom plugins:
+
+```javascript
+// my-plugin.js
+module.exports = {
+  name: 'my-plugin',
+  version: '1.0.0',
+  activate(context) {
+    // Hook into the submit pipeline
+    context.hooks.onBeforeSubmit((code, metadata) => {
+      context.logger.info(`Submitting: ${metadata.description}`);
+    });
+
+    // Hook into validation
+    context.hooks.onAfterValidate((result) => {
+      if (!result.valid) {
+        context.logger.warn(`Validation failed: ${result.errors.join(', ')}`);
+      }
+    });
+
+    // Modify search results
+    context.hooks.onSearch((query, results) => {
+      return results.filter(r => r.coherencyScore?.total > 0.8);
+    });
+  }
+};
+```
+
+```bash
+# Load a plugin
+oracle plugin load ./my-plugin.js
+
+# List plugins
+oracle plugin list
+
+# Unload a plugin
+oracle plugin unload my-plugin
+```
+
+From code:
+
+```javascript
+const { RemembranceOracle, PluginManager } = require('remembrance-oracle-toolkit');
+const oracle = new RemembranceOracle();
+const plugins = new PluginManager(oracle);
+plugins.load('./my-plugin.js');
+```
+
+Available hooks: `onBeforeSubmit`, `onAfterSubmit`, `onBeforeValidate`, `onAfterValidate`, `onPatternRegistered`, `onCandidateGenerated`, `onSearch`, `onResolve`.
+
+## Health & Metrics
+
+The dashboard exposes health and metrics endpoints:
+
+```bash
+# Health check
+curl http://localhost:3333/api/health
+
+# Metrics snapshot
+curl http://localhost:3333/api/metrics
+```
+
+```json
+{
+  "status": "healthy",
+  "version": "3.1.0",
+  "uptime": 3600,
+  "checks": {
+    "database": { "status": "ok", "latencyMs": 2 },
+    "patterns": { "status": "ok", "count": 892 },
+    "coherency": { "status": "ok", "avgScore": 0.82 }
+  }
+}
+```
+
+Metrics include: pattern counts by language/type, coherency distribution, usage tracking, candidate promotion rates, and uptime.
 
 ## Storage
 
@@ -372,7 +466,7 @@ All data lives in `.remembrance/` (SQLite with WAL mode, JSON fallback):
 ## Running Tests
 
 ```bash
-node --test tests/*.test.js   # 1160+ tests
+node --test tests/*.test.js   # 1228+ tests
 ```
 
 ## License

@@ -118,6 +118,16 @@ const HARM_PATTERNS = [
   { pattern: /format\s+[A-Z]:\s*\/[Yy]/i, principle: 15, reason: 'Drive formatting command' },
 ];
 
+// ─── Custom principle registry reference (set by PluginManager integration) ───
+let _customPrincipleRegistry = null;
+
+/**
+ * Set the custom principle registry for plugin-provided covenant principles.
+ */
+function setPrincipleRegistry(registry) {
+  _customPrincipleRegistry = registry;
+}
+
 /**
  * Run the covenant filter on code.
  *
@@ -172,13 +182,25 @@ function covenantCheck(code, metadata = {}) {
     }
   }
 
-  const principlesPassed = COVENANT_PRINCIPLES.length - violatedPrinciples.size;
+  // Check custom principles from plugin registry
+  let customPrincipleCount = 0;
+  if (_customPrincipleRegistry) {
+    const customViolations = _customPrincipleRegistry.check(code);
+    customPrincipleCount = _customPrincipleRegistry.list().length;
+    for (const cv of customViolations) {
+      violations.push(cv);
+      violatedPrinciples.add(cv.principle);
+    }
+  }
+
+  const totalPrinciples = COVENANT_PRINCIPLES.length + customPrincipleCount;
+  const principlesPassed = totalPrinciples - violatedPrinciples.size;
 
   return {
     sealed: violations.length === 0,
     violations,
     principlesPassed,
-    totalPrinciples: COVENANT_PRINCIPLES.length,
+    totalPrinciples,
   };
 }
 
@@ -392,6 +414,7 @@ module.exports = {
   formatCovenantResult,
   deepSecurityScan,
   safeJsonParse,
+  setPrincipleRegistry,
   COVENANT_PRINCIPLES,
   HARM_PATTERNS,
   DEEP_SECURITY_PATTERNS,

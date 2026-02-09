@@ -333,6 +333,17 @@ function sandboxRust(code, testCode, options = {}) {
   }
 }
 
+// ─── Custom runner registry reference (set by PluginManager integration) ───
+let _customRunnerRegistry = null;
+
+/**
+ * Set the custom runner registry for plugin-provided language runners.
+ * Called by the oracle when a PluginManager with runners is available.
+ */
+function setRunnerRegistry(registry) {
+  _customRunnerRegistry = registry;
+}
+
 /**
  * Universal sandboxed executor.
  */
@@ -355,6 +366,11 @@ function sandboxExecute(code, testCode, language, options = {}) {
     return sandboxRust(code, testCode, options);
   }
 
+  // Check custom runner registry for plugin-provided runners
+  if (_customRunnerRegistry && _customRunnerRegistry.has(lang)) {
+    return _customRunnerRegistry.execute(lang, code, testCode, options);
+  }
+
   return { passed: null, output: `No sandbox runner for: ${lang}`, sandboxed: false };
 }
 
@@ -367,4 +383,5 @@ module.exports = {
   sandboxRust,
   createSandboxDir,
   cleanupSandboxDir,
+  setRunnerRegistry,
 };

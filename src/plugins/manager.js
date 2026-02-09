@@ -15,6 +15,12 @@
 
 const fs = require('fs');
 const path = require('path');
+const {
+  LanguageRunnerRegistry,
+  CovenantPrincipleRegistry,
+  StorageBackendRegistry,
+  SearchProviderRegistry,
+} = require('./registry');
 
 // ─── Hook-based event emitter (pulled from oracle: event-emitter pattern) ───
 
@@ -103,6 +109,12 @@ class PluginManager {
     this._plugins = new Map(); // name → { manifest, deactivate? }
     this._emitter = new HookEmitter();
     this._pluginDir = options.pluginDir || null;
+
+    // Extension registries — formal API for community extensions
+    this.runners = new LanguageRunnerRegistry();
+    this.principles = new CovenantPrincipleRegistry();
+    this.storage = new StorageBackendRegistry();
+    this.search = new SearchProviderRegistry();
   }
 
   /**
@@ -160,6 +172,13 @@ class PluginManager {
       patterns: this._oracle.patterns,
       hooks,
       logger,
+      // Extension registries — plugins can register custom runners, principles, etc.
+      registries: {
+        runners: this.runners,
+        principles: this.principles,
+        storage: this.storage,
+        search: this.search,
+      },
     };
 
     // Activate
@@ -317,4 +336,8 @@ module.exports = {
   HookEmitter,
   createLogger,
   VALID_HOOKS,
+  LanguageRunnerRegistry,
+  CovenantPrincipleRegistry,
+  StorageBackendRegistry,
+  SearchProviderRegistry,
 };

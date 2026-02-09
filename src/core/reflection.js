@@ -165,6 +165,9 @@ function applyCorrect(code, lang) {
     );
     // Ensure Array.isArray check before array methods on parameters
     // (only for simple cases where we see .forEach/.map/.filter on params)
+
+    // Fix const in for-loop initializers (should be let, since loop vars are reassigned)
+    result = result.replace(/for\s*\(\s*const\s+(\w+)\s*=/g, 'for (let $1 =');
   }
   if (lang === 'python' || lang === 'py') {
     // Add docstring hint if function has none

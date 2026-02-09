@@ -28,6 +28,7 @@
 const { reflectionLoop } = require('./reflection');
 const { validateCode } = require('./validator');
 const { computeCoherencyScore, detectLanguage } = require('./coherency');
+const { isTestFile, isDataFile, requiresExternalModules } = require('./test-synth');
 
 // ─── Variant Templates ───
 // Language transpilation skeletons for common patterns
@@ -700,6 +701,28 @@ class PatternRecycler {
 
     const pyCode = `def ${pyName}(${jsToPythonParams(params)}):\n${indent(body, 4)}`;
 
+    // Post-transpilation validation: reject if JS syntax leaked through
+    if (/\bfunction\b/.test(pyCode) || /=>/.test(pyCode)) return null;
+    if (/===|!==/.test(pyCode)) return null;
+    if (/\bconst\b|\blet\b|\bvar\b/.test(pyCode)) return null;
+    if (/Number\.\w+/.test(pyCode)) return null;
+    if (/\bthis\./.test(pyCode)) return null;
+    if (/\.push\(/.test(pyCode)) return null; // should have been converted to .append()
+    if (/\bnew\s+\w+/.test(pyCode)) return null;
+    if (/\.prototype\./.test(pyCode)) return null;
+    // Reject leftover JS braces (Python uses colons + indentation)
+    if (/[{}]/.test(pyCode)) return null;
+    // Reject semicolons (not normal in Python)
+    if (/;/.test(pyCode)) return null;
+    // Reject dangling colons/brackets from broken ternary transpilation
+    if (/\]\s*:/.test(pyCode) || /\belse\s*\]/.test(pyCode)) return null;
+    // Reject broken slice patterns
+    if (/\[\d+\s+if\b/.test(pyCode)) return null;
+    // Reject Array.from (should be list())
+    if (/Array\.from/.test(pyCode)) return null;
+    // Reject .filter(), .map() etc. that weren't converted
+    if (/\.\w+\([^)]*=>/.test(pyCode)) return null;
+
     // Convert test assertions
     let pyTest = '';
     if (testCode) {
@@ -984,6 +1007,11 @@ class PatternRecycler {
     const toProcess = proven.slice(0, maxPatterns);
 
     for (const pattern of toProcess) {
+      // Skip patterns that can't produce viable candidates
+      if (_shouldSkipForGeneration(pattern.code)) {
+        report.skipped = (report.skipped || 0) + 1;
+        continue;
+      }
       if (methods.includes('variant')) {
         this._generateVariants(pattern, languages, report, knownNames, minCoherency, []);
       }
@@ -1010,6 +1038,12 @@ class PatternRecycler {
     } = options;
 
     const report = { generated: 0, stored: 0, skipped: 0, duplicates: 0, candidates: [] };
+
+    // Skip patterns that can't produce viable candidates
+    if (_shouldSkipForGeneration(pattern.code)) {
+      report.skipped = 1;
+      return report;
+    }
 
     const proven = this.oracle.patterns.getAll();
     const existingCandidates = this.oracle.patterns.getCandidates();
@@ -1163,6 +1197,19 @@ class PatternRecycler {
  * Reject patterns that use: regex literals, typeof, closures, new Set/Map,
  * prototype methods, Promise/async, class syntax, arrow functions with closures.
  */
+/**
+ * Check if a pattern should be skipped for candidate generation.
+ * Test files, data files, and module-heavy code don't produce viable candidates.
+ */
+function _shouldSkipForGeneration(code) {
+  if (isTestFile(code)) return true;
+  if (isDataFile(code)) return true;
+  if (requiresExternalModules(code)) return true;
+  // Skip very large files (>500 lines) — they're usually complex modules
+  if (code.split('\n').length > 500) return true;
+  return false;
+}
+
 function canTranspileToPython(code) {
   // Reject regex literal usage in method calls (Python uses re module)
   if (code.includes('.replace(/') || code.includes('.match(/') || code.includes('.test(/') || code.includes('.search(/')) return false;
@@ -1214,8 +1261,57 @@ function canTranspileToPython(code) {
   // Reject single-line for loops (body on same line as for — hard to indent for Python)
   if (/for\s*\([^)]+\)\s+\w/.test(code) && !/for\s*\([^)]+\)\s*\{/.test(code)) return false;
 
+  // Reject multi-statement lines (a = x; b = y; on same line — can't transpile cleanly)
+  const bodyLines = code.split('\n');
+  for (const line of bodyLines) {
+    const trimLine = line.trim();
+    // Count semicolons that aren't in strings (simplified check)
+    const semis = trimLine.replace(/'[^']*'|"[^"]*"/g, '').split(';').length - 1;
+    if (semis > 1) return false;
+  }
+
+  // Reject while loops with braces on same line as body
+  if (/while\s*\([^)]+\)\s*\{[^}]+\}/.test(code.replace(/\n/g, ' '))) return false;
+
+  // Reject inline ternary in return (complex to transpile: s ? x : y)
+  if (/return\s+\w+\s*\?/.test(code)) return false;
+
   // Reject .length in comparisons when param is named 'len' (Python builtin shadowing)
   if (/\w+\.length\s*<\s*\w+/.test(code) && /function\s+\w+\([^)]*\blen\b/.test(code)) return false;
+
+  // Reject Number.EPSILON, Number.MAX_SAFE_INTEGER, etc.
+  if (/Number\.\w+/.test(code)) return false;
+
+  // Reject Array.from (Python uses list())
+  if (/Array\.from/.test(code)) return false;
+
+  // Reject complex .slice() patterns with expressions (hard to transpile correctly)
+  if (/\.slice\([^)]*[+\-*]\s*[^)]+\)/.test(code)) return false;
+
+  // Reject new Constructor() patterns (no Python equivalent)
+  if (/\bnew\s+(?!Set|Map)\w+\s*\(/.test(code)) return false;
+
+  // Reject this. keyword
+  if (/\bthis\./.test(code)) return false;
+
+  // Reject .filter/.map/.reduce callbacks (Python uses list comprehensions)
+  if (/\.filter\s*\(/.test(code)) return false;
+  if (/\.map\s*\(/.test(code)) return false;
+  if (/\.reduce\s*\(/.test(code)) return false;
+  if (/\.forEach\s*\(/.test(code)) return false;
+
+  // Reject .splice() — no direct Python equivalent
+  if (/\.splice\s*\(/.test(code)) return false;
+
+  // Reject try/catch blocks — different syntax in Python
+  if (/\btry\s*\{/.test(code)) return false;
+
+  // Reject throw (Python uses raise)
+  if (/\bthrow\s+/.test(code)) return false;
+
+  // Reject complex destructuring: const { a, b } = or const [a, b] =
+  if (/(?:const|let|var)\s*\{[^}]+\}\s*=/.test(code)) return false;
+  if (/(?:const|let|var)\s*\[[^\]]+\]\s*=/.test(code)) return false;
 
   return true;
 }

@@ -10,6 +10,7 @@
  * Crimson (#E63946) — the sacred pulse, urgency of remembrance
  */
 
+/* ─── Dark theme (default) ─── */
 :root {
   --teal: #00A8A8;
   --indigo: #1A1B3A;
@@ -20,6 +21,33 @@
   --text-muted: #8B8BA8;
   --glow-teal: rgba(0, 168, 168, 0.15);
   --glow-crimson: rgba(230, 57, 70, 0.10);
+  --focus-ring: rgba(0, 168, 168, 0.6);
+}
+
+/* ─── Light theme ─── */
+[data-theme="light"] {
+  --bg-deep: #F4F3F0;
+  --bg-surface: #FFFFFF;
+  --text-primary: #1A1B3A;
+  --text-muted: #5A5A78;
+  --glow-teal: rgba(0, 168, 168, 0.25);
+  --glow-crimson: rgba(230, 57, 70, 0.15);
+  --focus-ring: rgba(0, 168, 168, 0.8);
+}
+
+[data-theme="light"] .cathedral-nav {
+  background-color: rgba(244, 243, 240, 0.9);
+  border-bottom-color: rgba(0, 168, 168, 0.15);
+}
+
+[data-theme="light"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 25%,
+    rgba(0, 168, 168, 0.12) 50%,
+    var(--bg-surface) 75%
+  );
+  background-size: 200% 100%;
 }
 
 @layer base {
@@ -150,6 +178,68 @@
   @keyframes shimmer {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
+  }
+}
+
+/* ─── Focus states (keyboard navigation) ─── */
+*:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove focus ring for mouse clicks */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Screen reader only — visually hidden but accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── High contrast mode ─── */
+@media (prefers-contrast: more) {
+  :root,
+  [data-theme="light"] {
+    --teal: #009090;
+    --crimson: #CC2233;
+    --focus-ring: #00DDDD;
+  }
+
+  :root {
+    --bg-deep: #000000;
+    --bg-surface: #0A0A1A;
+    --text-primary: #FFFFFF;
+    --text-muted: #C0C0D0;
+    --glow-teal: rgba(0, 168, 168, 0.3);
+  }
+
+  [data-theme="light"] {
+    --bg-deep: #FFFFFF;
+    --bg-surface: #F0F0F0;
+    --text-primary: #000000;
+    --text-muted: #333348;
+  }
+
+  .cathedral-surface {
+    border-width: 2px;
+  }
+
+  .cathedral-nav {
+    border-bottom-width: 2px;
+  }
+
+  *:focus-visible {
+    outline-width: 3px;
   }
 }
 

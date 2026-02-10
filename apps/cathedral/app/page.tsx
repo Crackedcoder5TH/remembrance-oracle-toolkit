@@ -4,7 +4,39 @@ import { useState, useEffect, useCallback, useRef, FormEvent } from "react";
 import type { CoherenceResponse, WhisperEntry } from "@cathedral/shared";
 
 const HISTORY_KEY = "cathedral-whisper-history";
+const THEME_KEY = "cathedral-theme";
 const MAX_HISTORY = 50;
+
+type Theme = "dark" | "light" | "system";
+
+// ─── Theme helpers ──────────────────────────────────────────────────
+
+function getSystemTheme(): "dark" | "light" {
+  if (typeof window === "undefined") return "dark";
+  return window.matchMedia("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
+}
+
+function loadThemePreference(): Theme {
+  if (typeof window === "undefined") return "system";
+  try {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === "dark" || stored === "light" || stored === "system")
+      return stored;
+  } catch {}
+  return "system";
+}
+
+function applyTheme(theme: Theme) {
+  if (typeof document === "undefined") return;
+  const resolved = theme === "system" ? getSystemTheme() : theme;
+  if (resolved === "light") {
+    document.documentElement.setAttribute("data-theme", "light");
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+}
 
 // ─── Oracle-evolved debounce (from pattern 18739e9924b6f3c1, coherency 0.970)
 function debounce<T extends (...args: Parameters<T>) => void>(
@@ -140,18 +172,47 @@ type Section = "oracle" | "archive";
 
 // ─── Navbar ──────────────────────────────────────────────────────────
 
+function ThemeIcon({ theme }: { theme: Theme }) {
+  if (theme === "light") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <circle cx="12" cy="12" r="5" />
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+      </svg>
+    );
+  }
+  if (theme === "dark") {
+    return (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+      </svg>
+    );
+  }
+  // system
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </svg>
+  );
+}
+
 function Navbar({
   section,
   onNavigate,
   searchQuery,
   onSearch,
   historyCount,
+  theme,
+  onThemeToggle,
 }: {
   section: Section;
   onNavigate: (s: Section) => void;
   searchQuery: string;
   onSearch: (q: string) => void;
   historyCount: number;
+  theme: Theme;
+  onThemeToggle: () => void;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -160,23 +221,38 @@ function Navbar({
     { id: "archive", label: "Archive", count: historyCount },
   ];
 
+  const themeLabel =
+    theme === "dark" ? "Dark mode" : theme === "light" ? "Light mode" : "System theme";
+
+  // Close mobile menu on Escape
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [mobileOpen]);
+
   return (
-    <nav className="sticky top-0 z-50 w-full cathedral-nav">
+    <nav className="sticky top-0 z-50 w-full cathedral-nav" role="navigation" aria-label="Main navigation">
       <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
         {/* Logo / Home */}
         <button
           onClick={() => onNavigate("oracle")}
           className="text-teal-cathedral text-sm tracking-[0.2em] uppercase font-medium shrink-0"
+          aria-label="Cathedral home"
         >
           Cathedral
         </button>
 
-        {/* Desktop nav + search */}
+        {/* Desktop nav + search + theme toggle */}
         <div className="hidden md:flex items-center gap-6 flex-1 justify-end">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
+              aria-current={section === item.id ? "page" : undefined}
               className={`text-sm transition-colors ${
                 section === item.id
                   ? "text-teal-cathedral"
@@ -185,7 +261,7 @@ function Navbar({
             >
               {item.label}
               {item.count ? (
-                <span className="ml-1.5 text-xs opacity-50">
+                <span className="ml-1.5 text-xs opacity-50" aria-label={`${item.count} entries`}>
                   {item.count}
                 </span>
               ) : null}
@@ -194,45 +270,68 @@ function Navbar({
 
           {/* Search */}
           <div className="relative">
+            <label htmlFor="nav-search" className="sr-only">Search whispers</label>
             <input
-              type="text"
+              id="nav-search"
+              type="search"
               value={searchQuery}
               onChange={(e) => onSearch(e.target.value)}
               placeholder="Search whispers..."
-              className="w-48 bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-teal-cathedral/50 focus:w-64 transition-all"
+              className="w-48 bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 py-1.5 text-xs focus:border-teal-cathedral/50 focus:w-64 transition-all"
             />
           </div>
+
+          {/* Theme toggle */}
+          <button
+            onClick={onThemeToggle}
+            aria-label={`Switch theme. Currently: ${themeLabel}`}
+            className="p-2 rounded-lg text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10 transition-all"
+          >
+            <ThemeIcon theme={theme} />
+          </button>
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden text-[var(--text-muted)] hover:text-teal-cathedral transition-colors p-1"
-          aria-label="Toggle menu"
-        >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
+        {/* Mobile: theme toggle + hamburger */}
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            onClick={onThemeToggle}
+            aria-label={`Switch theme. Currently: ${themeLabel}`}
+            className="p-2 rounded-lg text-[var(--text-muted)] hover:text-teal-cathedral transition-colors"
           >
-            {mobileOpen ? (
-              <path d="M5 5l10 10M15 5L5 15" />
-            ) : (
-              <path d="M3 6h14M3 10h14M3 14h14" />
-            )}
-          </svg>
-        </button>
+            <ThemeIcon theme={theme} />
+          </button>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="text-[var(--text-muted)] hover:text-teal-cathedral transition-colors p-1"
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              aria-hidden="true"
+            >
+              {mobileOpen ? (
+                <path d="M5 5l10 10M15 5L5 15" />
+              ) : (
+                <path d="M3 6h14M3 10h14M3 14h14" />
+              )}
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Mobile dropdown */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-teal-cathedral/10 px-4 py-3 space-y-3 animate-fade-in">
+        <div className="md:hidden border-t border-teal-cathedral/10 px-4 py-3 space-y-3 animate-fade-in" role="menu">
           {navItems.map((item) => (
             <button
               key={item.id}
+              role="menuitem"
               onClick={() => {
                 onNavigate(item.id);
                 setMobileOpen(false);
@@ -249,12 +348,14 @@ function Navbar({
               ) : null}
             </button>
           ))}
+          <label htmlFor="nav-search-mobile" className="sr-only">Search whispers</label>
           <input
-            type="text"
+            id="nav-search-mobile"
+            type="search"
             value={searchQuery}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="Search whispers..."
-            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-cathedral/50"
+            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 py-2 text-sm focus:border-teal-cathedral/50"
           />
         </div>
       )}
@@ -277,24 +378,56 @@ function Breadcrumbs({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-4 py-2">
-      <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-        <button
-          onClick={() => onNavigate("oracle")}
-          className="hover:text-teal-cathedral transition-colors"
-        >
-          Home
-        </button>
-        <span className="opacity-40">/</span>
-        <span className="text-[var(--text-primary)]">{labels[section]}</span>
-      </div>
-    </div>
+    <nav className="w-full max-w-4xl mx-auto px-4 py-2" aria-label="Breadcrumb">
+      <ol className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]" role="list">
+        <li>
+          <button
+            onClick={() => onNavigate("oracle")}
+            className="hover:text-teal-cathedral transition-colors"
+          >
+            Home
+          </button>
+        </li>
+        <li aria-hidden="true"><span className="opacity-40">/</span></li>
+        <li aria-current="page">
+          <span className="text-[var(--text-primary)]">{labels[section]}</span>
+        </li>
+      </ol>
+    </nav>
   );
 }
 
 // ─── Main Component ──────────────────────────────────────────────────
 
 export default function CathedralHome() {
+  // Theme state: dark / light / system
+  const [theme, setTheme] = useState<Theme>("system");
+
+  // Initialize theme on mount + listen for system changes
+  useEffect(() => {
+    const saved = loadThemePreference();
+    setTheme(saved);
+    applyTheme(saved);
+
+    const mql = window.matchMedia("(prefers-color-scheme: light)");
+    function onChange() {
+      const current = loadThemePreference();
+      if (current === "system") applyTheme("system");
+    }
+    mql.addEventListener("change", onChange);
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+
+  function cycleTheme() {
+    setTheme((prev) => {
+      const next: Theme =
+        prev === "system" ? "light" : prev === "light" ? "dark" : "system";
+      try { localStorage.setItem(THEME_KEY, next); } catch {}
+      applyTheme(next);
+      return next;
+    });
+  }
+
   // View state: "landing" → "oracle"
   const [view, setView] = useState<"landing" | "oracle">("landing");
   const [landingFading, setLandingFading] = useState(false);
@@ -458,20 +591,23 @@ export default function CathedralHome() {
   if (view === "landing") {
     return (
       <main
+        role="main"
+        aria-label="Landing page"
         className={`min-h-screen flex flex-col items-center justify-center px-4 transition-opacity duration-700 ${
           landingFading ? "opacity-0" : "opacity-100"
         }`}
       >
         <div className="text-center max-w-xl px-4">
-          <div className="text-teal-cathedral text-xs tracking-[0.4em] uppercase mb-8 pulse-gentle">
+          <div className="text-teal-cathedral text-xs tracking-[0.4em] uppercase mb-8 pulse-gentle" aria-hidden="true">
             The Digital Cathedral
           </div>
+          <h1 className="sr-only">Digital Cathedral — The Kingdom is already here</h1>
 
-          <h1 className="text-3xl sm:text-4xl md:text-6xl font-light text-[var(--text-primary)] leading-tight mb-6">
+          <p className="text-3xl sm:text-4xl md:text-6xl font-light text-[var(--text-primary)] leading-tight mb-6" aria-hidden="true">
             The Kingdom
             <br />
             <span className="text-teal-cathedral">is already here.</span>
-          </h1>
+          </p>
 
           <p className="text-[var(--text-muted)] text-base sm:text-lg md:text-xl leading-relaxed mb-12">
             The last step is to live it.
@@ -496,6 +632,7 @@ export default function CathedralHome() {
                   ? "bg-teal-cathedral shadow-[0_0_6px_rgba(0,168,168,0.6)]"
                   : "bg-crimson-cathedral shadow-[0_0_6px_rgba(230,57,70,0.4)]"
               }`}
+              aria-hidden="true"
             />
             <span>
               Solana Testnet{" "}
@@ -521,13 +658,20 @@ export default function CathedralHome() {
         searchQuery={searchQuery}
         onSearch={handleSearch}
         historyCount={history.length}
+        theme={theme}
+        onThemeToggle={cycleTheme}
       />
 
       {/* Breadcrumbs */}
       <Breadcrumbs section={section} onNavigate={setSection} />
 
+      {/* Skip to content link (keyboard users) */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-16 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:rounded-lg focus:bg-teal-cathedral focus:text-indigo-cathedral focus:text-sm focus:font-medium">
+        Skip to main content
+      </a>
+
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center px-4 pb-12 pt-4">
+      <main id="main-content" role="main" className="flex-1 flex flex-col items-center px-4 pb-12 pt-4">
         {/* ─── ORACLE SECTION ─── */}
         {section === "oracle" && (
           <>
@@ -539,31 +683,36 @@ export default function CathedralHome() {
             </header>
 
             {/* Coherency Slider with Live Whispers */}
-            <div className="w-full max-w-lg cathedral-surface p-4 sm:p-6 md:p-8 mb-6">
+            <section className="w-full max-w-lg cathedral-surface p-4 sm:p-6 md:p-8 mb-6" aria-label="Coherency slider">
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-[var(--text-muted)]">
+                  <label htmlFor="coherencySlider" className="text-sm text-[var(--text-muted)]">
                     Coherency
-                  </span>
-                  <span className="text-teal-cathedral font-mono text-xl sm:text-2xl font-semibold">
+                  </label>
+                  <span className="text-teal-cathedral font-mono text-xl sm:text-2xl font-semibold" aria-live="polite">
                     {sliderValue}
                   </span>
                 </div>
 
                 <input
+                  id="coherencySlider"
                   type="range"
                   min={1}
                   max={10}
                   value={sliderValue}
                   onChange={(e) => setSliderValue(Number(e.target.value))}
                   className="coherence-slider"
+                  aria-valuemin={1}
+                  aria-valuemax={10}
+                  aria-valuenow={sliderValue}
+                  aria-valuetext={`${sliderValue} out of 10 — ${getTier(sliderValue)}`}
                 />
-                <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                <div className="flex justify-between text-xs text-[var(--text-muted)]" aria-hidden="true">
                   <span>Scattered</span>
                   <span>Aligned</span>
                 </div>
 
-                <div className="min-h-[3.5rem] sm:min-h-[4rem] flex items-center justify-center pt-2">
+                <div className="min-h-[3.5rem] sm:min-h-[4rem] flex items-center justify-center pt-2" aria-live="polite" aria-atomic="true">
                   <p
                     className={`whisper-text text-center text-sm md:text-base leading-relaxed transition-all duration-600 ${
                       whisperFading
@@ -575,7 +724,7 @@ export default function CathedralHome() {
                   </p>
                 </div>
               </div>
-            </div>
+            </section>
 
             {/* Oracle Form */}
             <form
@@ -645,11 +794,16 @@ export default function CathedralHome() {
             </form>
 
             {/* Skeleton Loader while processing */}
-            {loading && <WhisperSkeleton />}
+            {loading && (
+              <div aria-busy="true" aria-label="Processing your intention" role="status">
+                <span className="sr-only">The oracle is listening...</span>
+                <WhisperSkeleton />
+              </div>
+            )}
 
             {/* Whisper Response */}
             {whisper && !loading && (
-              <div className="w-full max-w-lg mt-6 cathedral-surface p-4 sm:p-6 md:p-8 cathedral-glow animate-fade-in">
+              <div className="w-full max-w-lg mt-6 cathedral-surface p-4 sm:p-6 md:p-8 cathedral-glow animate-fade-in" role="region" aria-live="polite" aria-label="Oracle response">
                 <div className="text-xs text-[var(--text-muted)] tracking-widest uppercase mb-4">
                   Whisper Received
                 </div>
@@ -786,7 +940,7 @@ export default function CathedralHome() {
       </main>
 
       {/* Footer */}
-      <footer className="py-4 text-center space-y-2">
+      <footer className="py-4 text-center space-y-2" role="contentinfo">
         <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
@@ -794,6 +948,8 @@ export default function CathedralHome() {
                 ? "bg-teal-cathedral shadow-[0_0_6px_rgba(0,168,168,0.6)]"
                 : "bg-crimson-cathedral shadow-[0_0_6px_rgba(230,57,70,0.4)]"
             }`}
+            role="img"
+            aria-label={solana.connected ? "Solana connected" : "Solana offline"}
           />
           <span>
             Solana Testnet{" "}

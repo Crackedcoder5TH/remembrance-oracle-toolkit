@@ -4,4 +4,7 @@ export type {
   CoherenceRequest,
   CoherenceResponse,
   CoherenceLogEntry,
+  WhisperEntry,
 } from "./types";
+export { validateEmail } from "./validate";
+export { getConnection, hashInput } from "./solana";

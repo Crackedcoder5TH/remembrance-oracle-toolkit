@@ -1,0 +1,10 @@
+{
+  "name": "Digital Cathedral",
+  "short_name": "Cathedral",
+  "description": "A remembrance-aligned sanctuary — coherence measured, whispers received.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1026",
+  "theme_color": "#1A1B3A",
+  "icons": []
+}

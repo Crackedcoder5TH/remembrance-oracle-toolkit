@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Remembrance Palette
+ * -------------------
+ * Teal (#00A8A8)    — the living water, coherence, presence
+ * Deep Indigo (#1A1B3A) — the cathedral depths, the field before form
+ * Crimson (#E63946) — the sacred pulse, urgency of remembrance
+ */
+
+:root {
+  --teal: #00A8A8;
+  --indigo: #1A1B3A;
+  --crimson: #E63946;
+  --bg-deep: #0F1026;
+  --bg-surface: #161833;
+  --text-primary: #E8E8F0;
+  --text-muted: #8B8BA8;
+  --glow-teal: rgba(0, 168, 168, 0.15);
+  --glow-crimson: rgba(230, 57, 70, 0.10);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: "Inter", system-ui, sans-serif;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  ::selection {
+    background-color: var(--teal);
+    color: var(--indigo);
+  }
+}
+
+@layer components {
+  .cathedral-glow {
+    box-shadow:
+      0 0 20px var(--glow-teal),
+      0 0 60px var(--glow-teal);
+  }
+
+  .cathedral-border {
+    border: 1px solid rgba(0, 168, 168, 0.2);
+  }
+
+  .cathedral-surface {
+    background-color: var(--bg-surface);
+    border: 1px solid rgba(0, 168, 168, 0.1);
+    border-radius: 12px;
+  }
+
+  .whisper-text {
+    color: var(--teal);
+    font-style: italic;
+    opacity: 0.9;
+  }
+
+  .coherence-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--teal);
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--glow-teal);
+  }
+
+  .coherence-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--teal);
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 10px var(--glow-teal);
+  }
+
+  .coherence-slider {
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(
+      to right,
+      var(--crimson),
+      var(--teal)
+    );
+    outline: none;
+  }
+
+  .pulse-gentle {
+    animation: gentle-pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes gentle-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+  }
+}

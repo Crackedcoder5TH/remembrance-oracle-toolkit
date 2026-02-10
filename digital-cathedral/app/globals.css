@@ -128,6 +128,13 @@
       transform: translateY(0);
     }
   }
+
+  .cathedral-nav {
+    background-color: rgba(15, 16, 38, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0, 168, 168, 0.1);
+  }
 }
 
 /* Whisper fade transition — used via inline classes */

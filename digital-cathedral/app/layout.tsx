@@ -1,0 +1,28 @@
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Digital Cathedral — Remembrance Oracle",
+  description:
+    "A remembrance-aligned sanctuary where coherence is measured, whispers are received, and the kingdom is already here.",
+  manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1A1B3A",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <body className="min-h-screen bg-[var(--bg-deep)]">{children}</body>
+    </html>
+  );
+}

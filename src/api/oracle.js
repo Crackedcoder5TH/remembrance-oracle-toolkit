@@ -1552,8 +1552,10 @@ class RemembranceOracle {
       exported: new Date().toISOString(),
       count: patterns.length,
       patterns: patterns.map(p => ({
+        id: p.id,
         name: p.name,
         code: p.code,
+        testCode: p.testCode || undefined,
         language: p.language,
         description: p.description,
         tags: p.tags,

@@ -1,0 +1,79 @@
+{
+  "name": "remembrance-oracle",
+  "displayName": "Remembrance Oracle",
+  "description": "AI code memory — proven patterns, debug intelligence, and smart search at your fingertips",
+  "version": "0.1.0",
+  "publisher": "remembrance-oracle",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages", "Snippets", "Other"],
+  "keywords": ["code memory", "patterns", "debug", "oracle", "ai"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "oracle.search", "title": "Oracle: Search Patterns" },
+      { "command": "oracle.smartSearch", "title": "Oracle: Smart Search (Intent-Aware)" },
+      { "command": "oracle.submit", "title": "Oracle: Submit Selection as Pattern" },
+      { "command": "oracle.debugCapture", "title": "Oracle: Capture Error Fix" },
+      { "command": "oracle.debugSearch", "title": "Oracle: Find Fix for Error" },
+      { "command": "oracle.resolve", "title": "Oracle: Resolve (Pull/Evolve/Generate)" },
+      { "command": "oracle.stats", "title": "Oracle: Show Statistics" },
+      { "command": "oracle.refreshDiagnostics", "title": "Oracle: Refresh Diagnostics" },
+      { "command": "oracle.insertPattern", "title": "Oracle: Insert Pattern at Cursor" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "oracle-sidebar",
+          "title": "Remembrance Oracle",
+          "icon": "$(database)"
+        }
+      ]
+    },
+    "views": {
+      "oracle-sidebar": [
+        { "id": "oracle-patterns", "name": "Patterns" },
+        { "id": "oracle-debug", "name": "Debug Fixes" },
+        { "id": "oracle-stats", "name": "Statistics" }
+      ]
+    },
+    "configuration": {
+      "title": "Remembrance Oracle",
+      "properties": {
+        "oracle.autoAnalyze": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically analyze files on save for diagnostics"
+        },
+        "oracle.minCoherency": {
+          "type": "number",
+          "default": 0.7,
+          "description": "Minimum coherency score for pattern suggestions"
+        },
+        "oracle.maxDiagnostics": {
+          "type": "number",
+          "default": 20,
+          "description": "Maximum diagnostics per file"
+        },
+        "oracle.enableDebugOracle": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable debug oracle for automatic error fix suggestions"
+        }
+      }
+    },
+    "languages": [
+      { "id": "javascript", "extensions": [".js", ".mjs", ".cjs"] },
+      { "id": "typescript", "extensions": [".ts", ".tsx"] },
+      { "id": "python", "extensions": [".py"] },
+      { "id": "go", "extensions": [".go"] },
+      { "id": "rust", "extensions": [".rs"] }
+    ]
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0"
+  }
+}

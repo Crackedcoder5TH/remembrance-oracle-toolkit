@@ -1,0 +1,85 @@
+{
+  "protocol": "remembrance-oracle",
+  "version": "1.0.0",
+  "description": "AI code memory system — stores only proven code, serves the most relevant snippets ranked by coherency",
+
+  "connection_methods": {
+    "direct": {
+      "description": "Use as a Node.js library in-process",
+      "how": "const { RemembranceOracle } = require('remembrance-oracle-toolkit'); const oracle = new RemembranceOracle();"
+    },
+    "cli": {
+      "description": "Run CLI commands",
+      "how": "node src/cli.js <command> [options]"
+    },
+    "github_action": {
+      "description": "Use as a GitHub Action in any workflow",
+      "how": "uses: Crackedcoder5TH/remembrance-oracle-toolkit@main"
+    },
+    "github_issue": {
+      "description": "Create a GitHub issue with the 'oracle-command' label. Post a JSON command in the body. The Oracle replies as a comment.",
+      "how": "gh issue create --repo Crackedcoder5TH/remembrance-oracle-toolkit --label oracle-command --title 'Query' --body '{\"action\":\"query\",\"params\":{\"description\":\"sorting\"}}'"
+    },
+    "github_dispatch": {
+      "description": "Send a repository_dispatch event via GitHub API",
+      "how": "gh api repos/Crackedcoder5TH/remembrance-oracle-toolkit/dispatches -f event_type=oracle-command -f client_payload[action]=query -f client_payload[params][description]=sorting"
+    },
+    "stdin_pipe": {
+      "description": "Pipe JSON commands via stdin/stdout",
+      "how": "echo '{\"action\":\"query\",\"params\":{\"description\":\"sorting\"}}' | node src/connectors/github-handler.js"
+    }
+  },
+
+  "commands": {
+    "submit": {
+      "description": "Submit code for validation. Only code that proves itself gets stored.",
+      "params": {
+        "code": { "type": "string", "required": true, "description": "The code to submit" },
+        "language": { "type": "string", "description": "Programming language" },
+        "description": { "type": "string", "description": "What the code does" },
+        "tags": { "type": "array", "items": "string", "description": "Searchable tags" },
+        "test_code": { "type": "string", "description": "Test code to prove it works" }
+      }
+    },
+    "query": {
+      "description": "Query for proven code ranked by relevance + coherency",
+      "params": {
+        "description": { "type": "string", "description": "Describe what you need" },
+        "tags": { "type": "array", "items": "string", "description": "Tags to filter by" },
+        "language": { "type": "string", "description": "Language filter" },
+        "limit": { "type": "number", "default": 5 },
+        "min_coherency": { "type": "number", "default": 0.5 }
+      }
+    },
+    "feedback": {
+      "description": "Report whether pulled code worked. Updates reliability scores.",
+      "params": {
+        "id": { "type": "string", "required": true },
+        "success": { "type": "boolean", "required": true }
+      }
+    },
+    "stats": {
+      "description": "Get store statistics",
+      "params": {}
+    },
+    "inspect": {
+      "description": "View full details of a stored entry",
+      "params": {
+        "id": { "type": "string", "required": true }
+      }
+    },
+    "prune": {
+      "description": "Remove entries below coherency threshold",
+      "params": {
+        "minCoherency": { "type": "number", "default": 0.4 }
+      }
+    }
+  },
+
+  "ai_tool_definitions": {
+    "openai": "require('remembrance-oracle-toolkit/src/connectors/providers').OPENAI_TOOLS",
+    "anthropic": "require('remembrance-oracle-toolkit/src/connectors/providers').ANTHROPIC_TOOLS",
+    "gemini": "require('remembrance-oracle-toolkit/src/connectors/providers').GEMINI_TOOLS",
+    "mcp": "require('remembrance-oracle-toolkit/src/connectors/providers').MCP_TOOLS"
+  }
+}

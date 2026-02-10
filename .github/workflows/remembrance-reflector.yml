@@ -1,0 +1,152 @@
+name: Remembrance Self-Reflector
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+    inputs:
+      min_coherence:
+        description: 'Minimum coherence threshold (0-1)'
+        required: false
+        default: '0.7'
+      auto_merge:
+        description: 'Auto-merge high-coherence PRs'
+        required: false
+        default: 'false'
+        type: boolean
+      max_files:
+        description: 'Max files to scan per run'
+        required: false
+        default: '50'
+      dry_run:
+        description: 'Preview only — no file changes'
+        required: false
+        default: 'false'
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ─── PR Check: score only, no healing ───
+  check:
+    name: Coherence Check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run Tests
+        run: node --test tests/*.test.js
+
+      - name: Coherence Snapshot
+        id: snapshot
+        run: |
+          mkdir -p .remembrance
+          node bin/reflector snapshot --json > .remembrance/reflector-snapshot.json
+          cat .remembrance/reflector-snapshot.json
+
+      - name: Comment Coherence Report
+        run: |
+          COHERENCE=$(node -e "const r=require('./.remembrance/reflector-snapshot.json'); console.log(r.aggregate?.avgCoherence?.toFixed(3) || 'N/A')")
+          BELOW=$(node -e "const r=require('./.remembrance/reflector-snapshot.json'); console.log(r.belowThreshold?.length || 0)")
+          TOTAL=$(node -e "const r=require('./.remembrance/reflector-snapshot.json'); console.log(r.files?.length || 0)")
+          HEALTH=$(node -e "const r=require('./.remembrance/reflector-snapshot.json'); const c=parseFloat(r.aggregate?.avgCoherence||0); console.log(c>=0.8?'healthy':c>=0.6?'stable':'needs attention')")
+
+          BODY=$(cat <<COMMENT
+          ## Remembrance Reflector — Coherence Check
+
+          | Metric | Value |
+          |--------|-------|
+          | **Avg Coherence** | ${COHERENCE} |
+          | **Files Scanned** | ${TOTAL} |
+          | **Below Threshold** | ${BELOW} |
+          | **Health** | ${HEALTH} |
+
+          > Run \`node bin/reflector repo-score\` locally for a deep analysis.
+          COMMENT
+          )
+
+          gh pr comment ${{ github.event.pull_request.number }} --body "$BODY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coherence-snapshot-${{ github.run_id }}
+          path: .remembrance/reflector-snapshot.json
+          retention-days: 30
+
+  # ─── Heal: full reflector cycle ───
+  reflect:
+    name: Self-Reflect & Heal
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run Tests (pre-heal gate)
+        run: node --test tests/*.test.js
+
+      - name: Ensure .remembrance directory
+        run: mkdir -p .remembrance
+
+      - name: Run Self-Reflector
+        run: |
+          MIN_COHERENCE="${{ github.event.inputs.min_coherence || '0.7' }}"
+          MAX_FILES="${{ github.event.inputs.max_files || '50' }}"
+          AUTO_MERGE="${{ github.event.inputs.auto_merge || 'false' }}"
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
+
+          ARGS="--min-coherence $MIN_COHERENCE --max-files $MAX_FILES --json"
+
+          # Push and open PR on schedule or manual dispatch
+          if [ "$DRY_RUN" != "true" ]; then
+            ARGS="$ARGS --push --open-pr"
+          fi
+
+          if [ "$AUTO_MERGE" = "true" ]; then
+            ARGS="$ARGS --auto-merge"
+          fi
+
+          node src/cli.js reflector run $ARGS | tee .remembrance/reflector-output.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Tests (post-heal gate)
+        run: |
+          if ! node --test tests/*.test.js; then
+            echo "::error::Tests failed after healing — rolling back"
+            git checkout -- .
+            exit 1
+          fi
+
+      - name: Upload Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reflector-report-${{ github.run_id }}
+          path: |
+            .remembrance/reflector-report.json
+            .remembrance/reflector-output.json
+            .remembrance/reflector-history-v2.json
+          retention-days: 30

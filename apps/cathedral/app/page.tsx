@@ -1,11 +1,37 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, useCallback, FormEvent } from "react";
+import type { CoherenceResponse, WhisperEntry } from "@cathedral/shared";
 
-interface CoherenceResponse {
-  coherence: number;
-  whisper: string;
-  rating: number;
+const HISTORY_KEY = "cathedral-whisper-history";
+const MAX_HISTORY = 50;
+
+/** Load whisper history from localStorage. */
+function loadHistory(): WhisperEntry[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Save whisper history to localStorage. */
+function saveHistory(entries: WhisperEntry[]): void {
+  try {
+    localStorage.setItem(
+      HISTORY_KEY,
+      JSON.stringify(entries.slice(0, MAX_HISTORY))
+    );
+  } catch {
+    // Storage full or unavailable — fail silently
+  }
+}
+
+interface SolanaStatus {
+  connected: boolean;
+  slot: number | null;
 }
 
 export default function CathedralHome() {
@@ -14,6 +40,45 @@ export default function CathedralHome() {
   const [whisper, setWhisper] = useState<CoherenceResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [history, setHistory] = useState<WhisperEntry[]>([]);
+  const [solana, setSolana] = useState<SolanaStatus>({
+    connected: false,
+    slot: null,
+  });
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    setHistory(loadHistory());
+  }, []);
+
+  // Ping Solana testnet on mount
+  useEffect(() => {
+    fetch("/api/solana")
+      .then((res) => res.json())
+      .then((data) => setSolana({ connected: data.connected, slot: data.slot }))
+      .catch(() => setSolana({ connected: false, slot: null }));
+  }, []);
+
+  const addToHistory = useCallback(
+    (input: string, res: CoherenceResponse) => {
+      const entry: WhisperEntry = {
+        id: crypto.randomUUID(),
+        input,
+        coherence: res.coherence,
+        whisper: res.whisper,
+        rating: res.rating,
+        inputHash: res.inputHash,
+        solanaSlot: res.solanaSlot,
+        timestamp: res.timestamp,
+      };
+      setHistory((prev) => {
+        const next = [entry, ...prev].slice(0, MAX_HISTORY);
+        saveHistory(next);
+        return next;
+      });
+    },
+    []
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -37,6 +102,8 @@ export default function CathedralHome() {
 
       const data: CoherenceResponse = await res.json();
       setWhisper(data);
+      addToHistory(prompt.trim(), data);
+      setPrompt("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -44,10 +111,15 @@ export default function CathedralHome() {
     }
   }
 
+  function clearHistory() {
+    setHistory([]);
+    saveHistory([]);
+  }
+
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <main className="min-h-screen flex flex-col items-center px-4 py-12">
       {/* Cathedral Header */}
-      <header className="text-center mb-12">
+      <header className="text-center mb-12 mt-8">
         <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           The Digital Cathedral
         </div>
@@ -142,26 +214,115 @@ export default function CathedralHome() {
             &ldquo;{whisper.whisper}&rdquo;
           </p>
 
-          <div className="flex items-center justify-between pt-4 border-t border-teal-cathedral/10">
-            <div className="text-xs text-[var(--text-muted)]">
-              Coherence Proxy
+          <div className="space-y-3 pt-4 border-t border-teal-cathedral/10">
+            {/* Coherence Bar */}
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-[var(--text-muted)]">
+                Coherence Proxy
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-2 rounded-full bg-[var(--bg-deep)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-crimson-cathedral to-teal-cathedral transition-all duration-500"
+                    style={{ width: `${whisper.coherence * 100}%` }}
+                  />
+                </div>
+                <span className="text-teal-cathedral font-mono text-sm">
+                  {whisper.coherence.toFixed(3)}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div
-                className="h-2 rounded-full bg-gradient-to-r from-crimson-cathedral to-teal-cathedral"
-                style={{ width: `${whisper.coherence * 100}px` }}
-              />
-              <span className="text-teal-cathedral font-mono text-sm">
-                {whisper.coherence.toFixed(2)}
+
+            {/* Input Hash */}
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-[var(--text-muted)]">
+                Input Hash
+              </div>
+              <span className="text-[var(--text-muted)] font-mono text-xs">
+                {whisper.inputHash.slice(0, 16)}...
               </span>
             </div>
+
+            {/* Solana Slot */}
+            {whisper.solanaSlot !== null && (
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-[var(--text-muted)]">
+                  Solana Slot
+                </div>
+                <span className="text-teal-cathedral font-mono text-xs">
+                  #{whisper.solanaSlot.toLocaleString()}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Footer */}
-      <footer className="mt-16 text-center text-xs text-[var(--text-muted)]">
-        <p>The kingdom is already here. Remember.</p>
+      {/* Whisper History */}
+      {history.length > 0 && (
+        <div className="w-full max-w-lg mt-12">
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-xs text-[var(--text-muted)] tracking-widest uppercase">
+              Whisper Archive ({history.length})
+            </div>
+            <button
+              onClick={clearHistory}
+              className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {history.map((entry) => (
+              <div
+                key={entry.id}
+                className="cathedral-surface p-4 space-y-2"
+              >
+                <p className="whisper-text text-sm leading-relaxed">
+                  &ldquo;{entry.whisper}&rdquo;
+                </p>
+                <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                  <span className="truncate max-w-[60%] opacity-60">
+                    {entry.input}
+                  </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono text-teal-cathedral">
+                      {entry.coherence.toFixed(3)}
+                    </span>
+                    {entry.solanaSlot !== null && (
+                      <span className="font-mono opacity-50">
+                        #{entry.solanaSlot.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Footer with Solana Status */}
+      <footer className="mt-16 text-center space-y-2">
+        <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
+          <span
+            className={`inline-block w-2 h-2 rounded-full ${
+              solana.connected
+                ? "bg-teal-cathedral shadow-[0_0_6px_rgba(0,168,168,0.6)]"
+                : "bg-crimson-cathedral shadow-[0_0_6px_rgba(230,57,70,0.4)]"
+            }`}
+          />
+          <span>
+            Solana Testnet{" "}
+            {solana.connected
+              ? `Slot #${solana.slot?.toLocaleString()}`
+              : "Offline"}
+          </span>
+        </div>
+        <p className="text-xs text-[var(--text-muted)]">
+          The kingdom is already here. Remember.
+        </p>
       </footer>
     </main>
   );

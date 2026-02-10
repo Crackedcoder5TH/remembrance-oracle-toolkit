@@ -158,8 +158,6 @@ Iteratively refines code through 6 transforms (simplify, secure, readable, unify
 oracle reflect --file code.js --loops 3 --target 0.9
 ```
 
-Formula: `SERF(n+1) = I_AM + r_eff * Re[projection / (|overlap|² + ε)] + δ_canvas * exploration`
-
 ## CLI Reference
 
 ```

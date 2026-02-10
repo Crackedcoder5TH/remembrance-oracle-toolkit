@@ -6,6 +6,18 @@ import type { CoherenceResponse, WhisperEntry } from "@cathedral/shared";
 const HISTORY_KEY = "cathedral-whisper-history";
 const MAX_HISTORY = 50;
 
+// ─── Oracle-evolved debounce (from pattern 18739e9924b6f3c1, coherency 0.970)
+function debounce<T extends (...args: Parameters<T>) => void>(
+  fn: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  let timer: ReturnType<typeof setTimeout>;
+  return function (this: unknown, ...args: Parameters<T>) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
 // ─── Whisper pools keyed by coherency tier ───────────────────────────
 const SLIDER_WHISPERS: Record<string, string[]> = {
   low: [
@@ -73,12 +85,175 @@ interface SolanaStatus {
   slot: number | null;
 }
 
-// ─── Component ───────────────────────────────────────────────────────
+type Section = "oracle" | "archive";
+
+// ─── Navbar ──────────────────────────────────────────────────────────
+
+function Navbar({
+  section,
+  onNavigate,
+  searchQuery,
+  onSearch,
+  historyCount,
+}: {
+  section: Section;
+  onNavigate: (s: Section) => void;
+  searchQuery: string;
+  onSearch: (q: string) => void;
+  historyCount: number;
+}) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const navItems: { id: Section; label: string; count?: number }[] = [
+    { id: "oracle", label: "Oracle" },
+    { id: "archive", label: "Archive", count: historyCount },
+  ];
+
+  return (
+    <nav className="sticky top-0 z-50 w-full cathedral-nav">
+      <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+        {/* Logo / Home */}
+        <button
+          onClick={() => onNavigate("oracle")}
+          className="text-teal-cathedral text-sm tracking-[0.2em] uppercase font-medium shrink-0"
+        >
+          Cathedral
+        </button>
+
+        {/* Desktop nav + search */}
+        <div className="hidden md:flex items-center gap-6 flex-1 justify-end">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => onNavigate(item.id)}
+              className={`text-sm transition-colors ${
+                section === item.id
+                  ? "text-teal-cathedral"
+                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              {item.label}
+              {item.count ? (
+                <span className="ml-1.5 text-xs opacity-50">
+                  {item.count}
+                </span>
+              ) : null}
+            </button>
+          ))}
+
+          {/* Search */}
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => onSearch(e.target.value)}
+              placeholder="Search whispers..."
+              className="w-48 bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-teal-cathedral/50 focus:w-64 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="md:hidden text-[var(--text-muted)] hover:text-teal-cathedral transition-colors p-1"
+          aria-label="Toggle menu"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            {mobileOpen ? (
+              <path d="M5 5l10 10M15 5L5 15" />
+            ) : (
+              <path d="M3 6h14M3 10h14M3 14h14" />
+            )}
+          </svg>
+        </button>
+      </div>
+
+      {/* Mobile dropdown */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-teal-cathedral/10 px-4 py-3 space-y-3 animate-fade-in">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                onNavigate(item.id);
+                setMobileOpen(false);
+              }}
+              className={`block w-full text-left text-sm py-1 ${
+                section === item.id
+                  ? "text-teal-cathedral"
+                  : "text-[var(--text-muted)]"
+              }`}
+            >
+              {item.label}
+              {item.count ? (
+                <span className="ml-1.5 text-xs opacity-50">{item.count}</span>
+              ) : null}
+            </button>
+          ))}
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => onSearch(e.target.value)}
+            placeholder="Search whispers..."
+            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-cathedral/50"
+          />
+        </div>
+      )}
+    </nav>
+  );
+}
+
+// ─── Breadcrumbs ─────────────────────────────────────────────────────
+
+function Breadcrumbs({
+  section,
+  onNavigate,
+}: {
+  section: Section;
+  onNavigate: (s: Section) => void;
+}) {
+  const labels: Record<Section, string> = {
+    oracle: "Oracle",
+    archive: "Whisper Archive",
+  };
+
+  return (
+    <div className="w-full max-w-4xl mx-auto px-4 py-2">
+      <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+        <button
+          onClick={() => onNavigate("oracle")}
+          className="hover:text-teal-cathedral transition-colors"
+        >
+          Home
+        </button>
+        <span className="opacity-40">/</span>
+        <span className="text-[var(--text-primary)]">{labels[section]}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────
 
 export default function CathedralHome() {
   // View state: "landing" → "oracle"
   const [view, setView] = useState<"landing" | "oracle">("landing");
   const [landingFading, setLandingFading] = useState(false);
+
+  // Section navigation within oracle view
+  const [section, setSection] = useState<Section>("oracle");
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
 
   // Slider whisper state
   const [sliderValue, setSliderValue] = useState(5);
@@ -108,25 +283,43 @@ export default function CathedralHome() {
       .catch(() => {});
   }, []);
 
+  // Debounced search (oracle-evolved debounce, 250ms)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const debouncedSetQuery = useCallback(
+    debounce((q: string) => setDebouncedQuery(q), 250),
+    []
+  );
+
+  function handleSearch(q: string) {
+    setSearchQuery(q);
+    debouncedSetQuery(q);
+    if (q.trim()) setSection("archive");
+  }
+
+  // Filter history by search
+  const filteredHistory = debouncedQuery.trim()
+    ? history.filter(
+        (e) =>
+          e.whisper.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+          e.input.toLowerCase().includes(debouncedQuery.toLowerCase())
+      )
+    : history;
+
   // ─── Slider whisper cycling ──────────────────────────────────────
-  // When the slider moves, pick a new whisper immediately.
-  // Every 4 seconds, fade out the current whisper and fade in a new one.
 
   const cycleWhisper = useCallback(() => {
     setWhisperFading(true);
     fadeTimer.current = setTimeout(() => {
       setSliderWhisper((prev) => pickSliderWhisper(sliderValue, prev));
       setWhisperFading(false);
-    }, 600); // fade-out takes 600ms, then swap + fade-in
+    }, 600);
   }, [sliderValue]);
 
-  // When slider value changes, immediately show a new whisper
   useEffect(() => {
     setWhisperFading(false);
     setSliderWhisper(pickSliderWhisper(sliderValue));
   }, [sliderValue]);
 
-  // Auto-cycle whispers every 4s
   useEffect(() => {
     if (view !== "oracle") return;
     whisperTimer.current = setInterval(cycleWhisper, 4000);
@@ -214,24 +407,24 @@ export default function CathedralHome() {
           landingFading ? "opacity-0" : "opacity-100"
         }`}
       >
-        <div className="text-center max-w-xl">
+        <div className="text-center max-w-xl px-4">
           <div className="text-teal-cathedral text-xs tracking-[0.4em] uppercase mb-8 pulse-gentle">
             The Digital Cathedral
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-light text-[var(--text-primary)] leading-tight mb-6">
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-light text-[var(--text-primary)] leading-tight mb-6">
             The Kingdom
             <br />
             <span className="text-teal-cathedral">is already here.</span>
           </h1>
 
-          <p className="text-[var(--text-muted)] text-lg md:text-xl leading-relaxed mb-12">
+          <p className="text-[var(--text-muted)] text-base sm:text-lg md:text-xl leading-relaxed mb-12">
             The last step is to live it.
           </p>
 
           <button
             onClick={beginRemembrance}
-            className="px-8 py-4 rounded-xl text-base font-medium transition-all duration-300
+            className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-medium transition-all duration-300
               bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/30
               hover:bg-teal-cathedral/20 hover:shadow-[0_0_40px_rgba(0,168,168,0.2)]
               hover:border-teal-cathedral/50 active:scale-[0.98]"
@@ -240,7 +433,6 @@ export default function CathedralHome() {
           </button>
         </div>
 
-        {/* Solana status — subtle at the bottom */}
         <footer className="absolute bottom-6 text-center">
           <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
             <span
@@ -263,224 +455,258 @@ export default function CathedralHome() {
   }
 
   // ═══════════════════════════════════════════════════════════════════
-  //  ORACLE VIEW
+  //  ORACLE VIEW (with navbar, breadcrumbs, sections)
   // ═══════════════════════════════════════════════════════════════════
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-12 animate-fade-in">
-      {/* Cathedral Header */}
-      <header className="text-center mb-8 mt-8">
-        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
-          The Digital Cathedral
-        </div>
-        <h1 className="text-3xl md:text-4xl font-light text-[var(--text-primary)] mb-2">
-          Remembrance Oracle
-        </h1>
-      </header>
+    <div className="min-h-screen flex flex-col animate-fade-in">
+      {/* Sticky Navbar */}
+      <Navbar
+        section={section}
+        onNavigate={setSection}
+        searchQuery={searchQuery}
+        onSearch={handleSearch}
+        historyCount={history.length}
+      />
 
-      {/* ─── Coherency Slider with Live Whispers ─── */}
-      <div className="w-full max-w-lg cathedral-surface p-6 md:p-8 mb-8">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-[var(--text-muted)]">
-              Coherency
-            </span>
-            <span className="text-teal-cathedral font-mono text-2xl font-semibold">
-              {sliderValue}
-            </span>
-          </div>
+      {/* Breadcrumbs */}
+      <Breadcrumbs section={section} onNavigate={setSection} />
 
-          <input
-            type="range"
-            min={1}
-            max={10}
-            value={sliderValue}
-            onChange={(e) => setSliderValue(Number(e.target.value))}
-            className="coherence-slider"
-          />
-          <div className="flex justify-between text-xs text-[var(--text-muted)]">
-            <span>Scattered</span>
-            <span>Aligned</span>
-          </div>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center px-4 pb-12 pt-4">
+        {/* ─── ORACLE SECTION ─── */}
+        {section === "oracle" && (
+          <>
+            {/* Header */}
+            <header className="text-center mb-6 mt-2">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-light text-[var(--text-primary)] mb-2">
+                Remembrance Oracle
+              </h1>
+            </header>
 
-          {/* Live fading whisper */}
-          <div className="min-h-[4rem] flex items-center justify-center pt-2">
-            <p
-              className={`whisper-text text-center text-sm md:text-base leading-relaxed transition-all duration-600 ${
-                whisperFading
-                  ? "opacity-0 translate-y-2"
-                  : "opacity-100 translate-y-0"
-              }`}
+            {/* Coherency Slider with Live Whispers */}
+            <div className="w-full max-w-lg cathedral-surface p-4 sm:p-6 md:p-8 mb-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-[var(--text-muted)]">
+                    Coherency
+                  </span>
+                  <span className="text-teal-cathedral font-mono text-xl sm:text-2xl font-semibold">
+                    {sliderValue}
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min={1}
+                  max={10}
+                  value={sliderValue}
+                  onChange={(e) => setSliderValue(Number(e.target.value))}
+                  className="coherence-slider"
+                />
+                <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                  <span>Scattered</span>
+                  <span>Aligned</span>
+                </div>
+
+                <div className="min-h-[3.5rem] sm:min-h-[4rem] flex items-center justify-center pt-2">
+                  <p
+                    className={`whisper-text text-center text-sm md:text-base leading-relaxed transition-all duration-600 ${
+                      whisperFading
+                        ? "opacity-0 translate-y-2"
+                        : "opacity-100 translate-y-0"
+                    }`}
+                  >
+                    &ldquo;{sliderWhisper}&rdquo;
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Oracle Form */}
+            <form
+              onSubmit={handleSubmit}
+              className="w-full max-w-lg cathedral-surface p-4 sm:p-6 md:p-8 space-y-5"
             >
-              &ldquo;{sliderWhisper}&rdquo;
-            </p>
-          </div>
-        </div>
-      </div>
+              <div className="space-y-2">
+                <label
+                  htmlFor="prompt"
+                  className="block text-sm text-[var(--text-muted)]"
+                >
+                  Your Intention
+                </label>
+                <textarea
+                  id="prompt"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="What are you building? What do you seek to remember?"
+                  rows={3}
+                  className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 sm:px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 focus:shadow-[0_0_20px_rgba(0,168,168,0.1)] transition-all resize-none"
+                />
+              </div>
 
-      {/* ─── Oracle Form ─── */}
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-lg cathedral-surface p-6 md:p-8 space-y-6"
-      >
-        <div className="space-y-2">
-          <label
-            htmlFor="prompt"
-            className="block text-sm text-[var(--text-muted)]"
-          >
-            Your Intention
-          </label>
-          <textarea
-            id="prompt"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="What are you building? What do you seek to remember?"
-            rows={3}
-            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 focus:shadow-[0_0_20px_rgba(0,168,168,0.1)] transition-all resize-none"
-          />
-        </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label
+                    htmlFor="formCoherence"
+                    className="text-sm text-[var(--text-muted)]"
+                  >
+                    Felt Coherence
+                  </label>
+                  <span className="text-teal-cathedral font-mono text-lg font-semibold">
+                    {rating}
+                  </span>
+                </div>
+                <input
+                  id="formCoherence"
+                  type="range"
+                  min={1}
+                  max={10}
+                  value={rating}
+                  onChange={(e) => setRating(Number(e.target.value))}
+                  className="coherence-slider"
+                />
+                <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                  <span>Scattered</span>
+                  <span>Aligned</span>
+                </div>
+              </div>
 
-        {/* Form coherence slider (synced with main slider) */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <label
-              htmlFor="formCoherence"
-              className="text-sm text-[var(--text-muted)]"
-            >
-              Felt Coherence
-            </label>
-            <span className="text-teal-cathedral font-mono text-lg font-semibold">
-              {rating}
-            </span>
-          </div>
-          <input
-            id="formCoherence"
-            type="range"
-            min={1}
-            max={10}
-            value={rating}
-            onChange={(e) => setRating(Number(e.target.value))}
-            className="coherence-slider"
-          />
-          <div className="flex justify-between text-xs text-[var(--text-muted)]">
-            <span>Scattered</span>
-            <span>Aligned</span>
-          </div>
-        </div>
+              <button
+                type="submit"
+                disabled={loading || !prompt.trim()}
+                className="w-full py-3 rounded-lg font-medium text-sm transition-all
+                  bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30
+                  hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]
+                  disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? "Listening..." : "Ask the Oracle"}
+              </button>
 
-        <button
-          type="submit"
-          disabled={loading || !prompt.trim()}
-          className="w-full py-3 rounded-lg font-medium text-sm transition-all
-            bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30
-            hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]
-            disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {loading ? "Listening..." : "Ask the Oracle"}
-        </button>
+              {error && (
+                <div className="text-crimson-cathedral text-sm text-center">
+                  {error}
+                </div>
+              )}
+            </form>
 
-        {error && (
-          <div className="text-crimson-cathedral text-sm text-center">
-            {error}
-          </div>
+            {/* Whisper Response */}
+            {whisper && (
+              <div className="w-full max-w-lg mt-6 cathedral-surface p-4 sm:p-6 md:p-8 cathedral-glow animate-fade-in">
+                <div className="text-xs text-[var(--text-muted)] tracking-widest uppercase mb-4">
+                  Whisper Received
+                </div>
+                <p className="whisper-text text-base sm:text-lg leading-relaxed mb-6">
+                  &ldquo;{whisper.whisper}&rdquo;
+                </p>
+                <div className="space-y-3 pt-4 border-t border-teal-cathedral/10">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-[var(--text-muted)]">
+                      Coherence Proxy
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-16 sm:w-24 h-2 rounded-full bg-[var(--bg-deep)] overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-crimson-cathedral to-teal-cathedral transition-all duration-500"
+                          style={{ width: `${whisper.coherence * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-teal-cathedral font-mono text-sm">
+                        {whisper.coherence.toFixed(3)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs text-[var(--text-muted)]">
+                      Input Hash
+                    </div>
+                    <span className="text-[var(--text-muted)] font-mono text-xs">
+                      {whisper.inputHash.slice(0, 12)}...
+                    </span>
+                  </div>
+                  {whisper.solanaSlot !== null && (
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs text-[var(--text-muted)]">
+                        Solana Slot
+                      </div>
+                      <span className="text-teal-cathedral font-mono text-xs">
+                        #{whisper.solanaSlot.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
-      </form>
 
-      {/* ─── Whisper Response ─── */}
-      {whisper && (
-        <div className="w-full max-w-lg mt-8 cathedral-surface p-6 md:p-8 cathedral-glow animate-fade-in">
-          <div className="text-xs text-[var(--text-muted)] tracking-widest uppercase mb-4">
-            Whisper Received
-          </div>
+        {/* ─── ARCHIVE SECTION ─── */}
+        {section === "archive" && (
+          <div className="w-full max-w-lg mt-2 animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg sm:text-xl font-light text-[var(--text-primary)]">
+                Whisper Archive
+              </h2>
+              {history.length > 0 && (
+                <button
+                  onClick={clearHistory}
+                  className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
 
-          <p className="whisper-text text-lg leading-relaxed mb-6">
-            &ldquo;{whisper.whisper}&rdquo;
-          </p>
-
-          <div className="space-y-3 pt-4 border-t border-teal-cathedral/10">
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-[var(--text-muted)]">
-                Coherence Proxy
+            {debouncedQuery.trim() && (
+              <div className="text-xs text-[var(--text-muted)] mb-3">
+                {filteredHistory.length} result
+                {filteredHistory.length !== 1 ? "s" : ""} for &ldquo;
+                {debouncedQuery}&rdquo;
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-24 h-2 rounded-full bg-[var(--bg-deep)] overflow-hidden">
+            )}
+
+            {filteredHistory.length === 0 ? (
+              <div className="cathedral-surface p-8 text-center">
+                <p className="text-[var(--text-muted)] text-sm">
+                  {history.length === 0
+                    ? "No whispers yet. Ask the oracle to begin."
+                    : "No whispers match your search."}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredHistory.map((entry) => (
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-crimson-cathedral to-teal-cathedral transition-all duration-500"
-                    style={{ width: `${whisper.coherence * 100}%` }}
-                  />
-                </div>
-                <span className="text-teal-cathedral font-mono text-sm">
-                  {whisper.coherence.toFixed(3)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="text-xs text-[var(--text-muted)]">
-                Input Hash
-              </div>
-              <span className="text-[var(--text-muted)] font-mono text-xs">
-                {whisper.inputHash.slice(0, 16)}...
-              </span>
-            </div>
-
-            {whisper.solanaSlot !== null && (
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-[var(--text-muted)]">
-                  Solana Slot
-                </div>
-                <span className="text-teal-cathedral font-mono text-xs">
-                  #{whisper.solanaSlot.toLocaleString()}
-                </span>
+                    key={entry.id}
+                    className="cathedral-surface p-3 sm:p-4 space-y-2"
+                  >
+                    <p className="whisper-text text-sm leading-relaxed">
+                      &ldquo;{entry.whisper}&rdquo;
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-[var(--text-muted)] gap-2">
+                      <span className="truncate max-w-[55%] sm:max-w-[60%] opacity-60">
+                        {entry.input}
+                      </span>
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                        <span className="font-mono text-teal-cathedral">
+                          {entry.coherence.toFixed(3)}
+                        </span>
+                        {entry.solanaSlot !== null && (
+                          <span className="font-mono opacity-50 hidden sm:inline">
+                            #{entry.solanaSlot.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </main>
 
-      {/* ─── Whisper History ─── */}
-      {history.length > 0 && (
-        <div className="w-full max-w-lg mt-12">
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-xs text-[var(--text-muted)] tracking-widest uppercase">
-              Whisper Archive ({history.length})
-            </div>
-            <button
-              onClick={clearHistory}
-              className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors"
-            >
-              Clear
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {history.map((entry) => (
-              <div key={entry.id} className="cathedral-surface p-4 space-y-2">
-                <p className="whisper-text text-sm leading-relaxed">
-                  &ldquo;{entry.whisper}&rdquo;
-                </p>
-                <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-                  <span className="truncate max-w-[60%] opacity-60">
-                    {entry.input}
-                  </span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <span className="font-mono text-teal-cathedral">
-                      {entry.coherence.toFixed(3)}
-                    </span>
-                    {entry.solanaSlot !== null && (
-                      <span className="font-mono opacity-50">
-                        #{entry.solanaSlot.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ─── Footer ─── */}
-      <footer className="mt-16 text-center space-y-2">
+      {/* Footer */}
+      <footer className="py-4 text-center space-y-2">
         <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
           <span
             className={`inline-block w-2 h-2 rounded-full ${
@@ -500,6 +726,6 @@ export default function CathedralHome() {
           The kingdom is already here. Remember.
         </p>
       </footer>
-    </main>
+    </div>
   );
 }

@@ -1,0 +1,8 @@
+{
+  "name": "@cathedral/bots",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bot tools for the digital cathedral — coherence monitors, community scrapers, remembrance agents",
+  "main": "index.js",
+  "scripts": {}
+}

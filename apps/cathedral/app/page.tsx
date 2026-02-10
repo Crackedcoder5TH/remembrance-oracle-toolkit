@@ -78,6 +78,57 @@ function saveHistory(entries: WhisperEntry[]): void {
   } catch {}
 }
 
+// ─── Skeleton Loader ─────────────────────────────────────────────────
+
+function SkeletonLine({ width = "100%" }: { width?: string }) {
+  return (
+    <div
+      className="h-3 rounded-md skeleton-shimmer"
+      style={{ width }}
+    />
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="cathedral-surface p-4 sm:p-6 space-y-4 animate-pulse">
+      <SkeletonLine width="40%" />
+      <SkeletonLine />
+      <SkeletonLine width="75%" />
+      <div className="flex justify-between pt-2">
+        <SkeletonLine width="30%" />
+        <SkeletonLine width="20%" />
+      </div>
+    </div>
+  );
+}
+
+function WhisperSkeleton() {
+  return (
+    <div className="w-full max-w-lg mt-6 cathedral-surface p-4 sm:p-6 md:p-8 space-y-4 animate-pulse">
+      <SkeletonLine width="35%" />
+      <div className="space-y-2 py-2">
+        <SkeletonLine />
+        <SkeletonLine width="85%" />
+      </div>
+      <div className="space-y-3 pt-4 border-t border-teal-cathedral/10">
+        <div className="flex justify-between">
+          <SkeletonLine width="25%" />
+          <SkeletonLine width="30%" />
+        </div>
+        <div className="flex justify-between">
+          <SkeletonLine width="20%" />
+          <SkeletonLine width="25%" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Constants ───────────────────────────────────────────────────────
+
+const ARCHIVE_PAGE_SIZE = 10;
+
 // ─── Types ───────────────────────────────────────────────────────────
 
 interface SolanaStatus {
@@ -255,6 +306,9 @@ export default function CathedralHome() {
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
+  // Load-more pagination for archive
+  const [visibleCount, setVisibleCount] = useState(ARCHIVE_PAGE_SIZE);
+
   // Slider whisper state
   const [sliderValue, setSliderValue] = useState(5);
   const [sliderWhisper, setSliderWhisper] = useState("");
@@ -293,6 +347,7 @@ export default function CathedralHome() {
   function handleSearch(q: string) {
     setSearchQuery(q);
     debouncedSetQuery(q);
+    setVisibleCount(ARCHIVE_PAGE_SIZE);
     if (q.trim()) setSection("archive");
   }
 
@@ -589,8 +644,11 @@ export default function CathedralHome() {
               )}
             </form>
 
+            {/* Skeleton Loader while processing */}
+            {loading && <WhisperSkeleton />}
+
             {/* Whisper Response */}
-            {whisper && (
+            {whisper && !loading && (
               <div className="w-full max-w-lg mt-6 cathedral-surface p-4 sm:p-6 md:p-8 cathedral-glow animate-fade-in">
                 <div className="text-xs text-[var(--text-muted)] tracking-widest uppercase mb-4">
                   Whisper Received
@@ -673,33 +731,55 @@ export default function CathedralHome() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredHistory.map((entry) => (
-                  <div
-                    key={entry.id}
-                    className="cathedral-surface p-3 sm:p-4 space-y-2"
-                  >
-                    <p className="whisper-text text-sm leading-relaxed">
-                      &ldquo;{entry.whisper}&rdquo;
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-[var(--text-muted)] gap-2">
-                      <span className="truncate max-w-[55%] sm:max-w-[60%] opacity-60">
-                        {entry.input}
-                      </span>
-                      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                        <span className="font-mono text-teal-cathedral">
-                          {entry.coherence.toFixed(3)}
+              <>
+                <div className="space-y-3">
+                  {filteredHistory.slice(0, visibleCount).map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="cathedral-surface p-3 sm:p-4 space-y-2"
+                    >
+                      <p className="whisper-text text-sm leading-relaxed">
+                        &ldquo;{entry.whisper}&rdquo;
+                      </p>
+                      <div className="flex items-center justify-between text-xs text-[var(--text-muted)] gap-2">
+                        <span className="truncate max-w-[55%] sm:max-w-[60%] opacity-60">
+                          {entry.input}
                         </span>
-                        {entry.solanaSlot !== null && (
-                          <span className="font-mono opacity-50 hidden sm:inline">
-                            #{entry.solanaSlot.toLocaleString()}
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                          <span className="font-mono text-teal-cathedral">
+                            {entry.coherence.toFixed(3)}
                           </span>
-                        )}
+                          {entry.solanaSlot !== null && (
+                            <span className="font-mono opacity-50 hidden sm:inline">
+                              #{entry.solanaSlot.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+
+                {/* Load More */}
+                {visibleCount < filteredHistory.length && (
+                  <div className="flex flex-col items-center gap-2 mt-6">
+                    <button
+                      onClick={() =>
+                        setVisibleCount((c) => c + ARCHIVE_PAGE_SIZE)
+                      }
+                      className="px-6 py-2.5 rounded-lg text-sm font-medium transition-all
+                        bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/20
+                        hover:bg-teal-cathedral/20 hover:border-teal-cathedral/40"
+                    >
+                      Load More
+                    </button>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      Showing {Math.min(visibleCount, filteredHistory.length)}{" "}
+                      of {filteredHistory.length}
+                    </span>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         )}

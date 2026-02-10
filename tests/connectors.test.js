@@ -23,7 +23,7 @@ describe('AIConnector', () => {
 
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'connector-test-'));
-    connector = new AIConnector({ baseDir: tmpDir, provider: 'test', modelId: 'test-model' });
+    connector = new AIConnector({ baseDir: tmpDir, provider: 'test', modelId: 'test-model', autoSeed: false });
   });
 
   afterEach(() => {

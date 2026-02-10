@@ -243,7 +243,7 @@ ${testCode}
  * Uses `go test` with a temp module.
  */
 function sandboxGo(code, testCode, options = {}) {
-  const { timeout = DEFAULT_TIMEOUT * 3 } = options; // Go compilation needs more time
+  const { timeout = DEFAULT_TIMEOUT * 5 } = options; // Go compilation needs more time
   const sandboxDir = createSandboxDir();
 
   try {

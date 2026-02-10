@@ -512,7 +512,8 @@ function getProvenance(oracle, options = {}) {
       if (!p.tags.some(t => t.startsWith('source:'))) return false;
     }
     if (licenseFilter) {
-      if (!p.tags.some(t => t === `license:${licenseFilter}`)) return false;
+      const lf = licenseFilter.toLowerCase();
+      if (!p.tags.some(t => t.toLowerCase() === `license:${lf}`)) return false;
     }
     return true;
   }).map(p => {

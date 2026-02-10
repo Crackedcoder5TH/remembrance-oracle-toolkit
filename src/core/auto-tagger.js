@@ -362,7 +362,18 @@ function autoTag(code, options = {}) {
   const { description = '', language, tags: userTags = [], name = '' } = options;
 
   // Start with user-provided tags (always preserved)
-  const tagSet = new Set((userTags || []).map(t => t.toLowerCase().trim()).filter(Boolean));
+  // Preserve case of structured tag values (license:MIT, source:MyRepo)
+  const STRUCTURED_PREFIXES = ['license:', 'source:'];
+  const tagSet = new Set((userTags || []).map(t => {
+    const trimmed = t.trim();
+    const lower = trimmed.toLowerCase();
+    for (const prefix of STRUCTURED_PREFIXES) {
+      if (lower.startsWith(prefix)) {
+        return prefix + trimmed.slice(prefix.length);
+      }
+    }
+    return lower;
+  }).filter(Boolean));
 
   // 1. Code structure tags
   const codeTags = extractCodeTags(code);

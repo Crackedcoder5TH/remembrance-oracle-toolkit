@@ -21,6 +21,7 @@ const { DebugOracle } = require('../core/debug-oracle');
 const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
 const { ClaudeBridge } = require('../core/claude-bridge');
 const { reflectionLoop } = require('../core/reflection');
+const { autoTag } = require('../core/auto-tagger');
 
 class RemembranceOracle {
   constructor(options = {}) {
@@ -115,12 +116,15 @@ class RemembranceOracle {
       };
     }
 
+    // Auto-tag: aggressively enrich tags from code + description
+    const enrichedTags = autoTag(code, { description, language: validation.coherencyScore.language, tags, name: '' });
+
     // Store the verified code
     const entry = this.store.add({
       code,
       language: validation.coherencyScore.language,
       description,
-      tags,
+      tags: enrichedTags,
       author,
       coherencyScore: validation.coherencyScore,
       testPassed: validation.testPassed,
@@ -454,9 +458,18 @@ class RemembranceOracle {
       };
     }
 
+    // Auto-tag: aggressively enrich tags from code + description + name
+    const enrichedTags = autoTag(pattern.code, {
+      description: pattern.description || pattern.name,
+      language: validation.coherencyScore.language,
+      tags: pattern.tags,
+      name: pattern.name,
+    });
+
     // Register in both the pattern library AND verified history
     const registered = this.patterns.register({
       ...pattern,
+      tags: enrichedTags,
       testPassed: validation.testPassed,
       reliability: 0.5,
     });
@@ -466,7 +479,7 @@ class RemembranceOracle {
       code: pattern.code,
       language: validation.coherencyScore.language,
       description: pattern.description || pattern.name,
-      tags: [...(pattern.tags || []), pattern.patternType || 'pattern'].filter(Boolean),
+      tags: enrichedTags,
       author: pattern.author || 'oracle-pattern-library',
       coherencyScore: validation.coherencyScore,
       testPassed: validation.testPassed,
@@ -562,6 +575,82 @@ class RemembranceOracle {
    */
   retirePatterns(minScore) {
     return this.patterns.retire(minScore);
+  }
+
+  /**
+   * Re-tag a single pattern with aggressive auto-tagging.
+   * Enriches existing tags without removing user-provided ones.
+   *
+   * @param {string} id - Pattern ID
+   * @param {object} options - { dryRun: boolean }
+   * @returns {{ id, name, oldTags, newTags, added, updated }}
+   */
+  retag(id, options = {}) {
+    const { retagPattern, tagDiff } = require('../core/auto-tagger');
+    const pattern = this.patterns.getAll().find(p => p.id === id);
+    if (!pattern) return { error: `Pattern ${id} not found` };
+
+    const oldTags = [...(pattern.tags || [])];
+    const newTags = retagPattern(pattern);
+    const diff = tagDiff(oldTags, newTags);
+
+    if (!options.dryRun && diff.added.length > 0) {
+      this.patterns.update(id, { tags: newTags });
+    }
+
+    return {
+      id: pattern.id,
+      name: pattern.name,
+      oldTags,
+      newTags,
+      added: diff.added,
+      updated: !options.dryRun && diff.added.length > 0,
+    };
+  }
+
+  /**
+   * Re-tag ALL patterns in the library with aggressive auto-tagging.
+   * Batch operation — enriches tags across the entire library.
+   *
+   * @param {object} options - { dryRun: boolean, minAdded: number }
+   * @returns {{ total, enriched, totalTagsAdded, patterns }}
+   */
+  retagAll(options = {}) {
+    const { dryRun = false, minAdded = 0 } = options;
+    const { retagPattern, tagDiff } = require('../core/auto-tagger');
+    const all = this.patterns.getAll();
+
+    let enriched = 0;
+    let totalTagsAdded = 0;
+    const results = [];
+
+    for (const pattern of all) {
+      const oldTags = [...(pattern.tags || [])];
+      const newTags = retagPattern(pattern);
+      const diff = tagDiff(oldTags, newTags);
+
+      if (diff.added.length > minAdded) {
+        if (!dryRun) {
+          this.patterns.update(pattern.id, { tags: newTags });
+        }
+        enriched++;
+        totalTagsAdded += diff.added.length;
+        results.push({
+          id: pattern.id,
+          name: pattern.name,
+          added: diff.added,
+          total: newTags.length,
+        });
+      }
+    }
+
+    return {
+      total: all.length,
+      enriched,
+      totalTagsAdded,
+      dryRun,
+      patterns: results.slice(0, 50), // Cap output at 50 patterns
+    };
   }
 
   /**

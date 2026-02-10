@@ -715,6 +715,41 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'retag') {
+    const sub = process.argv[3];
+    const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+
+    if (sub === 'all') {
+      // Batch retag all patterns
+      console.log(c.boldCyan('Auto-Tag All Patterns') + (dryRun ? c.yellow(' (dry run)') : '') + '\n');
+      const report = oracle.retagAll({ dryRun });
+      if (jsonOut) { console.log(JSON.stringify(report)); return; }
+      console.log(`  Total patterns: ${c.bold(String(report.total))}`);
+      console.log(`  Enriched:       ${c.boldGreen(String(report.enriched))}`);
+      console.log(`  Tags added:     ${c.cyan(String(report.totalTagsAdded))}`);
+      if (report.patterns.length > 0) {
+        console.log(`\n  ${c.dim('Top enriched patterns:')}`);
+        for (const p of report.patterns.slice(0, 20)) {
+          console.log(`    ${c.bold(p.name)} ${c.dim('+')}${c.green(String(p.added.length))}: ${p.added.map(t => c.magenta(t)).join(', ')}`);
+        }
+      }
+      if (dryRun) console.log(c.yellow('\n(dry run — no changes made)'));
+      return;
+    }
+
+    // Single pattern retag
+    if (!sub) { console.error(`Usage: ${c.cyan('oracle retag')} <pattern-id> | ${c.cyan('oracle retag all')}`); process.exit(1); }
+    const result = oracle.retag(sub, { dryRun });
+    if (jsonOut) { console.log(JSON.stringify(result)); return; }
+    if (result.error) { console.error(c.boldRed(result.error)); process.exit(1); }
+    console.log(`${c.boldCyan('Auto-Tag:')} ${c.bold(result.name)} [${c.cyan(result.id)}]`);
+    console.log(`  Old tags: ${result.oldTags.map(t => c.dim(t)).join(', ') || c.dim('(none)')}`);
+    console.log(`  New tags: ${result.newTags.map(t => c.magenta(t)).join(', ')}`);
+    console.log(`  Added:    ${result.added.length > 0 ? result.added.map(t => c.green('+' + t)).join(', ') : c.dim('(no new tags)')}`);
+    if (dryRun) console.log(c.yellow('\n(dry run — no changes made)'));
+    return;
+  }
+
   if (cmd === 'diff') {
     const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
     if (ids.length < 2) { console.error(`Usage: ${c.cyan('oracle diff')} <id-a> <id-b>`); process.exit(1); }

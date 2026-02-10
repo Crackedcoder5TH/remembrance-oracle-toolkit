@@ -714,6 +714,44 @@ const TOOLS = [
     },
   },
 
+  // ─── Auto-Tagging Tools ───
+  {
+    name: 'oracle_retag',
+    description: 'Re-tag a single pattern with aggressive auto-tagging. Enriches existing tags with keywords extracted from code structure, description, domain detection, and concept clusters. Never removes user-provided tags.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Pattern ID to re-tag' },
+        dryRun: { type: 'boolean', description: 'Preview new tags without saving (default: false)' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'oracle_retag_all',
+    description: 'Batch re-tag ALL patterns in the library with aggressive auto-tagging. Enriches every pattern with domain, concept, and code-structure tags for instant future search.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dryRun: { type: 'boolean', description: 'Preview without saving (default: false)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_auto_tag',
+    description: 'Preview what tags the auto-tagger would generate for a given code snippet. Useful for understanding tag extraction before submitting.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Code to analyze for tags' },
+        description: { type: 'string', description: 'Description of the code' },
+        language: { type: 'string', description: 'Code language' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Existing user tags to preserve' },
+      },
+      required: ['code'],
+    },
+  },
+
   // ─── Open Source Registry Tools ───
   {
     name: 'oracle_registry_list',
@@ -1327,6 +1365,30 @@ class MCPServer {
           } else {
             result = { error: 'Provide action (verify/check/list) with required params' };
           }
+          break;
+        }
+
+        // ─── Auto-Tagging Handlers ───
+
+        case 'oracle_retag': {
+          result = this.oracle.retag(args.id, { dryRun: args.dryRun || false });
+          break;
+        }
+
+        case 'oracle_retag_all': {
+          result = this.oracle.retagAll({ dryRun: args.dryRun || false });
+          break;
+        }
+
+        case 'oracle_auto_tag': {
+          const { autoTag, tagDiff } = require('../core/auto-tagger');
+          const generated = autoTag(args.code, {
+            description: args.description || '',
+            language: args.language,
+            tags: args.tags || [],
+          });
+          const diff = tagDiff(args.tags || [], generated);
+          result = { tags: generated, added: diff.added, kept: diff.kept, total: diff.total };
           break;
         }
 

@@ -239,6 +239,9 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_registry_license'));
     assert.ok(names.includes('oracle_registry_provenance'));
     assert.ok(names.includes('oracle_registry_duplicates'));
-    assert.equal(res.result.tools.length, 67);
+    assert.ok(names.includes('oracle_retag'));
+    assert.ok(names.includes('oracle_retag_all'));
+    assert.ok(names.includes('oracle_auto_tag'));
+    assert.equal(res.result.tools.length, 70);
   });
 });

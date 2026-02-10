@@ -183,7 +183,18 @@ class PatternLibrary {
       const weightedScore = p.weightedVoteScore ?? ((p.upvotes || 0) - (p.downvotes || 0));
       const voteBoost = weightedScore > 0 ? Math.min(0.15, weightedScore * 0.02) : Math.max(-0.15, weightedScore * 0.02);
       const reliability = usageReliability * bugPenalty * healingRate + voteBoost;
-      const composite = relevance.relevance * 0.35 + coherency * 0.25 + reliability * 0.20 + nameBonus + focusBonus;
+
+      // Evolution adjustments: penalize stale + over-evolved patterns
+      let evolutionPenalty = 0;
+      try {
+        const { evolutionAdjustment } = require('../core/evolution');
+        const adj = evolutionAdjustment(p);
+        evolutionPenalty = adj.total;
+      } catch {
+        // Evolution module not available — no penalty
+      }
+
+      const composite = relevance.relevance * 0.35 + coherency * 0.25 + reliability * 0.20 + nameBonus + focusBonus - evolutionPenalty;
 
       return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
     }).sort((a, b) => b.composite - a.composite);

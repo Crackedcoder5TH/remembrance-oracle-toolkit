@@ -94,6 +94,20 @@ class RemembranceOracle {
     });
 
     if (!validation.valid) {
+      // Capture rejected submissions for potential SERF healing
+      try {
+        const { captureRejection } = require('../core/evolution');
+        const rejection = captureRejection(code, { language, description, tags }, validation);
+        this.recycler.capture(
+          { name: rejection.name, code, language: rejection.language, description, tags },
+          rejection.failureReason,
+          validation
+        );
+        this._emit({ type: 'rejection_captured', reason: rejection.failureReason });
+      } catch {
+        // Capture is best-effort
+      }
+
       return {
         accepted: false,
         validation,
@@ -162,6 +176,7 @@ class RemembranceOracle {
   /**
    * Report feedback — did the pulled code actually work?
    * This updates historical reliability scores.
+   * On negative feedback, auto-heals patterns with low success rates.
    */
   feedback(id, succeeded) {
     const updated = this.store.recordUsage(id, succeeded);
@@ -170,9 +185,42 @@ class RemembranceOracle {
     }
     this._emit({ type: 'feedback', id, succeeded, newReliability: updated.reliability.historicalScore });
 
+    // Auto-heal trigger: when feedback is negative and pattern has poor success rate
+    let healResult = null;
+    if (!succeeded) {
+      try {
+        const { needsAutoHeal, autoHeal } = require('../core/evolution');
+        // Check patterns table for matching pattern to heal
+        const pattern = this.patterns.getAll().find(p => p.id === id);
+        if (pattern && needsAutoHeal(pattern)) {
+          const healed = autoHeal(pattern);
+          if (healed && healed.improvement > 0) {
+            this.patterns.update(id, {
+              code: healed.code,
+              coherencyScore: healed.coherencyScore,
+            });
+            healResult = {
+              healed: true,
+              improvement: healed.improvement,
+              newCoherency: healed.newCoherency,
+            };
+            this._emit({
+              type: 'auto_heal',
+              id,
+              improvement: healed.improvement,
+              newCoherency: healed.newCoherency,
+            });
+          }
+        }
+      } catch {
+        // Auto-heal is best-effort — don't break feedback
+      }
+    }
+
     return {
       success: true,
       newReliability: updated.reliability.historicalScore,
+      healResult,
     };
   }
 
@@ -462,6 +510,7 @@ class RemembranceOracle {
 
   /**
    * Report pattern usage feedback.
+   * On negative feedback, triggers auto-healing for low-performing patterns.
    */
   patternFeedback(id, succeeded) {
     const updated = this.patterns.recordUsage(id, succeeded);
@@ -473,7 +522,32 @@ class RemembranceOracle {
       try { sqliteStore.updateVoterReputation(id, succeeded); } catch {}
     }
 
-    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount };
+    // Auto-heal trigger on negative feedback
+    let healResult = null;
+    if (!succeeded) {
+      try {
+        const { needsAutoHeal, autoHeal } = require('../core/evolution');
+        if (needsAutoHeal(updated)) {
+          const healed = autoHeal(updated);
+          if (healed && healed.improvement > 0) {
+            this.patterns.update(id, {
+              code: healed.code,
+              coherencyScore: healed.coherencyScore,
+            });
+            healResult = {
+              healed: true,
+              improvement: healed.improvement,
+              newCoherency: healed.newCoherency,
+            };
+            this._emit({ type: 'auto_heal', id, improvement: healed.improvement });
+          }
+        }
+      } catch {
+        // Auto-heal is best-effort
+      }
+    }
+
+    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount, healResult };
   }
 
   /**
@@ -1105,6 +1179,19 @@ class RemembranceOracle {
 
   isVerifiedVoter(voterId) {
     return this.getGitHubIdentity().isVerified(voterId);
+  }
+
+  /**
+   * Run a full self-evolution cycle.
+   * Detects regressions, auto-heals low performers, re-checks coherency,
+   * and computes staleness/evolve penalties for scoring.
+   *
+   * @param {object} options - Override evolution defaults
+   * @returns {object} Full evolution report
+   */
+  selfEvolve(options = {}) {
+    const { evolve } = require('../core/evolution');
+    return evolve(this, options);
   }
 
   synthesizeTests(options = {}) {

@@ -48,6 +48,7 @@ const { ModulePattern, DependencyGraph, TemplateEngine, ModuleStore, scaffold, c
 const { PatternComposer, BUILT_IN_TEMPLATES } = require('./patterns/composer');
 const { PluginManager, HookEmitter, VALID_HOOKS } = require('./plugins/manager');
 const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } = require('./health/monitor');
+const { evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS } = require('./core/evolution');
 
 module.exports = {
   // Core
@@ -255,4 +256,16 @@ module.exports = {
   healthCheck,
   metricsSnapshot,
   coherencyDistribution,
+
+  // Self-Evolution
+  selfEvolve,
+  stalenessPenalty,
+  evolvePenalty,
+  evolutionAdjustment,
+  needsAutoHeal,
+  autoHeal,
+  captureRejection,
+  detectRegressions,
+  recheckCoherency,
+  EVOLUTION_DEFAULTS,
 };

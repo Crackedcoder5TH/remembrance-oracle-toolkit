@@ -948,7 +948,11 @@ ${c.bold('Pipe support:')}
     const prod3 = seedProductionLibrary3(oracle, { verbose: !!args.verbose });
     console.log(`Production seeds 3 (pagination/command/cron/proxy/pool/stream): ${c.boldGreen(String(prod3.registered))} registered (${c.dim(prod3.skipped + ' skipped')}, ${prod3.failed > 0 ? c.boldRed(String(prod3.failed)) : c.dim(String(prod3.failed))} failed)`);
 
-    const total = results.registered + ext.registered + native.registered + prod3.registered;
+    const { seedProductionLibrary4 } = require('./patterns/seeds-production-4');
+    const prod4 = seedProductionLibrary4(oracle, { verbose: !!args.verbose });
+    console.log(`Production seeds 4 (coherence/solana/whisper/lsh/remembrance/reflection/covenant/healing/intent/axiom): ${c.boldGreen(String(prod4.registered))} registered (${c.dim(prod4.skipped + ' skipped')}, ${prod4.failed > 0 ? c.boldRed(String(prod4.failed)) : c.dim(String(prod4.failed))} failed)`);
+
+    const total = results.registered + ext.registered + native.registered + prod3.registered + prod4.registered;
     console.log(`\nTotal seeded: ${c.boldGreen(String(total))} patterns`);
     console.log(`Library now has ${c.bold(String(oracle.patternStats().totalPatterns))} patterns`);
     return;

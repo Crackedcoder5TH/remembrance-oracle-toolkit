@@ -47,7 +47,7 @@ oracle submit --file mycode.js --test mytest.js --tags "sort,algorithm"
 # Pipe code through the Covenant filter
 cat mycode.js | oracle covenant --json
 
-# Heal code with SERF reflection
+# Heal code with reflection
 cat mycode.js | oracle reflect --output healed.js
 
 # Start the web dashboard
@@ -96,7 +96,7 @@ Connect from any MCP-compatible AI client. 59 tools across 13 categories:
 |----------|-------|-------------|
 | **Core** | `oracle_search`, `oracle_resolve`, `oracle_submit`, `oracle_query`, `oracle_feedback`, `oracle_stats`, `oracle_register_pattern`, `oracle_nearest`, `oracle_smart_search` | Search, submit, resolve, and track patterns |
 | **Versioning** | `oracle_versions`, `oracle_semantic_diff`, `oracle_rollback`, `oracle_verify` | Version history and structural diffing |
-| **Reflection** | `oracle_reflect`, `oracle_covenant`, `oracle_harvest`, `oracle_compose`, `oracle_compose_templates` | SERF healing, harm filter, harvesting |
+| **Reflection** | `oracle_reflect`, `oracle_covenant`, `oracle_harvest`, `oracle_compose`, `oracle_compose_templates` | Code healing, harm filter, harvesting |
 | **Candidates** | `oracle_candidates`, `oracle_generate`, `oracle_promote`, `oracle_auto_promote`, `oracle_smart_promote`, `oracle_synthesize_tests` | Candidate lifecycle and promotion |
 | **Security** | `oracle_security_scan`, `oracle_security_audit` | Vulnerability scanning |
 | **Federation** | `oracle_remote_search`, `oracle_remotes`, `oracle_full_search`, `oracle_cross_search`, `oracle_repos` | Multi-server remote search |
@@ -150,7 +150,7 @@ oracle covenant list
 
 Includes protection against: SQL injection, command injection, XSS, credential exposure, infinite loops, resource exhaustion, and more.
 
-### SERF Reflection Loop
+### Reflection Loop
 
 Iteratively refines code through 6 transforms (simplify, secure, readable, unify, correct, heal), scoring each on 5 dimensions until coherence exceeds 0.9:
 
@@ -184,7 +184,7 @@ Library:
 
 Quality:
   covenant      Check code against the Covenant seal
-  reflect       SERF reflection loop — heal and refine code
+  reflect       Reflection loop — heal and refine code
   harvest       Bulk harvest patterns from a repo or directory
   compose       Create composed pattern from components
   deps          Show dependency tree for a pattern
@@ -325,7 +325,7 @@ src/
     validator.js         — Code validation (Covenant → tests → coherency)
     relevance.js         — TF-IDF relevance matching + ranking
     covenant.js          — 15-principle harm filter (Step 0)
-    reflection.js        — SERF infinite reflection loop (6 transforms)
+    reflection.js        — Infinite reflection loop (6 transforms)
     analytics.js         — Pattern analytics and health reports
     vectors.js           — Word vector embeddings (186 terms, 32 dims)
     embeddings.js        — Concept clusters for semantic search

@@ -117,6 +117,28 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_table, target_id);
     `);
 
+    // Schema migration: enforce unique (name, language) — dedup first, then add index
+    try {
+      // Check if unique index already exists
+      const idxExists = this.db.prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='index' AND name='idx_patterns_unique_name_lang'"
+      ).get();
+      if (!idxExists) {
+        // Remove duplicates before creating unique index (keep highest coherency)
+        this.db.exec(`
+          DELETE FROM patterns WHERE id NOT IN (
+            SELECT id FROM (
+              SELECT id, ROW_NUMBER() OVER (
+                PARTITION BY LOWER(name), LOWER(language)
+                ORDER BY coherency_total DESC, created_at ASC
+              ) AS rn FROM patterns
+            ) WHERE rn = 1
+          )
+        `);
+        this.db.exec(`CREATE UNIQUE INDEX idx_patterns_unique_name_lang ON patterns(name COLLATE NOCASE, language COLLATE NOCASE)`);
+      }
+    } catch { /* Index creation failed — app-level dedup still protects */ }
+
     // Schema migration: add composition columns
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch {}
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch {}
@@ -442,6 +464,16 @@ class SQLiteStore {
   // ─── Pattern methods — same interface as PatternLibrary ───
 
   addPattern(pattern) {
+    // Always route through dedup-safe method to prevent duplicates
+    const result = this.addPatternIfNotExists(pattern);
+    return result; // may be null if duplicate with equal/higher coherency exists
+  }
+
+  /**
+   * Raw insert — bypasses dedup checks. Only used internally by addPatternIfNotExists.
+   * @private
+   */
+  _insertPattern(pattern) {
     const id = this._hash(pattern.code + pattern.name + Date.now());
     const now = new Date().toISOString();
 
@@ -507,7 +539,7 @@ class SQLiteStore {
       return null; // Existing has equal or higher coherency — skip
     }
 
-    return this.addPattern(pattern);
+    return this._insertPattern(pattern);
   }
 
   /**

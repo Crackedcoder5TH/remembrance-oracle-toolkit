@@ -120,7 +120,7 @@ class PatternLibrary {
     });
 
     if (this._backend === 'sqlite') {
-      const record = this._sqlite.addPattern({
+      const patternData = {
         name: pattern.name,
         code: pattern.code,
         language: pattern.language || coherency.language,
@@ -131,8 +131,15 @@ class PatternLibrary {
         coherencyScore: coherency,
         variants: pattern.variants || [],
         testCode: pattern.testCode || null,
-      });
+      };
+      // Use dedup-safe insert: skip or update if (name, language) already exists
+      const record = this._sqlite.addPatternIfNotExists(patternData);
       this._sqlite.incrementDecisions();
+      if (!record) {
+        // Duplicate with equal/higher coherency — return the existing one
+        const existing = this._sqlite.getPatternByName(pattern.name);
+        return existing;
+      }
       return record;
     }
 

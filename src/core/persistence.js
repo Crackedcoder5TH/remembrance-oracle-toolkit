@@ -97,7 +97,13 @@ function transferPattern(pattern, targetStore) {
   if (typeof targetStore.addPatternIfNotExists === 'function') {
     return targetStore.addPatternIfNotExists(patternData);
   }
-  targetStore.addPattern(patternData);
+  // Fallback: addPattern now routes through addPatternIfNotExists internally,
+  // but guard against truly raw stores by checking for existing pattern first
+  if (typeof targetStore.getPatternByName === 'function') {
+    const existing = targetStore.getPatternByName(patternData.name);
+    if (existing) return null; // Skip duplicate
+  }
+  return targetStore.addPattern(patternData);
 }
 
 // ─── Sync: Local ↔ Personal (Private, Automatic) ───
@@ -420,9 +426,9 @@ function federatedQuery(localStore, query = {}) {
   const seen = new Set();
   const merged = [];
 
-  // Local first (highest priority)
+  // Local first (highest priority) — case-insensitive dedup keys
   for (const p of localPatterns) {
-    const key = `${p.name}:${p.language}`;
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'local' });
@@ -431,7 +437,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Personal second
   for (const p of personalPatterns) {
-    const key = `${p.name}:${p.language}`;
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'personal' });
@@ -440,7 +446,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Community last
   for (const p of communityPatterns) {
-    const key = `${p.name}:${p.language}`;
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'community' });

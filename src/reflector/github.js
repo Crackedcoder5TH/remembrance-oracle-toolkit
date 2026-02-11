@@ -168,7 +168,7 @@ function createHealingBranch(report, options = {}) {
 
     // Commit
     const healingCount = report.healedFiles.length;
-    const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper.message}\n\nAvg improvement: +${report.summary.avgImprovement.toFixed(3)}\nOverall health: ${report.collectiveWhisper.overallHealth}`;
+    const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper?.message || ''}\n\nAvg improvement: +${(report.summary?.avgImprovement || 0).toFixed(3)}\nOverall health: ${report.collectiveWhisper?.overallHealth || 'stable'}`;
 
     // Use env var to pass commit message safely (avoids shell injection via backticks/$())
     try {
@@ -247,15 +247,17 @@ function openHealingPR(report, options = {}) {
   const { formatPRBody } = require('./engine');
   const body = formatPRBody(report);
 
-  const title = `Remembrance Pull: Healed Refinement (+${report.summary.avgImprovement.toFixed(3)})`;
-  const labels = 'remembrance,auto-heal';
+  const improvement = (report.summary?.avgImprovement || 0).toFixed(3);
+  const title = `Remembrance Pull: Healed Refinement (+${improvement})`;
 
-  // Escape body for shell
+  // Escape all shell-interpolated strings
   const escapedBody = body.replace(/'/g, "'\\''");
+  const escapedTitle = title.replace(/'/g, "'\\''");
 
   try {
+    // Don't use --label since labels may not exist on repo
     const output = gh(
-      `pr create --title '${title}' --body '${escapedBody}' --base ${baseBranch} --head ${branch} --label '${labels}'`,
+      `pr create --title '${escapedTitle}' --body '${escapedBody}' --base ${baseBranch} --head ${branch}`,
       cwd
     );
 
@@ -269,7 +271,7 @@ function openHealingPR(report, options = {}) {
     };
 
     // Auto-merge if requested and high coherence
-    if (autoMerge && report.summary.autoMergeRecommended && result.number) {
+    if (autoMerge && report.summary?.autoMergeRecommended && result.number) {
       try {
         gh(`pr merge ${result.number} --auto --squash`, cwd);
         result.autoMergeEnabled = true;

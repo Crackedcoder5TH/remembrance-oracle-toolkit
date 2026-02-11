@@ -1598,7 +1598,11 @@ ${c.bold('Options:')}
       };
       console.log(c.boldCyan('Running Self-Reflector...\n'));
       const result = runReflector(process.cwd(), opts);
-      if (jsonOut) { console.log(JSON.stringify(result, null, 2)); return; }
+      if (jsonOut) {
+        console.log(JSON.stringify(result, null, 2));
+        if (result.error || result.branchError) process.exit(1);
+        return;
+      }
       if (result.skipped) {
         console.log(c.yellow('Skipped:'), result.reason);
         return;
@@ -1606,6 +1610,9 @@ ${c.bold('Options:')}
       if (result.error) {
         console.error(c.boldRed('Error:'), result.error);
         process.exit(1);
+      }
+      if (result.branchError) {
+        console.error(c.boldRed('Branch/PR Error:'), result.branchError);
       }
       console.log(`  Files scanned:         ${c.bold(String(result.report.filesScanned))}`);
       console.log(`  Files below threshold: ${c.yellow(String(result.report.filesBelowThreshold))}`);

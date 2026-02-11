@@ -72,9 +72,9 @@ function createRunRecord(report, preSnapshot, options = {}) {
 
   const beforeCoherence = preSnapshot
     ? (preSnapshot.aggregate ? preSnapshot.aggregate.avgCoherence : preSnapshot.avgCoherence || 0)
-    : report.snapshot.avgCoherence;
+    : (report.snapshot?.avgCoherence || 0);
 
-  const afterCoherence = report.snapshot.avgCoherence;
+  const afterCoherence = report.snapshot?.avgCoherence || 0;
 
   return {
     id: runId,
@@ -91,15 +91,15 @@ function createRunRecord(report, preSnapshot, options = {}) {
     },
 
     // Dimensions before (from snapshot)
-    dimensions: report.snapshot.dimensionAverages || {},
+    dimensions: report.snapshot?.dimensionAverages || {},
 
     // Healing summary
     healing: {
-      filesScanned: report.summary.filesScanned,
-      filesBelowThreshold: report.summary.filesBelowThreshold,
-      filesHealed: report.summary.filesHealed,
-      totalImprovement: report.summary.totalImprovement,
-      avgImprovement: report.summary.avgImprovement,
+      filesScanned: report.summary?.filesScanned || 0,
+      filesBelowThreshold: report.summary?.filesBelowThreshold || 0,
+      filesHealed: report.summary?.filesHealed || 0,
+      totalImprovement: report.summary?.totalImprovement || 0,
+      avgImprovement: report.summary?.avgImprovement || 0,
     },
 
     // Individual file changes

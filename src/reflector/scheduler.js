@@ -189,12 +189,33 @@ function runReflector(rootDir, options = {}) {
     const branchReport = {
       rootDir,
       healedFiles,
-      collectiveWhisper: { message: report.collectiveWhisper || '' },
+      healings: healedFiles.map(f => ({
+        path: f.path,
+        originalCoherence: f.originalCoherence || 0,
+        healedCoherence: f.healedCoherence || 0,
+        improvement: f.improvement || 0,
+        healingSummary: f.healingSummary || 'SERF refinement',
+        whisper: f.whisper || '',
+      })),
+      collectiveWhisper: {
+        message: report.collectiveWhisper || '',
+        overallHealth: report.autoMergeRecommended ? 'healthy' : 'stable',
+      },
       summary: {
+        filesScanned: report.filesScanned || 0,
+        filesBelowThreshold: report.filesBelowThreshold || 0,
+        filesHealed: report.filesHealed || 0,
+        totalImprovement: report.avgImprovement || 0,
         avgImprovement: report.avgImprovement || 0,
         autoMergeRecommended: report.autoMergeRecommended || false,
       },
-      snapshot: { totalFiles: report.filesScanned || 0, avgCoherence: 0, minCoherence: 0, maxCoherence: 0 },
+      snapshot: {
+        totalFiles: report.filesScanned || 0,
+        avgCoherence: 0,
+        minCoherence: 0,
+        maxCoherence: 0,
+        dimensionAverages: {},
+      },
     };
 
     try {

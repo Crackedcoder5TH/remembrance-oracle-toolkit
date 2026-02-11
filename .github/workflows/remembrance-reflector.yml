@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '0 */6 * * *'  # Every 6 hours
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
     types: [opened, synchronize]
   workflow_dispatch:
@@ -22,14 +22,21 @@ on:
         description: 'Max files to scan per run'
         required: false
         default: '50'
+      dry_run:
+        description: 'Preview only — no file changes'
+        required: false
+        default: 'false'
+        type: boolean
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  reflect:
-    name: Self-Reflect & Heal
+  # ─── Check: coherence snapshot on PRs ───
+  check:
+    name: Coherence Check
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,16 +47,64 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Run Tests
+        run: node --test tests/*.test.js
+
+      - name: Coherence Snapshot
+        run: |
+          mkdir -p .remembrance
+          node src/cli.js reflector snapshot --json | tee .remembrance/reflector-report.json
+
+      - name: Comment on PR
+        if: always()
+        run: |
+          if [ -f .remembrance/reflector-report.json ]; then
+            COHERENCE=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.aggregate?.avgCoherence?.toFixed(3) || 'N/A')")
+            BELOW=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log((r.files||[]).filter(f=>f.coherence<0.7).length)")
+            BODY="## Remembrance Coherence Report\n\n"
+            BODY+="- **Avg Coherence**: ${COHERENCE}\n"
+            BODY+="- **Files Below Threshold**: ${BELOW}\n"
+            gh pr comment ${{ github.event.pull_request.number }} --body "$BODY" || true
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── Heal: full reflector cycle ───
+  reflect:
+    name: Self-Reflect & Heal
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run Tests (pre-heal gate)
+        run: node --test tests/*.test.js
+
+      - name: Ensure .remembrance directory
+        run: mkdir -p .remembrance
+
       - name: Run Self-Reflector
         run: |
           MIN_COHERENCE="${{ github.event.inputs.min_coherence || '0.7' }}"
           MAX_FILES="${{ github.event.inputs.max_files || '50' }}"
           AUTO_MERGE="${{ github.event.inputs.auto_merge || 'false' }}"
+          DRY_RUN="${{ github.event.inputs.dry_run || 'false' }}"
 
           ARGS="--min-coherence $MIN_COHERENCE --max-files $MAX_FILES --json"
 
-          # Only push and open PR on schedule or manual dispatch (not on PR events)
-          if [ "${{ github.event_name }}" != "pull_request" ]; then
+          # Push and open PR on schedule or manual dispatch
+          if [ "$DRY_RUN" != "true" ]; then
             ARGS="$ARGS --push --open-pr"
           fi
 
@@ -61,6 +116,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Run Tests (post-heal gate)
+        run: |
+          if ! node --test tests/*.test.js; then
+            echo "::error::Tests failed after healing — rolling back"
+            git checkout -- .
+            exit 1
+          fi
+
       - name: Upload Report
         if: always()
         uses: actions/upload-artifact@v4
@@ -69,22 +132,5 @@ jobs:
           path: |
             .remembrance/reflector-report.json
             .remembrance/reflector-output.json
+            .remembrance/reflector-history-v2.json
           retention-days: 30
-
-      - name: Comment on PR (if PR event)
-        if: github.event_name == 'pull_request'
-        run: |
-          if [ -f .remembrance/reflector-report.json ]; then
-            COHERENCE=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.snapshot?.avgCoherence || 'N/A')")
-            BELOW=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.summary?.filesBelowThreshold || 0)")
-            WHISPER=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.collectiveWhisper?.message || 'No whisper')")
-
-            BODY="## Remembrance Reflector Report\n\n"
-            BODY+="- **Avg Coherence**: ${COHERENCE}\n"
-            BODY+="- **Files Below Threshold**: ${BELOW}\n"
-            BODY+="\n> ${WHISPER}"
-
-            gh pr comment ${{ github.event.pull_request.number }} --body "$BODY"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

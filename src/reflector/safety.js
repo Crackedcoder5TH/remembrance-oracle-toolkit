@@ -162,17 +162,17 @@ function dryRun(rootDir, config = {}) {
     timestamp: new Date().toISOString(),
     mode: 'dry-run',
     rootDir,
-    wouldHeal: report.healedFiles.length,
-    wouldChange: report.healedFiles.map(f => ({
+    wouldHeal: (report.healedFiles || []).length,
+    wouldChange: (report.healedFiles || []).map(f => ({
       path: f.path,
-      currentSize: f.code.length,
+      currentSize: f.code?.length || 0,
     })),
-    projectedImprovement: report.summary.avgImprovement,
+    projectedImprovement: report.summary?.avgImprovement || 0,
     projectedCoherence: {
-      before: report.snapshot.avgCoherence,
+      before: report.snapshot?.avgCoherence || 0,
       after: estimatePostHealCoherence(report),
     },
-    healings: report.healings.map(h => ({
+    healings: (report.healings || []).map(h => ({
       path: h.path,
       language: h.language,
       currentCoherence: h.originalCoherence,
@@ -181,13 +181,13 @@ function dryRun(rootDir, config = {}) {
       whisper: h.whisper,
       strategy: h.healingSummary,
     })),
-    collectiveWhisper: report.collectiveWhisper,
+    collectiveWhisper: report.collectiveWhisper || {},
     summary: {
-      filesScanned: report.summary.filesScanned,
-      filesBelowThreshold: report.summary.filesBelowThreshold,
-      wouldHeal: report.summary.filesHealed,
-      projectedAvgImprovement: report.summary.avgImprovement,
-      autoMergeRecommended: report.summary.autoMergeRecommended,
+      filesScanned: report.summary?.filesScanned || 0,
+      filesBelowThreshold: report.summary?.filesBelowThreshold || 0,
+      wouldHeal: report.summary?.filesHealed || 0,
+      projectedAvgImprovement: report.summary?.avgImprovement || 0,
+      autoMergeRecommended: report.summary?.autoMergeRecommended || false,
     },
     durationMs: Date.now() - startTime,
     warning: report.healedFiles.length > 0
@@ -203,20 +203,20 @@ function dryRun(rootDir, config = {}) {
  */
 function estimatePostHealCoherence(report) {
   if (!report.healings || report.healings.length === 0) {
-    return report.snapshot.avgCoherence;
+    return report.snapshot?.avgCoherence || 0;
   }
 
-  const totalFiles = report.snapshot.totalFiles || report.summary.filesScanned;
+  const totalFiles = report.snapshot?.totalFiles || report.summary?.filesScanned || 0;
   if (totalFiles === 0) return 0;
 
   // Sum of all file coherences, replacing healed files with new values
   const healedPaths = new Set(report.healings.map(h => h.path));
-  const totalImprovement = report.healings.reduce((s, h) => s + h.improvement, 0);
+  const totalImprovement = report.healings.reduce((s, h) => s + (h.improvement || 0), 0);
 
   // Approximate: current avg * total + total improvement / total
   return Math.min(
     1,
-    report.snapshot.avgCoherence + (totalImprovement / totalFiles)
+    (report.snapshot?.avgCoherence || 0) + (totalImprovement / totalFiles)
   );
 }
 
@@ -522,12 +522,12 @@ function safeReflect(rootDir, config = {}) {
   // Step 3: Run the reflector (pass preSnapshot to avoid redundant scan)
   const report = reflect(rootDir, { ...reflectConfig, _preSnapshot: preSnapshot });
   result.report = {
-    filesScanned: report.summary.filesScanned,
-    filesBelowThreshold: report.summary.filesBelowThreshold,
-    filesHealed: report.summary.filesHealed,
-    avgImprovement: report.summary.avgImprovement,
-    autoMergeRecommended: report.summary.autoMergeRecommended,
-    collectiveWhisper: report.collectiveWhisper.message,
+    filesScanned: report.summary?.filesScanned || 0,
+    filesBelowThreshold: report.summary?.filesBelowThreshold || 0,
+    filesHealed: report.summary?.filesHealed || 0,
+    avgImprovement: report.summary?.avgImprovement || 0,
+    autoMergeRecommended: report.summary?.autoMergeRecommended || false,
+    collectiveWhisper: report.collectiveWhisper?.message || report.collectiveWhisper || '',
   };
   result.healedFiles = report.healedFiles;
 

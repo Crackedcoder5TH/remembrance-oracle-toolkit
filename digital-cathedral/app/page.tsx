@@ -6,6 +6,18 @@ import type { CoherenceResponse, WhisperEntry } from "@cathedral/shared";
 const HISTORY_KEY = "cathedral-whisper-history";
 const THEME_KEY = "cathedral-theme";
 const MAX_HISTORY = 50;
+const MIN_PROMPT_LENGTH = 3;
+
+// ─── Toast Types ──────────────────────────────────────────────────────
+
+type ToastType = "success" | "error" | "info";
+
+interface ToastItem {
+  id: string;
+  message: string;
+  type: ToastType;
+  exiting?: boolean;
+}
 
 type Theme = "dark" | "light" | "system";
 
@@ -205,22 +217,33 @@ function BackToTop() {
 
 // ─── Copy-to-Clipboard Button ───────────────────────────────────────
 
-function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+function CopyButton({
+  text,
+  label = "Copy",
+  onToast,
+}: {
+  text: string;
+  label?: string;
+  onToast?: (msg: string, type: ToastType) => void;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
+      onToast?.("Copied to clipboard", "success");
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch {
+      onToast?.("Failed to copy", "error");
+    }
   }
 
   return (
     <button
       onClick={handleCopy}
       aria-label={copied ? "Copied" : label}
-      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-all
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-all cathedral-btn
         text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10"
     >
       {copied ? (
@@ -240,12 +263,21 @@ function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) 
 
 // ─── Share Buttons ──────────────────────────────────────────────────
 
-function ShareButtons({ whisperText, coherence }: { whisperText: string; coherence: number }) {
+function ShareButtons({
+  whisperText,
+  coherence,
+  onToast,
+}: {
+  whisperText: string;
+  coherence: number;
+  onToast?: (msg: string, type: ToastType) => void;
+}) {
   const shareText = `"${whisperText}" — Coherence ${coherence.toFixed(3)} | Digital Cathedral`;
 
   function shareOnX() {
     const url = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
     window.open(url, "_blank", "noopener,noreferrer");
+    onToast?.("Opened share dialog", "info");
   }
 
   return (
@@ -253,7 +285,7 @@ function ShareButtons({ whisperText, coherence }: { whisperText: string; coheren
       <button
         onClick={shareOnX}
         aria-label="Share on X"
-        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs transition-all
+        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs transition-all cathedral-btn
           text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10"
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -261,7 +293,33 @@ function ShareButtons({ whisperText, coherence }: { whisperText: string; coheren
         </svg>
         <span>Share</span>
       </button>
-      <CopyButton text={whisperText} label="Copy whisper" />
+      <CopyButton text={whisperText} label="Copy whisper" onToast={onToast} />
+    </div>
+  );
+}
+
+// ─── Toast Container ─────────────────────────────────────────────────
+
+function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
+  if (toasts.length === 0) return null;
+
+  return (
+    <div className="toast-container" aria-live="polite" aria-relevant="additions">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`toast toast-${toast.type}${toast.exiting ? " toast-exiting" : ""}`}
+          role="status"
+        >
+          {toast.type === "success" && (
+            <span aria-hidden="true" className="mr-1.5">&#10003;</span>
+          )}
+          {toast.type === "error" && (
+            <span aria-hidden="true" className="mr-1.5">&#10007;</span>
+          )}
+          {toast.message}
+        </div>
+      ))}
     </div>
   );
 }
@@ -492,7 +550,7 @@ function Breadcrumbs({
         <li>
           <button
             onClick={() => onNavigate("oracle")}
-            className="hover:text-teal-cathedral transition-colors"
+            className="cathedral-link"
           >
             Home
           </button>
@@ -560,6 +618,7 @@ export default function CathedralHome() {
 
   // Oracle form state
   const [prompt, setPrompt] = useState("");
+  const [promptTouched, setPromptTouched] = useState(false);
   const [rating, setRating] = useState(5);
   const [whisper, setWhisper] = useState<CoherenceResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -569,6 +628,29 @@ export default function CathedralHome() {
     connected: false,
     slot: null,
   });
+
+  // Toast notification state
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const addToast = useCallback((message: string, type: ToastType = "info") => {
+    const id = crypto.randomUUID();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    // Begin exit animation after 2.5s, remove after 2.75s
+    setTimeout(() => {
+      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, exiting: true } : t)));
+    }, 2500);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 2750);
+  }, []);
+
+  // Form validation
+  const promptValid = prompt.trim().length >= MIN_PROMPT_LENGTH;
+  const promptError = promptTouched && !promptValid
+    ? prompt.trim().length === 0
+      ? "Please enter your intention"
+      : `At least ${MIN_PROMPT_LENGTH} characters needed`
+    : "";
 
   // Load history + ping Solana on mount
   useEffect(() => {
@@ -660,7 +742,8 @@ export default function CathedralHome() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!prompt.trim()) return;
+    setPromptTouched(true);
+    if (!promptValid) return;
 
     setLoading(true);
     setError("");
@@ -682,8 +765,12 @@ export default function CathedralHome() {
       setWhisper(data);
       addToHistory(prompt.trim(), data);
       setPrompt("");
+      setPromptTouched(false);
+      addToast("Whisper received", "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      setError(msg);
+      addToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -724,10 +811,10 @@ export default function CathedralHome() {
 
           <button
             onClick={beginRemembrance}
-            className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-medium transition-all duration-300
+            className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-sm sm:text-base font-medium cathedral-btn
               bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/30
               hover:bg-teal-cathedral/20 hover:shadow-[0_0_40px_rgba(0,168,168,0.2)]
-              hover:border-teal-cathedral/50 active:scale-[0.98]"
+              hover:border-teal-cathedral/50 active:scale-[0.97]"
           >
             Begin your Remembrance
           </button>
@@ -760,6 +847,7 @@ export default function CathedralHome() {
   // ═══════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen flex flex-col animate-fade-in">
+      <ToastContainer toasts={toasts} />
       <BackToTop />
 
       {/* Sticky Navbar */}
@@ -841,8 +929,9 @@ export default function CathedralHome() {
             <form
               onSubmit={handleSubmit}
               className="w-full max-w-lg cathedral-surface p-4 sm:p-6 md:p-8 space-y-5"
+              noValidate
             >
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <label
                   htmlFor="prompt"
                   className="block text-sm text-[var(--text-muted)]"
@@ -852,11 +941,33 @@ export default function CathedralHome() {
                 <textarea
                   id="prompt"
                   value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
+                  onChange={(e) => {
+                    setPrompt(e.target.value);
+                    if (!promptTouched && e.target.value.trim().length > 0) setPromptTouched(true);
+                  }}
+                  onBlur={() => { if (prompt.trim().length > 0) setPromptTouched(true); }}
                   placeholder="What are you building? What do you seek to remember?"
                   rows={3}
-                  className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 sm:px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 focus:shadow-[0_0_20px_rgba(0,168,168,0.1)] transition-all resize-none"
+                  aria-invalid={promptTouched && !promptValid ? "true" : undefined}
+                  aria-describedby={promptError ? "prompt-helper" : undefined}
+                  className={`w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border rounded-lg px-3 sm:px-4 py-3 text-sm focus:outline-none transition-all resize-none ${
+                    promptTouched
+                      ? promptValid
+                        ? "field-valid focus:shadow-[0_0_20px_rgba(0,168,168,0.1)]"
+                        : "field-invalid focus:shadow-[0_0_20px_rgba(230,57,70,0.08)]"
+                      : "border-teal-cathedral/20 focus:border-teal-cathedral/60 focus:shadow-[0_0_20px_rgba(0,168,168,0.1)]"
+                  }`}
                 />
+                {promptError && (
+                  <p id="prompt-helper" className="field-helper field-helper-invalid" role="alert">
+                    {promptError}
+                  </p>
+                )}
+                {promptTouched && promptValid && (
+                  <p className="field-helper field-helper-valid">
+                    &#10003; Ready to ask the oracle
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -888,17 +999,17 @@ export default function CathedralHome() {
 
               <button
                 type="submit"
-                disabled={loading || !prompt.trim()}
-                className="w-full py-3 rounded-lg font-medium text-sm transition-all
+                disabled={loading || !promptValid}
+                className="w-full py-3 rounded-lg font-medium text-sm cathedral-btn
                   bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30
                   hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]
-                  disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:transform-none"
               >
                 {loading ? "Listening..." : "Ask the Oracle"}
               </button>
 
               {error && (
-                <div className="text-crimson-cathedral text-sm text-center">
+                <div className="text-crimson-cathedral text-sm text-center animate-fade-in" role="alert">
                   {error}
                 </div>
               )}
@@ -946,7 +1057,7 @@ export default function CathedralHome() {
                       <span className="text-[var(--text-muted)] font-mono text-xs">
                         {whisper.inputHash.slice(0, 12)}...
                       </span>
-                      <CopyButton text={whisper.inputHash} label="Copy hash" />
+                      <CopyButton text={whisper.inputHash} label="Copy hash" onToast={addToast} />
                     </div>
                   </div>
                   {whisper.solanaSlot !== null && (
@@ -963,7 +1074,7 @@ export default function CathedralHome() {
                     <div className="text-xs text-[var(--text-muted)]">
                       Share
                     </div>
-                    <ShareButtons whisperText={whisper.whisper} coherence={whisper.coherence} />
+                    <ShareButtons whisperText={whisper.whisper} coherence={whisper.coherence} onToast={addToast} />
                   </div>
                 </div>
               </div>
@@ -980,8 +1091,11 @@ export default function CathedralHome() {
               </h2>
               {history.length > 0 && (
                 <button
-                  onClick={clearHistory}
-                  className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors"
+                  onClick={() => {
+                    clearHistory();
+                    addToast("Archive cleared", "info");
+                  }}
+                  className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors cathedral-link"
                 >
                   Clear All
                 </button>
@@ -1016,7 +1130,7 @@ export default function CathedralHome() {
                         <p className="whisper-text text-sm leading-relaxed flex-1">
                           &ldquo;{entry.whisper}&rdquo;
                         </p>
-                        <CopyButton text={entry.whisper} label="Copy" />
+                        <CopyButton text={entry.whisper} label="Copy" onToast={addToast} />
                       </div>
                       <div className="flex items-center justify-between text-xs text-[var(--text-muted)] gap-2">
                         <span className="truncate max-w-[55%] sm:max-w-[60%] opacity-60">
@@ -1044,7 +1158,7 @@ export default function CathedralHome() {
                       onClick={() =>
                         setVisibleCount((c) => c + ARCHIVE_PAGE_SIZE)
                       }
-                      className="px-6 py-2.5 rounded-lg text-sm font-medium transition-all
+                      className="px-6 py-2.5 rounded-lg text-sm font-medium cathedral-btn
                         bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/20
                         hover:bg-teal-cathedral/20 hover:border-teal-cathedral/40"
                     >

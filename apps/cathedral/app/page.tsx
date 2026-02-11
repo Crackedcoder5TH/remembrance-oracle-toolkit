@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, FormEvent } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, FormEvent } from "react";
 import type { CoherenceResponse, WhisperEntry } from "@cathedral/shared";
 
 const HISTORY_KEY = "cathedral-whisper-history";
@@ -99,6 +99,29 @@ function pickSliderWhisper(value: number, exclude?: string): string {
   const filtered = exclude ? pool.filter((w) => w !== exclude) : pool;
   const source = filtered.length > 0 ? filtered : pool;
   return source[Math.floor(Math.random() * source.length)];
+}
+
+// ─── API helpers (guarded, abort-safe, single-flight) ────────────────
+
+const apiRequest = globalThis.fetch?.bind(globalThis);
+
+async function getSolanaStatus(signal?: AbortSignal): Promise<{ connected: boolean; slot: number | null }> {
+  const res = await apiRequest("/api/solana", { signal });
+  return res.json();
+}
+
+async function postCoherence(input: string, rating: number, signal?: AbortSignal): Promise<CoherenceResponse> {
+  const res = await apiRequest("/api/coherence", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ input, rating }),
+    signal,
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => null);
+    throw new Error(errBody?.error || `Request failed (${res.status})`);
+  }
+  return res.json();
 }
 
 // ─── localStorage helpers ────────────────────────────────────────────
@@ -615,6 +638,7 @@ export default function CathedralHome() {
   const [whisperFading, setWhisperFading] = useState(false);
   const whisperTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const submitController = useRef<AbortController | null>(null);
 
   // Oracle form state
   const [prompt, setPrompt] = useState("");
@@ -634,7 +658,8 @@ export default function CathedralHome() {
 
   const addToast = useCallback((message: string, type: ToastType = "info") => {
     const id = crypto.randomUUID();
-    setToasts((prev) => [...prev, { id, message, type }]);
+    // Cap at 5 visible toasts to prevent accumulation
+    setToasts((prev) => [...prev.slice(-4), { id, message, type }]);
     // Begin exit animation after 2.5s, remove after 2.75s
     setTimeout(() => {
       setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, exiting: true } : t)));
@@ -652,13 +677,14 @@ export default function CathedralHome() {
       : `At least ${MIN_PROMPT_LENGTH} characters needed`
     : "";
 
-  // Load history + ping Solana on mount
+  // Load history + ping Solana on mount (with abort guard)
   useEffect(() => {
     setHistory(loadHistory());
-    fetch("/api/solana")
-      .then((res) => res.json())
+    const controller = new AbortController();
+    getSolanaStatus(controller.signal)
       .then((data) => setSolana({ connected: data.connected, slot: data.slot }))
       .catch(() => {});
+    return () => controller.abort();
   }, []);
 
   // Debounced search (oracle-evolved debounce, 250ms)
@@ -675,14 +701,16 @@ export default function CathedralHome() {
     if (q.trim()) setSection("archive");
   }
 
-  // Filter history by search
-  const filteredHistory = debouncedQuery.trim()
-    ? history.filter(
-        (e) =>
-          e.whisper.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-          e.input.toLowerCase().includes(debouncedQuery.toLowerCase())
-      )
-    : history;
+  // Filter history by search (oracle-evolved memoize, from pattern bb674cc519161f62)
+  const filteredHistory = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return history;
+    return history.filter(
+      (e) =>
+        e.whisper.toLowerCase().includes(q) ||
+        e.input.toLowerCase().includes(q)
+    );
+  }, [debouncedQuery, history]);
 
   // ─── Slider whisper cycling ──────────────────────────────────────
 
@@ -743,31 +771,26 @@ export default function CathedralHome() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setPromptTouched(true);
-    if (!promptValid) return;
+    if (!promptValid || loading) return;
+
+    // Abort any in-flight request (anti-amplification guard)
+    submitController.current?.abort();
+    const controller = new AbortController();
+    submitController.current = controller;
 
     setLoading(true);
     setError("");
     setWhisper(null);
 
     try {
-      const res = await fetch("/api/coherence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: prompt.trim(), rating }),
-      });
-
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => null);
-        throw new Error(errBody?.error || `Request failed (${res.status})`);
-      }
-
-      const data: CoherenceResponse = await res.json();
+      const data = await postCoherence(prompt.trim(), rating, controller.signal);
       setWhisper(data);
       addToHistory(prompt.trim(), data);
       setPrompt("");
       setPromptTouched(false);
       addToast("Whisper received", "success");
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const msg = err instanceof Error ? err.message : "Something went wrong";
       setError(msg);
       addToast(msg, "error");

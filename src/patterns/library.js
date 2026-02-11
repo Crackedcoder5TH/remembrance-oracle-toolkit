@@ -267,11 +267,11 @@ class PatternLibrary {
       // Store bug count in the pattern's metadata
       this._sqlite.updatePattern(id, { bugReports: bugCount });
     } else {
-      const pats = this._loadJSON();
-      const idx = pats.findIndex(p => p.id === id);
+      const data = this._readJSON();
+      const idx = data.patterns.findIndex(p => p.id === id);
       if (idx >= 0) {
-        pats[idx].bugReports = bugCount;
-        this._saveJSON(pats);
+        data.patterns[idx].bugReports = bugCount;
+        this._writeJSON(data);
       }
     }
 
@@ -338,10 +338,11 @@ class PatternLibrary {
       return this._sqlite.updatePattern(id, updates);
     }
     // JSON fallback
-    const pattern = this._getAllJSON().find(p => p.id === id);
+    const data = this._readJSON();
+    const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
     Object.assign(pattern, updates, { updatedAt: new Date().toISOString() });
-    this._saveJSON();
+    this._writeJSON(data);
     return pattern;
   }
 
@@ -487,7 +488,8 @@ class PatternLibrary {
   _pruneCandidatesJSON(minCoherency) {
     const data = this._readCandidatesJSON();
     const before = data.candidates.length;
-    data.candidates = data.candidates.filter(c => (c.coherencyTotal ?? 0) >= minCoherency);
+    // Only prune unpromoted candidates — preserve promoted ones regardless of coherency
+    data.candidates = data.candidates.filter(c => c.promotedAt || (c.coherencyTotal ?? 0) >= minCoherency);
     this._writeCandidatesJSON(data);
     return { removed: before - data.candidates.length, remaining: data.candidates.length };
   }
@@ -553,6 +555,8 @@ class PatternLibrary {
   resolveDependencies(id) {
     const visited = new Set();
     const result = [];
+    // Read JSON once outside the walk to avoid re-parsing on every recursive call
+    const jsonData = this._backend !== 'sqlite' ? this._readJSON() : null;
 
     const walk = (patternId) => {
       if (visited.has(patternId)) return;
@@ -562,8 +566,7 @@ class PatternLibrary {
       if (this._backend === 'sqlite') {
         p = this._sqlite.getPattern(patternId);
       } else {
-        const data = this._readJSON();
-        p = data.patterns.find(x => x.id === patternId);
+        p = jsonData.patterns.find(x => x.id === patternId);
       }
       if (!p) return;
 
@@ -639,8 +642,8 @@ class PatternLibrary {
     const data = this._readJSON();
     const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
-    pattern.usageCount++;
-    if (succeeded) pattern.successCount++;
+    pattern.usageCount = (pattern.usageCount || 0) + 1;
+    if (succeeded) pattern.successCount = (pattern.successCount || 0) + 1;
     pattern.updatedAt = new Date().toISOString();
     this._writeJSON(data);
     return pattern;

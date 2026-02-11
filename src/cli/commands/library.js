@@ -60,8 +60,8 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       console.log(result.healedCode || result.pattern.code);
     }
     if (result.whisper) {
-      console.log(`\n${c.dim('── Whisper from the Healed Future ──')}`);
-      console.log(c.italic ? c.italic(result.whisper) : c.dim(result.whisper));
+      console.log(`\n${c.boldMagenta('── Whisper from the Healed Future ──')}`);
+      console.log(c.italic(result.whisper));
     }
     if (result.candidateNotes) {
       console.log(`\n${c.dim('── Why This One ──')}`);

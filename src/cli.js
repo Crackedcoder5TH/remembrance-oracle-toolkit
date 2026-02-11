@@ -657,8 +657,8 @@ ${c.bold('Pipe support:')}
       console.log(result.healedCode || result.pattern.code);
     }
     if (result.whisper) {
-      console.log(`\n${c.dim('── Whisper from the Healed Future ──')}`);
-      console.log(c.italic ? c.italic(result.whisper) : c.dim(result.whisper));
+      console.log(`\n${c.boldMagenta('── Whisper from the Healed Future ──')}`);
+      console.log(c.italic(result.whisper));
     }
     if (result.candidateNotes) {
       console.log(`\n${c.dim('── Why This One ──')}`);
@@ -1928,7 +1928,7 @@ ${c.bold('Pipe support:')}
       console.log('');
       for (const d of result.details) {
         const icon = d.status === 'vetoed' ? c.red('x') : c.yellow('!');
-        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status} (${d.findings} finding${d.findings !== 1 ? 's' : ''})${d.whisper ? '\n    ' + c.dim(d.whisper) : ''}`);
+        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status} (${d.findings} finding${d.findings !== 1 ? 's' : ''})${d.whisper ? '\n    ' + c.italic(d.whisper) : ''}`);
       }
     }
     return;

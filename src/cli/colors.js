@@ -13,6 +13,7 @@ const codes = {
   reset: '\x1b[0m',
   bold: '\x1b[1m',
   dim: '\x1b[2m',
+  italic: '\x1b[3m',
   underline: '\x1b[4m',
   red: '\x1b[31m',
   green: '\x1b[32m',
@@ -36,6 +37,7 @@ function wrap(code, text) {
 const c = {
   bold: (t) => wrap(codes.bold, t),
   dim: (t) => wrap(codes.dim, t),
+  italic: (t) => wrap(codes.italic, t),
   red: (t) => wrap(codes.red, t),
   green: (t) => wrap(codes.green, t),
   yellow: (t) => wrap(codes.yellow, t),

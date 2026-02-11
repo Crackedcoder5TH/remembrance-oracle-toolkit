@@ -207,6 +207,176 @@ function throttle<T extends (...args: Parameters<T>) => void>(
   };
 }
 
+// ─── Color-blind palette types ──────────────────────────────────────
+
+type A11yPalette = "default" | "deuteranopia" | "protanopia" | "tritanopia";
+
+const PALETTE_KEY = "cathedral-a11y-palette";
+
+function loadPalette(): A11yPalette {
+  if (typeof window === "undefined") return "default";
+  try {
+    const stored = localStorage.getItem(PALETTE_KEY);
+    if (stored === "deuteranopia" || stored === "protanopia" || stored === "tritanopia") return stored;
+  } catch {}
+  return "default";
+}
+
+function applyPalette(palette: A11yPalette) {
+  if (typeof document === "undefined") return;
+  if (palette === "default") {
+    document.documentElement.removeAttribute("data-a11y-palette");
+  } else {
+    document.documentElement.setAttribute("data-a11y-palette", palette);
+  }
+}
+
+// ─── Voice Input Hook ───────────────────────────────────────────────
+
+function useVoiceInput(onResult: (text: string) => void) {
+  const [listening, setListening] = useState(false);
+  const [supported, setSupported] = useState(false);
+  const recognitionRef = useRef<ReturnType<typeof createRecognition> | null>(null);
+
+  useEffect(() => {
+    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition ||
+               (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    setSupported(!!SR);
+  }, []);
+
+  function createRecognition() {
+    const SR = (window as unknown as Record<string, unknown>).SpeechRecognition ||
+               (window as unknown as Record<string, unknown>).webkitSpeechRecognition;
+    if (!SR) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = new (SR as any)();
+    r.continuous = false;
+    r.interimResults = false;
+    r.lang = "en-US";
+    return r;
+  }
+
+  function toggle() {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const r = createRecognition();
+    if (!r) return;
+    recognitionRef.current = r;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    r.onresult = (e: any) => {
+      const text = e.results[0][0].transcript;
+      onResult(text);
+      setListening(false);
+    };
+    r.onerror = () => setListening(false);
+    r.onend = () => setListening(false);
+    r.start();
+    setListening(true);
+  }
+
+  return { listening, supported, toggle };
+}
+
+// ─── Command Palette ────────────────────────────────────────────────
+
+interface CmdItem {
+  id: string;
+  label: string;
+  shortcut?: string;
+  action: () => void;
+}
+
+function CommandPalette({
+  open,
+  onClose,
+  items,
+}: {
+  open: boolean;
+  onClose: () => void;
+  items: CmdItem[];
+}) {
+  const [query, setQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((i) => i.label.toLowerCase().includes(q));
+  }, [query, items]);
+
+  useEffect(() => {
+    if (open) {
+      setQuery("");
+      setSelectedIndex(0);
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [query]);
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter" && filtered[selectedIndex]) {
+      filtered[selectedIndex].action();
+      onClose();
+    } else if (e.key === "Escape") {
+      onClose();
+    }
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="cmd-palette-overlay" onClick={onClose} role="dialog" aria-label="Command palette" aria-modal="true">
+      <div className="cmd-palette-box animate-fade-in" onClick={(e) => e.stopPropagation()} onKeyDown={handleKeyDown}>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search commands..."
+          className="cmd-palette-input"
+          aria-label="Search commands"
+        />
+        <div className="max-h-64 overflow-y-auto py-1" role="listbox">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-3 text-xs text-[var(--text-muted)]">No matching commands</div>
+          ) : (
+            filtered.map((item, i) => (
+              <div
+                key={item.id}
+                role="option"
+                aria-selected={i === selectedIndex}
+                data-selected={i === selectedIndex}
+                className="cmd-palette-item"
+                onClick={() => { item.action(); onClose(); }}
+              >
+                <span>{item.label}</span>
+                {item.shortcut && <span className="cmd-palette-item-key">{item.shortcut}</span>}
+              </div>
+            ))
+          )}
+        </div>
+        <div className="px-4 py-2 border-t border-teal-cathedral/10 text-xs text-[var(--text-muted)] flex justify-between">
+          <span>Navigate with <kbd className="font-mono">↑↓</kbd> Enter to select</span>
+          <span><kbd className="font-mono">Esc</kbd> to close</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Cookie Consent Banner ──────────────────────────────────────────
 
 const CONSENT_KEY = "cathedral-cookie-consent";
@@ -443,6 +613,9 @@ function Navbar({
   historyCount,
   theme,
   onThemeToggle,
+  palette,
+  onPaletteToggle,
+  onCmdOpen,
 }: {
   section: Section;
   onNavigate: (s: Section) => void;
@@ -451,6 +624,9 @@ function Navbar({
   historyCount: number;
   theme: Theme;
   onThemeToggle: () => void;
+  palette: A11yPalette;
+  onPaletteToggle: () => void;
+  onCmdOpen: () => void;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -526,6 +702,30 @@ function Navbar({
             className="p-2 rounded-lg text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10 transition-all"
           >
             <ThemeIcon theme={theme} />
+          </button>
+
+          {/* Color-blind palette toggle */}
+          <button
+            onClick={onPaletteToggle}
+            aria-label={`Color palette: ${palette === "default" ? "Standard" : palette}`}
+            title={`Palette: ${palette}`}
+            className="p-2 rounded-lg text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10 transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="8" r="2" fill={palette !== "default" ? "currentColor" : "none"} />
+              <circle cx="8" cy="14" r="2" fill={palette !== "default" ? "currentColor" : "none"} />
+              <circle cx="16" cy="14" r="2" fill={palette !== "default" ? "currentColor" : "none"} />
+            </svg>
+          </button>
+
+          {/* Command palette trigger */}
+          <button
+            onClick={onCmdOpen}
+            aria-label="Open command palette"
+            className="hidden lg:flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs text-[var(--text-muted)] border border-teal-cathedral/15 hover:border-teal-cathedral/30 hover:text-teal-cathedral transition-all"
+          >
+            <kbd className="font-mono text-[0.65rem]">⌘K</kbd>
           </button>
         </div>
 
@@ -666,6 +866,46 @@ export default function CathedralHome() {
     });
   }
 
+  // Color-blind palette state
+  const [palette, setPalette] = useState<A11yPalette>("default");
+  useEffect(() => {
+    const saved = loadPalette();
+    setPalette(saved);
+    applyPalette(saved);
+  }, []);
+
+  function cyclePalette() {
+    setPalette((prev) => {
+      const order: A11yPalette[] = ["default", "deuteranopia", "protanopia", "tritanopia"];
+      const next = order[(order.indexOf(prev) + 1) % order.length];
+      try { localStorage.setItem(PALETTE_KEY, next); } catch {}
+      applyPalette(next);
+      return next;
+    });
+  }
+
+  // Command palette state
+  const [cmdOpen, setCmdOpen] = useState(false);
+
+  // PWA service worker registration
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+
+  // Global keyboard shortcut: Ctrl/Cmd+K → command palette
+  useEffect(() => {
+    function handleGlobalKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setCmdOpen((prev) => !prev);
+      }
+    }
+    window.addEventListener("keydown", handleGlobalKey);
+    return () => window.removeEventListener("keydown", handleGlobalKey);
+  }, []);
+
   // View state: "landing" → "oracle"
   const [view, setView] = useState<"landing" | "oracle">("landing");
   const [landingFading, setLandingFading] = useState(false);
@@ -759,6 +999,25 @@ export default function CathedralHome() {
         e.input.toLowerCase().includes(q)
     );
   }, [debouncedQuery, history]);
+
+  // Voice input for the oracle form
+  const voice = useVoiceInput((text) => {
+    setPrompt((prev) => prev ? prev + " " + text : text);
+    setPromptTouched(true);
+  });
+
+  // Command palette items
+  const cmdItems: CmdItem[] = useMemo(() => [
+    { id: "oracle", label: "Go to Oracle", action: () => { setSection("oracle"); setView("oracle"); } },
+    { id: "archive", label: "Go to Archive", action: () => { setSection("archive"); setView("oracle"); } },
+    { id: "theme", label: "Toggle Theme", shortcut: "T", action: cycleTheme },
+    { id: "palette", label: "Cycle Color-blind Palette", shortcut: "P", action: cyclePalette },
+    { id: "clear", label: "Clear Whisper History", action: () => { clearHistory(); addToast("Archive cleared", "info"); } },
+    { id: "about", label: "About & Contact", action: () => { window.location.href = "/about"; } },
+    { id: "privacy", label: "Privacy Policy", action: () => { window.location.href = "/privacy"; } },
+    { id: "top", label: "Scroll to Top", action: () => window.scrollTo({ top: 0, behavior: "smooth" }) },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], []);
 
   // ─── Slider whisper cycling ──────────────────────────────────────
 
@@ -927,6 +1186,9 @@ export default function CathedralHome() {
       <ToastContainer toasts={toasts} />
       <BackToTop />
 
+      {/* Command Palette */}
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} items={cmdItems} />
+
       {/* Sticky Navbar */}
       <Navbar
         section={section}
@@ -936,6 +1198,9 @@ export default function CathedralHome() {
         historyCount={history.length}
         theme={theme}
         onThemeToggle={cycleTheme}
+        palette={palette}
+        onPaletteToggle={cyclePalette}
+        onCmdOpen={() => setCmdOpen(true)}
       />
 
       {/* Breadcrumbs */}
@@ -1035,16 +1300,36 @@ export default function CathedralHome() {
                       : "border-teal-cathedral/20 focus:border-teal-cathedral/60 focus:shadow-[0_0_20px_rgba(0,168,168,0.1)]"
                   }`}
                 />
-                {promptError && (
-                  <p id="prompt-helper" className="field-helper field-helper-invalid" role="alert">
-                    {promptError}
-                  </p>
-                )}
-                {promptTouched && promptValid && (
-                  <p className="field-helper field-helper-valid">
-                    &#10003; Ready to ask the oracle
-                  </p>
-                )}
+                <div className="flex items-center gap-2">
+                  {promptError && (
+                    <p id="prompt-helper" className="field-helper field-helper-invalid flex-1" role="alert">
+                      {promptError}
+                    </p>
+                  )}
+                  {promptTouched && promptValid && (
+                    <p className="field-helper field-helper-valid flex-1">
+                      &#10003; Ready to ask the oracle
+                    </p>
+                  )}
+                  {!promptError && !(promptTouched && promptValid) && <span className="flex-1" />}
+                  {voice.supported && (
+                    <button
+                      type="button"
+                      onClick={voice.toggle}
+                      aria-label={voice.listening ? "Stop voice input" : "Start voice input"}
+                      className={`p-1.5 rounded-lg text-xs transition-all ${
+                        voice.listening
+                          ? "text-crimson-cathedral bg-crimson-cathedral/10 animate-pulse"
+                          : "text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10"
+                      }`}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <rect x="9" y="1" width="6" height="11" rx="3" />
+                        <path d="M19 10v1a7 7 0 01-14 0v-1M12 18.5v3.5M8 22h8" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

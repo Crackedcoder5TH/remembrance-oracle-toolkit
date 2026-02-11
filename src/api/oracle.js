@@ -56,12 +56,29 @@ class RemembranceOracle {
     };
 
     // Auto-seed on first run if library is empty
-    if (options.autoSeed !== false && this.patterns.getAll().length === 0) {
+    const wasEmpty = this.patterns.getAll().length === 0;
+    if (options.autoSeed !== false && wasEmpty) {
       try {
         const { seedLibrary } = require('../patterns/seeds');
         seedLibrary(this);
       } catch {
         // Seeding is best-effort — don't fail construction
+      }
+    }
+
+    // Auto-pull from personal store when local library is new/empty
+    // This ensures patterns persist across projects and sessions
+    if (options.autoSeed !== false && options.autoPull !== false && wasEmpty) {
+      try {
+        const { hasGlobalStore, syncFromGlobal } = require('../core/persistence');
+        if (hasGlobalStore()) {
+          const sqliteStore = this.store.getSQLiteStore ? this.store.getSQLiteStore() : null;
+          if (sqliteStore) {
+            syncFromGlobal(sqliteStore, { minCoherency: 0.6 });
+          }
+        }
+      } catch {
+        // Auto-pull is best-effort — don't fail construction
       }
     }
   }

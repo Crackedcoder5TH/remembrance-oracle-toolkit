@@ -19,7 +19,7 @@ const { execSync } = require('child_process');
 const { RemembranceOracle } = require('./api/oracle');
 const { c, colorScore, colorDecision, colorStatus, colorDiff, colorSource } = require('./cli/colors');
 
-const oracle = new RemembranceOracle();
+const oracle = new RemembranceOracle({ autoSync: true });
 
 /**
  * Speak text via system TTS (espeak on Linux, say on macOS).

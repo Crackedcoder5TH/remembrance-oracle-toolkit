@@ -207,6 +207,54 @@ function throttle<T extends (...args: Parameters<T>) => void>(
   };
 }
 
+// ─── Cookie Consent Banner ──────────────────────────────────────────
+
+const CONSENT_KEY = "cathedral-cookie-consent";
+
+function CookieConsent() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(CONSENT_KEY)) setVisible(true);
+    } catch {}
+  }, []);
+
+  function accept() {
+    try { localStorage.setItem(CONSENT_KEY, "accepted"); } catch {}
+    setVisible(false);
+  }
+
+  if (!visible) return null;
+
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 z-50 p-4 animate-fade-in"
+      role="dialog"
+      aria-label="Cookie consent"
+    >
+      <div className="max-w-lg mx-auto cathedral-surface p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 border border-teal-cathedral/20">
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed flex-1">
+          This site uses <strong className="text-[var(--text-primary)]">localStorage</strong> to
+          save your whisper history and theme preference. No cookies or
+          third-party trackers are used.{" "}
+          <a href="/privacy" className="text-teal-cathedral hover:underline">
+            Privacy Policy
+          </a>
+        </p>
+        <button
+          onClick={accept}
+          className="shrink-0 px-5 py-2 rounded-lg text-xs font-medium cathedral-btn
+            bg-teal-cathedral/15 text-teal-cathedral border border-teal-cathedral/30
+            hover:bg-teal-cathedral/25"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Back-to-Top Button ─────────────────────────────────────────────
 
 function BackToTop() {
@@ -843,7 +891,7 @@ export default function CathedralHome() {
           </button>
         </div>
 
-        <footer className="absolute bottom-6 text-center">
+        <footer className="absolute bottom-6 text-center space-y-2">
           <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
             <span
               className={`inline-block w-1.5 h-1.5 rounded-full ${
@@ -860,7 +908,13 @@ export default function CathedralHome() {
                 : "Offline"}
             </span>
           </div>
+          <div className="flex items-center justify-center gap-3 text-xs text-[var(--text-muted)]">
+            <a href="/about" className="cathedral-link">About</a>
+            <span className="opacity-30">|</span>
+            <a href="/privacy" className="cathedral-link">Privacy</a>
+          </div>
         </footer>
+        <CookieConsent />
       </main>
     );
   }
@@ -1218,10 +1272,17 @@ export default function CathedralHome() {
               : "Offline"}
           </span>
         </div>
+        <div className="flex items-center justify-center gap-3 text-xs text-[var(--text-muted)]">
+          <a href="/about" className="cathedral-link">About</a>
+          <span className="opacity-30">|</span>
+          <a href="/privacy" className="cathedral-link">Privacy</a>
+        </div>
         <p className="text-xs text-[var(--text-muted)]">
           The kingdom is already here. Remember.
         </p>
       </footer>
+
+      <CookieConsent />
     </div>
   );
 }

@@ -469,6 +469,75 @@ class SQLiteStore {
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
   }
 
+  /**
+   * Add a pattern only if no pattern with the same (name, language) exists.
+   * If a duplicate exists with lower coherency, update it instead.
+   * Returns the pattern (existing or new), or null if skipped.
+   */
+  addPatternIfNotExists(pattern) {
+    const lang = (pattern.language || 'unknown').toLowerCase();
+    const name = pattern.name;
+    const newCoherency = pattern.coherencyScore?.total ?? 0;
+
+    const existing = this.db.prepare(
+      'SELECT id, coherency_total FROM patterns WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) LIMIT 1'
+    ).get(name, lang);
+
+    if (existing) {
+      // If new version has higher coherency, update the existing row
+      if (newCoherency > (existing.coherency_total || 0)) {
+        const now = new Date().toISOString();
+        this.db.prepare(`
+          UPDATE patterns SET code = ?, description = ?, tags = ?,
+            coherency_total = ?, coherency_json = ?, test_code = ?,
+            pattern_type = ?, complexity = ?, evolution_history = ?,
+            updated_at = ?, version = version + 1
+          WHERE id = ?
+        `).run(
+          pattern.code, pattern.description || '',
+          JSON.stringify(pattern.tags || []),
+          newCoherency, JSON.stringify(pattern.coherencyScore || {}),
+          pattern.testCode || null,
+          pattern.patternType || 'utility', pattern.complexity || 'composite',
+          JSON.stringify(pattern.evolutionHistory || []),
+          now, existing.id
+        );
+        return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(existing.id));
+      }
+      return null; // Existing has equal or higher coherency — skip
+    }
+
+    return this.addPattern(pattern);
+  }
+
+  /**
+   * Remove duplicate patterns, keeping the highest-coherency row for each (name, language).
+   * Returns { removed, kept, byName }.
+   */
+  deduplicatePatterns() {
+    const all = this.db.prepare('SELECT id, name, language, coherency_total FROM patterns ORDER BY coherency_total DESC').all();
+    const bestByKey = new Map();
+    const toDelete = [];
+
+    for (const row of all) {
+      const key = `${row.name.toLowerCase()}:${(row.language || 'unknown').toLowerCase()}`;
+      if (!bestByKey.has(key)) {
+        bestByKey.set(key, row.id);
+      } else {
+        toDelete.push(row.id);
+      }
+    }
+
+    if (toDelete.length > 0) {
+      const deleteStmt = this.db.prepare('DELETE FROM patterns WHERE id = ?');
+      for (const id of toDelete) {
+        deleteStmt.run(id);
+      }
+    }
+
+    return { removed: toDelete.length, kept: bestByKey.size };
+  }
+
   getAllPatterns(filters = {}) {
     let sql = 'SELECT * FROM patterns WHERE 1=1';
     const params = [];

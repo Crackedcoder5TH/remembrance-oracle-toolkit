@@ -76,7 +76,7 @@ function hasGlobalStore() {
 // ─── Pattern Transfer Helper ───
 
 function transferPattern(pattern, targetStore) {
-  targetStore.addPattern({
+  const patternData = {
     name: pattern.name,
     code: pattern.code,
     language: pattern.language,
@@ -91,7 +91,13 @@ function transferPattern(pattern, targetStore) {
     evolutionHistory: typeof pattern.evolution_history === 'string'
       ? JSON.parse(pattern.evolution_history)
       : (pattern.evolutionHistory || []),
-  });
+  };
+
+  // Use dedup-safe insert: skip if same (name, language) exists with equal/higher coherency
+  if (typeof targetStore.addPatternIfNotExists === 'function') {
+    return targetStore.addPatternIfNotExists(patternData);
+  }
+  targetStore.addPattern(patternData);
 }
 
 // ─── Sync: Local ↔ Personal (Private, Automatic) ───
@@ -107,14 +113,19 @@ function syncToGlobal(localStore, options = {}) {
     return { synced: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
+  // Auto-deduplicate the personal store before syncing (clean up historical cruft)
+  if (typeof personalStore.deduplicatePatterns === 'function') {
+    personalStore.deduplicatePatterns();
+  }
+
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore.getAllPatterns();
-  const personalIndex = new Set(personalPatterns.map(p => `${p.name}:${p.language}`));
+  const personalIndex = new Set(personalPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   const report = { synced: 0, skipped: 0, duplicates: 0, total: localPatterns.length, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${pattern.name}:${pattern.language}`;
+    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
 
     if (personalIndex.has(key)) {
       report.duplicates++;
@@ -137,6 +148,9 @@ function syncToGlobal(localStore, options = {}) {
       }
     }
 
+    // Track what we just added so we don't re-add duplicates from the same batch
+    personalIndex.add(key);
+
     report.synced++;
     if (verbose) {
       console.log(`  [SYNC→] ${pattern.name} (${pattern.language}) coherency: ${coherency.toFixed ? coherency.toFixed(3) : coherency}`);
@@ -157,16 +171,26 @@ function syncFromGlobal(localStore, options = {}) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
+  // Deduplicate the personal store first (removes historical cruft)
+  if (typeof personalStore.deduplicatePatterns === 'function') {
+    personalStore.deduplicatePatterns();
+  }
+
+  // Deduplicate local store too
+  if (typeof localStore.deduplicatePatterns === 'function') {
+    localStore.deduplicatePatterns();
+  }
+
   const personalPatterns = personalStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
-  const localIndex = new Set(localPatterns.map(p => `${p.name}:${p.language}`));
+  const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   const report = { pulled: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, details: [] };
 
   for (const pattern of personalPatterns) {
     if (report.pulled >= maxPull) break;
 
-    const key = `${pattern.name}:${pattern.language}`;
+    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     if (localIndex.has(key)) {
       report.duplicates++;
       continue;
@@ -192,6 +216,9 @@ function syncFromGlobal(localStore, options = {}) {
         continue;
       }
     }
+
+    // Track what we just added so duplicates in personal don't get re-pulled
+    localIndex.add(key);
 
     report.pulled++;
     if (verbose) {
@@ -232,7 +259,7 @@ function shareToCommunity(localStore, options = {}) {
 
   let localPatterns = localStore.getAllPatterns();
   const communityPatterns = communityStore.getAllPatterns();
-  const communityIndex = new Set(communityPatterns.map(p => `${p.name}:${p.language}`));
+  const communityIndex = new Set(communityPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   // Filter by name if specified
   if (nameFilter && nameFilter.length > 0) {
@@ -251,10 +278,15 @@ function shareToCommunity(localStore, options = {}) {
     });
   }
 
+  // Deduplicate community store before sharing
+  if (typeof communityStore.deduplicatePatterns === 'function') {
+    communityStore.deduplicatePatterns();
+  }
+
   const report = { shared: 0, skipped: 0, duplicates: 0, total: localPatterns.length, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${pattern.name}:${pattern.language}`;
+    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
 
     if (communityIndex.has(key)) {
       report.duplicates++;
@@ -286,6 +318,9 @@ function shareToCommunity(localStore, options = {}) {
       }
     }
 
+    // Track to prevent duplicates in same batch
+    communityIndex.add(key);
+
     report.shared++;
     if (verbose) {
       console.log(`  [SHARE→] ${pattern.name} (${pattern.language}) coherency: ${coherency.toFixed(3)}`);
@@ -309,7 +344,7 @@ function pullFromCommunity(localStore, options = {}) {
 
   let communityPatterns = communityStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
-  const localIndex = new Set(localPatterns.map(p => `${p.name}:${p.language}`));
+  const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   if (nameFilter && nameFilter.length > 0) {
     const nameSet = new Set(nameFilter.map(n => n.toLowerCase()));
@@ -318,12 +353,17 @@ function pullFromCommunity(localStore, options = {}) {
     );
   }
 
+  // Deduplicate community store
+  if (typeof communityStore.deduplicatePatterns === 'function') {
+    communityStore.deduplicatePatterns();
+  }
+
   const report = { pulled: 0, skipped: 0, duplicates: 0, total: communityPatterns.length, details: [] };
 
   for (const pattern of communityPatterns) {
     if (report.pulled >= maxPull) break;
 
-    const key = `${pattern.name}:${pattern.language}`;
+    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     if (localIndex.has(key)) {
       report.duplicates++;
       continue;
@@ -349,6 +389,9 @@ function pullFromCommunity(localStore, options = {}) {
         continue;
       }
     }
+
+    // Track to prevent duplicate pulls in same batch
+    localIndex.add(key);
 
     report.pulled++;
     if (verbose) {

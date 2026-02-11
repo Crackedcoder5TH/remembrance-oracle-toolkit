@@ -1645,6 +1645,45 @@ class RemembranceOracle {
     return communityStats();
   }
 
+  /**
+   * Deduplicate patterns in local, personal, and community stores.
+   * Keeps the highest-coherency row for each (name, language) pair.
+   * Returns report with removed counts per store.
+   */
+  deduplicate(options = {}) {
+    const { stores = ['local', 'personal', 'community'] } = options;
+    const report = { local: null, personal: null, community: null };
+
+    if (stores.includes('local')) {
+      const sqliteStore = this.store.getSQLiteStore();
+      if (sqliteStore && typeof sqliteStore.deduplicatePatterns === 'function') {
+        report.local = sqliteStore.deduplicatePatterns();
+      }
+    }
+
+    if (stores.includes('personal')) {
+      try {
+        const { openPersonalStore } = require('../core/persistence');
+        const personalStore = openPersonalStore();
+        if (personalStore && typeof personalStore.deduplicatePatterns === 'function') {
+          report.personal = personalStore.deduplicatePatterns();
+        }
+      } catch { /* best-effort */ }
+    }
+
+    if (stores.includes('community')) {
+      try {
+        const { openCommunityStore } = require('../core/persistence');
+        const communityStore = openCommunityStore();
+        if (communityStore && typeof communityStore.deduplicatePatterns === 'function') {
+          report.community = communityStore.deduplicatePatterns();
+        }
+      } catch { /* best-effort */ }
+    }
+
+    return report;
+  }
+
   // ─── Cross-Repo Search ───
 
   // ─── Remote Federation ───

@@ -1154,6 +1154,27 @@ ${c.bold('Pipe support:')}
     return;
   }
 
+  if (cmd === 'dedup' || cmd === 'deduplicate') {
+    console.log(c.boldCyan('Deduplicating pattern stores...\n'));
+    const report = oracle.deduplicate();
+    if (report.local) {
+      console.log(`Local:     removed ${c.boldGreen(String(report.local.removed))} duplicates, kept ${c.bold(String(report.local.kept))} unique`);
+    }
+    if (report.personal) {
+      console.log(`Personal:  removed ${c.boldGreen(String(report.personal.removed))} duplicates, kept ${c.bold(String(report.personal.kept))} unique`);
+    }
+    if (report.community) {
+      console.log(`Community: removed ${c.boldGreen(String(report.community.removed))} duplicates, kept ${c.bold(String(report.community.kept))} unique`);
+    }
+    const total = (report.local?.removed || 0) + (report.personal?.removed || 0) + (report.community?.removed || 0);
+    if (total === 0) {
+      console.log(c.green('No duplicates found — all stores are clean.'));
+    } else {
+      console.log(`\nTotal: ${c.boldGreen(String(total))} duplicates removed`);
+    }
+    return;
+  }
+
   if (cmd === 'sync') {
     const direction = process.argv[3] || 'both';
     const verbose = args.verbose === 'true' || args.verbose === true;

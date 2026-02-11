@@ -49,6 +49,9 @@ const { PatternComposer, BUILT_IN_TEMPLATES } = require('./patterns/composer');
 const { PluginManager, HookEmitter, VALID_HOOKS } = require('./plugins/manager');
 const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } = require('./health/monitor');
 const { evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS } = require('./core/evolution');
+const { LifecycleEngine, LIFECYCLE_DEFAULTS } = require('./core/lifecycle');
+const { HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS } = require('./core/whisper');
+const { selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, OPTIMIZE_DEFAULTS } = require('./core/self-optimize');
 
 module.exports = {
   // Core
@@ -268,4 +271,19 @@ module.exports = {
   detectRegressions,
   recheckCoherency,
   EVOLUTION_DEFAULTS,
+
+  // Lifecycle Engine
+  LifecycleEngine,
+  LIFECYCLE_DEFAULTS,
+
+  // Healing Whisper
+  HealingWhisper,
+  WHISPER_INTROS,
+  WHISPER_DETAILS,
+
+  // Self-Optimization
+  selfImprove,
+  selfOptimize,
+  fullOptimizationCycle,
+  OPTIMIZE_DEFAULTS,
 };

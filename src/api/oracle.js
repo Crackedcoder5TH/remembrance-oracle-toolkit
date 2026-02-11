@@ -1283,6 +1283,117 @@ class RemembranceOracle {
     return evolve(this, options);
   }
 
+  /**
+   * Run a full self-improvement cycle.
+   * Heals low-coherency patterns, promotes candidates, cleans stubs,
+   * re-tags for discoverability, and recovers rejections.
+   *
+   * @param {object} options - Override self-improve defaults
+   * @returns {object} Improvement report
+   */
+  selfImprove(options = {}) {
+    const { selfImprove } = require('../core/self-optimize');
+    return selfImprove(this, options);
+  }
+
+  /**
+   * Run a self-optimization cycle.
+   * Analyzes usage patterns, detects near-duplicates, consolidates tags,
+   * refreshes coherency scores, and generates recommendations.
+   *
+   * @param {object} options - Override optimize defaults
+   * @returns {object} Optimization report
+   */
+  selfOptimize(options = {}) {
+    const { selfOptimize } = require('../core/self-optimize');
+    return selfOptimize(this, options);
+  }
+
+  /**
+   * Run the full improvement + optimization + evolution cycle.
+   * Returns a combined report with a healing whisper summary.
+   *
+   * @param {object} options - Override defaults for all phases
+   * @returns {object} Full cycle report with whisper
+   */
+  fullOptimizationCycle(options = {}) {
+    const { fullCycle } = require('../core/self-optimize');
+    const { HealingWhisper } = require('../core/whisper');
+
+    // Start collecting healing whispers
+    const whisper = new HealingWhisper(this);
+    whisper.start();
+
+    // Run the full cycle
+    const report = fullCycle(this, options);
+
+    // Record all healing events into the whisper
+    if (report.evolution) {
+      whisper.recordEvolutionReport(report.evolution);
+    }
+    if (report.improvement?.promoted > 0) {
+      whisper.recordPromotionReport({ promoted: report.improvement.promoted });
+    }
+
+    // Stop collecting and get the whisper summary
+    const whisperSummary = whisper.stop();
+
+    return {
+      ...report,
+      whisperSummary,
+    };
+  }
+
+  /**
+   * Get or create the lifecycle engine for always-on management.
+   * The lifecycle engine hooks into oracle events and triggers
+   * automatic evolution, promotion, and healing cycles.
+   *
+   * @param {object} options - Override lifecycle defaults
+   * @returns {LifecycleEngine} The lifecycle engine instance
+   */
+  getLifecycle(options = {}) {
+    if (!this._lifecycle) {
+      const { LifecycleEngine } = require('../core/lifecycle');
+      this._lifecycle = new LifecycleEngine(this, options);
+    }
+    return this._lifecycle;
+  }
+
+  /**
+   * Start the always-on lifecycle engine.
+   * After calling this, the oracle will automatically:
+   * - Evolve after every N feedbacks
+   * - Promote candidates after every N submissions
+   * - Track healing and growth events
+   *
+   * @param {object} options - Override lifecycle defaults
+   * @returns {{ started: boolean }} Status
+   */
+  startLifecycle(options = {}) {
+    return this.getLifecycle(options).start();
+  }
+
+  /**
+   * Stop the lifecycle engine.
+   */
+  stopLifecycle() {
+    if (this._lifecycle) {
+      return this._lifecycle.stop();
+    }
+    return { stopped: false, reason: 'not started' };
+  }
+
+  /**
+   * Get lifecycle status and counters.
+   */
+  lifecycleStatus() {
+    if (this._lifecycle) {
+      return this._lifecycle.status();
+    }
+    return { running: false, reason: 'not initialized' };
+  }
+
   synthesizeTests(options = {}) {
     const { synthesizeForCandidates } = require('../core/test-synth');
     const synthReport = synthesizeForCandidates(this, options);

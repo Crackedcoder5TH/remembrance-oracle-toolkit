@@ -2297,6 +2297,7 @@ ${c.bold('Subcommands:')}
   ${c.cyan('debug grow')}       Generate variants from high-confidence patterns
   ${c.cyan('debug patterns')}   List stored debug patterns
   ${c.cyan('debug stats')}      Show debug pattern statistics
+  ${c.cyan('debug seed')}       Seed debug patterns for all 10 error categories
   ${c.cyan('debug share')}      Share debug patterns to community
   ${c.cyan('debug pull')}       Pull debug patterns from community
   ${c.cyan('debug sync')}       Sync debug patterns to personal store
@@ -2413,6 +2414,35 @@ ${c.bold('Options:')}
       if (Object.keys(report.byCategory).length > 0) {
         console.log(`  By category: ${Object.entries(report.byCategory).map(([k, v]) => `${c.magenta(k)}(${v})`).join(', ')}`);
       }
+      return;
+    }
+
+    if (sub === 'seed') {
+      console.log(c.boldCyan('Debug Pattern Seeding') + ' — covering all 10 error categories\n');
+      const verbose = args.verbose === 'true' || args.verbose === true;
+      const categories = args.category ? args.category.split(',').map(c => c.trim()) : undefined;
+      const languages = args.language ? args.language.split(',').map(l => l.trim()) : undefined;
+      const report = oracle.debugSeed({ verbose, categories, languages });
+      if (jsonOut) { console.log(JSON.stringify(report)); return; }
+      console.log(`  Seeded:     ${c.boldGreen(String(report.seeded))} debug patterns`);
+      console.log(`  Variants:   ${c.boldGreen('+' + String(report.variants))} auto-generated`);
+      console.log(`  Duplicates: ${c.dim(String(report.duplicates))} already existed`);
+      console.log(`  Skipped:    ${c.dim(String(report.skipped))}`);
+      if (Object.keys(report.byCategory).length > 0) {
+        console.log(`\n  By category: ${Object.entries(report.byCategory).map(([k, v]) => `${k}(${v})`).join(', ')}`);
+      }
+      if (Object.keys(report.byLanguage).length > 0) {
+        console.log(`  By language: ${Object.entries(report.byLanguage).map(([k, v]) => `${k}(${v})`).join(', ')}`);
+      }
+
+      // Auto-sync to personal store
+      const syncReport = oracle.debugSyncPersonal({ verbose: false });
+      if (syncReport.synced > 0) {
+        console.log(`\n  ${c.green('Auto-synced')} ${c.boldGreen(String(syncReport.synced))} debug patterns to personal store`);
+      }
+
+      const stats = oracle.debugStats();
+      console.log(`\n  Total debug patterns: ${c.bold(String(stats.totalPatterns))} across ${Object.keys(stats.byCategory).length} categories`);
       return;
     }
 

@@ -750,6 +750,9 @@ function syncDebugToPersonal(localStore, options = {}) {
       }
     }
 
+    // Track to prevent duplicates in same batch
+    personalIndex.add(key);
+
     report.synced++;
     if (verbose) {
       console.log(`  [SYNC-DEBUG→] ${dp.error_class}:${dp.error_category} (${dp.language})`);

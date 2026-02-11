@@ -2283,6 +2283,21 @@ class RemembranceOracle {
   }
 
   /**
+   * Seed the debug oracle with pre-built patterns for all 10 error categories.
+   * Fills gaps: syntax, reference, build, permission, data + more type/runtime/etc.
+   * Auto-generates language variants (Python, TypeScript, Go) for each seed.
+   *
+   * @param {object} options — { verbose, categories, languages }
+   * @returns {{ seeded, skipped, duplicates, variants, byCategory, byLanguage }}
+   */
+  debugSeed(options = {}) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { seeded: 0, error: 'No SQLite store available' };
+    const { seedDebugPatterns } = require('../core/debug-seeds');
+    return seedDebugPatterns(debug, options);
+  }
+
+  /**
    * Get combined debug stats across all tiers.
    */
   debugGlobalStats() {

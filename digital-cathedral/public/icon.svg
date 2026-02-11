@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" rx="96" fill="#1A1B3A"/>
+  <!-- Cathedral spire -->
+  <path d="M256 64L320 240H192L256 64Z" fill="#00A8A8" opacity="0.9"/>
+  <!-- Cathedral body -->
+  <rect x="192" y="240" width="128" height="160" rx="4" fill="#00A8A8" opacity="0.7"/>
+  <!-- Cathedral door arch -->
+  <path d="M232 400V320a24 24 0 0148 0v80H232Z" fill="#1A1B3A"/>
+  <!-- Glow ring -->
+  <circle cx="256" cy="240" r="20" fill="#00A8A8" opacity="0.4"/>
+  <circle cx="256" cy="240" r="8" fill="#00A8A8"/>
+  <!-- Base -->
+  <rect x="160" y="400" width="192" height="24" rx="4" fill="#00A8A8" opacity="0.5"/>
+</svg>

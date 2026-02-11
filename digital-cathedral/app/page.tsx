@@ -157,6 +157,115 @@ function WhisperSkeleton() {
   );
 }
 
+// ─── Oracle-evolved throttle (from pattern 0e7a39d95c5a5355, coherency 0.970)
+function throttle<T extends (...args: Parameters<T>) => void>(
+  fn: T,
+  limit: number
+): (...args: Parameters<T>) => void {
+  let lastCall = 0;
+  return function (this: unknown, ...args: Parameters<T>) {
+    const now = Date.now();
+    if (now - lastCall >= limit) {
+      lastCall = now;
+      fn.apply(this, args);
+    }
+  };
+}
+
+// ─── Back-to-Top Button ─────────────────────────────────────────────
+
+function BackToTop() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = throttle(() => {
+      setVisible(window.scrollY > 300);
+    }, 150);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <button
+      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      aria-label="Back to top"
+      className="fixed bottom-6 right-6 z-40 p-3 rounded-full transition-all duration-300
+        bg-teal-cathedral/15 text-teal-cathedral border border-teal-cathedral/25
+        hover:bg-teal-cathedral/25 hover:shadow-[0_0_20px_rgba(0,168,168,0.2)]
+        animate-fade-in"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M18 15l-6-6-6 6" />
+      </svg>
+    </button>
+  );
+}
+
+// ─── Copy-to-Clipboard Button ───────────────────────────────────────
+
+function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      aria-label={copied ? "Copied" : label}
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs transition-all
+        text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10"
+    >
+      {copied ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path d="M20 6L9 17l-5-5" />
+        </svg>
+      ) : (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+        </svg>
+      )}
+      <span>{copied ? "Copied" : label}</span>
+    </button>
+  );
+}
+
+// ─── Share Buttons ──────────────────────────────────────────────────
+
+function ShareButtons({ whisperText, coherence }: { whisperText: string; coherence: number }) {
+  const shareText = `"${whisperText}" — Coherence ${coherence.toFixed(3)} | Digital Cathedral`;
+
+  function shareOnX() {
+    const url = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={shareOnX}
+        aria-label="Share on X"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs transition-all
+          text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+        </svg>
+        <span>Share</span>
+      </button>
+      <CopyButton text={whisperText} label="Copy whisper" />
+    </div>
+  );
+}
+
 // ─── Constants ───────────────────────────────────────────────────────
 
 const ARCHIVE_PAGE_SIZE = 10;
@@ -651,6 +760,8 @@ export default function CathedralHome() {
   // ═══════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen flex flex-col animate-fade-in">
+      <BackToTop />
+
       {/* Sticky Navbar */}
       <Navbar
         section={section}
@@ -831,9 +942,12 @@ export default function CathedralHome() {
                     <div className="text-xs text-[var(--text-muted)]">
                       Input Hash
                     </div>
-                    <span className="text-[var(--text-muted)] font-mono text-xs">
-                      {whisper.inputHash.slice(0, 12)}...
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[var(--text-muted)] font-mono text-xs">
+                        {whisper.inputHash.slice(0, 12)}...
+                      </span>
+                      <CopyButton text={whisper.inputHash} label="Copy hash" />
+                    </div>
                   </div>
                   {whisper.solanaSlot !== null && (
                     <div className="flex items-center justify-between">
@@ -845,6 +959,12 @@ export default function CathedralHome() {
                       </span>
                     </div>
                   )}
+                  <div className="flex items-center justify-between pt-2 border-t border-teal-cathedral/10">
+                    <div className="text-xs text-[var(--text-muted)]">
+                      Share
+                    </div>
+                    <ShareButtons whisperText={whisper.whisper} coherence={whisper.coherence} />
+                  </div>
                 </div>
               </div>
             )}
@@ -892,9 +1012,12 @@ export default function CathedralHome() {
                       key={entry.id}
                       className="cathedral-surface p-3 sm:p-4 space-y-2"
                     >
-                      <p className="whisper-text text-sm leading-relaxed">
-                        &ldquo;{entry.whisper}&rdquo;
-                      </p>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="whisper-text text-sm leading-relaxed flex-1">
+                          &ldquo;{entry.whisper}&rdquo;
+                        </p>
+                        <CopyButton text={entry.whisper} label="Copy" />
+                      </div>
                       <div className="flex items-center justify-between text-xs text-[var(--text-muted)] gap-2">
                         <span className="truncate max-w-[55%] sm:max-w-[60%] opacity-60">
                           {entry.input}

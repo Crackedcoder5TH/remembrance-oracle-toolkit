@@ -20,6 +20,17 @@ const path = require('path');
 const crypto = require('crypto');
 const { computeCoherencyScore } = require('../core/coherency');
 const { computeRelevance } = require('../core/relevance');
+const {
+  DECISION_THRESHOLDS,
+  HASH_TRUNCATION_LENGTH,
+  DECISION_BONUSES,
+  BUG_PENALTY_MULTIPLIER,
+  VOTE_BOOST,
+  DECISION_WEIGHTS,
+  RELEVANCE_GATES,
+  COMPLEXITY_TIERS: COMPLEXITY_TIER_LIMITS,
+  RETIREMENT_WEIGHTS,
+} = require('../constants/thresholds');
 
 const PATTERN_FILE = 'pattern-library.json';
 
@@ -30,12 +41,12 @@ const PATTERN_TYPES = [
 
 const COMPLEXITY_TIERS = ['atomic', 'composite', 'architectural'];
 
-// Decision thresholds
+// Decision thresholds — sourced from centralized constants
 const THRESHOLDS = {
-  pull: 0.68,       // Above this: pull directly from library
-  evolve: 0.50,     // Between evolve and pull: fork + upgrade
-  generate: 0.50,   // Below this: generate new pattern
-  retire: 0.30,     // Below this: pattern should be retired
+  pull: DECISION_THRESHOLDS.PULL,
+  evolve: DECISION_THRESHOLDS.EVOLVE,
+  generate: DECISION_THRESHOLDS.GENERATE,
+  retire: DECISION_THRESHOLDS.RETIRE,
 };
 
 /**
@@ -107,11 +118,16 @@ class PatternLibrary {
   }
 
   _hash(str) {
-    return crypto.createHash('sha256').update(str).digest('hex').slice(0, 16);
+    return crypto.createHash('sha256').update(str).digest('hex').slice(0, HASH_TRUNCATION_LENGTH);
   }
 
   // ─── Public API ───
 
+  /**
+   * Register a new pattern in the library with coherency scoring.
+   * @param {object} pattern - Pattern object with code, name, language, etc.
+   * @returns {object} The registered pattern record with id and coherency score
+   */
   register(pattern) {
     const coherency = computeCoherencyScore(pattern.code, {
       language: pattern.language,
@@ -146,6 +162,11 @@ class PatternLibrary {
     return this._registerJSON(pattern, coherency);
   }
 
+  /**
+   * Decision engine: determines whether to PULL, EVOLVE, or GENERATE for a given request.
+   * @param {object} request - Request object with description, tags, language, minCoherency
+   * @returns {object} Decision result with decision type, pattern, confidence, reasoning, alternatives
+   */
   decide(request) {
     if (request == null || typeof request !== 'object') request = {};
     const { description: rawDesc = '', tags = [], language, minCoherency } = request;
@@ -177,18 +198,18 @@ class PatternLibrary {
 
       const normalizedDesc = description.toLowerCase().replace(/[-_]/g, ' ');
       const normalizedName = p.name.toLowerCase().replace(/[-_]/g, ' ');
-      const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? 0.15 : 0;
-      const focusBonus = p.complexity === 'atomic' ? 0.08 : p.complexity === 'composite' ? 0.04 : 0;
+      const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? DECISION_BONUSES.NAME_MATCH : 0;
+      const focusBonus = p.complexity === 'atomic' ? DECISION_BONUSES.ATOMIC_FOCUS : p.complexity === 'composite' ? DECISION_BONUSES.COMPOSITE_FOCUS : 0;
       const coherency = p.coherencyScore?.total ?? 0;
 
       // Enhanced reliability: usage success + bug reports + healing success + community votes
       const usageReliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
       const bugCount = p.bugReports || 0;
-      const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * 0.1) : 1.0;
+      const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * BUG_PENALTY_MULTIPLIER) : 1.0;
       const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(p.id) : 1.0;
       // Weighted vote scoring — uses reputation-weighted scores when available
       const weightedScore = p.weightedVoteScore ?? ((p.upvotes || 0) - (p.downvotes || 0));
-      const voteBoost = weightedScore > 0 ? Math.min(0.15, weightedScore * 0.02) : Math.max(-0.15, weightedScore * 0.02);
+      const voteBoost = weightedScore > 0 ? Math.min(VOTE_BOOST.MAX, weightedScore * VOTE_BOOST.MULTIPLIER) : Math.max(VOTE_BOOST.MIN, weightedScore * VOTE_BOOST.MULTIPLIER);
       const reliability = usageReliability * bugPenalty * healingRate + voteBoost;
 
       // Evolution adjustments: penalize stale + over-evolved patterns
@@ -201,7 +222,7 @@ class PatternLibrary {
         // Evolution module not available — no penalty
       }
 
-      const composite = relevance.relevance * 0.35 + coherency * 0.25 + reliability * 0.20 + nameBonus + focusBonus - evolutionPenalty;
+      const composite = relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + reliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus - evolutionPenalty;
 
       return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
     }).sort((a, b) => b.composite - a.composite);
@@ -209,7 +230,7 @@ class PatternLibrary {
     const best = scored[0];
     const threshold = minCoherency ?? THRESHOLDS.pull;
 
-    if (best.composite >= threshold && best.relevance >= 0.3) {
+    if (best.composite >= threshold && best.relevance >= RELEVANCE_GATES.FOR_PULL) {
       return {
         decision: 'pull',
         pattern: best.pattern,
@@ -220,7 +241,7 @@ class PatternLibrary {
     }
 
     const evolveThreshold = Math.min(threshold, THRESHOLDS.evolve);
-    if (best.composite >= evolveThreshold && best.relevance >= 0.2) {
+    if (best.composite >= evolveThreshold && best.relevance >= RELEVANCE_GATES.FOR_EVOLVE) {
       return {
         decision: 'evolve',
         pattern: best.pattern,
@@ -247,6 +268,12 @@ class PatternLibrary {
     this._healingRateProvider = fn;
   }
 
+  /**
+   * Record usage feedback for a pattern to track reliability.
+   * @param {string} id - Pattern ID
+   * @param {boolean} succeeded - Whether the pattern usage was successful
+   * @returns {object|null} Updated pattern record or null if not found
+   */
   recordUsage(id, succeeded) {
     if (this._backend === 'sqlite') {
       return this._sqlite.recordPatternUsage(id, succeeded);
@@ -287,11 +314,11 @@ class PatternLibrary {
 
     const usageReliability = pattern.usageCount > 0 ? pattern.successCount / pattern.usageCount : 0.5;
     const bugCount = pattern.bugReports || 0;
-    const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * 0.1) : 1.0;
+    const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * BUG_PENALTY_MULTIPLIER) : 1.0;
     const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(id) : 1.0;
     const voteScore = (pattern.upvotes || 0) - (pattern.downvotes || 0);
     const weightedScore = pattern.weightedVoteScore ?? voteScore;
-    const voteBoost = weightedScore > 0 ? Math.min(0.15, weightedScore * 0.02) : Math.max(-0.15, weightedScore * 0.02);
+    const voteBoost = weightedScore > 0 ? Math.min(VOTE_BOOST.MAX, weightedScore * VOTE_BOOST.MULTIPLIER) : Math.max(VOTE_BOOST.MIN, weightedScore * VOTE_BOOST.MULTIPLIER);
     const combined = usageReliability * bugPenalty * healingRate + voteBoost;
 
     return {
@@ -312,6 +339,13 @@ class PatternLibrary {
     };
   }
 
+  /**
+   * Evolve a pattern by creating a new variant with modified code.
+   * @param {string} parentId - ID of the parent pattern to evolve from
+   * @param {string} newCode - The evolved code implementation
+   * @param {object} metadata - Optional metadata (name, description, tags, etc.)
+   * @returns {object|null} The evolved pattern record or null if parent not found
+   */
   evolve(parentId, newCode, metadata = {}) {
     if (this._backend === 'sqlite') {
       return this._evolveSQLite(parentId, newCode, metadata);
@@ -319,6 +353,11 @@ class PatternLibrary {
     return this._evolveJSON(parentId, newCode, metadata);
   }
 
+  /**
+   * Retire low-scoring patterns below the minimum threshold.
+   * @param {number} minScore - Minimum composite score to retain (default from THRESHOLDS.retire)
+   * @returns {object} Result with retired count and remaining count
+   */
   retire(minScore = THRESHOLDS.retire) {
     if (this._backend === 'sqlite') {
       return this._sqlite.retirePatterns(minScore);
@@ -326,6 +365,11 @@ class PatternLibrary {
     return this._retireJSON(minScore);
   }
 
+  /**
+   * Get all patterns, optionally filtered by language, type, complexity, or coherency.
+   * @param {object} filters - Optional filters (language, patternType, complexity, minCoherency)
+   * @returns {Array<object>} Array of pattern records
+   */
   getAll(filters = {}) {
     if (this._backend === 'sqlite') {
       return this._sqlite.getAllPatterns(filters);
@@ -333,6 +377,12 @@ class PatternLibrary {
     return this._getAllJSON(filters);
   }
 
+  /**
+   * Update a pattern's fields by ID.
+   * @param {string} id - Pattern ID
+   * @param {object} updates - Object with fields to update
+   * @returns {object|null} Updated pattern record or null if not found
+   */
   update(id, updates) {
     if (this._backend === 'sqlite') {
       return this._sqlite.updatePattern(id, updates);
@@ -346,6 +396,10 @@ class PatternLibrary {
     return pattern;
   }
 
+  /**
+   * Get a statistical summary of the pattern library.
+   * @returns {object} Summary with pattern counts by type, complexity, language, and average coherency
+   */
   summary() {
     if (this._backend === 'sqlite') {
       return this._sqlite.patternSummary();
@@ -718,7 +772,7 @@ class PatternLibrary {
     data.patterns = data.patterns.filter(p => {
       const coherency = p.coherencyScore?.total ?? 0;
       const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
-      return (coherency * 0.6 + reliability * 0.4) >= minScore;
+      return (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
     });
     this._writeJSON(data);
     return { retired: before - data.patterns.length, remaining: data.patterns.length };
@@ -758,6 +812,12 @@ class PatternLibrary {
 
 // ─── Helpers ───
 
+/**
+ * Classify a pattern into a category based on code and name analysis.
+ * @param {string} code - The pattern's code
+ * @param {string} name - The pattern's name (optional)
+ * @returns {string} Pattern type (algorithm, data-structure, utility, design-pattern, etc.)
+ */
 function classifyPattern(code, name = '') {
   const combined = (code + ' ' + name).toLowerCase();
   if (/sort|search|bfs|dfs|dijkstra|binary.?search|merge|quick|heap/i.test(combined)) return 'algorithm';
@@ -772,11 +832,16 @@ function classifyPattern(code, name = '') {
   return 'utility';
 }
 
+/**
+ * Infer complexity tier based on code lines and nesting depth.
+ * @param {string} code - The code to analyze
+ * @returns {string} Complexity tier (atomic, composite, or architectural)
+ */
 function inferComplexity(code) {
   const lines = code.split('\n').filter(l => l.trim()).length;
   const depth = maxNestingDepth(code);
-  if (lines <= 15 && depth <= 2) return 'atomic';
-  if (lines <= 60 && depth <= 4) return 'composite';
+  if (lines <= COMPLEXITY_TIER_LIMITS.ATOMIC.MAX_LINES && depth <= COMPLEXITY_TIER_LIMITS.ATOMIC.MAX_NESTING) return 'atomic';
+  if (lines <= COMPLEXITY_TIER_LIMITS.COMPOSITE.MAX_LINES && depth <= COMPLEXITY_TIER_LIMITS.COMPOSITE.MAX_NESTING) return 'composite';
   return 'architectural';
 }
 

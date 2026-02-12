@@ -245,7 +245,15 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const native = seedNativeLibrary(oracle, { verbose: !!args.verbose });
     console.log(`Native seeds (Python/Go/Rust): ${c.boldGreen(String(native.registered))} registered (${c.dim(native.skipped + ' skipped')}, ${native.failed > 0 ? c.boldRed(String(native.failed)) : c.dim(String(native.failed))} failed)`);
 
-    const total = results.registered + ext.registered + native.registered;
+    const { seedProductionLibrary3 } = require('../../patterns/seeds-production-3');
+    const prod3 = seedProductionLibrary3(oracle, { verbose: !!args.verbose });
+    console.log(`Production seeds 3: ${c.boldGreen(String(prod3.registered))} registered (${c.dim(prod3.skipped + ' skipped')}, ${prod3.failed > 0 ? c.boldRed(String(prod3.failed)) : c.dim(String(prod3.failed))} failed)`);
+
+    const { seedProductionLibrary4 } = require('../../patterns/seeds-production-4');
+    const prod4 = seedProductionLibrary4(oracle, { verbose: !!args.verbose });
+    console.log(`Production seeds 4: ${c.boldGreen(String(prod4.registered))} registered (${c.dim(prod4.skipped + ' skipped')}, ${prod4.failed > 0 ? c.boldRed(String(prod4.failed)) : c.dim(String(prod4.failed))} failed)`);
+
+    const total = results.registered + ext.registered + native.registered + prod3.registered + prod4.registered;
     console.log(`\nTotal seeded: ${c.boldGreen(String(total))} patterns`);
     console.log(`Library now has ${c.bold(String(oracle.patternStats().totalPatterns))} patterns`);
   };

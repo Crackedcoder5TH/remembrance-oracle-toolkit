@@ -29,6 +29,16 @@ const { reflectionLoop } = require('./reflection');
 const { validateCode } = require('./validator');
 const { computeCoherencyScore, detectLanguage } = require('./coherency');
 const { isTestFile, isDataFile, requiresExternalModules } = require('./test-synth');
+const {
+  CASCADE,
+  HEALING,
+  VOID_REPLENISH_WEIGHTS,
+  VARIANT_GENERATION,
+  APPROACH_SWAP,
+  SERF_REFINE,
+  CANDIDATE_MIN_COHERENCY,
+  MAX_TERNARY_NESTING,
+} = require('../constants/thresholds');
 
 // ─── Variant Templates ───
 // Language transpilation skeletons for common patterns
@@ -122,18 +132,18 @@ const APPROACH_SWAPS = [
 
 // ─── The Recycler ───
 
-// ─── Cascade Constants ───
+// ─── Cascade Constants (from centralized thresholds) ───
 
-const CASCADE_BETA = 2.5;             // Exponential scaling factor for global coherence
-const CASCADE_GAMMA_BASE = 0.05;      // Base cascade amplification strength
-const VOID_SCAFFOLD_THRESHOLD = 0.3;  // Below this coherency, inject scaffolding from library
+const CASCADE_BETA = CASCADE.BETA;
+const CASCADE_GAMMA_BASE = CASCADE.GAMMA_BASE;
+const VOID_SCAFFOLD_THRESHOLD = CASCADE.VOID_SCAFFOLD_THRESHOLD;
 
 class PatternRecycler {
   constructor(oracle, options = {}) {
     this.oracle = oracle;
-    this.maxHealAttempts = options.maxHealAttempts || 3;
-    this.maxSerfLoops = options.maxSerfLoops || 5;
-    this.targetCoherence = options.targetCoherence || 0.9;
+    this.maxHealAttempts = options.maxHealAttempts || HEALING.MAX_ATTEMPTS;
+    this.maxSerfLoops = options.maxSerfLoops || HEALING.MAX_SERF_LOOPS;
+    this.targetCoherence = options.targetCoherence || HEALING.TARGET_COHERENCE;
     this.generateVariants = options.generateVariants !== false;
     this.variantLanguages = options.variantLanguages || ['python', 'typescript'];
     this.verbose = options.verbose || false;
@@ -217,7 +227,7 @@ class PatternRecycler {
     for (const candidate of allPatterns) {
       if (candidate.language !== pattern.language) continue;
       const score = candidate.coherencyScore?.total ?? 0;
-      if (score < 0.8) continue;  // Only use high-coherency scaffolds
+      if (score < CASCADE.VOID_SCAFFOLD_MIN_COHERENCY) continue;
 
       // Tag overlap
       const candidateTags = new Set(candidate.tags || []);
@@ -225,7 +235,7 @@ class PatternRecycler {
       const tagScore = patternTags.size > 0 ? overlap / patternTags.size : 0;
 
       // Combined: coherency * tag relevance
-      const combined = score * 0.4 + tagScore * 0.6;
+      const combined = score * VOID_REPLENISH_WEIGHTS.COHERENCY + tagScore * VOID_REPLENISH_WEIGHTS.TAG_RELEVANCE;
       if (combined > bestScore) {
         bestScore = combined;
         bestMatch = candidate;
@@ -343,7 +353,7 @@ class PatternRecycler {
    * @returns {{ registered, failed, recycled, variants, total, report }}
    */
   processSeeds(seeds, options = {}) {
-    const { depth = 2, maxVariantsPerPattern = 3 } = options;
+    const { depth = VARIANT_GENERATION.DEPTH, maxVariantsPerPattern = VARIANT_GENERATION.MAX_PATTERNS_PER_LEVEL } = options;
 
     // Compute initial global coherence — this drives cascade amplification
     this._updateGlobalCoherence();
@@ -404,7 +414,7 @@ class PatternRecycler {
       const wave = { wave: d, label: `variants-depth-${d}`, registered: 0, failed: 0, healed: 0, variants: 0 };
       const nextWavePatterns = [];
 
-      for (const pattern of currentPatterns.slice(0, maxVariantsPerPattern * 10)) {
+      for (const pattern of currentPatterns.slice(0, maxVariantsPerPattern * VARIANT_GENERATION.BATCH_MULTIPLIER)) {
         // Language variants
         const langVariants = this._generateLanguageVariants(pattern);
         wave.variants += langVariants.length;
@@ -805,8 +815,8 @@ class PatternRecycler {
 
     const reflection = reflectionLoop(hintedCode, {
       language: pattern.language,
-      maxLoops: 2,
-      targetCoherence: 0.85,
+      maxLoops: APPROACH_SWAP.SERF_LOOPS,
+      targetCoherence: APPROACH_SWAP.TARGET_COHERENCE,
       description: `${pattern.description} — ${swap.to} approach`,
       tags: [...(pattern.tags || []), swap.to],
     });
@@ -935,8 +945,8 @@ class PatternRecycler {
 
     const reflection = reflectionLoop(pattern.code, {
       language: pattern.language,
-      maxLoops: 2,
-      targetCoherence: 0.95,
+      maxLoops: SERF_REFINE.SERF_LOOPS,
+      targetCoherence: SERF_REFINE.TARGET_COHERENCE,
       description: pattern.description,
       tags: pattern.tags,
       cascadeBoost: this._cascadeBoost,
@@ -985,7 +995,7 @@ class PatternRecycler {
     const {
       maxPatterns = Infinity,
       languages = this.variantLanguages,
-      minCoherency = 0.5,
+      minCoherency = CANDIDATE_MIN_COHERENCY,
       methods = ['variant', 'serf-refine', 'approach-swap'],
     } = options;
 
@@ -1033,7 +1043,7 @@ class PatternRecycler {
   generateFromPattern(pattern, options = {}) {
     const {
       languages = this.variantLanguages,
-      minCoherency = 0.5,
+      minCoherency = CANDIDATE_MIN_COHERENCY,
       methods = ['variant', 'serf-refine'],
     } = options;
 
@@ -1205,8 +1215,8 @@ function _shouldSkipForGeneration(code) {
   if (isTestFile(code)) return true;
   if (isDataFile(code)) return true;
   if (requiresExternalModules(code)) return true;
-  // Skip very large files (>500 lines) — they're usually complex modules
-  if (code.split('\n').length > 500) return true;
+  // Skip very large files — they're usually complex modules
+  if (code.split('\n').length > VARIANT_GENERATION.LARGE_FILE_THRESHOLD) return true;
   return false;
 }
 
@@ -1241,7 +1251,7 @@ function canTranspileToPython(code) {
 
   // Reject ternary with complex nesting (3+ levels)
   const ternaries = (code.match(/\?[^:]+:/g) || []).length;
-  if (ternaries > 2) return false;
+  if (ternaries > MAX_TERNARY_NESTING) return false;
 
   // Reject >>> (unsigned right shift — no Python equivalent)
   if (/>>>/.test(code)) return false;

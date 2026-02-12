@@ -6,14 +6,22 @@ const fs = require('fs');
 const path = require('path');
 const { c, colorScore, colorStatus } = require('../colors');
 
-function registerCoreCommands(handlers, { oracle, getCode, readFile, parseArgs, jsonOut }) {
+function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['setup'] = handlers['init'] = (args) => {
     console.log(`\n${c.boldCyan('Remembrance Oracle — Setup')}\n`);
-    console.log(`${c.bold('1.')} Seeding pattern library...`);
-    const seedResult = oracle.seed();
-    console.log(`   ${c.green('✓')} ${seedResult.seeded || 0} patterns seeded\n`);
 
+    // 1. Seed the oracle
+    console.log(`${c.bold('1.')} Seeding pattern library...`);
+    const { seedLibrary: initSeedLibrary, seedNativeLibrary: initSeedNative } = require('../../patterns/seeds');
+    const { seedExtendedLibrary: initSeedExtended } = require('../../patterns/seeds-extended');
+    const initCore = initSeedLibrary(oracle);
+    const initExt = initSeedExtended(oracle);
+    const initNative = initSeedNative(oracle);
+    const totalSeeded = initCore.registered + initExt.registered + initNative.registered;
+    console.log(`   ${c.green('\u2713')} ${totalSeeded} patterns seeded\n`);
+
+    // 2. Create .remembrance dir
     const storeDir = path.join(process.cwd(), '.remembrance');
     if (!fs.existsSync(storeDir)) {
       fs.mkdirSync(storeDir, { recursive: true });
@@ -22,6 +30,7 @@ function registerCoreCommands(handlers, { oracle, getCode, readFile, parseArgs, 
       console.log(`${c.bold('2.')} ${c.cyan('.remembrance/')} directory exists`);
     }
 
+    // 3. Create CLAUDE.md if not present
     const claudeMd = path.join(process.cwd(), 'CLAUDE.md');
     if (!fs.existsSync(claudeMd)) {
       const template = `# Oracle Instructions\n\nBefore writing any function, search the oracle:\n\`\`\`bash\noracle search "<what you need>" --limit 3\noracle resolve --description "<what you need>"\n\`\`\`\n\nAfter writing code that passes tests, register it:\n\`\`\`bash\noracle register --file <code.js> --test <test.js> --name <name>\n\`\`\`\n`;
@@ -31,10 +40,11 @@ function registerCoreCommands(handlers, { oracle, getCode, readFile, parseArgs, 
       console.log(`${c.bold('3.')} ${c.cyan('CLAUDE.md')} already exists`);
     }
 
+    // 4. Stats
     const stats = oracle.stats();
-    const patternStats = oracle.patternStats();
+    const setupPatternStats = oracle.patternStats();
     console.log(`\n${c.boldGreen('Setup complete!')}`);
-    console.log(`  Patterns: ${patternStats.total}`);
+    console.log(`  Patterns: ${setupPatternStats.totalPatterns || setupPatternStats.total || 0}`);
     console.log(`  Entries:  ${stats.totalEntries}`);
     console.log(`\n${c.dim('Quick start:')}`);
     console.log(`  ${c.cyan('oracle search "debounce"')}     — Find a pattern`);
@@ -68,6 +78,12 @@ function registerCoreCommands(handlers, { oracle, getCode, readFile, parseArgs, 
     } else {
       console.log(`${colorStatus(false)}: ${c.red(result.reason)}`);
       console.log(`Score: ${colorScore(result.validation.coherencyScore?.total)}`);
+      // Show actionable feedback
+      if (result.validation.feedback) {
+        const { formatFeedback } = require('../../core/feedback');
+        console.log(`\n${c.boldCyan('What to fix:')}`);
+        console.log(formatFeedback(result.validation.feedback));
+      }
     }
   };
 
@@ -111,7 +127,13 @@ function registerCoreCommands(handlers, { oracle, getCode, readFile, parseArgs, 
     if (result.errors.length > 0) {
       console.log(`${c.boldRed('Errors:')}`);
       for (const err of result.errors) {
-        console.log(`  ${c.red('•')} ${err}`);
+        console.log(`  ${c.red('\u2022')} ${err}`);
+      }
+      // Show actionable feedback
+      if (result.feedback) {
+        const { formatFeedback } = require('../../core/feedback');
+        console.log(`\n${c.boldCyan('What to fix:')}`);
+        console.log(formatFeedback(result.feedback));
       }
     }
   };

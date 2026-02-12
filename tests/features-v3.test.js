@@ -5,6 +5,18 @@ const fs = require('fs');
 const os = require('os');
 const { RemembranceOracle } = require('../src/api/oracle');
 
+/** Read all CLI source files (cli.js + command modules) as a single string for assertion checks. */
+function readCliSources() {
+  const cliDir = path.join(__dirname, '..', 'src');
+  const mainCli = fs.readFileSync(path.join(cliDir, 'cli.js'), 'utf-8');
+  const commandsDir = path.join(cliDir, 'cli', 'commands');
+  if (!fs.existsSync(commandsDir)) return mainCli;
+  const modules = fs.readdirSync(commandsDir)
+    .filter(f => f.endsWith('.js'))
+    .map(f => fs.readFileSync(path.join(commandsDir, f), 'utf-8'));
+  return [mainCli, ...modules].join('\n');
+}
+
 // ─── Feature 1: AST-Based Multi-Language Transpiler ───
 
 describe('Feature 1: AST Transpiler — Go and Rust', () => {
@@ -203,7 +215,7 @@ describe('Feature 4: Voice Mode', () => {
   });
 
   it('resolve --voice flag is supported', () => {
-    const cliSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    const cliSrc = readCliSources();
     assert.ok(cliSrc.includes('args.voice'));
     assert.ok(cliSrc.includes('speakCLI(result.whisper)'));
   });
@@ -453,8 +465,8 @@ describe('Feature 6: Remote Oracle Federation', () => {
   });
 
   it('CLI has remote command', () => {
-    const cliSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
-    assert.ok(cliSrc.includes("cmd === 'remote'"));
+    const cliSrc = readCliSources();
+    assert.ok(cliSrc.includes("'remote'"));
     assert.ok(cliSrc.includes('registerRemote'));
     assert.ok(cliSrc.includes('removeRemote'));
     assert.ok(cliSrc.includes('checkRemoteHealth'));
@@ -586,8 +598,8 @@ describe('Feature 7: Weighted Voting with Reputation', () => {
   });
 
   it('CLI has reputation command', () => {
-    const cliSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
-    assert.ok(cliSrc.includes("cmd === 'reputation'"));
+    const cliSrc = readCliSources();
+    assert.ok(cliSrc.includes("'reputation'"));
     assert.ok(cliSrc.includes('getVoterReputation'));
     assert.ok(cliSrc.includes('topVoters'));
   });
@@ -677,8 +689,8 @@ describe('Feature 8: Transpiler Verification & Test Generation', () => {
   });
 
   it('CLI has verify-transpile command', () => {
-    const cliSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
-    assert.ok(cliSrc.includes("cmd === 'verify-transpile'"));
+    const cliSrc = readCliSources();
+    assert.ok(cliSrc.includes("'verify-transpile'"));
     assert.ok(cliSrc.includes('verifyTranspilation'));
   });
 });
@@ -768,10 +780,10 @@ describe('Feature 9: AI Context Injection', () => {
   });
 
   it('CLI has context command', () => {
-    const cliSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
-    assert.ok(cliSrc.includes("cmd === 'context'"));
+    const cliSrc = readCliSources();
+    assert.ok(cliSrc.includes("'context'"));
     assert.ok(cliSrc.includes('generateContext'));
-    assert.ok(cliSrc.includes('export-context'));
+    assert.ok(cliSrc.includes("'export-context'"));
   });
 });
 
@@ -806,9 +818,9 @@ describe('Feature 10: Package Distribution', () => {
   });
 
   it('setup command exists in CLI', () => {
-    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
-    assert.ok(cli.includes("cmd === 'setup'"));
-    assert.ok(cli.includes("cmd === 'init'"));
+    const cli = readCliSources();
+    assert.ok(cli.includes("'setup'"));
+    assert.ok(cli.includes("'init'"));
   });
 
   it('package.json has cloud script', () => {
@@ -911,9 +923,9 @@ describe('Feature 11: MCP Auto-Registration', () => {
   });
 
   it('CLI has mcp-install command', () => {
-    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
-    assert.ok(cli.includes("cmd === 'mcp-install'"));
-    assert.ok(cli.includes('install-mcp'));
+    const cli = readCliSources();
+    assert.ok(cli.includes("'mcp-install'"));
+    assert.ok(cli.includes("'install-mcp'"));
     assert.ok(cli.includes('checkInstallation'));
   });
 
@@ -979,7 +991,7 @@ describe('Feature 12: Native Pattern Seeds (Python/Go/Rust)', () => {
   });
 
   it('CLI seed command includes native seeds', () => {
-    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
+    const cli = readCliSources();
     assert.ok(cli.includes('seedNativeLibrary'));
     assert.ok(cli.includes('Native seeds'));
   });
@@ -1109,9 +1121,9 @@ describe('Feature 13: GitHub OAuth Identity', () => {
   });
 
   it('CLI has github command', () => {
-    const cli = fs.readFileSync(path.join(__dirname, '..', 'src', 'cli.js'), 'utf-8');
-    assert.ok(cli.includes("cmd === 'github'"));
-    assert.ok(cli.includes('gh-auth'));
+    const cli = readCliSources();
+    assert.ok(cli.includes("'github'"));
+    assert.ok(cli.includes("'gh-auth'"));
     assert.ok(cli.includes('GitHubIdentity'));
   });
 

@@ -52,7 +52,7 @@ That's it. You're running.
 
 The oracle automatically grows. Every time you register proven code:
 
-- **Candidates spawn** — language variants (JS → TS, Python) and SERF refinements
+- **Candidates spawn** — language variants (JS → TS, Python) and automated refinements
 - **Tests synthesize** — `oracle synthesize` generates tests for candidates
 - **Quality improves** — feedback tracking makes good code rise, bad code fall
 
@@ -124,7 +124,7 @@ oracle community pull    # Community → Local
 ## Common workflows
 
 ```bash
-# Heal code with SERF reflection
+# Heal code with reflection
 oracle reflect --file code.js --loops 3 --target 0.9
 
 # Check code against the Covenant (15 safety principles)

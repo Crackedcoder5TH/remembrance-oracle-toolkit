@@ -27,7 +27,7 @@ After using a pulled pattern or writing new code that passes tests:
 ## Automatic Growth
 
 The library grows automatically — every time you register or submit proven code:
-- **Candidates are spawned** — language variants (TS, Python) + SERF refinements
+- **Candidates are spawned** — language variants (TS, Python) + automated refinements
 - **No manual `generate` needed** — the loop runs on every proven pattern
 - **Candidates** live in the `candidates` table until promoted with test proof
 - Run `node src/cli.js promote auto` to auto-promote candidates with tests
@@ -100,5 +100,5 @@ node --test tests/*.test.js               # Run all tests
 - ALL proven patterns have test proof — no exceptions
 - Coherency is scored 0-1 across 5 dimensions
 - The oracle threshold is 0.6 — code below this is rejected
-- SERF healing can recover failed patterns via iterative refinement
+- Iterative healing can recover failed patterns via automated refinement
 - Registering proven code automatically spawns candidates (the loop runs itself)

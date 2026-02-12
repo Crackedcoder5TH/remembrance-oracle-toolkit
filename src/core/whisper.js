@@ -25,7 +25,7 @@ const WHISPER_INTROS = [
   'The oracle healed itself while you worked.',
   'Quiet refinement happened behind the scenes.',
   'Code was silently improved by the reflection loop.',
-  'The SERF formula refined patterns in the background.',
+  'The refinement engine improved patterns in the background.',
   'Self-healing completed — the library grew stronger.',
   'Patterns were polished through iterative reflection.',
   'The oracle whispers: improvements were made.',

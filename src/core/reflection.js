@@ -1,39 +1,28 @@
 /**
  * Infinite Reflection Loop — SERF Engine
  *
- * Self-Evolving Recursive Refinement Function:
- *
- *   SERF(n+1) = I_AM + r_eff * Re[ projection / (|<n+1|n>|² + ε) ] + δ_canvas * exploration
- *
- * Where:
- *   I_AM        = Base coherency identity score (Principle 1: declared purpose)
- *   r_eff       = Effective refinement rate (how aggressively to improve)
- *   <n+1|n>     = Overlap/similarity between current and previous iteration
- *   Ô           = Observation operator (multi-dimensional coherence scorer)
- *   projection  = Ô|n+1><n+1|n> - <n+1|Ô|n>|n+1>  (novel improvement projection)
- *   ε           = Stability constant (prevents division by zero / collapse)
- *   δ_canvas    = Creative exploration bonus (rewards diverse transformations)
+ * Iterative code refinement through multi-strategy transformation and scoring.
  *
  * Process:
- *   1. Generate 5 candidate fixes/refactors (one per strategy)
- *   2. Score each on coherence (0-1): simplicity, readability, security, unity, correctness
- *   3. Select highest-coherence version via SERF formula
- *   4. Reflect again: repeat on the winner, up to 3 loops or until coherence > 0.9
- *   5. Return final healed code + whisper from the healed future
+ *   1. Generate candidate fixes/refactors (one per strategy)
+ *   2. Score each on coherence (0-1) across multiple dimensions
+ *   3. Select highest-coherence version
+ *   4. Repeat on the winner, up to MAX_LOOPS or until target coherence exceeded
+ *   5. Return final healed code
  */
 
 const { computeCoherencyScore, detectLanguage } = require('./coherency');
 const { covenantCheck } = require('./covenant');
 
-// ─── SERF Constants ───
+// ─── Internal Constants ───
 
-const EPSILON_BASE = 1e-6;            // Base stability constant
-const R_EFF_BASE = 0.35;              // Base refinement rate
-const R_EFF_ALPHA = 0.8;              // Retrocausal pull strength (how much harder to pull when far)
-const DELTA_CANVAS = 0.12;            // Exploration bonus weight
-const DELTA_VOID_BASE = 0.08;         // Void replenishment — gain from nothingness
-const MAX_LOOPS = 3;                  // Maximum reflection iterations
-const TARGET_COHERENCE = 0.9;         // Stop when exceeded
+const EPSILON_BASE = 1e-6;
+const R_EFF_BASE = 0.35;
+const R_EFF_ALPHA = 0.8;
+const DELTA_CANVAS = 0.12;
+const DELTA_VOID_BASE = 0.08;
+const MAX_LOOPS = 3;
+const TARGET_COHERENCE = 0.9;
 
 // ─── The 5 Refinement Strategies ───
 

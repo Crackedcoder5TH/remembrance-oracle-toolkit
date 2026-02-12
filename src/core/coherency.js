@@ -174,8 +174,11 @@ function detectLanguage(code) {
   if (/\bfn\b.*->|let mut |impl\b/.test(code)) return 'rust';
   if (/\bfunc\b.*\{|package\b|fmt\./.test(code)) return 'go';
   if (/\bpublic\b.*\bclass\b|\bSystem\.out/.test(code)) return 'java';
-  if (/\bdef\b.*:|\bimport\b.*\n|print\(/.test(code)) return 'python';
+  // Check JS before Python to avoid misclassifying JS files that contain
+  // Python keywords in string literals (e.g. template literals with "import os")
   if (/\bfunction\b.*\{|const |let |=>\s*\{|require\(|import .* from/.test(code)) return 'javascript';
+  // Anchor Python patterns to start of line to avoid matching keywords inside strings
+  if (/^\s*def\b.*:/m.test(code) || /^\s*import\s+\w/m.test(code) || /^\s*print\s*\(/m.test(code)) return 'python';
   if (/<\/?[a-z][\s\S]*>/i.test(code) && /className|onClick|useState/.test(code)) return 'jsx';
   if (/<\/?[a-z][\s\S]*>/i.test(code)) return 'html';
   return 'unknown';

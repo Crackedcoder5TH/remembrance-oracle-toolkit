@@ -229,7 +229,9 @@ function scoreSecurity(code, metadata) {
   let score = 1.0;
   // Additional security heuristics beyond covenant
   if (/\beval\s*\(/i.test(code)) score -= 0.3;
-  if (/\bvar\b/.test(code)) score -= 0.05;
+  // Match actual var declarations only — \bvar\s+<identifier> avoids false positives
+  // from CSS var(--bg) and regex patterns like /const|let|var/
+  if (/\bvar\s+[a-zA-Z_$]/.test(code)) score -= 0.05;
   if (/==(?!=)/.test(code)) score -= 0.05;
   return Math.max(0, Math.min(1, score));
 }

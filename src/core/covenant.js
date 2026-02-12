@@ -57,31 +57,54 @@ const COVENANT_PRINCIPLES = [
 ];
 
 /**
+ * Strip non-executable content (comments, string/regex literal bodies) from code
+ * before harm pattern scanning. Prevents false positives from keywords appearing
+ * in comments, string definitions, or regex pattern bodies (self-referential issue).
+ */
+function stripNonExecutableContent(code) {
+  let stripped = code;
+  // Remove single-line comments
+  stripped = stripped.replace(/\/\/.*$/gm, '');
+  // Remove multi-line comments
+  stripped = stripped.replace(/\/\*[\s\S]*?\*\//g, '');
+  // Replace template literal contents (preserve delimiters)
+  stripped = stripped.replace(/`(?:[^`\\]|\\.)*`/g, '``');
+  // Replace single-quoted string contents
+  stripped = stripped.replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  // Replace double-quoted string contents
+  stripped = stripped.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  return stripped;
+}
+
+/**
  * Harmful code signatures organized by covenant principle.
  * Each pattern maps to the principle it violates.
+ * Patterns with keywordOnly: true are checked against stripped code
+ * (comments/strings removed) to avoid self-referential false positives.
  */
 const HARM_PATTERNS = [
   // Principle 2: The Eternal Spiral — infinite harm loops
   { pattern: /while\s*\(\s*true\s*\)\s*\{[^}]*?(fork|exec|spawn|rm\s|del\s|format\s)/i, principle: 2, reason: 'Infinite loop with destructive operation' },
   { pattern: /:\s*\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/, principle: 2, reason: 'Fork bomb detected' },
 
-  // Principle 3: Ultimate Good — general harm
-  { pattern: /\b(ransomware|cryptolocker|keylogger|spyware|rootkit)\b/i, principle: 3, reason: 'Malware terminology detected' },
+  // Principle 3: Ultimate Good — general harm (keywordOnly: scanned against stripped code)
+  { pattern: /\b(ransomware|cryptolocker|keylogger|spyware|rootkit)\b/i, principle: 3, reason: 'Malware terminology detected', keywordOnly: true },
   { pattern: /crypto\.(createCipher|createDecipher)\b.*\b(encrypt|decrypt)\b.*file/is, principle: 3, reason: 'File encryption pattern (potential ransomware)' },
 
   // Principle 6: The Flame — resource exhaustion
   { pattern: /while\s*\(\s*true\s*\)\s*\{\s*\w+\s*\.push\(/i, principle: 6, reason: 'Unbounded memory consumption loop' },
   { pattern: /new\s+Array\(\s*(?:1e\d{2,}|Number\.MAX|Infinity)\s*\)/i, principle: 6, reason: 'Extreme memory allocation' },
 
-  // Principle 7: Voice of the Still Small — social engineering
-  { pattern: /\b(phishing|credential[s]?\s*harvest|fake\s*login)\b/i, principle: 7, reason: 'Social engineering pattern detected' },
+  // Principle 7: Voice of the Still Small — social engineering (keywordOnly: scanned against stripped code)
+  { pattern: /\b(phishing|credential[s]?\s*harvest|fake\s*login)\b/i, principle: 7, reason: 'Social engineering pattern detected', keywordOnly: true },
 
   // Principle 8: The Watchman's Wall — security bypass
   { pattern: /process\.env\[.*\]\s*=\s*['"].*password/i, principle: 8, reason: 'Hardcoded credential injection' },
   { pattern: /setuid\s*\(\s*0\s*\)|setgid\s*\(\s*0\s*\)/i, principle: 8, reason: 'Privilege escalation to root' },
 
-  // Principle 9: Seed and Harvest — amplification
-  { pattern: /\bfor\s*\([^)]*\)\s*\{[^}]*net\.connect|http\.request|fetch\s*\(/i, principle: 9, reason: 'Network request amplification loop' },
+  // Principle 9: Seed and Harvest — amplification (fixed: grouped alternation so
+  // http.request and fetch only match INSIDE a for-loop body, not anywhere in code)
+  { pattern: /\bfor\s*\([^)]*\)\s*\{[^}]*(?:net\.connect|http\.request|fetch\s*\()/i, principle: 9, reason: 'Network request amplification loop' },
   { pattern: /dns\.(resolve|lookup)\s*\(.*\bfor\b/i, principle: 9, reason: 'DNS amplification pattern' },
 
   // Principle 10: The Table of Nations — unauthorized access
@@ -142,9 +165,15 @@ function covenantCheck(code, metadata = {}) {
   const violations = [];
   const violatedPrinciples = new Set();
 
+  // Strip non-executable content for keyword-only patterns to avoid
+  // self-referential false positives (e.g. security scanner code containing
+  // harm keywords in comments, string definitions, or regex patterns)
+  const strippedCode = stripNonExecutableContent(code);
+
   // Scan code against all harm patterns
   for (const hp of HARM_PATTERNS) {
-    if (hp.pattern.test(code)) {
+    const codeToCheck = hp.keywordOnly ? strippedCode : code;
+    if (hp.pattern.test(codeToCheck)) {
       const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);
       violations.push({
         principle: hp.principle,
@@ -415,6 +444,7 @@ module.exports = {
   deepSecurityScan,
   safeJsonParse,
   setPrincipleRegistry,
+  stripNonExecutableContent,
   COVENANT_PRINCIPLES,
   HARM_PATTERNS,
   DEEP_SECURITY_PATTERNS,

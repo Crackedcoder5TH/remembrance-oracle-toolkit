@@ -1019,7 +1019,8 @@ function crossRepoSearch(description, options = {}) {
       let matchCount = 0;
 
       for (const p of patterns) {
-        if (seen.has(p.name)) continue;
+        const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+        if (seen.has(key)) continue;
         // Simple relevance scoring: check if description words match name/tags/description
         const text = `${p.name} ${(p.tags || []).join(' ')} ${p.description || ''}`.toLowerCase();
         const words = description.toLowerCase().split(/\s+/);
@@ -1027,7 +1028,7 @@ function crossRepoSearch(description, options = {}) {
         if (matches.length === 0) continue;
         if (language && p.language !== language) continue;
 
-        seen.add(p.name);
+        seen.add(key);
         allResults.push({
           ...p,
           _repo: repoName,

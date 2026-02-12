@@ -611,6 +611,37 @@ class PatternLibrary {
 
   _registerJSON(pattern, coherency) {
     const data = this._readJSON();
+    const lang = (pattern.language || coherency.language || 'unknown').toLowerCase();
+    const name = pattern.name;
+    const newCoherency = coherency.total ?? 0;
+
+    // Dedup check: find existing pattern with same (name, language) — case-insensitive
+    const existingIdx = data.patterns.findIndex(
+      p => p.name.toLowerCase() === name.toLowerCase()
+        && (p.language || 'unknown').toLowerCase() === lang
+    );
+
+    if (existingIdx !== -1) {
+      const existing = data.patterns[existingIdx];
+      const existingCoherency = existing.coherencyScore?.total ?? 0;
+      if (newCoherency > existingCoherency) {
+        // Update in place — higher coherency replaces lower
+        existing.code = pattern.code;
+        existing.description = pattern.description || existing.description;
+        existing.tags = pattern.tags || existing.tags;
+        existing.coherencyScore = coherency;
+        existing.testCode = pattern.testCode || existing.testCode;
+        existing.patternType = pattern.patternType || existing.patternType;
+        existing.complexity = pattern.complexity || existing.complexity;
+        existing.updatedAt = new Date().toISOString();
+        data.meta.decisions++;
+        this._writeJSON(data);
+        return existing;
+      }
+      // Existing has equal or higher coherency — return it without modification
+      return existing;
+    }
+
     const id = this._hash(pattern.code + pattern.name + Date.now());
     const record = {
       id,

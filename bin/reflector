@@ -1,0 +1,595 @@
+#!/usr/bin/env node
+/**
+ * Remembrance Self-Reflector — Standalone CLI Entry Point
+ *
+ * A standalone executable for the reflector bot that can run independently
+ * of the main oracle CLI. Parses arguments, loads config, routes to the
+ * correct module, and handles output.
+ *
+ * Usage:
+ *   ./bin/reflector <command> [options]
+ *   node bin/reflector <command> [options]
+ *
+ * Commands:
+ *   run           Full reflector cycle with safety protections
+ *   snapshot      Take coherence snapshot without healing
+ *   heal          Heal a single file via SERF
+ *   evaluate      Evaluate a single file's coherence
+ *   dry-run       Simulate healing without changes
+ *   safe-run      Alias for run (always uses safety pipeline)
+ *   rollback      Revert to last backup
+ *   score         Deep-score a single file
+ *   repo-score    Aggregate repo-level deep score
+ *   multi         Multi-repo snapshot + compare + drift + heal
+ *   config        View/set central configuration
+ *   status        Show reflector status and recent runs
+ *   history       View run timeline
+ *   trend         Show ASCII coherence trend chart
+ *   stats         Show statistics and trends
+ *   log           Show recent log entries
+ *   workflow      Generate GitHub Actions workflow YAML
+ *   help          Show this help message
+ *
+ * Uses only Node.js built-ins — no external dependencies.
+ */
+
+const path = require('path');
+const fs = require('fs');
+
+// ─── Minimal ANSI Colors ───
+
+const isColor = process.stdout.isTTY && !process.env.NO_COLOR;
+const c = {
+  bold: s => isColor ? `\x1b[1m${s}\x1b[0m` : s,
+  dim: s => isColor ? `\x1b[2m${s}\x1b[0m` : s,
+  cyan: s => isColor ? `\x1b[36m${s}\x1b[0m` : s,
+  green: s => isColor ? `\x1b[32m${s}\x1b[0m` : s,
+  yellow: s => isColor ? `\x1b[33m${s}\x1b[0m` : s,
+  red: s => isColor ? `\x1b[31m${s}\x1b[0m` : s,
+  boldCyan: s => isColor ? `\x1b[1;36m${s}\x1b[0m` : s,
+  boldGreen: s => isColor ? `\x1b[1;32m${s}\x1b[0m` : s,
+  boldRed: s => isColor ? `\x1b[1;31m${s}\x1b[0m` : s,
+};
+
+function colorScore(score) {
+  if (typeof score !== 'number') return c.dim('N/A');
+  const s = score.toFixed(3);
+  return score >= 0.8 ? c.boldGreen(s) : score >= 0.6 ? c.yellow(s) : c.boldRed(s);
+}
+
+// ─── Argument Parser ───
+
+function parseArgs(argv) {
+  const args = { _: [], _command: null };
+  let i = 0;
+  while (i < argv.length) {
+    const arg = argv[i];
+    if (arg.startsWith('--')) {
+      const key = arg.slice(2);
+      const next = argv[i + 1];
+      if (!next || next.startsWith('--')) {
+        args[key] = true;
+      } else {
+        args[key] = next;
+        i++;
+      }
+    } else if (!args._command) {
+      args._command = arg;
+    } else {
+      args._.push(arg);
+    }
+    i++;
+  }
+  return args;
+}
+
+// ─── Help ───
+
+function showHelp() {
+  console.log(`
+${c.boldCyan('Remembrance Self-Reflector Bot')}
+
+${c.bold('Usage:')}  reflector <command> [options]
+
+${c.bold('Commands:')}
+  ${c.cyan('run')}           Run full reflector cycle (snapshot → score → heal → PR)
+  ${c.cyan('snapshot')}      Take coherence snapshot without healing
+  ${c.cyan('evaluate')}      Evaluate a single file's coherence
+  ${c.cyan('heal')}          Heal a single file via SERF reflection loop
+  ${c.cyan('dry-run')}       Simulate healing (preview changes without writing)
+  ${c.cyan('safe-run')}      Run with full safety (backup → heal → guard → rollback)
+  ${c.cyan('rollback')}      Revert to last backup state
+  ${c.cyan('backups')}       List available backups
+  ${c.cyan('score')}         Deep coherence analysis of a single file
+  ${c.cyan('repo-score')}    Aggregate repo-level deep coherence score
+  ${c.cyan('multi')}         Multi-repo: snapshot + compare + drift + heal
+  ${c.cyan('compare')}       Compare dimensions between two repos
+  ${c.cyan('drift')}         Detect function drift between repos
+  ${c.cyan('config')}        View central configuration
+  ${c.cyan('config-set')}    Set a config value (--key <path> --value <val>)
+  ${c.cyan('config-reset')}  Reset config to defaults (--section <name>)
+  ${c.cyan('status')}        Show reflector status and recent runs
+  ${c.cyan('history')}       View run history timeline
+  ${c.cyan('trend')}         Show ASCII coherence trend chart
+  ${c.cyan('stats')}         Show statistics and trends
+  ${c.cyan('log')}           Show recent log entries
+  ${c.cyan('workflow')}      Generate GitHub Actions workflow YAML
+  ${c.cyan('help')}          Show this help message
+
+${c.bold('Options:')}
+  ${c.yellow('--file')} <path>           File to evaluate/heal/score
+  ${c.yellow('--repos')} <a,b>           Comma-separated repo paths (multi/compare/drift)
+  ${c.yellow('--min-coherence')} <n>     Minimum coherence threshold (default: 0.7)
+  ${c.yellow('--max-files')} <n>         Max files per run (default: 50)
+  ${c.yellow('--push')}                  Push healing branch to remote
+  ${c.yellow('--open-pr')}               Open a PR with healing changes
+  ${c.yellow('--auto-merge')}            Auto-merge high-coherence PRs
+  ${c.yellow('--dry-run')}               Preview mode (no files modified)
+  ${c.yellow('--require-approval')}      Require approval before merge
+  ${c.yellow('--auto-rollback')}         Auto-rollback on coherence drop (default: true)
+  ${c.yellow('--backup-id')} <id>        Specific backup to rollback to
+  ${c.yellow('--key')} <path>            Config key (dot-notation, e.g. thresholds.minCoherence)
+  ${c.yellow('--value')} <val>           Value to set
+  ${c.yellow('--section')} <name>        Config section to reset
+  ${c.yellow('--json')}                  Output as JSON
+  ${c.yellow('--last')} <n>              Number of items to show (history/trend/log)
+  ${c.yellow('--verbose')}               Show detailed output
+
+${c.bold('Examples:')}
+  reflector run                             # Full reflector cycle
+  reflector run --push --open-pr            # Heal + push + open PR
+  reflector dry-run                         # Preview what would change
+  reflector evaluate --file src/index.js    # Score a single file
+  reflector score --file src/index.js       # Deep analysis of a file
+  reflector repo-score                      # Score entire repo
+  reflector trend                           # ASCII coherence chart
+  reflector config-set --key thresholds.minCoherence --value 0.8
+  reflector multi --repos /path/a,/path/b   # Multi-repo heal
+`);
+}
+
+// ─── Command Handlers ───
+
+function getOpts(args) {
+  return {
+    minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
+    maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+    push: args.push === true,
+    openPR: args['open-pr'] === true,
+    autoMerge: args['auto-merge'] === true,
+  };
+}
+
+function handleRun(args, cwd, json) {
+  const { safeReflect } = require('../src/reflector/safety');
+  const { loadCentralConfig, toEngineConfig } = require('../src/reflector/config');
+  const { appendLog } = require('../src/reflector/history');
+  const { createHealingBranch } = require('../src/reflector/github');
+
+  // Load central config, then overlay CLI args
+  const central = loadCentralConfig(cwd);
+  const engineCfg = toEngineConfig(central);
+  const opts = {
+    ...engineCfg,
+    ...getOpts(args),
+    dryRunMode: args['dry-run'] === true,
+    requireApproval: args['require-approval'] === true,
+    autoRollback: args['auto-rollback'] !== 'false',
+  };
+
+  appendLog(cwd, 'INFO', 'Reflector run started', { trigger: 'cli', mode: opts.dryRunMode ? 'dry-run' : 'live' });
+
+  console.log(c.boldCyan('Running Self-Reflector...\n'));
+  const startTime = Date.now();
+  const result = safeReflect(cwd, opts);
+
+  if (json) { console.log(JSON.stringify(result, null, 2)); return; }
+
+  console.log(`  Mode:    ${c.cyan(result.mode)}`);
+  if (result.safety.backup?.id) {
+    console.log(`  Backup:  ${c.boldGreen(result.safety.backup.id)}`);
+  }
+  if (result.report) {
+    console.log(`  Scanned: ${c.bold(String(result.report.filesScanned))}`);
+    console.log(`  Healed:  ${c.boldGreen(String(result.report.filesHealed))}`);
+    console.log(`  Improve: ${colorScore(result.report.avgImprovement)}`);
+    console.log(`  Whisper: "${c.dim(result.report.collectiveWhisper)}"`);
+  }
+  if (result.safety.coherenceGuard) {
+    const g = result.safety.coherenceGuard;
+    console.log(`\n${c.bold('Coherence Guard:')}`);
+    console.log(`  ${colorScore(g.preCoherence)} → ${colorScore(g.postCoherence)} (${g.delta >= 0 ? '+' : ''}${g.delta.toFixed(3)}) [${g.severity}]`);
+  }
+  if (result.safety.approval) {
+    const a = result.safety.approval;
+    console.log(`  Approval: ${a.approved ? c.boldGreen('APPROVED') : c.boldRed('REQUIRES REVIEW')}`);
+  }
+  if (result.safety.autoRolledBack) {
+    console.log(`\n  ${c.boldRed('AUTO-ROLLBACK TRIGGERED!')}`);
+    console.log(`  ${c.dim(result.safety.rollbackReason)}`);
+  }
+
+  // Create healing branch if files were healed and not rolled back
+  const healedFiles = result.healedFiles || [];
+  if (healedFiles.length > 0 && !result.safety?.autoRolledBack && (opts.push || opts.openPR)) {
+    try {
+      const branchReport = {
+        rootDir: cwd,
+        healedFiles,
+        collectiveWhisper: { message: result.report?.collectiveWhisper || '' },
+        summary: {
+          avgImprovement: result.report?.avgImprovement || 0,
+          autoMergeRecommended: result.report?.autoMergeRecommended || false,
+        },
+        snapshot: { totalFiles: result.report?.filesScanned || 0, avgCoherence: 0, minCoherence: 0, maxCoherence: 0 },
+      };
+      const branchResult = createHealingBranch(branchReport, {
+        push: opts.push,
+        openPR: opts.openPR,
+        autoMerge: opts.autoMerge,
+        cwd,
+      });
+      if (branchResult.branch) console.log(`\n  Branch: ${c.cyan(branchResult.branch)}`);
+      if (branchResult.prUrl) console.log(`  PR: ${c.cyan(branchResult.prUrl)}`);
+    } catch (err) {
+      console.error(`  ${c.boldRed('Branch/PR error:')} ${err.message}`);
+    }
+  }
+
+  appendLog(cwd, 'INFO', 'Reflector run completed', { durationMs: Date.now() - startTime, healed: result.report?.filesHealed || 0 });
+  console.log(`\n  Duration: ${Date.now() - startTime}ms`);
+}
+
+function handleSnapshot(args, cwd, json) {
+  const { takeSnapshot } = require('../src/reflector/engine');
+  console.log(c.boldCyan('Taking Coherence Snapshot...\n'));
+  const snap = takeSnapshot(cwd, getOpts(args));
+
+  if (json) { console.log(JSON.stringify(snap, null, 2)); return; }
+
+  console.log(`  Files scanned:   ${c.bold(String(snap.aggregate.totalFiles))}`);
+  console.log(`  Avg coherence:   ${colorScore(snap.aggregate.avgCoherence)}`);
+  console.log(`  Min coherence:   ${colorScore(snap.aggregate.minCoherence)}`);
+  console.log(`  Max coherence:   ${colorScore(snap.aggregate.maxCoherence)}`);
+  if (snap.aggregate.dimensionAverages) {
+    console.log(`\n${c.bold('Dimensions:')}`);
+    for (const [dim, val] of Object.entries(snap.aggregate.dimensionAverages)) {
+      const bar = '\u2588'.repeat(Math.round(val * 20));
+      const faded = '\u2591'.repeat(20 - Math.round(val * 20));
+      console.log(`  ${dim.padEnd(14)} ${bar}${faded} ${colorScore(val)}`);
+    }
+  }
+  if (snap.belowThreshold.length > 0) {
+    console.log(`\n${c.bold('Below Threshold:')}`);
+    for (const f of snap.belowThreshold) {
+      console.log(`  ${c.yellow(f.path)} — ${colorScore(f.coherence)}`);
+    }
+  }
+}
+
+function handleEvaluate(args, cwd, json) {
+  if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
+  const { evaluateFile } = require('../src/reflector/engine');
+  const filePath = path.resolve(cwd, args.file);
+  const result = evaluateFile(filePath);
+
+  if (json) { console.log(JSON.stringify(result, null, 2)); return; }
+  if (result.error) { console.error(c.boldRed('Error:'), result.error); process.exit(1); }
+
+  console.log(c.boldCyan(`Evaluation: ${args.file}\n`));
+  console.log(`  Language:  ${c.cyan(result.language)}`);
+  console.log(`  Coherence: ${colorScore(result.coherence)}`);
+  console.log(`  Covenant:  ${result.covenantSealed ? c.boldGreen('sealed') : c.boldRed('VIOLATED')}`);
+  if (result.dimensions) {
+    console.log(`\n${c.bold('Dimensions:')}`);
+    for (const [dim, val] of Object.entries(result.dimensions)) {
+      const bar = '\u2588'.repeat(Math.round(val * 20));
+      const faded = '\u2591'.repeat(20 - Math.round(val * 20));
+      console.log(`  ${dim.padEnd(14)} ${bar}${faded} ${colorScore(val)}`);
+    }
+  }
+}
+
+function handleHeal(args, cwd, json) {
+  if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
+  const { healFile } = require('../src/reflector/engine');
+  const filePath = path.resolve(cwd, args.file);
+  const result = healFile(filePath);
+
+  if (json) { console.log(JSON.stringify(result, null, 2)); return; }
+  if (result.error) { console.error(c.boldRed('Error:'), result.error); process.exit(1); }
+
+  console.log(c.boldCyan(`Healing: ${args.file}\n`));
+  console.log(`  Original coherence: ${colorScore(result.original.coherence)}`);
+  console.log(`  Healed coherence:   ${colorScore(result.healed.coherence)}`);
+  console.log(`  Improvement:        ${colorScore(result.improvement)}`);
+  console.log(`  Whisper: "${c.dim(result.whisper)}"`);
+}
+
+function handleDryRun(args, cwd, json) {
+  const { dryRun } = require('../src/reflector/safety');
+  console.log(c.boldCyan('Dry-Run: Simulating Healing...\n'));
+  const result = dryRun(cwd, getOpts(args));
+
+  if (json) { console.log(JSON.stringify(result, null, 2)); return; }
+
+  console.log(`  ${c.bold('Mode:')}             ${c.yellow('DRY-RUN (no files modified)')}`);
+  console.log(`  Files scanned:     ${c.bold(String(result.summary.filesScanned))}`);
+  console.log(`  Would heal:        ${result.summary.wouldHeal > 0 ? c.boldGreen(String(result.summary.wouldHeal)) : c.dim('0')}`);
+  console.log(`  Coherence before:  ${colorScore(result.projectedCoherence.before)}`);
+  console.log(`  Coherence after:   ${colorScore(result.projectedCoherence.after)}`);
+  if (result.healings.length > 0) {
+    console.log(`\n${c.bold('Projected Healings:')}`);
+    for (const h of result.healings) {
+      console.log(`  ${c.yellow(h.path)} ${h.currentCoherence.toFixed(3)} → ${h.projectedCoherence.toFixed(3)} (+${h.improvement.toFixed(3)})`);
+      console.log(`    ${c.dim(h.whisper)}`);
+    }
+  }
+}
+
+function handleScore(args, cwd, json) {
+  if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
+  const { deepScore, formatDeepScore } = require('../src/reflector/scoring');
+  const filePath = path.resolve(cwd, args.file);
+  const code = fs.readFileSync(filePath, 'utf-8');
+  const result = deepScore(code);
+
+  if (json) { console.log(JSON.stringify(result, null, 2)); return; }
+  console.log(c.boldCyan(`Deep Score: ${args.file}\n`));
+  console.log(formatDeepScore(result));
+}
+
+function handleRepoScore(args, cwd, json) {
+  const { repoScore } = require('../src/reflector/scoring');
+  console.log(c.boldCyan('Computing Repo-Level Deep Score...\n'));
+  const result = repoScore(cwd, getOpts(args));
+
+  if (json) { console.log(JSON.stringify(result, null, 2)); return; }
+
+  console.log(`  Files scored:    ${c.bold(String(result.totalFiles))}`);
+  console.log(`  Aggregate score: ${colorScore(result.aggregate)}`);
+  console.log(`  Health:          ${result.health === 'healthy' ? c.boldGreen(result.health) : result.health === 'stable' ? c.yellow(result.health) : c.boldRed(result.health)}`);
+  if (result.dimensions) {
+    console.log(`\n${c.bold('Dimensions:')}`);
+    for (const [dim, val] of Object.entries(result.dimensions)) {
+      const bar = '\u2588'.repeat(Math.round(val * 20));
+      const faded = '\u2591'.repeat(20 - Math.round(val * 20));
+      console.log(`  ${dim.padEnd(16)} ${bar}${faded} ${colorScore(val)}`);
+    }
+  }
+  if (result.worstFiles?.length > 0) {
+    console.log(`\n${c.bold('Worst Files:')}`);
+    for (const f of result.worstFiles) console.log(`  ${c.yellow(f.path)} — ${colorScore(f.score)}`);
+  }
+  if (result.securityFindings?.length > 0) {
+    console.log(`\n${c.bold('Security Findings:')}`);
+    for (const f of result.securityFindings.slice(0, 10)) {
+      const icon = f.severity === 'critical' ? c.boldRed('[!!]') : f.severity === 'high' ? c.boldRed('[!]') : c.yellow('[~]');
+      console.log(`  ${icon} ${f.file}: ${f.message}`);
+    }
+  }
+}
+
+function handleConfig(args, cwd, json, sub) {
+  if (sub === 'config-set') {
+    if (!args.key) { console.error(c.boldRed('Error:') + ' --key required'); process.exit(1); }
+    if (args.value === undefined) { console.error(c.boldRed('Error:') + ' --value required'); process.exit(1); }
+    const { setCentralValue, validateConfig } = require('../src/reflector/config');
+    let value = args.value;
+    if (value === 'true') value = true;
+    else if (value === 'false') value = false;
+    else if (!isNaN(parseFloat(value)) && String(parseFloat(value)) === value) value = parseFloat(value);
+    else if (value.startsWith('[') && value.endsWith(']')) { try { value = JSON.parse(value); } catch {} }
+    const config = setCentralValue(cwd, args.key, value);
+    const validation = validateConfig(config);
+    if (json) { console.log(JSON.stringify({ key: args.key, value, valid: validation.valid }, null, 2)); return; }
+    console.log(`${c.boldGreen('Set:')} ${c.cyan(args.key)} = ${c.bold(JSON.stringify(value))}`);
+    if (!validation.valid) {
+      for (const issue of validation.issues) console.log(`  ${c.yellow('Warning:')} ${issue}`);
+    }
+    return;
+  }
+
+  if (sub === 'config-reset') {
+    const { resetCentralConfig } = require('../src/reflector/config');
+    const section = args.section || null;
+    resetCentralConfig(cwd, section);
+    if (json) { console.log(JSON.stringify({ reset: section || 'all' })); return; }
+    console.log(section ? `${c.boldGreen('Reset:')} section "${c.cyan(section)}" → defaults` : c.boldGreen('Reset: all → defaults'));
+    return;
+  }
+
+  // Default: show config
+  const { loadCentralConfig, formatCentralConfig, validateConfig } = require('../src/reflector/config');
+  const config = loadCentralConfig(cwd);
+  if (json) { console.log(JSON.stringify(config, null, 2)); return; }
+  console.log(c.boldCyan('Central Configuration:\n'));
+  console.log(formatCentralConfig(config));
+  const validation = validateConfig(config);
+  if (!validation.valid) {
+    console.log(c.boldRed('Validation Issues:'));
+    for (const issue of validation.issues) console.log(`  ${c.yellow('!')} ${issue}`);
+  }
+}
+
+function handleStatus(args, cwd, json) {
+  const { getStatus } = require('../src/reflector/scheduler');
+  const status = getStatus(cwd);
+  if (json) { console.log(JSON.stringify(status, null, 2)); return; }
+  console.log(c.boldCyan('Reflector Status:\n'));
+  console.log(`  Enabled:    ${status.config.enabled ? c.boldGreen('yes') : c.dim('no')}`);
+  console.log(`  Interval:   ${c.cyan(status.config.intervalHours + 'h')}`);
+  console.log(`  Total runs: ${c.bold(String(status.totalRuns))}`);
+  if (status.lastRun) {
+    console.log(`\n${c.bold('Last Run:')}`);
+    console.log(`  ID:       ${c.dim(status.lastRun.id)}`);
+    console.log(`  Started:  ${status.lastRun.startedAt}`);
+    console.log(`  Duration: ${status.lastRun.durationMs}ms`);
+    if (status.lastRun.report) {
+      console.log(`  Healed:   ${c.boldGreen(String(status.lastRun.report.filesHealed))}`);
+    }
+  }
+}
+
+function handleHistory(args, cwd, json) {
+  const { generateTimeline, loadHistoryV2 } = require('../src/reflector/history');
+  const count = args.last ? parseInt(args.last) : 10;
+  if (json) { console.log(JSON.stringify(loadHistoryV2(cwd), null, 2)); return; }
+  console.log(c.boldCyan('Reflector Run History\n'));
+  console.log(generateTimeline(cwd, count));
+}
+
+function handleTrend(args, cwd, json) {
+  const { generateTrendChart, loadHistoryV2 } = require('../src/reflector/history');
+  if (json) {
+    const history = loadHistoryV2(cwd);
+    console.log(JSON.stringify(history.runs.map(r => ({ timestamp: r.timestamp, coherence: r.coherence?.after })), null, 2));
+    return;
+  }
+  console.log(c.boldCyan('Coherence Trend\n'));
+  console.log(generateTrendChart(cwd, {
+    width: args.width ? parseInt(args.width) : 60,
+    height: args.height ? parseInt(args.height) : 15,
+    last: args.last ? parseInt(args.last) : 30,
+  }));
+}
+
+function handleStats(args, cwd, json) {
+  const { computeStats } = require('../src/reflector/history');
+  const stats = computeStats(cwd);
+  if (json) { console.log(JSON.stringify(stats, null, 2)); return; }
+  console.log(c.boldCyan('Reflector Statistics\n'));
+  console.log(`  Total runs:       ${c.bold(String(stats.totalRuns))}`);
+  console.log(`  Avg coherence:    ${colorScore(stats.avgCoherence)}`);
+  console.log(`  Avg improvement:  ${colorScore(stats.avgImprovement)}`);
+  console.log(`  Total healed:     ${c.boldGreen(String(stats.totalFilesHealed))}`);
+  console.log(`  Trend:            ${stats.trend === 'improving' ? c.boldGreen(stats.trend) : stats.trend === 'declining' ? c.boldRed(stats.trend) : c.dim(stats.trend)}`);
+  if (stats.recentRuns?.length > 0) {
+    console.log(`\n${c.bold('Recent Runs:')}`);
+    for (const r of stats.recentRuns) {
+      console.log(`  ${c.dim(r.id)} ${r.timestamp?.slice(0, 19) || '?'} coherence: ${colorScore(r.coherence)} healed: ${r.healed}`);
+    }
+  }
+}
+
+function handleLog(args, cwd, json) {
+  const { readLogTail } = require('../src/reflector/history');
+  const n = args.last ? parseInt(args.last) : 20;
+  const lines = readLogTail(cwd, n);
+  if (json) { console.log(JSON.stringify(lines)); return; }
+  if (lines.length === 0) { console.log(c.dim('No log entries found.')); return; }
+  console.log(c.boldCyan(`Reflector Log (last ${n} entries)\n`));
+  for (const line of lines) {
+    if (line.includes('[ERROR]')) console.log(c.boldRed(line));
+    else if (line.includes('[WARN]')) console.log(c.yellow(line));
+    else console.log(c.dim(line));
+  }
+}
+
+function handleRollback(args, cwd, json) {
+  const { rollback, loadBackupManifests } = require('../src/reflector/safety');
+  const manifests = loadBackupManifests(cwd);
+  if (manifests.length === 0) { console.error(c.boldRed('No backups found.')); process.exit(1); }
+  console.log(c.boldCyan('Rolling Back...\n'));
+  const result = rollback(cwd, { backupId: args['backup-id'] || null, verify: true });
+  if (json) { console.log(JSON.stringify(result, null, 2)); return; }
+  if (result.success) {
+    console.log(`  ${c.boldGreen('Rollback successful!')}`);
+    console.log(`  Backup ID: ${c.dim(result.backupId)}`);
+    if (result.filesRestored) console.log(`  Files restored: ${c.bold(String(result.filesRestored))}`);
+  } else {
+    console.error(`  ${c.boldRed('Rollback failed:')} ${result.error}`);
+    process.exit(1);
+  }
+}
+
+function handleMulti(args, cwd, json) {
+  const repos = args.repos ? args.repos.split(',').map(r => path.resolve(cwd, r.trim())) : null;
+  if (!repos || repos.length < 2) {
+    console.error(c.boldRed('Error:') + ' --repos requires at least 2 comma-separated paths');
+    process.exit(1);
+  }
+  const { multiReflect, formatMultiReport } = require('../src/reflector/multi');
+  console.log(c.boldCyan('Running Multi-Repo Reflector...\n'));
+  const report = multiReflect(repos, getOpts(args));
+  if (json) { console.log(JSON.stringify(report, null, 2)); return; }
+  console.log(formatMultiReport(report));
+}
+
+function handleWorkflow(args) {
+  const { generateReflectorWorkflow } = require('../src/reflector/github');
+  const workflow = generateReflectorWorkflow({
+    schedule: args.schedule || '0 */6 * * *',
+    minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : 0.7,
+    autoMerge: args['auto-merge'] === true,
+  });
+  console.log(workflow);
+}
+
+// ─── Main ───
+
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const cmd = args._command || 'help';
+  const cwd = process.cwd();
+  const json = args.json === true;
+
+  const handlers = {
+    'help': () => showHelp(),
+    'run': () => handleRun(args, cwd, json),
+    'safe-run': () => handleRun(args, cwd, json),
+    'snapshot': () => handleSnapshot(args, cwd, json),
+    'evaluate': () => handleEvaluate(args, cwd, json),
+    'heal': () => handleHeal(args, cwd, json),
+    'dry-run': () => handleDryRun(args, cwd, json),
+    'rollback': () => handleRollback(args, cwd, json),
+    'backups': () => {
+      const { loadBackupManifests } = require('../src/reflector/safety');
+      const manifests = loadBackupManifests(cwd);
+      if (json) { console.log(JSON.stringify(manifests, null, 2)); return; }
+      if (manifests.length === 0) { console.log(c.dim('No backups found.')); return; }
+      console.log(c.boldCyan('Backup Manifests:\n'));
+      for (const m of manifests) {
+        console.log(`  ${c.bold(m.id)}  ${m.timestamp}  [${c.cyan(m.strategy)}]`);
+        console.log(`    ${c.dim(m.label)}`);
+      }
+    },
+    'score': () => handleScore(args, cwd, json),
+    'repo-score': () => handleRepoScore(args, cwd, json),
+    'multi': () => handleMulti(args, cwd, json),
+    'compare': () => {
+      const repos = args.repos ? args.repos.split(',').map(r => path.resolve(cwd, r.trim())) : null;
+      if (!repos || repos.length < 2) { console.error(c.boldRed('Error:') + ' --repos requires 2+ paths'); process.exit(1); }
+      const { multiSnapshot, compareDimensions } = require('../src/reflector/multi');
+      const cmp = compareDimensions(multiSnapshot(repos, getOpts(args)));
+      if (json) { console.log(JSON.stringify(cmp, null, 2)); return; }
+      console.log(`  Leader: ${c.boldGreen(cmp.coherenceLeader)} | Convergence: ${colorScore(cmp.convergenceScore)}`);
+    },
+    'drift': () => {
+      const repos = args.repos ? args.repos.split(',').map(r => path.resolve(cwd, r.trim())) : null;
+      if (!repos || repos.length < 2) { console.error(c.boldRed('Error:') + ' --repos requires 2+ paths'); process.exit(1); }
+      const { detectDrift } = require('../src/reflector/multi');
+      const drift = detectDrift(repos, getOpts(args));
+      if (json) { console.log(JSON.stringify(drift, null, 2)); return; }
+      console.log(`  Shared: ${c.boldGreen(String(drift.shared))} | Diverged: ${drift.diverged > 0 ? c.boldRed(String(drift.diverged)) : c.dim('0')} | Convergence: ${colorScore(drift.convergenceScore)}`);
+    },
+    'config': () => handleConfig(args, cwd, json, 'config'),
+    'config-set': () => handleConfig(args, cwd, json, 'config-set'),
+    'config-reset': () => handleConfig(args, cwd, json, 'config-reset'),
+    'status': () => handleStatus(args, cwd, json),
+    'history': () => handleHistory(args, cwd, json),
+    'trend': () => handleTrend(args, cwd, json),
+    'stats': () => handleStats(args, cwd, json),
+    'log': () => handleLog(args, cwd, json),
+    'workflow': () => handleWorkflow(args),
+  };
+
+  if (handlers[cmd]) {
+    handlers[cmd]();
+  } else {
+    console.error(`${c.boldRed('Unknown command:')} ${cmd}. Run ${c.cyan("'reflector help'")} for usage.`);
+    process.exit(1);
+  }
+}
+
+main();

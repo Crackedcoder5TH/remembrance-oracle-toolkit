@@ -131,8 +131,8 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
       tags: args.tags ? args.tags.split(',').map(t => t.trim()) : [],
     });
     if (jsonOut()) { console.log(JSON.stringify(result)); return; }
-    console.log(c.boldCyan('SERF Infinite Reflection Loop\n'));
-    console.log(`${c.bold('I_AM:')} ${colorScore(result.serf.I_AM)} \u2192 ${c.bold('Final:')} ${colorScore(result.serf.finalCoherence)} (${result.serf.improvement >= 0 ? c.green('+' + result.serf.improvement.toFixed(3)) : c.red(result.serf.improvement.toFixed(3))})`);
+    console.log(c.boldCyan('Infinite Reflection Loop\n'));
+    console.log(`${c.bold('I_AM:')} ${colorScore(result.reflection.I_AM)} \u2192 ${c.bold('Final:')} ${colorScore(result.reflection.finalCoherence)} (${result.reflection.improvement >= 0 ? c.green('+' + result.reflection.improvement.toFixed(3)) : c.red(result.reflection.improvement.toFixed(3))})`);
     console.log(`${c.bold('Loops:')} ${result.loops}  |  ${c.bold('Full coherency:')} ${colorScore(result.fullCoherency)}\n`);
     console.log(c.bold('Dimensions:'));
     for (const [dim, val] of Object.entries(result.dimensions)) {

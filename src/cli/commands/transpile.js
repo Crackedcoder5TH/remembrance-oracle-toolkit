@@ -110,7 +110,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
         console.log(`  All llm commands will use Claude for generation.`);
       } else {
         console.log(`${c.yellow('\u26A0 Claude CLI not detected')}`);
-        console.log(`  LLM commands will fall back to AST/SERF/regex methods.`);
+        console.log(`  LLM commands will fall back to AST/reflection/regex methods.`);
         console.log(`  Install Claude Code: ${c.cyan('npm install -g @anthropic-ai/claude-code')}`);
       }
       return;

@@ -4,7 +4,7 @@
  * Instead of discarding failed patterns, the recycler:
  *
  *   1. CAPTURES failures with full context (why it failed, how close it was)
- *   2. HEALS them via SERF reflection (simplify, secure, readable, unify, correct)
+ *   2. HEALS them via reflection (simplify, secure, readable, unify, correct)
  *   3. RE-VALIDATES healed code through the full oracle pipeline
  *   4. GENERATES VARIANTS from successful patterns (language ports, approach swaps)
  *   5. FEEDS variants back through the loop — exponential pattern growth
@@ -13,7 +13,7 @@
  *
  *   Code → Validate → Store (success)
  *                ↓
- *            Capture → SERF Heal → Re-validate → Store (recycled)
+ *            Capture → Heal → Re-validate → Store (recycled)
  *                                       ↓
  *                                  Still failing → variant generation
  *                                       ↓
@@ -35,7 +35,7 @@ const {
   VOID_REPLENISH_WEIGHTS,
   VARIANT_GENERATION,
   APPROACH_SWAP,
-  SERF_REFINE,
+  ITERATIVE_REFINE,
   CANDIDATE_MIN_COHERENCY,
   MAX_TERNARY_NESTING,
 } = require('../constants/thresholds');
@@ -142,7 +142,7 @@ class PatternRecycler {
   constructor(oracle, options = {}) {
     this.oracle = oracle;
     this.maxHealAttempts = options.maxHealAttempts || HEALING.MAX_ATTEMPTS;
-    this.maxSerfLoops = options.maxSerfLoops || HEALING.MAX_SERF_LOOPS;
+    this.maxRefineLoops = options.maxRefineLoops || HEALING.MAX_REFINE_LOOPS;
     this.targetCoherence = options.targetCoherence || HEALING.TARGET_COHERENCE;
     this.generateVariants = options.generateVariants !== false;
     this.variantLanguages = options.variantLanguages || ['python', 'typescript'];
@@ -158,7 +158,7 @@ class PatternRecycler {
     // Stats
     this.stats = {
       captured: 0,
-      healedViaSERF: 0,
+      healedViaReflection: 0,
       healedViaVariant: 0,
       variantsGenerated: 0,
       variantsAccepted: 0,
@@ -289,13 +289,13 @@ class PatternRecycler {
   }
 
   /**
-   * Recycle all captured failures through the SERF healing loop.
+   * Recycle all captured failures through the healing loop.
    * Returns a detailed report of what happened.
    */
   recycleFailed(options = {}) {
     const { maxPatterns = Infinity, language = null } = options;
 
-    // Update global coherence before healing — cascade boost applies to all SERF calls
+    // Update global coherence before healing — cascade boost applies to all reflection calls
     this._updateGlobalCoherence();
 
     const pending = this._failed
@@ -346,7 +346,7 @@ class PatternRecycler {
    * Takes a list of seed patterns and:
    *   1. Tries to register each
    *   2. Captures failures
-   *   3. Heals failures via SERF
+   *   3. Heals failures via reflection
    *   4. Generates variants from ALL successes
    *   5. Recursively processes variants (up to depth limit)
    *
@@ -486,7 +486,7 @@ class PatternRecycler {
     return report;
   }
 
-  // ─── Internal: Heal one failed pattern via SERF ───
+  // ─── Internal: Heal one failed pattern via reflection ───
 
   _healOne(entry) {
     const pattern = entry.pattern;
@@ -514,7 +514,7 @@ class PatternRecycler {
           const scaffold = this._voidReplenish(pattern);
           if (scaffold) {
             // Inject the scaffold's structure as a comment-guide at the top
-            // This gives SERF's transforms something healthy to work from
+            // This gives the transforms something healthy to work from
             const scaffoldHint = `// Scaffold from ${scaffold.name} (coherency ${scaffold.coherencyScore?.total?.toFixed(3)})\n`;
             codeToHeal = scaffoldHint + pattern.code;
             detail.voidScaffold = scaffold.name;
@@ -522,10 +522,10 @@ class PatternRecycler {
         }
       }
 
-      // Run SERF reflection with cascade boost from global coherence
+      // Run reflection with cascade boost from global coherence
       const reflection = reflectionLoop(codeToHeal, {
         language: pattern.language,
-        maxLoops: this.maxSerfLoops,
+        maxLoops: this.maxRefineLoops,
         targetCoherence: this.targetCoherence,
         description: pattern.description,
         tags: pattern.tags,
@@ -534,10 +534,10 @@ class PatternRecycler {
 
       const attemptDetail = {
         attempt: attempt + 1,
-        beforeCoherence: reflection.serf.I_AM,
-        afterCoherence: reflection.serf.finalCoherence,
+        beforeCoherence: reflection.reflection.I_AM,
+        afterCoherence: reflection.reflection.finalCoherence,
         loops: reflection.loops,
-        improvement: reflection.serf.improvement,
+        improvement: reflection.reflection.improvement,
         cascadeBoost: this._cascadeBoost,
       };
 
@@ -558,7 +558,7 @@ class PatternRecycler {
         detail.healed = true;
         detail.healedAs = regResult.pattern.id;
         detail.finalCoherency = regResult.validation.coherencyScore.total;
-        this.stats.healedViaSERF++;
+        this.stats.healedViaReflection++;
 
         entry.healHistory.push(attemptDetail);
         detail.attempts.push(attemptDetail);
@@ -801,7 +801,7 @@ class PatternRecycler {
     for (const swap of APPROACH_SWAPS) {
       if (!swap.detect(code)) continue;
 
-      // Try to transform the code using SERF with a hint
+      // Try to transform the code using reflection with a hint
       const hinted = this._applyApproachSwap(pattern, swap);
       if (hinted) alts.push(hinted);
     }
@@ -810,12 +810,12 @@ class PatternRecycler {
   }
 
   _applyApproachSwap(pattern, swap) {
-    // Use SERF reflection with the approach hint baked into the code as a directive comment
+    // Use reflection with the approach hint baked into the code as a directive comment
     const hintedCode = `// APPROACH: ${swap.hint}\n${pattern.code}`;
 
     const reflection = reflectionLoop(hintedCode, {
       language: pattern.language,
-      maxLoops: APPROACH_SWAP.SERF_LOOPS,
+      maxLoops: APPROACH_SWAP.REFINE_LOOPS,
       targetCoherence: APPROACH_SWAP.TARGET_COHERENCE,
       description: `${pattern.description} — ${swap.to} approach`,
       tags: [...(pattern.tags || []), swap.to],
@@ -843,7 +843,7 @@ class PatternRecycler {
 
   /**
    * Generate candidates from all proven patterns.
-   * Each proven pattern gets variant generation (language ports, SERF refinements).
+   * Each proven pattern gets variant generation (language ports, iterative refinements).
    * Variants that pass coherency (but skip full test validation) become candidates.
    *
    * @param {object} options - { maxPatterns, languages, minCoherency, methods }
@@ -937,16 +937,16 @@ class PatternRecycler {
   }
 
   /**
-   * Generate a SERF-refined candidate from a single pattern.
+   * Generate a refined candidate from a single pattern.
    */
-  _generateSerfRefine(pattern, report, knownNames, minCoherency, extraTags) {
+  _generateIterativeRefine(pattern, report, knownNames, minCoherency, extraTags) {
     const refinedName = `${pattern.name}-refined`;
     if (knownNames.has(refinedName)) return;
 
     const reflection = reflectionLoop(pattern.code, {
       language: pattern.language,
-      maxLoops: SERF_REFINE.SERF_LOOPS,
-      targetCoherence: SERF_REFINE.TARGET_COHERENCE,
+      maxLoops: ITERATIVE_REFINE.REFINE_LOOPS,
+      targetCoherence: ITERATIVE_REFINE.TARGET_COHERENCE,
       description: pattern.description,
       tags: pattern.tags,
       cascadeBoost: this._cascadeBoost,
@@ -959,11 +959,11 @@ class PatternRecycler {
       code: reflection.code,
       language: pattern.language,
       patternType: pattern.patternType,
-      description: `${pattern.description} (SERF refined)`,
-      tags: [...(pattern.tags || []), 'serf-refined'],
+      description: `${pattern.description} (refined)`,
+      tags: [...(pattern.tags || []), 'auto-refined'],
       testCode: pattern.testCode,
       parentPattern: pattern.name,
-      method: 'serf-refine',
+      method: 'iterative-refine',
     }, report, knownNames, minCoherency, extraTags);
   }
 
@@ -996,7 +996,7 @@ class PatternRecycler {
       maxPatterns = Infinity,
       languages = this.variantLanguages,
       minCoherency = CANDIDATE_MIN_COHERENCY,
-      methods = ['variant', 'serf-refine', 'approach-swap'],
+      methods = ['variant', 'iterative-refine', 'approach-swap'],
     } = options;
 
     this._updateGlobalCoherence();
@@ -1025,8 +1025,8 @@ class PatternRecycler {
       if (methods.includes('variant')) {
         this._generateVariants(pattern, languages, report, knownNames, minCoherency, []);
       }
-      if (methods.includes('serf-refine')) {
-        this._generateSerfRefine(pattern, report, knownNames, minCoherency, []);
+      if (methods.includes('iterative-refine')) {
+        this._generateIterativeRefine(pattern, report, knownNames, minCoherency, []);
       }
       if (methods.includes('approach-swap')) {
         this._generateApproachSwaps(pattern, report, knownNames, minCoherency);
@@ -1044,7 +1044,7 @@ class PatternRecycler {
     const {
       languages = this.variantLanguages,
       minCoherency = CANDIDATE_MIN_COHERENCY,
-      methods = ['variant', 'serf-refine'],
+      methods = ['variant', 'iterative-refine'],
     } = options;
 
     const report = { generated: 0, stored: 0, skipped: 0, duplicates: 0, candidates: [] };
@@ -1065,8 +1065,8 @@ class PatternRecycler {
     if (methods.includes('variant')) {
       this._generateVariants(pattern, languages, report, knownNames, minCoherency, ['auto-generated']);
     }
-    if (methods.includes('serf-refine')) {
-      this._generateSerfRefine(pattern, report, knownNames, minCoherency, ['auto-generated']);
+    if (methods.includes('iterative-refine')) {
+      this._generateIterativeRefine(pattern, report, knownNames, minCoherency, ['auto-generated']);
     }
 
     return report;

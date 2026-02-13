@@ -128,7 +128,7 @@ ${c.bold('Library:')}
 
 ${c.bold('Quality:')}
   ${c.cyan('covenant')}      Check code against the Covenant seal
-  ${c.cyan('reflect')}       SERF reflection loop — heal and refine code
+  ${c.cyan('reflect')}       reflection loop — heal and refine code
   ${c.cyan('harvest')}       Bulk harvest patterns from a repo or directory
   ${c.cyan('compose')}       Create a composed pattern from existing components
   ${c.cyan('deps')}          Show dependency tree for a pattern

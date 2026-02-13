@@ -19,7 +19,7 @@ describe('PatternRecycler', () => {
   beforeEach(() => {
     tmpDir = makeTempDir();
     oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, generateVariants: false, autoGrow: false });
-    recycler = new PatternRecycler(oracle, { maxHealAttempts: 2, maxSerfLoops: 2, generateVariants: false });
+    recycler = new PatternRecycler(oracle, { maxHealAttempts: 2, maxRefineLoops: 2, generateVariants: false });
   });
 
   describe('capture', () => {
@@ -61,12 +61,12 @@ return result
       );
 
       const report = recycler.recycleFailed();
-      // SERF should clean it up (or it was already valid enough)
+      // Reflection should clean it up (or it was already valid enough)
       assert.ok(report.processed > 0);
     });
 
     it('marks exhausted when healing fails repeatedly', () => {
-      // Truly broken code that SERF can't fix
+      // Truly broken code that reflection can't fix
       recycler.capture(
         { name: 'broken', code: '}{}{}{', language: 'javascript', description: 'broken', tags: [], patternType: 'utility' },
         'syntax error'
@@ -333,7 +333,7 @@ return result
       });
       oracle.patterns.addCandidate({
         name: 'c2', code: 'def c2(): return 2', language: 'python',
-        coherencyTotal: 0.6, generationMethod: 'serf-refine',
+        coherencyTotal: 0.6, generationMethod: 'iterative-refine',
       });
 
       const summary = oracle.patterns.candidateSummary();
@@ -500,12 +500,12 @@ return result
     it('oracle.candidateStats() returns summary via API', () => {
       oracle.patterns.addCandidate({
         name: 'stat-cand', code: 'function s() {}', language: 'javascript',
-        coherencyTotal: 0.7, generationMethod: 'serf-refine',
+        coherencyTotal: 0.7, generationMethod: 'iterative-refine',
       });
 
       const stats = oracle.candidateStats();
       assert.equal(stats.totalCandidates, 1);
-      assert.equal(stats.byMethod['serf-refine'], 1);
+      assert.equal(stats.byMethod['iterative-refine'], 1);
     });
   });
 

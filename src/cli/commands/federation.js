@@ -324,7 +324,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
         console.log(`    ${c.cyan('GET  /api/context')}      — AI context injection`);
         console.log(`    ${c.cyan('POST /api/sync/push')}    — Push patterns to this server`);
         console.log(`    ${c.cyan('POST /api/sync/pull')}    — Pull patterns from this server`);
-        console.log(`    ${c.cyan('POST /api/reflect')}      — SERF reflection loop`);
+        console.log(`    ${c.cyan('POST /api/reflect')}      — reflection loop`);
         console.log(`    ${c.cyan('POST /api/covenant')}     — Covenant check`);
         console.log(`    ${c.cyan('GET  /api/analytics')}    — Analytics report`);
         console.log(`    ${c.cyan('WS   /ws')}               — Real-time sync channel`);

@@ -1,5 +1,5 @@
 /**
- * Healing Whisper Summary — Aggregated reports of all SERF healing activity.
+ * Healing Whisper Summary — Aggregated reports of all healing activity.
  *
  * The whisper system collects healing events across the oracle's lifetime
  * and produces a summary "whisper" at the end of any operation that includes
@@ -38,7 +38,7 @@ const WHISPER_DETAILS = {
   regression_found: (count) => `  Detected ${count} regression(s) — marked for healing`,
   promotion: (count) => `  Promoted ${count} candidate(s) to proven status`,
   coherency_update: (count) => `  Re-scored ${count} pattern(s) with updated coherency`,
-  rejection_recovered: (count) => `  Recovered ${count} rejected submission(s) via SERF`,
+  rejection_recovered: (count) => `  Recovered ${count} rejected submission(s) via reflection`,
   stale_flagged: (count) => `  Flagged ${count} stale pattern(s) for review`,
   no_action: 'The oracle is healthy — no healing needed.',
 };
@@ -318,7 +318,7 @@ class HealingWhisper {
     if (stats.healed.length > 0) {
       const totalPct = (stats.totalImprovement * 100).toFixed(1);
       lines.push('');
-      lines.push(`  Total: ${stats.totalImprovement > 0 ? '+' : ''}${totalPct}% coherency gained across ${stats.totalLoops} SERF loop(s).`);
+      lines.push(`  Total: ${stats.totalImprovement > 0 ? '+' : ''}${totalPct}% coherency gained across ${stats.totalLoops} reflection loop(s).`);
     }
 
     return lines.join('\n');

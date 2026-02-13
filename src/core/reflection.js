@@ -1,5 +1,5 @@
 /**
- * Infinite Reflection Loop — SERF Engine
+ * Infinite Reflection Loop — Refinement Engine
  *
  * Iterative code refinement through multi-strategy transformation and scoring.
  *
@@ -314,7 +314,7 @@ function observeCoherence(code, metadata = {}) {
   };
 }
 
-// ─── SERF Scoring Formula ───
+// ─── Reflection Scoring Formula ───
 
 /**
  * Compute code similarity (the inner product <n+1|n>)
@@ -339,7 +339,7 @@ function innerProduct(codeA, codeB) {
 }
 
 /**
- * Adaptive SERF scoring with retrocausal pull, void replenishment, and cascade awareness.
+ * Adaptive reflection scoring with retrocausal pull, void replenishment, and cascade awareness.
  *
  * Core: I_AM + r_eff * Re[projection / (|overlap|² + ε)] + δ_canvas * exploration + δ_void * void_gain
  *
@@ -352,9 +352,9 @@ function innerProduct(codeA, codeB) {
  * @param {object} candidate  — { code, coherence (Ô score) }
  * @param {object} previous   — { code, coherence }
  * @param {object} context    — optional { cascadeBoost, targetCoherence }
- * @returns {number} SERF score (0-1)
+ * @returns {number} Reflection score (0-1)
  */
-function serfScore(candidate, previous, context = {}) {
+function reflectionScore(candidate, previous, context = {}) {
   const { cascadeBoost = 1, targetCoherence = TARGET_COHERENCE } = context;
 
   // I_AM — base identity coherency of the candidate
@@ -390,16 +390,16 @@ function serfScore(candidate, previous, context = {}) {
   const voidGain = DELTA_VOID_BASE * distance;
 
   // Combine all terms
-  let serf = I_AM
+  let score = I_AM
     + r_eff * (projection / denominator)
     + DELTA_CANVAS * exploration
     + voidGain;
 
   // Cascade amplification: global coherence multiplier
   // When the library is collectively healthy, each refinement gets a boost
-  serf *= cascadeBoost;
+  score *= cascadeBoost;
 
-  return Math.max(0, Math.min(1, Math.round(serf * 1000) / 1000));
+  return Math.max(0, Math.min(1, Math.round(score * 1000) / 1000));
 }
 
 // ─── Generate 5 Candidates ───
@@ -475,11 +475,11 @@ function generateWhisper(original, final, improvements, loops) {
 // ─── The Infinite Reflection Loop ───
 
 /**
- * Run the SERF reflection loop on code.
+ * Run the reflection loop on code.
  *
  * @param {string} code — Input code to refine
  * @param {object} options — { language, maxLoops, targetCoherence, description, tags }
- * @returns {{ code, coherence, dimensions, loops, history, whisper, serf }}
+ * @returns {{ code, coherence, dimensions, loops, history, whisper, reflection }}
  */
 function reflectionLoop(code, options = {}) {
   const {
@@ -513,7 +513,7 @@ function reflectionLoop(code, options = {}) {
     fullCoherency: current.fullCoherency,
     dimensions: { ...current.dimensions },
     strategy: 'original',
-    serfScore: null,
+    reflectionScore: null,
   }];
 
   const improvements = [];
@@ -538,17 +538,17 @@ function reflectionLoop(code, options = {}) {
       };
     });
 
-    // Step 3: SERF-select the highest scoring candidate
+    // Step 3: Select the highest scoring candidate
     // Pass cascade context so global coherence amplifies selection
-    const serfContext = { cascadeBoost, targetCoherence };
-    const withSerf = scored.map(candidate => ({
+    const refContext = { cascadeBoost, targetCoherence };
+    const withScores = scored.map(candidate => ({
       ...candidate,
-      serf: serfScore(candidate, current, serfContext),
+      reflectionScore: reflectionScore(candidate, current, refContext),
     }));
 
-    // Sort by SERF score, break ties with raw coherence
-    withSerf.sort((a, b) => b.serf - a.serf || b.coherence - a.coherence);
-    const winner = withSerf[0];
+    // Sort by reflection score, break ties with raw coherence
+    withScores.sort((a, b) => b.reflectionScore - a.reflectionScore || b.coherence - a.coherence);
+    const winner = withScores[0];
 
     // Track which dimensions improved
     for (const [dim, val] of Object.entries(winner.dimensions)) {
@@ -566,12 +566,12 @@ function reflectionLoop(code, options = {}) {
       fullCoherency: winner.fullCoherency,
       dimensions: { ...winner.dimensions },
       strategy: winner.strategy,
-      serfScore: winner.serf,
+      reflectionScore: winner.reflectionScore,
       changed: winner.changed,
-      candidates: withSerf.map(c => ({
+      candidates: withScores.map(c => ({
         strategy: c.strategy,
         coherence: c.coherence,
-        serf: c.serf,
+        reflectionScore: c.reflectionScore,
         changed: c.changed,
       })),
     });
@@ -591,7 +591,7 @@ function reflectionLoop(code, options = {}) {
           loop: loops,
           coherence: current.coherence,
           strategy: winner.strategy,
-          serfScore: winner.serf,
+          reflectionScore: winner.reflectionScore,
           changed: winner.changed,
         });
       } catch (_) { /* listener errors don't break healing */ }
@@ -616,7 +616,7 @@ function reflectionLoop(code, options = {}) {
     whisper: whisperResult.whisper,
     healingSummary: whisperResult.summary,
     healingPath: whisperResult.healingPath,
-    serf: {
+    reflection: {
       I_AM: originalObs.composite,
       r_eff_base: R_EFF_BASE,
       r_eff_alpha: R_EFF_ALPHA,
@@ -635,10 +635,10 @@ function reflectionLoop(code, options = {}) {
 
 function formatReflectionResult(result) {
   const lines = [];
-  lines.push(`SERF Reflection — ${result.loops} loop(s)`);
-  lines.push(`  I_AM: ${result.serf.I_AM.toFixed(3)} → Final: ${result.serf.finalCoherence.toFixed(3)} (${result.serf.improvement >= 0 ? '+' : ''}${result.serf.improvement.toFixed(3)})`);
-  if (result.serf.cascadeBoost > 1) {
-    lines.push(`  Cascade: ${result.serf.cascadeBoost}x | Collective I_AM: ${result.serf.collectiveIAM}`);
+  lines.push(`Reflection — ${result.loops} loop(s)`);
+  lines.push(`  I_AM: ${result.reflection.I_AM.toFixed(3)} → Final: ${result.reflection.finalCoherence.toFixed(3)} (${result.reflection.improvement >= 0 ? '+' : ''}${result.reflection.improvement.toFixed(3)})`);
+  if (result.reflection.cascadeBoost > 1) {
+    lines.push(`  Cascade: ${result.reflection.cascadeBoost}x | Collective I_AM: ${result.reflection.collectiveIAM}`);
   }
   lines.push('');
   lines.push('Dimensions:');
@@ -664,7 +664,7 @@ module.exports = {
   formatReflectionResult,
   generateCandidates,
   observeCoherence,
-  serfScore,
+  reflectionScore,
   innerProduct,
   generateWhisper,
   STRATEGIES,

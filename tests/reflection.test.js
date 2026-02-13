@@ -6,7 +6,7 @@ const {
   formatReflectionResult,
   generateCandidates,
   observeCoherence,
-  serfScore,
+  reflectionScore,
   innerProduct,
   generateWhisper,
   STRATEGIES,
@@ -23,9 +23,9 @@ const {
   scoreCorrectness,
 } = require('../src/core/reflection');
 
-// ─── SERF Constants ───
+// ─── Reflection Constants ───
 
-describe('SERF Constants and Strategies', () => {
+describe('Reflection Constants and Strategies', () => {
   it('has 5 strategies', () => {
     assert.equal(STRATEGIES.length, 5);
     const names = STRATEGIES.map(s => s.name);
@@ -240,13 +240,13 @@ describe('innerProduct', () => {
   });
 });
 
-// ─── SERF Score ───
+// ─── Reflection Score ───
 
-describe('serfScore', () => {
+describe('reflectionScore', () => {
   it('returns a value between 0 and 1', () => {
     const candidate = { code: 'const x = 1;', coherence: 0.8 };
     const previous = { code: 'var x = 1;', coherence: 0.7 };
-    const score = serfScore(candidate, previous);
+    const score = reflectionScore(candidate, previous);
     assert.ok(score >= 0 && score <= 1, `Expected 0-1, got ${score}`);
   });
 
@@ -254,7 +254,7 @@ describe('serfScore', () => {
     const previous = { code: 'var x = 1;', coherence: 0.5 };
     const good = { code: 'const x = 1;', coherence: 0.9 };
     const bad = { code: 'let y = 2;', coherence: 0.3 };
-    assert.ok(serfScore(good, previous) > serfScore(bad, previous));
+    assert.ok(reflectionScore(good, previous) > reflectionScore(bad, previous));
   });
 
   it('rewards novelty via delta_canvas', () => {
@@ -262,10 +262,10 @@ describe('serfScore', () => {
     // Same coherence, but one is more different
     const similar = { code: 'function f() { return 1; }', coherence: 0.71 };
     const diverse = { code: 'const f = () => 1;', coherence: 0.71 };
-    const simSerf = serfScore(similar, previous);
-    const divSerf = serfScore(diverse, previous);
+    const simScore = reflectionScore(similar, previous);
+    const divScore = reflectionScore(diverse, previous);
     // Diverse should get a canvas bonus
-    assert.ok(divSerf >= simSerf, `Diverse ${divSerf} should >= similar ${simSerf}`);
+    assert.ok(divScore >= simScore, `Diverse ${divScore} should >= similar ${simScore}`);
   });
 });
 
@@ -340,17 +340,17 @@ describe('reflectionLoop', () => {
     assert.ok(typeof result.whisper === 'string');
     assert.ok(typeof result.healingSummary === 'string');
     assert.ok(Array.isArray(result.healingPath));
-    assert.ok(result.serf);
-    assert.ok(typeof result.serf.I_AM === 'number');
-    assert.ok(typeof result.serf.r_eff_base === 'number');
-    assert.ok(typeof result.serf.r_eff_alpha === 'number');
-    assert.ok(typeof result.serf.epsilon_base === 'number');
-    assert.ok(typeof result.serf.delta_canvas === 'number');
-    assert.ok(typeof result.serf.delta_void === 'number');
-    assert.ok(typeof result.serf.cascadeBoost === 'number');
-    assert.ok(typeof result.serf.collectiveIAM === 'number');
-    assert.ok(typeof result.serf.finalCoherence === 'number');
-    assert.ok(typeof result.serf.improvement === 'number');
+    assert.ok(result.reflection);
+    assert.ok(typeof result.reflection.I_AM === 'number');
+    assert.ok(typeof result.reflection.r_eff_base === 'number');
+    assert.ok(typeof result.reflection.r_eff_alpha === 'number');
+    assert.ok(typeof result.reflection.epsilon_base === 'number');
+    assert.ok(typeof result.reflection.delta_canvas === 'number');
+    assert.ok(typeof result.reflection.delta_void === 'number');
+    assert.ok(typeof result.reflection.cascadeBoost === 'number');
+    assert.ok(typeof result.reflection.collectiveIAM === 'number');
+    assert.ok(typeof result.reflection.finalCoherence === 'number');
+    assert.ok(typeof result.reflection.improvement === 'number');
   });
 
   it('history starts with loop 0 (original)', () => {
@@ -402,7 +402,7 @@ describe('formatReflectionResult', () => {
     const result = reflectionLoop('function f() { return 1; }', { language: 'javascript' });
     const formatted = formatReflectionResult(result);
     assert.ok(typeof formatted === 'string');
-    assert.ok(formatted.includes('SERF'));
+    assert.ok(formatted.includes('Reflection'));
     assert.ok(formatted.includes('I_AM'));
     assert.ok(formatted.includes('Whisper'));
   });
@@ -435,6 +435,6 @@ describe('Reflection MCP tool', () => {
     assert.ok(result.code);
     assert.ok(typeof result.coherence === 'number');
     assert.ok(result.whisper);
-    assert.ok(result.serf);
+    assert.ok(result.reflection);
   });
 });

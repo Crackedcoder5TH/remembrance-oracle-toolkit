@@ -4,7 +4,7 @@
  * Two main capabilities:
  *
  * 1. selfImprove(oracle) — Improve the oracle's content quality:
- *    - Heal low-coherency patterns via SERF
+ *    - Heal low-coherency patterns via reflection
  *    - Promote ready candidates
  *    - Remove duplicates and stubs
  *    - Re-tag for better discoverability
@@ -43,8 +43,8 @@ const OPTIMIZE_DEFAULTS = {
   minUsageForAnalytics: 3,
   tagConsolidationMin: 2, // Minimum patterns per tag to keep
 
-  // SERF loops for improvement healing
-  maxSerfLoops: 3,
+  // Reflection loops for improvement healing
+  maxRefineLoops: 3,
 };
 
 // ─── Self-Improve ───
@@ -54,11 +54,11 @@ const OPTIMIZE_DEFAULTS = {
  *
  * Steps:
  *   1. Identify patterns below target coherency
- *   2. SERF-heal each one to raise coherency
+ *   2. Heal each one via reflection to raise coherency
  *   3. Promote any candidates ready for proven status
  *   4. Remove duplicates and trivial stubs
  *   5. Re-tag all patterns for better discoverability
- *   6. Recover rejected submissions via SERF
+ *   6. Recover rejected submissions via reflection
  *
  * @param {object} oracle - RemembranceOracle instance
  * @param {object} options - Override OPTIMIZE_DEFAULTS
@@ -97,7 +97,7 @@ function selfImprove(oracle, options = {}) {
   for (const pattern of needsHealing) {
     try {
       const result = autoHeal(pattern, {
-        maxLoops: config.maxSerfLoops,
+        maxLoops: config.maxRefineLoops,
       });
 
       if (result && result.improvement > 0) {
@@ -495,7 +495,7 @@ function _generateWhisper(improveReport, optimizeReport, evolutionReport) {
 
   // Healing summary
   if (improveReport.healed.length > 0) {
-    lines.push(`Healed ${improveReport.healed.length} pattern(s) via SERF reflection:`);
+    lines.push(`Healed ${improveReport.healed.length} pattern(s) via reflection:`);
     for (const h of improveReport.healed.slice(0, 10)) {
       const pct = (h.improvement * 100).toFixed(1);
       lines.push(`  + ${h.name}: ${(h.oldCoherency * 100).toFixed(0)}% -> ${(h.newCoherency * 100).toFixed(0)}% (+${pct}%)`);

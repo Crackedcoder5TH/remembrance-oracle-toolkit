@@ -4,10 +4,10 @@
  * The oracle already DETECTS problems (staleness, low success rate,
  * high evolve frequency, regression). This module makes it ACT on them:
  *
- * 1. Auto-Heal: Low success rate patterns get SERF healing automatically
+ * 1. Auto-Heal: Low success rate patterns get healing automatically
  * 2. Staleness Scoring: Unused patterns get deprioritized in decisions
  * 3. Evolve Penalty: Patterns forked 3+ times get parent deprioritized
- * 4. Rejection Capture: Failed submissions get captured for SERF healing
+ * 4. Rejection Capture: Failed submissions get captured for healing
  * 5. Regression Detection: Tracks success rate over time, flags drops
  * 6. Coherency Re-check: Periodically re-scores patterns
  *
@@ -40,8 +40,8 @@ const EVOLUTION_DEFAULTS = {
   // Re-check coherency after this many days
   recheckCoherencyDays: 30,
 
-  // Max SERF loops for auto-healing
-  maxSerfLoops: 3,
+  // Max reflection loops for auto-healing
+  maxRefineLoops: 3,
 };
 
 // ─── Staleness Scoring ───
@@ -126,7 +126,7 @@ function needsAutoHeal(pattern, config = EVOLUTION_DEFAULTS) {
 }
 
 /**
- * Auto-heal a pattern via SERF reflection.
+ * Auto-heal a pattern via reflection.
  * Returns the healed code and improvement metrics, or null if healing failed.
  *
  * @param {object} pattern - Pattern to heal
@@ -134,7 +134,7 @@ function needsAutoHeal(pattern, config = EVOLUTION_DEFAULTS) {
  * @returns {object|null} { code, improvement, loops, originalCoherency, newCoherency }
  */
 function autoHeal(pattern, options = {}) {
-  const maxLoops = options.maxLoops || EVOLUTION_DEFAULTS.maxSerfLoops;
+  const maxLoops = options.maxLoops || EVOLUTION_DEFAULTS.maxRefineLoops;
 
   try {
     const reflection = reflectionLoop(pattern.code, {
@@ -171,7 +171,7 @@ function autoHeal(pattern, options = {}) {
 // ─── Rejection Capture ───
 
 /**
- * Capture a rejected submission for potential SERF healing.
+ * Capture a rejected submission for potential healing.
  * Returns a captured entry that can be fed to the recycler.
  *
  * @param {string} code - Rejected code
@@ -312,7 +312,7 @@ function evolve(oracle, options = {}) {
   // 2. Auto-heal patterns with low success rate
   const needHealing = patterns.filter(p => needsAutoHeal(p, config));
   for (const pattern of needHealing) {
-    const healResult = autoHeal(pattern, { maxLoops: config.maxSerfLoops });
+    const healResult = autoHeal(pattern, { maxLoops: config.maxRefineLoops });
     if (healResult && healResult.improvement > 0) {
       // Update the pattern's code with the healed version
       try {

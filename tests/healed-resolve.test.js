@@ -171,7 +171,7 @@ setTimeout(() => { if (count !== 1) throw new Error('should debounce'); }, 50);`
   });
 
   describe('healing metadata', () => {
-    it('includes healing object with SERF data on pull', () => {
+    it('includes healing object with reflection data on pull', () => {
       const result = oracle.resolve({ description: 'rate limiter', tags: ['rate-limit'] });
       if (result.healing) {
         assert.equal(typeof result.healing.loops, 'number');

@@ -35,7 +35,7 @@ const { harvest, harvestFunctions, splitFunctions } = require('./ci/harvest');
 const { installHooks, uninstallHooks, runPreCommitCheck } = require('./ci/hooks');
 const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES } = require('./core/covenant');
 const { actionableFeedback, formatFeedback, covenantFeedback, coherencyFeedback } = require('./core/feedback');
-const { reflectionLoop, formatReflectionResult, observeCoherence, serfScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
+const { reflectionLoop, formatReflectionResult, observeCoherence, reflectionScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
 const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyError, computeConfidence, ERROR_CATEGORIES } = require('./core/debug-oracle');
 const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
 const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
@@ -167,11 +167,11 @@ module.exports = {
   covenantFeedback,
   coherencyFeedback,
 
-  // Reflection / SERF
+  // Reflection
   reflectionLoop,
   formatReflectionResult,
   observeCoherence,
-  serfScore,
+  reflectionScore,
   generateCandidates,
   STRATEGIES,
   DIMENSION_WEIGHTS,

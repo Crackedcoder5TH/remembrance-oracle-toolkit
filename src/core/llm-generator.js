@@ -4,7 +4,7 @@
  * Replaces regex-based transpilation with LLM-quality output:
  *   1. Transpile patterns to any language with correct idioms
  *   2. Generate test code for candidates
- *   3. Refine code via SERF with LLM suggestions
+ *   3. Refine code via reflection with LLM suggestions
  *   4. Generate approach alternatives (different algorithms)
  *   5. Generate documentation
  *
@@ -276,7 +276,7 @@ Output ONLY the alternative function code, no explanations.`;
   }
 
   /**
-   * Refine code using SERF-style improvement suggestions.
+   * Refine code using reflection-style improvement suggestions.
    * @param {object} pattern - { code, name, language }
    * @param {object} coherencyReport - The coherency score breakdown
    * @returns {Promise<string|null>} Improved code or null

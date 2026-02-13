@@ -492,7 +492,7 @@ describe('selfImprove', () => {
 
     // The pattern is below 0.85 target so healing is attempted
     assert.equal(report.patternsAnalyzed, 1);
-    // Result depends on whether SERF can improve it
+    // Result depends on whether reflection can improve it
     assert.ok(report.healed.length >= 0);
   });
 
@@ -659,7 +659,7 @@ describe('OPTIMIZE_DEFAULTS', () => {
     assert.ok(OPTIMIZE_DEFAULTS.healTargetCoherency > 0);
     assert.ok(OPTIMIZE_DEFAULTS.nearDuplicateThreshold > 0);
     assert.ok(OPTIMIZE_DEFAULTS.staleArchiveDays > 0);
-    assert.ok(OPTIMIZE_DEFAULTS.maxSerfLoops > 0);
+    assert.ok(OPTIMIZE_DEFAULTS.maxRefineLoops > 0);
   });
 });
 

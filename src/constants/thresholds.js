@@ -159,10 +159,10 @@ const CASCADE = {
   VOID_SCAFFOLD_MIN_COHERENCY: 0.8, // Only scaffold from high-quality patterns
 };
 
-/** SERF healing configuration */
+/** Healing configuration */
 const HEALING = {
   MAX_ATTEMPTS: 3,             // Try healing up to 3 times
-  MAX_SERF_LOOPS: 5,           // Max SERF reflection loops per attempt
+  MAX_REFINE_LOOPS: 5,         // Max reflection loops per attempt
   TARGET_COHERENCE: 0.9,       // Aim for 90% coherency after healing
 };
 
@@ -182,13 +182,13 @@ const VARIANT_GENERATION = {
 
 /** Approach swap — exploratory, so more lenient */
 const APPROACH_SWAP = {
-  SERF_LOOPS: 2,
+  REFINE_LOOPS: 2,
   TARGET_COHERENCE: 0.85,
 };
 
-/** SERF refinement of proven patterns — strict because refining proven code */
-const SERF_REFINE = {
-  SERF_LOOPS: 2,
+/** Iterative refinement of proven patterns — strict because refining proven code */
+const ITERATIVE_REFINE = {
+  REFINE_LOOPS: 2,
   TARGET_COHERENCE: 0.95,
 };
 
@@ -231,7 +231,7 @@ module.exports = {
   VOID_REPLENISH_WEIGHTS,
   VARIANT_GENERATION,
   APPROACH_SWAP,
-  SERF_REFINE,
+  ITERATIVE_REFINE,
   CANDIDATE_MIN_COHERENCY,
   MAX_TERNARY_NESTING,
 };

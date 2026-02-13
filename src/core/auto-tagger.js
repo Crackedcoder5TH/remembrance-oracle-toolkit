@@ -401,7 +401,7 @@ function autoTag(code, options = {}) {
   }
 
   // Remove empty/single-char tags and meta-noise
-  const NOISE = new Set(['auto-generated', 'variant', 'serf-refined', 'pattern']);
+  const NOISE = new Set(['auto-generated', 'variant', 'auto-refined', 'pattern']);
   const result = [...tagSet]
     .filter(t => t.length > 1 && !NOISE.has(t))
     .sort();

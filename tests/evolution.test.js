@@ -222,7 +222,7 @@ describe('needsAutoHeal', () => {
 // ─── autoHeal ───
 
 describe('autoHeal', () => {
-  it('attempts SERF healing on a pattern', () => {
+  it('attempts reflection healing on a pattern', () => {
     const p = makePattern({
       code: 'function   add( a,b ){return a+b}',
       language: 'javascript',
@@ -444,7 +444,7 @@ describe('EVOLUTION_DEFAULTS', () => {
     assert.ok(typeof EVOLUTION_DEFAULTS.evolvePenaltyMax === 'number');
     assert.ok(typeof EVOLUTION_DEFAULTS.regressionDelta === 'number');
     assert.ok(typeof EVOLUTION_DEFAULTS.recheckCoherencyDays === 'number');
-    assert.ok(typeof EVOLUTION_DEFAULTS.maxSerfLoops === 'number');
+    assert.ok(typeof EVOLUTION_DEFAULTS.maxRefineLoops === 'number');
   });
 
   it('has sensible default values', () => {

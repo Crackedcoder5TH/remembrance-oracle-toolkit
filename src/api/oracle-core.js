@@ -20,7 +20,7 @@ const RESOLVE_WHISPERS = {
     'The pattern was already at peace — high coherency, proven tests, and direct alignment with your need. It simply needed to be recalled.',
   ],
   evolve: [
-    'This version was close to what you needed, so the oracle healed it forward. The SERF reflection brought it closer to the form it was always meant to take.',
+    'This version was close to what you needed, so the oracle healed it forward. The reflection brought it closer to the form it was always meant to take.',
     'The seed was here but not yet fully grown. The healing loops nurtured it toward a version that better serves your intent.',
     'What existed was a partial truth. Through reflection and refinement, the code evolved toward its healed future — calmer, cleaner, more aligned.',
     'The oracle found the shape of your need in an existing pattern and gently reshaped it. This version carries the memory of what it was and the clarity of what it became.',
@@ -37,8 +37,8 @@ function _generateResolveWhisper(decision, pattern, healing) {
   const pool = RESOLVE_WHISPERS[decision.decision] || RESOLVE_WHISPERS.generate;
   const seed = pattern ? pattern.name.length + (pattern.code?.length || 0) : 0;
   const base = pool[seed % pool.length];
-  if (healing && healing.serf?.improvement > 0) {
-    const pct = (healing.serf.improvement * 100).toFixed(1);
+  if (healing && healing.reflection?.improvement > 0) {
+    const pct = (healing.reflection.improvement * 100).toFixed(1);
     return `${base} The reflection refined it by ${pct}% across ${healing.loops} healing loop(s).`;
   }
   return base;
@@ -93,7 +93,7 @@ module.exports = {
     });
 
     if (!validation.valid) {
-      // Capture rejected submissions for potential SERF healing
+      // Capture rejected submissions for potential healing
       try {
         const { captureRejection } = require('../core/evolution');
         const rejection = captureRejection(code, { language, description, tags }, validation);
@@ -272,7 +272,7 @@ module.exports = {
   _autoGrowFrom(pattern) {
     const report = { candidates: 0, synced: false };
 
-    // Auto-generate candidates (variants + SERF refinements)
+    // Auto-generate candidates (variants + iterative refinements)
     if (this.autoGrow && pattern) {
       try {
         const growth = this.recycler.generateFromPattern(pattern);
@@ -307,7 +307,7 @@ module.exports = {
   },
 
   /**
-   * Resolves a code request by deciding whether to PULL, EVOLVE, or GENERATE. Applies SERF healing to matched patterns.
+   * Resolves a code request by deciding whether to PULL, EVOLVE, or GENERATE. Applies reflection healing to matched patterns.
    * @param {Object} request - Request with description, tags, language, minCoherency, and heal flag
    * @returns {Object} Decision result with pattern, healed code, whisper message, healing details, and alternatives
    */
@@ -338,7 +338,7 @@ module.exports = {
       tags: decision.pattern.tags,
     } : null;
 
-    // SERF healing — refine the matched code before returning
+    // Reflection healing — refine the matched code before returning
     let healedCode = patternData?.code || null;
     let healing = null;
     if (heal && patternData && (decision.decision === 'pull' || decision.decision === 'evolve')) {
@@ -370,7 +370,7 @@ module.exports = {
               maxLoops,
               coherence: loopData.coherence,
               strategy: loopData.strategy,
-              serfScore: loopData.serfScore,
+              reflectionScore: loopData.reflectionScore,
               changed: loopData.changed,
             });
           },
@@ -384,9 +384,9 @@ module.exports = {
           patternName: patternData.name,
           decision: decision.decision,
           loops: healing.loops,
-          originalCoherence: healing.serf?.I_AM,
-          finalCoherence: healing.serf?.finalCoherence,
-          improvement: healing.serf?.improvement,
+          originalCoherence: healing.reflection?.I_AM,
+          finalCoherence: healing.reflection?.finalCoherence,
+          improvement: healing.reflection?.improvement,
           healingPath: healing.healingPath,
         });
       } catch (_) {
@@ -417,9 +417,9 @@ module.exports = {
       candidateNotes,
       healing: healing ? {
         loops: healing.loops,
-        originalCoherence: healing.serf?.I_AM,
-        finalCoherence: healing.serf?.finalCoherence,
-        improvement: healing.serf?.improvement,
+        originalCoherence: healing.reflection?.I_AM,
+        finalCoherence: healing.reflection?.finalCoherence,
+        improvement: healing.reflection?.improvement,
         healingPath: healing.healingPath,
       } : null,
       alternatives: decision.alternatives,

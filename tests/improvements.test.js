@@ -184,7 +184,7 @@ describe('Oracle Import', () => {
   });
 });
 
-// ─── Combined SERF Transform (applyHeal) ───
+// ─── Combined Reflection Transform (applyHeal) ───
 
 describe('applyHeal — combined transform', () => {
   const { applyHeal, generateCandidates } = require('../src/core/reflection');

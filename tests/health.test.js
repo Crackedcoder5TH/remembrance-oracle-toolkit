@@ -20,7 +20,7 @@ function createMockOracle(opts = {}) {
     patterns: {
       getAll: (filters) => patterns,
     },
-    candidateStats: () => ({ total: opts.candidates || 5, byMethod: { variant: 3, 'serf-refine': 2 } }),
+    candidateStats: () => ({ total: opts.candidates || 5, byMethod: { variant: 3, 'iterative-refine': 2 } }),
   };
 }
 

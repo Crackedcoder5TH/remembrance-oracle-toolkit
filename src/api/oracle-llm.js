@@ -95,7 +95,7 @@ module.exports = {
       }
     }
 
-    // Fallback to SERF reflection
+    // Fallback to reflection
     try {
       const { reflectionLoop } = require('../core/reflection');
       const result = reflectionLoop(pattern.code, {
@@ -104,7 +104,7 @@ module.exports = {
         targetCoherence: 0.9,
       });
       if (result.improved) {
-        return { success: true, refinedCode: result.code, method: 'serf' };
+        return { success: true, refinedCode: result.code, method: 'reflection' };
       }
     } catch { /* reflection not available */ }
 

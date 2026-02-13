@@ -5,7 +5,7 @@
  *   1. Auto-registration: patterns automatically register after successful operations
  *   2. Auto-promotion: candidates with tests get promoted on every feedback cycle
  *   3. Evolution triggers: self-evolve fires after threshold events (not manual)
- *   4. Healing sweeps: periodic SERF healing across the library
+ *   4. Healing sweeps: periodic reflection healing across the library
  *   5. Coherency maintenance: auto-retag + re-score on schedule
  *
  * The lifecycle engine hooks into oracle events and drives continuous improvement

@@ -51,7 +51,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       console.log(`Tags: ${(result.pattern.tags || []).map(t => c.magenta(t)).join(', ')}`);
       if (result.healing) {
         console.log(`\n${c.dim('── Healing ──')}`);
-        console.log(`SERF: ${colorScore(result.healing.originalCoherence?.toFixed(3))} → ${colorScore(result.healing.finalCoherence?.toFixed(3))} (${result.healing.improvement >= 0 ? '+' : ''}${(result.healing.improvement || 0).toFixed(3)}) in ${result.healing.loops} loop(s)`);
+        console.log(`Reflection: ${colorScore(result.healing.originalCoherence?.toFixed(3))} → ${colorScore(result.healing.finalCoherence?.toFixed(3))} (${result.healing.improvement >= 0 ? '+' : ''}${(result.healing.improvement || 0).toFixed(3)}) in ${result.healing.loops} loop(s)`);
         if (result.healing.healingPath?.length > 0) {
           console.log(`Path: ${c.dim(result.healing.healingPath.join(' → '))}`);
         }
@@ -295,7 +295,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['generate'] = (args) => {
     const languages = (args.languages || 'python,typescript').split(',').map(s => s.trim());
-    const methods = (args.methods || 'variant,serf-refine,approach-swap').split(',').map(s => s.trim());
+    const methods = (args.methods || 'variant,iterative-refine,approach-swap').split(',').map(s => s.trim());
     const maxPatterns = parseInt(args['max-patterns']) || Infinity;
     const minCoherency = parseFloat(args['min-coherency']) || 0.5;
 

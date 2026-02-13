@@ -5,7 +5,7 @@
  *
  *   1. CAPTURE: Error signature + stack trace + fix code → stored
  *   2. MATCH:   Error fingerprint → search all tiers for matching fixes
- *   3. GENERALIZE: SERF-refine fixes to work across error classes
+ *   3. GENERALIZE: refine fixes to work across error classes
  *   4. GROW:    Transpile fixes, generate for related error categories
  *   5. AMPLIFY: Community shares → more validations → higher confidence
  *

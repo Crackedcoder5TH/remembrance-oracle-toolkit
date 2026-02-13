@@ -467,7 +467,7 @@ export function rewriteQuery(query: string): string;
 export function editDistance(a: string, b: string): number;
 export function smartSearch(query: string, entries: Entry[]): Entry[];
 
-// ─── Reflection & SERF ───
+// ─── Reflection ───
 
 export interface ReflectionResult {
   original: string;
@@ -486,7 +486,7 @@ export function reflectionLoop(code: string, options?: {
 
 export function formatReflectionResult(result: ReflectionResult): string;
 export function observeCoherence(code: string): number;
-export function serfScore(code: string): number;
+export function reflectionScore(code: string): number;
 export function generateCandidates(options?: GenerateCandidatesOptions): Candidate[];
 
 export const STRATEGIES: string[];

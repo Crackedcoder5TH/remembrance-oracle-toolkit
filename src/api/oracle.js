@@ -37,7 +37,7 @@ class RemembranceOracle {
     this.autoSync = options.autoSync || false;    // Auto-sync to personal store on proven code
     this.recycler = new PatternRecycler(this, {
       maxHealAttempts: options.maxHealAttempts || 3,
-      maxSerfLoops: options.maxSerfLoops || 5,
+      maxRefineLoops: options.maxRefineLoops || 5,
       generateVariants: options.generateVariants !== false,
       variantLanguages: options.variantLanguages || ['python', 'typescript'],
       verbose: options.verbose || false,

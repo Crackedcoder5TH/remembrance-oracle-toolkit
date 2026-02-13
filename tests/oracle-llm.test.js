@@ -160,12 +160,12 @@ describe('Oracle llmRefine', () => {
     assert.ok(result.refinedCode.includes('function add'));
   });
 
-  it('falls back to SERF when Claude fails', () => {
+  it('falls back to reflection when Claude fails', () => {
     mockClaude.prompt = () => null;
     const patterns = oracle.patterns.getAll();
     const result = oracle.llmRefine(patterns[0].id);
-    // SERF may or may not improve — but should return with serf method or fail gracefully
-    assert.ok(result.method === 'serf' || result.method === 'none');
+    // Reflection may or may not improve — but should return with reflection method or fail gracefully
+    assert.ok(result.method === 'reflection' || result.method === 'none');
   });
 });
 

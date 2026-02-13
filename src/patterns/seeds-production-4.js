@@ -400,7 +400,7 @@ var stuck = selfReflectionLoop('stuck', {
 if (stuck.converged) throw new Error('should not converge when stuck');`,
       language: 'javascript',
       description: 'Self-reflection loop that iteratively evaluates and refines code until convergence threshold or max iterations',
-      tags: ['reflection', 'serf', 'loop', 'refinement', 'iteration', 'self-improvement', 'ai'],
+      tags: ['reflection', 'loop', 'refinement', 'iteration', 'self-improvement', 'ai'],
       patternType: 'design-pattern',
     },
 
@@ -516,7 +516,7 @@ if (!safe.valid) throw new Error('sha256 should be valid');`,
   var before = analysis.beforeScore || 0;
   var after = analysis.afterScore || 0;
   var delta = Math.round((after - before) * 1000) / 1000;
-  var method = analysis.method || 'serf-refine';
+  var method = analysis.method || 'iterative-refine';
   var issues = analysis.issuesFixed || [];
   var breaking = analysis.breakingChanges || false;
 
@@ -558,7 +558,7 @@ if (!safe.valid) throw new Error('sha256 should be valid');`,
   patternName: 'binary-search',
   beforeScore: 0.65,
   afterScore: 0.85,
-  method: 'serf-refine',
+  method: 'iterative-refine',
   issuesFixed: ['Fixed off-by-one', 'Improved naming'],
   breakingChanges: false
 });
@@ -579,8 +579,8 @@ if (!breaking.includes('Warning')) throw new Error('should warn about breaking')
 if (!breaking.includes('minor')) throw new Error('small delta should be minor');
 try { generateHealingPRComment(); throw new Error('should throw'); } catch(e) { if (e.message === 'should throw') throw e; }`,
       language: 'javascript',
-      description: 'Generates structured PR comments for SERF healing with score deltas, issue summaries, and verification checklists',
-      tags: ['healing', 'pr', 'comment', 'template', 'serf', 'report', 'markdown'],
+      description: 'Generates structured PR comments for reflection-based healing with score deltas, issue summaries, and verification checklists',
+      tags: ['healing', 'pr', 'comment', 'template', 'reflection', 'report', 'markdown'],
       patternType: 'utility',
     },
 

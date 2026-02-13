@@ -322,10 +322,10 @@ describe('autoTag', () => {
   });
 
   it('removes noise tags (auto-generated, variant, etc.)', () => {
-    const tags = autoTag('function sort() {}', { tags: ['auto-generated', 'variant', 'serf-refined', 'real-tag'] });
+    const tags = autoTag('function sort() {}', { tags: ['auto-generated', 'variant', 'auto-refined', 'real-tag'] });
     assert.ok(!tags.includes('auto-generated'));
     assert.ok(!tags.includes('variant'));
-    assert.ok(!tags.includes('serf-refined'));
+    assert.ok(!tags.includes('auto-refined'));
     assert.ok(tags.includes('real-tag'));
   });
 

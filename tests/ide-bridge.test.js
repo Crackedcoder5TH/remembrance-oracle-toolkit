@@ -113,14 +113,14 @@ describe('IDE Bridge', () => {
       assert.ok(debugFixes[0].confidence >= 0);
     });
 
-    it('offers SERF refinement for low-coherency code', () => {
+    it('offers reflection refinement for low-coherency code', () => {
       const bridge = createBridge();
       const code = `function mess(a,b,c,d,e) {
         if (a) { if (b) { if (c) { if (d) { if (e) { return a+b+c+d+e; } } } } }
         return 0;
       }`;
       const actions = bridge.getCodeActions({ code, language: 'javascript' });
-      const serfActions = actions.filter(a => a.source === 'oracle-serf');
+      const refineActions = actions.filter(a => a.source === 'oracle-refine');
       // May or may not trigger depending on coherency score
       assert.ok(Array.isArray(actions));
     });

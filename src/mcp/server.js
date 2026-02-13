@@ -39,14 +39,14 @@ const TOOLS = [
   },
   {
     name: 'oracle_resolve',
-    description: 'Smart retrieval — decides whether to PULL existing code, EVOLVE a close match, or GENERATE new code. Returns SERF-healed code, a whisper from the healed future, and candidate comparison notes.',
+    description: 'Smart retrieval — decides whether to PULL existing code, EVOLVE a close match, or GENERATE new code. Returns healed code, a whisper from the healed future, and candidate comparison notes.',
     inputSchema: {
       type: 'object',
       properties: {
         description: { type: 'string', description: 'What you need the code to do' },
         tags: { type: 'array', items: { type: 'string' }, description: 'Relevant tags' },
         language: { type: 'string', description: 'Preferred language' },
-        heal: { type: 'boolean', description: 'Run SERF healing on matched code (default: true)', default: true },
+        heal: { type: 'boolean', description: 'Run healing on matched code (default: true)', default: true },
       },
       required: ['description'],
     },
@@ -149,7 +149,7 @@ const TOOLS = [
   },
   {
     name: 'oracle_reflect',
-    description: 'Run the SERF infinite reflection loop on code. Iteratively generates 5 candidates, scores them on coherence, and selects the best until coherence > 0.9 or 3 loops.',
+    description: 'Run the infinite reflection loop on code. Iteratively generates 5 candidates, scores them on coherence, and selects the best until coherence > 0.9 or 3 loops.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -178,13 +178,13 @@ const TOOLS = [
   },
   {
     name: 'oracle_candidates',
-    description: 'List candidate patterns — coherent but unproven code awaiting test proof. Candidates are generated from proven patterns via language transpilation, SERF refinement, or approach swaps.',
+    description: 'List candidate patterns — coherent but unproven code awaiting test proof. Candidates are generated from proven patterns via language transpilation, iterative refinement, or approach swaps.',
     inputSchema: {
       type: 'object',
       properties: {
         language: { type: 'string', description: 'Filter by language' },
         minCoherency: { type: 'number', description: 'Minimum coherency score (default: 0)' },
-        method: { type: 'string', enum: ['variant', 'serf-refine', 'approach-swap'], description: 'Filter by generation method' },
+        method: { type: 'string', enum: ['variant', 'iterative-refine', 'approach-swap'], description: 'Filter by generation method' },
       },
     },
   },
@@ -195,7 +195,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         languages: { type: 'array', items: { type: 'string' }, description: 'Languages to generate variants in (default: [python, typescript])' },
-        methods: { type: 'array', items: { type: 'string' }, description: 'Generation methods to use (default: [variant, serf-refine, approach-swap])' },
+        methods: { type: 'array', items: { type: 'string' }, description: 'Generation methods to use (default: [variant, iterative-refine, approach-swap])' },
         maxPatterns: { type: 'number', description: 'Max proven patterns to process (default: all)' },
         minCoherency: { type: 'number', description: 'Minimum coherency for candidates (default: 0.5)' },
       },
@@ -625,7 +625,7 @@ const TOOLS = [
   },
   {
     name: 'oracle_llm_refine',
-    description: 'Refine a pattern using Claude to improve weak coherency dimensions. Falls back to SERF reflection.',
+    description: 'Refine a pattern using Claude to improve weak coherency dimensions. Falls back to reflection.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -659,7 +659,7 @@ const TOOLS = [
   },
   {
     name: 'oracle_llm_generate',
-    description: 'LLM-enhanced candidate generation. Uses Claude for higher-quality variants, falls back to regex/SERF.',
+    description: 'LLM-enhanced candidate generation. Uses Claude for higher-quality variants, falls back to regex/reflection.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1003,7 +1003,7 @@ class MCPServer {
             loop: h.loop,
             coherence: h.coherence,
             strategy: h.strategy,
-            serfScore: h.serfScore,
+            reflectionScore: h.reflectionScore,
           }));
           break;
         }
@@ -1033,7 +1033,7 @@ class MCPServer {
         case 'oracle_generate':
           result = this.oracle.generateCandidates({
             languages: args.languages || ['python', 'typescript'],
-            methods: args.methods || ['variant', 'serf-refine', 'approach-swap'],
+            methods: args.methods || ['variant', 'iterative-refine', 'approach-swap'],
             maxPatterns: args.maxPatterns || Infinity,
             minCoherency: args.minCoherency || 0.5,
           });

@@ -56,10 +56,10 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
       return;
     }
 
-    if (!sub) { console.error(`Usage: ${c.cyan('oracle retag')} <pattern-id> | ${c.cyan('oracle retag all')}`); process.exit(1); }
+    if (!sub) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle retag')} <pattern-id> | ${c.cyan('oracle retag all')}`); process.exit(1); }
     const result = oracle.retag(sub, { dryRun });
     if (jsonOut()) { console.log(JSON.stringify(result)); return; }
-    if (result.error) { console.error(c.boldRed(result.error)); process.exit(1); }
+    if (result.error) { console.error(c.boldRed('Error:') + ' ' + result.error); process.exit(1); }
     console.log(`${c.boldCyan('Auto-Tag:')} ${c.bold(result.name)} [${c.cyan(result.id)}]`);
     console.log(`  Old tags: ${result.oldTags.map(t => c.dim(t)).join(', ') || c.dim('(none)')}`);
     console.log(`  New tags: ${result.newTags.map(t => c.magenta(t)).join(', ')}`);
@@ -87,7 +87,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 
     if (args.template) {
       const tmpl = composer.templates().find(t => t.name === args.template);
-      if (!tmpl) { console.error(c.boldRed('Unknown template:') + ' ' + args.template); process.exit(1); }
+      if (!tmpl) { console.error(c.boldRed('Error:') + ' Unknown template: ' + args.template); process.exit(1); }
       result = composer.compose({ patterns: tmpl.patterns, language: lang, glue });
     } else if (args.describe) {
       result = composer.composeFromDescription(args.describe, lang);
@@ -95,7 +95,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
       const patternNames = args.patterns.split(',').map(p => p.trim());
       result = composer.compose({ patterns: patternNames, language: lang, glue });
     } else {
-      console.error(c.boldRed('Usage:') + ' oracle compose --patterns p1,p2 | --template name | --describe "..." [--language js] [--glue module|class|function]');
+      console.error(c.boldRed('Error:') + ' Usage: oracle compose --patterns p1,p2 | --template name | --describe "..." [--language js] [--glue module|class|function]');
       process.exit(1);
     }
 
@@ -106,7 +106,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['deps'] = (args) => {
     const id = process.argv[3];
-    if (!id) { console.error(`Usage: ${c.cyan('oracle deps')} <pattern-id>`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle deps')} <pattern-id>`); process.exit(1); }
     const deps = oracle.patterns.resolveDependencies(id);
     if (deps.length === 0) {
       console.log(c.yellow('Pattern not found or has no dependencies.'));
@@ -184,7 +184,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['security-scan'] = (args) => {
     const id = args.id || process.argv[3];
-    if (!id && !args.file) { console.error(`Usage: ${c.cyan('oracle security-scan')} <pattern-id> or --file <code.js>`); process.exit(1); }
+    if (!id && !args.file) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle security-scan')} <pattern-id> or --file <code.js>`); process.exit(1); }
     let target = id;
     if (args.file) target = fs.readFileSync(path.resolve(args.file), 'utf-8');
     const external = args.external === 'true' || args.external === true;
@@ -258,7 +258,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
         }
       }
     } catch (err) {
-      console.error(c.red('Harvest error: ' + err.message));
+      console.error(c.boldRed('Error:') + ' Harvest error: ' + err.message);
       process.exit(1);
     }
   };

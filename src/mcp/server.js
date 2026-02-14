@@ -182,7 +182,7 @@ const TOOLS = [
     },
   },
 
-  // ─── Debug (4) ───
+  // ─── Debug (6) ───
   {
     name: 'oracle_debug_capture',
     description: 'Capture an error→fix pair as a debug pattern. Automatically generates language and error variants.',
@@ -231,6 +231,27 @@ const TOOLS = [
     description: 'Get debug oracle statistics — total patterns, confidence, resolution rates.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'oracle_debug_grow',
+    description: 'Grow debug patterns by generating language and error variants from existing patterns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Max patterns to process (default: all)' },
+      },
+    },
+  },
+  {
+    name: 'oracle_debug_patterns',
+    description: 'List all debug patterns, optionally filtered by language or error class.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        language: { type: 'string', description: 'Filter by programming language' },
+        errorClass: { type: 'string', description: 'Filter by error class (e.g. TypeError, SyntaxError)' },
+      },
+    },
+  },
 
   // ─── Storage (2) ───
   {
@@ -256,6 +277,24 @@ const TOOLS = [
         minCoherency: { type: 'number', description: 'Minimum coherency to share (default: 0.7)' },
         dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
       },
+    },
+  },
+
+  // ─── Harvest (1) ───
+  {
+    name: 'oracle_harvest',
+    description: 'Harvest patterns from a local directory or Git repo URL. Walks source files, extracts functions, and bulk-registers them as Oracle patterns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Local directory path or Git repo URL to harvest from' },
+        language: { type: 'string', description: 'Filter by language (javascript, python, go, rust, typescript)' },
+        dryRun: { type: 'boolean', description: 'Preview without registering patterns (default: false)' },
+        splitMode: { type: 'string', enum: ['file', 'function'], description: 'Split mode: register whole files or individual functions (default: file)' },
+        branch: { type: 'string', description: 'Git branch to clone (default: default branch)' },
+        maxFiles: { type: 'number', description: 'Max standalone files to process (default: 200)' },
+      },
+      required: ['path'],
     },
   },
 
@@ -481,6 +520,19 @@ class MCPServer {
           result = this.oracle.debugStats();
           break;
 
+        case 'oracle_debug_grow':
+          result = this.oracle.debugGrow({
+            limit: args.limit,
+          });
+          break;
+
+        case 'oracle_debug_patterns':
+          result = this.oracle.debugPatterns({
+            language: args.language,
+            errorClass: args.errorClass,
+          });
+          break;
+
         // ─── Storage ───
 
         case 'oracle_sync': {
@@ -498,6 +550,20 @@ class MCPServer {
             tags: args.tags,
             minCoherency: args.minCoherency || 0.7,
             dryRun: args.dryRun || false,
+          });
+          break;
+        }
+
+        // ─── Harvest ───
+
+        case 'oracle_harvest': {
+          const { harvest } = require('../ci/harvest');
+          result = harvest(this.oracle, args.path, {
+            language: args.language,
+            dryRun: args.dryRun || false,
+            splitMode: args.splitMode || 'file',
+            branch: args.branch,
+            maxFiles: args.maxFiles || 200,
           });
           break;
         }

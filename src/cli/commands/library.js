@@ -12,7 +12,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['bug-report'] = (args) => {
     const id = args.id || process.argv[3];
-    if (!id) { console.error(`Usage: ${c.cyan('oracle bug-report')} <pattern-id> [--description "..."]`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle bug-report')} <pattern-id> [--description "..."]`); process.exit(1); }
     const result = oracle.patterns.reportBug(id, args.description || '');
     if (result.success) {
       console.log(`${c.boldRed('Bug reported:')} ${c.bold(result.patternName)} — now has ${result.bugReports} report(s)`);
@@ -23,7 +23,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['reliability'] = (args) => {
     const id = args.id || process.argv[3];
-    if (!id) { console.error(`Usage: ${c.cyan('oracle reliability')} <pattern-id>`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle reliability')} <pattern-id>`); process.exit(1); }
     const r = oracle.patterns.getReliability(id);
     if (!r) { console.log(c.red('Pattern not found')); return; }
     console.log(c.boldCyan(`Reliability: ${c.bold(r.patternName)}\n`));
@@ -188,9 +188,9 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   handlers['diff'] = (args) => {
     const { colorDiff } = require('../colors');
     const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
-    if (ids.length < 2) { console.error(`Usage: ${c.cyan('oracle diff')} <id-a> <id-b>`); process.exit(1); }
+    if (ids.length < 2) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle diff')} <id-a> <id-b>`); process.exit(1); }
     const result = oracle.diff(ids[0], ids[1]);
-    if (result.error) { console.error(c.boldRed(result.error)); process.exit(1); }
+    if (result.error) { console.error(c.boldRed('Error:') + ' ' + result.error); process.exit(1); }
     console.log(`${c.red('---')} ${c.bold(result.a.name)} [${c.cyan(result.a.id)}]  coherency: ${colorScore(result.a.coherency)}`);
     console.log(`${c.green('+++')} ${c.bold(result.b.name)} [${c.cyan(result.b.id)}]  coherency: ${colorScore(result.b.coherency)}`);
     console.log('');
@@ -334,7 +334,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['promote'] = (args) => {
     const id = args.id || process.argv[3];
-    if (!id) { console.error(`Usage: ${c.cyan('oracle promote')} <candidate-id> [--test <test-file>]`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle promote')} <candidate-id> [--test <test-file>]`); process.exit(1); }
 
     if (id === 'auto' || id === '--auto') {
       const result = oracle.autoPromote();

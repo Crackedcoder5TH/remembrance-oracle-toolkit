@@ -10,7 +10,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
     const id = args.id || process.argv[3];
     const direction = args.direction || process.argv[4] || 'up';
     const voter = args.voter || process.env.USER || 'anonymous';
-    if (!id) { console.error(`Usage: ${c.cyan('oracle vote')} <pattern-id> [up|down] [--voter <name>]`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle vote')} <pattern-id> [up|down] [--voter <name>]`); process.exit(1); }
     const vote = direction === 'down' || direction === 'downvote' || direction === '-1' ? -1 : 1;
     const result = oracle.vote(id, voter, vote);
     if (result.success) {

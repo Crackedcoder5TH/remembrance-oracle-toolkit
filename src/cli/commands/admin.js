@@ -20,13 +20,13 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
         const username = args.username || args.name;
         const password = args.password;
         const role = args.role || 'contributor';
-        if (!username || !password) { console.error(`Usage: ${c.cyan('oracle users add')} --username <name> --password <pass> [--role admin|contributor|viewer]`); process.exit(1); }
+        if (!username || !password) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle users add')} --username <name> --password <pass> [--role admin|contributor|viewer]`); process.exit(1); }
         const user = auth.createUser(username, password, role);
         console.log(`${c.boldGreen('User created:')} ${c.bold(user.username)} (${user.role})`);
         console.log(`  API Key: ${c.cyan(user.apiKey)}`);
       } else if (subCmd === 'delete') {
         const id = args.id;
-        if (!id) { console.error(`Usage: ${c.cyan('oracle users delete')} --id <user-id>`); process.exit(1); }
+        if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle users delete')} --id <user-id>`); process.exit(1); }
         const deleted = auth.deleteUser(id);
         console.log(deleted ? c.boldGreen('User deleted.') : c.yellow('User not found.'));
       } else {
@@ -37,7 +37,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
         }
       }
     } catch (err) {
-      console.error(c.red('Auth error: ' + err.message));
+      console.error(c.boldRed('Error:') + ' Auth error: ' + err.message);
     }
   };
 
@@ -83,7 +83,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
         }
       }
     } catch (err) {
-      console.error(c.red('Auto-seed error: ' + err.message));
+      console.error(c.boldRed('Error:') + ' Auto-seed error: ' + err.message);
     }
   };
 
@@ -147,14 +147,14 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
         console.log(`  ${c.cyan('pre-commit')}  \u2014 Covenant check on staged files`);
         console.log(`  ${c.cyan('post-commit')} \u2014 Auto-seed patterns from committed files`);
       } else {
-        console.error(c.red(result.error));
+        console.error(c.boldRed('Error:') + ' ' + result.error);
       }
     } else if (subCmd === 'uninstall') {
       const result = uninstallHooks(process.cwd());
       if (result.uninstalled) {
         console.log(`${c.boldGreen('Hooks removed:')} ${result.removed.join(', ') || 'none found'}`);
       } else {
-        console.error(c.red(result.error));
+        console.error(c.boldRed('Error:') + ' ' + result.error);
       }
     } else if (subCmd === 'run') {
       const hookName = process.argv[4];
@@ -181,7 +181,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
           process.exit(1);
         }
       } else {
-        console.error(`Usage: ${c.cyan('oracle hooks run pre-commit [files...]')}`);
+        console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle hooks run pre-commit [files...]')}`);
       }
     } else {
       console.log(`Usage: ${c.cyan('oracle hooks')} <install|uninstall|run>`);
@@ -256,7 +256,7 @@ ${c.bold('Subcommands:')}
       const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
       const licCheck = checkLicense(entry.license);
       if (!licCheck.allowed && !args['allow-copyleft']) {
-        console.error(c.boldRed('License blocked:') + ` ${entry.license} \u2014 ${licCheck.reason}`);
+        console.error(c.boldRed('Error:') + ` License blocked: ${entry.license} \u2014 ${licCheck.reason}`);
         console.error(c.dim('Use --allow-copyleft to override'));
         process.exit(1);
       }
@@ -281,7 +281,7 @@ ${c.bold('Subcommands:')}
           console.log(`  ${c.boldRed('\u2717')} ${r.reason}`);
         }
       } catch (err) {
-        console.error(c.red('Import error: ' + err.message));
+        console.error(c.boldRed('Error:') + ' Import error: ' + err.message);
         process.exit(1);
       }
       return;
@@ -292,7 +292,7 @@ ${c.bold('Subcommands:')}
       const language = args.language;
       const repos = listRegistry({ language });
       if (repos.length === 0) {
-        console.error(c.yellow('No repos found') + (language ? ` for language: ${language}` : ''));
+        console.error(c.boldRed('Error:') + ' No repos found' + (language ? ` for language: ${language}` : ''));
         process.exit(1);
       }
       console.log(`\n${c.boldCyan('Batch Import')} \u2014 ${repos.length} repos${language ? ' (' + c.blue(language) + ')' : ''}`);
@@ -401,7 +401,7 @@ ${c.bold('Subcommands:')}
       return;
     }
 
-    console.error(`${c.boldRed('Unknown registry subcommand:')} ${sub}. Run ${c.cyan('oracle registry help')} for usage.`);
+    console.error(c.boldRed('Error:') + ` Unknown registry subcommand: ${sub}. Run ${c.cyan('oracle registry help')} for usage.`);
     process.exit(1);
   };
 }

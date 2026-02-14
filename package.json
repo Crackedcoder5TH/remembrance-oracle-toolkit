@@ -30,6 +30,7 @@
   "files": [
     "src/",
     "types/",
+    "seeds/",
     "README.md",
     "QUICKSTART.md",
     "LICENSE",
@@ -71,7 +72,7 @@
   "author": "Crackedcoder5TH",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit"
+    "url": "https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit.git"
   },
   "homepage": "https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit#readme",
   "bugs": {

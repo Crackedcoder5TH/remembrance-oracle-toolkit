@@ -26,7 +26,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
         console.log(c.dim(`\nImports detected: ${result.imports.join(', ')}`));
       }
     } else {
-      console.error(c.red(`Transpile failed: ${result.error}`));
+      console.error(c.boldRed('Error:') + ` Transpile failed: ${result.error}`);
     }
   };
 
@@ -42,7 +42,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
     const code = fs.readFileSync(filePath, 'utf-8');
     const jsTestCode = args.test ? fs.readFileSync(args.test, 'utf-8') : null;
     const result = astTranspile(code, targetLang);
-    if (!result.success) { console.error(c.red(`Transpile failed: ${result.error}`)); return; }
+    if (!result.success) { console.error(c.boldRed('Error:') + ` Transpile failed: ${result.error}`); return; }
 
     console.log(c.boldGreen(`Transpiled to ${targetLang}:\n`));
     console.log(result.code);
@@ -126,7 +126,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
         console.log(`  ${c.dim('Language:')} ${result.result.language}`);
         console.log(`\n${result.result.code}`);
       } else {
-        console.error(`${c.boldRed('\u2717 Transpilation failed:')} ${result.error}`);
+        console.error(c.boldRed('Error:') + ` Transpilation failed: ${result.error}`);
       }
       return;
     }
@@ -138,7 +138,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
         console.log(`${c.boldGreen('\u2713 Tests generated')} via ${c.cyan(result.method)}`);
         console.log(`\n${result.testCode}`);
       } else {
-        console.error(`${c.boldRed('\u2717 Test generation failed:')} ${result.error}`);
+        console.error(c.boldRed('Error:') + ` Test generation failed: ${result.error}`);
       }
       return;
     }
@@ -150,7 +150,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
         console.log(`${c.boldGreen('\u2713 Refined')} via ${c.cyan(result.method)}`);
         console.log(`\n${result.refinedCode}`);
       } else {
-        console.error(`${c.boldRed('\u2717 Refinement failed:')} ${result.error}`);
+        console.error(c.boldRed('Error:') + ` Refinement failed: ${result.error}`);
       }
       return;
     }
@@ -163,7 +163,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
         console.log(`  ${c.dim('Name:')} ${result.alternative.name}`);
         console.log(`\n${result.alternative.code}`);
       } else {
-        console.error(`${c.boldRed('\u2717 Alternative failed:')} ${result.error}`);
+        console.error(c.boldRed('Error:') + ` Alternative failed: ${result.error}`);
       }
       return;
     }
@@ -175,7 +175,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
         console.log(`${c.boldGreen('\u2713 Docs generated')} via ${c.cyan(result.method)}`);
         console.log(`\n${result.docs}`);
       } else {
-        console.error(`${c.boldRed('\u2717 Docs failed:')} ${result.error}`);
+        console.error(c.boldRed('Error:') + ` Docs failed: ${result.error}`);
       }
       return;
     }
@@ -198,7 +198,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
           result.analysis.suggestions.forEach(s => console.log(`    ${c.cyan('\u2192')} ${s}`));
         }
       } else {
-        console.error(`${c.boldRed('\u2717 Analysis failed:')} ${result.error}`);
+        console.error(c.boldRed('Error:') + ` Analysis failed: ${result.error}`);
       }
       return;
     }
@@ -210,7 +210,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
         console.log(`${c.boldGreen('\u2713 Explanation')} via ${c.cyan(result.method)}`);
         console.log(`\n${result.explanation}`);
       } else {
-        console.error(`${c.boldRed('\u2717 Explanation failed:')} ${result.error}`);
+        console.error(c.boldRed('Error:') + ` Explanation failed: ${result.error}`);
       }
       return;
     }
@@ -230,7 +230,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
       return;
     }
 
-    console.error(`${c.boldRed('Unknown llm subcommand:')} ${sub}. Run ${c.cyan('oracle llm help')} for usage.`);
+    console.error(c.boldRed('Error:') + ` Unknown llm subcommand: ${sub}. Run ${c.cyan('oracle llm help')} for usage.`);
     process.exit(1);
   };
 }

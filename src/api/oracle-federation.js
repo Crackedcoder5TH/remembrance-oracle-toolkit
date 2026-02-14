@@ -116,7 +116,7 @@ module.exports = {
         if (personalStore && typeof personalStore.deduplicatePatterns === 'function') {
           report.personal = personalStore.deduplicatePatterns();
         }
-      } catch { /* best-effort */ }
+      } catch (e) { /* best-effort */ if (process.env.ORACLE_DEBUG) console.warn('personal store dedup failed:', e.message); }
     }
 
     if (stores.includes('community')) {
@@ -126,7 +126,7 @@ module.exports = {
         if (communityStore && typeof communityStore.deduplicatePatterns === 'function') {
           report.community = communityStore.deduplicatePatterns();
         }
-      } catch { /* best-effort */ }
+      } catch (e) { /* best-effort */ if (process.env.ORACLE_DEBUG) console.warn('community store dedup failed:', e.message); }
     }
 
     return report;
@@ -184,13 +184,13 @@ module.exports = {
     try {
       const fed = this.federatedSearch({ description: query, language: options.language });
       results.local = fed.patterns || [];
-    } catch { /* local search error */ }
+    } catch (e) { /* local search error */ if (process.env.ORACLE_DEBUG) console.warn('local federated search failed:', e.message); }
 
     // Cross-repo search (sibling directories)
     try {
       const repos = this.crossRepoSearch(query, { language: options.language, limit: options.limit || 20 });
       results.repos = repos.results || [];
-    } catch { /* repo search error */ }
+    } catch (e) { /* repo search error */ if (process.env.ORACLE_DEBUG) console.warn('cross-repo search failed:', e.message); }
 
     // Remote oracle search (HTTP federation)
     try {

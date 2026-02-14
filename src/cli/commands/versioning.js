@@ -8,7 +8,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
 
   handlers['versions'] = (args) => {
     const id = args.id || process.argv[3];
-    if (!id) { console.error(`Usage: ${c.cyan('oracle versions')} <pattern-id>`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle versions')} <pattern-id>`); process.exit(1); }
     try {
       const { VersionManager } = require('../../core/versioning');
       const sqliteStore = oracle.store.getSQLiteStore();
@@ -25,13 +25,13 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
         }
       }
     } catch (err) {
-      console.error(c.red('Versioning requires SQLite: ' + err.message));
+      console.error(c.boldRed('Error:') + ' Versioning requires SQLite: ' + err.message);
     }
   };
 
   handlers['rollback'] = (args) => {
     const id = args.id || process.argv[3];
-    if (!id) { console.error(`Usage: ${c.cyan('oracle rollback')} <pattern-id> [--version <n>]`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle rollback')} <pattern-id> [--version <n>]`); process.exit(1); }
     const version = parseInt(args.version) || undefined;
     const result = oracle.rollback(id, version);
     if (result.success) {
@@ -45,7 +45,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
 
   handlers['verify'] = (args) => {
     const id = args.id || process.argv[3];
-    if (!id) { console.error(`Usage: ${c.cyan('oracle verify')} <pattern-id>`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle verify')} <pattern-id>`); process.exit(1); }
     const result = oracle.verifyOrRollback(id);
     if (result.passed) {
       console.log(`${c.boldGreen('Verified:')} ${c.bold(result.patternName || id)} \u2014 tests pass`);
@@ -75,13 +75,13 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
 
   handlers['sdiff'] = (args) => {
     const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
-    if (!ids[0] || !ids[1]) { console.error(`Usage: ${c.cyan('oracle sdiff')} <id-a> <id-b>`); process.exit(1); }
+    if (!ids[0] || !ids[1]) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle sdiff')} <id-a> <id-b>`); process.exit(1); }
     try {
       const { semanticDiff } = require('../../core/versioning');
       const a = oracle.patterns.getAll().find(p => p.id === ids[0]) || oracle.store.get(ids[0]);
       const b = oracle.patterns.getAll().find(p => p.id === ids[1]) || oracle.store.get(ids[1]);
-      if (!a) { console.error(c.red(`Entry ${ids[0]} not found`)); process.exit(1); }
-      if (!b) { console.error(c.red(`Entry ${ids[1]} not found`)); process.exit(1); }
+      if (!a) { console.error(c.boldRed('Error:') + ` Entry ${ids[0]} not found`); process.exit(1); }
+      if (!b) { console.error(c.boldRed('Error:') + ` Entry ${ids[1]} not found`); process.exit(1); }
       const result = semanticDiff(a.code, b.code, a.language);
       console.log(`${c.boldCyan('Semantic Diff:')}`);
       console.log(`  Similarity: ${colorScore(result.similarity)} (${c.dim(result.changeType)})`);
@@ -94,7 +94,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
         }
       }
     } catch (err) {
-      console.error(c.red(err.message));
+      console.error(c.boldRed('Error:') + ' ' + err.message);
     }
   };
 }

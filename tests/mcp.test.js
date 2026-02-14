@@ -160,7 +160,7 @@ describe('MCPServer', () => {
     assert.ok('improvement' in data || 'durationMs' in data);
   });
 
-  it('has exactly 20 tools', async () => {
+  it('has exactly 23 tools', async () => {
     server = new MCPServer();
     const res = await server.handleRequest({ id: 15, method: 'tools/list' });
     const names = res.result.tools.map(t => t.name);
@@ -191,14 +191,19 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_debug_search'));
     assert.ok(names.includes('oracle_debug_feedback'));
     assert.ok(names.includes('oracle_debug_stats'));
+    assert.ok(names.includes('oracle_debug_grow'));
+    assert.ok(names.includes('oracle_debug_patterns'));
 
     // Storage
     assert.ok(names.includes('oracle_sync'));
     assert.ok(names.includes('oracle_share'));
 
+    // Harvest
+    assert.ok(names.includes('oracle_harvest'));
+
     // Maintenance
     assert.ok(names.includes('oracle_maintain'));
 
-    assert.equal(res.result.tools.length, 20);
+    assert.equal(res.result.tools.length, 23);
   });
 });

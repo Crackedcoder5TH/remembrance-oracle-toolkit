@@ -47,7 +47,7 @@ module.exports = {
           method: 'ast',
         };
       }
-    } catch { /* AST transpiler not available */ }
+    } catch (e) { /* AST transpiler not available */ if (process.env.ORACLE_DEBUG) console.warn('AST transpiler unavailable:', e.message); }
 
     // Final fallback to regex
     return { success: false, error: 'No transpilation method available', method: 'none' };
@@ -106,7 +106,7 @@ module.exports = {
       if (result.improved) {
         return { success: true, refinedCode: result.code, method: 'reflection' };
       }
-    } catch { /* reflection not available */ }
+    } catch (e) { /* reflection not available */ if (process.env.ORACLE_DEBUG) console.warn('reflection unavailable:', e.message); }
 
     return { success: false, error: 'No refinement method available', method: 'none' };
   },
@@ -243,7 +243,7 @@ module.exports = {
                 report.details.push({ name: candidate.name, method: 'claude-variant', language: lang, promoted: true });
                 continue;
               }
-            } catch { /* validation failed — store as candidate instead */ }
+            } catch (e) { /* validation failed — store as candidate instead */ if (process.env.ORACLE_DEBUG) console.warn('variant validation failed, storing as candidate:', e.message); }
           }
 
           // Store as candidate (unproven)
@@ -256,7 +256,7 @@ module.exports = {
             report.generated++;
             report.stored++;
             report.details.push({ name: candidate.name, method: 'claude-variant', language: lang, promoted: false });
-          } catch { /* duplicate or invalid */ }
+          } catch (e) { /* duplicate or invalid */ if (process.env.ORACLE_DEBUG) console.warn('candidate store failed (duplicate or invalid):', e.message); }
         }
       }
 
@@ -289,7 +289,7 @@ module.exports = {
               report.details.push({ name: alt.name, method: 'claude-alternative', promoted: true });
               continue;
             }
-          } catch { /* store as candidate instead */ }
+          } catch (e) { /* store as candidate instead */ if (process.env.ORACLE_DEBUG) console.warn('alternative validation failed, storing as candidate:', e.message); }
         }
 
         try {
@@ -301,7 +301,7 @@ module.exports = {
           report.generated++;
           report.stored++;
           report.details.push({ name: alt.name, method: 'claude-alternative', promoted: false });
-        } catch { /* duplicate or invalid */ }
+        } catch (e) { /* duplicate or invalid */ if (process.env.ORACLE_DEBUG) console.warn('candidate store failed (duplicate or invalid):', e.message); }
       }
     }
 

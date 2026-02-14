@@ -274,7 +274,7 @@ ${c.bold('Options:')}
       return;
     }
 
-    console.error(`${c.boldRed('Unknown debug subcommand:')} ${sub}. Run ${c.cyan('oracle debug help')} for usage.`);
+    console.error(c.boldRed('Error:') + ` Unknown debug subcommand: ${sub}. Run ${c.cyan('oracle debug help')} for usage.`);
     process.exit(1);
   };
 }

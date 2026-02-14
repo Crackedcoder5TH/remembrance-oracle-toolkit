@@ -188,7 +188,7 @@ ${c.bold('Commands:')}
       return;
     }
 
-    console.error(`${c.boldRed('Unknown lifecycle subcommand:')} ${sub}. Run ${c.cyan('oracle lifecycle help')} for usage.`);
+    console.error(c.boldRed('Error:') + ` Unknown lifecycle subcommand: ${sub}. Run ${c.cyan('oracle lifecycle help')} for usage.`);
     process.exit(1);
   };
 }

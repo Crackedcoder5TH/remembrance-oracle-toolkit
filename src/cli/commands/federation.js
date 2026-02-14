@@ -155,7 +155,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     const subCmd = process.argv[3];
     if (subCmd === 'add') {
       const repoPath = process.argv[4] || args.path;
-      if (!repoPath) { console.error(`Usage: ${c.cyan('oracle repos add')} <path>`); process.exit(1); }
+      if (!repoPath) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle repos add')} <path>`); process.exit(1); }
       const result = oracle.registerRepo(repoPath);
       console.log(`${c.boldGreen('Registered:')} ${c.bold(result.path)} (${result.totalRepos} total repos)`);
       return;
@@ -182,7 +182,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
 
   handlers['cross-search'] = (args) => {
     const desc = args.description || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
-    if (!desc) { console.error(`Usage: ${c.cyan('oracle cross-search')} "<query>" [--language <lang>]`); process.exit(1); }
+    if (!desc) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle cross-search')} "<query>" [--language <lang>]`); process.exit(1); }
     const result = oracle.crossRepoSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 });
     console.log(c.boldCyan(`Cross-repo search for "${desc}" across ${result.totalSearched} repos:\n`));
     if (result.repos.length > 0) {
@@ -239,7 +239,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     const sub = process.argv[3];
     if (sub === 'add') {
       const url = process.argv[4] || args.url;
-      if (!url) { console.error(`Usage: ${c.cyan('oracle remote add')} <url> [--name <name>] [--token <jwt>]`); process.exit(1); }
+      if (!url) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle remote add')} <url> [--name <name>] [--token <jwt>]`); process.exit(1); }
       const { registerRemote } = require('../../cloud/client');
       const result = registerRemote(url, { name: args.name, token: args.token });
       console.log(`${c.boldGreen('Remote registered:')} ${c.bold(result.name)} — ${c.cyan(result.url)}`);
@@ -248,7 +248,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     }
     if (sub === 'remove') {
       const target = process.argv[4] || args.url || args.name;
-      if (!target) { console.error(`Usage: ${c.cyan('oracle remote remove')} <url-or-name>`); process.exit(1); }
+      if (!target) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle remote remove')} <url-or-name>`); process.exit(1); }
       const { removeRemote } = require('../../cloud/client');
       const result = removeRemote(target);
       if (result.removed) console.log(c.boldGreen('Remote removed.'));
@@ -269,7 +269,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     }
     if (sub === 'search') {
       const desc = args.description || process.argv.slice(4).filter(a => !a.startsWith('--')).join(' ');
-      if (!desc) { console.error(`Usage: ${c.cyan('oracle remote search')} "<query>" [--language <lang>]`); process.exit(1); }
+      if (!desc) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle remote search')} "<query>" [--language <lang>]`); process.exit(1); }
       oracle.remoteSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 }).then(result => {
         console.log(c.boldCyan(`Remote federated search: "${desc}"\n`));
         if (result.remotes.length > 0) {

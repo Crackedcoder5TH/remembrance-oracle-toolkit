@@ -84,7 +84,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
         console.log(`${c.green('\u2713')} Loaded plugin ${c.bold(manifest.name)} v${manifest.version}`);
         if (manifest.description) console.log(`  ${c.dim(manifest.description)}`);
       } catch (e) {
-        console.error(`${c.red('\u2717')} ${e.message}`);
+        console.error(c.boldRed('Error:') + ' ' + e.message);
       }
     } else if (sub === 'list') {
       const list = pm.list();
@@ -105,7 +105,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
         pm.unload(name);
         console.log(`${c.green('\u2713')} Unloaded plugin ${c.bold(name)}`);
       } catch (e) {
-        console.error(`${c.red('\u2717')} ${e.message}`);
+        console.error(c.boldRed('Error:') + ' ' + e.message);
       }
     } else {
       console.log(`\n${c.boldCyan('Plugin Commands')}\n`);

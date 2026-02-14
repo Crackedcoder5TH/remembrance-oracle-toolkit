@@ -264,7 +264,7 @@ class GitHubIdentity {
         this.store.db.prepare(
           'UPDATE github_identities SET contributions = contributions + 1, last_seen = ? WHERE voter_id = ?'
         ).run(new Date().toISOString(), voterId);
-      } catch { /* ignore */ }
+      } catch (e) { /* ignore */ if (process.env.ORACLE_DEBUG) console.warn('contribution recording failed:', e.message); }
     }
     const identity = this._identities.get(voterId);
     if (identity) {
@@ -301,7 +301,7 @@ class GitHubIdentity {
           identity.voterId, identity.githubUsername, identity.githubId,
           identity.avatarUrl, now, now, now, identity.avatarUrl
         );
-      } catch { /* ignore duplicate */ }
+      } catch (e) { /* ignore duplicate */ if (process.env.ORACLE_DEBUG) console.warn('identity save failed (duplicate):', e.message); }
     }
 
     this._identities.set(identity.voterId, {

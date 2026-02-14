@@ -631,7 +631,7 @@ function shareDebugPatterns(localStore, options = {}) {
     }
 
     report.shared++;
-    if (verbose) {
+    if (process.env.ORACLE_DEBUG) {
       console.log(`  [SHARE-DEBUG→] ${dp.error_class}:${dp.error_category} (${dp.language}) confidence: ${dp.confidence}`);
     }
     report.details.push({
@@ -760,7 +760,7 @@ function syncDebugToPersonal(localStore, options = {}) {
     personalIndex.add(key);
 
     report.synced++;
-    if (verbose) {
+    if (process.env.ORACLE_DEBUG) {
       console.log(`  [SYNC-DEBUG→] ${dp.error_class}:${dp.error_category} (${dp.language})`);
     }
   }

@@ -504,6 +504,144 @@ function createDashboardServer(oracle, options = {}) {
         return;
       }
 
+      // ─── Insights ───
+      if (pathname === '/api/insights') {
+        try {
+          const { generateInsights } = require('../core/insights');
+          sendJSON(res, generateInsights(oracleInstance, parsed.query));
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
+      // ─── Actionable Insights ───
+      if (pathname === '/api/insights/act' && req.method === 'POST') {
+        try {
+          const { actOnInsights } = require('../core/actionable-insights');
+          const report = actOnInsights(oracleInstance);
+          sendJSON(res, report);
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
+      // ─── Usage Boosts (search ranking insights) ───
+      if (pathname === '/api/insights/boosts') {
+        try {
+          const { computeUsageBoosts } = require('../core/actionable-insights');
+          const boosts = computeUsageBoosts(oracleInstance);
+          const boostArray = Array.from(boosts.entries()).map(([id, boost]) => ({ id, boost }));
+          sendJSON(res, boostArray);
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
+      // ─── Lifecycle status ───
+      if (pathname === '/api/lifecycle') {
+        sendJSON(res, oracleInstance.lifecycleStatus());
+        return;
+      }
+
+      // ─── Lifecycle start ───
+      if (pathname === '/api/lifecycle/start' && req.method === 'POST') {
+        readBody(req, (body) => {
+          sendJSON(res, oracleInstance.startLifecycle(body || {}));
+        });
+        return;
+      }
+
+      // ─── Lifecycle stop ───
+      if (pathname === '/api/lifecycle/stop' && req.method === 'POST') {
+        sendJSON(res, oracleInstance.stopLifecycle());
+        return;
+      }
+
+      // ─── Lifecycle run cycle ───
+      if (pathname === '/api/lifecycle/run' && req.method === 'POST') {
+        const lifecycle = oracleInstance.getLifecycle();
+        sendJSON(res, lifecycle.runCycle());
+        return;
+      }
+
+      // ─── Lifecycle history ───
+      if (pathname === '/api/lifecycle/history') {
+        const lifecycle = oracleInstance.getLifecycle();
+        sendJSON(res, lifecycle.getHistory());
+        return;
+      }
+
+      // ─── Debug grow ───
+      if (pathname === '/api/debug/grow' && req.method === 'POST') {
+        try {
+          sendJSON(res, oracleInstance.debugGrow(parsed.query || {}));
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
+      // ─── Debug patterns list ───
+      if (pathname === '/api/debug/patterns') {
+        try {
+          sendJSON(res, oracleInstance.debugPatterns(parsed.query || {}));
+        } catch {
+          sendJSON(res, []);
+        }
+        return;
+      }
+
+      // ─── Smart search ───
+      if (pathname === '/api/smart-search') {
+        const query = parsed.query.q || '';
+        if (!query) { sendJSON(res, { results: [], intent: {}, suggestions: [] }); return; }
+        try {
+          const { smartSearch } = require('../core/search-intelligence');
+          const result = smartSearch(oracleInstance, query, {
+            limit: parseInt(parsed.query.limit) || 10,
+            language: parsed.query.language,
+            mode: parsed.query.mode || 'auto',
+          });
+          sendJSON(res, result);
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
+      // ─── Self-improve ───
+      if (pathname === '/api/self-improve' && req.method === 'POST') {
+        try {
+          sendJSON(res, oracleInstance.selfImprove());
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
+      // ─── Self-optimize ───
+      if (pathname === '/api/self-optimize' && req.method === 'POST') {
+        try {
+          sendJSON(res, oracleInstance.selfOptimize());
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
+      // ─── Full cycle ───
+      if (pathname === '/api/full-cycle' && req.method === 'POST') {
+        try {
+          sendJSON(res, oracleInstance.fullOptimizationCycle());
+        } catch (err) {
+          sendJSON(res, { error: err.message }, 500);
+        }
+        return;
+      }
+
       // ─── Serve dashboard HTML ───
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(getDashboardHTML());

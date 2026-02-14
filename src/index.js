@@ -38,7 +38,8 @@ const { actionableFeedback, formatFeedback, covenantFeedback, coherencyFeedback 
 const { reflectionLoop, formatReflectionResult, observeCoherence, reflectionScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
 const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyError, computeConfidence, ERROR_CATEGORIES } = require('./core/debug-oracle');
 const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
-const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
+const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, applyUsageBoosts, selectSearchMode, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
+const { healStalePatterns, healLowFeedback, healOverEvolved, computeUsageBoosts, actOnInsights, ACTIONABLE_DEFAULTS } = require('./core/actionable-insights');
 const { CloudSyncServer, createToken, verifyToken } = require('./cloud/server');
 const { RemoteOracleClient, registerRemote, removeRemote, listRemotes, federatedRemoteSearch, checkRemoteHealth } = require('./cloud/client');
 const { LLMClient, LLMGenerator } = require('./core/llm-generator');
@@ -203,12 +204,22 @@ module.exports = {
   rewriteQuery,
   editDistance,
   applyIntentRanking,
+  applyUsageBoosts,
+  selectSearchMode,
   expandLanguages,
   smartSearch,
   INTENT_PATTERNS,
   CORRECTIONS,
   LANGUAGE_ALIASES,
   LANGUAGE_FAMILIES,
+
+  // Actionable Insights
+  healStalePatterns,
+  healLowFeedback,
+  healOverEvolved,
+  computeUsageBoosts,
+  actOnInsights,
+  ACTIONABLE_DEFAULTS,
 
   // Cloud Sync
   CloudSyncServer,

@@ -33,6 +33,9 @@ const LIFECYCLE_DEFAULTS = {
   // How many registrations before triggering auto-grow sweep
   registerGrowThreshold: 3,
 
+  // How many debug captures before triggering debug auto-grow
+  debugGrowThreshold: 5,
+
   // Whether to auto-promote candidates with tests on each cycle
   autoPromoteOnCycle: true,
 
@@ -44,6 +47,9 @@ const LIFECYCLE_DEFAULTS = {
 
   // Whether to sync to personal store on each cycle
   autoSyncOnCycle: false,
+
+  // Whether to run actionable insights on each cycle
+  autoInsightsOnCycle: false,
 
   // Evolution options passed through to selfEvolve
   evolutionOptions: {},
@@ -75,6 +81,8 @@ class LifecycleEngine {
       registrations: 0,
       heals: 0,
       rejections: 0,
+      debugCaptures: 0,
+      debugFeedbacks: 0,
       cycles: 0,
     };
 
@@ -149,6 +157,8 @@ class LifecycleEngine {
       retag: null,
       clean: null,
       sync: null,
+      insights: null,
+      debugGrowth: null,
       durationMs: 0,
     };
 
@@ -203,6 +213,27 @@ class LifecycleEngine {
       }
     }
 
+    // 6. Run actionable insights (detect stale patterns, trigger heals)
+    if (this.config.autoInsightsOnCycle) {
+      try {
+        const { actOnInsights } = require('./actionable-insights');
+        report.insights = actOnInsights(this.oracle, {
+          maxHeals: this.config.maxHealsPerCycle,
+        });
+      } catch {
+        report.insights = { error: 'insights failed' };
+      }
+    }
+
+    // 7. Auto-grow debug patterns if captures have accumulated
+    if (this._counters.debugCaptures > 0) {
+      try {
+        report.debugGrowth = this._tryDebugGrow();
+      } catch {
+        report.debugGrowth = { error: 'debug growth failed' };
+      }
+    }
+
     report.durationMs = Date.now() - cycleStart;
 
     // Record in history
@@ -253,6 +284,17 @@ class LifecycleEngine {
       case 'rejection_captured':
         this._counters.rejections++;
         break;
+
+      case 'debug_capture':
+        this._counters.debugCaptures++;
+        if (this._counters.debugCaptures % this.config.debugGrowThreshold === 0) {
+          this._tryDebugGrow();
+        }
+        break;
+
+      case 'debug_feedback':
+        this._counters.debugFeedbacks++;
+        break;
     }
   }
 
@@ -275,6 +317,19 @@ class LifecycleEngine {
   _tryAutoPromote() {
     try {
       return this.oracle.autoPromote();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Try growing debug patterns from high-confidence captures.
+   */
+  _tryDebugGrow() {
+    try {
+      if (typeof this.oracle.debugGrow === 'function') {
+        return this.oracle.debugGrow({ minConfidence: 0.5 });
+      }
     } catch {
       return null;
     }
@@ -316,6 +371,8 @@ class LifecycleEngine {
       registrations: 0,
       heals: 0,
       rejections: 0,
+      debugCaptures: 0,
+      debugFeedbacks: 0,
       cycles: this._counters.cycles,
     };
   }

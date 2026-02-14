@@ -1703,7 +1703,7 @@ pre.code-block {
 
   // ─── Pattern Rendering ───
   function renderPatternCard(p) {
-    var score = (p.coherencyScore && p.coherencyScore.total) || 0;
+    var score = (p.coherencyScore && p.coherencyScore.total != null ? p.coherencyScore.total : 0);
     var tags = (p.tags || []).map(function(t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
     var typeTag = p.patternType ? '<span class="tag tag-type">' + esc(p.patternType) + '</span>' : '';
     var cxTag = p.complexity ? '<span class="tag tag-complexity">' + esc(p.complexity) + '</span>' : '';
@@ -1785,8 +1785,8 @@ pre.code-block {
     }
     filtered = filtered.slice().sort(function(a, b) {
       if (sortBy === 'coherency') {
-        var sa = (a.coherencyScore && a.coherencyScore.total) || 0;
-        var sb = (b.coherencyScore && b.coherencyScore.total) || 0;
+        var sa = (a.coherencyScore && a.coherencyScore.total != null ? a.coherencyScore.total : 0);
+        var sb = (b.coherencyScore && b.coherencyScore.total != null ? b.coherencyScore.total : 0);
         return sortAsc ? sa - sb : sb - sa;
       }
       return sortAsc ? (a.name || '').localeCompare(b.name || '') : (b.name || '').localeCompare(a.name || '');
@@ -1946,7 +1946,7 @@ pre.code-block {
       }
       var html = '<div class="timeline">';
       entries.forEach(function(e) {
-        var score = (e.coherencyScore && e.coherencyScore.total) || 0;
+        var score = (e.coherencyScore && e.coherencyScore.total != null ? e.coherencyScore.total : 0);
         var date = e.timestamp || e.created_at || '';
         html += '<div class="timeline-item">' +
           '<div class="timeline-dot"></div>' +

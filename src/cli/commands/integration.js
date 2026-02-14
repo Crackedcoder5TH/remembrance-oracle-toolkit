@@ -4,6 +4,7 @@
 
 const path = require('path');
 const { c, colorScore } = require('../colors');
+const { validatePort } = require('../validate-args');
 
 function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
 
@@ -116,7 +117,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
 
   handlers['dashboard'] = (args) => {
     const { startDashboard } = require('../../dashboard/server');
-    const port = parseInt(args.port) || 3333;
+    const port = validatePort(args.port, 3333);
     startDashboard(oracle, { port });
   };
 

@@ -103,8 +103,8 @@ module.exports = {
           validation
         );
         this._emit({ type: 'rejection_captured', reason: rejection.failureReason });
-      } catch {
-        // Capture is best-effort
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle:submit] rejection capture failed:', e.message);
       }
 
       return {
@@ -217,8 +217,8 @@ module.exports = {
             });
           }
         }
-      } catch {
-        // Auto-heal is best-effort — don't break feedback
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle:feedback] auto-heal failed:', e.message);
       }
     }
 
@@ -268,7 +268,7 @@ module.exports = {
 
   _emit(event) {
     for (const listener of this._listeners) {
-      try { listener(event); } catch { /* listener errors don't break oracle */ }
+      try { listener(event); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[oracle:emit] listener error:', e.message); }
     }
   },
 
@@ -287,8 +287,8 @@ module.exports = {
           candidatesGenerated: growth.stored,
           candidates: growth.candidates,
         });
-      } catch {
-        // Auto-grow is best-effort — don't break the registration
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle:autoGrow] candidate generation failed:', e.message);
       }
     }
 
@@ -301,8 +301,8 @@ module.exports = {
           syncToGlobal(sqliteStore, { minCoherency: 0.6 });
           report.synced = true;
         }
-      } catch {
-        // Auto-sync is best-effort
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle:autoSync] sync to personal store failed:', e.message);
       }
     }
 
@@ -536,7 +536,7 @@ module.exports = {
     // Update voter reputation based on pattern performance
     const sqliteStore = this.patterns._sqlite;
     if (sqliteStore) {
-      try { sqliteStore.updateVoterReputation(id, succeeded); } catch {}
+      try { sqliteStore.updateVoterReputation(id, succeeded); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[oracle:patternFeedback] voter reputation update failed:', e.message); }
     }
 
     // Auto-heal trigger on negative feedback
@@ -559,8 +559,8 @@ module.exports = {
             this._emit({ type: 'auto_heal', id, improvement: healed.improvement });
           }
         }
-      } catch {
-        // Auto-heal is best-effort
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle:patternFeedback] auto-heal failed:', e.message);
       }
     }
 

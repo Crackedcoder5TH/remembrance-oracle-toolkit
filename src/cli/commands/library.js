@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const { c, colorScore, colorStatus, colorDecision, colorSource } = require('../colors');
+const { validatePositiveInt, validateCoherency, validateId } = require('../validate-args');
 
 function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI, jsonOut }) {
 
@@ -119,7 +120,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     if (!term) { console.error(c.boldRed('Error:') + ` provide a search term. Usage: ${c.cyan('oracle search <term>')}`); process.exit(1); }
     const mode = args.mode || 'hybrid';
     const results = oracle.search(term, {
-      limit: parseInt(args.limit) || 10,
+      limit: validatePositiveInt(args.limit, 'limit', 10),
       language: args.language,
       mode,
     });
@@ -142,7 +143,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const term = args.description || args._rest || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
     if (!term) { console.error(c.boldRed('Error:') + ` provide a search term. Usage: ${c.cyan('oracle smart-search <term>')}`); process.exit(1); }
     const result = oracle.smartSearch(term, {
-      limit: parseInt(args.limit) || 10,
+      limit: validatePositiveInt(args.limit, 'limit', 10),
       language: args.language,
       mode: args.mode || 'hybrid',
     });

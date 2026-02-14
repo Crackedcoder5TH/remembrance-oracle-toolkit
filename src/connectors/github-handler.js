@@ -25,10 +25,10 @@ function handleIssue() {
   }
 
   const command = parseIssueCommand(body);
-  console.log('Parsed command:', JSON.stringify(command));
+  if (process.env.ORACLE_DEBUG) console.log('Parsed command:', JSON.stringify(command));
 
   const result = connector.execute(command);
-  console.log('Result:', JSON.stringify(result, null, 2));
+  if (process.env.ORACLE_DEBUG) console.log('Result:', JSON.stringify(result, null, 2));
 
   const comment = formatAsComment(result);
 
@@ -40,7 +40,7 @@ function handleIssue() {
         `gh issue comment ${issueNumber} --repo ${repo} --body '${escaped}'`,
         { stdio: 'inherit', env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN } }
       );
-      console.log('Comment posted successfully');
+      if (process.env.ORACLE_DEBUG) console.log('Comment posted successfully');
     } catch (err) {
       console.error('Failed to post comment:', err.message);
       // Still output the result

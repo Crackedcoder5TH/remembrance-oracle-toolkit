@@ -1034,7 +1034,7 @@ function seedExtendedLibrary(oracle, { verbose = false } = {}) {
     } else {
       failed++;
       failures.push({ name: seed.name, reason: result.reason });
-      console.log(`  [FAIL] ${seed.name}: ${result.reason}`);
+      if (verbose || process.env.ORACLE_DEBUG) console.log(`  [FAIL] ${seed.name}: ${result.reason}`);
     }
   }
 

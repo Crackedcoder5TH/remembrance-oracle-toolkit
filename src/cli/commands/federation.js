@@ -4,6 +4,7 @@
 
 const path = require('path');
 const { c, colorScore, colorSource } = require('../colors');
+const { validatePort } = require('../validate-args');
 
 function registerFederationCommands(handlers, { oracle, jsonOut }) {
 
@@ -304,7 +305,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     const { CloudSyncServer } = require('../../cloud/server');
     const sub = process.argv[3];
     if (sub === 'start' || sub === 'serve') {
-      const port = parseInt(args.port) || 3579;
+      const port = validatePort(args.port, 3579);
       const host = args.host || '0.0.0.0';
       const server = new CloudSyncServer({ oracle, port, secret: args.secret, rateLimit: parseInt(args.rateLimit) || 120 });
       server.start().then((p) => {

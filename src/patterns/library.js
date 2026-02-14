@@ -171,7 +171,15 @@ class PatternLibrary {
     if (request == null || typeof request !== 'object') request = {};
     const { description: rawDesc = '', tags = [], language, minCoherency } = request;
     const description = String(rawDesc);
-    const patterns = this.getAll();
+    let patterns = this.getAll();
+
+    // Pre-filter by language when specified to avoid scoring irrelevant patterns
+    if (language) {
+      const langLower = language.toLowerCase();
+      const filtered = patterns.filter(p => (p.language || 'unknown').toLowerCase() === langLower);
+      // Fall back to all patterns if no language match exists
+      if (filtered.length > 0) patterns = filtered;
+    }
 
     if (patterns.length === 0) {
       return {

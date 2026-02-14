@@ -64,8 +64,8 @@ class RemembranceOracle {
       try {
         const { seedLibrary } = require('../patterns/seeds');
         seedLibrary(this);
-      } catch {
-        // Seeding is best-effort — don't fail construction
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle] auto-seed failed:', e.message);
       }
     }
 
@@ -80,8 +80,8 @@ class RemembranceOracle {
             syncFromGlobal(sqliteStore, { minCoherency: 0.6 });
           }
         }
-      } catch {
-        // Auto-pull is best-effort — don't fail construction
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle] auto-pull from personal store failed:', e.message);
       }
     }
   }

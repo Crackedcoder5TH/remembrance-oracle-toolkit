@@ -38,7 +38,9 @@ function createRateLimiter(options = {}) {
   if (cleanup.unref) cleanup.unref();
 
   return function rateLimitMiddleware(req, res, next) {
-    const ip = req.socket.remoteAddress || '127.0.0.1';
+    // Parse X-Forwarded-For for proper client IP behind reverse proxies
+    const forwarded = req.headers?.['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket.remoteAddress || '127.0.0.1');
     const now = Date.now();
     const timestamps = (hits.get(ip) || []).filter(t => now - t < windowMs);
     timestamps.push(now);
@@ -1552,7 +1554,7 @@ pre.code-block {
         if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
       };
       ws.onmessage = function(event) {
-        try { handleWSEvent(JSON.parse(event.data)); } catch(e) {}
+        try { handleWSEvent(JSON.parse(event.data)); } catch(e) { console.debug('[ws] message parse error:', e.message); }
       };
       ws.onclose = function() {
         document.getElementById('ws-dot').className = 'ws-dot off';
@@ -1560,8 +1562,8 @@ pre.code-block {
         ws = null;
         if (!wsReconnectTimer) wsReconnectTimer = setTimeout(connectWS, 3000);
       };
-      ws.onerror = function() {};
-    } catch(e) {}
+      ws.onerror = function(e) { console.debug('[ws] connection error:', e); };
+    } catch(e) { console.debug('[ws] setup error:', e.message); }
   }
 
   function handleWSEvent(data) {
@@ -2134,7 +2136,7 @@ pre.code-block {
           patterns = pats || [];
           renderAllCharts(data, patterns);
         });
-      } catch(e) { renderAllCharts(data, []); }
+      } catch(e) { console.debug('[charts] pattern fetch failed:', e.message); renderAllCharts(data, []); }
     });
   }
 

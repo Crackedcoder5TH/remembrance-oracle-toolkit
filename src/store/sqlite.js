@@ -137,28 +137,28 @@ class SQLiteStore {
         `);
         this.db.exec(`CREATE UNIQUE INDEX idx_patterns_unique_name_lang ON patterns(name COLLATE NOCASE, language COLLATE NOCASE)`);
       }
-    } catch { /* Index creation failed — app-level dedup still protects */ }
+    } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] unique index creation failed:', e.message); }
 
     // Schema migration: add composition columns
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch {}
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] requires column:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] composed_of column:', e.message); }
 
     // Schema migration: add bug reports column for reliability tracking
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN bug_reports INTEGER DEFAULT 0`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN bug_reports INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] bug_reports column:', e.message); }
 
     // Schema migration: add votes columns for community voting
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN upvotes INTEGER DEFAULT 0`); } catch {}
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN downvotes INTEGER DEFAULT 0`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN upvotes INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] upvotes column:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN downvotes INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] downvotes column:', e.message); }
 
     // Schema migration: add provenance columns for open source tracking
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_url TEXT`); } catch {}
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_repo TEXT`); } catch {}
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_license TEXT`); } catch {}
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_commit TEXT`); } catch {}
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_file TEXT`); } catch {}
-    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_url TEXT`); } catch {}
-    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_repo TEXT`); } catch {}
-    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_license TEXT`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_url TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_url:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_repo TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_repo:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_license TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_license:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_commit TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_commit:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_file TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_file:', e.message); }
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_url TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] candidates.source_url:', e.message); }
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_repo TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] candidates.source_repo:', e.message); }
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_license TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] candidates.source_license:', e.message); }
 
     // Votes log table — tracks individual votes to prevent duplicates
     this.db.exec(`
@@ -187,7 +187,7 @@ class SQLiteStore {
     `);
 
     // Add weight column to votes table
-    try { this.db.exec(`ALTER TABLE votes ADD COLUMN weight REAL DEFAULT 1.0`); } catch {}
+    try { this.db.exec(`ALTER TABLE votes ADD COLUMN weight REAL DEFAULT 1.0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] votes.weight:', e.message); }
 
     // Candidates table — coherent-but-unproven patterns awaiting test proof
     this.db.exec(`
@@ -259,8 +259,8 @@ class SQLiteStore {
         }
         // Rename old file so migration doesn't re-run
         fs.renameSync(historyPath, historyPath + '.migrated');
-      } catch {
-        // Migration is best-effort
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] history JSON migration failed:', e.message);
       }
     }
 
@@ -289,8 +289,8 @@ class SQLiteStore {
           }
         }
         fs.renameSync(patternsPath, patternsPath + '.migrated');
-      } catch {
-        // Migration is best-effort
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] patterns JSON migration failed:', e.message);
       }
     }
   }

@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { c, colorScore, colorStatus } = require('../colors');
+const { validatePositiveInt, validateCoherency, validateId } = require('../validate-args');
 
 function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
 
@@ -93,8 +94,8 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
       description: args.description || '',
       tags,
       language: args.language,
-      limit: parseInt(args.limit) || 5,
-      minCoherency: parseFloat(args['min-coherency']) || 0.5,
+      limit: validatePositiveInt(args.limit, 'limit', 5),
+      minCoherency: validateCoherency(args['min-coherency'], 'min-coherency', 0.5),
     });
     if (jsonOut()) { console.log(JSON.stringify(results)); return; }
     if (results.length === 0) {
@@ -150,16 +151,16 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
   };
 
   handlers['inspect'] = (args) => {
-    if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
-    const entry = oracle.inspect(args.id);
+    const id = validateId(args.id);
+    const entry = oracle.inspect(id);
     if (!entry) { console.log(c.yellow('Entry not found.')); return; }
     console.log(JSON.stringify(entry, null, 2));
   };
 
   handlers['feedback'] = (args) => {
-    if (!args.id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
+    const id = validateId(args.id);
     const succeeded = args.success === true || args.success === 'true';
-    const result = oracle.feedback(args.id, succeeded);
+    const result = oracle.feedback(id, succeeded);
     if (result.success) {
       console.log(`Updated reliability: ${colorScore(result.newReliability)}`);
     } else {

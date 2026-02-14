@@ -53,7 +53,6 @@ const { LifecycleEngine, LIFECYCLE_DEFAULTS } = require('./core/lifecycle');
 const { HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS } = require('./core/whisper');
 const { selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, OPTIMIZE_DEFAULTS } = require('./core/self-optimize');
 const { StripeClient, BillingManager, billingMiddleware, billingRoutes, PLANS } = require('./billing/stripe');
-const { HostedHub, startHostedHub } = require('./federation/hosted-hub');
 const { createLandingServer, startLanding } = require('./landing/server');
 const { GitHubApp, webhookRoutes: githubWebhookRoutes, setupGitHubApp } = require('./github/app');
 
@@ -297,10 +296,6 @@ module.exports = {
   billingMiddleware,
   billingRoutes,
   PLANS,
-
-  // Hosted Hub
-  HostedHub,
-  startHostedHub,
 
   // Landing Page
   createLandingServer,

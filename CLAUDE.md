@@ -53,21 +53,15 @@ For AI clients that support MCP, start the server:
 node src/cli.js mcp
 ```
 
-This exposes 59 tools across 10 categories:
+This exposes 20 focused tools:
 
-- **Core**: oracle_search, oracle_resolve, oracle_submit, oracle_query, oracle_feedback, oracle_stats, oracle_register_pattern, oracle_nearest, oracle_smart_search
-- **Versioning**: oracle_versions, oracle_semantic_diff, oracle_rollback, oracle_verify
-- **Reflection**: oracle_reflect, oracle_covenant, oracle_harvest, oracle_compose, oracle_compose_templates
-- **Candidates**: oracle_candidates, oracle_generate, oracle_promote, oracle_auto_promote, oracle_smart_promote, oracle_synthesize_tests
-- **Security**: oracle_security_scan, oracle_security_audit
-- **Federation**: oracle_remote_search, oracle_remotes, oracle_full_search, oracle_cross_search, oracle_repos
-- **Voting**: oracle_vote, oracle_top_voted, oracle_reputation
-- **Storage**: oracle_sync, oracle_share, oracle_community, oracle_global_stats
-- **Debug**: oracle_debug_capture, oracle_debug_search, oracle_debug_feedback, oracle_debug_grow, oracle_debug_stats, oracle_debug_share
-- **LLM**: oracle_llm_status, oracle_llm_transpile, oracle_llm_tests, oracle_llm_refine, oracle_llm_analyze, oracle_llm_explain, oracle_llm_generate
-- **Transpiler**: oracle_transpile, oracle_verify_transpile, oracle_context
-- **Reliability**: oracle_healing_stats, oracle_reliability, oracle_report_bug
-- **Integration**: oracle_mcp_install, oracle_github_identity
+- **Core**: oracle_search, oracle_resolve, oracle_submit, oracle_query, oracle_feedback, oracle_stats, oracle_register_pattern
+- **Search**: oracle_smart_search
+- **Quality**: oracle_reflect, oracle_covenant
+- **Candidates**: oracle_candidates, oracle_auto_promote, oracle_synthesize_tests
+- **Debug**: oracle_debug_capture, oracle_debug_search, oracle_debug_feedback, oracle_debug_stats
+- **Storage**: oracle_sync, oracle_share
+- **Maintenance**: oracle_maintain
 
 ## Quick Reference
 
@@ -76,21 +70,13 @@ node src/cli.js search "debounce"          # Find a pattern
 node src/cli.js resolve --description "..."  # Smart pull/evolve/generate
 node src/cli.js patterns                    # Library stats
 node src/cli.js candidates                  # Unproven candidates
-node src/cli.js generate                    # Manual batch generate (usually automatic)
 node src/cli.js promote auto               # Promote candidates with tests
 node src/cli.js synthesize                  # Generate tests + auto-promote
+node src/cli.js maintain                   # Full maintenance cycle (heal + optimize + evolve)
 node src/cli.js sync push                  # Sync to personal store
 node src/cli.js share                      # Share to community store
-node src/cli.js global                     # View personal + community stats
-node src/cli.js analytics                  # Health report
-node src/cli.js cloud --port 8888          # Start cloud federation server
-node src/cli.js remote add <url>           # Add remote oracle
-node src/cli.js mcp-install                # Auto-register MCP in AI editors
-node src/cli.js github verify              # Link GitHub identity
-node src/cli.js vote --id <id> --score 5   # Vote on a pattern
 node src/cli.js debug search --error "..."  # Search debug patterns
-node src/cli.js transpile --id <id> --to python  # Transpile pattern
-node src/cli.js context --id <id>          # Export AI context
+node src/cli.js mcp                        # Start MCP server (20 tools)
 node --test tests/*.test.js               # Run all tests
 ```
 

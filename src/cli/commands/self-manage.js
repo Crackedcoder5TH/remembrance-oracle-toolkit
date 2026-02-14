@@ -1,58 +1,103 @@
 /**
- * Self-Management CLI commands: evolve, lifecycle, improve, optimize, full-cycle
+ * Self-Management CLI commands: maintain, lifecycle
+ *
+ * `maintain` replaces the former evolve/improve/optimize/full-cycle commands
+ * with a single entry point that runs the full optimization cycle.
  */
 
 const { c, colorScore } = require('../colors');
 
 function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
 
-  handlers['evolve'] = (args) => {
-    console.log(`\n${c.boldCyan('Self-Evolution Cycle')}\n`);
-    console.log(`${c.dim('Detecting regressions, healing low performers, re-checking coherency...')}\n`);
+  handlers['maintain'] = (args) => {
+    console.log(`\n${c.boldCyan('Oracle Maintenance')}`);
+    console.log(`${c.dim('Running self-improve → self-optimize → self-evolve...')}\n`);
 
-    const report = oracle.selfEvolve();
+    const report = oracle.fullOptimizationCycle({
+      maxHealsPerRun: parseInt(args.max) || 20,
+    });
     if (jsonOut()) { console.log(JSON.stringify(report)); return; }
 
-    console.log(`${c.bold('Patterns analyzed:')} ${report.patternsAnalyzed}`);
-
-    if (report.healed.length > 0) {
-      console.log(`\n${c.boldGreen('Healed')} ${report.healed.length} pattern(s):`);
-      for (const h of report.healed) {
-        console.log(`  ${c.green('+')} ${c.cyan(h.name || h.id)} \u2014 improvement: ${c.green('+' + (h.improvement * 100).toFixed(1) + '%')} \u2192 ${colorScore(h.newCoherency)}`);
+    // Improvement phase summary
+    if (report.improvement) {
+      const imp = report.improvement;
+      if (imp.healed && imp.healed.length > 0) {
+        console.log(`${c.boldGreen('Healed')} ${imp.healed.length} pattern(s):`);
+        for (const h of imp.healed.slice(0, 10)) {
+          console.log(`  ${c.green('+')} ${c.cyan(h.name || h.id)} — ${(h.oldCoherency * 100).toFixed(0)}% → ${(h.newCoherency * 100).toFixed(0)}% (${c.green('+' + (h.improvement * 100).toFixed(1) + '%')})`);
+        }
+        if (imp.healed.length > 10) {
+          console.log(`  ${c.dim('... and ' + (imp.healed.length - 10) + ' more')}`);
+        }
+      }
+      if (imp.promoted > 0) console.log(`${c.boldGreen('Promoted:')} ${imp.promoted} candidates`);
+      if (imp.cleaned > 0) console.log(`${c.bold('Cleaned:')} ${imp.cleaned} duplicates/stubs`);
+      if (imp.retagged > 0) console.log(`${c.bold('Re-tagged:')} ${imp.retagged} patterns`);
+      if (imp.totalCoherencyGained > 0) {
+        console.log(`${c.boldGreen('Coherency gained:')} +${(imp.totalCoherencyGained * 100).toFixed(1)}%`);
       }
     }
 
-    if (report.healFailed.length > 0) {
-      console.log(`\n${c.yellow('Heal failed:')} ${report.healFailed.length} pattern(s)`);
-      for (const f of report.healFailed.slice(0, 5)) {
-        console.log(`  ${c.yellow('\u00D7')} ${f.name || f.id} \u2014 ${f.reason}`);
+    // Optimization phase summary
+    if (report.optimization) {
+      const opt = report.optimization;
+      if (opt.unusedPatterns && opt.unusedPatterns.length > 0) {
+        console.log(`\n${c.yellow('Unused patterns:')} ${opt.unusedPatterns.length} (180+ days idle)`);
+        for (const u of opt.unusedPatterns.slice(0, 5)) {
+          console.log(`  ${c.yellow('○')} ${c.cyan(u.name || u.id)} — ${u.daysSinceUse} days, ${u.usageCount} uses`);
+        }
+      }
+      if (opt.nearDuplicates && opt.nearDuplicates.length > 0) {
+        console.log(`\n${c.bold('Near-duplicates:')} ${opt.nearDuplicates.length} pair(s)`);
+        for (const d of opt.nearDuplicates.slice(0, 5)) {
+          console.log(`  ${c.cyan(d.pattern1.name)} ≈ ${c.cyan(d.pattern2.name)} (${(d.similarity * 100).toFixed(0)}% similar)`);
+        }
+      }
+      if (opt.recommendations && opt.recommendations.length > 0) {
+        console.log(`\n${c.bold('Recommendations:')}`);
+        for (const r of opt.recommendations) {
+          const icon = r.priority === 'high' ? c.red('!') : r.priority === 'info' ? c.green('✓') : c.yellow('○');
+          console.log(`  ${icon} ${r.message}`);
+        }
       }
     }
 
-    if (report.regressions.length > 0) {
-      console.log(`\n${c.boldRed('Regressions detected:')} ${report.regressions.length}`);
-      for (const r of report.regressions) {
-        console.log(`  ${c.red('!')} ${c.cyan(r.name || r.id)} \u2014 success rate dropped by ${c.red((r.delta * 100).toFixed(1) + '%')}`);
+    // Evolution phase summary
+    if (report.evolution && !report.evolution.error) {
+      const evo = report.evolution;
+      if (evo.regressions && evo.regressions.length > 0) {
+        console.log(`\n${c.boldRed('Regressions detected:')} ${evo.regressions.length}`);
+        for (const r of evo.regressions) {
+          console.log(`  ${c.red('!')} ${c.cyan(r.name || r.id)} — success rate dropped by ${c.red((r.delta * 100).toFixed(1) + '%')}`);
+        }
       }
     }
 
-    if (report.coherencyUpdates.length > 0) {
-      console.log(`\n${c.bold('Coherency updates:')} ${report.coherencyUpdates.length}`);
-      for (const u of report.coherencyUpdates.slice(0, 5)) {
-        const dir = u.diff > 0 ? c.green('+' + (u.diff * 100).toFixed(1) + '%') : c.red((u.diff * 100).toFixed(1) + '%');
-        console.log(`  ${c.cyan(u.name || u.id)} \u2014 ${dir}`);
-      }
+    // Whisper
+    if (report.whisper) {
+      console.log(`\n${report.whisper}`);
     }
 
-    console.log(`\n${c.dim('Stale patterns:')} ${report.staleCount}  ${c.dim('Evolve-overloaded:')} ${report.evolveOverloaded.length}`);
+    if (report.whisperSummary && report.whisperSummary.hasActivity) {
+      console.log(`\n${c.boldCyan('─── Healing Whisper ───')}`);
+      console.log(report.whisperSummary.text);
+    }
+
+    console.log(`\n${c.dim('Total duration:')} ${report.durationMs}ms`);
   };
+
+  // Keep backward-compat aliases pointing to maintain
+  handlers['evolve'] = handlers['maintain'];
+  handlers['improve'] = handlers['maintain'];
+  handlers['optimize'] = handlers['maintain'];
+  handlers['full-cycle'] = handlers['maintain'];
 
   handlers['lifecycle'] = (args) => {
     const sub = process.argv[3];
 
     if (!sub || sub === 'help') {
       console.log(`
-${c.boldCyan('Lifecycle Engine')} \u2014 always-on automatic pattern management
+${c.boldCyan('Lifecycle Engine')} — always-on automatic pattern management
 
 ${c.bold('Commands:')}
   ${c.cyan('lifecycle start')}    Start the always-on lifecycle engine
@@ -145,100 +190,6 @@ ${c.bold('Commands:')}
 
     console.error(`${c.boldRed('Unknown lifecycle subcommand:')} ${sub}. Run ${c.cyan('oracle lifecycle help')} for usage.`);
     process.exit(1);
-  };
-
-  handlers['improve'] = (args) => {
-    console.log(`\n${c.boldCyan('Self-Improvement Cycle')}\n`);
-    console.log(`${c.dim('Healing low-coherency patterns, promoting candidates, cleaning stubs...')}\n`);
-
-    const report = oracle.selfImprove({
-      maxHealsPerRun: parseInt(args.max) || 20,
-    });
-    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
-
-    console.log(`${c.bold('Patterns analyzed:')} ${report.patternsAnalyzed}`);
-
-    if (report.healed.length > 0) {
-      console.log(`\n${c.boldGreen('Healed')} ${report.healed.length} pattern(s):`);
-      for (const h of report.healed.slice(0, 10)) {
-        console.log(`  ${c.green('+')} ${c.cyan(h.name || h.id)} \u2014 ${(h.oldCoherency * 100).toFixed(0)}% \u2192 ${(h.newCoherency * 100).toFixed(0)}% (${c.green('+' + (h.improvement * 100).toFixed(1) + '%')})`);
-      }
-      if (report.healed.length > 10) {
-        console.log(`  ${c.dim('... and ' + (report.healed.length - 10) + ' more')}`);
-      }
-    }
-
-    if (report.promoted > 0) console.log(`${c.boldGreen('Promoted:')} ${report.promoted} candidates`);
-    if (report.cleaned > 0) console.log(`${c.bold('Cleaned:')} ${report.cleaned} duplicates/stubs`);
-    if (report.retagged > 0) console.log(`${c.bold('Re-tagged:')} ${report.retagged} patterns`);
-    if (report.recovered > 0) console.log(`${c.bold('Recovered:')} ${report.recovered} rejections`);
-
-    if (report.totalCoherencyGained > 0) {
-      console.log(`\n${c.boldGreen('Total coherency gained:')} +${(report.totalCoherencyGained * 100).toFixed(1)}%`);
-    }
-    console.log(`${c.dim('Duration:')} ${report.durationMs}ms`);
-  };
-
-  handlers['optimize'] = (args) => {
-    console.log(`\n${c.boldCyan('Self-Optimization Cycle')}\n`);
-    console.log(`${c.dim('Analyzing usage, detecting duplicates, optimizing tags...')}\n`);
-
-    const report = oracle.selfOptimize();
-    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
-
-    console.log(`${c.bold('Patterns analyzed:')} ${report.patternsAnalyzed}`);
-
-    if (report.unusedPatterns.length > 0) {
-      console.log(`\n${c.yellow('Unused patterns:')} ${report.unusedPatterns.length} (180+ days idle)`);
-      for (const u of report.unusedPatterns.slice(0, 5)) {
-        console.log(`  ${c.yellow('\u25CB')} ${c.cyan(u.name || u.id)} \u2014 ${u.daysSinceUse} days, ${u.usageCount} uses`);
-      }
-      if (report.unusedPatterns.length > 5) {
-        console.log(`  ${c.dim('... and ' + (report.unusedPatterns.length - 5) + ' more')}`);
-      }
-    }
-
-    if (report.nearDuplicates.length > 0) {
-      console.log(`\n${c.bold('Near-duplicates:')} ${report.nearDuplicates.length} pair(s)`);
-      for (const d of report.nearDuplicates.slice(0, 5)) {
-        console.log(`  ${c.cyan(d.pattern1.name)} \u2248 ${c.cyan(d.pattern2.name)} (${(d.similarity * 100).toFixed(0)}% similar)`);
-      }
-    }
-
-    if (report.coherencyRefreshed > 0) {
-      console.log(`\n${c.bold('Coherency refreshed:')} ${report.coherencyRefreshed} pattern(s)`);
-    }
-
-    if (report.recommendations.length > 0) {
-      console.log(`\n${c.bold('Recommendations:')}`);
-      for (const r of report.recommendations) {
-        const icon = r.priority === 'high' ? c.red('!') : r.priority === 'info' ? c.green('\u2713') : c.yellow('\u25CB');
-        console.log(`  ${icon} ${r.message}`);
-      }
-    }
-
-    console.log(`\n${c.dim('Duration:')} ${report.durationMs}ms`);
-  };
-
-  handlers['full-cycle'] = (args) => {
-    console.log(`\n${c.boldCyan('Full Optimization Cycle')}`);
-    console.log(`${c.dim('Running self-improve \u2192 self-optimize \u2192 self-evolve...')}\n`);
-
-    const report = oracle.fullOptimizationCycle({
-      maxHealsPerRun: parseInt(args.max) || 20,
-    });
-    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
-
-    if (report.whisper) {
-      console.log(report.whisper);
-    }
-
-    if (report.whisperSummary && report.whisperSummary.hasActivity) {
-      console.log(`\n${c.boldCyan('\u2500\u2500\u2500 Healing Whisper \u2500\u2500\u2500')}`);
-      console.log(report.whisperSummary.text);
-    }
-
-    console.log(`\n${c.dim('Total duration:')} ${report.durationMs}ms`);
   };
 }
 

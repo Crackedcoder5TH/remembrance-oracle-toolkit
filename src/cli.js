@@ -166,10 +166,7 @@ ${c.bold('Transpiler & AI:')}
   ${c.cyan('llm')}           Claude LLM engine — transpile/test/refine/analyze/explain
 
 ${c.bold('Self-Management:')}
-  ${c.cyan('evolve')}        Run self-evolution cycle (heal, detect regressions)
-  ${c.cyan('improve')}       Self-improve — heal patterns, promote, clean, retag
-  ${c.cyan('optimize')}      Self-optimize — detect duplicates, analyze usage
-  ${c.cyan('full-cycle')}    Full cycle: improve + optimize + evolve (with whisper)
+  ${c.cyan('maintain')}      Full maintenance cycle: heal, promote, optimize, evolve
   ${c.cyan('lifecycle')}     Always-on lifecycle engine (start, stop, status, run)
 
 ${c.bold('Debug:')}
@@ -177,7 +174,7 @@ ${c.bold('Debug:')}
   ${c.cyan('reliability')}   Pattern reliability statistics
 
 ${c.bold('Integration:')}
-  ${c.cyan('mcp')}           Start MCP server (67 tools, JSON-RPC over stdio)
+  ${c.cyan('mcp')}           Start MCP server (20 tools, JSON-RPC over stdio)
   ${c.cyan('mcp-install')}   Auto-register MCP in AI editors (Claude, Cursor, VS Code)
   ${c.cyan('setup')}         Initialize oracle in current project (alias: init)
   ${c.cyan('dashboard')}     Start web dashboard (default port 3333)
@@ -187,7 +184,6 @@ ${c.bold('Integration:')}
 
 ${c.bold('Platform:')}
   ${c.cyan('billing')}       Stripe billing — plans, subscriptions, webhook server
-  ${c.cyan('hub')}           Hosted multi-tenant federation hub
   ${c.cyan('landing')}       Marketing landing page server
   ${c.cyan('github-app')}    GitHub App — webhook server, PR analysis, covenant checks
 

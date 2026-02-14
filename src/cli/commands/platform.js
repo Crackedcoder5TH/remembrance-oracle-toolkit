@@ -1,9 +1,8 @@
 /**
- * Platform CLI commands: billing, hosted-hub, landing, github-app
+ * Platform CLI commands: billing, landing, github-app
  *
- * Covers the four commercialization pillars:
+ * Covers the commercialization pillars:
  * - Stripe billing integration (subscriptions + webhook management)
- * - Hosted multi-tenant federation hub
  * - Marketing landing page server
  * - GitHub App for organic discovery
  */
@@ -89,64 +88,6 @@ function registerPlatformCommands(handlers, { oracle, jsonOut }) {
       console.log(`\n${c.bold('Required env vars:')}`);
       console.log(`  ${c.yellow('STRIPE_SECRET_KEY')}         — Stripe API secret key`);
       console.log(`  ${c.yellow('STRIPE_WEBHOOK_SECRET')}     — Stripe webhook signing secret`);
-    }
-  };
-
-  // ─── Hosted Hub ───
-
-  handlers['hosted-hub'] = handlers['hub'] = (args) => {
-    const sub = process.argv[3];
-
-    if (sub === 'start' || !sub) {
-      const { startHostedHub } = require('../../federation/hosted-hub');
-      const port = parseInt(args.port) || 3580;
-      const host = args.host || '0.0.0.0';
-      const dataDir = args['data-dir'];
-
-      const opts = { port, host };
-      if (dataDir) opts.dataDir = dataDir;
-
-      console.log(`${c.boldCyan('Starting Hosted Hub')} on ${host}:${port}\n`);
-
-      const { hub, server } = startHostedHub(opts);
-
-      server.on('listening', () => {
-        console.log(`${c.boldGreen('Hosted Hub')} ready on port ${c.bold(String(port))}\n`);
-        console.log(`  ${c.bold('Endpoints:')}`);
-        console.log(`    Health:    ${c.cyan(`http://localhost:${port}/api/hub/health`)}`);
-        console.log(`    Stats:     ${c.cyan(`http://localhost:${port}/api/hub/stats`)}`);
-        console.log(`    Discover:  ${c.cyan(`http://localhost:${port}/api/hub/discover`)}`);
-        console.log(`    Teams:     ${c.cyan(`POST http://localhost:${port}/api/teams/create`)}`);
-        console.log(`\n  ${c.dim('Press Ctrl+C to stop')}`);
-      });
-    } else if (sub === 'status') {
-      const { HostedHub } = require('../../federation/hosted-hub');
-      const dataDir = args['data-dir'];
-      const opts = {};
-      if (dataDir) opts.dataDir = dataDir;
-      const hub = new HostedHub(opts);
-      const stats = hub.globalStats();
-
-      if (jsonOut()) { console.log(JSON.stringify(stats)); return; }
-
-      console.log(`\n${c.boldCyan('Hosted Hub Status')}\n`);
-      console.log(`  Teams:       ${c.bold(String(stats.totalTeams))}`);
-      console.log(`  Patterns:    ${c.bold(String(stats.totalPatterns))}`);
-      console.log(`  Members:     ${c.bold(String(stats.totalMembers))}`);
-      if (stats.teams) {
-        console.log(`\n${c.bold('Teams:')}`);
-        for (const [id, info] of Object.entries(stats.teams)) {
-          console.log(`  ${c.cyan(info.name || id)} — ${info.patterns || 0} patterns, ${info.members || 0} members`);
-        }
-      }
-    } else {
-      console.log(`\n${c.boldCyan('Hosted Hub Commands')}\n`);
-      console.log(`  ${c.cyan('oracle hub start')}     — Start the hosted hub server`);
-      console.log(`  ${c.cyan('oracle hub status')}    — Show hub status and team info`);
-      console.log(`\n${c.bold('Options:')}`);
-      console.log(`  ${c.yellow('--port <n>')}          — Port (default: 3580)`);
-      console.log(`  ${c.yellow('--host <addr>')}       — Host (default: 0.0.0.0)`);
-      console.log(`  ${c.yellow('--data-dir <path>')}   — Hub data directory`);
     }
   };
 

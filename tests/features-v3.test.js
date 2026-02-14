@@ -473,12 +473,12 @@ describe('Feature 6: Remote Oracle Federation', () => {
     assert.ok(cliSrc.includes('remoteSearch'));
   });
 
-  it('MCP server has remote tools', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_remote_search'));
-    assert.ok(names.includes('oracle_remotes'));
-    assert.ok(names.includes('oracle_full_search'));
+  it('remote tools accessible via oracle API (not MCP)', () => {
+    const oracle = new RemembranceOracle({ storeDir: fs.mkdtempSync(path.join(os.tmpdir(), 'rem-api-test-')) });
+    assert.equal(typeof oracle.registerRemote, 'function');
+    assert.equal(typeof oracle.removeRemote, 'function');
+    assert.equal(typeof oracle.listRemotes, 'function');
+    assert.equal(typeof oracle.remoteSearch, 'function');
   });
 });
 
@@ -591,10 +591,10 @@ describe('Feature 7: Weighted Voting with Reputation', () => {
     // updateVoterReputation is tested via patternFeedback above
   });
 
-  it('MCP has reputation tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_reputation'));
+  it('reputation accessible via oracle API (not MCP)', () => {
+    const tmpOracle = new RemembranceOracle({ storeDir: fs.mkdtempSync(path.join(os.tmpdir(), 'rep-api-test-')) });
+    assert.equal(typeof tmpOracle.getVoterReputation, 'function');
+    assert.equal(typeof tmpOracle.topVoters, 'function');
   });
 
   it('CLI has reputation command', () => {
@@ -682,10 +682,9 @@ describe('Feature 8: Transpiler Verification & Test Generation', () => {
     assert.ok(recyclerSrc.includes('compile-verified'));
   });
 
-  it('MCP has verify_transpile tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_verify_transpile'));
+  it('verify transpile accessible via module (not MCP)', () => {
+    const { verifyTranspilation } = require('../src/core/ast-transpiler');
+    assert.equal(typeof verifyTranspilation, 'function');
   });
 
   it('CLI has verify-transpile command', () => {
@@ -773,10 +772,9 @@ describe('Feature 9: AI Context Injection', () => {
     assert.ok(ctx.prompt.includes('GENERATE'));
   });
 
-  it('MCP has context tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_context'));
+  it('context accessible via oracle API (not MCP)', () => {
+    assert.equal(typeof oracle.generateContext, 'function');
+    assert.equal(typeof oracle.exportContext, 'function');
   });
 
   it('CLI has context command', () => {
@@ -929,10 +927,10 @@ describe('Feature 11: MCP Auto-Registration', () => {
     assert.ok(cli.includes('checkInstallation'));
   });
 
-  it('MCP server includes oracle_mcp_install tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_mcp_install'));
+  it('MCP install accessible via module (not MCP tool)', () => {
+    const { installAll, checkInstallation } = require('../src/ide/mcp-install');
+    assert.equal(typeof installAll, 'function');
+    assert.equal(typeof checkInstallation, 'function');
   });
 });
 
@@ -1127,9 +1125,11 @@ describe('Feature 13: GitHub OAuth Identity', () => {
     assert.ok(cli.includes('GitHubIdentity'));
   });
 
-  it('MCP server includes oracle_github_identity tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_github_identity'));
+  it('GitHub identity accessible via oracle API (not MCP tool)', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gh-mcp-'));
+    const tmpOracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
+    assert.equal(typeof tmpOracle.verifyGitHubToken, 'function');
+    assert.equal(typeof tmpOracle.isVerifiedVoter, 'function');
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 });

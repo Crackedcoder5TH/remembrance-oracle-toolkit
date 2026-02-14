@@ -14,7 +14,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     console.log(`Pruned ${c.boldRed(String(result.removed))} entries. ${c.boldGreen(String(result.remaining))} remaining.`);
   };
 
-  handlers['deep-clean'] = handlers['deepclean'] = (args) => {
+  handlers['deep-clean'] = (args) => {
     const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
     const result = oracle.deepClean({
       minCodeLength: parseInt(args['min-code-length']) || 35,
@@ -182,7 +182,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     }
   };
 
-  handlers['security-scan'] = handlers['scan'] = (args) => {
+  handlers['security-scan'] = (args) => {
     const id = args.id || process.argv[3];
     if (!id && !args.file) { console.error(`Usage: ${c.cyan('oracle security-scan')} <pattern-id> or --file <code.js>`); process.exit(1); }
     let target = id;

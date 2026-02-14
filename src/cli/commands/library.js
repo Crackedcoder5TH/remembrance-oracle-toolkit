@@ -9,7 +9,7 @@ const { c, colorScore, colorStatus, colorDecision, colorSource } = require('../c
 
 function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI, jsonOut }) {
 
-  handlers['bug-report'] = handlers['report-bug'] = (args) => {
+  handlers['bug-report'] = (args) => {
     const id = args.id || process.argv[3];
     if (!id) { console.error(`Usage: ${c.cyan('oracle bug-report')} <pattern-id> [--description "..."]`); process.exit(1); }
     const result = oracle.patterns.reportBug(id, args.description || '');
@@ -379,7 +379,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     }
   };
 
-  handlers['synthesize'] = handlers['synth'] = (args) => {
+  handlers['synthesize'] = (args) => {
     const maxCandidates = parseInt(args['max-candidates']) || Infinity;
     const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
     const autoPromoteFlag = args['no-promote'] ? false : true;

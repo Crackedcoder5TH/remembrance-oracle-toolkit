@@ -781,7 +781,7 @@ describe('Feature 9: AI Context Injection', () => {
     const cliSrc = readCliSources();
     assert.ok(cliSrc.includes("'context'"));
     assert.ok(cliSrc.includes('generateContext'));
-    assert.ok(cliSrc.includes("'export-context'"));
+    assert.ok(cliSrc.includes("'context'"));
   });
 });
 
@@ -923,7 +923,7 @@ describe('Feature 11: MCP Auto-Registration', () => {
   it('CLI has mcp-install command', () => {
     const cli = readCliSources();
     assert.ok(cli.includes("'mcp-install'"));
-    assert.ok(cli.includes("'install-mcp'"));
+    assert.ok(cli.includes("'mcp-install'"));
     assert.ok(cli.includes('checkInstallation'));
   });
 
@@ -1121,7 +1121,7 @@ describe('Feature 13: GitHub OAuth Identity', () => {
   it('CLI has github command', () => {
     const cli = readCliSources();
     assert.ok(cli.includes("'github'"));
-    assert.ok(cli.includes("'gh-auth'"));
+    assert.ok(cli.includes("'github'"));
     assert.ok(cli.includes('GitHubIdentity'));
   });
 

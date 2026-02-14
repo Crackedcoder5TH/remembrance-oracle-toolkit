@@ -52,9 +52,6 @@ const { evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment
 const { LifecycleEngine, LIFECYCLE_DEFAULTS } = require('./core/lifecycle');
 const { HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS } = require('./core/whisper');
 const { selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, OPTIMIZE_DEFAULTS } = require('./core/self-optimize');
-const { StripeClient, BillingManager, billingMiddleware, billingRoutes, PLANS } = require('./billing/stripe');
-const { createLandingServer, startLanding } = require('./landing/server');
-const { GitHubApp, webhookRoutes: githubWebhookRoutes, setupGitHubApp } = require('./github/app');
 
 module.exports = {
   // Core
@@ -290,19 +287,4 @@ module.exports = {
   fullOptimizationCycle,
   OPTIMIZE_DEFAULTS,
 
-  // Billing (Stripe)
-  StripeClient,
-  BillingManager,
-  billingMiddleware,
-  billingRoutes,
-  PLANS,
-
-  // Landing Page
-  createLandingServer,
-  startLanding,
-
-  // GitHub App
-  GitHubApp,
-  githubWebhookRoutes,
-  setupGitHubApp,
 };

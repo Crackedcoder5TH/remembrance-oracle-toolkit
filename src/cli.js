@@ -30,7 +30,6 @@ const { registerTranspileCommands } = require('./cli/commands/transpile');
 const { registerIntegrationCommands } = require('./cli/commands/integration');
 const { registerAdminCommands } = require('./cli/commands/admin');
 const { registerSelfManageCommands } = require('./cli/commands/self-manage');
-const { registerPlatformCommands } = require('./cli/commands/platform');
 
 const oracle = new RemembranceOracle({ autoSync: true });
 
@@ -182,11 +181,6 @@ ${c.bold('Integration:')}
   ${c.cyan('hooks')}         Install/uninstall git hooks
   ${c.cyan('plugin')}        Manage plugins (load, list, unload)
 
-${c.bold('Platform:')}
-  ${c.cyan('billing')}       Stripe billing — plans, subscriptions, webhook server
-  ${c.cyan('landing')}       Marketing landing page server
-  ${c.cyan('github-app')}    GitHub App — webhook server, PR analysis, covenant checks
-
 ${c.bold('Admin:')}
   ${c.cyan('users')}         Manage users (list, add, delete)
   ${c.cyan('audit')}         View append-only audit log
@@ -253,7 +247,6 @@ function main() {
   registerIntegrationCommands(handlers, context);
   registerAdminCommands(handlers, context);
   registerSelfManageCommands(handlers, context);
-  registerPlatformCommands(handlers, context);
 
   const handler = handlers[cmd];
   if (handler) {

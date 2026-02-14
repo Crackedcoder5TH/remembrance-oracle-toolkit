@@ -22,7 +22,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['top-voted'] = handlers['topvoted'] = (args) => {
+  handlers['top-voted'] = (args) => {
     const limit = parseInt(args.limit) || 20;
     const patterns = oracle.topVoted(limit);
     if (patterns.length === 0) {
@@ -37,7 +37,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['reputation'] = handlers['rep'] = (args) => {
+  handlers['reputation'] = (args) => {
     const sub = process.argv[3];
     if (sub === 'check' || !sub) {
       const voter = args.voter || process.argv[4] || process.env.USER || 'anonymous';
@@ -67,7 +67,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['github'] = handlers['gh-auth'] = (args) => {
+  handlers['github'] = (args) => {
     const { GitHubIdentity } = require('../../auth/github-oauth');
     const sub = process.argv[3];
     const sqliteStore = oracle.store.getSQLiteStore();

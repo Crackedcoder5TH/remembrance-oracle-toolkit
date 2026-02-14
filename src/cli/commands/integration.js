@@ -12,7 +12,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
     startMCPServer(oracle);
   };
 
-  handlers['mcp-install'] = handlers['install-mcp'] = (args) => {
+  handlers['mcp-install'] = (args) => {
     const { installAll, uninstallAll, checkInstallation, installTo, uninstallFrom } = require('../../ide/mcp-install');
     const sub = process.argv[3];
 

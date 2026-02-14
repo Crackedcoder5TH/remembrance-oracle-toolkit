@@ -30,7 +30,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['verify-transpile'] = handlers['vtranspile'] = (args) => {
+  handlers['verify-transpile'] = (args) => {
     const { transpile: astTranspile, generateGoTest, generateRustTest, verifyTranspilation } = require('../../core/ast-transpiler');
     const targetLang = process.argv[3];
     const filePath = args.file || process.argv[4];
@@ -70,7 +70,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['context'] = handlers['export-context'] = (args) => {
+  handlers['context'] = (args) => {
     const format = args.format || process.argv[3] || 'markdown';
     const maxPatterns = parseInt(args.limit) || 50;
     const includeCode = args.code === 'true' || args.code === true;

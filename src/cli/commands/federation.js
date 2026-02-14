@@ -179,7 +179,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['cross-search'] = handlers['xsearch'] = (args) => {
+  handlers['cross-search'] = (args) => {
     const desc = args.description || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
     if (!desc) { console.error(`Usage: ${c.cyan('oracle cross-search')} "<query>" [--language <lang>]`); process.exit(1); }
     const result = oracle.crossRepoSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 });
@@ -214,7 +214,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['dedup'] = handlers['deduplicate'] = (args) => {
+  handlers['dedup'] = (args) => {
     console.log(c.boldCyan('Deduplicating pattern stores...\n'));
     const report = oracle.deduplicate();
     if (report.local) {

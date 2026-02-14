@@ -93,7 +93,7 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
   handlers['full-cycle'] = handlers['maintain'];
 
   handlers['lifecycle'] = (args) => {
-    const sub = process.argv[3];
+    const sub = args._sub;
 
     if (!sub || sub === 'help') {
       console.log(`

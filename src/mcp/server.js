@@ -361,8 +361,33 @@ class MCPServer {
     };
   }
 
+  /**
+   * Validate required parameters for a tool call against its inputSchema.
+   * Returns an error string if validation fails, null if valid.
+   */
+  _validateParams(toolName, args) {
+    const tool = TOOLS.find(t => t.name === toolName);
+    if (!tool) return `Unknown tool: ${toolName}`;
+    const required = tool.inputSchema?.required || [];
+    const missing = required.filter(p => args[p] === undefined || args[p] === null);
+    if (missing.length > 0) {
+      return `Missing required parameter(s): ${missing.join(', ')}`;
+    }
+    return null;
+  }
+
   async _handleToolCall(id, params) {
     const { name, arguments: args = {} } = params || {};
+
+    // Validate required parameters before execution
+    const validationError = this._validateParams(name, args);
+    if (validationError) {
+      return {
+        jsonrpc: '2.0',
+        id,
+        error: { code: -32602, message: validationError },
+      };
+    }
 
     try {
       let result;
@@ -580,10 +605,7 @@ class MCPServer {
           return {
             jsonrpc: '2.0',
             id,
-            result: {
-              content: [{ type: 'text', text: `Unknown tool: ${name}` }],
-              isError: true,
-            },
+            error: { code: -32602, message: `Unknown tool: ${name}` },
           };
       }
 
@@ -598,10 +620,7 @@ class MCPServer {
       return {
         jsonrpc: '2.0',
         id,
-        result: {
-          content: [{ type: 'text', text: `Error: ${err.message}` }],
-          isError: true,
-        },
+        error: { code: -32603, message: `Internal error: ${err.message}` },
       };
     }
   }

@@ -10,8 +10,8 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
 
   handlers['transpile'] = (args) => {
     const { transpile: astTranspile } = require('../../core/ast-transpiler');
-    const targetLang = process.argv[3];
-    const filePath = args.file || process.argv[4];
+    const targetLang = args._sub;
+    const filePath = args.file || args._positional[1];
     if (!targetLang || !filePath) {
       console.log(`Usage: oracle transpile <language> --file <code.js>`);
       console.log(`  Languages: python, typescript, go, rust`);
@@ -32,8 +32,8 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
 
   handlers['verify-transpile'] = (args) => {
     const { transpile: astTranspile, generateGoTest, generateRustTest, verifyTranspilation } = require('../../core/ast-transpiler');
-    const targetLang = process.argv[3];
-    const filePath = args.file || process.argv[4];
+    const targetLang = args._sub;
+    const filePath = args.file || args._positional[1];
     if (!targetLang || !filePath) {
       console.log(`Usage: oracle verify-transpile <language> --file <code.js> [--test <test.js>]`);
       console.log(`  Languages: go, rust`);
@@ -71,7 +71,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['context'] = (args) => {
-    const format = args.format || process.argv[3] || 'markdown';
+    const format = args.format || args._sub || 'markdown';
     const maxPatterns = parseInt(args.limit) || 50;
     const includeCode = args.code === 'true' || args.code === true;
     const output = args.output || args.file;
@@ -87,7 +87,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['llm'] = (args) => {
-    const sub = process.argv[3];
+    const sub = args._sub;
 
     if (!sub || sub === 'help') {
       console.log(`${c.bold('Claude LLM Engine')}\n`);

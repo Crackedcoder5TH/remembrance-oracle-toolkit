@@ -9,7 +9,7 @@ const { c, colorScore, colorSource } = require('../colors');
 function registerDebugCommands(handlers, { oracle, jsonOut }) {
 
   handlers['debug'] = (args) => {
-    const sub = process.argv[3];
+    const sub = args._sub;
 
     if (!sub || sub === 'help') {
       console.log(`
@@ -81,7 +81,7 @@ ${c.bold('Options:')}
     }
 
     if (sub === 'search') {
-      const errorMessage = args.error || process.argv.slice(4).filter(a => !a.startsWith('--')).join(' ');
+      const errorMessage = args.error || args._positional.slice(1).join(' ');
       if (!errorMessage) { console.error(c.boldRed('Error:') + ` provide an error message. Usage: ${c.cyan('oracle debug search --error "TypeError: x is not a function"')}`); process.exit(1); }
       const results = oracle.debugSearch({
         errorMessage,
@@ -108,7 +108,7 @@ ${c.bold('Options:')}
     }
 
     if (sub === 'feedback') {
-      const id = args.id || process.argv[4];
+      const id = args.id || args._positional[1];
       if (!id) { console.error(c.boldRed('Error:') + ' --id required'); process.exit(1); }
       const resolved = args.success === true || args.success === 'true';
       const result = oracle.debugFeedback(id, resolved);

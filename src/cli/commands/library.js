@@ -11,7 +11,7 @@ const { validatePositiveInt, validateCoherency, validateId } = require('../valid
 function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI, jsonOut }) {
 
   handlers['bug-report'] = (args) => {
-    const id = args.id || process.argv[3];
+    const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle bug-report')} <pattern-id> [--description "..."]`); process.exit(1); }
     const result = oracle.patterns.reportBug(id, args.description || '');
     if (result.success) {
@@ -22,7 +22,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['reliability'] = (args) => {
-    const id = args.id || process.argv[3];
+    const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle reliability')} <pattern-id>`); process.exit(1); }
     const r = oracle.patterns.getReliability(id);
     if (!r) { console.log(c.red('Pattern not found')); return; }
@@ -116,7 +116,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['search'] = (args) => {
-    const term = args.description || args._rest || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
+    const term = args.description || args._rest;
     if (!term) { console.error(c.boldRed('Error:') + ` provide a search term. Usage: ${c.cyan('oracle search <term>')}`); process.exit(1); }
     const mode = args.mode || 'hybrid';
     const results = oracle.search(term, {
@@ -140,7 +140,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['smart-search'] = (args) => {
-    const term = args.description || args._rest || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
+    const term = args.description || args._rest;
     if (!term) { console.error(c.boldRed('Error:') + ` provide a search term. Usage: ${c.cyan('oracle smart-search <term>')}`); process.exit(1); }
     const result = oracle.smartSearch(term, {
       limit: validatePositiveInt(args.limit, 'limit', 10),
@@ -187,7 +187,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['diff'] = (args) => {
     const { colorDiff } = require('../colors');
-    const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
+    const ids = args._positional;
     if (ids.length < 2) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle diff')} <id-a> <id-b>`); process.exit(1); }
     const result = oracle.diff(ids[0], ids[1]);
     if (result.error) { console.error(c.boldRed('Error:') + ' ' + result.error); process.exit(1); }
@@ -333,7 +333,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['promote'] = (args) => {
-    const id = args.id || process.argv[3];
+    const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle promote')} <candidate-id> [--test <test-file>]`); process.exit(1); }
 
     if (id === 'auto' || id === '--auto') {

@@ -15,7 +15,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
 
   handlers['mcp-install'] = (args) => {
     const { installAll, uninstallAll, checkInstallation, installTo, uninstallFrom } = require('../../ide/mcp-install');
-    const sub = process.argv[3];
+    const sub = args._sub;
 
     if (sub === 'status' || sub === 'check') {
       const status = checkInstallation();
@@ -29,7 +29,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
     }
 
     if (sub === 'remove' || sub === 'uninstall') {
-      const target = process.argv[4];
+      const target = args._positional[1];
       if (target) {
         const result = uninstallFrom(target);
         console.log(result.success ? `${c.green('\u2713')} Removed from ${c.bold(target)}` : `${c.red('\u2717')} ${result.error}`);
@@ -74,10 +74,10 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
   handlers['plugin'] = (args) => {
     const { PluginManager } = require('../../plugins/manager');
     const pm = new PluginManager(oracle, { pluginDir: path.join(process.cwd(), '.remembrance', 'plugins') });
-    const sub = process.argv[3];
+    const sub = args._sub;
 
     if (sub === 'load') {
-      const pluginPath = process.argv[4];
+      const pluginPath = args._positional[1];
       if (!pluginPath) { console.error(c.boldRed('Error:') + ' provide a plugin path'); process.exit(1); }
       try {
         const manifest = pm.load(pluginPath);
@@ -99,7 +99,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
         }
       }
     } else if (sub === 'unload') {
-      const name = process.argv[4];
+      const name = args._positional[1];
       if (!name) { console.error(c.boldRed('Error:') + ' provide plugin name'); process.exit(1); }
       try {
         pm.unload(name);

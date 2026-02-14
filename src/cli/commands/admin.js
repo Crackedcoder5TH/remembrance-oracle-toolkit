@@ -14,7 +14,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       const { AuthManager } = require('../../auth/auth');
       const sqliteStore = oracle.store.getSQLiteStore();
       const auth = new AuthManager(sqliteStore);
-      const subCmd = process.argv[3];
+      const subCmd = args._sub;
 
       if (subCmd === 'add') {
         const username = args.username || args.name;
@@ -138,7 +138,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
 
   handlers['hooks'] = (args) => {
     const { installHooks, uninstallHooks, runPreCommitCheck } = require('../../ci/hooks');
-    const subCmd = process.argv[3];
+    const subCmd = args._sub;
     if (subCmd === 'install') {
       const result = installHooks(process.cwd());
       if (result.installed) {
@@ -157,9 +157,9 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
         console.error(c.boldRed('Error:') + ' ' + result.error);
       }
     } else if (subCmd === 'run') {
-      const hookName = process.argv[4];
+      const hookName = args._positional[1];
       if (hookName === 'pre-commit') {
-        const files = process.argv.slice(5).filter(a => !a.startsWith('--'));
+        const files = args._positional.slice(2);
         if (files.length === 0) {
           try {
             const staged = execSync('git diff --cached --name-only --diff-filter=ACM', { encoding: 'utf-8' })
@@ -189,7 +189,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['registry'] = (args) => {
-    const sub = process.argv[3];
+    const sub = args._sub;
     const {
       listRegistry, searchRegistry, getRegistryEntry, batchImport,
       discoverReposSync, checkLicense, getProvenance, findDuplicates,
@@ -227,7 +227,7 @@ ${c.bold('Subcommands:')}
     }
 
     if (sub === 'search') {
-      const query = process.argv[4];
+      const query = args._positional[1];
       if (!query) { console.error(c.boldRed('Error:') + ' provide a search query'); process.exit(1); }
       const results = searchRegistry(query, { language: args.language, limit: parseInt(args.limit) || 10 });
       if (jsonOut()) { console.log(JSON.stringify(results)); return; }
@@ -246,7 +246,7 @@ ${c.bold('Subcommands:')}
     }
 
     if (sub === 'import') {
-      const name = process.argv[4];
+      const name = args._positional[1];
       if (!name) { console.error(c.boldRed('Error:') + ` provide a repo name. Usage: ${c.cyan('oracle registry import lodash')}`); process.exit(1); }
       const entry = getRegistryEntry(name);
       if (!entry) {
@@ -317,7 +317,7 @@ ${c.bold('Subcommands:')}
     }
 
     if (sub === 'discover') {
-      const query = process.argv[4];
+      const query = args._positional[1];
       if (!query) { console.error(c.boldRed('Error:') + ` provide a search query. Usage: ${c.cyan('oracle registry discover "sorting algorithms"')}`); process.exit(1); }
       console.log(c.dim('\nSearching GitHub...'));
       const repos = discoverReposSync(query, {
@@ -344,7 +344,7 @@ ${c.bold('Subcommands:')}
     }
 
     if (sub === 'license') {
-      const spdx = process.argv[4];
+      const spdx = args._positional[1];
       if (!spdx) { console.error(c.boldRed('Error:') + ' provide an SPDX license ID (e.g. MIT, GPL-3.0, Apache-2.0)'); process.exit(1); }
       const result = checkLicense(spdx, { allowCopyleft: args['allow-copyleft'] === true });
       if (jsonOut()) { console.log(JSON.stringify(result)); return; }

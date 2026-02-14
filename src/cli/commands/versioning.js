@@ -7,7 +7,7 @@ const { c, colorScore } = require('../colors');
 function registerVersioningCommands(handlers, { oracle, jsonOut }) {
 
   handlers['versions'] = (args) => {
-    const id = args.id || process.argv[3];
+    const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle versions')} <pattern-id>`); process.exit(1); }
     try {
       const { VersionManager } = require('../../core/versioning');
@@ -30,7 +30,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['rollback'] = (args) => {
-    const id = args.id || process.argv[3];
+    const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle rollback')} <pattern-id> [--version <n>]`); process.exit(1); }
     const version = parseInt(args.version) || undefined;
     const result = oracle.rollback(id, version);
@@ -44,7 +44,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['verify'] = (args) => {
-    const id = args.id || process.argv[3];
+    const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle verify')} <pattern-id>`); process.exit(1); }
     const result = oracle.verifyOrRollback(id);
     if (result.passed) {
@@ -74,7 +74,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['sdiff'] = (args) => {
-    const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
+    const ids = args._positional;
     if (!ids[0] || !ids[1]) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle sdiff')} <id-a> <id-b>`); process.exit(1); }
     try {
       const { semanticDiff } = require('../../core/versioning');

@@ -9,7 +9,7 @@ const { validatePort } = require('../validate-args');
 function registerFederationCommands(handlers, { oracle, jsonOut }) {
 
   handlers['sync'] = (args) => {
-    const direction = process.argv[3] || 'both';
+    const direction = args._sub || 'both';
     const verbose = args.verbose === 'true' || args.verbose === true;
     const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
     const { PERSONAL_DIR } = require('../../core/persistence');
@@ -47,7 +47,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
     const { COMMUNITY_DIR } = require('../../core/persistence');
 
-    const nameFilter = process.argv.slice(3).filter(a => !a.startsWith('--'));
+    const nameFilter = args._positional;
     const tagFilter = args.tags ? args.tags.split(',').map(t => t.trim()) : undefined;
     const minCoherency = parseFloat(args['min-coherency']) || 0.7;
 
@@ -76,14 +76,14 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['community'] = (args) => {
-    const sub = process.argv[3];
+    const sub = args._sub;
     const verbose = args.verbose === 'true' || args.verbose === true;
     const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
 
     if (sub === 'pull') {
       const lang = args.language;
       const maxPull = parseInt(args['max-pull']) || Infinity;
-      const nameFilter = process.argv.slice(4).filter(a => !a.startsWith('--'));
+      const nameFilter = args._positional.slice(1);
       const report = oracle.pullCommunity({
         verbose, dryRun, language: lang, maxPull,
         nameFilter: nameFilter.length > 0 ? nameFilter : undefined,
@@ -152,9 +152,9 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['repos'] = (args) => {
-    const subCmd = process.argv[3];
+    const subCmd = args._sub;
     if (subCmd === 'add') {
-      const repoPath = process.argv[4] || args.path;
+      const repoPath = args._positional[1] || args.path;
       if (!repoPath) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle repos add')} <path>`); process.exit(1); }
       const result = oracle.registerRepo(repoPath);
       console.log(`${c.boldGreen('Registered:')} ${c.bold(result.path)} (${result.totalRepos} total repos)`);
@@ -181,7 +181,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['cross-search'] = (args) => {
-    const desc = args.description || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
+    const desc = args.description || args._rest;
     if (!desc) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle cross-search')} "<query>" [--language <lang>]`); process.exit(1); }
     const result = oracle.crossRepoSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 });
     console.log(c.boldCyan(`Cross-repo search for "${desc}" across ${result.totalSearched} repos:\n`));
@@ -203,7 +203,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['nearest'] = (args) => {
-    const term = args.description || process.argv.slice(3).filter(a => !a.startsWith('--')).join(' ');
+    const term = args.description || args._rest;
     if (!term) { console.error(c.boldRed('Error:') + ` provide a query. Usage: ${c.cyan('oracle nearest <term>')}`); process.exit(1); }
     const { nearestTerms } = require('../../core/vectors');
     const results = nearestTerms(term, parseInt(args.limit) || 10);
@@ -236,9 +236,9 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['remote'] = (args) => {
-    const sub = process.argv[3];
+    const sub = args._sub;
     if (sub === 'add') {
-      const url = process.argv[4] || args.url;
+      const url = args._positional[1] || args.url;
       if (!url) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle remote add')} <url> [--name <name>] [--token <jwt>]`); process.exit(1); }
       const { registerRemote } = require('../../cloud/client');
       const result = registerRemote(url, { name: args.name, token: args.token });
@@ -247,7 +247,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
       return;
     }
     if (sub === 'remove') {
-      const target = process.argv[4] || args.url || args.name;
+      const target = args._positional[1] || args.url || args.name;
       if (!target) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle remote remove')} <url-or-name>`); process.exit(1); }
       const { removeRemote } = require('../../cloud/client');
       const result = removeRemote(target);
@@ -268,7 +268,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
       return;
     }
     if (sub === 'search') {
-      const desc = args.description || process.argv.slice(4).filter(a => !a.startsWith('--')).join(' ');
+      const desc = args.description || args._positional.slice(1).join(' ');
       if (!desc) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle remote search')} "<query>" [--language <lang>]`); process.exit(1); }
       oracle.remoteSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 }).then(result => {
         console.log(c.boldCyan(`Remote federated search: "${desc}"\n`));
@@ -303,7 +303,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
 
   handlers['cloud'] = (args) => {
     const { CloudSyncServer } = require('../../cloud/server');
-    const sub = process.argv[3];
+    const sub = args._sub;
     if (sub === 'start' || sub === 'serve') {
       const port = validatePort(args.port, 3579);
       const host = args.host || '0.0.0.0';

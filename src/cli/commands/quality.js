@@ -36,7 +36,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
   };
 
   handlers['retag'] = (args) => {
-    const sub = process.argv[3];
+    const sub = args._sub;
     const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
 
     if (sub === 'all') {
@@ -105,7 +105,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
   };
 
   handlers['deps'] = (args) => {
-    const id = process.argv[3];
+    const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle deps')} <pattern-id>`); process.exit(1); }
     const deps = oracle.patterns.resolveDependencies(id);
     if (deps.length === 0) {
@@ -155,7 +155,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['covenant'] = (args) => {
     const { covenantCheck, getCovenant } = require('../../core/covenant');
-    const subCmd = process.argv[3];
+    const subCmd = args._sub;
     if (subCmd === 'list' || (!subCmd && !args.file)) {
       const principles = getCovenant();
       console.log(c.boldCyan("The Kingdom's Weave \u2014 15 Covenant Principles:\n"));
@@ -183,7 +183,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
   };
 
   handlers['security-scan'] = (args) => {
-    const id = args.id || process.argv[3];
+    const id = args.id || args._sub;
     if (!id && !args.file) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle security-scan')} <pattern-id> or --file <code.js>`); process.exit(1); }
     let target = id;
     if (args.file) target = fs.readFileSync(path.resolve(args.file), 'utf-8');
@@ -227,7 +227,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
   };
 
   handlers['harvest'] = (args) => {
-    const source = process.argv[3];
+    const source = args._sub;
     if (!source) { console.error(c.boldRed('Error:') + ` provide a source. Usage: ${c.cyan('oracle harvest <git-url-or-path> [--language js] [--dry-run] [--split function]')}`); process.exit(1); }
     try {
       const { harvest } = require('../../ci/harvest');

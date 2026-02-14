@@ -90,7 +90,8 @@ describe('MCPServer', () => {
       method: 'tools/call',
       params: { name: 'nonexistent_tool', arguments: {} },
     });
-    assert.ok(res.result.isError);
+    assert.ok(res.error);
+    assert.equal(res.error.code, -32602);
   });
 
   it('handles unknown method', async () => {

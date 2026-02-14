@@ -152,7 +152,7 @@ function createDashboardServer(oracle, options = {}) {
       // ─── Auth routes ───
       if (pathname === '/api/login' && req.method === 'POST') {
         if (!authManager) { sendJSON(res, { error: 'Auth not enabled' }, 501); return; }
-        readBody(req, (body) => {
+        safeReadBody(req, res, (body) => {
           const { username, password } = body;
           const result = authManager.authenticate(username, password);
           if (!result) { sendJSON(res, { error: 'Invalid credentials' }, 401); return; }
@@ -173,13 +173,9 @@ function createDashboardServer(oracle, options = {}) {
         if (!authManager) { sendJSON(res, { error: 'Auth not enabled' }, 501); return; }
         const { canManageUsers } = require('../auth/auth');
         if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
-        readBody(req, (body) => {
-          try {
-            const user = authManager.createUser(body.username, body.password, body.role);
-            sendJSON(res, user);
-          } catch (err) {
-            sendJSON(res, { error: err.message }, 400);
-          }
+        safeReadBody(req, res, (body) => {
+          const user = authManager.createUser(body.username, body.password, body.role);
+          sendJSON(res, user);
         });
         return;
       }
@@ -280,7 +276,7 @@ function createDashboardServer(oracle, options = {}) {
 
       // ─── Voting ───
       if (pathname === '/api/vote' && req.method === 'POST') {
-        readBody(req, (body) => {
+        safeReadBody(req, res, (body) => {
           const result = oracleInstance.vote(body.patternId, body.voter || 'dashboard', body.vote || 1);
           sendJSON(res, result);
         });
@@ -296,7 +292,7 @@ function createDashboardServer(oracle, options = {}) {
 
       // ─── Reflection loop ───
       if (pathname === '/api/reflect' && req.method === 'POST') {
-        readBody(req, (body) => {
+        safeReadBody(req, res, (body) => {
           const { reflectionLoop } = require('../core/reflection');
           const result = reflectionLoop(body.code || '', {
             language: body.language,
@@ -313,7 +309,7 @@ function createDashboardServer(oracle, options = {}) {
       // ─── Covenant check ───
       if (pathname === '/api/covenant') {
         if (req.method === 'POST') {
-          readBody(req, (body) => {
+          safeReadBody(req, res, (body) => {
             const { covenantCheck } = require('../core/covenant');
             const result = covenantCheck(body.code || '', {
               description: body.description || '',
@@ -408,41 +404,37 @@ function createDashboardServer(oracle, options = {}) {
       if (pathname === '/api/teams' && req.method === 'POST') {
         const sqliteStore = oracleInstance.store.getSQLiteStore();
         if (!sqliteStore) { sendJSON(res, { error: 'Storage not available' }, 501); return; }
-        readBody(req, (body) => {
-          try {
-            sqliteStore.db.exec(`
-              CREATE TABLE IF NOT EXISTS teams (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                description TEXT DEFAULT '',
-                created_by TEXT DEFAULT '',
-                created_at TEXT NOT NULL
-              );
-              CREATE TABLE IF NOT EXISTS team_members (
-                team_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                role TEXT DEFAULT 'member',
-                joined_at TEXT NOT NULL,
-                PRIMARY KEY (team_id, user_id)
-              );
-            `);
-            const crypto = require('crypto');
-            const id = crypto.randomUUID();
-            const now = new Date().toISOString();
-            const name = body.name || 'Unnamed Team';
-            const description = body.description || '';
-            const createdBy = req.user?.id || 'anonymous';
-            sqliteStore.db.prepare(
-              'INSERT INTO teams (id, name, description, created_by, created_at) VALUES (?, ?, ?, ?, ?)'
-            ).run(id, name, description, createdBy, now);
-            // Add creator as admin
-            sqliteStore.db.prepare(
-              'INSERT INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)'
-            ).run(id, createdBy, 'admin', now);
-            sendJSON(res, { id, name, description, created_by: createdBy, created_at: now, memberCount: 1 });
-          } catch (err) {
-            sendJSON(res, { error: err.message }, 400);
-          }
+        safeReadBody(req, res, (body) => {
+          sqliteStore.db.exec(`
+            CREATE TABLE IF NOT EXISTS teams (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              description TEXT DEFAULT '',
+              created_by TEXT DEFAULT '',
+              created_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS team_members (
+              team_id TEXT NOT NULL,
+              user_id TEXT NOT NULL,
+              role TEXT DEFAULT 'member',
+              joined_at TEXT NOT NULL,
+              PRIMARY KEY (team_id, user_id)
+            );
+          `);
+          const crypto = require('crypto');
+          const id = crypto.randomUUID();
+          const now = new Date().toISOString();
+          const name = body.name || 'Unnamed Team';
+          const description = body.description || '';
+          const createdBy = req.user?.id || 'anonymous';
+          sqliteStore.db.prepare(
+            'INSERT INTO teams (id, name, description, created_by, created_at) VALUES (?, ?, ?, ?, ?)'
+          ).run(id, name, description, createdBy, now);
+          // Add creator as admin
+          sqliteStore.db.prepare(
+            'INSERT INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)'
+          ).run(id, createdBy, 'admin', now);
+          sendJSON(res, { id, name, description, created_by: createdBy, created_at: now, memberCount: 1 });
         });
         return;
       }
@@ -453,18 +445,14 @@ function createDashboardServer(oracle, options = {}) {
         const teamId = teamMembersMatch[1];
         const sqliteStore = oracleInstance.store.getSQLiteStore();
         if (!sqliteStore) { sendJSON(res, { error: 'Storage not available' }, 501); return; }
-        readBody(req, (body) => {
-          try {
-            const now = new Date().toISOString();
-            const userId = body.userId || body.user_id || '';
-            const role = body.role || 'member';
-            sqliteStore.db.prepare(
-              'INSERT OR REPLACE INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)'
-            ).run(teamId, userId, role, now);
-            sendJSON(res, { team_id: teamId, user_id: userId, role, joined_at: now });
-          } catch (err) {
-            sendJSON(res, { error: err.message }, 400);
-          }
+        safeReadBody(req, res, (body) => {
+          const now = new Date().toISOString();
+          const userId = body.userId || body.user_id || '';
+          const role = body.role || 'member';
+          sqliteStore.db.prepare(
+            'INSERT OR REPLACE INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)'
+          ).run(teamId, userId, role, now);
+          sendJSON(res, { team_id: teamId, user_id: userId, role, joined_at: now });
         });
         return;
       }
@@ -475,33 +463,29 @@ function createDashboardServer(oracle, options = {}) {
         const teamId = teamInviteMatch[1];
         const sqliteStore = oracleInstance.store.getSQLiteStore();
         if (!sqliteStore) { sendJSON(res, { error: 'Storage not available' }, 501); return; }
-        readBody(req, (body) => {
-          try {
-            sqliteStore.db.exec(`
-              CREATE TABLE IF NOT EXISTS team_invites (
-                id TEXT PRIMARY KEY,
-                team_id TEXT NOT NULL,
-                code TEXT NOT NULL UNIQUE,
-                role TEXT DEFAULT 'member',
-                uses_remaining INTEGER DEFAULT 1,
-                created_at TEXT NOT NULL,
-                expires_at TEXT
-              );
-            `);
-            const crypto = require('crypto');
-            const id = crypto.randomUUID();
-            const code = crypto.randomBytes(16).toString('hex');
-            const now = new Date().toISOString();
-            const role = body.role || 'member';
-            const usesRemaining = body.uses || 1;
-            const expiresAt = body.expiresAt || null;
-            sqliteStore.db.prepare(
-              'INSERT INTO team_invites (id, team_id, code, role, uses_remaining, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-            ).run(id, teamId, code, role, usesRemaining, now, expiresAt);
-            sendJSON(res, { id, team_id: teamId, code, role, uses_remaining: usesRemaining, created_at: now, expires_at: expiresAt });
-          } catch (err) {
-            sendJSON(res, { error: err.message }, 400);
-          }
+        safeReadBody(req, res, (body) => {
+          sqliteStore.db.exec(`
+            CREATE TABLE IF NOT EXISTS team_invites (
+              id TEXT PRIMARY KEY,
+              team_id TEXT NOT NULL,
+              code TEXT NOT NULL UNIQUE,
+              role TEXT DEFAULT 'member',
+              uses_remaining INTEGER DEFAULT 1,
+              created_at TEXT NOT NULL,
+              expires_at TEXT
+            );
+          `);
+          const crypto = require('crypto');
+          const id = crypto.randomUUID();
+          const code = crypto.randomBytes(16).toString('hex');
+          const now = new Date().toISOString();
+          const role = body.role || 'member';
+          const usesRemaining = body.uses || 1;
+          const expiresAt = body.expiresAt || null;
+          sqliteStore.db.prepare(
+            'INSERT INTO team_invites (id, team_id, code, role, uses_remaining, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+          ).run(id, teamId, code, role, usesRemaining, now, expiresAt);
+          sendJSON(res, { id, team_id: teamId, code, role, uses_remaining: usesRemaining, created_at: now, expires_at: expiresAt });
         });
         return;
       }
@@ -550,7 +534,7 @@ function createDashboardServer(oracle, options = {}) {
 
       // ─── Lifecycle start ───
       if (pathname === '/api/lifecycle/start' && req.method === 'POST') {
-        readBody(req, (body) => {
+        safeReadBody(req, res, (body) => {
           sendJSON(res, oracleInstance.startLifecycle(body || {}));
         });
         return;
@@ -704,11 +688,40 @@ function createDashboardServer(oracle, options = {}) {
   return server;
 }
 
+const MAX_BODY_SIZE = 1024 * 1024; // 1 MB limit
+
+/**
+ * Safely read and parse a JSON body, then call handler with error protection.
+ * Handles body size limits and wraps the handler in try/catch.
+ */
+function safeReadBody(req, res, handler) {
+  readBody(req, (body) => {
+    if (body && body._error) {
+      sendJSON(res, { error: body._error }, body._status || 400);
+      return;
+    }
+    try {
+      handler(body);
+    } catch (err) {
+      sendJSON(res, { error: err.message }, 500);
+    }
+  });
+}
+
 function readBody(req, callback) {
   let body = '';
-  req.on('data', chunk => { body += chunk; });
+  let aborted = false;
+  req.on('data', chunk => {
+    body += chunk;
+    if (body.length > MAX_BODY_SIZE) {
+      aborted = true;
+      req.destroy();
+      // callback with error indicator — handlers must check
+      callback({ _error: 'Request body too large', _status: 413 });
+    }
+  });
   req.on('end', () => {
-    callback(safeJsonParse(body, {}));
+    if (!aborted) callback(safeJsonParse(body, {}));
   });
 }
 

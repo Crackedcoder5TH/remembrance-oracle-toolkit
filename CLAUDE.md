@@ -53,15 +53,16 @@ For AI clients that support MCP, start the server:
 node src/cli.js mcp
 ```
 
-This exposes 20 focused tools:
+This exposes 23 tools:
 
-- **Core**: oracle_search, oracle_resolve, oracle_submit, oracle_query, oracle_feedback, oracle_stats, oracle_register_pattern
-- **Search**: oracle_smart_search
-- **Quality**: oracle_reflect, oracle_covenant
-- **Candidates**: oracle_candidates, oracle_auto_promote, oracle_synthesize_tests
-- **Debug**: oracle_debug_capture, oracle_debug_search, oracle_debug_feedback, oracle_debug_stats
-- **Storage**: oracle_sync, oracle_share
-- **Maintenance**: oracle_maintain
+- **Core (7)**: oracle_search, oracle_resolve, oracle_submit, oracle_query, oracle_feedback, oracle_stats, oracle_register_pattern
+- **Search (1)**: oracle_smart_search
+- **Quality (2)**: oracle_reflect, oracle_covenant
+- **Candidates (3)**: oracle_candidates, oracle_auto_promote, oracle_synthesize_tests
+- **Debug (6)**: oracle_debug_capture, oracle_debug_search, oracle_debug_feedback, oracle_debug_stats, oracle_debug_grow, oracle_debug_patterns
+- **Storage (2)**: oracle_sync, oracle_share
+- **Harvest (1)**: oracle_harvest
+- **Maintenance (1)**: oracle_maintain
 
 ## Quick Reference
 
@@ -76,7 +77,7 @@ node src/cli.js maintain                   # Full maintenance cycle (heal + opti
 node src/cli.js sync push                  # Sync to personal store
 node src/cli.js share                      # Share to community store
 node src/cli.js debug search --error "..."  # Search debug patterns
-node src/cli.js mcp                        # Start MCP server (20 tools)
+node src/cli.js mcp                        # Start MCP server (23 tools)
 node --test tests/*.test.js               # Run all tests
 ```
 

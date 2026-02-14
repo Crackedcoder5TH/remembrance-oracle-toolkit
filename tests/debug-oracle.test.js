@@ -752,7 +752,7 @@ describe('Debug Oracle', () => {
       assert.ok(response.result);
     });
 
-    it('handles oracle_debug_share', async () => {
+    it('handles oracle_debug_share (not a registered tool)', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
@@ -769,7 +769,9 @@ describe('Debug Oracle', () => {
       });
 
       assert.equal(response.jsonrpc, '2.0');
-      assert.ok(response.result);
+      // oracle_debug_share is not a registered MCP tool — expect JSON-RPC error
+      assert.ok(response.error);
+      assert.equal(response.error.code, -32602);
     });
   });
 

@@ -7,8 +7,8 @@ const { c, colorScore } = require('../colors');
 function registerVotingCommands(handlers, { oracle, jsonOut }) {
 
   handlers['vote'] = (args) => {
-    const id = args.id || process.argv[3];
-    const direction = args.direction || process.argv[4] || 'up';
+    const id = args.id || args._sub;
+    const direction = args.direction || args._positional[1] || 'up';
     const voter = args.voter || process.env.USER || 'anonymous';
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle vote')} <pattern-id> [up|down] [--voter <name>]`); process.exit(1); }
     const vote = direction === 'down' || direction === 'downvote' || direction === '-1' ? -1 : 1;
@@ -38,9 +38,9 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['reputation'] = (args) => {
-    const sub = process.argv[3];
+    const sub = args._sub;
     if (sub === 'check' || !sub) {
-      const voter = args.voter || process.argv[4] || process.env.USER || 'anonymous';
+      const voter = args.voter || args._positional[1] || process.env.USER || 'anonymous';
       const rep = oracle.getVoterReputation(voter);
       if (!rep) { console.log(c.dim('No reputation data.')); return; }
       console.log(c.boldCyan(`Voter Reputation: ${c.bold(rep.id)}\n`));
@@ -69,7 +69,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
 
   handlers['github'] = (args) => {
     const { GitHubIdentity } = require('../../auth/github-oauth');
-    const sub = process.argv[3];
+    const sub = args._sub;
     const sqliteStore = oracle.store.getSQLiteStore();
     const ghIdentity = new GitHubIdentity({ store: sqliteStore });
 

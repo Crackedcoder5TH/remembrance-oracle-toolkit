@@ -369,7 +369,9 @@ function fullCycle(oracle, options = {}) {
 // ─── Internal Helpers ───
 
 /**
- * Normalize code for similarity comparison.
+ * Normalize code for similarity comparison by stripping comments and whitespace.
+ * @param {string} code - Source code to normalize
+ * @returns {string} Lowercase, comment-free, whitespace-collapsed code string
  */
 function _normalizeCode(code) {
   if (!code || typeof code !== 'string') return '';
@@ -382,8 +384,10 @@ function _normalizeCode(code) {
 }
 
 /**
- * Simple code similarity based on character overlap.
- * Returns 0-1 similarity score.
+ * Compute similarity between two code strings using character bigram overlap.
+ * @param {string} a - First normalized code string
+ * @param {string} b - Second normalized code string
+ * @returns {number} Similarity score between 0 (no overlap) and 1 (identical)
  */
 function _codeSimilarity(a, b) {
   if (!a || !b) return 0;
@@ -412,7 +416,10 @@ function _codeSimilarity(a, b) {
 }
 
 /**
- * Generate optimization recommendations from analysis results.
+ * Generate actionable optimization recommendations from analysis results.
+ * @param {Object} report - The optimization report with unusedPatterns, nearDuplicates, sparseTags
+ * @param {Object[]} patterns - All patterns in the library (for computing averages)
+ * @returns {{ priority: string, action: string, message: string, count?: number }[]} Recommendations
  */
 function _generateRecommendations(report, patterns) {
   const recs = [];
@@ -478,7 +485,11 @@ function _generateRecommendations(report, patterns) {
 }
 
 /**
- * Generate a healing whisper from the full cycle results.
+ * Generate a human-readable healing whisper from the full optimization cycle results.
+ * @param {Object} improveReport - Results from selfImprove() (healed, promoted, cleaned arrays)
+ * @param {Object} optimizeReport - Results from selfOptimize() (nearDuplicates, unusedPatterns, etc.)
+ * @param {Object|null} evolutionReport - Results from evolve() (healed, regressions, etc.)
+ * @returns {string} Multi-line whisper text summarizing all improvements made
  */
 function _generateWhisper(improveReport, optimizeReport, evolutionReport) {
   const lines = [];

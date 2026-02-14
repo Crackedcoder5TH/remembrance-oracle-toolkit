@@ -372,7 +372,7 @@ class CloudSyncServer {
       name: e.name,
       language: e.language,
       tags: e.tags,
-      coherency: e.coherencyScore?.total || e.coherency || 0,
+      coherency: e.coherencyScore?.total ?? e.coherency ?? 0,
       description: e.description,
       patternType: e.patternType,
     }));
@@ -505,7 +505,7 @@ class CloudSyncServer {
       language: e.language,
       tags: e.tags,
       description: e.description,
-      coherency: e.coherencyScore?.total || e.coherency || 0,
+      coherency: e.coherencyScore?.total ?? e.coherency ?? 0,
     }));
 
     this._json(res, 200, { patterns: results, total: entries.length });

@@ -33,6 +33,13 @@ const RESOLVE_WHISPERS = {
   ],
 };
 
+/**
+ * Generate a resolve whisper message based on the decision outcome.
+ * @param {Object} decision - The resolve decision (with .decision = 'pull'|'evolve'|'generate')
+ * @param {Object|null} pattern - The matched pattern (used for deterministic message selection)
+ * @param {Object|null} healing - Healing result from SERF reflection (with .reflection.improvement and .loops)
+ * @returns {string} A whisper message describing the resolution
+ */
 function _generateResolveWhisper(decision, pattern, healing) {
   const pool = RESOLVE_WHISPERS[decision.decision] || RESOLVE_WHISPERS.generate;
   const seed = pattern ? pattern.name.length + (pattern.code?.length || 0) : 0;
@@ -272,6 +279,12 @@ module.exports = {
     }
   },
 
+  /**
+   * Auto-generate candidates from a proven pattern and sync to personal store.
+   * Called automatically after submit/register when autoGrow is enabled.
+   * @param {Object} pattern - The proven pattern to grow candidates from
+   * @returns {{ candidates: number, synced: boolean, candidateNames?: string[] }} Growth report
+   */
   _autoGrowFrom(pattern) {
     const report = { candidates: 0, synced: false };
 

@@ -205,8 +205,8 @@ module.exports = {
     }
 
     const patterns = this.patterns.getAll()
-      .filter(p => (p.coherencyScore?.total || 0) >= 0.6)
-      .sort((a, b) => (b.coherencyScore?.total || 0) - (a.coherencyScore?.total || 0))
+      .filter(p => (p.coherencyScore?.total ?? 0) >= 0.6)
+      .sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0))
       .slice(0, maxPatterns);
 
     for (const pattern of patterns) {

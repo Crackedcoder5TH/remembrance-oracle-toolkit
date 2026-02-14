@@ -88,7 +88,7 @@ function mostPulledPatterns(oracle, limit = 20) {
         usageCount: p.usageCount || 0,
         successCount: p.successCount || 0,
         successRate: p.usageCount > 0 ? Math.round((p.successCount || 0) / p.usageCount * 100) : 0,
-        coherency: p.coherencyScore?.total || 0,
+        coherency: p.coherencyScore?.total ?? 0,
       }));
   }
 
@@ -154,7 +154,7 @@ function evolveFrequency(oracle, limit = 20) {
         name: p?.name || 'unknown',
         language: p?.language || 'unknown',
         evolveCount: count,
-        coherency: p?.coherencyScore?.total || 0,
+        coherency: p?.coherencyScore?.total ?? 0,
         needsImprovement: count >= 3,
       };
     });
@@ -184,7 +184,7 @@ function coherencyTrend(oracle, periodDays = 7) {
     if (!periods[periodKey]) {
       periods[periodKey] = { label: periodLabel, daysAgo: periodKey, totalCoherency: 0, count: 0, patterns: 0 };
     }
-    periods[periodKey].totalCoherency += p.coherencyScore?.total || 0;
+    periods[periodKey].totalCoherency += p.coherencyScore?.total ?? 0;
     periods[periodKey].count++;
     periods[periodKey].patterns++;
   }
@@ -216,7 +216,7 @@ function stalePatterns(oracle, maxDays = 90, limit = 20) {
         id: p.id,
         name: p.name,
         language: p.language,
-        coherency: p.coherencyScore?.total || 0,
+        coherency: p.coherencyScore?.total ?? 0,
         daysSinceUse,
         usageCount: p.usageCount || 0,
         isStale: daysSinceUse >= maxDays,

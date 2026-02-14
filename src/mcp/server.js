@@ -4,7 +4,7 @@
  * Exposes the Remembrance Oracle as an MCP-compatible tool server.
  * Communicates via JSON-RPC 2.0 over stdin/stdout.
  *
- * 20 focused tools: core + search + submit + debug + maintenance.
+ * Focused tools: core + search + submit + debug + maintenance.
  */
 
 const readline = require('readline');

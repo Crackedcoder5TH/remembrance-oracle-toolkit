@@ -173,13 +173,19 @@ ${c.bold('Debug:')}
   ${c.cyan('reliability')}   Pattern reliability statistics
 
 ${c.bold('Integration:')}
-  ${c.cyan('mcp')}           Start MCP server (20 tools, JSON-RPC over stdio)
+  ${c.cyan('mcp')}           Start MCP server (JSON-RPC over stdio)
   ${c.cyan('mcp-install')}   Auto-register MCP in AI editors (Claude, Cursor, VS Code)
   ${c.cyan('setup')}         Initialize oracle in current project (alias: init)
-  ${c.cyan('dashboard')}     Start web dashboard (default port 3333)
-  ${c.cyan('deploy')}        Start production-ready server (configurable via env vars)
+  ${c.cyan('dashboard')}     Start web dashboard (default port 3333) [auth]
+  ${c.cyan('deploy')}        Start production-ready server (configurable via env vars) [auth]
   ${c.cyan('hooks')}         Install/uninstall git hooks
   ${c.cyan('plugin')}        Manage plugins (load, list, unload)
+
+${c.bold('Examples:')}
+  oracle harvest https://github.com/user/repo --language js --dry-run
+  oracle compose --patterns debounce,throttle --glue module
+  oracle llm transpile --id abc123 --to python
+  oracle llm refine --id abc123
 
 ${c.bold('Admin:')}
   ${c.cyan('users')}         Manage users (list, add, delete)

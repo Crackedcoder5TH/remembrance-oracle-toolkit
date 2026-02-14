@@ -156,9 +156,78 @@ export interface OracleOptions {
 }
 
 export interface SubmitResult {
+  success: boolean;
   accepted: boolean;
   entry?: Entry;
+  validation?: ValidationResult;
+  error?: string;
+  reason?: string;
+}
+
+export interface RegisterResult {
+  success: boolean;
+  registered: boolean;
+  pattern?: Pattern;
   validation: ValidationResult;
+  error?: string;
+  reason?: string;
+  growth?: { candidates: number; synced: boolean };
+}
+
+export interface EvolveResult {
+  success: boolean;
+  evolved: boolean;
+  pattern?: Pattern;
+  error?: string;
+}
+
+export interface RetagResult {
+  success: boolean;
+  id?: string;
+  name?: string;
+  oldTags?: string[];
+  newTags?: string[];
+  added?: string[];
+  updated?: boolean;
+  error?: string;
+}
+
+export interface RetagAllResult {
+  success: boolean;
+  total: number;
+  enriched: number;
+  totalTagsAdded: number;
+  dryRun: boolean;
+  patterns: Array<{ id: string; name: string; added: string[]; total: number }>;
+}
+
+export interface FeedbackResult {
+  success: boolean;
+  newReliability?: number;
+  healResult?: { healed: boolean; improvement: number; newCoherency: number } | null;
+  error?: string;
+}
+
+export interface LifecycleStatus {
+  running: boolean;
+  counters?: Record<string, number>;
+  cycleHistory?: Array<{ timestamp: string; results: unknown }>;
+  reason?: string;
+}
+
+export interface WhisperSummary {
+  text: string;
+  events: unknown[];
+  stats: Record<string, number>;
+  hasActivity: boolean;
+  durationMs: number;
+}
+
+export interface FullCycleResult {
+  improvement?: unknown;
+  optimization?: unknown;
+  evolution?: unknown;
+  whisperSummary?: WhisperSummary;
 }
 
 export interface ResolveRequest {
@@ -247,7 +316,23 @@ export type OracleEventType =
   | 'feedback'
   | 'pattern_registered'
   | 'candidate_generated'
-  | 'candidate_promoted';
+  | 'candidate_promoted'
+  | 'auto_heal'
+  | 'auto_grow'
+  | 'auto_promote'
+  | 'healing_start'
+  | 'healing_progress'
+  | 'healing_complete'
+  | 'healing_failed'
+  | 'rejection_captured'
+  | 'deep_clean'
+  | 'rollback'
+  | 'security_veto'
+  | 'debug_capture'
+  | 'debug_feedback'
+  | 'vote'
+  | 'import_complete'
+  | 'pattern_evolved';
 
 export type OracleListener = (event: { type: OracleEventType; data: unknown }) => void;
 
@@ -269,7 +354,13 @@ export class RemembranceOracle {
   query(query: string | QueryOptions): Entry[];
 
   /** Search patterns by text */
-  search(query: string, options?: { mode?: string; limit?: number }): Pattern[];
+  search(query: string, options?: { mode?: string; limit?: number; language?: string }): Pattern[];
+
+  /** Smart search with intent parsing */
+  smartSearch(query: string, options?: { limit?: number; language?: string }): { results: Pattern[]; intent: unknown };
+
+  /** Parse search query intent */
+  parseSearchIntent(query: string): { intent: string; language?: string; rewritten: string };
 
   /** Smart pull/evolve/generate decision */
   resolve(request: ResolveRequest): ResolveResult;
@@ -278,16 +369,22 @@ export class RemembranceOracle {
   inspect(id: string): Entry | null;
 
   /** Report if pulled code worked */
-  feedback(id: string, succeeded: boolean): void;
+  feedback(id: string, succeeded: boolean): FeedbackResult;
 
   /** Pattern library feedback */
-  patternFeedback(id: string, succeeded: boolean): void;
+  patternFeedback(id: string, succeeded: boolean): FeedbackResult;
+
+  /** Get store summary statistics */
+  stats(): Record<string, unknown>;
+
+  /** Prune low-coherency entries */
+  prune(minCoherency?: number): { removed: number };
 
   // Pattern Library
   patterns: PatternLibrary;
   patternStats(): { total: number; byLanguage: Record<string, number>; byType: Record<string, number> };
-  getAll(filters?: { language?: string; type?: string; minCoherency?: number }): Pattern[];
-  deepClean(options?: { minCoherency?: number; removeDuplicates?: boolean }): { removed: number };
+  retirePatterns(minScore?: number): { retired: number; remaining: number };
+  deepClean(options?: { minCoherency?: number; removeDuplicates?: boolean; removeStubs?: boolean; dryRun?: boolean }): { removed: number; duplicates: number; stubs: number; tooShort: number; remaining: number };
 
   // Candidates
   candidates(filters?: { language?: string; method?: string }): Candidate[];
@@ -295,8 +392,8 @@ export class RemembranceOracle {
   generateCandidates(options?: GenerateCandidatesOptions): Candidate[];
   promote(candidateId: string, testCode: string): Pattern;
   autoPromote(): { promoted: number; failed: number };
-  smartAutoPromote(options?: { maxAttempts?: number }): { promoted: number; failed: number };
-  synthesizeTests(options?: SynthesizeOptions): { synthesized: number; promoted: number };
+  smartAutoPromote(options?: { minCoherency?: number; minConfidence?: number; manualOverride?: boolean; dryRun?: boolean }): { promoted: number; skipped: number; vetoed: number; total: number; details: unknown[] };
+  synthesizeTests(options?: SynthesizeOptions): { synthesis: unknown; promotion: unknown };
 
   // Quality & Evolution
   registerPattern(pattern: {
@@ -308,23 +405,40 @@ export class RemembranceOracle {
     tags?: string[];
     patternType?: string;
     complexity?: string;
-  }): { registered: boolean; pattern?: Pattern; validation: ValidationResult; growth?: unknown };
+    author?: string;
+  }): RegisterResult;
 
-  evolvePattern(parentId: string, newCode: string, metadata?: Record<string, unknown>): Pattern;
+  evolvePattern(parentId: string, newCode: string, metadata?: Record<string, unknown>): EvolveResult;
   recycle(options?: { limit?: number }): { healed: number; failed: number };
-  rollback(patternId: string, targetVersion: number): Pattern;
-  verifyOrRollback(patternId: string): { verified: boolean; rolledBack: boolean };
+  rollback(patternId: string, targetVersion?: number): { success: boolean; patternId: string; patternName: string; restoredVersion: number; previousVersion: number; restoredCode: string; reason?: string };
+  verifyOrRollback(patternId: string): { passed: boolean; patternId?: string; patternName?: string; rolledBack?: boolean; restoredVersion?: number };
   healingStats(): HealingStats;
+
+  // Auto-Tagging
+  retag(id: string, options?: { dryRun?: boolean }): RetagResult;
+  retagAll(options?: { dryRun?: boolean; minAdded?: number }): RetagAllResult;
+
+  // Self-Evolution & Management
+  selfEvolve(options?: Record<string, unknown>): unknown;
+  selfImprove(options?: Record<string, unknown>): unknown;
+  selfOptimize(options?: Record<string, unknown>): unknown;
+  fullOptimizationCycle(options?: Record<string, unknown>): FullCycleResult;
+
+  // Lifecycle
+  getLifecycle(options?: Record<string, unknown>): unknown;
+  startLifecycle(options?: Record<string, unknown>): unknown;
+  stopLifecycle(): { stopped: boolean; reason?: string };
+  lifecycleStatus(): LifecycleStatus;
 
   // Security
   securityScan(codeOrPatternId: string, options?: { language?: string; runExternalTools?: boolean }): SecurityScanResult;
-  securityAudit(options?: { language?: string }): { total: number; passed: number; failed: number; findings: unknown[] };
+  securityAudit(options?: { language?: string }): { scanned: number; clean: number; advisory: number; vetoed: number; details: unknown[] };
 
   // Voting
   vote(patternId: string, voter: string, vote: { score: number }): VoteResult;
-  getVotes(patternId: string): { upvotes: number; downvotes: number; weightedScore: number };
+  getVotes(patternId: string): { upvotes: number; downvotes: number; weightedScore: number } | null;
   topVoted(limit?: number): Pattern[];
-  getVoterReputation(voterId: string): { voter: string; totalVotes: number; reputation: number };
+  getVoterReputation(voterId: string): { voter: string; totalVotes: number; reputation: number; weight: number; recentVotes: unknown[] } | null;
   topVoters(limit?: number): Array<{ voter: string; totalVotes: number; reputation: number }>;
 
   // GitHub
@@ -332,19 +446,72 @@ export class RemembranceOracle {
   startGitHubLogin(): Promise<{ userCode: string; verificationUri: string; deviceCode: string }>;
   pollGitHubLogin(deviceCode: string): Promise<{ verified: boolean; username: string }>;
   isVerifiedVoter(voterId: string): boolean;
+  getVerifiedIdentity(voterId: string): unknown;
+  listVerifiedIdentities(limit?: number): unknown[];
 
-  // Sync
-  sync(options?: SyncOptions): { synced: number };
-  syncToGlobal(options?: SyncOptions): { pushed: number };
-  syncFromGlobal(options?: SyncOptions): { pulled: number };
-  share(options?: ShareOptions): { shared: number };
+  // Sync & Federation
+  sync(options?: SyncOptions): { synced?: number; error?: string };
+  syncToGlobal(options?: SyncOptions): { synced?: number; error?: string };
+  syncFromGlobal(options?: SyncOptions): { pulled?: number; error?: string };
+  share(options?: ShareOptions): { shared: number; error?: string };
+  pullCommunity(options?: Record<string, unknown>): { pulled: number; error?: string };
+  federatedSearch(query: Record<string, unknown>): unknown;
+  globalStats(): Record<string, unknown>;
+  personalStats(): Record<string, unknown>;
+  communityStats(): Record<string, unknown>;
+  deduplicate(options?: { stores?: string[] }): { local: unknown; personal: unknown; community: unknown };
+
+  // Remotes
+  registerRemote(url: string, options?: Record<string, unknown>): unknown;
+  removeRemote(urlOrName: string): unknown;
+  listRemotes(): Array<{ name: string; url: string }>;
+  remoteSearch(query: string, options?: Record<string, unknown>): Promise<{ results: Pattern[]; errors: unknown[] }>;
+  checkRemoteHealth(): Promise<unknown>;
+  fullFederatedSearch(query: string, options?: Record<string, unknown>): Promise<{ results: Pattern[]; localCount: number; repoCount: number; remoteCount: number; errors: unknown[] }>;
+
+  // Repos
+  discoverRepos(options?: Record<string, unknown>): unknown;
+  registerRepo(repoPath: string): unknown;
+  listRepos(): unknown[];
+  crossRepoSearch(description: string, options?: Record<string, unknown>): { results: Pattern[] };
+
+  // Debug Oracle
+  debugCapture(params: { errorMessage: string; stackTrace?: string; fixCode: string; fixDescription?: string; language?: string; tags?: string[] }): { captured: boolean; pattern?: unknown; variants?: unknown; error?: string };
+  debugSearch(params: { errorMessage: string; stackTrace?: string; language?: string; limit?: number; federated?: boolean }): unknown[];
+  debugFeedback(id: string, resolved: boolean): { success: boolean; confidence?: number; error?: string };
+  debugGrow(options?: { limit?: number }): { processed: number; error?: string };
+  debugPatterns(filters?: Record<string, unknown>): unknown[];
+  debugStats(): { totalPatterns: number; error?: string };
+  debugShare(options?: Record<string, unknown>): { shared: number; error?: string };
+  debugPullCommunity(options?: Record<string, unknown>): { pulled: number; error?: string };
+  debugSyncPersonal(options?: Record<string, unknown>): { synced: number; error?: string };
+  debugSeed(options?: Record<string, unknown>): { seeded: number; error?: string };
+  debugGlobalStats(): Record<string, unknown>;
+
+  // LLM / Claude Bridge
+  isLLMAvailable(): boolean;
+  llmTranspile(patternId: string, targetLanguage: string): { success: boolean; result?: unknown; method: string; error?: string };
+  llmGenerateTests(patternId: string): { success: boolean; testCode?: string; method: string; error?: string };
+  llmRefine(patternId: string): { success: boolean; refinedCode?: string; method: string; error?: string };
+  llmAlternative(patternId: string): { success: boolean; alternative?: unknown; method: string; error?: string };
+  llmDocs(patternId: string): { success: boolean; docs?: string; method: string; error?: string };
+  llmAnalyze(code: string, language?: string): { success: boolean; analysis: unknown; method: string };
+  llmExplain(patternId: string): { success: boolean; explanation?: string; method: string; error?: string };
+  llmGenerate(options?: { languages?: string[]; maxPatterns?: number; methods?: string[]; autoPromote?: boolean }): { generated: number; stored: number; promoted: number; method: string; details: unknown[] };
 
   // Context
-  generateContext(options?: { limit?: number; language?: string }): string;
+  generateContext(options?: { format?: 'markdown' | 'json' | 'text'; maxPatterns?: number; includeCode?: boolean }): { prompt: string; format: string; stats: Record<string, unknown> };
   exportContext(options?: { format?: 'markdown' | 'json' | 'text'; limit?: number }): string;
 
+  // Import/Export
+  export(options?: { format?: 'json' | 'markdown'; limit?: number; minCoherency?: number; language?: string; tags?: string[] }): string;
+  import(data: string | Record<string, unknown>, options?: { skipValidation?: boolean; dryRun?: boolean; author?: string }): { imported: number; skipped: number; errors: string[]; results: unknown[] };
+
+  // Diff
+  diff(idA: string, idB: string): { a: unknown; b: unknown; diff: unknown[]; stats: { added: number; removed: number; same: number }; error?: string };
+
   // Events
-  on(listener: OracleListener): void;
+  on(listener: OracleListener): () => void;
 
   // Store access
   store: VerifiedHistoryStore;
@@ -384,6 +551,14 @@ export class PatternLibrary {
   getCandidates(filters?: Record<string, unknown>): Candidate[];
   candidateSummary(): { total: number; byMethod: Record<string, number> };
   promoteCandidate(id: string): Pattern;
+  pruneCandidates(minCoherency?: number): { removed: number; remaining: number };
+
+  // Composition
+  compose(spec: { name: string; components: string[]; code?: string; description?: string; tags?: string[] }): { composed: boolean; pattern?: Pattern; components?: Pattern[]; reason?: string };
+  resolveDependencies(id: string): Pattern[];
+
+  // Reliability
+  setHealingRateProvider(fn: (patternId: string) => number): void;
 }
 
 // ─── Storage ───

@@ -227,6 +227,17 @@ class PatternLibrary {
       return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
     }).sort((a, b) => b.composite - a.composite);
 
+    // Guard: if all patterns were filtered out during scoring, generate
+    if (scored.length === 0) {
+      return {
+        decision: 'generate',
+        pattern: null,
+        confidence: 1.0,
+        reasoning: 'All patterns filtered out during scoring — generation required',
+        alternatives: [],
+      };
+    }
+
     const best = scored[0];
     const threshold = minCoherency ?? THRESHOLDS.pull;
 

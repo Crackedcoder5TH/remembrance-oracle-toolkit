@@ -75,7 +75,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
 
   handlers['sdiff'] = (args) => {
     const ids = process.argv.slice(3).filter(a => !a.startsWith('--'));
-    if (ids.length < 2) { console.error(`Usage: ${c.cyan('oracle sdiff')} <id-a> <id-b>`); process.exit(1); }
+    if (!ids[0] || !ids[1]) { console.error(`Usage: ${c.cyan('oracle sdiff')} <id-a> <id-b>`); process.exit(1); }
     try {
       const { semanticDiff } = require('../../core/versioning');
       const a = oracle.patterns.getAll().find(p => p.id === ids[0]) || oracle.store.get(ids[0]);

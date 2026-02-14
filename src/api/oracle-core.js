@@ -72,7 +72,7 @@ module.exports = {
    */
   submit(code, metadata = {}) {
     if (code == null || typeof code !== 'string') {
-      return { stored: false, error: 'Invalid input: code must be a non-null string' };
+      return { success: false, accepted: false, stored: false, error: 'Invalid input: code must be a non-null string' };
     }
     if (metadata == null || typeof metadata !== 'object') metadata = {};
     const {
@@ -108,8 +108,10 @@ module.exports = {
       }
 
       return {
+        success: false,
         accepted: false,
         validation,
+        error: validation.errors.join('; '),
         reason: validation.errors.join('; '),
       };
     }
@@ -132,6 +134,7 @@ module.exports = {
     this._emit({ type: 'entry_added', id: entry.id, language: validation.coherencyScore.language, description });
 
     return {
+      success: true,
       accepted: true,
       entry,
       validation,
@@ -444,8 +447,10 @@ module.exports = {
 
     if (!validation.valid) {
       return {
+        success: false,
         registered: false,
         validation,
+        error: validation.errors.join('; '),
         reason: validation.errors.join('; '),
       };
     }
@@ -484,6 +489,7 @@ module.exports = {
     const growthReport = this._autoGrowFrom(registered);
 
     return {
+      success: true,
       registered: true,
       pattern: registered,
       validation,
@@ -500,7 +506,7 @@ module.exports = {
    */
   evolvePattern(parentId, newCode, metadata = {}) {
     const evolved = this.patterns.evolve(parentId, newCode, metadata);
-    if (!evolved) return { evolved: false, error: `Pattern ${parentId} not found` };
+    if (!evolved) return { success: false, evolved: false, error: `Pattern ${parentId} not found` };
 
     // Also store evolution in verified history
     this.store.add({
@@ -514,7 +520,7 @@ module.exports = {
 
     this._emit({ type: 'pattern_evolved', id: evolved.id, name: evolved.name, parentId });
 
-    return { evolved: true, pattern: evolved };
+    return { success: true, evolved: true, pattern: evolved };
   },
 
   /**

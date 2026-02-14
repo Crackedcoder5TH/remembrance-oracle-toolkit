@@ -25,7 +25,7 @@ module.exports = {
   retag(id, options = {}) {
     const { retagPattern, tagDiff } = require('../core/auto-tagger');
     const pattern = this.patterns.getAll().find(p => p.id === id);
-    if (!pattern) return { error: `Pattern ${id} not found` };
+    if (!pattern) return { success: false, error: `Pattern ${id} not found` };
 
     const oldTags = [...(pattern.tags || [])];
     const newTags = retagPattern(pattern);
@@ -36,6 +36,7 @@ module.exports = {
     }
 
     return {
+      success: true,
       id: pattern.id,
       name: pattern.name,
       oldTags,
@@ -75,6 +76,7 @@ module.exports = {
     }
 
     return {
+      success: true,
       total: all.length,
       enriched,
       totalTagsAdded,

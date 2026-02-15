@@ -1,8 +1,5 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
 
 const {
   DebugOracle,
@@ -17,12 +14,7 @@ const {
 } = require('../src/core/debug-oracle');
 
 const { SQLiteStore, DatabaseSync } = require('../src/store/sqlite');
-
-function makeTempDir(suffix = '') {
-  const dir = path.join(os.tmpdir(), `debug-test-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
+const { makeTempDir } = require('./helpers');
 
 function createDebugOracle() {
   const baseDir = makeTempDir('debug');

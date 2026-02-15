@@ -4,14 +4,14 @@
 
 const path = require('path');
 const { c, colorScore, colorSource } = require('../colors');
-const { validatePort } = require('../validate-args');
+const { validatePort, parseDryRun, parseTags, parseMinCoherency } = require('../validate-args');
 
 function registerFederationCommands(handlers, { oracle, jsonOut }) {
 
   handlers['sync'] = (args) => {
     const direction = args._sub || 'both';
     const verbose = args.verbose === 'true' || args.verbose === true;
-    const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+    const dryRun = parseDryRun(args);
     const { PERSONAL_DIR } = require('../../core/persistence');
 
     console.log(c.boldCyan('Personal Sync') + c.dim(` — ${PERSONAL_DIR}\n`));
@@ -44,12 +44,12 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
 
   handlers['share'] = (args) => {
     const verbose = args.verbose === 'true' || args.verbose === true;
-    const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+    const dryRun = parseDryRun(args);
     const { COMMUNITY_DIR } = require('../../core/persistence');
 
     const nameFilter = args._positional;
-    const tagFilter = args.tags ? args.tags.split(',').map(t => t.trim()) : undefined;
-    const minCoherency = parseFloat(args['min-coherency']) || 0.7;
+    const tagFilter = args.tags ? parseTags(args) : undefined;
+    const minCoherency = parseMinCoherency(args, 0.7);
 
     console.log(c.boldCyan('Share to Community') + c.dim(` — ${COMMUNITY_DIR}\n`));
 
@@ -78,7 +78,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
   handlers['community'] = (args) => {
     const sub = args._sub;
     const verbose = args.verbose === 'true' || args.verbose === true;
-    const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+    const dryRun = parseDryRun(args);
 
     if (sub === 'pull') {
       const lang = args.language;

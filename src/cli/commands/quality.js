@@ -5,17 +5,18 @@
 const fs = require('fs');
 const path = require('path');
 const { c, colorScore, colorStatus } = require('../colors');
+const { parseDryRun, parseMinCoherency } = require('../validate-args');
 
 function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['prune'] = (args) => {
-    const min = parseFloat(args['min-coherency']) || 0.4;
+    const min = parseMinCoherency(args, 0.4);
     const result = oracle.prune(min);
     console.log(`Pruned ${c.boldRed(String(result.removed))} entries. ${c.boldGreen(String(result.remaining))} remaining.`);
   };
 
   handlers['deep-clean'] = (args) => {
-    const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+    const dryRun = parseDryRun(args);
     const result = oracle.deepClean({
       minCodeLength: parseInt(args['min-code-length']) || 35,
       minNameLength: parseInt(args['min-name-length']) || 3,
@@ -37,7 +38,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['retag'] = (args) => {
     const sub = args._sub;
-    const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+    const dryRun = parseDryRun(args);
 
     if (sub === 'all') {
       console.log(c.boldCyan('Auto-Tag All Patterns') + (dryRun ? c.yellow(' (dry run)') : '') + '\n');
@@ -128,7 +129,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
       maxLoops: parseInt(args.loops) || 3,
       targetCoherence: parseFloat(args.target) || 0.9,
       description: args.description || '',
-      tags: args.tags ? args.tags.split(',').map(t => t.trim()) : [],
+      tags: parseTags(args),
     });
     if (jsonOut()) { console.log(JSON.stringify(result)); return; }
     console.log(c.boldCyan('Infinite Reflection Loop\n'));
@@ -167,7 +168,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     }
     const code = getCode(args);
     if (!code) { console.error(c.boldRed('Error:') + ` --file required or pipe code via stdin. Usage: ${c.cyan('cat code.js | oracle covenant')}`); process.exit(1); }
-    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const tags = parseTags(args);
     const result = covenantCheck(code, { description: args.description || '', tags, language: args.language });
     if (jsonOut()) { console.log(JSON.stringify(result)); return; }
     if (result.sealed) {
@@ -231,7 +232,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     if (!source) { console.error(c.boldRed('Error:') + ` provide a source. Usage: ${c.cyan('oracle harvest <git-url-or-path> [--language js] [--dry-run] [--split function]')}`); process.exit(1); }
     try {
       const { harvest } = require('../../ci/harvest');
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const dryRun = parseDryRun(args);
       const result = harvest(oracle, source, {
         language: args.language,
         dryRun,

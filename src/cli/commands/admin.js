@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { c, colorScore } = require('../colors');
+const { parseDryRun } = require('../validate-args');
 
 function registerAdminCommands(handlers, { oracle, jsonOut }) {
 
@@ -68,7 +69,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     try {
       const { autoSeed } = require('../../ci/auto-seed');
       const baseDir = args.dir || process.cwd();
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const dryRun = parseDryRun(args);
       const result = autoSeed(oracle, baseDir, { language: args.language, dryRun });
       if (dryRun) {
         console.log(c.boldCyan('Auto-Seed Dry Run:'));
@@ -253,7 +254,7 @@ ${c.bold('Subcommands:')}
         console.error(c.boldRed('Error:') + ` "${name}" not found in registry. Run ${c.cyan('oracle registry list')} to see available repos.`);
         process.exit(1);
       }
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const dryRun = parseDryRun(args);
       const licCheck = checkLicense(entry.license);
       if (!licCheck.allowed && !args['allow-copyleft']) {
         console.error(c.boldRed('Error:') + ` License blocked: ${entry.license} \u2014 ${licCheck.reason}`);
@@ -288,7 +289,7 @@ ${c.bold('Subcommands:')}
     }
 
     if (sub === 'batch') {
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const dryRun = parseDryRun(args);
       const language = args.language;
       const repos = listRegistry({ language });
       if (repos.length === 0) {

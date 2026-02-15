@@ -16,101 +16,36 @@ const {
   computeUsageBoosts, actOnInsights, ACTIONABLE_DEFAULTS,
 } = require('../src/core/actionable-insights');
 
-// ─── Helpers ───
+const { makePattern, createMockOracle: _createBaseMock } = require('./helpers');
 
-function makePattern(overrides = {}) {
-  return {
-    id: overrides.id || `p-${Math.random().toString(36).slice(2, 8)}`,
-    name: overrides.name || 'test-pattern',
-    language: overrides.language || 'javascript',
-    code: overrides.code || 'function add(a, b) {\n  return a + b;\n}',
-    coherencyScore: overrides.coherencyScore || { total: 0.85 },
-    usageCount: overrides.usageCount ?? 0,
-    successCount: overrides.successCount ?? 0,
-    timestamp: overrides.timestamp || new Date().toISOString(),
-    createdAt: overrides.createdAt || new Date().toISOString(),
-    lastUsed: overrides.lastUsed || null,
-    tags: overrides.tags || ['utility'],
-    evolutionHistory: overrides.evolutionHistory || [],
-    description: overrides.description || 'test pattern',
-    reliability: overrides.reliability ?? 0.5,
-  };
-}
+// ─── Extended mock with lifecycle/search for deepen tests ───
 
 function createMockOracle(patterns = []) {
-  const updates = [];
-  const events = [];
-  const listeners = [];
-  const candidates = [];
-
-  return {
-    patterns: {
-      getAll: () => patterns,
-      update: (id, data) => {
-        updates.push({ id, ...data });
-        const p = patterns.find(x => x.id === id);
-        if (p) Object.assign(p, data);
-        return p;
-      },
-      getCandidates: () => candidates,
-      candidateSummary: () => ({ total: candidates.length }),
-      _sqlite: null,
-    },
-    store: {
-      getSQLiteStore: () => null,
-      getAll: () => [],
-      summary: () => ({ totalEntries: patterns.length }),
-    },
-    on: (listener) => {
-      listeners.push(listener);
-      return () => {
-        const idx = listeners.indexOf(listener);
-        if (idx >= 0) listeners.splice(idx, 1);
-      };
-    },
-    _emit: (event) => {
-      events.push(event);
-      for (const l of listeners) {
-        try { l(event); } catch {}
-      }
-    },
-    _listeners: listeners,
-    _updates: updates,
-    _events: events,
-    autoPromote: () => ({ promoted: 0, skipped: 0, vetoed: 0, total: 0 }),
-    deepClean: () => ({ removed: 0, duplicates: 0, stubs: 0, tooShort: 0, remaining: patterns.length }),
-    retagAll: () => ({ total: patterns.length, enriched: 0, totalTagsAdded: 0 }),
-    recycle: () => ({ healed: 0 }),
-    patternStats: () => ({ totalPatterns: patterns.length }),
-    stats: () => ({ totalEntries: patterns.length }),
-    search: (term, opts) => {
-      const limit = opts?.limit || 10;
-      const lang = opts?.language;
-      return patterns
-        .filter(p => {
-          const text = `${p.name} ${p.description} ${(p.tags || []).join(' ')}`.toLowerCase();
-          const matches = text.includes((term || '').toLowerCase());
-          return matches && (!lang || p.language === lang);
-        })
-        .slice(0, limit)
-        .map(p => ({ ...p, matchScore: 0.5 }));
-    },
-    selfEvolve: function(opts) {
-      const { evolve } = require('../src/core/evolution');
-      return evolve(this, opts);
-    },
-    debugGrow: (opts) => ({ processed: 0, generated: 0 }),
-    lifecycleStatus: function() {
-      if (this._lifecycle) return this._lifecycle.status();
-      return { running: false, reason: 'not initialized' };
-    },
-    startLifecycle: function(opts) { return this.getLifecycle(opts).start(); },
-    stopLifecycle: function() { if (this._lifecycle) return this._lifecycle.stop(); return { stopped: false }; },
-    getLifecycle: function(opts) {
-      if (!this._lifecycle) this._lifecycle = new LifecycleEngine(this, opts);
-      return this._lifecycle;
-    },
+  const mock = _createBaseMock(patterns);
+  mock.search = (term, opts) => {
+    const limit = opts?.limit || 10;
+    const lang = opts?.language;
+    return patterns
+      .filter(p => {
+        const text = `${p.name} ${p.description} ${(p.tags || []).join(' ')}`.toLowerCase();
+        const matches = text.includes((term || '').toLowerCase());
+        return matches && (!lang || p.language === lang);
+      })
+      .slice(0, limit)
+      .map(p => ({ ...p, matchScore: 0.5 }));
   };
+  mock.debugGrow = () => ({ processed: 0, generated: 0 });
+  mock.lifecycleStatus = function() {
+    if (this._lifecycle) return this._lifecycle.status();
+    return { running: false, reason: 'not initialized' };
+  };
+  mock.startLifecycle = function(opts) { return this.getLifecycle(opts).start(); };
+  mock.stopLifecycle = function() { if (this._lifecycle) return this._lifecycle.stop(); return { stopped: false }; };
+  mock.getLifecycle = function(opts) {
+    if (!this._lifecycle) this._lifecycle = new LifecycleEngine(this, opts);
+    return this._lifecycle;
+  };
+  return mock;
 }
 
 // ═══════════════════════════════════════════════════
@@ -711,89 +646,22 @@ describe('DEEPEN 5: Dashboard API — new endpoints exist', () => {
   });
 
   // Verify the dashboard handles the new routes by checking the source
-  it('dashboard handles /api/insights route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/insights'));
-  });
+  // Routes were extracted to routes.js, so check there
+  const routeEndpoints = [
+    '/api/insights', '/api/lifecycle', '/api/lifecycle/start',
+    '/api/lifecycle/stop', '/api/lifecycle/run', '/api/lifecycle/history',
+    '/api/smart-search', '/api/insights/act', '/api/insights/boosts',
+    '/api/debug/grow', '/api/debug/patterns',
+    '/api/self-improve', '/api/self-optimize', '/api/full-cycle',
+  ];
 
-  it('dashboard handles /api/lifecycle route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/lifecycle'));
-  });
-
-  it('dashboard handles /api/lifecycle/start route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/lifecycle/start'));
-  });
-
-  it('dashboard handles /api/lifecycle/stop route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/lifecycle/stop'));
-  });
-
-  it('dashboard handles /api/lifecycle/run route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/lifecycle/run'));
-  });
-
-  it('dashboard handles /api/lifecycle/history route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/lifecycle/history'));
-  });
-
-  it('dashboard handles /api/smart-search route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/smart-search'));
-  });
-
-  it('dashboard handles /api/insights/act route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/insights/act'));
-  });
-
-  it('dashboard handles /api/insights/boosts route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/insights/boosts'));
-  });
-
-  it('dashboard handles /api/debug/grow route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/debug/grow'));
-  });
-
-  it('dashboard handles /api/debug/patterns route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/debug/patterns'));
-  });
-
-  it('dashboard handles /api/self-improve route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/self-improve'));
-  });
-
-  it('dashboard handles /api/self-optimize route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/self-optimize'));
-  });
-
-  it('dashboard handles /api/full-cycle route', () => {
-    const fs = require('fs');
-    const source = fs.readFileSync(require.resolve('../src/dashboard/server'), 'utf8');
-    assert.ok(source.includes('/api/full-cycle'));
-  });
+  for (const endpoint of routeEndpoints) {
+    it(`dashboard handles ${endpoint} route`, () => {
+      const fs = require('fs');
+      const source = fs.readFileSync(require.resolve('../src/dashboard/routes'), 'utf8');
+      assert.ok(source.includes(endpoint));
+    });
+  }
 });
 
 // ─── Cross-Feature Integration ───

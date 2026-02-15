@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { c, colorScore, colorSource } = require('../colors');
+const { parseDryRun, parseTags } = require('../validate-args');
 
 function registerDebugCommands(handlers, { oracle, jsonOut }) {
 
@@ -55,7 +56,7 @@ ${c.bold('Options:')}
         fixCode,
         fixDescription: args.description || '',
         language: args.language || 'javascript',
-        tags: args.tags ? args.tags.split(',').map(t => t.trim()) : [],
+        tags: parseTags(args),
       });
       if (jsonOut()) { console.log(JSON.stringify(result)); return; }
       if (result.captured) {
@@ -214,7 +215,7 @@ ${c.bold('Options:')}
 
     if (sub === 'share') {
       const verbose = args.verbose === 'true' || args.verbose === true;
-      const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+      const dryRun = parseDryRun(args);
       const minConfidence = parseFloat(args['min-confidence']) || 0.5;
       console.log(c.boldCyan('Share Debug Patterns to Community\n'));
       const report = oracle.debugShare({ verbose, dryRun, minConfidence, category: args.category, language: args.language });
@@ -227,7 +228,7 @@ ${c.bold('Options:')}
 
     if (sub === 'pull') {
       const verbose = args.verbose === 'true' || args.verbose === true;
-      const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+      const dryRun = parseDryRun(args);
       console.log(c.boldCyan('Pull Debug Patterns from Community\n'));
       const report = oracle.debugPullCommunity({
         verbose, dryRun, category: args.category, language: args.language,
@@ -245,7 +246,7 @@ ${c.bold('Options:')}
       console.log(c.boldCyan('Sync Debug Patterns to Personal Store\n'));
       const report = oracle.debugSyncPersonal({
         verbose: args.verbose === true || args.verbose === 'true',
-        dryRun: args['dry-run'] === true || args['dry-run'] === 'true',
+        dryRun: parseDryRun(args),
       });
       console.log(`  Synced:     ${c.boldGreen(String(report.synced))}`);
       console.log(`  Duplicates: ${c.dim(String(report.duplicates))}`);

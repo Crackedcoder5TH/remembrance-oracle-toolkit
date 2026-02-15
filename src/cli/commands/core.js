@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { c, colorScore, colorStatus } = require('../colors');
-const { validatePositiveInt, validateCoherency, validateId } = require('../validate-args');
+const { validatePositiveInt, validateCoherency, validateId, parseTags } = require('../validate-args');
 
 function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
 
@@ -59,7 +59,7 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
     const code = getCode(args);
     if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
     const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
-    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const tags = parseTags(args);
     const result = oracle.submit(code, {
       description: args.description || '',
       tags,
@@ -89,7 +89,7 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
   };
 
   handlers['query'] = (args) => {
-    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const tags = parseTags(args);
     const results = oracle.query({
       description: args.description || '',
       tags,

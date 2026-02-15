@@ -1,17 +1,9 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
 
 const { PatternRecycler, APPROACH_SWAPS } = require('../src/core/recycler');
 const { RemembranceOracle } = require('../src/api/oracle');
-
-function makeTempDir() {
-  const dir = path.join(os.tmpdir(), `recycler-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
+const { makeTempDir } = require('./helpers');
 
 describe('PatternRecycler', () => {
   let oracle, recycler, tmpDir;

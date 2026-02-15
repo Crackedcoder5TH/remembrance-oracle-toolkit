@@ -1,8 +1,5 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
 
 const {
   syncToGlobal,
@@ -18,12 +15,7 @@ const {
   openCommunityStore,
 } = require('../src/core/persistence');
 const { SQLiteStore, DatabaseSync } = require('../src/store/sqlite');
-
-function makeTempDir(suffix = '') {
-  const dir = path.join(os.tmpdir(), `persist-test-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
+const { makeTempDir } = require('./helpers');
 
 function createTestStores() {
   const localBase = makeTempDir('local');

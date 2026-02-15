@@ -46,4 +46,39 @@ function validateId(value) {
   return value.trim();
 }
 
-module.exports = { validatePositiveInt, validatePort, validateCoherency, validateId };
+// ─── Common Flag Extractors ─────────────────────────────────────────────────
+// Eliminates 50+ duplicated flag parsing lines across command modules.
+
+function parseDryRun(args) {
+  return args['dry-run'] === true || args['dry-run'] === 'true';
+}
+
+function parseTags(args) {
+  return args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+}
+
+function parseLimit(args, defaultValue = 10) {
+  return validatePositiveInt(args.limit, 'limit', defaultValue);
+}
+
+function parseMinCoherency(args, defaultValue = 0.5) {
+  return validateCoherency(args['min-coherency'], 'min-coherency', defaultValue);
+}
+
+function parseLanguage(args, defaultValue) {
+  return args.language || defaultValue;
+}
+
+function jsonOrPrint(jsonOut, result, printFn) {
+  if (jsonOut()) {
+    console.log(JSON.stringify(result));
+    return true;
+  }
+  if (printFn) printFn(result);
+  return false;
+}
+
+module.exports = {
+  validatePositiveInt, validatePort, validateCoherency, validateId,
+  parseDryRun, parseTags, parseLimit, parseMinCoherency, parseLanguage, jsonOrPrint,
+};

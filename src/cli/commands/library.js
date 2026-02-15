@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const { c, colorScore, colorStatus, colorDecision, colorSource } = require('../colors');
-const { validatePositiveInt, validateCoherency, validateId } = require('../validate-args');
+const { validatePositiveInt, validateCoherency, validateId, parseDryRun, parseTags, parseMinCoherency } = require('../validate-args');
 
 function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI, jsonOut }) {
 
@@ -34,13 +34,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['resolve'] = (args) => {
-    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const tags = parseTags(args);
     const noHeal = args['no-heal'] || args.raw;
     const result = oracle.resolve({
       description: args.description || '',
       tags,
       language: args.language,
-      minCoherency: parseFloat(args['min-coherency']) || undefined,
+      minCoherency: args['min-coherency'] ? parseMinCoherency(args) : undefined,
       heal: !noHeal,
     });
     console.log(`Decision: ${colorDecision(result.decision)}`);
@@ -80,7 +80,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
     const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
     const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
-    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const tags = parseTags(args);
     const result = oracle.registerPattern({
       name: args.name || path.basename(args.file, path.extname(args.file)),
       code,
@@ -205,7 +205,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const output = oracle.export({
       format: args.format || (args.file && args.file.endsWith('.md') ? 'markdown' : 'json'),
       limit: parseInt(args.limit) || 20,
-      minCoherency: parseFloat(args['min-coherency']) || 0.5,
+      minCoherency: parseMinCoherency(args, 0.5),
       language: args.language,
       tags,
     });
@@ -220,7 +220,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   handlers['import'] = (args) => {
     if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle import --file patterns.json [--dry-run]')}`); process.exit(1); }
     const data = fs.readFileSync(path.resolve(args.file), 'utf-8');
-    const dryRun = args['dry-run'] === true;
+    const dryRun = parseDryRun(args);
     const result = oracle.import(data, { dryRun, author: args.author || 'cli-import' });
     if (dryRun) console.log(c.dim('(dry run — no changes written)\n'));
     console.log(`${c.boldGreen('Imported:')} ${result.imported}  |  ${c.yellow('Skipped:')} ${result.skipped}`);
@@ -262,7 +262,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   handlers['candidates'] = (args) => {
     const filters = {};
     if (args.language) filters.language = args.language;
-    if (args['min-coherency']) filters.minCoherency = parseFloat(args['min-coherency']);
+    if (args['min-coherency']) filters.minCoherency = parseMinCoherency(args);
     if (args.method) filters.generationMethod = args.method;
 
     const candidates = oracle.candidates(filters);
@@ -298,7 +298,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const languages = (args.languages || 'python,typescript').split(',').map(s => s.trim());
     const methods = (args.methods || 'variant,iterative-refine,approach-swap').split(',').map(s => s.trim());
     const maxPatterns = parseInt(args['max-patterns']) || Infinity;
-    const minCoherency = parseFloat(args['min-coherency']) || 0.5;
+    const minCoherency = parseMinCoherency(args, 0.5);
 
     console.log(c.boldCyan('Continuous Generation') + ' — proven → coherency → candidates\n');
     oracle.recycler.verbose = true;
@@ -350,9 +350,9 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     }
 
     if (id === 'smart') {
-      const minCoherency = parseFloat(args['min-coherency']) || 0.9;
+      const minCoherency = parseMinCoherency(args, 0.9);
       const minConfidence = parseFloat(args['min-confidence']) || 0.8;
-      const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+      const dryRun = parseDryRun(args);
       const override = args['override'] === 'true' || args['override'] === true;
       const result = oracle.smartAutoPromote({ minCoherency, minConfidence, dryRun, manualOverride: override });
       console.log(c.boldCyan('Smart Auto-Promote Results:\n'));
@@ -382,7 +382,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['synthesize'] = (args) => {
     const maxCandidates = parseInt(args['max-candidates']) || Infinity;
-    const dryRun = args['dry-run'] === 'true' || args['dry-run'] === true;
+    const dryRun = parseDryRun(args);
     const autoPromoteFlag = args['no-promote'] ? false : true;
 
     console.log(c.boldCyan('Test Synthesis') + ' — generating tests for candidates\n');

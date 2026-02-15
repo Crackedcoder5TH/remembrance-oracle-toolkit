@@ -6,6 +6,7 @@
  */
 
 const { c, colorScore } = require('../colors');
+const { parseDryRun, parseMinCoherency } = require('../validate-args');
 
 function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
 
@@ -86,11 +87,15 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
     console.log(`\n${c.dim('Total duration:')} ${report.durationMs}ms`);
   };
 
-  // Keep backward-compat aliases pointing to maintain
-  handlers['evolve'] = handlers['maintain'];
-  handlers['improve'] = handlers['maintain'];
-  handlers['optimize'] = handlers['maintain'];
-  handlers['full-cycle'] = handlers['maintain'];
+  // Deprecated aliases — show a helpful redirect message then run maintain
+  const deprecatedAlias = (oldName) => (args) => {
+    console.log(c.yellow(`Note: '${oldName}' is now '${c.cyan('maintain')}'. Running maintain...\n`));
+    handlers['maintain'](args);
+  };
+  handlers['evolve'] = deprecatedAlias('evolve');
+  handlers['improve'] = deprecatedAlias('improve');
+  handlers['optimize'] = deprecatedAlias('optimize');
+  handlers['full-cycle'] = deprecatedAlias('full-cycle');
 
   handlers['consolidate'] = (args) => {
     const sub = args._sub;
@@ -110,7 +115,7 @@ ${c.bold('Commands:')}
     }
 
     if (sub === 'duplicates') {
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const dryRun = parseDryRun(args);
       console.log(`\n${c.boldCyan('Consolidating Near-Duplicates')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
       const report = oracle.consolidateDuplicates({
@@ -145,7 +150,7 @@ ${c.bold('Commands:')}
     }
 
     if (sub === 'tags') {
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const dryRun = parseDryRun(args);
       const minUsage = parseInt(args['min-usage']) || 2;
       console.log(`\n${c.boldCyan('Consolidating Tags')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
@@ -171,8 +176,8 @@ ${c.bold('Commands:')}
     }
 
     if (sub === 'candidates') {
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
-      const minCoherency = parseFloat(args['min-coherency']) || 0.6;
+      const dryRun = parseDryRun(args);
+      const minCoherency = parseMinCoherency(args, 0.6);
       console.log(`\n${c.boldCyan('Pruning Stuck Candidates')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
       const report = oracle.pruneStuckCandidates({ minCoherency, dryRun });
@@ -202,7 +207,7 @@ ${c.bold('Commands:')}
     }
 
     if (sub === 'once') {
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const dryRun = parseDryRun(args);
       console.log(`\n${c.boldCyan('Single Polish Pass')}${dryRun ? c.dim(' (dry run)') : ''}`);
       console.log(`${c.dim('Running: consolidate duplicates → tags → candidates → improve → optimize → evolve...')}\n`);
 
@@ -241,7 +246,7 @@ ${c.bold('Commands:')}
     }
 
     if (sub === 'all') {
-      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const dryRun = parseDryRun(args);
       const maxIterations = parseInt(args['max-iterations']) || undefined;
       console.log(`\n${c.boldCyan('Iterative Polish')}${dryRun ? c.dim(' (dry run)') : ''}`);
       console.log(`${c.dim('Running self-reflection loop: polish → evaluate → repeat until convergence...')}\n`);

@@ -1,21 +1,11 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
 const { RemembranceOracle } = require('../src/api/oracle');
 const { ClaudeBridge } = require('../src/core/claude-bridge');
+const { createTestOracle: _createTestOracle } = require('./helpers');
 
-// Test with a fresh oracle in a temp directory
 function createTestOracle(claudeOverride) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-  const oracle = new RemembranceOracle({
-    baseDir: tmpDir,
-    autoSeed: false,
-    autoGrow: false,
-    claude: claudeOverride || null,
-  });
-  return { oracle, tmpDir };
+  return _createTestOracle({ prefix: 'oracle-llm-test', claude: claudeOverride || null });
 }
 
 // Create a mock Claude bridge that returns predictable responses
@@ -87,8 +77,7 @@ describe('Oracle llmTranspile', () => {
 
   beforeEach(() => {
     mockClaude = createMockClaude();
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, autoGrow: false, claude: mockClaude });
+    ({ oracle } = createTestOracle(mockClaude));
     registerTestPattern(oracle);
   });
 
@@ -123,8 +112,7 @@ describe('Oracle llmGenerateTests', () => {
 
   beforeEach(() => {
     mockClaude = createMockClaude();
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, autoGrow: false, claude: mockClaude });
+    ({ oracle } = createTestOracle(mockClaude));
     registerTestPattern(oracle);
   });
 
@@ -147,8 +135,7 @@ describe('Oracle llmRefine', () => {
 
   beforeEach(() => {
     mockClaude = createMockClaude();
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, autoGrow: false, claude: mockClaude });
+    ({ oracle } = createTestOracle(mockClaude));
     registerTestPattern(oracle);
   });
 
@@ -174,8 +161,7 @@ describe('Oracle llmAlternative', () => {
 
   beforeEach(() => {
     mockClaude = createMockClaude();
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, autoGrow: false, claude: mockClaude });
+    ({ oracle } = createTestOracle(mockClaude));
     registerTestPattern(oracle);
   });
 
@@ -194,8 +180,7 @@ describe('Oracle llmDocs', () => {
 
   beforeEach(() => {
     mockClaude = createMockClaude();
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, autoGrow: false, claude: mockClaude });
+    ({ oracle } = createTestOracle(mockClaude));
     registerTestPattern(oracle);
   });
 
@@ -212,8 +197,7 @@ describe('Oracle llmAnalyze', () => {
 
   beforeEach(() => {
     mockClaude = createMockClaude();
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, autoGrow: false, claude: mockClaude });
+    ({ oracle } = createTestOracle(mockClaude));
   });
 
   it('analyzes via Claude', () => {
@@ -238,8 +222,7 @@ describe('Oracle llmExplain', () => {
 
   beforeEach(() => {
     mockClaude = createMockClaude();
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, autoGrow: false, claude: mockClaude });
+    ({ oracle } = createTestOracle(mockClaude));
     registerTestPattern(oracle);
   });
 
@@ -265,8 +248,7 @@ describe('Oracle llmGenerate', () => {
 
   beforeEach(() => {
     mockClaude = createMockClaude();
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-llm-test-'));
-    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false, autoGrow: false, claude: mockClaude });
+    ({ oracle } = createTestOracle(mockClaude));
     registerTestPattern(oracle);
   });
 

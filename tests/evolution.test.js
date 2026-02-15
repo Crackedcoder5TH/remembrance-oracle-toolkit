@@ -14,48 +14,7 @@ const {
   EVOLUTION_DEFAULTS,
 } = require('../src/core/evolution');
 
-// ─── Helpers ───
-
-function makePattern(overrides = {}) {
-  return {
-    id: overrides.id || `p-${Math.random().toString(36).slice(2, 8)}`,
-    name: overrides.name || 'test-pattern',
-    language: overrides.language || 'javascript',
-    code: overrides.code || 'function add(a, b) {\n  return a + b;\n}',
-    coherencyScore: overrides.coherencyScore || { total: 0.85 },
-    usageCount: overrides.usageCount ?? 0,
-    successCount: overrides.successCount ?? 0,
-    timestamp: overrides.timestamp || new Date().toISOString(),
-    createdAt: overrides.createdAt || new Date().toISOString(),
-    lastUsed: overrides.lastUsed || null,
-    tags: overrides.tags || [],
-    evolutionHistory: overrides.evolutionHistory || [],
-    bugReports: overrides.bugReports || 0,
-    description: overrides.description || 'test pattern',
-    reliability: overrides.reliability ?? 0.5,
-    initialReliability: overrides.initialReliability ?? undefined,
-  };
-}
-
-function createMockOracle(patterns = []) {
-  const updates = [];
-  const events = [];
-  return {
-    patterns: {
-      getAll: () => patterns,
-      update: (id, data) => {
-        updates.push({ id, ...data });
-        const p = patterns.find(x => x.id === id);
-        if (p) Object.assign(p, data);
-        return p;
-      },
-      _sqlite: null,
-    },
-    _emit: (event) => { events.push(event); },
-    _updates: updates,
-    _events: events,
-  };
-}
+const { makePattern, createMockOracle } = require('./helpers');
 
 // ─── stalenessPenalty ───
 

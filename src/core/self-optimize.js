@@ -578,9 +578,435 @@ function _generateWhisper(improveReport, optimizeReport, evolutionReport) {
   return lines.join('\n');
 }
 
+// ─── Near-Duplicate Consolidation ───
+
+/**
+ * Consolidate near-duplicate patterns by merging language variants and removing redundant copies.
+ *
+ * For JS/TS mirror pairs: keeps the higher-coherency version and links the other via tags.
+ * For same-language duplicates: keeps the higher-coherency version and removes the other.
+ *
+ * @param {object} oracle - RemembranceOracle instance
+ * @param {object} options - Configuration
+ * @param {number} options.similarityThreshold - Minimum similarity to consider (default 0.92)
+ * @param {boolean} options.dryRun - If true, report only without modifying (default false)
+ * @returns {object} Consolidation report
+ */
+function consolidateDuplicates(oracle, options = {}) {
+  const {
+    similarityThreshold = OPTIMIZE_DEFAULTS.nearDuplicateThreshold,
+    dryRun = false,
+  } = options;
+
+  const startTime = Date.now();
+  const patterns = oracle.patterns.getAll();
+  const report = {
+    timestamp: new Date().toISOString(),
+    phase: 'consolidate-duplicates',
+    patternsAnalyzed: patterns.length,
+    merged: [],
+    removed: [],
+    linked: [],
+    dryRun,
+    durationMs: 0,
+  };
+
+  // Detect near-duplicate pairs
+  const codeMap = new Map();
+  const duplicatePairs = [];
+
+  for (const p of patterns) {
+    const normalized = _normalizeCode(p.code || '');
+    if (!normalized) continue;
+
+    let foundMatch = false;
+    for (const [key, existing] of codeMap) {
+      const similarity = _codeSimilarity(normalized, key);
+      if (similarity >= similarityThreshold) {
+        duplicatePairs.push({ existing, duplicate: p, similarity });
+        foundMatch = true;
+        break;
+      }
+    }
+
+    if (!foundMatch) {
+      codeMap.set(normalized, p);
+    }
+  }
+
+  // Language variant pairs (e.g., JS/TS mirrors)
+  const LANGUAGE_VARIANTS = new Set([
+    'javascript:typescript', 'typescript:javascript',
+    'javascript:python', 'python:javascript',
+    'typescript:python', 'python:typescript',
+  ]);
+
+  for (const { existing, duplicate, similarity } of duplicatePairs) {
+    const existingLang = (existing.language || '').toLowerCase();
+    const duplicateLang = (duplicate.language || '').toLowerCase();
+    const langPair = `${existingLang}:${duplicateLang}`;
+    const isLangVariant = LANGUAGE_VARIANTS.has(langPair);
+
+    const existingCoherency = existing.coherencyScore?.total ?? 0;
+    const duplicateCoherency = duplicate.coherencyScore?.total ?? 0;
+
+    // Determine which to keep (higher coherency wins)
+    const keeper = existingCoherency >= duplicateCoherency ? existing : duplicate;
+    const loser = keeper === existing ? duplicate : existing;
+
+    if (isLangVariant) {
+      // Link language variants: tag the keeper with its variant's language
+      const variantTag = `has-${loser.language}-variant`;
+      const keeperTags = new Set(keeper.tags || []);
+
+      if (!keeperTags.has(variantTag)) {
+        keeperTags.add(variantTag);
+        if (!dryRun) {
+          oracle.patterns.update(keeper.id, { tags: [...keeperTags] });
+        }
+      }
+
+      // Remove the lower-coherency variant
+      if (!dryRun) {
+        _deletePattern(oracle, loser.id);
+      }
+
+      report.linked.push({
+        kept: { id: keeper.id, name: keeper.name, language: keeper.language, coherency: existingCoherency >= duplicateCoherency ? existingCoherency : duplicateCoherency },
+        removed: { id: loser.id, name: loser.name, language: loser.language, coherency: existingCoherency >= duplicateCoherency ? duplicateCoherency : existingCoherency },
+        similarity: Math.round(similarity * 1000) / 1000,
+        variantTag,
+      });
+    } else {
+      // Same-language duplicate: remove the lower-coherency one
+      if (!dryRun) {
+        _deletePattern(oracle, loser.id);
+      }
+
+      report.merged.push({
+        kept: { id: keeper.id, name: keeper.name, coherency: Math.max(existingCoherency, duplicateCoherency) },
+        removed: { id: loser.id, name: loser.name, coherency: Math.min(existingCoherency, duplicateCoherency) },
+        similarity: Math.round(similarity * 1000) / 1000,
+      });
+    }
+
+    report.removed.push({ id: loser.id, name: loser.name, reason: isLangVariant ? 'language-variant' : 'same-language-duplicate' });
+  }
+
+  report.durationMs = Date.now() - startTime;
+
+  if (typeof oracle._emit === 'function') {
+    oracle._emit({
+      type: 'consolidate_duplicates',
+      merged: report.merged.length,
+      linked: report.linked.length,
+      totalRemoved: report.removed.length,
+      dryRun,
+      durationMs: report.durationMs,
+    });
+  }
+
+  return report;
+}
+
+// ─── Tag Consolidation ───
+
+/**
+ * Consolidate sparse tags — remove orphan tags used by fewer than N patterns.
+ *
+ * Tags used by only 1 pattern are removed unless they're in the protected set
+ * (language names, core domain tags). Noise tags from auto-generation are stripped.
+ *
+ * @param {object} oracle - RemembranceOracle instance
+ * @param {object} options - Configuration
+ * @param {number} options.minUsage - Minimum patterns per tag to keep (default 2)
+ * @param {boolean} options.dryRun - If true, report only (default false)
+ * @returns {object} Tag consolidation report
+ */
+function consolidateTags(oracle, options = {}) {
+  const {
+    minUsage = OPTIMIZE_DEFAULTS.tagConsolidationMin,
+    dryRun = false,
+  } = options;
+
+  const startTime = Date.now();
+  const patterns = oracle.patterns.getAll();
+
+  // Protected tags that should never be removed regardless of usage count
+  const PROTECTED_TAGS = new Set([
+    'javascript', 'typescript', 'python', 'go', 'rust', 'java',
+    'utility', 'algorithm', 'data-structure', 'testing', 'security',
+    'auth', 'crypto', 'database', 'network', 'validation', 'async',
+    'stream', 'file-io', 'ui', 'react', 'node', 'web', 'cli',
+    'math', 'string', 'array', 'object', 'function', 'class',
+    'error-handling', 'logging', 'config', 'parser', 'formatter',
+    'imported', 'harvested',
+  ]);
+
+  // Noise tags that should always be stripped
+  const NOISE_TAGS = new Set([
+    'auto-generated', 'variant', 'serf-refined', 'approach-swap',
+    'needs-test', 'needs-review',
+  ]);
+
+  // Count tag usage across all patterns
+  const tagCounts = new Map();
+  for (const p of patterns) {
+    for (const tag of (p.tags || [])) {
+      tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+    }
+  }
+
+  // Identify tags to remove
+  const tagsToRemove = new Set();
+  for (const [tag, count] of tagCounts) {
+    if (NOISE_TAGS.has(tag)) {
+      tagsToRemove.add(tag);
+    } else if (count < minUsage && !PROTECTED_TAGS.has(tag.toLowerCase())) {
+      tagsToRemove.add(tag);
+    }
+  }
+
+  const report = {
+    timestamp: new Date().toISOString(),
+    phase: 'consolidate-tags',
+    patternsAnalyzed: patterns.length,
+    totalTagsBefore: tagCounts.size,
+    tagsRemoved: [],
+    patternsUpdated: 0,
+    noiseTagsStripped: 0,
+    orphanTagsRemoved: 0,
+    dryRun,
+    durationMs: 0,
+  };
+
+  // Apply tag removals
+  for (const p of patterns) {
+    const oldTags = p.tags || [];
+    const newTags = oldTags.filter(t => !tagsToRemove.has(t));
+
+    if (newTags.length < oldTags.length) {
+      if (!dryRun) {
+        oracle.patterns.update(p.id, { tags: newTags });
+      }
+      report.patternsUpdated++;
+    }
+  }
+
+  for (const tag of tagsToRemove) {
+    const count = tagCounts.get(tag) || 0;
+    const isNoise = NOISE_TAGS.has(tag);
+    report.tagsRemoved.push({ tag, count, reason: isNoise ? 'noise' : 'orphan' });
+    if (isNoise) report.noiseTagsStripped++;
+    else report.orphanTagsRemoved++;
+  }
+
+  report.totalTagsAfter = tagCounts.size - tagsToRemove.size;
+  report.durationMs = Date.now() - startTime;
+
+  if (typeof oracle._emit === 'function') {
+    oracle._emit({
+      type: 'consolidate_tags',
+      tagsRemoved: report.tagsRemoved.length,
+      patternsUpdated: report.patternsUpdated,
+      dryRun,
+      durationMs: report.durationMs,
+    });
+  }
+
+  return report;
+}
+
+// ─── Candidate Cleanup ───
+
+/**
+ * Prune stuck candidates that are below the promotion threshold and will never promote.
+ *
+ * @param {object} oracle - RemembranceOracle instance
+ * @param {object} options - Configuration
+ * @param {number} options.minCoherency - Threshold below which candidates are pruned (default 0.6)
+ * @param {boolean} options.dryRun - If true, report only (default false)
+ * @returns {object} Pruning report
+ */
+function pruneStuckCandidates(oracle, options = {}) {
+  const {
+    minCoherency = 0.6,
+    dryRun = false,
+  } = options;
+
+  const startTime = Date.now();
+  const candidates = oracle.patterns.getCandidates ? oracle.patterns.getCandidates() : [];
+
+  const report = {
+    timestamp: new Date().toISOString(),
+    phase: 'prune-candidates',
+    totalCandidates: candidates.length,
+    pruned: [],
+    kept: [],
+    dryRun,
+    durationMs: 0,
+  };
+
+  for (const c of candidates) {
+    const coherency = c.coherencyScore?.total ?? c.coherencyTotal ?? 0;
+    if (coherency < minCoherency) {
+      report.pruned.push({
+        id: c.id,
+        name: c.name,
+        coherency: Math.round(coherency * 1000) / 1000,
+        language: c.language,
+        generationMethod: c.generationMethod,
+      });
+    } else {
+      report.kept.push({
+        id: c.id,
+        name: c.name,
+        coherency: Math.round(coherency * 1000) / 1000,
+      });
+    }
+  }
+
+  // Execute pruning via SQLite store
+  if (!dryRun && report.pruned.length > 0) {
+    const sqliteStore = oracle.patterns._sqlite;
+    if (sqliteStore && typeof sqliteStore.pruneCandidates === 'function') {
+      sqliteStore.pruneCandidates(minCoherency);
+    } else {
+      // Fallback: delete individual candidates
+      for (const p of report.pruned) {
+        try {
+          if (sqliteStore && typeof sqliteStore.deleteCandidate === 'function') {
+            sqliteStore.deleteCandidate(p.id);
+          }
+        } catch { /* best effort */ }
+      }
+    }
+  }
+
+  report.durationMs = Date.now() - startTime;
+
+  if (typeof oracle._emit === 'function') {
+    oracle._emit({
+      type: 'prune_candidates',
+      pruned: report.pruned.length,
+      kept: report.kept.length,
+      dryRun,
+      durationMs: report.durationMs,
+    });
+  }
+
+  return report;
+}
+
+// ─── Polish Cycle (Pull Healed Code Forward) ───
+
+/**
+ * Full polish cycle — consolidate duplicates, clean tags, prune stuck candidates,
+ * then run a normal optimization cycle to pull healed code forward.
+ *
+ * @param {object} oracle - RemembranceOracle instance
+ * @param {object} options - Configuration
+ * @returns {object} Combined polish report
+ */
+function polishCycle(oracle, options = {}) {
+  const startTime = Date.now();
+
+  // Phase 1: Consolidate near-duplicates
+  const duplicateReport = consolidateDuplicates(oracle, options);
+
+  // Phase 2: Consolidate sparse/orphan tags
+  const tagReport = consolidateTags(oracle, options);
+
+  // Phase 3: Prune stuck candidates
+  const candidateReport = pruneStuckCandidates(oracle, options);
+
+  // Phase 4: Run full improvement + optimization cycle to pull healed code forward
+  const cycleReport = fullCycle(oracle, options);
+
+  const totalDurationMs = Date.now() - startTime;
+
+  // Generate polish whisper
+  const whisperLines = ['=== Oracle Polish Cycle ===', ''];
+
+  if (duplicateReport.removed.length > 0) {
+    whisperLines.push(`Consolidated ${duplicateReport.removed.length} near-duplicate(s):`);
+    if (duplicateReport.linked.length > 0) {
+      whisperLines.push(`  ${duplicateReport.linked.length} language variant(s) linked under canonical patterns`);
+    }
+    if (duplicateReport.merged.length > 0) {
+      whisperLines.push(`  ${duplicateReport.merged.length} same-language duplicate(s) merged`);
+    }
+    whisperLines.push('');
+  }
+
+  if (tagReport.tagsRemoved.length > 0) {
+    whisperLines.push(`Consolidated ${tagReport.tagsRemoved.length} sparse/noise tag(s):`);
+    if (tagReport.orphanTagsRemoved > 0) {
+      whisperLines.push(`  ${tagReport.orphanTagsRemoved} orphan tag(s) removed (used by <${options.minUsage || 2} patterns)`);
+    }
+    if (tagReport.noiseTagsStripped > 0) {
+      whisperLines.push(`  ${tagReport.noiseTagsStripped} noise tag(s) stripped`);
+    }
+    whisperLines.push(`  ${tagReport.patternsUpdated} pattern(s) updated`);
+    whisperLines.push('');
+  }
+
+  if (candidateReport.pruned.length > 0) {
+    whisperLines.push(`Pruned ${candidateReport.pruned.length} stuck candidate(s) below ${options.minCoherency || 0.6} coherency`);
+    if (candidateReport.kept.length > 0) {
+      whisperLines.push(`  ${candidateReport.kept.length} viable candidate(s) retained`);
+    }
+    whisperLines.push('');
+  }
+
+  if (cycleReport.whisper) {
+    whisperLines.push(cycleReport.whisper);
+  }
+
+  whisperLines.push(`Completed in ${(totalDurationMs / 1000).toFixed(1)}s`);
+
+  if (typeof oracle._emit === 'function') {
+    oracle._emit({
+      type: 'polish_cycle',
+      duplicatesRemoved: duplicateReport.removed.length,
+      tagsConsolidated: tagReport.tagsRemoved.length,
+      candidatesPruned: candidateReport.pruned.length,
+      durationMs: totalDurationMs,
+    });
+  }
+
+  return {
+    timestamp: new Date().toISOString(),
+    consolidation: duplicateReport,
+    tagConsolidation: tagReport,
+    candidatePruning: candidateReport,
+    cycle: cycleReport,
+    whisper: whisperLines.join('\n'),
+    durationMs: totalDurationMs,
+  };
+}
+
+/**
+ * Delete a pattern from the database.
+ * @param {object} oracle
+ * @param {string} id
+ */
+function _deletePattern(oracle, id) {
+  try {
+    const db = oracle.patterns._sqlite?.db || oracle.store?.db;
+    if (db) {
+      db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
+    }
+  } catch { /* skip if delete not supported */ }
+}
+
 module.exports = {
   selfImprove,
   selfOptimize,
   fullCycle,
+  consolidateDuplicates,
+  consolidateTags,
+  pruneStuckCandidates,
+  polishCycle,
   OPTIMIZE_DEFAULTS,
 };

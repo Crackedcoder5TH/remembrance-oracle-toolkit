@@ -442,6 +442,26 @@ module.exports = {
     return selfOptimize(this, options);
   },
 
+  consolidateDuplicates(options = {}) {
+    const { consolidateDuplicates } = require('../core/self-optimize');
+    return consolidateDuplicates(this, options);
+  },
+
+  consolidateTags(options = {}) {
+    const { consolidateTags } = require('../core/self-optimize');
+    return consolidateTags(this, options);
+  },
+
+  pruneStuckCandidates(options = {}) {
+    const { pruneStuckCandidates } = require('../core/self-optimize');
+    return pruneStuckCandidates(this, options);
+  },
+
+  polishCycle(options = {}) {
+    const { polishCycle } = require('../core/self-optimize');
+    return polishCycle(this, options);
+  },
+
   fullOptimizationCycle(options = {}) {
     const { fullCycle } = require('../core/self-optimize');
     const { HealingWhisper } = require('../core/whisper');

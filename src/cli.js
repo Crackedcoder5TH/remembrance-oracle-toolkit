@@ -184,6 +184,8 @@ ${c.bold('Self-Management:')}
   ${c.cyan('improve')}         Self-improve: heal low-coherency, promote, clean
   ${c.cyan('optimize')}        Self-optimize: dedup, usage analysis, tag consolidation
   ${c.cyan('full-cycle')}      Combined improve + optimize + evolve cycle
+  ${c.cyan('consolidate')}     Consolidate duplicates, tags, and candidates (--dry-run)
+  ${c.cyan('polish')}          Full polish cycle: consolidate + improve + optimize + evolve
   ${c.cyan('lifecycle')}       Always-on lifecycle engine (start, stop, status, run, history)
 
 ${c.bold('Debug:')}

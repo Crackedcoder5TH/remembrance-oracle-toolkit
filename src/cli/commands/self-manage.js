@@ -92,6 +92,166 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
   handlers['optimize'] = handlers['maintain'];
   handlers['full-cycle'] = handlers['maintain'];
 
+  handlers['consolidate'] = (args) => {
+    const sub = args._sub;
+
+    if (!sub || sub === 'help') {
+      console.log(`
+${c.boldCyan('Consolidation')} — reduce redundancy and clean up the library
+
+${c.bold('Commands:')}
+  ${c.cyan('consolidate duplicates')}   Merge near-duplicate patterns (--dry-run)
+  ${c.cyan('consolidate tags')}         Remove orphan/noise tags (--dry-run)
+  ${c.cyan('consolidate candidates')}   Prune stuck candidates below threshold (--dry-run)
+  ${c.cyan('consolidate all')}          Run full polish cycle (all of the above + heal)
+      `);
+      return;
+    }
+
+    if (sub === 'duplicates') {
+      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      console.log(`\n${c.boldCyan('Consolidating Near-Duplicates')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
+
+      const report = oracle.consolidateDuplicates({
+        similarityThreshold: parseFloat(args.threshold) || undefined,
+        dryRun,
+      });
+
+      if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+      if (report.linked.length > 0) {
+        console.log(`${c.boldGreen('Language variants linked:')} ${report.linked.length}`);
+        for (const l of report.linked.slice(0, 10)) {
+          console.log(`  ${c.green('+')} ${c.cyan(l.kept.name)} (${l.kept.language}) ${c.dim('kept')} — ${c.yellow(l.removed.name)} (${l.removed.language}) ${c.dim('removed')} (${(l.similarity * 100).toFixed(0)}% similar)`);
+        }
+        if (report.linked.length > 10) console.log(`  ${c.dim('... and ' + (report.linked.length - 10) + ' more')}`);
+      }
+
+      if (report.merged.length > 0) {
+        console.log(`${c.boldGreen('Same-language duplicates merged:')} ${report.merged.length}`);
+        for (const m of report.merged.slice(0, 10)) {
+          console.log(`  ${c.green('+')} ${c.cyan(m.kept.name)} ${c.dim('kept')} — ${c.yellow(m.removed.name)} ${c.dim('removed')} (${(m.similarity * 100).toFixed(0)}% similar)`);
+        }
+        if (report.merged.length > 10) console.log(`  ${c.dim('... and ' + (report.merged.length - 10) + ' more')}`);
+      }
+
+      if (report.removed.length === 0) {
+        console.log(`${c.green('No near-duplicates found above threshold.')}`);
+      }
+
+      console.log(`\n${c.dim('Analyzed:')} ${report.patternsAnalyzed} patterns ${c.dim('|')} ${c.dim('Removed:')} ${report.removed.length} ${c.dim('|')} ${c.dim('Duration:')} ${report.durationMs}ms`);
+      return;
+    }
+
+    if (sub === 'tags') {
+      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const minUsage = parseInt(args['min-usage']) || 2;
+      console.log(`\n${c.boldCyan('Consolidating Tags')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
+
+      const report = oracle.consolidateTags({ minUsage, dryRun });
+
+      if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+      if (report.orphanTagsRemoved > 0) {
+        console.log(`${c.bold('Orphan tags removed:')} ${report.orphanTagsRemoved} (used by <${minUsage} patterns)`);
+        const orphans = report.tagsRemoved.filter(t => t.reason === 'orphan').slice(0, 20);
+        for (const t of orphans) {
+          console.log(`  ${c.yellow('○')} ${c.dim(t.tag)} (${t.count} pattern${t.count === 1 ? '' : 's'})`);
+        }
+        if (report.orphanTagsRemoved > 20) console.log(`  ${c.dim('... and ' + (report.orphanTagsRemoved - 20) + ' more')}`);
+      }
+
+      if (report.noiseTagsStripped > 0) {
+        console.log(`${c.bold('Noise tags stripped:')} ${report.noiseTagsStripped}`);
+      }
+
+      console.log(`\n${c.dim('Tags:')} ${report.totalTagsBefore} → ${report.totalTagsAfter} ${c.dim('|')} ${c.dim('Patterns updated:')} ${report.patternsUpdated} ${c.dim('|')} ${c.dim('Duration:')} ${report.durationMs}ms`);
+      return;
+    }
+
+    if (sub === 'candidates') {
+      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const minCoherency = parseFloat(args['min-coherency']) || 0.6;
+      console.log(`\n${c.boldCyan('Pruning Stuck Candidates')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
+
+      const report = oracle.pruneStuckCandidates({ minCoherency, dryRun });
+
+      if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+      if (report.pruned.length > 0) {
+        console.log(`${c.bold('Pruned:')} ${report.pruned.length} candidate(s) below ${minCoherency} coherency`);
+        for (const p of report.pruned) {
+          console.log(`  ${c.red('×')} ${c.cyan(p.name)} — coherency ${colorScore(p.coherency)} (${p.generationMethod})`);
+        }
+      }
+
+      if (report.kept.length > 0) {
+        console.log(`\n${c.boldGreen('Kept:')} ${report.kept.length} viable candidate(s)`);
+        for (const k of report.kept) {
+          console.log(`  ${c.green('✓')} ${c.cyan(k.name)} — coherency ${colorScore(k.coherency)}`);
+        }
+      }
+
+      if (report.pruned.length === 0 && report.kept.length === 0) {
+        console.log(`${c.green('No candidates to process.')}`);
+      }
+
+      console.log(`\n${c.dim('Duration:')} ${report.durationMs}ms`);
+      return;
+    }
+
+    if (sub === 'all') {
+      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      console.log(`\n${c.boldCyan('Full Polish Cycle')}${dryRun ? c.dim(' (dry run)') : ''}`);
+      console.log(`${c.dim('Running: consolidate duplicates → tags → candidates → improve → optimize → evolve...')}\n`);
+
+      const report = oracle.polishCycle({ dryRun });
+
+      if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+      // Consolidation summary
+      const con = report.consolidation;
+      if (con.removed.length > 0) {
+        console.log(`${c.boldGreen('Duplicates consolidated:')} ${con.removed.length} (${con.linked.length} variants linked, ${con.merged.length} merged)`);
+      }
+
+      const tags = report.tagConsolidation;
+      if (tags.tagsRemoved.length > 0) {
+        console.log(`${c.bold('Tags consolidated:')} ${tags.tagsRemoved.length} removed (${tags.patternsUpdated} patterns updated)`);
+      }
+
+      const cand = report.candidatePruning;
+      if (cand.pruned.length > 0) {
+        console.log(`${c.bold('Candidates pruned:')} ${cand.pruned.length} stuck, ${cand.kept.length} kept`);
+      }
+
+      // Cycle summary (from fullCycle)
+      if (report.cycle?.improvement?.healed?.length > 0) {
+        console.log(`${c.boldGreen('Healed:')} ${report.cycle.improvement.healed.length} pattern(s)`);
+      }
+      if (report.cycle?.improvement?.promoted > 0) {
+        console.log(`${c.boldGreen('Promoted:')} ${report.cycle.improvement.promoted} candidate(s)`);
+      }
+
+      // Whisper
+      if (report.whisper) {
+        console.log(`\n${report.whisper}`);
+      }
+
+      console.log(`\n${c.dim('Total duration:')} ${report.durationMs}ms`);
+      return;
+    }
+
+    console.error(c.boldRed('Error:') + ` Unknown consolidate subcommand: ${sub}. Run ${c.cyan('oracle consolidate help')} for usage.`);
+    process.exit(1);
+  };
+
+  // Convenience alias
+  handlers['polish'] = (args) => {
+    args._sub = 'all';
+    handlers['consolidate'](args);
+  };
+
   handlers['lifecycle'] = (args) => {
     const sub = args._sub;
 

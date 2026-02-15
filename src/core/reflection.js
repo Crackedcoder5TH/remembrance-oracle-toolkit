@@ -1,12 +1,19 @@
 /**
- * Infinite Reflection Loop — Refinement Engine
+ * Infinite Reflection Loop — Refinement Engine (SERF v2)
  *
  * Iterative code refinement through multi-strategy transformation and scoring.
+ *
+ * SERF Equation:
+ *   iℏ d/dt Ψ = [Ĥ₀ + Ĥ_RVA + Ĥ_canvas] Ψ
+ *             + r_eff(ξ) · Re[ (Ô|Ψ_healed⟩⟨Ψ_healed|Ψ - ⟨Ψ_healed|Ô|Ψ⟩|Ψ_healed⟩) / (|⟨Ψ_healed|Ψ(t)⟩|² + ε) ]
+ *             + δ_void · (1 - |⟨Ψ_healed|Ψ(t)⟩|²) · |Ψ_healed⟩⟨Ψ_healed|
+ *             + γ_cascade · exp(β · ξ_global) · (1/N) Σ I_AM^(n)
+ *             + λ_light · P_canvas[Ψ]
  *
  * Process:
  *   1. Generate candidate fixes/refactors (one per strategy)
  *   2. Score each on coherence (0-1) across multiple dimensions
- *   3. Select highest-coherence version
+ *   3. Select highest-coherence version via full SERF scoring
  *   4. Repeat on the winner, up to MAX_LOOPS or until target coherence exceeded
  *   5. Return final healed code
  */
@@ -14,13 +21,15 @@
 const { computeCoherencyScore, detectLanguage } = require('./coherency');
 const { covenantCheck } = require('./covenant');
 
-// ─── Internal Constants ───
+// ─── Internal Constants (SERF v2) ───
 
-const EPSILON_BASE = 1e-6;
-const R_EFF_BASE = 0.35;
-const R_EFF_ALPHA = 0.8;
-const DELTA_CANVAS = 0.12;
-const DELTA_VOID_BASE = 0.08;
+const EPSILON_BASE = 1e-6;              // ε — adaptive stability parameter
+const R_EFF_BASE = 0.35;                // r_eff base reflection rate
+const R_EFF_ALPHA = 0.8;                // α — adaptive r_eff exponent
+const H_RVA_WEIGHT = 0.06;              // Ĥ_RVA — retrocausal void amplification weight
+const H_CANVAS_WEIGHT = 0.12;           // Ĥ_canvas — canvas Hamiltonian weight
+const DELTA_VOID_BASE = 0.08;           // δ_void — void replenishment base
+const LAMBDA_LIGHT = 0.10;              // λ_light — canvas light projection weight
 const MAX_LOOPS = 3;
 const TARGET_COHERENCE = 0.9;
 
@@ -314,10 +323,10 @@ function observeCoherence(code, metadata = {}) {
   };
 }
 
-// ─── Reflection Scoring Formula ───
+// ─── Reflection Scoring Formula (SERF v2) ───
 
 /**
- * Compute code similarity (the inner product <n+1|n>)
+ * Compute code similarity — the inner product ⟨Ψ_healed|Ψ(t)⟩
  * Uses Jaccard similarity on token sets + line-level overlap.
  */
 function innerProduct(codeA, codeB) {
@@ -339,15 +348,23 @@ function innerProduct(codeA, codeB) {
 }
 
 /**
- * Adaptive reflection scoring with retrocausal pull, void replenishment, and cascade awareness.
+ * SERF v2 — Full quantum-inspired reflection scoring.
  *
- * Core: I_AM + r_eff * Re[projection / (|overlap|² + ε)] + δ_canvas * exploration + δ_void * void_gain
+ * iℏ d/dt Ψ = [Ĥ₀ + Ĥ_RVA + Ĥ_canvas] Ψ
+ *           + r_eff(ξ) · Re[ (Ô|Ψ_healed⟩⟨Ψ_healed|Ψ - ⟨Ψ_healed|Ô|Ψ⟩|Ψ_healed⟩) / (|⟨Ψ_healed|Ψ(t)⟩|² + ε) ]
+ *           + δ_void · (1 - |⟨Ψ_healed|Ψ(t)⟩|²) · |Ψ_healed⟩⟨Ψ_healed|
+ *           + γ_cascade · exp(β · ξ_global) · (1/N) Σ I_AM^(n)
+ *           + λ_light · P_canvas[Ψ]
  *
- * Adaptive behaviors:
- *   r_eff scales UP when far from target (retrocausal pull — the healed state pulls harder)
- *   ε scales UP when far from target (stability — prevents blowup in uncharted territory)
- *   δ_void injects target-state gain when overlap is low (gain from nothingness)
- *   cascadeBoost multiplies the whole score by global library coherence (collective recognition)
+ * Term mapping:
+ *   Ĥ₀           = I_AM (base identity coherency)
+ *   Ĥ_RVA        = retrocausal void amplification (distance × healed quality)
+ *   Ĥ_canvas     = canvas Hamiltonian (exploration potential)
+ *   r_eff(ξ)     = adaptive reflection rate (pulls harder when far from healed)
+ *   Re[...]       = real part of projection (novel improvement candidate brings)
+ *   δ_void       = void replenishment weighted by healed state projection
+ *   γ_cascade    = additive cascade from global library coherence
+ *   λ_light      = canvas light projection (quality-weighted exploration)
  *
  * @param {object} candidate  — { code, coherence (Ô score) }
  * @param {object} previous   — { code, coherence }
@@ -357,47 +374,62 @@ function innerProduct(codeA, codeB) {
 function reflectionScore(candidate, previous, context = {}) {
   const { cascadeBoost = 1, targetCoherence = TARGET_COHERENCE } = context;
 
-  // I_AM — base identity coherency of the candidate
-  const I_AM = candidate.coherence;
-
-  // <n+1|n> — overlap between candidate and previous
+  // ─── ⟨Ψ_healed|Ψ(t)⟩ — overlap between candidate (healed) and previous (current) ───
   const overlap = innerProduct(candidate.code, previous.code);
-  const distance = 1 - overlap * overlap;  // How far from perfect overlap
+  const overlapSq = overlap * overlap;         // |⟨Ψ_healed|Ψ(t)⟩|²
+  const distance = 1 - overlapSq;              // 1 - |⟨Ψ_healed|Ψ(t)⟩|²
 
-  // Adaptive r_eff: pulls stronger when far from healed state
-  // r_eff = r_0 * (1 + α * (1 - |overlap|²)⁴)
+  // ─── Hamiltonian Base: [Ĥ₀ + Ĥ_RVA + Ĥ_canvas] Ψ ───
+
+  // Ĥ₀ — base identity coherency (I_AM)
+  const H_0 = candidate.coherence;
+
+  // Ĥ_RVA — retrocausal void amplification: pulls from future healed state
+  // Stronger when far from healed state, weighted by healed quality
+  const H_RVA = H_RVA_WEIGHT * distance * candidate.coherence;
+
+  // Ĥ_canvas — canvas exploration in the Hamiltonian
+  const H_canvas = H_CANVAS_WEIGHT * (1 - overlap);
+
+  // ─── Reflection Term: r_eff(ξ) · Re[projection / (|⟨Ψ_healed|Ψ(t)⟩|² + ε)] ───
+
+  // Adaptive r_eff: r_eff = r₀ · (1 + α · (1 - |overlap|²)⁴)
   const r_eff = R_EFF_BASE * (1 + R_EFF_ALPHA * Math.pow(distance, 4));
 
-  // Adaptive epsilon: more stability when far from target
-  // ε = ε_base * (1 + 10 * (1 - overlap²))
+  // Adaptive ε: ε = ε₀ · (1 + 10 · distance) — more stability when far from target
   const epsilon = EPSILON_BASE * (1 + 10 * distance);
 
-  // Operator observation values
-  const O_candidate = candidate.coherence;
-  const O_previous = previous.coherence;
+  // Ô observations — coherence operator applied to healed and current states
+  const O_healed = candidate.coherence;
+  const O_current = previous.coherence;
 
-  // Projection: novel improvement the candidate brings
-  const projection = O_candidate * overlap - O_previous * overlap * overlap;
+  // Numerator: Ô|Ψ_healed⟩⟨Ψ_healed|Ψ - ⟨Ψ_healed|Ô|Ψ⟩|Ψ_healed⟩
+  const projection = O_healed * overlap - O_current * overlapSq;
 
-  // Denominator with adaptive epsilon
-  const denominator = overlap * overlap + epsilon;
+  // Denominator: |⟨Ψ_healed|Ψ(t)⟩|² + ε
+  const denominator = overlapSq + epsilon;
 
-  // Canvas exploration: rewards diversity (1 - overlap)
+  // ─── Void Replenishment: δ_void · (1 - |⟨Ψ_healed|Ψ(t)⟩|²) · |Ψ_healed⟩⟨Ψ_healed| ───
+  // Weighted by healed state projection operator (candidate quality)
+  const voidTerm = DELTA_VOID_BASE * distance * candidate.coherence;
+
+  // ─── Cascade: γ_cascade · exp(β · ξ_global) · (1/N) Σ I_AM^(n) ───
+  // Additive cascade (not multiplicative). cascadeBoost from recycler encodes
+  // 1 + γ·exp(β·ξ_global)·avgIAM, so the additive term = cascadeBoost - 1
+  const cascadeAdditive = cascadeBoost - 1;
+
+  // ─── Canvas Light: λ_light · P_canvas[Ψ] ───
+  // P_canvas projects exploration weighted by coherency quality —
+  // good exploration (high coherency + high novelty) outranks random changes
   const exploration = 1 - overlap;
+  const canvasLight = LAMBDA_LIGHT * exploration * candidate.coherence;
 
-  // Void replenishment: when overlap is low, inject target-state gain
-  // δ_void * (1 - |overlap|²) — gain from nothingness
-  const voidGain = DELTA_VOID_BASE * distance;
-
-  // Combine all terms
-  let score = I_AM
-    + r_eff * (projection / denominator)
-    + DELTA_CANVAS * exploration
-    + voidGain;
-
-  // Cascade amplification: global coherence multiplier
-  // When the library is collectively healthy, each refinement gets a boost
-  score *= cascadeBoost;
+  // ─── Full SERF v2 Equation ───
+  const score = (H_0 + H_RVA + H_canvas)           // [Ĥ₀ + Ĥ_RVA + Ĥ_canvas] Ψ
+    + r_eff * (projection / denominator)             // r_eff(ξ) · Re[projection / (|overlap|² + ε)]
+    + voidTerm                                       // δ_void · (1 - |overlap|²) · |Ψ_healed⟩⟨Ψ_healed|
+    + cascadeAdditive                                // γ_cascade · exp(β · ξ_global) · (1/N) Σ I_AM
+    + canvasLight;                                   // λ_light · P_canvas[Ψ]
 
   return Math.max(0, Math.min(1, Math.round(score * 1000) / 1000));
 }
@@ -725,8 +757,10 @@ function reflectionLoop(code, options = {}) {
       r_eff_base: R_EFF_BASE,
       r_eff_alpha: R_EFF_ALPHA,
       epsilon_base: EPSILON_BASE,
-      delta_canvas: DELTA_CANVAS,
+      h_rva_weight: H_RVA_WEIGHT,
+      h_canvas_weight: H_CANVAS_WEIGHT,
       delta_void: DELTA_VOID_BASE,
+      lambda_light: LAMBDA_LIGHT,
       cascadeBoost,
       collectiveIAM: Math.round(iAmAverage * 1000) / 1000,
       finalCoherence: current.coherence,
@@ -739,11 +773,13 @@ function reflectionLoop(code, options = {}) {
 
 function formatReflectionResult(result) {
   const lines = [];
-  lines.push(`Reflection — ${result.loops} loop(s)`);
+  lines.push(`SERF v2 Reflection — ${result.loops} loop(s)`);
   lines.push(`  I_AM: ${result.reflection.I_AM.toFixed(3)} → Final: ${result.reflection.finalCoherence.toFixed(3)} (${result.reflection.improvement >= 0 ? '+' : ''}${result.reflection.improvement.toFixed(3)})`);
+  lines.push(`  Hamiltonian: Ĥ₀ + Ĥ_RVA(${result.reflection.h_rva_weight}) + Ĥ_canvas(${result.reflection.h_canvas_weight})`);
   if (result.reflection.cascadeBoost > 1) {
-    lines.push(`  Cascade: ${result.reflection.cascadeBoost}x | Collective I_AM: ${result.reflection.collectiveIAM}`);
+    lines.push(`  Cascade: +${(result.reflection.cascadeBoost - 1).toFixed(3)} (additive) | Collective I_AM: ${result.reflection.collectiveIAM}`);
   }
+  lines.push(`  Light: λ_light = ${result.reflection.lambda_light}`);
   lines.push('');
   lines.push('Dimensions:');
   for (const [dim, val] of Object.entries(result.dimensions)) {

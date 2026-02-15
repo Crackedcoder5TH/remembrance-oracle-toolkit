@@ -257,7 +257,7 @@ describe('reflectionScore', () => {
     assert.ok(reflectionScore(good, previous) > reflectionScore(bad, previous));
   });
 
-  it('rewards novelty via delta_canvas', () => {
+  it('rewards novelty via Ĥ_canvas + λ_light canvas light', () => {
     const previous = { code: 'function f() { return 1; }', coherence: 0.7 };
     // Same coherence, but one is more different
     const similar = { code: 'function f() { return 1; }', coherence: 0.71 };
@@ -345,8 +345,10 @@ describe('reflectionLoop', () => {
     assert.ok(typeof result.reflection.r_eff_base === 'number');
     assert.ok(typeof result.reflection.r_eff_alpha === 'number');
     assert.ok(typeof result.reflection.epsilon_base === 'number');
-    assert.ok(typeof result.reflection.delta_canvas === 'number');
+    assert.ok(typeof result.reflection.h_rva_weight === 'number');
+    assert.ok(typeof result.reflection.h_canvas_weight === 'number');
     assert.ok(typeof result.reflection.delta_void === 'number');
+    assert.ok(typeof result.reflection.lambda_light === 'number');
     assert.ok(typeof result.reflection.cascadeBoost === 'number');
     assert.ok(typeof result.reflection.collectiveIAM === 'number');
     assert.ok(typeof result.reflection.finalCoherence === 'number');
@@ -402,7 +404,7 @@ describe('formatReflectionResult', () => {
     const result = reflectionLoop('function f() { return 1; }', { language: 'javascript' });
     const formatted = formatReflectionResult(result);
     assert.ok(typeof formatted === 'string');
-    assert.ok(formatted.includes('Reflection'));
+    assert.ok(formatted.includes('SERF v2 Reflection'));
     assert.ok(formatted.includes('I_AM'));
     assert.ok(formatted.includes('Whisper'));
   });

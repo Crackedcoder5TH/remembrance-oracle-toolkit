@@ -139,12 +139,15 @@ describe('Orchestrator — exports', () => {
   });
 });
 
-describe('Orchestrator — MCP tool', () => {
-  it('should have oracle_reflector_orchestrate tool', () => {
+describe('Orchestrator — reflector functions (MCP consolidated)', () => {
+  it('orchestrate and formatOrchestration are directly importable', () => {
+    const multi = require('../src/reflector/multi');
+    assert.strictEqual(typeof multi.orchestrate, 'function');
+    assert.strictEqual(typeof multi.formatOrchestration, 'function');
+  });
+
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_orchestrate');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('orchestrated'));
-    assert.ok(tool.inputSchema.properties.dryRun);
+    assert.equal(TOOLS.length, 10);
   });
 });

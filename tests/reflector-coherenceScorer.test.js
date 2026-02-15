@@ -300,20 +300,20 @@ describe('Coherence Scorer — exports', () => {
   });
 });
 
-// ─── MCP Tools ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Coherence Scorer — MCP tools', () => {
-  it('should have oracle_reflector_coherence tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_coherence');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('coherence'));
-    assert.ok(tool.inputSchema.properties.filePath);
+describe('Coherence Scorer — reflector functions (MCP consolidated)', () => {
+  it('computeCoherence and computeRepoCoherence are directly importable', () => {
+    const scoring = require('../src/reflector/scoring');
+    assert.strictEqual(typeof scoring.computeCoherence, 'function');
+    assert.strictEqual(typeof scoring.computeRepoCoherence, 'function');
+    assert.strictEqual(typeof scoring.formatCoherence, 'function');
+    assert.strictEqual(typeof scoring.scoreSyntaxValidity, 'function');
+    assert.strictEqual(typeof scoring.scoreTestProof, 'function');
   });
 
-  it('should have oracle_reflector_repo_coherence tool', () => {
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_repo_coherence');
-    assert.ok(tool);
+    assert.equal(TOOLS.length, 10);
   });
 });

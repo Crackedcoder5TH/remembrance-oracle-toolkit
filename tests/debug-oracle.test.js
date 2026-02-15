@@ -621,14 +621,22 @@ describe('Debug Oracle', () => {
 
   // ─── MCP Integration ───
 
-  describe('MCP debug tools', () => {
-    it('lists debug tools', () => {
+  describe('MCP debug tools (consolidated)', () => {
+    it('lists consolidated oracle_debug tool', () => {
       const { TOOLS } = require('../src/mcp/server');
-      const debugTools = TOOLS.filter(t => t.name.startsWith('oracle_debug_'));
-      assert.ok(debugTools.length >= 6, `expected at least 6 debug tools, got ${debugTools.length}`);
+      const debugTool = TOOLS.find(t => t.name === 'oracle_debug');
+      assert.ok(debugTool, 'oracle_debug tool should exist');
+      assert.ok(debugTool.inputSchema.properties.action, 'should have action param');
+      const actions = debugTool.inputSchema.properties.action.enum;
+      assert.ok(actions.includes('capture'));
+      assert.ok(actions.includes('search'));
+      assert.ok(actions.includes('feedback'));
+      assert.ok(actions.includes('stats'));
+      assert.ok(actions.includes('grow'));
+      assert.ok(actions.includes('patterns'));
     });
 
-    it('handles oracle_debug_capture', async () => {
+    it('handles oracle_debug capture action', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
@@ -639,8 +647,9 @@ describe('Debug Oracle', () => {
         id: 1,
         method: 'tools/call',
         params: {
-          name: 'oracle_debug_capture',
+          name: 'oracle_debug',
           arguments: {
+            action: 'capture',
             errorMessage: 'TypeError: x is undefined',
             fixCode: 'const x = 0;',
             language: 'javascript',
@@ -653,7 +662,7 @@ describe('Debug Oracle', () => {
       assert.ok(response.result.content);
     });
 
-    it('handles oracle_debug_search', async () => {
+    it('handles oracle_debug search action', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
@@ -664,8 +673,9 @@ describe('Debug Oracle', () => {
         id: 2,
         method: 'tools/call',
         params: {
-          name: 'oracle_debug_search',
+          name: 'oracle_debug',
           arguments: {
+            action: 'search',
             errorMessage: 'TypeError: x is undefined',
           },
         },
@@ -675,7 +685,7 @@ describe('Debug Oracle', () => {
       assert.ok(response.result);
     });
 
-    it('handles oracle_debug_stats', async () => {
+    it('handles oracle_debug stats action', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
@@ -686,8 +696,8 @@ describe('Debug Oracle', () => {
         id: 3,
         method: 'tools/call',
         params: {
-          name: 'oracle_debug_stats',
-          arguments: {},
+          name: 'oracle_debug',
+          arguments: { action: 'stats' },
         },
       });
 
@@ -695,7 +705,7 @@ describe('Debug Oracle', () => {
       assert.ok(response.result);
     });
 
-    it('handles oracle_debug_grow', async () => {
+    it('handles oracle_debug grow action', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
@@ -706,8 +716,8 @@ describe('Debug Oracle', () => {
         id: 4,
         method: 'tools/call',
         params: {
-          name: 'oracle_debug_grow',
-          arguments: {},
+          name: 'oracle_debug',
+          arguments: { action: 'grow' },
         },
       });
 
@@ -715,7 +725,7 @@ describe('Debug Oracle', () => {
       assert.ok(response.result);
     });
 
-    it('handles oracle_debug_feedback', async () => {
+    it('handles oracle_debug feedback action', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const { RemembranceOracle } = require('../src/api/oracle');
       const oracle = new RemembranceOracle({ autoSeed: false });
@@ -735,8 +745,8 @@ describe('Debug Oracle', () => {
         id: 5,
         method: 'tools/call',
         params: {
-          name: 'oracle_debug_feedback',
-          arguments: { id, resolved: true },
+          name: 'oracle_debug',
+          arguments: { action: 'feedback', id, resolved: true },
         },
       });
 

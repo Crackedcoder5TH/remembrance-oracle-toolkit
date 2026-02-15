@@ -548,33 +548,22 @@ describe('Safety Exports', () => {
   });
 });
 
-// ─── MCP Safety Tools Tests ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Safety MCP Tools', () => {
-  it('should register safety tools in MCP server', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_reflector_dry_run'));
-    assert.ok(names.includes('oracle_reflector_safe_run'));
-    assert.ok(names.includes('oracle_reflector_rollback'));
-    assert.ok(names.includes('oracle_reflector_backups'));
+describe('Safety — reflector functions (MCP consolidated)', () => {
+  it('safety functions are directly importable from report', () => {
+    const report = require('../src/reflector/report');
+    assert.strictEqual(typeof report.dryRun, 'function');
+    assert.strictEqual(typeof report.safeReflect, 'function');
+    assert.strictEqual(typeof report.rollback, 'function');
+    assert.strictEqual(typeof report.createBackup, 'function');
+    assert.strictEqual(typeof report.loadBackupManifests, 'function');
+    assert.strictEqual(typeof report.getLatestBackup, 'function');
+    assert.strictEqual(typeof report.coherenceGuard, 'function');
   });
 
-  it('should handle dry-run via MCP', async () => {
-    const { MCPServer } = require('../src/mcp/server');
-    const server = new MCPServer();
-    const response = await server.handleRequest({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: {
-        name: 'oracle_reflector_backups',
-        arguments: {},
-      },
-    });
-    assert.equal(response.jsonrpc, '2.0');
-    assert.equal(response.id, 1);
-    assert.ok(response.result);
-    assert.ok(response.result.content);
+  it('MCP has 10 consolidated tools', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    assert.equal(TOOLS.length, 10);
   });
 });

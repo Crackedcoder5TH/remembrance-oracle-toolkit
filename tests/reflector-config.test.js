@@ -373,33 +373,22 @@ describe('Config Exports', () => {
   });
 });
 
-// ─── MCP Tools Tests ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Config MCP Tools', () => {
-  it('should register config tools in MCP server', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_reflector_central_config'));
-    assert.ok(names.includes('oracle_reflector_central_set'));
+describe('Config — reflector functions (MCP consolidated)', () => {
+  it('config functions are directly importable from scoring', () => {
+    const scoring = require('../src/reflector/scoring');
+    assert.strictEqual(typeof scoring.loadCentralConfig, 'function');
+    assert.strictEqual(typeof scoring.saveCentralConfig, 'function');
+    assert.strictEqual(typeof scoring.setCentralValue, 'function');
+    assert.strictEqual(typeof scoring.getCentralValue, 'function');
+    assert.strictEqual(typeof scoring.resetCentralConfig, 'function');
+    assert.strictEqual(typeof scoring.validateConfig, 'function');
+    assert.strictEqual(typeof scoring.formatCentralConfig, 'function');
   });
 
-  it('should handle central-config via MCP', async () => {
-    const { MCPServer } = require('../src/mcp/server');
-    const server = new MCPServer();
-    const response = await server.handleRequest({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: {
-        name: 'oracle_reflector_central_config',
-        arguments: {},
-      },
-    });
-    assert.equal(response.jsonrpc, '2.0');
-    assert.ok(response.result);
-    const data = JSON.parse(response.result.content[0].text);
-    assert.ok(data.config);
-    assert.ok(data.validation);
-    assert.equal(data.validation.valid, true);
+  it('MCP has 10 consolidated tools', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    assert.equal(TOOLS.length, 10);
   });
 });

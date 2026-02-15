@@ -281,21 +281,20 @@ describe('Pattern Library Hook — exports', () => {
   });
 });
 
-// ─── MCP Tools ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Pattern Library Hook — MCP tools', () => {
-  it('should have oracle_reflector_pattern_hook tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_pattern_hook');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('pattern'));
-    assert.ok(tool.inputSchema.properties.filePath);
+describe('Pattern Library Hook — reflector functions (MCP consolidated)', () => {
+  it('hookBeforeHeal and patternHookStats are directly importable', () => {
+    const report = require('../src/reflector/report');
+    assert.strictEqual(typeof report.hookBeforeHeal, 'function');
+    assert.strictEqual(typeof report.patternHookStats, 'function');
+    assert.strictEqual(typeof report.batchPatternLookup, 'function');
+    assert.strictEqual(typeof report.queryPatternsForFile, 'function');
+    assert.strictEqual(typeof report.formatPatternHook, 'function');
   });
 
-  it('should have oracle_reflector_pattern_hook_stats tool', () => {
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_pattern_hook_stats');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('statistics') || tool.description.includes('stat'));
+    assert.equal(TOOLS.length, 10);
   });
 });

@@ -266,14 +266,20 @@ describe('Dashboard Integration — exports', () => {
   });
 });
 
-// ─── MCP Tool ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Dashboard Integration — MCP tool', () => {
-  it('should have oracle_reflector_dashboard_data tool', () => {
+describe('Dashboard Integration — reflector functions (MCP consolidated)', () => {
+  it('dashboard functions are directly importable from report', () => {
+    const report = require('../src/reflector/report');
+    assert.strictEqual(typeof report.gatherDashboardData, 'function');
+    assert.strictEqual(typeof report.handleApiRequest, 'function');
+    assert.strictEqual(typeof report.generateDashboardHTML, 'function');
+    assert.strictEqual(typeof report.createReflectorDashboard, 'function');
+    assert.strictEqual(typeof report.startReflectorDashboard, 'function');
+  });
+
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_dashboard_data');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('dashboard'));
-    assert.ok(tool.inputSchema.properties.rootDir);
+    assert.equal(TOOLS.length, 10);
   });
 });

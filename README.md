@@ -90,18 +90,20 @@ const decision = oracle.resolve({
 oracle mcp
 ```
 
-Connect from any MCP-compatible AI client. 23 tools across 8 categories:
+Connect from any MCP-compatible AI client. 10 focused tools:
 
-| Category | Tools | Description |
-|----------|-------|-------------|
-| **Core** (7) | `oracle_search`, `oracle_resolve`, `oracle_submit`, `oracle_query`, `oracle_feedback`, `oracle_stats`, `oracle_register_pattern` | Search, submit, resolve, and track patterns |
-| **Search** (1) | `oracle_smart_search` | Intent-aware search with typo correction and ranking |
-| **Quality** (2) | `oracle_reflect`, `oracle_covenant` | Code healing and harm filter |
-| **Candidates** (3) | `oracle_candidates`, `oracle_auto_promote`, `oracle_synthesize_tests` | Candidate lifecycle and promotion |
-| **Debug** (6) | `oracle_debug_capture`, `oracle_debug_search`, `oracle_debug_feedback`, `oracle_debug_stats`, `oracle_debug_grow`, `oracle_debug_patterns` | Error-to-fix pattern database |
-| **Storage** (2) | `oracle_sync`, `oracle_share` | Three-tier storage management |
-| **Harvest** (1) | `oracle_harvest` | Bulk pattern harvesting from repos/directories |
-| **Maintenance** (1) | `oracle_maintain` | Full maintenance cycle (heal + optimize + evolve) |
+| Tool | Description |
+|------|-------------|
+| `oracle_search` | Unified search (basic, smart/intent-aware, structured query via `mode` param) |
+| `oracle_resolve` | Smart retrieval — PULL, EVOLVE, or GENERATE decision |
+| `oracle_submit` | Submit code for validation and storage |
+| `oracle_register` | Register named patterns in the library |
+| `oracle_feedback` | Report whether pulled code worked |
+| `oracle_stats` | Store, pattern, and candidate statistics |
+| `oracle_debug` | Debug oracle — capture/search/feedback/stats/grow/patterns via `action` param |
+| `oracle_sync` | Sync across tiers — personal/community/both via `scope` param |
+| `oracle_harvest` | Bulk harvest patterns from repos/directories |
+| `oracle_maintain` | Maintenance — full-cycle/candidates/promote/synthesize/reflect/covenant via `action` param |
 
 ### As a GitHub Action
 
@@ -236,7 +238,7 @@ Debug:
   reliability   Pattern reliability statistics
 
 Integration:
-  mcp           Start MCP server (23 tools, JSON-RPC over stdio)
+  mcp           Start MCP server (10 tools, JSON-RPC over stdio)
   mcp-install   Auto-register MCP in AI editors (Claude, Cursor, VS Code)
   setup         Initialize oracle in current project
   dashboard     Start web dashboard (default port 3333)
@@ -362,7 +364,7 @@ src/
   store/
     sqlite.js            — SQLite storage (WAL mode, schema v3)
     history.js           — Verified history store
-  mcp/server.js          — MCP server (23 tools, JSON-RPC 2.0)
+  mcp/server.js          — MCP server (10 tools, JSON-RPC 2.0)
   dashboard/server.js    — Web dashboard + API + WebSocket
   auth/auth.js           — Token + API key auth (3 roles)
   ci/

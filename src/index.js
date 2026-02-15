@@ -6,6 +6,13 @@
  * - Scores all code on coherency (syntax, completeness, consistency, test proof)
  * - Serves the most relevant, highest-scoring code to any AI that queries it
  * - Tracks historical reliability so quality improves over time
+ *
+ * Secondary systems (Dashboard, Cloud, Auth, IDE, CI) are opt-in plugins.
+ * Load them via the plugin system:
+ *   const { PluginManager } = require('./plugins/manager');
+ *   const { loadBuiltinPlugin } = require('./plugins/builtins');
+ *   const pm = new PluginManager(oracle);
+ *   loadBuiltinPlugin(pm, 'dashboard');
  */
 
 const { RemembranceOracle } = require('./api/oracle');
@@ -21,30 +28,20 @@ const { PatternLibrary, classifyPattern, inferComplexity, THRESHOLDS } = require
 const { parseCode, astCoherencyBoost } = require('./core/parsers/ast');
 const { sandboxExecute, sandboxGo, sandboxRust } = require('./core/sandbox');
 const { semanticSearch, semanticSimilarity, expandQuery, identifyConcepts } = require('./search/embeddings');
-const { CIFeedbackReporter, wrapWithTracking } = require('./ci/feedback');
 const { vectorSimilarity, embedDocument, nearestTerms } = require('./search/vectors');
 const { MCPServer, startMCPServer } = require('./mcp/server');
-const { createDashboardServer, startDashboard, createRateLimiter } = require('./dashboard/server');
 const { WebSocketServer } = require('./core/websocket');
 const { VersionManager, semanticDiff, extractFunctions } = require('./core/versioning');
-const { AuthManager, authMiddleware, ROLES, canWrite, canManageUsers, canRead } = require('./auth/auth');
-const { TeamManager, TEAM_ROLES, TEAM_ROLE_HIERARCHY } = require('./auth/teams');
 const { generateAnalytics, computeTagCloud } = require('./analytics/analytics');
-const { discoverPatterns, autoSeed } = require('./ci/auto-seed');
-const { harvest, harvestFunctions, splitFunctions } = require('./ci/harvest');
-const { installHooks, uninstallHooks, runPreCommitCheck } = require('./ci/hooks');
 const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES } = require('./core/covenant');
 const { actionableFeedback, formatFeedback, covenantFeedback, coherencyFeedback } = require('./core/feedback');
 const { reflectionLoop, formatReflectionResult, observeCoherence, reflectionScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
 const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyError, computeConfidence, ERROR_CATEGORIES } = require('./debug/debug-oracle');
-const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
 const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, applyUsageBoosts, selectSearchMode, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
 const { healStalePatterns, healLowFeedback, healOverEvolved, computeUsageBoosts, actOnInsights, ACTIONABLE_DEFAULTS } = require('./analytics/actionable-insights');
 const reflectorScoring = require('./reflector/scoring');
 const reflectorMulti = require('./reflector/multi');
 const reflectorReport = require('./reflector/report');
-const { CloudSyncServer, createToken, verifyToken } = require('./cloud/server');
-const { RemoteOracleClient, registerRemote, removeRemote, listRemotes, federatedRemoteSearch, checkRemoteHealth } = require('./cloud/client');
 const { LLMClient, LLMGenerator } = require('./core/llm-generator');
 const { transpile: astTranspile, parseJS, tokenize: astTokenize, toSnakeCase } = require('./core/ast-transpiler');
 const { ClaudeBridge, findClaudeCLI, extractCodeBlock: extractLLMCode } = require('./core/claude-bridge');
@@ -54,6 +51,9 @@ const { PluginManager, HookEmitter, VALID_HOOKS } = require('./plugins/manager')
 const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } = require('./health/monitor');
 const { createOracleContext, evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS, LifecycleEngine, LIFECYCLE_DEFAULTS, HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS, selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, iterativePolish, OPTIMIZE_DEFAULTS } = require('./evolution');
 const { retryWithBackoff, isRetryableError, withRetry, resilientFetchSource } = require('./core/resilience');
+
+// Plugin system for opt-in subsystems
+const { loadBuiltinPlugin, loadAllBuiltins, listBuiltins } = require('./plugins/builtins');
 
 module.exports = {
   // Core
@@ -113,11 +113,6 @@ module.exports = {
   MCPServer,
   startMCPServer,
 
-  // Dashboard
-  createDashboardServer,
-  startDashboard,
-  createRateLimiter,
-
   // WebSocket
   WebSocketServer,
 
@@ -126,36 +121,9 @@ module.exports = {
   semanticDiff,
   extractFunctions,
 
-  // Auth
-  AuthManager,
-  authMiddleware,
-  ROLES,
-  canWrite,
-  canManageUsers,
-  canRead,
-
-  // Teams / Enterprise
-  TeamManager,
-  TEAM_ROLES,
-  TEAM_ROLE_HIERARCHY,
-
-  // Auto-seed
-  discoverPatterns,
-  autoSeed,
-
   // Analytics
   generateAnalytics,
   computeTagCloud,
-
-  // Harvest
-  harvest,
-  harvestFunctions,
-  splitFunctions,
-
-  // Git Hooks
-  installHooks,
-  uninstallHooks,
-  runPreCommitCheck,
 
   // Covenant
   covenantCheck,
@@ -184,10 +152,6 @@ module.exports = {
   expandQuery,
   identifyConcepts,
 
-  // CI Feedback
-  CIFeedbackReporter,
-  wrapWithTracking,
-
   // Debug Oracle
   DebugOracle,
   debugFingerprint,
@@ -195,10 +159,6 @@ module.exports = {
   classifyError,
   computeConfidence,
   ERROR_CATEGORIES,
-
-  // IDE Integration
-  IDEBridge,
-  IDE_SEVERITY,
 
   // Search Intelligence
   parseIntent,
@@ -375,19 +335,6 @@ module.exports = {
   reflectorStartReflectorDashboard: reflectorReport.startReflectorDashboard,
   reflectorHandleApiRequest: reflectorReport.handleApiRequest,
 
-  // Cloud Sync
-  CloudSyncServer,
-  createToken,
-  verifyToken,
-
-  // Remote Federation
-  RemoteOracleClient,
-  registerRemote,
-  removeRemote,
-  listRemotes,
-  federatedRemoteSearch,
-  checkRemoteHealth,
-
   // LLM Generation
   LLMClient,
   LLMGenerator,
@@ -419,6 +366,11 @@ module.exports = {
   PluginManager,
   HookEmitter,
   VALID_HOOKS,
+
+  // Built-in Plugins (opt-in subsystems)
+  loadBuiltinPlugin,
+  loadAllBuiltins,
+  listBuiltins,
 
   // Health & Metrics
   healthCheck,

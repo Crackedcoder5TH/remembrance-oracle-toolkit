@@ -808,11 +808,12 @@ describe('Feature 10: Package Distribution', () => {
     const idx = require('../src/index');
     assert.ok(idx.RemembranceOracle);
     assert.ok(idx.PatternLibrary);
-    assert.ok(idx.CloudSyncServer);
-    assert.ok(idx.RemoteOracleClient);
     assert.ok(idx.MCPServer);
     assert.ok(idx.DebugOracle);
-    assert.ok(idx.AuthManager);
+    // Secondary systems (Cloud, Auth, Dashboard, IDE, CI) are now opt-in plugins
+    assert.ok(idx.loadBuiltinPlugin, 'should export loadBuiltinPlugin for opt-in subsystems');
+    assert.ok(idx.loadAllBuiltins, 'should export loadAllBuiltins');
+    assert.ok(idx.listBuiltins, 'should export listBuiltins');
   });
 
   it('setup command exists in CLI', () => {

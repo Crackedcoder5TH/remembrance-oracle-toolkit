@@ -231,22 +231,21 @@ describe('Notifications — exports', () => {
   });
 });
 
-// ─── MCP Tools ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Notifications — MCP tools', () => {
-  it('should have oracle_reflector_notify tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_notify');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('Discord') || tool.description.includes('Slack'));
-    assert.ok(tool.inputSchema.properties.webhookUrl);
-    assert.ok(tool.inputSchema.properties.report);
+describe('Notifications — reflector functions (MCP consolidated)', () => {
+  it('notify and notification functions are directly importable', () => {
+    const report = require('../src/reflector/report');
+    assert.strictEqual(typeof report.notify, 'function');
+    assert.strictEqual(typeof report.notifyFromReport, 'function');
+    assert.strictEqual(typeof report.notificationStats, 'function');
+    assert.strictEqual(typeof report.formatDiscordEmbed, 'function');
+    assert.strictEqual(typeof report.formatSlackBlocks, 'function');
+    assert.strictEqual(typeof report.detectPlatform, 'function');
   });
 
-  it('should have oracle_reflector_notification_stats tool', () => {
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_notification_stats');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('stat'));
+    assert.equal(TOOLS.length, 10);
   });
 });

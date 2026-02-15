@@ -412,15 +412,16 @@ describe('formatReflectionResult', () => {
 
 // ─── MCP Integration ───
 
-describe('Reflection MCP tool', () => {
-  it('oracle_reflect is in the tools list', () => {
+describe('Reflection via consolidated MCP oracle_maintain tool', () => {
+  it('oracle_maintain has reflect action', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflect');
-    assert.ok(tool, 'oracle_reflect tool should exist');
-    assert.ok(tool.inputSchema.required.includes('code'));
+    const tool = TOOLS.find(t => t.name === 'oracle_maintain');
+    assert.ok(tool, 'oracle_maintain tool should exist');
+    const actions = tool.inputSchema.properties.action.enum;
+    assert.ok(actions.includes('reflect'), 'oracle_maintain should support reflect action');
   });
 
-  it('MCP server handles oracle_reflect calls', async () => {
+  it('MCP server handles reflect via oracle_maintain', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
     const response = await server.handleRequest({
@@ -428,8 +429,8 @@ describe('Reflection MCP tool', () => {
       id: 1,
       method: 'tools/call',
       params: {
-        name: 'oracle_reflect',
-        arguments: { code: 'var x = 1;', language: 'javascript' },
+        name: 'oracle_maintain',
+        arguments: { action: 'reflect', code: 'var x = 1;', language: 'javascript' },
       },
     });
     assert.equal(response.id, 1);

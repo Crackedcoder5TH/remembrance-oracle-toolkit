@@ -354,14 +354,20 @@ describe('PR Formatter — exports', () => {
   });
 });
 
-// ─── MCP Tool ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('PR Formatter — MCP tool', () => {
-  it('should have oracle_reflector_format_pr tool', () => {
+describe('PR Formatter — reflector functions (MCP consolidated)', () => {
+  it('formatPRComment, formatFileComment, formatCheckRun are directly importable', () => {
+    const report = require('../src/reflector/report');
+    assert.strictEqual(typeof report.formatPRComment, 'function');
+    assert.strictEqual(typeof report.formatFileComment, 'function');
+    assert.strictEqual(typeof report.formatCheckRun, 'function');
+    assert.strictEqual(typeof report.progressBar, 'function');
+    assert.strictEqual(typeof report.scoreIndicator, 'function');
+  });
+
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_format_pr');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('PR'));
-    assert.ok(tool.inputSchema.properties.report);
+    assert.equal(TOOLS.length, 10);
   });
 });

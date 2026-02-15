@@ -6,6 +6,7 @@ const {
   consolidateTags,
   pruneStuckCandidates,
   polishCycle,
+  iterativePolish,
   OPTIMIZE_DEFAULTS,
 } = require('../src/core/self-optimize');
 
@@ -536,5 +537,105 @@ describe('index.js consolidation exports', () => {
   it('exports polishCycle', () => {
     const index = require('../src/index');
     assert.equal(typeof index.polishCycle, 'function');
+  });
+
+  it('exports iterativePolish', () => {
+    const index = require('../src/index');
+    assert.equal(typeof index.iterativePolish, 'function');
+  });
+});
+
+// ─── iterativePolish ───
+
+describe('iterativePolish', () => {
+  it('returns valid report with history for empty oracle', () => {
+    const oracle = createMockOracle([]);
+    const report = iterativePolish(oracle);
+
+    assert.equal(report.phase, 'iterative-polish');
+    assert.equal(report.converged, true);
+    assert.ok(report.iterations >= 1);
+    assert.ok(Array.isArray(report.history));
+    assert.ok(report.history.length >= 1);
+    assert.ok(report.totals);
+    assert.ok(typeof report.whisper === 'string');
+    assert.ok(report.durationMs >= 0);
+    assert.ok(report.finalPatternCount >= 0);
+    assert.ok(report.timestamp);
+  });
+
+  it('converges immediately when no improvements needed', () => {
+    const patterns = [
+      makePattern({ id: 'p1', name: 'unique-1', code: 'function a() { return 1; }' }),
+      makePattern({ id: 'p2', name: 'unique-2', code: 'function b() { return 2; }' }),
+    ];
+    const oracle = createMockOracle(patterns);
+    const report = iterativePolish(oracle);
+
+    assert.equal(report.converged, true);
+    assert.equal(report.iterations, 1);
+    assert.equal(report.history[0].improvements, 0);
+    assert.equal(report.history[0].score, 1.0);
+  });
+
+  it('runs multiple iterations when duplicates exist', () => {
+    const code = 'function duplicate(a, b) {\n  return a + b;\n}';
+    const patterns = [
+      makePattern({ id: 'p1', name: 'dup-1', code, coherencyScore: { total: 0.9 } }),
+      makePattern({ id: 'p2', name: 'dup-2', code, coherencyScore: { total: 0.7 } }),
+      makePattern({ id: 'p3', name: 'unique', code: 'function unique() { return 42; }' }),
+    ];
+    const oracle = createMockOracle(patterns);
+    const report = iterativePolish(oracle);
+
+    assert.ok(report.iterations >= 1);
+    assert.equal(report.converged, true);
+    assert.ok(report.totals.removed >= 1);
+  });
+
+  it('respects maxPolishIterations option', () => {
+    const oracle = createMockOracle([]);
+    const report = iterativePolish(oracle, { maxPolishIterations: 2 });
+
+    assert.ok(report.iterations <= 2);
+  });
+
+  it('emits iterative_polish event', () => {
+    const oracle = createMockOracle([]);
+    iterativePolish(oracle);
+
+    const events = oracle._events.filter(e => e.type === 'iterative_polish');
+    assert.equal(events.length, 1);
+    assert.ok('iterations' in events[0]);
+    assert.ok('converged' in events[0]);
+    assert.ok('totalRemoved' in events[0]);
+    assert.ok('finalPatternCount' in events[0]);
+  });
+
+  it('history tracks per-iteration improvements', () => {
+    const oracle = createMockOracle([]);
+    const report = iterativePolish(oracle);
+
+    for (const h of report.history) {
+      assert.ok('iteration' in h);
+      assert.ok('score' in h);
+      assert.ok('improvements' in h);
+      assert.ok('patternsRemaining' in h);
+      assert.ok('durationMs' in h);
+    }
+  });
+
+  it('whisper includes iteration details', () => {
+    const oracle = createMockOracle([]);
+    const report = iterativePolish(oracle);
+
+    assert.ok(report.whisper.includes('Iterative Polish'));
+    assert.ok(report.whisper.includes('Pass 1'));
+  });
+
+  it('RemembranceOracle has iterativePolish method', () => {
+    const { RemembranceOracle } = require('../src/api/oracle');
+    const oracle = new RemembranceOracle({ autoSeed: false });
+    assert.equal(typeof oracle.iterativePolish, 'function');
   });
 });

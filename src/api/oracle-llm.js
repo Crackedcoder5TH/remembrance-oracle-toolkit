@@ -462,6 +462,11 @@ module.exports = {
     return polishCycle(this, options);
   },
 
+  iterativePolish(options = {}) {
+    const { iterativePolish } = require('../core/self-optimize');
+    return iterativePolish(this, options);
+  },
+
   fullOptimizationCycle(options = {}) {
     const { fullCycle } = require('../core/self-optimize');
     const { HealingWhisper } = require('../core/whisper');

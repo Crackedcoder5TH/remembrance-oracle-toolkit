@@ -103,7 +103,8 @@ ${c.bold('Commands:')}
   ${c.cyan('consolidate duplicates')}   Merge near-duplicate patterns (--dry-run)
   ${c.cyan('consolidate tags')}         Remove orphan/noise tags (--dry-run)
   ${c.cyan('consolidate candidates')}   Prune stuck candidates below threshold (--dry-run)
-  ${c.cyan('consolidate all')}          Run full polish cycle (all of the above + heal)
+  ${c.cyan('consolidate all')}          Run iterative polish (loops until convergence)
+  ${c.cyan('consolidate once')}         Run a single polish pass (no iteration)
       `);
       return;
     }
@@ -200,16 +201,15 @@ ${c.bold('Commands:')}
       return;
     }
 
-    if (sub === 'all') {
+    if (sub === 'once') {
       const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
-      console.log(`\n${c.boldCyan('Full Polish Cycle')}${dryRun ? c.dim(' (dry run)') : ''}`);
+      console.log(`\n${c.boldCyan('Single Polish Pass')}${dryRun ? c.dim(' (dry run)') : ''}`);
       console.log(`${c.dim('Running: consolidate duplicates → tags → candidates → improve → optimize → evolve...')}\n`);
 
       const report = oracle.polishCycle({ dryRun });
 
       if (jsonOut()) { console.log(JSON.stringify(report)); return; }
 
-      // Consolidation summary
       const con = report.consolidation;
       if (con.removed.length > 0) {
         console.log(`${c.boldGreen('Duplicates consolidated:')} ${con.removed.length} (${con.linked.length} variants linked, ${con.merged.length} merged)`);
@@ -225,7 +225,6 @@ ${c.bold('Commands:')}
         console.log(`${c.bold('Candidates pruned:')} ${cand.pruned.length} stuck, ${cand.kept.length} kept`);
       }
 
-      // Cycle summary (from fullCycle)
       if (report.cycle?.improvement?.healed?.length > 0) {
         console.log(`${c.boldGreen('Healed:')} ${report.cycle.improvement.healed.length} pattern(s)`);
       }
@@ -233,12 +232,56 @@ ${c.bold('Commands:')}
         console.log(`${c.boldGreen('Promoted:')} ${report.cycle.improvement.promoted} candidate(s)`);
       }
 
-      // Whisper
       if (report.whisper) {
         console.log(`\n${report.whisper}`);
       }
 
       console.log(`\n${c.dim('Total duration:')} ${report.durationMs}ms`);
+      return;
+    }
+
+    if (sub === 'all') {
+      const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+      const maxIterations = parseInt(args['max-iterations']) || undefined;
+      console.log(`\n${c.boldCyan('Iterative Polish')}${dryRun ? c.dim(' (dry run)') : ''}`);
+      console.log(`${c.dim('Running self-reflection loop: polish → evaluate → repeat until convergence...')}\n`);
+
+      const report = oracle.iterativePolish({
+        dryRun,
+        ...(maxIterations ? { maxPolishIterations: maxIterations } : {}),
+      });
+
+      if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+      // Iteration history
+      console.log(`${c.bold('Iterations:')} ${report.iterations} ${report.converged ? c.green('(converged)') : c.yellow('(max reached)')}`);
+      console.log('');
+
+      for (const h of report.history) {
+        const parts = [];
+        if (h.duplicatesRemoved > 0) parts.push(`${h.duplicatesRemoved} dupes`);
+        if (h.tagsRemoved > 0) parts.push(`${h.tagsRemoved} tags`);
+        if (h.candidatesPruned > 0) parts.push(`${h.candidatesPruned} candidates`);
+        if (h.healed > 0) parts.push(`${h.healed} healed`);
+        if (h.promoted > 0) parts.push(`${h.promoted} promoted`);
+        if (h.cleaned > 0) parts.push(`${h.cleaned} cleaned`);
+
+        const detail = parts.length > 0 ? parts.join(', ') : c.dim('no changes');
+        const scoreColor = h.score >= 0.95 ? c.green : h.score >= 0.8 ? c.yellow : c.red;
+        console.log(`  Pass ${h.iteration + 1}: ${detail} ${c.dim('|')} score ${scoreColor((h.score * 100).toFixed(1) + '%')} ${c.dim('|')} ${h.patternsRemaining} patterns`);
+      }
+
+      // Totals
+      console.log('');
+      const t = report.totals;
+      if (t.removed > 0) console.log(`${c.boldGreen('Total duplicates removed:')} ${t.removed}`);
+      if (t.tagsConsolidated > 0) console.log(`${c.bold('Total tags consolidated:')} ${t.tagsConsolidated}`);
+      if (t.candidatesPruned > 0) console.log(`${c.bold('Total candidates pruned:')} ${t.candidatesPruned}`);
+      if (t.healed > 0) console.log(`${c.boldGreen('Total patterns healed:')} ${t.healed}`);
+      if (t.promoted > 0) console.log(`${c.boldGreen('Total promoted:')} ${t.promoted}`);
+
+      console.log(`\n${c.bold('Final library:')} ${report.finalPatternCount} patterns`);
+      console.log(`${c.dim('Total duration:')} ${report.durationMs}ms`);
       return;
     }
 

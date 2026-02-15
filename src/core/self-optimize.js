@@ -45,6 +45,10 @@ const OPTIMIZE_DEFAULTS = {
 
   // Reflection loops for improvement healing
   maxRefineLoops: 3,
+
+  // Iterative polish (self-reflection loop)
+  maxPolishIterations: 5,
+  polishConvergenceThreshold: 0.95, // Stop when improvement score >= this
 };
 
 // ─── Self-Improve ───
@@ -986,6 +990,162 @@ function polishCycle(oracle, options = {}) {
   };
 }
 
+// ─── Iterative Polish (Self-Reflection Loop) ───
+
+/**
+ * Run polish cycles iteratively until convergence — evolved from the oracle's
+ * self-reflection-loop pattern (0.990 coherency, id: e36f953fffee32d8).
+ *
+ * Each iteration runs a full polish pass (consolidate → tags → prune → heal).
+ * The loop evaluates how much improvement was made and stops when:
+ *   - No further improvements are found (score plateau)
+ *   - The improvement score meets the convergence threshold
+ *   - Max iterations reached
+ *
+ * @param {object} oracle - RemembranceOracle instance
+ * @param {object} options - Override OPTIMIZE_DEFAULTS + polishCycle options
+ * @returns {object} Iterative polish report with history
+ */
+function iterativePolish(oracle, options = {}) {
+  const config = { ...OPTIMIZE_DEFAULTS, ...options };
+  const maxIterations = config.maxPolishIterations;
+  const threshold = config.polishConvergenceThreshold;
+  const startTime = Date.now();
+
+  let history = [];
+  let converged = false;
+  let iteration = 0;
+  let totalRemoved = 0;
+  let totalHealed = 0;
+  let totalPromoted = 0;
+  let totalTagsConsolidated = 0;
+  let totalCandidatesPruned = 0;
+
+  while (iteration < maxIterations) {
+    const passReport = polishCycle(oracle, options);
+
+    // Evaluate: count of improvements made in this pass
+    const duplicatesRemoved = passReport.consolidation?.removed?.length || 0;
+    const tagsRemoved = passReport.tagConsolidation?.tagsRemoved?.length || 0;
+    const candidatesPruned = passReport.candidatePruning?.pruned?.length || 0;
+    const healed = passReport.cycle?.improvement?.healed?.length || 0;
+    const promoted = passReport.cycle?.improvement?.promoted || 0;
+    const cleaned = passReport.cycle?.improvement?.cleaned || 0;
+
+    const totalImprovements = duplicatesRemoved + tagsRemoved + candidatesPruned + healed + promoted + cleaned;
+
+    // Score: proportion of patterns that needed no work (1.0 = nothing to do = converged)
+    const patternsAnalyzed = passReport.consolidation?.patternsAnalyzed || 1;
+    const score = totalImprovements === 0 ? 1.0 : Math.max(0, 1 - (totalImprovements / patternsAnalyzed));
+
+    // Accumulate totals
+    totalRemoved += duplicatesRemoved;
+    totalHealed += healed;
+    totalPromoted += promoted;
+    totalTagsConsolidated += tagsRemoved;
+    totalCandidatesPruned += candidatesPruned;
+
+    history.push({
+      iteration,
+      score,
+      improvements: totalImprovements,
+      duplicatesRemoved,
+      tagsRemoved,
+      candidatesPruned,
+      healed,
+      promoted,
+      cleaned,
+      patternsRemaining: oracle.patterns.getAll().length,
+      durationMs: passReport.durationMs,
+    });
+
+    // Convergence: score meets threshold (library is clean)
+    if (score >= threshold) {
+      converged = true;
+      break;
+    }
+
+    // Plateau: no improvement over previous iteration
+    if (iteration > 0 && history[iteration].score <= history[iteration - 1].score) {
+      converged = true; // Plateau counts as convergence
+      break;
+    }
+
+    // No improvements at all — nothing left to do
+    if (totalImprovements === 0) {
+      converged = true;
+      break;
+    }
+
+    iteration++;
+  }
+
+  const totalDurationMs = Date.now() - startTime;
+  const finalPatternCount = oracle.patterns.getAll().length;
+
+  // Generate iterative whisper
+  const whisperLines = ['=== Oracle Iterative Polish ===', ''];
+  whisperLines.push(`Ran ${history.length} iteration(s) — ${converged ? 'converged' : 'max iterations reached'}`);
+  whisperLines.push('');
+
+  for (const h of history) {
+    const parts = [];
+    if (h.duplicatesRemoved > 0) parts.push(`${h.duplicatesRemoved} dupes`);
+    if (h.tagsRemoved > 0) parts.push(`${h.tagsRemoved} tags`);
+    if (h.candidatesPruned > 0) parts.push(`${h.candidatesPruned} candidates`);
+    if (h.healed > 0) parts.push(`${h.healed} healed`);
+    if (h.promoted > 0) parts.push(`${h.promoted} promoted`);
+    if (h.cleaned > 0) parts.push(`${h.cleaned} cleaned`);
+
+    const detail = parts.length > 0 ? parts.join(', ') : 'no changes';
+    whisperLines.push(`  Pass ${h.iteration + 1}: ${detail} (score: ${(h.score * 100).toFixed(1)}%)`);
+  }
+
+  whisperLines.push('');
+  if (totalRemoved > 0) whisperLines.push(`Total duplicates removed: ${totalRemoved}`);
+  if (totalTagsConsolidated > 0) whisperLines.push(`Total tags consolidated: ${totalTagsConsolidated}`);
+  if (totalCandidatesPruned > 0) whisperLines.push(`Total candidates pruned: ${totalCandidatesPruned}`);
+  if (totalHealed > 0) whisperLines.push(`Total patterns healed: ${totalHealed}`);
+  if (totalPromoted > 0) whisperLines.push(`Total candidates promoted: ${totalPromoted}`);
+  whisperLines.push(`Final library size: ${finalPatternCount} patterns`);
+  whisperLines.push(`Completed in ${(totalDurationMs / 1000).toFixed(1)}s`);
+
+  if (typeof oracle._emit === 'function') {
+    oracle._emit({
+      type: 'iterative_polish',
+      iterations: history.length,
+      converged,
+      totalRemoved,
+      totalHealed,
+      totalPromoted,
+      totalTagsConsolidated,
+      totalCandidatesPruned,
+      finalPatternCount,
+      durationMs: totalDurationMs,
+    });
+  }
+
+  return {
+    timestamp: new Date().toISOString(),
+    phase: 'iterative-polish',
+    converged,
+    iterations: history.length,
+    finalScore: history.length > 0 ? history[history.length - 1].score : 1.0,
+    history,
+    totals: {
+      removed: totalRemoved,
+      healed: totalHealed,
+      promoted: totalPromoted,
+      tagsConsolidated: totalTagsConsolidated,
+      candidatesPruned: totalCandidatesPruned,
+    },
+    finalPatternCount,
+    improved: history.length > 1 && history[history.length - 1].score > history[0].score,
+    whisper: whisperLines.join('\n'),
+    durationMs: totalDurationMs,
+  };
+}
+
 /**
  * Delete a pattern from the database.
  * @param {object} oracle
@@ -1008,5 +1168,6 @@ module.exports = {
   consolidateTags,
   pruneStuckCandidates,
   polishCycle,
+  iterativePolish,
   OPTIMIZE_DEFAULTS,
 };

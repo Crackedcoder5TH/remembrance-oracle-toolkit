@@ -13,6 +13,7 @@ const { URL } = require('url');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { withRetry } = require('../core/resilience');
 
 const REMOTES_CONFIG_DIR = path.join(os.homedir(), '.remembrance');
 const REMOTES_CONFIG_PATH = path.join(REMOTES_CONFIG_DIR, 'remotes.json');
@@ -67,6 +68,11 @@ class RemoteOracleClient {
     this.name = options.name || new URL(baseUrl).hostname;
     this.token = options.token || null;
     this.timeout = options.timeout || 10000;
+    // Wrap request with retry for network resilience
+    this._resilientRequest = withRetry(request, {
+      maxRetries: options.maxRetries ?? 3,
+      baseDelay: options.retryBaseDelay ?? 200,
+    });
   }
 
   /**
@@ -118,7 +124,7 @@ class RemoteOracleClient {
    */
   async search(query, options = {}) {
     try {
-      const res = await request(`${this.baseUrl}/api/search`, {
+      const res = await this._resilientRequest(`${this.baseUrl}/api/search`, {
         method: 'POST',
         body: { query, language: options.language, limit: options.limit || 20 },
         token: this.token,
@@ -152,7 +158,7 @@ class RemoteOracleClient {
       if (options.offset) params.set('offset', String(options.offset));
       const qs = params.toString() ? `?${params}` : '';
 
-      const res = await request(`${this.baseUrl}/api/patterns${qs}`, {
+      const res = await this._resilientRequest(`${this.baseUrl}/api/patterns${qs}`, {
         token: this.token,
         timeout: this.timeout,
       });
@@ -186,7 +192,7 @@ class RemoteOracleClient {
    */
   async pull(options = {}) {
     try {
-      const res = await request(`${this.baseUrl}/api/sync/pull`, {
+      const res = await this._resilientRequest(`${this.baseUrl}/api/sync/pull`, {
         method: 'POST',
         body: { since: options.since, language: options.language, limit: options.limit || 100 },
         token: this.token,
@@ -207,7 +213,7 @@ class RemoteOracleClient {
    */
   async push(patterns) {
     try {
-      const res = await request(`${this.baseUrl}/api/sync/push`, {
+      const res = await this._resilientRequest(`${this.baseUrl}/api/sync/push`, {
         method: 'POST',
         body: { patterns },
         token: this.token,
@@ -306,7 +312,7 @@ async function federatedRemoteSearch(query, options = {}) {
     }
   });
 
-  const responses = await Promise.all(promises);
+  const settled = await Promise.allSettled(promises);
 
   // Merge and deduplicate (first occurrence wins)
   const seen = new Set();
@@ -314,7 +320,12 @@ async function federatedRemoteSearch(query, options = {}) {
   const remoteInfo = [];
   const errors = [];
 
-  for (const res of responses) {
+  for (const outcome of settled) {
+    if (outcome.status === 'rejected') {
+      errors.push({ remote: 'unknown', error: outcome.reason?.message || 'Request failed' });
+      continue;
+    }
+    const res = outcome.value;
     remoteInfo.push({ name: res.remote, url: res.url, count: res.results.length, error: res.error || null });
     if (res.error) errors.push({ remote: res.remote, error: res.error });
 

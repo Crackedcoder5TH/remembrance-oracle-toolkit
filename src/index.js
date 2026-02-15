@@ -52,7 +52,8 @@ const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } =
 const { evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS } = require('./core/evolution');
 const { LifecycleEngine, LIFECYCLE_DEFAULTS } = require('./core/lifecycle');
 const { HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS } = require('./core/whisper');
-const { selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, OPTIMIZE_DEFAULTS } = require('./core/self-optimize');
+const { selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, iterativePolish, OPTIMIZE_DEFAULTS } = require('./core/self-optimize');
+const { retryWithBackoff, isRetryableError, withRetry, resilientFetchSource } = require('./core/resilience');
 
 module.exports = {
   // Core
@@ -300,6 +301,13 @@ module.exports = {
   consolidateTags,
   pruneStuckCandidates,
   polishCycle,
+  iterativePolish,
   OPTIMIZE_DEFAULTS,
+
+  // Resilience
+  retryWithBackoff,
+  isRetryableError,
+  withRetry,
+  resilientFetchSource,
 
 };

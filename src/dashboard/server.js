@@ -17,6 +17,7 @@ const http = require('http');
 const url = require('url');
 const { RemembranceOracle } = require('../api/oracle');
 const { safeJsonParse } = require('../core/covenant');
+const { resilientFetchSource } = require('../core/resilience');
 
 /**
  * Simple in-memory rate limiter.
@@ -1453,6 +1454,9 @@ pre.code-block {
 (function() {
   'use strict';
 
+  // ─── Resilient Fetch (retry with exponential backoff) ───
+  ${resilientFetchSource()}
+
   // ─── Helpers ───
   function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
   function scoreClass(s) { return s >= 0.7 ? 'score-high' : s >= 0.4 ? 'score-mid' : 'score-low'; }
@@ -1743,7 +1747,7 @@ pre.code-block {
 
   // ─── Patterns Tab ───
   function refreshStats() {
-    fetch('/api/stats').then(function(r) { return r.json(); }).then(function(stats) {
+    resilientFetch('/api/stats').then(function(r) { return r.json(); }).then(function(stats) {
       var ps = stats.patterns || {};
       var sg = document.getElementById('stats-grid');
       sg.innerHTML =
@@ -1756,7 +1760,7 @@ pre.code-block {
   }
 
   function refreshPatterns() {
-    fetch('/api/patterns').then(function(r) { return r.json(); }).then(function(patterns) {
+    resilientFetch('/api/patterns').then(function(r) { return r.json(); }).then(function(patterns) {
       allPatterns = patterns;
       buildFilters();
       renderFilteredPatterns();
@@ -1834,7 +1838,7 @@ pre.code-block {
     }
     intentEl.textContent = 'searching...';
     var mode = document.getElementById('search-mode').value;
-    fetch('/api/search?q=' + encodeURIComponent(q) + '&mode=' + mode)
+    resilientFetch('/api/search?q=' + encodeURIComponent(q) + '&mode=' + mode)
       .then(function(r) { return r.json(); })
       .then(function(results) {
         if (results.length === 0) {
@@ -1861,7 +1865,7 @@ pre.code-block {
   // ─── Debug Tab ───
   function loadDebugStats() {
     window._debugLoaded = true;
-    fetch('/api/debug/stats').then(function(r) { return r.json(); }).then(function(s) {
+    resilientFetch('/api/debug/stats').then(function(r) { return r.json(); }).then(function(s) {
       document.getElementById('debug-stats').innerHTML =
         '<div class="stat-card"><div class="stat-label">Debug Patterns</div><div class="stat-value">' + (s.totalPatterns||0) + '</div></div>' +
         '<div class="stat-card"><div class="stat-label">Avg Confidence</div><div class="stat-value">' + (s.avgConfidence||0).toFixed(3) + '</div></div>' +
@@ -1877,7 +1881,7 @@ pre.code-block {
       document.getElementById('debug-results').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9888;</div><div class="empty-text">Search for error messages to find proven fixes</div></div>';
       return;
     }
-    fetch('/api/debug/search?q=' + encodeURIComponent(q))
+    resilientFetch('/api/debug/search?q=' + encodeURIComponent(q))
       .then(function(r) { return r.json(); })
       .then(function(results) {
         if (!results || results.length === 0) {
@@ -1910,7 +1914,7 @@ pre.code-block {
   // ─── Teams Tab ───
   function loadTeams() {
     window._teamsLoaded = true;
-    fetch('/api/teams').then(function(r) { return r.json(); }).then(function(teams) {
+    resilientFetch('/api/teams').then(function(r) { return r.json(); }).then(function(teams) {
       if (!teams || teams.length === 0) {
         document.getElementById('teams-list').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9734;</div><div class="empty-text">No teams yet. Create one to get started.</div></div>';
         return;
@@ -1941,7 +1945,7 @@ pre.code-block {
   document.getElementById('submit-team-btn').addEventListener('click', function() {
     var name = document.getElementById('team-name-input').value.trim();
     if (!name) return;
-    fetch('/api/teams', {
+    resilientFetch('/api/teams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name, description: document.getElementById('team-desc-input').value.trim() })
@@ -1958,7 +1962,7 @@ pre.code-block {
   // ─── History Tab ───
   function loadHistory() {
     window._historyLoaded = true;
-    fetch('/api/entries').then(function(r) { return r.json(); }).then(function(entries) {
+    resilientFetch('/api/entries').then(function(r) { return r.json(); }).then(function(entries) {
       if (!entries || entries.length === 0) {
         document.getElementById('history-list').innerHTML = '<div class="empty-state"><div class="empty-icon">&#8634;</div><div class="empty-text">No entries in history</div></div>';
         return;
@@ -2006,7 +2010,7 @@ pre.code-block {
       document.getElementById('vector-results').innerHTML = '<div class="empty-state"><div class="empty-icon">&#8728;</div><div class="empty-text">Type a term to explore the vector space</div></div>';
       return;
     }
-    fetch('/api/nearest?q=' + encodeURIComponent(q))
+    resilientFetch('/api/nearest?q=' + encodeURIComponent(q))
       .then(function(r) { return r.json(); })
       .then(function(terms) {
         if (!terms || terms.length === 0) {
@@ -2055,7 +2059,7 @@ pre.code-block {
   // ─── Analytics Tab ───
   function loadAnalytics() {
     window._analyticsLoaded = true;
-    fetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
+    resilientFetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
       var ov = data.overview || {};
       var dist = data.coherencyDistribution || {};
       var health = data.healthReport || {};
@@ -2147,11 +2151,11 @@ pre.code-block {
   // ─── Charts Tab (Visual Coherence) ───
   function loadCharts() {
     window._chartsLoaded = true;
-    fetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
+    resilientFetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
       var patterns = [];
       try {
         // Also fetch full pattern list for detailed charting
-        fetch('/api/patterns').then(function(r2) { return r2.json(); }).then(function(pats) {
+        resilientFetch('/api/patterns').then(function(r2) { return r2.json(); }).then(function(pats) {
           patterns = pats || [];
           renderAllCharts(data, patterns);
         });
@@ -2306,7 +2310,7 @@ pre.code-block {
   function loadAdmin() {
     window._adminLoaded = true;
     // Load users
-    fetch('/api/users').then(function(r) { return r.json(); }).then(function(users) {
+    resilientFetch('/api/users').then(function(r) { return r.json(); }).then(function(users) {
       if (!users || !Array.isArray(users) || users.length === 0) {
         document.getElementById('users-table').innerHTML = '<div style="font-size:0.82em;color:var(--fg3);padding:8px 0">No users configured (auth may be disabled)</div>';
         return;
@@ -2322,7 +2326,7 @@ pre.code-block {
     });
 
     // Load health
-    fetch('/api/health').then(function(r) { return r.json(); }).then(function(h) {
+    resilientFetch('/api/health').then(function(r) { return r.json(); }).then(function(h) {
       document.getElementById('system-health').innerHTML =
         '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
         '<div class="stat-card" style="flex:1;min-width:150px"><div class="stat-label">Status</div><div class="stat-value" style="color:var(--green)">' + esc(h.status || 'unknown') + '</div></div>' +
@@ -2337,7 +2341,7 @@ pre.code-block {
     var password = document.getElementById('new-password').value;
     var role = document.getElementById('new-role').value;
     if (!username || !password) { showToast('Username and password required'); return; }
-    fetch('/api/users', {
+    resilientFetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username, password: password, role: role })

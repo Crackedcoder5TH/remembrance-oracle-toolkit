@@ -47,7 +47,7 @@ const LIFECYCLE_DEFAULTS = {
   autoCleanOnCycle: false,
 
   // Whether to sync to personal store on each cycle
-  autoSyncOnCycle: false,
+  autoSyncOnCycle: true,
 
   // Whether to run actionable insights on each cycle
   autoInsightsOnCycle: false,
@@ -319,6 +319,12 @@ class LifecycleEngine {
 
       case 'debug_feedback':
         this._counters.debugFeedbacks++;
+        break;
+
+      case 'harvest_complete':
+      case 'auto_submit_complete':
+        // After harvest or auto-submit, trigger promotion for any new candidates
+        this._tryAutoPromote();
         break;
     }
   }

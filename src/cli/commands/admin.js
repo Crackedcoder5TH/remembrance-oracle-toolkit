@@ -65,6 +65,31 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
+  handlers['auto-submit'] = (args) => {
+    try {
+      const { autoSubmit } = require('../../ci/auto-submit');
+      const dryRun = parseDryRun(args);
+      const syncPersonal = args.sync !== 'false' && args.sync !== false;
+      const shareCommunity = args.share === 'true' || args.share === true;
+      const result = autoSubmit(oracle, process.cwd(), {
+        syncPersonal,
+        shareCommunity,
+        dryRun,
+        language: args.language,
+      });
+      console.log(c.boldCyan('Auto-Submit Report:'));
+      console.log(`  Harvested:  ${c.boldGreen(String(result.harvest.registered))} registered, ${c.dim(String(result.harvest.skipped))} skipped, ${c.dim(String(result.harvest.failed))} failed`);
+      console.log(`  Promoted:   ${c.boldGreen(String(result.promoted))} candidate(s)`);
+      console.log(`  Synced:     ${result.synced ? c.boldGreen('yes') : c.dim('no')}`);
+      console.log(`  Shared:     ${result.shared ? c.boldGreen('yes') : c.dim('no')}`);
+      if (result.errors.length > 0) {
+        console.log(`  Errors:     ${c.boldRed(result.errors.join(', '))}`);
+      }
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Auto-submit error: ' + err.message);
+    }
+  };
+
   handlers['auto-seed'] = (args) => {
     try {
       const { autoSeed } = require('../../ci/auto-seed');

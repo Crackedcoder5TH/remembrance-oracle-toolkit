@@ -10,7 +10,7 @@ const {
   recordNotification,
   loadNotificationHistory,
   notificationStats,
-} = require('../src/reflector/notifications');
+} = require('../src/reflector/report');
 
 // ─── Helpers ───
 

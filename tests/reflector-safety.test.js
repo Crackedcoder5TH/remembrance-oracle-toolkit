@@ -16,9 +16,9 @@ const {
   loadRollbacks,
   coherenceGuard,
   safeReflect,
-} = require('../src/reflector/safety');
+} = require('../src/reflector/report');
 
-const { takeSnapshot } = require('../src/reflector/engine');
+const { takeSnapshot } = require('../src/reflector/multi');
 
 // ─── Helpers ───
 

@@ -68,7 +68,7 @@ describe('Integration: Config → Orchestrator', () => {
 
   it('should use resolveConfig for mode-aware config loading', () => {
     dir = makeTempRepo();
-    const { orchestrate } = require('../src/reflector/orchestrator');
+    const { orchestrate } = require('../src/reflector/multi');
     const result = orchestrate(dir, { dryRun: true, mode: 'strict' });
 
     assert.ok(result.steps[0].status === 'ok');
@@ -79,7 +79,7 @@ describe('Integration: Config → Orchestrator', () => {
 
   it('should accept env overrides via resolveConfig', () => {
     dir = makeTempRepo();
-    const { resolveConfig } = require('../src/reflector/modes');
+    const { resolveConfig } = require('../src/reflector/scoring');
     const config = resolveConfig(dir, {
       mode: 'balanced',
       env: { REFLECTOR_MIN_COHERENCE: '0.99' },
@@ -96,8 +96,8 @@ describe('Integration: Config → Orchestrator', () => {
         notifications: { platform: 'invalid_platform' },
       },
     });
-    const { validateConfig } = require('../src/reflector/config');
-    const { resolveConfig } = require('../src/reflector/modes');
+    const { validateConfig } = require('../src/reflector/scoring');
+    const { resolveConfig } = require('../src/reflector/scoring');
     const config = resolveConfig(dir);
     const validation = validateConfig(config);
 
@@ -114,7 +114,7 @@ describe('Integration: Full Pipeline End-to-End', () => {
 
   it('should run complete dry-run pipeline with all 8 steps', () => {
     dir = makeTempRepo();
-    const { orchestrate } = require('../src/reflector/orchestrator');
+    const { orchestrate } = require('../src/reflector/multi');
     const result = orchestrate(dir, { dryRun: true });
 
     // All 8 steps should be present
@@ -143,13 +143,13 @@ describe('Integration: Full Pipeline End-to-End', () => {
 
   it('should run live pipeline and record to history v2', () => {
     dir = makeTempRepo();
-    const { orchestrate } = require('../src/reflector/orchestrator');
+    const { orchestrate } = require('../src/reflector/multi');
     const result = orchestrate(dir);
 
     assert.strictEqual(result.mode, 'live');
 
     // History should have a new record
-    const { loadHistoryV2 } = require('../src/reflector/history');
+    const { loadHistoryV2 } = require('../src/reflector/report');
     const history = loadHistoryV2(dir);
     assert.ok(history.runs.length >= 1);
 
@@ -164,7 +164,7 @@ describe('Integration: Full Pipeline End-to-End', () => {
 
   it('should enrich whisper with deep score health', () => {
     dir = makeTempRepo();
-    const { orchestrate } = require('../src/reflector/orchestrator');
+    const { orchestrate } = require('../src/reflector/multi');
     const result = orchestrate(dir, { dryRun: true });
 
     // Whisper should contain health tag from deep score
@@ -201,7 +201,7 @@ describe('Integration: Pipeline → Dashboard', () => {
       },
     });
 
-    const { gatherDashboardData } = require('../src/reflector/dashboard');
+    const { gatherDashboardData } = require('../src/reflector/report');
     const data = gatherDashboardData(dir);
 
     // Trend should reflect history
@@ -220,7 +220,7 @@ describe('Integration: Pipeline → Dashboard', () => {
 
   it('should include pattern hook stats in dashboard', () => {
     dir = makeTempRepo();
-    const { gatherDashboardData } = require('../src/reflector/dashboard');
+    const { gatherDashboardData } = require('../src/reflector/report');
     const data = gatherDashboardData(dir);
 
     assert.ok(data.patternHook);
@@ -230,7 +230,7 @@ describe('Integration: Pipeline → Dashboard', () => {
 
   it('should render HTML with all sections', () => {
     dir = makeTempRepo();
-    const { gatherDashboardData, generateDashboardHTML } = require('../src/reflector/dashboard');
+    const { gatherDashboardData, generateDashboardHTML } = require('../src/reflector/report');
     const data = gatherDashboardData(dir);
     const html = generateDashboardHTML(data);
 
@@ -245,7 +245,7 @@ describe('Integration: Pipeline → Dashboard', () => {
 
   it('should serve dashboard API with resolved config', () => {
     dir = makeTempRepo();
-    const { handleApiRequest } = require('../src/reflector/dashboard');
+    const { handleApiRequest } = require('../src/reflector/report');
 
     // API should return resolved config (with autoCommit + notifications sections)
     const configResult = handleApiRequest(dir, '/api/config');
@@ -330,8 +330,8 @@ describe('Integration: Modes → Config Consumers', () => {
 
   it('should propagate strict mode thresholds to all consumers', () => {
     dir = makeTempRepo();
-    const { resolveConfig } = require('../src/reflector/modes');
-    const { toEngineConfig, validateConfig } = require('../src/reflector/config');
+    const { resolveConfig } = require('../src/reflector/scoring');
+    const { toEngineConfig, validateConfig } = require('../src/reflector/scoring');
 
     const config = resolveConfig(dir, { mode: 'strict' });
     assert.strictEqual(config._mode, 'strict');
@@ -350,8 +350,8 @@ describe('Integration: Modes → Config Consumers', () => {
 
   it('should propagate relaxed mode to dashboard display', () => {
     dir = makeTempRepo();
-    const { setMode } = require('../src/reflector/modes');
-    const { gatherDashboardData } = require('../src/reflector/dashboard');
+    const { setMode } = require('../src/reflector/scoring');
+    const { gatherDashboardData } = require('../src/reflector/report');
 
     setMode(dir, 'relaxed');
     const data = gatherDashboardData(dir);
@@ -363,7 +363,7 @@ describe('Integration: Modes → Config Consumers', () => {
 
 describe('Integration: Notifications from orchestrator data', () => {
   it('should format discord embed from orchestrator-shaped report', () => {
-    const { formatDiscordEmbed } = require('../src/reflector/notifications');
+    const { formatDiscordEmbed } = require('../src/reflector/report');
 
     // Simulate what orchestrator passes to notifyFromReport
     const report = {
@@ -380,7 +380,7 @@ describe('Integration: Notifications from orchestrator data', () => {
   });
 
   it('should format slack blocks from orchestrator-shaped report', () => {
-    const { formatSlackBlocks } = require('../src/reflector/notifications');
+    const { formatSlackBlocks } = require('../src/reflector/report');
 
     const report = {
       coherence: { before: 0.70, after: 0.70 },
@@ -403,8 +403,8 @@ describe('Integration: History v2 format across modules', () => {
 
   it('should write and read consistent v2 records across orchestrator and dashboard', () => {
     dir = makeTempRepo();
-    const { orchestrate } = require('../src/reflector/orchestrator');
-    const { gatherDashboardData } = require('../src/reflector/dashboard');
+    const { orchestrate } = require('../src/reflector/multi');
+    const { gatherDashboardData } = require('../src/reflector/report');
 
     // Run orchestrator to create a real history record
     orchestrate(dir, { dryRun: true });
@@ -423,8 +423,8 @@ describe('Integration: History v2 format across modules', () => {
 
   it('should accumulate multiple runs in history', () => {
     dir = makeTempRepo();
-    const { orchestrate } = require('../src/reflector/orchestrator');
-    const { loadHistoryV2 } = require('../src/reflector/history');
+    const { orchestrate } = require('../src/reflector/multi');
+    const { loadHistoryV2 } = require('../src/reflector/report');
 
     orchestrate(dir, { dryRun: true });
     orchestrate(dir, { dryRun: true });
@@ -445,7 +445,7 @@ describe('Integration: Error Resilience', () => {
     dir = join(tmpdir(), `empty-test-${Date.now()}`);
     mkdirSync(join(dir, '.remembrance'), { recursive: true });
 
-    const { orchestrate } = require('../src/reflector/orchestrator');
+    const { orchestrate } = require('../src/reflector/multi');
     const result = orchestrate(dir, { dryRun: true });
 
     // Should still complete, even with 0 files
@@ -456,7 +456,7 @@ describe('Integration: Error Resilience', () => {
 
   it('should handle dashboard with no history gracefully', () => {
     dir = makeTempRepo();
-    const { gatherDashboardData, generateDashboardHTML } = require('../src/reflector/dashboard');
+    const { gatherDashboardData, generateDashboardHTML } = require('../src/reflector/report');
 
     const data = gatherDashboardData(dir);
     assert.strictEqual(data.trend.length, 0);

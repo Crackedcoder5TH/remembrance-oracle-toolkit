@@ -8,7 +8,7 @@ const {
   formatPRComment,
   formatFileComment,
   formatCheckRun,
-} = require('../src/reflector/prFormatter');
+} = require('../src/reflector/report');
 
 // ─── Progress Bar ───
 

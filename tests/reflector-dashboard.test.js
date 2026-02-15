@@ -8,7 +8,7 @@ const {
   handleApiRequest,
   generateDashboardHTML,
   createReflectorDashboard,
-} = require('../src/reflector/dashboard');
+} = require('../src/reflector/report');
 
 // ─── Helpers ───
 

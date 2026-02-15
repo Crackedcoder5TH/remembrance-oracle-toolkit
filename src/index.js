@@ -40,24 +40,9 @@ const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyErro
 const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
 const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, applyUsageBoosts, selectSearchMode, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
 const { healStalePatterns, healLowFeedback, healOverEvolved, computeUsageBoosts, actOnInsights, ACTIONABLE_DEFAULTS } = require('./analytics/actionable-insights');
-const reflectorEngine = require('./reflector/engine');
-const reflectorGithub = require('./reflector/github');
-const reflectorScheduler = require('./reflector/scheduler');
-const reflectorMulti = require('./reflector/multi');
-const reflectorSafety = require('./reflector/safety');
 const reflectorScoring = require('./reflector/scoring');
-const reflectorConfig = require('./reflector/config');
-const reflectorHistory = require('./reflector/history');
-const reflectorUtils = require('./reflector/utils');
-const reflectorOrchestrator = require('./reflector/orchestrator');
-const reflectorErrorHandler = require('./reflector/errorHandler');
-const reflectorCoherenceScorer = require('./reflector/coherenceScorer');
-const reflectorPRFormatter = require('./reflector/prFormatter');
-const reflectorAutoCommit = require('./reflector/autoCommit');
-const reflectorPatternHook = require('./reflector/patternHook');
-const reflectorModes = require('./reflector/modes');
-const reflectorNotifications = require('./reflector/notifications');
-const reflectorDashboard = require('./reflector/dashboard');
+const reflectorMulti = require('./reflector/multi');
+const reflectorReport = require('./reflector/report');
 const { CloudSyncServer, createToken, verifyToken } = require('./cloud/server');
 const { RemoteOracleClient, registerRemote, removeRemote, listRemotes, federatedRemoteSearch, checkRemoteHealth } = require('./cloud/client');
 const { LLMClient, LLMGenerator } = require('./core/llm-generator');
@@ -237,23 +222,23 @@ module.exports = {
   actOnInsights,
   ACTIONABLE_DEFAULTS,
 
-  // Self-Reflector Bot
-  reflectorScanDirectory: reflectorEngine.scanDirectory,
-  reflectorEvaluateFile: reflectorEngine.evaluateFile,
-  reflectorTakeSnapshot: reflectorEngine.takeSnapshot,
-  reflectorHealFile: reflectorEngine.healFile,
-  reflectorReflect: reflectorEngine.reflect,
-  reflectorFormatReport: reflectorEngine.formatReport,
-  reflectorFormatPRBody: reflectorEngine.formatPRBody,
-  reflectorDefaultConfig: reflectorEngine.DEFAULT_CONFIG,
-  reflectorCreateHealingBranch: reflectorGithub.createHealingBranch,
-  reflectorGenerateWorkflow: reflectorGithub.generateReflectorWorkflow,
-  reflectorFindExistingPR: reflectorGithub.findExistingReflectorPR,
-  reflectorRunReflector: reflectorScheduler.runReflector,
-  reflectorStartScheduler: reflectorScheduler.startScheduler,
-  reflectorLoadConfig: reflectorScheduler.loadConfig,
-  reflectorSaveConfig: reflectorScheduler.saveConfig,
-  reflectorGetStatus: reflectorScheduler.getStatus,
+  // Self-Reflector Bot (from multi.js — engine + orchestrator + scheduler)
+  reflectorScanDirectory: reflectorMulti.scanDirectory,
+  reflectorEvaluateFile: reflectorMulti.evaluateFile,
+  reflectorTakeSnapshot: reflectorMulti.takeSnapshot,
+  reflectorHealFile: reflectorMulti.healFile,
+  reflectorReflect: reflectorMulti.reflect,
+  reflectorFormatReport: reflectorMulti.formatReport,
+  reflectorFormatPRBody: reflectorMulti.formatPRBody,
+  reflectorDefaultConfig: reflectorMulti.DEFAULT_CONFIG,
+  reflectorCreateHealingBranch: reflectorReport.createHealingBranch,
+  reflectorGenerateWorkflow: reflectorReport.generateReflectorWorkflow,
+  reflectorFindExistingPR: reflectorReport.findExistingReflectorPR,
+  reflectorRunReflector: reflectorMulti.runReflector,
+  reflectorStartScheduler: reflectorMulti.startScheduler,
+  reflectorLoadConfig: reflectorMulti.loadConfig,
+  reflectorSaveConfig: reflectorMulti.saveConfig,
+  reflectorGetStatus: reflectorMulti.getStatus,
 
   // Multi-Repo Reflector
   reflectorMultiSnapshot: reflectorMulti.multiSnapshot,
@@ -265,23 +250,23 @@ module.exports = {
   reflectorCodeSimilarity: reflectorMulti.codeSimilarity,
   reflectorExtractFunctionBody: reflectorMulti.extractFunctionBody,
 
-  // Reflector Shared Utilities
-  reflectorEnsureDir: reflectorUtils.ensureDir,
-  reflectorLoadJSON: reflectorUtils.loadJSON,
-  reflectorSaveJSON: reflectorUtils.saveJSON,
-  reflectorTrimArray: reflectorUtils.trimArray,
+  // Reflector Shared Utilities (from scoring.js)
+  reflectorEnsureDir: reflectorScoring.ensureDir,
+  reflectorLoadJSON: reflectorScoring.loadJSON,
+  reflectorSaveJSON: reflectorScoring.saveJSON,
+  reflectorTrimArray: reflectorScoring.trimArray,
 
-  // Reflector Safety & Revert
-  reflectorCreateBackup: reflectorSafety.createBackup,
-  reflectorLoadBackups: reflectorSafety.loadBackupManifests,
-  reflectorGetLatestBackup: reflectorSafety.getLatestBackup,
-  reflectorDryRun: reflectorSafety.dryRun,
-  reflectorCheckApproval: reflectorSafety.checkApproval,
-  reflectorRecordApproval: reflectorSafety.recordApproval,
-  reflectorRollback: reflectorSafety.rollback,
-  reflectorLoadRollbacks: reflectorSafety.loadRollbacks,
-  reflectorCoherenceGuard: reflectorSafety.coherenceGuard,
-  reflectorSafeReflect: reflectorSafety.safeReflect,
+  // Reflector Safety & Revert (from report.js)
+  reflectorCreateBackup: reflectorReport.createBackup,
+  reflectorLoadBackups: reflectorReport.loadBackupManifests,
+  reflectorGetLatestBackup: reflectorReport.getLatestBackup,
+  reflectorDryRun: reflectorReport.dryRun,
+  reflectorCheckApproval: reflectorReport.checkApproval,
+  reflectorRecordApproval: reflectorReport.recordApproval,
+  reflectorRollback: reflectorReport.rollback,
+  reflectorLoadRollbacks: reflectorReport.loadRollbacks,
+  reflectorCoherenceGuard: reflectorReport.coherenceGuard,
+  reflectorSafeReflect: reflectorReport.safeReflect,
 
   // Reflector Deep Scoring Engine
   reflectorDeepScore: reflectorScoring.deepScore,
@@ -293,102 +278,102 @@ module.exports = {
   reflectorQualityMetrics: reflectorScoring.computeQualityMetrics,
   reflectorFormatDeepScore: reflectorScoring.formatDeepScore,
 
-  // Reflector Central Configuration
-  reflectorCentralDefaults: reflectorConfig.CENTRAL_DEFAULTS,
-  reflectorLoadCentralConfig: reflectorConfig.loadCentralConfig,
-  reflectorSaveCentralConfig: reflectorConfig.saveCentralConfig,
-  reflectorSetCentralValue: reflectorConfig.setCentralValue,
-  reflectorGetCentralValue: reflectorConfig.getCentralValue,
-  reflectorResetCentralConfig: reflectorConfig.resetCentralConfig,
-  reflectorValidateConfig: reflectorConfig.validateConfig,
-  reflectorToEngineConfig: reflectorConfig.toEngineConfig,
-  reflectorListConfigKeys: reflectorConfig.listConfigKeys,
+  // Reflector Central Configuration (from scoring.js)
+  reflectorCentralDefaults: reflectorScoring.CENTRAL_DEFAULTS,
+  reflectorLoadCentralConfig: reflectorScoring.loadCentralConfig,
+  reflectorSaveCentralConfig: reflectorScoring.saveCentralConfig,
+  reflectorSetCentralValue: reflectorScoring.setCentralValue,
+  reflectorGetCentralValue: reflectorScoring.getCentralValue,
+  reflectorResetCentralConfig: reflectorScoring.resetCentralConfig,
+  reflectorValidateConfig: reflectorScoring.validateConfig,
+  reflectorToEngineConfig: reflectorScoring.toEngineConfig,
+  reflectorListConfigKeys: reflectorScoring.listConfigKeys,
 
-  // Reflector History & Logging
-  reflectorLoadHistoryV2: reflectorHistory.loadHistoryV2,
-  reflectorSaveRunRecord: reflectorHistory.saveRunRecord,
-  reflectorCreateRunRecord: reflectorHistory.createRunRecord,
-  reflectorAppendLog: reflectorHistory.appendLog,
-  reflectorReadLogTail: reflectorHistory.readLogTail,
-  reflectorComputeStats: reflectorHistory.computeStats,
-  reflectorTrendChart: reflectorHistory.generateTrendChart,
-  reflectorTimeline: reflectorHistory.generateTimeline,
+  // Reflector History & Logging (from report.js)
+  reflectorLoadHistoryV2: reflectorReport.loadHistoryV2,
+  reflectorSaveRunRecord: reflectorReport.saveRunRecord,
+  reflectorCreateRunRecord: reflectorReport.createRunRecord,
+  reflectorAppendLog: reflectorReport.appendLog,
+  reflectorReadLogTail: reflectorReport.readLogTail,
+  reflectorComputeStats: reflectorReport.computeStats,
+  reflectorTrendChart: reflectorReport.generateTrendChart,
+  reflectorTimeline: reflectorReport.generateTimeline,
 
-  // Reflector Orchestrator
-  reflectorOrchestrate: reflectorOrchestrator.orchestrate,
-  reflectorFormatOrchestration: reflectorOrchestrator.formatOrchestration,
+  // Reflector Orchestrator (from multi.js)
+  reflectorOrchestrate: reflectorMulti.orchestrate,
+  reflectorFormatOrchestration: reflectorMulti.formatOrchestration,
 
-  // Reflector Error Handling
-  reflectorErrorTypes: reflectorErrorHandler.ERROR_TYPES,
-  reflectorClassifyError: reflectorErrorHandler.classifyError,
-  reflectorWithErrorHandling: reflectorErrorHandler.withErrorHandling,
-  reflectorWithRetry: reflectorErrorHandler.withRetry,
-  reflectorWithCircuitBreaker: reflectorErrorHandler.withCircuitBreaker,
-  reflectorResetCircuitBreaker: reflectorErrorHandler.resetCircuitBreaker,
-  reflectorBuildErrorReport: reflectorErrorHandler.buildErrorReport,
+  // Reflector Error Handling (from scoring.js)
+  reflectorErrorTypes: reflectorScoring.ERROR_TYPES,
+  reflectorClassifyError: reflectorScoring.classifyError,
+  reflectorWithErrorHandling: reflectorScoring.withErrorHandling,
+  reflectorWithRetry: reflectorScoring.withRetry,
+  reflectorWithCircuitBreaker: reflectorScoring.withCircuitBreaker,
+  reflectorResetCircuitBreaker: reflectorScoring.resetCircuitBreaker,
+  reflectorBuildErrorReport: reflectorScoring.buildErrorReport,
 
-  // Reflector Real Coherence Scoring
-  reflectorComputeCoherence: reflectorCoherenceScorer.computeCoherence,
-  reflectorComputeRepoCoherence: reflectorCoherenceScorer.computeRepoCoherence,
-  reflectorFormatCoherence: reflectorCoherenceScorer.formatCoherence,
-  reflectorScoreSyntaxValidity: reflectorCoherenceScorer.scoreSyntaxValidity,
-  reflectorScoreReadability: reflectorCoherenceScorer.scoreReadability,
-  reflectorScoreTestProof: reflectorCoherenceScorer.scoreTestProof,
-  reflectorScoreHistoricalReliability: reflectorCoherenceScorer.scoreHistoricalReliability,
-  reflectorCoherenceWeights: reflectorCoherenceScorer.DEFAULT_WEIGHTS,
+  // Reflector Real Coherence Scoring (from scoring.js)
+  reflectorComputeCoherence: reflectorScoring.computeCoherence,
+  reflectorComputeRepoCoherence: reflectorScoring.computeRepoCoherence,
+  reflectorFormatCoherence: reflectorScoring.formatCoherence,
+  reflectorScoreSyntaxValidity: reflectorScoring.scoreSyntaxValidity,
+  reflectorScoreReadability: reflectorScoring.scoreReadability,
+  reflectorScoreTestProof: reflectorScoring.scoreTestProof,
+  reflectorScoreHistoricalReliability: reflectorScoring.scoreHistoricalReliability,
+  reflectorCoherenceWeights: reflectorScoring.DEFAULT_WEIGHTS,
 
-  // Reflector PR Comment Formatter
-  reflectorFormatPRComment: reflectorPRFormatter.formatPRComment,
-  reflectorFormatFileComment: reflectorPRFormatter.formatFileComment,
-  reflectorFormatCheckRun: reflectorPRFormatter.formatCheckRun,
-  reflectorProgressBar: reflectorPRFormatter.progressBar,
-  reflectorScoreIndicator: reflectorPRFormatter.scoreIndicator,
+  // Reflector PR Comment Formatter (from report.js)
+  reflectorFormatPRComment: reflectorReport.formatPRComment,
+  reflectorFormatFileComment: reflectorReport.formatFileComment,
+  reflectorFormatCheckRun: reflectorReport.formatCheckRun,
+  reflectorProgressBar: reflectorReport.progressBar,
+  reflectorScoreIndicator: reflectorReport.scoreIndicator,
 
-  // Reflector Auto-Commit Safety
-  reflectorCreateSafetyBranch: reflectorAutoCommit.createSafetyBranch,
-  reflectorRunTestGate: reflectorAutoCommit.runTestGate,
-  reflectorMergeIfPassing: reflectorAutoCommit.mergeIfPassing,
-  reflectorSafeAutoCommit: reflectorAutoCommit.safeAutoCommit,
-  reflectorAutoCommitStats: reflectorAutoCommit.autoCommitStats,
-  reflectorFormatAutoCommit: reflectorAutoCommit.formatAutoCommit,
-  reflectorLoadAutoCommitHistory: reflectorAutoCommit.loadAutoCommitHistory,
+  // Reflector Auto-Commit Safety (from report.js)
+  reflectorCreateSafetyBranch: reflectorReport.createSafetyBranch,
+  reflectorRunTestGate: reflectorReport.runTestGate,
+  reflectorMergeIfPassing: reflectorReport.mergeIfPassing,
+  reflectorSafeAutoCommit: reflectorReport.safeAutoCommit,
+  reflectorAutoCommitStats: reflectorReport.autoCommitStats,
+  reflectorFormatAutoCommit: reflectorReport.formatAutoCommit,
+  reflectorLoadAutoCommitHistory: reflectorReport.loadAutoCommitHistory,
 
-  // Reflector Pattern Library Hook
-  reflectorHookBeforeHeal: reflectorPatternHook.hookBeforeHeal,
-  reflectorBatchPatternLookup: reflectorPatternHook.batchPatternLookup,
-  reflectorQueryPatternsForFile: reflectorPatternHook.queryPatternsForFile,
-  reflectorBuildHealingContext: reflectorPatternHook.buildHealingContext,
-  reflectorPatternHookStats: reflectorPatternHook.patternHookStats,
-  reflectorRecordPatternHookUsage: reflectorPatternHook.recordPatternHookUsage,
-  reflectorFormatPatternHook: reflectorPatternHook.formatPatternHook,
-  reflectorExtractFileHints: reflectorPatternHook.extractFileHints,
+  // Reflector Pattern Library Hook (from report.js)
+  reflectorHookBeforeHeal: reflectorReport.hookBeforeHeal,
+  reflectorBatchPatternLookup: reflectorReport.batchPatternLookup,
+  reflectorQueryPatternsForFile: reflectorReport.queryPatternsForFile,
+  reflectorBuildHealingContext: reflectorReport.buildHealingContext,
+  reflectorPatternHookStats: reflectorReport.patternHookStats,
+  reflectorRecordPatternHookUsage: reflectorReport.recordPatternHookUsage,
+  reflectorFormatPatternHook: reflectorReport.formatPatternHook,
+  reflectorExtractFileHints: reflectorReport.extractFileHints,
 
-  // Reflector Configurable Thresholds & Modes
-  reflectorPresetModes: reflectorModes.PRESET_MODES,
-  reflectorEnvOverrides: reflectorModes.ENV_OVERRIDES,
-  reflectorReadEnvOverrides: reflectorModes.readEnvOverrides,
-  reflectorResolveConfig: reflectorModes.resolveConfig,
-  reflectorShouldAutoCreatePR: reflectorModes.shouldAutoCreatePR,
-  reflectorListModes: reflectorModes.listModes,
-  reflectorSetMode: reflectorModes.setMode,
-  reflectorGetCurrentMode: reflectorModes.getCurrentMode,
-  reflectorFormatResolvedConfig: reflectorModes.formatResolvedConfig,
+  // Reflector Configurable Thresholds & Modes (from scoring.js)
+  reflectorPresetModes: reflectorScoring.PRESET_MODES,
+  reflectorEnvOverrides: reflectorScoring.ENV_OVERRIDES,
+  reflectorReadEnvOverrides: reflectorScoring.readEnvOverrides,
+  reflectorResolveConfig: reflectorScoring.resolveConfig,
+  reflectorShouldAutoCreatePR: reflectorScoring.shouldAutoCreatePR,
+  reflectorListModes: reflectorScoring.listModes,
+  reflectorSetMode: reflectorScoring.setMode,
+  reflectorGetCurrentMode: reflectorScoring.getCurrentMode,
+  reflectorFormatResolvedConfig: reflectorScoring.formatResolvedConfig,
 
-  // Reflector Discord/Slack Notifications
-  reflectorNotify: reflectorNotifications.notify,
-  reflectorNotifyFromReport: reflectorNotifications.notifyFromReport,
-  reflectorFormatDiscordEmbed: reflectorNotifications.formatDiscordEmbed,
-  reflectorFormatSlackBlocks: reflectorNotifications.formatSlackBlocks,
-  reflectorDetectPlatform: reflectorNotifications.detectPlatform,
-  reflectorNotificationStats: reflectorNotifications.notificationStats,
-  reflectorLoadNotificationHistory: reflectorNotifications.loadNotificationHistory,
+  // Reflector Discord/Slack Notifications (from report.js)
+  reflectorNotify: reflectorReport.notify,
+  reflectorNotifyFromReport: reflectorReport.notifyFromReport,
+  reflectorFormatDiscordEmbed: reflectorReport.formatDiscordEmbed,
+  reflectorFormatSlackBlocks: reflectorReport.formatSlackBlocks,
+  reflectorDetectPlatform: reflectorReport.detectPlatform,
+  reflectorNotificationStats: reflectorReport.notificationStats,
+  reflectorLoadNotificationHistory: reflectorReport.loadNotificationHistory,
 
-  // Reflector Dashboard Integration
-  reflectorGatherDashboardData: reflectorDashboard.gatherDashboardData,
-  reflectorGenerateDashboardHTML: reflectorDashboard.generateDashboardHTML,
-  reflectorCreateReflectorDashboard: reflectorDashboard.createReflectorDashboard,
-  reflectorStartReflectorDashboard: reflectorDashboard.startReflectorDashboard,
-  reflectorHandleApiRequest: reflectorDashboard.handleApiRequest,
+  // Reflector Dashboard Integration (from report.js)
+  reflectorGatherDashboardData: reflectorReport.gatherDashboardData,
+  reflectorGenerateDashboardHTML: reflectorReport.generateDashboardHTML,
+  reflectorCreateReflectorDashboard: reflectorReport.createReflectorDashboard,
+  reflectorStartReflectorDashboard: reflectorReport.startReflectorDashboard,
+  reflectorHandleApiRequest: reflectorReport.handleApiRequest,
 
   // Cloud Sync
   CloudSyncServer,

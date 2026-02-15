@@ -15,7 +15,7 @@ const {
   computeCoherence,
   computeRepoCoherence,
   formatCoherence,
-} = require('../src/reflector/coherenceScorer');
+} = require('../src/reflector/scoring');
 
 function makeTempRepo(opts = {}) {
   const dir = join(tmpdir(), `coh-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -218,7 +218,7 @@ describe('scoreHistoricalReliability', () => {
 
   it('should score high for files never healed', () => {
     const dir = makeTempRepo();
-    const { saveJSON } = require('../src/reflector/utils');
+    const { saveJSON } = require('../src/reflector/scoring');
     saveJSON(join(dir, '.remembrance', 'reflector-history-v2.json'), {
       runs: [{ id: 'r1', changes: [] }, { id: 'r2', changes: [] }],
       version: 2,

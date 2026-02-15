@@ -15,7 +15,7 @@ const {
   computeStats,
   generateTrendChart,
   generateTimeline,
-} = require('../src/reflector/history');
+} = require('../src/reflector/report');
 
 // ─── Helpers ───
 

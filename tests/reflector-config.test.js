@@ -20,7 +20,7 @@ const {
   deepClone,
   setNestedValue,
   getNestedValue,
-} = require('../src/reflector/config');
+} = require('../src/reflector/scoring');
 
 // ─── Helpers ───
 

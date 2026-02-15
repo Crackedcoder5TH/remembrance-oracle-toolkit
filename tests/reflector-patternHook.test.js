@@ -12,7 +12,7 @@ const {
   recordPatternHookUsage,
   patternHookStats,
   formatPatternHook,
-} = require('../src/reflector/patternHook');
+} = require('../src/reflector/report');
 
 // ─── Helpers ───
 

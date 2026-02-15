@@ -13,7 +13,7 @@ const {
   loadAutoCommitHistory,
   autoCommitStats,
   formatAutoCommit,
-} = require('../src/reflector/autoCommit');
+} = require('../src/reflector/report');
 
 // ─── Helpers ───
 

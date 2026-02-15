@@ -16,14 +16,14 @@ const {
   formatPRBody,
   generateCollectiveWhisper,
   DEFAULT_CONFIG,
-} = require('../src/reflector/engine');
+} = require('../src/reflector/multi');
 
 // ─── GitHub Integration Tests ───
 
 const {
   generateBranchName,
   generateReflectorWorkflow,
-} = require('../src/reflector/github');
+} = require('../src/reflector/report');
 
 // ─── Scheduler Tests ───
 
@@ -36,7 +36,7 @@ const {
   runReflector,
   parseCronInterval,
   getStatus,
-} = require('../src/reflector/scheduler');
+} = require('../src/reflector/multi');
 
 // ─── Helpers ───
 

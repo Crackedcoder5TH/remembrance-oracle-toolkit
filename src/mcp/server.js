@@ -1006,7 +1006,7 @@ class MCPServer {
         }
 
         case 'oracle_reflector_snapshot': {
-          const { takeSnapshot } = require('../reflector/engine');
+          const { takeSnapshot } = require('../reflector/multi');
           result = takeSnapshot(args.path || process.cwd(), {
             minCoherence: args.minCoherence || 0.7,
             maxFilesPerRun: args.maxFiles || 50,
@@ -1024,7 +1024,7 @@ class MCPServer {
         }
 
         case 'oracle_reflector_run': {
-          const { runReflector } = require('../reflector/scheduler');
+          const { runReflector } = require('../reflector/multi');
           result = runReflector(args.path || process.cwd(), {
             minCoherence: args.minCoherence,
             maxFilesPerRun: args.maxFiles,
@@ -1036,13 +1036,13 @@ class MCPServer {
         }
 
         case 'oracle_reflector_evaluate': {
-          const { evaluateFile } = require('../reflector/engine');
+          const { evaluateFile } = require('../reflector/multi');
           result = evaluateFile(args.filePath);
           break;
         }
 
         case 'oracle_reflector_heal': {
-          const { healFile } = require('../reflector/engine');
+          const { healFile } = require('../reflector/multi');
           result = healFile(args.filePath, {
             maxSerfLoops: args.maxLoops || 3,
             targetCoherence: args.targetCoherence || 0.95,
@@ -1058,13 +1058,13 @@ class MCPServer {
         }
 
         case 'oracle_reflector_status': {
-          const { getStatus } = require('../reflector/scheduler');
+          const { getStatus } = require('../reflector/multi');
           result = getStatus(args.path || process.cwd());
           break;
         }
 
         case 'oracle_reflector_config': {
-          const { loadConfig, saveConfig } = require('../reflector/scheduler');
+          const { loadConfig, saveConfig } = require('../reflector/multi');
           const rootDir = args.path || process.cwd();
           const cfg = loadConfig(rootDir);
           const updatable = ['intervalHours', 'minCoherence', 'autoMerge', 'push', 'openPR'];
@@ -1120,7 +1120,7 @@ class MCPServer {
         }
 
         case 'oracle_reflector_dry_run': {
-          const { dryRun } = require('../reflector/safety');
+          const { dryRun } = require('../reflector/report');
           const dir = args.rootDir || process.cwd();
           result = dryRun(dir, {
             minCoherence: args.minCoherence,
@@ -1130,7 +1130,7 @@ class MCPServer {
         }
 
         case 'oracle_reflector_safe_run': {
-          const { safeReflect } = require('../reflector/safety');
+          const { safeReflect } = require('../reflector/report');
           const dir = args.rootDir || process.cwd();
           result = safeReflect(dir, {
             minCoherence: args.minCoherence,
@@ -1149,14 +1149,14 @@ class MCPServer {
         }
 
         case 'oracle_reflector_rollback': {
-          const { rollback: doRollback } = require('../reflector/safety');
+          const { rollback: doRollback } = require('../reflector/report');
           const dir = args.rootDir || process.cwd();
           result = doRollback(dir, { backupId: args.backupId, verify: true });
           break;
         }
 
         case 'oracle_reflector_backups': {
-          const { loadBackupManifests } = require('../reflector/safety');
+          const { loadBackupManifests } = require('../reflector/report');
           const dir = args.rootDir || process.cwd();
           result = loadBackupManifests(dir);
           break;
@@ -1193,7 +1193,7 @@ class MCPServer {
         }
 
         case 'oracle_reflector_central_config': {
-          const { loadCentralConfig, validateConfig } = require('../reflector/config');
+          const { loadCentralConfig, validateConfig } = require('../reflector/scoring');
           const dir = args.rootDir || process.cwd();
           const config = loadCentralConfig(dir);
           const validation = validateConfig(config);
@@ -1202,7 +1202,7 @@ class MCPServer {
         }
 
         case 'oracle_reflector_central_set': {
-          const { setCentralValue, validateConfig } = require('../reflector/config');
+          const { setCentralValue, validateConfig } = require('../reflector/scoring');
           const dir = args.rootDir || process.cwd();
           const config = setCentralValue(dir, args.key, args.value);
           const validation = validateConfig(config);
@@ -1211,7 +1211,7 @@ class MCPServer {
         }
 
         case 'oracle_reflector_history': {
-          const { loadHistoryV2 } = require('../reflector/history');
+          const { loadHistoryV2 } = require('../reflector/report');
           const dir = args.rootDir || process.cwd();
           const history = loadHistoryV2(dir);
           const last = args.last || 10;
@@ -1220,21 +1220,21 @@ class MCPServer {
         }
 
         case 'oracle_reflector_trend': {
-          const { generateTrendChart } = require('../reflector/history');
+          const { generateTrendChart } = require('../reflector/report');
           const dir = args.rootDir || process.cwd();
           result = { chart: generateTrendChart(dir, { last: args.last || 30 }) };
           break;
         }
 
         case 'oracle_reflector_stats': {
-          const { computeStats } = require('../reflector/history');
+          const { computeStats } = require('../reflector/report');
           const dir = args.rootDir || process.cwd();
           result = computeStats(dir);
           break;
         }
 
         case 'oracle_reflector_orchestrate': {
-          const { orchestrate } = require('../reflector/orchestrator');
+          const { orchestrate } = require('../reflector/multi');
           const dir = args.rootDir || process.cwd();
           result = orchestrate(dir, {
             dryRun: args.dryRun || false,
@@ -1245,27 +1245,27 @@ class MCPServer {
         }
 
         case 'oracle_reflector_coherence': {
-          const { computeCoherence } = require('../reflector/coherenceScorer');
+          const { computeCoherence } = require('../reflector/scoring');
           const dir = args.rootDir || process.cwd();
           result = computeCoherence(args.filePath, { rootDir: dir });
           break;
         }
 
         case 'oracle_reflector_repo_coherence': {
-          const { computeRepoCoherence } = require('../reflector/coherenceScorer');
+          const { computeRepoCoherence } = require('../reflector/scoring');
           const dir = args.rootDir || process.cwd();
           result = computeRepoCoherence(dir);
           break;
         }
 
         case 'oracle_reflector_format_pr': {
-          const { formatPRComment } = require('../reflector/prFormatter');
+          const { formatPRComment } = require('../reflector/report');
           result = { markdown: formatPRComment(args.report || {}) };
           break;
         }
 
         case 'oracle_reflector_auto_commit': {
-          const { safeAutoCommit, autoCommitStats } = require('../reflector/autoCommit');
+          const { safeAutoCommit, autoCommitStats } = require('../reflector/report');
           if (args.healedFiles) {
             result = safeAutoCommit(args.rootDir, args.healedFiles, {
               testCommand: args.testCommand,
@@ -1279,7 +1279,7 @@ class MCPServer {
         }
 
         case 'oracle_reflector_pattern_hook': {
-          const { hookBeforeHeal } = require('../reflector/patternHook');
+          const { hookBeforeHeal } = require('../reflector/report');
           result = hookBeforeHeal(args.filePath, {
             rootDir: args.rootDir,
             maxResults: args.maxResults,
@@ -1288,31 +1288,31 @@ class MCPServer {
         }
 
         case 'oracle_reflector_pattern_hook_stats': {
-          const { patternHookStats } = require('../reflector/patternHook');
+          const { patternHookStats } = require('../reflector/report');
           result = patternHookStats(args.rootDir);
           break;
         }
 
         case 'oracle_reflector_resolve_config': {
-          const { resolveConfig } = require('../reflector/modes');
+          const { resolveConfig } = require('../reflector/scoring');
           result = resolveConfig(args.rootDir, { mode: args.mode });
           break;
         }
 
         case 'oracle_reflector_set_mode': {
-          const { setMode } = require('../reflector/modes');
+          const { setMode } = require('../reflector/scoring');
           result = setMode(args.rootDir, args.mode);
           break;
         }
 
         case 'oracle_reflector_list_modes': {
-          const { listModes } = require('../reflector/modes');
+          const { listModes } = require('../reflector/scoring');
           result = listModes();
           break;
         }
 
         case 'oracle_reflector_notify': {
-          const { formatDiscordEmbed, formatSlackBlocks, detectPlatform, notificationStats } = require('../reflector/notifications');
+          const { formatDiscordEmbed, formatSlackBlocks, detectPlatform, notificationStats } = require('../reflector/report');
           if (args.report) {
             const platform = detectPlatform(args.webhookUrl || '');
             const repoName = args.repoName || 'unknown';
@@ -1330,13 +1330,13 @@ class MCPServer {
         }
 
         case 'oracle_reflector_notification_stats': {
-          const { notificationStats } = require('../reflector/notifications');
+          const { notificationStats } = require('../reflector/report');
           result = notificationStats(args.rootDir);
           break;
         }
 
         case 'oracle_reflector_dashboard_data': {
-          const { gatherDashboardData } = require('../reflector/dashboard');
+          const { gatherDashboardData } = require('../reflector/report');
           result = gatherDashboardData(args.rootDir);
           break;
         }

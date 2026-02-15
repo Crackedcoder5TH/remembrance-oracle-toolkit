@@ -40,7 +40,7 @@ describe('Reflector CLI — help', () => {
 
 describe('Reflector CLI — evaluate', () => {
   it('should evaluate a file and show coherence', () => {
-    const output = run(['evaluate', '--file', 'src/reflector/utils.js']);
+    const output = run(['evaluate', '--file', 'src/reflector/scoring.js']);
     assert.ok(output.includes('Evaluation:'));
     assert.ok(output.includes('Language:'));
     assert.ok(output.includes('Coherence:'));
@@ -48,7 +48,7 @@ describe('Reflector CLI — evaluate', () => {
   });
 
   it('should output JSON with --json flag', () => {
-    const output = run(['evaluate', '--file', 'src/reflector/utils.js', '--json']);
+    const output = run(['evaluate', '--file', 'src/reflector/scoring.js', '--json']);
     const data = JSON.parse(output);
     assert.ok(typeof data.coherence === 'number');
     assert.ok(typeof data.language === 'string');
@@ -62,7 +62,7 @@ describe('Reflector CLI — evaluate', () => {
 
 describe('Reflector CLI — score', () => {
   it('should deep-score a file', () => {
-    const output = run(['score', '--file', 'src/reflector/utils.js']);
+    const output = run(['score', '--file', 'src/reflector/scoring.js']);
     assert.ok(output.includes('Deep Score:'));
     assert.ok(output.includes('Aggregate:'));
     assert.ok(output.includes('SERF:'));
@@ -71,7 +71,7 @@ describe('Reflector CLI — score', () => {
   });
 
   it('should output JSON with --json flag', () => {
-    const output = run(['score', '--file', 'src/reflector/utils.js', '--json']);
+    const output = run(['score', '--file', 'src/reflector/scoring.js', '--json']);
     const data = JSON.parse(output);
     assert.ok(typeof data.aggregate === 'number');
     assert.ok(typeof data.serfCoherence === 'number');

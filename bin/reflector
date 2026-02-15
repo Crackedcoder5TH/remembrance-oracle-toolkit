@@ -161,10 +161,10 @@ function getOpts(args) {
 }
 
 function handleRun(args, cwd, json) {
-  const { safeReflect } = require('../src/reflector/safety');
-  const { loadCentralConfig, toEngineConfig } = require('../src/reflector/config');
-  const { appendLog } = require('../src/reflector/history');
-  const { createHealingBranch } = require('../src/reflector/github');
+  const { safeReflect } = require('../src/reflector/report');
+  const { loadCentralConfig, toEngineConfig } = require('../src/reflector/scoring');
+  const { appendLog } = require('../src/reflector/report');
+  const { createHealingBranch } = require('../src/reflector/report');
 
   // Load central config, then overlay CLI args
   const central = loadCentralConfig(cwd);
@@ -241,7 +241,7 @@ function handleRun(args, cwd, json) {
 }
 
 function handleSnapshot(args, cwd, json) {
-  const { takeSnapshot } = require('../src/reflector/engine');
+  const { takeSnapshot } = require('../src/reflector/multi');
   console.log(c.boldCyan('Taking Coherence Snapshot...\n'));
   const snap = takeSnapshot(cwd, getOpts(args));
 
@@ -269,7 +269,7 @@ function handleSnapshot(args, cwd, json) {
 
 function handleEvaluate(args, cwd, json) {
   if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
-  const { evaluateFile } = require('../src/reflector/engine');
+  const { evaluateFile } = require('../src/reflector/multi');
   const filePath = path.resolve(cwd, args.file);
   const result = evaluateFile(filePath);
 
@@ -292,7 +292,7 @@ function handleEvaluate(args, cwd, json) {
 
 function handleHeal(args, cwd, json) {
   if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
-  const { healFile } = require('../src/reflector/engine');
+  const { healFile } = require('../src/reflector/multi');
   const filePath = path.resolve(cwd, args.file);
   const result = healFile(filePath);
 
@@ -307,7 +307,7 @@ function handleHeal(args, cwd, json) {
 }
 
 function handleDryRun(args, cwd, json) {
-  const { dryRun } = require('../src/reflector/safety');
+  const { dryRun } = require('../src/reflector/report');
   console.log(c.boldCyan('Dry-Run: Simulating Healing...\n'));
   const result = dryRun(cwd, getOpts(args));
 
@@ -374,7 +374,7 @@ function handleConfig(args, cwd, json, sub) {
   if (sub === 'config-set') {
     if (!args.key) { console.error(c.boldRed('Error:') + ' --key required'); process.exit(1); }
     if (args.value === undefined) { console.error(c.boldRed('Error:') + ' --value required'); process.exit(1); }
-    const { setCentralValue, validateConfig } = require('../src/reflector/config');
+    const { setCentralValue, validateConfig } = require('../src/reflector/scoring');
     let value = args.value;
     if (value === 'true') value = true;
     else if (value === 'false') value = false;
@@ -391,7 +391,7 @@ function handleConfig(args, cwd, json, sub) {
   }
 
   if (sub === 'config-reset') {
-    const { resetCentralConfig } = require('../src/reflector/config');
+    const { resetCentralConfig } = require('../src/reflector/scoring');
     const section = args.section || null;
     resetCentralConfig(cwd, section);
     if (json) { console.log(JSON.stringify({ reset: section || 'all' })); return; }
@@ -400,7 +400,7 @@ function handleConfig(args, cwd, json, sub) {
   }
 
   // Default: show config
-  const { loadCentralConfig, formatCentralConfig, validateConfig } = require('../src/reflector/config');
+  const { loadCentralConfig, formatCentralConfig, validateConfig } = require('../src/reflector/scoring');
   const config = loadCentralConfig(cwd);
   if (json) { console.log(JSON.stringify(config, null, 2)); return; }
   console.log(c.boldCyan('Central Configuration:\n'));
@@ -413,7 +413,7 @@ function handleConfig(args, cwd, json, sub) {
 }
 
 function handleStatus(args, cwd, json) {
-  const { getStatus } = require('../src/reflector/scheduler');
+  const { getStatus } = require('../src/reflector/multi');
   const status = getStatus(cwd);
   if (json) { console.log(JSON.stringify(status, null, 2)); return; }
   console.log(c.boldCyan('Reflector Status:\n'));
@@ -432,7 +432,7 @@ function handleStatus(args, cwd, json) {
 }
 
 function handleHistory(args, cwd, json) {
-  const { generateTimeline, loadHistoryV2 } = require('../src/reflector/history');
+  const { generateTimeline, loadHistoryV2 } = require('../src/reflector/report');
   const count = args.last ? parseInt(args.last) : 10;
   if (json) { console.log(JSON.stringify(loadHistoryV2(cwd), null, 2)); return; }
   console.log(c.boldCyan('Reflector Run History\n'));
@@ -440,7 +440,7 @@ function handleHistory(args, cwd, json) {
 }
 
 function handleTrend(args, cwd, json) {
-  const { generateTrendChart, loadHistoryV2 } = require('../src/reflector/history');
+  const { generateTrendChart, loadHistoryV2 } = require('../src/reflector/report');
   if (json) {
     const history = loadHistoryV2(cwd);
     console.log(JSON.stringify(history.runs.map(r => ({ timestamp: r.timestamp, coherence: r.coherence?.after })), null, 2));
@@ -455,7 +455,7 @@ function handleTrend(args, cwd, json) {
 }
 
 function handleStats(args, cwd, json) {
-  const { computeStats } = require('../src/reflector/history');
+  const { computeStats } = require('../src/reflector/report');
   const stats = computeStats(cwd);
   if (json) { console.log(JSON.stringify(stats, null, 2)); return; }
   console.log(c.boldCyan('Reflector Statistics\n'));
@@ -473,7 +473,7 @@ function handleStats(args, cwd, json) {
 }
 
 function handleLog(args, cwd, json) {
-  const { readLogTail } = require('../src/reflector/history');
+  const { readLogTail } = require('../src/reflector/report');
   const n = args.last ? parseInt(args.last) : 20;
   const lines = readLogTail(cwd, n);
   if (json) { console.log(JSON.stringify(lines)); return; }
@@ -487,7 +487,7 @@ function handleLog(args, cwd, json) {
 }
 
 function handleRollback(args, cwd, json) {
-  const { rollback, loadBackupManifests } = require('../src/reflector/safety');
+  const { rollback, loadBackupManifests } = require('../src/reflector/report');
   const manifests = loadBackupManifests(cwd);
   if (manifests.length === 0) { console.error(c.boldRed('No backups found.')); process.exit(1); }
   console.log(c.boldCyan('Rolling Back...\n'));
@@ -517,7 +517,7 @@ function handleMulti(args, cwd, json) {
 }
 
 function handleWorkflow(args) {
-  const { generateReflectorWorkflow } = require('../src/reflector/github');
+  const { generateReflectorWorkflow } = require('../src/reflector/report');
   const workflow = generateReflectorWorkflow({
     schedule: args.schedule || '0 */6 * * *',
     minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : 0.7,
@@ -544,7 +544,7 @@ function main() {
     'dry-run': () => handleDryRun(args, cwd, json),
     'rollback': () => handleRollback(args, cwd, json),
     'backups': () => {
-      const { loadBackupManifests } = require('../src/reflector/safety');
+      const { loadBackupManifests } = require('../src/reflector/report');
       const manifests = loadBackupManifests(cwd);
       if (json) { console.log(JSON.stringify(manifests, null, 2)); return; }
       if (manifests.length === 0) { console.log(c.dim('No backups found.')); return; }

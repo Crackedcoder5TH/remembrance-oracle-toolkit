@@ -14,7 +14,7 @@ const {
   setMode,
   getCurrentMode,
   formatResolvedConfig,
-} = require('../src/reflector/modes');
+} = require('../src/reflector/scoring');
 
 // ─── Helpers ───
 

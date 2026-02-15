@@ -4,7 +4,7 @@ const { mkdirSync, writeFileSync, existsSync, rmSync } = require('fs');
 const { join } = require('path');
 const { tmpdir } = require('os');
 
-const { ensureDir, loadJSON, saveJSON, trimArray } = require('../src/reflector/utils');
+const { ensureDir, loadJSON, saveJSON, trimArray } = require('../src/reflector/scoring');
 
 // ── Temp directory helper ──
 

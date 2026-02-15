@@ -4,7 +4,7 @@ const { mkdirSync, writeFileSync, rmSync, existsSync } = require('fs');
 const { join } = require('path');
 const { tmpdir } = require('os');
 
-const { orchestrate, formatOrchestration } = require('../src/reflector/orchestrator');
+const { orchestrate, formatOrchestration } = require('../src/reflector/multi');
 
 function makeTempRepo() {
   const dir = join(tmpdir(), `orch-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -100,7 +100,7 @@ describe('Orchestrator — live mode', () => {
 
   it('should record history after run', () => {
     orchestrate(dir);
-    const { loadHistoryV2 } = require('../src/reflector/history');
+    const { loadHistoryV2 } = require('../src/reflector/report');
     const history = loadHistoryV2(dir);
     assert.ok(history.runs.length > 0);
     assert.ok(history.runs[0].id.startsWith('orch-'));

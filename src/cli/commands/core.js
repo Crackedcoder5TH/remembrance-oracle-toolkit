@@ -14,8 +14,7 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
 
     // 1. Seed the oracle
     console.log(`${c.bold('1.')} Seeding pattern library...`);
-    const { seedLibrary: initSeedLibrary, seedNativeLibrary: initSeedNative } = require('../../patterns/seeds');
-    const { seedExtendedLibrary: initSeedExtended } = require('../../patterns/seeds-extended');
+    const { seedLibrary: initSeedLibrary, seedNativeLibrary: initSeedNative, seedExtendedLibrary: initSeedExtended } = require('../../patterns/seed-helpers');
     const initCore = initSeedLibrary(oracle);
     const initExt = initSeedExtended(oracle);
     const initNative = initSeedNative(oracle);

@@ -5,8 +5,7 @@ const path = require('path');
 const os = require('os');
 const { RemembranceOracle } = require('../src/api/oracle');
 const { PatternComposer, BUILT_IN_TEMPLATES } = require('../src/patterns/composer');
-const { getProductionSeeds } = require('../src/patterns/seeds-production');
-const { getProductionSeeds2 } = require('../src/patterns/seeds-production-2');
+const { getProductionSeeds, getProductionSeeds2 } = require('../src/patterns/seed-helpers');
 
 describe('PatternComposer', () => {
   let tmpDir, oracle, composer;

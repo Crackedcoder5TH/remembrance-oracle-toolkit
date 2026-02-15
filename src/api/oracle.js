@@ -62,7 +62,7 @@ class RemembranceOracle {
     const wasEmpty = this.patterns.getAll().length === 0;
     if (options.autoSeed !== false && wasEmpty) {
       try {
-        const { seedLibrary } = require('../patterns/seeds');
+        const { seedLibrary } = require('../patterns/seed-helpers');
         seedLibrary(this);
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle] auto-seed failed:', e.message);

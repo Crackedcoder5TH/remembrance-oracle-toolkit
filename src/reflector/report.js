@@ -1,79 +1,45 @@
 /**
- * Remembrance Self-Reflector — Report & Integration
+ * Remembrance Self-Reflector — Consolidated Report Module
  *
- * Consolidated module combining:
- * - history.js — run history, logging, statistics, trend charts
- * - patternHook.js — pattern-guided healing context
- * - prFormatter.js — PR comment formatting
- * - github.js — git/GitHub operations
- * - autoCommit.js — auto-commit safety pipeline
- * - notifications.js — Discord/Slack notifications
- * - dashboard.js — reflector dashboard
- * - safety.js — backup, rollback, approval, coherence guard
+ * Merges 8 modules into one:
+ *   1. history.js      — run history and logging
+ *   2. patternHook.js  — pattern-guided healing
+ *   3. prFormatter.js  — PR formatting
+ *   4. github.js       — GitHub/git operations
+ *   5. autoCommit.js   — auto-commit safety
+ *   6. notifications.js — notification system
+ *   7. dashboard.js    — reflector dashboard
+ *   8. safety.js       — safety checks
+ *
+ * Uses lazy requires for ./scoring and ./multi to avoid circular deps.
  */
 
-const { readFileSync, existsSync, copyFileSync, writeFileSync, appendFileSync } = require('fs');
-const { join, relative, basename, extname } = require('path');
+const { readFileSync, writeFileSync, existsSync, appendFileSync, copyFileSync } = require('fs');
+const { join, basename, extname, relative } = require('path');
 const { execSync } = require('child_process');
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
+const { PatternLibrary } = require('../patterns/library');
+const { detectLanguage } = require('../core/coherency');
 
-// ─── Shared Utilities (inlined from utils.js) ───
+// ─── Lazy Require Helpers (avoid circular deps with scoring/multi) ───
 
-function ensureDir(dir) {
-  const { mkdirSync, existsSync: dirExists } = require('fs');
-  if (!dirExists(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
+let _scoringMod;
+function _scoring() {
+  if (!_scoringMod) _scoringMod = require('./scoring');
+  return _scoringMod;
 }
 
-function loadJSON(filePath, fallback = null) {
-  try {
-    if (!existsSync(filePath)) return fallback;
-    return JSON.parse(readFileSync(filePath, 'utf-8'));
-  } catch {
-    return fallback;
-  }
+let _multiMod;
+function _multi() {
+  if (!_multiMod) _multiMod = require('./multi');
+  return _multiMod;
 }
 
-function saveJSON(filePath, data) {
-  ensureDir(join(filePath, '..'));
-  writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-}
-
-function trimArray(arr, max) {
-  if (arr.length > max) arr.splice(0, arr.length - max);
-}
-
-
-// ─── Lazy requires to avoid circular dependencies ───
-
-function _getScoring() { return require('./scoring'); }
-function _getMulti() { return require('./multi'); }
-
-
-// ════════════════════════════════════════════════════════════════
-// HISTORY — from history.js
-// ════════════════════════════════════════════════════════════════
-
-/**
- * Remembrance Self-Reflector — Logging & History
- *
- * Rich run history with:
- * 1. Before/after coherence scores per run
- * 2. Changes applied (files healed, improvements)
- * 3. Whisper text from each run
- * 4. ASCII trend chart for coherence over time
- * 5. Structured log entries with timestamps
- * 6. Statistics and trend analysis
- *
- * History is stored in `.remembrance/reflector-history-v2.json`.
- * Uses only Node.js built-ins.
- */
-
-
-// ─── History Storage ───
+// =====================================================================
+// SECTION 1: History — Run History & Logging (from history.js)
+// =====================================================================
 
 function getHistoryV2Path(rootDir) {
   return join(rootDir, '.remembrance', 'reflector-history-v2.json');
@@ -90,6 +56,7 @@ function getLogPath(rootDir) {
  * @returns {object} { runs[], summary }
  */
 function loadHistoryV2(rootDir) {
+  const { loadJSON } = _scoring();
   return loadJSON(getHistoryV2Path(rootDir), { runs: [], version: 2 });
 }
 
@@ -102,8 +69,9 @@ function loadHistoryV2(rootDir) {
  * @returns {object} The saved record
  */
 function saveRunRecord(rootDir, record, options = {}) {
+  const { loadJSON, saveJSON, trimArray } = _scoring();
   const { maxRuns = 100 } = options;
-  const history = loadHistoryV2(rootDir);
+  const history = loadJSON(getHistoryV2Path(rootDir), { runs: [], version: 2 });
   history.runs.push(record);
   trimArray(history.runs, maxRuns);
   saveJSON(getHistoryV2Path(rootDir), history);
@@ -138,18 +106,12 @@ function createRunRecord(report, preSnapshot, options = {}) {
     trigger,
     branch,
     durationMs,
-
-    // Before/after scores
     coherence: {
       before: Math.round(beforeCoherence * 1000) / 1000,
       after: Math.round(afterCoherence * 1000) / 1000,
       delta: Math.round((afterCoherence - beforeCoherence) * 1000) / 1000,
     },
-
-    // Dimensions before (from snapshot)
     dimensions: report.snapshot.dimensionAverages || {},
-
-    // Healing summary
     healing: {
       filesScanned: report.summary.filesScanned,
       filesBelowThreshold: report.summary.filesBelowThreshold,
@@ -157,8 +119,6 @@ function createRunRecord(report, preSnapshot, options = {}) {
       totalImprovement: report.summary.totalImprovement,
       avgImprovement: report.summary.avgImprovement,
     },
-
-    // Individual file changes
     changes: (report.healings || []).map(h => ({
       path: h.path,
       language: h.language,
@@ -167,20 +127,14 @@ function createRunRecord(report, preSnapshot, options = {}) {
       improvement: h.improvement,
       strategy: h.healingSummary || 'reflection',
     })),
-
-    // Whisper
     whisper: report.collectiveWhisper
       ? (typeof report.collectiveWhisper === 'string' ? report.collectiveWhisper : report.collectiveWhisper.message)
       : '',
-
-    // Health status
     health: report.collectiveWhisper
       ? (typeof report.collectiveWhisper === 'object' ? report.collectiveWhisper.overallHealth : 'unknown')
       : 'unknown',
   };
 }
-
-// ─── Log Writing ───
 
 /**
  * Append a log entry to the reflector log file.
@@ -191,6 +145,7 @@ function createRunRecord(report, preSnapshot, options = {}) {
  * @param {object} [data] - Optional structured data
  */
 function appendLog(rootDir, level, message, data) {
+  const { ensureDir } = _scoring();
   ensureDir(join(rootDir, '.remembrance'));
 
   const timestamp = new Date().toISOString();
@@ -222,8 +177,6 @@ function readLogTail(rootDir, n = 20) {
   }
 }
 
-// ─── Statistics ───
-
 /**
  * Compute statistics from run history.
  *
@@ -252,7 +205,6 @@ function computeStats(rootDir) {
   const avgCoherence = coherenceValues.reduce((s, v) => s + v, 0) / coherenceValues.length;
   const avgImprovement = improvements.reduce((s, v) => s + v, 0) / improvements.length;
 
-  // Trend: compare last 5 runs to previous 5
   let trend = 'stable';
   if (runs.length >= 4) {
     const mid = Math.floor(runs.length / 2);
@@ -262,7 +214,6 @@ function computeStats(rootDir) {
     else if (olderAvg - recentAvg > 0.02) trend = 'declining';
   }
 
-  // Best and worst runs
   const sorted = [...runs].sort((a, b) => (b.coherence?.after || 0) - (a.coherence?.after || 0));
 
   return {
@@ -285,8 +236,6 @@ function computeStats(rootDir) {
   };
 }
 
-// ─── ASCII Trend Chart ───
-
 /**
  * Generate an ASCII trend chart of coherence over time.
  *
@@ -306,15 +255,12 @@ function generateTrendChart(rootDir, options = {}) {
   const values = runs.map(r => r.coherence?.after || 0);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const range = max - min || 0.1; // Avoid division by zero
+  const range = max - min || 0.1;
 
   const lines = [];
-
-  // Title
   lines.push('Coherence Trend');
   lines.push('');
 
-  // Chart area
   const chartWidth = Math.min(width, values.length);
   const step = values.length > chartWidth ? Math.floor(values.length / chartWidth) : 1;
   const sampled = [];
@@ -322,7 +268,6 @@ function generateTrendChart(rootDir, options = {}) {
     sampled.push(values[i]);
   }
 
-  // Build the chart grid
   for (let row = height - 1; row >= 0; row--) {
     const threshold = min + (range * row / (height - 1));
     const label = threshold.toFixed(3);
@@ -333,9 +278,9 @@ function generateTrendChart(rootDir, options = {}) {
       const normalizedRow = Math.round((val - min) / range * (height - 1));
 
       if (normalizedRow === row) {
-        line += '\u2588'; // Full block
+        line += '\u2588';
       } else if (normalizedRow > row) {
-        line += '\u2591'; // Light shade (below the data point)
+        line += '\u2591';
       } else {
         line += ' ';
       }
@@ -344,20 +289,16 @@ function generateTrendChart(rootDir, options = {}) {
     lines.push(line);
   }
 
-  // X-axis
   lines.push('       +' + '\u2500'.repeat(sampled.length));
 
-  // Labels
   const firstDate = runs[0].timestamp ? runs[0].timestamp.slice(0, 10) : '?';
   const lastDate = runs[runs.length - 1].timestamp ? runs[runs.length - 1].timestamp.slice(0, 10) : '?';
   const axisLabel = `        ${firstDate}${' '.repeat(Math.max(0, sampled.length - 20))}${lastDate}`;
   lines.push(axisLabel);
 
-  // Summary line
   lines.push('');
   lines.push(`Runs: ${values.length} | Avg: ${(values.reduce((s, v) => s + v, 0) / values.length).toFixed(3)} | Min: ${min.toFixed(3)} | Max: ${max.toFixed(3)}`);
 
-  // Trend indicator
   if (values.length >= 2) {
     const recent = values[values.length - 1];
     const previous = values[values.length - 2];
@@ -368,8 +309,6 @@ function generateTrendChart(rootDir, options = {}) {
 
   return lines.join('\n');
 }
-
-// ─── Run Timeline ───
 
 /**
  * Generate a timeline view of recent runs.
@@ -417,45 +356,22 @@ function generateTimeline(rootDir, count = 10) {
   return lines.join('\n');
 }
 
-
-
-// ════════════════════════════════════════════════════════════════
-// PATTERNHOOK — from patternHook.js
-// ════════════════════════════════════════════════════════════════
-
-/**
- * Remembrance Self-Reflector — Pattern Library Hook
- *
- * Before healing a file, query the Oracle's pattern library for similar
- * proven patterns and feed them as "healed examples" to guide strategy.
- *
- * 1. queryPatternsForFile — search library for patterns matching a file's purpose
- * 2. buildHealingContext — assemble matched patterns into a healing context
- * 3. hookBeforeHeal — the actual hook: takes a file, returns enriched config
- * 4. batchPatternLookup — look up patterns for multiple files at once
- * 5. patternHookStats — stats on how many healings were pattern-guided
- *
- * Uses only Node.js built-ins + existing Oracle modules.
- */
-
-
-// ─── Query Patterns for File ───
+// =====================================================================
+// SECTION 2: Pattern Hook — Pattern-Guided Healing (from patternHook.js)
+// =====================================================================
 
 /**
  * Extract purpose/description keywords from a file's content.
- * Uses the file name, leading comments, and exported function names.
  *
  * @param {string} code - File source code
  * @param {string} filePath - File path for name hints
  * @returns {object} { description, tags, language }
  */
 function extractFileHints(code, filePath) {
-  const { detectLanguage } = require('../core/coherency');
   const language = detectLanguage(code);
   const name = basename(filePath, extname(filePath));
   const tags = [];
 
-  // Extract leading comment block for description
   let description = name.replace(/[-_.]/g, ' ');
   const commentMatch = code.match(/^\/\*\*?\s*([\s\S]*?)\*\//);
   if (commentMatch) {
@@ -467,7 +383,6 @@ function extractFileHints(code, filePath) {
       description = comment.slice(0, 200);
     }
   }
-  // Also try single-line leading comments
   if (description === name.replace(/[-_.]/g, ' ')) {
     const lineComments = code.match(/^(?:\/\/|#)\s*(.+)/m);
     if (lineComments) {
@@ -475,7 +390,6 @@ function extractFileHints(code, filePath) {
     }
   }
 
-  // Extract exported function names as tags
   const fnMatches = code.matchAll(/(?:function|const|let|var)\s+(\w+)/g);
   for (const m of fnMatches) {
     if (m[1].length > 2 && m[1].length < 30) {
@@ -484,7 +398,6 @@ function extractFileHints(code, filePath) {
     if (tags.length >= 10) break;
   }
 
-  // Add file name parts as tags
   const nameParts = name.split(/[-_.]/).filter(p => p.length > 2);
   tags.push(...nameParts);
 
@@ -508,24 +421,20 @@ function queryPatternsForFile(code, filePath, options = {}) {
 
   const hints = extractFileHints(code, filePath);
 
-  // Initialize a PatternLibrary
   let library;
   try {
-    const { PatternLibrary } = require('../patterns/library');
     const dir = storeDir || join(process.cwd(), '.remembrance');
     library = new PatternLibrary(dir);
   } catch {
     return { matches: [], decision: 'generate', bestMatch: null, query: hints };
   }
 
-  // Use the library's decide() for best match info
   const decision = library.decide({
     description: hints.description,
     tags: hints.tags,
     language: hints.language,
   });
 
-  // Get all patterns and compute relevance for top-N
   let allPatterns;
   try {
     allPatterns = library.getAll();
@@ -537,7 +446,6 @@ function queryPatternsForFile(code, filePath, options = {}) {
     return { matches: [], decision: 'generate', bestMatch: null, query: hints };
   }
 
-  // Score and rank
   const { computeRelevance } = require('../core/relevance');
   const scored = allPatterns.map(p => {
     const rel = computeRelevance(
@@ -575,11 +483,8 @@ function queryPatternsForFile(code, filePath, options = {}) {
   };
 }
 
-// ─── Build Healing Context ───
-
 /**
  * Assemble matched patterns into a healing context object.
- * This context can be passed to the healing engine to guide strategy.
  *
  * @param {object[]} matches - Array of pattern matches from queryPatternsForFile
  * @returns {object} Healing context with example code snippets and strategies
@@ -602,7 +507,6 @@ function buildHealingContext(matches) {
     coherency: m.coherency,
   }));
 
-  // Determine suggested strategy from best match
   const best = matches[0];
   let suggestedStrategy = 'default';
   if (best.relevance >= 0.7 && best.coherency >= 0.8) {
@@ -621,15 +525,9 @@ function buildHealingContext(matches) {
   };
 }
 
-// ─── Hook Before Heal ───
-
 /**
  * The main hook: given a file path, query the pattern library and return
  * an enriched config object to guide healing.
- *
- * Usage:
- *   const context = hookBeforeHeal(filePath, { storeDir });
- *   // pass context.healingContext to the healer
  *
  * @param {string} filePath - File to heal
  * @param {object} options - { storeDir, maxResults, minScore, rootDir }
@@ -670,15 +568,12 @@ function hookBeforeHeal(filePath, options = {}) {
   };
 }
 
-// ─── Batch Pattern Lookup ───
-
 /**
  * Look up patterns for multiple files at once.
- * Returns a Map of filePath → hookResult.
  *
  * @param {string[]} filePaths - Array of file paths
  * @param {object} options - { storeDir, maxResults, minScore, rootDir }
- * @returns {Map<string, object>} Map of filePath → hook result
+ * @returns {Map<string, object>} Map of filePath -> hook result
  */
 function batchPatternLookup(filePaths, options = {}) {
   const results = new Map();
@@ -688,11 +583,6 @@ function batchPatternLookup(filePaths, options = {}) {
   return results;
 }
 
-// ─── Stats ───
-
-/**
- * Get the path to the pattern hook log file.
- */
 function getPatternHookLogPath(rootDir) {
   return join(rootDir, '.remembrance', 'pattern-hook-log.json');
 }
@@ -704,6 +594,7 @@ function getPatternHookLogPath(rootDir) {
  * @param {object} entry - { filePath, patternGuided, patternName, improvement }
  */
 function recordPatternHookUsage(rootDir, entry) {
+  const { ensureDir, loadJSON, saveJSON, trimArray } = _scoring();
   const logPath = getPatternHookLogPath(rootDir);
   ensureDir(join(rootDir, '.remembrance'));
   const log = loadJSON(logPath, []);
@@ -713,38 +604,6 @@ function recordPatternHookUsage(rootDir, entry) {
   });
   trimArray(log, 200);
   saveJSON(logPath, log);
-}
-
-/**
- * Get stats on pattern-guided healings.
- *
- * @param {string} rootDir - Repository root
- * @returns {object} Stats
- */
-function patternHookStats(rootDir) {
-  const log = loadJSON(getPatternHookLogPath(rootDir), []);
-  if (log.length === 0) {
-    return { totalHealings: 0, patternGuided: 0, patternGuidedRate: 0, avgImprovement: { guided: 0, unguided: 0 } };
-  }
-
-  const guided = log.filter(e => e.patternGuided);
-  const unguided = log.filter(e => !e.patternGuided);
-  const avgImprovement = (entries) => {
-    const improvements = entries.filter(e => typeof e.improvement === 'number');
-    if (improvements.length === 0) return 0;
-    return Math.round(improvements.reduce((s, e) => s + e.improvement, 0) / improvements.length * 1000) / 1000;
-  };
-
-  return {
-    totalHealings: log.length,
-    patternGuided: guided.length,
-    patternGuidedRate: Math.round(guided.length / log.length * 1000) / 1000,
-    avgImprovement: {
-      guided: avgImprovement(guided),
-      unguided: avgImprovement(unguided),
-    },
-    topPatterns: getTopPatterns(guided),
-  };
 }
 
 /**
@@ -764,11 +623,44 @@ function getTopPatterns(guidedEntries) {
 }
 
 /**
+ * Get stats on pattern-guided healings.
+ *
+ * @param {string} rootDir - Repository root
+ * @returns {object} Stats
+ */
+function patternHookStats(rootDir) {
+  const { loadJSON } = _scoring();
+  const log = loadJSON(getPatternHookLogPath(rootDir), []);
+  if (log.length === 0) {
+    return { totalHealings: 0, patternGuided: 0, patternGuidedRate: 0, avgImprovement: { guided: 0, unguided: 0 } };
+  }
+
+  const guided = log.filter(e => e.patternGuided);
+  const unguided = log.filter(e => !e.patternGuided);
+  const avgImprovementFn = (entries) => {
+    const improvements = entries.filter(e => typeof e.improvement === 'number');
+    if (improvements.length === 0) return 0;
+    return Math.round(improvements.reduce((s, e) => s + e.improvement, 0) / improvements.length * 1000) / 1000;
+  };
+
+  return {
+    totalHealings: log.length,
+    patternGuided: guided.length,
+    patternGuidedRate: Math.round(guided.length / log.length * 1000) / 1000,
+    avgImprovement: {
+      guided: avgImprovementFn(guided),
+      unguided: avgImprovementFn(unguided),
+    },
+    topPatterns: getTopPatterns(guided),
+  };
+}
+
+/**
  * Format pattern hook result as human-readable text.
  */
 function formatPatternHook(hookResult) {
   const lines = [];
-  lines.push('── Pattern Library Hook ──');
+  lines.push('\u2500\u2500 Pattern Library Hook \u2500\u2500');
   lines.push('');
   lines.push(`File:     ${hookResult.filePath}`);
   lines.push(`Decision: ${hookResult.decision || 'N/A'}`);
@@ -789,29 +681,9 @@ function formatPatternHook(hookResult) {
   return lines.join('\n');
 }
 
-
-
-// ════════════════════════════════════════════════════════════════
-// PRFORMATTER — from prFormatter.js
-// ════════════════════════════════════════════════════════════════
-
-/**
- * Remembrance Self-Reflector — PR Comment Formatter
- *
- * Generates rich markdown for GitHub PR bodies and comments:
- *
- * 1. Before/after coherence delta with visual indicators
- * 2. Top 3 healed changes with file paths and improvements
- * 3. Whisper message with health context
- * 4. Deep score summary (if available)
- * 5. Security findings summary
- * 6. Dimensional breakdown with progress bars
- * 7. Approval prompt: "Approve to manifest this remembrance"
- *
- * Uses only Node.js built-ins.
- */
-
-// ─── Progress Bar Generator ───
+// =====================================================================
+// SECTION 3: PR Formatter (from prFormatter.js)
+// =====================================================================
 
 /**
  * Generate a markdown-compatible progress bar using Unicode blocks.
@@ -831,10 +703,10 @@ function progressBar(value, width = 20) {
  */
 function scoreIndicator(score) {
   if (typeof score !== 'number') return '\u2753 N/A';
-  if (score >= 0.9) return `\u{1F7E2} ${score.toFixed(3)}`;   // Green
-  if (score >= 0.7) return `\u{1F7E1} ${score.toFixed(3)}`;   // Yellow
-  if (score >= 0.5) return `\u{1F7E0} ${score.toFixed(3)}`;   // Orange
-  return `\u{1F534} ${score.toFixed(3)}`;                       // Red
+  if (score >= 0.9) return `\u{1F7E2} ${score.toFixed(3)}`;
+  if (score >= 0.7) return `\u{1F7E1} ${score.toFixed(3)}`;
+  if (score >= 0.5) return `\u{1F7E0} ${score.toFixed(3)}`;
+  return `\u{1F534} ${score.toFixed(3)}`;
 }
 
 /**
@@ -846,8 +718,6 @@ function deltaIndicator(delta) {
   if (delta < -0.01) return `\u25BC ${delta.toFixed(3)}`;
   return `\u25C6 ${delta.toFixed(3)}`;
 }
-
-// ─── PR Body Formatter ───
 
 /**
  * Generate a full PR body with rich markdown.
@@ -866,11 +736,9 @@ function formatPRComment(report, options = {}) {
 
   const lines = [];
 
-  // ── Header ──
   lines.push('## Remembrance Pull: Healed Refinement');
   lines.push('');
 
-  // ── Coherence Delta ──
   const coherence = report.coherence || report.snapshot || {};
   const before = coherence.before ?? coherence.avgCoherence ?? 0;
   const after = coherence.after ?? before;
@@ -885,12 +753,10 @@ function formatPRComment(report, options = {}) {
   lines.push(`| Delta  | ${deltaIndicator(delta)} |`);
   lines.push('');
 
-  // Visual bar
   lines.push(`\`Before:\` ${progressBar(before)} ${before.toFixed(3)}`);
   lines.push(`\`After: \` ${progressBar(after)} ${after.toFixed(3)}`);
   lines.push('');
 
-  // ── Top Healed Changes ──
   const healings = report.changes || report.healings || [];
   if (healings.length > 0) {
     lines.push('### Top Changes');
@@ -902,11 +768,11 @@ function formatPRComment(report, options = {}) {
 
     for (let i = 0; i < top.length; i++) {
       const h = top[i];
-      const before = h.before ?? h.originalCoherence ?? 0;
-      const after = h.after ?? h.healedCoherence ?? 0;
-      const improve = h.improvement ?? (after - before);
+      const hBefore = h.before ?? h.originalCoherence ?? 0;
+      const hAfter = h.after ?? h.healedCoherence ?? 0;
+      const improve = h.improvement ?? (hAfter - hBefore);
       lines.push(`**${i + 1}. \`${h.path}\`**`);
-      lines.push(`   ${before.toFixed(3)} \u2192 ${after.toFixed(3)} (+${improve.toFixed(3)})`);
+      lines.push(`   ${hBefore.toFixed(3)} \u2192 ${hAfter.toFixed(3)} (+${improve.toFixed(3)})`);
       if (h.strategy) lines.push(`   _Strategy: ${h.strategy}_`);
       lines.push('');
     }
@@ -917,7 +783,6 @@ function formatPRComment(report, options = {}) {
     }
   }
 
-  // ── Healing Summary ──
   const healing = report.healing || {};
   if (healing.filesHealed !== undefined || healing.filesScanned !== undefined) {
     lines.push('### Healing Summary');
@@ -931,7 +796,6 @@ function formatPRComment(report, options = {}) {
     lines.push('');
   }
 
-  // ── Deep Score ──
   if (includeDeepScore && report.deepScore) {
     const ds = report.deepScore;
     lines.push('### Deep Score Analysis');
@@ -943,8 +807,8 @@ function formatPRComment(report, options = {}) {
       lines.push('| Dimension | Score | Bar |');
       lines.push('|-----------|-------|-----|');
       for (const [dim, val] of Object.entries(ds.dimensions)) {
-        const score = typeof val === 'number' ? val : val?.score || 0;
-        lines.push(`| ${dim} | ${score.toFixed(3)} | ${progressBar(score, 15)} |`);
+        const dimScore = typeof val === 'number' ? val : val?.score || 0;
+        lines.push(`| ${dim} | ${dimScore.toFixed(3)} | ${progressBar(dimScore, 15)} |`);
       }
       lines.push('');
     }
@@ -954,7 +818,7 @@ function formatPRComment(report, options = {}) {
       lines.push('<summary>Worst Files</summary>');
       lines.push('');
       for (const f of ds.worstFiles.slice(0, 5)) {
-        lines.push(`- \`${f.path}\` — ${scoreIndicator(f.score)}`);
+        lines.push(`- \`${f.path}\` \u2014 ${scoreIndicator(f.score)}`);
       }
       lines.push('');
       lines.push('</details>');
@@ -962,7 +826,6 @@ function formatPRComment(report, options = {}) {
     }
   }
 
-  // ── Security Findings ──
   if (includeSecurity) {
     const findings = report.securityFindings || report.deepScore?.securityFindings || [];
     const count = typeof findings === 'number' ? findings : findings.length;
@@ -984,7 +847,6 @@ function formatPRComment(report, options = {}) {
     }
   }
 
-  // ── All Changed Files ──
   if (includeFiles && healings.length > 0) {
     lines.push('<details>');
     lines.push(`<summary>All Changed Files (${healings.length})</summary>`);
@@ -992,10 +854,10 @@ function formatPRComment(report, options = {}) {
     lines.push('| File | Before | After | Delta |');
     lines.push('|------|--------|-------|-------|');
     for (const h of healings.slice(0, maxFiles)) {
-      const before = h.before ?? h.originalCoherence ?? 0;
-      const after = h.after ?? h.healedCoherence ?? 0;
-      const delta = h.improvement ?? (after - before);
-      lines.push(`| \`${h.path}\` | ${before.toFixed(3)} | ${after.toFixed(3)} | +${delta.toFixed(3)} |`);
+      const hBefore = h.before ?? h.originalCoherence ?? 0;
+      const hAfter = h.after ?? h.healedCoherence ?? 0;
+      const hDelta = h.improvement ?? (hAfter - hBefore);
+      lines.push(`| \`${h.path}\` | ${hBefore.toFixed(3)} | ${hAfter.toFixed(3)} | +${hDelta.toFixed(3)} |`);
     }
     if (healings.length > maxFiles) {
       lines.push(`| _...${healings.length - maxFiles} more_ | | | |`);
@@ -1005,7 +867,6 @@ function formatPRComment(report, options = {}) {
     lines.push('');
   }
 
-  // ── Whisper ──
   const whisper = report.whisper || report.collectiveWhisper || '';
   const whisperText = typeof whisper === 'string' ? whisper : whisper.message || '';
   if (whisperText) {
@@ -1015,11 +876,10 @@ function formatPRComment(report, options = {}) {
     lines.push('');
   }
 
-  // ── Safety ──
   if (report.safety) {
     const s = report.safety;
     if (s.autoRolledBack) {
-      lines.push('> \u26A0\uFE0F **Auto-rollback triggered** — coherence dropped after healing.');
+      lines.push('> \u26A0\uFE0F **Auto-rollback triggered** \u2014 coherence dropped after healing.');
       lines.push('');
     }
     if (s.backup) {
@@ -1028,7 +888,6 @@ function formatPRComment(report, options = {}) {
     }
   }
 
-  // ── Footer ──
   lines.push('---');
   lines.push('');
   lines.push('**Approve to manifest this remembrance.**');
@@ -1085,27 +944,9 @@ function formatCheckRun(report) {
   };
 }
 
-
-
-// ════════════════════════════════════════════════════════════════
-// GITHUB — from github.js
-// ════════════════════════════════════════════════════════════════
-
-/**
- * Remembrance Self-Reflector — GitHub Integration
- *
- * Handles all GitHub operations for the self-reflector:
- * 1. Creating healing branches from the current HEAD
- * 2. Committing healed file changes
- * 3. Opening PRs with whisper explanations
- * 4. Checking for existing reflector PRs
- * 5. Auto-merge support for high-coherence PRs
- *
- * Uses the `gh` CLI or raw `git` commands — no external dependencies.
- */
-
-
-// ─── Branch Naming ───
+// =====================================================================
+// SECTION 4: GitHub — Git/GitHub Operations (from github.js)
+// =====================================================================
 
 /**
  * Generate a unique healing branch name.
@@ -1118,8 +959,6 @@ function generateBranchName() {
   const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   return `remembrance/heal-${date}-${time}`;
 }
-
-// ─── Git Operations ───
 
 /**
  * Execute a git command in the given directory.
@@ -1187,7 +1026,6 @@ function getDefaultBranch(cwd) {
   } catch {
     // Fallback
   }
-  // Check if main exists, otherwise try master
   try {
     git('rev-parse --verify main', cwd);
     return 'main';
@@ -1208,8 +1046,6 @@ function isCleanWorkingTree(cwd) {
   const status = git('status --porcelain', cwd);
   return status === '';
 }
-
-// ─── Healing Branch Operations ───
 
 /**
  * Create a healing branch, commit healed files, and optionally push + open PR.
@@ -1237,7 +1073,6 @@ function createHealingBranch(report, options = {}) {
   const branch = branchName || generateBranchName();
   const result = { branch, baseBranch: base, commits: 0, files: [] };
 
-  // Stash any uncommitted changes
   let stashed = false;
   if (!isCleanWorkingTree(cwd)) {
     git('stash push -m "reflector: stash before healing"', cwd);
@@ -1245,10 +1080,8 @@ function createHealingBranch(report, options = {}) {
   }
 
   try {
-    // Create and switch to healing branch
     git(`checkout -b ${branch}`, cwd);
 
-    // Write healed files
     for (const file of report.healedFiles) {
       const absPath = file.absolutePath || join(cwd, file.path);
       writeFileSync(absPath, file.code, 'utf-8');
@@ -1256,11 +1089,9 @@ function createHealingBranch(report, options = {}) {
       result.files.push(file.path);
     }
 
-    // Commit
     const healingCount = report.healedFiles.length;
     const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper.message}\n\nAvg improvement: +${report.summary.avgImprovement.toFixed(3)}\nOverall health: ${report.collectiveWhisper.overallHealth}`;
 
-    // Use env var to pass commit message safely (avoids shell injection via backticks/$())
     try {
       execSync('git commit -m "$REMEMBRANCE_COMMIT_MSG"', {
         cwd,
@@ -1275,13 +1106,11 @@ function createHealingBranch(report, options = {}) {
     }
     result.commits = 1;
 
-    // Push if requested
     if (push) {
       git(`push -u origin ${branch}`, cwd);
       result.pushed = true;
     }
 
-    // Open PR if requested
     if (openPR && push) {
       const prResult = openHealingPR(report, {
         branch,
@@ -1293,14 +1122,12 @@ function createHealingBranch(report, options = {}) {
       result.prNumber = prResult.number;
     }
   } finally {
-    // Return to original branch
     try {
       git(`checkout ${currentBranch}`, cwd);
     } catch {
       // Best effort
     }
 
-    // Restore stashed changes
     if (stashed) {
       try {
         git('stash pop', cwd);
@@ -1312,8 +1139,6 @@ function createHealingBranch(report, options = {}) {
 
   return result;
 }
-
-// ─── PR Operations ───
 
 /**
  * Open a Healing PR with the reflector report as the body.
@@ -1334,13 +1159,12 @@ function openHealingPR(report, options = {}) {
     return { url: null, error: 'gh CLI not available or not authenticated' };
   }
 
-  const { formatPRBody } = require('./multi');
+  const { formatPRBody } = _multi();
   const body = formatPRBody(report);
 
   const title = `Remembrance Pull: Healed Refinement (+${report.summary.avgImprovement.toFixed(3)})`;
   const labels = 'remembrance,auto-heal';
 
-  // Escape body for shell
   const escapedBody = body.replace(/'/g, "'\\''");
 
   try {
@@ -1349,26 +1173,24 @@ function openHealingPR(report, options = {}) {
       cwd
     );
 
-    // Parse PR URL from output
     const urlMatch = output.match(/https:\/\/github\.com\/[^\s]+/);
     const numberMatch = output.match(/\/pull\/(\d+)/);
 
-    const result = {
+    const prResult = {
       url: urlMatch ? urlMatch[0] : output,
       number: numberMatch ? parseInt(numberMatch[1]) : null,
     };
 
-    // Auto-merge if requested and high coherence
-    if (autoMerge && report.summary.autoMergeRecommended && result.number) {
+    if (autoMerge && report.summary.autoMergeRecommended && prResult.number) {
       try {
-        gh(`pr merge ${result.number} --auto --squash`, cwd);
-        result.autoMergeEnabled = true;
+        gh(`pr merge ${prResult.number} --auto --squash`, cwd);
+        prResult.autoMergeEnabled = true;
       } catch {
-        result.autoMergeEnabled = false;
+        prResult.autoMergeEnabled = false;
       }
     }
 
-    return result;
+    return prResult;
   } catch (err) {
     return { url: null, error: err.message };
   }
@@ -1397,7 +1219,7 @@ function findExistingReflectorPR(cwd) {
  */
 function generateReflectorWorkflow(config = {}) {
   const {
-    schedule = '0 */6 * * *',  // Every 6 hours
+    schedule = '0 */6 * * *',
     minCoherence = 0.7,
     autoMerge = false,
     nodeVersion = '22',
@@ -1460,31 +1282,12 @@ jobs:
 `;
 }
 
-
-
-// ════════════════════════════════════════════════════════════════
-// AUTOCOMMIT — from autoCommit.js
-// ════════════════════════════════════════════════════════════════
-
-/**
- * Remembrance Self-Reflector — Auto-Commit Safety
- *
- * Ensures healing never damages the repo by:
- *
- * 1. createSafetyBranch — create a backup branch at current HEAD before changes
- * 2. runTestGate — execute build/test commands on the healing branch
- * 3. mergeIfPassing — only merge into base when test gate passes
- * 4. safeAutoCommit — full pipeline: branch → heal → test → merge (or abort)
- *
- * Uses only Node.js built-ins.
- */
-
-
-// ─── Safety Branch ───
+// =====================================================================
+// SECTION 5: Auto-Commit Safety (from autoCommit.js)
+// =====================================================================
 
 /**
  * Create a safety branch at current HEAD before any healing begins.
- * This preserves the exact state for rollback if tests fail.
  *
  * @param {string} rootDir - Repository root
  * @param {object} options - { label }
@@ -1508,18 +1311,16 @@ function createSafetyBranch(rootDir, options = {}) {
   };
 }
 
-// ─── Test Gate ───
-
 /**
  * Run build/test commands on the current branch.
- * Returns structured result: pass/fail, stdout, stderr, duration.
  *
  * @param {string} rootDir - Repository root
  * @param {object} options - { testCommand, buildCommand, timeoutMs }
  * @returns {object} { passed, steps[] }
  */
 function runTestGate(rootDir, options = {}) {
-  const config = _getScoring().resolveConfig(rootDir, { env: process.env });
+  const { resolveConfig } = _scoring();
+  const config = resolveConfig(rootDir, { env: process.env });
   const {
     testCommand = config.autoCommit?.testCommand || 'npm test',
     buildCommand = config.autoCommit?.buildCommand || '',
@@ -1545,7 +1346,7 @@ function runTestGate(rootDir, options = {}) {
       result.passed = false;
       result.failedStep = step.name;
       result.failReason = stepResult.error || `${step.name} command exited with non-zero code`;
-      break; // Stop on first failure
+      break;
     }
   }
 
@@ -1594,11 +1395,8 @@ function truncate(str, maxLen) {
   return str.slice(0, maxLen) + `\n... (truncated, ${str.length} total chars)`;
 }
 
-// ─── Merge If Passing ───
-
 /**
  * Merge healing branch into base only if test gate passed.
- * If tests fail, abort and switch back to base branch.
  *
  * @param {string} rootDir - Repository root
  * @param {object} options - { healingBranch, baseBranch, safetyBranch, testResult, squash }
@@ -1614,14 +1412,12 @@ function mergeIfPassing(rootDir, options = {}) {
   } = options;
 
   if (!testResult || !testResult.passed) {
-    // Test gate failed — abort and restore
     try {
       git(`checkout ${baseBranch}`, rootDir);
     } catch {
       // Best effort
     }
 
-    // Delete the healing branch since it failed
     try {
       git(`branch -D ${healingBranch}`, rootDir);
     } catch {
@@ -1638,7 +1434,6 @@ function mergeIfPassing(rootDir, options = {}) {
     };
   }
 
-  // Tests passed — merge into base
   try {
     git(`checkout ${baseBranch}`, rootDir);
 
@@ -1649,7 +1444,6 @@ function mergeIfPassing(rootDir, options = {}) {
       git(`merge ${healingBranch} --no-ff -m "Remembrance Pull: Healed refinement (test-verified)"`, rootDir);
     }
 
-    // Clean up the safety branch (no longer needed since merge succeeded)
     try {
       git(`branch -D ${safetyBranch}`, rootDir);
     } catch {
@@ -1664,7 +1458,6 @@ function mergeIfPassing(rootDir, options = {}) {
       healingBranch,
     };
   } catch (err) {
-    // Merge conflict or error — abort
     try {
       git('merge --abort', rootDir);
     } catch {
@@ -1680,16 +1473,8 @@ function mergeIfPassing(rootDir, options = {}) {
   }
 }
 
-// ─── Full Safe Auto-Commit Pipeline ───
-
 /**
- * Full auto-commit safety pipeline:
- * 1. Create safety branch (backup)
- * 2. Create healing branch from base
- * 3. Apply healed files
- * 4. Run test gate on healing branch
- * 5. Merge if tests pass, abort if they fail
- * 6. Record result to auto-commit history
+ * Full auto-commit safety pipeline.
  *
  * @param {string} rootDir - Repository root
  * @param {object} healedFiles - Array of { path, code } from reflector
@@ -1702,14 +1487,14 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
     buildCommand,
     timeoutMs,
     squash = true,
-    dryRun = false,
+    dryRun: dryRunFlag = false,
     commitMessage,
   } = options;
 
   const startTime = Date.now();
   const result = {
     timestamp: new Date().toISOString(),
-    mode: dryRun ? 'dry-run' : 'live',
+    mode: dryRunFlag ? 'dry-run' : 'live',
     pipeline: [],
   };
 
@@ -1720,7 +1505,6 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
     return result;
   }
 
-  // Step 1: Ensure clean working tree
   if (!isCleanWorkingTree(rootDir)) {
     result.skipped = true;
     result.reason = 'Working tree has uncommitted changes. Stash or commit them first.';
@@ -1728,7 +1512,6 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
     return result;
   }
 
-  // Step 2: Create safety branch (backup)
   let safetyInfo;
   try {
     safetyInfo = createSafetyBranch(rootDir);
@@ -1742,10 +1525,10 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
     return result;
   }
 
-  const baseBranch = safetyInfo.baseBranch;
+  const autoCommitBaseBranch = safetyInfo.baseBranch;
   const healingBranch = generateBranchName();
 
-  if (dryRun) {
+  if (dryRunFlag) {
     result.pipeline.push({ step: 'dry-run', status: 'ok', message: 'Would create healing branch, apply files, run tests, and merge if passing.' });
     result.dryRun = {
       safetyBranch: safetyInfo.branch,
@@ -1754,21 +1537,19 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
       testCommand: testCommand || 'npm test',
       buildCommand: buildCommand || '(none)',
     };
-    // Clean up the safety branch in dry-run
     try { git(`branch -D ${safetyInfo.branch}`, rootDir); } catch { /* ignore */ }
     result.durationMs = Date.now() - startTime;
     recordAutoCommit(rootDir, result);
     return result;
   }
 
-  // Step 3: Create healing branch and apply healed files
   try {
     git(`checkout -b ${healingBranch}`, rootDir);
     result.pipeline.push({ step: 'healing-branch', status: 'ok', branch: healingBranch });
 
     for (const file of healedFiles) {
       const absPath = file.absolutePath || join(rootDir, file.path);
-      fs.writeFileSync(absPath, file.code, 'utf-8');
+      writeFileSync(absPath, file.code, 'utf-8');
       git(`add "${file.path}"`, rootDir);
     }
 
@@ -1777,8 +1558,7 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
     result.pipeline.push({ step: 'commit', status: 'ok', files: healedFiles.length });
   } catch (err) {
     result.pipeline.push({ step: 'commit', status: 'error', error: err.message });
-    // Abort — go back to base
-    try { git(`checkout ${baseBranch}`, rootDir); } catch { /* ignore */ }
+    try { git(`checkout ${autoCommitBaseBranch}`, rootDir); } catch { /* ignore */ }
     try { git(`branch -D ${healingBranch}`, rootDir); } catch { /* ignore */ }
     try { git(`branch -D ${safetyInfo.branch}`, rootDir); } catch { /* ignore */ }
     result.aborted = true;
@@ -1788,7 +1568,6 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
     return result;
   }
 
-  // Step 4: Run test gate
   const testResult = runTestGate(rootDir, { testCommand, buildCommand, timeoutMs });
   result.pipeline.push({
     step: 'test-gate',
@@ -1797,10 +1576,9 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
   });
   result.testResult = testResult;
 
-  // Step 5: Merge or abort
   const mergeResult = mergeIfPassing(rootDir, {
     healingBranch,
-    baseBranch,
+    baseBranch: autoCommitBaseBranch,
     safetyBranch: safetyInfo.branch,
     testResult,
     squash,
@@ -1817,17 +1595,11 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
   result.healingBranch = healingBranch;
   result.durationMs = Date.now() - startTime;
 
-  // Step 6: Record to history
   recordAutoCommit(rootDir, result);
 
   return result;
 }
 
-// ─── History ───
-
-/**
- * Get the path to the auto-commit history file.
- */
 function getAutoCommitHistoryPath(rootDir) {
   return join(rootDir, '.remembrance', 'auto-commit-history.json');
 }
@@ -1836,6 +1608,7 @@ function getAutoCommitHistoryPath(rootDir) {
  * Record an auto-commit result to history.
  */
 function recordAutoCommit(rootDir, result) {
+  const { ensureDir, loadJSON, saveJSON, trimArray } = _scoring();
   const historyPath = getAutoCommitHistoryPath(rootDir);
   ensureDir(join(rootDir, '.remembrance'));
   const history = loadJSON(historyPath, []);
@@ -1857,6 +1630,7 @@ function recordAutoCommit(rootDir, result) {
  * Load auto-commit history.
  */
 function loadAutoCommitHistory(rootDir) {
+  const { loadJSON } = _scoring();
   return loadJSON(getAutoCommitHistoryPath(rootDir), []);
 }
 
@@ -1891,7 +1665,7 @@ function autoCommitStats(rootDir) {
  */
 function formatAutoCommit(result) {
   const lines = [];
-  lines.push('── Auto-Commit Safety Report ──');
+  lines.push('\u2500\u2500 Auto-Commit Safety Report \u2500\u2500');
   lines.push('');
   lines.push(`Mode:      ${result.mode || 'live'}`);
   lines.push(`Time:      ${result.timestamp}`);
@@ -1906,14 +1680,14 @@ function formatAutoCommit(result) {
   lines.push('Pipeline Steps:');
   for (const step of (result.pipeline || [])) {
     const icon = step.status === 'ok' ? '[OK]' : step.status === 'failed' ? '[FAIL]' : '[SKIP]';
-    lines.push(`  ${icon} ${step.step}${step.branch ? ` (${step.branch})` : ''}${step.reason ? ` — ${step.reason}` : ''}`);
+    lines.push(`  ${icon} ${step.step}${step.branch ? ` (${step.branch})` : ''}${step.reason ? ` \u2014 ${step.reason}` : ''}`);
   }
   lines.push('');
 
   if (result.merged) {
     lines.push('RESULT: Healing merged successfully (test-verified).');
   } else if (result.aborted) {
-    lines.push(`RESULT: Aborted — ${result.reason}`);
+    lines.push(`RESULT: Aborted \u2014 ${result.reason}`);
     if (result.safetyBranch) {
       lines.push(`Safety branch preserved: ${result.safetyBranch}`);
     }
@@ -1922,40 +1696,17 @@ function formatAutoCommit(result) {
   return lines.join('\n');
 }
 
-
-
-// ════════════════════════════════════════════════════════════════
-// NOTIFICATIONS — from notifications.js
-// ════════════════════════════════════════════════════════════════
+// =====================================================================
+// SECTION 6: Notifications — Discord / Slack (from notifications.js)
+// =====================================================================
 
 /**
- * Remembrance Self-Reflector — Discord / Slack Notifications
- *
- * Post PR links, coherence deltas, whispers, and healing summaries
- * to Discord or Slack channels via webhook URLs.
- *
- * 1. sendDiscordNotification — POST to Discord webhook
- * 2. sendSlackNotification — POST to Slack webhook
- * 3. formatDiscordEmbed — Rich embed for Discord
- * 4. formatSlackBlocks — Block Kit message for Slack
- * 5. notify — Unified: auto-detect platform from webhook URL
- * 6. notifyFromReport — Build message from reflector report and send
- *
- * Uses only Node.js built-ins (https module for webhook POST).
- */
-
-
-// ─── HTTP POST Helper ───
-
-/**
- * POST JSON to a URL. Returns a promise-like result via callback or sync wrapper.
- * Since the project is zero-dependency and uses sync patterns,
- * this returns a synchronous result using a blocking approach.
+ * POST JSON to a URL.
  *
  * @param {string} webhookUrl - Full URL to POST to
  * @param {object} payload - JSON body
  * @param {object} options - { timeoutMs }
- * @returns {object} { ok, status, error }
+ * @returns {Promise<object>} { ok, status, error }
  */
 function postJSON(webhookUrl, payload, options = {}) {
   const { timeoutMs = 10000 } = options;
@@ -2008,7 +1759,27 @@ function postJSON(webhookUrl, payload, options = {}) {
   }
 }
 
-// ─── Discord ───
+/**
+ * Extract whisper text from a report.
+ */
+function extractWhisper(report) {
+  if (typeof report.whisper === 'string') return report.whisper;
+  if (report.whisper?.message) return report.whisper.message;
+  if (typeof report.collectiveWhisper === 'string') return report.collectiveWhisper;
+  if (report.collectiveWhisper?.message) return report.collectiveWhisper.message;
+  if (report.report?.collectiveWhisper) return report.report.collectiveWhisper;
+  return '';
+}
+
+/**
+ * Detect the platform from a webhook URL.
+ */
+function detectPlatform(webhookUrl) {
+  if (!webhookUrl) return 'unknown';
+  if (webhookUrl.includes('discord.com') || webhookUrl.includes('discordapp.com')) return 'discord';
+  if (webhookUrl.includes('hooks.slack.com')) return 'slack';
+  return 'generic';
+}
 
 /**
  * Build a Discord embed object from a reflector report.
@@ -2030,7 +1801,7 @@ function formatDiscordEmbed(report, options = {}) {
   const deltaStr = delta >= 0 ? `+${delta.toFixed(3)}` : delta.toFixed(3);
 
   const fields = [
-    { name: 'Coherence', value: `${coherenceBefore.toFixed(3)} → ${coherenceAfter.toFixed(3)} (${deltaStr})`, inline: true },
+    { name: 'Coherence', value: `${coherenceBefore.toFixed(3)} \u2192 ${coherenceAfter.toFixed(3)} (${deltaStr})`, inline: true },
     { name: 'Files Healed', value: `${filesHealed}`, inline: true },
   ];
 
@@ -2067,8 +1838,6 @@ async function sendDiscordNotification(webhookUrl, report, options = {}) {
   return postJSON(webhookUrl, embed, { timeoutMs: options.timeoutMs });
 }
 
-// ─── Slack ───
-
 /**
  * Build Slack Block Kit blocks from a reflector report.
  *
@@ -2095,7 +1864,7 @@ function formatSlackBlocks(report, options = {}) {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Coherence:*\n${coherenceBefore.toFixed(3)} → ${coherenceAfter.toFixed(3)} (${deltaStr}) ${emoji}` },
+        { type: 'mrkdwn', text: `*Coherence:*\n${coherenceBefore.toFixed(3)} \u2192 ${coherenceAfter.toFixed(3)} (${deltaStr}) ${emoji}` },
         { type: 'mrkdwn', text: `*Files Healed:*\n${filesHealed}` },
       ],
     },
@@ -2125,7 +1894,7 @@ function formatSlackBlocks(report, options = {}) {
     elements: [{ type: 'mrkdwn', text: '_Remembrance Self-Reflector Bot_' }],
   });
 
-  return { blocks, text: `Remembrance Pull: ${repoName} — ${filesHealed} file(s) healed (${deltaStr})` };
+  return { blocks, text: `Remembrance Pull: ${repoName} \u2014 ${filesHealed} file(s) healed (${deltaStr})` };
 }
 
 /**
@@ -2140,8 +1909,6 @@ async function sendSlackNotification(webhookUrl, report, options = {}) {
   const payload = formatSlackBlocks(report, options);
   return postJSON(webhookUrl, payload, { timeoutMs: options.timeoutMs });
 }
-
-// ─── Unified Notify ───
 
 /**
  * Auto-detect platform from webhook URL and send notification.
@@ -2161,66 +1928,18 @@ async function notify(webhookUrl, report, options = {}) {
     return sendSlackNotification(webhookUrl, report, options);
   }
 
-  // Generic: try Slack-style payload
   return sendSlackNotification(webhookUrl, report, options);
 }
-
-/**
- * Detect the platform from a webhook URL.
- */
-function detectPlatform(webhookUrl) {
-  if (!webhookUrl) return 'unknown';
-  if (webhookUrl.includes('discord.com') || webhookUrl.includes('discordapp.com')) return 'discord';
-  if (webhookUrl.includes('hooks.slack.com')) return 'slack';
-  return 'generic';
-}
-
-// ─── Notify From Report ───
-
-/**
- * Build a notification from a reflector report and send it.
- * Reads webhook config from central config.
- *
- * @param {string} rootDir - Repository root
- * @param {object} report - Reflector report
- * @param {object} options - { repoName, prUrl, webhookUrl, platform }
- * @returns {Promise<object>} Send result
- */
-async function notifyFromReport(rootDir, report, options = {}) {
-  const config = _getScoring().resolveConfig(rootDir, { env: process.env });
-
-  const webhookUrl = options.webhookUrl
-    || config.notifications?.webhookUrl
-    || process.env.REFLECTOR_WEBHOOK_URL;
-
-  if (!webhookUrl) {
-    return { ok: false, error: 'No webhook URL configured. Set notifications.webhookUrl in central config or REFLECTOR_WEBHOOK_URL env var.' };
-  }
-
-  const repoName = options.repoName || config.notifications?.repoName || rootDir.split('/').pop();
-  const platform = options.platform || config.notifications?.platform || detectPlatform(webhookUrl);
-
-  const result = await notify(webhookUrl, report, { ...options, repoName, platform });
-
-  // Record notification in history
-  recordNotification(rootDir, {
-    platform,
-    webhookUrl: webhookUrl.slice(0, 40) + '...',
-    ok: result.ok,
-    status: result.status,
-    error: result.error,
-  });
-
-  return result;
-}
-
-// ─── Notification History ───
 
 function getNotificationLogPath(rootDir) {
   return join(rootDir, '.remembrance', 'notification-log.json');
 }
 
+/**
+ * Record a notification event.
+ */
 function recordNotification(rootDir, entry) {
+  const { ensureDir, loadJSON, saveJSON, trimArray } = _scoring();
   ensureDir(join(rootDir, '.remembrance'));
   const logPath = getNotificationLogPath(rootDir);
   const log = loadJSON(logPath, []);
@@ -2229,10 +1948,17 @@ function recordNotification(rootDir, entry) {
   saveJSON(logPath, log);
 }
 
+/**
+ * Load notification history.
+ */
 function loadNotificationHistory(rootDir) {
+  const { loadJSON } = _scoring();
   return loadJSON(getNotificationLogPath(rootDir), []);
 }
 
+/**
+ * Get notification stats.
+ */
 function notificationStats(rootDir) {
   const log = loadNotificationHistory(rootDir);
   if (log.length === 0) return { total: 0, sent: 0, failed: 0, successRate: 0 };
@@ -2247,58 +1973,61 @@ function notificationStats(rootDir) {
   };
 }
 
-// ─── Helpers ───
+/**
+ * Build a notification from a reflector report and send it.
+ *
+ * @param {string} rootDir - Repository root
+ * @param {object} report - Reflector report
+ * @param {object} options - { repoName, prUrl, webhookUrl, platform }
+ * @returns {Promise<object>} Send result
+ */
+async function notifyFromReport(rootDir, report, options = {}) {
+  const { resolveConfig } = _scoring();
+  const config = resolveConfig(rootDir, { env: process.env });
 
-function extractWhisper(report) {
-  if (typeof report.whisper === 'string') return report.whisper;
-  if (report.whisper?.message) return report.whisper.message;
-  if (typeof report.collectiveWhisper === 'string') return report.collectiveWhisper;
-  if (report.collectiveWhisper?.message) return report.collectiveWhisper.message;
-  if (report.report?.collectiveWhisper) return report.report.collectiveWhisper;
-  return '';
+  const webhookUrl = options.webhookUrl
+    || config.notifications?.webhookUrl
+    || process.env.REFLECTOR_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    return { ok: false, error: 'No webhook URL configured. Set notifications.webhookUrl in central config or REFLECTOR_WEBHOOK_URL env var.' };
+  }
+
+  const repoName = options.repoName || config.notifications?.repoName || rootDir.split('/').pop();
+  const platform = options.platform || config.notifications?.platform || detectPlatform(webhookUrl);
+
+  const result = await notify(webhookUrl, report, { ...options, repoName, platform });
+
+  recordNotification(rootDir, {
+    platform,
+    webhookUrl: webhookUrl.slice(0, 40) + '...',
+    ok: result.ok,
+    status: result.status,
+    error: result.error,
+  });
+
+  return result;
 }
 
+// =====================================================================
+// SECTION 7: Dashboard — Reflector Dashboard (from dashboard.js)
+// =====================================================================
 
+const _dashboardCache = new Map();
+const DASHBOARD_CACHE_TTL_MS = 5000;
 
-// ════════════════════════════════════════════════════════════════
-// DASHBOARD — from dashboard.js
-// ════════════════════════════════════════════════════════════════
-
-/**
- * Remembrance Self-Reflector — Dashboard Integration
- *
- * A lightweight dashboard showing:
- * 1. Repo coherence trend over time (from history v2)
- * 2. Recent healing pulls (files healed, improvements)
- * 3. Healing history timeline
- * 4. Current config mode & thresholds
- * 5. Auto-commit & notification stats
- *
- * Serves a single-page HTML dashboard via Node's built-in http module.
- * Zero external dependencies.
- */
-
-
-// ─── Data Cache (TTL-based, avoids redundant I/O on rapid requests) ───
-
-const _cache = new Map(); // key: rootDir, value: { data, expiry }
-const CACHE_TTL_MS = 5000; // 5-second TTL
-
-function getCached(rootDir) {
-  const entry = _cache.get(rootDir);
+function getDashboardCached(rootDir) {
+  const entry = _dashboardCache.get(rootDir);
   if (entry && Date.now() < entry.expiry) return entry.data;
   return null;
 }
 
-function setCache(rootDir, data) {
-  _cache.set(rootDir, { data, expiry: Date.now() + CACHE_TTL_MS });
+function setDashboardCache(rootDir, data) {
+  _dashboardCache.set(rootDir, { data, expiry: Date.now() + DASHBOARD_CACHE_TTL_MS });
 }
-
-// ─── Data Aggregation ───
 
 /**
  * Gather all dashboard data for a repo.
- * Uses a 5-second TTL cache to avoid repeated I/O on rapid dashboard refreshes.
  *
  * @param {string} rootDir - Repository root
  * @param {object} options - { bypassCache }
@@ -2306,20 +2035,21 @@ function setCache(rootDir, data) {
  */
 function gatherDashboardData(rootDir, options = {}) {
   if (!options.bypassCache) {
-    const cached = getCached(rootDir);
+    const cached = getDashboardCached(rootDir);
     if (cached) return cached;
   }
+
+  const { resolveConfig, getCurrentMode } = _scoring();
   const history = loadHistoryV2(rootDir);
   const stats = computeStats(rootDir);
-  const config = _getScoring().resolveConfig(rootDir, { env: process.env });
-  const mode = config._mode || _getScoring().getCurrentMode(rootDir);
+  const config = resolveConfig(rootDir, { env: process.env });
+  const mode = config._mode || getCurrentMode(rootDir);
   const autoCommit = autoCommitStats(rootDir);
   const notifications = notificationStats(rootDir);
   const patternHook = patternHookStats(rootDir);
 
-  // Build coherence trend from history
   const trend = history.runs
-    .slice(-30) // Last 30 runs
+    .slice(-30)
     .map(r => ({
       timestamp: r.timestamp,
       coherence: r.coherence?.after ?? 0,
@@ -2327,7 +2057,6 @@ function gatherDashboardData(rootDir, options = {}) {
       improvement: r.healing?.avgImprovement ?? 0,
     }));
 
-  // Recent healings
   const recentRuns = history.runs.slice(-10).reverse().map(r => ({
     timestamp: r.timestamp,
     mode: r.trigger || 'live',
@@ -2352,24 +2081,22 @@ function gatherDashboardData(rootDir, options = {}) {
     generatedAt: new Date().toISOString(),
   };
 
-  setCache(rootDir, result);
+  setDashboardCache(rootDir, result);
   return result;
 }
-
-// ─── JSON API ───
 
 /**
  * Handle API requests for the dashboard.
  *
  * @param {string} rootDir - Repository root
- * @param {string} path - Request path
+ * @param {string} reqPath - Request path
  * @returns {object|null} JSON response or null for unmatched paths
  */
-function handleApiRequest(rootDir, path) {
-  if (path === '/api/dashboard') {
+function handleApiRequest(rootDir, reqPath) {
+  if (reqPath === '/api/dashboard') {
     return gatherDashboardData(rootDir);
   }
-  if (path === '/api/trend') {
+  if (reqPath === '/api/trend') {
     const history = loadHistoryV2(rootDir);
     return history.runs.slice(-50).map(r => ({
       timestamp: r.timestamp,
@@ -2377,23 +2104,45 @@ function handleApiRequest(rootDir, path) {
       filesHealed: r.healing?.filesHealed ?? 0,
     }));
   }
-  if (path === '/api/stats') {
+  if (reqPath === '/api/stats') {
     return computeStats(rootDir);
   }
-  if (path === '/api/config') {
-    return _getScoring().resolveConfig(rootDir, { env: process.env });
+  if (reqPath === '/api/config') {
+    const { resolveConfig } = _scoring();
+    return resolveConfig(rootDir, { env: process.env });
   }
-  if (path === '/api/ascii-trend') {
+  if (reqPath === '/api/ascii-trend') {
     return { chart: generateTrendChart(rootDir) };
   }
   return null;
 }
 
-// ─── HTML Dashboard ───
+// ─── Dashboard HTML Helpers ───
+
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function dashboardFormatNum(n) {
+  if (typeof n !== 'number') return 'N/A';
+  return n.toFixed(3);
+}
+
+function dashboardFormatPercent(n) {
+  if (typeof n !== 'number') return 'N/A';
+  return `${(n * 100).toFixed(1)}%`;
+}
+
+function getCoherenceClass(n) {
+  if (typeof n !== 'number') return '';
+  if (n >= 0.8) return 'stat-green';
+  if (n >= 0.6) return 'stat-yellow';
+  return 'stat-red';
+}
 
 /**
  * Generate the full HTML for the reflector dashboard.
- * Single-page app with inline CSS and JS — no external dependencies.
  *
  * @param {object} data - Dashboard data from gatherDashboardData()
  * @returns {string} HTML string
@@ -2407,7 +2156,7 @@ function generateDashboardHTML(data) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Remembrance Reflector — ${escapeHTML(data.repo)}</title>
+<title>Remembrance Reflector \u2014 ${escapeHTML(data.repo)}</title>
 <style>
   :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --green: #3fb950; --yellow: #d29922; --red: #f85149; --blue: #58a6ff; --dim: #8b949e; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -2443,7 +2192,7 @@ function generateDashboardHTML(data) {
 
 <div class="grid">
   <div class="card">
-    <div class="stat-value ${getCoherenceClass(data.stats?.avgCoherence)}">${formatNum(data.stats?.avgCoherence)}</div>
+    <div class="stat-value ${getCoherenceClass(data.stats?.avgCoherence)}">${dashboardFormatNum(data.stats?.avgCoherence)}</div>
     <div class="stat-label">Current Avg Coherence</div>
   </div>
   <div class="card">
@@ -2455,7 +2204,7 @@ function generateDashboardHTML(data) {
     <div class="stat-label">Total Files Healed</div>
   </div>
   <div class="card">
-    <div class="stat-value stat-green">+${formatNum(data.stats?.avgImprovement)}</div>
+    <div class="stat-value stat-green">+${dashboardFormatNum(data.stats?.avgImprovement)}</div>
     <div class="stat-label">Avg Improvement per Run</div>
   </div>
 </div>
@@ -2477,9 +2226,9 @@ function generateDashboardHTML(data) {
   <div class="card">
     <h2>Thresholds</h2>
     <table>
-      <tr><td>Min Coherence</td><td>${formatNum(data.thresholds?.minCoherence)}</td></tr>
-      <tr><td>Auto-Merge Threshold</td><td>${formatNum(data.thresholds?.autoMergeThreshold)}</td></tr>
-      <tr><td>Target Coherence</td><td>${formatNum(data.thresholds?.targetCoherence)}</td></tr>
+      <tr><td>Min Coherence</td><td>${dashboardFormatNum(data.thresholds?.minCoherence)}</td></tr>
+      <tr><td>Auto-Merge Threshold</td><td>${dashboardFormatNum(data.thresholds?.autoMergeThreshold)}</td></tr>
+      <tr><td>Target Coherence</td><td>${dashboardFormatNum(data.thresholds?.targetCoherence)}</td></tr>
       <tr><td>Approval File Threshold</td><td>${data.thresholds?.approvalFileThreshold ?? 'N/A'}</td></tr>
     </table>
   </div>
@@ -2489,7 +2238,7 @@ function generateDashboardHTML(data) {
       <tr><td>Total Runs</td><td>${data.autoCommit?.totalRuns ?? 0}</td></tr>
       <tr><td>Merged</td><td class="stat-green">${data.autoCommit?.merged ?? 0}</td></tr>
       <tr><td>Aborted</td><td class="stat-red">${data.autoCommit?.aborted ?? 0}</td></tr>
-      <tr><td>Success Rate</td><td>${formatPercent(data.autoCommit?.successRate)}</td></tr>
+      <tr><td>Success Rate</td><td>${dashboardFormatPercent(data.autoCommit?.successRate)}</td></tr>
     </table>
   </div>
   <div class="card">
@@ -2498,7 +2247,7 @@ function generateDashboardHTML(data) {
       <tr><td>Total Sent</td><td>${data.notifications?.total ?? 0}</td></tr>
       <tr><td>Successful</td><td class="stat-green">${data.notifications?.sent ?? 0}</td></tr>
       <tr><td>Failed</td><td class="stat-red">${data.notifications?.failed ?? 0}</td></tr>
-      <tr><td>Success Rate</td><td>${formatPercent(data.notifications?.successRate)}</td></tr>
+      <tr><td>Success Rate</td><td>${dashboardFormatPercent(data.notifications?.successRate)}</td></tr>
     </table>
   </div>
   <div class="card">
@@ -2506,9 +2255,9 @@ function generateDashboardHTML(data) {
     <table>
       <tr><td>Total Healings</td><td>${data.patternHook?.totalHealings ?? 0}</td></tr>
       <tr><td>Pattern-Guided</td><td class="stat-green">${data.patternHook?.patternGuided ?? 0}</td></tr>
-      <tr><td>Guided Rate</td><td>${formatPercent(data.patternHook?.patternGuidedRate)}</td></tr>
-      <tr><td>Avg Improvement (Guided)</td><td>${formatNum(data.patternHook?.avgImprovement?.guided)}</td></tr>
-      <tr><td>Avg Improvement (Unguided)</td><td>${formatNum(data.patternHook?.avgImprovement?.unguided)}</td></tr>
+      <tr><td>Guided Rate</td><td>${dashboardFormatPercent(data.patternHook?.patternGuidedRate)}</td></tr>
+      <tr><td>Avg Improvement (Guided)</td><td>${dashboardFormatNum(data.patternHook?.avgImprovement?.guided)}</td></tr>
+      <tr><td>Avg Improvement (Unguided)</td><td>${dashboardFormatNum(data.patternHook?.avgImprovement?.unguided)}</td></tr>
     </table>
   </div>
 </div>
@@ -2519,7 +2268,6 @@ function generateDashboardHTML(data) {
 const trend = ${trendJSON};
 const runs = ${recentJSON};
 
-// Populate runs table
 const tbody = document.getElementById('runsTable');
 runs.forEach(r => {
   const tr = document.createElement('tr');
@@ -2538,7 +2286,6 @@ runs.forEach(r => {
   tbody.appendChild(tr);
 });
 
-// Draw trend chart (simple canvas)
 const canvas = document.getElementById('trendChart');
 if (canvas && trend.length > 1) {
   const ctx = canvas.getContext('2d');
@@ -2557,7 +2304,6 @@ if (canvas && trend.length > 1) {
   const maxV = Math.max(...values, 1.0);
   const rangeV = maxV - minV || 1;
 
-  // Grid lines
   ctx.strokeStyle = '#30363d';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
@@ -2571,7 +2317,6 @@ if (canvas && trend.length > 1) {
     ctx.fillText((maxV - (rangeV * i / 4)).toFixed(2), 4, y + 4);
   }
 
-  // Line
   ctx.strokeStyle = '#3fb950';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -2582,7 +2327,6 @@ if (canvas && trend.length > 1) {
   });
   ctx.stroke();
 
-  // Dots
   ctx.fillStyle = '#3fb950';
   trend.forEach((t, i) => {
     const x = pad.left + (plotW * i / (trend.length - 1));
@@ -2597,32 +2341,6 @@ if (canvas && trend.length > 1) {
 </html>`;
 }
 
-// ─── HTML Helpers ───
-
-function escapeHTML(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
-
-function formatNum(n) {
-  if (typeof n !== 'number') return 'N/A';
-  return n.toFixed(3);
-}
-
-function formatPercent(n) {
-  if (typeof n !== 'number') return 'N/A';
-  return `${(n * 100).toFixed(1)}%`;
-}
-
-function getCoherenceClass(n) {
-  if (typeof n !== 'number') return '';
-  if (n >= 0.8) return 'stat-green';
-  if (n >= 0.6) return 'stat-yellow';
-  return 'stat-red';
-}
-
-// ─── HTTP Server ───
-
 /**
  * Create a dashboard HTTP server.
  *
@@ -2634,11 +2352,10 @@ function createReflectorDashboard(rootDir, options = {}) {
   const { port = 3456 } = options;
 
   const server = http.createServer((req, res) => {
-    const url = req.url.split('?')[0];
+    const reqUrl = req.url.split('?')[0];
 
-    // API routes
-    if (url.startsWith('/api/')) {
-      const apiResult = handleApiRequest(rootDir, url);
+    if (reqUrl.startsWith('/api/')) {
+      const apiResult = handleApiRequest(rootDir, reqUrl);
       if (apiResult) {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify(apiResult, null, 2));
@@ -2649,7 +2366,6 @@ function createReflectorDashboard(rootDir, options = {}) {
       return;
     }
 
-    // Dashboard HTML
     const data = gatherDashboardData(rootDir);
     const html = generateDashboardHTML(data);
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -2672,94 +2388,46 @@ function startReflectorDashboard(rootDir, options = {}) {
   return { server, port, url: `http://localhost:${port}` };
 }
 
+// =====================================================================
+// SECTION 8: Safety — Backup, Rollback, Dry-Run, Approval (from safety.js)
+// =====================================================================
 
-
-// ════════════════════════════════════════════════════════════════
-// SAFETY — from safety.js
-// ════════════════════════════════════════════════════════════════
-
-/**
- * Remembrance Self-Reflector — Safety & Revert Mechanism
- *
- * Axiom 3: No harm. Every healing must be reversible.
- *
- * 1. Backup Branch — snapshot current state before any healing
- * 2. Dry-Run Mode — simulate healing without writing files or committing
- * 3. Approval Gate — require explicit approval before auto-merge
- * 4. Rollback — revert to backup if coherence drops after healing
- *
- * Uses only Node.js built-ins — no external dependencies.
- */
-
-
-// ─── Backup State ───
-
-/**
- * Get the path to the backup manifest file.
- */
 function getBackupManifestPath(rootDir) {
   return join(rootDir, '.remembrance', 'backup-manifest.json');
 }
 
 /**
- * Create a backup of the current state before healing.
- *
- * Two strategies:
- *   - 'git-branch': Create a git branch at current HEAD (lightweight, requires git)
- *   - 'file-copy': Copy files to .remembrance/backups/ (works without git)
- *
- * @param {string} rootDir - Repository root
- * @param {object} options - { strategy, filePaths }
- * @returns {object} Backup manifest
+ * Save backup manifest to disk.
  */
-function createBackup(rootDir, options = {}) {
-  const {
-    strategy = 'git-branch',
-    filePaths = [],
-    label = '',
-  } = options;
+function saveBackupManifest(rootDir, manifest) {
+  const { loadJSON, saveJSON, trimArray } = _scoring();
+  const manifests = loadJSON(getBackupManifestPath(rootDir), []);
+  manifests.push(manifest);
+  trimArray(manifests, 20);
+  saveJSON(getBackupManifestPath(rootDir), manifests);
+}
 
-  const backupId = `backup-${Date.now()}`;
-  const timestamp = new Date().toISOString();
+/**
+ * Load all backup manifests.
+ */
+function loadBackupManifests(rootDir) {
+  const { loadJSON } = _scoring();
+  return loadJSON(getBackupManifestPath(rootDir), []);
+}
 
-  const manifest = {
-    id: backupId,
-    timestamp,
-    strategy,
-    rootDir,
-    label: label || `Pre-healing backup ${timestamp}`,
-    files: [],
-  };
-
-  if (strategy === 'git-branch') {
-    // Create a lightweight backup branch at current HEAD
-    const currentBranch = getCurrentBranch(rootDir);
-    const backupBranch = `remembrance/backup-${Date.now()}`;
-
-    try {
-      git(`branch ${backupBranch}`, rootDir);
-      manifest.branch = backupBranch;
-      manifest.baseBranch = currentBranch;
-      manifest.headCommit = git('rev-parse HEAD', rootDir);
-    } catch (err) {
-      // Fall back to file-copy if git branch fails
-      manifest.strategy = 'file-copy';
-      manifest.branchError = err.message;
-      return createFileCopyBackup(rootDir, filePaths, manifest);
-    }
-  } else {
-    return createFileCopyBackup(rootDir, filePaths, manifest);
-  }
-
-  // Save manifest
-  saveBackupManifest(rootDir, manifest);
-  return manifest;
+/**
+ * Get the most recent backup manifest.
+ */
+function getLatestBackup(rootDir) {
+  const manifests = loadBackupManifests(rootDir);
+  return manifests.length > 0 ? manifests[manifests.length - 1] : null;
 }
 
 /**
  * Create file-copy backup (fallback when git-branch not available).
  */
 function createFileCopyBackup(rootDir, filePaths, manifest) {
+  const { ensureDir } = _scoring();
   const backupDir = join(rootDir, '.remembrance', 'backups', manifest.id);
   ensureDir(backupDir);
   manifest.backupDir = backupDir;
@@ -2791,48 +2459,85 @@ function createFileCopyBackup(rootDir, filePaths, manifest) {
 }
 
 /**
- * Save backup manifest to disk.
+ * Create a backup of the current state before healing.
+ *
+ * @param {string} rootDir - Repository root
+ * @param {object} options - { strategy, filePaths }
+ * @returns {object} Backup manifest
  */
-function saveBackupManifest(rootDir, manifest) {
-  const manifests = loadBackupManifests(rootDir);
-  manifests.push(manifest);
-  trimArray(manifests, 20);
-  saveJSON(getBackupManifestPath(rootDir), manifests);
+function createBackup(rootDir, options = {}) {
+  const {
+    strategy = 'git-branch',
+    filePaths = [],
+    label = '',
+  } = options;
+
+  const backupId = `backup-${Date.now()}`;
+  const timestamp = new Date().toISOString();
+
+  const manifest = {
+    id: backupId,
+    timestamp,
+    strategy,
+    rootDir,
+    label: label || `Pre-healing backup ${timestamp}`,
+    files: [],
+  };
+
+  if (strategy === 'git-branch') {
+    const currentBranch = getCurrentBranch(rootDir);
+    const backupBranch = `remembrance/backup-${Date.now()}`;
+
+    try {
+      git(`branch ${backupBranch}`, rootDir);
+      manifest.branch = backupBranch;
+      manifest.baseBranch = currentBranch;
+      manifest.headCommit = git('rev-parse HEAD', rootDir);
+    } catch (err) {
+      manifest.strategy = 'file-copy';
+      manifest.branchError = err.message;
+      return createFileCopyBackup(rootDir, filePaths, manifest);
+    }
+  } else {
+    return createFileCopyBackup(rootDir, filePaths, manifest);
+  }
+
+  saveBackupManifest(rootDir, manifest);
+  return manifest;
 }
 
 /**
- * Load all backup manifests.
+ * Estimate post-heal average coherence from a report.
  */
-function loadBackupManifests(rootDir) {
-  return loadJSON(getBackupManifestPath(rootDir), []);
-}
+function estimatePostHealCoherence(report) {
+  if (!report.healings || report.healings.length === 0) {
+    return report.snapshot.avgCoherence;
+  }
 
-/**
- * Get the most recent backup manifest.
- */
-function getLatestBackup(rootDir) {
-  const manifests = loadBackupManifests(rootDir);
-  return manifests.length > 0 ? manifests[manifests.length - 1] : null;
-}
+  const totalFiles = report.snapshot.totalFiles || report.summary.filesScanned;
+  if (totalFiles === 0) return 0;
 
-// ─── Dry-Run Mode ───
+  const totalImprovement = report.healings.reduce((s, h) => s + h.improvement, 0);
+
+  return Math.min(
+    1,
+    report.snapshot.avgCoherence + (totalImprovement / totalFiles)
+  );
+}
 
 /**
  * Run the reflector in dry-run mode.
- * Simulates healing without writing files or creating branches.
- * Returns what WOULD happen if healing were applied.
  *
  * @param {string} rootDir - Repository root
  * @param {object} config - Configuration overrides
  * @returns {object} Dry-run report with projected changes
  */
 function dryRun(rootDir, config = {}) {
+  const { reflect } = _multi();
   const startTime = Date.now();
 
-  // Run the full reflect pipeline
-  const report = _getMulti().reflect(rootDir, config);
+  const report = reflect(rootDir, config);
 
-  // Build a projection of what would change
   const projection = {
     timestamp: new Date().toISOString(),
     mode: 'dry-run',
@@ -2874,36 +2579,7 @@ function dryRun(rootDir, config = {}) {
 }
 
 /**
- * Estimate post-heal average coherence from a report.
- */
-function estimatePostHealCoherence(report) {
-  if (!report.healings || report.healings.length === 0) {
-    return report.snapshot.avgCoherence;
-  }
-
-  const totalFiles = report.snapshot.totalFiles || report.summary.filesScanned;
-  if (totalFiles === 0) return 0;
-
-  // Sum of all file coherences, replacing healed files with new values
-  const healedPaths = new Set(report.healings.map(h => h.path));
-  const totalImprovement = report.healings.reduce((s, h) => s + h.improvement, 0);
-
-  // Approximate: current avg * total + total improvement / total
-  return Math.min(
-    1,
-    report.snapshot.avgCoherence + (totalImprovement / totalFiles)
-  );
-}
-
-// ─── Approval Gate ───
-
-/**
  * Check if a healing run requires approval before merging.
- *
- * Approval is required when:
- * - requireApproval is true in config
- * - autoMerge is true but coherence is below autoMergeThreshold
- * - The run modifies more than approvalFileThreshold files
  *
  * @param {object} report - Reflector report
  * @param {object} config - Safety configuration
@@ -2917,7 +2593,6 @@ function checkApproval(report, config = {}) {
     autoMerge = false,
   } = config;
 
-  // If approval not required and no auto-merge, always approve
   if (!requireApproval && !autoMerge) {
     return { approved: true, reason: 'No approval gate configured', requiresManualReview: false };
   }
@@ -2925,7 +2600,6 @@ function checkApproval(report, config = {}) {
   const filesHealed = report.summary ? report.summary.filesHealed : 0;
   const avgCoherence = report.snapshot ? report.snapshot.avgCoherence : 0;
 
-  // Check if too many files were changed
   if (filesHealed > approvalFileThreshold) {
     return {
       approved: false,
@@ -2936,7 +2610,6 @@ function checkApproval(report, config = {}) {
     };
   }
 
-  // Check if coherence is high enough for auto-merge
   if (autoMerge && avgCoherence < autoMergeThreshold) {
     return {
       approved: false,
@@ -2947,7 +2620,6 @@ function checkApproval(report, config = {}) {
     };
   }
 
-  // Explicit approval required
   if (requireApproval) {
     return {
       approved: false,
@@ -2963,12 +2635,13 @@ function checkApproval(report, config = {}) {
  * Record an approval decision for a run.
  */
 function recordApproval(rootDir, runId, decision) {
+  const { loadJSON, saveJSON, trimArray } = _scoring();
   const approvalPath = join(rootDir, '.remembrance', 'approvals.json');
   const approvals = loadJSON(approvalPath, []);
 
   approvals.push({
     runId,
-    decision, // 'approved' | 'rejected'
+    decision,
     timestamp: new Date().toISOString(),
   });
 
@@ -2977,13 +2650,28 @@ function recordApproval(rootDir, runId, decision) {
   return { runId, decision, timestamp: new Date().toISOString() };
 }
 
-// ─── Rollback ───
+/**
+ * Record a rollback event.
+ */
+function recordRollback(rootDir, rollbackResult) {
+  const { loadJSON, saveJSON, trimArray } = _scoring();
+  const rollbackPath = join(rootDir, '.remembrance', 'rollbacks.json');
+  const rollbacks = loadJSON(rollbackPath, []);
+  rollbacks.push(rollbackResult);
+  trimArray(rollbacks, 20);
+  saveJSON(rollbackPath, rollbacks);
+}
+
+/**
+ * Load rollback history.
+ */
+function loadRollbacks(rootDir) {
+  const { loadJSON } = _scoring();
+  return loadJSON(join(rootDir, '.remembrance', 'rollbacks.json'), []);
+}
 
 /**
  * Rollback to a previous backup state.
- *
- * For git-branch backups: checkout the backup branch or reset to backup commit.
- * For file-copy backups: restore files from the backup directory.
  *
  * @param {string} rootDir - Repository root
  * @param {object} options - { backupId, verify }
@@ -2992,11 +2680,10 @@ function recordApproval(rootDir, runId, decision) {
 function rollback(rootDir, options = {}) {
   const { backupId, verify = true } = options;
 
-  // Find the backup
   const manifests = loadBackupManifests(rootDir);
   const backup = backupId
     ? manifests.find(m => m.id === backupId)
-    : manifests[manifests.length - 1]; // Latest
+    : manifests[manifests.length - 1];
 
   if (!backup) {
     return { success: false, error: 'No backup found to rollback to' };
@@ -3011,19 +2698,17 @@ function rollback(rootDir, options = {}) {
 
   if (backup.strategy === 'git-branch' && backup.branch) {
     try {
-      // Take a pre-rollback snapshot for comparison
+      const { takeSnapshot } = _multi();
       let preRollbackCoherence;
       if (verify) {
-        const snap = _getMulti().takeSnapshot(rootDir);
+        const snap = takeSnapshot(rootDir);
         preRollbackCoherence = snap.aggregate.avgCoherence;
       }
 
-      // Reset to the backup commit
       const currentBranch = getCurrentBranch(rootDir);
       if (backup.headCommit) {
         git(`reset --hard ${backup.headCommit}`, rootDir);
       } else {
-        // Merge from backup branch
         git(`merge ${backup.branch} --no-commit`, rootDir);
       }
 
@@ -3031,9 +2716,8 @@ function rollback(rootDir, options = {}) {
       result.restoredBranch = backup.branch;
       result.previousBranch = currentBranch;
 
-      // Verify coherence after rollback
       if (verify) {
-        const postSnap = _getMulti().takeSnapshot(rootDir);
+        const postSnap = takeSnapshot(rootDir);
         result.coherenceBefore = preRollbackCoherence;
         result.coherenceAfter = postSnap.aggregate.avgCoherence;
         result.coherenceDelta = Math.round(
@@ -3045,7 +2729,6 @@ function rollback(rootDir, options = {}) {
       result.error = `Git rollback failed: ${err.message}`;
     }
   } else if (backup.strategy === 'file-copy' && backup.files) {
-    // Restore files from backup directory
     for (const file of backup.files) {
       try {
         if (existsSync(file.backup)) {
@@ -3059,9 +2742,9 @@ function rollback(rootDir, options = {}) {
     }
     result.success = result.filesRestored > 0 || backup.files.length === 0;
 
-    // Verify coherence after rollback
     if (verify && result.success) {
-      const postSnap = _getMulti().takeSnapshot(rootDir);
+      const { takeSnapshot } = _multi();
+      const postSnap = takeSnapshot(rootDir);
       result.coherenceAfter = postSnap.aggregate.avgCoherence;
     }
   } else {
@@ -3069,43 +2752,24 @@ function rollback(rootDir, options = {}) {
     result.error = 'Unknown backup strategy or missing backup data';
   }
 
-  // Record the rollback in history
   recordRollback(rootDir, result);
 
   return result;
 }
 
 /**
- * Record a rollback event.
- */
-function recordRollback(rootDir, rollbackResult) {
-  const rollbackPath = join(rootDir, '.remembrance', 'rollbacks.json');
-  const rollbacks = loadJSON(rollbackPath, []);
-  rollbacks.push(rollbackResult);
-  trimArray(rollbacks, 20);
-  saveJSON(rollbackPath, rollbacks);
-}
-
-/**
- * Load rollback history.
- */
-function loadRollbacks(rootDir) {
-  return loadJSON(join(rootDir, '.remembrance', 'rollbacks.json'), []);
-}
-
-// ─── Coherence Guard ───
-
-/**
  * Check if coherence dropped after a healing run.
- * If it dropped, recommend rollback.
  *
  * @param {string} rootDir - Repository root
  * @param {object} preHealSnapshot - Snapshot taken before healing
- * @param {object} [postHealSnapshot] - Optional post-heal snapshot (avoids redundant scan)
+ * @param {object} [postHealSnapshot] - Optional post-heal snapshot
  * @returns {object} { dropped, delta, recommendation }
  */
 function coherenceGuard(rootDir, preHealSnapshot, postHealSnapshot) {
-  const postSnap = postHealSnapshot || _getMulti().takeSnapshot(rootDir);
+  const postSnap = postHealSnapshot || (() => {
+    const { takeSnapshot } = _multi();
+    return takeSnapshot(rootDir);
+  })();
 
   const preAvg = preHealSnapshot.aggregate
     ? preHealSnapshot.aggregate.avgCoherence
@@ -3139,15 +2803,8 @@ function coherenceGuard(rootDir, preHealSnapshot, postHealSnapshot) {
   return result;
 }
 
-// ─── Safe Reflect Pipeline ───
-
 /**
- * Run the reflector with full safety protections:
- * 1. Create backup before any changes
- * 2. Run healing
- * 3. Check coherence guard
- * 4. Check approval gate
- * 5. Auto-rollback if coherence dropped
+ * Run the reflector with full safety protections.
  *
  * @param {string} rootDir - Repository root
  * @param {object} config - Configuration overrides
@@ -3169,18 +2826,17 @@ function safeReflect(rootDir, config = {}) {
     safety: {},
   };
 
-  // Step 0: Dry-run mode
   if (dryRunMode) {
     result.dryRun = dryRun(rootDir, reflectConfig);
     result.durationMs = Date.now() - startTime;
     return result;
   }
 
-  // Step 1: Take pre-heal snapshot for coherence guard
-  const preSnapshot = _getMulti().takeSnapshot(rootDir, reflectConfig);
+  const { reflect, takeSnapshot } = _multi();
+
+  const preSnapshot = takeSnapshot(rootDir, reflectConfig);
   result.safety.preCoherence = preSnapshot.aggregate.avgCoherence;
 
-  // Step 2: Create backup
   try {
     const filePaths = preSnapshot.files
       .filter(f => !f.error)
@@ -3194,8 +2850,7 @@ function safeReflect(rootDir, config = {}) {
     result.safety.backup = { error: err.message };
   }
 
-  // Step 3: Run the reflector (pass preSnapshot to avoid redundant scan)
-  const report = _getMulti().reflect(rootDir, { ...reflectConfig, _preSnapshot: preSnapshot });
+  const report = reflect(rootDir, { ...reflectConfig, _preSnapshot: preSnapshot });
   result.report = {
     filesScanned: report.summary.filesScanned,
     filesBelowThreshold: report.summary.filesBelowThreshold,
@@ -3206,7 +2861,6 @@ function safeReflect(rootDir, config = {}) {
   };
   result.healedFiles = report.healedFiles;
 
-  // Step 4: Check approval gate
   result.safety.approval = checkApproval(report, {
     requireApproval,
     approvalFileThreshold,
@@ -3214,9 +2868,6 @@ function safeReflect(rootDir, config = {}) {
     autoMergeThreshold: reflectConfig.autoMergeThreshold,
   });
 
-  // Step 5: Coherence guard — check if coherence dropped
-  //   reflect() doesn't write files to disk, so re-scanning would show no change.
-  //   Instead, build a synthetic post-snapshot from the report's estimated improvement.
   if (report.healedFiles && report.healedFiles.length > 0) {
     const estimatedPostCoherence = estimatePostHealCoherence(report);
     const syntheticPostSnap = {
@@ -3224,7 +2875,6 @@ function safeReflect(rootDir, config = {}) {
     };
     result.safety.coherenceGuard = coherenceGuard(rootDir, preSnapshot, syntheticPostSnap);
 
-    // Auto-rollback if coherence dropped and autoRollback is enabled
     if (autoRollback && result.safety.coherenceGuard.dropped && result.safety.coherenceGuard.severity === 'critical') {
       result.safety.autoRolledBack = true;
       result.safety.rollbackResult = rollback(rootDir, { verify: true });
@@ -3236,55 +2886,97 @@ function safeReflect(rootDir, config = {}) {
   return result;
 }
 
-
-
-// ════════════════════════════════════════════════════════════════
-// EXPORTS
-// ════════════════════════════════════════════════════════════════
+// =====================================================================
+// EXPORTS — Everything from all 8 merged modules
+// =====================================================================
 
 module.exports = {
-  // Utilities (shared)
-  ensureDir, loadJSON, saveJSON, trimArray,
+  // ── History ──
+  loadHistoryV2,
+  saveRunRecord,
+  createRunRecord,
+  getHistoryV2Path,
+  appendLog,
+  readLogTail,
+  getLogPath,
+  computeStats,
+  generateTrendChart,
+  generateTimeline,
 
-  // History
-  loadHistoryV2, saveRunRecord, createRunRecord, getHistoryV2Path,
-  appendLog, readLogTail, getLogPath, computeStats,
-  generateTrendChart, generateTimeline,
+  // ── Pattern Hook ──
+  extractFileHints,
+  queryPatternsForFile,
+  buildHealingContext,
+  hookBeforeHeal,
+  batchPatternLookup,
+  recordPatternHookUsage,
+  patternHookStats,
+  formatPatternHook,
 
-  // Pattern Hook
-  extractFileHints, queryPatternsForFile, buildHealingContext,
-  hookBeforeHeal, batchPatternLookup,
-  recordPatternHookUsage, patternHookStats, formatPatternHook,
+  // ── PR Formatter ──
+  progressBar,
+  scoreIndicator,
+  deltaIndicator,
+  formatPRComment,
+  formatFileComment,
+  formatCheckRun,
 
-  // PR Formatter
-  progressBar, scoreIndicator, deltaIndicator,
-  formatPRComment, formatFileComment, formatCheckRun,
-
-  // GitHub
-  generateBranchName, git, gh, isGhAvailable,
-  getCurrentBranch, getDefaultBranch, isCleanWorkingTree,
-  createHealingBranch, openHealingPR, findExistingReflectorPR,
+  // ── GitHub ──
+  generateBranchName,
+  git,
+  gh,
+  isGhAvailable,
+  getCurrentBranch,
+  getDefaultBranch,
+  isCleanWorkingTree,
+  createHealingBranch,
+  openHealingPR,
+  findExistingReflectorPR,
   generateReflectorWorkflow,
 
-  // Auto-Commit
-  createSafetyBranch, runTestGate, runCommand,
-  mergeIfPassing, safeAutoCommit,
-  recordAutoCommit, loadAutoCommitHistory, autoCommitStats, formatAutoCommit,
+  // ── Auto-Commit ──
+  createSafetyBranch,
+  runTestGate,
+  runCommand,
+  mergeIfPassing,
+  safeAutoCommit,
+  recordAutoCommit,
+  loadAutoCommitHistory,
+  autoCommitStats,
+  formatAutoCommit,
 
-  // Notifications
-  postJSON, formatDiscordEmbed, sendDiscordNotification,
-  formatSlackBlocks, sendSlackNotification,
-  notify, detectPlatform, notifyFromReport,
-  loadNotificationHistory, notificationStats, recordNotification,
+  // ── Notifications ──
+  postJSON,
+  formatDiscordEmbed,
+  sendDiscordNotification,
+  formatSlackBlocks,
+  sendSlackNotification,
+  notify,
+  detectPlatform,
+  notifyFromReport,
+  loadNotificationHistory,
+  notificationStats,
+  recordNotification,
 
-  // Dashboard
-  gatherDashboardData, handleApiRequest, generateDashboardHTML,
-  createReflectorDashboard, startReflectorDashboard,
+  // ── Dashboard ──
+  gatherDashboardData,
+  handleApiRequest,
+  generateDashboardHTML,
+  createReflectorDashboard,
+  startReflectorDashboard,
 
-  // Safety
-  createBackup, loadBackupManifests, getLatestBackup, getBackupManifestPath,
-  dryRun, estimatePostHealCoherence,
-  checkApproval, recordApproval,
-  rollback, loadRollbacks, coherenceGuard,
+  // ── Safety ──
+  createBackup,
+  createFileCopyBackup,
+  loadBackupManifests,
+  getLatestBackup,
+  getBackupManifestPath,
+  dryRun,
+  estimatePostHealCoherence,
+  checkApproval,
+  recordApproval,
+  rollback,
+  loadRollbacks,
+  coherenceGuard,
   safeReflect,
 };

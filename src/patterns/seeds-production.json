@@ -1,0 +1,159 @@
+[
+  {
+    "name": "rate-limiter",
+    "code": "class RateLimiter {\n  constructor(maxTokens, refillRate) {\n    this.max = maxTokens;\n    this.tokens = maxTokens;\n    this.rate = refillRate;\n    this.last = Date.now();\n  }\n  _refill() {\n    const now = Date.now();\n    this.tokens = Math.min(this.max, this.tokens + (now - this.last) / 1000 * this.rate);\n    this.last = now;\n  }\n  consume(tokens = 1) {\n    this._refill();\n    if (this.tokens >= tokens) { this.tokens -= tokens; return true; }\n    return false;\n  }\n  remainingTokens() {\n    this._refill();\n    return Math.floor(this.tokens);\n  }\n}",
+    "testCode": "const limiter = new RateLimiter(5, 1);\nif (!limiter.consume(1)) throw new Error('should consume 1 token');\nif (!limiter.consume(4)) throw new Error('should consume remaining 4 tokens');\nif (limiter.consume(1)) throw new Error('should reject when exhausted');\nif (limiter.remainingTokens() !== 0) throw new Error('should have 0 remaining');\nconst l2 = new RateLimiter(3, 10);\nif (!l2.consume(2)) throw new Error('should consume 2 of 3');",
+    "language": "javascript",
+    "description": "Token bucket rate limiter with configurable max tokens and refill rate per second",
+    "tags": [
+      "rate-limit",
+      "throttle",
+      "token-bucket",
+      "concurrency",
+      "rate-limiter"
+    ],
+    "type": "concurrency"
+  },
+  {
+    "name": "semaphore",
+    "code": "class Semaphore {\n  constructor(permits) {\n    this._permits = permits;\n    this._max = permits;\n    this._queue = [];\n  }\n  acquire() {\n    if (this._permits > 0) {\n      this._permits--;\n      return Promise.resolve();\n    }\n    return new Promise(resolve => this._queue.push(resolve));\n  }\n  release() {\n    if (this._queue.length > 0) {\n      this._queue.shift()();\n    } else if (this._permits < this._max) {\n      this._permits++;\n    }\n  }\n  available() {\n    return this._permits;\n  }\n}",
+    "testCode": "const sem = new Semaphore(2);\nif (sem.available() !== 2) throw new Error('should start with 2 permits');\nawait sem.acquire();\nif (sem.available() !== 1) throw new Error('should have 1 after acquire');\nawait sem.acquire();\nif (sem.available() !== 0) throw new Error('should have 0 after 2 acquires');\nlet acquired = false;\nconst pending = sem.acquire().then(() => { acquired = true; });\nsem.release();\nawait pending;\nif (!acquired) throw new Error('should acquire after release');",
+    "language": "javascript",
+    "description": "Counting semaphore with async acquire and bounded permits",
+    "tags": [
+      "semaphore",
+      "concurrency",
+      "async",
+      "locking",
+      "permits"
+    ],
+    "type": "concurrency"
+  },
+  {
+    "name": "promise-queue",
+    "code": "class PromiseQueue {\n  constructor(concurrency = 1) {\n    this._c = concurrency; this._q = []; this._p = 0;\n  }\n  add(fn) {\n    return new Promise((resolve, reject) => {\n      this._q.push({ fn, resolve, reject }); this._run();\n    });\n  }\n  _run() {\n    while (this._p < this._c && this._q.length) {\n      const t = this._q.shift(); this._p++;\n      Promise.resolve(t.fn()).then(\n        v => { this._p--; t.resolve(v); this._run(); },\n        e => { this._p--; t.reject(e); this._run(); }\n      );\n    }\n  }\n  size() { return this._q.length; }\n  pending() { return this._p; }\n}",
+    "testCode": "const q = new PromiseQueue(2);\nconst order = [];\nconst task = (id, ms) => () => new Promise(r => setTimeout(() => { order.push(id); r(id); }, ms));\nconst p1 = q.add(task('a', 50));\nconst p2 = q.add(task('b', 30));\nconst p3 = q.add(task('c', 10));\nif (q.pending() !== 2) throw new Error('should have 2 pending');\nif (q.size() !== 1) throw new Error('should have 1 queued');\nconst results = await Promise.all([p1, p2, p3]);\nif (results.join(',') !== 'a,b,c') throw new Error('should resolve with correct values');",
+    "language": "javascript",
+    "description": "Concurrency-limited promise queue that processes async tasks with bounded parallelism",
+    "tags": [
+      "queue",
+      "promise",
+      "concurrency",
+      "async",
+      "task-queue",
+      "parallel"
+    ],
+    "type": "concurrency"
+  },
+  {
+    "name": "connection-pool",
+    "code": "class ConnectionPool {\n  constructor(factory, opts = {}) {\n    this._f = factory; this._max = opts.max || 10;\n    this._p = []; this._a = 0; this._w = [];\n  }\n  async acquire() {\n    if (this._p.length > 0) { this._a++; return this._p.pop(); }\n    if (this._a < this._max) { this._a++; return this._f(); }\n    return new Promise(r => this._w.push(r));\n  }\n  release(conn) {\n    if (this._w.length > 0) this._w.shift()(conn);\n    else { this._a--; this._p.push(conn); }\n  }\n  drain() {\n    this._p = []; this._w.forEach(r => r(null));\n    this._w = []; this._a = 0;\n  }\n}",
+    "testCode": "let created = 0;\nconst pool = new ConnectionPool(() => ({ id: ++created }), { max: 2 });\nconst c1 = await pool.acquire();\nconst c2 = await pool.acquire();\nif (created !== 2) throw new Error('should create 2 connections');\npool.release(c1);\nconst c3 = await pool.acquire();\nif (c3.id !== c1.id) throw new Error('should reuse released connection');\nif (created !== 2) throw new Error('should not create new after reuse');\nawait pool.drain();",
+    "language": "javascript",
+    "description": "Object connection pool with configurable max size, factory function, and waiting queue",
+    "tags": [
+      "pool",
+      "connection",
+      "concurrency",
+      "resource",
+      "database",
+      "connection-pool"
+    ],
+    "type": "concurrency"
+  },
+  {
+    "name": "event-emitter",
+    "code": "class EventEmitter {\n  constructor() { this._e = {}; }\n  on(event, fn) {\n    (this._e[event] = this._e[event] || []).push(fn);\n    return this;\n  }\n  off(event, fn) {\n    if (this._e[event]) this._e[event] = this._e[event].filter(h => h !== fn);\n    return this;\n  }\n  emit(event, ...args) {\n    if (this._e[event]) this._e[event].slice().forEach(h => h(...args));\n    return this;\n  }\n  once(event, fn) {\n    const w = (...a) => { this.off(event, w); fn(...a); };\n    return this.on(event, w);\n  }\n}",
+    "testCode": "const ee = new EventEmitter();\nlet called = 0;\nconst handler = () => called++;\nee.on('test', handler);\nee.emit('test');\nif (called !== 1) throw new Error('should call handler once');\nee.off('test', handler);\nee.emit('test');\nif (called !== 1) throw new Error('should not call after off');\nlet onceCount = 0;\nee.once('x', () => onceCount++);\nee.emit('x');\nee.emit('x');\nif (onceCount !== 1) throw new Error('once should fire only once');\nlet arg;\nee.on('data', v => { arg = v; });\nee.emit('data', 42);\nif (arg !== 42) throw new Error('should pass arguments to handler');",
+    "language": "javascript",
+    "description": "Minimal event emitter with on, off, emit, and once support",
+    "tags": [
+      "event",
+      "emitter",
+      "pubsub",
+      "observer",
+      "design-pattern",
+      "events"
+    ],
+    "type": "design-pattern"
+  },
+  {
+    "name": "state-machine",
+    "code": "class StateMachine {\n  constructor(config) {\n    this._state = config.initial;\n    this._t = {};\n    for (const t of config.transitions || []) this._t[t.from + ':' + t.event] = t.to;\n  }\n  transition(event) {\n    const next = this._t[this._state + ':' + event];\n    if (!next) throw new Error('Invalid: ' + event + ' from ' + this._state);\n    this._state = next;\n    return this._state;\n  }\n  can(event) {\n    return !!(this._t[this._state + ':' + event]);\n  }\n  getState() { return this._state; }\n}",
+    "testCode": "const sm = new StateMachine({\n  initial: 'idle',\n  transitions: [\n    { from: 'idle', event: 'start', to: 'running' },\n    { from: 'running', event: 'pause', to: 'paused' },\n    { from: 'paused', event: 'resume', to: 'running' },\n    { from: 'running', event: 'stop', to: 'idle' }\n  ]\n});\nif (sm.getState() !== 'idle') throw new Error('initial state should be idle');\nif (!sm.can('start')) throw new Error('should be able to start from idle');\nif (sm.can('pause')) throw new Error('should not pause from idle');\nsm.transition('start');\nif (sm.getState() !== 'running') throw new Error('should be running after start');\nlet threw = false;\ntry { sm.transition('resume'); } catch(e) { threw = true; }\nif (!threw) throw new Error('invalid transition should throw');",
+    "language": "javascript",
+    "description": "Finite state machine with declarative transitions and state querying",
+    "tags": [
+      "state-machine",
+      "fsm",
+      "design-pattern",
+      "state",
+      "transitions"
+    ],
+    "type": "design-pattern"
+  },
+  {
+    "name": "middleware-chain",
+    "code": "class MiddlewareChain {\n  constructor() { this._middlewares = []; }\n  use(fn) {\n    this._middlewares.push(fn);\n    return this;\n  }\n  execute(context) {\n    let index = 0;\n    const next = () => {\n      if (index >= this._middlewares.length) return Promise.resolve();\n      const fn = this._middlewares[index++];\n      return Promise.resolve(fn(context, next));\n    };\n    return next();\n  }\n}",
+    "testCode": "const chain = new MiddlewareChain();\nconst order = [];\nchain.use(async (ctx, next) => { order.push('a'); ctx.a = 1; await next(); order.push('a2'); });\nchain.use(async (ctx, next) => { order.push('b'); ctx.b = 2; await next(); });\nconst ctx = {};\nawait chain.execute(ctx);\nif (ctx.a !== 1 || ctx.b !== 2) throw new Error('middleware should modify context');\nif (order.join(',') !== 'a,b,a2') throw new Error('should execute in onion order: ' + order);\nconst empty = new MiddlewareChain();\nawait empty.execute({});",
+    "language": "javascript",
+    "description": "Express-style middleware chain with async next() calling and context passing",
+    "tags": [
+      "middleware",
+      "chain",
+      "pipeline",
+      "design-pattern",
+      "express",
+      "compose"
+    ],
+    "type": "design-pattern"
+  },
+  {
+    "name": "circuit-breaker",
+    "code": "class CircuitBreaker {\n  constructor(fn, o={}) {\n    this._fn = fn; this._th = o.threshold || 5; this._to = o.timeout || 30000;\n    this._s = 'closed'; this._f = this._at = 0;\n  }\n  async call(...args) {\n    if (this._s === 'open') {\n      if (Date.now() - this._at >= this._to) this._s = 'half-open';\n      else throw new Error('Open');\n    }\n    try {\n      const r = await this._fn(...args);\n      this._f = 0; this._s = 'closed'; return r;\n    } catch (e) {\n      if (++this._f >= this._th) { this._s = 'open'; this._at = Date.now(); }\n      throw e;\n    }\n  }\n  getState() { return this._s; }\n}",
+    "testCode": "let callCount = 0;\nconst breaker = new CircuitBreaker(async () => { callCount++; throw new Error('fail'); }, { threshold: 3, timeout: 100 });\nfor (let i = 0; i < 3; i++) { try { await breaker.call(); } catch(e) {} }\nif (breaker.getState() !== 'open') throw new Error('should be open after threshold failures');\nlet blocked = false;\ntry { await breaker.call(); } catch(e) { blocked = e.message === 'Open'; }\nif (!blocked) throw new Error('should block calls when circuit is open');\nif (callCount !== 3) throw new Error('should not invoke fn when open');\nconst ok = new CircuitBreaker(async (x) => x * 2, { threshold: 5 });\nconst r = await ok.call(21);\nif (r !== 42) throw new Error('should return result on success');",
+    "language": "javascript",
+    "description": "Circuit breaker with closed/open/half-open states, failure threshold, and automatic recovery",
+    "tags": [
+      "circuit-breaker",
+      "resilience",
+      "fault-tolerance",
+      "design-pattern",
+      "reliability"
+    ],
+    "type": "design-pattern"
+  },
+  {
+    "name": "retry-with-backoff",
+    "code": "async function retryWithBackoff(fn, options = {}) {\n  const { maxRetries = 3, baseDelay = 100, maxDelay = 5000, jitter = true } = options;\n  let lastError;\n  for (let i = 0; i <= maxRetries; i++) {\n    try {\n      return await fn();\n    } catch (err) {\n      lastError = err;\n      if (i < maxRetries) {\n        let delay = Math.min(baseDelay * Math.pow(2, i), maxDelay);\n        if (jitter) delay *= 0.5 + Math.random() * 0.5;\n        await new Promise(r => setTimeout(r, delay));\n      }\n    }\n  }\n  throw lastError;\n}",
+    "testCode": "let count = 0;\nconst flaky = async () => { count++; if (count < 3) throw new Error('not yet'); return 'done'; };\nconst result = await retryWithBackoff(flaky, { maxRetries: 3, baseDelay: 10 });\nif (result !== 'done') throw new Error('should return successful result');\nif (count !== 3) throw new Error('should have retried until success');\nlet threw = false;\ntry { await retryWithBackoff(() => { throw new Error('always'); }, { maxRetries: 2, baseDelay: 10 }); }\ncatch(e) { threw = true; if (e.message !== 'always') throw new Error('should throw last error'); }\nif (!threw) throw new Error('should throw after retries exhausted');",
+    "language": "javascript",
+    "description": "Async retry with exponential backoff, jitter, configurable max retries and delay bounds",
+    "tags": [
+      "retry",
+      "backoff",
+      "exponential",
+      "resilience",
+      "async",
+      "utility"
+    ],
+    "type": "utility"
+  },
+  {
+    "name": "memoize-async",
+    "code": "function memoizeAsync(fn, opts = {}) {\n  const { ttl = 0, keyFn = (...a) => JSON.stringify(a), max = 100 } = opts;\n  const cache = new Map(), order = [];\n  return async function(...args) {\n    const k = keyFn(...args), e = cache.get(k);\n    if (e && (!ttl || Date.now() - e.t < ttl)) {\n      const i = order.indexOf(k);\n      if (i > -1) { order.splice(i, 1); order.push(k); }\n      return e.v;\n    }\n    const v = await fn(...args);\n    cache.set(k, { v, t: Date.now() });\n    if (!order.includes(k)) order.push(k);\n    while (order.length > max) cache.delete(order.shift());\n    return v;\n  };\n}",
+    "testCode": "let calls = 0;\nconst fn = memoizeAsync(async (x) => { calls++; return x * 2; }, { max: 2 });\nconst r1 = await fn(5);\nif (r1 !== 10) throw new Error('should return computed value');\nawait fn(5);\nif (calls !== 1) throw new Error('should use cache on second call');\nawait fn(6);\nawait fn(7);\nif (calls !== 3) throw new Error('should compute for new args');\nawait fn(5);\nif (calls !== 4) throw new Error('should evict LRU entry when maxSize exceeded');",
+    "language": "javascript",
+    "description": "Async function memoizer with LRU eviction, TTL expiry, and custom key function",
+    "tags": [
+      "memoize",
+      "cache",
+      "async",
+      "lru",
+      "ttl",
+      "utility",
+      "memoization"
+    ],
+    "type": "utility"
+  }
+]

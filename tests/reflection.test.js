@@ -98,11 +98,19 @@ describe('applyReadable', () => {
 });
 
 describe('applyUnify', () => {
-  it('normalizes quotes when singles dominate', () => {
+  it('normalizes quotes when singles clearly dominate (>2x threshold)', () => {
+    // Singles must be >2x doubles to trigger normalization (healed SERF threshold)
+    const code = "const x = 'hello'; const y = 'there'; const z = 'foo'; const w = \"world\";";
+    const result = applyUnify(code, 'javascript');
+    // 6 singles vs 2 doubles → 6 > 4 → normalizes
+    assert.ok(result.includes("'world'"), `Expected single quotes, got: ${result}`);
+  });
+
+  it('does not normalize quotes when ratio is close', () => {
+    // 4 singles vs 2 doubles → 4 > 4 is false → no normalization
     const code = "const x = 'hello'; const y = 'there'; const z = \"world\";";
     const result = applyUnify(code, 'javascript');
-    // Should convert doubles to singles since singles dominate (4 vs 2)
-    assert.ok(result.includes("'world'"), `Expected single quotes, got: ${result}`);
+    assert.ok(result.includes('"world"'), `Expected no normalization, got: ${result}`);
   });
 });
 

@@ -118,13 +118,20 @@ function applyUnify(code, lang) {
   let result = code;
   if (lang === 'javascript' || lang === 'js' || lang === 'typescript' || lang === 'ts') {
     // Count single vs double quotes to determine preference
+    // Only normalize when one style clearly dominates (2x threshold)
     const singles = (result.match(/'/g) || []).length;
     const doubles = (result.match(/"/g) || []).length;
-    if (singles > doubles) {
-      // Prefer single quotes — convert double to single (not inside template literals)
+    if (singles > doubles * 2) {
+      // Prefer single quotes — convert double to single
       result = result.replace(/"([^"\\]*(?:\\.[^"\\]*)*)"/g, (match, content) => {
-        if (content.includes("'")) return match; // Don't convert if contains single quotes
+        if (content.includes("'")) return match;
         return `'${content}'`;
+      });
+    } else if (doubles > singles * 2) {
+      // Prefer double quotes — convert single to double
+      result = result.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (match, content) => {
+        if (content.includes('"')) return match;
+        return `"${content}"`;
       });
     }
     // Ensure trailing semicolons for statements
@@ -225,10 +232,10 @@ function scoreReadability(code) {
   const destructureVars = (code.match(/\b(const|let|var)\s*[\[{].*[a-z]\s*[,}\]]/g) || []).length;
   const badVars = Math.max(0, singleCharVars - loopVars - destructureVars);
   if (badVars > 0) score -= badVars * 0.05;
-  // Reward presence of comments proportional to code
+  // Reward presence of comments proportional to code (ratio-based positive reinforcement)
   const commentLines = lines.filter(l => l.trim().startsWith('//') || l.trim().startsWith('#') || l.trim().startsWith('*')).length;
-  const codeLines = lines.filter(l => l.trim() && !l.trim().startsWith('//') && !l.trim().startsWith('#')).length;
-  if (codeLines > 10 && commentLines === 0) score -= 0.05;
+  const ratio = lines.length > 0 ? commentLines / lines.length : 0;
+  if (ratio > 0.05) score += 0.05;
   return Math.max(0, Math.min(1, score));
 }
 

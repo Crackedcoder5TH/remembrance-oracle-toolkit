@@ -25,16 +25,23 @@
   },
   "bin": {
     "remembrance-oracle": "src/cli.js",
-    "oracle": "src/cli.js"
+    "oracle": "src/cli.js",
+    "reflector": "bin/reflector"
   },
   "files": [
     "src/",
     "types/",
     "seeds/",
+    "bin/",
     "README.md",
     "QUICKSTART.md",
     "LICENSE",
     "action.yml"
+  ],
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "tools/*"
   ],
   "scripts": {
     "test": "node --test tests/*.test.js",
@@ -45,7 +52,9 @@
     "mcp": "node src/cli.js mcp",
     "seed": "node src/cli.js seed",
     "analytics": "node src/cli.js analytics --json",
-    "postinstall": "node -e \"try{require('fs').mkdirSync('.remembrance',{recursive:true})}catch{}\""
+    "postinstall": "node -e \"try{require('fs').mkdirSync('.remembrance',{recursive:true})}catch{}\"",
+    "dev:cathedral": "npm run dev --workspace=apps/cathedral",
+    "build:cathedral": "npm run build --workspace=apps/cathedral"
   },
   "keywords": [
     "ai",

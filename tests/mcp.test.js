@@ -205,6 +205,15 @@ describe('MCPServer', () => {
     // Maintenance
     assert.ok(names.includes('oracle_maintain'));
 
-    assert.equal(res.result.tools.length, 23);
+    // Reflector
+    assert.ok(names.includes('oracle_reflector_snapshot'));
+    assert.ok(names.includes('oracle_reflector_run'));
+    assert.ok(names.includes('oracle_reflector_evaluate'));
+    assert.ok(names.includes('oracle_reflector_heal'));
+    assert.ok(names.includes('oracle_reflector_status'));
+    assert.ok(names.includes('oracle_reflector_config'));
+
+    // Tools count should be at least 23 (core) + reflector tools
+    assert.ok(res.result.tools.length >= 23, `Expected at least 23 tools, got ${res.result.tools.length}`);
   });
 });

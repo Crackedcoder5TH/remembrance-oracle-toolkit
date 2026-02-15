@@ -7,6 +7,8 @@ const {
   rewriteQuery,
   editDistance,
   applyIntentRanking,
+  applyUsageBoosts,
+  selectSearchMode,
   expandLanguages,
   smartSearch,
   INTENT_PATTERNS,
@@ -369,6 +371,72 @@ describe('smartSearch', () => {
   it('returns null corrections when query unchanged', () => {
     const result = smartSearch(mockOracle, 'sort');
     assert.equal(result.corrections, null);
+  });
+});
+
+// ─── selectSearchMode ───
+
+describe('selectSearchMode', () => {
+  it('returns hybrid when no intents', () => {
+    assert.equal(selectSearchMode({ intents: [] }), 'hybrid');
+  });
+
+  it('returns hybrid for null intent', () => {
+    assert.equal(selectSearchMode(null), 'hybrid');
+  });
+
+  it('returns semantic for performance intent', () => {
+    const intent = parseIntent('fast sorting algorithm');
+    assert.equal(selectSearchMode(intent), 'semantic');
+  });
+
+  it('returns semantic for safety intent', () => {
+    const intent = parseIntent('safe input validator');
+    assert.equal(selectSearchMode(intent), 'semantic');
+  });
+
+  it('returns semantic for functional intent', () => {
+    const intent = parseIntent('compose pipe utility');
+    assert.equal(selectSearchMode(intent), 'semantic');
+  });
+
+  it('returns hybrid for simplicity intent', () => {
+    const intent = parseIntent('simple helper');
+    assert.equal(selectSearchMode(intent), 'hybrid');
+  });
+
+  it('returns hybrid for testing intent', () => {
+    const intent = parseIntent('unit test mock');
+    assert.equal(selectSearchMode(intent), 'hybrid');
+  });
+
+  it('respects explicit mode override', () => {
+    const intent = parseIntent('fast sort');
+    assert.equal(selectSearchMode(intent, 'hybrid'), 'hybrid');
+  });
+
+  it('ignores auto mode override', () => {
+    const intent = parseIntent('fast sort');
+    assert.equal(selectSearchMode(intent, 'auto'), 'semantic');
+  });
+});
+
+// ─── applyUsageBoosts ───
+
+describe('applyUsageBoosts', () => {
+  it('returns empty array for empty results', () => {
+    assert.deepEqual(applyUsageBoosts([], {}), []);
+  });
+
+  it('returns null/undefined results as-is', () => {
+    assert.equal(applyUsageBoosts(null, {}), null);
+  });
+
+  it('returns results unchanged when no insights module', () => {
+    const results = [{ id: '1', name: 'test', matchScore: 0.5 }];
+    const boosted = applyUsageBoosts(results, {});
+    assert.equal(boosted.length, 1);
+    assert.equal(boosted[0].matchScore, 0.5);
   });
 });
 

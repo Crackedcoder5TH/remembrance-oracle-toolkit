@@ -651,6 +651,18 @@ function startMCPServer(oracle) {
     }
   });
 
+  rl.on('error', (err) => {
+    if (process.env.ORACLE_DEBUG) {
+      console.error('[mcp] readline error:', err.message);
+    }
+  });
+
+  process.stdin.on('error', (err) => {
+    if (process.env.ORACLE_DEBUG) {
+      console.error('[mcp] stdin error:', err.message);
+    }
+  });
+
   return server;
 }
 

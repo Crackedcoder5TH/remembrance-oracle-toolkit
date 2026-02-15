@@ -242,7 +242,7 @@ ${c.bold('Pipe support:')}
     `);
 }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   const cmd = args._command;
   const jsonOutFn = () => args.json === true;
@@ -270,7 +270,13 @@ function main() {
 
   const handler = handlers[cmd];
   if (handler) {
-    handler(args);
+    try {
+      await handler(args);
+    } catch (err) {
+      console.error(`${c.boldRed('Error:')} ${err.message || err}`);
+      if (process.env.ORACLE_DEBUG) console.error(err.stack);
+      process.exit(1);
+    }
   } else {
     console.error(`${c.boldRed('Unknown command:')} ${cmd}`);
     console.error(`Run ${c.cyan('oracle help')} for available commands.`);

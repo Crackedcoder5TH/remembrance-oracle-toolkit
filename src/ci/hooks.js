@@ -48,14 +48,15 @@ fi
 FAILED=0
 for file in $STAGED; do
   if [ -f "$file" ]; then
-    result=$(node -e "
+    result=$(ORACLE_CHECK_FILE="$file" node -e "
       try {
         const { covenantCheck } = require('${path.resolve(__dirname, '../core/covenant')}');
         const fs = require('fs');
-        const code = fs.readFileSync('$file', 'utf-8');
-        const r = covenantCheck(code, { description: '$file' });
+        const f = process.env.ORACLE_CHECK_FILE;
+        const code = fs.readFileSync(f, 'utf-8');
+        const r = covenantCheck(code, { description: f });
         if (!r.sealed) {
-          r.violations.forEach(v => console.error('COVENANT BROKEN [' + v.name + ']: ' + v.reason + ' — ' + '$file'));
+          r.violations.forEach(v => console.error('COVENANT BROKEN [' + v.name + ']: ' + v.reason + ' — ' + f));
           process.exit(1);
         }
       } catch(e) {

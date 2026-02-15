@@ -663,6 +663,12 @@ function createDashboardServer(oracle, options = {}) {
         // Ignore malformed messages
       }
     });
+
+    wsServer.on('error', (err) => {
+      if (process.env.ORACLE_DEBUG) {
+        console.error('[dashboard] WebSocket error:', err.message);
+      }
+    });
   } catch {
     // WebSocket module not available — dashboard works without it
   }

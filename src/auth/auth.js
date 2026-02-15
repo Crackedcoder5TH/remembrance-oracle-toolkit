@@ -139,11 +139,12 @@ class AuthManager {
       const password = _getDefaultAdminPassword();
       const admin = this.createUser(DEFAULT_ADMIN_USERNAME, password, ROLES.ADMIN);
       if (process.env.ORACLE_DEBUG) {
+        const maskedKey = admin.apiKey ? admin.apiKey.slice(0, 4) + '…' + admin.apiKey.slice(-4) : '(none)';
         if (process.env.ORACLE_ADMIN_PASSWORD) {
-          console.log(`[auth] Default admin created (password from ORACLE_ADMIN_PASSWORD). API key: ${admin.apiKey}`);
+          console.log(`[auth] Default admin created (password from ORACLE_ADMIN_PASSWORD). API key: ${maskedKey}`);
         } else {
-          console.log(`[auth] Default admin created with generated password: ${password}`);
-          console.log(`[auth] Set ORACLE_ADMIN_PASSWORD env var to use a fixed password. API key: ${admin.apiKey}`);
+          console.log(`[auth] Default admin created with generated password (use ORACLE_ADMIN_PASSWORD env var to set a fixed one).`);
+          console.log(`[auth] API key: ${maskedKey}`);
         }
       }
     }

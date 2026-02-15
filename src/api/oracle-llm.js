@@ -427,56 +427,67 @@ module.exports = {
     ].join('\n');
   },
 
+  /** Build an OracleContext from this oracle instance (cached). */
+  _getEvolutionContext() {
+    if (!this._evolutionCtx) {
+      const { createOracleContext } = require('../evolution/context');
+      this._evolutionCtx = createOracleContext(this);
+    }
+    return this._evolutionCtx;
+  },
+
   selfEvolve(options = {}) {
-    const { evolve } = require('../core/evolution');
-    return evolve(this, options);
+    const { evolve } = require('../evolution/evolution');
+    return evolve(this._getEvolutionContext(), options);
   },
 
   selfImprove(options = {}) {
-    const { selfImprove } = require('../core/self-optimize');
-    return selfImprove(this, options);
+    const { selfImprove } = require('../evolution/self-optimize');
+    return selfImprove(this._getEvolutionContext(), options);
   },
 
   selfOptimize(options = {}) {
-    const { selfOptimize } = require('../core/self-optimize');
-    return selfOptimize(this, options);
+    const { selfOptimize } = require('../evolution/self-optimize');
+    return selfOptimize(this._getEvolutionContext(), options);
   },
 
   consolidateDuplicates(options = {}) {
-    const { consolidateDuplicates } = require('../core/self-optimize');
-    return consolidateDuplicates(this, options);
+    const { consolidateDuplicates } = require('../evolution/self-optimize');
+    return consolidateDuplicates(this._getEvolutionContext(), options);
   },
 
   consolidateTags(options = {}) {
-    const { consolidateTags } = require('../core/self-optimize');
-    return consolidateTags(this, options);
+    const { consolidateTags } = require('../evolution/self-optimize');
+    return consolidateTags(this._getEvolutionContext(), options);
   },
 
   pruneStuckCandidates(options = {}) {
-    const { pruneStuckCandidates } = require('../core/self-optimize');
-    return pruneStuckCandidates(this, options);
+    const { pruneStuckCandidates } = require('../evolution/self-optimize');
+    return pruneStuckCandidates(this._getEvolutionContext(), options);
   },
 
   polishCycle(options = {}) {
-    const { polishCycle } = require('../core/self-optimize');
-    return polishCycle(this, options);
+    const { polishCycle } = require('../evolution/self-optimize');
+    return polishCycle(this._getEvolutionContext(), options);
   },
 
   iterativePolish(options = {}) {
-    const { iterativePolish } = require('../core/self-optimize');
-    return iterativePolish(this, options);
+    const { iterativePolish } = require('../evolution/self-optimize');
+    return iterativePolish(this._getEvolutionContext(), options);
   },
 
   fullOptimizationCycle(options = {}) {
-    const { fullCycle } = require('../core/self-optimize');
-    const { HealingWhisper } = require('../core/whisper');
+    const { fullCycle } = require('../evolution/self-optimize');
+    const { HealingWhisper } = require('../evolution/whisper');
+
+    const ctx = this._getEvolutionContext();
 
     // Start collecting healing whispers
-    const whisper = new HealingWhisper(this);
+    const whisper = new HealingWhisper(ctx);
     whisper.start();
 
     // Run the full cycle
-    const report = fullCycle(this, options);
+    const report = fullCycle(ctx, options);
 
     // Record all healing events into the whisper
     if (report.evolution) {
@@ -497,8 +508,8 @@ module.exports = {
 
   getLifecycle(options = {}) {
     if (!this._lifecycle) {
-      const { LifecycleEngine } = require('../core/lifecycle');
-      this._lifecycle = new LifecycleEngine(this, options);
+      const { LifecycleEngine } = require('../evolution/lifecycle');
+      this._lifecycle = new LifecycleEngine(this._getEvolutionContext(), options);
     }
     return this._lifecycle;
   },

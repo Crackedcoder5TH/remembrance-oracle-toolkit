@@ -49,10 +49,7 @@ const { ModulePattern, DependencyGraph, TemplateEngine, ModuleStore, scaffold, c
 const { PatternComposer, BUILT_IN_TEMPLATES } = require('./patterns/composer');
 const { PluginManager, HookEmitter, VALID_HOOKS } = require('./plugins/manager');
 const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } = require('./health/monitor');
-const { evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS } = require('./core/evolution');
-const { LifecycleEngine, LIFECYCLE_DEFAULTS } = require('./core/lifecycle');
-const { HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS } = require('./core/whisper');
-const { selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, iterativePolish, OPTIMIZE_DEFAULTS } = require('./core/self-optimize');
+const { createOracleContext, evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS, LifecycleEngine, LIFECYCLE_DEFAULTS, HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS, selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, iterativePolish, OPTIMIZE_DEFAULTS } = require('./evolution');
 const { retryWithBackoff, isRetryableError, withRetry, resilientFetchSource } = require('./core/resilience');
 
 module.exports = {
@@ -271,6 +268,9 @@ module.exports = {
   healthCheck,
   metricsSnapshot,
   coherencyDistribution,
+
+  // Evolution Context
+  createOracleContext,
 
   // Self-Evolution
   selfEvolve,

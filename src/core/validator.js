@@ -14,15 +14,36 @@ const os = require('os');
 const { computeCoherencyScore } = require('./coherency');
 const { sandboxExecute } = require('./sandbox');
 const { covenantCheck } = require('./covenant');
+const { actionableFeedback, formatFeedback } = require('./feedback');
+const {
+  MIN_COHERENCY_THRESHOLD,
+  DEFAULT_VALIDATION_TIMEOUT_MS,
+} = require('../constants/thresholds');
 
-const MIN_COHERENCY_THRESHOLD = 0.6;
-
+/**
+ * Validates code through covenant check, optional test execution, and coherency scoring.
+ * Only code that passes all validation gates is considered valid.
+ * @param {string} code - The source code to validate
+ * @param {Object} options - Validation options
+ * @param {string} [options.language] - Programming language (e.g., 'javascript', 'python')
+ * @param {string} [options.testCode] - Test code to execute against the source code
+ * @param {number} [options.threshold] - Minimum coherency threshold (default: MIN_COHERENCY_THRESHOLD)
+ * @param {number} [options.timeout] - Test execution timeout in milliseconds (default: DEFAULT_VALIDATION_TIMEOUT_MS)
+ * @param {boolean} [options.skipCovenant] - Skip covenant check if true
+ * @param {string} [options.description] - Code description for covenant context
+ * @param {string[]} [options.tags] - Code tags for covenant context
+ * @param {boolean} [options.sandbox] - Use sandboxed execution if true (default: true)
+ * @returns {{valid: boolean, testPassed: boolean|null, testOutput: string|null, coherencyScore: Object|null, covenantResult: Object|null, errors: string[], feedback: Object|null}} Validation result
+ */
 function validateCode(code, options = {}) {
+  if (code == null || typeof code !== 'string') {
+    return { valid: false, testPassed: null, testOutput: null, coherencyScore: null, covenantResult: null, errors: ['Invalid input: code must be a non-null string'], feedback: null };
+  }
   const {
     language,
     testCode,
     threshold = MIN_COHERENCY_THRESHOLD,
-    timeout = 10000,
+    timeout = DEFAULT_VALIDATION_TIMEOUT_MS,
     skipCovenant = false,
   } = options;
 
@@ -33,6 +54,7 @@ function validateCode(code, options = {}) {
     coherencyScore: null,
     covenantResult: null,
     errors: [],
+    feedback: null,
   };
 
   // Step 0: Covenant check — the seal above all code
@@ -47,6 +69,8 @@ function validateCode(code, options = {}) {
       for (const v of covenant.violations) {
         result.errors.push(`Covenant broken [${v.name}]: ${v.reason}`);
       }
+      // Generate actionable feedback for covenant violations
+      result.feedback = actionableFeedback(code, result);
       return result; // Rejected — does not reach coherency or testing
     }
   }
@@ -79,9 +103,24 @@ function validateCode(code, options = {}) {
   }
 
   result.valid = result.errors.length === 0;
+
+  // Generate actionable feedback for any failures
+  if (!result.valid) {
+    result.feedback = actionableFeedback(code, result);
+  }
+
   return result;
 }
 
+/**
+ * Executes test code against source code in a temporary file environment.
+ * Supports JavaScript/JS and Python/Py with language-specific test runners.
+ * @param {string} code - The source code to test
+ * @param {string} testCode - The test code to execute
+ * @param {string} language - Programming language ('javascript', 'js', 'python', 'py')
+ * @param {number} timeout - Execution timeout in milliseconds
+ * @returns {{passed: boolean|null, output: string}} Test execution result with pass status and output
+ */
 function executeTest(code, testCode, language, timeout) {
   const lang = language || 'javascript';
   const tmpFile = path.join(os.tmpdir(), `oracle-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);

@@ -383,10 +383,10 @@ describe('Config MCP Tools', () => {
     assert.ok(names.includes('oracle_reflector_central_set'));
   });
 
-  it('should handle central-config via MCP', () => {
+  it('should handle central-config via MCP', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
-    const response = server.handleRequest({
+    const response = await server.handleRequest({
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',

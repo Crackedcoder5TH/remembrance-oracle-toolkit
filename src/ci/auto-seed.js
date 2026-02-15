@@ -209,7 +209,7 @@ function autoSeed(oracle, baseDir, options = {}) {
         result.patterns.push({
           name: d.name,
           id: reg.pattern.id,
-          coherency: reg.validation?.coherencyScore?.total || 0,
+          coherency: reg.validation?.coherencyScore?.total ?? 0,
         });
       } else {
         result.skipped++;

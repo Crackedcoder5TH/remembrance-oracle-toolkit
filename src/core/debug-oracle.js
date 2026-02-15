@@ -5,7 +5,7 @@
  *
  *   1. CAPTURE: Error signature + stack trace + fix code → stored
  *   2. MATCH:   Error fingerprint → search all tiers for matching fixes
- *   3. GENERALIZE: SERF-refine fixes to work across error classes
+ *   3. GENERALIZE: refine fixes to work across error classes
  *   4. GROW:    Transpile fixes, generate for related error categories
  *   5. AMPLIFY: Community shares → more validations → higher confidence
  *
@@ -415,7 +415,7 @@ class DebugOracle {
     // Auto-generate variants
     const variants = this._autoGrow(pattern);
 
-    if (this.verbose) {
+    if (process.env.ORACLE_DEBUG) {
       console.log(`  [DEBUG-CAPTURE] ${fp.errorClass}:${fp.category} → ${id} (+${variants.length} variants)`);
     }
 
@@ -611,7 +611,7 @@ class DebugOracle {
       }
     }
 
-    if (this.verbose) {
+    if (process.env.ORACLE_DEBUG) {
       console.log(`  [DEBUG-GROW] ${report.processed} patterns → ${report.stored} new variants`);
     }
 
@@ -759,7 +759,7 @@ class DebugOracle {
       if (stored) variants.push(stored);
     }
 
-    if (this.verbose && variants.length > 0) {
+    if (process.env.ORACLE_DEBUG && variants.length > 0) {
       console.log(`  [CASCADE] ${pattern.id} (confidence ${pattern.confidence}) → ${variants.length} new variants`);
     }
 

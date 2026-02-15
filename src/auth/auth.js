@@ -30,7 +30,13 @@ const SALT_BYTES = 16;
 const TOKEN_BYTES = 32;
 
 const DEFAULT_ADMIN_USERNAME = 'admin';
-const DEFAULT_ADMIN_PASSWORD = 'oracle-admin';
+
+/** Admin password from env, or auto-generated if unset. */
+function _getDefaultAdminPassword() {
+  if (process.env.ORACLE_ADMIN_PASSWORD) return process.env.ORACLE_ADMIN_PASSWORD;
+  // Generate a random password so we never ship with a known default
+  return crypto.randomBytes(16).toString('hex');
+}
 
 /** Paths that don't require authentication. */
 const publicPaths = ['/api/health', '/health', '/favicon.ico'];
@@ -130,8 +136,17 @@ class AuthManager {
   _ensureDefaultAdmin() {
     const users = this.listUsers();
     if (users.length === 0) {
-      const admin = this.createUser(DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD, ROLES.ADMIN);
-      console.log(`[auth] Default admin created. API key: ${admin.apiKey}`);
+      const password = _getDefaultAdminPassword();
+      const admin = this.createUser(DEFAULT_ADMIN_USERNAME, password, ROLES.ADMIN);
+      if (process.env.ORACLE_DEBUG) {
+        const maskedKey = admin.apiKey ? admin.apiKey.slice(0, 4) + '…' + admin.apiKey.slice(-4) : '(none)';
+        if (process.env.ORACLE_ADMIN_PASSWORD) {
+          console.log(`[auth] Default admin created (password from ORACLE_ADMIN_PASSWORD). API key: ${maskedKey}`);
+        } else {
+          console.log(`[auth] Default admin created with generated password (use ORACLE_ADMIN_PASSWORD env var to set a fixed one).`);
+          console.log(`[auth] API key: ${maskedKey}`);
+        }
+      }
     }
   }
 

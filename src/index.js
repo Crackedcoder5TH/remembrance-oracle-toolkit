@@ -34,10 +34,12 @@ const { discoverPatterns, autoSeed } = require('./ci/auto-seed');
 const { harvest, harvestFunctions, splitFunctions } = require('./ci/harvest');
 const { installHooks, uninstallHooks, runPreCommitCheck } = require('./ci/hooks');
 const { covenantCheck, getCovenant, formatCovenantResult, COVENANT_PRINCIPLES } = require('./core/covenant');
-const { reflectionLoop, formatReflectionResult, observeCoherence, serfScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
+const { actionableFeedback, formatFeedback, covenantFeedback, coherencyFeedback } = require('./core/feedback');
+const { reflectionLoop, formatReflectionResult, observeCoherence, reflectionScore, generateCandidates, STRATEGIES, DIMENSION_WEIGHTS } = require('./core/reflection');
 const { DebugOracle, fingerprint: debugFingerprint, normalizeError, classifyError, computeConfidence, ERROR_CATEGORIES } = require('./core/debug-oracle');
 const { IDEBridge, SEVERITY: IDE_SEVERITY } = require('./ide/bridge');
-const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
+const { parseIntent, rewriteQuery, editDistance, applyIntentRanking, applyUsageBoosts, selectSearchMode, expandLanguages, smartSearch, INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES, LANGUAGE_FAMILIES } = require('./core/search-intelligence');
+const { healStalePatterns, healLowFeedback, healOverEvolved, computeUsageBoosts, actOnInsights, ACTIONABLE_DEFAULTS } = require('./core/actionable-insights');
 const reflectorEngine = require('./reflector/engine');
 const reflectorGithub = require('./reflector/github');
 const reflectorScheduler = require('./reflector/scheduler');
@@ -57,11 +59,16 @@ const reflectorModes = require('./reflector/modes');
 const reflectorNotifications = require('./reflector/notifications');
 const reflectorDashboard = require('./reflector/dashboard');
 const { CloudSyncServer, createToken, verifyToken } = require('./cloud/server');
+const { RemoteOracleClient, registerRemote, removeRemote, listRemotes, federatedRemoteSearch, checkRemoteHealth } = require('./cloud/client');
 const { LLMClient, LLMGenerator } = require('./core/llm-generator');
 const { transpile: astTranspile, parseJS, tokenize: astTokenize, toSnakeCase } = require('./core/ast-transpiler');
 const { ClaudeBridge, findClaudeCLI, extractCodeBlock: extractLLMCode } = require('./core/claude-bridge');
 const { ModulePattern, DependencyGraph, TemplateEngine, ModuleStore, scaffold, compose } = require('./patterns/multi-file');
 const { PatternComposer, BUILT_IN_TEMPLATES } = require('./patterns/composer');
+const { PluginManager, HookEmitter, VALID_HOOKS } = require('./plugins/manager');
+const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } = require('./health/monitor');
+const { createOracleContext, evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS, LifecycleEngine, LIFECYCLE_DEFAULTS, HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS, selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, iterativePolish, OPTIMIZE_DEFAULTS } = require('./evolution');
+const { retryWithBackoff, isRetryableError, withRetry, resilientFetchSource } = require('./core/resilience');
 
 module.exports = {
   // Core
@@ -171,11 +178,17 @@ module.exports = {
   formatCovenantResult,
   COVENANT_PRINCIPLES,
 
-  // Reflection / SERF
+  // Actionable Feedback
+  actionableFeedback,
+  formatFeedback,
+  covenantFeedback,
+  coherencyFeedback,
+
+  // Reflection
   reflectionLoop,
   formatReflectionResult,
   observeCoherence,
-  serfScore,
+  reflectionScore,
   generateCandidates,
   STRATEGIES,
   DIMENSION_WEIGHTS,
@@ -207,12 +220,22 @@ module.exports = {
   rewriteQuery,
   editDistance,
   applyIntentRanking,
+  applyUsageBoosts,
+  selectSearchMode,
   expandLanguages,
   smartSearch,
   INTENT_PATTERNS,
   CORRECTIONS,
   LANGUAGE_ALIASES,
   LANGUAGE_FAMILIES,
+
+  // Actionable Insights
+  healStalePatterns,
+  healLowFeedback,
+  healOverEvolved,
+  computeUsageBoosts,
+  actOnInsights,
+  ACTIONABLE_DEFAULTS,
 
   // Self-Reflector Bot
   reflectorScanDirectory: reflectorEngine.scanDirectory,
@@ -372,6 +395,14 @@ module.exports = {
   createToken,
   verifyToken,
 
+  // Remote Federation
+  RemoteOracleClient,
+  registerRemote,
+  removeRemote,
+  listRemotes,
+  federatedRemoteSearch,
+  checkRemoteHealth,
+
   // LLM Generation
   LLMClient,
   LLMGenerator,
@@ -398,4 +429,56 @@ module.exports = {
   // Pattern Composition
   PatternComposer,
   BUILT_IN_TEMPLATES,
+
+  // Plugin System
+  PluginManager,
+  HookEmitter,
+  VALID_HOOKS,
+
+  // Health & Metrics
+  healthCheck,
+  metricsSnapshot,
+  coherencyDistribution,
+
+  // Evolution Context
+  createOracleContext,
+
+  // Self-Evolution
+  selfEvolve,
+  stalenessPenalty,
+  evolvePenalty,
+  evolutionAdjustment,
+  needsAutoHeal,
+  autoHeal,
+  captureRejection,
+  detectRegressions,
+  recheckCoherency,
+  EVOLUTION_DEFAULTS,
+
+  // Lifecycle Engine
+  LifecycleEngine,
+  LIFECYCLE_DEFAULTS,
+
+  // Healing Whisper
+  HealingWhisper,
+  WHISPER_INTROS,
+  WHISPER_DETAILS,
+
+  // Self-Optimization
+  selfImprove,
+  selfOptimize,
+  fullOptimizationCycle,
+  consolidateDuplicates,
+  consolidateTags,
+  pruneStuckCandidates,
+  polishCycle,
+  iterativePolish,
+  OPTIMIZE_DEFAULTS,
+
+  // Resilience
+  retryWithBackoff,
+  isRetryableError,
+  withRetry,
+  resilientFetchSource,
+
 };

@@ -1,5 +1,5 @@
 /**
- * Git Hook Integration — Pre-commit covenant check and post-commit auto-seed.
+ * Git Hook Integration — Pre-commit covenant check and post-commit auto-submit.
  *
  * Install:
  *   oracle hooks install         # Installs pre-commit + post-commit hooks
@@ -9,7 +9,7 @@
  * Pre-commit: Checks all staged .js/.ts/.py/.go/.rs files against the Covenant.
  *             Blocks commit if any file violates the Kingdom's Weave.
  *
- * Post-commit: Auto-discovers patterns from the committed files and seeds them.
+ * Post-commit: Runs full auto-submit pipeline — harvest, promote, and sync patterns.
  */
 
 const fs = require('fs');
@@ -48,14 +48,15 @@ fi
 FAILED=0
 for file in $STAGED; do
   if [ -f "$file" ]; then
-    result=$(node -e "
+    result=$(ORACLE_CHECK_FILE="$file" node -e "
       try {
         const { covenantCheck } = require('${path.resolve(__dirname, '../core/covenant')}');
         const fs = require('fs');
-        const code = fs.readFileSync('$file', 'utf-8');
-        const r = covenantCheck(code, { description: '$file' });
+        const f = process.env.ORACLE_CHECK_FILE;
+        const code = fs.readFileSync(f, 'utf-8');
+        const r = covenantCheck(code, { description: f });
         if (!r.sealed) {
-          r.violations.forEach(v => console.error('COVENANT BROKEN [' + v.name + ']: ' + v.reason + ' — ' + '$file'));
+          r.violations.forEach(v => console.error('COVENANT BROKEN [' + v.name + ']: ' + v.reason + ' — ' + f));
           process.exit(1);
         }
       } catch(e) {
@@ -80,21 +81,24 @@ fi
 
 /**
  * Generate post-commit hook script.
+ * Runs the full auto-submit pipeline: harvest → promote → sync.
  */
 function postCommitScript() {
   return `#!/bin/sh
 ${HOOK_MARKER}
-# Remembrance Oracle — Post-commit auto-seed
-# Seeds any newly committed source files into the pattern library
+# Remembrance Oracle — Post-commit auto-submit
+# Harvests patterns, promotes candidates, and syncs to personal store
 
 node -e "
   try {
-    const { autoSeed } = require('${path.resolve(__dirname, './auto-seed')}');
+    const { shouldAutoSubmit, autoSubmit } = require('${path.resolve(__dirname, './auto-submit')}');
+    if (!shouldAutoSubmit(process.cwd())) process.exit(0);
     const { RemembranceOracle } = require('${path.resolve(__dirname, '../api/oracle')}');
-    const oracle = new RemembranceOracle();
-    const result = autoSeed(oracle, process.cwd(), { dryRun: false });
-    if (result.registered > 0) {
-      console.log('Oracle: Auto-seeded ' + result.registered + ' pattern(s)');
+    const oracle = new RemembranceOracle({ autoSeed: false });
+    const result = autoSubmit(oracle, process.cwd(), { syncPersonal: true, silent: true });
+    const total = result.harvest.registered + result.promoted;
+    if (total > 0) {
+      console.log('Oracle: ' + result.harvest.registered + ' harvested, ' + result.promoted + ' promoted' + (result.synced ? ', synced' : ''));
     }
   } catch(e) {
     // Silently fail — don't block workflow

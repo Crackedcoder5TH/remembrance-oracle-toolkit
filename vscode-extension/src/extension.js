@@ -4,7 +4,7 @@
  * Integrates the Oracle's proven code memory into the editor:
  * - Diagnostics: covenant violations, coherency warnings, pattern suggestions
  * - Hover: pattern info on function names
- * - Code Actions: debug fixes, pattern upgrades, SERF refinement
+ * - Code Actions: debug fixes, pattern upgrades, reflection refinement
  * - Completions: context-aware pattern suggestions
  * - Sidebar: pattern browser, debug fixes, statistics
  * - Commands: search, smart-search, submit, resolve, debug capture/search

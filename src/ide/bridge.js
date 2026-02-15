@@ -179,7 +179,7 @@ class IDEBridge {
 
   /**
    * Get available code actions for a given context.
-   * Includes: debug fixes, pattern replacements, SERF refinement.
+   * Includes: debug fixes, pattern replacements, Iterative refinement.
    *
    * @param {object} params
    *   - code: The source code
@@ -235,16 +235,16 @@ class IDEBridge {
       } catch {}
     }
 
-    // 3. SERF refinement: offer to heal low-coherency code
+    // 3. Refinement: offer to heal low-coherency code
     if (code) {
       try {
         const { computeCoherencyScore } = require('../core/coherency');
         const score = computeCoherencyScore(code, { language });
         if (score.total < 0.7 && score.total > 0.3) {
           actions.push({
-            title: `SERF Refine: improve coherency from ${score.total.toFixed(3)}`,
+            title: `Refine: improve coherency from ${score.total.toFixed(3)}`,
             kind: 'refactor.rewrite',
-            source: 'oracle-serf',
+            source: 'oracle-refine',
             currentCoherency: score.total,
           });
         }
@@ -456,7 +456,7 @@ class IDEBridge {
       return { applied: true, code: action.code, source: 'pattern-library' };
     }
 
-    if (action.source === 'oracle-serf' && code) {
+    if (action.source === 'oracle-refine' && code) {
       try {
         const { reflectionLoop } = require('../core/reflection');
         const result = reflectionLoop(code, {
@@ -467,8 +467,8 @@ class IDEBridge {
         return {
           applied: true,
           code: result.code,
-          source: 'serf-reflection',
-          improvement: result.serf?.improvement,
+          source: 'iterative-reflection',
+          improvement: result.reflection?.improvement,
           finalCoherency: result.fullCoherency,
         };
       } catch (err) {

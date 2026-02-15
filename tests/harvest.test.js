@@ -233,20 +233,20 @@ function beta() {
   });
 
   describe('MCP oracle_harvest', () => {
-    it('exposes harvest tool', () => {
+    it('exposes harvest tool', async () => {
       const { MCPServer } = require('../src/mcp/server');
       const server = new MCPServer(oracle);
-      const tools = server.handleRequest({ id: 1, method: 'tools/list' });
+      const tools = await server.handleRequest({ id: 1, method: 'tools/list' });
       const harvestTool = tools.result.tools.find(t => t.name === 'oracle_harvest');
       assert.ok(harvestTool, 'oracle_harvest tool should exist');
       assert.ok(harvestTool.inputSchema.properties.path);
     });
 
-    it('handles harvest via MCP', () => {
+    it('handles harvest via MCP', async () => {
       fs.writeFileSync(path.join(srcDir, 'mcp.js'), 'function mcpTest() { return "hello"; }');
       const { MCPServer } = require('../src/mcp/server');
       const server = new MCPServer(oracle);
-      const resp = server.handleRequest({
+      const resp = await server.handleRequest({
         id: 2,
         method: 'tools/call',
         params: { name: 'oracle_harvest', arguments: { path: tmpDir, dryRun: true } },

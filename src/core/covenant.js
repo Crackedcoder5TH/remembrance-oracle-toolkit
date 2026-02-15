@@ -57,31 +57,54 @@ const COVENANT_PRINCIPLES = [
 ];
 
 /**
+ * Strip non-executable content (comments, string/regex literal bodies) from code
+ * before harm pattern scanning. Prevents false positives from keywords appearing
+ * in comments, string definitions, or regex pattern bodies (self-referential issue).
+ */
+function stripNonExecutableContent(code) {
+  let stripped = code;
+  // Remove single-line comments
+  stripped = stripped.replace(/\/\/.*$/gm, '');
+  // Remove multi-line comments
+  stripped = stripped.replace(/\/\*[\s\S]*?\*\//g, '');
+  // Replace template literal contents (preserve delimiters)
+  stripped = stripped.replace(/`(?:[^`\\]|\\.)*`/g, '``');
+  // Replace single-quoted string contents
+  stripped = stripped.replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  // Replace double-quoted string contents
+  stripped = stripped.replace(/"(?:[^"\\]|\\.)*"/g, '""');
+  return stripped;
+}
+
+/**
  * Harmful code signatures organized by covenant principle.
  * Each pattern maps to the principle it violates.
+ * Patterns with keywordOnly: true are checked against stripped code
+ * (comments/strings removed) to avoid self-referential false positives.
  */
 const HARM_PATTERNS = [
   // Principle 2: The Eternal Spiral — infinite harm loops
   { pattern: /while\s*\(\s*true\s*\)\s*\{[^}]*?(fork|exec|spawn|rm\s|del\s|format\s)/i, principle: 2, reason: 'Infinite loop with destructive operation' },
   { pattern: /:\s*\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/, principle: 2, reason: 'Fork bomb detected' },
 
-  // Principle 3: Ultimate Good — general harm
-  { pattern: /\b(ransomware|cryptolocker|keylogger|spyware|rootkit)\b/i, principle: 3, reason: 'Malware terminology detected' },
+  // Principle 3: Ultimate Good — general harm (keywordOnly: scanned against stripped code)
+  { pattern: /\b(ransomware|cryptolocker|keylogger|spyware|rootkit)\b/i, principle: 3, reason: 'Malware terminology detected', keywordOnly: true },
   { pattern: /crypto\.(createCipher|createDecipher)\b.*\b(encrypt|decrypt)\b.*file/is, principle: 3, reason: 'File encryption pattern (potential ransomware)' },
 
   // Principle 6: The Flame — resource exhaustion
   { pattern: /while\s*\(\s*true\s*\)\s*\{\s*\w+\s*\.push\(/i, principle: 6, reason: 'Unbounded memory consumption loop' },
   { pattern: /new\s+Array\(\s*(?:1e\d{2,}|Number\.MAX|Infinity)\s*\)/i, principle: 6, reason: 'Extreme memory allocation' },
 
-  // Principle 7: Voice of the Still Small — social engineering
-  { pattern: /\b(phishing|credential[s]?\s*harvest|fake\s*login)\b/i, principle: 7, reason: 'Social engineering pattern detected' },
+  // Principle 7: Voice of the Still Small — social engineering (keywordOnly: scanned against stripped code)
+  { pattern: /\b(phishing|credential[s]?\s*harvest|fake\s*login)\b/i, principle: 7, reason: 'Social engineering pattern detected', keywordOnly: true },
 
   // Principle 8: The Watchman's Wall — security bypass
   { pattern: /process\.env\[.*\]\s*=\s*['"].*password/i, principle: 8, reason: 'Hardcoded credential injection' },
   { pattern: /setuid\s*\(\s*0\s*\)|setgid\s*\(\s*0\s*\)/i, principle: 8, reason: 'Privilege escalation to root' },
 
-  // Principle 9: Seed and Harvest — amplification
-  { pattern: /\bfor\s*\([^)]*\)\s*\{[^}]*net\.connect|http\.request|fetch\s*\(/i, principle: 9, reason: 'Network request amplification loop' },
+  // Principle 9: Seed and Harvest — amplification (fixed: grouped alternation so
+  // http.request and fetch only match INSIDE a for-loop body, not anywhere in code)
+  { pattern: /\bfor\s*\([^)]*\)\s*\{[^}]*(?:net\.connect|http\.request|fetch\s*\()/i, principle: 9, reason: 'Network request amplification loop' },
   { pattern: /dns\.(resolve|lookup)\s*\(.*\bfor\b/i, principle: 9, reason: 'DNS amplification pattern' },
 
   // Principle 10: The Table of Nations — unauthorized access
@@ -118,6 +141,16 @@ const HARM_PATTERNS = [
   { pattern: /format\s+[A-Z]:\s*\/[Yy]/i, principle: 15, reason: 'Drive formatting command' },
 ];
 
+// ─── Custom principle registry reference (set by PluginManager integration) ───
+let _customPrincipleRegistry = null;
+
+/**
+ * Set the custom principle registry for plugin-provided covenant principles.
+ */
+function setPrincipleRegistry(registry) {
+  _customPrincipleRegistry = registry;
+}
+
 /**
  * Run the covenant filter on code.
  *
@@ -132,9 +165,15 @@ function covenantCheck(code, metadata = {}) {
   const violations = [];
   const violatedPrinciples = new Set();
 
+  // Strip non-executable content for keyword-only patterns to avoid
+  // self-referential false positives (e.g. security scanner code containing
+  // harm keywords in comments, string definitions, or regex patterns)
+  const strippedCode = stripNonExecutableContent(code);
+
   // Scan code against all harm patterns
   for (const hp of HARM_PATTERNS) {
-    if (hp.pattern.test(code)) {
+    const codeToCheck = hp.keywordOnly ? strippedCode : code;
+    if (hp.pattern.test(codeToCheck)) {
       const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);
       violations.push({
         principle: hp.principle,
@@ -172,13 +211,25 @@ function covenantCheck(code, metadata = {}) {
     }
   }
 
-  const principlesPassed = COVENANT_PRINCIPLES.length - violatedPrinciples.size;
+  // Check custom principles from plugin registry
+  let customPrincipleCount = 0;
+  if (_customPrincipleRegistry) {
+    const customViolations = _customPrincipleRegistry.check(code);
+    customPrincipleCount = _customPrincipleRegistry.list().length;
+    for (const cv of customViolations) {
+      violations.push(cv);
+      violatedPrinciples.add(cv.principle);
+    }
+  }
+
+  const totalPrinciples = COVENANT_PRINCIPLES.length + customPrincipleCount;
+  const principlesPassed = totalPrinciples - violatedPrinciples.size;
 
   return {
     sealed: violations.length === 0,
     violations,
     principlesPassed,
-    totalPrinciples: COVENANT_PRINCIPLES.length,
+    totalPrinciples,
   };
 }
 
@@ -204,10 +255,197 @@ function formatCovenantResult(result) {
   return lines.join('\n');
 }
 
+// ─── Deep Security Scan (External Tools + Extended Checks) ───
+
+/**
+ * Language-specific vulnerability patterns beyond the base covenant.
+ * These catch common security anti-patterns that regex can detect.
+ */
+const DEEP_SECURITY_PATTERNS = {
+  javascript: [
+    { pattern: /document\.write\s*\(/, reason: 'document.write can enable XSS', severity: 'medium' },
+    { pattern: /\.outerHTML\s*=/, reason: 'outerHTML assignment can enable XSS', severity: 'medium' },
+    { pattern: /JSON\.parse\s*\(\s*(?!['"`])/, reason: 'Unvalidated JSON.parse (potential prototype pollution)', severity: 'medium' },
+    { pattern: /Object\.assign\s*\(\s*\{\}\s*,\s*(?:req\.body|req\.query|input|params|data)/i, reason: 'Prototype pollution via Object.assign with user input', severity: 'high' },
+    { pattern: /\.__proto__\s*[=\[]/, reason: 'Direct __proto__ manipulation (prototype pollution)', severity: 'high' },
+    { pattern: /crypto\.createHash\s*\(\s*['"]md5['"]\s*\)/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
+    { pattern: /crypto\.createHash\s*\(\s*['"]sha1['"]\s*\)/, reason: 'SHA1 is deprecated for security use', severity: 'low' },
+    { pattern: /Math\.random\s*\(/, reason: 'Math.random is not cryptographically secure', severity: 'low' },
+    { pattern: /new\s+Function\s*\(.*\+/, reason: 'Dynamic Function constructor with concatenation', severity: 'high' },
+    { pattern: /setTimeout\s*\(\s*['"`]/, reason: 'setTimeout with string argument acts like eval', severity: 'medium' },
+    { pattern: /setInterval\s*\(\s*['"`]/, reason: 'setInterval with string argument acts like eval', severity: 'medium' },
+    { pattern: /(?:password|secret|api_key|apikey|token)\s*[:=]\s*['"](?!(?:test|fake|mock|dummy|example|placeholder|xxx|TODO)[^'"]*['"])[^'"]{6,}/i, reason: 'Hardcoded secret/credential detected', severity: 'high' },
+    { pattern: /disable.*(?:csrf|xss|cors|auth|ssl|tls|verify)/i, reason: 'Security feature explicitly disabled', severity: 'high' },
+    { pattern: /rejectUnauthorized\s*:\s*false/, reason: 'TLS certificate validation disabled', severity: 'high' },
+    { pattern: /NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['"]0['"]/, reason: 'TLS validation disabled globally', severity: 'high' },
+  ],
+  python: [
+    { pattern: /\bpickle\.loads?\s*\(/, reason: 'pickle deserialization can execute arbitrary code', severity: 'high' },
+    { pattern: /\byaml\.load\s*\([^)]*(?!Loader)/, reason: 'yaml.load without SafeLoader allows code execution', severity: 'high' },
+    { pattern: /\bexec\s*\(/, reason: 'exec() can execute arbitrary code', severity: 'high' },
+    { pattern: /\beval\s*\(/, reason: 'eval() can execute arbitrary code', severity: 'high' },
+    { pattern: /subprocess\.(?:call|run|Popen)\s*\(\s*(?!.*shell\s*=\s*False).*shell\s*=\s*True/i, reason: 'Shell injection via subprocess', severity: 'high' },
+    { pattern: /os\.system\s*\(/, reason: 'os.system() is vulnerable to shell injection', severity: 'high' },
+    { pattern: /\bhashlib\.md5\b/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
+    { pattern: /\brandom\.\w+\s*\(/, reason: 'random module is not cryptographically secure', severity: 'low' },
+    { pattern: /\bassert\s+\w+.*#.*security/i, reason: 'assert statements are stripped in optimized mode', severity: 'medium' },
+    { pattern: /(?:password|secret|api_key|token)\s*=\s*['"](?!(?:test|fake|mock|dummy|example|placeholder|xxx|TODO)[^'"]*['"])[^'"]{6,}/i, reason: 'Hardcoded secret/credential detected', severity: 'high' },
+  ],
+  go: [
+    { pattern: /\bexec\.Command\s*\(\s*["'](?:sh|bash)["']/, reason: 'Shell command execution', severity: 'high' },
+    { pattern: /\bunsafe\.Pointer\b/, reason: 'unsafe.Pointer bypasses Go type safety', severity: 'medium' },
+    { pattern: /InsecureSkipVerify\s*:\s*true/, reason: 'TLS verification disabled', severity: 'high' },
+    { pattern: /\bmd5\.New\b/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
+    { pattern: /fmt\.Sprintf\s*\(\s*\w+/, reason: 'Format string from variable (potential format string attack)', severity: 'medium' },
+  ],
+  typescript: [], // Inherits JavaScript patterns
+};
+
+// TypeScript inherits JavaScript patterns
+DEEP_SECURITY_PATTERNS.typescript = [...DEEP_SECURITY_PATTERNS.javascript];
+
+/**
+ * Run a deep security scan on code.
+ * Combines:
+ *   1. Base covenant check (15 principles)
+ *   2. Language-specific vulnerability patterns
+ *   3. External tool integration (Bandit, Semgrep, npm audit, Snyk) when available
+ *
+ * @param {string} code
+ * @param {object} options - { language, runExternalTools? }
+ * @returns {{ passed, covenant, deepFindings, externalTools, veto, whisper }}
+ */
+function deepSecurityScan(code, options = {}) {
+  const { language = 'javascript', runExternalTools = false } = options;
+
+  // Step 1: Base covenant
+  const covenant = covenantCheck(code, options);
+
+  // Step 2: Language-specific deep patterns
+  const langPatterns = DEEP_SECURITY_PATTERNS[language] || DEEP_SECURITY_PATTERNS.javascript;
+  const deepFindings = [];
+
+  for (const check of langPatterns) {
+    if (check.pattern.test(code)) {
+      deepFindings.push({
+        severity: check.severity,
+        reason: check.reason,
+        language,
+      });
+    }
+  }
+
+  // Step 3: External tool integration (best-effort)
+  const externalTools = [];
+  if (runExternalTools) {
+    const { execSync } = require('child_process');
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'covenant-scan-'));
+
+    try {
+      const ext = language === 'python' ? '.py' : language === 'go' ? '.go' : '.js';
+      const tmpFile = path.join(tmpDir, `scan${ext}`);
+      fs.writeFileSync(tmpFile, code);
+
+      // Semgrep (multi-language)
+      try {
+        const semgrepOut = execSync(`semgrep --config auto --json "${tmpFile}" 2>/dev/null`, { timeout: 15000 }).toString();
+        const semgrepResult = JSON.parse(semgrepOut);
+        if (semgrepResult.results?.length > 0) {
+          for (const r of semgrepResult.results.slice(0, 5)) {
+            externalTools.push({
+              tool: 'semgrep',
+              severity: r.extra?.severity || 'medium',
+              reason: r.extra?.message || r.check_id,
+              ruleId: r.check_id,
+            });
+          }
+        }
+      } catch { /* semgrep not installed or failed — skip */ }
+
+      // Bandit (Python only)
+      if (language === 'python') {
+        try {
+          const banditOut = execSync(`bandit -f json "${tmpFile}" 2>/dev/null`, { timeout: 10000 }).toString();
+          const banditResult = JSON.parse(banditOut);
+          if (banditResult.results?.length > 0) {
+            for (const r of banditResult.results.slice(0, 5)) {
+              externalTools.push({
+                tool: 'bandit',
+                severity: r.issue_severity?.toLowerCase() || 'medium',
+                reason: r.issue_text,
+                testId: r.test_id,
+              });
+            }
+          }
+        } catch { /* bandit not installed — skip */ }
+      }
+    } finally {
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* cleanup */ }
+    }
+  }
+
+  // Determine veto
+  const highFindings = deepFindings.filter(f => f.severity === 'high');
+  const criticalExternal = externalTools.filter(f => f.severity === 'high' || f.severity === 'error');
+  const veto = !covenant.sealed || highFindings.length > 0 || criticalExternal.length > 0;
+
+  // Generate security whisper
+  let whisper;
+  if (veto) {
+    const reasons = [
+      ...(!covenant.sealed ? ['covenant violation'] : []),
+      ...highFindings.map(f => f.reason),
+      ...criticalExternal.map(f => `${f.tool}: ${f.reason}`),
+    ];
+    whisper = `This path was vetoed for safety. ${reasons[0]}.`;
+  } else if (deepFindings.length > 0) {
+    whisper = `The code passed the covenant but has ${deepFindings.length} advisory finding(s). Consider reviewing: ${deepFindings[0].reason}.`;
+  } else {
+    whisper = 'The code stands clean. All security principles upheld.';
+  }
+
+  return {
+    passed: !veto,
+    covenant: { sealed: covenant.sealed, violations: covenant.violations.length, principlesPassed: covenant.principlesPassed },
+    deepFindings,
+    externalTools,
+    veto,
+    whisper,
+    totalFindings: covenant.violations.length + deepFindings.length + externalTools.length,
+  };
+}
+
+/**
+ * Safe JSON.parse that strips prototype pollution keys (__proto__, constructor.prototype).
+ * Use this for any data from external/untrusted sources (HTTP bodies, WebSocket messages, etc.).
+ *
+ * @param {string} str - JSON string to parse
+ * @param {*} [fallback={}] - Value to return on parse failure
+ * @returns {*} Parsed object with dangerous keys stripped
+ */
+function safeJsonParse(str, fallback = {}) {
+  try {
+    return JSON.parse(str, (key, value) => {
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') return undefined;
+      return value;
+    });
+  } catch {
+    return fallback;
+  }
+}
+
 module.exports = {
   covenantCheck,
   getCovenant,
   formatCovenantResult,
+  deepSecurityScan,
+  safeJsonParse,
+  setPrincipleRegistry,
+  stripNonExecutableContent,
   COVENANT_PRINCIPLES,
   HARM_PATTERNS,
+  DEEP_SECURITY_PATTERNS,
 };

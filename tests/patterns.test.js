@@ -1,21 +1,19 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
 const { PatternLibrary, classifyPattern, inferComplexity, THRESHOLDS } = require('../src/patterns/library');
+const { makeTempDir, cleanTempDir } = require('./helpers');
 
 describe('PatternLibrary', () => {
   let tmpDir;
   let lib;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'patterns-test-'));
+    tmpDir = makeTempDir('patterns-test');
     lib = new PatternLibrary(tmpDir);
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    cleanTempDir(tmpDir);
   });
 
   describe('register', () => {

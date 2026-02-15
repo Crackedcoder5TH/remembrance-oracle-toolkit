@@ -317,7 +317,7 @@ describe('Integration: Pattern Hook → SERF', () => {
     });
 
     // SERF should have run with cascade boost
-    assert.ok(result.serf.cascadeBoost === 1.05);
+    assert.ok(result.reflection.cascadeBoost === 1.05);
     assert.ok(result.coherence > 0);
   });
 });

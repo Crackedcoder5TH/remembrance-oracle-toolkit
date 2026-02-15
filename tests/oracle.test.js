@@ -1,21 +1,19 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
 const { RemembranceOracle } = require('../src/api/oracle');
+const { makeTempDir, cleanTempDir } = require('./helpers');
 
 describe('RemembranceOracle', () => {
   let tmpDir;
   let oracle;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-test-'));
+    tmpDir = makeTempDir('oracle-test');
     oracle = new RemembranceOracle({ baseDir: tmpDir, threshold: 0.5, autoSeed: false });
   });
 
   afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    cleanTempDir(tmpDir);
   });
 
   describe('submit', () => {

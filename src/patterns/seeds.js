@@ -904,4 +904,38 @@ function seedLibrary(oracle) {
   return { registered, skipped, failed, total: SEEDS.length };
 }
 
-module.exports = { seedLibrary, SEEDS };
+/**
+ * Seed native patterns for non-JS languages (Python, Go, Rust).
+ * These are idiomatic patterns, not transpiled from JS.
+ */
+function seedNativeLibrary(oracle, options = {}) {
+  const existing = oracle.patterns.getAll();
+  const existingNames = new Set(existing.map(p => p.name));
+
+  let allSeeds = [];
+  try { const { PYTHON_SEEDS } = require('./seeds-python'); allSeeds.push(...PYTHON_SEEDS); } catch { /* no python seeds */ }
+  try { const { GO_SEEDS } = require('./seeds-go'); allSeeds.push(...GO_SEEDS); } catch { /* no go seeds */ }
+  try { const { RUST_SEEDS } = require('./seeds-rust'); allSeeds.push(...RUST_SEEDS); } catch { /* no rust seeds */ }
+
+  let registered = 0, skipped = 0, failed = 0;
+
+  for (const seed of allSeeds) {
+    if (existingNames.has(seed.name)) {
+      skipped++;
+      continue;
+    }
+
+    const result = oracle.registerPattern(seed);
+    if (result.registered) {
+      registered++;
+      if (options.verbose) console.log(`  [OK] ${seed.name} (${seed.language})`);
+    } else {
+      failed++;
+      if (options.verbose) console.log(`  [FAIL] ${seed.name}: ${result.reason}`);
+    }
+  }
+
+  return { registered, skipped, failed, total: allSeeds.length };
+}
+
+module.exports = { seedLibrary, seedNativeLibrary, SEEDS };

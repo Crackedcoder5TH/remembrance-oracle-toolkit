@@ -6,7 +6,7 @@ Before writing any new function, utility, or pattern:
 
 1. **Search first**: `node src/cli.js search "<what you need>" --limit 3`
 2. **Resolve if match found**: `node src/cli.js resolve --description "<what you need>" --language <lang>`
-3. **Use the proven code** if the oracle returns PULL (coherency > 0.7)
+3. **Use the proven code** if the oracle returns PULL (coherency >= 0.68)
 4. **Adapt the code** if the oracle returns EVOLVE
 5. **Write new code** only if the oracle returns GENERATE or no match exists
 
@@ -27,7 +27,7 @@ After using a pulled pattern or writing new code that passes tests:
 ## Automatic Growth
 
 The library grows automatically — every time you register or submit proven code:
-- **Candidates are spawned** — language variants (TS, Python) + SERF refinements
+- **Candidates are spawned** — language variants (TS, Python) + automated refinements
 - **No manual `generate` needed** — the loop runs on every proven pattern
 - **Candidates** live in the `candidates` table until promoted with test proof
 - Run `node src/cli.js promote auto` to auto-promote candidates with tests
@@ -53,12 +53,16 @@ For AI clients that support MCP, start the server:
 node src/cli.js mcp
 ```
 
-This exposes 22 tools: oracle_search, oracle_resolve, oracle_submit, oracle_query,
-oracle_feedback, oracle_stats, oracle_register_pattern, oracle_nearest,
-oracle_versions, oracle_semantic_diff, oracle_reflect, oracle_harvest,
-oracle_covenant, oracle_candidates, oracle_generate, oracle_promote,
-oracle_auto_promote, oracle_synthesize_tests, oracle_sync, oracle_share,
-oracle_community, oracle_global_stats.
+This exposes 23 tools:
+
+- **Core (7)**: oracle_search, oracle_resolve, oracle_submit, oracle_query, oracle_feedback, oracle_stats, oracle_register_pattern
+- **Search (1)**: oracle_smart_search
+- **Quality (2)**: oracle_reflect, oracle_covenant
+- **Candidates (3)**: oracle_candidates, oracle_auto_promote, oracle_synthesize_tests
+- **Debug (6)**: oracle_debug_capture, oracle_debug_search, oracle_debug_feedback, oracle_debug_stats, oracle_debug_grow, oracle_debug_patterns
+- **Storage (2)**: oracle_sync, oracle_share
+- **Harvest (1)**: oracle_harvest
+- **Maintenance (1)**: oracle_maintain
 
 ## Quick Reference
 
@@ -67,13 +71,13 @@ node src/cli.js search "debounce"          # Find a pattern
 node src/cli.js resolve --description "..."  # Smart pull/evolve/generate
 node src/cli.js patterns                    # Library stats
 node src/cli.js candidates                  # Unproven candidates
-node src/cli.js generate                    # Manual batch generate (usually automatic)
 node src/cli.js promote auto               # Promote candidates with tests
 node src/cli.js synthesize                  # Generate tests + auto-promote
+node src/cli.js maintain                   # Full maintenance cycle (heal + optimize + evolve)
 node src/cli.js sync push                  # Sync to personal store
 node src/cli.js share                      # Share to community store
-node src/cli.js global                     # View personal + community stats
-node src/cli.js analytics                  # Health report
+node src/cli.js debug search --error "..."  # Search debug patterns
+node src/cli.js mcp                        # Start MCP server (23 tools)
 node --test tests/*.test.js               # Run all tests
 ```
 
@@ -83,5 +87,5 @@ node --test tests/*.test.js               # Run all tests
 - ALL proven patterns have test proof — no exceptions
 - Coherency is scored 0-1 across 5 dimensions
 - The oracle threshold is 0.6 — code below this is rejected
-- SERF healing can recover failed patterns via iterative refinement
+- Iterative healing can recover failed patterns via automated refinement
 - Registering proven code automatically spawns candidates (the loop runs itself)

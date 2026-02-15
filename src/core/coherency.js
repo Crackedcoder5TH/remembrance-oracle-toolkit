@@ -10,35 +10,54 @@
  */
 
 const { astCoherencyBoost } = require('./parsers/ast');
+const {
+  COHERENCY_WEIGHTS,
+  SYNTAX_SCORES,
+  COMPLETENESS_PENALTIES,
+  CONSISTENCY_PENALTIES,
+  COHERENCY_DEFAULTS,
+  ROUNDING_FACTOR,
+} = require('../constants/thresholds');
 
 const WEIGHTS = {
-  syntaxValid: 0.25,
-  completeness: 0.20,
-  consistency: 0.15,
-  testProof: 0.30,
-  historicalReliability: 0.10,
+  syntaxValid: COHERENCY_WEIGHTS.SYNTAX_VALID,
+  completeness: COHERENCY_WEIGHTS.COMPLETENESS,
+  consistency: COHERENCY_WEIGHTS.CONSISTENCY,
+  testProof: COHERENCY_WEIGHTS.TEST_PROOF,
+  historicalReliability: COHERENCY_WEIGHTS.HISTORICAL_RELIABILITY,
 };
 
+/**
+ * Scores code syntax validity on a 0-1 scale. JavaScript code is parsed with Function constructor; other languages use structural heuristics.
+ * @param {string} code - The code to analyze
+ * @param {string} language - The programming language
+ * @returns {number} Syntax score from 0 (invalid) to 1 (perfect)
+ */
 function scoreSyntax(code, language) {
   if (language === 'javascript' || language === 'js') {
     try {
       new Function(code);
-      return 1.0;
+      return SYNTAX_SCORES.PERFECT;
     } catch {
       // Might be a module — try looser check
       const balanced = checkBalancedBraces(code);
-      return balanced ? 0.7 : 0.2;
+      return balanced ? SYNTAX_SCORES.BALANCED_BRACES : SYNTAX_SCORES.INVALID;
     }
   }
   // For other languages, do structural checks
   const balanced = checkBalancedBraces(code);
   const hasStructure = /\b(function|def|class|fn|pub|func|void|int|string)\b/i.test(code);
-  let score = 0.5;
-  if (balanced) score += 0.3;
-  if (hasStructure) score += 0.2;
+  let score = SYNTAX_SCORES.UNKNOWN_BASE;
+  if (balanced) score += SYNTAX_SCORES.BALANCED_BONUS;
+  if (hasStructure) score += SYNTAX_SCORES.STRUCTURE_BONUS;
   return Math.min(score, 1.0);
 }
 
+/**
+ * Checks if braces, brackets, and parentheses are balanced in the code.
+ * @param {string} code - The code to check
+ * @returns {boolean} True if all pairs are balanced, false otherwise
+ */
 function checkBalancedBraces(code) {
   const stack = [];
   const pairs = { '(': ')', '[': ']', '{': '}' };
@@ -52,18 +71,28 @@ function checkBalancedBraces(code) {
   return stack.length === 0;
 }
 
+/**
+ * Scores code completeness by detecting incomplete markers (TODO, FIXME), placeholders, and empty function bodies.
+ * @param {string} code - The code to analyze
+ * @returns {number} Completeness score from 0 (highly incomplete) to 1 (complete)
+ */
 function scoreCompleteness(code) {
   let score = 1.0;
   // Penalize TODO/FIXME/HACK markers
   const incompleteMarkers = (code.match(/\b(TODO|FIXME|HACK|XXX|STUB)\b/g) || []).length;
-  score -= incompleteMarkers * 0.15;
+  score -= incompleteMarkers * COMPLETENESS_PENALTIES.MARKER_PENALTY;
   // Penalize placeholder patterns like "..."  or pass
-  if (/\.{3}|pass\s*$|raise NotImplementedError/m.test(code)) score -= 0.3;
+  if (/\.{3}|pass\s*$|raise NotImplementedError/m.test(code)) score -= COMPLETENESS_PENALTIES.PLACEHOLDER_PENALTY;
   // Penalize empty function bodies
-  if (/\{\s*\}/.test(code) && !/=>\s*\{\s*\}/.test(code)) score -= 0.2;
+  if (/\{\s*\}/.test(code) && !/=>\s*\{\s*\}/.test(code)) score -= COMPLETENESS_PENALTIES.EMPTY_BODY_PENALTY;
   return Math.max(score, 0);
 }
 
+/**
+ * Scores code consistency by checking indentation style (tabs vs spaces) and naming conventions (camelCase vs snake_case).
+ * @param {string} code - The code to analyze
+ * @returns {number} Consistency score from 0 (inconsistent) to 1 (fully consistent)
+ */
 function scoreConsistency(code) {
   let score = 1.0;
   const lines = code.split('\n').filter(l => l.trim());
@@ -78,7 +107,7 @@ function scoreConsistency(code) {
   if (indents.length > 0) {
     const usesTabs = indents.some(i => i.includes('\t'));
     const usesSpaces = indents.some(i => i.includes(' '));
-    if (usesTabs && usesSpaces) score -= 0.3; // Mixed indentation
+    if (usesTabs && usesSpaces) score -= CONSISTENCY_PENALTIES.MIXED_INDENT_PENALTY;
   }
 
   // Check naming convention consistency
@@ -86,16 +115,25 @@ function scoreConsistency(code) {
   const snakeCase = (code.match(/[a-z]+_[a-z]+\(/g) || []).length;
   if (camelCase > 0 && snakeCase > 0) {
     const ratio = Math.min(camelCase, snakeCase) / Math.max(camelCase, snakeCase);
-    if (ratio > 0.3) score -= 0.2; // Significantly mixed naming
+    if (ratio > CONSISTENCY_PENALTIES.NAMING_RATIO_THRESHOLD) score -= CONSISTENCY_PENALTIES.MIXED_NAMING_PENALTY;
   }
 
   return Math.max(score, 0);
 }
 
+/**
+ * Computes overall coherency score (0-1) across syntax, completeness, consistency, test proof, and historical reliability. Includes AST-based boost/penalty.
+ * @param {string} code - The code to analyze
+ * @param {Object} metadata - Optional metadata (language, testPassed, historicalReliability)
+ * @returns {Object} Coherency result with total score, breakdown, AST analysis, and detected language
+ */
 function computeCoherencyScore(code, metadata = {}) {
+  if (code == null || typeof code !== 'string') {
+    return { total: 0, breakdown: { syntaxValid: 0, completeness: 0, consistency: 0, testProof: 0, historicalReliability: 0 } };
+  }
   const language = metadata.language || detectLanguage(code);
-  const testProof = metadata.testPassed ? 1.0 : metadata.testPassed === false ? 0.0 : 0.5;
-  const historicalReliability = metadata.historicalReliability ?? 0.5;
+  const testProof = metadata.testPassed ? 1.0 : metadata.testPassed === false ? 0.0 : COHERENCY_DEFAULTS.TEST_PROOF_FALLBACK;
+  const historicalReliability = metadata.historicalReliability ?? COHERENCY_DEFAULTS.HISTORICAL_RELIABILITY_FALLBACK;
 
   const scores = {
     syntaxValid: scoreSyntax(code, language),
@@ -114,7 +152,7 @@ function computeCoherencyScore(code, metadata = {}) {
   const total = Math.max(0, Math.min(1, weighted + ast.boost));
 
   return {
-    total: Math.round(total * 1000) / 1000,
+    total: Math.round(total * ROUNDING_FACTOR) / ROUNDING_FACTOR,
     breakdown: scores,
     astAnalysis: {
       boost: ast.boost,
@@ -127,12 +165,20 @@ function computeCoherencyScore(code, metadata = {}) {
   };
 }
 
+/**
+ * Detects programming language from code patterns (keywords, syntax, conventions).
+ * @param {string} code - The code to analyze
+ * @returns {string} Detected language (rust, go, java, python, javascript, jsx, html, or unknown)
+ */
 function detectLanguage(code) {
   if (/\bfn\b.*->|let mut |impl\b/.test(code)) return 'rust';
   if (/\bfunc\b.*\{|package\b|fmt\./.test(code)) return 'go';
   if (/\bpublic\b.*\bclass\b|\bSystem\.out/.test(code)) return 'java';
-  if (/\bdef\b.*:|\bimport\b.*\n|print\(/.test(code)) return 'python';
+  // Check JS before Python to avoid misclassifying JS files that contain
+  // Python keywords in string literals (e.g. template literals with "import os")
   if (/\bfunction\b.*\{|const |let |=>\s*\{|require\(|import .* from/.test(code)) return 'javascript';
+  // Anchor Python patterns to start of line to avoid matching keywords inside strings
+  if (/^\s*def\b.*:/m.test(code) || /^\s*import\s+\w/m.test(code) || /^\s*print\s*\(/m.test(code)) return 'python';
   if (/<\/?[a-z][\s\S]*>/i.test(code) && /className|onClick|useState/.test(code)) return 'jsx';
   if (/<\/?[a-z][\s\S]*>/i.test(code)) return 'html';
   return 'unknown';

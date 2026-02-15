@@ -76,7 +76,7 @@ function hasGlobalStore() {
 // ─── Pattern Transfer Helper ───
 
 function transferPattern(pattern, targetStore) {
-  targetStore.addPattern({
+  const patternData = {
     name: pattern.name,
     code: pattern.code,
     language: pattern.language,
@@ -91,7 +91,19 @@ function transferPattern(pattern, targetStore) {
     evolutionHistory: typeof pattern.evolution_history === 'string'
       ? JSON.parse(pattern.evolution_history)
       : (pattern.evolutionHistory || []),
-  });
+  };
+
+  // Use dedup-safe insert: skip if same (name, language) exists with equal/higher coherency
+  if (typeof targetStore.addPatternIfNotExists === 'function') {
+    return targetStore.addPatternIfNotExists(patternData);
+  }
+  // Fallback: addPattern now routes through addPatternIfNotExists internally,
+  // but guard against truly raw stores by checking for existing pattern first
+  if (typeof targetStore.getPatternByName === 'function') {
+    const existing = targetStore.getPatternByName(patternData.name);
+    if (existing) return null; // Skip duplicate
+  }
+  return targetStore.addPattern(patternData);
 }
 
 // ─── Sync: Local ↔ Personal (Private, Automatic) ───
@@ -107,14 +119,19 @@ function syncToGlobal(localStore, options = {}) {
     return { synced: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
+  // Auto-deduplicate the personal store before syncing (clean up historical cruft)
+  if (typeof personalStore.deduplicatePatterns === 'function') {
+    personalStore.deduplicatePatterns();
+  }
+
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore.getAllPatterns();
-  const personalIndex = new Set(personalPatterns.map(p => `${p.name}:${p.language}`));
+  const personalIndex = new Set(personalPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   const report = { synced: 0, skipped: 0, duplicates: 0, total: localPatterns.length, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${pattern.name}:${pattern.language}`;
+    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
 
     if (personalIndex.has(key)) {
       report.duplicates++;
@@ -137,6 +154,9 @@ function syncToGlobal(localStore, options = {}) {
       }
     }
 
+    // Track what we just added so we don't re-add duplicates from the same batch
+    personalIndex.add(key);
+
     report.synced++;
     if (verbose) {
       console.log(`  [SYNC→] ${pattern.name} (${pattern.language}) coherency: ${coherency.toFixed ? coherency.toFixed(3) : coherency}`);
@@ -157,16 +177,26 @@ function syncFromGlobal(localStore, options = {}) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
+  // Deduplicate the personal store first (removes historical cruft)
+  if (typeof personalStore.deduplicatePatterns === 'function') {
+    personalStore.deduplicatePatterns();
+  }
+
+  // Deduplicate local store too
+  if (typeof localStore.deduplicatePatterns === 'function') {
+    localStore.deduplicatePatterns();
+  }
+
   const personalPatterns = personalStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
-  const localIndex = new Set(localPatterns.map(p => `${p.name}:${p.language}`));
+  const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   const report = { pulled: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, details: [] };
 
   for (const pattern of personalPatterns) {
     if (report.pulled >= maxPull) break;
 
-    const key = `${pattern.name}:${pattern.language}`;
+    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     if (localIndex.has(key)) {
       report.duplicates++;
       continue;
@@ -192,6 +222,9 @@ function syncFromGlobal(localStore, options = {}) {
         continue;
       }
     }
+
+    // Track what we just added so duplicates in personal don't get re-pulled
+    localIndex.add(key);
 
     report.pulled++;
     if (verbose) {
@@ -223,7 +256,7 @@ function syncBidirectional(localStore, options = {}) {
  *   patterns: array of pattern names/IDs to share (if empty, shares all above threshold)
  *   tags: filter by tags
  */
-function shareToCommuntiy(localStore, options = {}) {
+function shareToCommunity(localStore, options = {}) {
   const { verbose = false, dryRun = false, minCoherency = 0.7, patterns: nameFilter, tags: tagFilter } = options;
   const communityStore = openCommunityStore();
   if (!communityStore) {
@@ -232,7 +265,7 @@ function shareToCommuntiy(localStore, options = {}) {
 
   let localPatterns = localStore.getAllPatterns();
   const communityPatterns = communityStore.getAllPatterns();
-  const communityIndex = new Set(communityPatterns.map(p => `${p.name}:${p.language}`));
+  const communityIndex = new Set(communityPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   // Filter by name if specified
   if (nameFilter && nameFilter.length > 0) {
@@ -251,10 +284,15 @@ function shareToCommuntiy(localStore, options = {}) {
     });
   }
 
+  // Deduplicate community store before sharing
+  if (typeof communityStore.deduplicatePatterns === 'function') {
+    communityStore.deduplicatePatterns();
+  }
+
   const report = { shared: 0, skipped: 0, duplicates: 0, total: localPatterns.length, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${pattern.name}:${pattern.language}`;
+    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
 
     if (communityIndex.has(key)) {
       report.duplicates++;
@@ -286,6 +324,9 @@ function shareToCommuntiy(localStore, options = {}) {
       }
     }
 
+    // Track to prevent duplicates in same batch
+    communityIndex.add(key);
+
     report.shared++;
     if (verbose) {
       console.log(`  [SHARE→] ${pattern.name} (${pattern.language}) coherency: ${coherency.toFixed(3)}`);
@@ -309,7 +350,7 @@ function pullFromCommunity(localStore, options = {}) {
 
   let communityPatterns = communityStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
-  const localIndex = new Set(localPatterns.map(p => `${p.name}:${p.language}`));
+  const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   if (nameFilter && nameFilter.length > 0) {
     const nameSet = new Set(nameFilter.map(n => n.toLowerCase()));
@@ -318,12 +359,17 @@ function pullFromCommunity(localStore, options = {}) {
     );
   }
 
+  // Deduplicate community store
+  if (typeof communityStore.deduplicatePatterns === 'function') {
+    communityStore.deduplicatePatterns();
+  }
+
   const report = { pulled: 0, skipped: 0, duplicates: 0, total: communityPatterns.length, details: [] };
 
   for (const pattern of communityPatterns) {
     if (report.pulled >= maxPull) break;
 
-    const key = `${pattern.name}:${pattern.language}`;
+    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     if (localIndex.has(key)) {
       report.duplicates++;
       continue;
@@ -349,6 +395,9 @@ function pullFromCommunity(localStore, options = {}) {
         continue;
       }
     }
+
+    // Track to prevent duplicate pulls in same batch
+    localIndex.add(key);
 
     report.pulled++;
     if (verbose) {
@@ -377,9 +426,9 @@ function federatedQuery(localStore, query = {}) {
   const seen = new Set();
   const merged = [];
 
-  // Local first (highest priority)
+  // Local first (highest priority) — case-insensitive dedup keys
   for (const p of localPatterns) {
-    const key = `${p.name}:${p.language}`;
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'local' });
@@ -388,7 +437,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Personal second
   for (const p of personalPatterns) {
-    const key = `${p.name}:${p.language}`;
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'personal' });
@@ -397,7 +446,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Community last
   for (const p of communityPatterns) {
-    const key = `${p.name}:${p.language}`;
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'community' });
@@ -582,7 +631,7 @@ function shareDebugPatterns(localStore, options = {}) {
     }
 
     report.shared++;
-    if (verbose) {
+    if (process.env.ORACLE_DEBUG) {
       console.log(`  [SHARE-DEBUG→] ${dp.error_class}:${dp.error_category} (${dp.language}) confidence: ${dp.confidence}`);
     }
     report.details.push({
@@ -707,8 +756,11 @@ function syncDebugToPersonal(localStore, options = {}) {
       }
     }
 
+    // Track to prevent duplicates in same batch
+    personalIndex.add(key);
+
     report.synced++;
-    if (verbose) {
+    if (process.env.ORACLE_DEBUG) {
       console.log(`  [SYNC-DEBUG→] ${dp.error_class}:${dp.error_category} (${dp.language})`);
     }
   }
@@ -849,6 +901,157 @@ function _transferDebugPattern(dp, targetStore) {
   );
 }
 
+// ─── Cross-Repo Federated Search ───
+
+const REPOS_CONFIG_PATH = path.join(GLOBAL_DIR, 'repos.json');
+
+/**
+ * Discover oracle stores in sibling directories and configured repo paths.
+ * Searches parent directory for siblings with `.remembrance/` dirs.
+ *
+ * @param {object} options — { includeSiblings, additionalPaths, maxDepth }
+ * @returns {string[]} Array of directory paths with oracle stores
+ */
+function discoverRepoStores(options = {}) {
+  const { includeSiblings = true, additionalPaths = [], maxDepth = 1 } = options;
+  const discovered = new Set();
+
+  // Load configured repos
+  try {
+    if (fs.existsSync(REPOS_CONFIG_PATH)) {
+      const config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
+      (config.repos || []).forEach(r => {
+        const rDir = path.resolve(r);
+        if (fs.existsSync(path.join(rDir, '.remembrance'))) {
+          discovered.add(rDir);
+        }
+      });
+    }
+  } catch { /* config read error */ }
+
+  // Add explicit paths
+  for (const p of additionalPaths) {
+    const resolved = path.resolve(p);
+    if (fs.existsSync(path.join(resolved, '.remembrance'))) {
+      discovered.add(resolved);
+    }
+  }
+
+  // Auto-discover siblings
+  if (includeSiblings) {
+    try {
+      const cwd = process.cwd();
+      const parent = path.dirname(cwd);
+      const entries = fs.readdirSync(parent, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const siblingPath = path.join(parent, entry.name);
+        if (siblingPath === cwd) continue; // Skip self
+        if (fs.existsSync(path.join(siblingPath, '.remembrance'))) {
+          discovered.add(siblingPath);
+        }
+      }
+    } catch { /* permission or read error */ }
+  }
+
+  return Array.from(discovered);
+}
+
+/**
+ * Register a repo path for cross-repo federated search.
+ */
+function registerRepo(repoPath) {
+  ensureDir(GLOBAL_DIR);
+  let config = { repos: [] };
+  try {
+    if (fs.existsSync(REPOS_CONFIG_PATH)) {
+      config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
+    }
+  } catch { /* fresh config */ }
+
+  const resolved = path.resolve(repoPath);
+  if (!config.repos.includes(resolved)) {
+    config.repos.push(resolved);
+    fs.writeFileSync(REPOS_CONFIG_PATH, JSON.stringify(config, null, 2));
+  }
+  return { registered: true, path: resolved, totalRepos: config.repos.length };
+}
+
+/**
+ * List configured repos.
+ */
+function listRepos() {
+  try {
+    if (fs.existsSync(REPOS_CONFIG_PATH)) {
+      const config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
+      return (config.repos || []).map(r => {
+        const exists = fs.existsSync(path.join(r, '.remembrance'));
+        return { path: r, name: path.basename(r), active: exists };
+      });
+    }
+  } catch { /* config error */ }
+  return [];
+}
+
+/**
+ * Search patterns across multiple repo oracle stores.
+ * Deduplicates by pattern name (first repo wins).
+ *
+ * @param {string} description — search query
+ * @param {object} options — { language, limit, repos }
+ * @returns {{ results, repos, totalSearched }}
+ */
+function crossRepoSearch(description, options = {}) {
+  const { language, limit = 20, repos: explicitRepos } = options;
+  const repoPaths = explicitRepos || discoverRepoStores();
+
+  const allResults = [];
+  const repoInfo = [];
+  const seen = new Set();
+
+  for (const repoPath of repoPaths) {
+    try {
+      const store = openStore(repoPath);
+      if (!store) continue;
+
+      const patterns = store.getPatterns ? store.getPatterns() : [];
+      const repoName = path.basename(repoPath);
+      let matchCount = 0;
+
+      for (const p of patterns) {
+        const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+        if (seen.has(key)) continue;
+        // Simple relevance scoring: check if description words match name/tags/description
+        const text = `${p.name} ${(p.tags || []).join(' ')} ${p.description || ''}`.toLowerCase();
+        const words = description.toLowerCase().split(/\s+/);
+        const matches = words.filter(w => text.includes(w));
+        if (matches.length === 0) continue;
+        if (language && p.language !== language) continue;
+
+        seen.add(key);
+        allResults.push({
+          ...p,
+          _repo: repoName,
+          _repoPath: repoPath,
+          _matchScore: matches.length / words.length,
+        });
+        matchCount++;
+      }
+
+      repoInfo.push({ name: repoName, path: repoPath, patterns: patterns.length, matches: matchCount });
+    } catch { /* store open failed — skip */ }
+  }
+
+  // Sort by match score
+  allResults.sort((a, b) => b._matchScore - a._matchScore);
+
+  return {
+    results: allResults.slice(0, limit),
+    repos: repoInfo,
+    totalSearched: repoPaths.length,
+  };
+}
+
 module.exports = {
   getGlobalDir,
   hasGlobalStore,
@@ -858,7 +1061,7 @@ module.exports = {
   syncToGlobal,
   syncFromGlobal,
   syncBidirectional,
-  shareToCommuntiy,
+  shareToCommunity,
   pullFromCommunity,
   federatedQuery,
   globalStats,
@@ -869,6 +1072,10 @@ module.exports = {
   syncDebugToPersonal,
   federatedDebugSearch,
   debugGlobalStats,
+  discoverRepoStores,
+  registerRepo,
+  listRepos,
+  crossRepoSearch,
   GLOBAL_DIR,
   PERSONAL_DIR,
   COMMUNITY_DIR,

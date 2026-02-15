@@ -20,6 +20,7 @@
 const http = require('http');
 const crypto = require('crypto');
 const { URL } = require('url');
+const { safeJsonParse } = require('../core/covenant');
 
 // ─── JWT (minimal, no dependencies) ───
 
@@ -59,7 +60,9 @@ function hashPassword(password) {
 function verifyPassword(password, stored) {
   const [salt, hash] = stored.split(':');
   const check = crypto.scryptSync(password, salt, 64).toString('hex');
-  return hash === check;
+  // Constant-time comparison to prevent timing attacks
+  if (check.length !== hash.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(check, 'hex'), Buffer.from(hash, 'hex'));
 }
 
 // ─── Cloud Sync Server ───
@@ -147,7 +150,14 @@ class CloudSyncServer {
         return await this._handleLogin(req, res);
       }
       if (path === '/api/health' && method === 'GET') {
-        return this._json(res, 200, { status: 'ok', version: '1.0.0' });
+        const patterns = this.oracle.patterns ? this.oracle.patterns.getAll().length : 0;
+        return this._json(res, 200, {
+          status: 'ok',
+          version: '1.0.0',
+          patterns,
+          uptime: process.uptime(),
+          wsClients: this.wsClients.size,
+        });
       }
 
       // All other routes require authentication
@@ -175,6 +185,109 @@ class CloudSyncServer {
       // Search
       if (path === '/api/search' && method === 'POST') {
         return await this._handleSearch(req, res);
+      }
+      if (path === '/api/search' && method === 'GET') {
+        const q = url.searchParams.get('q') || url.searchParams.get('query') || '';
+        if (!q) return this._json(res, 200, { results: [] });
+        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        const results = this.oracle.search(q, { limit });
+        return this._json(res, 200, { results });
+      }
+
+      // Resolve
+      if (path === '/api/resolve' && method === 'POST') {
+        const body = await this._readBody(req);
+        const result = this.oracle.resolve({
+          description: body.description,
+          language: body.language || 'javascript',
+          tags: body.tags || [],
+        });
+        return this._json(res, 200, result);
+      }
+
+      // Feedback
+      if (path === '/api/feedback' && method === 'POST') {
+        const body = await this._readBody(req);
+        if (!body.id) return this._json(res, 400, { error: 'id is required' });
+        const result = this.oracle.patternFeedback(body.id, body.success !== false);
+        return this._json(res, 200, result);
+      }
+
+      // Vote
+      if (path === '/api/vote' && method === 'POST') {
+        const body = await this._readBody(req);
+        if (!body.patternId) return this._json(res, 400, { error: 'patternId is required' });
+        const voter = body.voter || user.username || 'anonymous';
+        const result = this.oracle.vote(body.patternId, voter, body.vote || 1);
+        this._broadcast({ type: 'vote', patternId: body.patternId, vote: body.vote });
+        return this._json(res, 200, result);
+      }
+
+      // Top voted
+      if (path === '/api/top-voted' && method === 'GET') {
+        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        return this._json(res, 200, this.oracle.topVoted(limit));
+      }
+
+      // Reputation
+      if (path === '/api/reputation' && method === 'GET') {
+        const voterId = url.searchParams.get('voter') || url.searchParams.get('id');
+        if (voterId) {
+          return this._json(res, 200, this.oracle.getVoterReputation(voterId));
+        }
+        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        return this._json(res, 200, this.oracle.topVoters(limit));
+      }
+
+      // Context (AI injection)
+      if (path === '/api/context' && method === 'GET') {
+        const format = url.searchParams.get('format') || 'markdown';
+        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        const result = this.oracle.generateContext({ format, limit });
+        return this._json(res, 200, result);
+      }
+
+      // Reflect
+      if (path === '/api/reflect' && method === 'POST') {
+        const body = await this._readBody(req);
+        const { reflectionLoop } = require('../core/reflection');
+        const result = reflectionLoop(body.code || '', {
+          language: body.language,
+          maxLoops: body.maxLoops || 3,
+          targetCoherence: body.targetCoherence || 0.9,
+        });
+        return this._json(res, 200, result);
+      }
+
+      // Covenant check
+      if (path === '/api/covenant' && method === 'POST') {
+        const body = await this._readBody(req);
+        const { covenantCheck } = require('../core/covenant');
+        const result = covenantCheck(body.code || '', {
+          language: body.language || 'javascript',
+          description: body.description || '',
+          tags: body.tags || [],
+        });
+        return this._json(res, 200, result);
+      }
+
+      // Analytics
+      if (path === '/api/analytics' && method === 'GET') {
+        try {
+          const { generateAnalytics } = require('../core/analytics');
+          return this._json(res, 200, generateAnalytics(this.oracle));
+        } catch (err) {
+          return this._json(res, 500, { error: err.message });
+        }
+      }
+
+      // Candidates
+      if (path === '/api/candidates' && method === 'GET') {
+        try {
+          return this._json(res, 200, this.oracle.getCandidates());
+        } catch {
+          return this._json(res, 200, { candidates: [] });
+        }
       }
 
       // Stats
@@ -259,7 +372,7 @@ class CloudSyncServer {
       name: e.name,
       language: e.language,
       tags: e.tags,
-      coherency: e.coherencyScore?.total || e.coherency || 0,
+      coherency: e.coherencyScore?.total ?? e.coherency ?? 0,
       description: e.description,
       patternType: e.patternType,
     }));
@@ -329,7 +442,23 @@ class CloudSyncServer {
 
   _handleStats(res) {
     const stats = this.oracle.stats();
-    this._json(res, 200, stats);
+    const patternStats = this.oracle.patternStats();
+    const total = this.oracle.patterns ? this.oracle.patterns.getAll().length : 0;
+    const byLanguage = {};
+    if (this.oracle.patterns) {
+      for (const p of this.oracle.patterns.getAll()) {
+        byLanguage[p.language] = (byLanguage[p.language] || 0) + 1;
+      }
+    }
+    this._json(res, 200, {
+      version: '1.0.0',
+      patterns: total,
+      store: stats,
+      patternStats,
+      byLanguage,
+      uptime: process.uptime(),
+      wsClients: this.wsClients.size,
+    });
   }
 
   // ─── Sync ───
@@ -376,7 +505,7 @@ class CloudSyncServer {
       language: e.language,
       tags: e.tags,
       description: e.description,
-      coherency: e.coherencyScore?.total || e.coherency || 0,
+      coherency: e.coherencyScore?.total ?? e.coherency ?? 0,
     }));
 
     this._json(res, 200, { patterns: results, total: entries.length });
@@ -422,8 +551,9 @@ class CloudSyncServer {
     // WebSocket handshake
     const key = req.headers['sec-websocket-key'];
     if (!key) { socket.destroy(); return; }
+    // SHA-1 is mandated by RFC 6455 for WebSocket handshake — not a security concern
     const accept = crypto.createHash('sha1')
-      .update(key + '258EAFA5-E914-47DA-95CA-5AB5DC11654B')
+      .update(key + '258EAFA5-E914-47DA-95CA-5AB5DC11AD48')
       .digest('base64');
 
     socket.write([
@@ -457,21 +587,25 @@ class CloudSyncServer {
       }
       if (opcode === 0x0a || opcode === 0x09) return; // Pong/Ping
 
+      if (data.length < 2) return;
       const secondByte = data[1];
       const masked = (secondByte & 0x80) !== 0;
       let length = secondByte & 0x7f;
       let offset = 2;
 
       if (length === 126) {
+        if (data.length < 4) return;
         length = data.readUInt16BE(2);
         offset = 4;
       } else if (length === 127) {
+        if (data.length < 10) return;
         length = Number(data.readBigUInt64BE(2));
         offset = 10;
       }
 
       let payload;
       if (masked) {
+        if (data.length < offset + 4 + length) return;
         const mask = data.slice(offset, offset + 4);
         offset += 4;
         payload = Buffer.alloc(length);
@@ -479,10 +613,12 @@ class CloudSyncServer {
           payload[i] = data[offset + i] ^ mask[i % 4];
         }
       } else {
+        if (data.length < offset + length) return;
         payload = data.slice(offset, offset + length);
       }
 
-      const msg = JSON.parse(payload.toString());
+      const msg = safeJsonParse(payload.toString(), null);
+      if (!msg) return;
 
       // Handle sync messages
       if (msg.type === 'sync_request') {
@@ -543,8 +679,7 @@ class CloudSyncServer {
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', () => {
-        try { resolve(JSON.parse(body)); }
-        catch { resolve({}); }
+        resolve(safeJsonParse(body, {}));
       });
     });
   }

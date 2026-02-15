@@ -619,10 +619,10 @@ describe('Reflector MCP Tools', () => {
     assert.ok(toolNames.includes('oracle_reflector_config'));
   });
 
-  it('should handle reflector snapshot via MCP', () => {
+  it('should handle reflector snapshot via MCP', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
-    const response = server.handleRequest({
+    const response = await server.handleRequest({
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',

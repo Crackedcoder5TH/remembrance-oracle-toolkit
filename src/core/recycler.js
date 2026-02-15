@@ -4,7 +4,7 @@
  * Instead of discarding failed patterns, the recycler:
  *
  *   1. CAPTURES failures with full context (why it failed, how close it was)
- *   2. HEALS them via SERF reflection (simplify, secure, readable, unify, correct)
+ *   2. HEALS them via reflection (simplify, secure, readable, unify, correct)
  *   3. RE-VALIDATES healed code through the full oracle pipeline
  *   4. GENERATES VARIANTS from successful patterns (language ports, approach swaps)
  *   5. FEEDS variants back through the loop — exponential pattern growth
@@ -13,7 +13,7 @@
  *
  *   Code → Validate → Store (success)
  *                ↓
- *            Capture → SERF Heal → Re-validate → Store (recycled)
+ *            Capture → Heal → Re-validate → Store (recycled)
  *                                       ↓
  *                                  Still failing → variant generation
  *                                       ↓
@@ -28,6 +28,17 @@
 const { reflectionLoop } = require('./reflection');
 const { validateCode } = require('./validator');
 const { computeCoherencyScore, detectLanguage } = require('./coherency');
+const { isTestFile, isDataFile, requiresExternalModules } = require('./test-synth');
+const {
+  CASCADE,
+  HEALING,
+  VOID_REPLENISH_WEIGHTS,
+  VARIANT_GENERATION,
+  APPROACH_SWAP,
+  ITERATIVE_REFINE,
+  CANDIDATE_MIN_COHERENCY,
+  MAX_TERNARY_NESTING,
+} = require('../constants/thresholds');
 
 // ─── Variant Templates ───
 // Language transpilation skeletons for common patterns
@@ -121,18 +132,18 @@ const APPROACH_SWAPS = [
 
 // ─── The Recycler ───
 
-// ─── Cascade Constants ───
+// ─── Cascade Constants (from centralized thresholds) ───
 
-const CASCADE_BETA = 2.5;             // Exponential scaling factor for global coherence
-const CASCADE_GAMMA_BASE = 0.05;      // Base cascade amplification strength
-const VOID_SCAFFOLD_THRESHOLD = 0.3;  // Below this coherency, inject scaffolding from library
+const CASCADE_BETA = CASCADE.BETA;
+const CASCADE_GAMMA_BASE = CASCADE.GAMMA_BASE;
+const VOID_SCAFFOLD_THRESHOLD = CASCADE.VOID_SCAFFOLD_THRESHOLD;
 
 class PatternRecycler {
   constructor(oracle, options = {}) {
     this.oracle = oracle;
-    this.maxHealAttempts = options.maxHealAttempts || 3;
-    this.maxSerfLoops = options.maxSerfLoops || 5;
-    this.targetCoherence = options.targetCoherence || 0.9;
+    this.maxHealAttempts = options.maxHealAttempts || HEALING.MAX_ATTEMPTS;
+    this.maxRefineLoops = options.maxRefineLoops || HEALING.MAX_REFINE_LOOPS;
+    this.targetCoherence = options.targetCoherence || HEALING.TARGET_COHERENCE;
     this.generateVariants = options.generateVariants !== false;
     this.variantLanguages = options.variantLanguages || ['python', 'typescript'];
     this.verbose = options.verbose || false;
@@ -147,7 +158,7 @@ class PatternRecycler {
     // Stats
     this.stats = {
       captured: 0,
-      healedViaSERF: 0,
+      healedViaReflection: 0,
       healedViaVariant: 0,
       variantsGenerated: 0,
       variantsAccepted: 0,
@@ -216,7 +227,7 @@ class PatternRecycler {
     for (const candidate of allPatterns) {
       if (candidate.language !== pattern.language) continue;
       const score = candidate.coherencyScore?.total ?? 0;
-      if (score < 0.8) continue;  // Only use high-coherency scaffolds
+      if (score < CASCADE.VOID_SCAFFOLD_MIN_COHERENCY) continue;
 
       // Tag overlap
       const candidateTags = new Set(candidate.tags || []);
@@ -224,7 +235,7 @@ class PatternRecycler {
       const tagScore = patternTags.size > 0 ? overlap / patternTags.size : 0;
 
       // Combined: coherency * tag relevance
-      const combined = score * 0.4 + tagScore * 0.6;
+      const combined = score * VOID_REPLENISH_WEIGHTS.COHERENCY + tagScore * VOID_REPLENISH_WEIGHTS.TAG_RELEVANCE;
       if (combined > bestScore) {
         bestScore = combined;
         bestMatch = candidate;
@@ -278,13 +289,13 @@ class PatternRecycler {
   }
 
   /**
-   * Recycle all captured failures through the SERF healing loop.
+   * Recycle all captured failures through the healing loop.
    * Returns a detailed report of what happened.
    */
   recycleFailed(options = {}) {
     const { maxPatterns = Infinity, language = null } = options;
 
-    // Update global coherence before healing — cascade boost applies to all SERF calls
+    // Update global coherence before healing — cascade boost applies to all reflection calls
     this._updateGlobalCoherence();
 
     const pending = this._failed
@@ -335,14 +346,14 @@ class PatternRecycler {
    * Takes a list of seed patterns and:
    *   1. Tries to register each
    *   2. Captures failures
-   *   3. Heals failures via SERF
+   *   3. Heals failures via reflection
    *   4. Generates variants from ALL successes
    *   5. Recursively processes variants (up to depth limit)
    *
    * @returns {{ registered, failed, recycled, variants, total, report }}
    */
   processSeeds(seeds, options = {}) {
-    const { depth = 2, maxVariantsPerPattern = 3 } = options;
+    const { depth = VARIANT_GENERATION.DEPTH, maxVariantsPerPattern = VARIANT_GENERATION.MAX_PATTERNS_PER_LEVEL } = options;
 
     // Compute initial global coherence — this drives cascade amplification
     this._updateGlobalCoherence();
@@ -403,7 +414,7 @@ class PatternRecycler {
       const wave = { wave: d, label: `variants-depth-${d}`, registered: 0, failed: 0, healed: 0, variants: 0 };
       const nextWavePatterns = [];
 
-      for (const pattern of currentPatterns.slice(0, maxVariantsPerPattern * 10)) {
+      for (const pattern of currentPatterns.slice(0, maxVariantsPerPattern * VARIANT_GENERATION.BATCH_MULTIPLIER)) {
         // Language variants
         const langVariants = this._generateLanguageVariants(pattern);
         wave.variants += langVariants.length;
@@ -475,7 +486,7 @@ class PatternRecycler {
     return report;
   }
 
-  // ─── Internal: Heal one failed pattern via SERF ───
+  // ─── Internal: Heal one failed pattern via reflection ───
 
   _healOne(entry) {
     const pattern = entry.pattern;
@@ -503,7 +514,7 @@ class PatternRecycler {
           const scaffold = this._voidReplenish(pattern);
           if (scaffold) {
             // Inject the scaffold's structure as a comment-guide at the top
-            // This gives SERF's transforms something healthy to work from
+            // This gives the transforms something healthy to work from
             const scaffoldHint = `// Scaffold from ${scaffold.name} (coherency ${scaffold.coherencyScore?.total?.toFixed(3)})\n`;
             codeToHeal = scaffoldHint + pattern.code;
             detail.voidScaffold = scaffold.name;
@@ -511,10 +522,10 @@ class PatternRecycler {
         }
       }
 
-      // Run SERF reflection with cascade boost from global coherence
+      // Run reflection with cascade boost from global coherence
       const reflection = reflectionLoop(codeToHeal, {
         language: pattern.language,
-        maxLoops: this.maxSerfLoops,
+        maxLoops: this.maxRefineLoops,
         targetCoherence: this.targetCoherence,
         description: pattern.description,
         tags: pattern.tags,
@@ -523,10 +534,10 @@ class PatternRecycler {
 
       const attemptDetail = {
         attempt: attempt + 1,
-        beforeCoherence: reflection.serf.I_AM,
-        afterCoherence: reflection.serf.finalCoherence,
+        beforeCoherence: reflection.reflection.I_AM,
+        afterCoherence: reflection.reflection.finalCoherence,
         loops: reflection.loops,
-        improvement: reflection.serf.improvement,
+        improvement: reflection.reflection.improvement,
         cascadeBoost: this._cascadeBoost,
       };
 
@@ -547,7 +558,7 @@ class PatternRecycler {
         detail.healed = true;
         detail.healedAs = regResult.pattern.id;
         detail.finalCoherency = regResult.validation.coherencyScore.total;
-        this.stats.healedViaSERF++;
+        this.stats.healedViaReflection++;
 
         entry.healHistory.push(attemptDetail);
         detail.attempts.push(attemptDetail);
@@ -627,12 +638,51 @@ class PatternRecycler {
   // ─── Internal: Transpile a JS pattern to another language ───
 
   _transpileToLanguage(pattern, targetLang) {
-    const code = pattern.code;
-    const testCode = pattern.testCode;
-
     if (targetLang === 'python') return this._toPython(pattern);
     if (targetLang === 'typescript') return this._toTypeScript(pattern);
+    if (targetLang === 'go' || targetLang === 'rust') return this._toASTLanguage(pattern, targetLang);
     return null;
+  }
+
+  _toASTLanguage(pattern, targetLang) {
+    const { transpile: astTranspile, generateGoTest, generateRustTest, verifyTranspilation } = require('./ast-transpiler');
+    const result = astTranspile(pattern.code, targetLang);
+    if (!result.success || !result.code) return null;
+
+    // Extract the primary function name from the pattern
+    const funcName = pattern.name ? pattern.name.replace(/-/g, '') : null;
+
+    // Generate test code for the transpiled variant
+    let testCode = null;
+    if (pattern.testCode && funcName) {
+      if (targetLang === 'go') {
+        testCode = generateGoTest(result.code, pattern.testCode, funcName);
+      } else if (targetLang === 'rust') {
+        testCode = generateRustTest(result.code, pattern.testCode, funcName);
+      }
+    }
+
+    // Attempt compilation verification (non-blocking — candidate stored either way)
+    let verified = false;
+    if (testCode) {
+      try {
+        const check = verifyTranspilation(result.code, testCode, targetLang);
+        verified = check.compiled;
+      } catch { /* compilation check failed, not fatal */ }
+    }
+
+    const suffix = targetLang === 'go' ? '-go' : '-rs';
+    return {
+      name: `${pattern.name}${suffix}`,
+      code: result.code,
+      language: targetLang,
+      description: `${pattern.description || pattern.name} (${targetLang} via AST${verified ? ', verified' : ''})`,
+      tags: [...(pattern.tags || []), 'variant', targetLang, 'ast-generated', ...(verified ? ['compile-verified'] : [])],
+      patternType: pattern.patternType || 'utility',
+      complexity: pattern.complexity || 'moderate',
+      testCode,
+      verified,
+    };
   }
 
   _toPython(pattern) {
@@ -660,6 +710,28 @@ class PatternRecycler {
     if (!body.trim() || body.includes('function ') || body.includes('=>')) return null;
 
     const pyCode = `def ${pyName}(${jsToPythonParams(params)}):\n${indent(body, 4)}`;
+
+    // Post-transpilation validation: reject if JS syntax leaked through
+    if (/\bfunction\b/.test(pyCode) || /=>/.test(pyCode)) return null;
+    if (/===|!==/.test(pyCode)) return null;
+    if (/\bconst\b|\blet\b|\bvar\b/.test(pyCode)) return null;
+    if (/Number\.\w+/.test(pyCode)) return null;
+    if (/\bthis\./.test(pyCode)) return null;
+    if (/\.push\(/.test(pyCode)) return null; // should have been converted to .append()
+    if (/\bnew\s+\w+/.test(pyCode)) return null;
+    if (/\.prototype\./.test(pyCode)) return null;
+    // Reject leftover JS braces (Python uses colons + indentation)
+    if (/[{}]/.test(pyCode)) return null;
+    // Reject semicolons (not normal in Python)
+    if (/;/.test(pyCode)) return null;
+    // Reject dangling colons/brackets from broken ternary transpilation
+    if (/\]\s*:/.test(pyCode) || /\belse\s*\]/.test(pyCode)) return null;
+    // Reject broken slice patterns
+    if (/\[\d+\s+if\b/.test(pyCode)) return null;
+    // Reject Array.from (should be list())
+    if (/Array\.from/.test(pyCode)) return null;
+    // Reject .filter(), .map() etc. that weren't converted
+    if (/\.\w+\([^)]*=>/.test(pyCode)) return null;
 
     // Convert test assertions
     let pyTest = '';
@@ -729,7 +801,7 @@ class PatternRecycler {
     for (const swap of APPROACH_SWAPS) {
       if (!swap.detect(code)) continue;
 
-      // Try to transform the code using SERF with a hint
+      // Try to transform the code using reflection with a hint
       const hinted = this._applyApproachSwap(pattern, swap);
       if (hinted) alts.push(hinted);
     }
@@ -738,13 +810,13 @@ class PatternRecycler {
   }
 
   _applyApproachSwap(pattern, swap) {
-    // Use SERF reflection with the approach hint baked into the code as a directive comment
+    // Use reflection with the approach hint baked into the code as a directive comment
     const hintedCode = `// APPROACH: ${swap.hint}\n${pattern.code}`;
 
     const reflection = reflectionLoop(hintedCode, {
       language: pattern.language,
-      maxLoops: 2,
-      targetCoherence: 0.85,
+      maxLoops: APPROACH_SWAP.REFINE_LOOPS,
+      targetCoherence: APPROACH_SWAP.TARGET_COHERENCE,
       description: `${pattern.description} — ${swap.to} approach`,
       tags: [...(pattern.tags || []), swap.to],
     });
@@ -771,7 +843,7 @@ class PatternRecycler {
 
   /**
    * Generate candidates from all proven patterns.
-   * Each proven pattern gets variant generation (language ports, SERF refinements).
+   * Each proven pattern gets variant generation (language ports, iterative refinements).
    * Variants that pass coherency (but skip full test validation) become candidates.
    *
    * @param {object} options - { maxPatterns, languages, minCoherency, methods }
@@ -865,16 +937,16 @@ class PatternRecycler {
   }
 
   /**
-   * Generate a SERF-refined candidate from a single pattern.
+   * Generate a refined candidate from a single pattern.
    */
-  _generateSerfRefine(pattern, report, knownNames, minCoherency, extraTags) {
+  _generateIterativeRefine(pattern, report, knownNames, minCoherency, extraTags) {
     const refinedName = `${pattern.name}-refined`;
     if (knownNames.has(refinedName)) return;
 
     const reflection = reflectionLoop(pattern.code, {
       language: pattern.language,
-      maxLoops: 2,
-      targetCoherence: 0.95,
+      maxLoops: ITERATIVE_REFINE.REFINE_LOOPS,
+      targetCoherence: ITERATIVE_REFINE.TARGET_COHERENCE,
       description: pattern.description,
       tags: pattern.tags,
       cascadeBoost: this._cascadeBoost,
@@ -887,11 +959,11 @@ class PatternRecycler {
       code: reflection.code,
       language: pattern.language,
       patternType: pattern.patternType,
-      description: `${pattern.description} (SERF refined)`,
-      tags: [...(pattern.tags || []), 'serf-refined'],
+      description: `${pattern.description} (refined)`,
+      tags: [...(pattern.tags || []), 'auto-refined'],
       testCode: pattern.testCode,
       parentPattern: pattern.name,
-      method: 'serf-refine',
+      method: 'iterative-refine',
     }, report, knownNames, minCoherency, extraTags);
   }
 
@@ -923,8 +995,8 @@ class PatternRecycler {
     const {
       maxPatterns = Infinity,
       languages = this.variantLanguages,
-      minCoherency = 0.5,
-      methods = ['variant', 'serf-refine', 'approach-swap'],
+      minCoherency = CANDIDATE_MIN_COHERENCY,
+      methods = ['variant', 'iterative-refine', 'approach-swap'],
     } = options;
 
     this._updateGlobalCoherence();
@@ -945,11 +1017,16 @@ class PatternRecycler {
     const toProcess = proven.slice(0, maxPatterns);
 
     for (const pattern of toProcess) {
+      // Skip patterns that can't produce viable candidates
+      if (_shouldSkipForGeneration(pattern.code)) {
+        report.skipped = (report.skipped || 0) + 1;
+        continue;
+      }
       if (methods.includes('variant')) {
         this._generateVariants(pattern, languages, report, knownNames, minCoherency, []);
       }
-      if (methods.includes('serf-refine')) {
-        this._generateSerfRefine(pattern, report, knownNames, minCoherency, []);
+      if (methods.includes('iterative-refine')) {
+        this._generateIterativeRefine(pattern, report, knownNames, minCoherency, []);
       }
       if (methods.includes('approach-swap')) {
         this._generateApproachSwaps(pattern, report, knownNames, minCoherency);
@@ -966,11 +1043,17 @@ class PatternRecycler {
   generateFromPattern(pattern, options = {}) {
     const {
       languages = this.variantLanguages,
-      minCoherency = 0.5,
-      methods = ['variant', 'serf-refine'],
+      minCoherency = CANDIDATE_MIN_COHERENCY,
+      methods = ['variant', 'iterative-refine'],
     } = options;
 
     const report = { generated: 0, stored: 0, skipped: 0, duplicates: 0, candidates: [] };
+
+    // Skip patterns that can't produce viable candidates
+    if (_shouldSkipForGeneration(pattern.code)) {
+      report.skipped = 1;
+      return report;
+    }
 
     const proven = this.oracle.patterns.getAll();
     const existingCandidates = this.oracle.patterns.getCandidates();
@@ -982,8 +1065,8 @@ class PatternRecycler {
     if (methods.includes('variant')) {
       this._generateVariants(pattern, languages, report, knownNames, minCoherency, ['auto-generated']);
     }
-    if (methods.includes('serf-refine')) {
-      this._generateSerfRefine(pattern, report, knownNames, minCoherency, ['auto-generated']);
+    if (methods.includes('iterative-refine')) {
+      this._generateIterativeRefine(pattern, report, knownNames, minCoherency, ['auto-generated']);
     }
 
     return report;
@@ -1124,6 +1207,19 @@ class PatternRecycler {
  * Reject patterns that use: regex literals, typeof, closures, new Set/Map,
  * prototype methods, Promise/async, class syntax, arrow functions with closures.
  */
+/**
+ * Check if a pattern should be skipped for candidate generation.
+ * Test files, data files, and module-heavy code don't produce viable candidates.
+ */
+function _shouldSkipForGeneration(code) {
+  if (isTestFile(code)) return true;
+  if (isDataFile(code)) return true;
+  if (requiresExternalModules(code)) return true;
+  // Skip very large files — they're usually complex modules
+  if (code.split('\n').length > VARIANT_GENERATION.LARGE_FILE_THRESHOLD) return true;
+  return false;
+}
+
 function canTranspileToPython(code) {
   // Reject regex literal usage in method calls (Python uses re module)
   if (code.includes('.replace(/') || code.includes('.match(/') || code.includes('.test(/') || code.includes('.search(/')) return false;
@@ -1155,7 +1251,7 @@ function canTranspileToPython(code) {
 
   // Reject ternary with complex nesting (3+ levels)
   const ternaries = (code.match(/\?[^:]+:/g) || []).length;
-  if (ternaries > 2) return false;
+  if (ternaries > MAX_TERNARY_NESTING) return false;
 
   // Reject >>> (unsigned right shift — no Python equivalent)
   if (/>>>/.test(code)) return false;
@@ -1175,8 +1271,57 @@ function canTranspileToPython(code) {
   // Reject single-line for loops (body on same line as for — hard to indent for Python)
   if (/for\s*\([^)]+\)\s+\w/.test(code) && !/for\s*\([^)]+\)\s*\{/.test(code)) return false;
 
+  // Reject multi-statement lines (a = x; b = y; on same line — can't transpile cleanly)
+  const bodyLines = code.split('\n');
+  for (const line of bodyLines) {
+    const trimLine = line.trim();
+    // Count semicolons that aren't in strings (simplified check)
+    const semis = trimLine.replace(/'[^']*'|"[^"]*"/g, '').split(';').length - 1;
+    if (semis > 1) return false;
+  }
+
+  // Reject while loops with braces on same line as body
+  if (/while\s*\([^)]+\)\s*\{[^}]+\}/.test(code.replace(/\n/g, ' '))) return false;
+
+  // Reject inline ternary in return (complex to transpile: s ? x : y)
+  if (/return\s+\w+\s*\?/.test(code)) return false;
+
   // Reject .length in comparisons when param is named 'len' (Python builtin shadowing)
   if (/\w+\.length\s*<\s*\w+/.test(code) && /function\s+\w+\([^)]*\blen\b/.test(code)) return false;
+
+  // Reject Number.EPSILON, Number.MAX_SAFE_INTEGER, etc.
+  if (/Number\.\w+/.test(code)) return false;
+
+  // Reject Array.from (Python uses list())
+  if (/Array\.from/.test(code)) return false;
+
+  // Reject complex .slice() patterns with expressions (hard to transpile correctly)
+  if (/\.slice\([^)]*[+\-*]\s*[^)]+\)/.test(code)) return false;
+
+  // Reject new Constructor() patterns (no Python equivalent)
+  if (/\bnew\s+(?!Set|Map)\w+\s*\(/.test(code)) return false;
+
+  // Reject this. keyword
+  if (/\bthis\./.test(code)) return false;
+
+  // Reject .filter/.map/.reduce callbacks (Python uses list comprehensions)
+  if (/\.filter\s*\(/.test(code)) return false;
+  if (/\.map\s*\(/.test(code)) return false;
+  if (/\.reduce\s*\(/.test(code)) return false;
+  if (/\.forEach\s*\(/.test(code)) return false;
+
+  // Reject .splice() — no direct Python equivalent
+  if (/\.splice\s*\(/.test(code)) return false;
+
+  // Reject try/catch blocks — different syntax in Python
+  if (/\btry\s*\{/.test(code)) return false;
+
+  // Reject throw (Python uses raise)
+  if (/\bthrow\s+/.test(code)) return false;
+
+  // Reject complex destructuring: const { a, b } = or const [a, b] =
+  if (/(?:const|let|var)\s*\{[^}]+\}\s*=/.test(code)) return false;
+  if (/(?:const|let|var)\s*\[[^\]]+\]\s*=/.test(code)) return false;
 
   return true;
 }

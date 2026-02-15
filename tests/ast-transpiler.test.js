@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { transpile, parseJS, tokenize, toSnakeCase, inferType, inferReturnType } = require('../src/core/ast-transpiler');
+const { transpile, parseJS, tokenize, toSnakeCase, inferType, inferReturnType, toGo, toRust, detectPythonImports } = require('../src/core/ast-transpiler');
 
 // ─── Tokenizer ───
 
@@ -601,5 +601,167 @@ describe('throw statements', () => {
     const result = transpile('throw new Error("fail");', 'typescript');
     assert.ok(result.success);
     assert.ok(result.code.includes('throw new Error("fail");'));
+  });
+});
+
+// ─── Go Code Generation ───
+
+describe('Go transpiler', () => {
+  it('transpiles simple function to Go', () => {
+    const result = transpile('function add(a, b) { return a + b; }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('func add('));
+    assert.ok(result.code.includes('return a + b'));
+    assert.ok(result.code.includes('package main'));
+  });
+
+  it('transpiles if/else to Go', () => {
+    const result = transpile('function check(n) { if (n > 0) { return true; } else { return false; } }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('if n > 0'));
+    assert.ok(result.code.includes('return true'));
+    assert.ok(result.code.includes('} else {'));
+  });
+
+  it('transpiles for-of to Go range', () => {
+    const result = transpile('function sum(items) { let s = 0; for (const x of items) { s += x; } return s; }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('range'));
+  });
+
+  it('transpiles while to Go for', () => {
+    const result = transpile('function countdown(n) { while (n > 0) { n--; } }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('for n > 0'));
+  });
+
+  it('translates console.log to fmt.Println', () => {
+    const result = transpile('function greet(name) { console.log(name); }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('fmt.Println'));
+  });
+
+  it('translates Math methods for Go', () => {
+    const result = transpile('function calc(n) { return Math.sqrt(n); }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('math.Sqrt'));
+  });
+
+  it('translates string methods for Go', () => {
+    const result = transpile('function upper(s) { return s.toUpperCase(); }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('strings.ToUpper'));
+  });
+
+  it('transpiles class to Go struct + methods', () => {
+    const result = transpile('class Counter { constructor() {} increment() { return 1; } }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('type Counter struct'));
+    assert.ok(result.code.includes('func (s *Counter) Increment'));
+  });
+
+  it('transpiles throw to Go panic', () => {
+    const result = transpile('function fail() { throw new Error("oops"); }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('panic('));
+  });
+
+  it('detects Go imports', () => {
+    const result = transpile('function greet() { console.log("hi"); return Math.sqrt(4); }', 'go');
+    assert.ok(result.success);
+    assert.ok(result.imports.length > 0);
+  });
+});
+
+// ─── Rust Code Generation ───
+
+describe('Rust transpiler', () => {
+  it('transpiles simple function to Rust', () => {
+    const result = transpile('function add(a, b) { return a + b; }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('fn add('));
+    assert.ok(result.code.includes('return a + b;'));
+  });
+
+  it('transpiles if/else to Rust', () => {
+    const result = transpile('function check(n) { if (n > 0) { return true; } else { return false; } }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('if n > 0'));
+    assert.ok(result.code.includes('} else {'));
+  });
+
+  it('transpiles for-of to Rust iter()', () => {
+    const result = transpile('function sum(items) { let s = 0; for (const x of items) { s += x; } return s; }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('.iter()'));
+  });
+
+  it('translates console.log to println!', () => {
+    const result = transpile('function greet(name) { console.log(name); }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('println!'));
+  });
+
+  it('translates string methods for Rust', () => {
+    const result = transpile('function upper(s) { return s.toUpperCase(); }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('.to_uppercase()'));
+  });
+
+  it('transpiles arrays to Rust vec!', () => {
+    const result = transpile('function make() { let arr = [1, 2, 3]; return arr; }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('vec!['));
+  });
+
+  it('transpiles class to Rust struct + impl', () => {
+    const result = transpile('class Counter { constructor() {} increment() { return 1; } }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('struct Counter'));
+    assert.ok(result.code.includes('impl Counter'));
+  });
+
+  it('transpiles throw new Error to Rust Err', () => {
+    const result = transpile('function fail() { throw new Error("oops"); }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('return Err('));
+  });
+
+  it('uses snake_case for Rust names', () => {
+    const result = transpile('function getUserName(firstName, lastName) { return firstName; }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('fn get_user_name'));
+    assert.ok(result.code.includes('first_name'));
+  });
+
+  it('transpiles await to Rust .await', () => {
+    const result = transpile('async function fetch() { const data = await getData(); return data; }', 'rust');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('.await'));
+  });
+});
+
+// ─── Python Import Detection ───
+
+describe('Python import detection', () => {
+  it('detects math import', () => {
+    const imports = detectPythonImports('x = math.sqrt(4)');
+    assert.ok(imports.includes('import math'));
+  });
+
+  it('detects random import', () => {
+    const imports = detectPythonImports('x = random.random()');
+    assert.ok(imports.includes('import random'));
+  });
+
+  it('returns empty for no imports needed', () => {
+    const imports = detectPythonImports('x = 1 + 2');
+    assert.equal(imports.length, 0);
+  });
+
+  it('adds imports to transpiled Python output', () => {
+    const result = transpile('function rand() { return Math.random(); }', 'python');
+    assert.ok(result.success);
+    assert.ok(result.code.includes('import random'));
   });
 });

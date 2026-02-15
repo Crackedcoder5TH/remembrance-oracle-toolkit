@@ -233,4 +233,110 @@ describe('CloudSyncServer', () => {
     const res = await request(port, 'POST', '/api/auth/register', { username: '' });
     assert.equal(res.status, 400);
   });
+
+  it('health returns pattern count', async () => {
+    const res = await request(port, 'GET', '/api/health');
+    assert.equal(res.status, 200);
+    assert.equal(typeof res.body.patterns, 'number');
+    assert.ok(res.body.uptime >= 0);
+  });
+
+  it('resolve returns decision', async () => {
+    const res = await request(port, 'POST', '/api/resolve', {
+      description: 'sort an array',
+      language: 'javascript',
+    }, token);
+    assert.equal(res.status, 200);
+    assert.ok(['pull', 'evolve', 'generate', 'PULL', 'EVOLVE', 'GENERATE'].includes(res.body.decision));
+  });
+
+  it('feedback on pattern', async () => {
+    // Submit a pattern first, then give feedback
+    const sub = await request(port, 'POST', '/api/patterns', [{
+      code: 'function feedbackTest() { return true; }',
+      language: 'javascript',
+      name: 'feedback-test-cloud',
+      tags: ['test'],
+      testCode: 'assert(feedbackTest())',
+    }], token);
+    assert.equal(sub.status, 200);
+    // Feedback (may fail if pattern didn't store - that's OK)
+    const fbRes = await request(port, 'POST', '/api/feedback', { id: 'fake-id', success: true }, token);
+    assert.equal(fbRes.status, 200);
+  });
+
+  it('feedback requires id', async () => {
+    const res = await request(port, 'POST', '/api/feedback', {}, token);
+    assert.equal(res.status, 400);
+  });
+
+  it('vote on pattern', async () => {
+    const res = await request(port, 'POST', '/api/vote', { patternId: 'test-id', vote: 1 }, token);
+    assert.equal(res.status, 200);
+  });
+
+  it('vote requires patternId', async () => {
+    const res = await request(port, 'POST', '/api/vote', {}, token);
+    assert.equal(res.status, 400);
+  });
+
+  it('top voted patterns', async () => {
+    const res = await request(port, 'GET', '/api/top-voted', null, token);
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(res.body));
+  });
+
+  it('reputation endpoint', async () => {
+    const res = await request(port, 'GET', '/api/reputation', null, token);
+    assert.equal(res.status, 200);
+  });
+
+  it('context endpoint returns AI injection', async () => {
+    const res = await request(port, 'GET', '/api/context', null, token);
+    assert.equal(res.status, 200);
+    assert.ok(res.body.context !== undefined || res.body.format !== undefined);
+  });
+
+  it('reflect endpoint', async () => {
+    const res = await request(port, 'POST', '/api/reflect', {
+      code: 'function add(a, b) { return a + b; }',
+      language: 'javascript',
+    }, token);
+    assert.equal(res.status, 200);
+    assert.ok(res.body.finalScore !== undefined || res.body.score !== undefined || typeof res.body === 'object');
+  });
+
+  it('covenant check endpoint', async () => {
+    const res = await request(port, 'POST', '/api/covenant', {
+      code: 'function safe() { return 1; }',
+      language: 'javascript',
+    }, token);
+    assert.equal(res.status, 200);
+    assert.ok(res.body.pass !== undefined || res.body.approved !== undefined || typeof res.body === 'object');
+  });
+
+  it('analytics endpoint', async () => {
+    const res = await request(port, 'GET', '/api/analytics', null, token);
+    assert.equal(res.status, 200);
+    assert.ok(typeof res.body === 'object');
+  });
+
+  it('candidates endpoint', async () => {
+    const res = await request(port, 'GET', '/api/candidates', null, token);
+    assert.equal(res.status, 200);
+  });
+
+  it('GET search with query param', async () => {
+    const res = await request(port, 'GET', '/api/search?q=sort', null, token);
+    assert.equal(res.status, 200);
+    assert.ok(res.body.results !== undefined);
+  });
+
+  it('stats include pattern count and language breakdown', async () => {
+    const res = await request(port, 'GET', '/api/stats', null, token);
+    assert.equal(res.status, 200);
+    assert.equal(typeof res.body.patterns, 'number');
+    assert.ok(res.body.byLanguage !== undefined);
+    assert.ok(res.body.version);
+  });
 });

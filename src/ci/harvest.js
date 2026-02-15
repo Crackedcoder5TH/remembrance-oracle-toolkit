@@ -82,8 +82,9 @@ function harvestFunctions(baseDir, options = {}) {
               size: stat.size,
             });
           }
-        } catch {
+        } catch (e) {
           // Skip unreadable files
+          if (process.env.ORACLE_DEBUG) console.warn('skipping unreadable file:', e.message);
         }
       }
     }

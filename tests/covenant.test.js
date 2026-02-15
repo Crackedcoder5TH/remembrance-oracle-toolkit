@@ -84,10 +84,18 @@ describe('covenantCheck — harmful code rejected', () => {
   });
 
   it('rejects malware keywords (Principle 3: Ultimate Good)', () => {
-    const code = '// This is a keylogger implementation\nfunction captureKeys() {}';
+    // Keywords in executable code (not comments/strings) should be caught
+    const code = 'const keylogger = new Keylogger();\nkeylogger.start();';
     const result = covenantCheck(code);
     assert.equal(result.sealed, false);
     assert.ok(result.violations.some(v => v.principle === 3));
+  });
+
+  it('ignores malware keywords in comments and strings (self-referential fix)', () => {
+    // Keywords in comments and string literals should NOT trigger false positives
+    const code = 'function detectThreats(input) {\n  // Check for keylogger patterns\n  const threats = ["ransomware", "spyware"];\n  return threats.some(t => input.includes(t));\n}';
+    const result = covenantCheck(code);
+    assert.equal(result.sealed, true);
   });
 
   it('rejects unbounded memory loops (Principle 6: The Flame)', () => {
@@ -269,10 +277,10 @@ describe('Covenant MCP tool', () => {
     assert.ok(covenantTool.inputSchema.required.includes('code'));
   });
 
-  it('MCP server handles oracle_covenant calls', () => {
+  it('MCP server handles oracle_covenant calls', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
-    const response = server.handleRequest({
+    const response = await server.handleRequest({
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',
@@ -286,10 +294,10 @@ describe('Covenant MCP tool', () => {
     assert.equal(result.sealed, true);
   });
 
-  it('MCP server rejects harmful code via covenant', () => {
+  it('MCP server rejects harmful code via covenant', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
-    const response = server.handleRequest({
+    const response = await server.handleRequest({
       jsonrpc: '2.0',
       id: 2,
       method: 'tools/call',

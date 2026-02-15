@@ -25,10 +25,47 @@ function extractSignature(code, language) {
 }
 
 function extractJSSig(code, language) {
-  const match = code.match(/function\s+(\w+)\s*\(([^)]*)\)/);
-  if (!match) return null;
+  // Skip test files — they're not functions to be tested
+  if (isTestFile(code)) return null;
+
+  // Skip data/config files (arrays of objects, module.exports = { ... })
+  if (isDataFile(code)) return null;
+
+  // Try exported function first (module.exports = function name(...))
+  let match = code.match(/module\.exports\s*=\s*function\s+(\w+)\s*\(([^)]*)\)/);
+
+  // Try named export: exports.name = function(...)
+  if (!match) {
+    const exportMatch = code.match(/exports\.(\w+)\s*=\s*function\s*\(([^)]*)\)/);
+    if (exportMatch) match = exportMatch;
+  }
+
+  // Try standalone function (but NOT inside strings/comments)
+  if (!match) {
+    // Match functions at top-level (line starts with function or has only whitespace before)
+    const lines = code.split('\n');
+    for (const line of lines) {
+      const lineMatch = line.match(/^(?:export\s+)?(?:default\s+)?function\s+(\w+)\s*\(([^)]*)\)/);
+      if (lineMatch) {
+        match = lineMatch;
+        break;
+      }
+    }
+  }
+
+  // Fallback: any function declaration
+  if (!match) {
+    match = code.match(/function\s+(\w+)\s*\(([^)]*)\)/);
+    if (!match) return null;
+  }
 
   const [, name, rawParams] = match;
+
+  // Detect if this is a constructor (used with `new` or has prototype methods)
+  const isConstructor = code.includes(`new ${name}(`) ||
+    code.includes(`${name}.prototype.`) ||
+    /^[A-Z]/.test(name);
+
   const params = rawParams.split(',').map(p => p.trim()).filter(Boolean).map(p => {
     const parts = p.split('=').map(s => s.trim());
     const paramName = parts[0].replace(/:\s*\w+.*$/, '').trim(); // strip TS types
@@ -45,7 +82,7 @@ function extractJSSig(code, language) {
     return result;
   });
 
-  return { name, params, language: language || 'javascript' };
+  return { name, params, language: language || 'javascript', isConstructor };
 }
 
 function extractPythonSig(code) {
@@ -72,10 +109,10 @@ function inferParamType(name, code) {
 
   // Name-based inference
   if (/^(arr|array|list|items|nums|values|elements)$/i.test(n)) return 'array';
-  if (/^(str|string|text|s|name|word|char|ch|prefix|suffix|sep)$/i.test(n)) return 'string';
+  if (/^(str|string|text|s|t|name|word|char|ch|prefix|suffix|sep|input|content|src|source|msg|message|line|csv|json|xml|html|template|pattern|query|url|path)$/i.test(n)) return 'string';
   if (/^(n|num|count|index|size|len|max|min|limit|start|end|step|depth|places|delay|ms)$/i.test(n)) return 'number';
   if (/^(fn|func|callback|predicate|handler|cb|comparator)$/i.test(n)) return 'function';
-  if (/^(obj|dict|options|config|opts|map|data|record)$/i.test(n)) return 'object';
+  if (/^(obj|o|dict|options|config|opts|map|data|record|params|props|settings|meta|ctx|context)$/i.test(n)) return 'object';
   if (/^(flag|bool|enabled|disabled|is\w+|has\w+|should\w+)$/i.test(n)) return 'boolean';
   if (/^(keys|tags|ids)$/i.test(n)) return 'array';
 
@@ -97,7 +134,10 @@ function inferParamType(name, code) {
 function testValuesForType(type, language) {
   const py = language === 'python';
 
-  switch (type) {
+  // Normalize array types: any[], number[], string[] → array
+  const normalizedType = type?.endsWith('[]') ? 'array' : type;
+
+  switch (normalizedType) {
     case 'number':
       return {
         typical: [0, 1, 5, 10, 42, -1, 100],
@@ -276,9 +316,14 @@ function jsToPyExpr(expr) {
  * Generate tests from function signature analysis.
  */
 function generateFromSignature(sig, code, language, maxTests) {
-  const { name, params } = sig;
+  const { name, params, isConstructor } = sig;
   const py = language === 'python';
   const tests = [];
+
+  // Constructor pattern: use `new Name()` and test prototype methods
+  if (isConstructor && !py) {
+    return generateConstructorTests(name, code, language, maxTests);
+  }
 
   if (params.length === 0) {
     // Zero-arg function — just call it
@@ -352,6 +397,51 @@ function generateFromSignature(sig, code, language, maxTests) {
   return [...new Set(tests)].slice(0, maxTests).join('\n');
 }
 
+/**
+ * Generate tests for constructor + prototype method patterns.
+ * Handles: function Foo() { ... } + Foo.prototype.bar = function() { ... }
+ */
+function generateConstructorTests(name, code, language, maxTests) {
+  const tests = [];
+  const varName = name[0].toLowerCase() + name.slice(1);
+
+  // Instantiate
+  tests.push(`var ${varName} = new ${name}();`);
+
+  // Find prototype methods
+  const protoRegex = new RegExp(`${name}\\.prototype\\.(\\w+)\\s*=\\s*function\\s*\\(([^)]*)\\)`, 'g');
+  let methodMatch;
+  const methods = [];
+  while ((methodMatch = protoRegex.exec(code)) !== null) {
+    methods.push({ method: methodMatch[1], params: methodMatch[2] });
+  }
+
+  for (const m of methods) {
+    if (tests.length >= maxTests + 1) break; // +1 for the instantiation line
+    const params = m.params.split(',').map(p => p.trim()).filter(Boolean);
+    if (params.length === 0) {
+      tests.push(`${varName}.${m.method}();`);
+    } else {
+      const args = params.map(p => {
+        const type = inferParamType(p.split('=')[0].trim(), code);
+        const vals = testValuesForType(type, language);
+        return String(vals.typical[0] ?? '1');
+      });
+      tests.push(`${varName}.${m.method}(${args.join(', ')});`);
+    }
+  }
+
+  // If no prototype methods found, just test construction
+  if (methods.length === 0) {
+    tests.push(`if (!${varName}) throw new Error("constructor returned falsy");`);
+  } else {
+    // Add a final assertion
+    tests.push(`if (!${varName}) throw new Error("instance is falsy");`);
+  }
+
+  return tests.join('\n');
+}
+
 function looksLikeReturnsNumber(code) {
   return /return\s+[\w.]+\s*[\+\-\*\/\%]/.test(code) ||
     /return\s+Math\./.test(code) ||
@@ -364,6 +454,49 @@ function makeCallTest(call, python) {
     return `result = ${call}\nassert result is not None or result == 0 or result == '' or result == [] or result == False`;
   }
   return `if (${call} === undefined) throw new Error("returned undefined");`;
+}
+
+/**
+ * Detect if code is a test file (contains test framework imports/usage).
+ */
+function isTestFile(code) {
+  // Node test runner
+  if (/require\(['"]node:test['"]\)/.test(code)) return true;
+  // Test frameworks
+  if (/\bdescribe\s*\(/.test(code) && /\b(?:it|test)\s*\(/.test(code)) return true;
+  // Jest/Mocha/Vitest patterns
+  if (/\bbeforeEach\s*\(/.test(code) && /\bafterEach\s*\(/.test(code)) return true;
+  // require assert + describe
+  if (/require\(['"](?:node:)?assert/.test(code) && /\bdescribe\s*\(/.test(code)) return true;
+  return false;
+}
+
+/**
+ * Detect if code is a data/config file (mostly object/array definitions, not functions).
+ */
+function isDataFile(code) {
+  // Large array of objects (seed files, config arrays)
+  if (/^(?:const|let|var)\s+\w+\s*=\s*\[/m.test(code)) {
+    const funcCount = (code.match(/\bfunction\s+\w+/g) || []).length;
+    const objectCount = (code.match(/\{\s*name\s*:/g) || []).length;
+    if (objectCount > 5 && funcCount <= 1) return true;
+  }
+  return false;
+}
+
+/**
+ * Detect if code requires external/blocked modules that won't work in sandbox.
+ */
+function requiresExternalModules(code) {
+  const blockedModules = ['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2'];
+  for (const mod of blockedModules) {
+    if (code.includes(`require('${mod}')`) || code.includes(`require("${mod}")`)) return true;
+    if (code.includes(`require('node:${mod}')`) || code.includes(`require("node:${mod}")`)) return true;
+  }
+  // Also detect heavy relative requires (test files importing project modules)
+  const relativeRequires = (code.match(/require\(['"]\.\.?\//g) || []).length;
+  if (relativeRequires > 2) return true;
+  return false;
 }
 
 /**
@@ -383,6 +516,27 @@ function isViableCode(code, language) {
     if (/\bnew\s+Date\b/.test(code)) return false;           // new Date()
     if (/Number\.EPSILON/.test(code)) return false;           // Number.EPSILON
     if (/\.getDate\(/.test(code)) return false;               // JS Date methods
+    if (/\.filter\s*\(/.test(code)) return false;             // .filter() method
+    if (/\.map\s*\(/.test(code)) return false;                // .map() method
+    if (/\.reduce\s*\(/.test(code)) return false;             // .reduce() method
+    if (/\.forEach\s*\(/.test(code)) return false;            // .forEach() method
+    if (/\.push\s*\(/.test(code)) return false;               // .push() method
+    if (/\.splice\s*\(/.test(code)) return false;             // .splice() method
+    if (/\.slice\s*\(/.test(code)) return false;              // .slice() method
+    if (/\.indexOf\s*\(/.test(code)) return false;            // .indexOf() method
+    if (/\bnew\s+\w+\s*\(/.test(code)) return false;         // new Constructor()
+    if (/\btypeof\b/.test(code)) return false;                // typeof operator
+    if (/===|!==/.test(code)) return false;                    // strict equality
+    if (/\bcatch\s*\(/.test(code)) return false;              // try/catch
+    if (/\bthrow\s+new\b/.test(code)) return false;           // throw new Error
+    // Check for broken indentation (inconsistent indent levels)
+    const lines = code.split('\n').filter(l => l.trim());
+    for (let i = 1; i < lines.length; i++) {
+      const prevIndent = lines[i-1].match(/^(\s*)/)[1].length;
+      const currIndent = lines[i].match(/^(\s*)/)[1].length;
+      // Jump of >8 spaces is suspicious
+      if (currIndent - prevIndent > 8 && !lines[i-1].trim().endsWith(':')) return false;
+    }
     // Shadowing builtins as params: def f(val, min, max) shadows min/max
     const defMatch = code.match(/def\s+\w+\(([^)]+)\)/);
     if (defMatch) {
@@ -390,6 +544,12 @@ function isViableCode(code, language) {
       const builtins = ['min', 'max', 'len', 'int', 'str', 'list', 'dict', 'set', 'type', 'range', 'print', 'sum', 'abs', 'round'];
       if (params.some(p => builtins.includes(p))) return false;
     }
+  }
+  if (language === 'javascript' || language === 'typescript') {
+    // Reject test files
+    if (isTestFile(code)) return false;
+    // Reject code that requires blocked modules
+    if (requiresExternalModules(code)) return false;
   }
   return true;
 }
@@ -525,4 +685,7 @@ module.exports = {
   isViableCode,
   hasBrokenTestSyntax,
   cleanupTestCode,
+  isTestFile,
+  isDataFile,
+  requiresExternalModules,
 };

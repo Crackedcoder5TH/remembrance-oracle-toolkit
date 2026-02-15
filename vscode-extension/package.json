@@ -6,6 +6,7 @@
   "publisher": "remembrance-oracle",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Programming Languages", "Snippets", "Other"],
+  "license": "MIT",
   "keywords": ["code memory", "patterns", "debug", "oracle", "ai"],
   "activationEvents": ["onStartupFinished"],
   "main": "./src/extension.js",

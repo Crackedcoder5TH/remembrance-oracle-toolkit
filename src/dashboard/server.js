@@ -2,105 +2,47 @@
  * Web Dashboard for the Remembrance Oracle
  *
  * Self-contained HTTP server — no external dependencies.
- * Serves an interactive HTML dashboard with:
- * - Pattern browser with search
- * - Semantic vector visualization
- * - History viewer
- * - Audit log viewer
- * - Store statistics
- * - Real-time WebSocket updates
- * - Authentication & user management
- * - Pattern version history
+ * Split into focused modules:
+ * - middleware.js  — rate limiting, CORS, auth setup
+ * - routes.js     — all /api/* endpoint handlers
+ * - websocket.js  — real-time event forwarding
  */
 
 const http = require('http');
 const url = require('url');
 const { RemembranceOracle } = require('../api/oracle');
+const { resilientFetchSource } = require('../core/resilience');
 
-/**
- * Simple in-memory rate limiter.
- * Tracks requests per IP in a sliding window.
- */
-function createRateLimiter(options = {}) {
-  const { windowMs = 60000, maxRequests = 100 } = options;
-  const hits = new Map(); // ip → [timestamps]
-
-  // Cleanup old entries every minute
-  const cleanup = setInterval(() => {
-    const now = Date.now();
-    for (const [ip, timestamps] of hits) {
-      const valid = timestamps.filter(t => now - t < windowMs);
-      if (valid.length === 0) hits.delete(ip);
-      else hits.set(ip, valid);
-    }
-  }, windowMs);
-  if (cleanup.unref) cleanup.unref();
-
-  return function rateLimitMiddleware(req, res, next) {
-    const ip = req.socket.remoteAddress || '127.0.0.1';
-    const now = Date.now();
-    const timestamps = (hits.get(ip) || []).filter(t => now - t < windowMs);
-    timestamps.push(now);
-    hits.set(ip, timestamps);
-
-    res.setHeader('X-RateLimit-Limit', maxRequests);
-    res.setHeader('X-RateLimit-Remaining', Math.max(0, maxRequests - timestamps.length));
-
-    if (timestamps.length > maxRequests) {
-      res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': Math.ceil(windowMs / 1000) });
-      res.end(JSON.stringify({ error: 'Too many requests' }));
-      return;
-    }
-    next();
-  };
-}
+const { createRateLimiter, setupAuth, setupVersionManager, applyCORS } = require('./middleware');
+const { createRouteHandler } = require('./routes');
+const { setupWebSocket } = require('./websocket');
 
 function createDashboardServer(oracle, options = {}) {
   const oracleInstance = oracle || new RemembranceOracle();
 
-  // Auth manager (optional — when auth is enabled)
-  let authManager = options.authManager || null;
-  let authMw = null;
-  if (options.auth !== false) {
-    try {
-      const { AuthManager, authMiddleware } = require('../auth/auth');
-      if (!authManager) {
-        const sqliteStore = oracleInstance.store.getSQLiteStore();
-        authManager = new AuthManager(sqliteStore);
-      }
-      authMw = authMiddleware(authManager);
-    } catch {
-      // Auth module not available — run without auth
-    }
-  }
+  const { authManager, authMw } = setupAuth(oracleInstance, options);
+  const versionManager = setupVersionManager(oracleInstance);
 
-  // Version manager (optional)
-  let versionManager = null;
-  try {
-    const { VersionManager } = require('../core/versioning');
-    const sqliteStore = oracleInstance.store.getSQLiteStore();
-    versionManager = new VersionManager(sqliteStore);
-  } catch {
-    // Versioning module not available
-  }
-
-  // Rate limiter (optional — when rateLimit is enabled)
   let rateLimiter = null;
   if (options.rateLimit !== false && options.auth !== false) {
     rateLimiter = createRateLimiter(options.rateLimitOptions || {});
   }
 
-  // WebSocket server (optional)
-  let wsServer = null;
+  // wsServer reference — will be set after server creation
+  const ctx = { wsServer: null };
+
+  const handleRequest = createRouteHandler(oracleInstance, {
+    authManager,
+    versionManager,
+    get wsServer() { return ctx.wsServer; },
+    getDashboardHTML,
+  });
 
   const server = http.createServer((req, res) => {
     const parsed = url.parse(req.url, true);
     const pathname = parsed.pathname;
 
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    applyCORS(res);
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -108,9 +50,7 @@ function createDashboardServer(oracle, options = {}) {
       return;
     }
 
-    // Rate limiting (applied before auth)
     const proceed = () => {
-      // Auth middleware — skip for dashboard HTML, health, and login
       const publicPaths = ['/', '/api/health', '/api/login'];
       if (authMw && !publicPaths.includes(pathname)) {
         authMw(req, res, () => handleRequest(req, res, parsed, pathname));
@@ -127,426 +67,12 @@ function createDashboardServer(oracle, options = {}) {
     }
   });
 
-  function handleRequest(req, res, parsed, pathname) {
-    try {
-      // ─── Health ───
-      if (pathname === '/api/health') {
-        sendJSON(res, { status: 'ok', wsClients: wsServer ? wsServer.clients.size : 0 });
-        return;
-      }
-
-      // ─── Auth routes ───
-      if (pathname === '/api/login' && req.method === 'POST') {
-        if (!authManager) { sendJSON(res, { error: 'Auth not enabled' }, 501); return; }
-        readBody(req, (body) => {
-          const { username, password } = body;
-          const result = authManager.authenticate(username, password);
-          if (!result) { sendJSON(res, { error: 'Invalid credentials' }, 401); return; }
-          sendJSON(res, result);
-        });
-        return;
-      }
-
-      if (pathname === '/api/users' && req.method === 'GET') {
-        if (!authManager) { sendJSON(res, [], 200); return; }
-        const { canManageUsers } = require('../auth/auth');
-        if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
-        sendJSON(res, authManager.listUsers());
-        return;
-      }
-
-      if (pathname === '/api/users' && req.method === 'POST') {
-        if (!authManager) { sendJSON(res, { error: 'Auth not enabled' }, 501); return; }
-        const { canManageUsers } = require('../auth/auth');
-        if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
-        readBody(req, (body) => {
-          try {
-            const user = authManager.createUser(body.username, body.password, body.role);
-            sendJSON(res, user);
-          } catch (err) {
-            sendJSON(res, { error: err.message }, 400);
-          }
-        });
-        return;
-      }
-
-      // ─── Stats ───
-      if (pathname === '/api/stats') {
-        const storeStats = oracleInstance.stats();
-        const patternStats = oracleInstance.patternStats();
-        sendJSON(res, { store: storeStats, patterns: patternStats });
-        return;
-      }
-
-      // ─── Patterns ───
-      if (pathname === '/api/patterns') {
-        const patterns = oracleInstance.patterns.getAll();
-        sendJSON(res, patterns);
-        return;
-      }
-
-      // ─── Search ───
-      if (pathname === '/api/search') {
-        const query = parsed.query.q || '';
-        const mode = parsed.query.mode || 'hybrid';
-        const limit = parseInt(parsed.query.limit) || 10;
-        if (!query) { sendJSON(res, []); return; }
-        const results = oracleInstance.search(query, { mode, limit });
-        sendJSON(res, results);
-        return;
-      }
-
-      // ─── Nearest vectors ───
-      if (pathname === '/api/nearest') {
-        const query = parsed.query.q || '';
-        if (!query) { sendJSON(res, []); return; }
-        try {
-          const { nearestTerms } = require('../core/vectors');
-          sendJSON(res, nearestTerms(query, 15));
-        } catch {
-          sendJSON(res, []);
-        }
-        return;
-      }
-
-      // ─── Audit log ───
-      if (pathname === '/api/audit') {
-        const sqliteStore = oracleInstance.store.getSQLiteStore();
-        if (!sqliteStore) { sendJSON(res, []); return; }
-        const limit = parseInt(parsed.query.limit) || 50;
-        sendJSON(res, sqliteStore.getAuditLog({ limit }));
-        return;
-      }
-
-      // ─── Entries ───
-      if (pathname === '/api/entries') {
-        const entries = oracleInstance.store.getAll();
-        sendJSON(res, entries);
-        return;
-      }
-
-      // ─── Version history ───
-      if (pathname === '/api/versions') {
-        if (!versionManager) { sendJSON(res, []); return; }
-        const patternId = parsed.query.id;
-        if (!patternId) { sendJSON(res, { error: 'id required' }, 400); return; }
-        sendJSON(res, versionManager.getHistory(patternId));
-        return;
-      }
-
-      // ─── Semantic diff ───
-      if (pathname === '/api/diff') {
-        const idA = parsed.query.a;
-        const idB = parsed.query.b;
-        if (!idA || !idB) { sendJSON(res, { error: 'a and b required' }, 400); return; }
-        if (versionManager) {
-          const { semanticDiff } = require('../core/versioning');
-          const patternA = oracleInstance.patterns.getAll().find(p => p.id === idA) || oracleInstance.store.get(idA);
-          const patternB = oracleInstance.patterns.getAll().find(p => p.id === idB) || oracleInstance.store.get(idB);
-          if (!patternA || !patternB) { sendJSON(res, { error: 'Pattern not found' }, 404); return; }
-          sendJSON(res, semanticDiff(patternA.code, patternB.code, patternA.language));
-        } else {
-          sendJSON(res, oracleInstance.diff(idA, idB));
-        }
-        return;
-      }
-
-      // ─── Analytics ───
-      if (pathname === '/api/analytics') {
-        try {
-          const { generateAnalytics, computeTagCloud } = require('../core/analytics');
-          const analytics = generateAnalytics(oracleInstance);
-          analytics.tagCloud = computeTagCloud(oracleInstance.patterns.getAll());
-          sendJSON(res, analytics);
-        } catch (err) {
-          sendJSON(res, { error: err.message }, 500);
-        }
-        return;
-      }
-
-      // ─── Reflection loop ───
-      if (pathname === '/api/reflect' && req.method === 'POST') {
-        readBody(req, (body) => {
-          const { reflectionLoop } = require('../core/reflection');
-          const result = reflectionLoop(body.code || '', {
-            language: body.language,
-            maxLoops: body.maxLoops || 3,
-            targetCoherence: body.targetCoherence || 0.9,
-            description: body.description || '',
-            tags: body.tags || [],
-          });
-          sendJSON(res, result);
-        });
-        return;
-      }
-
-      // ─── Covenant check ───
-      if (pathname === '/api/covenant') {
-        if (req.method === 'POST') {
-          readBody(req, (body) => {
-            const { covenantCheck } = require('../core/covenant');
-            const result = covenantCheck(body.code || '', {
-              description: body.description || '',
-              tags: body.tags || [],
-              language: body.language,
-            });
-            sendJSON(res, result);
-          });
-          return;
-        }
-        // GET — return the 15 principles
-        const { getCovenant } = require('../core/covenant');
-        sendJSON(res, getCovenant());
-        return;
-      }
-
-      // ─── Debug search ───
-      if (pathname === '/api/debug/search') {
-        const query = parsed.query.q || '';
-        if (!query) { sendJSON(res, []); return; }
-        try {
-          const { DebugOracle } = require('../core/debug-oracle');
-          const sqliteStore = oracleInstance.store.getSQLiteStore();
-          if (!sqliteStore) { sendJSON(res, []); return; }
-          const debugOracle = new DebugOracle(sqliteStore);
-          const results = debugOracle.search({ errorMessage: query, limit: parseInt(parsed.query.limit) || 10 });
-          sendJSON(res, results);
-        } catch {
-          sendJSON(res, []);
-        }
-        return;
-      }
-
-      // ─── Debug stats ───
-      if (pathname === '/api/debug/stats') {
-        try {
-          const { DebugOracle } = require('../core/debug-oracle');
-          const sqliteStore = oracleInstance.store.getSQLiteStore();
-          if (!sqliteStore) { sendJSON(res, { totalPatterns: 0 }); return; }
-          const debugOracle = new DebugOracle(sqliteStore);
-          sendJSON(res, debugOracle.stats());
-        } catch {
-          sendJSON(res, { totalPatterns: 0, avgConfidence: 0, byCategory: {}, byLanguage: {} });
-        }
-        return;
-      }
-
-      // ─── Teams ───
-      if (pathname === '/api/teams' && req.method === 'GET') {
-        // Return teams/orgs for the current user
-        const sqliteStore = oracleInstance.store.getSQLiteStore();
-        if (!sqliteStore) { sendJSON(res, []); return; }
-        try {
-          sqliteStore.db.exec(`
-            CREATE TABLE IF NOT EXISTS teams (
-              id TEXT PRIMARY KEY,
-              name TEXT NOT NULL,
-              description TEXT DEFAULT '',
-              created_by TEXT DEFAULT '',
-              created_at TEXT NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS team_members (
-              team_id TEXT NOT NULL,
-              user_id TEXT NOT NULL,
-              role TEXT DEFAULT 'member',
-              joined_at TEXT NOT NULL,
-              PRIMARY KEY (team_id, user_id)
-            );
-            CREATE TABLE IF NOT EXISTS team_invites (
-              id TEXT PRIMARY KEY,
-              team_id TEXT NOT NULL,
-              code TEXT NOT NULL UNIQUE,
-              role TEXT DEFAULT 'member',
-              uses_remaining INTEGER DEFAULT 1,
-              created_at TEXT NOT NULL,
-              expires_at TEXT
-            );
-          `);
-          const teams = sqliteStore.db.prepare('SELECT * FROM teams ORDER BY created_at DESC').all();
-          // Enrich with member count
-          const enriched = teams.map(t => {
-            const members = sqliteStore.db.prepare('SELECT COUNT(*) as count FROM team_members WHERE team_id = ?').get(t.id);
-            return { ...t, memberCount: members?.count || 0 };
-          });
-          sendJSON(res, enriched);
-        } catch {
-          sendJSON(res, []);
-        }
-        return;
-      }
-
-      if (pathname === '/api/teams' && req.method === 'POST') {
-        const sqliteStore = oracleInstance.store.getSQLiteStore();
-        if (!sqliteStore) { sendJSON(res, { error: 'Storage not available' }, 501); return; }
-        readBody(req, (body) => {
-          try {
-            sqliteStore.db.exec(`
-              CREATE TABLE IF NOT EXISTS teams (
-                id TEXT PRIMARY KEY,
-                name TEXT NOT NULL,
-                description TEXT DEFAULT '',
-                created_by TEXT DEFAULT '',
-                created_at TEXT NOT NULL
-              );
-              CREATE TABLE IF NOT EXISTS team_members (
-                team_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                role TEXT DEFAULT 'member',
-                joined_at TEXT NOT NULL,
-                PRIMARY KEY (team_id, user_id)
-              );
-            `);
-            const crypto = require('crypto');
-            const id = crypto.randomUUID();
-            const now = new Date().toISOString();
-            const name = body.name || 'Unnamed Team';
-            const description = body.description || '';
-            const createdBy = req.user?.id || 'anonymous';
-            sqliteStore.db.prepare(
-              'INSERT INTO teams (id, name, description, created_by, created_at) VALUES (?, ?, ?, ?, ?)'
-            ).run(id, name, description, createdBy, now);
-            // Add creator as admin
-            sqliteStore.db.prepare(
-              'INSERT INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)'
-            ).run(id, createdBy, 'admin', now);
-            sendJSON(res, { id, name, description, created_by: createdBy, created_at: now, memberCount: 1 });
-          } catch (err) {
-            sendJSON(res, { error: err.message }, 400);
-          }
-        });
-        return;
-      }
-
-      // ─── Team members ───
-      const teamMembersMatch = pathname.match(/^\/api\/teams\/([^/]+)\/members$/);
-      if (teamMembersMatch && req.method === 'POST') {
-        const teamId = teamMembersMatch[1];
-        const sqliteStore = oracleInstance.store.getSQLiteStore();
-        if (!sqliteStore) { sendJSON(res, { error: 'Storage not available' }, 501); return; }
-        readBody(req, (body) => {
-          try {
-            const now = new Date().toISOString();
-            const userId = body.userId || body.user_id || '';
-            const role = body.role || 'member';
-            sqliteStore.db.prepare(
-              'INSERT OR REPLACE INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)'
-            ).run(teamId, userId, role, now);
-            sendJSON(res, { team_id: teamId, user_id: userId, role, joined_at: now });
-          } catch (err) {
-            sendJSON(res, { error: err.message }, 400);
-          }
-        });
-        return;
-      }
-
-      // ─── Team invites ───
-      const teamInviteMatch = pathname.match(/^\/api\/teams\/([^/]+)\/invite$/);
-      if (teamInviteMatch && req.method === 'POST') {
-        const teamId = teamInviteMatch[1];
-        const sqliteStore = oracleInstance.store.getSQLiteStore();
-        if (!sqliteStore) { sendJSON(res, { error: 'Storage not available' }, 501); return; }
-        readBody(req, (body) => {
-          try {
-            sqliteStore.db.exec(`
-              CREATE TABLE IF NOT EXISTS team_invites (
-                id TEXT PRIMARY KEY,
-                team_id TEXT NOT NULL,
-                code TEXT NOT NULL UNIQUE,
-                role TEXT DEFAULT 'member',
-                uses_remaining INTEGER DEFAULT 1,
-                created_at TEXT NOT NULL,
-                expires_at TEXT
-              );
-            `);
-            const crypto = require('crypto');
-            const id = crypto.randomUUID();
-            const code = crypto.randomBytes(16).toString('hex');
-            const now = new Date().toISOString();
-            const role = body.role || 'member';
-            const usesRemaining = body.uses || 1;
-            const expiresAt = body.expiresAt || null;
-            sqliteStore.db.prepare(
-              'INSERT INTO team_invites (id, team_id, code, role, uses_remaining, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-            ).run(id, teamId, code, role, usesRemaining, now, expiresAt);
-            sendJSON(res, { id, team_id: teamId, code, role, uses_remaining: usesRemaining, created_at: now, expires_at: expiresAt });
-          } catch (err) {
-            sendJSON(res, { error: err.message }, 400);
-          }
-        });
-        return;
-      }
-
-      // ─── Serve dashboard HTML ───
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(getDashboardHTML());
-    } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: err.message }));
-    }
-  }
-
-  // Attach WebSocket after server is created
-  try {
-    const { WebSocketServer } = require('../core/websocket');
-    wsServer = new WebSocketServer(server);
-
-    wsServer.on('connection', () => {
-      // Broadcast connection count update
-      wsServer.broadcast({ type: 'clients', count: wsServer.clients.size });
-    });
-
-    wsServer.on('close', () => {
-      wsServer.broadcast({ type: 'clients', count: wsServer.clients.size });
-    });
-
-    wsServer.on('message', (msg) => {
-      try {
-        const data = JSON.parse(msg);
-        // Handle client commands
-        if (data.type === 'subscribe') {
-          // Clients auto-subscribe on connect — this is a no-op acknowledgement
-        }
-      } catch {
-        // Ignore malformed messages
-      }
-    });
-  } catch {
-    // WebSocket module not available — dashboard works without it
-  }
-
-  // Public method to broadcast events (used by Oracle hooks)
-  server.broadcast = function(event) {
-    if (wsServer) {
-      wsServer.broadcast(event);
-    }
-  };
-
-  // Auto-forward Oracle events to WebSocket clients
-  if (oracleInstance && oracleInstance.on) {
-    oracleInstance.on((event) => {
-      if (wsServer) wsServer.broadcast(event);
-    });
-  }
-
-  server.wsServer = wsServer;
+  ctx.wsServer = setupWebSocket(server, oracleInstance);
+  server.wsServer = ctx.wsServer;
   server.authManager = authManager;
   server.versionManager = versionManager;
 
   return server;
-}
-
-function readBody(req, callback) {
-  let body = '';
-  req.on('data', chunk => { body += chunk; });
-  req.on('end', () => {
-    try { callback(JSON.parse(body)); }
-    catch { callback({}); }
-  });
-}
-
-function sendJSON(res, data, statusCode = 200) {
-  res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(data));
 }
 
 function startDashboard(oracle, options = {}) {
@@ -1018,13 +544,19 @@ pre.code-block {
     <div class="nav-item" data-panel="analytics">
       <span class="nav-icon">&#9636;</span> Analytics
     </div>
+    <div class="nav-item" data-panel="charts">
+      <span class="nav-icon">&#9650;</span> Charts
+    </div>
     <div class="nav-section">System</div>
     <div class="nav-item" data-panel="admin">
       <span class="nav-icon">&#9881;</span> Admin
     </div>
   </nav>
   <div class="sidebar-footer">
-    Remembrance Oracle Toolkit v3
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <span>Remembrance Oracle Toolkit v3</span>
+      <button id="voice-toggle" title="Toggle Voice Mode" style="background:none;border:none;cursor:pointer;font-size:1.2em;opacity:0.4;transition:opacity 0.2s">&#128264;</button>
+    </div>
   </div>
 </aside>
 
@@ -1168,6 +700,44 @@ pre.code-block {
   </div>
 </div>
 
+<!-- ─── CHARTS TAB ─── -->
+<div id="panel-charts" class="panel">
+  <div class="page-header">
+    <div><div class="page-title">Visual Coherence</div><div class="page-desc">Charts: coherence trend, dimension breakdown, top patterns, vote distribution</div></div>
+    <button class="btn btn-ghost" id="refresh-charts-btn">Refresh</button>
+  </div>
+  <div class="stats-row" style="margin-bottom: 24px">
+    <div class="stat-card" style="flex:1"><div class="stat-label">Avg Coherency</div><div class="stat-value" id="chart-avg-coherency">--</div></div>
+    <div class="stat-card" style="flex:1"><div class="stat-label">Total Patterns</div><div class="stat-value" id="chart-total-patterns">--</div></div>
+    <div class="stat-card" style="flex:1"><div class="stat-label">High Quality (&gt;0.8)</div><div class="stat-value" id="chart-high-quality">--</div></div>
+    <div class="stat-card" style="flex:1"><div class="stat-label">Total Votes</div><div class="stat-value" id="chart-total-votes">--</div></div>
+  </div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+    <div class="card" style="padding:20px">
+      <div class="card-title" style="margin-bottom:12px">Coherence Distribution</div>
+      <svg id="chart-coherence-dist" width="100%" height="200" viewBox="0 0 400 200"></svg>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="card-title" style="margin-bottom:12px">Dimension Breakdown (avg)</div>
+      <svg id="chart-dimensions" width="100%" height="200" viewBox="0 0 400 200"></svg>
+    </div>
+  </div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+    <div class="card" style="padding:20px">
+      <div class="card-title" style="margin-bottom:12px">Top 10 Patterns by Usage</div>
+      <svg id="chart-top-usage" width="100%" height="260" viewBox="0 0 400 260"></svg>
+    </div>
+    <div class="card" style="padding:20px">
+      <div class="card-title" style="margin-bottom:12px">Language Distribution</div>
+      <svg id="chart-languages" width="100%" height="260" viewBox="0 0 400 260"></svg>
+    </div>
+  </div>
+  <div class="card" style="padding:20px">
+    <div class="card-title" style="margin-bottom:12px">Coherence Sparkline (by pattern creation order)</div>
+    <svg id="chart-sparkline" width="100%" height="100" viewBox="0 0 800 100"></svg>
+  </div>
+</div>
+
 <!-- ─── ADMIN TAB ─── -->
 <div id="panel-admin" class="panel">
   <div class="page-header">
@@ -1221,6 +791,9 @@ pre.code-block {
 <script>
 (function() {
   'use strict';
+
+  // ─── Resilient Fetch (retry with exponential backoff) ───
+  ${resilientFetchSource()}
 
   // ─── Helpers ───
   function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
@@ -1277,6 +850,7 @@ pre.code-block {
     document.getElementById('sidebar').classList.remove('open');
     // Lazy-load tab data
     if (panelName === 'analytics' && !window._analyticsLoaded) loadAnalytics();
+    if (panelName === 'charts' && !window._chartsLoaded) loadCharts();
     if (panelName === 'history' && !window._historyLoaded) loadHistory();
     if (panelName === 'debug' && !window._debugLoaded) loadDebugStats();
     if (panelName === 'teams' && !window._teamsLoaded) loadTeams();
@@ -1341,7 +915,7 @@ pre.code-block {
         if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
       };
       ws.onmessage = function(event) {
-        try { handleWSEvent(JSON.parse(event.data)); } catch(e) {}
+        try { handleWSEvent(JSON.parse(event.data)); } catch(e) { console.debug('[ws] message parse error:', e.message); }
       };
       ws.onclose = function() {
         document.getElementById('ws-dot').className = 'ws-dot off';
@@ -1349,8 +923,8 @@ pre.code-block {
         ws = null;
         if (!wsReconnectTimer) wsReconnectTimer = setTimeout(connectWS, 3000);
       };
-      ws.onerror = function() {};
-    } catch(e) {}
+      ws.onerror = function(e) { console.debug('[ws] connection error:', e); };
+    } catch(e) { console.debug('[ws] setup error:', e.message); }
   }
 
   function handleWSEvent(data) {
@@ -1372,14 +946,125 @@ pre.code-block {
       case 'stats_update':
         refreshStats();
         break;
+      case 'healing_start':
+        showHealingBanner(data);
+        break;
+      case 'healing_progress':
+        updateHealingProgress(data);
+        break;
+      case 'healing_complete':
+        completeHealingBanner(data);
+        break;
+      case 'healing_failed':
+        failHealingBanner(data);
+        break;
+      case 'auto_promote':
+        showToast('Auto-promoted: ' + (data.promoted || 0) + ' candidate(s)');
+        refreshPatterns();
+        break;
+      case 'rollback':
+        showToast('Rollback: ' + (data.patternName || '') + ' reverted to v' + (data.restoredVersion || '?'));
+        refreshPatterns();
+        break;
+      case 'security_veto':
+        showToast('Security veto: ' + (data.patternName || '') + ' — ' + (data.tool || ''));
+        break;
     }
+  }
+
+  // ─── Healing Banner (real-time feedback) ───
+  function showHealingBanner(data) {
+    var existing = document.getElementById('healing-banner');
+    if (existing) existing.remove();
+    var banner = document.createElement('div');
+    banner.id = 'healing-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#1a1a2e;color:#e0e0ff;padding:12px 20px;z-index:9999;font-family:monospace;border-bottom:2px solid #6c63ff;transition:opacity 0.5s;';
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:1.2em;">&#x2728;</span>' +
+      '<span>Healing <strong>' + esc(data.patternName || '') + '</strong> (' + esc(data.decision || '') + ')...</span>' +
+      '<span id="healing-coherence" style="color:#6c63ff;font-weight:bold;">loop 0/' + (data.maxLoops || 3) + '</span>' +
+      '<div id="healing-bar" style="flex:1;height:6px;background:#333;border-radius:3px;overflow:hidden;">' +
+      '<div id="healing-bar-fill" style="width:0%;height:100%;background:linear-gradient(90deg,#6c63ff,#a78bfa);transition:width 0.3s;"></div>' +
+      '</div></div>';
+    document.body.prepend(banner);
+  }
+
+  function updateHealingProgress(data) {
+    var label = document.getElementById('healing-coherence');
+    var fill = document.getElementById('healing-bar-fill');
+    if (label) label.textContent = 'loop ' + data.loop + '/' + data.maxLoops + ' | coherence: ' + (data.coherence || 0).toFixed(3) + ' | ' + (data.strategy || '');
+    if (fill) fill.style.width = Math.min(100, ((data.loop / (data.maxLoops || 3)) * 100)).toFixed(0) + '%';
+  }
+
+  function completeHealingBanner(data) {
+    var banner = document.getElementById('healing-banner');
+    if (!banner) return;
+    var imp = data.improvement || 0;
+    var sign = imp >= 0 ? '+' : '';
+    banner.style.borderBottomColor = '#22c55e';
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:1.2em;">&#x2705;</span>' +
+      '<span>Healed <strong>' + esc(data.patternName || '') + '</strong></span>' +
+      '<span style="color:#22c55e;font-weight:bold;">' + (data.finalCoherence || 0).toFixed(3) + ' (' + sign + imp.toFixed(3) + ') in ' + (data.loops || 0) + ' loop(s)</span>' +
+      '</div>';
+    setTimeout(function() { if (banner.parentNode) { banner.style.opacity = '0'; setTimeout(function() { banner.remove(); }, 500); } }, 5000);
+  }
+
+  function failHealingBanner(data) {
+    var banner = document.getElementById('healing-banner');
+    if (!banner) return;
+    banner.style.borderBottomColor = '#ef4444';
+    banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
+      '<span style="font-size:1.2em;">&#x274C;</span>' +
+      '<span>Healing failed for <strong>' + esc(data.patternName || '') + '</strong>: ' + esc(data.error || 'unknown') + '</span>' +
+      '</div>';
+    setTimeout(function() { if (banner.parentNode) { banner.style.opacity = '0'; setTimeout(function() { banner.remove(); }, 500); } }, 5000);
   }
 
   connectWS();
 
+  // ─── Voice Mode (Web Speech API) ───
+  var voiceEnabled = false;
+  var voiceToggle = document.getElementById('voice-toggle');
+  voiceToggle.addEventListener('click', function() {
+    voiceEnabled = !voiceEnabled;
+    voiceToggle.style.opacity = voiceEnabled ? '1' : '0.4';
+    voiceToggle.innerHTML = voiceEnabled ? '&#128266;' : '&#128264;';
+    if (voiceEnabled) speakWhisper('Voice mode activated. I will speak whispers from the healed future.');
+  });
+
+  function speakWhisper(text) {
+    if (!voiceEnabled || !window.speechSynthesis || !text) return;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    var utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.9;
+    utterance.pitch = 0.95;
+    utterance.volume = 0.8;
+    // Prefer a calm, clear voice
+    var voices = window.speechSynthesis.getVoices();
+    var preferred = voices.find(function(v) { return /samantha|karen|daniel|google.*uk|zira/i.test(v.name); });
+    if (preferred) utterance.voice = preferred;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  // Speak healing whispers when events arrive
+  var _origComplete = completeHealingBanner;
+  completeHealingBanner = function(data) {
+    _origComplete(data);
+    if (data.whisper) speakWhisper(data.whisper);
+    else if (data.patternName) speakWhisper('Healing complete for ' + data.patternName + '. Coherence: ' + (data.finalCoherence || 0).toFixed(2));
+  };
+
+  var _origFail = failHealingBanner;
+  failHealingBanner = function(data) {
+    _origFail(data);
+    speakWhisper('Healing failed for ' + (data.patternName || 'pattern') + '. ' + (data.error || ''));
+  };
+
   // ─── Pattern Rendering ───
   function renderPatternCard(p) {
-    var score = (p.coherencyScore && p.coherencyScore.total) || 0;
+    var score = (p.coherencyScore && p.coherencyScore.total != null ? p.coherencyScore.total : 0);
     var tags = (p.tags || []).map(function(t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
     var typeTag = p.patternType ? '<span class="tag tag-type">' + esc(p.patternType) + '</span>' : '';
     var cxTag = p.complexity ? '<span class="tag tag-complexity">' + esc(p.complexity) + '</span>' : '';
@@ -1400,7 +1085,7 @@ pre.code-block {
 
   // ─── Patterns Tab ───
   function refreshStats() {
-    fetch('/api/stats').then(function(r) { return r.json(); }).then(function(stats) {
+    resilientFetch('/api/stats').then(function(r) { return r.json(); }).then(function(stats) {
       var ps = stats.patterns || {};
       var sg = document.getElementById('stats-grid');
       sg.innerHTML =
@@ -1413,7 +1098,7 @@ pre.code-block {
   }
 
   function refreshPatterns() {
-    fetch('/api/patterns').then(function(r) { return r.json(); }).then(function(patterns) {
+    resilientFetch('/api/patterns').then(function(r) { return r.json(); }).then(function(patterns) {
       allPatterns = patterns;
       buildFilters();
       renderFilteredPatterns();
@@ -1461,8 +1146,8 @@ pre.code-block {
     }
     filtered = filtered.slice().sort(function(a, b) {
       if (sortBy === 'coherency') {
-        var sa = (a.coherencyScore && a.coherencyScore.total) || 0;
-        var sb = (b.coherencyScore && b.coherencyScore.total) || 0;
+        var sa = (a.coherencyScore && a.coherencyScore.total != null ? a.coherencyScore.total : 0);
+        var sb = (b.coherencyScore && b.coherencyScore.total != null ? b.coherencyScore.total : 0);
         return sortAsc ? sa - sb : sb - sa;
       }
       return sortAsc ? (a.name || '').localeCompare(b.name || '') : (b.name || '').localeCompare(a.name || '');
@@ -1491,7 +1176,7 @@ pre.code-block {
     }
     intentEl.textContent = 'searching...';
     var mode = document.getElementById('search-mode').value;
-    fetch('/api/search?q=' + encodeURIComponent(q) + '&mode=' + mode)
+    resilientFetch('/api/search?q=' + encodeURIComponent(q) + '&mode=' + mode)
       .then(function(r) { return r.json(); })
       .then(function(results) {
         if (results.length === 0) {
@@ -1518,7 +1203,7 @@ pre.code-block {
   // ─── Debug Tab ───
   function loadDebugStats() {
     window._debugLoaded = true;
-    fetch('/api/debug/stats').then(function(r) { return r.json(); }).then(function(s) {
+    resilientFetch('/api/debug/stats').then(function(r) { return r.json(); }).then(function(s) {
       document.getElementById('debug-stats').innerHTML =
         '<div class="stat-card"><div class="stat-label">Debug Patterns</div><div class="stat-value">' + (s.totalPatterns||0) + '</div></div>' +
         '<div class="stat-card"><div class="stat-label">Avg Confidence</div><div class="stat-value">' + (s.avgConfidence||0).toFixed(3) + '</div></div>' +
@@ -1534,7 +1219,7 @@ pre.code-block {
       document.getElementById('debug-results').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9888;</div><div class="empty-text">Search for error messages to find proven fixes</div></div>';
       return;
     }
-    fetch('/api/debug/search?q=' + encodeURIComponent(q))
+    resilientFetch('/api/debug/search?q=' + encodeURIComponent(q))
       .then(function(r) { return r.json(); })
       .then(function(results) {
         if (!results || results.length === 0) {
@@ -1567,7 +1252,7 @@ pre.code-block {
   // ─── Teams Tab ───
   function loadTeams() {
     window._teamsLoaded = true;
-    fetch('/api/teams').then(function(r) { return r.json(); }).then(function(teams) {
+    resilientFetch('/api/teams').then(function(r) { return r.json(); }).then(function(teams) {
       if (!teams || teams.length === 0) {
         document.getElementById('teams-list').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9734;</div><div class="empty-text">No teams yet. Create one to get started.</div></div>';
         return;
@@ -1598,7 +1283,7 @@ pre.code-block {
   document.getElementById('submit-team-btn').addEventListener('click', function() {
     var name = document.getElementById('team-name-input').value.trim();
     if (!name) return;
-    fetch('/api/teams', {
+    resilientFetch('/api/teams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name, description: document.getElementById('team-desc-input').value.trim() })
@@ -1615,14 +1300,14 @@ pre.code-block {
   // ─── History Tab ───
   function loadHistory() {
     window._historyLoaded = true;
-    fetch('/api/entries').then(function(r) { return r.json(); }).then(function(entries) {
+    resilientFetch('/api/entries').then(function(r) { return r.json(); }).then(function(entries) {
       if (!entries || entries.length === 0) {
         document.getElementById('history-list').innerHTML = '<div class="empty-state"><div class="empty-icon">&#8634;</div><div class="empty-text">No entries in history</div></div>';
         return;
       }
       var html = '<div class="timeline">';
       entries.forEach(function(e) {
-        var score = (e.coherencyScore && e.coherencyScore.total) || 0;
+        var score = (e.coherencyScore && e.coherencyScore.total != null ? e.coherencyScore.total : 0);
         var date = e.timestamp || e.created_at || '';
         html += '<div class="timeline-item">' +
           '<div class="timeline-dot"></div>' +
@@ -1663,7 +1348,7 @@ pre.code-block {
       document.getElementById('vector-results').innerHTML = '<div class="empty-state"><div class="empty-icon">&#8728;</div><div class="empty-text">Type a term to explore the vector space</div></div>';
       return;
     }
-    fetch('/api/nearest?q=' + encodeURIComponent(q))
+    resilientFetch('/api/nearest?q=' + encodeURIComponent(q))
       .then(function(r) { return r.json(); })
       .then(function(terms) {
         if (!terms || terms.length === 0) {
@@ -1712,7 +1397,7 @@ pre.code-block {
   // ─── Analytics Tab ───
   function loadAnalytics() {
     window._analyticsLoaded = true;
-    fetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
+    resilientFetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
       var ov = data.overview || {};
       var dist = data.coherencyDistribution || {};
       var health = data.healthReport || {};
@@ -1801,11 +1486,169 @@ pre.code-block {
     });
   }
 
+  // ─── Charts Tab (Visual Coherence) ───
+  function loadCharts() {
+    window._chartsLoaded = true;
+    resilientFetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
+      var patterns = [];
+      try {
+        // Also fetch full pattern list for detailed charting
+        resilientFetch('/api/patterns').then(function(r2) { return r2.json(); }).then(function(pats) {
+          patterns = pats || [];
+          renderAllCharts(data, patterns);
+        });
+      } catch(e) { console.debug('[charts] pattern fetch failed:', e.message); renderAllCharts(data, []); }
+    });
+  }
+
+  function renderAllCharts(analytics, patterns) {
+    var ov = analytics.overview || {};
+    var dist = analytics.coherencyDistribution || {};
+    var langs = analytics.languageBreakdown || {};
+
+    // Summary cards
+    document.getElementById('chart-avg-coherency').textContent = (ov.avgCoherency || 0).toFixed(3);
+    document.getElementById('chart-total-patterns').textContent = ov.totalPatterns || 0;
+    document.getElementById('chart-high-quality').textContent = (ov.qualityRatio || 0) + '%';
+    var totalVotes = patterns.reduce(function(sum, p) { return sum + (p.upvotes || 0) + (p.downvotes || 0); }, 0);
+    document.getElementById('chart-total-votes').textContent = totalVotes;
+
+    // 1. Coherence Distribution Bar Chart
+    renderBarChart('chart-coherence-dist', dist, 'var(--accent)');
+
+    // 2. Dimension Breakdown
+    renderDimensionChart('chart-dimensions', patterns);
+
+    // 3. Top 10 by Usage
+    renderUsageChart('chart-top-usage', patterns);
+
+    // 4. Language Distribution
+    renderLanguageChart('chart-languages', langs);
+
+    // 5. Sparkline
+    renderSparkline('chart-sparkline', patterns);
+  }
+
+  function renderBarChart(svgId, dist, color) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var keys = Object.keys(dist);
+    if (keys.length === 0) { svg.innerHTML = '<text x="200" y="100" fill="var(--fg3)" text-anchor="middle" font-size="14">No data</text>'; return; }
+    var maxVal = Math.max.apply(null, keys.map(function(k) { return dist[k]; }).concat([1]));
+    var barW = Math.floor(360 / keys.length) - 4;
+    var html = '';
+    keys.forEach(function(k, i) {
+      var h = Math.max(2, (dist[k] / maxVal) * 160);
+      var x = 30 + i * (barW + 4);
+      var y = 180 - h;
+      html += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" fill="' + color + '" rx="3" opacity="0.85"/>';
+      html += '<text x="' + (x + barW/2) + '" y="195" fill="var(--fg3)" text-anchor="middle" font-size="9">' + k + '</text>';
+      html += '<text x="' + (x + barW/2) + '" y="' + (y - 4) + '" fill="var(--fg2)" text-anchor="middle" font-size="10">' + dist[k] + '</text>';
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderDimensionChart(svgId, patterns) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var dims = { correctness: 0, simplicity: 0, unity: 0, reliability: 0, economy: 0 };
+    var count = 0;
+    patterns.forEach(function(p) {
+      var cs = p.coherencyScore;
+      if (cs && typeof cs === 'object') {
+        Object.keys(dims).forEach(function(d) { if (cs[d] != null) dims[d] += cs[d]; });
+        count++;
+      }
+    });
+    if (count === 0) { svg.innerHTML = '<text x="200" y="100" fill="var(--fg3)" text-anchor="middle" font-size="14">No dimension data</text>'; return; }
+    var dimKeys = Object.keys(dims);
+    var barW = Math.floor(360 / dimKeys.length) - 8;
+    var colors = ['var(--green)', 'var(--accent)', 'var(--purple)', 'var(--yellow)', 'var(--cyan)'];
+    var html = '';
+    dimKeys.forEach(function(d, i) {
+      var avg = dims[d] / count;
+      var h = avg * 160;
+      var x = 30 + i * (barW + 8);
+      var y = 180 - h;
+      html += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" fill="' + colors[i] + '" rx="4" opacity="0.8"/>';
+      html += '<text x="' + (x + barW/2) + '" y="195" fill="var(--fg3)" text-anchor="middle" font-size="9">' + d.slice(0,4) + '</text>';
+      html += '<text x="' + (x + barW/2) + '" y="' + (y - 4) + '" fill="var(--fg2)" text-anchor="middle" font-size="10">' + avg.toFixed(2) + '</text>';
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderUsageChart(svgId, patterns) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var sorted = patterns.slice().sort(function(a, b) { return (b.usageCount || 0) - (a.usageCount || 0); }).slice(0, 10);
+    if (sorted.length === 0) { svg.innerHTML = '<text x="200" y="130" fill="var(--fg3)" text-anchor="middle" font-size="14">No usage data</text>'; return; }
+    var maxUsage = Math.max.apply(null, sorted.map(function(p) { return p.usageCount || 0; }).concat([1]));
+    var html = '';
+    sorted.forEach(function(p, i) {
+      var w = Math.max(2, ((p.usageCount || 0) / maxUsage) * 260);
+      var y = 10 + i * 24;
+      html += '<rect x="130" y="' + y + '" width="' + w + '" height="18" fill="var(--green)" rx="3" opacity="0.75"/>';
+      var name = (p.name || '').length > 15 ? (p.name || '').slice(0, 15) + '..' : (p.name || '');
+      html += '<text x="125" y="' + (y + 13) + '" fill="var(--fg2)" text-anchor="end" font-size="10">' + name + '</text>';
+      html += '<text x="' + (135 + w) + '" y="' + (y + 13) + '" fill="var(--fg3)" font-size="10">' + (p.usageCount || 0) + '</text>';
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderLanguageChart(svgId, langs) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var keys = Object.keys(langs);
+    if (keys.length === 0) { svg.innerHTML = '<text x="200" y="130" fill="var(--fg3)" text-anchor="middle" font-size="14">No language data</text>'; return; }
+    var total = keys.reduce(function(s, k) { return s + langs[k]; }, 0);
+    var colors = ['var(--accent)', 'var(--green)', 'var(--purple)', 'var(--yellow)', 'var(--cyan)', 'var(--red)', 'var(--orange)'];
+    var html = '';
+    var cx = 130, cy = 130, r = 100;
+    var startAngle = 0;
+    keys.forEach(function(lang, i) {
+      var pct = langs[lang] / total;
+      var angle = pct * Math.PI * 2;
+      var endAngle = startAngle + angle;
+      var x1 = cx + r * Math.cos(startAngle);
+      var y1 = cy + r * Math.sin(startAngle);
+      var x2 = cx + r * Math.cos(endAngle);
+      var y2 = cy + r * Math.sin(endAngle);
+      var largeArc = angle > Math.PI ? 1 : 0;
+      html += '<path d="M' + cx + ',' + cy + ' L' + x1 + ',' + y1 + ' A' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + x2 + ',' + y2 + ' Z" fill="' + colors[i % colors.length] + '" opacity="0.85"/>';
+      // Legend
+      html += '<rect x="260" y="' + (20 + i * 22) + '" width="14" height="14" fill="' + colors[i % colors.length] + '" rx="3"/>';
+      html += '<text x="280" y="' + (32 + i * 22) + '" fill="var(--fg2)" font-size="11">' + lang + ' (' + langs[lang] + ')</text>';
+      startAngle = endAngle;
+    });
+    svg.innerHTML = html;
+  }
+
+  function renderSparkline(svgId, patterns) {
+    var svg = document.getElementById(svgId);
+    if (!svg) return;
+    var scores = patterns.map(function(p) { return p.coherencyScore && p.coherencyScore.total != null ? p.coherencyScore.total : 0; });
+    if (scores.length === 0) { svg.innerHTML = '<text x="400" y="50" fill="var(--fg3)" text-anchor="middle" font-size="14">No sparkline data</text>'; return; }
+    var step = 790 / Math.max(scores.length - 1, 1);
+    var points = scores.map(function(s, i) { return (5 + i * step).toFixed(1) + ',' + (90 - s * 80).toFixed(1); });
+    var html = '<polyline points="' + points.join(' ') + '" fill="none" stroke="var(--accent)" stroke-width="1.5" opacity="0.7"/>';
+    // Average line
+    var avg = scores.reduce(function(s, v) { return s + v; }, 0) / scores.length;
+    var avgY = (90 - avg * 80).toFixed(1);
+    html += '<line x1="5" y1="' + avgY + '" x2="795" y2="' + avgY + '" stroke="var(--green)" stroke-width="1" stroke-dasharray="4,3" opacity="0.6"/>';
+    html += '<text x="798" y="' + (parseFloat(avgY) + 4) + '" fill="var(--green)" font-size="9" text-anchor="end">avg ' + avg.toFixed(2) + '</text>';
+    svg.innerHTML = html;
+  }
+
+  document.getElementById('refresh-charts-btn').addEventListener('click', function() {
+    window._chartsLoaded = false;
+    loadCharts();
+  });
+
   // ─── Admin Tab ───
   function loadAdmin() {
     window._adminLoaded = true;
     // Load users
-    fetch('/api/users').then(function(r) { return r.json(); }).then(function(users) {
+    resilientFetch('/api/users').then(function(r) { return r.json(); }).then(function(users) {
       if (!users || !Array.isArray(users) || users.length === 0) {
         document.getElementById('users-table').innerHTML = '<div style="font-size:0.82em;color:var(--fg3);padding:8px 0">No users configured (auth may be disabled)</div>';
         return;
@@ -1821,7 +1664,7 @@ pre.code-block {
     });
 
     // Load health
-    fetch('/api/health').then(function(r) { return r.json(); }).then(function(h) {
+    resilientFetch('/api/health').then(function(r) { return r.json(); }).then(function(h) {
       document.getElementById('system-health').innerHTML =
         '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
         '<div class="stat-card" style="flex:1;min-width:150px"><div class="stat-label">Status</div><div class="stat-value" style="color:var(--green)">' + esc(h.status || 'unknown') + '</div></div>' +
@@ -1836,7 +1679,7 @@ pre.code-block {
     var password = document.getElementById('new-password').value;
     var role = document.getElementById('new-role').value;
     if (!username || !password) { showToast('Username and password required'); return; }
-    fetch('/api/users', {
+    resilientFetch('/api/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username, password: password, role: role })

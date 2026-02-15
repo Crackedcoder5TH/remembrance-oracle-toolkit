@@ -232,13 +232,13 @@ function healFile(filePath, config = {}) {
     language,
     original: {
       code,
-      coherence: result.serf.I_AM,
+      coherence: result.reflection.I_AM,
     },
     healed: {
       code: result.code,
       coherence: result.coherence,
     },
-    improvement: result.serf.improvement,
+    improvement: result.reflection.improvement,
     dimensions: result.dimensions,
     whisper: result.whisper,
     healingSummary: result.healingSummary,

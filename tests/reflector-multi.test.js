@@ -374,7 +374,7 @@ describe('Multi-Repo — MCP Tools', () => {
     assert.equal(multiTools.length, 3);
   });
 
-  it('should handle compare via MCP', () => {
+  it('should handle compare via MCP', async () => {
     const repoA = createTmpRepo('mcpA');
     const repoB = createTmpRepo('mcpB');
     writeFile(repoA, 'a.js', 'function a() { return 1; }');
@@ -382,7 +382,7 @@ describe('Multi-Repo — MCP Tools', () => {
 
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
-    const response = server.handleRequest({
+    const response = await server.handleRequest({
       jsonrpc: '2.0',
       id: 1,
       method: 'tools/call',

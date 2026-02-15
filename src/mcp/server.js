@@ -4,24 +4,18 @@
  * Exposes the Remembrance Oracle as an MCP-compatible tool server.
  * Communicates via JSON-RPC 2.0 over stdin/stdout.
  *
- * Any AI client that supports MCP can connect and use:
- * - oracle_search: Search for proven code patterns
- * - oracle_resolve: Smart pull/evolve/generate decision
- * - oracle_submit: Submit code for validation and storage
- * - oracle_query: Query stored entries
- * - oracle_feedback: Report if pulled code worked
- * - oracle_stats: Get store statistics
- * - oracle_register_pattern: Register a pattern in the library
- * - oracle_nearest: Find nearest vocabulary terms
+ * Focused tools: core + search + submit + debug + maintenance.
  */
 
 const readline = require('readline');
 const { RemembranceOracle } = require('../api/oracle');
+const { safeJsonParse } = require('../core/covenant');
 
 const PROTOCOL_VERSION = '2024-11-05';
-const SERVER_INFO = { name: 'remembrance-oracle', version: '1.0.0' };
+const SERVER_INFO = { name: 'remembrance-oracle', version: '2.0.0' };
 
 const TOOLS = [
+  // ─── Core (7) ───
   {
     name: 'oracle_search',
     description: 'Search for proven, validated code patterns. Returns ranked results by relevance and coherency.',
@@ -38,13 +32,14 @@ const TOOLS = [
   },
   {
     name: 'oracle_resolve',
-    description: 'Smart retrieval — decides whether to PULL existing code, EVOLVE a close match, or GENERATE new code.',
+    description: 'Smart retrieval — decides whether to PULL existing code, EVOLVE a close match, or GENERATE new code. Returns healed code, a whisper from the healed future, and candidate comparison notes.',
     inputSchema: {
       type: 'object',
       properties: {
         description: { type: 'string', description: 'What you need the code to do' },
         tags: { type: 'array', items: { type: 'string' }, description: 'Relevant tags' },
         language: { type: 'string', description: 'Preferred language' },
+        heal: { type: 'boolean', description: 'Run healing on matched code (default: true)', default: true },
       },
       required: ['description'],
     },
@@ -110,180 +105,8 @@ const TOOLS = [
       required: ['name', 'code'],
     },
   },
-  {
-    name: 'oracle_nearest',
-    description: 'Find the nearest semantic vocabulary terms to a query. Useful for understanding how the Oracle interprets your intent.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Query to find nearest terms for' },
-        limit: { type: 'number', description: 'Max results (default: 10)' },
-      },
-      required: ['query'],
-    },
-  },
-  {
-    name: 'oracle_versions',
-    description: 'Get version history for a pattern, showing all saved snapshots.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        patternId: { type: 'string', description: 'Pattern ID to get history for' },
-      },
-      required: ['patternId'],
-    },
-  },
-  {
-    name: 'oracle_semantic_diff',
-    description: 'Perform a semantic diff between two code entries, showing function-level changes and structural analysis.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        idA: { type: 'string', description: 'ID of the first entry/pattern' },
-        idB: { type: 'string', description: 'ID of the second entry/pattern' },
-      },
-      required: ['idA', 'idB'],
-    },
-  },
-  {
-    name: 'oracle_reflect',
-    description: 'Run the SERF infinite reflection loop on code. Iteratively generates 5 candidates, scores them on coherence, and selects the best until coherence > 0.9 or 3 loops.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string', description: 'The code to refine through reflection' },
-        language: { type: 'string', description: 'Code language' },
-        maxLoops: { type: 'number', description: 'Maximum reflection iterations (default: 3)' },
-        targetCoherence: { type: 'number', description: 'Stop when coherence exceeds this (default: 0.9)' },
-      },
-      required: ['code'],
-    },
-  },
-  {
-    name: 'oracle_harvest',
-    description: 'Bulk harvest patterns from a local directory. Walks source files, extracts functions, and registers them as patterns.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        path: { type: 'string', description: 'Local directory path to harvest from' },
-        language: { type: 'string', description: 'Filter by language (javascript, python, go, rust, typescript)' },
-        dryRun: { type: 'boolean', description: 'Preview without registering (default: false)' },
-        splitMode: { type: 'string', enum: ['file', 'function'], description: 'Split patterns by file or individual function (default: file)' },
-        maxFiles: { type: 'number', description: 'Max files to process (default: 200)' },
-      },
-      required: ['path'],
-    },
-  },
-  {
-    name: 'oracle_candidates',
-    description: 'List candidate patterns — coherent but unproven code awaiting test proof. Candidates are generated from proven patterns via language transpilation, SERF refinement, or approach swaps.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        language: { type: 'string', description: 'Filter by language' },
-        minCoherency: { type: 'number', description: 'Minimum coherency score (default: 0)' },
-        method: { type: 'string', enum: ['variant', 'serf-refine', 'approach-swap'], description: 'Filter by generation method' },
-      },
-    },
-  },
-  {
-    name: 'oracle_generate',
-    description: 'Generate candidate patterns from all proven patterns. Runs the continuous growth loop: proven → coherency → language variants → candidates store. The library is always growing.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        languages: { type: 'array', items: { type: 'string' }, description: 'Languages to generate variants in (default: [python, typescript])' },
-        methods: { type: 'array', items: { type: 'string' }, description: 'Generation methods to use (default: [variant, serf-refine, approach-swap])' },
-        maxPatterns: { type: 'number', description: 'Max proven patterns to process (default: all)' },
-        minCoherency: { type: 'number', description: 'Minimum coherency for candidates (default: 0.5)' },
-      },
-    },
-  },
-  {
-    name: 'oracle_promote',
-    description: 'Promote a candidate to proven by providing test proof. The candidate runs through the full oracle validation pipeline with the given test code.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        candidateId: { type: 'string', description: 'ID of the candidate to promote' },
-        testCode: { type: 'string', description: 'Test code that proves the candidate works' },
-      },
-      required: ['candidateId'],
-    },
-  },
-  {
-    name: 'oracle_auto_promote',
-    description: 'Auto-promote all candidates that already have test code. Each is run through the full oracle validation pipeline.',
-    inputSchema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'oracle_synthesize_tests',
-    description: 'Synthesize test code for candidate patterns. Analyzes function signatures, translates parent tests, and generates edge-case assertions. Optionally auto-promotes candidates with new tests.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        maxCandidates: { type: 'number', description: 'Max candidates to process (default: all)' },
-        dryRun: { type: 'boolean', description: 'Preview without updating candidates (default: false)' },
-        autoPromote: { type: 'boolean', description: 'Auto-promote candidates after synthesis (default: true)' },
-      },
-    },
-  },
-  {
-    name: 'oracle_sync',
-    description: 'Sync patterns with your personal store (~/.remembrance/personal/). Bidirectional by default. Personal store is private — grows automatically across projects.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        direction: { type: 'string', enum: ['push', 'pull', 'both'], description: 'Sync direction (default: both)' },
-        dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
-        language: { type: 'string', description: 'Filter by language when pulling (default: all)' },
-      },
-    },
-  },
-  {
-    name: 'oracle_share',
-    description: 'Share patterns to the community store (~/.remembrance/community/). Explicit action — only shares test-backed patterns above 0.7 coherency. Community patterns can be pulled by anyone.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        patterns: { type: 'array', items: { type: 'string' }, description: 'Pattern names to share (default: all eligible)' },
-        tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags' },
-        minCoherency: { type: 'number', description: 'Minimum coherency to share (default: 0.7)' },
-        dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
-      },
-    },
-  },
-  {
-    name: 'oracle_community',
-    description: 'Browse or pull from the community store (~/.remembrance/community/). Use action "stats" to view, "pull" to pull patterns into local.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['stats', 'pull'], description: 'Action to perform (default: stats)' },
-        language: { type: 'string', description: 'Filter by language when pulling' },
-        maxPull: { type: 'number', description: 'Max patterns to pull (default: all)' },
-        dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
-      },
-    },
-  },
-  {
-    name: 'oracle_global_stats',
-    description: 'Get combined statistics for personal + community stores. Shows totals and breakdown by store type.',
-    inputSchema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'oracle_covenant',
-    description: 'Check code against the Covenant seal (The Kingdom\'s Weave). Code must pass all 15 principles to be accepted.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string', description: 'The code to check against the covenant' },
-        description: { type: 'string', description: 'Optional description for metadata intent check' },
-        tags: { type: 'array', items: { type: 'string' }, description: 'Optional tags for metadata intent check' },
-      },
-      required: ['code'],
-    },
-  },
+
+  // ─── Search (1) ───
   {
     name: 'oracle_smart_search',
     description: 'Intelligent search with intent parsing, typo correction, abbreviation expansion, cross-language support, and contextual ranking. Better than oracle_search for natural language queries.',
@@ -298,9 +121,71 @@ const TOOLS = [
       required: ['query'],
     },
   },
+
+  // ─── Quality (2) ───
+  {
+    name: 'oracle_reflect',
+    description: 'Run the infinite reflection loop on code. Iteratively generates 5 candidates, scores them on coherence, and selects the best until coherence > 0.9 or 3 loops.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'The code to refine through reflection' },
+        language: { type: 'string', description: 'Code language' },
+        maxLoops: { type: 'number', description: 'Maximum reflection iterations (default: 3)' },
+        targetCoherence: { type: 'number', description: 'Stop when coherence exceeds this (default: 0.9)' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'oracle_covenant',
+    description: 'Check code against the Covenant seal (The Kingdom\'s Weave). Code must pass all 15 principles to be accepted.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'The code to check against the covenant' },
+        description: { type: 'string', description: 'Optional description for metadata intent check' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Optional tags for metadata intent check' },
+      },
+      required: ['code'],
+    },
+  },
+
+  // ─── Candidates (3) ───
+  {
+    name: 'oracle_candidates',
+    description: 'List candidate patterns — coherent but unproven code awaiting test proof.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        language: { type: 'string', description: 'Filter by language' },
+        minCoherency: { type: 'number', description: 'Minimum coherency score (default: 0)' },
+        method: { type: 'string', enum: ['variant', 'iterative-refine', 'approach-swap'], description: 'Filter by generation method' },
+      },
+    },
+  },
+  {
+    name: 'oracle_auto_promote',
+    description: 'Auto-promote all candidates that already have test code. Each is run through the full oracle validation pipeline.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'oracle_synthesize_tests',
+    description: 'Synthesize test code for candidate patterns and optionally auto-promote.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        maxCandidates: { type: 'number', description: 'Max candidates to process (default: all)' },
+        dryRun: { type: 'boolean', description: 'Preview without updating candidates (default: false)' },
+        autoPromote: { type: 'boolean', description: 'Auto-promote candidates after synthesis (default: true)' },
+      },
+    },
+  },
+
+  // ─── Debug (6) ───
   {
     name: 'oracle_debug_capture',
-    description: 'Capture an error→fix pair as a debug pattern. Automatically generates language variants and error variants for exponential growth.',
+    description: 'Capture an error→fix pair as a debug pattern. Automatically generates language and error variants.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -316,7 +201,7 @@ const TOOLS = [
   },
   {
     name: 'oracle_debug_search',
-    description: 'Search for debug patterns (error→fix pairs) matching an error message. Searches across local, personal, and community stores for the best fixes ranked by confidence.',
+    description: 'Search for debug patterns (error→fix pairs) matching an error message. Searches across local, personal, and community stores.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -331,7 +216,7 @@ const TOOLS = [
   },
   {
     name: 'oracle_debug_feedback',
-    description: 'Report whether an applied debug fix resolved the error. Successful resolutions increase confidence and trigger cascading variant generation.',
+    description: 'Report whether an applied debug fix resolved the error.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -342,32 +227,29 @@ const TOOLS = [
     },
   },
   {
+    name: 'oracle_debug_stats',
+    description: 'Get debug oracle statistics — total patterns, confidence, resolution rates.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'oracle_debug_grow',
-    description: 'Generate debug pattern variants from all high-confidence patterns. Exponential growth engine — language variants, error variants, and cascade amplification.',
+    description: 'Grow debug patterns by generating language and error variants from existing patterns.',
     inputSchema: {
       type: 'object',
       properties: {
-        minConfidence: { type: 'number', description: 'Minimum confidence to process (default: 0.5)' },
-        maxPatterns: { type: 'number', description: 'Max patterns to process (default: all)' },
-        languages: { type: 'array', items: { type: 'string' }, description: 'Languages for variants (default: [python, typescript, go])' },
+        limit: { type: 'number', description: 'Max patterns to process (default: all)' },
       },
     },
   },
   {
-    name: 'oracle_debug_stats',
-    description: 'Get debug oracle statistics — total patterns, confidence, resolution rates, breakdown by category and language.',
-    inputSchema: { type: 'object', properties: {} },
-  },
-  {
-    name: 'oracle_debug_share',
-    description: 'Share proven debug patterns to the community store. Requires confidence >= 0.5 and at least 1 successful resolution.',
+    name: 'oracle_debug_patterns',
+    description: 'List all debug patterns, optionally filtered by language or error class.',
     inputSchema: {
       type: 'object',
       properties: {
-        minConfidence: { type: 'number', description: 'Minimum confidence to share (default: 0.5)' },
-        category: { type: 'string', description: 'Filter by error category' },
-        language: { type: 'string', description: 'Filter by language' },
-        dryRun: { type: 'boolean', description: 'Preview without sharing (default: false)' },
+        language: { type: 'string', description: 'Filter by programming language' },
+        errorClass: { type: 'string', description: 'Filter by error class (e.g. TypeError, SyntaxError)' },
+        limit: { type: 'number', description: 'Max results (default: 20)' },
       },
     },
   },
@@ -790,87 +672,68 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        patternId: { type: 'string', description: 'ID of the pattern to transpile' },
-        targetLanguage: { type: 'string', description: 'Target language (python, typescript, go, rust, etc.)' },
+        patternId: { type: 'string', description: 'Pattern ID to transpile' },
+        targetLanguage: { type: 'string', description: 'Target language (python, typescript, go, rust)' },
       },
       required: ['patternId', 'targetLanguage'],
     },
   },
+
+  // ─── Storage (2) ───
   {
-    name: 'oracle_llm_tests',
-    description: 'Generate tests for a pattern using Claude. Falls back to static test synthesis if unavailable.',
+    name: 'oracle_sync',
+    description: 'Sync patterns with your personal store (~/.remembrance/personal/). Bidirectional by default.',
     inputSchema: {
       type: 'object',
       properties: {
-        patternId: { type: 'string', description: 'ID of the pattern' },
-      },
-      required: ['patternId'],
-    },
-  },
-  {
-    name: 'oracle_llm_refine',
-    description: 'Refine a pattern using Claude to improve weak coherency dimensions. Falls back to SERF reflection.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        patternId: { type: 'string', description: 'ID of the pattern to refine' },
-      },
-      required: ['patternId'],
-    },
-  },
-  {
-    name: 'oracle_llm_analyze',
-    description: 'Analyze code quality using Claude. Returns issues, suggestions, complexity, and quality score.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string', description: 'Code to analyze' },
-        language: { type: 'string', description: 'Programming language' },
-      },
-      required: ['code'],
-    },
-  },
-  {
-    name: 'oracle_llm_explain',
-    description: 'Explain a pattern in plain language using Claude.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        patternId: { type: 'string', description: 'ID of the pattern to explain' },
-      },
-      required: ['patternId'],
-    },
-  },
-  {
-    name: 'oracle_llm_generate',
-    description: 'LLM-enhanced candidate generation. Uses Claude for higher-quality variants, falls back to regex/SERF.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        maxPatterns: { type: 'number', description: 'Max source patterns to process (default 10)' },
-        languages: { type: 'array', items: { type: 'string' }, description: 'Target languages for variants' },
-      },
-    },
-  },
-  // Pattern Composition
-  {
-    name: 'oracle_compose',
-    description: 'Compose multiple patterns into a cohesive module. Accepts pattern names, a template name, or a natural language description.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        patterns: { type: 'array', items: { type: 'string' }, description: 'Pattern names to compose' },
-        template: { type: 'string', description: 'Built-in template name (rest-api, auth-service, task-queue, data-pipeline, resilient-service)' },
-        describe: { type: 'string', description: 'Natural language description to auto-detect patterns' },
-        language: { type: 'string', description: 'Target language (default: javascript)' },
-        glue: { type: 'string', enum: ['module', 'class', 'function'], description: 'How to combine patterns (default: module)' },
+        direction: { type: 'string', enum: ['push', 'pull', 'both'], description: 'Sync direction (default: both)' },
+        dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
+        language: { type: 'string', description: 'Filter by language when pulling (default: all)' },
       },
     },
   },
   {
-    name: 'oracle_compose_templates',
-    description: 'List available composition templates.',
-    inputSchema: { type: 'object', properties: {} },
+    name: 'oracle_share',
+    description: 'Share patterns to the community store (~/.remembrance/community/). Only shares test-backed patterns above 0.7 coherency.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        patterns: { type: 'array', items: { type: 'string' }, description: 'Pattern names to share (default: all eligible)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags' },
+        minCoherency: { type: 'number', description: 'Minimum coherency to share (default: 0.7)' },
+        dryRun: { type: 'boolean', description: 'Preview without making changes (default: false)' },
+      },
+    },
+  },
+
+  // ─── Harvest (1) ───
+  {
+    name: 'oracle_harvest',
+    description: 'Harvest patterns from a local directory or Git repo URL. Walks source files, extracts functions, and bulk-registers them as Oracle patterns.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Local directory path or Git repo URL to harvest from' },
+        language: { type: 'string', description: 'Filter by language (javascript, python, go, rust, typescript)' },
+        dryRun: { type: 'boolean', description: 'Preview without registering patterns (default: false)' },
+        splitMode: { type: 'string', enum: ['file', 'function'], description: 'Split mode: register whole files or individual functions (default: file)' },
+        branch: { type: 'string', description: 'Git branch to clone (default: default branch)' },
+        maxFiles: { type: 'number', description: 'Max standalone files to process (default: 200)' },
+      },
+      required: ['path'],
+    },
+  },
+
+  // ─── Maintenance (1) ───
+  {
+    name: 'oracle_maintain',
+    description: 'Run full maintenance cycle: self-improve (heal low-coherency patterns, promote candidates, clean stubs) → self-optimize (detect duplicates, analyze usage) → self-evolve (detect regressions, re-check coherency). Returns combined report.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        maxHealsPerRun: { type: 'number', description: 'Max patterns to heal per run (default: 20)' },
+      },
+    },
   },
 ];
 
@@ -880,7 +743,7 @@ class MCPServer {
     this._initialized = false;
   }
 
-  handleRequest(msg) {
+  async handleRequest(msg) {
     const { id, method, params } = msg;
 
     // Notifications (no id)
@@ -914,7 +777,7 @@ class MCPServer {
     }
 
     if (method === 'tools/call') {
-      return this._handleToolCall(id, params);
+      return await this._handleToolCall(id, params);
     }
 
     return {
@@ -924,13 +787,40 @@ class MCPServer {
     };
   }
 
-  _handleToolCall(id, params) {
+  /**
+   * Validate required parameters for a tool call against its inputSchema.
+   * Returns an error string if validation fails, null if valid.
+   */
+  _validateParams(toolName, args) {
+    const tool = TOOLS.find(t => t.name === toolName);
+    if (!tool) return `Unknown tool: ${toolName}`;
+    const required = tool.inputSchema?.required || [];
+    const missing = required.filter(p => args[p] === undefined || args[p] === null);
+    if (missing.length > 0) {
+      return `Missing required parameter(s): ${missing.join(', ')}`;
+    }
+    return null;
+  }
+
+  async _handleToolCall(id, params) {
     const { name, arguments: args = {} } = params || {};
+
+    // Validate required parameters before execution
+    const validationError = this._validateParams(name, args);
+    if (validationError) {
+      return {
+        jsonrpc: '2.0',
+        id,
+        error: { code: -32602, message: validationError },
+      };
+    }
 
     try {
       let result;
 
       switch (name) {
+        // ─── Core ───
+
         case 'oracle_search':
           result = this.oracle.search(args.query || '', {
             limit: args.limit || 5,
@@ -944,6 +834,7 @@ class MCPServer {
             description: args.description || '',
             tags: args.tags || [],
             language: args.language,
+            heal: args.heal !== false,
           });
           break;
 
@@ -987,29 +878,17 @@ class MCPServer {
           });
           break;
 
-        case 'oracle_nearest': {
-          const { nearestTerms } = require('../core/vectors');
-          result = nearestTerms(args.query || '', args.limit || 10);
-          break;
-        }
+        // ─── Search ───
 
-        case 'oracle_versions': {
-          const { VersionManager } = require('../core/versioning');
-          const sqliteStore = this.oracle.store.getSQLiteStore();
-          const vm = new VersionManager(sqliteStore);
-          result = vm.getHistory(args.patternId);
+        case 'oracle_smart_search':
+          result = this.oracle.smartSearch(args.query, {
+            language: args.language,
+            limit: args.limit || 10,
+            mode: args.mode || 'hybrid',
+          });
           break;
-        }
 
-        case 'oracle_semantic_diff': {
-          const { semanticDiff } = require('../core/versioning');
-          const entryA = this.oracle.patterns.getAll().find(p => p.id === args.idA) || this.oracle.store.get(args.idA);
-          const entryB = this.oracle.patterns.getAll().find(p => p.id === args.idB) || this.oracle.store.get(args.idB);
-          if (!entryA) throw new Error(`Entry ${args.idA} not found`);
-          if (!entryB) throw new Error(`Entry ${args.idB} not found`);
-          result = semanticDiff(entryA.code, entryB.code, entryA.language);
-          break;
-        }
+        // ─── Quality ───
 
         case 'oracle_reflect': {
           const { reflectionLoop } = require('../core/reflection');
@@ -1018,26 +897,25 @@ class MCPServer {
             maxLoops: args.maxLoops || 3,
             targetCoherence: args.targetCoherence || 0.9,
           });
-          // Trim history code to keep response size reasonable
           result.history = result.history.map(h => ({
             loop: h.loop,
             coherence: h.coherence,
             strategy: h.strategy,
-            serfScore: h.serfScore,
+            reflectionScore: h.reflectionScore,
           }));
           break;
         }
 
-        case 'oracle_harvest': {
-          const { harvest } = require('../ci/harvest');
-          result = harvest(this.oracle, args.path || '.', {
-            language: args.language,
-            dryRun: args.dryRun || false,
-            splitMode: args.splitMode || 'file',
-            maxFiles: args.maxFiles || 200,
+        case 'oracle_covenant': {
+          const { covenantCheck } = require('../core/covenant');
+          result = covenantCheck(args.code || '', {
+            description: args.description || '',
+            tags: args.tags || [],
           });
           break;
         }
+
+        // ─── Candidates ───
 
         case 'oracle_candidates': {
           const filters = {};
@@ -1049,19 +927,6 @@ class MCPServer {
           result = { stats, candidates: candidates.slice(0, 50) };
           break;
         }
-
-        case 'oracle_generate':
-          result = this.oracle.generateCandidates({
-            languages: args.languages || ['python', 'typescript'],
-            methods: args.methods || ['variant', 'serf-refine', 'approach-swap'],
-            maxPatterns: args.maxPatterns || Infinity,
-            minCoherency: args.minCoherency || 0.5,
-          });
-          break;
-
-        case 'oracle_promote':
-          result = this.oracle.promote(args.candidateId, args.testCode);
-          break;
 
         case 'oracle_auto_promote':
           result = this.oracle.autoPromote();
@@ -1075,62 +940,7 @@ class MCPServer {
           });
           break;
 
-        case 'oracle_sync': {
-          const dir = args.direction || 'both';
-          const opts = { dryRun: args.dryRun || false, language: args.language };
-          if (dir === 'push') result = this.oracle.syncToGlobal(opts);
-          else if (dir === 'pull') result = this.oracle.syncFromGlobal(opts);
-          else result = this.oracle.sync(opts);
-          break;
-        }
-
-        case 'oracle_share': {
-          result = this.oracle.share({
-            patterns: args.patterns,
-            tags: args.tags,
-            minCoherency: args.minCoherency || 0.7,
-            dryRun: args.dryRun || false,
-          });
-          break;
-        }
-
-        case 'oracle_community': {
-          const action = args.action || 'stats';
-          if (action === 'pull') {
-            result = this.oracle.pullCommunity({
-              language: args.language,
-              maxPull: args.maxPull || Infinity,
-              dryRun: args.dryRun || false,
-            });
-          } else {
-            result = this.oracle.communityStats();
-          }
-          break;
-        }
-
-        case 'oracle_global_stats': {
-          const gStats = this.oracle.globalStats();
-          const federated = this.oracle.federatedSearch();
-          result = { ...gStats, globalOnly: federated.globalOnly, personalOnly: federated.personalOnly, communityOnly: federated.communityOnly };
-          break;
-        }
-
-        case 'oracle_covenant': {
-          const { covenantCheck } = require('../core/covenant');
-          result = covenantCheck(args.code || '', {
-            description: args.description || '',
-            tags: args.tags || [],
-          });
-          break;
-        }
-
-        case 'oracle_smart_search':
-          result = this.oracle.smartSearch(args.query, {
-            language: args.language,
-            limit: args.limit || 10,
-            mode: args.mode || 'hybrid',
-          });
-          break;
+        // ─── Debug ───
 
         case 'oracle_debug_capture':
           result = this.oracle.debugCapture({
@@ -1157,26 +967,43 @@ class MCPServer {
           result = this.oracle.debugFeedback(args.id, args.resolved);
           break;
 
-        case 'oracle_debug_grow':
-          result = this.oracle.debugGrow({
-            minConfidence: args.minConfidence || 0.5,
-            maxPatterns: args.maxPatterns || Infinity,
-            languages: args.languages,
-          });
-          break;
-
         case 'oracle_debug_stats':
           result = this.oracle.debugStats();
           break;
 
-        case 'oracle_debug_share':
-          result = this.oracle.debugShare({
-            minConfidence: args.minConfidence || 0.5,
-            category: args.category,
+        case 'oracle_debug_grow':
+          result = this.oracle.debugGrow({
+            limit: args.limit,
+          });
+          break;
+
+        case 'oracle_debug_patterns':
+          result = this.oracle.debugPatterns({
             language: args.language,
+            errorClass: args.errorClass,
+          });
+          break;
+
+        // ─── Storage ───
+
+        case 'oracle_sync': {
+          const dir = args.direction || 'both';
+          const opts = { dryRun: args.dryRun || false, language: args.language };
+          if (dir === 'push') result = this.oracle.syncToGlobal(opts);
+          else if (dir === 'pull') result = this.oracle.syncFromGlobal(opts);
+          else result = this.oracle.sync(opts);
+          break;
+        }
+
+        case 'oracle_share': {
+          result = this.oracle.share({
+            patterns: args.patterns,
+            tags: args.tags,
+            minCoherency: args.minCoherency || 0.7,
             dryRun: args.dryRun || false,
           });
           break;
+        }
 
         case 'oracle_reflector_snapshot': {
           const { takeSnapshot } = require('../reflector/engine');
@@ -1518,64 +1345,33 @@ class MCPServer {
           result = { available: this.oracle.isLLMAvailable(), engine: 'claude-bridge' };
           break;
 
-        case 'oracle_llm_transpile':
-          result = this.oracle.llmTranspile(args.patternId, args.targetLanguage);
-          break;
+        // ─── Harvest ───
 
-        case 'oracle_llm_tests':
-          result = this.oracle.llmGenerateTests(args.patternId);
-          break;
-
-        case 'oracle_llm_refine':
-          result = this.oracle.llmRefine(args.patternId);
-          break;
-
-        case 'oracle_llm_analyze':
-          result = this.oracle.llmAnalyze(args.code, args.language || 'javascript');
-          break;
-
-        case 'oracle_llm_explain':
-          result = this.oracle.llmExplain(args.patternId);
-          break;
-
-        case 'oracle_llm_generate':
-          result = this.oracle.llmGenerate({
-            maxPatterns: args.maxPatterns || 10,
-            languages: args.languages || ['python', 'typescript'],
+        case 'oracle_harvest': {
+          const { harvest } = require('../ci/harvest');
+          result = harvest(this.oracle, args.path, {
+            language: args.language,
+            dryRun: args.dryRun || false,
+            splitMode: args.splitMode || 'file',
+            branch: args.branch,
+            maxFiles: args.maxFiles || 200,
           });
           break;
-
-        case 'oracle_compose': {
-          const { PatternComposer } = require('../patterns/composer');
-          const composer = new PatternComposer(this.oracle);
-          if (args.template) {
-            const tmpl = composer.templates().find(t => t.name === args.template);
-            result = tmpl ? composer.compose({ patterns: tmpl.patterns, language: args.language || 'javascript', glue: args.glue || 'module' }) : { error: 'Unknown template' };
-          } else if (args.describe) {
-            result = composer.composeFromDescription(args.describe, args.language || 'javascript');
-          } else if (args.patterns) {
-            result = composer.compose({ patterns: args.patterns, language: args.language || 'javascript', glue: args.glue || 'module' });
-          } else {
-            result = { error: 'Provide patterns, template, or describe' };
-          }
-          break;
         }
 
-        case 'oracle_compose_templates': {
-          const { PatternComposer: PC } = require('../patterns/composer');
-          const comp = new PC(this.oracle);
-          result = comp.templates();
+        // ─── Maintenance ───
+
+        case 'oracle_maintain':
+          result = this.oracle.fullOptimizationCycle({
+            maxHealsPerRun: args.maxHealsPerRun || 20,
+          });
           break;
-        }
 
         default:
           return {
             jsonrpc: '2.0',
             id,
-            result: {
-              content: [{ type: 'text', text: `Unknown tool: ${name}` }],
-              isError: true,
-            },
+            error: { code: -32602, message: `Unknown tool: ${name}` },
           };
       }
 
@@ -1590,10 +1386,7 @@ class MCPServer {
       return {
         jsonrpc: '2.0',
         id,
-        result: {
-          content: [{ type: 'text', text: `Error: ${err.message}` }],
-          isError: true,
-        },
+        error: { code: -32603, message: `Internal error: ${err.message}` },
       };
     }
   }
@@ -1606,10 +1399,11 @@ function startMCPServer(oracle) {
   const server = new MCPServer(oracle);
   const rl = readline.createInterface({ input: process.stdin, terminal: false });
 
-  rl.on('line', (line) => {
+  rl.on('line', async (line) => {
     try {
-      const msg = JSON.parse(line.trim());
-      const response = server.handleRequest(msg);
+      const msg = safeJsonParse(line.trim(), null);
+      if (!msg) throw new Error('Invalid JSON');
+      const response = await server.handleRequest(msg);
       if (response) {
         process.stdout.write(JSON.stringify(response) + '\n');
       }
@@ -1620,6 +1414,18 @@ function startMCPServer(oracle) {
         error: { code: -32700, message: 'Parse error' },
       };
       process.stdout.write(JSON.stringify(errorResponse) + '\n');
+    }
+  });
+
+  rl.on('error', (err) => {
+    if (process.env.ORACLE_DEBUG) {
+      console.error('[mcp] readline error:', err.message);
+    }
+  });
+
+  process.stdin.on('error', (err) => {
+    if (process.env.ORACLE_DEBUG) {
+      console.error('[mcp] stdin error:', err.message);
     }
   });
 

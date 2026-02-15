@@ -32,11 +32,11 @@ function computeOverview(patterns, entries) {
   const totalPatterns = patterns.length;
   const totalEntries = entries.length;
   const avgCoherency = totalPatterns > 0
-    ? patterns.reduce((sum, p) => sum + (p.coherencyScore?.total || 0), 0) / totalPatterns
+    ? patterns.reduce((sum, p) => sum + (p.coherencyScore?.total ?? 0), 0) / totalPatterns
     : 0;
   const languages = new Set(patterns.map(p => p.language).filter(Boolean));
-  const withTests = patterns.filter(p => p.tags?.includes('test-backed')).length;
-  const highQuality = patterns.filter(p => (p.coherencyScore?.total || 0) >= 0.7).length;
+  const withTests = patterns.filter(p => p.testCode || p.tags?.includes('test-backed')).length;
+  const highQuality = patterns.filter(p => (p.coherencyScore?.total ?? 0) >= 0.7).length;
 
   return {
     totalPatterns,
@@ -53,7 +53,7 @@ function computeOverview(patterns, entries) {
 function computeCoherencyDistribution(patterns) {
   const buckets = { '0.0-0.2': 0, '0.2-0.4': 0, '0.4-0.6': 0, '0.6-0.8': 0, '0.8-1.0': 0 };
   for (const p of patterns) {
-    const score = p.coherencyScore?.total || 0;
+    const score = p.coherencyScore?.total ?? 0;
     if (score < 0.2) buckets['0.0-0.2']++;
     else if (score < 0.4) buckets['0.2-0.4']++;
     else if (score < 0.6) buckets['0.4-0.6']++;
@@ -69,7 +69,7 @@ function computeLanguageBreakdown(patterns) {
     const lang = p.language || 'unknown';
     if (!breakdown[lang]) breakdown[lang] = { count: 0, avgCoherency: 0, totalCoherency: 0 };
     breakdown[lang].count++;
-    breakdown[lang].totalCoherency += p.coherencyScore?.total || 0;
+    breakdown[lang].totalCoherency += p.coherencyScore?.total ?? 0;
   }
   for (const lang of Object.keys(breakdown)) {
     breakdown[lang].avgCoherency = breakdown[lang].count > 0
@@ -82,13 +82,13 @@ function computeLanguageBreakdown(patterns) {
 
 function computeTopPatterns(patterns) {
   return [...patterns]
-    .sort((a, b) => (b.coherencyScore?.total || 0) - (a.coherencyScore?.total || 0))
+    .sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0))
     .slice(0, 20)
     .map(p => ({
       id: p.id,
       name: p.name,
       language: p.language,
-      coherency: p.coherencyScore?.total || 0,
+      coherency: p.coherencyScore?.total ?? 0,
       type: p.patternType,
       complexity: p.complexity,
       tags: (p.tags || []).slice(0, 5),
@@ -109,16 +109,16 @@ function computeHealthReport(patterns) {
   const total = patterns.length;
   if (total === 0) return { healthy: 0, warning: 0, critical: 0, patterns: [] };
 
-  const healthy = patterns.filter(p => (p.coherencyScore?.total || 0) >= 0.6).length;
+  const healthy = patterns.filter(p => (p.coherencyScore?.total ?? 0) >= 0.6).length;
   const warning = patterns.filter(p => {
-    const s = p.coherencyScore?.total || 0;
+    const s = p.coherencyScore?.total ?? 0;
     return s >= 0.4 && s < 0.6;
   }).length;
-  const critical = patterns.filter(p => (p.coherencyScore?.total || 0) < 0.4).length;
+  const critical = patterns.filter(p => (p.coherencyScore?.total ?? 0) < 0.4).length;
 
   const criticalPatterns = patterns
-    .filter(p => (p.coherencyScore?.total || 0) < 0.4)
-    .map(p => ({ id: p.id, name: p.name, coherency: p.coherencyScore?.total || 0 }));
+    .filter(p => (p.coherencyScore?.total ?? 0) < 0.4)
+    .map(p => ({ id: p.id, name: p.name, coherency: p.coherencyScore?.total ?? 0 }));
 
   return { healthy, warning, critical, criticalPatterns };
 }
@@ -134,7 +134,7 @@ function computeRecentActivity(patterns, entries) {
     id: p.id,
     name: p.name,
     language: p.language,
-    coherency: p.coherencyScore?.total || 0,
+    coherency: p.coherencyScore?.total ?? 0,
     timestamp: p.timestamp,
   }));
 }

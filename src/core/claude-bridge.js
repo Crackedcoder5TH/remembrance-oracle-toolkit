@@ -14,7 +14,7 @@
  *   6. Analyze code for potential improvements
  *   7. Explain code patterns in natural language
  *
- * Falls back to the existing regex/SERF pipeline when CLI is unavailable.
+ * Falls back to the existing regex/reflection pipeline when CLI is unavailable.
  */
 
 const { execFileSync, execFile } = require('child_process');

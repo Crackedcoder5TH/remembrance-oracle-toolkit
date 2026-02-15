@@ -1,14 +1,11 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
 
 const {
   syncToGlobal,
   syncFromGlobal,
   syncBidirectional,
-  shareToCommuntiy,
+  shareToCommunity,
   pullFromCommunity,
   federatedQuery,
   globalStats,
@@ -18,12 +15,7 @@ const {
   openCommunityStore,
 } = require('../src/core/persistence');
 const { SQLiteStore, DatabaseSync } = require('../src/store/sqlite');
-
-function makeTempDir(suffix = '') {
-  const dir = path.join(os.tmpdir(), `persist-test-${suffix}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
+const { makeTempDir } = require('./helpers');
 
 function createTestStores() {
   const localBase = makeTempDir('local');
@@ -123,7 +115,7 @@ describe('Cross-Project Persistence', () => {
     });
   });
 
-  describe('shareToCommuntiy', () => {
+  describe('shareToCommunity', () => {
     it('shares test-backed patterns to community store', () => {
       const { localStore } = createTestStores();
       const communityBase = makeTempDir('community');

@@ -304,53 +304,156 @@ function expandLanguages(language) {
 // ─── Smart Search ───
 
 /**
+ * Select the optimal search mode based on parsed intent.
+ * Performance/safety intents → semantic (deeper matching).
+ * Simplicity/testing intents → hybrid (faster, keyword-heavy).
+ * No intents → hybrid (default).
+ *
+ * @param {object} intent - Parsed intent from parseIntent()
+ * @param {string} requestedMode - User-requested mode override
+ * @returns {string} 'hybrid' | 'semantic'
+ */
+function selectSearchMode(intent, requestedMode) {
+  if (requestedMode && requestedMode !== 'auto') return requestedMode;
+  if (!intent || intent.intents.length === 0) return 'hybrid';
+
+  const intentNames = new Set(intent.intents.map(i => i.name));
+
+  // Deep semantic search for complex intents
+  if (intentNames.has('performance') || intentNames.has('safety') || intentNames.has('functional')) {
+    return 'semantic';
+  }
+
+  return 'hybrid';
+}
+
+/**
+ * Apply usage-based boosts to search results.
+ * High-usage, high-success patterns get a ranking bump.
+ *
+ * @param {Array} results - Search results
+ * @param {object} oracle - RemembranceOracle instance
+ * @returns {Array} Results with usage boosts applied
+ */
+function applyUsageBoosts(results, oracle) {
+  if (!results || results.length === 0) return results;
+
+  try {
+    const { computeUsageBoosts } = require('./actionable-insights');
+    const boosts = computeUsageBoosts(oracle);
+    if (boosts.size === 0) return results;
+
+    return results.map(r => {
+      const boost = boosts.get(r.id) || 0;
+      if (boost > 0) {
+        return {
+          ...r,
+          matchScore: Math.min(1, (r.matchScore || 0) + boost),
+          usageBoost: boost,
+        };
+      }
+      return r;
+    }).sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+  } catch {
+    return results;
+  }
+}
+
+/**
  * Intelligent search that combines intent parsing, query rewriting,
- * and contextual ranking into a single call.
+ * contextual ranking, and embedding-tier selection into a single call.
+ *
+ * The search pipeline:
+ *   1. Parse intent → detect language, constraints, semantic signals
+ *   2. Select search mode based on intent (auto-tier selection)
+ *   3. Rewrite query with typo corrections
+ *   4. Search with expanded languages
+ *   5. Apply intent-based ranking boosts
+ *   6. Apply usage-based boosts from insights
+ *   7. Filter by constraints
+ *   8. Deduplicate and suggest
  *
  * @param {object} oracle - RemembranceOracle instance
  * @param {string} query - Raw search query
- * @param {object} options - { language, limit, mode }
- * @returns {object} { results, intent, rewrittenQuery, suggestions }
+ * @param {object} options - { language, limit, mode, embeddingEngine }
+ * @returns {object} { results, intent, rewrittenQuery, suggestions, searchMode }
  */
 function smartSearch(oracle, query, options = {}) {
-  const { language, limit = 10, mode = 'hybrid' } = options;
+  const { language, limit = 10, mode = 'auto', embeddingEngine } = options;
 
   // Step 1: Parse intent
   const intent = parseIntent(query);
 
-  // Step 2: Use rewritten query for search
+  // Step 2: Select optimal search mode based on intent
+  const searchMode = selectSearchMode(intent, mode);
+
+  // Step 3: Use rewritten query for search
   const searchQuery = intent.rewritten || query;
   const searchLang = language || intent.language;
 
-  // Step 3: Search with expanded languages
+  // Step 4: Search with expanded languages
   let results = oracle.search(searchQuery, {
     limit: limit * 2, // Over-fetch for re-ranking
     language: searchLang,
-    mode,
+    mode: searchMode,
   });
 
-  // Step 4: If language was detected, also search family languages
+  // Step 4b: If embedding engine provided and intent is complex, do secondary embedding search
+  if (embeddingEngine && intent.intents.length > 0 && results.length < limit) {
+    try {
+      const allPatterns = oracle.patterns.getAll();
+      const embeddingResults = embeddingEngine.search(searchQuery, allPatterns, {
+        limit: limit,
+        language: searchLang,
+      });
+      // Merge embedding results that aren't already in main results
+      const existingIds = new Set(results.map(r => r.id));
+      for (const er of embeddingResults) {
+        if (!existingIds.has(er.id)) {
+          results.push({
+            ...er,
+            matchScore: er._relevance?.relevance || 0,
+            embeddingMatch: true,
+          });
+        }
+      }
+    } catch {
+      // Embedding search is best-effort
+    }
+  }
+
+  // Step 5: If language was detected, also search family languages
   if (searchLang) {
     const family = expandLanguages(searchLang);
     for (const lang of family) {
       if (lang === searchLang) continue;
-      const familyResults = oracle.search(searchQuery, { limit: 5, language: lang, mode });
+      const familyResults = oracle.search(searchQuery, { limit: 5, language: lang, mode: searchMode });
       results = results.concat(familyResults.map(r => ({ ...r, crossLanguage: true })));
     }
   }
 
-  // Step 5: Apply intent-based ranking
+  // Step 6: Apply intent-based ranking
   results = applyIntentRanking(results, intent);
 
-  // Step 6: Apply constraint filters
+  // Step 7: Apply usage-based boosts from insights
+  results = applyUsageBoosts(results, oracle);
+
+  // Step 8: Apply constraint filters
   if (intent.constraints.zeroDeps) {
     results = results.filter(r => {
       const code = r.code || '';
       return !code.includes('require(') && !code.includes('import ');
     });
   }
+  if (intent.constraints.typed) {
+    results = results.filter(r => {
+      const lang = (r.language || '').toLowerCase();
+      const code = r.code || '';
+      return lang === 'typescript' || code.includes(': string') || code.includes(': number');
+    });
+  }
 
-  // Step 7: Deduplicate by name
+  // Step 9: Deduplicate by name
   const seen = new Set();
   results = results.filter(r => {
     const key = r.name || r.id;
@@ -359,7 +462,7 @@ function smartSearch(oracle, query, options = {}) {
     return true;
   });
 
-  // Step 8: Generate suggestions if few results
+  // Step 10: Generate suggestions if few results
   const suggestions = [];
   if (results.length < 3) {
     if (intent.rewritten !== intent.original) {
@@ -380,6 +483,7 @@ function smartSearch(oracle, query, options = {}) {
     corrections: intent.rewritten !== intent.original ? intent.rewritten : null,
     suggestions,
     totalMatches: results.length,
+    searchMode,
   };
 }
 
@@ -390,6 +494,8 @@ module.exports = {
   rewriteQuery,
   editDistance,
   applyIntentRanking,
+  applyUsageBoosts,
+  selectSearchMode,
   expandLanguages,
   smartSearch,
   INTENT_PATTERNS,

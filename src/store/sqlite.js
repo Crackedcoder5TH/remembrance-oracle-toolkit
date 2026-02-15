@@ -117,9 +117,77 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_table, target_id);
     `);
 
+    // Schema migration: enforce unique (name, language) — dedup first, then add index
+    try {
+      // Check if unique index already exists
+      const idxExists = this.db.prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='index' AND name='idx_patterns_unique_name_lang'"
+      ).get();
+      if (!idxExists) {
+        // Remove duplicates before creating unique index (keep highest coherency)
+        this.db.exec(`
+          DELETE FROM patterns WHERE id NOT IN (
+            SELECT id FROM (
+              SELECT id, ROW_NUMBER() OVER (
+                PARTITION BY LOWER(name), LOWER(language)
+                ORDER BY coherency_total DESC, created_at ASC
+              ) AS rn FROM patterns
+            ) WHERE rn = 1
+          )
+        `);
+        this.db.exec(`CREATE UNIQUE INDEX idx_patterns_unique_name_lang ON patterns(name COLLATE NOCASE, language COLLATE NOCASE)`);
+      }
+    } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] unique index creation failed:', e.message); }
+
     // Schema migration: add composition columns
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch {}
-    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch {}
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] requires column:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] composed_of column:', e.message); }
+
+    // Schema migration: add bug reports column for reliability tracking
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN bug_reports INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] bug_reports column:', e.message); }
+
+    // Schema migration: add votes columns for community voting
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN upvotes INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] upvotes column:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN downvotes INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] downvotes column:', e.message); }
+
+    // Schema migration: add provenance columns for open source tracking
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_url TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_url:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_repo TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_repo:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_license TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_license:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_commit TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_commit:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN source_file TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.source_file:', e.message); }
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_url TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] candidates.source_url:', e.message); }
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_repo TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] candidates.source_repo:', e.message); }
+    try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_license TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] candidates.source_license:', e.message); }
+
+    // Votes log table — tracks individual votes to prevent duplicates
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS votes (
+        id TEXT PRIMARY KEY,
+        pattern_id TEXT NOT NULL,
+        voter TEXT NOT NULL,
+        vote INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(pattern_id, voter)
+      );
+      CREATE INDEX IF NOT EXISTS idx_votes_pattern ON votes(pattern_id);
+    `);
+
+    // Voter reputation table — tracks contributor identity and weighted influence
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS voters (
+        id TEXT PRIMARY KEY,
+        reputation REAL DEFAULT 1.0,
+        total_votes INTEGER DEFAULT 0,
+        accurate_votes INTEGER DEFAULT 0,
+        contributions INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+
+    // Add weight column to votes table
+    try { this.db.exec(`ALTER TABLE votes ADD COLUMN weight REAL DEFAULT 1.0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] votes.weight:', e.message); }
 
     // Candidates table — coherent-but-unproven patterns awaiting test proof
     this.db.exec(`
@@ -191,8 +259,8 @@ class SQLiteStore {
         }
         // Rename old file so migration doesn't re-run
         fs.renameSync(historyPath, historyPath + '.migrated');
-      } catch {
-        // Migration is best-effort
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] history JSON migration failed:', e.message);
       }
     }
 
@@ -221,8 +289,8 @@ class SQLiteStore {
           }
         }
         fs.renameSync(patternsPath, patternsPath + '.migrated');
-      } catch {
-        // Migration is best-effort
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] patterns JSON migration failed:', e.message);
       }
     }
   }
@@ -396,6 +464,16 @@ class SQLiteStore {
   // ─── Pattern methods — same interface as PatternLibrary ───
 
   addPattern(pattern) {
+    // Always route through dedup-safe method to prevent duplicates
+    const result = this.addPatternIfNotExists(pattern);
+    return result; // may be null if duplicate with equal/higher coherency exists
+  }
+
+  /**
+   * Raw insert — bypasses dedup checks. Only used internally by addPatternIfNotExists.
+   * @private
+   */
+  _insertPattern(pattern) {
     const id = this._hash(pattern.code + pattern.name + Date.now());
     const now = new Date().toISOString();
 
@@ -421,6 +499,75 @@ class SQLiteStore {
     });
 
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
+  }
+
+  /**
+   * Add a pattern only if no pattern with the same (name, language) exists.
+   * If a duplicate exists with lower coherency, update it instead.
+   * Returns the pattern (existing or new), or null if skipped.
+   */
+  addPatternIfNotExists(pattern) {
+    const lang = (pattern.language || 'unknown').toLowerCase();
+    const name = pattern.name;
+    const newCoherency = pattern.coherencyScore?.total ?? 0;
+
+    const existing = this.db.prepare(
+      'SELECT id, coherency_total FROM patterns WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) LIMIT 1'
+    ).get(name, lang);
+
+    if (existing) {
+      // If new version has higher coherency, update the existing row
+      if (newCoherency > (existing.coherency_total || 0)) {
+        const now = new Date().toISOString();
+        this.db.prepare(`
+          UPDATE patterns SET code = ?, description = ?, tags = ?,
+            coherency_total = ?, coherency_json = ?, test_code = ?,
+            pattern_type = ?, complexity = ?, evolution_history = ?,
+            updated_at = ?, version = version + 1
+          WHERE id = ?
+        `).run(
+          pattern.code, pattern.description || '',
+          JSON.stringify(pattern.tags || []),
+          newCoherency, JSON.stringify(pattern.coherencyScore || {}),
+          pattern.testCode || null,
+          pattern.patternType || 'utility', pattern.complexity || 'composite',
+          JSON.stringify(pattern.evolutionHistory || []),
+          now, existing.id
+        );
+        return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(existing.id));
+      }
+      return null; // Existing has equal or higher coherency — skip
+    }
+
+    return this._insertPattern(pattern);
+  }
+
+  /**
+   * Remove duplicate patterns, keeping the highest-coherency row for each (name, language).
+   * Returns { removed, kept, byName }.
+   */
+  deduplicatePatterns() {
+    const all = this.db.prepare('SELECT id, name, language, coherency_total FROM patterns ORDER BY coherency_total DESC').all();
+    const bestByKey = new Map();
+    const toDelete = [];
+
+    for (const row of all) {
+      const key = `${row.name.toLowerCase()}:${(row.language || 'unknown').toLowerCase()}`;
+      if (!bestByKey.has(key)) {
+        bestByKey.set(key, row.id);
+      } else {
+        toDelete.push(row.id);
+      }
+    }
+
+    if (toDelete.length > 0) {
+      const deleteStmt = this.db.prepare('DELETE FROM patterns WHERE id = ?');
+      for (const id of toDelete) {
+        deleteStmt.run(id);
+      }
+    }
+
+    return { removed: toDelete.length, kept: bestByKey.size };
   }
 
   getAllPatterns(filters = {}) {
@@ -497,6 +644,169 @@ class SQLiteStore {
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
   }
 
+  /**
+   * Vote on a pattern (upvote or downvote).
+   * Each voter can only vote once per pattern — subsequent votes update the existing vote.
+   *
+   * @param {string} patternId - Pattern ID
+   * @param {string} voter - Voter identifier (username, IP, etc.)
+   * @param {number} vote - 1 for upvote, -1 for downvote
+   * @returns {{ success, patternId, upvotes, downvotes, voteScore }}
+   */
+  votePattern(patternId, voter, vote) {
+    const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(patternId);
+    if (!row) return { success: false, error: 'Pattern not found' };
+
+    const voteVal = vote > 0 ? 1 : -1;
+    const now = new Date().toISOString();
+    const weight = this.getVoteWeight(voter);
+
+    // Ensure voter profile exists and update stats
+    const voterProfile = this.getVoter(voter);
+    this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
+
+    // Check for existing vote
+    const existing = this.db.prepare('SELECT * FROM votes WHERE pattern_id = ? AND voter = ?').get(patternId, voter);
+    if (existing) {
+      if (existing.vote === voteVal) {
+        return { success: false, error: 'Already voted' };
+      }
+      // Change vote direction
+      this.db.prepare('UPDATE votes SET vote = ?, weight = ?, created_at = ? WHERE id = ?').run(voteVal, weight, now, existing.id);
+      if (voteVal === 1) {
+        this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1, downvotes = MAX(0, downvotes - 1) WHERE id = ?').run(patternId);
+      } else {
+        this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1, upvotes = MAX(0, upvotes - 1) WHERE id = ?').run(patternId);
+      }
+    } else {
+      const id = require('crypto').randomUUID();
+      this.db.prepare('INSERT INTO votes (id, pattern_id, voter, vote, weight, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, patternId, voter, voteVal, weight, now);
+      if (voteVal === 1) {
+        this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1 WHERE id = ?').run(patternId);
+      } else {
+        this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1 WHERE id = ?').run(patternId);
+      }
+    }
+
+    this._audit('vote', 'patterns', patternId, { voter, vote: voteVal, weight });
+    const updated = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
+    const upvotes = updated.upvotes || 0;
+    const downvotes = updated.downvotes || 0;
+    return {
+      success: true,
+      patternId,
+      upvotes,
+      downvotes,
+      voteScore: upvotes - downvotes,
+      weight,
+      voterReputation: voterProfile.reputation,
+    };
+  }
+
+  /**
+   * Get vote counts for a pattern.
+   */
+  getVotes(patternId) {
+    const row = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
+    if (!row) return null;
+    const upvotes = row.upvotes || 0;
+    const downvotes = row.downvotes || 0;
+
+    // Calculate weighted score from individual votes
+    const votes = this.db.prepare('SELECT vote, weight FROM votes WHERE pattern_id = ?').all(patternId);
+    let weightedScore = 0;
+    for (const v of votes) {
+      weightedScore += v.vote * (v.weight || 1.0);
+    }
+
+    return { upvotes, downvotes, voteScore: upvotes - downvotes, weightedScore: Math.round(weightedScore * 100) / 100 };
+  }
+
+  /**
+   * Get top-voted patterns.
+   */
+  topVoted(limit = 20) {
+    const rows = this.db.prepare(
+      'SELECT * FROM patterns ORDER BY (COALESCE(upvotes, 0) - COALESCE(downvotes, 0)) DESC LIMIT ?'
+    ).all(limit);
+    return rows.map(r => this._rowToPattern(r));
+  }
+
+  /**
+   * Get or create a voter profile.
+   */
+  getVoter(voterId) {
+    let voter = this.db.prepare('SELECT * FROM voters WHERE id = ?').get(voterId);
+    if (!voter) {
+      const now = new Date().toISOString();
+      this.db.prepare('INSERT INTO voters (id, reputation, total_votes, accurate_votes, contributions, created_at, updated_at) VALUES (?, 1.0, 0, 0, 0, ?, ?)').run(voterId, now, now);
+      voter = this.db.prepare('SELECT * FROM voters WHERE id = ?').get(voterId);
+    }
+    return voter;
+  }
+
+  /**
+   * Get reputation weight for a voter. Reputation scales vote influence:
+   * - rep 0-0.5: weight 0.5 (reduced influence)
+   * - rep 0.5-1.0: weight 0.5-1.0 (normal)
+   * - rep 1.0-2.0: weight 1.0-2.0 (trusted)
+   * - rep 2.0+: weight 2.0 (cap)
+   */
+  getVoteWeight(voterId) {
+    const voter = this.getVoter(voterId);
+    return Math.min(2.0, Math.max(0.5, voter.reputation));
+  }
+
+  /**
+   * Update voter reputation based on pattern performance.
+   * Called when a pattern receives usage feedback.
+   */
+  updateVoterReputation(patternId, succeeded) {
+    const votes = this.db.prepare('SELECT voter, vote FROM votes WHERE pattern_id = ?').all(patternId);
+    const now = new Date().toISOString();
+
+    for (const v of votes) {
+      const voter = this.getVoter(v.voter);
+      let delta = 0;
+      if (succeeded && v.vote === 1) {
+        // Upvoted a pattern that succeeded — good judgment
+        delta = 0.05;
+      } else if (!succeeded && v.vote === -1) {
+        // Downvoted a pattern that failed — good judgment
+        delta = 0.05;
+      } else if (succeeded && v.vote === -1) {
+        // Downvoted a pattern that succeeded — poor judgment
+        delta = -0.03;
+      } else if (!succeeded && v.vote === 1) {
+        // Upvoted a pattern that failed — poor judgment
+        delta = -0.03;
+      }
+
+      if (delta !== 0) {
+        const newRep = Math.min(3.0, Math.max(0.1, voter.reputation + delta));
+        const accurate = delta > 0 ? voter.accurate_votes + 1 : voter.accurate_votes;
+        this.db.prepare('UPDATE voters SET reputation = ?, accurate_votes = ?, updated_at = ? WHERE id = ?')
+          .run(Math.round(newRep * 1000) / 1000, accurate, now, v.voter);
+      }
+    }
+  }
+
+  /**
+   * Get top contributors by reputation.
+   */
+  topVoters(limit = 20) {
+    return this.db.prepare('SELECT * FROM voters ORDER BY reputation DESC LIMIT ?').all(limit);
+  }
+
+  /**
+   * Get voter's vote history.
+   */
+  getVoterHistory(voterId, limit = 50) {
+    return this.db.prepare(
+      'SELECT v.*, p.name as pattern_name, p.language FROM votes v LEFT JOIN patterns p ON v.pattern_id = p.id WHERE v.voter = ? ORDER BY v.created_at DESC LIMIT ?'
+    ).all(voterId, limit);
+  }
+
   retirePatterns(minScore = 0.30) {
     const rows = this.db.prepare('SELECT * FROM patterns').all();
     let retired = 0;
@@ -547,6 +857,15 @@ class SQLiteStore {
       evolutionHistory: JSON.parse(row.evolution_history || '[]'),
       requires: JSON.parse(row.requires || '[]'),
       composedOf: JSON.parse(row.composed_of || '[]'),
+      bugReports: row.bug_reports || 0,
+      upvotes: row.upvotes || 0,
+      downvotes: row.downvotes || 0,
+      voteScore: (row.upvotes || 0) - (row.downvotes || 0),
+      sourceUrl: row.source_url || null,
+      sourceRepo: row.source_repo || null,
+      sourceLicense: row.source_license || null,
+      sourceCommit: row.source_commit || null,
+      sourceFile: row.source_file || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -559,6 +878,10 @@ class SQLiteStore {
       coherencyScore: 'coherency_json', coherencyTotal: 'coherency_total',
       testCode: 'test_code', tags: 'tags', description: 'description',
       updatedAt: 'updated_at', requires: 'requires', composedOf: 'composed_of',
+      bugReports: 'bug_reports', code: 'code',
+      sourceUrl: 'source_url', sourceRepo: 'source_repo',
+      sourceLicense: 'source_license', sourceCommit: 'source_commit',
+      sourceFile: 'source_file',
     };
     return map[field] || null;
   }

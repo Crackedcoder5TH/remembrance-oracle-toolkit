@@ -90,23 +90,18 @@ const decision = oracle.resolve({
 oracle mcp
 ```
 
-Connect from any MCP-compatible AI client. 59 tools across 13 categories:
+Connect from any MCP-compatible AI client. 23 tools across 8 categories:
 
 | Category | Tools | Description |
 |----------|-------|-------------|
-| **Core** | `oracle_search`, `oracle_resolve`, `oracle_submit`, `oracle_query`, `oracle_feedback`, `oracle_stats`, `oracle_register_pattern`, `oracle_nearest`, `oracle_smart_search` | Search, submit, resolve, and track patterns |
-| **Versioning** | `oracle_versions`, `oracle_semantic_diff`, `oracle_rollback`, `oracle_verify` | Version history and structural diffing |
-| **Reflection** | `oracle_reflect`, `oracle_covenant`, `oracle_harvest`, `oracle_compose`, `oracle_compose_templates` | Code healing, harm filter, harvesting |
-| **Candidates** | `oracle_candidates`, `oracle_generate`, `oracle_promote`, `oracle_auto_promote`, `oracle_smart_promote`, `oracle_synthesize_tests` | Candidate lifecycle and promotion |
-| **Security** | `oracle_security_scan`, `oracle_security_audit` | Vulnerability scanning |
-| **Federation** | `oracle_remote_search`, `oracle_remotes`, `oracle_full_search`, `oracle_cross_search`, `oracle_repos` | Multi-server remote search |
-| **Voting** | `oracle_vote`, `oracle_top_voted`, `oracle_reputation` | Community pattern voting |
-| **Storage** | `oracle_sync`, `oracle_share`, `oracle_community`, `oracle_global_stats` | Three-tier storage management |
-| **Debug** | `oracle_debug_capture`, `oracle_debug_search`, `oracle_debug_feedback`, `oracle_debug_grow`, `oracle_debug_stats`, `oracle_debug_share` | Error→fix pattern database |
-| **LLM** | `oracle_llm_status`, `oracle_llm_transpile`, `oracle_llm_tests`, `oracle_llm_refine`, `oracle_llm_analyze`, `oracle_llm_explain`, `oracle_llm_generate` | Claude AI integration |
-| **Transpiler** | `oracle_transpile`, `oracle_verify_transpile`, `oracle_context` | Cross-language transpilation |
-| **Reliability** | `oracle_healing_stats`, `oracle_reliability`, `oracle_report_bug` | Healing and bug tracking |
-| **Integration** | `oracle_mcp_install`, `oracle_github_identity` | IDE setup and GitHub identity |
+| **Core** (7) | `oracle_search`, `oracle_resolve`, `oracle_submit`, `oracle_query`, `oracle_feedback`, `oracle_stats`, `oracle_register_pattern` | Search, submit, resolve, and track patterns |
+| **Search** (1) | `oracle_smart_search` | Intent-aware search with typo correction and ranking |
+| **Quality** (2) | `oracle_reflect`, `oracle_covenant` | Code healing and harm filter |
+| **Candidates** (3) | `oracle_candidates`, `oracle_auto_promote`, `oracle_synthesize_tests` | Candidate lifecycle and promotion |
+| **Debug** (6) | `oracle_debug_capture`, `oracle_debug_search`, `oracle_debug_feedback`, `oracle_debug_stats`, `oracle_debug_grow`, `oracle_debug_patterns` | Error-to-fix pattern database |
+| **Storage** (2) | `oracle_sync`, `oracle_share` | Three-tier storage management |
+| **Harvest** (1) | `oracle_harvest` | Bulk pattern harvesting from repos/directories |
+| **Maintenance** (1) | `oracle_maintain` | Full maintenance cycle (heal + optimize + evolve) |
 
 ### As a GitHub Action
 
@@ -119,6 +114,32 @@ Connect from any MCP-compatible AI client. 59 tools across 13 categories:
     description: "Sorting algorithm"
     tags: "sort,algorithm"
 ```
+
+### VS Code Extension
+
+A full VS Code extension lives in `vscode-extension/` with editor-integrated Oracle features:
+
+**Commands** (9): Search Patterns, Smart Search, Submit Selection, Capture Error Fix, Find Fix for Error, Resolve (Pull/Evolve/Generate), Show Statistics, Refresh Diagnostics, Insert Pattern
+
+**Editor Features:**
+- **Diagnostics** — covenant violations and coherency warnings on save
+- **Hover** — pattern info, coherency scores, and alternatives on function names
+- **Code Actions** — quick-fix suggestions from the debug oracle
+- **Completions** — context-aware proven pattern suggestions as you type
+- **Status Bar** — Oracle indicator with one-click smart search
+
+**Sidebar Views** (3): Pattern browser by language, Debug fixes by error category, Statistics overview
+
+**Supported Languages:** JavaScript, TypeScript, Python, Go, Rust
+
+**Configuration:**
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `oracle.autoAnalyze` | `true` | Analyze files on save |
+| `oracle.minCoherency` | `0.7` | Minimum coherency for suggestions |
+| `oracle.maxDiagnostics` | `20` | Max diagnostics per file |
+| `oracle.enableDebugOracle` | `true` | Automatic error fix suggestions |
 
 ## How It Works
 
@@ -215,7 +236,7 @@ Debug:
   reliability   Pattern reliability statistics
 
 Integration:
-  mcp           Start MCP server (59 tools, JSON-RPC over stdio)
+  mcp           Start MCP server (23 tools, JSON-RPC over stdio)
   mcp-install   Auto-register MCP in AI editors (Claude, Cursor, VS Code)
   setup         Initialize oracle in current project
   dashboard     Start web dashboard (default port 3333)
@@ -341,7 +362,7 @@ src/
   store/
     sqlite.js            — SQLite storage (WAL mode, schema v3)
     history.js           — Verified history store
-  mcp/server.js          — MCP server (59 tools, JSON-RPC 2.0)
+  mcp/server.js          — MCP server (23 tools, JSON-RPC 2.0)
   dashboard/server.js    — Web dashboard + API + WebSocket
   auth/auth.js           — Token + API key auth (3 roles)
   ci/
@@ -363,7 +384,8 @@ src/
   plugins/manager.js     — Plugin system (hooks, lifecycle, isolation)
   health/monitor.js      — Health checks + metrics collection
   cli.js                 — CLI interface (66+ commands)
-tests/                   — 1228+ tests across 38 files
+vscode-extension/          — VS Code editor integration (9 commands, 3 sidebar views)
+tests/                   — 1735+ tests across 54 files
 types/index.d.ts         — Full TypeScript type definitions
 ```
 
@@ -464,7 +486,7 @@ All data lives in `.remembrance/` (SQLite with WAL mode, JSON fallback):
 ## Running Tests
 
 ```bash
-node --test tests/*.test.js   # 1228+ tests
+node --test tests/*.test.js   # 1735+ tests
 ```
 
 ## License

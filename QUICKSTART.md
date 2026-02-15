@@ -105,7 +105,7 @@ Auto-register in your AI editor:
 oracle mcp-install   # Detects Claude Desktop, Cursor, VS Code
 ```
 
-59 tools across 13 categories — search, submit, validate, reflect, transpile, debug, and more.
+23 tools across 8 categories — search, submit, validate, reflect, debug, and more.
 
 ## Three-tier storage
 
@@ -150,5 +150,6 @@ oracle debug search --error "Cannot read property of undefined"
 
 - [Full CLI Reference](README.md#cli-reference) — all 60+ commands
 - [MCP Server](README.md#as-an-mcp-server-for-ai-agents) — AI agent integration
+- [VS Code Extension](README.md#vs-code-extension) — editor integration with diagnostics, hover, and completions
 - [Plugin System](README.md#plugin-system) — extend the oracle
 - [GitHub Action](README.md#as-a-github-action) — CI/CD integration

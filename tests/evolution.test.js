@@ -12,7 +12,7 @@ const {
   recheckCoherency,
   evolve,
   EVOLUTION_DEFAULTS,
-} = require('../src/core/evolution');
+} = require('../src/evolution/evolution');
 
 const { makePattern, createMockOracle } = require('./helpers');
 

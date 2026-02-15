@@ -11,7 +11,7 @@ const {
   searchAnalytics,
   growthMetrics,
   feedbackRates,
-} = require('../src/core/insights');
+} = require('../src/analytics/insights');
 
 // Helper: create a mock oracle with in-memory patterns
 function createMockOracle(patterns = [], entries = []) {

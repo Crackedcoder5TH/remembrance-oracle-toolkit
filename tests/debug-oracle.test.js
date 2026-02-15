@@ -11,7 +11,7 @@ const {
   generateErrorVariants,
   generateFixVariants,
   ERROR_CATEGORIES,
-} = require('../src/core/debug-oracle');
+} = require('../src/debug/debug-oracle');
 
 const { SQLiteStore, DatabaseSync } = require('../src/store/sqlite');
 const { makeTempDir } = require('./helpers');

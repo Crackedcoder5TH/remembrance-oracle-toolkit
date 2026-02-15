@@ -10,7 +10,7 @@
  * User-provided tags are NEVER removed, only enriched.
  */
 
-const { identifyConcepts, CONCEPT_CLUSTERS } = require('./embeddings');
+const { identifyConcepts, CONCEPT_CLUSTERS } = require('../search/embeddings');
 
 // ─── Domain Detectors ───
 // Each detector scans code for domain-specific signals.

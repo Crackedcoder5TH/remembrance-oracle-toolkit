@@ -785,7 +785,7 @@ function federatedDebugSearch(localStore, params = {}) {
   for (const [store, source] of [[localStore, 'local'], [personalStore, 'personal'], [communityStore, 'community']]) {
     if (!store) continue;
     try {
-      const { DebugOracle } = require('./debug-oracle');
+      const { DebugOracle } = require('../debug/debug-oracle');
       const debugOracle = new DebugOracle(store);
       const matches = debugOracle.search({ errorMessage, stackTrace, language, limit });
       for (const match of matches) {
@@ -813,7 +813,7 @@ function debugGlobalStats() {
   try {
     const personalStore = openPersonalStore();
     if (personalStore) {
-      const { DebugOracle } = require('./debug-oracle');
+      const { DebugOracle } = require('../debug/debug-oracle');
       stats.personal = new DebugOracle(personalStore).stats();
     }
   } catch {}
@@ -821,7 +821,7 @@ function debugGlobalStats() {
   try {
     const communityStore = openCommunityStore();
     if (communityStore) {
-      const { DebugOracle } = require('./debug-oracle');
+      const { DebugOracle } = require('../debug/debug-oracle');
       stats.community = new DebugOracle(communityStore).stats();
     }
   } catch {}

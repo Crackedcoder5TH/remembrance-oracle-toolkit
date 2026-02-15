@@ -34,7 +34,7 @@ describe('Pattern Analytics', () => {
   });
 
   it('generates analytics for empty library', () => {
-    const { generateAnalytics } = require('../src/core/analytics');
+    const { generateAnalytics } = require('../src/analytics/analytics');
     const analytics = generateAnalytics(oracle);
     assert.ok(analytics.overview);
     assert.equal(analytics.overview.totalPatterns, 0);
@@ -44,7 +44,7 @@ describe('Pattern Analytics', () => {
   });
 
   it('computes tag cloud', () => {
-    const { computeTagCloud } = require('../src/core/analytics');
+    const { computeTagCloud } = require('../src/analytics/analytics');
     const tags = computeTagCloud([]);
     assert.deepEqual(tags, []);
   });
@@ -57,7 +57,7 @@ describe('Pattern Analytics', () => {
       tags: ['analytics', 'test'],
     });
 
-    const { generateAnalytics } = require('../src/core/analytics');
+    const { generateAnalytics } = require('../src/analytics/analytics');
     const analytics = generateAnalytics(oracle);
     assert.ok(analytics.overview.totalPatterns >= 1);
     assert.ok(analytics.overview.avgCoherency > 0);
@@ -71,7 +71,7 @@ describe('Pattern Analytics', () => {
       language: 'javascript',
     });
 
-    const { generateAnalytics } = require('../src/core/analytics');
+    const { generateAnalytics } = require('../src/analytics/analytics');
     const analytics = generateAnalytics(oracle);
     const total = Object.values(analytics.coherencyDistribution).reduce((a, b) => a + b, 0);
     assert.ok(total >= 1);
@@ -84,7 +84,7 @@ describe('Pattern Analytics', () => {
       language: 'javascript',
     });
 
-    const { generateAnalytics } = require('../src/core/analytics');
+    const { generateAnalytics } = require('../src/analytics/analytics');
     const analytics = generateAnalytics(oracle);
     assert.ok(analytics.languageBreakdown.javascript);
     assert.ok(analytics.languageBreakdown.javascript.count >= 1);
@@ -97,7 +97,7 @@ describe('Pattern Analytics', () => {
       language: 'javascript',
     });
 
-    const { generateAnalytics } = require('../src/core/analytics');
+    const { generateAnalytics } = require('../src/analytics/analytics');
     const analytics = generateAnalytics(oracle);
     const h = analytics.healthReport;
     assert.equal(typeof h.healthy, 'number');
@@ -114,7 +114,7 @@ describe('Pattern Analytics', () => {
       tags: ['math', 'utility', 'simple'],
     });
 
-    const { computeTagCloud } = require('../src/core/analytics');
+    const { computeTagCloud } = require('../src/analytics/analytics');
     const tags = computeTagCloud(oracle.patterns.getAll());
     assert.ok(tags.length >= 1);
     assert.ok(tags[0].tag);

@@ -339,7 +339,7 @@ function applyUsageBoosts(results, oracle) {
   if (!results || results.length === 0) return results;
 
   try {
-    const { computeUsageBoosts } = require('./actionable-insights');
+    const { computeUsageBoosts } = require('../analytics/actionable-insights');
     const boosts = computeUsageBoosts(oracle);
     if (boosts.size === 0) return results;
 

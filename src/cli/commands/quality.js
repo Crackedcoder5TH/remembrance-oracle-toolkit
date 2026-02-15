@@ -265,7 +265,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
   };
 
   handlers['recycle'] = (args) => {
-    const { PatternRecycler } = require('../../core/recycler');
+    const { PatternRecycler } = require('../../evolution/recycler');
     const { SEEDS } = require('../../patterns/seeds');
     const { EXTENDED_SEEDS } = require('../../patterns/seeds-extended');
 

@@ -13,7 +13,7 @@ const {
   jsToPyExpr,
   generateFromSignature,
   synthesizeForCandidates,
-} = require('../src/core/test-synth');
+} = require('../src/evolution/test-synth');
 const { RemembranceOracle } = require('../src/api/oracle');
 
 function makeTempDir() {

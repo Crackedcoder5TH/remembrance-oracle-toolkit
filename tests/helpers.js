@@ -96,7 +96,7 @@ function createMockOracle(patterns = [], opts = {}) {
     patternStats: () => ({ totalPatterns: patterns.length }),
     stats: () => ({ totalEntries: patterns.length }),
     selfEvolve: function(evolveOpts) {
-      const { evolve } = require('../src/core/evolution');
+      const { evolve } = require('../src/evolution/evolution');
       return evolve(this, evolveOpts);
     },
   };

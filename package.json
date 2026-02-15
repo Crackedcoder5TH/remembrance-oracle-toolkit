@@ -19,7 +19,7 @@
     "./mcp": "./src/mcp/server.js",
     "./dashboard": "./src/dashboard/server.js",
     "./auth": "./src/auth/auth.js",
-    "./debug": "./src/core/debug-oracle.js",
+    "./debug": "./src/debug/debug-oracle.js",
     "./plugins": "./src/plugins/manager.js",
     "./health": "./src/health/monitor.js"
   },

@@ -18,7 +18,7 @@
 
 const { VerifiedHistoryStore } = require('../store/history');
 const { PatternLibrary } = require('../patterns/library');
-const { PatternRecycler } = require('../core/recycler');
+const { PatternRecycler } = require('../evolution/recycler');
 
 // Mixin modules — each exports an object of methods for the prototype
 const coreMethods = require('./oracle-core');

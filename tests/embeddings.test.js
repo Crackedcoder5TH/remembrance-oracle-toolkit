@@ -7,7 +7,7 @@ const {
   semanticSearch,
   charNgrams,
   cosineSim,
-} = require('../src/core/embeddings');
+} = require('../src/search/embeddings');
 
 describe('expandQuery', () => {
   it('expands rate-limiting intent', () => {

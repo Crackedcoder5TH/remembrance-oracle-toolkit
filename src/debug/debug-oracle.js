@@ -378,7 +378,7 @@ class DebugOracle {
     let coherencyTotal = 0;
     let coherencyJson = {};
     try {
-      const { computeCoherencyScore } = require('./coherency');
+      const { computeCoherencyScore } = require('../core/coherency');
       const score = computeCoherencyScore(fixCode, { language, description: fixDescription, tags });
       coherencyTotal = score.total;
       coherencyJson = score;
@@ -778,7 +778,7 @@ class DebugOracle {
     // Compute coherency for variant
     let coherencyTotal = parent.coherencyTotal * 0.8; // Inherit scaled coherency
     try {
-      const { computeCoherencyScore } = require('./coherency');
+      const { computeCoherencyScore } = require('../core/coherency');
       const score = computeCoherencyScore(variantCode, { language });
       coherencyTotal = score.total;
     } catch {}

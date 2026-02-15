@@ -274,7 +274,7 @@ class CloudSyncServer {
       // Analytics
       if (path === '/api/analytics' && method === 'GET') {
         try {
-          const { generateAnalytics } = require('../core/analytics');
+          const { generateAnalytics } = require('../analytics/analytics');
           return this._json(res, 200, generateAnalytics(this.oracle));
         } catch (err) {
           return this._json(res, 500, { error: err.message });

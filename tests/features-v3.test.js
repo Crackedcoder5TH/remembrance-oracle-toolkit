@@ -675,7 +675,7 @@ describe('Feature 8: Transpiler Verification & Test Generation', () => {
   });
 
   it('recycler _toASTLanguage now produces testCode', () => {
-    const recyclerSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'recycler.js'), 'utf-8');
+    const recyclerSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'evolution', 'recycler.js'), 'utf-8');
     assert.ok(recyclerSrc.includes('generateGoTest'));
     assert.ok(recyclerSrc.includes('generateRustTest'));
     assert.ok(recyclerSrc.includes('verifyTranspilation'));

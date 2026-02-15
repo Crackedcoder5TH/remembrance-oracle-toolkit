@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { getVector, embedDocument, vectorSimilarity, nearestTerms, VOCABULARY, DIMENSIONS } = require('../src/core/vectors');
+const { getVector, embedDocument, vectorSimilarity, nearestTerms, VOCABULARY, DIMENSIONS } = require('../src/search/vectors');
 
 describe('getVector', () => {
   it('returns vector for known term', () => {

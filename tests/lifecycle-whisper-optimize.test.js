@@ -1,9 +1,9 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { LifecycleEngine, LIFECYCLE_DEFAULTS } = require('../src/core/lifecycle');
-const { HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS } = require('../src/core/whisper');
-const { selfImprove, selfOptimize, fullCycle, OPTIMIZE_DEFAULTS } = require('../src/core/self-optimize');
+const { LifecycleEngine, LIFECYCLE_DEFAULTS } = require('../src/evolution/lifecycle');
+const { HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS } = require('../src/evolution/whisper');
+const { selfImprove, selfOptimize, fullCycle, OPTIMIZE_DEFAULTS } = require('../src/evolution/self-optimize');
 
 const { makePattern, createMockOracle } = require('./helpers');
 

@@ -1,0 +1,114 @@
+[
+  {
+    "name": "stack-go",
+    "code": "package main\n\ntype Stack[T any] struct {\n\titems []T\n}\n\nfunc NewStack[T any]() *Stack[T] {\n\treturn &Stack[T]{items: make([]T, 0)}\n}\n\nfunc (s *Stack[T]) Push(item T) {\n\ts.items = append(s.items, item)\n}\n\nfunc (s *Stack[T]) Pop() (T, bool) {\n\tif len(s.items) == 0 {\n\t\tvar zero T\n\t\treturn zero, false\n\t}\n\titem := s.items[len(s.items)-1]\n\ts.items = s.items[:len(s.items)-1]\n\treturn item, true\n}\n\nfunc (s *Stack[T]) Peek() (T, bool) {\n\tif len(s.items) == 0 {\n\t\tvar zero T\n\t\treturn zero, false\n\t}\n\treturn s.items[len(s.items)-1], true\n}\n\nfunc (s *Stack[T]) Len() int {\n\treturn len(s.items)\n}",
+    "testCode": "package main\n\nimport \"testing\"\n\nfunc TestStack(t *testing.T) {\n\ts := NewStack[int]()\n\ts.Push(1)\n\ts.Push(2)\n\tif s.Len() != 2 { t.Errorf(\"expected len 2, got %d\", s.Len()) }\n\tv, ok := s.Pop()\n\tif !ok || v != 2 { t.Errorf(\"expected 2, got %d\", v) }\n\tv, ok = s.Peek()\n\tif !ok || v != 1 { t.Errorf(\"expected peek 1, got %d\", v) }\n\ts.Pop()\n\t_, ok = s.Pop()\n\tif ok { t.Error(\"expected false on empty pop\") }\n}",
+    "language": "go",
+    "description": "Generic stack using Go generics",
+    "tags": [
+      "data-structure",
+      "stack",
+      "generics",
+      "go-native"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "binary-search-go",
+    "code": "package main\n\nimport \"sort\"\n\nfunc BinarySearch(arr []int, target int) int {\n\ti := sort.SearchInts(arr, target)\n\tif i < len(arr) && arr[i] == target {\n\t\treturn i\n\t}\n\treturn -1\n}",
+    "testCode": "package main\n\nimport \"testing\"\n\nfunc TestBinarySearch(t *testing.T) {\n\ttests := []struct{arr []int; target int; want int}{\n\t\t{[]int{1,2,3,4,5}, 3, 2},\n\t\t{[]int{1,2,3,4,5}, 1, 0},\n\t\t{[]int{1,2,3,4,5}, 6, -1},\n\t\t{[]int{}, 1, -1},\n\t}\n\tfor _, tt := range tests {\n\t\tgot := BinarySearch(tt.arr, tt.target)\n\t\tif got != tt.want { t.Errorf(\"BinarySearch(%v, %d) = %d, want %d\", tt.arr, tt.target, got, tt.want) }\n\t}\n}",
+    "language": "go",
+    "description": "Binary search using sort.SearchInts — idiomatic Go",
+    "tags": [
+      "search",
+      "algorithm",
+      "sort",
+      "go-native"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "worker-pool-go",
+    "code": "package main\n\nimport \"sync\"\n\nfunc WorkerPool[T any, R any](workers int, jobs []T, fn func(T) R) []R {\n\tvar wg sync.WaitGroup\n\tresults := make([]R, len(jobs))\n\tch := make(chan int, len(jobs))\n\n\tfor i := range jobs {\n\t\tch <- i\n\t}\n\tclose(ch)\n\n\tfor w := 0; w < workers; w++ {\n\t\twg.Add(1)\n\t\tgo func() {\n\t\t\tdefer wg.Done()\n\t\t\tfor idx := range ch {\n\t\t\t\tresults[idx] = fn(jobs[idx])\n\t\t\t}\n\t\t}()\n\t}\n\n\twg.Wait()\n\treturn results\n}",
+    "testCode": "package main\n\nimport \"testing\"\n\nfunc TestWorkerPool(t *testing.T) {\n\tjobs := []int{1, 2, 3, 4, 5}\n\tresults := WorkerPool(3, jobs, func(n int) int { return n * 2 })\n\texpected := []int{2, 4, 6, 8, 10}\n\tfor i, v := range results {\n\t\tif v != expected[i] { t.Errorf(\"index %d: got %d, want %d\", i, v, expected[i]) }\n\t}\n}",
+    "language": "go",
+    "description": "Generic worker pool with goroutines and channels",
+    "tags": [
+      "concurrency",
+      "goroutine",
+      "worker-pool",
+      "go-native"
+    ],
+    "patternType": "concurrency"
+  },
+  {
+    "name": "retry-go",
+    "code": "package main\n\nimport (\n\t\"errors\"\n\t\"time\"\n)\n\nfunc Retry(attempts int, delay time.Duration, fn func() error) error {\n\tvar lastErr error\n\tfor i := 0; i < attempts; i++ {\n\t\tlastErr = fn()\n\t\tif lastErr == nil {\n\t\t\treturn nil\n\t\t}\n\t\tif i < attempts-1 {\n\t\t\ttime.Sleep(delay)\n\t\t\tdelay *= 2\n\t\t}\n\t}\n\treturn lastErr\n}\n\nvar ErrMaxRetries = errors.New(\"max retries exceeded\")",
+    "testCode": "package main\n\nimport (\n\t\"testing\"\n\t\"time\"\n\t\"errors\"\n)\n\nfunc TestRetry(t *testing.T) {\n\tcount := 0\n\terr := Retry(3, time.Millisecond, func() error {\n\t\tcount++\n\t\tif count < 3 { return errors.New(\"not yet\") }\n\t\treturn nil\n\t})\n\tif err != nil { t.Errorf(\"expected nil, got %v\", err) }\n\tif count != 3 { t.Errorf(\"expected 3 attempts, got %d\", count) }\n}",
+    "language": "go",
+    "description": "Retry with exponential backoff — idiomatic Go error handling",
+    "tags": [
+      "retry",
+      "resilience",
+      "error-handling",
+      "go-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "result-type-go",
+    "code": "package main\n\ntype Result[T any] struct {\n\tValue T\n\tErr   error\n}\n\nfunc Ok[T any](value T) Result[T] {\n\treturn Result[T]{Value: value}\n}\n\nfunc Err[T any](err error) Result[T] {\n\treturn Result[T]{Err: err}\n}\n\nfunc (r Result[T]) IsOk() bool {\n\treturn r.Err == nil\n}\n\nfunc (r Result[T]) Unwrap() T {\n\tif r.Err != nil {\n\t\tpanic(r.Err)\n\t}\n\treturn r.Value\n}\n\nfunc (r Result[T]) UnwrapOr(fallback T) T {\n\tif r.Err != nil {\n\t\treturn fallback\n\t}\n\treturn r.Value\n}",
+    "testCode": "package main\n\nimport (\n\t\"errors\"\n\t\"testing\"\n)\n\nfunc TestResult(t *testing.T) {\n\tok := Ok(42)\n\tif !ok.IsOk() { t.Error(\"expected ok\") }\n\tif ok.Unwrap() != 42 { t.Error(\"expected 42\") }\n\n\tfail := Err[int](errors.New(\"oops\"))\n\tif fail.IsOk() { t.Error(\"expected err\") }\n\tif fail.UnwrapOr(0) != 0 { t.Error(\"expected fallback 0\") }\n}",
+    "language": "go",
+    "description": "Rust-inspired Result type using Go generics",
+    "tags": [
+      "result",
+      "error-handling",
+      "generics",
+      "go-native"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "map-filter-reduce-go",
+    "code": "package main\n\nfunc Map[T any, R any](slice []T, fn func(T) R) []R {\n\tresult := make([]R, len(slice))\n\tfor i, v := range slice {\n\t\tresult[i] = fn(v)\n\t}\n\treturn result\n}\n\nfunc Filter[T any](slice []T, predicate func(T) bool) []T {\n\tresult := make([]T, 0)\n\tfor _, v := range slice {\n\t\tif predicate(v) {\n\t\t\tresult = append(result, v)\n\t\t}\n\t}\n\treturn result\n}\n\nfunc Reduce[T any, R any](slice []T, initial R, fn func(R, T) R) R {\n\tacc := initial\n\tfor _, v := range slice {\n\t\tacc = fn(acc, v)\n\t}\n\treturn acc\n}",
+    "testCode": "package main\n\nimport \"testing\"\n\nfunc TestMapFilterReduce(t *testing.T) {\n\tdoubled := Map([]int{1,2,3}, func(n int) int { return n * 2 })\n\tif doubled[0] != 2 || doubled[1] != 4 || doubled[2] != 6 { t.Error(\"map failed\") }\n\n\tevens := Filter([]int{1,2,3,4,5}, func(n int) bool { return n%2 == 0 })\n\tif len(evens) != 2 { t.Errorf(\"expected 2 evens, got %d\", len(evens)) }\n\n\tsum := Reduce([]int{1,2,3,4}, 0, func(acc, n int) int { return acc + n })\n\tif sum != 10 { t.Errorf(\"expected 10, got %d\", sum) }\n}",
+    "language": "go",
+    "description": "Generic map, filter, reduce for Go slices",
+    "tags": [
+      "functional",
+      "generics",
+      "slice",
+      "go-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "linked-list-go",
+    "code": "package main\n\ntype Node[T any] struct {\n\tValue T\n\tNext  *Node[T]\n}\n\ntype LinkedList[T any] struct {\n\tHead *Node[T]\n\tSize int\n}\n\nfunc (ll *LinkedList[T]) Prepend(value T) {\n\tll.Head = &Node[T]{Value: value, Next: ll.Head}\n\tll.Size++\n}\n\nfunc (ll *LinkedList[T]) ToSlice() []T {\n\tresult := make([]T, 0, ll.Size)\n\tcurrent := ll.Head\n\tfor current != nil {\n\t\tresult = append(result, current.Value)\n\t\tcurrent = current.Next\n\t}\n\treturn result\n}\n\nfunc (ll *LinkedList[T]) Reverse() {\n\tvar prev *Node[T]\n\tcurrent := ll.Head\n\tfor current != nil {\n\t\tnext := current.Next\n\t\tcurrent.Next = prev\n\t\tprev = current\n\t\tcurrent = next\n\t}\n\tll.Head = prev\n}",
+    "testCode": "package main\n\nimport \"testing\"\n\nfunc TestLinkedList(t *testing.T) {\n\tll := &LinkedList[int]{}\n\tll.Prepend(3)\n\tll.Prepend(2)\n\tll.Prepend(1)\n\ts := ll.ToSlice()\n\tif len(s) != 3 || s[0] != 1 || s[2] != 3 { t.Error(\"prepend/toSlice failed\") }\n\tll.Reverse()\n\ts = ll.ToSlice()\n\tif s[0] != 3 || s[2] != 1 { t.Error(\"reverse failed\") }\n}",
+    "language": "go",
+    "description": "Generic singly linked list with reverse",
+    "tags": [
+      "data-structure",
+      "linked-list",
+      "generics",
+      "go-native"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "memoize-go",
+    "code": "package main\n\nimport \"sync\"\n\nfunc Memoize[K comparable, V any](fn func(K) V) func(K) V {\n\tcache := make(map[K]V)\n\tvar mu sync.RWMutex\n\n\treturn func(key K) V {\n\t\tmu.RLock()\n\t\tif v, ok := cache[key]; ok {\n\t\t\tmu.RUnlock()\n\t\t\treturn v\n\t\t}\n\t\tmu.RUnlock()\n\n\t\tv := fn(key)\n\t\tmu.Lock()\n\t\tcache[key] = v\n\t\tmu.Unlock()\n\t\treturn v\n\t}\n}",
+    "testCode": "package main\n\nimport \"testing\"\n\nfunc TestMemoize(t *testing.T) {\n\tcalls := 0\n\tfib := Memoize(func(n int) int {\n\t\tcalls++\n\t\tif n <= 1 { return n }\n\t\treturn n // simplified\n\t})\n\tfib(5)\n\tfib(5)\n\tif calls != 1 { t.Errorf(\"expected 1 call, got %d\", calls) }\n}",
+    "language": "go",
+    "description": "Thread-safe memoization with generics and RWMutex",
+    "tags": [
+      "memoize",
+      "cache",
+      "concurrency",
+      "go-native"
+    ],
+    "patternType": "utility"
+  }
+]

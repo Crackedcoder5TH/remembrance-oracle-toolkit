@@ -106,7 +106,7 @@ function createOracleContext(oracle) {
     // ─── Insights ───
     actOnInsights: (opts) => {
       try {
-        const { actOnInsights } = require('../core/actionable-insights');
+        const { actOnInsights } = require('../analytics/actionable-insights');
         return actOnInsights(oracle, opts);
       } catch { /* best effort */ }
       return null;

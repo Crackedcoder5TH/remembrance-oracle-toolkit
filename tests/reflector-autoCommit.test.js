@@ -13,7 +13,7 @@ const {
   loadAutoCommitHistory,
   autoCommitStats,
   formatAutoCommit,
-} = require('../src/reflector/autoCommit');
+} = require('../src/reflector/report');
 
 // ─── Helpers ───
 
@@ -319,17 +319,21 @@ describe('Auto-Commit Safety — exports', () => {
   });
 });
 
-// ─── MCP Tool ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Auto-Commit Safety — MCP tool', () => {
-  it('should have oracle_reflector_auto_commit tool', () => {
+describe('Auto-Commit Safety — reflector functions (MCP consolidated)', () => {
+  it('safeAutoCommit and related functions are directly importable', () => {
+    const report = require('../src/reflector/report');
+    assert.strictEqual(typeof report.safeAutoCommit, 'function');
+    assert.strictEqual(typeof report.createSafetyBranch, 'function');
+    assert.strictEqual(typeof report.runTestGate, 'function');
+    assert.strictEqual(typeof report.mergeIfPassing, 'function');
+    assert.strictEqual(typeof report.autoCommitStats, 'function');
+    assert.strictEqual(typeof report.formatAutoCommit, 'function');
+  });
+
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_auto_commit');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('auto-commit'));
-    assert.ok(tool.inputSchema.properties.rootDir);
-    assert.ok(tool.inputSchema.properties.healedFiles);
-    assert.ok(tool.inputSchema.properties.testCommand);
-    assert.ok(tool.inputSchema.properties.dryRun);
+    assert.equal(TOOLS.length, 10);
   });
 });

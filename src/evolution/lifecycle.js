@@ -240,7 +240,7 @@ class LifecycleEngine {
           });
         } else {
           // Fallback for raw oracle
-          const { actOnInsights } = require('../core/actionable-insights');
+          const { actOnInsights } = require('../analytics/actionable-insights');
           report.insights = actOnInsights(this.oracle, {
             maxHeals: this.config.maxHealsPerCycle,
           });

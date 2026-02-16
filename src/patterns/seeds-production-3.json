@@ -1,0 +1,196 @@
+[
+  {
+    "name": "paginator",
+    "code": "class Paginator {\n  constructor(items, pageSize) {\n    this._items = items;\n    this._size = Math.max(1, pageSize);\n  }\n  page(n) {\n    const start = (n - 1) * this._size;\n    return this._items.slice(start, start + this._size);\n  }\n  totalPages() {\n    return Math.ceil(this._items.length / this._size);\n  }\n  hasNext(n) { return n < this.totalPages(); }\n  hasPrev(n) { return n > 1; }\n  offset(n) { return (n - 1) * this._size; }\n  meta(n) {\n    return {\n      page: n, pageSize: this._size,\n      total: this._items.length,\n      totalPages: this.totalPages(),\n      hasNext: this.hasNext(n),\n      hasPrev: this.hasPrev(n)\n    };\n  }\n}",
+    "testCode": "const items = Array.from({ length: 25 }, (_, i) => i + 1);\nconst pg = new Paginator(items, 10);\nif (pg.totalPages() !== 3) throw new Error('should have 3 pages');\nconst p1 = pg.page(1);\nif (p1.length !== 10 || p1[0] !== 1) throw new Error('page 1 wrong');\nconst p3 = pg.page(3);\nif (p3.length !== 5 || p3[0] !== 21) throw new Error('page 3 wrong');\nif (!pg.hasNext(1)) throw new Error('page 1 should have next');\nif (pg.hasNext(3)) throw new Error('page 3 should not have next');\nif (pg.hasPrev(1)) throw new Error('page 1 should not have prev');\nif (!pg.hasPrev(2)) throw new Error('page 2 should have prev');\nconst m = pg.meta(2);\nif (m.total !== 25 || m.totalPages !== 3) throw new Error('meta wrong');",
+    "language": "javascript",
+    "description": "Offset-based paginator with page retrieval, navigation helpers, and metadata",
+    "tags": [
+      "pagination",
+      "paginator",
+      "paging",
+      "utility",
+      "list",
+      "offset"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "command-undo",
+    "code": "class CommandManager {\n  constructor() {\n    this._history = [];\n    this._undone = [];\n  }\n  execute(command) {\n    command.execute();\n    this._history.push(command);\n    this._undone = [];\n  }\n  undo() {\n    const cmd = this._history.pop();\n    if (!cmd) return false;\n    cmd.undo();\n    this._undone.push(cmd);\n    return true;\n  }\n  redo() {\n    const cmd = this._undone.pop();\n    if (!cmd) return false;\n    cmd.execute();\n    this._history.push(cmd);\n    return true;\n  }\n  canUndo() { return this._history.length > 0; }\n  canRedo() { return this._undone.length > 0; }\n  clear() { this._history = []; this._undone = []; }\n}",
+    "testCode": "const state = { value: 0 };\nconst mgr = new CommandManager();\nconst inc = { execute() { state.value += 10; }, undo() { state.value -= 10; } };\nconst dec = { execute() { state.value -= 3; }, undo() { state.value += 3; } };\nmgr.execute(inc);\nif (state.value !== 10) throw new Error('execute should apply');\nmgr.execute(dec);\nif (state.value !== 7) throw new Error('second execute');\nmgr.undo();\nif (state.value !== 10) throw new Error('undo should revert');\nif (!mgr.canRedo()) throw new Error('should be able to redo');\nmgr.redo();\nif (state.value !== 7) throw new Error('redo should reapply');\nmgr.undo(); mgr.undo();\nif (state.value !== 0) throw new Error('full undo to start');\nif (mgr.canUndo()) throw new Error('should not be able to undo');",
+    "language": "javascript",
+    "description": "Command pattern with undo/redo history stack and navigation",
+    "tags": [
+      "command",
+      "undo",
+      "redo",
+      "design-pattern",
+      "history",
+      "action"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "cron-scheduler",
+    "code": "class CronScheduler {\n  constructor() { this._jobs = new Map(); this._id = 0; }\n  _parse(expr) {\n    const p = expr.split(' ');\n    if (p.length !== 5) throw new Error('Invalid cron: need 5 fields');\n    return { min: p[0], hour: p[1], dom: p[2], mon: p[3], dow: p[4] };\n  }\n  _matches(field, value) {\n    if (field === '*') return true;\n    if (field.includes('/')) {\n      const step = parseInt(field.split('/')[1], 10);\n      return value % step === 0;\n    }\n    if (field.includes(',')) return field.split(',').map(Number).includes(value);\n    if (field.includes('-')) {\n      const parts = field.split('-').map(Number);\n      return value >= parts[0] && value <= parts[1];\n    }\n    return parseInt(field, 10) === value;\n  }\n  shouldRun(expr, date) {\n    const c = this._parse(expr);\n    const d = date || new Date();\n    return this._matches(c.min, d.getMinutes())\n      && this._matches(c.hour, d.getHours())\n      && this._matches(c.dom, d.getDate())\n      && this._matches(c.mon, d.getMonth() + 1)\n      && this._matches(c.dow, d.getDay());\n  }\n  add(expr, fn) {\n    const id = ++this._id;\n    this._jobs.set(id, { expr, fn, enabled: true });\n    return id;\n  }\n  remove(id) { return this._jobs.delete(id); }\n  tick(date) {\n    const results = [];\n    for (const [id, job] of this._jobs) {\n      if (job.enabled && this.shouldRun(job.expr, date)) {\n        job.fn(); results.push(id);\n      }\n    }\n    return results;\n  }\n  list() { return Array.from(this._jobs.keys()); }\n}",
+    "testCode": "const sched = new CronScheduler();\nconst d = new Date(2025, 0, 15, 10, 30, 0);\nif (!sched.shouldRun('30 10 * * *', d)) throw new Error('exact match should run');\nif (sched.shouldRun('0 10 * * *', d)) throw new Error('wrong minute should not run');\nif (!sched.shouldRun('*/5 * * * *', d)) throw new Error('step match should run');\nif (!sched.shouldRun('30,45 * * * *', d)) throw new Error('list match should run');\nif (!sched.shouldRun('25-35 * * * *', d)) throw new Error('range match should run');\nlet ran = 0;\nconst id = sched.add('30 10 * * *', () => { ran++; });\nsched.tick(d);\nif (ran !== 1) throw new Error('tick should fire matching job');\nsched.remove(id);\nsched.tick(d);\nif (ran !== 1) throw new Error('removed job should not fire');",
+    "language": "javascript",
+    "description": "Cron expression scheduler with 5-field parsing, step/range/list matching, and job management",
+    "tags": [
+      "cron",
+      "scheduler",
+      "job",
+      "timer",
+      "utility",
+      "schedule",
+      "task"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "proxy-handler",
+    "code": "class ProxyHandler {\n  constructor(target, hooks) {\n    this._target = target;\n    this._hooks = hooks || {};\n    this._log = [];\n  }\n  get(prop) {\n    if (this._hooks.beforeGet) this._hooks.beforeGet(prop);\n    this._log.push({ op: 'get', prop, time: Date.now() });\n    const val = this._target[prop];\n    if (this._hooks.afterGet) this._hooks.afterGet(prop, val);\n    return typeof val === 'function' ? val.bind(this._target) : val;\n  }\n  set(prop, value) {\n    const old = this._target[prop];\n    if (this._hooks.beforeSet) {\n      const allowed = this._hooks.beforeSet(prop, value, old);\n      if (allowed === false) return false;\n    }\n    this._log.push({ op: 'set', prop, old, value, time: Date.now() });\n    this._target[prop] = value;\n    if (this._hooks.afterSet) this._hooks.afterSet(prop, value, old);\n    return true;\n  }\n  getLog() { return this._log.slice(); }\n  clearLog() { this._log = []; }\n}",
+    "testCode": "const obj = { x: 1, y: 2 };\nconst proxy = new ProxyHandler(obj, {\n  beforeSet(prop, val) { if (prop === 'y' && val < 0) return false; }\n});\nif (proxy.get('x') !== 1) throw new Error('get should return value');\nproxy.set('x', 10);\nif (obj.x !== 10) throw new Error('set should update target');\nif (!proxy.set('y', 5)) throw new Error('valid set should return true');\nif (proxy.set('y', -1) !== false) throw new Error('blocked set should return false');\nif (obj.y !== 5) throw new Error('blocked set should not update target');\nconst log = proxy.getLog();\nif (log.length !== 3) throw new Error('should log 3 operations (blocked set excluded), got ' + log.length);\nif (log[0].op !== 'get') throw new Error('first log should be get');\nproxy.clearLog();\nif (proxy.getLog().length !== 0) throw new Error('clearLog should empty log');",
+    "language": "javascript",
+    "description": "Proxy handler with get/set hooks, access logging, and write protection",
+    "tags": [
+      "proxy",
+      "handler",
+      "intercept",
+      "design-pattern",
+      "logging",
+      "access-control"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "object-pool",
+    "code": "class ObjectPool {\n  constructor(factory, opts) {\n    opts = opts || {};\n    this._factory = factory;\n    this._max = opts.max || 10;\n    this._pool = [];\n    this._active = 0;\n    this._reset = opts.reset || null;\n  }\n  acquire() {\n    if (this._pool.length > 0) {\n      this._active++;\n      const obj = this._pool.pop();\n      if (this._reset) this._reset(obj);\n      return obj;\n    }\n    if (this._active < this._max) {\n      this._active++;\n      return this._factory();\n    }\n    return null;\n  }\n  release(obj) {\n    if (this._active <= 0) return false;\n    this._active--;\n    this._pool.push(obj);\n    return true;\n  }\n  size() { return this._pool.length; }\n  active() { return this._active; }\n  drain() {\n    this._pool = [];\n    this._active = 0;\n  }\n}",
+    "testCode": "let created = 0;\nconst pool = new ObjectPool(() => ({ id: ++created, data: null }), {\n  max: 3, reset: (obj) => { obj.data = null; }\n});\nconst a = pool.acquire();\nconst b = pool.acquire();\nif (created !== 2) throw new Error('should create 2 objects');\nif (pool.active() !== 2) throw new Error('should have 2 active');\na.data = 'dirty';\npool.release(a);\nif (pool.size() !== 1) throw new Error('pool should have 1 after release');\nconst c = pool.acquire();\nif (c.id !== a.id) throw new Error('should reuse released object');\nif (c.data !== null) throw new Error('reset should clean object');\nconst d = pool.acquire();\nconst e = pool.acquire();\nif (pool.acquire() !== null) throw new Error('should return null when exhausted');\npool.drain();\nif (pool.active() !== 0 || pool.size() !== 0) throw new Error('drain should empty pool');",
+    "language": "javascript",
+    "description": "Generic object pool with factory, max size, optional reset, and drain support",
+    "tags": [
+      "pool",
+      "object-pool",
+      "concurrency",
+      "resource",
+      "reuse",
+      "factory"
+    ],
+    "patternType": "concurrency"
+  },
+  {
+    "name": "transform-stream",
+    "code": "class TransformStream {\n  constructor() {\n    this._transforms = [];\n    this._buffer = [];\n    this._flushed = false;\n  }\n  addTransform(fn) {\n    this._transforms.push(fn);\n    return this;\n  }\n  write(chunk) {\n    if (this._flushed) throw new Error('Stream already flushed');\n    let data = chunk;\n    for (const t of this._transforms) {\n      data = t(data);\n      if (data == null) return this;\n    }\n    this._buffer.push(data);\n    return this;\n  }\n  flush() {\n    this._flushed = true;\n    return this._buffer.slice();\n  }\n  pipe(other) {\n    const output = this.flush();\n    for (const item of output) other.write(item);\n    return other;\n  }\n  size() { return this._buffer.length; }\n  reset() { this._buffer = []; this._flushed = false; return this; }\n}",
+    "testCode": "const ts = new TransformStream();\nts.addTransform(x => x * 2).addTransform(x => x + 1);\nts.write(1); ts.write(2); ts.write(3);\nconst out = ts.flush();\nif (out.length !== 3) throw new Error('should have 3 items');\nif (out[0] !== 3 || out[1] !== 5 || out[2] !== 7) throw new Error('transforms wrong');\nconst filter = new TransformStream();\nfilter.addTransform(x => x > 5 ? x : null);\nfilter.write(3); filter.write(8); filter.write(2); filter.write(10);\nconst filtered = filter.flush();\nif (filtered.length !== 2) throw new Error('filter should drop nulls');\nif (filtered[0] !== 8 || filtered[1] !== 10) throw new Error('filter values wrong');\nconst ts2 = new TransformStream();\nts2.addTransform(x => x.toUpperCase());\nconst ts3 = new TransformStream();\nts3.addTransform(x => x + '!');\nts2.write('hello'); ts2.write('world');\nts2.pipe(ts3);\nconst piped = ts3.flush();\nif (piped[0] !== 'HELLO!' || piped[1] !== 'WORLD!') throw new Error('pipe wrong');",
+    "language": "javascript",
+    "description": "Transform stream with chainable transforms, null filtering, piping, and buffered flush",
+    "tags": [
+      "stream",
+      "transform",
+      "pipeline",
+      "io",
+      "buffer",
+      "chain",
+      "filter"
+    ],
+    "patternType": "io"
+  },
+  {
+    "name": "paginator-ts",
+    "code": "interface PageMeta {\n  page: number;\n  pageSize: number;\n  total: number;\n  totalPages: number;\n  hasNext: boolean;\n  hasPrev: boolean;\n}\n\nclass Paginator<T> {\n  private items: T[];\n  private pageSize: number;\n\n  constructor(items: T[], pageSize: number) {\n    this.items = items;\n    this.pageSize = Math.max(1, pageSize);\n  }\n\n  page(n: number): T[] {\n    const start = (n - 1) * this.pageSize;\n    return this.items.slice(start, start + this.pageSize);\n  }\n\n  totalPages(): number {\n    return Math.ceil(this.items.length / this.pageSize);\n  }\n\n  hasNext(n: number): boolean { return n < this.totalPages(); }\n  hasPrev(n: number): boolean { return n > 1; }\n\n  meta(n: number): PageMeta {\n    return {\n      page: n, pageSize: this.pageSize,\n      total: this.items.length,\n      totalPages: this.totalPages(),\n      hasNext: this.hasNext(n),\n      hasPrev: this.hasPrev(n)\n    };\n  }\n}",
+    "testCode": "const items: number[] = Array.from({ length: 25 }, (_, i) => i + 1);\nconst pg = new Paginator<number>(items, 10);\nif (pg.totalPages() !== 3) throw new Error('should have 3 pages');\nconst p1 = pg.page(1);\nif (p1.length !== 10 || p1[0] !== 1) throw new Error('page 1 wrong');\nif (!pg.hasNext(1)) throw new Error('page 1 should have next');\nif (pg.hasNext(3)) throw new Error('page 3 should not have next');\nconst m = pg.meta(2);\nif (m.total !== 25) throw new Error('meta wrong');",
+    "language": "typescript",
+    "description": "Generic typed paginator with page retrieval, navigation, and metadata",
+    "tags": [
+      "pagination",
+      "paginator",
+      "utility",
+      "typescript",
+      "generic",
+      "variant"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "command-undo-ts",
+    "code": "interface Command {\n  execute(): void;\n  undo(): void;\n}\n\nclass CommandManager {\n  private history: Command[] = [];\n  private undone: Command[] = [];\n\n  execute(command: Command): void {\n    command.execute();\n    this.history.push(command);\n    this.undone = [];\n  }\n\n  undo(): boolean {\n    const cmd = this.history.pop();\n    if (!cmd) return false;\n    cmd.undo();\n    this.undone.push(cmd);\n    return true;\n  }\n\n  redo(): boolean {\n    const cmd = this.undone.pop();\n    if (!cmd) return false;\n    cmd.execute();\n    this.history.push(cmd);\n    return true;\n  }\n\n  canUndo(): boolean { return this.history.length > 0; }\n  canRedo(): boolean { return this.undone.length > 0; }\n  clear(): void { this.history = []; this.undone = []; }\n}",
+    "testCode": "const state = { value: 0 };\nconst mgr = new CommandManager();\nconst inc: Command = { execute() { state.value += 10; }, undo() { state.value -= 10; } };\nmgr.execute(inc);\nif (state.value !== 10) throw new Error('execute should apply');\nmgr.undo();\nif (state.value !== 0) throw new Error('undo should revert');\nmgr.redo();\nif (state.value !== 10) throw new Error('redo should reapply');\nif (!mgr.canUndo()) throw new Error('should be able to undo');\nmgr.clear();\nif (mgr.canUndo()) throw new Error('clear should empty history');",
+    "language": "typescript",
+    "description": "Command pattern with typed interface, undo/redo stack, and clear",
+    "tags": [
+      "command",
+      "undo",
+      "redo",
+      "design-pattern",
+      "typescript",
+      "variant"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "cron-scheduler-ts",
+    "code": "interface CronField {\n  min: string; hour: string; dom: string; mon: string; dow: string;\n}\n\nclass CronScheduler {\n  private jobs = new Map<number, { expr: string; fn: () => void; enabled: boolean }>();\n  private nextId = 0;\n\n  private parse(expr: string): CronField {\n    const p = expr.split(' ');\n    if (p.length !== 5) throw new Error('Invalid cron: need 5 fields');\n    return { min: p[0], hour: p[1], dom: p[2], mon: p[3], dow: p[4] };\n  }\n\n  private matches(field: string, value: number): boolean {\n    if (field === '*') return true;\n    if (field.includes('/')) return value % parseInt(field.split('/')[1], 10) === 0;\n    if (field.includes(',')) return field.split(',').map(Number).includes(value);\n    if (field.includes('-')) {\n      const [lo, hi] = field.split('-').map(Number);\n      return value >= lo && value <= hi;\n    }\n    return parseInt(field, 10) === value;\n  }\n\n  shouldRun(expr: string, date?: Date): boolean {\n    const c = this.parse(expr);\n    const d = date || new Date();\n    return this.matches(c.min, d.getMinutes())\n      && this.matches(c.hour, d.getHours())\n      && this.matches(c.dom, d.getDate())\n      && this.matches(c.mon, d.getMonth() + 1)\n      && this.matches(c.dow, d.getDay());\n  }\n\n  add(expr: string, fn: () => void): number {\n    const id = ++this.nextId;\n    this.jobs.set(id, { expr, fn, enabled: true });\n    return id;\n  }\n\n  remove(id: number): boolean { return this.jobs.delete(id); }\n\n  tick(date?: Date): number[] {\n    const results: number[] = [];\n    for (const [id, job] of this.jobs) {\n      if (job.enabled && this.shouldRun(job.expr, date)) {\n        job.fn(); results.push(id);\n      }\n    }\n    return results;\n  }\n}",
+    "testCode": "const sched = new CronScheduler();\nconst d = new Date(2025, 0, 15, 10, 30, 0);\nif (!sched.shouldRun('30 10 * * *', d)) throw new Error('exact match should run');\nif (sched.shouldRun('0 10 * * *', d)) throw new Error('wrong minute should not run');\nif (!sched.shouldRun('*/5 * * * *', d)) throw new Error('step should run');\nlet ran = 0;\nconst id = sched.add('30 10 * * *', () => { ran++; });\nsched.tick(d);\nif (ran !== 1) throw new Error('tick should fire matching job');\nsched.remove(id);\nsched.tick(d);\nif (ran !== 1) throw new Error('removed job should not fire');",
+    "language": "typescript",
+    "description": "Typed cron scheduler with 5-field parsing, step/range/list matching, and job management",
+    "tags": [
+      "cron",
+      "scheduler",
+      "job",
+      "utility",
+      "typescript",
+      "variant"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "proxy-handler-ts",
+    "code": "interface ProxyHooks<T> {\n  beforeGet?(prop: string): void;\n  afterGet?(prop: string, value: unknown): void;\n  beforeSet?(prop: string, value: unknown, old: unknown): boolean | void;\n  afterSet?(prop: string, value: unknown, old: unknown): void;\n}\n\ninterface LogEntry {\n  op: string; prop: string; time: number;\n  old?: unknown; value?: unknown;\n}\n\nclass ProxyHandler<T extends Record<string, unknown>> {\n  private target: T;\n  private hooks: ProxyHooks<T>;\n  private log: LogEntry[] = [];\n\n  constructor(target: T, hooks?: ProxyHooks<T>) {\n    this.target = target;\n    this.hooks = hooks || {};\n  }\n\n  get(prop: string): unknown {\n    if (this.hooks.beforeGet) this.hooks.beforeGet(prop);\n    this.log.push({ op: 'get', prop, time: Date.now() });\n    const val = this.target[prop];\n    if (this.hooks.afterGet) this.hooks.afterGet(prop, val);\n    return val;\n  }\n\n  set(prop: string, value: unknown): boolean {\n    const old = this.target[prop];\n    if (this.hooks.beforeSet) {\n      const allowed = this.hooks.beforeSet(prop, value, old);\n      if (allowed === false) return false;\n    }\n    this.log.push({ op: 'set', prop, old, value, time: Date.now() });\n    (this.target as Record<string, unknown>)[prop] = value;\n    if (this.hooks.afterSet) this.hooks.afterSet(prop, value, old);\n    return true;\n  }\n\n  getLog(): LogEntry[] { return this.log.slice(); }\n  clearLog(): void { this.log = []; }\n}",
+    "testCode": "const obj: Record<string, number> = { x: 1, y: 2 };\nconst proxy = new ProxyHandler(obj, {\n  beforeSet(prop: string, val: unknown) { if (prop === 'y' && (val as number) < 0) return false; }\n});\nif (proxy.get('x') !== 1) throw new Error('get should return value');\nproxy.set('x', 10);\nif (obj.x !== 10) throw new Error('set should update target');\nif (proxy.set('y', -1) !== false) throw new Error('blocked set should return false');\nif (obj.y !== 2) throw new Error('blocked set should not update');\nconst log = proxy.getLog();\nif (log.length !== 2) throw new Error('should log 2 operations (blocked set excluded)');\nproxy.clearLog();\nif (proxy.getLog().length !== 0) throw new Error('clearLog should empty');",
+    "language": "typescript",
+    "description": "Generic typed proxy handler with hooks, logging, and write protection",
+    "tags": [
+      "proxy",
+      "handler",
+      "design-pattern",
+      "typescript",
+      "generic",
+      "variant"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "object-pool-ts",
+    "code": "interface PoolOptions<T> {\n  max?: number;\n  reset?: (obj: T) => void;\n}\n\nclass ObjectPool<T> {\n  private factory: () => T;\n  private maxSize: number;\n  private pool: T[] = [];\n  private activeCount = 0;\n  private resetFn: ((obj: T) => void) | null;\n\n  constructor(factory: () => T, opts?: PoolOptions<T>) {\n    this.factory = factory;\n    this.maxSize = opts?.max || 10;\n    this.resetFn = opts?.reset || null;\n  }\n\n  acquire(): T | null {\n    if (this.pool.length > 0) {\n      this.activeCount++;\n      const obj = this.pool.pop()!;\n      if (this.resetFn) this.resetFn(obj);\n      return obj;\n    }\n    if (this.activeCount < this.maxSize) {\n      this.activeCount++;\n      return this.factory();\n    }\n    return null;\n  }\n\n  release(obj: T): boolean {\n    if (this.activeCount <= 0) return false;\n    this.activeCount--;\n    this.pool.push(obj);\n    return true;\n  }\n\n  size(): number { return this.pool.length; }\n  active(): number { return this.activeCount; }\n  drain(): void { this.pool = []; this.activeCount = 0; }\n}",
+    "testCode": "let created = 0;\nconst pool = new ObjectPool<{ id: number; data: string | null }>(\n  () => ({ id: ++created, data: null }),\n  { max: 3, reset: (obj) => { obj.data = null; } }\n);\nconst a = pool.acquire()!;\nconst b = pool.acquire()!;\nif (created !== 2) throw new Error('should create 2');\na.data = 'dirty';\npool.release(a);\nconst c = pool.acquire()!;\nif (c.id !== a.id) throw new Error('should reuse');\nif (c.data !== null) throw new Error('should reset');\npool.acquire(); pool.acquire();\nif (pool.acquire() !== null) throw new Error('should return null when full');\npool.drain();\nif (pool.active() !== 0) throw new Error('drain should empty');",
+    "language": "typescript",
+    "description": "Generic typed object pool with factory, reset, max size, and drain",
+    "tags": [
+      "pool",
+      "object-pool",
+      "concurrency",
+      "typescript",
+      "generic",
+      "variant"
+    ],
+    "patternType": "concurrency"
+  },
+  {
+    "name": "transform-stream-ts",
+    "code": "class TransformStream<TIn, TOut = TIn> {\n  private transforms: Array<(data: unknown) => unknown> = [];\n  private buffer: unknown[] = [];\n  private flushed = false;\n\n  addTransform<R>(fn: (data: unknown) => R): TransformStream<TIn, R> {\n    this.transforms.push(fn as (data: unknown) => unknown);\n    return this as unknown as TransformStream<TIn, R>;\n  }\n\n  write(chunk: TIn): this {\n    if (this.flushed) throw new Error('Stream already flushed');\n    let data: unknown = chunk;\n    for (const t of this.transforms) {\n      data = t(data);\n      if (data == null) return this;\n    }\n    this.buffer.push(data);\n    return this;\n  }\n\n  flush(): TOut[] {\n    this.flushed = true;\n    return this.buffer.slice() as TOut[];\n  }\n\n  size(): number { return this.buffer.length; }\n\n  reset(): this {\n    this.buffer = [];\n    this.flushed = false;\n    return this;\n  }\n}",
+    "testCode": "const ts = new TransformStream<number, number>();\nts.addTransform((x: unknown) => (x as number) * 2).addTransform((x: unknown) => (x as number) + 1);\nts.write(1); ts.write(2); ts.write(3);\nconst out = ts.flush();\nif (out.length !== 3) throw new Error('should have 3 items');\nif (out[0] !== 3 || out[1] !== 5) throw new Error('transforms wrong');\nconst filter = new TransformStream<number, number>();\nfilter.addTransform((x: unknown) => (x as number) > 5 ? x : null);\nfilter.write(3); filter.write(8); filter.write(10);\nconst filtered = filter.flush();\nif (filtered.length !== 2) throw new Error('filter should drop nulls');\nif (filtered[0] !== 8) throw new Error('filter values wrong');",
+    "language": "typescript",
+    "description": "Generic typed transform stream with chainable transforms, null filtering, and flush",
+    "tags": [
+      "stream",
+      "transform",
+      "io",
+      "typescript",
+      "generic",
+      "variant"
+    ],
+    "patternType": "io"
+  }
+]

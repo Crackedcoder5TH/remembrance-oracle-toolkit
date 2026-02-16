@@ -1,0 +1,114 @@
+[
+  {
+    "name": "stack-rust",
+    "code": "pub struct Stack<T> {\n    items: Vec<T>,\n}\n\nimpl<T> Stack<T> {\n    pub fn new() -> Self {\n        Stack { items: Vec::new() }\n    }\n\n    pub fn push(&mut self, item: T) {\n        self.items.push(item);\n    }\n\n    pub fn pop(&mut self) -> Option<T> {\n        self.items.pop()\n    }\n\n    pub fn peek(&self) -> Option<&T> {\n        self.items.last()\n    }\n\n    pub fn len(&self) -> usize {\n        self.items.len()\n    }\n\n    pub fn is_empty(&self) -> bool {\n        self.items.is_empty()\n    }\n}",
+    "testCode": "use super::*;\n\n#[test]\nfn test_stack() {\n    let mut s = Stack::new();\n    s.push(1);\n    s.push(2);\n    assert_eq!(s.len(), 2);\n    assert_eq!(s.pop(), Some(2));\n    assert_eq!(s.peek(), Some(&1));\n    s.pop();\n    assert_eq!(s.pop(), None);\n    assert!(s.is_empty());\n}",
+    "language": "rust",
+    "description": "Generic stack backed by Vec",
+    "tags": [
+      "data-structure",
+      "stack",
+      "generics",
+      "rust-native"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "binary-search-rust",
+    "code": "pub fn binary_search<T: Ord>(arr: &[T], target: &T) -> Option<usize> {\n    arr.binary_search(target).ok()\n}\n\npub fn binary_search_by<T, F>(arr: &[T], mut cmp: F) -> Option<usize>\nwhere\n    F: FnMut(&T) -> std::cmp::Ordering,\n{\n    arr.binary_search_by(|item| cmp(item)).ok()\n}",
+    "testCode": "use super::*;\n\n#[test]\nfn test_binary_search() {\n    let arr = vec![1, 2, 3, 4, 5];\n    assert_eq!(binary_search(&arr, &3), Some(2));\n    assert_eq!(binary_search(&arr, &1), Some(0));\n    assert_eq!(binary_search(&arr, &6), None);\n    let empty: Vec<i32> = vec![];\n    assert_eq!(binary_search(&empty, &1), None);\n}",
+    "language": "rust",
+    "description": "Binary search using slice::binary_search — idiomatic Rust",
+    "tags": [
+      "search",
+      "algorithm",
+      "slice",
+      "rust-native"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "result-chain-rust",
+    "code": "use std::num::ParseIntError;\n\npub fn parse_and_double(s: &str) -> Result<i64, ParseIntError> {\n    s.trim().parse::<i64>().map(|n| n * 2)\n}\n\npub fn parse_sum(values: &[&str]) -> Result<i64, ParseIntError> {\n    values.iter()\n        .map(|s| s.trim().parse::<i64>())\n        .try_fold(0i64, |acc, r| r.map(|n| acc + n))\n}",
+    "testCode": "use super::*;\n\n#[test]\nfn test_result_chain() {\n    assert_eq!(parse_and_double(\"21\"), Ok(42));\n    assert!(parse_and_double(\"abc\").is_err());\n    assert_eq!(parse_sum(&[\"1\", \"2\", \"3\"]), Ok(6));\n    assert!(parse_sum(&[\"1\", \"x\"]).is_err());\n}",
+    "language": "rust",
+    "description": "Result chaining with map and try_fold",
+    "tags": [
+      "result",
+      "error-handling",
+      "iterator",
+      "rust-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "iterator-pipeline-rust",
+    "code": "pub fn top_n_words(text: &str, n: usize) -> Vec<(String, usize)> {\n    let mut counts = std::collections::HashMap::new();\n    for word in text.split_whitespace() {\n        let w = word.to_lowercase();\n        *counts.entry(w).or_insert(0usize) += 1;\n    }\n    let mut pairs: Vec<_> = counts.into_iter().collect();\n    pairs.sort_by(|a, b| b.1.cmp(&a.1));\n    pairs.truncate(n);\n    pairs\n}",
+    "testCode": "use super::*;\n\n#[test]\nfn test_top_n_words() {\n    let result = top_n_words(\"the cat sat on the mat the\", 2);\n    assert_eq!(result[0].0, \"the\");\n    assert_eq!(result[0].1, 3);\n    assert_eq!(result.len(), 2);\n}",
+    "language": "rust",
+    "description": "Word frequency counter with iterator pipeline",
+    "tags": [
+      "iterator",
+      "string",
+      "frequency",
+      "rust-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "trait-strategy-rust",
+    "code": "pub trait Sorter {\n    fn sort(&self, data: &mut [i32]);\n}\n\npub struct BubbleSort;\npub struct InsertionSort;\n\nimpl Sorter for BubbleSort {\n    fn sort(&self, data: &mut [i32]) {\n        let n = data.len();\n        for i in 0..n {\n            for j in 0..n - 1 - i {\n                if data[j] > data[j + 1] {\n                    data.swap(j, j + 1);\n                }\n            }\n        }\n    }\n}\n\nimpl Sorter for InsertionSort {\n    fn sort(&self, data: &mut [i32]) {\n        for i in 1..data.len() {\n            let key = data[i];\n            let mut j = i;\n            while j > 0 && data[j - 1] > key {\n                data[j] = data[j - 1];\n                j -= 1;\n            }\n            data[j] = key;\n        }\n    }\n}\n\npub fn sort_with(data: &mut [i32], strategy: &dyn Sorter) {\n    strategy.sort(data);\n}",
+    "testCode": "use super::*;\n\n#[test]\nfn test_strategy_pattern() {\n    let mut data = vec![3, 1, 4, 1, 5];\n    sort_with(&mut data, &BubbleSort);\n    assert_eq!(data, vec![1, 1, 3, 4, 5]);\n\n    let mut data2 = vec![5, 4, 3, 2, 1];\n    sort_with(&mut data2, &InsertionSort);\n    assert_eq!(data2, vec![1, 2, 3, 4, 5]);\n}",
+    "language": "rust",
+    "description": "Strategy pattern using traits and dynamic dispatch",
+    "tags": [
+      "trait",
+      "design-pattern",
+      "strategy",
+      "rust-native"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "option-utils-rust",
+    "code": "pub fn first_some<T>(options: &[Option<T>]) -> Option<&T> {\n    options.iter().find_map(|o| o.as_ref())\n}\n\npub fn zip_options<A, B>(a: Option<A>, b: Option<B>) -> Option<(A, B)> {\n    match (a, b) {\n        (Some(a), Some(b)) => Some((a, b)),\n        _ => None,\n    }\n}\n\npub fn unwrap_or_compute<T, F: FnOnce() -> T>(opt: Option<T>, f: F) -> T {\n    match opt {\n        Some(v) => v,\n        None => f(),\n    }\n}",
+    "testCode": "use super::*;\n\n#[test]\nfn test_option_utils() {\n    let opts: Vec<Option<i32>> = vec![None, Some(2), Some(3)];\n    assert_eq!(first_some(&opts), Some(&2));\n\n    assert_eq!(zip_options(Some(1), Some(\"a\")), Some((1, \"a\")));\n    assert_eq!(zip_options(Some(1), None::<&str>), None);\n\n    assert_eq!(unwrap_or_compute(Some(5), || 10), 5);\n    assert_eq!(unwrap_or_compute(None, || 10), 10);\n}",
+    "language": "rust",
+    "description": "Option utility functions — first_some, zip, unwrap_or_compute",
+    "tags": [
+      "option",
+      "utility",
+      "functional",
+      "rust-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "linked-list-rust",
+    "code": "pub struct LinkedList<T> {\n    head: Option<Box<Node<T>>>,\n    len: usize,\n}\n\nstruct Node<T> {\n    value: T,\n    next: Option<Box<Node<T>>>,\n}\n\nimpl<T> LinkedList<T> {\n    pub fn new() -> Self {\n        LinkedList { head: None, len: 0 }\n    }\n\n    pub fn push_front(&mut self, value: T) {\n        let node = Box::new(Node { value, next: self.head.take() });\n        self.head = Some(node);\n        self.len += 1;\n    }\n\n    pub fn pop_front(&mut self) -> Option<T> {\n        self.head.take().map(|node| {\n            self.head = node.next;\n            self.len -= 1;\n            node.value\n        })\n    }\n\n    pub fn len(&self) -> usize {\n        self.len\n    }\n\n    pub fn is_empty(&self) -> bool {\n        self.head.is_none()\n    }\n}",
+    "testCode": "use super::*;\n\n#[test]\nfn test_linked_list() {\n    let mut ll = LinkedList::new();\n    ll.push_front(3);\n    ll.push_front(2);\n    ll.push_front(1);\n    assert_eq!(ll.len(), 3);\n    assert_eq!(ll.pop_front(), Some(1));\n    assert_eq!(ll.pop_front(), Some(2));\n    assert_eq!(ll.pop_front(), Some(3));\n    assert!(ll.is_empty());\n}",
+    "language": "rust",
+    "description": "Singly linked list using Box and Option",
+    "tags": [
+      "data-structure",
+      "linked-list",
+      "ownership",
+      "rust-native"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "from-trait-rust",
+    "code": "#[derive(Debug, PartialEq)]\npub struct Celsius(f64);\n\n#[derive(Debug, PartialEq)]\npub struct Fahrenheit(f64);\n\nimpl From<Celsius> for Fahrenheit {\n    fn from(c: Celsius) -> Self {\n        Fahrenheit(c.0 * 9.0 / 5.0 + 32.0)\n    }\n}\n\nimpl From<Fahrenheit> for Celsius {\n    fn from(f: Fahrenheit) -> Self {\n        Celsius((f.0 - 32.0) * 5.0 / 9.0)\n    }\n}",
+    "testCode": "use super::*;\n\n#[test]\nfn test_temperature_conversion() {\n    let boiling = Celsius(100.0);\n    let f: Fahrenheit = boiling.into();\n    assert_eq!(f.0, 212.0);\n\n    let freezing = Fahrenheit(32.0);\n    let c: Celsius = freezing.into();\n    assert_eq!(c.0, 0.0);\n}",
+    "language": "rust",
+    "description": "Type-safe temperature conversion using From trait",
+    "tags": [
+      "trait",
+      "from",
+      "conversion",
+      "rust-native"
+    ],
+    "patternType": "design-pattern"
+  }
+]

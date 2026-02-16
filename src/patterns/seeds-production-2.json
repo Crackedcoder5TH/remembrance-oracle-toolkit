@@ -1,0 +1,168 @@
+[
+  {
+    "name": "worker-pool",
+    "code": "class WorkerPool{\n  constructor(n){this.size=n;this.current=0;this.active=0;this.completed=0;this.failed=0;this._off=false}\n  async exec(task){\n    if(this._off)throw new Error('Pool is shut down');\n    var w=this.current;this.current=(this.current+1)%this.size;this.active++;\n    try{var r=await Promise.resolve(task(w));this.completed++;return r}\n    catch(e){this.failed++;throw e}finally{this.active--}}\n  stats(){return{size:this.size,active:this.active,completed:this.completed,failed:this.failed}}\n  shutdown(){this._off=true}\n}",
+    "testCode": "var pool=new WorkerPool(2),results=[];\nawait pool.exec(function(w){results.push('a'+w)});\nawait pool.exec(function(w){results.push('b'+w)});\nawait pool.exec(function(w){results.push('c'+w)});\nif(results[0]!=='a0') throw new Error('first worker');\nif(results[1]!=='b1') throw new Error('round-robin');\nif(results[2]!=='c0') throw new Error('wrap around');\nif(pool.stats().completed!==3) throw new Error('completed count');\npool.shutdown();\ntry{await pool.exec(function(){});throw new Error('no')}catch(e){if(e.message==='no')throw e}",
+    "language": "javascript",
+    "description": "Worker pool with round-robin dispatch, stats tracking, and graceful shutdown",
+    "tags": [
+      "concurrency",
+      "pool",
+      "worker",
+      "async",
+      "round-robin",
+      "task-queue"
+    ],
+    "patternType": "concurrency"
+  },
+  {
+    "name": "csv-parser",
+    "code": "function parseCSV(t,o){\n  o=o||{};var d=o.delimiter||',',h=o.headers!==false,q=o.quote||'\"',R=[],row=[''],Q=false,col=0;\n  for(var i=0;i<t.length;i++){var c=t[i];\n    if(Q){if(c===q&&t[i+1]===q){row[col]+=q;i++}else if(c===q)Q=false;else row[col]+=c}\n    else if(c===q)Q=true;else if(c===d)row[++col]='';\n    else if(c==='\\n'||(c==='\\r'&&t[i+1]==='\\n')){if(c==='\\r')i++;R.push(row);row=[''];col=0}\n    else row[col]+=c}\n  if(row.length>1||row[0]!=='')R.push(row);if(!h||!R.length)return R;\n  return R.slice(1).map(function(r){var o={};R[0].forEach(function(n,i){o[n]=r[i]||''});return o})\n}",
+    "testCode": "var r1=parseCSV('name,age\\nAlice,30\\nBob,25');\nif(r1.length!==2) throw new Error('row count');\nif(r1[0].name!=='Alice') throw new Error('field value');\nif(r1[1].age!=='25') throw new Error('second row');\nvar r2=parseCSV('\"a,b\",c\\n\"d\"\"e\",f',{headers:false});\nif(r2[0][0]!=='a,b') throw new Error('quoted comma');\nif(r2[1][0]!=='d\"e') throw new Error('escaped quote');",
+    "language": "javascript",
+    "description": "CSV parser handling quoted fields, escaped quotes, and newlines within quotes",
+    "tags": [
+      "csv",
+      "parser",
+      "io",
+      "text",
+      "delimiter",
+      "data-import"
+    ],
+    "patternType": "io"
+  },
+  {
+    "name": "jwt-auth",
+    "code": "const crypto=require('crypto'),B='base64url',HD=Buffer.from('{\"alg\":\"HS256\",\"typ\":\"JWT\"}').toString(B);\nclass JWTAuth{constructor(s){this.s=s}\n_h(i){return crypto.createHmac('sha256',this.s).update(i).digest(B)}\nsign(p,ms){ms=ms||36e5;var b=Buffer.from(JSON.stringify({...p,exp:Date.now()+ms})).toString(B);return HD+'.'+b+'.'+this._h(HD+'.'+b)}\nverify(t){var p=t.split('.');if(this._h(p[0]+'.'+p[1])!==p[2])throw new Error('Bad sig');\nvar d=JSON.parse(Buffer.from(p[1],B));if(d.exp&&Date.now()>d.exp)throw new Error('Expired');return d}\ndecode(t){return JSON.parse(Buffer.from(t.split('.')[1],B))}}",
+    "testCode": "var auth=new JWTAuth('test-secret-key-12345');\nvar token=auth.sign({sub:'user1',role:'admin'});\nif(typeof token!=='string'||token.split('.').length!==3) throw new Error('token format');\nvar payload=auth.verify(token);\nif(payload.sub!=='user1') throw new Error('verify payload');\nvar decoded=auth.decode(token);\nif(decoded.role!=='admin') throw new Error('decode payload');\ntry{auth.verify(token+'x');throw new Error('no')}catch(e){if(e.message==='no')throw e}",
+    "language": "javascript",
+    "description": "JWT authentication with HMAC-SHA256 signing, verification, and decoding",
+    "tags": [
+      "jwt",
+      "auth",
+      "token",
+      "hmac",
+      "sha256",
+      "crypto",
+      "security",
+      "validation"
+    ],
+    "patternType": "validation"
+  },
+  {
+    "name": "cors-middleware",
+    "code": "function cors(opts){\n  opts=opts||{};var A='Access-Control-Allow-',o={origin:opts.origin||'*',\n    mt:opts.methods||'GET,HEAD,PUT,PATCH,POST,DELETE',\n    hd:opts.headers||'',cred:!!opts.credentials,ma:opts.maxAge||86400};\n  return function(req,res,next){\n    res.setHeader(A+'Origin',o.origin);\n    if(o.cred)res.setHeader(A+'Credentials','true');\n    if(req.method==='OPTIONS'){\n      res.setHeader(A+'Methods',o.mt);\n      if(o.hd)res.setHeader(A+'Headers',o.hd);\n      res.setHeader('Access-Control-Max-Age',''+o.ma);\n      res.writeHead(204);res.end();return}\n    next()}\n}",
+    "testCode": "var handler=cors({origin:'http://example.com',methods:'GET,POST',credentials:true});\nvar hd={};\nvar res={setHeader:function(k,v){hd[k]=v},writeHead:function(){},end:function(){}};\nhandler({method:'OPTIONS'},res,function(){});\nif(hd['Access-Control-Allow-Origin']!=='http://example.com') throw new Error('origin');\nif(hd['Access-Control-Allow-Credentials']!=='true') throw new Error('credentials');\nif(hd['Access-Control-Allow-Methods']!=='GET,POST') throw new Error('methods');\nvar called=false;hd={};\nhandler({method:'GET'},res,function(){called=true});\nif(!called) throw new Error('next not called');",
+    "language": "javascript",
+    "description": "CORS middleware with preflight handling, origin control, and credentials support",
+    "tags": [
+      "cors",
+      "middleware",
+      "http",
+      "headers",
+      "preflight",
+      "security",
+      "api"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "request-validator",
+    "code": "class RequestValidator{\n  constructor(schema){this.schema=schema}\n  validate(data){\n    var er=[];\n    for(var f in this.schema){var r=this.schema[f],v=data[f];\n      if(r.required&&(v==null||v==='')){er.push(f+' required');continue}\n      if(v==null)continue;\n      if(r.type&&typeof v!==r.type)er.push(f+': want '+r.type);\n      if(r.min!=null&&v<r.min)er.push(f+' < min');\n      if(r.max!=null&&v>r.max)er.push(f+' > max');\n      if(r.pattern&&!r.pattern.test(''+v))er.push(f+' bad format');\n      if(r.enum&&!r.enum.includes(v))er.push(f+' not in enum')}\n    return{valid:!er.length,errors:er}}\n}",
+    "testCode": "var v=new RequestValidator({\n  name:{type:'string',required:true},\n  age:{type:'number',min:0,max:150},\n  role:{enum:['admin','user']}\n});\nvar r1=v.validate({name:'Alice',age:30,role:'admin'});\nif(!r1.valid) throw new Error('valid data failed');\nvar r2=v.validate({});\nif(r2.valid||r2.errors.length===0) throw new Error('missing required passed');\nvar r3=v.validate({name:'Bob',age:-1});\nif(r3.valid) throw new Error('below min passed');\nvar r4=v.validate({name:'X',role:'superadmin'});\nif(r4.valid) throw new Error('invalid enum passed');",
+    "language": "javascript",
+    "description": "Schema-based request validator with type, range, pattern, and enum checks",
+    "tags": [
+      "validation",
+      "schema",
+      "request",
+      "form",
+      "input",
+      "sanitize"
+    ],
+    "patternType": "validation"
+  },
+  {
+    "name": "stream-pipeline",
+    "code": "class StreamPipeline{\n  constructor(){this.transforms=[]}\n  pipe(fn){this.transforms.push(fn);return this}\n  async process(input){\n    var r=input;\n    for(var i=0;i<this.transforms.length;i++)\n      r=await Promise.resolve(this.transforms[i](r));\n    return r}\n  get length(){return this.transforms.length}\n  reset(){this.transforms=[];return this}\n}",
+    "testCode": "var p=new StreamPipeline();\np.pipe(function(x){return x*2}).pipe(function(x){return x+1}).pipe(function(x){return String(x)});\nvar r=await p.process(5);\nif(r!=='11') throw new Error('chain result: '+r);\nvar p2=new StreamPipeline();\np2.pipe(async function(x){return x.toUpperCase()}).pipe(function(x){return x+'!'});\nvar r2=await p2.process('hello');\nif(r2!=='HELLO!') throw new Error('async transform');\nif(p.length!==3) throw new Error('length');\nvar p3=new StreamPipeline();\nif(await p3.process(42)!==42) throw new Error('empty pipeline');",
+    "language": "javascript",
+    "description": "Chainable transform pipeline with sync and async function support",
+    "tags": [
+      "stream",
+      "pipeline",
+      "transform",
+      "chain",
+      "async",
+      "io",
+      "functional"
+    ],
+    "patternType": "io"
+  },
+  {
+    "name": "observable",
+    "code": "class Observable{\n  constructor(fn){this._fn=fn}\n  subscribe(o){return this._fn(typeof o==='function'?{next:o}:o)}\n  static of(){var v=[].slice.call(arguments);\n    return new Observable(function(o){v.forEach(function(x){o.next(x)});\n      if(o.complete)o.complete();return{unsubscribe:function(){}}})}\n  map(fn){var s=this;return new Observable(function(o){\n    return s.subscribe({next:function(v){o.next(fn(v))}})})}\n  filter(fn){var s=this;return new Observable(function(o){\n    return s.subscribe({next:function(v){if(fn(v))o.next(v)}})})}\n}",
+    "testCode": "var values=[];\nObservable.of(1,2,3).subscribe({next:function(v){values.push(v)}});\nif(values.length!==3||values[2]!==3) throw new Error('of');\nvar mapped=[];\nObservable.of(1,2,3).map(function(x){return x*10}).subscribe({next:function(v){mapped.push(v)}});\nif(mapped[0]!==10||mapped[2]!==30) throw new Error('map');\nvar filtered=[];\nObservable.of(1,2,3,4).filter(function(x){return x%2===0}).subscribe({next:function(v){filtered.push(v)}});\nif(filtered.length!==2||filtered[0]!==2) throw new Error('filter');\nvar u=Observable.of(1).subscribe({next:function(){}});\nif(typeof u.unsubscribe!=='function') throw new Error('unsubscribe');",
+    "language": "javascript",
+    "description": "Observable with subscribe, map, filter, and static of() factory",
+    "tags": [
+      "observable",
+      "reactive",
+      "stream",
+      "design-pattern",
+      "functional",
+      "subscribe"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "dependency-injection",
+    "code": "class DIContainer{\n  constructor(){this._r=new Map();this._s=new Map()}\n  register(name,factory,opts){\n    this._r.set(name,{factory:factory,singleton:!!(opts&&opts.singleton)});\n    this._s.delete(name);return this}\n  resolve(name){\n    if(!this._r.has(name))throw new Error(name+' not registered');\n    var e=this._r.get(name);\n    if(e.singleton){if(!this._s.has(name))this._s.set(name,e.factory(this));return this._s.get(name)}\n    return e.factory(this)}\n  has(name){return this._r.has(name)}\n}",
+    "testCode": "var c=new DIContainer();\nc.register('config',function(){return{port:3000}},{singleton:true});\nc.register('logger',function(){return{log:function(){}}});\nvar cfg1=c.resolve('config');\nvar cfg2=c.resolve('config');\nif(cfg1!==cfg2) throw new Error('singleton should return same instance');\nvar l1=c.resolve('logger');\nvar l2=c.resolve('logger');\nif(l1===l2) throw new Error('non-singleton should return new instance');\nif(!c.has('config')||c.has('missing')) throw new Error('has check');\ntry{c.resolve('missing');throw new Error('no')}catch(e){if(e.message==='no')throw e}",
+    "language": "javascript",
+    "description": "Dependency injection container with singleton support and factory resolution",
+    "tags": [
+      "di",
+      "dependency-injection",
+      "container",
+      "ioc",
+      "design-pattern",
+      "factory",
+      "singleton"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "bloom-filter",
+    "code": "class BloomFilter{\n  constructor(sz,hc){this.sz=sz;this.hc=hc;this.b=new Uint8Array(sz);this.count=0}\n  _hashes(item){var s=''+item,r=[];\n    for(var i=0;i<this.hc;i++){var h=0;\n      for(var j=0;j<s.length;j++)h=((h<<5)-h+s.charCodeAt(j)*(i+1))|0;\n      r.push((h<0?-h:h)%this.sz)}return r}\n  add(item){var b=this.b;this._hashes(item).forEach(function(i){b[i]=1});this.count++}\n  mightContain(item){var b=this.b;return this._hashes(item).every(function(i){return b[i]===1})}\n  falsePositiveRate(){var s=0;for(var i=0;i<this.sz;i++)if(this.b[i])s++;\n    return Math.pow(s/this.sz,this.hc)}\n}",
+    "testCode": "var bf=new BloomFilter(1000,3);\nbf.add('hello');bf.add('world');\nif(!bf.mightContain('hello')) throw new Error('added item missing');\nif(!bf.mightContain('world')) throw new Error('second item missing');\nvar fp=0;\nfor(var i=0;i<100;i++){if(bf.mightContain('test'+i))fp++}\nif(fp>20) throw new Error('too many false positives: '+fp);\nvar rate=bf.falsePositiveRate();\nif(typeof rate!=='number'||rate<0||rate>1) throw new Error('rate out of bounds');",
+    "language": "javascript",
+    "description": "Bloom filter with configurable size and hash count for probabilistic membership testing",
+    "tags": [
+      "bloom-filter",
+      "data-structure",
+      "probabilistic",
+      "set",
+      "hash",
+      "membership"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "pub-sub",
+    "code": "class PubSub{\n  constructor(){this._subs=new Map()}\n  subscribe(topic,handler){\n    if(!this._subs.has(topic))this._subs.set(topic,new Set());\n    this._subs.get(topic).add(handler);var self=this;\n    return function(){var h=self._subs.get(topic);if(h){h.delete(handler);if(!h.size)self._subs.delete(topic)}}}\n  publish(topic,data){\n    for(var e of this._subs){var p=e[0],h=e[1];\n      if(p===topic||p==='*'||(p.includes('*')&&new RegExp('^'+p.split('*').join('.*')+'$').test(topic)))\n        h.forEach(function(fn){fn(data,topic)})}}\n  topics(){return Array.from(this._subs.keys())}\n}",
+    "testCode": "var ps=new PubSub();\nvar msgs=[];\nvar unsub=ps.subscribe('chat',function(d){msgs.push(d)});\nps.publish('chat','hello');\nps.publish('chat','world');\nif(msgs.length!==2||msgs[0]!=='hello') throw new Error('basic pub/sub');\nunsub();\nps.publish('chat','gone');\nif(msgs.length!==2) throw new Error('unsubscribe failed');\nvar wild=[];\nps.subscribe('*',function(d){wild.push(d)});\nps.publish('anything','test');\nif(wild.length!==1) throw new Error('wildcard');\nif(!ps.topics().includes('*')) throw new Error('topics list');",
+    "language": "javascript",
+    "description": "Publish-subscribe system with wildcard topic matching and unsubscribe support",
+    "tags": [
+      "pub-sub",
+      "pubsub",
+      "event",
+      "design-pattern",
+      "message",
+      "wildcard",
+      "topic"
+    ],
+    "patternType": "design-pattern"
+  }
+]

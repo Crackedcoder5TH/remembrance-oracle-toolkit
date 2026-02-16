@@ -15,7 +15,7 @@ const {
   computeStats,
   generateTrendChart,
   generateTimeline,
-} = require('../src/reflector/history');
+} = require('../src/reflector/report');
 
 // ─── Helpers ───
 
@@ -377,33 +377,23 @@ describe('History Exports', () => {
   });
 });
 
-// ─── MCP Tools Tests ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('History MCP Tools', () => {
-  it('should register history tools in MCP server', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_reflector_history'));
-    assert.ok(names.includes('oracle_reflector_trend'));
-    assert.ok(names.includes('oracle_reflector_stats'));
+describe('History — reflector functions (MCP consolidated)', () => {
+  it('history functions are directly importable from report', () => {
+    const report = require('../src/reflector/report');
+    assert.strictEqual(typeof report.loadHistoryV2, 'function');
+    assert.strictEqual(typeof report.saveRunRecord, 'function');
+    assert.strictEqual(typeof report.createRunRecord, 'function');
+    assert.strictEqual(typeof report.computeStats, 'function');
+    assert.strictEqual(typeof report.generateTrendChart, 'function');
+    assert.strictEqual(typeof report.generateTimeline, 'function');
+    assert.strictEqual(typeof report.appendLog, 'function');
+    assert.strictEqual(typeof report.readLogTail, 'function');
   });
 
-  it('should handle stats via MCP', async () => {
-    const { MCPServer } = require('../src/mcp/server');
-    const server = new MCPServer();
-    const response = await server.handleRequest({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: {
-        name: 'oracle_reflector_stats',
-        arguments: {},
-      },
-    });
-    assert.equal(response.jsonrpc, '2.0');
-    assert.ok(response.result);
-    const data = JSON.parse(response.result.content[0].text);
-    assert.ok('totalRuns' in data);
-    assert.ok('trend' in data);
+  it('MCP has 10 consolidated tools', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    assert.equal(TOOLS.length, 10);
   });
 });

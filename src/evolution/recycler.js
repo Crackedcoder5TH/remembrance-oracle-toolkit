@@ -25,9 +25,9 @@
  *   - Each approach alt → spawns language variants = exponential
  */
 
-const { reflectionLoop } = require('./reflection');
-const { validateCode } = require('./validator');
-const { computeCoherencyScore, detectLanguage } = require('./coherency');
+const { reflectionLoop } = require('../core/reflection');
+const { validateCode } = require('../core/validator');
+const { computeCoherencyScore, detectLanguage } = require('../core/coherency');
 const { isTestFile, isDataFile, requiresExternalModules } = require('./test-synth');
 const {
   CASCADE,
@@ -47,7 +47,7 @@ const {
   jsToPythonTest,
   inferTypeScriptParams,
   findMatchingParen,
-} = require('./transpilers/js-helpers');
+} = require('../core/transpilers/js-helpers');
 
 // ─── Variant Templates ───
 // Language transpilation skeletons for common patterns
@@ -654,7 +654,7 @@ class PatternRecycler {
   }
 
   _toASTLanguage(pattern, targetLang) {
-    const { transpile: astTranspile, generateGoTest, generateRustTest, verifyTranspilation } = require('./ast-transpiler');
+    const { transpile: astTranspile, generateGoTest, generateRustTest, verifyTranspilation } = require('../core/ast-transpiler');
     const result = astTranspile(pattern.code, targetLang);
     if (!result.success || !result.code) return null;
 

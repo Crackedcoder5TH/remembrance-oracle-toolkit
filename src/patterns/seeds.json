@@ -1,0 +1,426 @@
+[
+  {
+    "name": "binary-search",
+    "code": "function binarySearch(arr, target) {\n  let lo = 0, hi = arr.length - 1;\n  while (lo <= hi) {\n    const mid = (lo + hi) >>> 1;\n    if (arr[mid] === target) return mid;\n    if (arr[mid] < target) lo = mid + 1;\n    else hi = mid - 1;\n  }\n  return -1;\n}",
+    "testCode": "if (binarySearch([1,2,3,4,5], 3) !== 2) throw new Error(\"mid\");\nif (binarySearch([1,2,3,4,5], 1) !== 0) throw new Error(\"first\");\nif (binarySearch([1,2,3,4,5], 5) !== 4) throw new Error(\"last\");\nif (binarySearch([1,2,3,4,5], 6) !== -1) throw new Error(\"missing\");\nif (binarySearch([], 1) !== -1) throw new Error(\"empty\");",
+    "language": "javascript",
+    "description": "Binary search on a sorted array — O(log n)",
+    "tags": [
+      "search",
+      "algorithm",
+      "array",
+      "sorted",
+      "binary-search"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "merge-sort",
+    "code": "function mergeSort(arr) {\n  if (arr.length <= 1) return arr;\n  const mid = arr.length >>> 1;\n  const left = mergeSort(arr.slice(0, mid));\n  const right = mergeSort(arr.slice(mid));\n  const result = [];\n  let i = 0, j = 0;\n  while (i < left.length && j < right.length) {\n    result.push(left[i] <= right[j] ? left[i++] : right[j++]);\n  }\n  while (i < left.length) result.push(left[i++]);\n  while (j < right.length) result.push(right[j++]);\n  return result;\n}",
+    "testCode": "const r1 = mergeSort([5,3,8,1,9,2]);\nif (JSON.stringify(r1) !== '[1,2,3,5,8,9]') throw new Error(\"sort: \" + r1);\nif (JSON.stringify(mergeSort([])) !== '[]') throw new Error(\"empty\");\nif (JSON.stringify(mergeSort([1])) !== '[1]') throw new Error(\"single\");\nif (JSON.stringify(mergeSort([3,1,1,2])) !== '[1,1,2,3]') throw new Error(\"dups\");",
+    "language": "javascript",
+    "description": "Merge sort — stable O(n log n) sorting",
+    "tags": [
+      "sort",
+      "algorithm",
+      "array",
+      "merge-sort",
+      "stable"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "depth-first-search",
+    "code": "function dfs(graph, start, visited = new Set()) {\n  visited.add(start);\n  const result = [start];\n  for (const neighbor of (graph[start] || [])) {\n    if (!visited.has(neighbor)) {\n      result.push(...dfs(graph, neighbor, visited));\n    }\n  }\n  return result;\n}",
+    "testCode": "const g = { a: ['b','c'], b: ['d'], c: ['d'], d: [] };\nconst r = dfs(g, 'a');\nif (!r.includes('a') || !r.includes('b') || !r.includes('c') || !r.includes('d')) throw new Error(\"missing nodes\");\nif (r[0] !== 'a') throw new Error(\"should start at root\");\nif (r.length !== 4) throw new Error(\"should visit all: \" + r);",
+    "language": "javascript",
+    "description": "Depth-first search on adjacency list graph",
+    "tags": [
+      "graph",
+      "search",
+      "algorithm",
+      "dfs",
+      "traversal"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "breadth-first-search",
+    "code": "function bfs(graph, start) {\n  const visited = new Set([start]);\n  const queue = [start];\n  const result = [];\n  while (queue.length > 0) {\n    const node = queue.shift();\n    result.push(node);\n    for (const neighbor of (graph[node] || [])) {\n      if (!visited.has(neighbor)) {\n        visited.add(neighbor);\n        queue.push(neighbor);\n      }\n    }\n  }\n  return result;\n}",
+    "testCode": "const g = { a: ['b','c'], b: ['d'], c: ['d'], d: [] };\nconst r = bfs(g, 'a');\nif (r[0] !== 'a') throw new Error(\"start\");\nif (r.length !== 4) throw new Error(\"all nodes\");\nif (r.indexOf('b') > r.indexOf('d') && r.indexOf('c') > r.indexOf('d')) throw new Error(\"bfs order\");",
+    "language": "javascript",
+    "description": "Breadth-first search on adjacency list graph",
+    "tags": [
+      "graph",
+      "search",
+      "algorithm",
+      "bfs",
+      "traversal"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "debounce",
+    "code": "function debounce(fn, delay) {\n  let timer;\n  return function(...args) {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn.apply(this, args), delay);\n  };\n}",
+    "testCode": "const d = debounce(() => {}, 100);\nif (typeof d !== 'function') throw new Error(\"should return function\");",
+    "language": "javascript",
+    "description": "Debounce — delays function execution until pause in calls",
+    "tags": [
+      "utility",
+      "async",
+      "debounce",
+      "rate-limit",
+      "timing"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "throttle",
+    "code": "function throttle(fn, limit) {\n  let lastCall = 0;\n  return function(...args) {\n    const now = Date.now();\n    if (now - lastCall >= limit) {\n      lastCall = now;\n      return fn.apply(this, args);\n    }\n  };\n}",
+    "testCode": "let count = 0;\nconst t = throttle(() => count++, 50);\nt(); t(); t();\nif (count !== 1) throw new Error(\"should throttle: \" + count);",
+    "language": "javascript",
+    "description": "Throttle — limits function to one call per time window",
+    "tags": [
+      "utility",
+      "async",
+      "throttle",
+      "rate-limit",
+      "timing"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "memoize",
+    "code": "function memoize(fn) {\n  const cache = new Map();\n  return function(...args) {\n    const key = JSON.stringify(args);\n    if (cache.has(key)) return cache.get(key);\n    const result = fn.apply(this, args);\n    cache.set(key, result);\n    return result;\n  };\n}",
+    "testCode": "let calls = 0;\nconst add = memoize((a, b) => { calls++; return a + b; });\nif (add(1, 2) !== 3) throw new Error(\"first call\");\nif (add(1, 2) !== 3) throw new Error(\"cached call\");\nif (calls !== 1) throw new Error(\"should cache: \" + calls);\nif (add(2, 3) !== 5) throw new Error(\"diff args\");\nif (calls !== 2) throw new Error(\"new args: \" + calls);",
+    "language": "javascript",
+    "description": "Memoize — caches function results by arguments",
+    "tags": [
+      "utility",
+      "cache",
+      "memoize",
+      "performance",
+      "optimization"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "deep-clone",
+    "code": "function deepClone(obj) {\n  if (obj === null || typeof obj !== 'object') return obj;\n  if (obj instanceof Date) return new Date(obj.getTime());\n  if (obj instanceof RegExp) return new RegExp(obj.source, obj.flags);\n  if (Array.isArray(obj)) return obj.map(item => deepClone(item));\n  const cloned = {};\n  for (const key of Object.keys(obj)) {\n    cloned[key] = deepClone(obj[key]);\n  }\n  return cloned;\n}",
+    "testCode": "const orig = { a: 1, b: { c: [1,2,{d:3}] }, e: new Date(0) };\nconst clone = deepClone(orig);\nif (clone === orig) throw new Error(\"same ref\");\nif (clone.b === orig.b) throw new Error(\"shallow copy\");\nclone.b.c[2].d = 999;\nif (orig.b.c[2].d === 999) throw new Error(\"mutation leaked\");\nif (clone.e.getTime() !== 0) throw new Error(\"date clone\");\nif (deepClone(null) !== null) throw new Error(\"null\");\nif (deepClone(42) !== 42) throw new Error(\"primitive\");",
+    "language": "javascript",
+    "description": "Deep clone — recursively copies objects, arrays, dates, regexps",
+    "tags": [
+      "utility",
+      "clone",
+      "deep-copy",
+      "object",
+      "immutable"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "retry-async",
+    "code": "async function retry(fn, maxRetries = 3, delay = 1000) {\n  let lastError;\n  for (let i = 0; i <= maxRetries; i++) {\n    try {\n      return await fn();\n    } catch (err) {\n      lastError = err;\n      if (i < maxRetries) {\n        await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));\n      }\n    }\n  }\n  throw lastError;\n}",
+    "testCode": "let attempts = 0;\nconst fn = async () => { attempts++; if (attempts < 3) throw new Error(\"fail\"); return \"ok\"; };\nretry(fn, 3, 1).then(r => {\n  if (r !== \"ok\") throw new Error(\"result\");\n  if (attempts !== 3) throw new Error(\"attempts: \" + attempts);\n});",
+    "language": "javascript",
+    "description": "Retry with exponential backoff for async operations",
+    "tags": [
+      "utility",
+      "async",
+      "retry",
+      "backoff",
+      "error-handling",
+      "resilience"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "pipe",
+    "code": "function pipe(...fns) {\n  return function(input) {\n    return fns.reduce((val, fn) => fn(val), input);\n  };\n}",
+    "testCode": "const double = x => x * 2;\nconst inc = x => x + 1;\nconst str = x => String(x);\nconst transform = pipe(double, inc, str);\nif (transform(5) !== \"11\") throw new Error(\"pipe: \" + transform(5));\nif (pipe()(42) !== 42) throw new Error(\"empty pipe\");",
+    "language": "javascript",
+    "description": "Function pipe — compose left-to-right",
+    "tags": [
+      "utility",
+      "functional",
+      "pipe",
+      "compose",
+      "transform"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "lru-cache",
+    "code": "class LRUCache {\n  constructor(capacity) {\n    this.capacity = capacity;\n    this.cache = new Map();\n  }\n  get(key) {\n    if (!this.cache.has(key)) return undefined;\n    const val = this.cache.get(key);\n    this.cache.delete(key);\n    this.cache.set(key, val);\n    return val;\n  }\n  set(key, val) {\n    if (this.cache.has(key)) this.cache.delete(key);\n    else if (this.cache.size >= this.capacity) {\n      this.cache.delete(this.cache.keys().next().value);\n    }\n    this.cache.set(key, val);\n  }\n}",
+    "testCode": "const c = new LRUCache(2);\nc.set('a', 1); c.set('b', 2);\nif (c.get('a') !== 1) throw new Error(\"get a\");\nc.set('c', 3);\nif (c.get('b') !== undefined) throw new Error(\"evict b\");\nif (c.get('c') !== 3) throw new Error(\"get c\");",
+    "language": "javascript",
+    "description": "LRU Cache using Map for O(1) get/set with eviction",
+    "tags": [
+      "data-structure",
+      "cache",
+      "lru",
+      "map",
+      "eviction"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "trie",
+    "code": "class Trie {\n  constructor() { this.root = {}; }\n  insert(word) {\n    let node = this.root;\n    for (const ch of word) { node = node[ch] = node[ch] || {}; }\n    node._end = true;\n  }\n  search(word) {\n    let node = this.root;\n    for (const ch of word) { if (!node[ch]) return false; node = node[ch]; }\n    return node._end === true;\n  }\n  startsWith(prefix) {\n    let node = this.root;\n    for (const ch of prefix) { if (!node[ch]) return false; node = node[ch]; }\n    return true;\n  }\n}",
+    "testCode": "const t = new Trie();\nt.insert(\"hello\"); t.insert(\"help\");\nif (!t.search(\"hello\")) throw new Error(\"find hello\");\nif (t.search(\"hell\")) throw new Error(\"partial\");\nif (!t.startsWith(\"hel\")) throw new Error(\"prefix\");\nif (t.startsWith(\"xyz\")) throw new Error(\"bad prefix\");",
+    "language": "javascript",
+    "description": "Trie (prefix tree) for fast string lookups and prefix search",
+    "tags": [
+      "data-structure",
+      "trie",
+      "string",
+      "prefix",
+      "search"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "validate-email",
+    "code": "function validateEmail(email) {\n  if (typeof email !== 'string') return false;\n  const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  return re.test(email) && email.length <= 254;\n}",
+    "testCode": "if (!validateEmail(\"user@example.com\")) throw new Error(\"valid\");\nif (!validateEmail(\"a@b.co\")) throw new Error(\"short valid\");\nif (validateEmail(\"@example.com\")) throw new Error(\"no local\");\nif (validateEmail(\"user@\")) throw new Error(\"no domain\");\nif (validateEmail(\"\")) throw new Error(\"empty\");\nif (validateEmail(null)) throw new Error(\"null\");\nif (validateEmail(\"has space@x.com\")) throw new Error(\"space\");",
+    "language": "javascript",
+    "description": "Email validation with basic RFC compliance",
+    "tags": [
+      "validation",
+      "email",
+      "regex",
+      "input",
+      "sanitize"
+    ],
+    "patternType": "validation"
+  },
+  {
+    "name": "flatten-deep",
+    "code": "function flattenDeep(arr) {\n  const result = [];\n  const stack = [...arr];\n  while (stack.length > 0) {\n    const item = stack.pop();\n    if (Array.isArray(item)) {\n      stack.push(...item);\n    } else {\n      result.unshift(item);\n    }\n  }\n  return result;\n}",
+    "testCode": "if (JSON.stringify(flattenDeep([1,[2,[3,[4]]]])) !== '[1,2,3,4]') throw new Error(\"nested\");\nif (JSON.stringify(flattenDeep([])) !== '[]') throw new Error(\"empty\");\nif (JSON.stringify(flattenDeep([1,2,3])) !== '[1,2,3]') throw new Error(\"flat\");",
+    "language": "javascript",
+    "description": "Flatten deeply nested arrays iteratively (no recursion limit)",
+    "tags": [
+      "transformation",
+      "array",
+      "flatten",
+      "iterative",
+      "utility"
+    ],
+    "patternType": "transformation"
+  },
+  {
+    "name": "group-by",
+    "code": "function groupBy(arr, keyFn) {\n  const groups = {};\n  for (const item of arr) {\n    const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];\n    (groups[key] = groups[key] || []).push(item);\n  }\n  return groups;\n}",
+    "testCode": "const data = [{n:'a',t:1},{n:'b',t:1},{n:'c',t:2}];\nconst g = groupBy(data, 't');\nif (g[1].length !== 2) throw new Error(\"group 1\");\nif (g[2].length !== 1) throw new Error(\"group 2\");\nconst g2 = groupBy(data, item => item.t);\nif (g2[1].length !== 2) throw new Error(\"fn key\");",
+    "language": "javascript",
+    "description": "Group array items by a key or function",
+    "tags": [
+      "transformation",
+      "array",
+      "group",
+      "aggregate",
+      "utility"
+    ],
+    "patternType": "transformation"
+  },
+  {
+    "name": "binary-search-py",
+    "code": "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
+    "testCode": "assert binary_search([1,2,3,4,5], 3) == 2, \"mid\"\nassert binary_search([1,2,3,4,5], 1) == 0, \"first\"\nassert binary_search([1,2,3,4,5], 6) == -1, \"missing\"\nassert binary_search([], 1) == -1, \"empty\"",
+    "language": "python",
+    "description": "Binary search on sorted list — O(log n)",
+    "tags": [
+      "search",
+      "algorithm",
+      "list",
+      "sorted",
+      "binary-search"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "memoize-py",
+    "code": "def memoize(fn):\n    cache = {}\n    def wrapper(*args):\n        if args not in cache:\n            cache[args] = fn(*args)\n        return cache[args]\n    wrapper.cache = cache\n    return wrapper",
+    "testCode": "calls = 0\ndef add(a, b):\n    global calls\n    calls += 1\n    return a + b\nmemo_add = memoize(add)\nassert memo_add(1, 2) == 3\nassert memo_add(1, 2) == 3\nassert calls == 1, f\"should cache: {calls}\"",
+    "language": "python",
+    "description": "Memoize decorator — caches function results by arguments",
+    "tags": [
+      "utility",
+      "cache",
+      "memoize",
+      "decorator",
+      "performance"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "debounce-ts",
+    "code": "function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {\n  let timer: ReturnType<typeof setTimeout>;\n  return ((...args: Parameters<T>) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), delay);\n  }) as T;\n}",
+    "testCode": "let count = 0;\nconst inc = debounce(() => { count++; }, 50);\ninc(); inc(); inc();\nsetTimeout(() => {\n  if (count !== 0) throw new Error(\"should not fire yet: \" + count);\n  setTimeout(() => {\n    if (count !== 1) throw new Error(\"should fire once: \" + count);\n  }, 60);\n}, 20);",
+    "language": "typescript",
+    "description": "Debounce with TypeScript generics — preserves argument types",
+    "tags": [
+      "utility",
+      "async",
+      "debounce",
+      "rate-limit",
+      "typescript",
+      "generic"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "result-type-ts",
+    "code": "type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };\n\nfunction Ok<T>(value: T): Result<T, never> {\n  return { ok: true, value };\n}\n\nfunction Err<E>(error: E): Result<never, E> {\n  return { ok: false, error };\n}\n\nfunction unwrap<T, E>(result: Result<T, E>): T {\n  if (result.ok) return result.value;\n  throw result.error;\n}",
+    "testCode": "const ok = Ok(42);\nif (!ok.ok || ok.value !== 42) throw new Error(\"Ok failed\");\nconst err = Err(new Error(\"boom\"));\nif (err.ok) throw new Error(\"Err should not be ok\");\ntry { unwrap(err); throw new Error(\"should throw\"); } catch(e) { if (e.message !== \"boom\") throw e; }\nif (unwrap(Ok(\"hello\")) !== \"hello\") throw new Error(\"unwrap ok\");",
+    "language": "typescript",
+    "description": "Result type (Rust-style Ok/Err) for typed error handling",
+    "tags": [
+      "utility",
+      "error-handling",
+      "typescript",
+      "type-safety",
+      "result"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "typed-event-emitter-ts",
+    "code": "type EventMap = Record<string, any>;\n\nclass TypedEmitter<T extends EventMap> {\n  private listeners: { [K in keyof T]?: Array<(payload: T[K]) => void> } = {};\n\n  on<K extends keyof T>(event: K, fn: (payload: T[K]) => void): void {\n    (this.listeners[event] = this.listeners[event] || []).push(fn);\n  }\n\n  off<K extends keyof T>(event: K, fn: (payload: T[K]) => void): void {\n    const fns = this.listeners[event];\n    if (fns) this.listeners[event] = fns.filter(f => f !== fn);\n  }\n\n  emit<K extends keyof T>(event: K, payload: T[K]): void {\n    for (const fn of this.listeners[event] || []) fn(payload);\n  }\n}",
+    "testCode": "const em = new TypedEmitter();\nlet got = null;\nconst handler = (v) => { got = v; };\nem.on('test', handler);\nem.emit('test', 42);\nif (got !== 42) throw new Error(\"emit failed: \" + got);\nem.off('test', handler);\nem.emit('test', 99);\nif (got !== 42) throw new Error(\"off failed: \" + got);",
+    "language": "typescript",
+    "description": "Type-safe event emitter with generics for event map",
+    "tags": [
+      "utility",
+      "events",
+      "typescript",
+      "generic",
+      "type-safe"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "binary-search-go",
+    "code": "package sandbox\n\nfunc BinarySearch(arr []int, target int) int {\n\tlo, hi := 0, len(arr)-1\n\tfor lo <= hi {\n\t\tmid := lo + (hi-lo)/2\n\t\tif arr[mid] == target {\n\t\t\treturn mid\n\t\t} else if arr[mid] < target {\n\t\t\tlo = mid + 1\n\t\t} else {\n\t\t\thi = mid - 1\n\t\t}\n\t}\n\treturn -1\n}",
+    "testCode": "package sandbox\n\nimport \"testing\"\n\nfunc TestBinarySearch(t *testing.T) {\n\tif BinarySearch([]int{1,2,3,4,5}, 3) != 2 { t.Fatal(\"mid\") }\n\tif BinarySearch([]int{1,2,3,4,5}, 1) != 0 { t.Fatal(\"first\") }\n\tif BinarySearch([]int{1,2,3,4,5}, 6) != -1 { t.Fatal(\"missing\") }\n\tif BinarySearch([]int{}, 1) != -1 { t.Fatal(\"empty\") }\n}",
+    "language": "go",
+    "description": "Binary search on sorted slice — O(log n)",
+    "tags": [
+      "search",
+      "algorithm",
+      "slice",
+      "sorted",
+      "binary-search"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "merge-sort-go",
+    "code": "package sandbox\n\nfunc MergeSort(arr []int) []int {\n\tif len(arr) <= 1 {\n\t\treturn arr\n\t}\n\tmid := len(arr) / 2\n\tleft := MergeSort(arr[:mid])\n\tright := MergeSort(arr[mid:])\n\treturn merge(left, right)\n}\n\nfunc merge(a, b []int) []int {\n\tresult := make([]int, 0, len(a)+len(b))\n\ti, j := 0, 0\n\tfor i < len(a) && j < len(b) {\n\t\tif a[i] <= b[j] {\n\t\t\tresult = append(result, a[i])\n\t\t\ti++\n\t\t} else {\n\t\t\tresult = append(result, b[j])\n\t\t\tj++\n\t\t}\n\t}\n\tresult = append(result, a[i:]...)\n\tresult = append(result, b[j:]...)\n\treturn result\n}",
+    "testCode": "package sandbox\n\nimport (\n\t\"reflect\"\n\t\"testing\"\n)\n\nfunc TestMergeSort(t *testing.T) {\n\tgot := MergeSort([]int{5,3,8,1,9,2})\n\twant := []int{1,2,3,5,8,9}\n\tif !reflect.DeepEqual(got, want) { t.Fatalf(\"got %v want %v\", got, want) }\n\tif len(MergeSort([]int{})) != 0 { t.Fatal(\"empty\") }\n\tif MergeSort([]int{1})[0] != 1 { t.Fatal(\"single\") }\n}",
+    "language": "go",
+    "description": "Merge sort — stable O(n log n) sorting for slices",
+    "tags": [
+      "sort",
+      "algorithm",
+      "slice",
+      "stable",
+      "merge-sort"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "retry-go",
+    "code": "package sandbox\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc Retry(attempts int, delay time.Duration, fn func() error) error {\n\tvar err error\n\tfor i := 0; i < attempts; i++ {\n\t\terr = fn()\n\t\tif err == nil {\n\t\t\treturn nil\n\t\t}\n\t\tif i < attempts-1 {\n\t\t\ttime.Sleep(delay)\n\t\t\tdelay *= 2\n\t\t}\n\t}\n\treturn fmt.Errorf(\"failed after %d attempts: %w\", attempts, err)\n}",
+    "testCode": "package sandbox\n\nimport (\n\t\"errors\"\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestRetry(t *testing.T) {\n\tcount := 0\n\terr := Retry(3, time.Millisecond, func() error {\n\t\tcount++\n\t\tif count < 3 { return errors.New(\"fail\") }\n\t\treturn nil\n\t})\n\tif err != nil { t.Fatalf(\"should succeed: %v\", err) }\n\tif count != 3 { t.Fatalf(\"attempts: %d\", count) }\n}",
+    "language": "go",
+    "description": "Retry with exponential backoff — robust error recovery",
+    "tags": [
+      "utility",
+      "async",
+      "retry",
+      "backoff",
+      "error-handling"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "lru-cache-go",
+    "code": "package sandbox\n\ntype LRUCache struct {\n\tcapacity int\n\titems    map[string]*node\n\thead     *node\n\ttail     *node\n}\n\ntype node struct {\n\tkey        string\n\tvalue      interface{}\n\tprev, next *node\n}\n\nfunc NewLRUCache(capacity int) *LRUCache {\n\thead := &node{}\n\ttail := &node{}\n\thead.next = tail\n\ttail.prev = head\n\treturn &LRUCache{capacity: capacity, items: make(map[string]*node), head: head, tail: tail}\n}\n\nfunc (c *LRUCache) Get(key string) (interface{}, bool) {\n\tif n, ok := c.items[key]; ok {\n\t\tc.moveToFront(n)\n\t\treturn n.value, true\n\t}\n\treturn nil, false\n}\n\nfunc (c *LRUCache) Put(key string, value interface{}) {\n\tif n, ok := c.items[key]; ok {\n\t\tn.value = value\n\t\tc.moveToFront(n)\n\t\treturn\n\t}\n\tn := &node{key: key, value: value}\n\tc.items[key] = n\n\tc.addToFront(n)\n\tif len(c.items) > c.capacity {\n\t\tback := c.tail.prev\n\t\tc.remove(back)\n\t\tdelete(c.items, back.key)\n\t}\n}\n\nfunc (c *LRUCache) moveToFront(n *node) { c.remove(n); c.addToFront(n) }\nfunc (c *LRUCache) addToFront(n *node) { n.prev = c.head; n.next = c.head.next; c.head.next.prev = n; c.head.next = n }\nfunc (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev }",
+    "testCode": "package sandbox\n\nimport \"testing\"\n\nfunc TestLRUCache(t *testing.T) {\n\tc := NewLRUCache(2)\n\tc.Put(\"a\", 1)\n\tc.Put(\"b\", 2)\n\tif v, ok := c.Get(\"a\"); !ok || v != 1 { t.Fatal(\"get a\") }\n\tc.Put(\"c\", 3)\n\tif _, ok := c.Get(\"b\"); ok { t.Fatal(\"should evict b\") }\n\tif v, ok := c.Get(\"c\"); !ok || v != 3 { t.Fatal(\"get c\") }\n}",
+    "language": "go",
+    "description": "LRU cache with O(1) get/put using doubly-linked list + hashmap",
+    "tags": [
+      "data-structure",
+      "cache",
+      "lru",
+      "map",
+      "eviction"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "binary-search-rs",
+    "code": "pub fn binary_search(arr: &[i32], target: i32) -> Option<usize> {\n    let (mut lo, mut hi) = (0usize, arr.len());\n    while lo < hi {\n        let mid = lo + (hi - lo) / 2;\n        match arr[mid].cmp(&target) {\n            std::cmp::Ordering::Equal => return Some(mid),\n            std::cmp::Ordering::Less => lo = mid + 1,\n            std::cmp::Ordering::Greater => hi = mid,\n        }\n    }\n    None\n}",
+    "testCode": "    use super::*;\n\n    #[test]\n    fn test_binary_search() {\n        assert_eq!(binary_search(&[1,2,3,4,5], 3), Some(2));\n        assert_eq!(binary_search(&[1,2,3,4,5], 1), Some(0));\n        assert_eq!(binary_search(&[1,2,3,4,5], 6), None);\n        assert_eq!(binary_search(&[], 1), None);\n    }",
+    "language": "rust",
+    "description": "Binary search returning Option<usize> — idiomatic Rust",
+    "tags": [
+      "search",
+      "algorithm",
+      "slice",
+      "sorted",
+      "binary-search"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "merge-sort-rs",
+    "code": "pub fn merge_sort(arr: &mut Vec<i32>) {\n    let len = arr.len();\n    if len <= 1 { return; }\n    let mid = len / 2;\n    let mut left = arr[..mid].to_vec();\n    let mut right = arr[mid..].to_vec();\n    merge_sort(&mut left);\n    merge_sort(&mut right);\n    let (mut i, mut j, mut k) = (0, 0, 0);\n    while i < left.len() && j < right.len() {\n        if left[i] <= right[j] { arr[k] = left[i]; i += 1; }\n        else { arr[k] = right[j]; j += 1; }\n        k += 1;\n    }\n    while i < left.len() { arr[k] = left[i]; i += 1; k += 1; }\n    while j < right.len() { arr[k] = right[j]; j += 1; k += 1; }\n}",
+    "testCode": "    use super::*;\n\n    #[test]\n    fn test_merge_sort() {\n        let mut v = vec![5,3,8,1,9,2];\n        merge_sort(&mut v);\n        assert_eq!(v, vec![1,2,3,5,8,9]);\n        let mut e: Vec<i32> = vec![];\n        merge_sort(&mut e);\n        assert!(e.is_empty());\n    }",
+    "language": "rust",
+    "description": "In-place merge sort for Vec<i32> — stable O(n log n)",
+    "tags": [
+      "sort",
+      "algorithm",
+      "vec",
+      "stable",
+      "merge-sort"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "retry-rs",
+    "code": "use std::time::Duration;\n\npub fn retry<F, T, E>(attempts: u32, initial_delay: Duration, mut f: F) -> Result<T, E>\nwhere\n    F: FnMut() -> Result<T, E>,\n{\n    let mut delay = initial_delay;\n    for i in 0..attempts {\n        match f() {\n            Ok(val) => return Ok(val),\n            Err(e) => {\n                if i == attempts - 1 { return Err(e); }\n                std::thread::sleep(delay);\n                delay *= 2;\n            }\n        }\n    }\n    unreachable!()\n}",
+    "testCode": "    use super::*;\n    use std::time::Duration;\n\n    #[test]\n    fn test_retry() {\n        let mut count = 0u32;\n        let result = retry(3, Duration::from_millis(1), || -> Result<&str, &str> {\n            count += 1;\n            if count < 3 { Err(\"fail\") } else { Ok(\"ok\") }\n        });\n        assert_eq!(result, Ok(\"ok\"));\n        assert_eq!(count, 3);\n    }",
+    "language": "rust",
+    "description": "Generic retry with exponential backoff — works with any Result<T, E>",
+    "tags": [
+      "utility",
+      "async",
+      "retry",
+      "backoff",
+      "error-handling",
+      "generic"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "lru-cache-rs",
+    "code": "use std::collections::HashMap;\n\npub struct LruCache<K: std::hash::Hash + Eq + Clone, V> {\n    capacity: usize,\n    map: HashMap<K, (V, usize)>,\n    counter: usize,\n}\n\nimpl<K: std::hash::Hash + Eq + Clone, V> LruCache<K, V> {\n    pub fn new(capacity: usize) -> Self {\n        LruCache { capacity, map: HashMap::new(), counter: 0 }\n    }\n\n    pub fn get(&mut self, key: &K) -> Option<&V> {\n        if let Some(entry) = self.map.get_mut(key) {\n            self.counter += 1;\n            entry.1 = self.counter;\n            Some(&entry.0)\n        } else {\n            None\n        }\n    }\n\n    pub fn put(&mut self, key: K, value: V) {\n        self.counter += 1;\n        if self.map.contains_key(&key) {\n            self.map.insert(key, (value, self.counter));\n            return;\n        }\n        if self.map.len() >= self.capacity {\n            let lru_key = self.map.iter()\n                .min_by_key(|(_, (_, ts))| *ts)\n                .map(|(k, _)| k.clone())\n                .unwrap();\n            self.map.remove(&lru_key);\n        }\n        self.map.insert(key, (value, self.counter));\n    }\n}",
+    "testCode": "    use super::*;\n\n    #[test]\n    fn test_lru_cache() {\n        let mut c = LruCache::new(2);\n        c.put(\"a\", 1);\n        c.put(\"b\", 2);\n        assert_eq!(c.get(&\"a\"), Some(&1));\n        c.put(\"c\", 3);\n        assert_eq!(c.get(&\"b\"), None);\n        assert_eq!(c.get(&\"c\"), Some(&3));\n    }",
+    "language": "rust",
+    "description": "Generic LRU cache with HashMap — evicts least recently used",
+    "tags": [
+      "data-structure",
+      "cache",
+      "lru",
+      "hashmap",
+      "eviction",
+      "generic"
+    ],
+    "patternType": "data-structure"
+  }
+]

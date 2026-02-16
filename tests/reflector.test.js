@@ -16,14 +16,14 @@ const {
   formatPRBody,
   generateCollectiveWhisper,
   DEFAULT_CONFIG,
-} = require('../src/reflector/engine');
+} = require('../src/reflector/multi');
 
 // ─── GitHub Integration Tests ───
 
 const {
   generateBranchName,
   generateReflectorWorkflow,
-} = require('../src/reflector/github');
+} = require('../src/reflector/report');
 
 // ─── Scheduler Tests ───
 
@@ -36,7 +36,7 @@ const {
   runReflector,
   parseCronInterval,
   getStatus,
-} = require('../src/reflector/scheduler');
+} = require('../src/reflector/multi');
 
 // ─── Helpers ───
 
@@ -604,37 +604,21 @@ describe('Reflector Scheduler — getStatus', () => {
 
 // ─── MCP Tool Registration Tests ───
 
-describe('Reflector MCP Tools', () => {
-  it('should register reflector tools in MCP server', () => {
+describe('MCP consolidated tools include reflector-related features', () => {
+  it('MCP has consolidated 10 tools (reflector is accessed via module directly)', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const reflectorTools = TOOLS.filter(t => t.name.startsWith('oracle_reflector'));
-    assert.ok(reflectorTools.length >= 6, `Expected at least 6 reflector tools, got ${reflectorTools.length}`);
-
-    const toolNames = reflectorTools.map(t => t.name);
-    assert.ok(toolNames.includes('oracle_reflector_snapshot'));
-    assert.ok(toolNames.includes('oracle_reflector_run'));
-    assert.ok(toolNames.includes('oracle_reflector_evaluate'));
-    assert.ok(toolNames.includes('oracle_reflector_heal'));
-    assert.ok(toolNames.includes('oracle_reflector_status'));
-    assert.ok(toolNames.includes('oracle_reflector_config'));
+    assert.equal(TOOLS.length, 10, 'MCP should have exactly 10 consolidated tools');
+    const names = TOOLS.map(t => t.name);
+    assert.ok(names.includes('oracle_maintain'), 'oracle_maintain should exist for reflect/covenant actions');
   });
 
-  it('should handle reflector snapshot via MCP', async () => {
-    const { MCPServer } = require('../src/mcp/server');
-    const server = new MCPServer();
-    const response = await server.handleRequest({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: {
-        name: 'oracle_reflector_status',
-        arguments: {},
-      },
-    });
-    assert.equal(response.jsonrpc, '2.0');
-    assert.equal(response.id, 1);
-    assert.ok(response.result);
-    assert.ok(response.result.content);
+  it('reflector functions are still accessible via module directly', () => {
+    const multi = require('../src/reflector/multi');
+    assert.ok(typeof multi.scanDirectory === 'function');
+    assert.ok(typeof multi.evaluateFile === 'function');
+    assert.ok(typeof multi.takeSnapshot === 'function');
+    assert.ok(typeof multi.healFile === 'function');
+    assert.ok(typeof multi.getStatus === 'function');
   });
 });
 

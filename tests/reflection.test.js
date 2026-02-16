@@ -98,11 +98,19 @@ describe('applyReadable', () => {
 });
 
 describe('applyUnify', () => {
-  it('normalizes quotes when singles dominate', () => {
+  it('normalizes quotes when singles clearly dominate (>2x threshold)', () => {
+    // Singles must be >2x doubles to trigger normalization (healed SERF threshold)
+    const code = "const x = 'hello'; const y = 'there'; const z = 'foo'; const w = \"world\";";
+    const result = applyUnify(code, 'javascript');
+    // 6 singles vs 2 doubles → 6 > 4 → normalizes
+    assert.ok(result.includes("'world'"), `Expected single quotes, got: ${result}`);
+  });
+
+  it('does not normalize quotes when ratio is close', () => {
+    // 4 singles vs 2 doubles → 4 > 4 is false → no normalization
     const code = "const x = 'hello'; const y = 'there'; const z = \"world\";";
     const result = applyUnify(code, 'javascript');
-    // Should convert doubles to singles since singles dominate (4 vs 2)
-    assert.ok(result.includes("'world'"), `Expected single quotes, got: ${result}`);
+    assert.ok(result.includes('"world"'), `Expected no normalization, got: ${result}`);
   });
 });
 
@@ -257,7 +265,7 @@ describe('reflectionScore', () => {
     assert.ok(reflectionScore(good, previous) > reflectionScore(bad, previous));
   });
 
-  it('rewards novelty via delta_canvas', () => {
+  it('rewards novelty via Ĥ_canvas + λ_light canvas light', () => {
     const previous = { code: 'function f() { return 1; }', coherence: 0.7 };
     // Same coherence, but one is more different
     const similar = { code: 'function f() { return 1; }', coherence: 0.71 };
@@ -345,8 +353,10 @@ describe('reflectionLoop', () => {
     assert.ok(typeof result.reflection.r_eff_base === 'number');
     assert.ok(typeof result.reflection.r_eff_alpha === 'number');
     assert.ok(typeof result.reflection.epsilon_base === 'number');
-    assert.ok(typeof result.reflection.delta_canvas === 'number');
+    assert.ok(typeof result.reflection.h_rva_weight === 'number');
+    assert.ok(typeof result.reflection.h_canvas_weight === 'number');
     assert.ok(typeof result.reflection.delta_void === 'number');
+    assert.ok(typeof result.reflection.lambda_light === 'number');
     assert.ok(typeof result.reflection.cascadeBoost === 'number');
     assert.ok(typeof result.reflection.collectiveIAM === 'number');
     assert.ok(typeof result.reflection.finalCoherence === 'number');
@@ -402,7 +412,7 @@ describe('formatReflectionResult', () => {
     const result = reflectionLoop('function f() { return 1; }', { language: 'javascript' });
     const formatted = formatReflectionResult(result);
     assert.ok(typeof formatted === 'string');
-    assert.ok(formatted.includes('Reflection'));
+    assert.ok(formatted.includes('SERF v2 Reflection'));
     assert.ok(formatted.includes('I_AM'));
     assert.ok(formatted.includes('Whisper'));
   });
@@ -410,15 +420,16 @@ describe('formatReflectionResult', () => {
 
 // ─── MCP Integration ───
 
-describe('Reflection MCP tool', () => {
-  it('oracle_reflect is in the tools list', () => {
+describe('Reflection via consolidated MCP oracle_maintain tool', () => {
+  it('oracle_maintain has reflect action', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflect');
-    assert.ok(tool, 'oracle_reflect tool should exist');
-    assert.ok(tool.inputSchema.required.includes('code'));
+    const tool = TOOLS.find(t => t.name === 'oracle_maintain');
+    assert.ok(tool, 'oracle_maintain tool should exist');
+    const actions = tool.inputSchema.properties.action.enum;
+    assert.ok(actions.includes('reflect'), 'oracle_maintain should support reflect action');
   });
 
-  it('MCP server handles oracle_reflect calls', async () => {
+  it('MCP server handles reflect via oracle_maintain', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
     const response = await server.handleRequest({
@@ -426,8 +437,8 @@ describe('Reflection MCP tool', () => {
       id: 1,
       method: 'tools/call',
       params: {
-        name: 'oracle_reflect',
-        arguments: { code: 'var x = 1;', language: 'javascript' },
+        name: 'oracle_maintain',
+        arguments: { action: 'reflect', code: 'var x = 1;', language: 'javascript' },
       },
     });
     assert.equal(response.id, 1);

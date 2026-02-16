@@ -311,7 +311,7 @@ module.exports = {
   },
 
   synthesizeTests(options = {}) {
-    const { synthesizeForCandidates } = require('../core/test-synth');
+    const { synthesizeForCandidates } = require('../evolution/test-synth');
     const synthReport = synthesizeForCandidates(this, options);
 
     // If autoPromote requested, try promoting candidates with new tests

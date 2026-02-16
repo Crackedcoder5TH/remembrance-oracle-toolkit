@@ -127,7 +127,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['analytics'] = (args) => {
-    const { generateAnalytics, computeTagCloud } = require('../../core/analytics');
+    const { generateAnalytics, computeTagCloud } = require('../../analytics/analytics');
     const analytics = generateAnalytics(oracle);
     analytics.tagCloud = computeTagCloud(oracle.patterns.getAll());
     if (jsonOut()) { console.log(JSON.stringify(analytics)); return; }

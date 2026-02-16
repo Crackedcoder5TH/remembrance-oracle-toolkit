@@ -105,7 +105,7 @@ Auto-register in your AI editor:
 oracle mcp-install   # Detects Claude Desktop, Cursor, VS Code
 ```
 
-23 tools across 8 categories — search, submit, validate, reflect, debug, and more.
+10 focused tools — search, resolve, submit, register, feedback, stats, debug, sync, harvest, maintain.
 
 ## Three-tier storage
 

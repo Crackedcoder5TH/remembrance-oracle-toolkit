@@ -308,6 +308,10 @@ class LifecycleEngine {
 
       case 'rejection_captured':
         this._counters.rejections++;
+        // Auto-heal: trigger recycling after accumulating rejections
+        if (this._counters.rejections >= 3 && this._counters.rejections % 3 === 0) {
+          this._tryAutoHeal();
+        }
         break;
 
       case 'debug_capture':
@@ -342,6 +346,22 @@ class LifecycleEngine {
   _tryAutoPromote() {
     try {
       return this._autoPromote();
+    } catch {
+      return null;
+    }
+  }
+
+  _tryAutoHeal() {
+    try {
+      const recycler = this.oracle?.recycler;
+      if (recycler && typeof recycler.recycleFailed === 'function') {
+        const result = recycler.recycleFailed({ maxPatterns: this.config.maxHealsPerCycle });
+        if (result.healed > 0) {
+          this._counters.heals += result.healed;
+        }
+        return result;
+      }
+      return null;
     } catch {
       return null;
     }

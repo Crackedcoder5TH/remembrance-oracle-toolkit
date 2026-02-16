@@ -439,4 +439,134 @@ module.exports = {
     if (this._lifecycle) return this._lifecycle.status();
     return { running: false, reason: 'not initialized' };
   },
+
+  /**
+   * Reflect — the oracle introspects on its own health and state.
+   * Returns a comprehensive self-assessment including store health,
+   * pattern library stats, healing loop status, coherency metrics,
+   * and identified weaknesses.
+   *
+   * @param {object} options - Optional: { verbose: false }
+   * @returns {object} Self-assessment report
+   */
+  reflect(options = {}) {
+    const fs = require('fs');
+    const path = require('path');
+
+    const report = {
+      timestamp: new Date().toISOString(),
+      store: null,
+      patterns: null,
+      healing: null,
+      coherency: null,
+      lifecycle: null,
+      weaknesses: [],
+      recommendations: [],
+    };
+
+    // 1. Store health
+    try {
+      report.store = this.stats();
+    } catch { report.store = { error: 'unavailable' }; }
+
+    // 2. Pattern library
+    try {
+      const allPatterns = this.patterns.getAll();
+      const byLang = {};
+      const byType = {};
+      for (const p of allPatterns) {
+        byLang[p.language] = (byLang[p.language] || 0) + 1;
+        byType[p.patternType] = (byType[p.patternType] || 0) + 1;
+      }
+      const coherencies = allPatterns.map(p => p.coherencyScore?.total ?? 0);
+      const avg = coherencies.length > 0 ? coherencies.reduce((s, c) => s + c, 0) / coherencies.length : 0;
+      const min = coherencies.length > 0 ? Math.min(...coherencies) : 0;
+
+      report.patterns = {
+        total: allPatterns.length,
+        byLanguage: byLang,
+        byType,
+        avgCoherency: Math.round(avg * 1000) / 1000,
+        minCoherency: Math.round(min * 1000) / 1000,
+        belowThreshold: coherencies.filter(c => c < this.threshold).length,
+      };
+    } catch { report.patterns = { error: 'unavailable' }; }
+
+    // 3. Healing loop status
+    try {
+      report.healing = {
+        captured: this.recycler.stats.captured,
+        healedViaReflection: this.recycler.stats.healedViaReflection,
+        healedViaVariant: this.recycler.stats.healedViaVariant,
+        stillFailed: this.recycler.stats.stillFailed,
+        totalAttempts: this.recycler.stats.totalAttempts,
+        pendingCount: this.recycler.getCaptured({ status: 'pending' }).length,
+        cascadeBoost: this.recycler._cascadeBoost,
+        xiGlobal: this.recycler._xiGlobal,
+      };
+    } catch { report.healing = { error: 'unavailable' }; }
+
+    // 4. Global coherency
+    try {
+      this.recycler._updateGlobalCoherence();
+      report.coherency = {
+        xiGlobal: this.recycler._xiGlobal,
+        cascadeBoost: this.recycler._cascadeBoost,
+        threshold: this.threshold,
+      };
+    } catch { report.coherency = { error: 'unavailable' }; }
+
+    // 5. Lifecycle status
+    try {
+      report.lifecycle = this.lifecycleStatus();
+    } catch { report.lifecycle = { error: 'unavailable' }; }
+
+    // 6. Candidates
+    try {
+      const candidates = this.patterns.getCandidates();
+      report.candidates = {
+        total: candidates.length,
+        pending: candidates.filter(c => !c.promotedAt).length,
+        promoted: candidates.filter(c => c.promotedAt).length,
+      };
+    } catch { report.candidates = { error: 'unavailable' }; }
+
+    // 7. Identify weaknesses
+    if (report.patterns && !report.patterns.error) {
+      if (report.patterns.total < 20) {
+        report.weaknesses.push({ area: 'patterns', issue: 'Pattern library is small', severity: 'medium' });
+      }
+      if (report.patterns.belowThreshold > 0) {
+        report.weaknesses.push({ area: 'coherency', issue: `${report.patterns.belowThreshold} patterns below threshold`, severity: 'high' });
+      }
+      const langs = Object.keys(report.patterns.byLanguage);
+      if (langs.length < 3) {
+        report.weaknesses.push({ area: 'diversity', issue: 'Limited language diversity', severity: 'low' });
+      }
+    }
+
+    if (report.healing && !report.healing.error) {
+      if (report.healing.captured === 0 && report.healing.totalAttempts === 0) {
+        report.weaknesses.push({ area: 'healing', issue: 'Healing loop has never been exercised', severity: 'medium' });
+      }
+      if (report.healing.pendingCount > 10) {
+        report.weaknesses.push({ area: 'healing', issue: `${report.healing.pendingCount} patterns awaiting healing`, severity: 'high' });
+      }
+    }
+
+    // 8. Recommendations
+    for (const w of report.weaknesses) {
+      if (w.area === 'healing' && w.issue.includes('never been exercised')) {
+        report.recommendations.push('Run `oracle.maintain()` or `node src/cli.js maintain` to trigger healing cycle');
+      }
+      if (w.area === 'coherency') {
+        report.recommendations.push('Run `node src/cli.js maintain` to heal low-coherency patterns');
+      }
+      if (w.area === 'diversity') {
+        report.recommendations.push('Submit patterns in more languages (Python, Rust, Go, TypeScript)');
+      }
+    }
+
+    return report;
+  },
 };

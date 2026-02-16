@@ -178,6 +178,91 @@ class PatternRecycler {
       cascadeBoost: 1,
       xiGlobal: 0,
     };
+
+    // Restore persisted rejections from previous sessions
+    this._restorePersistedRejections();
+  }
+
+  /**
+   * Restore previously captured rejections from the audit log.
+   * This allows healing to persist across sessions.
+   */
+  _restorePersistedRejections() {
+    try {
+      const sqlStore = this.oracle.store?.getSQLiteStore?.();
+      if (!sqlStore || !sqlStore.db) return;
+
+      const rows = sqlStore.db.prepare(
+        "SELECT detail FROM audit_log WHERE action = 'rejection_captured' AND target_table = 'recycler' ORDER BY timestamp DESC LIMIT 50"
+      ).all();
+
+      for (const row of rows) {
+        const detail = JSON.parse(row.detail || '{}');
+        if (detail.pattern && detail.status === 'pending') {
+          this._failed.push({
+            id: detail.id || require('crypto').randomBytes(8).toString('hex'),
+            pattern: detail.pattern,
+            failureReason: detail.failureReason || 'restored',
+            validation: detail.validation || null,
+            capturedAt: detail.capturedAt || new Date().toISOString(),
+            attempts: detail.attempts || 0,
+            status: 'pending',
+            healHistory: detail.healHistory || [],
+          });
+          this.stats.captured++;
+        }
+      }
+    } catch {
+      // Persistence is best-effort — never break the recycler
+    }
+  }
+
+  /**
+   * Persist a captured rejection to the audit log for cross-session recovery.
+   */
+  _persistCapture(entry) {
+    try {
+      const sqlStore = this.oracle.store?.getSQLiteStore?.();
+      if (!sqlStore || !sqlStore.db) return;
+
+      sqlStore.db.prepare(
+        "INSERT INTO audit_log (timestamp, action, target_table, target_id, detail, actor) VALUES (?, 'rejection_captured', 'recycler', ?, ?, 'recycler')"
+      ).run(
+        new Date().toISOString(),
+        entry.id,
+        JSON.stringify({
+          id: entry.id,
+          pattern: entry.pattern,
+          failureReason: entry.failureReason,
+          status: entry.status,
+          capturedAt: entry.capturedAt,
+          attempts: entry.attempts,
+          healHistory: entry.healHistory,
+        })
+      );
+    } catch {
+      // Best-effort persistence
+    }
+  }
+
+  /**
+   * Mark a persisted rejection as healed/exhausted in the audit log.
+   */
+  _persistHealResult(entry) {
+    try {
+      const sqlStore = this.oracle.store?.getSQLiteStore?.();
+      if (!sqlStore || !sqlStore.db) return;
+
+      sqlStore.db.prepare(
+        "INSERT INTO audit_log (timestamp, action, target_table, target_id, detail, actor) VALUES (?, 'rejection_healed', 'recycler', ?, ?, 'recycler')"
+      ).run(
+        new Date().toISOString(),
+        entry.id,
+        JSON.stringify({ status: entry.status, attempts: entry.attempts })
+      );
+    } catch {
+      // Best-effort
+    }
   }
 
   /**
@@ -280,6 +365,9 @@ class PatternRecycler {
     this._failed.push(entry);
     this.stats.captured++;
 
+    // Persist to audit log for cross-session recovery
+    this._persistCapture(entry);
+
     if (this.verbose) {
       console.log(`  [CAPTURE] ${pattern.name}: ${failureReason}`);
     }
@@ -332,8 +420,10 @@ class PatternRecycler {
       if (result.healed) {
         report.healed++;
         entry.status = 'recycled';
+        this._persistHealResult(entry);
       } else {
         entry.status = 'exhausted';
+        this._persistHealResult(entry);
         report.exhausted++;
       }
 

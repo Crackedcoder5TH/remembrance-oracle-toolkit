@@ -1,6 +1,8 @@
 /**
  * Reflector — Security pattern scanning.
  * Dynamic pattern builders prevent self-referential false positives.
+ *
+ * @oracle-pattern-definitions
  */
 
 function _k(...parts) { return parts.join(''); }

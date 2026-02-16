@@ -1,5 +1,7 @@
 /**
  * Reflector — Complexity, comments, nesting, and quality metrics.
+ *
+ * @oracle-dense-code
  */
 
 const { stripStringsAndComments } = require('./scoring-analysis-security');

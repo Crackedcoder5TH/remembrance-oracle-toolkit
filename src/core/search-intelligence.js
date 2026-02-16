@@ -44,6 +44,18 @@ const INTENT_PATTERNS = {
     boost: { tags: ['test', 'testing', 'mock'], codeHints: ['assert', 'expect', 'describe', 'it', 'test'] },
     weight: 0.1,
   },
+  architecture: {
+    triggers: /\b(split|refactor|modular|barrel|facade|extract|decompos|restructur|reorganiz|decouple|monolith|sub-?module|re-?export|separate concerns|single responsibility)\b/i,
+    boost: { tags: ['architecture', 'refactor', 'pattern', 'module'], codeHints: ['module.exports', 'require', 'import', 'export'] },
+    weight: 0.2,
+    structural: true,
+  },
+  designPattern: {
+    triggers: /\b(factory|singleton|observer|strategy|adapter|decorator|proxy|builder|middleware|plugin|registry|pub-?sub|event-?emitter)\b/i,
+    boost: { tags: ['pattern', 'design-pattern', 'architecture'], codeHints: ['class', 'interface', 'extends', 'implements'] },
+    weight: 0.15,
+    structural: true,
+  },
 };
 
 // ─── Common Typos & Abbreviations ───
@@ -142,7 +154,7 @@ function parseIntent(query) {
   const intents = [];
   for (const [name, pattern] of Object.entries(INTENT_PATTERNS)) {
     if (pattern.triggers.test(lower)) {
-      intents.push({ name, weight: pattern.weight, boost: pattern.boost });
+      intents.push({ name, weight: pattern.weight, boost: pattern.boost, structural: !!pattern.structural });
     }
   }
 
@@ -319,8 +331,9 @@ function selectSearchMode(intent, requestedMode) {
 
   const intentNames = new Set(intent.intents.map(i => i.name));
 
-  // Deep semantic search for complex intents
-  if (intentNames.has('performance') || intentNames.has('safety') || intentNames.has('functional')) {
+  // Deep semantic search for complex or structural intents
+  if (intentNames.has('performance') || intentNames.has('safety') || intentNames.has('functional') ||
+      intentNames.has('architecture') || intentNames.has('designPattern')) {
     return 'semantic';
   }
 
@@ -462,7 +475,10 @@ function smartSearch(oracle, query, options = {}) {
     return true;
   });
 
-  // Step 10: Generate suggestions if few results
+  // Step 10: Inject architectural results for structural queries
+  results = injectArchitecturalResults(results, intent, limit * 2);
+
+  // Step 11: Generate suggestions if few results
   const suggestions = [];
   if (results.length < 3) {
     if (intent.rewritten !== intent.original) {
@@ -487,6 +503,132 @@ function smartSearch(oracle, query, options = {}) {
   };
 }
 
+// ─── Built-In Architectural Patterns ───
+
+const ARCHITECTURAL_PATTERNS = [
+  {
+    id: 'arch:barrel-reexport',
+    name: 'Barrel Re-Export',
+    description: 'Split a monolithic module into focused sub-modules with a thin barrel file that re-exports everything. Preserves backward-compatible require() paths.',
+    tags: ['architecture', 'refactor', 'module', 'barrel', 'split'],
+    language: 'javascript',
+    code: `// barrel.js — thin re-export preserving original require path
+const subA = require('./module-sub-a');
+const subB = require('./module-sub-b');
+module.exports = { ...subA, ...subB };`,
+    source: 'builtin-architecture',
+    coherency: 1.0,
+  },
+  {
+    id: 'arch:facade-pattern',
+    name: 'Facade Pattern',
+    description: 'Provide a simplified interface to a complex subsystem. The facade delegates to sub-modules but exposes a clean, minimal API.',
+    tags: ['architecture', 'pattern', 'facade', 'api'],
+    language: 'javascript',
+    code: `// facade.js — simplified interface to complex subsystem
+const auth = require('./auth');
+const db = require('./database');
+const cache = require('./cache');
+
+module.exports = {
+  async getUser(id) {
+    const cached = cache.get('user:' + id);
+    if (cached) return cached;
+    const user = await db.findUser(id);
+    cache.set('user:' + id, user);
+    return user;
+  },
+};`,
+    source: 'builtin-architecture',
+    coherency: 1.0,
+  },
+  {
+    id: 'arch:strategy-pattern',
+    name: 'Strategy Pattern',
+    description: 'Define a family of algorithms, encapsulate each one, and make them interchangeable. Strategies let the algorithm vary independently from clients that use it.',
+    tags: ['architecture', 'pattern', 'strategy', 'design-pattern'],
+    language: 'javascript',
+    code: `// strategies.js — interchangeable algorithm implementations
+const strategies = {
+  json: { serialize: JSON.stringify, deserialize: JSON.parse },
+  csv: { serialize: toCsv, deserialize: parseCsv },
+};
+
+function process(data, format = 'json') {
+  const strategy = strategies[format];
+  if (!strategy) throw new Error('Unknown format: ' + format);
+  return strategy.serialize(data);
+}`,
+    source: 'builtin-architecture',
+    coherency: 1.0,
+  },
+  {
+    id: 'arch:plugin-registry',
+    name: 'Plugin Registry',
+    description: 'Extensible plugin system with registration, hooks, and lifecycle management. Plugins register themselves and are invoked at extension points.',
+    tags: ['architecture', 'pattern', 'plugin', 'registry', 'extensible'],
+    language: 'javascript',
+    code: `// registry.js — extensible plugin system
+const plugins = new Map();
+
+function register(name, plugin) {
+  if (plugins.has(name)) throw new Error('Plugin already registered: ' + name);
+  plugins.set(name, plugin);
+  if (typeof plugin.init === 'function') plugin.init();
+}
+
+function invoke(hook, ...args) {
+  for (const [, plugin] of plugins) {
+    if (typeof plugin[hook] === 'function') plugin[hook](...args);
+  }
+}`,
+    source: 'builtin-architecture',
+    coherency: 1.0,
+  },
+  {
+    id: 'arch:mixin-prototype',
+    name: 'Mixin / Prototype Extension',
+    description: 'Compose behavior from multiple sources onto a prototype. Each mixin is a plain object of methods that receives context via this.',
+    tags: ['architecture', 'pattern', 'mixin', 'composition'],
+    language: 'javascript',
+    code: `// Compose behavior from focused sub-modules
+const searchMethods = require('./search');
+const feedbackMethods = require('./feedback');
+
+class Oracle {
+  constructor(store) { this.store = store; }
+}
+
+Object.assign(Oracle.prototype, searchMethods, feedbackMethods);`,
+    source: 'builtin-architecture',
+    coherency: 1.0,
+  },
+];
+
+/**
+ * Inject architectural patterns into search results when structural intent is detected.
+ */
+function injectArchitecturalResults(results, intent, limit) {
+  const isStructural = intent.intents.some(i => i.structural);
+  if (!isStructural) return results;
+
+  const existingIds = new Set(results.map(r => r.id));
+  const archMatches = ARCHITECTURAL_PATTERNS
+    .filter(p => !existingIds.has(p.id))
+    .map(p => {
+      const query = intent.rewritten || intent.original;
+      const words = query.toLowerCase().split(/\s+/);
+      const allText = [p.name, p.description, ...p.tags].join(' ').toLowerCase();
+      const hits = words.filter(w => w.length > 2 && allText.includes(w)).length;
+      const matchScore = words.length > 0 ? Math.min(1, hits / words.length + 0.3) : 0.3;
+      return { ...p, matchScore, intentBoost: 0.3, matchedIntents: ['architecture'] };
+    })
+    .filter(p => p.matchScore > 0.2)
+    .sort((a, b) => b.matchScore - a.matchScore);
+
+  return [...archMatches, ...results].slice(0, limit);
+}
+
 // ─── Exports ───
 
 module.exports = {
@@ -498,8 +640,10 @@ module.exports = {
   selectSearchMode,
   expandLanguages,
   smartSearch,
+  injectArchitecturalResults,
   INTENT_PATTERNS,
   CORRECTIONS,
   LANGUAGE_ALIASES,
   LANGUAGE_FAMILIES,
+  ARCHITECTURAL_PATTERNS,
 };

@@ -130,7 +130,7 @@ function crossFileAnalysis(rootDir, fileScores) {
   const findings = [];
 
   // 1. Detect duplicate function names across files
-  const fnMap = {};
+  const fnMap = Object.create(null);
   for (const file of fileScores) {
     let code;
     try { code = readFileSync(resolve(rootDir, file.path), 'utf-8'); } catch { continue; }

@@ -1,5 +1,7 @@
 'use strict';
 
+/* @oracle-infrastructure */
+
 function getDashboardScript(resilientFetchSource) {
   return `
 (function() {

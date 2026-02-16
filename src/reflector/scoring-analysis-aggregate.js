@@ -129,28 +129,51 @@ function formatDeepScore(result) {
 function crossFileAnalysis(rootDir, fileScores) {
   const findings = [];
 
-  // 1. Detect duplicate function names across files
+  // 1. Detect duplicate functions across files (same name AND similar body)
   const fnMap = Object.create(null);
+  const KEYWORDS = new Set(['for', 'if', 'while', 'switch', 'catch', 'return', 'new', 'try', 'get', 'set', 'constructor', 'toString']);
   for (const file of fileScores) {
     let code;
     try { code = readFileSync(resolve(rootDir, file.path), 'utf-8'); } catch { continue; }
     const fns = extractFunctionBodies(code);
     for (const fn of fns) {
       if (!fnMap[fn.name]) fnMap[fn.name] = [];
-      fnMap[fn.name].push({ file: file.path, line: fn.line, bodyLength: fn.body.split('\n').length });
+      // Normalize body for similarity comparison: strip whitespace and comments
+      const normalized = fn.body.replace(/\/\/[^\n]*/g, '').replace(/\s+/g, ' ').trim();
+      fnMap[fn.name].push({ file: file.path, line: fn.line, bodyLength: fn.body.split('\n').length, normalized });
     }
   }
   for (const [name, locations] of Object.entries(fnMap)) {
-    const KEYWORDS = new Set(['for', 'if', 'while', 'switch', 'catch', 'return', 'new', 'try', 'get', 'set', 'constructor', 'toString']);
     if (locations.length > 1 && !KEYWORDS.has(name) && name.length > 2) {
-      const uniqueFiles = new Set(locations.map(l => l.file));
-      if (uniqueFiles.size > 1) {
-        findings.push({
-          type: 'duplicate-function',
-          severity: 'medium',
-          message: `Function "${name}" defined in ${uniqueFiles.size} files`,
-          files: locations.map(l => `${l.file}:${l.line}`),
-        });
+      // Group by similar bodies — only flag when bodies actually overlap
+      const groups = [];
+      for (const loc of locations) {
+        let matched = false;
+        for (const group of groups) {
+          // Compare normalized bodies: if one starts with the other or >60% overlap
+          const a = group[0].normalized;
+          const b = loc.normalized;
+          const shorter = a.length < b.length ? a : b;
+          const longer = a.length < b.length ? b : a;
+          if (shorter.length > 20 && longer.includes(shorter.slice(0, Math.floor(shorter.length * 0.6)))) {
+            group.push(loc);
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) groups.push([loc]);
+      }
+      // Only report groups with similar bodies across different files
+      for (const group of groups) {
+        const uniqueFiles = new Set(group.map(l => l.file));
+        if (uniqueFiles.size > 1) {
+          findings.push({
+            type: 'duplicate-function',
+            severity: 'medium',
+            message: `Function "${name}" duplicated across ${uniqueFiles.size} files (similar bodies)`,
+            files: group.map(l => `${l.file}:${l.line}`),
+          });
+        }
       }
     }
   }

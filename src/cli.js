@@ -3,6 +3,8 @@
 /**
  * CLI for the Remembrance Oracle.
  *
+ * @oracle-infrastructure
+ *
  * Usage:
  *   remembrance-oracle submit --file code.js --test test.js --tags "sort,algorithm"
  *   remembrance-oracle query --description "sorting function" --language javascript

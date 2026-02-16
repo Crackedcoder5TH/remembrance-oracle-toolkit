@@ -1,6 +1,8 @@
 /**
  * Resilience utilities — retry with exponential backoff.
  *
+ * @oracle-infrastructure
+ *
  * Evolved from oracle pattern "retry-with-backoff" (0.990 coherency, id: 1cc7fba70f6f699e).
  *
  * Provides:

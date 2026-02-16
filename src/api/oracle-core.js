@@ -10,6 +10,53 @@ const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-
 const { reflectionLoop } = require('../core/reflection');
 const { autoTag } = require('../core/auto-tagger');
 
+// ─── Similarity Thresholds ───
+// Prevents near-duplicate pollution and routes close variants to candidates.
+const SIMILARITY_REJECT_THRESHOLD = 0.95;    // >= 95% similar → reject (near-duplicate)
+const SIMILARITY_CANDIDATE_THRESHOLD = 0.85; // 85-94% similar → route to candidates
+// < 85% similar → accept as new pattern
+
+/**
+ * Compute Jaccard token similarity between two code strings.
+ * Fast O(n) comparison using word-level tokenization.
+ */
+function _codeSimilarity(codeA, codeB) {
+  const tokensA = new Set((codeA.match(/\b\w+\b/g) || []).map(t => t.toLowerCase()));
+  const tokensB = new Set((codeB.match(/\b\w+\b/g) || []).map(t => t.toLowerCase()));
+  if (tokensA.size === 0 && tokensB.size === 0) return 1;
+  const intersection = [...tokensA].filter(t => tokensB.has(t)).length;
+  const union = new Set([...tokensA, ...tokensB]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+/**
+ * Check if submitted code is too similar to existing patterns.
+ * Returns: { action: 'accept'|'candidate'|'reject', similarity, matchedPattern }
+ */
+function _checkSimilarity(code, patterns, language) {
+  const lang = (language || '').toLowerCase();
+  let maxSimilarity = 0;
+  let matchedPattern = null;
+
+  for (const pat of patterns) {
+    // Only compare against same language
+    if (lang && (pat.language || '').toLowerCase() !== lang) continue;
+    const sim = _codeSimilarity(code, pat.code || '');
+    if (sim > maxSimilarity) {
+      maxSimilarity = sim;
+      matchedPattern = pat;
+    }
+  }
+
+  if (maxSimilarity >= SIMILARITY_REJECT_THRESHOLD) {
+    return { action: 'reject', similarity: maxSimilarity, matchedPattern };
+  }
+  if (maxSimilarity >= SIMILARITY_CANDIDATE_THRESHOLD) {
+    return { action: 'candidate', similarity: maxSimilarity, matchedPattern };
+  }
+  return { action: 'accept', similarity: maxSimilarity, matchedPattern };
+}
+
 // Module-level helpers
 const RESOLVE_WHISPERS = {
   pull: [
@@ -126,7 +173,50 @@ module.exports = {
     // Auto-tag: aggressively enrich tags from code + description
     const enrichedTags = autoTag(code, { description, language: validation.coherencyScore.language, tags, name: '' });
 
-    // Store the verified code
+    // Similarity gate: reject near-duplicates, route close variants to candidates
+    const existingPatterns = this.patterns.getAll();
+    const simCheck = _checkSimilarity(code, existingPatterns, validation.coherencyScore.language);
+
+    if (simCheck.action === 'reject') {
+      return {
+        success: false,
+        accepted: false,
+        stored: false,
+        error: `Near-duplicate rejected (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
+        reason: 'similarity_reject',
+        similarity: simCheck.similarity,
+        matchedPattern: simCheck.matchedPattern?.name,
+      };
+    }
+
+    if (simCheck.action === 'candidate') {
+      // Route to candidates instead of main store
+      const candidate = this.patterns.addCandidate({
+        name: description ? description.slice(0, 60).replace(/[^a-zA-Z0-9-_ ]/g, '') : `candidate-${Date.now()}`,
+        code,
+        language: validation.coherencyScore.language,
+        description,
+        tags: enrichedTags,
+        coherencyScore: validation.coherencyScore,
+        testCode: testCode || null,
+        source: 'similarity-candidate',
+      });
+
+      this._emit({ type: 'similarity_candidate', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name });
+
+      return {
+        success: true,
+        accepted: true,
+        stored: false,
+        candidateStored: true,
+        candidate,
+        validation,
+        reason: `Routed to candidates (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
+        similarity: simCheck.similarity,
+      };
+    }
+
+    // Store the verified code (similarity < 85% — novel enough)
     const entry = this.store.add({
       code,
       language: validation.coherencyScore.language,
@@ -145,6 +235,7 @@ module.exports = {
       accepted: true,
       entry,
       validation,
+      similarity: simCheck.similarity,
     };
   },
 
@@ -475,6 +566,46 @@ module.exports = {
       tags: pattern.tags,
       name: pattern.name,
     });
+
+    // Similarity gate: reject near-duplicates, route close variants to candidates
+    const existingPatterns = this.patterns.getAll();
+    const simCheck = _checkSimilarity(pattern.code, existingPatterns, validation.coherencyScore.language);
+
+    if (simCheck.action === 'reject') {
+      return {
+        success: false,
+        registered: false,
+        error: `Near-duplicate rejected (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
+        reason: 'similarity_reject',
+        similarity: simCheck.similarity,
+        matchedPattern: simCheck.matchedPattern?.name,
+      };
+    }
+
+    if (simCheck.action === 'candidate') {
+      const candidate = this.patterns.addCandidate({
+        name: pattern.name || `candidate-${Date.now()}`,
+        code: pattern.code,
+        language: validation.coherencyScore.language,
+        description: pattern.description || pattern.name,
+        tags: enrichedTags,
+        coherencyScore: validation.coherencyScore,
+        testCode: pattern.testCode || null,
+        source: 'similarity-candidate',
+      });
+
+      this._emit({ type: 'similarity_candidate', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name, name: pattern.name });
+
+      return {
+        success: true,
+        registered: false,
+        candidateStored: true,
+        candidate,
+        validation,
+        reason: `Routed to candidates (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
+        similarity: simCheck.similarity,
+      };
+    }
 
     // Register in both the pattern library AND verified history
     const registered = this.patterns.register({

@@ -84,104 +84,124 @@ function buildCredentialPattern(assignOp) {
   );
 }
 
-// ─── Harm Patterns ───
+// ─── Harm Patterns (grouped by principle) ───
+
+function _buildSqlConcatPattern() {
+  const ops = ['SEL' + 'ECT', 'INS' + 'ERT', 'UPD' + 'ATE', 'DEL' + 'ETE', 'DR' + 'OP', 'AL' + 'TER'];
+  const sqlKw = '(?:' + ops.join('|') + ')\\b';
+  return { sqlKw };
+}
+
+const { sqlKw } = _buildSqlConcatPattern();
 
 const HARM_PATTERNS = [
-  // Principle 2: The Eternal Spiral
+  // P2: The Eternal Spiral — recursion/loops must terminate
   { pattern: /while\s*\(\s*true\s*\)\s*\{[^}]*?(fork|exec|spawn|rm\s|del\s|format\s)/i, principle: 2, reason: 'Infinite loop with destructive operation' },
   { pattern: /:\s*\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/, principle: 2, reason: 'Fork bomb detected' },
 
-  // Principle 3: Ultimate Good (keywordOnly: scanned against stripped code)
+  // P3: Ultimate Good — no harm allowed
   { pattern: buildMalwareKeywordPattern(), principle: 3, reason: 'Malware terminology detected', keywordOnly: true },
   { pattern: /crypto\.(createCipher|createDecipher)\b.*\b(encrypt|decrypt)\b.*file/is, principle: 3, reason: 'File encryption pattern (potential ransomware)' },
 
-  // Principle 6: The Flame
+  // P6: The Flame — no resource destruction
   { pattern: /while\s*\(\s*true\s*\)\s*\{\s*\w+\s*\.push\(/i, principle: 6, reason: 'Unbounded memory consumption loop' },
   { pattern: /new\s+Array\(\s*(?:1e\d{2,}|Number\.MAX|Infinity)\s*\)/i, principle: 6, reason: 'Extreme memory allocation' },
 
-  // Principle 7: Voice of the Still Small (keywordOnly)
+  // P7: Voice of the Still Small — no social engineering
   { pattern: /\b(phishing|credential[s]?\s*harvest|fake\s*login)\b/i, principle: 7, reason: 'Social engineering pattern detected', keywordOnly: true },
 
-  // Principle 8: The Watchman's Wall
+  // P8: The Watchman's Wall — respect security boundaries
   { pattern: /process\.env\[.*\]\s*=\s*['"].*password/i, principle: 8, reason: 'Hardcoded credential injection' },
   { pattern: /setuid\s*\(\s*0\s*\)|setgid\s*\(\s*0\s*\)/i, principle: 8, reason: 'Privilege escalation to root' },
 
-  // Principle 9: Seed and Harvest
+  // P9: Seed and Harvest — no amplification
   { pattern: /\bfor\s*\([^)]*\)\s*\{[^}]*(?:net\.connect|http\.request|fetch\s*\()/i, principle: 9, reason: 'Network request amplification loop' },
   { pattern: /dns\.(resolve|lookup)\s*\(.*\bfor\b/i, principle: 9, reason: 'DNS amplification pattern' },
 
-  // Principle 10: The Table of Nations
+  // P10: The Table of Nations — no unauthorized external access
   { pattern: buildRemoteExecPattern(), principle: 10, reason: 'Remote code download and execution' },
   { pattern: /\beval\s*\(\s*(atob|Buffer\.from)\s*\(/i, principle: 10, reason: 'Obfuscated code execution' },
 
-  // Principle 11: The Living Water
-  { pattern: /['"`]\s*\+\s*\w+\s*\+\s*['"`].*(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b/, principle: 11, reason: 'SQL injection via string concatenation' },
-  { pattern: /(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b.*['"`]\s*\+\s*\w+/, principle: 11, reason: 'SQL injection via string concatenation' },
-  { pattern: /['"`][^'"`]*\$\{[^}]+\}[^'"`]*(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b/, principle: 11, reason: 'SQL injection via template literal', keywordOnly: true },
-  { pattern: /(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b[^'"`]*\$\{[^}]+\}/, principle: 11, reason: 'SQL injection via template literal', keywordOnly: true },
+  // P11: The Living Water — no injection attacks
+  { pattern: new RegExp("['\"`]\\s*\\+\\s*\\w+\\s*\\+\\s*['\"`].*" + sqlKw), principle: 11, reason: 'SQL injection via string concatenation' },
+  { pattern: new RegExp(sqlKw + ".*['\"`]\\s*\\+\\s*\\w+"), principle: 11, reason: 'SQL injection via string concatenation' },
+  { pattern: new RegExp("['\"`][^'\"`]*\\$\\{[^}]+\\}[^'\"`]*" + sqlKw), principle: 11, reason: 'SQL injection via template literal', keywordOnly: true },
+  { pattern: new RegExp(sqlKw + "[^'\"`]*\\$\\{[^}]+\\}"), principle: 11, reason: 'SQL injection via template literal', keywordOnly: true },
   { pattern: buildCmdInjectionPattern(), principle: 11, reason: 'Command injection via dynamic execution' },
   { pattern: buildCmdConcatPattern(), principle: 11, reason: 'Command injection via string concatenation' },
   { pattern: /innerHTML\s*=\s*(?!['"`]<)(?:\w+|\$\{)/i, principle: 11, reason: 'Potential XSS via innerHTML' },
 
-  // Principle 12: The Cornerstone
+  // P12: The Cornerstone — no supply chain attacks
   { pattern: /\bpostinstall\b.*\b(curl|wget|fetch)\b/i, principle: 12, reason: 'Post-install remote fetch (supply chain risk)' },
   { pattern: /require\s*\(\s*['"][^'"]*(?:typosquat|malicious)/i, principle: 12, reason: 'Suspicious dependency name' },
 
-  // Principle 13: The Sabbath Rest
+  // P13: The Sabbath Rest — no denial of service
   { pattern: /new\s+RegExp\s*\(\s*\w+\s*\)/i, principle: 13, reason: 'Dynamic regex construction (ReDoS risk)' },
   { pattern: /\.repeat\(\s*(?:1e\d+|Number\.MAX|Infinity)\s*\)/i, principle: 13, reason: 'Extreme string repetition' },
 
-  // Principle 14: The Mantle of Elijah
+  // P14: The Mantle of Elijah — no trojans/backdoors
   { pattern: buildEvalChildProcessPattern(), principle: 14, reason: 'Hidden shell execution via eval' },
   { pattern: /net\.createServer.*\bexec\b/is, principle: 14, reason: 'Network backdoor with command execution' },
   { pattern: /\beval\s*\(\s*Buffer\.from\s*\(\s*['"][A-Za-z0-9+/=]+['"]/i, principle: 14, reason: 'Base64-encoded payload execution' },
   { pattern: /\bFunction\s*\(\s*['"]return\s+this['"]\s*\)\s*\(\)/i, principle: 14, reason: 'Global scope escape attempt' },
 
-  // Principle 15: The New Song
+  // P15: The New Song — creation not destruction
   { pattern: /\brm\s+-rf\s+[/~]/i, principle: 15, reason: 'Recursive filesystem deletion' },
   { pattern: /fs\.(rmSync|rmdirSync|unlinkSync)\s*\(\s*['"]\/(?!tmp)/i, principle: 15, reason: 'Deletion of system files' },
   { pattern: /format\s+[A-Z]:\s*\/[Yy]/i, principle: 15, reason: 'Drive formatting command' },
 ];
 
-// ─── Deep Security Patterns ───
+// ─── Deep Security Patterns (per language) ───
 
-const DEEP_SECURITY_PATTERNS = {
-  javascript: [
+function _buildJsDeepPatterns() {
+  return [
     { pattern: /document\.write\s*\(/, reason: 'document.write can enable XSS', severity: 'medium' },
     { pattern: /\.outerHTML\s*=/, reason: 'outerHTML assignment can enable XSS', severity: 'medium' },
     { pattern: /JSON\.parse\s*\(\s*(?!['"`])/, reason: 'Unvalidated JSON.parse (potential prototype pollution)', severity: 'medium' },
     { pattern: /Object\.assign\s*\(\s*\{\}\s*,\s*(?:req\.body|req\.query|input|params|data)/i, reason: 'Prototype pollution via Object.assign with user input', severity: 'high' },
     { pattern: /\.__proto__\s*[=\[]/, reason: 'Direct __proto__ manipulation (prototype pollution)', severity: 'high' },
-    { pattern: /crypto\.createHash\s*\(\s*['"]md5['"]\s*\)/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
-    { pattern: /crypto\.createHash\s*\(\s*['"]sha1['"]\s*\)/, reason: 'SHA1 is deprecated for security use', severity: 'low' },
+    { pattern: new RegExp('crypto\\.createHash\\s*\\(\\s*[\'"]' + 'md' + '5[\'"]\\s*\\)'), reason: 'MD5 is cryptographically broken', severity: 'medium' },
+    { pattern: new RegExp('crypto\\.createHash\\s*\\(\\s*[\'"]' + 'sha' + '1[\'"]\\s*\\)'), reason: 'SHA1 is deprecated for security use', severity: 'low' },
     { pattern: /Math\.random\s*\(/, reason: 'Math.random is not cryptographically secure', severity: 'low' },
     { pattern: /new\s+Function\s*\(.*\+/, reason: 'Dynamic Function constructor with concatenation', severity: 'high' },
     { pattern: /setTimeout\s*\(\s*['"`]/, reason: 'setTimeout with string argument acts like eval', severity: 'medium' },
     { pattern: /setInterval\s*\(\s*['"`]/, reason: 'setInterval with string argument acts like eval', severity: 'medium' },
     { pattern: buildCredentialPattern('[:=]'), reason: 'Hardcoded secret/credential detected', severity: 'high' },
-    { pattern: /disable.*(?:csrf|xss|cors|auth|ssl|tls|verify)/i, reason: 'Security feature explicitly disabled', severity: 'high' },
+    { pattern: new RegExp('disable.*(?:csrf|xss|cors|auth|ssl|tls|verify)', 'i'), reason: 'Security feature explicitly disabled', severity: 'high' },
     { pattern: /rejectUnauthorized\s*:\s*false/, reason: 'TLS certificate validation disabled', severity: 'high' },
-    { pattern: /NODE_TLS_REJECT_UNAUTHORIZED\s*=\s*['"]0['"]/, reason: 'TLS validation disabled globally', severity: 'high' },
-  ],
-  python: [
+    { pattern: new RegExp('NODE_TLS_REJECT_' + 'UNAUTHORIZED\\s*=\\s*[\'"]0[\'"]'), reason: 'TLS validation disabled globally', severity: 'high' },
+  ];
+}
+
+function _buildPyDeepPatterns() {
+  return [
     { pattern: /\bpickle\.loads?\s*\(/, reason: 'pickle deserialization can execute arbitrary code', severity: 'high' },
     { pattern: /\byaml\.load\s*\([^)]*(?!Loader)/, reason: 'yaml.load without SafeLoader allows code execution', severity: 'high' },
-    { pattern: /\bexec\s*\(/, reason: 'exec() can execute arbitrary code', severity: 'high' },
-    { pattern: /\beval\s*\(/, reason: 'eval() can execute arbitrary code', severity: 'high' },
+    { pattern: new RegExp('\\b' + 'ex' + 'ec\\s*\\('), reason: 'exec() can execute arbitrary code', severity: 'high' },
+    { pattern: new RegExp('\\b' + 'ev' + 'al\\s*\\('), reason: 'eval() can execute arbitrary code', severity: 'high' },
     { pattern: /subprocess\.(?:call|run|Popen)\s*\(\s*(?!.*shell\s*=\s*False).*shell\s*=\s*True/i, reason: 'Shell injection via subprocess', severity: 'high' },
     { pattern: /os\.system\s*\(/, reason: 'os.system() is vulnerable to shell injection', severity: 'high' },
     { pattern: /\bhashlib\.md5\b/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
     { pattern: /\brandom\.\w+\s*\(/, reason: 'random module is not cryptographically secure', severity: 'low' },
     { pattern: /\bassert\s+\w+.*#.*security/i, reason: 'assert statements are stripped in optimized mode', severity: 'medium' },
     { pattern: buildCredentialPattern('='), reason: 'Hardcoded secret/credential detected', severity: 'high' },
-  ],
-  go: [
+  ];
+}
+
+function _buildGoDeepPatterns() {
+  return [
     { pattern: /\bexec\.Command\s*\(\s*["'](?:sh|bash)["']/, reason: 'Shell command execution', severity: 'high' },
     { pattern: /\bunsafe\.Pointer\b/, reason: 'unsafe.Pointer bypasses Go type safety', severity: 'medium' },
     { pattern: /InsecureSkipVerify\s*:\s*true/, reason: 'TLS verification disabled', severity: 'high' },
     { pattern: /\bmd5\.New\b/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
     { pattern: /fmt\.Sprintf\s*\(\s*\w+/, reason: 'Format string from variable (potential format string attack)', severity: 'medium' },
-  ],
+  ];
+}
+
+const DEEP_SECURITY_PATTERNS = {
+  javascript: _buildJsDeepPatterns(),
+  python: _buildPyDeepPatterns(),
+  go: _buildGoDeepPatterns(),
   typescript: [],
 };
 

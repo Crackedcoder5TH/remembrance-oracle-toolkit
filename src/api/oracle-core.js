@@ -5,7 +5,7 @@
 
 const { validateCode } = require('../core/validator');
 const { rankEntries } = require('../core/relevance');
-const { semanticSearch: semanticSearchEngine } = require('../core/embeddings');
+const { semanticSearch: semanticSearchEngine } = require('../search/embeddings');
 const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
 const { reflectionLoop } = require('../core/reflection');
 const { autoTag } = require('../core/auto-tagger');
@@ -102,7 +102,7 @@ module.exports = {
     if (!validation.valid) {
       // Capture rejected submissions for potential healing
       try {
-        const { captureRejection } = require('../core/evolution');
+        const { captureRejection } = require('../evolution/evolution');
         const rejection = captureRejection(code, { language, description, tags }, validation);
         this.recycler.capture(
           { name: rejection.name, code, language: rejection.language, description, tags },
@@ -201,7 +201,7 @@ module.exports = {
     let healResult = null;
     if (!succeeded) {
       try {
-        const { needsAutoHeal, autoHeal } = require('../core/evolution');
+        const { needsAutoHeal, autoHeal } = require('../evolution/evolution');
         // Check patterns table for matching pattern to heal
         const pattern = this.patterns.getAll().find(p => p.id === id);
         if (pattern && needsAutoHeal(pattern)) {
@@ -556,7 +556,7 @@ module.exports = {
     let healResult = null;
     if (!succeeded) {
       try {
-        const { needsAutoHeal, autoHeal } = require('../core/evolution');
+        const { needsAutoHeal, autoHeal } = require('../evolution/evolution');
         if (needsAutoHeal(updated)) {
           const healed = autoHeal(updated);
           if (healed && healed.improvement > 0) {

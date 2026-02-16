@@ -415,50 +415,23 @@ describe('Scoring Exports', () => {
   });
 });
 
-// ─── MCP Tools Tests ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Scoring MCP Tools', () => {
-  it('should register scoring tools in MCP server', () => {
+describe('Scoring — reflector functions (MCP consolidated)', () => {
+  it('scoring functions are directly importable from scoring', () => {
+    const scoring = require('../src/reflector/scoring');
+    assert.strictEqual(typeof scoring.deepScore, 'function');
+    assert.strictEqual(typeof scoring.repoScore, 'function');
+    assert.strictEqual(typeof scoring.securityScan, 'function');
+    assert.strictEqual(typeof scoring.calculateCyclomaticComplexity, 'function');
+    assert.strictEqual(typeof scoring.analyzeCommentDensity, 'function');
+    assert.strictEqual(typeof scoring.analyzeNestingDepth, 'function');
+    assert.strictEqual(typeof scoring.computeQualityMetrics, 'function');
+    assert.strictEqual(typeof scoring.formatDeepScore, 'function');
+  });
+
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const names = TOOLS.map(t => t.name);
-    assert.ok(names.includes('oracle_reflector_deep_score'));
-    assert.ok(names.includes('oracle_reflector_repo_score'));
-    assert.ok(names.includes('oracle_reflector_security_scan'));
-  });
-
-  it('should handle deep-score via MCP', async () => {
-    const { MCPServer } = require('../src/mcp/server');
-    const server = new MCPServer();
-    const response = await server.handleRequest({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: {
-        name: 'oracle_reflector_deep_score',
-        arguments: { code: 'function add(a, b) { return a + b; }' },
-      },
-    });
-    assert.equal(response.jsonrpc, '2.0');
-    assert.equal(response.id, 1);
-    assert.ok(response.result);
-    const data = JSON.parse(response.result.content[0].text);
-    assert.ok(typeof data.aggregate === 'number');
-  });
-
-  it('should handle security-scan via MCP', async () => {
-    const { MCPServer } = require('../src/mcp/server');
-    const server = new MCPServer();
-    const response = await server.handleRequest({
-      jsonrpc: '2.0',
-      id: 2,
-      method: 'tools/call',
-      params: {
-        name: 'oracle_reflector_security_scan',
-        arguments: { code: 'eval("danger")', language: 'javascript' },
-      },
-    });
-    const data = JSON.parse(response.result.content[0].text);
-    assert.ok(data.findings.length > 0);
-    assert.ok(data.score < 1);
+    assert.equal(TOOLS.length, 10);
   });
 });

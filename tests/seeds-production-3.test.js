@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { getProductionSeeds3 } = require('../src/patterns/seeds-production-3');
+const { getProductionSeeds3 } = require('../src/patterns/seed-helpers');
 const { RemembranceOracle } = require('../src/api/oracle');
 
 describe('Production Seeds - Batch 3 (pagination, command, cron, proxy, pool, streams)', () => {

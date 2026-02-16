@@ -4,6 +4,9 @@
  * Exposes the Remembrance Oracle as an MCP-compatible tool server.
  * Communicates via JSON-RPC 2.0 over stdin/stdout.
  *
+ * Consolidated to 10 focused tools (down from 55+):
+ *   search, resolve, submit, register, feedback, stats, debug, sync, harvest, maintain
+ *
  * Tool definitions in ./tools.js, handler implementations in ./handlers.js.
  */
 
@@ -14,7 +17,7 @@ const { TOOLS } = require('./tools');
 const { HANDLERS } = require('./handlers');
 
 const PROTOCOL_VERSION = '2024-11-05';
-const SERVER_INFO = { name: 'remembrance-oracle', version: '2.0.0' };
+const SERVER_INFO = { name: 'remembrance-oracle', version: '3.0.0' };
 
 class MCPServer {
   constructor(oracle) {
@@ -28,7 +31,7 @@ class MCPServer {
     // Notifications (no id)
     if (method === 'notifications/initialized') {
       this._initialized = true;
-      return null; // No response for notifications
+      return null;
     }
 
     switch (method) {
@@ -67,7 +70,6 @@ class MCPServer {
 
   /**
    * Validate required parameters for a tool call against its inputSchema.
-   * Returns an error string if validation fails, null if valid.
    */
   _validateParams(toolName, args) {
     const tool = TOOLS.find(t => t.name === toolName);
@@ -83,7 +85,6 @@ class MCPServer {
   async _handleToolCall(id, params) {
     const { name, arguments: args = {} } = params || {};
 
-    // Validate required parameters before execution
     const validationError = this._validateParams(name, args);
     if (validationError) {
       return {

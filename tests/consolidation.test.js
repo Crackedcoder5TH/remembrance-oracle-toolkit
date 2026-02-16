@@ -8,7 +8,7 @@ const {
   polishCycle,
   iterativePolish,
   OPTIMIZE_DEFAULTS,
-} = require('../src/core/self-optimize');
+} = require('../src/evolution/self-optimize');
 
 // ─── Helpers ───
 
@@ -104,7 +104,7 @@ function createMockOracle(patterns = [], candidates = []) {
     patternStats: () => ({ totalPatterns: patterns.length }),
     stats: () => ({ totalEntries: patterns.length }),
     selfEvolve: function(opts) {
-      const { evolve } = require('../src/core/evolution');
+      const { evolve } = require('../src/evolution/evolution');
       return evolve(this, opts);
     },
   };

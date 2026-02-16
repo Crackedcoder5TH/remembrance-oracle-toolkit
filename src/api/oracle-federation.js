@@ -3,7 +3,7 @@
  * Cross-project and cross-machine pattern sharing.
  */
 
-const { DebugOracle } = require('../core/debug-oracle');
+const { DebugOracle } = require('../debug/debug-oracle');
 
 module.exports = {
   /**
@@ -403,7 +403,7 @@ module.exports = {
   debugSeed(options = {}) {
     const debug = this._getDebugOracle();
     if (!debug) return { seeded: 0, error: 'No SQLite store available' };
-    const { seedDebugPatterns } = require('../core/debug-seeds');
+    const { seedDebugPatterns } = require('../debug/debug-seeds');
     return seedDebugPatterns(debug, options);
   },
 

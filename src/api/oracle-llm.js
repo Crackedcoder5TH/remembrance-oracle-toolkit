@@ -126,7 +126,7 @@ module.exports = {
     }
 
     try {
-      require('../core/test-synth');
+      require('../evolution/test-synth');
       return { success: false, error: 'Claude unavailable; use synthesizeTests() for static synthesis', method: 'none' };
     } catch {
       return { success: false, error: 'No test generation method available', method: 'none' };

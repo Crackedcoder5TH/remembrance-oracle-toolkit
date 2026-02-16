@@ -1,7 +1,7 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { PatternRecycler, APPROACH_SWAPS } = require('../src/core/recycler');
+const { PatternRecycler, APPROACH_SWAPS } = require('../src/evolution/recycler');
 const { RemembranceOracle } = require('../src/api/oracle');
 const { makeTempDir } = require('./helpers');
 

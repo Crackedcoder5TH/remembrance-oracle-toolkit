@@ -6,7 +6,7 @@ const {
   builtinEmbed,
   cosineSimilarity,
   CODE_STRUCTURE_FEATURES,
-} = require('../src/core/embedding-engine');
+} = require('../src/search/embedding-engine');
 
 // ─── builtinEmbed ───
 

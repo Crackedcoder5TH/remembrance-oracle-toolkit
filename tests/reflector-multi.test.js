@@ -361,43 +361,24 @@ describe('Multi-Repo — multiReflect (full pipeline)', () => {
   });
 });
 
-// ─── MCP Tool Registration ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Multi-Repo — MCP Tools', () => {
-  it('should register multi-repo tools in MCP server', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const multiTools = TOOLS.filter(t =>
-      t.name === 'oracle_reflector_multi' ||
-      t.name === 'oracle_reflector_compare' ||
-      t.name === 'oracle_reflector_drift'
-    );
-    assert.equal(multiTools.length, 3);
+describe('Multi-Repo — reflector functions (MCP consolidated)', () => {
+  it('multi-repo functions are directly importable from multi', () => {
+    const multi = require('../src/reflector/multi');
+    assert.strictEqual(typeof multi.multiSnapshot, 'function');
+    assert.strictEqual(typeof multi.compareDimensions, 'function');
+    assert.strictEqual(typeof multi.detectDrift, 'function');
+    assert.strictEqual(typeof multi.unifiedHeal, 'function');
+    assert.strictEqual(typeof multi.multiReflect, 'function');
+    assert.strictEqual(typeof multi.formatMultiReport, 'function');
+    assert.strictEqual(typeof multi.formatMultiPRBody, 'function');
+    assert.strictEqual(typeof multi.codeSimilarity, 'function');
   });
 
-  it('should handle compare via MCP', async () => {
-    const repoA = createTmpRepo('mcpA');
-    const repoB = createTmpRepo('mcpB');
-    writeFile(repoA, 'a.js', 'function a() { return 1; }');
-    writeFile(repoB, 'b.js', 'function b() { return 2; }');
-
-    const { MCPServer } = require('../src/mcp/server');
-    const server = new MCPServer();
-    const response = await server.handleRequest({
-      jsonrpc: '2.0',
-      id: 1,
-      method: 'tools/call',
-      params: {
-        name: 'oracle_reflector_compare',
-        arguments: { repos: [repoA, repoB] },
-      },
-    });
-    assert.ok(response.result);
-    assert.ok(!response.result.isError);
-    const content = JSON.parse(response.result.content[0].text);
-    assert.ok(typeof content.convergenceScore === 'number');
-
-    rmSync(repoA, { recursive: true, force: true });
-    rmSync(repoB, { recursive: true, force: true });
+  it('MCP has 10 consolidated tools', () => {
+    const { TOOLS } = require('../src/mcp/server');
+    assert.equal(TOOLS.length, 10);
   });
 });
 

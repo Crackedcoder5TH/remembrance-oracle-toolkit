@@ -680,7 +680,7 @@ describe('Feature 8: Transpiler Verification & Test Generation', () => {
   });
 
   it('recycler _toASTLanguage now produces testCode', () => {
-    const recyclerSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'recycler.js'), 'utf-8');
+    const recyclerSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'evolution', 'recycler.js'), 'utf-8');
     assert.ok(recyclerSrc.includes('generateGoTest'));
     assert.ok(recyclerSrc.includes('generateRustTest'));
     assert.ok(recyclerSrc.includes('verifyTranspilation'));
@@ -813,11 +813,12 @@ describe('Feature 10: Package Distribution', () => {
     const idx = require('../src/index');
     assert.ok(idx.RemembranceOracle);
     assert.ok(idx.PatternLibrary);
-    assert.ok(idx.CloudSyncServer);
-    assert.ok(idx.RemoteOracleClient);
     assert.ok(idx.MCPServer);
     assert.ok(idx.DebugOracle);
-    assert.ok(idx.AuthManager);
+    // Secondary systems (Cloud, Auth, Dashboard, IDE, CI) are now opt-in plugins
+    assert.ok(idx.loadBuiltinPlugin, 'should export loadBuiltinPlugin for opt-in subsystems');
+    assert.ok(idx.loadAllBuiltins, 'should export loadAllBuiltins');
+    assert.ok(idx.listBuiltins, 'should export listBuiltins');
   });
 
   it('setup command exists in CLI', () => {
@@ -943,7 +944,7 @@ describe('Feature 11: MCP Auto-Registration', () => {
 
 describe('Feature 12: Native Pattern Seeds (Python/Go/Rust)', () => {
   it('PYTHON_SEEDS has idiomatic Python patterns', () => {
-    const { PYTHON_SEEDS } = require('../src/patterns/seeds-python');
+    const { PYTHON_SEEDS } = require('../src/patterns/seed-helpers');
     assert.ok(PYTHON_SEEDS.length >= 8, 'should have at least 8 Python seeds');
     assert.ok(PYTHON_SEEDS.every(s => s.language === 'python'));
     assert.ok(PYTHON_SEEDS.every(s => s.code && s.testCode && s.name));
@@ -953,7 +954,7 @@ describe('Feature 12: Native Pattern Seeds (Python/Go/Rust)', () => {
   });
 
   it('GO_SEEDS has idiomatic Go patterns', () => {
-    const { GO_SEEDS } = require('../src/patterns/seeds-go');
+    const { GO_SEEDS } = require('../src/patterns/seed-helpers');
     assert.ok(GO_SEEDS.length >= 6, 'should have at least 6 Go seeds');
     assert.ok(GO_SEEDS.every(s => s.language === 'go'));
     assert.ok(GO_SEEDS.every(s => s.code && s.testCode && s.name));
@@ -963,7 +964,7 @@ describe('Feature 12: Native Pattern Seeds (Python/Go/Rust)', () => {
   });
 
   it('RUST_SEEDS has idiomatic Rust patterns', () => {
-    const { RUST_SEEDS } = require('../src/patterns/seeds-rust');
+    const { RUST_SEEDS } = require('../src/patterns/seed-helpers');
     assert.ok(RUST_SEEDS.length >= 6, 'should have at least 6 Rust seeds');
     assert.ok(RUST_SEEDS.every(s => s.language === 'rust'));
     assert.ok(RUST_SEEDS.every(s => s.code && s.testCode && s.name));
@@ -973,21 +974,19 @@ describe('Feature 12: Native Pattern Seeds (Python/Go/Rust)', () => {
   });
 
   it('Rust test code includes use super::*', () => {
-    const { RUST_SEEDS } = require('../src/patterns/seeds-rust');
+    const { RUST_SEEDS } = require('../src/patterns/seed-helpers');
     for (const seed of RUST_SEEDS) {
       assert.ok(seed.testCode.includes('use super::*'), seed.name + ' should have use super::*');
     }
   });
 
   it('seedNativeLibrary function exists', () => {
-    const { seedNativeLibrary } = require('../src/patterns/seeds');
+    const { seedNativeLibrary } = require('../src/patterns/seed-helpers');
     assert.equal(typeof seedNativeLibrary, 'function');
   });
 
   it('native patterns are tagged as native', () => {
-    const { PYTHON_SEEDS } = require('../src/patterns/seeds-python');
-    const { GO_SEEDS } = require('../src/patterns/seeds-go');
-    const { RUST_SEEDS } = require('../src/patterns/seeds-rust');
+    const { PYTHON_SEEDS, GO_SEEDS, RUST_SEEDS } = require('../src/patterns/seed-helpers');
     assert.ok(PYTHON_SEEDS.every(s => s.tags.includes('python-native')));
     assert.ok(GO_SEEDS.every(s => s.tags.includes('go-native')));
     assert.ok(RUST_SEEDS.every(s => s.tags.includes('rust-native')));

@@ -205,7 +205,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
   handlers['nearest'] = (args) => {
     const term = args.description || args._rest;
     if (!term) { console.error(c.boldRed('Error:') + ` provide a query. Usage: ${c.cyan('oracle nearest <term>')}`); process.exit(1); }
-    const { nearestTerms } = require('../../core/vectors');
+    const { nearestTerms } = require('../../search/vectors');
     const results = nearestTerms(term, parseInt(args.limit) || 10);
     console.log(`Nearest terms for ${c.cyan('"' + term + '"')}:\n`);
     for (const r of results) {

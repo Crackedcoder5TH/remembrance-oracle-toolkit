@@ -223,7 +223,7 @@ class PatternLibrary {
       // Evolution adjustments: penalize stale + over-evolved patterns
       let evolutionPenalty = 0;
       try {
-        const { evolutionAdjustment } = require('../core/evolution');
+        const { evolutionAdjustment } = require('../evolution/evolution');
         const adj = evolutionAdjustment(p);
         evolutionPenalty = adj.total;
       } catch {

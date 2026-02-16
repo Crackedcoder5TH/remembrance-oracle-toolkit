@@ -51,6 +51,7 @@ describe('MCPServer', () => {
     const data = JSON.parse(res.result.content[0].text);
     assert.ok('store' in data);
     assert.ok('patterns' in data);
+    assert.ok('candidates' in data);
   });
 
   it('handles oracle_search', async () => {
@@ -63,6 +64,16 @@ describe('MCPServer', () => {
     assert.ok(res.result.content);
     const data = JSON.parse(res.result.content[0].text);
     assert.ok(Array.isArray(data));
+  });
+
+  it('handles oracle_search with smart mode', async () => {
+    server = new MCPServer();
+    const res = await server.handleRequest({
+      id: 50,
+      method: 'tools/call',
+      params: { name: 'oracle_search', arguments: { query: 'sort array', mode: 'smart' } },
+    });
+    assert.ok(res.result.content);
   });
 
   it('handles oracle_submit', async () => {
@@ -122,12 +133,12 @@ describe('MCPServer', () => {
     assert.ok(data.decision);
   });
 
-  it('handles oracle_candidates', async () => {
+  it('handles oracle_maintain with candidates action', async () => {
     server = new MCPServer();
     const res = await server.handleRequest({
       id: 11,
       method: 'tools/call',
-      params: { name: 'oracle_candidates', arguments: {} },
+      params: { name: 'oracle_maintain', arguments: { action: 'candidates' } },
     });
     assert.ok(res.result.content);
     const data = JSON.parse(res.result.content[0].text);
@@ -136,12 +147,12 @@ describe('MCPServer', () => {
     assert.ok(Array.isArray(data.candidates));
   });
 
-  it('handles oracle_auto_promote', async () => {
+  it('handles oracle_maintain with promote action', async () => {
     server = new MCPServer();
     const res = await server.handleRequest({
       id: 13,
       method: 'tools/call',
-      params: { name: 'oracle_auto_promote', arguments: {} },
+      params: { name: 'oracle_maintain', arguments: { action: 'promote' } },
     });
     assert.ok(res.result.content);
     const data = JSON.parse(res.result.content[0].text);
@@ -149,7 +160,7 @@ describe('MCPServer', () => {
     assert.ok('promoted' in data);
   });
 
-  it('handles oracle_maintain', async () => {
+  it('handles oracle_maintain with full-cycle (default)', async () => {
     server = new MCPServer();
     const res = await server.handleRequest({
       id: 20,
@@ -161,59 +172,70 @@ describe('MCPServer', () => {
     assert.ok('improvement' in data || 'durationMs' in data);
   });
 
-  it('has exactly 23 tools', async () => {
+  it('handles oracle_debug with stats action', async () => {
+    server = new MCPServer();
+    const res = await server.handleRequest({
+      id: 30,
+      method: 'tools/call',
+      params: { name: 'oracle_debug', arguments: { action: 'stats' } },
+    });
+    assert.ok(res.result.content);
+  });
+
+  it('handles oracle_debug with patterns action', async () => {
+    server = new MCPServer();
+    const res = await server.handleRequest({
+      id: 31,
+      method: 'tools/call',
+      params: { name: 'oracle_debug', arguments: { action: 'patterns' } },
+    });
+    assert.ok(res.result.content);
+  });
+
+  it('handles oracle_sync (personal default)', async () => {
+    server = new MCPServer();
+    const res = await server.handleRequest({
+      id: 40,
+      method: 'tools/call',
+      params: { name: 'oracle_sync', arguments: {} },
+    });
+    assert.ok(res.result.content);
+  });
+
+  it('handles oracle_register', async () => {
+    server = new MCPServer();
+    const res = await server.handleRequest({
+      id: 41,
+      method: 'tools/call',
+      params: {
+        name: 'oracle_register',
+        arguments: {
+          name: 'test-pattern-mcp',
+          code: 'function greet(name) { return `Hello, ${name}!`; }',
+          language: 'javascript',
+        },
+      },
+    });
+    assert.ok(res.result.content);
+  });
+
+  it('has exactly 10 consolidated tools', async () => {
     server = new MCPServer();
     const res = await server.handleRequest({ id: 15, method: 'tools/list' });
     const names = res.result.tools.map(t => t.name);
 
-    // Core
-    assert.ok(names.includes('oracle_search'));
-    assert.ok(names.includes('oracle_resolve'));
-    assert.ok(names.includes('oracle_submit'));
-    assert.ok(names.includes('oracle_query'));
-    assert.ok(names.includes('oracle_feedback'));
-    assert.ok(names.includes('oracle_stats'));
-    assert.ok(names.includes('oracle_register_pattern'));
+    // All 10 consolidated tools
+    assert.ok(names.includes('oracle_search'), 'missing oracle_search');
+    assert.ok(names.includes('oracle_resolve'), 'missing oracle_resolve');
+    assert.ok(names.includes('oracle_submit'), 'missing oracle_submit');
+    assert.ok(names.includes('oracle_register'), 'missing oracle_register');
+    assert.ok(names.includes('oracle_feedback'), 'missing oracle_feedback');
+    assert.ok(names.includes('oracle_stats'), 'missing oracle_stats');
+    assert.ok(names.includes('oracle_debug'), 'missing oracle_debug');
+    assert.ok(names.includes('oracle_sync'), 'missing oracle_sync');
+    assert.ok(names.includes('oracle_harvest'), 'missing oracle_harvest');
+    assert.ok(names.includes('oracle_maintain'), 'missing oracle_maintain');
 
-    // Search
-    assert.ok(names.includes('oracle_smart_search'));
-
-    // Quality
-    assert.ok(names.includes('oracle_reflect'));
-    assert.ok(names.includes('oracle_covenant'));
-
-    // Candidates
-    assert.ok(names.includes('oracle_candidates'));
-    assert.ok(names.includes('oracle_auto_promote'));
-    assert.ok(names.includes('oracle_synthesize_tests'));
-
-    // Debug
-    assert.ok(names.includes('oracle_debug_capture'));
-    assert.ok(names.includes('oracle_debug_search'));
-    assert.ok(names.includes('oracle_debug_feedback'));
-    assert.ok(names.includes('oracle_debug_stats'));
-    assert.ok(names.includes('oracle_debug_grow'));
-    assert.ok(names.includes('oracle_debug_patterns'));
-
-    // Storage
-    assert.ok(names.includes('oracle_sync'));
-    assert.ok(names.includes('oracle_share'));
-
-    // Harvest
-    assert.ok(names.includes('oracle_harvest'));
-
-    // Maintenance
-    assert.ok(names.includes('oracle_maintain'));
-
-    // Reflector
-    assert.ok(names.includes('oracle_reflector_snapshot'));
-    assert.ok(names.includes('oracle_reflector_run'));
-    assert.ok(names.includes('oracle_reflector_evaluate'));
-    assert.ok(names.includes('oracle_reflector_heal'));
-    assert.ok(names.includes('oracle_reflector_status'));
-    assert.ok(names.includes('oracle_reflector_config'));
-
-    // Tools count should be at least 23 (core) + reflector tools
-    assert.ok(res.result.tools.length >= 23, `Expected at least 23 tools, got ${res.result.tools.length}`);
+    assert.equal(res.result.tools.length, 10, `Expected exactly 10 tools, got ${res.result.tools.length}`);
   });
 });

@@ -122,7 +122,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         const query = parsed.query.q || '';
         if (!query) { sendJSON(res, []); return; }
         try {
-          const { nearestTerms } = require('../core/vectors');
+          const { nearestTerms } = require('../search/vectors');
           sendJSON(res, nearestTerms(query, 15));
         } catch {
           sendJSON(res, []);
@@ -173,7 +173,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       // ─── Analytics ───
       if (pathname === '/api/analytics') {
         try {
-          const { generateAnalytics, computeTagCloud } = require('../core/analytics');
+          const { generateAnalytics, computeTagCloud } = require('../analytics/analytics');
           const analytics = generateAnalytics(oracleInstance);
           analytics.tagCloud = computeTagCloud(oracleInstance.patterns.getAll());
           sendJSON(res, analytics);
@@ -234,7 +234,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         const query = parsed.query.q || '';
         if (!query) { sendJSON(res, []); return; }
         try {
-          const { DebugOracle } = require('../core/debug-oracle');
+          const { DebugOracle } = require('../debug/debug-oracle');
           const sqliteStore = oracleInstance.store.getSQLiteStore();
           if (!sqliteStore) { sendJSON(res, []); return; }
           const debugOracle = new DebugOracle(sqliteStore);
@@ -248,7 +248,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       // ─── Debug stats ───
       if (pathname === '/api/debug/stats') {
         try {
-          const { DebugOracle } = require('../core/debug-oracle');
+          const { DebugOracle } = require('../debug/debug-oracle');
           const sqliteStore = oracleInstance.store.getSQLiteStore();
           if (!sqliteStore) { sendJSON(res, { totalPatterns: 0 }); return; }
           sendJSON(res, new DebugOracle(sqliteStore).stats());
@@ -339,7 +339,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       // ─── Insights ───
       if (pathname === '/api/insights') {
         try {
-          const { generateInsights } = require('../core/insights');
+          const { generateInsights } = require('../analytics/insights');
           sendJSON(res, generateInsights(oracleInstance, parsed.query));
         } catch (err) { sendJSON(res, { error: err.message }, 500); }
         return;
@@ -347,7 +347,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
 
       if (pathname === '/api/insights/act' && req.method === 'POST') {
         try {
-          const { actOnInsights } = require('../core/actionable-insights');
+          const { actOnInsights } = require('../analytics/actionable-insights');
           sendJSON(res, actOnInsights(oracleInstance));
         } catch (err) { sendJSON(res, { error: err.message }, 500); }
         return;
@@ -355,7 +355,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
 
       if (pathname === '/api/insights/boosts') {
         try {
-          const { computeUsageBoosts } = require('../core/actionable-insights');
+          const { computeUsageBoosts } = require('../analytics/actionable-insights');
           const boosts = computeUsageBoosts(oracleInstance);
           sendJSON(res, Array.from(boosts.entries()).map(([id, boost]) => ({ id, boost })));
         } catch (err) { sendJSON(res, { error: err.message }, 500); }

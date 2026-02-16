@@ -14,7 +14,7 @@ const {
   setMode,
   getCurrentMode,
   formatResolvedConfig,
-} = require('../src/reflector/modes');
+} = require('../src/reflector/scoring');
 
 // ─── Helpers ───
 
@@ -302,27 +302,20 @@ describe('Configurable Thresholds & Modes — exports', () => {
   });
 });
 
-// ─── MCP Tools ───
+// ─── Reflector functions accessible (MCP consolidated) ───
 
-describe('Configurable Thresholds & Modes — MCP tools', () => {
-  it('should have resolve_config tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_resolve_config');
-    assert.ok(tool);
-    assert.ok(tool.inputSchema.properties.rootDir);
-    assert.ok(tool.inputSchema.properties.mode);
+describe('Configurable Thresholds & Modes — reflector functions (MCP consolidated)', () => {
+  it('resolveConfig, setMode, listModes are directly importable', () => {
+    const scoring = require('../src/reflector/scoring');
+    assert.strictEqual(typeof scoring.resolveConfig, 'function');
+    assert.strictEqual(typeof scoring.setMode, 'function');
+    assert.strictEqual(typeof scoring.listModes, 'function');
+    assert.strictEqual(typeof scoring.getCurrentMode, 'function');
+    assert.strictEqual(typeof scoring.formatResolvedConfig, 'function');
   });
 
-  it('should have set_mode tool', () => {
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_set_mode');
-    assert.ok(tool);
-    assert.ok(tool.inputSchema.required.includes('mode'));
-  });
-
-  it('should have list_modes tool', () => {
-    const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_list_modes');
-    assert.ok(tool);
+    assert.equal(TOOLS.length, 10);
   });
 });

@@ -53,16 +53,18 @@ For AI clients that support MCP, start the server:
 node src/cli.js mcp
 ```
 
-This exposes 23 tools:
+This exposes 10 focused tools:
 
-- **Core (7)**: oracle_search, oracle_resolve, oracle_submit, oracle_query, oracle_feedback, oracle_stats, oracle_register_pattern
-- **Search (1)**: oracle_smart_search
-- **Quality (2)**: oracle_reflect, oracle_covenant
-- **Candidates (3)**: oracle_candidates, oracle_auto_promote, oracle_synthesize_tests
-- **Debug (6)**: oracle_debug_capture, oracle_debug_search, oracle_debug_feedback, oracle_debug_stats, oracle_debug_grow, oracle_debug_patterns
-- **Storage (2)**: oracle_sync, oracle_share
-- **Harvest (1)**: oracle_harvest
-- **Maintenance (1)**: oracle_maintain
+- **oracle_search** — unified search (basic, smart/intent-aware, structured query)
+- **oracle_resolve** — smart retrieval (PULL/EVOLVE/GENERATE decision)
+- **oracle_submit** — submit code for validation and storage
+- **oracle_register** — register named patterns in the library
+- **oracle_feedback** — report whether pulled code worked
+- **oracle_stats** — store, pattern, and candidate statistics
+- **oracle_debug** — debug oracle (capture/search/feedback/stats/grow/patterns via `action` param)
+- **oracle_sync** — sync across tiers (personal/community/both via `scope` param)
+- **oracle_harvest** — bulk harvest patterns from repos/directories
+- **oracle_maintain** — maintenance (full-cycle/candidates/promote/synthesize/reflect/covenant via `action` param)
 
 ## Quick Reference
 
@@ -77,7 +79,7 @@ node src/cli.js maintain                   # Full maintenance cycle (heal + opti
 node src/cli.js sync push                  # Sync to personal store
 node src/cli.js share                      # Share to community store
 node src/cli.js debug search --error "..."  # Search debug patterns
-node src/cli.js mcp                        # Start MCP server (23 tools)
+node src/cli.js mcp                        # Start MCP server (10 tools)
 node --test tests/*.test.js               # Run all tests
 ```
 

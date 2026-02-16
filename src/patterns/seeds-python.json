@@ -1,0 +1,142 @@
+[
+  {
+    "name": "lru-cache-py",
+    "code": "from collections import OrderedDict\n\nclass LRUCache:\n    def __init__(self, capacity: int):\n        self.cache = OrderedDict()\n        self.capacity = capacity\n\n    def get(self, key):\n        if key not in self.cache:\n            return -1\n        self.cache.move_to_end(key)\n        return self.cache[key]\n\n    def put(self, key, value):\n        if key in self.cache:\n            self.cache.move_to_end(key)\n        self.cache[key] = value\n        if len(self.cache) > self.capacity:\n            self.cache.popitem(last=False)",
+    "testCode": "cache = LRUCache(2)\ncache.put(1, 1)\ncache.put(2, 2)\nassert cache.get(1) == 1\ncache.put(3, 3)\nassert cache.get(2) == -1\nassert cache.get(3) == 3",
+    "language": "python",
+    "description": "LRU cache using OrderedDict — O(1) get/put",
+    "tags": [
+      "cache",
+      "data-structure",
+      "lru",
+      "python-native"
+    ],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "defaultdict-counter-py",
+    "code": "from collections import defaultdict\n\ndef word_frequency(text: str) -> dict:\n    freq = defaultdict(int)\n    for word in text.lower().split():\n        freq[word] += 1\n    return dict(sorted(freq.items(), key=lambda x: -x[1]))",
+    "testCode": "result = word_frequency(\"the cat sat on the mat\")\nassert result[\"the\"] == 2\nassert result[\"cat\"] == 1\nassert list(result.keys())[0] == \"the\"",
+    "language": "python",
+    "description": "Word frequency counter using defaultdict",
+    "tags": [
+      "string",
+      "counter",
+      "frequency",
+      "python-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "binary-search-py",
+    "code": "from bisect import bisect_left\n\ndef binary_search(arr: list, target) -> int:\n    i = bisect_left(arr, target)\n    if i != len(arr) and arr[i] == target:\n        return i\n    return -1",
+    "testCode": "assert binary_search([1, 2, 3, 4, 5], 3) == 2\nassert binary_search([1, 2, 3, 4, 5], 1) == 0\nassert binary_search([1, 2, 3, 4, 5], 6) == -1\nassert binary_search([], 1) == -1",
+    "language": "python",
+    "description": "Binary search using bisect — idiomatic Python",
+    "tags": [
+      "search",
+      "algorithm",
+      "bisect",
+      "python-native"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "merge-sort-py",
+    "code": "def merge_sort(arr: list) -> list:\n    if len(arr) <= 1:\n        return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return _merge(left, right)\n\ndef _merge(left: list, right: list) -> list:\n    result = []\n    i = j = 0\n    while i < len(left) and j < len(right):\n        if left[i] <= right[j]:\n            result.append(left[i])\n            i += 1\n        else:\n            result.append(right[j])\n            j += 1\n    result.extend(left[i:])\n    result.extend(right[j:])\n    return result",
+    "testCode": "assert merge_sort([3, 1, 4, 1, 5]) == [1, 1, 3, 4, 5]\nassert merge_sort([]) == []\nassert merge_sort([1]) == [1]\nassert merge_sort([5, 4, 3, 2, 1]) == [1, 2, 3, 4, 5]",
+    "language": "python",
+    "description": "Merge sort — stable O(n log n)",
+    "tags": [
+      "sort",
+      "algorithm",
+      "merge-sort",
+      "python-native"
+    ],
+    "patternType": "algorithm"
+  },
+  {
+    "name": "flatten-py",
+    "code": "def flatten(lst, depth=-1):\n    result = []\n    for item in lst:\n        if isinstance(item, list) and depth != 0:\n            result.extend(flatten(item, depth - 1))\n        else:\n            result.append(item)\n    return result",
+    "testCode": "assert flatten([1, [2, [3, [4]]]]) == [1, 2, 3, 4]\nassert flatten([1, [2, [3]]], depth=1) == [1, 2, [3]]\nassert flatten([]) == []\nassert flatten([[1], [2], [3]]) == [1, 2, 3]",
+    "language": "python",
+    "description": "Flatten nested lists with optional depth limit",
+    "tags": [
+      "list",
+      "flatten",
+      "utility",
+      "python-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "retry-decorator-py",
+    "code": "import time\nimport functools\n\ndef retry(max_attempts=3, delay=1.0, backoff=2.0, exceptions=(Exception,)):\n    def decorator(func):\n        @functools.wraps(func)\n        def wrapper(*args, **kwargs):\n            last_exception = None\n            current_delay = delay\n            for attempt in range(max_attempts):\n                try:\n                    return func(*args, **kwargs)\n                except exceptions as e:\n                    last_exception = e\n                    if attempt < max_attempts - 1:\n                        time.sleep(current_delay)\n                        current_delay *= backoff\n            raise last_exception\n        return wrapper\n    return decorator",
+    "testCode": "call_count = 0\n@retry(max_attempts=3, delay=0.01)\ndef flaky():\n    global call_count\n    call_count += 1\n    if call_count < 3:\n        raise ValueError(\"not yet\")\n    return \"ok\"\nassert flaky() == \"ok\"\nassert call_count == 3",
+    "language": "python",
+    "description": "Retry decorator with exponential backoff",
+    "tags": [
+      "decorator",
+      "retry",
+      "resilience",
+      "python-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "dataclass-builder-py",
+    "code": "from dataclasses import dataclass, field, asdict\nfrom typing import List, Optional\n\n@dataclass\nclass Config:\n    host: str = \"localhost\"\n    port: int = 8080\n    debug: bool = False\n    tags: List[str] = field(default_factory=list)\n    secret: Optional[str] = None\n\n    def to_dict(self):\n        return asdict(self)\n\n    @classmethod\n    def from_dict(cls, data: dict):\n        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})",
+    "testCode": "c = Config(host=\"0.0.0.0\", port=3000, tags=[\"api\"])\nassert c.host == \"0.0.0.0\"\nassert c.port == 3000\nd = c.to_dict()\nassert d[\"host\"] == \"0.0.0.0\"\nc2 = Config.from_dict({\"host\": \"prod\", \"port\": 443, \"extra\": \"ignored\"})\nassert c2.host == \"prod\"\nassert c2.debug == False",
+    "language": "python",
+    "description": "Dataclass with serialization and builder pattern",
+    "tags": [
+      "dataclass",
+      "config",
+      "builder",
+      "python-native"
+    ],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "context-manager-py",
+    "code": "from contextlib import contextmanager\nimport time\n\n@contextmanager\ndef timer(label=\"elapsed\"):\n    start = time.perf_counter()\n    yield lambda: time.perf_counter() - start\n    elapsed = time.perf_counter() - start\n    print(f\"{label}: {elapsed:.4f}s\")",
+    "testCode": "with timer(\"test\") as get_elapsed:\n    total = sum(range(1000))\n    assert get_elapsed() >= 0\nassert total == 499500",
+    "language": "python",
+    "description": "Context manager timer using contextlib",
+    "tags": [
+      "context-manager",
+      "timer",
+      "utility",
+      "python-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "generator-pipeline-py",
+    "code": "def chunked(iterable, size):\n    chunk = []\n    for item in iterable:\n        chunk.append(item)\n        if len(chunk) == size:\n            yield chunk\n            chunk = []\n    if chunk:\n        yield chunk\n\ndef batched_map(iterable, fn, batch_size=100):\n    for batch in chunked(iterable, batch_size):\n        yield from (fn(item) for item in batch)",
+    "testCode": "assert list(chunked([1,2,3,4,5], 2)) == [[1,2], [3,4], [5]]\nassert list(chunked([], 3)) == []\nassert list(batched_map([1,2,3], lambda x: x*2, 2)) == [2, 4, 6]",
+    "language": "python",
+    "description": "Generator-based chunking and batch processing pipeline",
+    "tags": [
+      "generator",
+      "pipeline",
+      "batch",
+      "python-native"
+    ],
+    "patternType": "utility"
+  },
+  {
+    "name": "type-guard-py",
+    "code": "from typing import TypeGuard, Any, Union\n\ndef is_str_list(val: Any) -> TypeGuard[list[str]]:\n    return isinstance(val, list) and all(isinstance(x, str) for x in val)\n\ndef is_int(val: Any) -> TypeGuard[int]:\n    return isinstance(val, int) and not isinstance(val, bool)\n\ndef safe_cast(val: Any, target_type: type, default=None):\n    try:\n        return target_type(val)\n    except (ValueError, TypeError):\n        return default",
+    "testCode": "assert is_str_list([\"a\", \"b\"]) == True\nassert is_str_list([1, 2]) == False\nassert is_str_list(\"not a list\") == False\nassert is_int(42) == True\nassert is_int(True) == False\nassert safe_cast(\"123\", int) == 123\nassert safe_cast(\"abc\", int, 0) == 0",
+    "language": "python",
+    "description": "Type guards and safe casting utilities",
+    "tags": [
+      "typing",
+      "guard",
+      "validation",
+      "python-native"
+    ],
+    "patternType": "validation"
+  }
+]

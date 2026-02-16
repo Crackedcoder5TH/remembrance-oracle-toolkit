@@ -16,7 +16,7 @@
  *  - shouldSkipForGeneration(code)
  */
 
-const { isTestFile, isDataFile, requiresExternalModules } = require('../test-synth');
+const { isTestFile, isDataFile, requiresExternalModules } = require('../../evolution/test-synth');
 const {
   VARIANT_GENERATION,
   MAX_TERNARY_NESTING,

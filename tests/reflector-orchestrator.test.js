@@ -4,7 +4,7 @@ const { mkdirSync, writeFileSync, rmSync, existsSync } = require('fs');
 const { join } = require('path');
 const { tmpdir } = require('os');
 
-const { orchestrate, formatOrchestration } = require('../src/reflector/orchestrator');
+const { orchestrate, formatOrchestration } = require('../src/reflector/multi');
 
 function makeTempRepo() {
   const dir = join(tmpdir(), `orch-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -100,7 +100,7 @@ describe('Orchestrator — live mode', () => {
 
   it('should record history after run', () => {
     orchestrate(dir);
-    const { loadHistoryV2 } = require('../src/reflector/history');
+    const { loadHistoryV2 } = require('../src/reflector/report');
     const history = loadHistoryV2(dir);
     assert.ok(history.runs.length > 0);
     assert.ok(history.runs[0].id.startsWith('orch-'));
@@ -139,12 +139,15 @@ describe('Orchestrator — exports', () => {
   });
 });
 
-describe('Orchestrator — MCP tool', () => {
-  it('should have oracle_reflector_orchestrate tool', () => {
+describe('Orchestrator — reflector functions (MCP consolidated)', () => {
+  it('orchestrate and formatOrchestration are directly importable', () => {
+    const multi = require('../src/reflector/multi');
+    assert.strictEqual(typeof multi.orchestrate, 'function');
+    assert.strictEqual(typeof multi.formatOrchestration, 'function');
+  });
+
+  it('MCP has 10 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const tool = TOOLS.find(t => t.name === 'oracle_reflector_orchestrate');
-    assert.ok(tool);
-    assert.ok(tool.description.includes('orchestrated'));
-    assert.ok(tool.inputSchema.properties.dryRun);
+    assert.equal(TOOLS.length, 10);
   });
 });

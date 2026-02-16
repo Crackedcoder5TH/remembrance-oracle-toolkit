@@ -13,7 +13,7 @@ const {
   resetCircuitBreaker,
   getCircuitStatus,
   buildErrorReport,
-} = require('../src/reflector/errorHandler');
+} = require('../src/reflector/scoring');
 
 function makeTempDir() {
   const dir = join(tmpdir(), `err-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -218,7 +218,7 @@ describe('buildErrorReport', () => {
 
   it('should count errors from log', () => {
     const dir = makeTempDir();
-    const { appendLog } = require('../src/reflector/history');
+    const { appendLog } = require('../src/reflector/report');
     appendLog(dir, 'ERROR', 'test error 1', { errorType: 'transient' });
     appendLog(dir, 'ERROR', 'test error 2', { errorType: 'fatal' });
     appendLog(dir, 'WARN', 'test warning');

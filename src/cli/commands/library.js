@@ -235,22 +235,19 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['seed'] = (args) => {
-    const { seedLibrary, seedNativeLibrary } = require('../../patterns/seeds');
+    const { seedLibrary, seedNativeLibrary, seedExtendedLibrary, seedProductionLibrary3, seedProductionLibrary4 } = require('../../patterns/seed-helpers');
     const results = seedLibrary(oracle);
     console.log(`Core seeds: ${c.boldGreen(String(results.registered))} registered (${c.dim(results.skipped + ' skipped')}, ${results.failed > 0 ? c.boldRed(String(results.failed)) : c.dim(String(results.failed))} failed)`);
 
-    const { seedExtendedLibrary } = require('../../patterns/seeds-extended');
     const ext = seedExtendedLibrary(oracle, { verbose: !!args.verbose });
     console.log(`Extended seeds: ${c.boldGreen(String(ext.registered))} registered (${c.dim(ext.skipped + ' skipped')}, ${ext.failed > 0 ? c.boldRed(String(ext.failed)) : c.dim(String(ext.failed))} failed)`);
 
     const native = seedNativeLibrary(oracle, { verbose: !!args.verbose });
     console.log(`Native seeds (Python/Go/Rust): ${c.boldGreen(String(native.registered))} registered (${c.dim(native.skipped + ' skipped')}, ${native.failed > 0 ? c.boldRed(String(native.failed)) : c.dim(String(native.failed))} failed)`);
 
-    const { seedProductionLibrary3 } = require('../../patterns/seeds-production-3');
     const prod3 = seedProductionLibrary3(oracle, { verbose: !!args.verbose });
     console.log(`Production seeds 3: ${c.boldGreen(String(prod3.registered))} registered (${c.dim(prod3.skipped + ' skipped')}, ${prod3.failed > 0 ? c.boldRed(String(prod3.failed)) : c.dim(String(prod3.failed))} failed)`);
 
-    const { seedProductionLibrary4 } = require('../../patterns/seeds-production-4');
     const prod4 = seedProductionLibrary4(oracle, { verbose: !!args.verbose });
     console.log(`Production seeds 4: ${c.boldGreen(String(prod4.registered))} registered (${c.dim(prod4.skipped + ' skipped')}, ${prod4.failed > 0 ? c.boldRed(String(prod4.failed)) : c.dim(String(prod4.failed))} failed)`);
 

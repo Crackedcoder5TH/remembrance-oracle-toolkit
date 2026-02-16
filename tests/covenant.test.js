@@ -269,15 +269,16 @@ describe('Covenant integration with validator', () => {
   });
 });
 
-describe('Covenant MCP tool', () => {
-  it('oracle_covenant is in the tools list', () => {
+describe('Covenant via consolidated MCP oracle_maintain tool', () => {
+  it('oracle_maintain has covenant action', () => {
     const { TOOLS } = require('../src/mcp/server');
-    const covenantTool = TOOLS.find(t => t.name === 'oracle_covenant');
-    assert.ok(covenantTool, 'oracle_covenant tool should exist');
-    assert.ok(covenantTool.inputSchema.required.includes('code'));
+    const tool = TOOLS.find(t => t.name === 'oracle_maintain');
+    assert.ok(tool, 'oracle_maintain tool should exist');
+    const actions = tool.inputSchema.properties.action.enum;
+    assert.ok(actions.includes('covenant'), 'oracle_maintain should support covenant action');
   });
 
-  it('MCP server handles oracle_covenant calls', async () => {
+  it('MCP server handles covenant via oracle_maintain', async () => {
     const { MCPServer } = require('../src/mcp/server');
     const server = new MCPServer();
     const response = await server.handleRequest({
@@ -285,8 +286,8 @@ describe('Covenant MCP tool', () => {
       id: 1,
       method: 'tools/call',
       params: {
-        name: 'oracle_covenant',
-        arguments: { code: 'function add(a, b) { return a + b; }' },
+        name: 'oracle_maintain',
+        arguments: { action: 'covenant', code: 'function add(a, b) { return a + b; }' },
       },
     });
     assert.equal(response.id, 1);
@@ -302,8 +303,8 @@ describe('Covenant MCP tool', () => {
       id: 2,
       method: 'tools/call',
       params: {
-        name: 'oracle_covenant',
-        arguments: { code: 'rm -rf /home', description: 'delete everything' },
+        name: 'oracle_maintain',
+        arguments: { action: 'covenant', code: 'rm -rf /home', description: 'delete everything' },
       },
     });
     const result = JSON.parse(response.result.content[0].text);

@@ -18,7 +18,7 @@
 
 const { VerifiedHistoryStore } = require('../store/history');
 const { PatternLibrary } = require('../patterns/library');
-const { PatternRecycler } = require('../core/recycler');
+const { PatternRecycler } = require('../evolution/recycler');
 
 // Mixin modules — each exports an object of methods for the prototype
 const coreMethods = require('./oracle-core');
@@ -62,7 +62,7 @@ class RemembranceOracle {
     const wasEmpty = this.patterns.getAll().length === 0;
     if (options.autoSeed !== false && wasEmpty) {
       try {
-        const { seedLibrary } = require('../patterns/seeds');
+        const { seedLibrary } = require('../patterns/seed-helpers');
         seedLibrary(this);
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle] auto-seed failed:', e.message);

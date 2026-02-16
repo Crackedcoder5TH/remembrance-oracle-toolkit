@@ -743,4 +743,5 @@ module.exports = {
   VersionManager,
   semanticDiff,
   extractFunctions,
+  buildLCS,
 };

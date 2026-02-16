@@ -873,14 +873,7 @@ function maxNestingDepth(code) {
   return max;
 }
 
-function countBy(items, key) {
-  const counts = {};
-  for (const item of items) {
-    const val = item[key] || 'unknown';
-    counts[val] = (counts[val] || 0) + 1;
-  }
-  return counts;
-}
+const { countBy } = require('../store/store-helpers');
 
 module.exports = {
   PatternLibrary,

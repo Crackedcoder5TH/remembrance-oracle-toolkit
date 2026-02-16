@@ -63,55 +63,146 @@ function checkBalancedBraces(code) {
   const stack = [];
   const pairs = { '(': ')', '[': ']', '{': '}' };
   const closers = new Set([')', ']', '}']);
+  const REGEX_KW = new Set(['return', 'typeof', 'instanceof', 'in', 'case', 'void', 'delete', 'throw', 'new', 'yield', 'await']);
+  const REGEX_OPS = '=(!&|,;:?[{+-%~^<>';
   let i = 0;
+  let lastToken = ''; // track last meaningful token for regex detection
   while (i < code.length) {
     const ch = code[i];
-    // Skip single-line comments
+    // Skip whitespace (don't update lastToken)
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') { i++; continue; }
+    // Skip single-line comments (don't update lastToken)
     if (ch === '/' && code[i + 1] === '/') {
       i = code.indexOf('\n', i + 2);
       if (i === -1) break;
       i++;
       continue;
     }
-    // Skip block comments
+    // Skip block comments (don't update lastToken)
     if (ch === '/' && code[i + 1] === '*') {
       i = code.indexOf('*/', i + 2);
       if (i === -1) break;
       i += 2;
       continue;
     }
-    // Skip string literals (single, double, backtick)
-    if (ch === "'" || ch === '"' || ch === '`') {
-      const quote = ch;
+    // Skip template literals (handling ${...} expressions with nested braces)
+    if (ch === '`') {
+      i++;
+      i = _skipTemplateLiteral(code, i);
+      lastToken = '`';
+      continue;
+    }
+    // Skip string literals (single, double)
+    if (ch === "'" || ch === '"') {
       i++;
       while (i < code.length) {
         if (code[i] === '\\') { i += 2; continue; }
-        if (code[i] === quote) { i++; break; }
+        if (code[i] === ch) { i++; break; }
         i++;
       }
+      lastToken = ch;
       continue;
     }
-    // Skip regex literals (after operator or start-of-line context)
-    if (ch === '/' && i > 0) {
-      const before = code.slice(Math.max(0, i - 10), i).trimEnd();
-      const lastChar = before[before.length - 1];
-      if (lastChar && '=(!&|,;:?[{+-%~^'.includes(lastChar)) {
+    // Skip regex literals (after operator, keyword, or start-of-line context)
+    if (ch === '/') {
+      const isRegex = lastToken === '' || REGEX_OPS.includes(lastToken) || REGEX_KW.has(lastToken);
+      if (isRegex) {
         i++;
-        while (i < code.length) {
-          if (code[i] === '\\') { i += 2; continue; }
-          if (code[i] === '/') { i++; break; }
-          i++;
-        }
+        i = _skipRegexBody(code, i);
+        lastToken = '/';
         continue;
       }
     }
-    if (pairs[ch]) stack.push(pairs[ch]);
+    if (pairs[ch]) { stack.push(pairs[ch]); lastToken = ch; }
     else if (closers.has(ch)) {
       if (stack.pop() !== ch) return false;
+      lastToken = ch;
+    } else {
+      // Track identifier words for keyword detection
+      if (/[a-zA-Z_$]/.test(ch)) {
+        let word = ch;
+        let j = i + 1;
+        while (j < code.length && /[\w$]/.test(code[j])) { word += code[j]; j++; }
+        lastToken = word;
+        i = j;
+        continue;
+      }
+      lastToken = ch;
     }
     i++;
   }
   return stack.length === 0;
+}
+
+/** Advance past template literal content, handling ${...} expressions. */
+function _skipTemplateLiteral(code, i) {
+  while (i < code.length) {
+    if (code[i] === '\\') { i += 2; continue; }
+    if (code[i] === '$' && code[i + 1] === '{') {
+      i += 2;
+      i = _skipTemplateExpression(code, i);
+      continue;
+    }
+    if (code[i] === '`') { i++; return i; }
+    i++;
+  }
+  return i;
+}
+
+/** Advance past a ${...} expression inside a template literal. */
+function _skipTemplateExpression(code, i) {
+  const REGEX_KW = new Set(['return', 'typeof', 'instanceof', 'in', 'case', 'void', 'delete', 'throw', 'new', 'yield', 'await']);
+  let depth = 1;
+  while (i < code.length && depth > 0) {
+    const c = code[i];
+    if (c === '\\') { i += 2; continue; }
+    if (c === '`') { i++; i = _skipTemplateLiteral(code, i); continue; }
+    if (c === "'" || c === '"') {
+      const q = c; i++;
+      while (i < code.length) {
+        if (code[i] === '\\') { i += 2; continue; }
+        if (code[i] === q) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    if (c === '/' && code[i + 1] === '/') {
+      i = code.indexOf('\n', i + 2);
+      if (i === -1) return code.length;
+      i++; continue;
+    }
+    if (c === '/' && code[i + 1] === '*') {
+      i = code.indexOf('*/', i + 2);
+      if (i === -1) return code.length;
+      i += 2; continue;
+    }
+    // Skip regex literals inside template expressions
+    if (c === '/') {
+      let isRegex = false;
+      const before = code.slice(Math.max(0, i - 20), i).trimEnd();
+      const lastCh = before[before.length - 1];
+      if (lastCh && '=(!&|,;:?[{+-%~^<>'.includes(lastCh)) isRegex = true;
+      else { const wm = before.match(/\b(\w+)$/); if (wm && REGEX_KW.has(wm[1])) isRegex = true; }
+      if (isRegex) { i++; i = _skipRegexBody(code, i); continue; }
+    }
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) { i++; return i; } }
+    i++;
+  }
+  return i;
+}
+
+/** Advance past regex body, handling character classes [..] where / doesn't terminate. */
+function _skipRegexBody(code, i) {
+  let inCharClass = false;
+  while (i < code.length) {
+    if (code[i] === '\\') { i += 2; continue; }
+    if (code[i] === '[' && !inCharClass) { inCharClass = true; i++; continue; }
+    if (code[i] === ']' && inCharClass) { inCharClass = false; i++; continue; }
+    if (code[i] === '/' && !inCharClass) { i++; while (i < code.length && /[gimsuy]/.test(code[i])) i++; return i; }
+    i++;
+  }
+  return i;
 }
 
 /**

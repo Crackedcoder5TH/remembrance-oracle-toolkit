@@ -10,8 +10,7 @@ const { covenantCheck } = require('../core/covenant');
 const { calculateCyclomaticComplexity, analyzeCommentDensity, analyzeNestingDepth, computeQualityMetrics, extractFunctionBodies } = require('./scoring-analysis-complexity');
 const { securityScan } = require('./scoring-analysis-security');
 
-let _multi;
-function getMulti() { return _multi || (_multi = require('./multi')); }
+const { multi: getMulti } = require('./report-lazy');
 
 function deepScore(code, options = {}) {
   const language = options.language || detectLanguage(code);

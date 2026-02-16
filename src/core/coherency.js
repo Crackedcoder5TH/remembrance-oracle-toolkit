@@ -35,14 +35,13 @@ const WEIGHTS = {
  */
 function scoreSyntax(code, language) {
   if (language === 'javascript' || language === 'js') {
-    try {
-      new Function(code);
-      return SYNTAX_SCORES.PERFECT;
-    } catch {
-      // Might be a module — try looser check
-      const balanced = checkBalancedBraces(code);
-      return balanced ? SYNTAX_SCORES.BALANCED_BRACES : SYNTAX_SCORES.INVALID;
-    }
+    // Use balanced braces + structural checks instead of new Function()
+    // which compiles code and can execute side effects at parse time.
+    const balanced = checkBalancedBraces(code);
+    const hasStructure = /\b(function|const|let|var|class|module|export|import|require)\b/.test(code);
+    if (balanced && hasStructure) return SYNTAX_SCORES.PERFECT;
+    if (balanced) return SYNTAX_SCORES.BALANCED_BRACES;
+    return SYNTAX_SCORES.INVALID;
   }
   // For other languages, do structural checks
   const balanced = checkBalancedBraces(code);
@@ -55,6 +54,8 @@ function scoreSyntax(code, language) {
 
 /**
  * Checks if braces, brackets, and parentheses are balanced in the code.
+ * Skips characters inside string literals, template literals, regex literals,
+ * and comments to avoid false positives from bracket characters in non-code.
  * @param {string} code - The code to check
  * @returns {boolean} True if all pairs are balanced, false otherwise
  */
@@ -62,11 +63,53 @@ function checkBalancedBraces(code) {
   const stack = [];
   const pairs = { '(': ')', '[': ']', '{': '}' };
   const closers = new Set([')', ']', '}']);
-  for (const ch of code) {
+  let i = 0;
+  while (i < code.length) {
+    const ch = code[i];
+    // Skip single-line comments
+    if (ch === '/' && code[i + 1] === '/') {
+      i = code.indexOf('\n', i + 2);
+      if (i === -1) break;
+      i++;
+      continue;
+    }
+    // Skip block comments
+    if (ch === '/' && code[i + 1] === '*') {
+      i = code.indexOf('*/', i + 2);
+      if (i === -1) break;
+      i += 2;
+      continue;
+    }
+    // Skip string literals (single, double, backtick)
+    if (ch === "'" || ch === '"' || ch === '`') {
+      const quote = ch;
+      i++;
+      while (i < code.length) {
+        if (code[i] === '\\') { i += 2; continue; }
+        if (code[i] === quote) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    // Skip regex literals (after operator or start-of-line context)
+    if (ch === '/' && i > 0) {
+      const before = code.slice(Math.max(0, i - 10), i).trimEnd();
+      const lastChar = before[before.length - 1];
+      if (lastChar && '=(!&|,;:?[{+-%~^'.includes(lastChar)) {
+        i++;
+        while (i < code.length) {
+          if (code[i] === '\\') { i += 2; continue; }
+          if (code[i] === '/') { i++; break; }
+          i++;
+        }
+        continue;
+      }
+    }
     if (pairs[ch]) stack.push(pairs[ch]);
     else if (closers.has(ch)) {
       if (stack.pop() !== ch) return false;
     }
+    i++;
   }
   return stack.length === 0;
 }

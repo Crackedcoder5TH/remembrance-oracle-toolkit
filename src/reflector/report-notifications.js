@@ -14,12 +14,7 @@ const { readFileSync, writeFileSync, existsSync, appendFileSync } = require('fs'
 const { join } = require('path');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
-
-let _scoringMod;
-function _scoring() {
-  if (!_scoringMod) _scoringMod = require('./scoring');
-  return _scoringMod;
-}
+const { scoring: _scoring } = require('./report-lazy');
 
 // =====================================================================
 // Notifications — Discord / Slack

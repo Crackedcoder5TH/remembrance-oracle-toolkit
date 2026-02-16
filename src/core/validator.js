@@ -7,7 +7,7 @@
  * 3. Coherency threshold gate (must meet minimum score)
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -131,7 +131,7 @@ function executeTest(code, testCode, language, timeout) {
       const file = tmpFile + '.js';
       fs.writeFileSync(file, combined, 'utf-8');
       try {
-        execSync(`node ${file}`, {
+        execFileSync('node', [file], {
           timeout,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
@@ -147,7 +147,7 @@ function executeTest(code, testCode, language, timeout) {
       const file = tmpFile + '.py';
       fs.writeFileSync(file, combined, 'utf-8');
       try {
-        const output = execSync(`python3 ${file}`, {
+        const output = execFileSync('python3', [file], {
           timeout,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],

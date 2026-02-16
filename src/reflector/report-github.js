@@ -10,12 +10,7 @@ const { join } = require('path');
 const { existsSync, writeFileSync } = require('fs');
 
 // ─── Lazy Require Helper (avoid circular deps with multi) ───
-
-let _multiMod;
-function _multi() {
-  if (!_multiMod) _multiMod = require('./multi');
-  return _multiMod;
-}
+const { multi: _multi } = require('./report-lazy');
 
 // =====================================================================
 // GitHub — Git/GitHub Operations

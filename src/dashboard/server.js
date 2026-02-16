@@ -46,7 +46,7 @@ function createDashboardServer(oracle, options = {}) {
     const parsed = url.parse(req.url, true);
     const pathname = parsed.pathname;
 
-    applyCORS(res);
+    applyCORS(res, req);
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);

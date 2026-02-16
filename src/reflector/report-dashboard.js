@@ -12,46 +12,7 @@ const { join } = require('path');
 const { readFileSync, existsSync } = require('fs');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
-
-let _scoringMod;
-function _scoring() {
-  if (!_scoringMod) _scoringMod = require('./scoring');
-  return _scoringMod;
-}
-
-let _multiMod;
-function _multi() {
-  if (!_multiMod) _multiMod = require('./multi');
-  return _multiMod;
-}
-
-// Lazy require for report-history (section 1) — loadHistoryV2, computeStats, generateTrendChart
-let _historyMod;
-function _history() {
-  if (!_historyMod) _historyMod = require('./report-history');
-  return _historyMod;
-}
-
-// Lazy require for report-pattern-hook (section 2) — patternHookStats
-let _patternHookMod;
-function _patternHook() {
-  if (!_patternHookMod) _patternHookMod = require('./report-pattern-hook');
-  return _patternHookMod;
-}
-
-// Lazy require for report-notifications (section 6) — notificationStats
-let _notificationsMod;
-function _notifications() {
-  if (!_notificationsMod) _notificationsMod = require('./report-notifications');
-  return _notificationsMod;
-}
-
-// Lazy require for report-autocommit (section 5) — autoCommitStats
-let _autocommitMod;
-function _autocommit() {
-  if (!_autocommitMod) _autocommitMod = require('./report-autocommit');
-  return _autocommitMod;
-}
+const { scoring: _scoring, multi: _multi, history: _history, patternHook: _patternHook, notifications: _notifications, autocommit: _autocommit } = require('./report-lazy');
 
 // =====================================================================
 // Dashboard — Reflector Dashboard

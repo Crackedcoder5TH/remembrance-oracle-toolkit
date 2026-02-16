@@ -9,18 +9,7 @@ const { readFileSync, appendFileSync, existsSync } = require('fs');
 const { join, basename } = require('path');
 
 // ─── Lazy Require Helpers (avoid circular deps with scoring/multi) ───
-
-let _scoringMod;
-function _scoring() {
-  if (!_scoringMod) _scoringMod = require('./scoring');
-  return _scoringMod;
-}
-
-let _multiMod;
-function _multi() {
-  if (!_multiMod) _multiMod = require('./multi');
-  return _multiMod;
-}
+const { scoring: _scoring, multi: _multi } = require('./report-lazy');
 
 // =====================================================================
 // History — Run History & Logging

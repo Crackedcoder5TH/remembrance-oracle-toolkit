@@ -781,7 +781,7 @@ class DebugOracle {
       const { computeCoherencyScore } = require('./coherency');
       const score = computeCoherencyScore(variantCode, { language });
       coherencyTotal = score.total;
-    } catch {}
+    } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[debug-oracle]', err.message); }
 
     try {
       this.store.db.prepare(`

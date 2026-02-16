@@ -1671,7 +1671,7 @@ function getReportPath(rootDir) {
 function loadConfig(rootDir) {
   // Lazy requires: ./scoring for config + modes + utils
   const { resolveConfig, toEngineConfig } = require('./scoring');
-  const { loadJSON } = require('./report');
+  const { loadJSON } = require('./scoring');
 
   // Layer 1: Resolved config (central + mode + env overrides)
   let centralOverrides = {};
@@ -1700,7 +1700,7 @@ function loadConfig(rootDir) {
  * Save reflector configuration.
  */
 function saveConfig(rootDir, config) {
-  const { saveJSON } = require('./report');
+  const { saveJSON } = require('./scoring');
   return saveJSON(getConfigPath(rootDir), config);
 }
 
@@ -1710,7 +1710,7 @@ function saveConfig(rootDir, config) {
  * Load run history from .remembrance/reflector-history.json
  */
 function loadHistory(rootDir) {
-  const { loadJSON } = require('./report');
+  const { loadJSON } = require('./scoring');
   return loadJSON(getHistoryPath(rootDir), { runs: [] });
 }
 
@@ -1718,7 +1718,7 @@ function loadHistory(rootDir) {
  * Append a run record to history.
  */
 function recordRun(rootDir, record) {
-  const { trimArray, saveJSON } = require('./report');
+  const { trimArray, saveJSON } = require('./scoring');
 
   const history = loadHistory(rootDir);
   history.runs.push(record);
@@ -1741,7 +1741,8 @@ function recordRun(rootDir, record) {
  */
 function runReflector(rootDir, options = {}) {
   // Lazy requires: ./scoring for safety + utils; ./report for github + history
-  const { safeReflect, saveJSON, createHealingBranch, findExistingReflectorPR, saveRunRecord } = require('./report');
+  const { safeReflect, createHealingBranch, findExistingReflectorPR, saveRunRecord } = require('./report');
+  const { saveJSON } = require('./scoring');
 
   const config = { ...loadConfig(rootDir), ...options };
   const startTime = Date.now();

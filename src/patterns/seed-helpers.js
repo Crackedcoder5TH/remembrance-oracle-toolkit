@@ -59,14 +59,6 @@ function getRustSeeds() {
   return _rustSeeds;
 }
 
-// ─── Backward-compatible named exports ───
-
-Object.defineProperty(module.exports, 'SEEDS', { get: getSeeds, enumerable: true });
-Object.defineProperty(module.exports, 'EXTENDED_SEEDS', { get: getExtendedSeeds, enumerable: true });
-Object.defineProperty(module.exports, 'PYTHON_SEEDS', { get: getPythonSeeds, enumerable: true });
-Object.defineProperty(module.exports, 'GO_SEEDS', { get: getGoSeeds, enumerable: true });
-Object.defineProperty(module.exports, 'RUST_SEEDS', { get: getRustSeeds, enumerable: true });
-
 // ─── Seeding functions ───
 
 /**
@@ -243,6 +235,12 @@ module.exports = {
   seedExtendedLibrary,
   seedProductionLibrary3,
   seedProductionLibrary4,
-  // Backward-compatible named exports are defined via defineProperty above
-  // SEEDS, EXTENDED_SEEDS, PYTHON_SEEDS, GO_SEEDS, RUST_SEEDS
 };
+
+// ─── Backward-compatible named exports (must come AFTER module.exports assignment) ───
+
+Object.defineProperty(module.exports, 'SEEDS', { get: getSeeds, enumerable: true });
+Object.defineProperty(module.exports, 'EXTENDED_SEEDS', { get: getExtendedSeeds, enumerable: true });
+Object.defineProperty(module.exports, 'PYTHON_SEEDS', { get: getPythonSeeds, enumerable: true });
+Object.defineProperty(module.exports, 'GO_SEEDS', { get: getGoSeeds, enumerable: true });
+Object.defineProperty(module.exports, 'RUST_SEEDS', { get: getRustSeeds, enumerable: true });

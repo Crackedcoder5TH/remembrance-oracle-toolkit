@@ -3,11 +3,11 @@
  */
 
 const { readFileSync } = require('fs');
-const { relative } = require('path');
+const { relative, resolve } = require('path');
 const { detectLanguage } = require('../core/coherency');
 const { observeCoherence } = require('../core/reflection');
 const { covenantCheck } = require('../core/covenant');
-const { calculateCyclomaticComplexity, analyzeCommentDensity, analyzeNestingDepth, computeQualityMetrics } = require('./scoring-analysis-complexity');
+const { calculateCyclomaticComplexity, analyzeCommentDensity, analyzeNestingDepth, computeQualityMetrics, extractFunctionBodies } = require('./scoring-analysis-complexity');
 const { securityScan } = require('./scoring-analysis-security');
 
 let _multi;
@@ -95,6 +95,7 @@ function repoScore(rootDir, config = {}) {
     worstFiles: sorted.slice(0, 5).map(f => ({ path: f.path, score: f.aggregate })),
     bestFiles: sorted.slice(-5).reverse().map(f => ({ path: f.path, score: f.aggregate })),
     securityFindings: fileScores.flatMap(f => f.security.findings.map(finding => ({ ...finding, file: f.path }))),
+    crossFile: crossFileAnalysis(rootDir, fileScores),
     files: fileScores,
   };
 }
@@ -120,4 +121,124 @@ function formatDeepScore(result) {
   return lines.join('\n');
 }
 
-module.exports = { deepScore, repoScore, formatDeepScore };
+/**
+ * Cross-file analysis — detects structural issues across files that
+ * per-file scoring misses: duplicate functions, circular dependencies,
+ * and cross-file code similarity.
+ */
+function crossFileAnalysis(rootDir, fileScores) {
+  const findings = [];
+
+  // 1. Detect duplicate function names across files
+  const fnMap = {};
+  for (const file of fileScores) {
+    let code;
+    try { code = readFileSync(resolve(rootDir, file.path), 'utf-8'); } catch { continue; }
+    const fns = extractFunctionBodies(code);
+    for (const fn of fns) {
+      if (!fnMap[fn.name]) fnMap[fn.name] = [];
+      fnMap[fn.name].push({ file: file.path, line: fn.line, bodyLength: fn.body.split('\n').length });
+    }
+  }
+  for (const [name, locations] of Object.entries(fnMap)) {
+    const KEYWORDS = new Set(['for', 'if', 'while', 'switch', 'catch', 'return', 'new', 'try', 'get', 'set', 'constructor', 'toString']);
+    if (locations.length > 1 && !KEYWORDS.has(name) && name.length > 2) {
+      const uniqueFiles = new Set(locations.map(l => l.file));
+      if (uniqueFiles.size > 1) {
+        findings.push({
+          type: 'duplicate-function',
+          severity: 'medium',
+          message: `Function "${name}" defined in ${uniqueFiles.size} files`,
+          files: locations.map(l => `${l.file}:${l.line}`),
+        });
+      }
+    }
+  }
+
+  // 2. Detect circular require chains
+  const requireMap = {};
+  for (const file of fileScores) {
+    let code;
+    try { code = readFileSync(resolve(rootDir, file.path), 'utf-8'); } catch { continue; }
+    const requires = [];
+    const reqPattern = /require\s*\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g;
+    let match;
+    while ((match = reqPattern.exec(code)) !== null) {
+      const reqPath = match[1].replace(/\.js$/, '');
+      requires.push(reqPath);
+    }
+    requireMap[file.path] = requires;
+  }
+
+  const visited = new Set();
+  const inStack = new Set();
+  const cycles = [];
+
+  function dfs(file, path) {
+    if (inStack.has(file)) {
+      const cycleStart = path.indexOf(file);
+      if (cycleStart >= 0) cycles.push(path.slice(cycleStart).concat(file));
+      return;
+    }
+    if (visited.has(file)) return;
+    visited.add(file);
+    inStack.add(file);
+    for (const req of (requireMap[file] || [])) {
+      const resolved = Object.keys(requireMap).find(f =>
+        f.endsWith(req + '.js') || f.endsWith(req) || f === req
+      );
+      if (resolved) dfs(resolved, [...path, file]);
+    }
+    inStack.delete(file);
+  }
+
+  for (const file of Object.keys(requireMap)) {
+    dfs(file, []);
+  }
+  for (const cycle of cycles.slice(0, 5)) {
+    findings.push({
+      type: 'circular-dependency',
+      severity: 'high',
+      message: `Circular require chain: ${cycle.join(' \u2192 ')}`,
+      files: cycle,
+    });
+  }
+
+  // 3. Cross-file code similarity (duplicate blocks across files)
+  const blockMap = {};
+  for (const file of fileScores) {
+    let code;
+    try { code = readFileSync(resolve(rootDir, file.path), 'utf-8'); } catch { continue; }
+    const lines = code.split('\n');
+    for (let i = 0; i <= lines.length - 5; i++) {
+      const block = lines.slice(i, i + 5).map(l => l.trim()).filter(l => l && l.length > 10);
+      if (block.length < 3) continue;
+      const key = block.join('\n');
+      if (!blockMap[key]) blockMap[key] = [];
+      blockMap[key].push({ file: file.path, line: i + 1 });
+    }
+  }
+  const duplicateBlocks = Object.entries(blockMap)
+    .filter(([, locs]) => new Set(locs.map(l => l.file)).size > 1)
+    .slice(0, 10);
+
+  for (const [, locs] of duplicateBlocks) {
+    const uniqueFiles = [...new Set(locs.map(l => l.file))];
+    findings.push({
+      type: 'cross-file-duplication',
+      severity: 'low',
+      message: `Duplicate code block across ${uniqueFiles.length} files`,
+      files: locs.map(l => `${l.file}:${l.line}`),
+    });
+  }
+
+  return {
+    totalFindings: findings.length,
+    duplicateFunctions: findings.filter(f => f.type === 'duplicate-function').length,
+    circularDependencies: findings.filter(f => f.type === 'circular-dependency').length,
+    crossFileDuplication: findings.filter(f => f.type === 'cross-file-duplication').length,
+    findings,
+  };
+}
+
+module.exports = { deepScore, repoScore, formatDeepScore, crossFileAnalysis };

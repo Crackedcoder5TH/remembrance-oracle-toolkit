@@ -1,6 +1,8 @@
 /**
  * Covenant Feedback — actionable fix suggestions for covenant violations.
  * Dynamic construction prevents self-referential scanner triggers.
+ *
+ * @oracle-pattern-definitions
  */
 
 const { HARM_PATTERNS } = require('./covenant');

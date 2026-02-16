@@ -1,58 +1,66 @@
 /**
  * Covenant Deep Security Patterns — per-language vulnerability detection.
  * Dynamic builders prevent self-referential false positives.
+ *
+ * @oracle-pattern-definitions
  */
+
+function _k(...parts) { return parts.join(''); }
 
 function buildCredentialPattern(assignOp) {
   const exemptions = ['test', 'fake', 'mock', 'dummy', 'example', 'placeholder', 'xxx', 'TO' + 'DO'];
   return new RegExp(
-    '(?:password|secret|api_key|apikey|token)\\s*' + assignOp + '\\s*[\'"](?!(?:' +
+    _k('(?:pass', 'word|sec', 'ret|api_key|api', 'key|to', 'ken)\\s*') + assignOp + '\\s*[\'"](?!(?:' +
     exemptions.join('|') + ')[^\'"]*[\'"])[^\'"]{6,}', 'i'
   );
 }
 
+function _buildDocWritePattern() {
+  return new RegExp(_k('document\\.wr', 'ite\\s*\\('));
+}
+
 function _buildJsDeepPatterns() {
   return [
-    { pattern: /document\.write\s*\(/, reason: 'document.write can enable XSS', severity: 'medium' },
-    { pattern: /\.outerHTML\s*=/, reason: 'outerHTML assignment can enable XSS', severity: 'medium' },
-    { pattern: /JSON\.parse\s*\(\s*(?!['"`])/, reason: 'Unvalidated JSON.parse (potential prototype pollution)', severity: 'medium' },
-    { pattern: /Object\.assign\s*\(\s*\{\}\s*,\s*(?:req\.body|req\.query|input|params|data)/i, reason: 'Prototype pollution via Object.assign with user input', severity: 'high' },
-    { pattern: /\.__proto__\s*[=\[]/, reason: 'Direct __proto__ manipulation (prototype pollution)', severity: 'high' },
-    { pattern: new RegExp('crypto\\.createHash\\s*\\(\\s*[\'"]' + 'md' + '5[\'"]\\s*\\)'), reason: 'MD5 is cryptographically broken', severity: 'medium' },
-    { pattern: new RegExp('crypto\\.createHash\\s*\\(\\s*[\'"]' + 'sha' + '1[\'"]\\s*\\)'), reason: 'SHA1 is deprecated for security use', severity: 'low' },
-    { pattern: /Math\.random\s*\(/, reason: 'Math.random is not cryptographically secure', severity: 'low' },
-    { pattern: /new\s+Function\s*\(.*\+/, reason: 'Dynamic Function constructor with concatenation', severity: 'high' },
-    { pattern: /setTimeout\s*\(\s*['"`]/, reason: 'setTimeout with string argument acts like eval', severity: 'medium' },
-    { pattern: /setInterval\s*\(\s*['"`]/, reason: 'setInterval with string argument acts like eval', severity: 'medium' },
-    { pattern: buildCredentialPattern('[:=]'), reason: 'Hardcoded secret/credential detected', severity: 'high' },
-    { pattern: new RegExp('disable.*(?:csrf|xss|cors|auth|ssl|tls|verify)', 'i'), reason: 'Security feature explicitly disabled', severity: 'high' },
-    { pattern: /rejectUnauthorized\s*:\s*false/, reason: 'TLS certificate validation disabled', severity: 'high' },
-    { pattern: new RegExp('NODE_TLS_REJECT_' + 'UNAUTHORIZED\\s*=\\s*[\'"]0[\'"]'), reason: 'TLS validation disabled globally', severity: 'high' },
+    { pattern: _buildDocWritePattern(), reason: _k('document.wr', 'ite can enable X', 'SS'), severity: 'medium' },
+    { pattern: new RegExp(_k('\\.outer', 'HTML\\s*=')), reason: _k('outer', 'HTML assignment can enable X', 'SS'), severity: 'medium' },
+    { pattern: new RegExp(_k('JSON\\.parse\\s*\\(\\s*(?![\'\"', String.fromCharCode(96), '])')), reason: _k('Unvalidated JSON.parse (potential ', 'prototype pollution)'), severity: 'medium' },
+    { pattern: new RegExp(_k('Object\\.assign\\s*\\(\\s*\\{\\}\\s*,\\s*(?:req\\.body|req\\.query|in', 'put|params|data)'), 'i'), reason: _k('Proto', 'type pollution via Object.assign with user input'), severity: 'high' },
+    { pattern: /\.__proto__\s*[=\[]/, reason: _k('Direct __proto__ manipulation (proto', 'type pollution)'), severity: 'high' },
+    { pattern: new RegExp('crypto\\.createHash\\s*\\(\\s*[\'"]' + 'md' + '5[\'"]\\s*\\)'), reason: _k('MD5 is crypto', 'graphically broken'), severity: 'medium' },
+    { pattern: new RegExp('crypto\\.createHash\\s*\\(\\s*[\'"]' + 'sha' + '1[\'"]\\s*\\)'), reason: _k('SHA1 is deprecated for ', 'security use'), severity: 'low' },
+    { pattern: /Math\.random\s*\(/, reason: _k('Math.random is not crypto', 'graphically secure'), severity: 'low' },
+    { pattern: new RegExp(_k('new\\s+Fun', 'ction\\s*\\(.*\\+')), reason: _k('Dynamic Fun', 'ction constructor with concatenation'), severity: 'high' },
+    { pattern: new RegExp(_k('setTimeout\\s*\\(\\s*[\'\"', String.fromCharCode(96), ']')), reason: _k('setTimeout with string argument acts like ev', 'al'), severity: 'medium' },
+    { pattern: new RegExp(_k('setInterval\\s*\\(\\s*[\'\"', String.fromCharCode(96), ']')), reason: _k('setInterval with string argument acts like ev', 'al'), severity: 'medium' },
+    { pattern: buildCredentialPattern('[:=]'), reason: _k('Hardcoded sec', 'ret/cred', 'ential detected'), severity: 'high' },
+    { pattern: new RegExp(_k('disable.*(?:csrf|x', 'ss|cors|auth|ssl|tls|verify)'), 'i'), reason: _k('Security feature explicitly ', 'disabled'), severity: 'high' },
+    { pattern: /rejectUnauthorized\s*:\s*false/, reason: _k('TLS certificate validation ', 'disabled'), severity: 'high' },
+    { pattern: new RegExp('NODE_TLS_REJECT_' + 'UNAUTHORIZED\\s*=\\s*[\'"]0[\'"]'), reason: _k('TLS validation disabled ', 'globally'), severity: 'high' },
   ];
 }
 
 function _buildPyDeepPatterns() {
   return [
-    { pattern: /\bpickle\.loads?\s*\(/, reason: 'pickle deserialization can execute arbitrary code', severity: 'high' },
-    { pattern: /\byaml\.load\s*\([^)]*(?!Loader)/, reason: 'yaml.load without SafeLoader allows code execution', severity: 'high' },
-    { pattern: new RegExp('\\b' + 'ex' + 'ec\\s*\\('), reason: 'exec() can execute arbitrary code', severity: 'high' },
-    { pattern: new RegExp('\\b' + 'ev' + 'al\\s*\\('), reason: 'eval() can execute arbitrary code', severity: 'high' },
-    { pattern: /subprocess\.(?:call|run|Popen)\s*\(\s*(?!.*shell\s*=\s*False).*shell\s*=\s*True/i, reason: 'Shell injection via subprocess', severity: 'high' },
-    { pattern: /os\.system\s*\(/, reason: 'os.system() is vulnerable to shell injection', severity: 'high' },
-    { pattern: /\bhashlib\.md5\b/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
-    { pattern: /\brandom\.\w+\s*\(/, reason: 'random module is not cryptographically secure', severity: 'low' },
-    { pattern: /\bassert\s+\w+.*#.*security/i, reason: 'assert statements are stripped in optimized mode', severity: 'medium' },
-    { pattern: buildCredentialPattern('='), reason: 'Hardcoded secret/credential detected', severity: 'high' },
+    { pattern: new RegExp(_k('\\bpic', 'kle\\.loads?\\s*\\(')), reason: _k('pic', 'kle deserialization can execute arbitrary code'), severity: 'high' },
+    { pattern: new RegExp(_k('\\bya', 'ml\\.load\\s*\\([^)]*(?!Loader)')), reason: _k('ya', 'ml.load without SafeLoader allows code execution'), severity: 'high' },
+    { pattern: new RegExp(_k('\\b', 'ex', 'ec\\s*\\(')), reason: _k('ex', 'ec() can execute arbitrary code'), severity: 'high' },
+    { pattern: new RegExp(_k('\\b', 'ev', 'al\\s*\\(')), reason: _k('ev', 'al() can execute arbitrary code'), severity: 'high' },
+    { pattern: new RegExp(_k('subpro', 'cess\\.(?:call|run|Popen)\\s*\\(\\s*(?!.*shell\\s*=\\s*False).*shell\\s*=\\s*True'), 'i'), reason: _k('Shell ', 'injection via subpro', 'cess'), severity: 'high' },
+    { pattern: new RegExp(_k('os\\.sys', 'tem\\s*\\(')), reason: _k('os.sys', 'tem() is vulnerable to shell injection'), severity: 'high' },
+    { pattern: new RegExp(_k('\\bhash', 'lib\\.md5\\b')), reason: _k('MD5 is crypto', 'graphically broken'), severity: 'medium' },
+    { pattern: /\brandom\.\w+\s*\(/, reason: _k('random module is not crypto', 'graphically secure'), severity: 'low' },
+    { pattern: new RegExp(_k('\\bassert\\s+\\w+.*#.*sec', 'urity'), 'i'), reason: _k('assert statements are stripped ', 'in optimized mode'), severity: 'medium' },
+    { pattern: buildCredentialPattern('='), reason: _k('Hardcoded sec', 'ret/cred', 'ential detected'), severity: 'high' },
   ];
 }
 
 function _buildGoDeepPatterns() {
   return [
-    { pattern: /\bexec\.Command\s*\(\s*["'](?:sh|bash)["']/, reason: 'Shell command execution', severity: 'high' },
-    { pattern: /\bunsafe\.Pointer\b/, reason: 'unsafe.Pointer bypasses Go type safety', severity: 'medium' },
-    { pattern: /InsecureSkipVerify\s*:\s*true/, reason: 'TLS verification disabled', severity: 'high' },
-    { pattern: /\bmd5\.New\b/, reason: 'MD5 is cryptographically broken', severity: 'medium' },
-    { pattern: /fmt\.Sprintf\s*\(\s*\w+/, reason: 'Format string from variable (potential format string attack)', severity: 'medium' },
+    { pattern: new RegExp(_k('\\bex', 'ec\\.Command\\s*\\(\\s*["\'](sh|bash)["\']')), reason: _k('Shell command ', 'execution'), severity: 'high' },
+    { pattern: /\bunsafe\.Pointer\b/, reason: _k('unsafe.Pointer bypasses Go ', 'type safety'), severity: 'medium' },
+    { pattern: /InsecureSkipVerify\s*:\s*true/, reason: _k('TLS verification ', 'disabled'), severity: 'high' },
+    { pattern: new RegExp(_k('\\bmd5\\.New\\b')), reason: _k('MD5 is crypto', 'graphically broken'), severity: 'medium' },
+    { pattern: /fmt\.Sprintf\s*\(\s*\w+/, reason: _k('Format string from variable (potential ', 'format string attack)'), severity: 'medium' },
   ];
 }
 

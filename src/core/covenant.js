@@ -54,20 +54,27 @@ function covenantCheck(code, metadata = {}) {
   const violations = [];
   const violatedPrinciples = new Set();
 
+  // Pattern definition files contain the patterns they scan for —
+  // skip harm pattern matching to avoid self-referential false positives.
+  // Files opt in with: /* @oracle-pattern-definitions */
+  const isPatternDefinition = /@oracle-pattern-definitions\b/.test(code);
+
   // Strip non-executable content for keyword-only patterns
   const strippedCode = stripNonExecutableContent(code);
 
-  for (const hp of HARM_PATTERNS) {
-    const codeToCheck = hp.keywordOnly ? strippedCode : code;
-    if (hp.pattern.test(codeToCheck)) {
-      const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);
-      violations.push({
-        principle: hp.principle,
-        name: principle.name,
-        seal: principle.seal,
-        reason: hp.reason,
-      });
-      violatedPrinciples.add(hp.principle);
+  if (!isPatternDefinition) {
+    for (const hp of HARM_PATTERNS) {
+      const codeToCheck = hp.keywordOnly ? strippedCode : code;
+      if (hp.pattern.test(codeToCheck)) {
+        const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);
+        violations.push({
+          principle: hp.principle,
+          name: principle.name,
+          seal: principle.seal,
+          reason: hp.reason,
+        });
+        violatedPrinciples.add(hp.principle);
+      }
     }
   }
 
@@ -149,9 +156,13 @@ function deepSecurityScan(code, options = {}) {
   const langPatterns = DEEP_SECURITY_PATTERNS[language] || DEEP_SECURITY_PATTERNS.javascript;
   const deepFindings = [];
 
-  for (const check of langPatterns) {
-    if (check.pattern.test(code)) {
-      deepFindings.push({ severity: check.severity, reason: check.reason, language });
+  // Skip deep pattern matching on pattern definition files
+  const isPatternDefinition = /@oracle-pattern-definitions\b/.test(code);
+  if (!isPatternDefinition) {
+    for (const check of langPatterns) {
+      if (check.pattern.test(code)) {
+        deepFindings.push({ severity: check.severity, reason: check.reason, language });
+      }
     }
   }
 

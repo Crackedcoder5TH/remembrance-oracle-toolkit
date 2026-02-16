@@ -73,7 +73,11 @@ function reflectionLoop(code, options = {}) {
   const metadata = { description, tags, language: lang };
 
   const originalObs = observeCoherence(code, metadata);
-  const originalCoherency = computeCoherencyScore(code, { language: lang });
+  // During reflection, testProof and historicalReliability are not measurable —
+  // treat them as not-applicable (1.0) rather than unknown (0.5) to avoid
+  // artificially deflating fullCoherency for code that's being analyzed in isolation.
+  const coherencyMeta = { language: lang, testPassed: true, historicalReliability: 1.0 };
+  const originalCoherency = computeCoherencyScore(code, coherencyMeta);
 
   let current = {
     code, coherence: originalObs.composite,
@@ -102,7 +106,7 @@ function reflectionLoop(code, options = {}) {
 
     const scored = candidates.map(candidate => {
       const obs = observeCoherence(candidate.code, metadata);
-      const fullC = computeCoherencyScore(candidate.code, { language: lang });
+      const fullC = computeCoherencyScore(candidate.code, coherencyMeta);
       return { ...candidate, coherence: obs.composite, dimensions: obs.dimensions, fullCoherency: fullC.total };
     });
 

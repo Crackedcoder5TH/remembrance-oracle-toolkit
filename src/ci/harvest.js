@@ -1,6 +1,8 @@
 /**
  * GitHub Harvester — Bulk import patterns from any Git repository.
  *
+ * @oracle-infrastructure
+ *
  * Clones a repo (or uses a local path), walks its tested source files,
  * extracts functions, and bulk-registers them as Oracle patterns.
  *

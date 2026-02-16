@@ -30,7 +30,7 @@ function tryLoadSQLite() {
       const { SQLiteStore } = require('./sqlite');
       return SQLiteStore;
     }
-  } catch {}
+  } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[history]', err.message); }
   return null;
 }
 

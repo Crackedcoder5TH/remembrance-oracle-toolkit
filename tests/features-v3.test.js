@@ -210,8 +210,13 @@ describe('Feature 4: Voice Mode', () => {
   it('dashboard HTML includes voice toggle', () => {
     const dashSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'dashboard', 'server.js'), 'utf-8');
     assert.ok(dashSrc.includes('voice-toggle'));
-    assert.ok(dashSrc.includes('speakWhisper'));
-    assert.ok(dashSrc.includes('SpeechSynthesisUtterance'));
+    // Voice JS logic may be in server.js or extracted to client-script.js
+    const clientSrc = fs.existsSync(path.join(__dirname, '..', 'src', 'dashboard', 'client-script.js'))
+      ? fs.readFileSync(path.join(__dirname, '..', 'src', 'dashboard', 'client-script.js'), 'utf-8')
+      : '';
+    const combined = dashSrc + clientSrc;
+    assert.ok(combined.includes('speakWhisper'));
+    assert.ok(combined.includes('SpeechSynthesisUtterance'));
   });
 
   it('resolve --voice flag is supported', () => {

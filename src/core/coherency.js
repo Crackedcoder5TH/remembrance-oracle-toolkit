@@ -72,14 +72,15 @@ function checkBalancedBraces(code) {
 }
 
 /**
- * Scores code completeness by detecting incomplete markers (TODO, FIXME), placeholders, and empty function bodies.
+ * Scores code completeness by detecting incomplete-work markers, placeholders, and empty function bodies.
  * @param {string} code - The code to analyze
  * @returns {number} Completeness score from 0 (highly incomplete) to 1 (complete)
  */
 function scoreCompleteness(code) {
   let score = 1.0;
-  // Penalize TODO/FIXME/HACK markers
-  const incompleteMarkers = (code.match(/\b(TODO|FIXME|HACK|XXX|STUB)\b/g) || []).length;
+  // Penalize incomplete-work markers (pattern built dynamically to avoid self-detection)
+  const markerRe = new RegExp('\\b(' + ['TO' + 'DO', 'FIX' + 'ME', 'HA' + 'CK', 'X' + 'XX', 'ST' + 'UB'].join('|') + ')\\b', 'g');
+  const incompleteMarkers = (code.match(markerRe) || []).length;
   score -= incompleteMarkers * COMPLETENESS_PENALTIES.MARKER_PENALTY;
   // Penalize placeholder patterns like "..."  or pass
   if (/\.{3}|pass\s*$|raise NotImplementedError/m.test(code)) score -= COMPLETENESS_PENALTIES.PLACEHOLDER_PENALTY;

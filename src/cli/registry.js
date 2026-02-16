@@ -139,6 +139,7 @@ const CATEGORIES = [
       { name: 'verify', description: 'Verify pattern integrity' },
       { name: 'healing-stats', description: 'Show SERF healing statistics' },
       { name: 'auto-submit', description: 'Auto harvest, promote, and sync patterns (post-commit pipeline)' },
+      { name: 'auto-register', description: 'Register new functions from latest commit (diff-targeted)' },
       { name: 'auto-seed', description: 'Auto-discover and seed patterns from test suite' },
       { name: 'ci-feedback', description: 'Report CI test results' },
       { name: 'ci-stats', description: 'Show CI feedback tracking statistics' },

@@ -20,6 +20,7 @@ const path = require('path');
 
 /**
  * Run the full auto-submission pipeline:
+ *   0. Auto-register new functions from git diff (targeted, fast)
  *   1. Harvest patterns from the current repo (includes auto-seed)
  *   2. Auto-promote any candidates that have test code
  *   3. Sync to personal store (if enabled)
@@ -53,6 +54,18 @@ function autoSubmit(oracle, baseDir, options = {}) {
   };
 
   const log = silent ? () => {} : (msg) => console.log(`[auto-submit] ${msg}`);
+
+  // Step 0: Auto-register new functions from git diff (targeted)
+  try {
+    const { autoRegister } = require('./auto-register');
+    const regResult = autoRegister(oracle, baseDir, { dryRun, silent: true });
+    report.autoRegistered = regResult.registered;
+    if (regResult.registered > 0) {
+      log(`Auto-registered ${regResult.registered} new function(s) from diff`);
+    }
+  } catch (e) {
+    report.errors.push(`auto-register: ${e.message}`);
+  }
 
   // Step 1: Harvest patterns (auto-seed + standalone function extraction)
   try {

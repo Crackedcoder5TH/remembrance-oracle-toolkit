@@ -24,12 +24,37 @@ After using a pulled pattern or writing new code that passes tests:
    node src/cli.js submit --file <code.js> --test <test.js> --language javascript
    ```
 
+## Auto-Registration (Automatic Pattern Capture)
+
+Pattern registration is now **automatic on every commit** via git hooks:
+
+1. **Install hooks once**: `node src/cli.js hooks install`
+2. **Every commit triggers**: diff analysis → function extraction → dedup → registration
+3. **No manual registration needed** — the post-commit hook calls `auto-register` → `harvest` → `promote` → `sync`
+
+The pipeline:
+- **Step 0 — Auto-Register**: Analyzes `git diff` to find new/modified functions, matches them to test files, and registers individually
+- **Step 1 — Harvest**: Broad directory scan for any remaining unregistered patterns
+- **Step 2 — Promote**: Auto-promotes candidates that have test proof
+- **Step 3 — Sync**: Syncs proven patterns to personal store
+
+Manual commands:
+```bash
+node src/cli.js auto-register              # Register functions from last commit
+node src/cli.js auto-register --dry-run    # Preview without registering
+node src/cli.js auto-register --whole-file # Register whole files instead of functions
+node src/cli.js auto-submit                # Full pipeline: register + harvest + promote + sync
+node src/cli.js hooks install              # Install pre-commit + post-commit hooks
+node src/cli.js hooks uninstall            # Remove hooks
+```
+
 ## Automatic Growth
 
 The library grows automatically — every time you register or submit proven code:
 - **Candidates are spawned** — language variants (TS, Python) + automated refinements
 - **No manual `generate` needed** — the loop runs on every proven pattern
 - **Candidates** live in the `candidates` table until promoted with test proof
+- **Git hooks handle registration** — no need to manually register after coding
 - Run `node src/cli.js promote auto` to auto-promote candidates with tests
 - Run `node src/cli.js synthesize` to generate tests and promote in one step
 
@@ -76,6 +101,9 @@ node src/cli.js candidates                  # Unproven candidates
 node src/cli.js promote auto               # Promote candidates with tests
 node src/cli.js synthesize                  # Generate tests + auto-promote
 node src/cli.js maintain                   # Full maintenance cycle (heal + optimize + evolve)
+node src/cli.js auto-register              # Register new functions from last commit
+node src/cli.js auto-submit                # Full pipeline: register + harvest + promote + sync
+node src/cli.js hooks install              # Install git hooks (covenant + auto-register)
 node src/cli.js sync push                  # Sync to personal store
 node src/cli.js share                      # Share to community store
 node src/cli.js debug search --error "..."  # Search debug patterns

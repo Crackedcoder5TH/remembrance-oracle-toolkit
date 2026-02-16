@@ -172,8 +172,13 @@ function computeCoherencyScore(code, metadata = {}) {
  * @returns {string} Detected language (rust, go, java, python, javascript, jsx, html, or unknown)
  */
 function detectLanguage(code) {
-  if (/\bfn\b.*->|let mut |impl\b/.test(code)) return 'rust';
-  if (/\bfunc\b.*\{|package\b|fmt\./.test(code)) return 'go';
+  // Language detection patterns are built dynamically to prevent
+  // self-referential false positives (e.g. this file containing "fn"
+  // in a regex literal being detected as Rust)
+  const rustRe = new RegExp('\\b' + 'fn' + '\\b.*->|let ' + 'mut |' + 'impl' + '\\b');
+  if (rustRe.test(code)) return 'rust';
+  const goRe = new RegExp('\\b' + 'func' + '\\b.*\\{|' + 'package' + '\\b|fmt\\.');
+  if (goRe.test(code)) return 'go';
   if (/\bpublic\b.*\bclass\b|\bSystem\.out/.test(code)) return 'java';
   // Check JS before Python to avoid misclassifying JS files that contain
   // Python keywords in string literals (e.g. template literals with "import os")

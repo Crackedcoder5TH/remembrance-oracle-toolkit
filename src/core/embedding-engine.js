@@ -18,7 +18,13 @@
  */
 
 const http = require('http');
+const crypto = require('crypto');
 const { CONCEPT_CLUSTERS, identifyConcepts, expandQuery } = require('./embeddings');
+
+/** Hash text to produce a collision-resistant cache key. */
+function cacheKey(text) {
+  return crypto.createHash('sha256').update(text).digest('hex').slice(0, 24);
+}
 
 // ─── Built-in Enhanced Embeddings (Tier 1) ───
 
@@ -256,12 +262,12 @@ class EmbeddingEngine {
    */
   embed(text) {
     // Check cache
-    const cacheKey = text.slice(0, 500); // Truncate for cache key
-    if (this._cache.has(cacheKey)) return this._cache.get(cacheKey);
+    const key = cacheKey(text);
+    if (this._cache.has(key)) return this._cache.get(key);
 
     // Always use builtin for sync path
     const vec = builtinEmbed(text);
-    this._setCache(cacheKey, vec);
+    this._setCache(key, vec);
     return vec;
   }
 
@@ -271,8 +277,8 @@ class EmbeddingEngine {
    * @returns {Promise<number[]>}
    */
   async embedAsync(text) {
-    const cacheKey = text.slice(0, 500);
-    if (this._cache.has(cacheKey)) return this._cache.get(cacheKey);
+    const key = cacheKey(text);
+    if (this._cache.has(key)) return this._cache.get(key);
 
     // Tier 3: Plugin providers
     if (this._tier === 'plugin' && this._searchRegistry) {
@@ -283,7 +289,7 @@ class EmbeddingEngine {
           try {
             const vec = await provider.embed(text);
             if (vec && vec.length > 0) {
-              this._setCache(cacheKey, vec);
+              this._setCache(key, vec);
               return vec;
             }
           } catch { /* fall through */ }
@@ -299,14 +305,14 @@ class EmbeddingEngine {
         model: this._ollamaModel,
       });
       if (vec && vec.length > 0) {
-        this._setCache(cacheKey, vec);
+        this._setCache(key, vec);
         return vec;
       }
     }
 
     // Tier 1: Built-in
     const vec = builtinEmbed(text);
-    this._setCache(cacheKey, vec);
+    this._setCache(key, vec);
     return vec;
   }
 

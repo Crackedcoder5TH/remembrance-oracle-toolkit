@@ -42,12 +42,14 @@ const oracle = new RemembranceOracle({ autoSync: true });
  */
 function speakCLI(text) {
   try {
-    const safeText = text.replace(/["`$\\]/g, '');
     const { platform } = require('os');
-    const cmd = platform() === 'darwin'
-      ? `say -r 180 "${safeText}" &`
-      : `espeak -s 150 "${safeText}" 2>/dev/null &`;
-    require('child_process').exec(cmd);
+    const { execFile } = require('child_process');
+    const safeText = String(text).slice(0, 200);
+    if (platform() === 'darwin') {
+      execFile('say', ['-r', '180', safeText], { timeout: 10000 }, () => {});
+    } else {
+      execFile('espeak', ['-s', '150', safeText], { timeout: 10000 }, () => {});
+    }
   } catch { /* TTS not available — silent fallback */ }
 }
 

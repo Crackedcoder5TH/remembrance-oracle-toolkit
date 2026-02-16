@@ -67,10 +67,14 @@ function setupVersionManager(oracleInstance) {
   }
 }
 
-function applyCORS(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+function applyCORS(res, req) {
+  const origin = req?.headers?.origin || '';
+  // Only allow localhost origins — the dashboard is a local dev tool.
+  const allowed = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+  res.setHeader('Access-Control-Allow-Origin', allowed ? origin : 'http://localhost');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (allowed) res.setHeader('Vary', 'Origin');
 }
 
 module.exports = { createRateLimiter, setupAuth, setupVersionManager, applyCORS };

@@ -11,25 +11,7 @@ const { readFileSync, writeFileSync, existsSync, copyFileSync } = require('fs');
 const { join, relative, basename } = require('path');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
-
-let _scoringMod;
-function _scoring() {
-  if (!_scoringMod) _scoringMod = require('./scoring');
-  return _scoringMod;
-}
-
-let _multiMod;
-function _multi() {
-  if (!_multiMod) _multiMod = require('./multi');
-  return _multiMod;
-}
-
-// Lazy require for report-github (section 4) — git, getCurrentBranch
-let _githubMod;
-function _github() {
-  if (!_githubMod) _githubMod = require('./report-github');
-  return _githubMod;
-}
+const { scoring: _scoring, multi: _multi, github: _github } = require('./report-lazy');
 
 // =====================================================================
 // Safety — Backup, Rollback, Dry-Run, Approval

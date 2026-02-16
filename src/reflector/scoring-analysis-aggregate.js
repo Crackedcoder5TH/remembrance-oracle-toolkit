@@ -63,13 +63,16 @@ function repoScore(rootDir, config = {}) {
   const opts = { ...DEFAULT_CONFIG, ...config };
   const filePaths = scanDirectory(rootDir, opts);
   const fileScores = [];
+  const codeCache = Object.create(null);
 
   for (const filePath of filePaths) {
     let code;
     try { code = readFileSync(filePath, 'utf-8'); } catch { continue; }
     if (!code.trim()) continue;
+    const relPath = relative(rootDir, filePath);
+    codeCache[relPath] = code;
     const result = deepScore(code, { language: detectLanguage(code), weights: opts.weights });
-    fileScores.push({ path: relative(rootDir, filePath), ...result });
+    fileScores.push({ path: relPath, ...result });
   }
 
   if (fileScores.length === 0) {
@@ -95,7 +98,7 @@ function repoScore(rootDir, config = {}) {
     worstFiles: sorted.slice(0, 5).map(f => ({ path: f.path, score: f.aggregate })),
     bestFiles: sorted.slice(-5).reverse().map(f => ({ path: f.path, score: f.aggregate })),
     securityFindings: fileScores.flatMap(f => f.security.findings.map(finding => ({ ...finding, file: f.path }))),
-    crossFile: crossFileAnalysis(rootDir, fileScores),
+    crossFile: crossFileAnalysis(rootDir, fileScores, codeCache),
     files: fileScores,
   };
 }
@@ -126,15 +129,20 @@ function formatDeepScore(result) {
  * per-file scoring misses: duplicate functions, circular dependencies,
  * and cross-file code similarity.
  */
-function crossFileAnalysis(rootDir, fileScores) {
+function crossFileAnalysis(rootDir, fileScores, codeCache) {
+  const _cache = codeCache || Object.create(null);
+  const _readCode = (filePath) => {
+    if (_cache[filePath]) return _cache[filePath];
+    try { return readFileSync(resolve(rootDir, filePath), 'utf-8'); } catch { return null; }
+  };
   const findings = [];
 
   // 1. Detect duplicate functions across files (same name AND similar body)
   const fnMap = Object.create(null);
   const KEYWORDS = new Set(['for', 'if', 'while', 'switch', 'catch', 'return', 'new', 'try', 'get', 'set', 'constructor', 'toString']);
   for (const file of fileScores) {
-    let code;
-    try { code = readFileSync(resolve(rootDir, file.path), 'utf-8'); } catch { continue; }
+    const code = _readCode(file.path);
+    if (!code) continue;
     const fns = extractFunctionBodies(code);
     for (const fn of fns) {
       if (!fnMap[fn.name]) fnMap[fn.name] = [];
@@ -181,8 +189,8 @@ function crossFileAnalysis(rootDir, fileScores) {
   // 2. Detect circular require chains
   const requireMap = {};
   for (const file of fileScores) {
-    let code;
-    try { code = readFileSync(resolve(rootDir, file.path), 'utf-8'); } catch { continue; }
+    const code = _readCode(file.path);
+    if (!code) continue;
     const requires = [];
     const reqPattern = /require\s*\(\s*['"](\.\.?\/[^'"]+)['"]\s*\)/g;
     let match;
@@ -230,8 +238,8 @@ function crossFileAnalysis(rootDir, fileScores) {
   // 3. Cross-file code similarity (duplicate blocks across files)
   const blockMap = {};
   for (const file of fileScores) {
-    let code;
-    try { code = readFileSync(resolve(rootDir, file.path), 'utf-8'); } catch { continue; }
+    const code = _readCode(file.path);
+    if (!code) continue;
     const lines = code.split('\n');
     for (let i = 0; i <= lines.length - 5; i++) {
       const block = lines.slice(i, i + 5).map(l => l.trim()).filter(l => l && l.length > 10);

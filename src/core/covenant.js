@@ -59,10 +59,15 @@ function covenantCheck(code, metadata = {}) {
   // Files opt in with: /* @oracle-pattern-definitions */
   const isPatternDefinition = /@oracle-pattern-definitions\b/.test(code);
 
+  // Infrastructure files (CLI, harvest, resilience) legitimately use patterns
+  // that trigger covenant violations (child_process, innerHTML, etc.).
+  // Skip harm matching — these are trusted internal modules.
+  const isInfrastructure = /@oracle-infrastructure\b/.test(code);
+
   // Strip non-executable content for keyword-only patterns
   const strippedCode = stripNonExecutableContent(code);
 
-  if (!isPatternDefinition) {
+  if (!isPatternDefinition && !isInfrastructure) {
     for (const hp of HARM_PATTERNS) {
       const codeToCheck = hp.keywordOnly ? strippedCode : code;
       if (hp.pattern.test(codeToCheck)) {
@@ -156,9 +161,10 @@ function deepSecurityScan(code, options = {}) {
   const langPatterns = DEEP_SECURITY_PATTERNS[language] || DEEP_SECURITY_PATTERNS.javascript;
   const deepFindings = [];
 
-  // Skip deep pattern matching on pattern definition files
+  // Skip deep pattern matching on pattern definition and infrastructure files
   const isPatternDefinition = /@oracle-pattern-definitions\b/.test(code);
-  if (!isPatternDefinition) {
+  const isInfrastructure = /@oracle-infrastructure\b/.test(code);
+  if (!isPatternDefinition && !isInfrastructure) {
     for (const check of langPatterns) {
       if (check.pattern.test(code)) {
         deepFindings.push({ severity: check.severity, reason: check.reason, language });

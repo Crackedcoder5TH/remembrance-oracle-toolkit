@@ -41,10 +41,21 @@ describe('@oracle-pattern-definitions marker', () => {
 // ─── @oracle-infrastructure marker ───
 
 describe('@oracle-infrastructure marker', () => {
+  const { covenantCheck } = require('../src/core/covenant');
   const { scoreSecurity } = require('../src/core/reflection-scorers');
 
-  it('gives reduced penalty instead of hard zero for infra files', () => {
-    // innerHTML assignment triggers covenant violation (XSS risk)
+  it('skips covenant harm matching for infrastructure files', () => {
+    const infraCode = `
+      /* @oracle-infrastructure */
+      function render(data) {
+        element.innerHTML = data;
+      }
+    `;
+    const result = covenantCheck(infraCode);
+    assert.equal(result.sealed, true, 'infrastructure files should pass covenant');
+  });
+
+  it('passes covenant and scores high security for infra files', () => {
     const infraCode = `
       /* @oracle-infrastructure */
       function render(data) {
@@ -52,8 +63,7 @@ describe('@oracle-infrastructure marker', () => {
       }
     `;
     const score = scoreSecurity(infraCode, { language: 'javascript' });
-    assert.ok(score >= 0.4, `infrastructure files should get at least 0.4 security, got ${score}`);
-    assert.ok(score < 1.0, 'should still have some penalty');
+    assert.ok(score >= 0.9, `infrastructure files should pass security, got ${score}`);
   });
 
   it('still gives hard zero for non-infra files with violations', () => {

@@ -11,12 +11,7 @@ const { PatternLibrary } = require('../patterns/library');
 const { detectLanguage } = require('../core/coherency');
 
 // ─── Lazy Require Helper (avoid circular deps with scoring) ───
-
-let _scoringMod;
-function _scoring() {
-  if (!_scoringMod) _scoringMod = require('./scoring');
-  return _scoringMod;
-}
+const { scoring: _scoring } = require('./report-lazy');
 
 // =====================================================================
 // Pattern Hook — Pattern-Guided Healing

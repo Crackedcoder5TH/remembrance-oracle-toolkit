@@ -17,16 +17,35 @@ function sendJSON(res, data, statusCode = 200) {
 function readBody(req, callback) {
   let body = '';
   let aborted = false;
+
+  // 30-second timeout to prevent slow-loris attacks
+  const timeout = setTimeout(() => {
+    if (!aborted) {
+      aborted = true;
+      req.destroy();
+      callback({ _error: 'Request body read timed out', _status: 408 });
+    }
+  }, 30000);
+
   req.on('data', chunk => {
     body += chunk;
     if (body.length > MAX_BODY_SIZE) {
       aborted = true;
+      clearTimeout(timeout);
       req.destroy();
       callback({ _error: 'Request body too large', _status: 413 });
     }
   });
   req.on('end', () => {
+    clearTimeout(timeout);
     if (!aborted) callback(safeJsonParse(body, {}));
+  });
+  req.on('error', () => {
+    clearTimeout(timeout);
+    if (!aborted) {
+      aborted = true;
+      callback({ _error: 'Request body read failed', _status: 400 });
+    }
   });
 }
 

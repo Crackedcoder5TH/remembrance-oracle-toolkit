@@ -12,26 +12,7 @@ const { join, relative } = require('path');
 const { execSync } = require('child_process');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
-
-let _scoringMod;
-function _scoring() {
-  if (!_scoringMod) _scoringMod = require('./scoring');
-  return _scoringMod;
-}
-
-// Lazy require for report-github (section 4) — git, getCurrentBranch
-let _githubMod;
-function _github() {
-  if (!_githubMod) _githubMod = require('./report-github');
-  return _githubMod;
-}
-
-// Lazy require for report-history (section 1) — appendLog
-let _historyMod;
-function _history() {
-  if (!_historyMod) _historyMod = require('./report-history');
-  return _historyMod;
-}
+const { scoring: _scoring, github: _github, history: _history } = require('./report-lazy');
 
 // =====================================================================
 // Auto-Commit Safety

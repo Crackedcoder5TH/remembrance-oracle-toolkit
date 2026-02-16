@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { c, colorScore, colorStatus } = require('../colors');
-const { parseDryRun, parseMinCoherency } = require('../validate-args');
+const { parseDryRun, parseTags, parseMinCoherency } = require('../validate-args');
 
 function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 

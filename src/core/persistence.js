@@ -816,7 +816,7 @@ function debugGlobalStats() {
       const { DebugOracle } = require('../debug/debug-oracle');
       stats.personal = new DebugOracle(personalStore).stats();
     }
-  } catch {}
+  } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
 
   try {
     const communityStore = openCommunityStore();
@@ -824,7 +824,7 @@ function debugGlobalStats() {
       const { DebugOracle } = require('../debug/debug-oracle');
       stats.community = new DebugOracle(communityStore).stats();
     }
-  } catch {}
+  } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
 
   const totalPatterns = (stats.personal?.totalPatterns || 0) + (stats.community?.totalPatterns || 0);
   const totalApplied = (stats.personal?.totalApplied || 0) + (stats.community?.totalApplied || 0);
@@ -873,7 +873,7 @@ function _ensureDebugSchema(store) {
       CREATE INDEX IF NOT EXISTS idx_debug_category ON debug_patterns(error_category);
       CREATE INDEX IF NOT EXISTS idx_debug_confidence ON debug_patterns(confidence);
     `);
-  } catch {}
+  } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
 }
 
 function _transferDebugPattern(dp, targetStore) {

@@ -76,7 +76,7 @@ class IDEBridge {
           });
         }
       }
-    } catch {}
+    } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
 
     // 2. Coherency check
     try {
@@ -106,7 +106,7 @@ class IDEBridge {
           });
         }
       }
-    } catch {}
+    } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
 
     // 3. Pattern match suggestions — does oracle have a better version?
     try {
@@ -126,7 +126,7 @@ class IDEBridge {
           });
         }
       }
-    } catch {}
+    } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
 
     return diagnostics.slice(0, this.maxDiagnostics);
   }
@@ -213,7 +213,7 @@ class IDEBridge {
             matchType: fix.matchType,
           });
         }
-      } catch {}
+      } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
     }
 
     // 2. Pattern upgrades: suggest proven replacements
@@ -232,7 +232,7 @@ class IDEBridge {
             });
           }
         }
-      } catch {}
+      } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
     }
 
     // 3. Refinement: offer to heal low-coherency code
@@ -248,7 +248,7 @@ class IDEBridge {
             currentCoherency: score.total,
           });
         }
-      } catch {}
+      } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
     }
 
     // 4. Covenant fix: if code violates covenant, suggest removal of violations
@@ -266,7 +266,7 @@ class IDEBridge {
             });
           }
         }
-      } catch {}
+      } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
     }
 
     return actions;
@@ -391,7 +391,7 @@ class IDEBridge {
     try {
       const { computeCoherencyScore } = require('../core/coherency');
       coherency = computeCoherencyScore(code, { language });
-    } catch {}
+    } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
 
     // Function count
     const functions = this._extractFunctionNames(code);

@@ -44,7 +44,7 @@
     "tools/*"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js",
+    "test": "node --test --test-timeout=300000 tests/*.test.js",
     "start": "node src/deploy.js",
     "setup": "node src/cli.js seed",
     "dashboard": "node src/cli.js dashboard",

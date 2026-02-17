@@ -16,6 +16,19 @@ const crypto = require('crypto');
 
 // ─── HTTP Helper ───
 
+function _parseResponse(data) {
+  try {
+    return JSON.parse(data);
+  } catch {
+    const parsed = {};
+    data.split('&').forEach(pair => {
+      const [k, v] = pair.split('=');
+      if (k) parsed[decodeURIComponent(k)] = decodeURIComponent(v || '');
+    });
+    return parsed;
+  }
+}
+
 function githubRequest(path, options = {}) {
   return new Promise((resolve, reject) => {
     const method = options.method || 'GET';
@@ -35,17 +48,7 @@ function githubRequest(path, options = {}) {
       let data = '';
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => {
-        try {
-          resolve({ status: res.statusCode, data: JSON.parse(data) });
-        } catch {
-          // Parse URL-encoded response (device flow returns this)
-          const parsed = {};
-          data.split('&').forEach(pair => {
-            const [k, v] = pair.split('=');
-            if (k) parsed[decodeURIComponent(k)] = decodeURIComponent(v || '');
-          });
-          resolve({ status: res.statusCode, data: parsed });
-        }
+        resolve({ status: res.statusCode, data: _parseResponse(data) });
       });
     });
 
@@ -57,6 +60,29 @@ function githubRequest(path, options = {}) {
     }
     req.end();
   });
+}
+
+// ─── DB Helpers ───
+
+function _saveToDb(store, identity, now) {
+  try {
+    store.db.prepare(`
+      INSERT INTO github_identities (voter_id, github_username, github_id, avatar_url, verified_at, last_seen, contributions)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+      ON CONFLICT(voter_id) DO UPDATE SET last_seen = ?, avatar_url = ?
+    `).run(
+      identity.voterId, identity.githubUsername, identity.githubId,
+      identity.avatarUrl, now, now, now, identity.avatarUrl
+    );
+  } catch (e) { /* ignore duplicate */ if (process.env.ORACLE_DEBUG) console.warn('identity save failed (duplicate):', e.message); }
+}
+
+function _recordContributionDb(store, voterId) {
+  try {
+    store.db.prepare(
+      'UPDATE github_identities SET contributions = contributions + 1, last_seen = ? WHERE voter_id = ?'
+    ).run(new Date().toISOString(), voterId);
+  } catch (e) { /* ignore */ if (process.env.ORACLE_DEBUG) console.warn('contribution recording failed:', e.message); }
 }
 
 // ─── GitHub Identity Verifier ───
@@ -260,11 +286,7 @@ class GitHubIdentity {
    */
   recordContribution(voterId) {
     if (this.store && this.store.db) {
-      try {
-        this.store.db.prepare(
-          'UPDATE github_identities SET contributions = contributions + 1, last_seen = ? WHERE voter_id = ?'
-        ).run(new Date().toISOString(), voterId);
-      } catch (e) { /* ignore */ if (process.env.ORACLE_DEBUG) console.warn('contribution recording failed:', e.message); }
+      _recordContributionDb(this.store, voterId);
     }
     const identity = this._identities.get(voterId);
     if (identity) {
@@ -292,16 +314,7 @@ class GitHubIdentity {
     const now = new Date().toISOString();
 
     if (this.store && this.store.db) {
-      try {
-        this.store.db.prepare(`
-          INSERT INTO github_identities (voter_id, github_username, github_id, avatar_url, verified_at, last_seen, contributions)
-          VALUES (?, ?, ?, ?, ?, ?, 0)
-          ON CONFLICT(voter_id) DO UPDATE SET last_seen = ?, avatar_url = ?
-        `).run(
-          identity.voterId, identity.githubUsername, identity.githubId,
-          identity.avatarUrl, now, now, now, identity.avatarUrl
-        );
-      } catch (e) { /* ignore duplicate */ if (process.env.ORACLE_DEBUG) console.warn('identity save failed (duplicate):', e.message); }
+      _saveToDb(this.store, identity, now);
     }
 
     this._identities.set(identity.voterId, {

@@ -2,6 +2,83 @@
  * Oracle Patterns — Candidates, tagging, cleaning, promotion.
  */
 
+function _findDuplicates(all) {
+  const toRemove = new Map();
+  const byCode = new Map();
+  for (const p of all) {
+    const key = (p.code || '').trim();
+    if (!key) continue;
+    if (!byCode.has(key)) byCode.set(key, []);
+    byCode.get(key).push(p);
+  }
+  for (const [, group] of byCode) {
+    if (group.length <= 1) continue;
+    group.sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0));
+    for (let i = 1; i < group.length; i++) toRemove.set(group[i].id, 'duplicate');
+  }
+  return toRemove;
+}
+
+function _findStubs(all, toRemove) {
+  for (const p of all) {
+    if (toRemove.has(p.id)) continue;
+    const code = (p.code || '').trim();
+    if (!code) continue;
+    if (/^(?:function|const)\s+\w+[^{]*\{\s*(?:\/[/*][^}]*)?\}$/.test(code)) {
+      toRemove.set(p.id, 'stub');
+      continue;
+    }
+    if (code.length < 50) {
+      const isOneLiner = /^(?:function|const)\s+\w+[^{]*\{[^{}]*\}$/.test(code);
+      const isTestHelper = /^(?:function|const)\s+(?:def-?[Tt]est|hover-?[Tt]est|safeCode|broken|only|hidden|dry|dup|evTest|mcpTest|jsFunc|realFunction|testFunc)\b/.test(code);
+      if (isOneLiner || isTestHelper) toRemove.set(p.id, 'stub');
+    }
+  }
+}
+
+function _evaluateCandidate(candidate, provenPatterns, options) {
+  const { minCoherency = 0.9, minConfidence = 0.8, manualOverride = false, dryRun = false } = options;
+  const { covenantCheck } = require('../core/covenant');
+  const { sandboxExecute } = require('../core/sandbox');
+
+  const coherency = candidate.coherencyScore?.total ?? 0;
+  if (coherency < minCoherency) {
+    return { status: 'skipped', reason: `coherency ${coherency.toFixed(3)} < ${minCoherency}` };
+  }
+
+  if (!manualOverride && candidate.parentPattern) {
+    const parent = provenPatterns.find(p => p.id === candidate.parentPattern || p.name === candidate.parentPattern);
+    if (parent) {
+      const parentReliability = parent.usageCount > 0 ? parent.successCount / parent.usageCount : 0.5;
+      if (parentReliability < minConfidence) {
+        return { status: 'skipped', reason: `parent reliability ${parentReliability.toFixed(3)} < ${minConfidence}` };
+      }
+    }
+  }
+
+  const covenant = covenantCheck(candidate.code);
+  if (!covenant.passed) {
+    return { status: 'vetoed', reason: `covenant: ${covenant.violations?.[0]?.principle || 'failed'}` };
+  }
+
+  if (candidate.testCode) {
+    try {
+      const testResult = sandboxExecute(candidate.code, candidate.testCode, { language: candidate.language });
+      if (!testResult.passed) {
+        return { status: 'vetoed', reason: 'test execution failed' };
+      }
+    } catch (_) {
+      return { status: 'vetoed', reason: 'sandbox error' };
+    }
+  }
+
+  if (dryRun) {
+    return { status: 'would-promote', coherency: coherency.toFixed(3) };
+  }
+
+  return { status: 'promote', coherency };
+}
+
 module.exports = {
   retag(id, options = {}) {
     const { retagPattern, tagDiff } = require('../core/auto-tagger');
@@ -16,7 +93,12 @@ module.exports = {
       this.patterns.update(id, { tags: newTags });
     }
 
-    return { success: true, id: pattern.id, name: pattern.name, oldTags, newTags, added: diff.added, updated: !options.dryRun && diff.added.length > 0 };
+    const result = {
+      success: true, id: pattern.id, name: pattern.name,
+      oldTags, newTags, added: diff.added,
+      updated: !options.dryRun && diff.added.length > 0
+    };
+    return result;
   },
 
   retagAll(options = {}) {
@@ -38,44 +120,20 @@ module.exports = {
       }
     }
 
-    return { success: true, total: all.length, enriched, totalTagsAdded, dryRun, patterns: results.slice(0, 50) };
+    const result = {
+      success: true, total: all.length, enriched,
+      totalTagsAdded, dryRun, patterns: results.slice(0, 50)
+    };
+    return result;
   },
 
   deepClean(options = {}) {
     const { minCodeLength = 35, minNameLength = 3, removeDuplicates = true, removeStubs = true, dryRun = false } = options;
     const all = this.patterns.getAll();
-    const toRemove = new Map();
-
-    if (removeDuplicates) {
-      const byCode = new Map();
-      for (const p of all) {
-        const key = (p.code || '').trim();
-        if (!key) continue;
-        if (!byCode.has(key)) byCode.set(key, []);
-        byCode.get(key).push(p);
-      }
-      for (const [, group] of byCode) {
-        if (group.length <= 1) continue;
-        group.sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0));
-        for (let i = 1; i < group.length; i++) toRemove.set(group[i].id, 'duplicate');
-      }
-    }
+    const toRemove = removeDuplicates ? _findDuplicates(all) : new Map();
 
     if (removeStubs) {
-      for (const p of all) {
-        if (toRemove.has(p.id)) continue;
-        const code = (p.code || '').trim();
-        if (!code) continue;
-        if (/^(?:function|const)\s+\w+[^{]*\{\s*(?:\/[/*][^}]*)?\}$/.test(code)) {
-          toRemove.set(p.id, 'stub');
-          continue;
-        }
-        if (code.length < 50) {
-          const isOneLiner = /^(?:function|const)\s+\w+[^{]*\{[^{}]*\}$/.test(code);
-          const isTestHelper = /^(?:function|const)\s+(?:def-?[Tt]est|hover-?[Tt]est|safeCode|broken|only|hidden|dry|dup|evTest|mcpTest|jsFunc|realFunction|testFunc)\b/.test(code);
-          if (isOneLiner || isTestHelper) toRemove.set(p.id, 'stub');
-        }
-      }
+      _findStubs(all, toRemove);
     }
 
     for (const p of all) {
@@ -118,49 +176,31 @@ module.exports = {
   autoPromote() { return this.recycler.autoPromote(); },
 
   smartAutoPromote(options = {}) {
-    const { minCoherency = 0.9, minConfidence = 0.8, manualOverride = false, dryRun = false } = options;
-    const { covenantCheck } = require('../core/covenant');
-    const { sandboxExecute } = require('../core/sandbox');
-
+    const { dryRun = false } = options;
     const candidates = this.patterns.getCandidates();
     const provenPatterns = this.patterns.getAll();
     const report = { promoted: 0, skipped: 0, vetoed: 0, total: candidates.length, details: [] };
 
     for (const candidate of candidates) {
-      const coherency = candidate.coherencyScore?.total ?? 0;
-      if (coherency < minCoherency) {
+      const evaluation = _evaluateCandidate(candidate, provenPatterns, options);
+
+      if (evaluation.status === 'skipped') {
         report.skipped++;
-        report.details.push({ name: candidate.name, status: 'skipped', reason: `coherency ${coherency.toFixed(3)} < ${minCoherency}` });
+        report.details.push({ name: candidate.name, status: 'skipped', reason: evaluation.reason });
         continue;
       }
 
-      if (!manualOverride && candidate.parentPattern) {
-        const parent = provenPatterns.find(p => p.id === candidate.parentPattern || p.name === candidate.parentPattern);
-        if (parent) {
-          const parentReliability = parent.usageCount > 0 ? parent.successCount / parent.usageCount : 0.5;
-          if (parentReliability < minConfidence) {
-            report.skipped++;
-            report.details.push({ name: candidate.name, status: 'skipped', reason: `parent reliability ${parentReliability.toFixed(3)} < ${minConfidence}` });
-            continue;
-          }
-        }
-      }
-
-      const covenant = covenantCheck(candidate.code);
-      if (!covenant.passed) {
+      if (evaluation.status === 'vetoed') {
         report.vetoed++;
-        report.details.push({ name: candidate.name, status: 'vetoed', reason: `covenant: ${covenant.violations?.[0]?.principle || 'failed'}` });
+        report.details.push({ name: candidate.name, status: 'vetoed', reason: evaluation.reason });
         continue;
       }
 
-      if (candidate.testCode) {
-        try {
-          const testResult = sandboxExecute(candidate.code, candidate.testCode, { language: candidate.language });
-          if (!testResult.passed) { report.vetoed++; report.details.push({ name: candidate.name, status: 'vetoed', reason: 'test execution failed' }); continue; }
-        } catch (_) { report.vetoed++; report.details.push({ name: candidate.name, status: 'vetoed', reason: 'sandbox error' }); continue; }
+      if (evaluation.status === 'would-promote') {
+        report.promoted++;
+        report.details.push({ name: candidate.name, status: 'would-promote', coherency: evaluation.coherency });
+        continue;
       }
-
-      if (dryRun) { report.promoted++; report.details.push({ name: candidate.name, status: 'would-promote', coherency: coherency.toFixed(3) }); continue; }
 
       const result = this.registerPattern({
         name: candidate.name, code: candidate.code, language: candidate.language,
@@ -171,7 +211,7 @@ module.exports = {
       if (result.registered) {
         this.patterns.promoteCandidate(candidate.id);
         report.promoted++;
-        report.details.push({ name: candidate.name, status: 'promoted', coherency: coherency.toFixed(3) });
+        report.details.push({ name: candidate.name, status: 'promoted', coherency: evaluation.coherency.toFixed(3) });
       } else {
         report.vetoed++;
         report.details.push({ name: candidate.name, status: 'vetoed', reason: result.reason || 'registration failed' });

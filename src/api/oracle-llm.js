@@ -53,6 +53,162 @@ function _tryPromoteOrStore(oracle, candidate, parentId, method, report, autoPro
   return false;
 }
 
+// ─── reflect() helpers ───
+
+function _collectPatternStats(oracle) {
+  try {
+    const allPatterns = oracle.patterns.getAll();
+    const byLang = {};
+    const byType = {};
+    for (const p of allPatterns) {
+      byLang[p.language] = (byLang[p.language] || 0) + 1;
+      byType[p.patternType] = (byType[p.patternType] || 0) + 1;
+    }
+    const coherencies = allPatterns.map(p => p.coherencyScore?.total ?? 0);
+    const avg = coherencies.length > 0 ? coherencies.reduce((s, c) => s + c, 0) / coherencies.length : 0;
+    const min = coherencies.length > 0 ? Math.min(...coherencies) : 0;
+
+    return {
+      total: allPatterns.length,
+      byLanguage: byLang,
+      byType,
+      avgCoherency: Math.round(avg * 1000) / 1000,
+      minCoherency: Math.round(min * 1000) / 1000,
+      belowThreshold: coherencies.filter(c => c < oracle.threshold).length,
+    };
+  } catch { return { error: 'unavailable' }; }
+}
+
+function _collectHealingStatus(oracle) {
+  try {
+    return {
+      captured: oracle.recycler.stats.captured,
+      healedViaReflection: oracle.recycler.stats.healedViaReflection,
+      healedViaVariant: oracle.recycler.stats.healedViaVariant,
+      stillFailed: oracle.recycler.stats.stillFailed,
+      totalAttempts: oracle.recycler.stats.totalAttempts,
+      pendingCount: oracle.recycler.getCaptured({ status: 'pending' }).length,
+      cascadeBoost: oracle.recycler._cascadeBoost,
+      xiGlobal: oracle.recycler._xiGlobal,
+    };
+  } catch { return { error: 'unavailable' }; }
+}
+
+function _identifyWeaknesses(oracle, report) {
+  const weaknesses = [];
+  const recommendations = [];
+
+  if (report.patterns && !report.patterns.error) {
+    if (report.patterns.total < 20) {
+      weaknesses.push({ area: 'patterns', issue: 'Pattern library is small', severity: 'medium' });
+    }
+    if (report.patterns.belowThreshold > 0) {
+      weaknesses.push({ area: 'coherency', issue: `${report.patterns.belowThreshold} patterns below threshold`, severity: 'high' });
+    }
+    const langs = Object.keys(report.patterns.byLanguage);
+    if (langs.length < 3) {
+      weaknesses.push({ area: 'diversity', issue: 'Limited language diversity', severity: 'low' });
+    }
+  }
+
+  if (report.healing && !report.healing.error) {
+    if (report.healing.captured === 0 && report.healing.totalAttempts === 0) {
+      weaknesses.push({ area: 'healing', issue: 'Healing loop has never been exercised', severity: 'medium' });
+    }
+    if (report.healing.pendingCount > 10) {
+      weaknesses.push({ area: 'healing', issue: `${report.healing.pendingCount} patterns awaiting healing`, severity: 'high' });
+    }
+  }
+
+  for (const w of weaknesses) {
+    if (w.area === 'healing' && w.issue.includes('never been exercised')) {
+      recommendations.push('Run `oracle.maintain()` or `node src/cli.js maintain` to trigger healing cycle');
+    }
+    if (w.area === 'coherency') {
+      recommendations.push('Run `node src/cli.js maintain` to heal low-coherency patterns');
+    }
+    if (w.area === 'diversity') {
+      recommendations.push('Submit patterns in more languages (Python, Rust, Go, TypeScript)');
+    }
+  }
+
+  return { weaknesses, recommendations };
+}
+
+// ─── llmGenerate() helper ───
+
+function _generateVariant(oracle, claude, pattern, lang, report, autoPromote) {
+  const candidate = claude.transpile(pattern, lang);
+  if (!candidate || !candidate.code) return;
+
+  const testResult = claude.generateTests({ ...candidate, language: lang });
+  if (testResult && testResult.testCode) candidate.testCode = testResult.testCode;
+
+  _tryPromoteOrStore(oracle, { ...candidate, language: lang }, pattern.id, 'claude-variant', report, autoPromote);
+}
+
+// ─── generateContext() format helpers ───
+
+function _formatContextJson(stats, topPatterns, instructions) {
+  return {
+    prompt: JSON.stringify({ oracle: { stats, patterns: topPatterns, instructions } }, null, 2),
+    format: 'json',
+    stats,
+  };
+}
+
+function _formatContextText(patterns, byLanguage, byType, topPatterns, instructions) {
+  const lines = [
+    `REMEMBRANCE ORACLE — ${patterns.length} verified patterns`,
+    '',
+    `Languages: ${Object.entries(byLanguage).map(([k, v]) => `${k}(${v})`).join(', ')}`,
+    `Types: ${Object.entries(byType).map(([k, v]) => `${k}(${v})`).join(', ')}`,
+    '',
+    'TOP PATTERNS:',
+    ...topPatterns.map(p => `  ${p.name} [${p.language}] coherency:${p.coherency} — ${p.description || p.tags.join(', ')}`),
+    '',
+    ...instructions.split('\n'),
+  ];
+  const stats = {
+    totalPatterns: patterns.length,
+    byLanguage,
+    byType,
+    storeEntries: 0,
+  };
+  return { prompt: lines.join('\n'), format: 'text', stats };
+}
+
+function _formatContextMarkdown(patterns, byLanguage, byType, topPatterns, instructions) {
+  const md = [
+    `# Remembrance Oracle — Verified Code Memory`,
+    '',
+    `This project has **${patterns.length} verified, proven code patterns** available.`,
+    '',
+    `## Available Languages`,
+    ...Object.entries(byLanguage).map(([k, v]) => `- **${k}**: ${v} patterns`),
+    '',
+    `## Pattern Types`,
+    ...Object.entries(byType).map(([k, v]) => `- **${k}**: ${v} patterns`),
+    '',
+    `## Top Patterns (by coherency)`,
+    '',
+    '| Name | Language | Coherency | Tags |',
+    '|------|----------|-----------|------|',
+    ...topPatterns.slice(0, 30).map(p => `| ${p.name} | ${p.language} | ${p.coherency} | ${p.tags.slice(0, 3).join(', ')} |`),
+    '',
+    `## How to Use`,
+    '',
+    instructions,
+  ];
+  const stats = {
+    totalPatterns: patterns.length,
+    byLanguage,
+    byType,
+    storeEntries: 0,
+  };
+  return { prompt: md.join('\n'), format: 'markdown', stats };
+}
+
 // ─── Evolution delegation factory (eliminates 8× trivial wrappers) ───
 
 function _delegateEvolution(modulePath, fnName) {
@@ -249,14 +405,7 @@ module.exports = {
       if (methods.includes('variant')) {
         for (const lang of languages) {
           if (lang === pattern.language) continue;
-          const candidate = claude.transpile(pattern, lang);
-          if (!candidate || !candidate.code) continue;
-
-          const testResult = claude.generateTests({ ...candidate, language: lang });
-          if (testResult && testResult.testCode) candidate.testCode = testResult.testCode;
-
-          const detail = { language: lang };
-          _tryPromoteOrStore(this, { ...candidate, language: lang }, pattern.id, 'claude-variant', report, autoPromote);
+          _generateVariant(this, claude, pattern, lang, report, autoPromote);
         }
       }
 
@@ -304,60 +453,24 @@ module.exports = {
       return entry;
     });
 
-    const stats = {
-      totalPatterns: patterns.length,
-      byLanguage,
-      byType,
-      storeEntries: storeStats.total || storeStats.totalEntries || 0,
-    };
+    const storeEntries = storeStats.total || storeStats.totalEntries || 0;
+    const instructions = this._contextInstructions();
 
     if (format === 'json') {
-      return {
-        prompt: JSON.stringify({ oracle: { stats, patterns: topPatterns, instructions: this._contextInstructions() } }, null, 2),
-        format: 'json',
-        stats,
-      };
+      const stats = { totalPatterns: patterns.length, byLanguage, byType, storeEntries };
+      return _formatContextJson(stats, topPatterns, instructions);
     }
 
     if (format === 'text') {
-      const lines = [
-        `REMEMBRANCE ORACLE — ${patterns.length} verified patterns`,
-        '',
-        `Languages: ${Object.entries(byLanguage).map(([k, v]) => `${k}(${v})`).join(', ')}`,
-        `Types: ${Object.entries(byType).map(([k, v]) => `${k}(${v})`).join(', ')}`,
-        '',
-        'TOP PATTERNS:',
-        ...topPatterns.map(p => `  ${p.name} [${p.language}] coherency:${p.coherency} — ${p.description || p.tags.join(', ')}`),
-        '',
-        ...this._contextInstructions().split('\n'),
-      ];
-      return { prompt: lines.join('\n'), format: 'text', stats };
+      const result = _formatContextText(patterns, byLanguage, byType, topPatterns, instructions);
+      result.stats.storeEntries = storeEntries;
+      return result;
     }
 
     // Default: markdown
-    const md = [
-      `# Remembrance Oracle — Verified Code Memory`,
-      '',
-      `This project has **${patterns.length} verified, proven code patterns** available.`,
-      '',
-      `## Available Languages`,
-      ...Object.entries(byLanguage).map(([k, v]) => `- **${k}**: ${v} patterns`),
-      '',
-      `## Pattern Types`,
-      ...Object.entries(byType).map(([k, v]) => `- **${k}**: ${v} patterns`),
-      '',
-      `## Top Patterns (by coherency)`,
-      '',
-      '| Name | Language | Coherency | Tags |',
-      '|------|----------|-----------|------|',
-      ...topPatterns.slice(0, 30).map(p => `| ${p.name} | ${p.language} | ${p.coherency} | ${p.tags.slice(0, 3).join(', ')} |`),
-      '',
-      `## How to Use`,
-      '',
-      this._contextInstructions(),
-    ];
-
-    return { prompt: md.join('\n'), format: 'markdown', stats };
+    const result = _formatContextMarkdown(patterns, byLanguage, byType, topPatterns, instructions);
+    result.stats.storeEntries = storeEntries;
+    return result;
   },
 
   exportContext(options = {}) {
@@ -462,9 +575,6 @@ module.exports = {
    * @returns {object} Self-assessment report
    */
   reflect(options = {}) {
-    const fs = require('fs');
-    const path = require('path');
-
     const report = {
       timestamp: new Date().toISOString(),
       store: null,
@@ -482,41 +592,10 @@ module.exports = {
     } catch { report.store = { error: 'unavailable' }; }
 
     // 2. Pattern library
-    try {
-      const allPatterns = this.patterns.getAll();
-      const byLang = {};
-      const byType = {};
-      for (const p of allPatterns) {
-        byLang[p.language] = (byLang[p.language] || 0) + 1;
-        byType[p.patternType] = (byType[p.patternType] || 0) + 1;
-      }
-      const coherencies = allPatterns.map(p => p.coherencyScore?.total ?? 0);
-      const avg = coherencies.length > 0 ? coherencies.reduce((s, c) => s + c, 0) / coherencies.length : 0;
-      const min = coherencies.length > 0 ? Math.min(...coherencies) : 0;
-
-      report.patterns = {
-        total: allPatterns.length,
-        byLanguage: byLang,
-        byType,
-        avgCoherency: Math.round(avg * 1000) / 1000,
-        minCoherency: Math.round(min * 1000) / 1000,
-        belowThreshold: coherencies.filter(c => c < this.threshold).length,
-      };
-    } catch { report.patterns = { error: 'unavailable' }; }
+    report.patterns = _collectPatternStats(this);
 
     // 3. Healing loop status
-    try {
-      report.healing = {
-        captured: this.recycler.stats.captured,
-        healedViaReflection: this.recycler.stats.healedViaReflection,
-        healedViaVariant: this.recycler.stats.healedViaVariant,
-        stillFailed: this.recycler.stats.stillFailed,
-        totalAttempts: this.recycler.stats.totalAttempts,
-        pendingCount: this.recycler.getCaptured({ status: 'pending' }).length,
-        cascadeBoost: this.recycler._cascadeBoost,
-        xiGlobal: this.recycler._xiGlobal,
-      };
-    } catch { report.healing = { error: 'unavailable' }; }
+    report.healing = _collectHealingStatus(this);
 
     // 4. Global coherency
     try {
@@ -543,41 +622,10 @@ module.exports = {
       };
     } catch { report.candidates = { error: 'unavailable' }; }
 
-    // 7. Identify weaknesses
-    if (report.patterns && !report.patterns.error) {
-      if (report.patterns.total < 20) {
-        report.weaknesses.push({ area: 'patterns', issue: 'Pattern library is small', severity: 'medium' });
-      }
-      if (report.patterns.belowThreshold > 0) {
-        report.weaknesses.push({ area: 'coherency', issue: `${report.patterns.belowThreshold} patterns below threshold`, severity: 'high' });
-      }
-      const langs = Object.keys(report.patterns.byLanguage);
-      if (langs.length < 3) {
-        report.weaknesses.push({ area: 'diversity', issue: 'Limited language diversity', severity: 'low' });
-      }
-    }
-
-    if (report.healing && !report.healing.error) {
-      if (report.healing.captured === 0 && report.healing.totalAttempts === 0) {
-        report.weaknesses.push({ area: 'healing', issue: 'Healing loop has never been exercised', severity: 'medium' });
-      }
-      if (report.healing.pendingCount > 10) {
-        report.weaknesses.push({ area: 'healing', issue: `${report.healing.pendingCount} patterns awaiting healing`, severity: 'high' });
-      }
-    }
-
-    // 8. Recommendations
-    for (const w of report.weaknesses) {
-      if (w.area === 'healing' && w.issue.includes('never been exercised')) {
-        report.recommendations.push('Run `oracle.maintain()` or `node src/cli.js maintain` to trigger healing cycle');
-      }
-      if (w.area === 'coherency') {
-        report.recommendations.push('Run `node src/cli.js maintain` to heal low-coherency patterns');
-      }
-      if (w.area === 'diversity') {
-        report.recommendations.push('Submit patterns in more languages (Python, Rust, Go, TypeScript)');
-      }
-    }
+    // 7+8. Weaknesses and recommendations
+    const assessment = _identifyWeaknesses(this, report);
+    report.weaknesses = assessment.weaknesses;
+    report.recommendations = assessment.recommendations;
 
     return report;
   },

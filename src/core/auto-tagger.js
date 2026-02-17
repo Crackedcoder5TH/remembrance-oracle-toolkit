@@ -379,34 +379,35 @@ function autoTag(code, options = {}) {
   const codeTags = extractCodeTags(code);
   for (const t of codeTags) tagSet.add(t);
 
-  // 2. Description keywords (only keep the most relevant)
+  // 2. Description keywords (limit to top 3 to prevent tag explosion)
   const descKeywords = extractDescriptionKeywords(description);
-  for (const k of descKeywords.slice(0, 8)) tagSet.add(k);
+  for (const k of descKeywords.slice(0, 3)) tagSet.add(k);
 
-  // 3. Concept cluster tags
+  // 3. Concept cluster tags (limit to top 3)
   const conceptTags = extractConceptTags(code, description);
-  for (const t of conceptTags) tagSet.add(t);
+  for (const t of conceptTags.slice(0, 3)) tagSet.add(t);
 
   // 4. Language tag
   const lang = detectLanguageTag(code, language);
   if (lang) tagSet.add(lang);
 
-  // 5. Name-derived tags (function/class names)
+  // 5. Name-derived tags (limit to top 2 to avoid unique noise)
   const nameTags = extractNameTags(code);
-  for (const t of nameTags) tagSet.add(t);
+  for (const t of nameTags.slice(0, 2)) tagSet.add(t);
 
-  // 6. Pattern name as tag
-  if (name && name.length > 2) {
+  // 6. Pattern name as tag (only if short and meaningful)
+  if (name && name.length > 2 && name.length <= 30) {
     tagSet.add(camelToKebab(name));
   }
 
   // Remove empty/single-char tags and meta-noise
-  const NOISE = new Set(['auto-generated', 'variant', 'auto-refined', 'pattern']);
+  const NOISE = new Set(['auto-generated', 'variant', 'auto-refined', 'pattern', 'needs-test', 'needs-review']);
   const result = [...tagSet]
     .filter(t => t.length > 1 && !NOISE.has(t))
     .sort();
 
-  return result;
+  // Cap total tags per pattern at 12 to prevent bloat
+  return result.slice(0, 12);
 }
 
 /**

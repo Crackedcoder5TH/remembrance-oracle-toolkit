@@ -625,29 +625,44 @@ describe('Oracle integration', () => {
     const { RemembranceOracle } = require('../src/api/oracle');
     const oracle = new RemembranceOracle({ autoSeed: false });
 
-    const start = oracle.startLifecycle();
-    assert.equal(start.started, true);
-
+    // Lifecycle auto-starts by default — verify it's already running
     const status = oracle.lifecycleStatus();
     assert.equal(status.running, true);
 
     const stop = oracle.stopLifecycle();
     assert.equal(stop.stopped, true);
+
+    // Can restart after stopping
+    const start = oracle.startLifecycle();
+    assert.equal(start.started, true);
+
+    oracle.stopLifecycle();
   });
 
-  it('lifecycle engine is lazily created', () => {
+  it('lifecycle engine is auto-started by default', () => {
     const { RemembranceOracle } = require('../src/api/oracle');
     const oracle = new RemembranceOracle({ autoSeed: false });
 
-    assert.equal(oracle._lifecycle, undefined);
+    // Lifecycle is auto-created and started
+    assert.ok(oracle._lifecycle);
+    assert.ok(oracle._lifecycle instanceof LifecycleEngine);
 
     const lifecycle = oracle.getLifecycle();
     assert.ok(lifecycle instanceof LifecycleEngine);
-    assert.ok(oracle._lifecycle);
 
     // Same instance returned
     const lifecycle2 = oracle.getLifecycle();
     assert.equal(lifecycle, lifecycle2);
+
+    oracle.stopLifecycle();
+  });
+
+  it('lifecycle can be disabled via options', () => {
+    const { RemembranceOracle } = require('../src/api/oracle');
+    const oracle = new RemembranceOracle({ autoSeed: false, autoGrow: false });
+
+    // With autoGrow:false, lifecycle should not auto-start
+    assert.equal(oracle._lifecycle, undefined);
 
     oracle.stopLifecycle();
   });

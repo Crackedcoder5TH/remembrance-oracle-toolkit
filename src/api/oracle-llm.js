@@ -402,7 +402,7 @@ module.exports = {
   iterativePolish: _delegateEvolution('../evolution/self-optimize', 'iterativePolish'),
 
   fullOptimizationCycle(options = {}) {
-    const { fullCycle } = require('../evolution/self-optimize');
+    const { fullCycle, consolidateDuplicates, consolidateTags } = require('../evolution/self-optimize');
     const { HealingWhisper } = require('../evolution/whisper');
 
     const ctx = this._getEvolutionContext();
@@ -410,6 +410,18 @@ module.exports = {
     whisper.start();
 
     const report = fullCycle(ctx, options);
+
+    // Auto-consolidate near-duplicates and sparse tags found during optimize
+    if (report.optimization?.nearDuplicates?.length > 0) {
+      try {
+        report.consolidation = consolidateDuplicates(ctx, options);
+      } catch { /* best effort */ }
+    }
+    if (report.optimization?.sparseTags?.length > 0) {
+      try {
+        report.tagConsolidation = consolidateTags(ctx, options);
+      } catch { /* best effort */ }
+    }
 
     if (report.evolution) whisper.recordEvolutionReport(report.evolution);
     if (report.improvement?.promoted > 0) whisper.recordPromotionReport({ promoted: report.improvement.promoted });

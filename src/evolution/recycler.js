@@ -199,6 +199,10 @@ class PatternRecycler {
       for (const row of rows) {
         const detail = JSON.parse(row.detail || '{}');
         if (detail.pattern && detail.status === 'pending') {
+          // Skip empty shells — captures must have non-empty code
+          const code = (detail.pattern.code || '').trim();
+          if (!code) continue;
+
           this._failed.push({
             id: detail.id || require('crypto').randomBytes(8).toString('hex'),
             pattern: detail.pattern,
@@ -349,11 +353,38 @@ class PatternRecycler {
   /**
    * Capture a failed pattern instead of discarding it.
    * Called when oracle.registerPattern() returns { registered: false }.
+   * Rejects empty shells — captures must have substantial code to be worth healing.
    */
   capture(pattern, failureReason, validation) {
+    // Viability gate: reject empty shells that have no meaningful code
+    const code = (pattern.code || '').trim();
+    if (!code) {
+      if (this.verbose) {
+        console.log(`  [SKIP-CAPTURE] ${pattern.name || 'unnamed'}: empty code`);
+      }
+      return null;
+    }
+
+    // Reject stub patterns (empty function bodies with no real logic)
+    if (/^(?:function|const|def|class)\s+\w+[^{]*\{\s*\}$/.test(code)) {
+      if (this.verbose) {
+        console.log(`  [SKIP-CAPTURE] ${pattern.name || 'unnamed'}: empty body stub`);
+      }
+      return null;
+    }
+
     const entry = {
       id: crypto.randomUUID ? crypto.randomUUID() : require('crypto').randomBytes(8).toString('hex'),
-      pattern: { ...pattern },
+      pattern: {
+        name: pattern.name || 'unnamed',
+        code,
+        language: pattern.language || 'unknown',
+        description: pattern.description || '',
+        tags: pattern.tags || [],
+        testCode: pattern.testCode || null,
+        patternType: pattern.patternType || 'utility',
+        parentPattern: pattern.parentPattern || null,
+      },
       failureReason,
       validation: validation || null,
       capturedAt: new Date().toISOString(),
@@ -956,6 +987,13 @@ class PatternRecycler {
    */
   _tryStoreCandidate(candidate, report, knownNames, minCoherency, extraTags = []) {
     report.generated++;
+
+    // Viability gate: reject empty shells
+    const code = (candidate.code || '').trim();
+    if (!code || code.length < 20) {
+      report.skipped++;
+      return false;
+    }
 
     if (knownNames.has(candidate.name)) {
       report.duplicates++;

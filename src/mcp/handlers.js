@@ -4,7 +4,7 @@
  * Dispatch map for all MCP tool calls. Each handler is a function
  * (oracle, args) => result that implements one tool's logic.
  *
- * Consolidated to 10 focused handlers (down from 55+).
+ * 11 focused handlers (down from 55+).
  * Extracted from the monolithic switch in server.js for maintainability.
  */
 
@@ -208,6 +208,54 @@ const HANDLERS = {
       }
       default:
         throw new Error(`Unknown maintain action: ${action}. Use: full-cycle, candidates, promote, synthesize, reflect, covenant`);
+    }
+  },
+
+  // ─── 11. Swarm (multi-agent orchestration) ───
+  async oracle_swarm(oracle, args) {
+    const action = args.action || 'code';
+    const { swarm, swarmCode, swarmReview, swarmHeal, resolveProviders, loadSwarmConfig } = require('../swarm');
+
+    switch (action) {
+      case 'code':
+        if (!args.task) throw new Error('task is required for code action');
+        return swarmCode(args.task, args.language || 'javascript', {
+          rootDir: process.cwd(),
+          crossScoring: args.crossScoring,
+          oracle,
+        });
+      case 'review':
+        if (!args.code) throw new Error('code is required for review action');
+        return swarmReview(args.code, {
+          rootDir: process.cwd(),
+          language: args.language,
+          oracle,
+        });
+      case 'heal':
+        if (!args.code) throw new Error('code is required for heal action');
+        return swarmHeal(args.code, {
+          rootDir: process.cwd(),
+          language: args.language,
+          oracle,
+        });
+      case 'status': {
+        const config = loadSwarmConfig(process.cwd());
+        const providers = resolveProviders(config);
+        return {
+          ready: providers.length >= config.minAgents,
+          providers: providers.length,
+          minRequired: config.minAgents,
+          crossScoring: config.crossScoring,
+          dimensions: config.dimensions.length,
+        };
+      }
+      case 'providers': {
+        const config = loadSwarmConfig(process.cwd());
+        const available = resolveProviders(config);
+        return { available, total: 6 };
+      }
+      default:
+        throw new Error(`Unknown swarm action: ${action}. Use: code, review, heal, status, providers`);
     }
   },
 };

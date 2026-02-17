@@ -1,7 +1,7 @@
 /**
  * MCP Tool Definitions
  *
- * Consolidated to 10 focused tools (down from 55+).
+ * 11 focused tools (down from 55+).
  * Extracted from server.js for maintainability.
  */
 
@@ -176,6 +176,23 @@ const TOOLS = [
         method: { type: 'string', enum: ['variant', 'iterative-refine', 'approach-swap'], description: 'Filter by generation method (for candidates)' },
         maxHealsPerRun: { type: 'number', description: 'Max patterns to heal (for full-cycle, default: 20)' },
       },
+    },
+  },
+
+  // ─── 11. Swarm (multi-agent orchestration) ───
+  {
+    name: 'oracle_swarm',
+    description: 'Swarm orchestrator — route tasks to multiple AI agents for collective intelligence. Actions: code (generate via swarm), review (multi-agent code review), heal (improve code via swarm), status (check readiness), providers (list available agents).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['code', 'review', 'heal', 'status', 'providers'], description: 'Swarm action (default: code)' },
+        task: { type: 'string', description: 'Task description (for code action)' },
+        code: { type: 'string', description: 'Code to review or heal (for review/heal actions)' },
+        language: { type: 'string', description: 'Target language (default: javascript)' },
+        crossScoring: { type: 'boolean', description: 'Enable peer cross-scoring (default: true)' },
+      },
+      required: ['action'],
     },
   },
 ];

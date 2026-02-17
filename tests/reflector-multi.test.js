@@ -376,9 +376,9 @@ describe('Multi-Repo — reflector functions (MCP consolidated)', () => {
     assert.strictEqual(typeof multi.codeSimilarity, 'function');
   });
 
-  it('MCP has 10 consolidated tools', () => {
+  it('MCP has 11 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 10);
+    assert.equal(TOOLS.length, 11);
   });
 });
 

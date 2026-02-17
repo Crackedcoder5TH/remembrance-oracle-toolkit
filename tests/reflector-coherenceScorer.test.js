@@ -312,8 +312,8 @@ describe('Coherence Scorer — reflector functions (MCP consolidated)', () => {
     assert.strictEqual(typeof scoring.scoreTestProof, 'function');
   });
 
-  it('MCP has 10 consolidated tools', () => {
+  it('MCP has 11 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 10);
+    assert.equal(TOOLS.length, 11);
   });
 });

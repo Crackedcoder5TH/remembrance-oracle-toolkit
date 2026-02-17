@@ -105,6 +105,17 @@ const CATEGORIES = [
     ],
   },
   {
+    name: 'Swarm',
+    commands: [
+      { name: 'swarm', description: 'Swarm orchestrator \u2014 route tasks to multiple AI agents for consensus' },
+      { name: 'swarm review', description: 'Code review via multi-agent swarm' },
+      { name: 'swarm heal', description: 'Heal code via multi-agent swarm' },
+      { name: 'swarm config', description: 'Show/edit swarm configuration' },
+      { name: 'swarm providers', description: 'List available AI providers' },
+      { name: 'swarm status', description: 'Swarm readiness check' },
+    ],
+  },
+  {
     name: 'Debug',
     commands: [
       { name: 'debug', description: 'Debug oracle — capture/search/grow error\u2192fix patterns' },

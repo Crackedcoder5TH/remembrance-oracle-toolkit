@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Safety (Section 8)
+ * Remembrance Reflector BOT — Safety (Section 8)
  *
  * Extracted from report.js. Provides backup, rollback, dry-run,
  * approval gate, coherence guard, and safe reflect pipeline.

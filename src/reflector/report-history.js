@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — History Sub-Module
+ * Remembrance Reflector BOT — History Sub-Module
  *
  * Run history and logging functions extracted from report.js Section 1.
  * Uses lazy requires for ./scoring and ./multi to avoid circular deps.

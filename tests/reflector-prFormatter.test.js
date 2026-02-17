@@ -105,7 +105,7 @@ describe('formatPRComment', () => {
     const md = formatPRComment({});
     assert.ok(md.includes('## Remembrance Pull: Healed Refinement'));
     assert.ok(md.includes('Approve to manifest this remembrance'));
-    assert.ok(md.includes('Remembrance Self-Reflector Bot'));
+    assert.ok(md.includes('Remembrance Reflector BOT'));
   });
 
   it('should include coherence section with before/after', () => {

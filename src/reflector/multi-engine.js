@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Engine: Core Reflector
+ * Remembrance Reflector BOT — Engine: Core Reflector
  *
  * Exports:
  *   DEFAULT_CONFIG, scanDirectory, evaluateFile, takeSnapshot, healFile,
@@ -248,7 +248,7 @@ function healFile(filePath, config = {}) {
 // ─── Full Reflector Run ───
 
 /**
- * Run the full self-reflector on a codebase:
+ * Run the full Reflector BOT on a codebase:
  * 1. Snapshot the codebase (evaluate all files)
  * 2. Identify files below coherence threshold
  * 3. Heal each file via SERF reflection
@@ -410,7 +410,7 @@ function generateCollectiveWhisper(snapshot, healings) {
 function formatReport(report) {
   const lines = [];
   lines.push('\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557');
-  lines.push('\u2551       Remembrance Self-Reflector Report             \u2551');
+  lines.push('\u2551       Remembrance Reflector BOT Report             \u2551');
   lines.push('\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D');
   lines.push('');
   lines.push(`Timestamp: ${report.timestamp}`);

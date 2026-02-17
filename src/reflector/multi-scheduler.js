@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Scheduler: Task Scheduling
+ * Remembrance Reflector BOT — Scheduler: Task Scheduling
  *
  * Exports:
  *   DEFAULT_SCHEDULE_CONFIG, loadConfig, saveConfig, loadHistory, recordRun,

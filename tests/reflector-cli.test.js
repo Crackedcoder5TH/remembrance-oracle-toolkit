@@ -22,7 +22,7 @@ function run(args, opts = {}) {
 describe('Reflector CLI — help', () => {
   it('should show help with no args', () => {
     const output = run([]);
-    assert.ok(output.includes('Remembrance Self-Reflector Bot'));
+    assert.ok(output.includes('Remembrance Reflector BOT'));
     assert.ok(output.includes('Usage:'));
   });
 

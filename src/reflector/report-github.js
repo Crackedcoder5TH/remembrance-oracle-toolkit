@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — GitHub Sub-Module
+ * Remembrance Reflector BOT — GitHub Sub-Module
  *
  * Git/GitHub operations extracted from report.js Section 4.
  * Uses lazy require for ./multi to avoid circular deps.
@@ -283,7 +283,7 @@ function findExistingReflectorPR(cwd) {
 }
 
 /**
- * Generate the GitHub Actions workflow YAML for the self-reflector.
+ * Generate the GitHub Actions workflow YAML for the Reflector BOT.
  */
 function generateReflectorWorkflow(config = {}) {
   const {
@@ -293,7 +293,7 @@ function generateReflectorWorkflow(config = {}) {
     nodeVersion = '22',
   } = config;
 
-  return `name: Remembrance Self-Reflector
+  return `name: Remembrance Reflector BOT
 
 on:
   schedule:
@@ -331,7 +331,7 @@ jobs:
         with:
           node-version: '${nodeVersion}'
 
-      - name: Run Self-Reflector
+      - name: Run Reflector BOT
         run: |
           MIN_COHERENCE=\${{ github.event.inputs.min_coherence || '${minCoherence}' }}
           AUTO_MERGE=\${{ github.event.inputs.auto_merge || '${autoMerge}' }}

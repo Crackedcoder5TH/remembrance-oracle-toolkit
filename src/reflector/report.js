@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Report Module (barrel re-export)
+ * Remembrance Reflector BOT — Report Module (barrel re-export)
  *
  * Split into focused sub-modules for maintainability:
  *   1. report-history.js        — run history and logging

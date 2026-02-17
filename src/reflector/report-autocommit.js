@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Auto-Commit Safety (Section 5)
+ * Remembrance Reflector BOT — Auto-Commit Safety (Section 5)
  *
  * Extracted from report.js. Provides the auto-commit safety pipeline:
  * safety branches, test gates, merge-if-passing, and commit history.

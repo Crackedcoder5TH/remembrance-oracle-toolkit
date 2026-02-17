@@ -1,4 +1,4 @@
-name: Remembrance Self-Reflector
+name: Remembrance Reflector BOT
 
 on:
   schedule:
@@ -40,7 +40,7 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Run Self-Reflector
+      - name: Run Reflector BOT
         run: |
           MIN_COHERENCE="${{ github.event.inputs.min_coherence || '0.7' }}"
           MAX_FILES="${{ github.event.inputs.max_files || '50' }}"
@@ -79,7 +79,7 @@ jobs:
             BELOW=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.summary?.filesBelowThreshold || 0)")
             WHISPER=$(node -e "const r=require('./.remembrance/reflector-report.json'); console.log(r.collectiveWhisper?.message || 'No whisper')")
 
-            BODY="## Remembrance Reflector Report\n\n"
+            BODY="## Remembrance Reflector BOT Report\n\n"
             BODY+="- **Avg Coherence**: ${COHERENCE}\n"
             BODY+="- **Files Below Threshold**: ${BELOW}\n"
             BODY+="\n> ${WHISPER}"

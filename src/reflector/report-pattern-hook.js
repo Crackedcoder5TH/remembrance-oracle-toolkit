@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Pattern Hook Sub-Module
+ * Remembrance Reflector BOT — Pattern Hook Sub-Module
  *
  * Pattern-guided healing functions extracted from report.js Section 2.
  * Uses lazy requires for ./scoring to avoid circular deps.

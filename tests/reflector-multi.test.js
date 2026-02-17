@@ -345,7 +345,7 @@ describe('Multi-Repo — multiReflect (full pipeline)', () => {
     writeFile(repoB, 'b.js', 'function b() { return 2; }');
     const report = multiReflect([repoA, repoB]);
     const text = formatMultiReport(report);
-    assert.ok(text.includes('Multi-Repo Reflector Report'));
+    assert.ok(text.includes('Multi-Repo Reflector BOT Report'));
     assert.ok(text.includes('Per-Repo Coherence'));
     assert.ok(text.includes('Dimension Comparison'));
     assert.ok(text.includes('Collective Whisper'));

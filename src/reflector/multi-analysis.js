@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Multi: Multi-Repo Analysis
+ * Remembrance Reflector BOT — Multi: Multi-Repo Analysis
  *
  * Exports:
  *   multiSnapshot, compareDimensions, extractFunctionSignatures,
@@ -591,7 +591,7 @@ function generateMultiWhisper(snapshot, comparison, drift, healing) {
 function formatMultiReport(report) {
   const lines = [];
   lines.push('\u2554\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2557');
-  lines.push('\u2551       Remembrance Multi-Repo Reflector Report               \u2551');
+  lines.push('\u2551       Remembrance Multi-Repo Reflector BOT Report               \u2551');
   lines.push('\u255A\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u255D');
   lines.push('');
   lines.push(`Timestamp: ${report.timestamp}`);

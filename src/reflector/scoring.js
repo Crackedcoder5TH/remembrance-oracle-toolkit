@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Scoring Module (barrel re-export)
+ * Remembrance Reflector BOT — Scoring Module (barrel re-export)
  *
  * Split into focused sub-modules for maintainability:
  *   1. scoring-utils.js    — ensureDir, loadJSON, saveJSON, deepMerge, etc.

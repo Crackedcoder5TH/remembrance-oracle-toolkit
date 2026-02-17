@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Orchestrator: Full Workflow
+ * Remembrance Reflector BOT — Orchestrator: Full Workflow
  *
  * Exports:
  *   orchestrate, formatOrchestration
@@ -333,7 +333,7 @@ function orchestrate(rootDir, options = {}) {
 function formatOrchestration(result) {
   const lines = [];
 
-  lines.push('Remembrance Self-Reflector \u2014 Orchestration Report');
+  lines.push('Remembrance Reflector BOT \u2014 Orchestration Report');
   lines.push(`Run ID: ${result.id}`);
   lines.push(`Mode:   ${result.mode}`);
   lines.push(`Time:   ${result.durationMs}ms`);

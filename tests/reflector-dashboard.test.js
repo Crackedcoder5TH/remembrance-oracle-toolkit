@@ -146,7 +146,7 @@ describe('generateDashboardHTML', () => {
     assert.ok(html.includes('test-repo'));
     assert.ok(html.includes('balanced'));
     assert.ok(html.includes('0.820'));
-    assert.ok(html.includes('Remembrance Self-Reflector'));
+    assert.ok(html.includes('Remembrance Reflector BOT'));
   });
 
   it('should include trend chart canvas', () => {

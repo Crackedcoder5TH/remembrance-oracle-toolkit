@@ -16,6 +16,11 @@ const { scoreWithCoherency, crossScore, computePeerScores } = require('./cross-s
 const { buildConsensus, quickConsensus, mergeTopOutputs } = require('./consensus');
 const { synthesizeWhisper, formatWhisper, determineRecommendation } = require('./whisper-synthesis');
 const { DIMENSIONS, DEFAULT_SWARM_CONFIG, loadSwarmConfig, saveSwarmConfig, resolveProviders, getProviderKey, getProviderModel } = require('./swarm-config');
+const { DEFAULT_ESCALATION_CONFIG, shouldEscalate, getEscalationMode, applyEscalation, swarmWithEscalation } = require('./escalation');
+const { loadHistory, saveHistory, recordRun, recordFeedback, getProviderReliability, getHistorySummary } = require('./swarm-history');
+const { ERROR_CLASSES, classifyError, getRecoveryStrategy, sendWithRecovery, dispatchWithRecovery, buildErrorSummary } = require('./error-recovery');
+const { SwarmProgressEmitter, createSwarmEmitter, attachCliReporter } = require('./progress-emitter');
+const { DIMENSION_TEMPLATES, buildRememberedPrompt, preflightOracleSearch, buildAllPrompts } = require('./prompt-templates');
 
 module.exports = {
   // Main orchestration
@@ -24,6 +29,13 @@ module.exports = {
   swarmReview,
   swarmHeal,
   formatSwarmResult,
+
+  // Escalation
+  DEFAULT_ESCALATION_CONFIG,
+  shouldEscalate,
+  getEscalationMode,
+  applyEscalation,
+  swarmWithEscalation,
 
   // Agent pool
   createAgentPool,
@@ -49,6 +61,33 @@ module.exports = {
   synthesizeWhisper,
   formatWhisper,
   determineRecommendation,
+
+  // History & Feedback
+  loadHistory,
+  saveHistory,
+  recordRun,
+  recordFeedback,
+  getProviderReliability,
+  getHistorySummary,
+
+  // Error Recovery
+  ERROR_CLASSES,
+  classifyError,
+  getRecoveryStrategy,
+  sendWithRecovery,
+  dispatchWithRecovery,
+  buildErrorSummary,
+
+  // Progress Streaming
+  SwarmProgressEmitter,
+  createSwarmEmitter,
+  attachCliReporter,
+
+  // Prompt Templates
+  DIMENSION_TEMPLATES,
+  buildRememberedPrompt,
+  preflightOracleSearch,
+  buildAllPrompts,
 
   // Configuration
   DIMENSIONS,

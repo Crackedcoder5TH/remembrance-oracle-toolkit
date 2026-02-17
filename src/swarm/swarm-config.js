@@ -34,6 +34,14 @@ const DEFAULT_SWARM_CONFIG = {
     peerScore: 0.4,
   },
   providers: {},
+  escalation: {
+    enabled: true,
+    coherenceFloor: 0.90,
+    maxRetries: 2,
+    modes: ['retry', 'expand', 'deep'],
+    deepTimeoutMultiplier: 2,
+    expandAgentBoost: 2,
+  },
 };
 
 /**

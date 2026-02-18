@@ -21,6 +21,11 @@ const { loadHistory, saveHistory, recordRun, recordFeedback, getProviderReliabil
 const { ERROR_CLASSES, classifyError, getRecoveryStrategy, sendWithRecovery, dispatchWithRecovery, buildErrorSummary } = require('./error-recovery');
 const { SwarmProgressEmitter, createSwarmEmitter, attachCliReporter } = require('./progress-emitter');
 const { DIMENSION_TEMPLATES, buildRememberedPrompt, preflightOracleSearch, buildAllPrompts } = require('./prompt-templates');
+const { analyzeSwarmPerformance, suggestOptimalWeights, applyWeightSuggestion, selfRefine, formatRefinementReport } = require('./self-refinement');
+const { detectVoiceCapabilities, speak, speakWhisper, speakResult, readVoiceInput, sanitizeForShell } = require('./voice-io');
+const { PRIORITY, SwarmTaskQueue } = require('./task-queue');
+const { DEFAULT_AUTO_REGISTER_CONFIG, qualifiesForRegistration, autoRegisterResult, batchAutoRegister, extractTaskName, detectLanguage } = require('./auto-register');
+const { buildScoreMatrix, buildVotingGraph, buildConsensusTree, buildTimeline, renderScoreChart, renderConsensusTree, renderDebateVisualization, exportVisualizationData } = require('./debate-visualization');
 
 module.exports = {
   // Main orchestration
@@ -88,6 +93,43 @@ module.exports = {
   buildRememberedPrompt,
   preflightOracleSearch,
   buildAllPrompts,
+
+  // Self-Refinement
+  analyzeSwarmPerformance,
+  suggestOptimalWeights,
+  applyWeightSuggestion,
+  selfRefine,
+  formatRefinementReport,
+
+  // Voice I/O
+  detectVoiceCapabilities,
+  speak,
+  speakWhisper,
+  speakResult,
+  readVoiceInput,
+  sanitizeForShell,
+
+  // Task Queue
+  PRIORITY,
+  SwarmTaskQueue,
+
+  // Auto-Registration
+  DEFAULT_AUTO_REGISTER_CONFIG,
+  qualifiesForRegistration,
+  autoRegisterResult,
+  batchAutoRegister,
+  extractTaskName,
+  detectLanguage,
+
+  // Debate Visualization
+  buildScoreMatrix,
+  buildVotingGraph,
+  buildConsensusTree,
+  buildTimeline,
+  renderScoreChart,
+  renderConsensusTree,
+  renderDebateVisualization,
+  exportVisualizationData,
 
   // Configuration
   DIMENSIONS,

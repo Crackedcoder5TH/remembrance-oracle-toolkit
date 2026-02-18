@@ -1389,3 +1389,526 @@ describe('Remembrance-aware prompt templates', () => {
     assert.ok(swarmModule.buildAllPrompts);
   });
 });
+
+// ─── self-refinement.js ───
+
+describe('Swarm self-refinement', () => {
+  const fs = require('fs');
+
+  function makeTmpWithHistory(runs) {
+    const dir = `/tmp/swarm-refine-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    fs.mkdirSync(require('path').join(dir, '.remembrance'), { recursive: true });
+
+    // Seed history
+    const { recordRun } = require('../src/swarm/swarm-history');
+    for (const r of runs) {
+      recordRun(r, { userApproved: r._approved }, dir);
+    }
+    return dir;
+  }
+
+  it('analyzeSwarmPerformance returns insufficient with < 3 runs', () => {
+    const { analyzeSwarmPerformance } = require('../src/swarm/self-refinement');
+    const result = analyzeSwarmPerformance('/tmp/nonexistent-refine-xyz');
+    assert.equal(result.sufficient, false);
+    assert.ok(result.message.includes('3'));
+  });
+
+  it('analyzeSwarmPerformance produces suggestions with enough data', () => {
+    const { analyzeSwarmPerformance } = require('../src/swarm/self-refinement');
+    const runs = [];
+    for (let i = 0; i < 5; i++) {
+      runs.push({
+        id: `refine-${i}`, task: 'test', winner: { agent: 'claude', score: 0.85 },
+        agreement: 0.7, agentCount: 2, totalDurationMs: 100,
+        rankings: [{ agent: 'claude', totalScore: 0.85 }, { agent: 'openai', totalScore: 0.6 }],
+      });
+    }
+    const dir = makeTmpWithHistory(runs);
+    const result = analyzeSwarmPerformance(dir);
+    assert.equal(result.sufficient, true);
+    assert.equal(result.runsAnalyzed, 5);
+    assert.ok(Array.isArray(result.suggestions));
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('suggestOptimalWeights returns weights with insufficient data', () => {
+    const { suggestOptimalWeights } = require('../src/swarm/self-refinement');
+    const result = suggestOptimalWeights('/tmp/nonexistent-refine-xyz');
+    assert.ok(result.weights);
+    assert.equal(result.applied, false);
+    assert.ok(result.reasoning.includes('Insufficient'));
+  });
+
+  it('selfRefine returns analysis + weight suggestion', () => {
+    const { selfRefine } = require('../src/swarm/self-refinement');
+    const runs = [];
+    for (let i = 0; i < 6; i++) {
+      runs.push({
+        id: `sr-${i}`, task: 'test', winner: { agent: 'claude', score: 0.9 },
+        agreement: 0.8, agentCount: 2, totalDurationMs: 100,
+        rankings: [{ agent: 'claude', totalScore: 0.9 }, { agent: 'openai', totalScore: 0.7 }],
+        _approved: i % 2 === 0,
+      });
+    }
+    const dir = makeTmpWithHistory(runs);
+    const result = selfRefine(dir);
+    assert.ok(result.analysis);
+    assert.ok(result.weightSuggestion);
+    assert.ok(result.weightSuggestion.weights);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('formatRefinementReport produces readable output', () => {
+    const { formatRefinementReport } = require('../src/swarm/self-refinement');
+    const report = {
+      analysis: { sufficient: true, runsAnalyzed: 10, recentAgreement: 0.8, suggestions: [{ type: 'trend_positive', message: 'Getting better' }] },
+      weightSuggestion: { weights: { coherency: 0.4, selfConfidence: 0.2, peerScore: 0.4 }, reasoning: 'test', applied: false },
+    };
+    const text = formatRefinementReport(report);
+    assert.ok(text.includes('Self-Refinement'));
+    assert.ok(text.includes('Getting better'));
+  });
+
+  it('barrel export includes self-refinement functions', () => {
+    const s = require('../src/swarm');
+    assert.ok(s.analyzeSwarmPerformance);
+    assert.ok(s.suggestOptimalWeights);
+    assert.ok(s.selfRefine);
+    assert.ok(s.formatRefinementReport);
+  });
+});
+
+// ─── voice-io.js ───
+
+describe('Voice I/O', () => {
+  it('detectVoiceCapabilities returns platform info', () => {
+    const { detectVoiceCapabilities } = require('../src/swarm/voice-io');
+    const caps = detectVoiceCapabilities();
+    assert.ok(caps.platform);
+    assert.ok(typeof caps.tts === 'string' || caps.tts === null);
+    assert.ok(typeof caps.stt === 'string' || caps.stt === null);
+  });
+
+  it('sanitizeForShell removes dangerous characters', () => {
+    const { sanitizeForShell } = require('../src/swarm/voice-io');
+    assert.equal(sanitizeForShell('hello "world"'), 'hello world');
+    assert.equal(sanitizeForShell('test$var`cmd`'), 'testvarcmd');
+    assert.equal(sanitizeForShell('line1\nline2'), 'line1. line2');
+  });
+
+  it('speakWhisper returns text summary even without TTS', () => {
+    const { speakWhisper } = require('../src/swarm/voice-io');
+    const whisper = {
+      message: 'test whisper',
+      winner: { agent: 'claude', score: 0.85 },
+      agreement: 0.8,
+      recommendation: 'PULL',
+      dissent: ['openai: disagreed'],
+    };
+    const result = speakWhisper(whisper, { engine: 'nonexistent' });
+    assert.ok(result.text.includes('claude'));
+    assert.ok(result.text.includes('80'));
+    assert.ok(result.text.includes('PULL'));
+  });
+
+  it('speakWhisper handles null whisper', () => {
+    const { speakWhisper } = require('../src/swarm/voice-io');
+    const result = speakWhisper(null);
+    assert.equal(result.spoken, false);
+    assert.equal(result.text, '');
+  });
+
+  it('speakResult formats result for speech', () => {
+    const { speakResult } = require('../src/swarm/voice-io');
+    const result = speakResult({
+      winner: { agent: 'claude', score: 0.9 },
+      agreement: 0.85,
+      agentCount: 3,
+      whisper: { recommendation: 'PULL' },
+    }, { engine: 'nonexistent' });
+    assert.ok(result.text.includes('claude'));
+    assert.ok(result.text.includes('PULL'));
+  });
+
+  it('readVoiceInput returns null for nonexistent file', () => {
+    const { readVoiceInput } = require('../src/swarm/voice-io');
+    assert.equal(readVoiceInput('/tmp/nonexistent-voice-xyz.txt'), null);
+  });
+
+  it('readVoiceInput reads text file', () => {
+    const { readVoiceInput } = require('../src/swarm/voice-io');
+    const fs = require('fs');
+    const fp = `/tmp/voice-test-${Date.now()}.txt`;
+    fs.writeFileSync(fp, 'implement debounce function');
+    const text = readVoiceInput(fp);
+    assert.equal(text, 'implement debounce function');
+    fs.unlinkSync(fp);
+  });
+
+  it('barrel export includes voice functions', () => {
+    const s = require('../src/swarm');
+    assert.ok(s.detectVoiceCapabilities);
+    assert.ok(s.speak);
+    assert.ok(s.speakWhisper);
+    assert.ok(s.speakResult);
+    assert.ok(s.readVoiceInput);
+    assert.ok(s.sanitizeForShell);
+  });
+});
+
+// ─── task-queue.js ───
+
+describe('Multi-task queue', () => {
+  it('PRIORITY has correct values', () => {
+    const { PRIORITY } = require('../src/swarm/task-queue');
+    assert.equal(PRIORITY.CRITICAL, 1);
+    assert.equal(PRIORITY.HIGH, 2);
+    assert.equal(PRIORITY.NORMAL, 3);
+    assert.equal(PRIORITY.LOW, 4);
+  });
+
+  it('enqueue adds tasks in priority order', () => {
+    const { SwarmTaskQueue, PRIORITY } = require('../src/swarm/task-queue');
+    const q = new SwarmTaskQueue();
+    q.enqueue('low task', { priority: PRIORITY.LOW });
+    q.enqueue('critical task', { priority: PRIORITY.CRITICAL });
+    q.enqueue('normal task', { priority: PRIORITY.NORMAL });
+
+    const status = q.status();
+    assert.equal(status.pending, 3);
+    assert.equal(status.tasks.pending[0].description, 'critical task');
+    assert.equal(status.tasks.pending[2].description, 'low task');
+  });
+
+  it('enqueue returns id and position', () => {
+    const { SwarmTaskQueue } = require('../src/swarm/task-queue');
+    const q = new SwarmTaskQueue();
+    const result = q.enqueue('test task');
+    assert.ok(result.id);
+    assert.equal(result.position, 1);
+  });
+
+  it('enqueue throws when queue is full', () => {
+    const { SwarmTaskQueue } = require('../src/swarm/task-queue');
+    const q = new SwarmTaskQueue({ maxQueueSize: 2 });
+    q.enqueue('task 1');
+    q.enqueue('task 2');
+    assert.throws(() => q.enqueue('task 3'), /Queue full/);
+  });
+
+  it('cancel removes pending task', () => {
+    const { SwarmTaskQueue } = require('../src/swarm/task-queue');
+    const q = new SwarmTaskQueue();
+    const { id } = q.enqueue('test');
+    assert.equal(q.pendingCount, 1);
+    assert.equal(q.cancel(id), true);
+    assert.equal(q.pendingCount, 0);
+    assert.equal(q.cancel('nonexistent'), false);
+  });
+
+  it('process executes tasks and emits events', async () => {
+    const { SwarmTaskQueue } = require('../src/swarm/task-queue');
+    const q = new SwarmTaskQueue({ concurrency: 1 });
+    const events = [];
+
+    q.on('task:started', (data) => events.push({ type: 'started', ...data }));
+    q.on('task:completed', (data) => events.push({ type: 'completed', ...data }));
+
+    q.enqueue('task 1');
+    q.enqueue('task 2');
+
+    let callCount = 0;
+    await q.process(async (task) => {
+      callCount++;
+      return { winner: { agent: 'claude', score: 0.9 }, totalDurationMs: 50 };
+    });
+
+    assert.equal(callCount, 2);
+    assert.equal(events.filter(e => e.type === 'started').length, 2);
+    assert.equal(events.filter(e => e.type === 'completed').length, 2);
+    assert.equal(q.pendingCount, 0);
+  });
+
+  it('process handles task failures', async () => {
+    const { SwarmTaskQueue } = require('../src/swarm/task-queue');
+    const q = new SwarmTaskQueue();
+    const failed = [];
+
+    q.on('task:failed', (data) => failed.push(data));
+    q.enqueue('bad task');
+
+    await q.process(async () => { throw new Error('boom'); });
+    assert.equal(failed.length, 1);
+    assert.ok(failed[0].error.includes('boom'));
+  });
+
+  it('getResult returns completed task', async () => {
+    const { SwarmTaskQueue } = require('../src/swarm/task-queue');
+    const q = new SwarmTaskQueue();
+    const { id } = q.enqueue('test');
+
+    await q.process(async () => ({ winner: { agent: 'test', score: 0.8 }, totalDurationMs: 10 }));
+
+    const result = q.getResult(id);
+    assert.ok(result);
+    assert.equal(result.status, 'completed');
+    assert.equal(q.getResult('nonexistent'), null);
+  });
+
+  it('barrel export includes queue', () => {
+    const s = require('../src/swarm');
+    assert.ok(s.PRIORITY);
+    assert.ok(s.SwarmTaskQueue);
+  });
+});
+
+// ─── auto-register.js ───
+
+describe('Pattern auto-registration', () => {
+  it('qualifiesForRegistration rejects low score', () => {
+    const { qualifiesForRegistration } = require('../src/swarm/auto-register');
+    const result = { winner: { code: 'x()', score: 0.7 }, agreement: 0.8 };
+    const check = qualifiesForRegistration(result);
+    assert.equal(check.qualifies, false);
+    assert.ok(check.reason.includes('score'));
+  });
+
+  it('qualifiesForRegistration rejects low agreement', () => {
+    const { qualifiesForRegistration } = require('../src/swarm/auto-register');
+    const result = { winner: { code: 'x()', score: 0.96 }, agreement: 0.3 };
+    const check = qualifiesForRegistration(result);
+    assert.equal(check.qualifies, false);
+    assert.ok(check.reason.includes('agreement'));
+  });
+
+  it('qualifiesForRegistration accepts excellent result', () => {
+    const { qualifiesForRegistration } = require('../src/swarm/auto-register');
+    const result = { winner: { code: 'function good() {}', score: 0.96 }, agreement: 0.85 };
+    const check = qualifiesForRegistration(result);
+    assert.equal(check.qualifies, true);
+  });
+
+  it('qualifiesForRegistration rejects when disabled', () => {
+    const { qualifiesForRegistration } = require('../src/swarm/auto-register');
+    const result = { winner: { code: 'x()', score: 0.99 }, agreement: 0.9 };
+    assert.equal(qualifiesForRegistration(result, { enabled: false }).qualifies, false);
+  });
+
+  it('autoRegisterResult registers with mock oracle', () => {
+    const { autoRegisterResult } = require('../src/swarm/auto-register');
+    let registered = null;
+    const mockOracle = {
+      register: (data) => { registered = data; return { id: 'pat-123' }; },
+    };
+    const result = {
+      id: 'run-1', task: 'implement debounce',
+      winner: { code: 'function debounce(){}', score: 0.96, dimensions: ['simplicity'] },
+      agreement: 0.85,
+    };
+    const outcome = autoRegisterResult(result, mockOracle);
+    assert.equal(outcome.registered, true);
+    assert.equal(outcome.patternId, 'pat-123');
+    assert.ok(registered.name.includes('debounce'));
+  });
+
+  it('autoRegisterResult skips when no oracle', () => {
+    const { autoRegisterResult } = require('../src/swarm/auto-register');
+    const result = { winner: { code: 'x()', score: 0.96 }, agreement: 0.8 };
+    const outcome = autoRegisterResult(result, null);
+    assert.equal(outcome.registered, false);
+  });
+
+  it('extractTaskName converts to kebab-case', () => {
+    const { extractTaskName } = require('../src/swarm/auto-register');
+    assert.equal(extractTaskName('Implement a debounce function'), 'implement-a-debounce-function');
+    assert.equal(extractTaskName(''), 'swarm-output');
+  });
+
+  it('detectLanguage identifies languages', () => {
+    const { detectLanguage } = require('../src/swarm/auto-register');
+    assert.equal(detectLanguage('def foo():\n  pass'), 'python');
+    assert.equal(detectLanguage('fn main() -> Result {}'), 'rust');
+    assert.equal(detectLanguage('function foo() {}'), 'javascript');
+    assert.equal(detectLanguage('const x: string = "hi"'), 'typescript');
+  });
+
+  it('batchAutoRegister processes multiple results', () => {
+    const { batchAutoRegister } = require('../src/swarm/auto-register');
+    const mockOracle = { register: () => ({ id: 'p1' }) };
+    const results = [
+      { id: 'r1', task: 'a', winner: { code: 'a()', score: 0.97 }, agreement: 0.9 },
+      { id: 'r2', task: 'b', winner: { code: 'b()', score: 0.5 }, agreement: 0.9 },
+    ];
+    const batch = batchAutoRegister(results, mockOracle);
+    assert.equal(batch.total, 2);
+    assert.equal(batch.registered, 1);
+    assert.equal(batch.skipped, 1);
+  });
+
+  it('barrel export includes auto-register', () => {
+    const s = require('../src/swarm');
+    assert.ok(s.qualifiesForRegistration);
+    assert.ok(s.autoRegisterResult);
+    assert.ok(s.batchAutoRegister);
+    assert.ok(s.extractTaskName);
+    assert.ok(s.detectLanguage);
+  });
+});
+
+// ─── debate-visualization.js ───
+
+describe('Debate visualization', () => {
+  it('buildScoreMatrix creates matrix from rankings', () => {
+    const { buildScoreMatrix } = require('../src/swarm/debate-visualization');
+    const rankings = [
+      { agent: 'claude', totalScore: 0.9, breakdown: { coherency: 0.95 } },
+      { agent: 'openai', totalScore: 0.7, breakdown: { coherency: 0.8 } },
+    ];
+    const outputs = [
+      { agent: 'claude', dimensions: ['simplicity'] },
+      { agent: 'openai', dimensions: ['security'] },
+    ];
+    const result = buildScoreMatrix(rankings, outputs);
+    assert.deepEqual(result.agents, ['claude', 'openai']);
+    assert.ok(result.dimensions.includes('simplicity'));
+    assert.equal(result.matrix.claude.total, 0.9);
+    assert.equal(result.winnerAgent, 'claude');
+  });
+
+  it('buildVotingGraph creates nodes and edges', () => {
+    const { buildVotingGraph } = require('../src/swarm/debate-visualization');
+    const matrix = {
+      a1: { a2: { score: 0.8 } },
+      a2: { a1: { score: 0.7 } },
+    };
+    const graph = buildVotingGraph(matrix, ['a1', 'a2']);
+    assert.equal(graph.nodes.length, 2);
+    assert.equal(graph.edges.length, 2);
+    assert.equal(graph.edges[0].from, 'a1');
+    assert.equal(graph.edges[0].weight, 0.8);
+  });
+
+  it('buildVotingGraph handles null matrix', () => {
+    const { buildVotingGraph } = require('../src/swarm/debate-visualization');
+    const graph = buildVotingGraph(null, ['a1']);
+    assert.equal(graph.nodes.length, 1);
+    assert.equal(graph.edges.length, 0);
+  });
+
+  it('buildConsensusTree separates allies and dissenters', () => {
+    const { buildConsensusTree } = require('../src/swarm/debate-visualization');
+    const consensus = {
+      winner: { agent: 'claude', score: 0.9 },
+      rankings: [
+        { agent: 'claude', totalScore: 0.9 },
+        { agent: 'openai', totalScore: 0.88 },  // ally (>85%)
+        { agent: 'gemini', totalScore: 0.75 },   // neutral
+        { agent: 'ollama', totalScore: 0.5 },    // dissenter (<70%)
+      ],
+    };
+    const tree = buildConsensusTree(consensus);
+    assert.equal(tree.winner.agent, 'claude');
+    assert.equal(tree.allies.length, 1);
+    assert.equal(tree.allies[0].agent, 'openai');
+    assert.equal(tree.neutrals.length, 1);
+    assert.equal(tree.dissenters.length, 1);
+    assert.equal(tree.dissenters[0].agent, 'ollama');
+  });
+
+  it('buildConsensusTree handles null consensus', () => {
+    const { buildConsensusTree } = require('../src/swarm/debate-visualization');
+    const tree = buildConsensusTree(null);
+    assert.equal(tree.winner, null);
+  });
+
+  it('buildTimeline creates timeline from steps', () => {
+    const { buildTimeline } = require('../src/swarm/debate-visualization');
+    const steps = [
+      { name: 'configure', status: 'ok', durationMs: 5 },
+      { name: 'dispatch', status: 'ok', durationMs: 100 },
+      { name: 'consensus', status: 'error', durationMs: 10, error: 'failed' },
+    ];
+    const timeline = buildTimeline(steps, []);
+    assert.equal(timeline.length, 3);
+    assert.equal(timeline[0].cumulativeMs, 5);
+    assert.equal(timeline[1].cumulativeMs, 105);
+    assert.ok(timeline[2].meta.error);
+  });
+
+  it('renderScoreChart produces ASCII bars', () => {
+    const { renderScoreChart } = require('../src/swarm/debate-visualization');
+    const rankings = [
+      { agent: 'claude', totalScore: 0.9 },
+      { agent: 'openai', totalScore: 0.6 },
+    ];
+    const chart = renderScoreChart(rankings, { width: 20 });
+    assert.ok(chart.includes('claude'));
+    assert.ok(chart.includes('0.900'));
+    assert.ok(chart.includes('*')); // winner marker
+  });
+
+  it('renderScoreChart handles empty rankings', () => {
+    const { renderScoreChart } = require('../src/swarm/debate-visualization');
+    assert.ok(renderScoreChart([]).includes('no agents'));
+  });
+
+  it('renderConsensusTree produces ASCII tree', () => {
+    const { renderConsensusTree } = require('../src/swarm/debate-visualization');
+    const tree = {
+      winner: { agent: 'claude', score: 0.9 },
+      allies: [{ agent: 'openai', score: 0.88 }],
+      dissenters: [{ agent: 'ollama', score: 0.4 }],
+      neutrals: [],
+    };
+    const text = renderConsensusTree(tree);
+    assert.ok(text.includes('WINNER'));
+    assert.ok(text.includes('ALLY'));
+    assert.ok(text.includes('DISSENT'));
+  });
+
+  it('renderDebateVisualization produces complete output', () => {
+    const { renderDebateVisualization } = require('../src/swarm/debate-visualization');
+    const result = {
+      id: 'test', task: 'test', agreement: 0.8, agentCount: 3,
+      rankings: [
+        { agent: 'claude', totalScore: 0.9 },
+        { agent: 'openai', totalScore: 0.7 },
+      ],
+      steps: [{ name: 'configure', status: 'ok', durationMs: 5 }],
+      winner: { agent: 'claude', score: 0.9 },
+    };
+    const text = renderDebateVisualization(result);
+    assert.ok(text.includes('Debate Visualization'));
+    assert.ok(text.includes('claude'));
+    assert.ok(text.includes('Agreement'));
+  });
+
+  it('exportVisualizationData produces dashboard-ready JSON', () => {
+    const { exportVisualizationData } = require('../src/swarm/debate-visualization');
+    const result = {
+      id: 'test', task: 'test', timestamp: '2026-01-01', agreement: 0.8,
+      agentCount: 2, totalDurationMs: 1000,
+      rankings: [{ agent: 'claude', totalScore: 0.9, dimensions: [] }],
+      steps: [{ name: 'configure', status: 'ok', durationMs: 5 }],
+      winner: { agent: 'claude', score: 0.9 },
+    };
+    const data = exportVisualizationData(result);
+    assert.ok(data.scoreMatrix);
+    assert.ok(data.votingGraph);
+    assert.ok(data.consensusTree);
+    assert.ok(data.timeline);
+    assert.ok(data.summary);
+    assert.equal(data.summary.winner, 'claude');
+  });
+
+  it('barrel export includes visualization functions', () => {
+    const s = require('../src/swarm');
+    assert.ok(s.buildScoreMatrix);
+    assert.ok(s.buildVotingGraph);
+    assert.ok(s.buildConsensusTree);
+    assert.ok(s.renderScoreChart);
+    assert.ok(s.renderDebateVisualization);
+    assert.ok(s.exportVisualizationData);
+  });
+});

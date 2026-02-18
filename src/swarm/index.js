@@ -26,6 +26,7 @@ const { detectVoiceCapabilities, speak, speakWhisper, speakResult, readVoiceInpu
 const { PRIORITY, SwarmTaskQueue } = require('./task-queue');
 const { DEFAULT_AUTO_REGISTER_CONFIG, qualifiesForRegistration, autoRegisterResult, batchAutoRegister, extractTaskName, detectLanguage } = require('./auto-register');
 const { buildScoreMatrix, buildVotingGraph, buildConsensusTree, buildTimeline, renderScoreChart, renderConsensusTree, renderDebateVisualization, exportVisualizationData } = require('./debate-visualization');
+const { parseEnvContent, loadEnvFile, findEnvFile, loadEnvFromAncestors } = require('./env-loader');
 
 module.exports = {
   // Main orchestration
@@ -130,6 +131,12 @@ module.exports = {
   renderConsensusTree,
   renderDebateVisualization,
   exportVisualizationData,
+
+  // Env Loader
+  parseEnvContent,
+  loadEnvFile,
+  findEnvFile,
+  loadEnvFromAncestors,
 
   // Configuration
   DIMENSIONS,

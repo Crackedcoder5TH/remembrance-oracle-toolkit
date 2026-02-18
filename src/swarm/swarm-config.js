@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { loadEnvFile } = require('./env-loader');
 
 /**
  * Remembrance dimensions — the specialist lenses for swarm agents.
@@ -50,6 +51,9 @@ const DEFAULT_SWARM_CONFIG = {
  * @returns {object} Merged configuration
  */
 function loadSwarmConfig(rootDir) {
+  // Load .env file before resolving config (so API keys are in process.env)
+  loadEnvFile(rootDir);
+
   const configPath = path.join(rootDir || '.', '.remembrance', 'swarm-config.json');
   let userConfig = {};
   try {

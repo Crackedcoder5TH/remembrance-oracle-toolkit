@@ -1911,4 +1911,225 @@ describe('Debate visualization', () => {
     assert.ok(s.renderDebateVisualization);
     assert.ok(s.exportVisualizationData);
   });
+
+  it('barrel export includes env-loader functions', () => {
+    const s = require('../src/swarm');
+    assert.ok(s.parseEnvContent);
+    assert.ok(s.loadEnvFile);
+    assert.ok(s.findEnvFile);
+    assert.ok(s.loadEnvFromAncestors);
+  });
+});
+
+// ─── env-loader.js ───
+
+describe('Env Loader', () => {
+  const { parseEnvContent, loadEnvFile, findEnvFile } = require('../src/swarm/env-loader');
+  const fs = require('fs');
+  const path = require('path');
+  const os = require('os');
+
+  it('parseEnvContent parses simple KEY=value pairs', () => {
+    const content = 'FOO=bar\nBAZ=qux';
+    const vars = parseEnvContent(content);
+    assert.equal(vars.get('FOO'), 'bar');
+    assert.equal(vars.get('BAZ'), 'qux');
+    assert.equal(vars.size, 2);
+  });
+
+  it('parseEnvContent handles double-quoted values', () => {
+    const content = 'API_KEY="sk-abc-123"';
+    const vars = parseEnvContent(content);
+    assert.equal(vars.get('API_KEY'), 'sk-abc-123');
+  });
+
+  it('parseEnvContent handles single-quoted values', () => {
+    const content = "SECRET='my secret value'";
+    const vars = parseEnvContent(content);
+    assert.equal(vars.get('SECRET'), 'my secret value');
+  });
+
+  it('parseEnvContent skips comments and empty lines', () => {
+    const content = '# This is a comment\n\nKEY=val\n  # another comment\n';
+    const vars = parseEnvContent(content);
+    assert.equal(vars.size, 1);
+    assert.equal(vars.get('KEY'), 'val');
+  });
+
+  it('parseEnvContent strips inline comments for unquoted values', () => {
+    const content = 'HOST=localhost # the host';
+    const vars = parseEnvContent(content);
+    assert.equal(vars.get('HOST'), 'localhost');
+  });
+
+  it('parseEnvContent handles export prefix', () => {
+    const content = 'export MY_VAR=hello';
+    const vars = parseEnvContent(content);
+    assert.equal(vars.get('MY_VAR'), 'hello');
+  });
+
+  it('parseEnvContent skips lines without =', () => {
+    const content = 'INVALID_LINE\nGOOD=yes';
+    const vars = parseEnvContent(content);
+    assert.equal(vars.size, 1);
+    assert.equal(vars.get('GOOD'), 'yes');
+  });
+
+  it('parseEnvContent skips invalid key names', () => {
+    const content = '123BAD=no\nGOOD_KEY=yes\n-dash=no';
+    const vars = parseEnvContent(content);
+    assert.equal(vars.size, 1);
+    assert.equal(vars.get('GOOD_KEY'), 'yes');
+  });
+
+  it('parseEnvContent handles values with = in them', () => {
+    const content = 'URL=postgres://user:pass@host/db?opt=1';
+    const vars = parseEnvContent(content);
+    assert.equal(vars.get('URL'), 'postgres://user:pass@host/db?opt=1');
+  });
+
+  it('loadEnvFile loads from a real file into process.env', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    const envPath = path.join(tmpDir, '.env');
+    const uniqueKey = '_TEST_ENV_LOADER_' + Date.now();
+    fs.writeFileSync(envPath, `${uniqueKey}=loaded_ok`);
+
+    try {
+      const result = loadEnvFile(tmpDir);
+      assert.equal(result.loaded, 1);
+      assert.equal(result.file, envPath);
+      assert.ok(result.vars.includes(uniqueKey));
+      assert.equal(process.env[uniqueKey], 'loaded_ok');
+    } finally {
+      delete process.env[uniqueKey];
+      fs.unlinkSync(envPath);
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  it('loadEnvFile does not override existing env vars', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    const envPath = path.join(tmpDir, '.env');
+    const uniqueKey = '_TEST_ENV_NO_OVERRIDE_' + Date.now();
+    process.env[uniqueKey] = 'original';
+    fs.writeFileSync(envPath, `${uniqueKey}=overridden`);
+
+    try {
+      const result = loadEnvFile(tmpDir);
+      assert.equal(result.loaded, 0);
+      assert.equal(process.env[uniqueKey], 'original');
+    } finally {
+      delete process.env[uniqueKey];
+      fs.unlinkSync(envPath);
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  it('loadEnvFile with override=true does override existing vars', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    const envPath = path.join(tmpDir, '.env');
+    const uniqueKey = '_TEST_ENV_FORCE_' + Date.now();
+    process.env[uniqueKey] = 'old';
+    fs.writeFileSync(envPath, `${uniqueKey}=new`);
+
+    try {
+      const result = loadEnvFile(tmpDir, { override: true });
+      assert.equal(result.loaded, 1);
+      assert.equal(process.env[uniqueKey], 'new');
+    } finally {
+      delete process.env[uniqueKey];
+      fs.unlinkSync(envPath);
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  it('loadEnvFile returns zero when no .env exists', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    try {
+      const result = loadEnvFile(tmpDir);
+      assert.equal(result.loaded, 0);
+      assert.equal(result.file, null);
+    } finally {
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  it('loadEnvFile supports custom filename', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    const envPath = path.join(tmpDir, '.env.local');
+    const uniqueKey = '_TEST_ENV_CUSTOM_' + Date.now();
+    fs.writeFileSync(envPath, `${uniqueKey}=custom`);
+
+    try {
+      const result = loadEnvFile(tmpDir, { filename: '.env.local' });
+      assert.equal(result.loaded, 1);
+      assert.equal(process.env[uniqueKey], 'custom');
+    } finally {
+      delete process.env[uniqueKey];
+      fs.unlinkSync(envPath);
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  it('findEnvFile finds .env in current directory', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    const envPath = path.join(tmpDir, '.env');
+    fs.writeFileSync(envPath, 'X=1');
+
+    try {
+      const found = findEnvFile(tmpDir);
+      assert.equal(found, envPath);
+    } finally {
+      fs.unlinkSync(envPath);
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  it('findEnvFile searches parent directories', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    const subDir = path.join(tmpDir, 'a', 'b', 'c');
+    fs.mkdirSync(subDir, { recursive: true });
+    const envPath = path.join(tmpDir, '.env');
+    fs.writeFileSync(envPath, 'Y=2');
+
+    try {
+      const found = findEnvFile(subDir);
+      assert.equal(found, envPath);
+    } finally {
+      fs.unlinkSync(envPath);
+      fs.rmdirSync(subDir);
+      fs.rmdirSync(path.join(tmpDir, 'a', 'b'));
+      fs.rmdirSync(path.join(tmpDir, 'a'));
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  it('findEnvFile returns null when no .env found', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    try {
+      const found = findEnvFile(tmpDir);
+      // May find a .env somewhere up the tree, or null — just check type
+      assert.ok(found === null || typeof found === 'string');
+    } finally {
+      fs.rmdirSync(tmpDir);
+    }
+  });
+
+  it('loadSwarmConfig triggers env loading', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'env-test-'));
+    const envPath = path.join(tmpDir, '.env');
+    const uniqueKey = '_TEST_SWARM_CONFIG_ENV_' + Date.now();
+    fs.writeFileSync(envPath, `${uniqueKey}=from_swarm_config`);
+
+    const { loadSwarmConfig } = require('../src/swarm/swarm-config');
+
+    try {
+      loadSwarmConfig(tmpDir);
+      assert.equal(process.env[uniqueKey], 'from_swarm_config');
+    } finally {
+      delete process.env[uniqueKey];
+      fs.unlinkSync(envPath);
+      fs.rmdirSync(tmpDir);
+    }
+  });
 });

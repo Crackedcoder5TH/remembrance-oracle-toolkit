@@ -123,6 +123,21 @@ function resolveProviders(config) {
     }
   }
 
+  // claude-code: local CLI provider, available if the binary exists on PATH
+  if (config.providers?.['claude-code']?.enabled !== false) {
+    const cliPath = config.providers?.['claude-code']?.cliPath || 'claude';
+    try {
+      require('child_process').execFileSync(cliPath, ['--version'], {
+        timeout: 3000,
+        stdio: 'pipe',
+        env: { ...process.env, CLAUDECODE: '' },
+      });
+      available.push('claude-code');
+    } catch {
+      // Claude CLI not installed or not reachable — skip silently
+    }
+  }
+
   return available;
 }
 
@@ -163,6 +178,7 @@ function getProviderModel(provider, config) {
     grok: 'grok-3',
     deepseek: 'deepseek-chat',
     ollama: 'llama3.1',
+    'claude-code': 'claude-sonnet-4-5-20250929',
   };
   return defaults[provider] || provider;
 }

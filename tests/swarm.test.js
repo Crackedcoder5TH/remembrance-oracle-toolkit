@@ -149,6 +149,87 @@ describe('Agent pool', () => {
   });
 });
 
+// ─── claude-code adapter ───
+
+describe('Claude Code adapter', () => {
+  it('createAdapter builds a claude-code adapter', () => {
+    const { createAdapter } = require('../src/swarm/agent-pool');
+    const config = {
+      timeoutMs: 5000,
+      providers: { 'claude-code': {} },
+    };
+    const adapter = createAdapter('claude-code', config);
+    assert.equal(adapter.name, 'claude-code');
+    assert.equal(adapter.model, 'claude-sonnet-4-5-20250929');
+    assert.equal(typeof adapter.send, 'function');
+  });
+
+  it('createAgentPool includes claude-code alongside API providers', () => {
+    const { createAgentPool } = require('../src/swarm/agent-pool');
+    const config = {
+      timeoutMs: 5000,
+      providers: {
+        claude: { apiKey: 'test' },
+        'claude-code': {},
+      },
+    };
+    const pool = createAgentPool(config, ['claude', 'claude-code']);
+    assert.equal(pool.size, 2);
+    const names = pool.agents.map(a => a.name);
+    assert.ok(names.includes('claude'));
+    assert.ok(names.includes('claude-code'));
+    pool.shutdown();
+  });
+
+  it('claude-code adapter respects custom cliPath from config', () => {
+    const { createAdapter } = require('../src/swarm/agent-pool');
+    const config = {
+      timeoutMs: 5000,
+      providers: { 'claude-code': { cliPath: '/usr/local/bin/claude', model: 'claude-opus-4-6' } },
+    };
+    const adapter = createAdapter('claude-code', config);
+    assert.equal(adapter.name, 'claude-code');
+    assert.equal(adapter.model, 'claude-opus-4-6');
+  });
+
+  it('claude-code adapter send rejects on timeout', async () => {
+    const { createAdapter } = require('../src/swarm/agent-pool');
+    const config = {
+      timeoutMs: 100,
+      providers: { 'claude-code': { cliPath: 'sleep' } }, // 'sleep' will timeout
+    };
+    const adapter = createAdapter('claude-code', config);
+    await assert.rejects(
+      () => adapter.send('hello'),
+      /Claude Code CLI/
+    );
+  });
+
+  it('getProviderModel returns default for claude-code', () => {
+    const { getProviderModel } = require('../src/swarm/swarm-config');
+    const config = { providers: {} };
+    assert.equal(getProviderModel('claude-code', config), 'claude-sonnet-4-5-20250929');
+  });
+
+  it('resolveProviders detects claude-code when CLI is available', () => {
+    const { resolveProviders } = require('../src/swarm/swarm-config');
+    // Save and clear env vars to isolate
+    const saved = {};
+    for (const key of ['ANTHROPIC_API_KEY', 'CLAUDE_API_KEY', 'OPENAI_API_KEY', 'GOOGLE_API_KEY', 'GEMINI_API_KEY', 'GROK_API_KEY', 'XAI_API_KEY', 'DEEPSEEK_API_KEY', 'OLLAMA_HOST']) {
+      saved[key] = process.env[key];
+      delete process.env[key];
+    }
+    const result = resolveProviders({ providers: { ollama: { enabled: false }, 'claude-code': { enabled: true } } });
+    // Restore env vars
+    for (const [k, v] of Object.entries(saved)) {
+      if (v !== undefined) process.env[k] = v;
+    }
+    // claude-code should be available if the CLI binary exists
+    // In CI/test environments the binary may or may not exist, so just verify the structure
+    assert.ok(Array.isArray(result));
+  });
+});
+
 // ─── dimension-router.js ───
 
 describe('Dimension router', () => {

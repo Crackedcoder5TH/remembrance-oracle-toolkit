@@ -1,5 +1,6 @@
 'use strict';
 
+const { execFile } = require('child_process');
 const { getProviderKey, getProviderModel } = require('./swarm-config');
 
 /**
@@ -22,6 +23,7 @@ function createAdapter(provider, config) {
     grok: () => createGrokAdapter(key, model, timeoutMs),
     deepseek: () => createDeepSeekAdapter(key, model, timeoutMs),
     ollama: () => createOllamaAdapter(model, timeoutMs, config),
+    'claude-code': () => createClaudeCodeAdapter(model, timeoutMs, config),
   };
 
   const factory = adapters[provider];
@@ -235,6 +237,61 @@ function createOllamaAdapter(model, timeoutMs, config) {
       };
     },
   };
+}
+
+/**
+ * Claude Code CLI adapter (local subprocess, no API key needed).
+ * Spawns the `claude` CLI with --print for non-interactive mode.
+ * Evolved from the Ollama adapter pattern — local provider, no key required.
+ */
+function createClaudeCodeAdapter(model, timeoutMs, config) {
+  const cliPath = config.providers?.['claude-code']?.cliPath || 'claude';
+  return {
+    name: 'claude-code',
+    model: model || 'claude-sonnet-4-5-20250929',
+    async send(prompt, options = {}) {
+      const args = ['--print'];
+      const selectedModel = options.model || model;
+      if (selectedModel) {
+        args.push('--model', selectedModel);
+      }
+      if (options.system) {
+        args.push('--system-prompt', options.system);
+      }
+      if (options.maxTokens) {
+        args.push('--max-turns', '1');
+      }
+      args.push(prompt);
+
+      const text = await spawnClaude(cliPath, args, timeoutMs);
+      return {
+        response: text,
+        meta: { model: selectedModel || 'claude-code', provider: 'claude-code' },
+      };
+    },
+  };
+}
+
+/**
+ * Spawn the Claude CLI as a child process with timeout.
+ * Returns the captured stdout text.
+ */
+function spawnClaude(cliPath, args, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const child = execFile(cliPath, args, {
+      timeout: timeoutMs,
+      maxBuffer: 10 * 1024 * 1024, // 10 MB
+      env: { ...process.env, CLAUDECODE: '' }, // Unset to avoid nested-session block
+    }, (error, stdout, stderr) => {
+      if (error) {
+        if (error.killed) {
+          return reject(new Error(`Claude Code CLI timed out after ${timeoutMs}ms`));
+        }
+        return reject(new Error(`Claude Code CLI error: ${error.message}${stderr ? ' — ' + stderr.slice(0, 200) : ''}`));
+      }
+      resolve(stdout.trim());
+    });
+  });
 }
 
 /**

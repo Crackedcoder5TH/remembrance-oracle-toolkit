@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Consolidated Multi Module (Barrel)
+ * Remembrance Reflector BOT — Consolidated Multi Module (Barrel)
  *
  * Re-exports all symbols from the four sub-modules so that existing
  * `require('./multi')` calls continue to work unchanged.

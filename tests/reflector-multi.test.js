@@ -345,7 +345,7 @@ describe('Multi-Repo — multiReflect (full pipeline)', () => {
     writeFile(repoB, 'b.js', 'function b() { return 2; }');
     const report = multiReflect([repoA, repoB]);
     const text = formatMultiReport(report);
-    assert.ok(text.includes('Multi-Repo Reflector Report'));
+    assert.ok(text.includes('Multi-Repo Reflector BOT Report'));
     assert.ok(text.includes('Per-Repo Coherence'));
     assert.ok(text.includes('Dimension Comparison'));
     assert.ok(text.includes('Collective Whisper'));
@@ -376,9 +376,9 @@ describe('Multi-Repo — reflector functions (MCP consolidated)', () => {
     assert.strictEqual(typeof multi.codeSimilarity, 'function');
   });
 
-  it('MCP has 10 consolidated tools', () => {
+  it('MCP has 11 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 10);
+    assert.equal(TOOLS.length, 11);
   });
 });
 

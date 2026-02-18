@@ -1041,29 +1041,6 @@ class SQLiteStore {
   }
 }
 
-// ─── Helpers ───
-
-function getTopTags(entries, limit) {
-  const counts = {};
-  for (const e of entries) {
-    for (const tag of e.tags) {
-      const t = tag.toLowerCase();
-      counts[t] = (counts[t] || 0) + 1;
-    }
-  }
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([tag, count]) => ({ tag, count }));
-}
-
-function countBy(items, key) {
-  const counts = {};
-  for (const item of items) {
-    const val = item[key] || 'unknown';
-    counts[val] = (counts[val] || 0) + 1;
-  }
-  return counts;
-}
+const { countBy, getTopTags } = require('./store-helpers');
 
 module.exports = { SQLiteStore, DatabaseSync };

@@ -22,4 +22,5 @@ module.exports = {
   notifications: () => lazy('notifications', () => require('./report-notifications')),
   autocommit:    () => lazy('autocommit',    () => require('./report-autocommit')),
   safety:        () => lazy('safety',        () => require('./report-safety')),
+  report:        () => lazy('report',        () => require('./report')),
 };

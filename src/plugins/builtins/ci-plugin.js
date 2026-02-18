@@ -8,7 +8,7 @@
 module.exports = {
   name: 'ci',
   version: '1.0.0',
-  description: 'CI/CD integration: git hooks, feedback tracking, auto-seed, harvest, auto-submit',
+  description: 'CI/CD integration: git hooks, feedback tracking, auto-seed, harvest, auto-register, auto-submit',
   author: 'remembrance-oracle',
   hooks: ['afterSubmit', 'patternRegistered'],
 
@@ -18,13 +18,14 @@ module.exports = {
     const { harvest, harvestFunctions, splitFunctions } = require('../../ci/harvest');
     const { installHooks, uninstallHooks, runPreCommitCheck } = require('../../ci/hooks');
     const { autoSubmit } = require('../../ci/auto-submit');
+    const { autoRegister } = require('../../ci/auto-register');
 
     ctx.oracle._ciFactory = {
       CIFeedbackReporter, wrapWithTracking,
       discoverPatterns, autoSeed,
       harvest, harvestFunctions, splitFunctions,
       installHooks, uninstallHooks, runPreCommitCheck,
-      autoSubmit,
+      autoSubmit, autoRegister,
     };
 
     ctx.logger.info('CI plugin activated — git hooks and automation available');
@@ -42,6 +43,7 @@ module.exports = {
       ...require('../../ci/harvest'),
       ...require('../../ci/hooks'),
       ...require('../../ci/auto-submit'),
+      ...require('../../ci/auto-register'),
     };
   },
 };

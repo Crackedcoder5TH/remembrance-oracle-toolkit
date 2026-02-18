@@ -50,7 +50,27 @@ function setPrincipleRegistry(registry) {
  * @param {object} metadata — Optional metadata (description, tags, language)
  * @returns {{ sealed: boolean, violations: Array, principlesPassed: number }}
  */
+// Cache recent covenant results to avoid re-running all HARM_PATTERNS regex on the same code.
+// Key: fast fingerprint of code content.  Max 256 entries to bound memory.
+const _covenantCache = new Map();
+const _CACHE_MAX = 256;
+
+function _cacheKey(code) {
+  const len = code.length;
+  const head = code.slice(0, 64);
+  const tail = code.slice(-64);
+  return len + ':' + head + ':' + tail;
+}
+
 function covenantCheck(code, metadata = {}) {
+  // Fast-path: if no metadata, check cache
+  const hasMeta = metadata.description || (metadata.tags && metadata.tags.length);
+  if (!hasMeta) {
+    const key = _cacheKey(code);
+    const cached = _covenantCache.get(key);
+    if (cached) return cached;
+  }
+
   const violations = [];
   const violatedPrinciples = new Set();
 
@@ -123,12 +143,24 @@ function covenantCheck(code, metadata = {}) {
   const totalPrinciples = COVENANT_PRINCIPLES.length + customPrincipleCount;
   const principlesPassed = totalPrinciples - violatedPrinciples.size;
 
-  return {
+  const result = {
     sealed: violations.length === 0,
     violations,
     principlesPassed,
     totalPrinciples,
   };
+
+  // Cache the result (only for code-only checks)
+  if (!hasMeta) {
+    const key = _cacheKey(code);
+    if (_covenantCache.size >= _CACHE_MAX) {
+      const oldest = _covenantCache.keys().next().value;
+      _covenantCache.delete(oldest);
+    }
+    _covenantCache.set(key, result);
+  }
+
+  return result;
 }
 
 function getCovenant() {

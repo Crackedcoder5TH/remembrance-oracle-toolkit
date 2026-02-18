@@ -33,6 +33,7 @@ const { registerTranspileCommands } = require('./cli/commands/transpile');
 const { registerIntegrationCommands } = require('./cli/commands/integration');
 const { registerAdminCommands } = require('./cli/commands/admin');
 const { registerSelfManageCommands } = require('./cli/commands/self-manage');
+const { registerSwarmCommands } = require('./cli/commands/swarm');
 
 const oracle = new RemembranceOracle({ autoSync: true });
 
@@ -140,6 +141,7 @@ async function main() {
   registerIntegrationCommands(handlers, context);
   registerAdminCommands(handlers, context);
   registerSelfManageCommands(handlers, context);
+  registerSwarmCommands(handlers, context);
 
   const handler = handlers[cmd];
   if (handler) {

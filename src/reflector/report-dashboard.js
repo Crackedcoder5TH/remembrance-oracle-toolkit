@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Dashboard (Section 7)
+ * Remembrance Reflector BOT — Dashboard (Section 7)
  *
  * Extracted from report.js. Provides the reflector dashboard:
  * data gathering, API handling, HTML generation, and HTTP server.
@@ -169,7 +169,7 @@ function generateDashboardHTML(data) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Remembrance Reflector \u2014 ${escapeHTML(data.repo)}</title>
+<title>Remembrance Reflector BOT \u2014 ${escapeHTML(data.repo)}</title>
 <style>
   :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --green: #3fb950; --yellow: #d29922; --red: #f85149; --blue: #58a6ff; --dim: #8b949e; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -200,7 +200,7 @@ function generateDashboardHTML(data) {
 </style>
 </head>
 <body>
-<h1>Remembrance Self-Reflector</h1>
+<h1>Remembrance Reflector BOT</h1>
 <p class="subtitle">${escapeHTML(data.repo)} &middot; Mode: <span class="badge badge-${escapeHTML(data.mode)}">${escapeHTML(data.mode)}</span> &middot; Generated: ${escapeHTML(data.generatedAt)}</p>
 
 <div class="grid">
@@ -275,7 +275,7 @@ function generateDashboardHTML(data) {
   </div>
 </div>
 
-<div class="footer">Remembrance Self-Reflector Bot &middot; Zero Dependencies &middot; Powered by Node.js</div>
+<div class="footer">Remembrance Reflector BOT &middot; Zero Dependencies &middot; Powered by Node.js</div>
 
 <script>
 const trend = ${trendJSON};

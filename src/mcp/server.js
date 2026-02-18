@@ -4,8 +4,8 @@
  * Exposes the Remembrance Oracle as an MCP-compatible tool server.
  * Communicates via JSON-RPC 2.0 over stdin/stdout.
  *
- * Consolidated to 10 focused tools (down from 55+):
- *   search, resolve, submit, register, feedback, stats, debug, sync, harvest, maintain
+ * 11 focused tools:
+ *   search, resolve, submit, register, feedback, stats, debug, sync, harvest, maintain, swarm
  *
  * Tool definitions in ./tools.js, handler implementations in ./handlers.js.
  */

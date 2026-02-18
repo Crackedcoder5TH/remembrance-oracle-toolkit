@@ -105,6 +105,17 @@ const CATEGORIES = [
     ],
   },
   {
+    name: 'Swarm',
+    commands: [
+      { name: 'swarm', description: 'Swarm orchestrator \u2014 route tasks to multiple AI agents for consensus' },
+      { name: 'swarm review', description: 'Code review via multi-agent swarm' },
+      { name: 'swarm heal', description: 'Heal code via multi-agent swarm' },
+      { name: 'swarm config', description: 'Show/edit swarm configuration' },
+      { name: 'swarm providers', description: 'List available AI providers' },
+      { name: 'swarm status', description: 'Swarm readiness check' },
+    ],
+  },
+  {
     name: 'Debug',
     commands: [
       { name: 'debug', description: 'Debug oracle — capture/search/grow error\u2192fix patterns' },
@@ -139,6 +150,7 @@ const CATEGORIES = [
       { name: 'verify', description: 'Verify pattern integrity' },
       { name: 'healing-stats', description: 'Show SERF healing statistics' },
       { name: 'auto-submit', description: 'Auto harvest, promote, and sync patterns (post-commit pipeline)' },
+      { name: 'auto-register', description: 'Register new functions from latest commit (diff-targeted)' },
       { name: 'auto-seed', description: 'Auto-discover and seed patterns from test suite' },
       { name: 'ci-feedback', description: 'Report CI test results' },
       { name: 'ci-stats', description: 'Show CI feedback tracking statistics' },

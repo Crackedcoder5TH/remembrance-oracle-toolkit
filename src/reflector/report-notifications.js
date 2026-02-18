@@ -1,5 +1,5 @@
 /**
- * Remembrance Self-Reflector — Notifications (Section 6)
+ * Remembrance Reflector BOT — Notifications (Section 6)
  *
  * Extracted from report.js. Provides Discord and Slack webhook
  * notifications for reflector reports.
@@ -139,7 +139,7 @@ function formatDiscordEmbed(report, options = {}) {
       description: `Healed ${filesHealed} file(s) with coherence delta ${deltaStr}.`,
       color,
       fields,
-      footer: { text: 'Remembrance Self-Reflector Bot' },
+      footer: { text: 'Remembrance Reflector BOT' },
       timestamp: new Date().toISOString(),
     }],
   };
@@ -211,7 +211,7 @@ function formatSlackBlocks(report, options = {}) {
 
   blocks.push({
     type: 'context',
-    elements: [{ type: 'mrkdwn', text: '_Remembrance Self-Reflector Bot_' }],
+    elements: [{ type: 'mrkdwn', text: '_Remembrance Reflector BOT_' }],
   });
 
   return { blocks, text: `Remembrance Pull: ${repoName} \u2014 ${filesHealed} file(s) healed (${deltaStr})` };

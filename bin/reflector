@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Remembrance Self-Reflector — Standalone CLI Entry Point
+ * Remembrance Reflector BOT — Standalone CLI Entry Point
  *
  * A standalone executable for the reflector bot that can run independently
  * of the main oracle CLI. Parses arguments, loads config, routes to the
@@ -87,7 +87,7 @@ function parseArgs(argv) {
 
 function showHelp() {
   console.log(`
-${c.boldCyan('Remembrance Self-Reflector Bot')}
+${c.boldCyan('Remembrance Reflector BOT')}
 
 ${c.bold('Usage:')}  reflector <command> [options]
 
@@ -179,7 +179,7 @@ function handleRun(args, cwd, json) {
 
   appendLog(cwd, 'INFO', 'Reflector run started', { trigger: 'cli', mode: opts.dryRunMode ? 'dry-run' : 'live' });
 
-  console.log(c.boldCyan('Running Self-Reflector...\n'));
+  console.log(c.boldCyan('Running Reflector BOT...\n'));
   const startTime = Date.now();
   const result = safeReflect(cwd, opts);
 

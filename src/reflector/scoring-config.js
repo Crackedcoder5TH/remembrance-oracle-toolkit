@@ -229,7 +229,7 @@ function listConfigKeys(config, prefix = '') {
 
 function formatCentralConfig(config) {
   const lines = [];
-  lines.push('── Remembrance Reflector Central Configuration ──');
+  lines.push('── Remembrance Reflector BOT Central Configuration ──');
   lines.push('');
   for (const section of Object.keys(config)) {
     lines.push(`[${section}]`);

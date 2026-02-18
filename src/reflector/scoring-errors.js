@@ -5,8 +5,7 @@
  * withCircuitBreaker, buildErrorReport.
  */
 
-let _report;
-function getReport() { return _report || (_report = require('./report')); }
+const { report: getReport } = require('./report-lazy');
 
 const ERROR_TYPES = {
   TRANSIENT: 'transient',

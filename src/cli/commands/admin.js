@@ -90,6 +90,33 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
+  handlers['auto-register'] = (args) => {
+    try {
+      const { autoRegister } = require('../../ci/auto-register');
+      const dryRun = parseDryRun(args);
+      const range = args.commit || args.range || 'HEAD~1..HEAD';
+      const wholeFile = args['whole-file'] === 'true' || args['whole-file'] === true;
+      const result = autoRegister(oracle, process.cwd(), { range, dryRun, wholeFile });
+
+      console.log(c.boldCyan('Auto-Register Report:'));
+      console.log(`  Files scanned: ${c.bold(String(result.files.length))}`);
+      console.log(`  Registered:    ${c.boldGreen(String(result.registered))}`);
+      console.log(`  Already exist: ${c.dim(String(result.alreadyExists))}`);
+      console.log(`  Skipped:       ${c.dim(String(result.skipped))}`);
+      console.log(`  Failed:        ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+
+      if (result.patterns.length > 0) {
+        console.log(`\n${c.bold('Patterns:')}`);
+        for (const p of result.patterns) {
+          const statusColor = p.status === 'registered' ? c.boldGreen : p.status === 'dry-run' ? c.yellow : c.dim;
+          console.log(`  ${statusColor(p.status.padEnd(10))} ${c.cyan(p.name)} ${c.dim(p.file)}`);
+        }
+      }
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Auto-register error: ' + err.message);
+    }
+  };
+
   handlers['auto-seed'] = (args) => {
     try {
       const { autoSeed } = require('../../ci/auto-seed');

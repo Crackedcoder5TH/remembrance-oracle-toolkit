@@ -108,12 +108,9 @@ function scoreUnity(code) {
 
 function scoreCorrectness(code, lang) {
   let score = 1.0;
-  const stripped = code
-    .replace(/\/\/[^\n]*/g, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/`(?:\\[\s\S]|[^`])*`/g, '')
-    .replace(/"(?:\\.|[^"\\])*"/g, '')
-    .replace(/'(?:\\.|[^'\\])*'/g, '');
+  // Strip comments, strings, and template literals char-by-char to avoid
+  // catastrophic regex backtracking on large template literals.
+  const stripped = _stripNonCode(code);
   const counts = { '(': 0, ')': 0, '[': 0, ']': 0, '{': 0, '}': 0 };
   for (const ch of stripped) {
     if (ch in counts) counts[ch]++;
@@ -129,6 +126,68 @@ function scoreCorrectness(code, lang) {
   score -= todos * 0.1;
   if (/catch\s*(?:\([^)]*\))?\s*\{\s*\}/.test(stripped)) score -= 0.1;
   return Math.max(0, Math.min(1, score));
+}
+
+/** Strip comments, strings, template literals, and regex via char-by-char scanning. */
+function _stripNonCode(code) {
+  const REGEX_OPS = '=(!&|,;:?[{+-%~^<>';
+  const REGEX_KW = new Set(['return', 'typeof', 'instanceof', 'in', 'case', 'void', 'delete', 'throw', 'new', 'yield', 'await']);
+  let out = '';
+  let i = 0;
+  let lastToken = '';
+  while (i < code.length) {
+    const ch = code[i];
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') { out += ch; i++; continue; }
+    if (ch === '/' && code[i + 1] === '/') {
+      const nl = code.indexOf('\n', i + 2);
+      i = nl === -1 ? code.length : nl + 1;
+      continue;
+    }
+    if (ch === '/' && code[i + 1] === '*') {
+      const end = code.indexOf('*/', i + 2);
+      i = end === -1 ? code.length : end + 2;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      i++;
+      while (i < code.length) {
+        if (code[i] === '\\') { i += 2; continue; }
+        if (code[i] === ch) { i++; break; }
+        i++;
+      }
+      lastToken = ch;
+      continue;
+    }
+    if (ch === '/') {
+      const isRegex = lastToken === '' || REGEX_OPS.includes(lastToken) || REGEX_KW.has(lastToken);
+      if (isRegex) {
+        i++;
+        let inCC = false;
+        while (i < code.length) {
+          if (code[i] === '\\') { i += 2; continue; }
+          if (code[i] === '[' && !inCC) { inCC = true; i++; continue; }
+          if (code[i] === ']' && inCC) { inCC = false; i++; continue; }
+          if (code[i] === '/' && !inCC) { i++; while (i < code.length && /[gimsuy]/.test(code[i])) i++; break; }
+          i++;
+        }
+        lastToken = '/';
+        continue;
+      }
+    }
+    if (/[a-zA-Z_$]/.test(ch)) {
+      let word = ch;
+      let j = i + 1;
+      while (j < code.length && /[\w$]/.test(code[j])) { word += code[j]; j++; }
+      lastToken = word;
+      out += word;
+      i = j;
+      continue;
+    }
+    lastToken = ch;
+    out += ch;
+    i++;
+  }
+  return out;
 }
 
 const DIMENSION_WEIGHTS = {

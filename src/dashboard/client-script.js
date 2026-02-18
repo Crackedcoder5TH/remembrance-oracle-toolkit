@@ -11,27 +11,52 @@ function getDashboardScript(resilientFetchSource) {
   ${resilientFetchSource()}
 
   // ─── Helpers ───
-  function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
-  function scoreClass(s) { return s >= 0.7 ? 'score-high' : s >= 0.4 ? 'score-mid' : 'score-low'; }
-  function debounce(fn, ms) { let t; return function() { clearTimeout(t); const a = arguments, c = this; t = setTimeout(() => fn.apply(c, a), ms); }; }
+  function escapeHtml(text) {
+    if (!text) return '';
+    var el = document.createElement('div');
+    el.textContent = String(text);
+    return el.innerHTML;
+  }
+  function getScoreClass(score) {
+    return score >= 0.7 ? 'score-high' : score >= 0.4 ? 'score-mid' : 'score-low';
+  }
+  function debounce(fn, delay) {
+    var timer;
+    return function() {
+      clearTimeout(timer);
+      var args = arguments, ctx = this;
+      timer = setTimeout(function() { fn.apply(ctx, args); }, delay);
+    };
+  }
+
+  // ─── Reusable UI builders ───
+  function statCard(label, value, sub) {
+    return '<div class="stat-card"><div class="stat-label">' + escapeHtml(label) +
+      '</div><div class="stat-value">' + escapeHtml(String(value)) +
+      '</div>' + (sub ? '<div class="stat-sub">' + escapeHtml(sub) + '</div>' : '') + '</div>';
+  }
+  function emptyState(icon, message) {
+    return '<div class="empty-state"><div class="empty-icon">' + icon +
+      '</div><div class="empty-text">' + escapeHtml(message) + '</div></div>';
+  }
 
   // Basic syntax highlight
   function highlight(code, lang) {
     if (!code) return '';
-    let s = esc(code);
-    // comments
-    s = s.replace(/(\/\/[^\\n]*)/g, '<span class="cm">$1</span>');
-    s = s.replace(/(#[^\\n]*)/g, function(m) { return lang === 'python' ? '<span class="cm">' + m + '</span>' : m; });
-    // strings
-    s = s.replace(/(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|\`[^\`]*?\`)/g, '<span class="str">$1</span>');
-    // numbers
-    s = s.replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class="num">$1</span>');
-    // keywords
-    var kwRegex = /\\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|new|try|catch|throw|switch|case|break|default|typeof|instanceof|in|of|def|self|lambda|yield|None|True|False|fn|impl|pub|use|mod|struct|enum|match|mut|go|func|defer|select|chan)\\b/g;
-    s = s.replace(kwRegex, '<span class="kw">$1</span>');
-    // function calls
-    s = s.replace(/\\b([a-zA-Z_]\\w*)\\s*\\(/g, '<span class="fn">$1</span>(');
-    return s;
+    var highlighted = escapeHtml(code);
+    highlighted = highlighted.replace(/(\/\/[^\\n]*)/g, '<span class="cm">$1</span>');
+    highlighted = highlighted.replace(/(#[^\\n]*)/g, function(match) {
+      return lang === 'python' ? '<span class="cm">' + match + '</span>' : match;
+    });
+    highlighted = highlighted.replace(
+      /(&quot;[^&]*?&quot;|&#39;[^&]*?&#39;|\`[^\`]*?\`)/g,
+      '<span class="str">$1</span>'
+    );
+    highlighted = highlighted.replace(/\\b(\\d+\\.?\\d*)\\b/g, '<span class="num">$1</span>');
+    var kwPattern = /\\b(const|let|var|function|return|if|else|for|while|class|import|export|from|async|await|new|try|catch|throw|switch|case|break|default|typeof|instanceof|in|of|def|self|lambda|yield|None|True|False|fn|impl|pub|use|mod|struct|enum|match|mut|go|func|defer|select|chan)\\b/g;
+    highlighted = highlighted.replace(kwPattern, '<span class="kw">$1</span>');
+    highlighted = highlighted.replace(/\\b([a-zA-Z_]\\w*)\\s*\\(/g, '<span class="fn">$1</span>(');
+    return highlighted;
   }
 
   // ─── State ───
@@ -42,12 +67,14 @@ function getDashboardScript(resilientFetchSource) {
 
   // ─── Toast ───
   function showToast(msg) {
-    var c = document.getElementById('toast-container');
-    var t = document.createElement('div');
-    t.className = 'toast-msg';
-    t.textContent = msg;
-    c.appendChild(t);
-    setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3100);
+    var container = document.getElementById('toast-container');
+    var toast = document.createElement('div');
+    toast.className = 'toast-msg';
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(function() {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 3100);
   }
 
   // ─── Navigation ───
@@ -55,11 +82,11 @@ function getDashboardScript(resilientFetchSource) {
   var panels = document.querySelectorAll('.panel');
 
   function switchPanel(panelName) {
-    navItems.forEach(function(n) {
-      n.classList.toggle('active', n.dataset.panel === panelName);
+    navItems.forEach(function(nav) {
+      nav.classList.toggle('active', nav.dataset.panel === panelName);
     });
-    panels.forEach(function(p) {
-      p.classList.toggle('active', p.id === 'panel-' + panelName);
+    panels.forEach(function(panel) {
+      panel.classList.toggle('active', panel.id === 'panel-' + panelName);
     });
     // Close sidebar on mobile
     document.getElementById('sidebar').classList.remove('open');
@@ -86,11 +113,11 @@ function getDashboardScript(resilientFetchSource) {
     // Ctrl+K or Cmd+K => command palette / search focus
     if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
       e.preventDefault();
-      var cp = document.getElementById('cmd-palette');
-      if (cp.classList.contains('open')) {
-        cp.classList.remove('open');
+      var palette = document.getElementById('cmd-palette');
+      if (palette.classList.contains('open')) {
+        palette.classList.remove('open');
       } else {
-        cp.classList.add('open');
+        palette.classList.add('open');
         document.getElementById('cmd-input').value = '';
         document.getElementById('cmd-input').focus();
       }
@@ -102,10 +129,10 @@ function getDashboardScript(resilientFetchSource) {
 
   // Command palette search redirects to Search tab
   document.getElementById('cmd-input').addEventListener('input', debounce(function() {
-    var q = this.value.trim();
-    if (q.length > 1) {
+    var query = this.value.trim();
+    if (query.length > 1) {
       switchPanel('search');
-      document.getElementById('search-input').value = q;
+      document.getElementById('search-input').value = query;
       document.getElementById('search-input').dispatchEvent(new Event('input'));
       document.getElementById('cmd-palette').classList.remove('open');
     }
@@ -196,7 +223,7 @@ function getDashboardScript(resilientFetchSource) {
     banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#1a1a2e;color:#e0e0ff;padding:12px 20px;z-index:9999;font-family:monospace;border-bottom:2px solid #6c63ff;transition:opacity 0.5s;';
     banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
       '<span style="font-size:1.2em;">&#x2728;</span>' +
-      '<span>Healing <strong>' + esc(data.patternName || '') + '</strong> (' + esc(data.decision || '') + ')...</span>' +
+      '<span>Healing <strong>' + escapeHtml(data.patternName || '') + '</strong> (' + escapeHtml(data.decision || '') + ')...</span>' +
       '<span id="healing-coherence" style="color:#6c63ff;font-weight:bold;">loop 0/' + (data.maxLoops || 3) + '</span>' +
       '<div id="healing-bar" style="flex:1;height:6px;background:#333;border-radius:3px;overflow:hidden;">' +
       '<div id="healing-bar-fill" style="width:0%;height:100%;background:linear-gradient(90deg,#6c63ff,#a78bfa);transition:width 0.3s;"></div>' +
@@ -219,7 +246,7 @@ function getDashboardScript(resilientFetchSource) {
     banner.style.borderBottomColor = '#22c55e';
     banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
       '<span style="font-size:1.2em;">&#x2705;</span>' +
-      '<span>Healed <strong>' + esc(data.patternName || '') + '</strong></span>' +
+      '<span>Healed <strong>' + escapeHtml(data.patternName || '') + '</strong></span>' +
       '<span style="color:#22c55e;font-weight:bold;">' + (data.finalCoherence || 0).toFixed(3) + ' (' + sign + imp.toFixed(3) + ') in ' + (data.loops || 0) + ' loop(s)</span>' +
       '</div>';
     setTimeout(function() { if (banner.parentNode) { banner.style.opacity = '0'; setTimeout(function() { banner.remove(); }, 500); } }, 5000);
@@ -231,7 +258,7 @@ function getDashboardScript(resilientFetchSource) {
     banner.style.borderBottomColor = '#ef4444';
     banner.innerHTML = '<div style="display:flex;align-items:center;gap:12px;">' +
       '<span style="font-size:1.2em;">&#x274C;</span>' +
-      '<span>Healing failed for <strong>' + esc(data.patternName || '') + '</strong>: ' + esc(data.error || 'unknown') + '</span>' +
+      '<span>Healing failed for <strong>' + escapeHtml(data.patternName || '') + '</strong>: ' + escapeHtml(data.error || 'unknown') + '</span>' +
       '</div>';
     setTimeout(function() { if (banner.parentNode) { banner.style.opacity = '0'; setTimeout(function() { banner.remove(); }, 500); } }, 5000);
   }
@@ -280,17 +307,17 @@ function getDashboardScript(resilientFetchSource) {
   // ─── Pattern Rendering ───
   function renderPatternCard(p) {
     var score = (p.coherencyScore && p.coherencyScore.total != null ? p.coherencyScore.total : 0);
-    var tags = (p.tags || []).map(function(t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
-    var typeTag = p.patternType ? '<span class="tag tag-type">' + esc(p.patternType) + '</span>' : '';
-    var cxTag = p.complexity ? '<span class="tag tag-complexity">' + esc(p.complexity) + '</span>' : '';
+    var tags = (p.tags || []).map(function(t) { return '<span class="tag">' + escapeHtml(t) + '</span>'; }).join('');
+    var typeTag = p.patternType ? '<span class="tag tag-type">' + escapeHtml(p.patternType) + '</span>' : '';
+    var cxTag = p.complexity ? '<span class="tag tag-complexity">' + escapeHtml(p.complexity) + '</span>' : '';
 
-    return '<div class="code-card" data-id="' + esc(p.id) + '" data-lang="' + esc(p.language || '') +
+    return '<div class="code-card" data-id="' + escapeHtml(p.id) + '" data-lang="' + escapeHtml(p.language || '') +
       '" data-score="' + score + '">' +
       '<div class="code-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
       '<span class="code-card-expand">&#9654;</span>' +
-      '<span class="code-card-name">' + esc(p.name) + '</span>' +
-      '<span class="code-card-lang">' + esc(p.language || 'unknown') + '</span>' +
-      '<span class="code-card-score ' + scoreClass(score) + '">' + score.toFixed(3) + '</span>' +
+      '<span class="code-card-name">' + escapeHtml(p.name) + '</span>' +
+      '<span class="code-card-lang">' + escapeHtml(p.language || 'unknown') + '</span>' +
+      '<span class="code-card-score ' + getScoreClass(score) + '">' + score.toFixed(3) + '</span>' +
       '</div>' +
       '<div class="code-card-body">' +
       '<div class="code-card-meta">' + typeTag + cxTag + tags + '</div>' +
@@ -300,20 +327,20 @@ function getDashboardScript(resilientFetchSource) {
 
   // ─── Patterns Tab ───
   function refreshStats() {
-    resilientFetch('/api/stats').then(function(r) { return r.json(); }).then(function(stats) {
-      var ps = stats.patterns || {};
-      var sg = document.getElementById('stats-grid');
-      sg.innerHTML =
-        '<div class="stat-card"><div class="stat-label">Patterns</div><div class="stat-value">' + (ps.totalPatterns||0) + '</div><div class="stat-sub">Proven code patterns</div></div>' +
-        '<div class="stat-card"><div class="stat-label">Entries</div><div class="stat-value">' + (stats.store && stats.store.totalEntries||0) + '</div><div class="stat-sub">Store entries</div></div>' +
-        '<div class="stat-card"><div class="stat-label">Avg Coherency</div><div class="stat-value">' + (ps.avgCoherency||0).toFixed(3) + '</div><div class="stat-sub">Quality score</div></div>' +
-        '<div class="stat-card"><div class="stat-label">Languages</div><div class="stat-value">' + Object.keys(ps.byLanguage||{}).length + '</div><div class="stat-sub">Supported</div></div>';
-      document.getElementById('nav-pat-count').textContent = ps.totalPatterns || 0;
+    resilientFetch('/api/stats').then(function(resp) { return resp.json(); }).then(function(stats) {
+      var patStats = stats.patterns || {};
+      var grid = document.getElementById('stats-grid');
+      grid.innerHTML =
+        statCard('Patterns', patStats.totalPatterns || 0, 'Proven code patterns') +
+        statCard('Entries', (stats.store && stats.store.totalEntries) || 0, 'Store entries') +
+        statCard('Avg Coherency', (patStats.avgCoherency || 0).toFixed(3), 'Quality score') +
+        statCard('Languages', Object.keys(patStats.byLanguage || {}).length, 'Supported');
+      document.getElementById('nav-pat-count').textContent = patStats.totalPatterns || 0;
     }).catch(function() {});
   }
 
   function refreshPatterns() {
-    resilientFetch('/api/patterns').then(function(r) { return r.json(); }).then(function(patterns) {
+    resilientFetch('/api/patterns').then(function(resp) { return resp.json(); }).then(function(patterns) {
       allPatterns = patterns;
       buildFilters();
       renderFilteredPatterns();
@@ -323,20 +350,27 @@ function getDashboardScript(resilientFetchSource) {
   }
 
   function buildFilters() {
-    var langs = {};
-    allPatterns.forEach(function(p) {
-      var l = p.language || 'unknown';
-      langs[l] = (langs[l] || 0) + 1;
+    var langCounts = {};
+    allPatterns.forEach(function(pat) {
+      var lang = pat.language || 'unknown';
+      langCounts[lang] = (langCounts[lang] || 0) + 1;
     });
-    var fb = document.getElementById('pattern-filters');
-    var html = '<span class="filter-pill' + (currentFilter === 'all' ? ' active' : '') + '" data-filter="all">All (' + allPatterns.length + ')</span>';
-    Object.keys(langs).sort().forEach(function(l) {
-      html += '<span class="filter-pill' + (currentFilter === l ? ' active' : '') + '" data-filter="' + esc(l) + '">' + esc(l) + ' (' + langs[l] + ')</span>';
+    var filterBar = document.getElementById('pattern-filters');
+    var html = '<span class="filter-pill' +
+      (currentFilter === 'all' ? ' active' : '') +
+      '" data-filter="all">All (' + allPatterns.length + ')</span>';
+    Object.keys(langCounts).sort().forEach(function(lang) {
+      html += '<span class="filter-pill' +
+        (currentFilter === lang ? ' active' : '') +
+        '" data-filter="' + escapeHtml(lang) + '">' +
+        escapeHtml(lang) + ' (' + langCounts[lang] + ')</span>';
     });
-    html += '<button class="sort-btn" id="sort-toggle">Sort: ' + (sortBy === 'coherency' ? 'Coherency' : 'Name') + ' ' + (sortAsc ? '&#9650;' : '&#9660;') + '</button>';
-    fb.innerHTML = html;
+    html += '<button class="sort-btn" id="sort-toggle">Sort: ' +
+      (sortBy === 'coherency' ? 'Coherency' : 'Name') + ' ' +
+      (sortAsc ? '&#9650;' : '&#9660;') + '</button>';
+    filterBar.innerHTML = html;
 
-    fb.querySelectorAll('.filter-pill').forEach(function(pill) {
+    filterBar.querySelectorAll('.filter-pill').forEach(function(pill) {
       pill.addEventListener('click', function() {
         currentFilter = this.dataset.filter;
         buildFilters();
@@ -382,34 +416,40 @@ function getDashboardScript(resilientFetchSource) {
   // ─── Search Tab ───
   var searchInput = document.getElementById('search-input');
   searchInput.addEventListener('input', debounce(function() {
-    var q = this.value.trim();
+    var searchQuery = this.value.trim();
     var intentEl = document.getElementById('search-intent');
-    if (!q) {
-      document.getElementById('search-results').innerHTML = '<div class="empty-state"><div class="empty-icon">&#8981;</div><div class="empty-text">Type a query to search proven patterns</div></div>';
+    if (!searchQuery) {
+      document.getElementById('search-results').innerHTML =
+        emptyState('&#8981;', 'Type a query to search proven patterns');
       intentEl.textContent = 'idle';
       return;
     }
     intentEl.textContent = 'searching...';
     var mode = document.getElementById('search-mode').value;
-    resilientFetch('/api/search?q=' + encodeURIComponent(q) + '&mode=' + mode)
-      .then(function(r) { return r.json(); })
+    resilientFetch('/api/search?q=' + encodeURIComponent(searchQuery) + '&mode=' + mode)
+      .then(function(resp) { return resp.json(); })
       .then(function(results) {
         if (results.length === 0) {
           intentEl.textContent = 'no matches';
-          document.getElementById('search-results').innerHTML = '<div class="empty-state"><div class="empty-text">No results for "' + esc(q) + '"</div></div>';
+          document.getElementById('search-results').innerHTML =
+            emptyState('', 'No results for "' + escapeHtml(searchQuery) + '"');
           return;
         }
         intentEl.textContent = results.length + ' match' + (results.length !== 1 ? 'es' : '');
-        document.getElementById('search-results').innerHTML = results.map(function(r) {
-          var score = r.matchScore || r.semanticScore || 0;
-          var concepts = (r.matchedConcepts && r.matchedConcepts.length) ? '<div style="font-size:0.75em;color:var(--fg3);margin-top:4px">Concepts: ' + r.matchedConcepts.join(', ') + '</div>' : '';
-          return '<div class="code-card"><div class="code-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
+        document.getElementById('search-results').innerHTML = results.map(function(result) {
+          var matchScore = result.matchScore || result.semanticScore || 0;
+          var concepts = (result.matchedConcepts && result.matchedConcepts.length)
+            ? '<div style="font-size:0.75em;color:var(--fg3);margin-top:4px">Concepts: ' +
+              result.matchedConcepts.join(', ') + '</div>' : '';
+          return '<div class="code-card">' +
+            '<div class="code-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
             '<span class="code-card-expand">&#9654;</span>' +
-            '<span class="code-card-name">' + esc(r.name || r.description || r.id) + '</span>' +
-            '<span class="code-card-lang">' + esc(r.language || '') + '</span>' +
-            '<span class="code-card-score ' + scoreClass(score) + '">match: ' + score.toFixed(3) + '</span>' +
+            '<span class="code-card-name">' + escapeHtml(result.name || result.description || result.id) + '</span>' +
+            '<span class="code-card-lang">' + escapeHtml(result.language || '') + '</span>' +
+            '<span class="code-card-score ' + getScoreClass(matchScore) + '">match: ' +
+            matchScore.toFixed(3) + '</span>' +
             '</div><div class="code-card-body">' + concepts +
-            '<pre class="code-block">' + highlight(r.code, r.language) + '</pre>' +
+            '<pre class="code-block">' + highlight(result.code, result.language) + '</pre>' +
             '</div></div>';
         }).join('');
       }).catch(function() { intentEl.textContent = 'error'; });
@@ -418,45 +458,47 @@ function getDashboardScript(resilientFetchSource) {
   // ─── Debug Tab ───
   function loadDebugStats() {
     window._debugLoaded = true;
-    resilientFetch('/api/debug/stats').then(function(r) { return r.json(); }).then(function(s) {
+    resilientFetch('/api/debug/stats').then(function(resp) { return resp.json(); }).then(function(debugStats) {
       document.getElementById('debug-stats').innerHTML =
-        '<div class="stat-card"><div class="stat-label">Debug Patterns</div><div class="stat-value">' + (s.totalPatterns||0) + '</div></div>' +
-        '<div class="stat-card"><div class="stat-label">Avg Confidence</div><div class="stat-value">' + (s.avgConfidence||0).toFixed(3) + '</div></div>' +
-        '<div class="stat-card"><div class="stat-label">Resolution Rate</div><div class="stat-value">' + ((s.resolutionRate||0)*100).toFixed(0) + '%</div></div>';
+        statCard('Debug Patterns', debugStats.totalPatterns || 0) +
+        statCard('Avg Confidence', (debugStats.avgConfidence || 0).toFixed(3)) +
+        statCard('Resolution Rate', ((debugStats.resolutionRate || 0) * 100).toFixed(0) + '%');
     }).catch(function() {
-      document.getElementById('debug-stats').innerHTML = '<div class="stat-card"><div class="stat-label">Debug Patterns</div><div class="stat-value">0</div></div>';
+      document.getElementById('debug-stats').innerHTML = statCard('Debug Patterns', 0);
     });
   }
 
   document.getElementById('debug-search-input').addEventListener('input', debounce(function() {
-    var q = this.value.trim();
-    if (!q) {
-      document.getElementById('debug-results').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9888;</div><div class="empty-text">Search for error messages to find proven fixes</div></div>';
+    var debugQuery = this.value.trim();
+    if (!debugQuery) {
+      document.getElementById('debug-results').innerHTML =
+        emptyState('&#9888;', 'Search for error messages to find proven fixes');
       return;
     }
-    resilientFetch('/api/debug/search?q=' + encodeURIComponent(q))
-      .then(function(r) { return r.json(); })
+    resilientFetch('/api/debug/search?q=' + encodeURIComponent(debugQuery))
+      .then(function(resp) { return resp.json(); })
       .then(function(results) {
         if (!results || results.length === 0) {
-          document.getElementById('debug-results').innerHTML = '<div class="empty-state"><div class="empty-text">No debug fixes found for that error</div></div>';
+          document.getElementById('debug-results').innerHTML =
+            emptyState('', 'No debug fixes found for that error');
           return;
         }
         document.getElementById('debug-results').innerHTML = results.map(function(d) {
           var conf = d.confidence || 0;
           return '<div class="debug-card">' +
             '<div class="debug-card-header">' +
-            '<span class="debug-error">' + esc(d.errorMessage || d.error_message || '') + '</span>' +
-            '<span class="debug-confidence ' + scoreClass(conf) + '">' + (conf*100).toFixed(0) + '% conf</span>' +
+            '<span class="debug-error">' + escapeHtml(d.errorMessage || d.error_message || '') + '</span>' +
+            '<span class="debug-confidence ' + getScoreClass(conf) + '">' + (conf*100).toFixed(0) + '% conf</span>' +
             '</div>' +
             '<div class="debug-meta">' +
-            '<span class="debug-category">' + esc(d.errorCategory || d.error_category || '') + '</span>' +
-            '<span>' + esc(d.language || '') + '</span>' +
+            '<span class="debug-category">' + escapeHtml(d.errorCategory || d.error_category || '') + '</span>' +
+            '<span>' + escapeHtml(d.language || '') + '</span>' +
             '<span>Applied: ' + (d.timesApplied || 0) + '</span>' +
             '<span>Resolved: ' + (d.timesResolved || 0) + '</span>' +
-            (d.matchType ? '<span>Match: ' + esc(d.matchType) + '</span>' : '') +
+            (d.matchType ? '<span>Match: ' + escapeHtml(d.matchType) + '</span>' : '') +
             '</div>' +
             (d.fixCode ? '<pre class="code-block" style="margin-top:8px">' + highlight(d.fixCode || d.fix_code || '', d.language) + '</pre>' : '') +
-            (d.fixDescription || d.fix_description ? '<div style="font-size:0.78em;color:var(--fg3);margin-top:6px">' + esc(d.fixDescription || d.fix_description) + '</div>' : '') +
+            (d.fixDescription || d.fix_description ? '<div style="font-size:0.78em;color:var(--fg3);margin-top:6px">' + escapeHtml(d.fixDescription || d.fix_description) + '</div>' : '') +
             '</div>';
         }).join('');
       }).catch(function() {
@@ -467,30 +509,32 @@ function getDashboardScript(resilientFetchSource) {
   // ─── Teams Tab ───
   function loadTeams() {
     window._teamsLoaded = true;
-    resilientFetch('/api/teams').then(function(r) { return r.json(); }).then(function(teams) {
+    resilientFetch('/api/teams').then(function(resp) { return resp.json(); }).then(function(teams) {
       if (!teams || teams.length === 0) {
-        document.getElementById('teams-list').innerHTML = '<div class="empty-state"><div class="empty-icon">&#9734;</div><div class="empty-text">No teams yet. Create one to get started.</div></div>';
+        document.getElementById('teams-list').innerHTML =
+          emptyState('&#9734;', 'No teams yet. Create one to get started.');
         return;
       }
-      document.getElementById('teams-list').innerHTML = teams.map(function(t) {
-        var initial = (t.name || '?')[0].toUpperCase();
+      document.getElementById('teams-list').innerHTML = teams.map(function(team) {
+        var initial = (team.name || '?')[0].toUpperCase();
         return '<div class="team-card">' +
-          '<div class="team-avatar">' + esc(initial) + '</div>' +
+          '<div class="team-avatar">' + escapeHtml(initial) + '</div>' +
           '<div class="team-info">' +
-          '<div class="team-name">' + esc(t.name) + '</div>' +
-          '<div class="team-desc">' + esc(t.description || '') + '</div>' +
+          '<div class="team-name">' + escapeHtml(team.name) + '</div>' +
+          '<div class="team-desc">' + escapeHtml(team.description || '') + '</div>' +
           '</div>' +
-          '<div class="team-members">' + (t.memberCount || 0) + ' members</div>' +
+          '<div class="team-members">' + (team.memberCount || 0) + ' members</div>' +
           '</div>';
       }).join('');
     }).catch(function() {
-      document.getElementById('teams-list').innerHTML = '<div class="empty-state"><div class="empty-text">Failed to load teams</div></div>';
+      document.getElementById('teams-list').innerHTML =
+        emptyState('', 'Failed to load teams');
     });
   }
 
   document.getElementById('create-team-btn').addEventListener('click', function() {
-    var f = document.getElementById('create-team-form');
-    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+    var form = document.getElementById('create-team-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
   });
   document.getElementById('cancel-team-btn').addEventListener('click', function() {
     document.getElementById('create-team-form').style.display = 'none';
@@ -502,7 +546,7 @@ function getDashboardScript(resilientFetchSource) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name, description: document.getElementById('team-desc-input').value.trim() })
-    }).then(function(r) { return r.json(); }).then(function(team) {
+    }).then(function(resp) { return resp.json(); }).then(function(team) {
       showToast('Team created: ' + team.name);
       document.getElementById('create-team-form').style.display = 'none';
       document.getElementById('team-name-input').value = '';
@@ -515,41 +559,49 @@ function getDashboardScript(resilientFetchSource) {
   // ─── History Tab ───
   function loadHistory() {
     window._historyLoaded = true;
-    resilientFetch('/api/entries').then(function(r) { return r.json(); }).then(function(entries) {
+    resilientFetch('/api/entries').then(function(resp) { return resp.json(); }).then(function(entries) {
       if (!entries || entries.length === 0) {
-        document.getElementById('history-list').innerHTML = '<div class="empty-state"><div class="empty-icon">&#8634;</div><div class="empty-text">No entries in history</div></div>';
+        document.getElementById('history-list').innerHTML =
+          emptyState('&#8634;', 'No entries in history');
         return;
       }
       var html = '<div class="timeline">';
-      entries.forEach(function(e) {
-        var score = (e.coherencyScore && e.coherencyScore.total != null ? e.coherencyScore.total : 0);
-        var date = e.timestamp || e.created_at || '';
+      entries.forEach(function(entry) {
+        var score = (entry.coherencyScore && entry.coherencyScore.total != null
+          ? entry.coherencyScore.total : 0);
+        var date = entry.timestamp || entry.created_at || '';
+        var tagHtml = (entry.tags && entry.tags.length)
+          ? ' &middot; ' + entry.tags.map(function(tag) {
+              return '<span class="tag" style="font-size:0.68em">' + escapeHtml(tag) + '</span>';
+            }).join('') : '';
         html += '<div class="timeline-item">' +
           '<div class="timeline-dot"></div>' +
           '<div class="timeline-card">' +
-          '<div class="timeline-date">' + esc(date) + '</div>' +
+          '<div class="timeline-date">' + escapeHtml(date) + '</div>' +
           '<div style="display:flex;justify-content:space-between;align-items:center">' +
-          '<div class="timeline-title">' + esc(e.description || e.id) + '</div>' +
-          '<span class="code-card-score ' + scoreClass(score) + '" style="font-size:0.75em">' + score.toFixed(3) + '</span>' +
+          '<div class="timeline-title">' + escapeHtml(entry.description || entry.id) + '</div>' +
+          '<span class="code-card-score ' + getScoreClass(score) +
+          '" style="font-size:0.75em">' + score.toFixed(3) + '</span>' +
           '</div>' +
-          '<div class="timeline-detail"><span class="code-card-lang" style="font-size:0.7em">' + esc(e.language || '') + '</span>' +
-          (e.tags && e.tags.length ? ' &middot; ' + e.tags.map(function(t) { return '<span class="tag" style="font-size:0.68em">' + esc(t) + '</span>'; }).join('') : '') +
-          '</div>' +
-          '</div></div>';
+          '<div class="timeline-detail">' +
+          '<span class="code-card-lang" style="font-size:0.7em">' +
+          escapeHtml(entry.language || '') + '</span>' + tagHtml +
+          '</div></div></div>';
       });
       html += '</div>';
       document.getElementById('history-list').innerHTML = html;
     }).catch(function() {
-      document.getElementById('history-list').innerHTML = '<div class="empty-state"><div class="empty-text">Failed to load history</div></div>';
+      document.getElementById('history-list').innerHTML =
+        emptyState('', 'Failed to load history');
     });
   }
 
   // History filter
   document.getElementById('history-search').addEventListener('input', debounce(function() {
-    var q = this.value.trim().toLowerCase();
+    var filterText = this.value.trim().toLowerCase();
     document.querySelectorAll('#history-list .timeline-item').forEach(function(item) {
       var text = item.textContent.toLowerCase();
-      item.style.display = !q || text.includes(q) ? '' : 'none';
+      item.style.display = !filterText || text.includes(filterText) ? '' : 'none';
     });
   }, 200));
 
@@ -557,84 +609,106 @@ function getDashboardScript(resilientFetchSource) {
   var vectorColors = ['#7aa2f7','#bb9af7','#7dcfff','#9ece6a','#e0af68','#f7768e','#ff9e64','#73daca','#b4f9f8','#c0caf5'];
 
   document.getElementById('vector-input').addEventListener('input', debounce(function() {
-    var q = this.value.trim();
-    if (!q) {
+    var vectorQuery = this.value.trim();
+    if (!vectorQuery) {
       document.getElementById('vector-scatter').style.display = 'none';
-      document.getElementById('vector-results').innerHTML = '<div class="empty-state"><div class="empty-icon">&#8728;</div><div class="empty-text">Type a term to explore the vector space</div></div>';
+      document.getElementById('vector-results').innerHTML =
+        emptyState('&#8728;', 'Type a term to explore the vector space');
       return;
     }
-    resilientFetch('/api/nearest?q=' + encodeURIComponent(q))
-      .then(function(r) { return r.json(); })
+    resilientFetch('/api/nearest?q=' + encodeURIComponent(vectorQuery))
+      .then(function(resp) { return resp.json(); })
       .then(function(terms) {
         if (!terms || terms.length === 0) {
           document.getElementById('vector-scatter').style.display = 'none';
-          document.getElementById('vector-results').innerHTML = '<div class="empty-state"><div class="empty-text">No matching terms in vector space</div></div>';
+          document.getElementById('vector-results').innerHTML =
+            emptyState('', 'No matching terms in vector space');
           return;
         }
         // Bar chart
         var maxSim = terms[0].similarity || 1;
-        var html = terms.map(function(t, i) {
-          var pct = (t.similarity / maxSim * 100).toFixed(1);
-          return '<div class="bar-row"><span class="bar-label">' + esc(t.term) +
-            '</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + vectorColors[i % vectorColors.length] + '"></div></div>' +
-            '<span class="bar-val">' + t.similarity.toFixed(3) + '</span></div>';
+        var html = terms.map(function(term, idx) {
+          var pct = (term.similarity / maxSim * 100).toFixed(1);
+          var barColor = vectorColors[idx % vectorColors.length];
+          return '<div class="bar-row">' +
+            '<span class="bar-label">' + escapeHtml(term.term) + '</span>' +
+            '<div class="bar-track"><div class="bar-fill" style="width:' + pct +
+            '%;background:' + barColor + '"></div></div>' +
+            '<span class="bar-val">' + term.similarity.toFixed(3) + '</span></div>';
         }).join('');
         document.getElementById('vector-results').innerHTML = html;
 
         // 3D scatter
         var scatter = document.getElementById('vector-scatter');
         scatter.style.display = 'block';
-        var sw = scatter.offsetWidth;
-        var sh = scatter.offsetHeight;
+        var scatterWidth = scatter.offsetWidth;
+        var scatterHeight = scatter.offsetHeight;
         var scatterHTML = '<div class="scatter-axis" style="bottom:8px;left:50%;transform:translateX(-50%)">Similarity</div>' +
           '<div class="scatter-axis" style="left:8px;top:50%;transform:translateY(-50%) rotate(-90deg)">Distribution</div>';
 
-        terms.forEach(function(t, i) {
-          var x = 40 + (t.similarity / maxSim) * (sw - 100);
+        terms.forEach(function(term, idx) {
+          var posX = 40 + (term.similarity / maxSim) * (scatterWidth - 100);
           // Pseudo-random y based on term hash
           var hash = 0;
-          for (var c = 0; c < t.term.length; c++) hash = ((hash << 5) - hash) + t.term.charCodeAt(c);
-          var y = 30 + Math.abs(hash % (sh - 80));
-          var size = 6 + (t.similarity / maxSim) * 12;
-          var depth = 0.5 + (t.similarity / maxSim) * 0.5;
-          var color = vectorColors[i % vectorColors.length];
-          scatterHTML += '<div class="scatter-point" style="left:' + x + 'px;top:' + y + 'px;width:' + size + 'px;height:' + size + 'px;' +
-            'background:' + color + ';opacity:' + depth + ';transform:scale(' + depth + ');" title="' + esc(t.term) + ': ' + t.similarity.toFixed(3) + '"></div>';
-          scatterHTML += '<div class="scatter-label" style="left:' + (x + size + 4) + 'px;top:' + (y - 2) + 'px;opacity:' + (depth * 0.8) + '">' + esc(t.term) + '</div>';
+          for (var ci = 0; ci < term.term.length; ci++) {
+            hash = ((hash << 5) - hash) + term.term.charCodeAt(ci);
+          }
+          var posY = 30 + Math.abs(hash % (scatterHeight - 80));
+          var dotSize = 6 + (term.similarity / maxSim) * 12;
+          var dotDepth = 0.5 + (term.similarity / maxSim) * 0.5;
+          var dotColor = vectorColors[idx % vectorColors.length];
+          scatterHTML += '<div class="scatter-point" style="left:' + posX +
+            'px;top:' + posY + 'px;width:' + dotSize + 'px;height:' + dotSize + 'px;' +
+            'background:' + dotColor + ';opacity:' + dotDepth +
+            ';transform:scale(' + dotDepth + ');" title="' +
+            escapeHtml(term.term) + ': ' + term.similarity.toFixed(3) + '"></div>';
+          scatterHTML += '<div class="scatter-label" style="left:' +
+            (posX + dotSize + 4) + 'px;top:' + (posY - 2) + 'px;opacity:' +
+            (dotDepth * 0.8) + '">' + escapeHtml(term.term) + '</div>';
         });
         scatter.innerHTML = scatterHTML;
       }).catch(function() {
         document.getElementById('vector-scatter').style.display = 'none';
-        document.getElementById('vector-results').innerHTML = '<div class="empty-state"><div class="empty-text">Failed to load vectors</div></div>';
+        document.getElementById('vector-results').innerHTML =
+          emptyState('', 'Failed to load vectors');
       });
   }, 300));
 
   // ─── Analytics Tab ───
   function loadAnalytics() {
     window._analyticsLoaded = true;
-    resilientFetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
-      var ov = data.overview || {};
+    resilientFetch('/api/analytics').then(function(resp) { return resp.json(); }).then(function(data) {
+      var overview = data.overview || {};
       var dist = data.coherencyDistribution || {};
-      var health = data.healthReport || {};
-      var langs = data.languageBreakdown || {};
-      var tags = data.tagCloud || [];
-      var top = data.topPatterns || [];
+      var healthReport = data.healthReport || {};
+      var langBreakdown = data.languageBreakdown || {};
+      var tagCloud = data.tagCloud || [];
+      var topPatterns = data.topPatterns || [];
 
       var html = '';
 
       // Stats
       html += '<div class="stats-row">';
-      html += '<div class="stat-card"><div class="stat-label">Total Patterns</div><div class="stat-value">' + (ov.totalPatterns||0) + '</div></div>';
-      html += '<div class="stat-card"><div class="stat-label">Avg Coherency</div><div class="stat-value">' + (ov.avgCoherency||0).toFixed(3) + '</div></div>';
-      html += '<div class="stat-card"><div class="stat-label">Quality Ratio</div><div class="stat-value">' + (ov.qualityRatio||0) + '%</div></div>';
-      html += '<div class="stat-card"><div class="stat-label">Languages</div><div class="stat-value">' + (ov.languages||0) + '</div></div>';
+      html += statCard('Total Patterns', overview.totalPatterns || 0);
+      html += statCard('Avg Coherency', (overview.avgCoherency || 0).toFixed(3));
+      html += statCard('Quality Ratio', (overview.qualityRatio || 0) + '%');
+      html += statCard('Languages', overview.languages || 0);
       html += '</div>';
 
       // Health indicators
       html += '<div style="display:flex;gap:24px;margin:16px 0;flex-wrap:wrap">';
-      html += '<div style="display:flex;align-items:center;gap:8px"><span class="health-dot health-good"></span><span style="font-size:0.85em">Healthy: ' + (health.healthy||0) + '</span></div>';
-      html += '<div style="display:flex;align-items:center;gap:8px"><span class="health-dot health-warn"></span><span style="font-size:0.85em">Warning: ' + (health.warning||0) + '</span></div>';
-      html += '<div style="display:flex;align-items:center;gap:8px"><span class="health-dot health-bad"></span><span style="font-size:0.85em">Critical: ' + (health.critical||0) + '</span></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="health-dot health-good"></span>' +
+        '<span style="font-size:0.85em">Healthy: ' + (healthReport.healthy || 0) +
+        '</span></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="health-dot health-warn"></span>' +
+        '<span style="font-size:0.85em">Warning: ' + (healthReport.warning || 0) +
+        '</span></div>';
+      html += '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="health-dot health-bad"></span>' +
+        '<span style="font-size:0.85em">Critical: ' + (healthReport.critical || 0) +
+        '</span></div>';
       html += '</div>';
 
       // Coherency distribution bars
@@ -643,72 +717,86 @@ function getDashboardScript(resilientFetchSource) {
       var maxBucket = Math.max.apply(null, distKeys.map(function(k) { return dist[k]; }).concat([1]));
       distKeys.forEach(function(range) {
         var pct = (dist[range] / maxBucket * 100).toFixed(1);
-        html += '<div class="bar-row"><span class="bar-label">' + esc(range) + '</span>' +
+        html += '<div class="bar-row"><span class="bar-label">' + escapeHtml(range) + '</span>' +
           '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
           '<span class="bar-val">' + dist[range] + '</span></div>';
       });
 
       // Language donut
-      var langKeys = Object.keys(langs);
+      var langKeys = Object.keys(langBreakdown);
       if (langKeys.length > 0) {
         html += '<div class="admin-section-title" style="margin-top:20px">Languages</div>';
-        var total = langKeys.reduce(function(s, k) { return s + langs[k].count; }, 0) || 1;
-        // CSS conic gradient donut
+        var langTotal = langKeys.reduce(function(sum, key) {
+          return sum + langBreakdown[key].count;
+        }, 0) || 1;
         var gradParts = [];
         var angle = 0;
         var legendItems = [];
-        langKeys.forEach(function(l, i) {
-          var pct = langs[l].count / total * 100;
-          var color = vectorColors[i % vectorColors.length];
-          gradParts.push(color + ' ' + angle.toFixed(1) + '% ' + (angle + pct).toFixed(1) + '%');
-          legendItems.push('<div class="donut-legend-item"><span class="donut-swatch" style="background:' + color + '"></span>' + esc(l) + ': ' + langs[l].count + ' (' + langs[l].avgCoherency.toFixed(3) + ')</div>');
+        langKeys.forEach(function(lang, idx) {
+          var pct = langBreakdown[lang].count / langTotal * 100;
+          var color = vectorColors[idx % vectorColors.length];
+          gradParts.push(color + ' ' + angle.toFixed(1) + '% ' +
+            (angle + pct).toFixed(1) + '%');
+          legendItems.push(
+            '<div class="donut-legend-item">' +
+            '<span class="donut-swatch" style="background:' + color + '"></span>' +
+            escapeHtml(lang) + ': ' + langBreakdown[lang].count +
+            ' (' + langBreakdown[lang].avgCoherency.toFixed(3) + ')</div>');
           angle += pct;
         });
         html += '<div class="donut-wrap">';
-        html += '<div class="donut" style="background:conic-gradient(' + gradParts.join(',') + ');"><div style="width:60px;height:60px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center"><span class="donut-center">' + langKeys.length + '</span></div></div>';
+        html += '<div class="donut" style="background:conic-gradient(' +
+          gradParts.join(',') + ');">' +
+          '<div style="width:60px;height:60px;border-radius:50%;background:var(--bg);' +
+          'display:flex;align-items:center;justify-content:center">' +
+          '<span class="donut-center">' + langKeys.length + '</span>' +
+          '</div></div>';
         html += '<div class="donut-legend">' + legendItems.join('') + '</div>';
         html += '</div>';
       }
 
       // Tag cloud
-      if (tags.length > 0) {
+      if (tagCloud.length > 0) {
         html += '<div class="admin-section-title" style="margin-top:20px">Tag Cloud</div>';
         html += '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:12px 0">';
-        var maxTag = tags[0].count || 1;
-        tags.forEach(function(t) {
-          var size = 0.72 + (t.count / maxTag) * 0.9;
-          html += '<span class="tag" style="font-size:' + size.toFixed(2) + 'em;padding:3px 10px">' + esc(t.tag) + ' (' + t.count + ')</span>';
+        var maxTagCount = tagCloud[0].count || 1;
+        tagCloud.forEach(function(tagItem) {
+          var fontSize = 0.72 + (tagItem.count / maxTagCount) * 0.9;
+          html += '<span class="tag" style="font-size:' + fontSize.toFixed(2) +
+            'em;padding:3px 10px">' + escapeHtml(tagItem.tag) +
+            ' (' + tagItem.count + ')</span>';
         });
         html += '</div>';
       }
 
       // Top patterns
-      if (top.length > 0) {
+      if (topPatterns.length > 0) {
         html += '<div class="admin-section-title" style="margin-top:20px">Top Patterns</div>';
-        top.forEach(function(p) {
-          html += '<div class="code-card" style="border-left-color:var(--green)"><div class="code-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
+        topPatterns.forEach(function(pat) {
+          html += '<div class="code-card" style="border-left-color:var(--green)">' +
+            '<div class="code-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
             '<span class="code-card-expand">&#9654;</span>' +
-            '<span class="code-card-name">' + esc(p.name) + '</span>' +
-            '<span class="code-card-lang">' + esc(p.language || '') + '</span>' +
-            '<span class="code-card-score ' + scoreClass(p.coherency) + '">' + p.coherency.toFixed(3) + '</span>' +
-            '</div></div>';
+            '<span class="code-card-name">' + escapeHtml(pat.name) + '</span>' +
+            '<span class="code-card-lang">' + escapeHtml(pat.language || '') + '</span>' +
+            '<span class="code-card-score ' + getScoreClass(pat.coherency) + '">' +
+            pat.coherency.toFixed(3) + '</span></div></div>';
         });
       }
 
       document.getElementById('analytics-content').innerHTML = html;
     }).catch(function(err) {
-      document.getElementById('analytics-content').innerHTML = '<div class="empty-state"><div class="empty-text">Failed to load analytics</div></div>';
+      document.getElementById('analytics-content').innerHTML =
+        emptyState('', 'Failed to load analytics');
     });
   }
 
   // ─── Charts Tab (Visual Coherence) ───
   function loadCharts() {
     window._chartsLoaded = true;
-    resilientFetch('/api/analytics').then(function(r) { return r.json(); }).then(function(data) {
+    resilientFetch('/api/analytics').then(function(resp) { return resp.json(); }).then(function(data) {
       var patterns = [];
       try {
-        // Also fetch full pattern list for detailed charting
-        resilientFetch('/api/patterns').then(function(r2) { return r2.json(); }).then(function(pats) {
+        resilientFetch('/api/patterns').then(function(resp2) { return resp2.json(); }).then(function(pats) {
           patterns = pats || [];
           renderAllCharts(data, patterns);
         });
@@ -863,14 +951,20 @@ function getDashboardScript(resilientFetchSource) {
   function loadAdmin() {
     window._adminLoaded = true;
     // Load users
-    resilientFetch('/api/users').then(function(r) { return r.json(); }).then(function(users) {
+    resilientFetch('/api/users').then(function(resp) { return resp.json(); }).then(function(users) {
       if (!users || !Array.isArray(users) || users.length === 0) {
-        document.getElementById('users-table').innerHTML = '<div style="font-size:0.82em;color:var(--fg3);padding:8px 0">No users configured (auth may be disabled)</div>';
+        document.getElementById('users-table').innerHTML =
+          '<div style="font-size:0.82em;color:var(--fg3);padding:8px 0">' +
+          'No users configured (auth may be disabled)</div>';
         return;
       }
-      var html = '<table class="admin-table"><thead><tr><th>Username</th><th>Role</th><th>Created</th></tr></thead><tbody>';
-      users.forEach(function(u) {
-        html += '<tr><td>' + esc(u.username) + '</td><td><span class="role-badge role-' + (u.role||'viewer') + '">' + esc(u.role) + '</span></td><td>' + esc(u.created_at || '') + '</td></tr>';
+      var html = '<table class="admin-table">' +
+        '<thead><tr><th>Username</th><th>Role</th><th>Created</th></tr></thead><tbody>';
+      users.forEach(function(user) {
+        html += '<tr><td>' + escapeHtml(user.username) +
+          '</td><td><span class="role-badge role-' + (user.role || 'viewer') + '">' +
+          escapeHtml(user.role) + '</span></td><td>' +
+          escapeHtml(user.created_at || '') + '</td></tr>';
       });
       html += '</tbody></table>';
       document.getElementById('users-table').innerHTML = html;
@@ -879,11 +973,16 @@ function getDashboardScript(resilientFetchSource) {
     });
 
     // Load health
-    resilientFetch('/api/health').then(function(r) { return r.json(); }).then(function(h) {
+    resilientFetch('/api/health').then(function(resp) { return resp.json(); }).then(function(healthData) {
       document.getElementById('system-health').innerHTML =
         '<div style="display:flex;gap:16px;flex-wrap:wrap">' +
-        '<div class="stat-card" style="flex:1;min-width:150px"><div class="stat-label">Status</div><div class="stat-value" style="color:var(--green)">' + esc(h.status || 'unknown') + '</div></div>' +
-        '<div class="stat-card" style="flex:1;min-width:150px"><div class="stat-label">WS Clients</div><div class="stat-value">' + (h.wsClients||0) + '</div></div>' +
+        '<div class="stat-card" style="flex:1;min-width:150px">' +
+        '<div class="stat-label">Status</div>' +
+        '<div class="stat-value" style="color:var(--green)">' +
+        escapeHtml(healthData.status || 'unknown') + '</div></div>' +
+        '<div class="stat-card" style="flex:1;min-width:150px">' +
+        '<div class="stat-label">WS Clients</div>' +
+        '<div class="stat-value">' + (healthData.wsClients || 0) + '</div></div>' +
         '</div>';
     }).catch(function() {});
   }
@@ -898,7 +997,7 @@ function getDashboardScript(resilientFetchSource) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: username, password: password, role: role })
-    }).then(function(r) { return r.json(); }).then(function(result) {
+    }).then(function(resp) { return resp.json(); }).then(function(result) {
       if (result.error) { showToast('Error: ' + result.error); return; }
       showToast('User created: ' + result.username);
       document.getElementById('new-username').value = '';

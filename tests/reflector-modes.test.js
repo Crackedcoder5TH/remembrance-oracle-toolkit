@@ -314,8 +314,8 @@ describe('Configurable Thresholds & Modes — reflector functions (MCP consolida
     assert.strictEqual(typeof scoring.formatResolvedConfig, 'function');
   });
 
-  it('MCP has 10 consolidated tools', () => {
+  it('MCP has 11 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 10);
+    assert.equal(TOOLS.length, 11);
   });
 });

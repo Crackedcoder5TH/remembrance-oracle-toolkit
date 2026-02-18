@@ -178,6 +178,95 @@ class PatternRecycler {
       cascadeBoost: 1,
       xiGlobal: 0,
     };
+
+    // Restore persisted rejections from previous sessions
+    this._restorePersistedRejections();
+  }
+
+  /**
+   * Restore previously captured rejections from the audit log.
+   * This allows healing to persist across sessions.
+   */
+  _restorePersistedRejections() {
+    try {
+      const sqlStore = this.oracle.store?.getSQLiteStore?.();
+      if (!sqlStore || !sqlStore.db) return;
+
+      const rows = sqlStore.db.prepare(
+        "SELECT detail FROM audit_log WHERE action = 'rejection_captured' AND target_table = 'recycler' ORDER BY timestamp DESC LIMIT 50"
+      ).all();
+
+      for (const row of rows) {
+        const detail = JSON.parse(row.detail || '{}');
+        if (detail.pattern && detail.status === 'pending') {
+          // Skip empty shells — captures must have non-empty code
+          const code = (detail.pattern.code || '').trim();
+          if (!code) continue;
+
+          this._failed.push({
+            id: detail.id || require('crypto').randomBytes(8).toString('hex'),
+            pattern: detail.pattern,
+            failureReason: detail.failureReason || 'restored',
+            validation: detail.validation || null,
+            capturedAt: detail.capturedAt || new Date().toISOString(),
+            attempts: detail.attempts || 0,
+            status: 'pending',
+            healHistory: detail.healHistory || [],
+          });
+          this.stats.captured++;
+        }
+      }
+    } catch {
+      // Persistence is best-effort — never break the recycler
+    }
+  }
+
+  /**
+   * Persist a captured rejection to the audit log for cross-session recovery.
+   */
+  _persistCapture(entry) {
+    try {
+      const sqlStore = this.oracle.store?.getSQLiteStore?.();
+      if (!sqlStore || !sqlStore.db) return;
+
+      sqlStore.db.prepare(
+        "INSERT INTO audit_log (timestamp, action, target_table, target_id, detail, actor) VALUES (?, 'rejection_captured', 'recycler', ?, ?, 'recycler')"
+      ).run(
+        new Date().toISOString(),
+        entry.id,
+        JSON.stringify({
+          id: entry.id,
+          pattern: entry.pattern,
+          failureReason: entry.failureReason,
+          status: entry.status,
+          capturedAt: entry.capturedAt,
+          attempts: entry.attempts,
+          healHistory: entry.healHistory,
+        })
+      );
+    } catch {
+      // Best-effort persistence
+    }
+  }
+
+  /**
+   * Mark a persisted rejection as healed/exhausted in the audit log.
+   */
+  _persistHealResult(entry) {
+    try {
+      const sqlStore = this.oracle.store?.getSQLiteStore?.();
+      if (!sqlStore || !sqlStore.db) return;
+
+      sqlStore.db.prepare(
+        "INSERT INTO audit_log (timestamp, action, target_table, target_id, detail, actor) VALUES (?, 'rejection_healed', 'recycler', ?, ?, 'recycler')"
+      ).run(
+        new Date().toISOString(),
+        entry.id,
+        JSON.stringify({ status: entry.status, attempts: entry.attempts })
+      );
+    } catch {
+      // Best-effort
+    }
   }
 
   /**
@@ -264,11 +353,38 @@ class PatternRecycler {
   /**
    * Capture a failed pattern instead of discarding it.
    * Called when oracle.registerPattern() returns { registered: false }.
+   * Rejects empty shells — captures must have substantial code to be worth healing.
    */
   capture(pattern, failureReason, validation) {
+    // Viability gate: reject empty shells that have no meaningful code
+    const code = (pattern.code || '').trim();
+    if (!code) {
+      if (this.verbose) {
+        console.log(`  [SKIP-CAPTURE] ${pattern.name || 'unnamed'}: empty code`);
+      }
+      return null;
+    }
+
+    // Reject stub patterns (empty function bodies with no real logic)
+    if (/^(?:function|const|def|class)\s+\w+[^{]*\{\s*\}$/.test(code)) {
+      if (this.verbose) {
+        console.log(`  [SKIP-CAPTURE] ${pattern.name || 'unnamed'}: empty body stub`);
+      }
+      return null;
+    }
+
     const entry = {
       id: crypto.randomUUID ? crypto.randomUUID() : require('crypto').randomBytes(8).toString('hex'),
-      pattern: { ...pattern },
+      pattern: {
+        name: pattern.name || 'unnamed',
+        code,
+        language: pattern.language || 'unknown',
+        description: pattern.description || '',
+        tags: pattern.tags || [],
+        testCode: pattern.testCode || null,
+        patternType: pattern.patternType || 'utility',
+        parentPattern: pattern.parentPattern || null,
+      },
       failureReason,
       validation: validation || null,
       capturedAt: new Date().toISOString(),
@@ -279,6 +395,9 @@ class PatternRecycler {
 
     this._failed.push(entry);
     this.stats.captured++;
+
+    // Persist to audit log for cross-session recovery
+    this._persistCapture(entry);
 
     if (this.verbose) {
       console.log(`  [CAPTURE] ${pattern.name}: ${failureReason}`);
@@ -332,8 +451,10 @@ class PatternRecycler {
       if (result.healed) {
         report.healed++;
         entry.status = 'recycled';
+        this._persistHealResult(entry);
       } else {
         entry.status = 'exhausted';
+        this._persistHealResult(entry);
         report.exhausted++;
       }
 
@@ -866,6 +987,13 @@ class PatternRecycler {
    */
   _tryStoreCandidate(candidate, report, knownNames, minCoherency, extraTags = []) {
     report.generated++;
+
+    // Viability gate: reject empty shells
+    const code = (candidate.code || '').trim();
+    if (!code || code.length < 20) {
+      report.skipped++;
+      return false;
+    }
 
     if (knownNames.has(candidate.name)) {
       report.duplicates++;

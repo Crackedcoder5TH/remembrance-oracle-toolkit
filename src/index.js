@@ -182,7 +182,7 @@ module.exports = {
   actOnInsights,
   ACTIONABLE_DEFAULTS,
 
-  // Self-Reflector Bot (from multi.js — engine + orchestrator + scheduler)
+  // Reflector BOT (from multi.js — engine + orchestrator + scheduler)
   reflectorScanDirectory: reflectorMulti.scanDirectory,
   reflectorEvaluateFile: reflectorMulti.evaluateFile,
   reflectorTakeSnapshot: reflectorMulti.takeSnapshot,

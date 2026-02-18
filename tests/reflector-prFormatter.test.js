@@ -105,7 +105,7 @@ describe('formatPRComment', () => {
     const md = formatPRComment({});
     assert.ok(md.includes('## Remembrance Pull: Healed Refinement'));
     assert.ok(md.includes('Approve to manifest this remembrance'));
-    assert.ok(md.includes('Remembrance Self-Reflector Bot'));
+    assert.ok(md.includes('Remembrance Reflector BOT'));
   });
 
   it('should include coherence section with before/after', () => {
@@ -366,8 +366,8 @@ describe('PR Formatter — reflector functions (MCP consolidated)', () => {
     assert.strictEqual(typeof report.scoreIndicator, 'function');
   });
 
-  it('MCP has 10 consolidated tools', () => {
+  it('MCP has 11 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 10);
+    assert.equal(TOOLS.length, 11);
   });
 });

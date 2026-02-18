@@ -95,6 +95,15 @@ module.exports = {
     const whisper = _generateResolveWhisper(decision, patternData, healing);
     const candidateNotes = _generateCandidateNotes(decision);
 
+    // Auto-record usage feedback when a pattern is pulled or evolved
+    // This closes the feedback loop that was previously manual-only
+    if (patternData?.id && (decision.decision === 'pull' || decision.decision === 'evolve')) {
+      try {
+        this.patterns.recordUsage(patternData.id, true);
+        this._emit({ type: 'feedback', id: patternData.id, succeeded: true, source: 'auto-resolve' });
+      } catch { /* best effort — never break resolve */ }
+    }
+
     return {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,
       pattern: patternData, healedCode, whisper, candidateNotes,

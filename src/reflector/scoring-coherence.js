@@ -17,9 +17,7 @@ const {
   stripStringsAndComments,
 } = require('./scoring-analysis');
 
-let _multi, _report;
-function getMulti() { return _multi || (_multi = require('./multi')); }
-function getReport() { return _report || (_report = require('./report')); }
+const { multi: getMulti, report: getReport } = require('./report-lazy');
 
 const DEFAULT_WEIGHTS = {
   syntaxValidity: 0.25,

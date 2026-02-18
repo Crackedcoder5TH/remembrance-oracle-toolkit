@@ -327,7 +327,7 @@ describe('Reflector Engine — reflect (full cycle)', () => {
     createTestFile(tmpDir, 'code.js', 'function test() { return true; }');
     const report = reflect(tmpDir);
     const text = formatReport(report);
-    assert.ok(text.includes('Remembrance Self-Reflector Report'));
+    assert.ok(text.includes('Remembrance Reflector BOT Report'));
     assert.ok(text.includes('Codebase Snapshot'));
     assert.ok(text.includes('Healing Results'));
     assert.ok(text.includes('Collective Whisper'));
@@ -408,7 +408,7 @@ describe('Reflector GitHub — generateBranchName', () => {
 describe('Reflector GitHub — generateReflectorWorkflow', () => {
   it('should generate valid YAML', () => {
     const yaml = generateReflectorWorkflow();
-    assert.ok(yaml.includes('name: Remembrance Self-Reflector'));
+    assert.ok(yaml.includes('name: Remembrance Reflector BOT'));
     assert.ok(yaml.includes('schedule'));
     assert.ok(yaml.includes('workflow_dispatch'));
     assert.ok(yaml.includes('actions/checkout@v4'));
@@ -605,9 +605,9 @@ describe('Reflector Scheduler — getStatus', () => {
 // ─── MCP Tool Registration Tests ───
 
 describe('MCP consolidated tools include reflector-related features', () => {
-  it('MCP has consolidated 10 tools (reflector is accessed via module directly)', () => {
+  it('MCP has consolidated 11 tools (reflector is accessed via module directly)', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 10, 'MCP should have exactly 10 consolidated tools');
+    assert.equal(TOOLS.length, 11, 'MCP should have exactly 11 consolidated tools');
     const names = TOOLS.map(t => t.name);
     assert.ok(names.includes('oracle_maintain'), 'oracle_maintain should exist for reflect/covenant actions');
   });

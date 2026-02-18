@@ -84,6 +84,16 @@ class RemembranceOracle {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle] auto-pull from personal store failed:', e.message);
       }
     }
+
+    // Auto-start lifecycle engine for always-on pattern management
+    // Disabled by lifecycle:false or autoGrow:false (test harnesses)
+    if (options.lifecycle !== false && this.autoGrow) {
+      try {
+        this.startLifecycle(options.lifecycleOptions || {});
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle] lifecycle auto-start failed:', e.message);
+      }
+    }
   }
 }
 

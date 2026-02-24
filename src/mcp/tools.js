@@ -1,7 +1,7 @@
 /**
  * MCP Tool Definitions
  *
- * 11 focused tools (down from 55+).
+ * 12 focused tools (down from 55+).
  * Extracted from server.js for maintainability.
  */
 
@@ -179,7 +179,22 @@ const TOOLS = [
     },
   },
 
-  // ─── 11. Swarm (multi-agent orchestration) ───
+  // ─── 11. Healing (lineage, stats, variants, improvements) ───
+  {
+    name: 'oracle_healing',
+    description: 'Healing memory — query healed variants, healing lineage, persistent stats, and improvement queries. Actions: lineage (variant ancestry for a pattern), stats (per-pattern or aggregate healing stats), improved (patterns that improved above a threshold), variants (all healed variants for a pattern), best (best healed variant for a pattern).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['lineage', 'stats', 'improved', 'variants', 'best'], description: 'Healing action (default: stats)' },
+        patternId: { type: 'string', description: 'Pattern ID (for lineage/stats/variants/best)' },
+        minDelta: { type: 'number', description: 'Minimum coherency improvement (for improved, default: 0.2)' },
+      },
+      required: ['action'],
+    },
+  },
+
+  // ─── 12. Swarm (multi-agent orchestration) ───
   {
     name: 'oracle_swarm',
     description: 'Swarm orchestrator — route tasks to multiple AI agents for collective intelligence. Actions: code (generate via swarm), review (multi-agent code review), heal (improve code via swarm), status (check readiness), providers (list available agents).',

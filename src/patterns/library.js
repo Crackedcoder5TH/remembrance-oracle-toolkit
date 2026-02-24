@@ -230,7 +230,8 @@ class PatternLibrary {
         // Evolution module not available — no penalty
       }
 
-      const composite = relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + reliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus - evolutionPenalty;
+      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
+      const composite = relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus - evolutionPenalty;
 
       return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
     }).sort((a, b) => b.composite - a.composite);

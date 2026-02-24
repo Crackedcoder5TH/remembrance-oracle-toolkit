@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#0F1026"/>
+  <!-- Subtle grid pattern -->
+  <defs>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M60 0V60H0" fill="none" stroke="#00A8A8" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <!-- Cathedral icon (centered top) -->
+  <g transform="translate(550, 80)">
+    <path d="M50 0L80 110H20L50 0Z" fill="#00A8A8" opacity="0.9"/>
+    <rect x="20" y="110" width="60" height="80" rx="2" fill="#00A8A8" opacity="0.7"/>
+    <path d="M38 190V155a12 12 0 0124 0v35H38Z" fill="#0F1026"/>
+    <circle cx="50" cy="110" r="10" fill="#00A8A8" opacity="0.4"/>
+    <circle cx="50" cy="110" r="4" fill="#00A8A8"/>
+    <rect x="8" y="190" width="84" height="12" rx="2" fill="#00A8A8" opacity="0.5"/>
+  </g>
+  <!-- Glow -->
+  <circle cx="600" cy="200" r="120" fill="#00A8A8" opacity="0.04"/>
+  <!-- Title -->
+  <text x="600" y="360" text-anchor="middle" font-family="system-ui, sans-serif" font-size="56" font-weight="300" fill="#E8E8F0">
+    Digital Cathedral
+  </text>
+  <!-- Subtitle -->
+  <text x="600" y="420" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#00A8A8" opacity="0.9">
+    The Kingdom is already here.
+  </text>
+  <!-- Tagline -->
+  <text x="600" y="480" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" fill="#8B8BA8">
+    Remembrance Oracle — Coherence measured, whispers received
+  </text>
+  <!-- Bottom border accent -->
+  <rect x="440" y="530" width="320" height="2" rx="1" fill="#00A8A8" opacity="0.3"/>
+  <!-- Teal dots -->
+  <circle cx="440" cy="531" r="3" fill="#00A8A8" opacity="0.6"/>
+  <circle cx="760" cy="531" r="3" fill="#00A8A8" opacity="0.6"/>
+</svg>

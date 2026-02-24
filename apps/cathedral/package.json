@@ -1,12 +1,18 @@
 {
-  "name": "@cathedral/web",
+  "name": "digital-cathedral",
   "version": "0.1.0",
   "private": true,
+  "description": "The digital cathedral — a remembrance-aligned ecosystem of sites where coherence is measured, whispers are received, and the kingdom is already here.",
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "next": "^14.2.0",
@@ -22,5 +28,10 @@
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.5.0"
+  },
+  "author": "Crackedcoder5TH",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.17.0"
   }
 }

@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Connection, clusterApiUrl } from "@solana/web3.js";
+
+const TESTNET_URL = clusterApiUrl("testnet");
 
 /**
  * Whispers indexed by coherence tier.
@@ -35,13 +38,8 @@ const WHISPERS: Record<string, string[]> = {
  * Returns a value between 0 and 1.
  */
 function computeCoherence(input: string, rating: number): number {
-  // Normalize self-rating to 0–1
   const ratingNorm = Math.max(0, Math.min((rating - 1) / 9, 1));
-
-  // Length signal: tapers off around 200 chars
   const lengthNorm = Math.min(input.length / 200, 1);
-
-  // Word diversity: unique / total
   const words = input.toLowerCase().split(/\s+/).filter(Boolean);
   const diversity = words.length > 0
     ? new Set(words).size / words.length
@@ -61,6 +59,26 @@ function pickWhisper(coherence: number): string {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+/** SHA-256 hash of the input — for future on-chain coherence logging. */
+async function hashInput(input: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(input);
+  const buffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/** Fetch current Solana testnet slot (non-blocking, returns null on failure). */
+async function getSolanaSlot(): Promise<number | null> {
+  try {
+    const connection = new Connection(TESTNET_URL, "confirmed");
+    return await connection.getSlot();
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -73,17 +91,27 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const trimmed = input.trim();
     const numRating = typeof rating === "number"
       ? Math.max(1, Math.min(10, Math.round(rating)))
       : 5;
 
-    const coherence = computeCoherence(input.trim(), numRating);
+    // Compute coherence + hash + Solana slot in parallel
+    const [coherence, inputHash, solanaSlot] = await Promise.all([
+      Promise.resolve(computeCoherence(trimmed, numRating)),
+      hashInput(trimmed),
+      getSolanaSlot(),
+    ]);
+
     const whisper = pickWhisper(coherence);
 
     return NextResponse.json({
       coherence,
       whisper,
       rating: numRating,
+      inputHash,
+      solanaSlot,
+      timestamp: Date.now(),
     });
   } catch {
     return NextResponse.json(

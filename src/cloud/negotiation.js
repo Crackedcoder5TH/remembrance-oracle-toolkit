@@ -22,16 +22,31 @@ const http = require('http');
  */
 function generateManifest(oracle) {
   const patterns = oracle.patterns ? oracle.patterns.getAll() : [];
-  return patterns.map(p => ({
-    id: p.id,
-    name: p.name,
-    language: p.language,
-    coherency: p.coherencyScore?.total ?? 0,
-    tags: p.tags || [],
-    usageCount: p.usageCount || 0,
-    hasTests: !!p.testCode,
-    codeHash: _quickHash(p.code || ''),
-  }));
+
+  // Include temporal health in manifest for richer negotiation
+  let temporal = null;
+  try { temporal = oracle.getTemporalMemory?.(); } catch { /* unavailable */ }
+
+  return patterns.map(p => {
+    let health = null;
+    if (temporal) {
+      try {
+        const h = temporal.analyzeHealth(p.id);
+        health = { status: h.status, successRate: h.successRate };
+      } catch { /* skip */ }
+    }
+    return {
+      id: p.id,
+      name: p.name,
+      language: p.language,
+      coherency: p.coherencyScore?.total ?? 0,
+      tags: p.tags || [],
+      usageCount: p.usageCount || 0,
+      hasTests: !!p.testCode,
+      codeHash: _quickHash(p.code || ''),
+      health,
+    };
+  });
 }
 
 /**
@@ -129,6 +144,17 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
       localUnique: opportunities.localUnique.length,
     });
 
+    // Use coverage map to prioritize blind spots when pulling unique patterns
+    let blindSpotDomains = new Set();
+    try {
+      const coverage = oracle.coverageMap?.() || null;
+      if (coverage?.blindSpots) {
+        for (const spot of coverage.blindSpots) {
+          blindSpotDomains.add(spot.domain);
+        }
+      }
+    } catch { /* coverage map unavailable */ }
+
     // Step 3: REQUEST — ask for superior patterns
     if (pullSuperior && opportunities.peerSuperior.length > 0) {
       const requestIds = opportunities.peerSuperior
@@ -164,11 +190,18 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
       result.steps.push({ step: 'PULL_SUPERIOR', pulled: result.pulled });
     }
 
-    // Pull unique patterns from peer
+    // Pull unique patterns from peer — prioritize blind spot domains
     if (pullUnique && opportunities.peerUnique.length > 0) {
-      const requestIds = opportunities.peerUnique
+      const sorted = [...opportunities.peerUnique]
         .filter(p => p.coherency >= minCoherency && p.hasTests)
-        .map(p => p.id);
+        .sort((a, b) => {
+          // Boost patterns whose tags match our blind spots
+          const aInBlindSpot = (a.tags || []).some(t => blindSpotDomains.has(t)) ? 1 : 0;
+          const bInBlindSpot = (b.tags || []).some(t => blindSpotDomains.has(t)) ? 1 : 0;
+          if (aInBlindSpot !== bInBlindSpot) return bInBlindSpot - aInBlindSpot;
+          return b.coherency - a.coherency;
+        });
+      const requestIds = sorted.map(p => p.id);
 
       if (requestIds.length > 0) {
         const offered = await _fetchJson(`${remoteUrl}/api/negotiate/request`, {

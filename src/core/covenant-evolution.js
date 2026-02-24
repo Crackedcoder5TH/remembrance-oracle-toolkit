@@ -76,7 +76,7 @@ function recordViolation(code, reason, category, rootDir = process.cwd()) {
  * @param {object} options — { minOccurrences, rootDir }
  */
 function discoverPrinciples(options = {}) {
-  const { minOccurrences = 3, rootDir = process.cwd() } = options;
+  const { minOccurrences = 3, autoPromote = false, rootDir = process.cwd() } = options;
   const data = loadEvolvedPrinciples(rootDir);
 
   // Cluster violations by category
@@ -99,14 +99,22 @@ function discoverPrinciples(options = {}) {
     if (cluster.count >= minOccurrences && !existingCategories.has(cat)) {
       // Generate a detection pattern from common code snippets
       const pattern = _inferPattern(cluster.snippets);
-      proposals.push({
+      const proposal = {
         category: cat,
         occurrences: cluster.count,
         reasons: cluster.reasons,
         suggestedPattern: pattern,
         suggestedName: _categoryToName(cat),
         suggestedSeal: `Code must not contain ${cat} patterns. Discovered from ${cluster.count} violations.`,
-      });
+      };
+      proposals.push(proposal);
+
+      // Self-reinforcing loop: auto-promote if pattern is strong enough
+      if (autoPromote && pattern && cluster.count >= minOccurrences * 2) {
+        try {
+          promotePrinciple(proposal, rootDir);
+        } catch { /* promotion failed — non-fatal */ }
+      }
     }
   }
 

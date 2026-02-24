@@ -299,6 +299,10 @@ function semanticSimilarity(query, document) {
  *
  * Returns ranked results with similarity scores.
  */
+// Query similarity cache — avoids recomputing embeddings for repeated queries
+const _querySimilarityCache = new Map();
+const _QUERY_CACHE_MAX = 64;
+
 function semanticSearch(items, query, options = {}) {
   if (!Array.isArray(items)) return [];
   if (query == null || typeof query !== 'string') return [];
@@ -309,6 +313,25 @@ function semanticSearch(items, query, options = {}) {
     filtered = filtered.filter(item =>
       (item.language || '').toLowerCase() === language.toLowerCase()
     );
+  }
+
+  // Pre-compute query concepts and n-grams once for reuse across all items
+  const queryLower = query.toLowerCase();
+  const queryCacheKey = queryLower.slice(0, 80);
+  let cachedQueryData = _querySimilarityCache.get(queryCacheKey);
+  if (!cachedQueryData) {
+    cachedQueryData = {
+      concepts: identifyConcepts(queryLower),
+      conceptIds: null,
+      expanded: expandQuery(query),
+      ngrams: charNgrams(queryLower, 2),
+    };
+    cachedQueryData.conceptIds = new Set(cachedQueryData.concepts.map(c => c.id));
+    if (_querySimilarityCache.size >= _QUERY_CACHE_MAX) {
+      const oldest = _querySimilarityCache.keys().next().value;
+      _querySimilarityCache.delete(oldest);
+    }
+    _querySimilarityCache.set(queryCacheKey, cachedQueryData);
   }
 
   const results = filtered.map(item => {

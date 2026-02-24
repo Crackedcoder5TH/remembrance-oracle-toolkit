@@ -42,7 +42,17 @@ const DOMAINS = [
  * @returns {object} coverageMap
  */
 function generateCoverageMap(oracle) {
+  // Cache: reuse if <5 min old and pattern count unchanged
   const patterns = oracle.patterns ? oracle.patterns.getAll() : [];
+  if (oracle._coverageCache &&
+      oracle._coverageCache.patternCount === patterns.length &&
+      Date.now() - oracle._coverageCache.timestamp < 300000) {
+    return oracle._coverageCache.data;
+  }
+
+  // Initialize temporal memory for health-aware scoring
+  let temporal = null;
+  try { temporal = oracle.getTemporalMemory?.(); } catch { /* unavailable */ }
 
   // Domain coverage
   const domainCoverage = {};
@@ -51,21 +61,37 @@ function generateCoverageMap(oracle) {
       patterns: [],
       count: 0,
       avgCoherency: 0,
+      healthAdjustedCoherency: 0,
       languages: {},
       hasTests: 0,
+      regressedCount: 0,
     };
   }
 
   // Classify each pattern into domains
   for (const p of patterns) {
     const text = [p.name, p.description, ...(p.tags || []), (p.code || '').slice(0, 300)].join(' ').toLowerCase();
+
+    // Get temporal health multiplier (healthy=1.0, regressed=0.5, unknown=1.0)
+    let healthMultiplier = 1.0;
+    if (temporal) {
+      try {
+        const health = temporal.analyzeHealth(p.id);
+        if (health.status === 'regressed') healthMultiplier = 0.5;
+        else if (health.status === 'recovered') healthMultiplier = 0.9;
+      } catch { /* skip */ }
+    }
+
     for (const domain of DOMAINS) {
       const hits = domain.keywords.filter(k => text.includes(k)).length;
       if (hits >= 1) {
         const d = domainCoverage[domain.id];
         d.patterns.push(p.name || p.id);
         d.count++;
-        d.avgCoherency += (p.coherencyScore?.total ?? 0);
+        const coherency = p.coherencyScore?.total ?? 0;
+        d.avgCoherency += coherency;
+        d.healthAdjustedCoherency += coherency * healthMultiplier;
+        if (healthMultiplier < 1.0) d.regressedCount++;
         const lang = p.language || 'unknown';
         d.languages[lang] = (d.languages[lang] || 0) + 1;
         if (p.testCode) d.hasTests++;
@@ -78,6 +104,7 @@ function generateCoverageMap(oracle) {
     const d = domainCoverage[domain.id];
     if (d.count > 0) {
       d.avgCoherency = +(d.avgCoherency / d.count).toFixed(3);
+      d.healthAdjustedCoherency = +(d.healthAdjustedCoherency / d.count).toFixed(3);
     }
     // Trim pattern list to top 10
     d.patterns = d.patterns.slice(0, 10);
@@ -127,7 +154,7 @@ function generateCoverageMap(oracle) {
   // Generate narrative
   const narrative = _generateNarrative(patterns.length, domainsCovered, DOMAINS.length, blindSpots, strengths, languageGaps);
 
-  return {
+  const result = {
     totalPatterns: patterns.length,
     domainsCovered,
     totalDomains: DOMAINS.length,
@@ -139,6 +166,13 @@ function generateCoverageMap(oracle) {
     languageGaps,
     narrative,
   };
+
+  // Cache result on oracle instance
+  if (oracle) {
+    oracle._coverageCache = { timestamp: Date.now(), patternCount: patterns.length, data: result };
+  }
+
+  return result;
 }
 
 function _generateNarrative(total, covered, totalDomains, blindSpots, strengths, langGaps) {

@@ -130,6 +130,18 @@ module.exports = {
     });
 
     this._emit({ type: 'pattern_registered', id: registered.id, name: pattern.name, language: registered.language });
+
+    // Record in temporal memory
+    try {
+      const tm = this.getTemporalMemory?.();
+      if (tm) {
+        tm.record(registered.id, 'promoted', {
+          context: 'pattern-registered',
+          detail: `Registered with coherency ${validation.coherencyScore?.total?.toFixed(3) || 'N/A'}`,
+        });
+      }
+    } catch { /* temporal memory not available */ }
+
     const growthReport = this._autoGrowFrom(registered);
     return { success: true, registered: true, pattern: registered, validation, growth: growthReport };
   },

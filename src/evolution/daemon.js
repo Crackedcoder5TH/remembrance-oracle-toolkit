@@ -81,7 +81,14 @@ function startDaemon(oracle, options = {}) {
    */
   function runCycle() {
     if (running) return lastReport;
+    // Acquire maintenance lock — prevent lifecycle from overlapping
+    if (oracle._maintenanceInProgress) {
+      log(`Skipping cycle — maintenance already in progress (source: ${oracle._maintenanceSource})`);
+      return lastReport;
+    }
     running = true;
+    oracle._maintenanceInProgress = true;
+    oracle._maintenanceSource = 'daemon';
     const start = Date.now();
     cycleCount++;
 
@@ -140,11 +147,25 @@ function startDaemon(oracle, options = {}) {
         }
       }
 
-      // 4. Coverage analysis: identify gaps
+      // 4. Coverage analysis: identify gaps and emit events for blind spots
       if (config.enableCoverageAnalysis) {
         try {
           log('Analyzing coverage...');
           report.coverage = generateCoverageMap(oracle);
+
+          // Emit events for critical blind spots — feeds into generation queue
+          if (report.coverage.blindSpots?.length > 0) {
+            for (const spot of report.coverage.blindSpots.filter(b => b.severity === 'critical').slice(0, 3)) {
+              try {
+                oracle._emit?.({
+                  type: 'coverage_gap_detected',
+                  domain: spot.domain,
+                  suggestion: spot.suggestion,
+                });
+              } catch { /* emit not available */ }
+            }
+            log(`  Coverage gaps: ${report.coverage.blindSpots.map(b => b.domain).join(', ')}`);
+          }
         } catch (err) {
           report.errors.push(`coverage: ${err.message}`);
         }
@@ -154,7 +175,7 @@ function startDaemon(oracle, options = {}) {
       if (config.enableCovenantEvolution) {
         try {
           log('Evolving covenant...');
-          const proposals = discoverPrinciples({ minOccurrences: 3 });
+          const proposals = discoverPrinciples({ minOccurrences: 3, autoPromote: true });
           report.covenant = {
             proposals: proposals.length,
             stats: evolvedCovenantStats(),
@@ -167,10 +188,33 @@ function startDaemon(oracle, options = {}) {
         }
       }
 
-      // 6. Temporal tracking: record environment state
+      // 6. Temporal tracking: detect regressions and trigger priority heals
       if (config.enableTemporalTracking && temporal) {
         try {
           report.temporal = temporal.stats();
+
+          // Detect regressions and mark for priority healing
+          const regressions = temporal.detectRegressions({ lookbackDays: 7 });
+          if (regressions.length > 0) {
+            report.temporal.regressions = regressions.length;
+            log(`  Detected ${regressions.length} regression(s) in last 7 days`);
+
+            // Trigger priority healing for regressed patterns
+            if (oracle.recycler && typeof oracle.recycler.capture === 'function') {
+              for (const reg of regressions.slice(0, 5)) {
+                const pattern = oracle.patterns?.get?.(reg.patternId);
+                if (pattern) {
+                  try {
+                    oracle.recycler.capture(
+                      { name: pattern.name, code: pattern.code, language: pattern.language },
+                      `Temporal regression detected: ${reg.possibleCause || 'unknown'}`,
+                      null
+                    );
+                  } catch { /* capture failed */ }
+                }
+              }
+            }
+          }
         } catch (err) {
           report.errors.push(`temporal: ${err.message}`);
         }
@@ -181,6 +225,9 @@ function startDaemon(oracle, options = {}) {
     }
 
     report.durationMs = Date.now() - start;
+    // Release maintenance lock
+    oracle._maintenanceInProgress = false;
+    oracle._maintenanceSource = null;
     lastReport = report;
     history.push({
       cycle: report.cycle,

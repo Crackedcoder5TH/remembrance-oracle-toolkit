@@ -57,6 +57,22 @@ function compose(oracle, description, options = {}) {
     return { code: null, error: 'No matching patterns found for composition' };
   }
 
+  // Step 1b: Adjust scores by temporal health — avoid regressed patterns
+  let temporal = null;
+  try { temporal = oracle.getTemporalMemory?.(); } catch { /* unavailable */ }
+
+  if (temporal) {
+    for (const m of matches) {
+      try {
+        const health = temporal.analyzeHealth(m.id);
+        if (health.status === 'regressed') m.semanticScore *= 0.3;
+        else if (health.status === 'healthy') m.semanticScore *= 1.1;
+        else if (health.status === 'recovered') m.semanticScore *= 0.9;
+      } catch { /* skip */ }
+    }
+    matches.sort((a, b) => b.semanticScore - a.semanticScore);
+  }
+
   // Step 2: Select building blocks (high coherency, diverse)
   const buildingBlocks = _selectDiverse(matches, maxPatterns);
 
@@ -67,7 +83,7 @@ function compose(oracle, description, options = {}) {
   const composedName = name || _generateName(description);
   const composed = _composeFunction(composedName, description, buildingBlocks, signatures);
 
-  return {
+  const result = {
     code: composed.code,
     testCode: composed.testCode,
     buildingBlocks: buildingBlocks.map(b => ({
@@ -78,6 +94,27 @@ function compose(oracle, description, options = {}) {
     composition: composed.composition,
     name: composedName,
   };
+
+  // Self-reinforcing loop: auto-register successful compositions as candidates
+  if (options.autoRegister && oracle && composed.code) {
+    try {
+      const { sandboxExecute } = require('./sandbox');
+      const testResult = sandboxExecute(composed.code, composed.testCode, language);
+      if (testResult.passed) {
+        oracle.patterns?.addCandidate?.({
+          name: composedName,
+          code: composed.code,
+          language,
+          tags: ['composed', ...buildingBlocks.map(b => b.name)],
+          testCode: composed.testCode,
+          source: 'pattern-composer',
+        });
+        result.autoRegistered = true;
+      }
+    } catch { /* auto-registration failed — non-fatal */ }
+  }
+
+  return result;
 }
 
 /**

@@ -14,6 +14,17 @@ module.exports = {
     }
     this._emit({ type: 'feedback', id, succeeded, newReliability: updated.reliability.historicalScore });
 
+    // Record in temporal memory for health tracking
+    try {
+      const tm = this.getTemporalMemory?.();
+      if (tm) {
+        tm.record(id, succeeded ? 'success' : 'failure', {
+          context: 'feedback',
+          successRate: updated.reliability.historicalScore,
+        });
+      }
+    } catch { /* temporal memory not available */ }
+
     let healResult = null;
     if (!succeeded) {
       try {
@@ -41,6 +52,14 @@ module.exports = {
   patternFeedback(id, succeeded) {
     const updated = this.patterns.recordUsage(id, succeeded);
     if (!updated) return { success: false, error: `Pattern ${id} not found` };
+
+    // Record in temporal memory
+    try {
+      const tm = this.getTemporalMemory?.();
+      if (tm) {
+        tm.record(id, succeeded ? 'success' : 'failure', { context: 'pattern-feedback' });
+      }
+    } catch { /* temporal memory not available */ }
 
     const sqliteStore = this.patterns._sqlite;
     if (sqliteStore) {

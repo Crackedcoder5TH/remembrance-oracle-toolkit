@@ -48,6 +48,10 @@ class RemembranceOracle {
     this._healingStats = new Map();
     this.patterns.setHealingRateProvider((id) => this.getHealingSuccessRate(id));
 
+    // Maintenance coordination lock — prevents daemon and lifecycle from overlapping
+    this._maintenanceInProgress = false;
+    this._maintenanceSource = null;
+
     // Debug Oracle — exponential debugging intelligence
     this._debugOracle = null; // Lazy-initialized on first debug call
 

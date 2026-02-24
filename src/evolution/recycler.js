@@ -696,6 +696,17 @@ class PatternRecycler {
         // Update global coherence after successful heal — cascade compounds
         this._updateGlobalCoherence();
 
+        // Record heal success in temporal memory for tracking
+        try {
+          const tm = this.oracle?.getTemporalMemory?.();
+          if (tm) {
+            tm.record(regResult.pattern.id, 'healed', {
+              context: `Healed via reflection (attempt ${attempt + 1})`,
+              detail: `coherency: ${attemptDetail.coherency.toFixed(3)}, cascade: ${this._cascadeBoost}x`,
+            });
+          }
+        } catch { /* temporal not available */ }
+
         if (this.verbose) {
           console.log(`  [HEALED] ${pattern.name} — attempt ${attempt + 1}, coherency ${attemptDetail.coherency.toFixed(3)} (cascade ${this._cascadeBoost}x)`);
         }
@@ -706,6 +717,12 @@ class PatternRecycler {
       attemptDetail.reason = regResult.reason;
       entry.healHistory.push(attemptDetail);
       detail.attempts.push(attemptDetail);
+
+      // Feed failure into covenant evolution — near-misses become new principles
+      try {
+        const { recordViolation } = require('../core/covenant-evolution');
+        recordViolation(healedCode, `Heal rejected: ${regResult.reason || 'unknown'}`, 'heal-failure');
+      } catch { /* covenant evolution not available */ }
 
       // Use healed code as input for next attempt
       pattern.code = healedCode;

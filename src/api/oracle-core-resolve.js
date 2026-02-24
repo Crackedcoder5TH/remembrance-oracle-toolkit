@@ -83,11 +83,44 @@ module.exports = {
           finalCoherence: healing.reflection?.finalCoherence, improvement: healing.reflection?.improvement,
           healingPath: healing.healingPath,
         });
+
+        // Store healed variant as linked lineage when coherency improved
+        const originalCoherency = patternData.coherencyScore || 0;
+        const healedCoherency = healing.fullCoherency || healing.coherence || 0;
+        if (healedCoherency > originalCoherency && this.patterns._sqlite) {
+          try {
+            this.patterns._sqlite.addHealedVariant({
+              parentPatternId: patternData.id,
+              healedCode: healing.code,
+              originalCoherency,
+              healedCoherency,
+              healingLoops: healing.loops,
+              healingStrategy: healing.healingPath?.[0]?.split(':')?.[0] || 'reflection',
+              healingSummary: healing.healingSummary || null,
+              whisper: healing.whisper || null,
+            });
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[resolve] healed variant storage failed:', e.message);
+          }
+        }
+
+        // Record healing stats to persistent storage
+        this._trackHealingSuccess(patternData.id, true, {
+          coherencyBefore: originalCoherency,
+          coherencyAfter: healedCoherency,
+          healingLoops: healing.loops,
+        });
       } catch (_) {
         healedCode = patternData.code;
         this._emit({
           type: 'healing_failed', patternId: patternData?.id, patternName: patternData?.name,
           error: _.message || 'Unknown healing error',
+        });
+
+        // Record failed healing attempt to persistent storage
+        this._trackHealingSuccess(patternData.id, false, {
+          coherencyBefore: patternData.coherencyScore || 0,
+          healingLoops: 0,
         });
       }
     }

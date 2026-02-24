@@ -216,6 +216,47 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_candidates_method ON candidates(generation_method);
     `);
 
+    // Healed variants table — stores healing results as linked variants alongside originals
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS healed_variants (
+        id TEXT PRIMARY KEY,
+        parent_pattern_id TEXT NOT NULL,
+        healed_code TEXT NOT NULL,
+        original_coherency REAL DEFAULT 0,
+        healed_coherency REAL DEFAULT 0,
+        coherency_delta REAL DEFAULT 0,
+        healing_loops INTEGER DEFAULT 0,
+        healing_strategy TEXT,
+        healing_summary TEXT,
+        whisper TEXT,
+        healed_at TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_healed_parent ON healed_variants(parent_pattern_id);
+      CREATE INDEX IF NOT EXISTS idx_healed_coherency ON healed_variants(healed_coherency);
+      CREATE INDEX IF NOT EXISTS idx_healed_delta ON healed_variants(coherency_delta);
+      CREATE INDEX IF NOT EXISTS idx_healed_at ON healed_variants(healed_at);
+    `);
+
+    // Healing stats table — persistent per-pattern healing history (replaces in-memory Map)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS healing_stats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        pattern_id TEXT NOT NULL,
+        succeeded INTEGER NOT NULL,
+        coherency_before REAL,
+        coherency_after REAL,
+        coherency_delta REAL,
+        healing_loops INTEGER DEFAULT 0,
+        healed_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_healing_stats_pattern ON healing_stats(pattern_id);
+      CREATE INDEX IF NOT EXISTS idx_healing_stats_succeeded ON healing_stats(succeeded);
+      CREATE INDEX IF NOT EXISTS idx_healing_stats_delta ON healing_stats(coherency_delta);
+    `);
+
     // Initialize meta if not present
     const row = this.db.prepare('SELECT value FROM meta WHERE key = ?').get('version');
     if (!row) {
@@ -1014,6 +1055,272 @@ class SQLiteStore {
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+  }
+
+  // ─── Healed Variants — linked healing results alongside originals ───
+
+  /**
+   * Store a healed variant linked to its parent pattern.
+   * The original stays intact; the healed version sits alongside with lineage.
+   */
+  addHealedVariant(variant) {
+    const id = this._hash(variant.healedCode + variant.parentPatternId + Date.now());
+    const now = new Date().toISOString();
+    const delta = (variant.healedCoherency || 0) - (variant.originalCoherency || 0);
+
+    this.db.prepare(`
+      INSERT INTO healed_variants (id, parent_pattern_id, healed_code,
+        original_coherency, healed_coherency, coherency_delta,
+        healing_loops, healing_strategy, healing_summary, whisper,
+        healed_at, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, variant.parentPatternId, variant.healedCode,
+      variant.originalCoherency || 0, variant.healedCoherency || 0, delta,
+      variant.healingLoops || 0, variant.healingStrategy || null,
+      variant.healingSummary || null, variant.whisper || null,
+      now, now
+    );
+
+    this._audit('add', 'healed_variants', id, {
+      parentPatternId: variant.parentPatternId,
+      originalCoherency: variant.originalCoherency,
+      healedCoherency: variant.healedCoherency,
+      delta,
+    });
+
+    return this._rowToHealedVariant(this.db.prepare('SELECT * FROM healed_variants WHERE id = ?').get(id));
+  }
+
+  /**
+   * Get all healed variants for a pattern, ordered by coherency (best first).
+   */
+  getHealedVariants(parentPatternId) {
+    const rows = this.db.prepare(
+      'SELECT * FROM healed_variants WHERE parent_pattern_id = ? ORDER BY healed_coherency DESC'
+    ).all(parentPatternId);
+    return rows.map(r => this._rowToHealedVariant(r));
+  }
+
+  /**
+   * Get the best healed variant for a pattern (highest coherency).
+   */
+  getBestHealedVariant(parentPatternId) {
+    const row = this.db.prepare(
+      'SELECT * FROM healed_variants WHERE parent_pattern_id = ? ORDER BY healed_coherency DESC LIMIT 1'
+    ).get(parentPatternId);
+    return row ? this._rowToHealedVariant(row) : null;
+  }
+
+  /**
+   * Get healing lineage for a pattern — all healed variants with timestamps.
+   */
+  getHealingLineage(parentPatternId) {
+    const variants = this.getHealedVariants(parentPatternId);
+    const pattern = this.getPattern(parentPatternId);
+    return {
+      patternId: parentPatternId,
+      patternName: pattern?.name || 'unknown',
+      originalCoherency: pattern?.coherencyScore?.total || 0,
+      healingCount: variants.length,
+      variants: variants.map(v => ({
+        id: v.id,
+        coherencyBefore: v.originalCoherency,
+        coherencyAfter: v.healedCoherency,
+        delta: v.coherencyDelta,
+        loops: v.healingLoops,
+        strategy: v.healingStrategy,
+        healedAt: v.healedAt,
+      })),
+      bestCoherency: variants.length > 0 ? variants[0].healedCoherency : null,
+      totalImprovement: variants.length > 0
+        ? variants[0].healedCoherency - (pattern?.coherencyScore?.total || 0)
+        : 0,
+    };
+  }
+
+  _rowToHealedVariant(row) {
+    return {
+      id: row.id,
+      parentPatternId: row.parent_pattern_id,
+      healedCode: row.healed_code,
+      originalCoherency: row.original_coherency,
+      healedCoherency: row.healed_coherency,
+      coherencyDelta: row.coherency_delta,
+      healingLoops: row.healing_loops,
+      healingStrategy: row.healing_strategy,
+      healingSummary: row.healing_summary,
+      whisper: row.whisper,
+      healedAt: row.healed_at,
+      createdAt: row.created_at,
+    };
+  }
+
+  // ─── Healing Stats — persistent per-pattern healing history ───
+
+  /**
+   * Record a healing attempt with full context.
+   * Replaces in-memory _healingStats tracking.
+   */
+  recordHealingAttempt(stat) {
+    const now = new Date().toISOString();
+    const delta = (stat.coherencyAfter || 0) - (stat.coherencyBefore || 0);
+
+    this.db.prepare(`
+      INSERT INTO healing_stats (pattern_id, succeeded, coherency_before,
+        coherency_after, coherency_delta, healing_loops, healed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      stat.patternId, stat.succeeded ? 1 : 0,
+      stat.coherencyBefore || null, stat.coherencyAfter || null, delta,
+      stat.healingLoops || 0, now
+    );
+  }
+
+  /**
+   * Get healing success rate for a pattern from persistent storage.
+   * Returns 1.0 for patterns with no healing history (optimistic default).
+   */
+  getHealingSuccessRate(patternId) {
+    const row = this.db.prepare(
+      'SELECT COUNT(*) as attempts, SUM(succeeded) as successes FROM healing_stats WHERE pattern_id = ?'
+    ).get(patternId);
+    if (!row || row.attempts === 0) return 1.0;
+    return row.successes / row.attempts;
+  }
+
+  /**
+   * Get full healing stats for a pattern — attempts, successes, coherency history.
+   */
+  getPatternHealingStats(patternId) {
+    const summary = this.db.prepare(
+      'SELECT COUNT(*) as attempts, SUM(succeeded) as successes, AVG(coherency_delta) as avgDelta, MAX(coherency_after) as peakCoherency FROM healing_stats WHERE pattern_id = ?'
+    ).get(patternId);
+
+    const history = this.db.prepare(
+      'SELECT * FROM healing_stats WHERE pattern_id = ? ORDER BY healed_at DESC'
+    ).all(patternId);
+
+    return {
+      patternId,
+      attempts: summary.attempts || 0,
+      successes: summary.successes || 0,
+      rate: summary.attempts > 0 ? summary.successes / summary.attempts : 1.0,
+      avgCoherencyDelta: summary.avgDelta || 0,
+      peakCoherency: summary.peakCoherency || null,
+      history: history.map(r => ({
+        succeeded: r.succeeded === 1,
+        coherencyBefore: r.coherency_before,
+        coherencyAfter: r.coherency_after,
+        coherencyDelta: r.coherency_delta,
+        healingLoops: r.healing_loops,
+        healedAt: r.healed_at,
+      })),
+    };
+  }
+
+  /**
+   * Get aggregate healing stats across all patterns.
+   */
+  getAllHealingStats() {
+    const summary = this.db.prepare(
+      'SELECT COUNT(*) as totalAttempts, SUM(succeeded) as totalSuccesses FROM healing_stats'
+    ).get();
+
+    const patternCount = this.db.prepare(
+      'SELECT COUNT(DISTINCT pattern_id) as c FROM healing_stats'
+    ).get().c;
+
+    const details = this.db.prepare(`
+      SELECT pattern_id, COUNT(*) as attempts, SUM(succeeded) as successes,
+        AVG(coherency_delta) as avgDelta, MAX(coherency_after) as peakCoherency
+      FROM healing_stats GROUP BY pattern_id ORDER BY attempts DESC
+    `).all();
+
+    return {
+      patterns: patternCount,
+      totalAttempts: summary.totalAttempts || 0,
+      totalSuccesses: summary.totalSuccesses || 0,
+      overallRate: summary.totalAttempts > 0
+        ? summary.totalSuccesses / summary.totalAttempts
+        : 0,
+      details: details.map(d => {
+        const pattern = this.getPattern(d.pattern_id);
+        return {
+          id: d.pattern_id,
+          name: pattern?.name || 'unknown',
+          attempts: d.attempts,
+          successes: d.successes,
+          rate: d.attempts > 0 ? d.successes / d.attempts : 0,
+          avgDelta: Math.round((d.avgDelta || 0) * 1000) / 1000,
+          peakCoherency: d.peakCoherency,
+        };
+      }),
+    };
+  }
+
+  /**
+   * Query patterns that improved more than a given threshold through healing.
+   * "Show me all patterns that improved more than 20% through healing" → queryHealingImprovement(0.2)
+   */
+  queryHealingImprovement(minDelta = 0.2) {
+    const rows = this.db.prepare(`
+      SELECT pattern_id, MAX(coherency_delta) as bestDelta,
+        AVG(coherency_delta) as avgDelta, COUNT(*) as attempts,
+        SUM(succeeded) as successes, MAX(coherency_after) as peakCoherency
+      FROM healing_stats
+      WHERE coherency_delta >= ?
+      GROUP BY pattern_id
+      ORDER BY bestDelta DESC
+    `).all(minDelta);
+
+    return rows.map(r => {
+      const pattern = this.getPattern(r.pattern_id);
+      return {
+        id: r.pattern_id,
+        name: pattern?.name || 'unknown',
+        language: pattern?.language || 'unknown',
+        bestDelta: Math.round(r.bestDelta * 1000) / 1000,
+        avgDelta: Math.round(r.avgDelta * 1000) / 1000,
+        attempts: r.attempts,
+        successes: r.successes,
+        peakCoherency: r.peakCoherency,
+      };
+    });
+  }
+
+  /**
+   * Compute composite healing boost for a pattern.
+   * Battle-tested patterns (many heals, improving coherency) get a boost > 1.0.
+   * This is the foundation for the healing rate provider in decide().
+   *
+   * Formula: base_rate * (1 + battle_bonus)
+   * battle_bonus = log2(1 + healCount) * avgPositiveDelta * successRate
+   * Capped at 1.5 (50% boost maximum).
+   */
+  getHealingCompositeBoost(patternId) {
+    const row = this.db.prepare(`
+      SELECT COUNT(*) as attempts, SUM(succeeded) as successes,
+        AVG(CASE WHEN coherency_delta > 0 THEN coherency_delta ELSE 0 END) as avgPositiveDelta
+      FROM healing_stats WHERE pattern_id = ?
+    `).get(patternId);
+
+    if (!row || row.attempts === 0) return 1.0;
+
+    const successRate = row.successes / row.attempts;
+    const avgPosDelta = row.avgPositiveDelta || 0;
+    const healCount = row.attempts;
+
+    // Battle-tested bonus: log curve for diminishing returns on count,
+    // scaled by how much improvement healing actually produced
+    const battleBonus = Math.log2(1 + healCount) * avgPosDelta * successRate;
+
+    // Base reliability from success rate, boosted by battle-testing
+    const baseRate = successRate;
+    const boosted = baseRate * (1 + Math.min(battleBonus, 0.5));
+
+    // Clamp to [0, 1.5] — max 50% boost over base rate
+    return Math.min(1.5, Math.max(0, boosted));
   }
 
   // ─── Meta ───

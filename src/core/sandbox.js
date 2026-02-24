@@ -171,35 +171,83 @@ ${testCode}
 }
 
 /**
+ * Normalize literal escape sequences (\\n, \\t) that appear in code
+ * stored with escaped newlines/tabs instead of actual whitespace.
+ */
+function normalizeEscapes(code) {
+  if (!code) return code;
+  // Only fix if code contains literal \n or \t outside of strings
+  // Heuristic: if the code has no actual newlines but has \n sequences, it's escaped
+  if (code.includes('\\n') && !code.includes('\n')) {
+    return code.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+  }
+  return code;
+}
+
+/**
  * Strip TypeScript type annotations from code (lightweight, no deps).
- * Handles: param types, return types, generics, type/interface declarations.
+ * Handles: param types, return types, generics, type/interface declarations,
+ * union/intersection types, custom type references, and enum declarations.
  */
 function stripTypeAnnotations(code) {
   let result = code;
+  // Remove enum declarations
+  result = result.replace(/^(export\s+)?(const\s+)?enum\s+\w+\s*\{[\s\S]*?^\}/gm, '');
   // Remove standalone interface/type declaration blocks
   result = result.replace(/^(export\s+)?(interface|type)\s+\w[^\n]*\{[\s\S]*?^\}/gm, '');
   // Remove single-line type/interface declarations
   result = result.replace(/^(export\s+)?(type|interface)\s+[^\n]+;\s*$/gm, '');
-  // Remove : Type annotations from params and variables
-  result = result.replace(/:\s*(?:string|number|boolean|void|any|unknown|never|null|undefined|object|bigint|symbol|Function)\b(\[\])?\s*(?=[,)=\{;])/g, '');
+  // Remove : Type annotations — built-in types, custom types, union/intersection types, array types
+  result = result.replace(/:\s*(?:(?:string|number|boolean|void|any|unknown|never|null|undefined|object|bigint|symbol|Function|Date|RegExp|Error)\b(?:\[\])?(?:\s*\|\s*(?:string|number|boolean|void|any|unknown|never|null|undefined|object|bigint|symbol|Function|Date|RegExp|Error)\b(?:\[\])?)*)\s*(?=[,)=\{;])/g, '');
+  // Remove : CustomType annotations (PascalCase identifiers)
+  result = result.replace(/:\s*[A-Z]\w*(?:\[\])?\s*(?=[,)=\{;])/g, '');
   // Remove generic type params <T, U> from function declarations
   result = result.replace(/<\s*[A-Z]\w*(?:\s*(?:extends\s+\w+)?\s*,\s*[A-Z]\w*(?:\s*extends\s+\w+)?)*\s*>/g, '');
-  // Remove 'as Type' assertions
-  result = result.replace(/\s+as\s+(?:string|number|boolean|any|unknown|const)\b/g, '');
+  // Remove 'as Type' assertions (including custom types)
+  result = result.replace(/\s+as\s+(?:string|number|boolean|any|unknown|const|[A-Z]\w*)\b/g, '');
   // Remove complex type annotations like : Record<...>, : Map<...>, etc.
-  result = result.replace(/:\s*(?:Record|Map|Set|Array|Promise|Partial|Required|Pick|Omit|ReadonlyArray)<[^>]+>\s*(?=[,)=\{;])/g, '');
-  // Remove return type annotations (function foo(): Type)
-  result = result.replace(/\)\s*:\s*(?:string|number|boolean|void|any|unknown|never|null|undefined|object|Promise<[^>]+>|[A-Z]\w*(?:\[\])?)\s*\{/g, ') {');
+  result = result.replace(/:\s*(?:Record|Map|Set|Array|Promise|Partial|Required|Pick|Omit|ReadonlyArray|Readonly)<[^>]+>\s*(?=[,)=\{;])/g, '');
+  // Remove return type annotations (function foo(): Type) including union returns
+  result = result.replace(/\)\s*:\s*(?:string|number|boolean|void|any|unknown|never|null|undefined|object|Promise<[^>]+>|[A-Z]\w*(?:\[\])?)(?:\s*\|\s*(?:string|number|boolean|void|any|unknown|never|null|undefined|object|[A-Z]\w*(?:\[\])?))*\s*\{/g, ') {');
+  // Remove non-null assertions (!)
+  result = result.replace(/!\./g, '.');
+  result = result.replace(/!\[/g, '[');
   return result;
 }
 
 /**
+ * Check if tsx is available for TypeScript execution.
+ * Cached after first check.
+ */
+let _tsxAvailable = null;
+function isTsxAvailable() {
+  if (_tsxAvailable !== null) return _tsxAvailable;
+  try {
+    execSync('tsx --version', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 });
+    _tsxAvailable = true;
+  } catch {
+    _tsxAvailable = false;
+  }
+  return _tsxAvailable;
+}
+
+/**
  * Execute TypeScript code in a sandboxed subprocess.
- * Strategy: Try --experimental-strip-types first, fallback to manual strip as JS.
+ *
+ * Strategy chain (stops at first success or non-TS-syntax failure):
+ *   1. Node --experimental-strip-types (fast, built-in, handles most TS)
+ *   2. tsx runtime (handles enums, decorators, namespaces, complex TS)
+ *   3. Manual type stripping → run as plain JS (last resort)
+ *
+ * Code is pre-processed to normalize literal escape sequences.
  */
 function sandboxTypeScript(code, testCode, options = {}) {
   const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY } = options;
   const sandboxDir = createSandboxDir();
+
+  // Pre-process: normalize literal escape sequences in code
+  const normalizedCode = normalizeEscapes(code);
+  const normalizedTest = normalizeEscapes(testCode);
 
   try {
     const preloadPath = path.join(sandboxDir, '_preload.js');
@@ -217,13 +265,15 @@ Module._load = function(request, parent, isMain) {
     const wrapper = `
 'use strict';
 // Run user code
-${code}
+${normalizedCode}
 ;
 // Run tests
-${testCode}
+${normalizedTest}
 `;
 
     const memFlag = `--max-old-space-size=${maxMemory}`;
+    const sandboxEnv = { PATH: process.env.PATH, NODE_PATH: '', HOME: sandboxDir, NODE_NO_WARNINGS: '1' };
+    const execOpts = { timeout, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], cwd: sandboxDir, env: sandboxEnv };
 
     // Strategy 1: Native --experimental-strip-types (.ts file)
     const tsPath = path.join(sandboxDir, 'test.ts');
@@ -232,18 +282,7 @@ ${testCode}
     try {
       const result = execSync(
         `node ${memFlag} --experimental-strip-types --require "${preloadPath}" "${tsPath}"`,
-        {
-          timeout,
-          encoding: 'utf-8',
-          stdio: ['pipe', 'pipe', 'pipe'],
-          cwd: sandboxDir,
-          env: {
-            PATH: process.env.PATH,
-            NODE_PATH: '',
-            HOME: sandboxDir,
-            NODE_NO_WARNINGS: '1',
-          },
-        }
+        execOpts
       );
       return { passed: true, output: result || 'All assertions passed', sandboxed: true };
     } catch (tsErr) {
@@ -253,40 +292,51 @@ ${testCode}
       }
       const tsOutput = tsErr.stderr || tsErr.stdout || tsErr.message || '';
 
-      // If it's a syntax/import error from type-stripping, try fallback
-      const isTypeStripError = /ERR_UNSUPPORTED_|SyntaxError.*type|Cannot use import|Unexpected token/.test(tsOutput);
-      if (!isTypeStripError) {
-        // Test logic failure — TS compiled fine, test just failed
+      // If it's a syntax/import/TS-specific error, try next strategy; otherwise it's a test logic failure
+      const isTsSyntaxError = /ERR_UNSUPPORTED_|ERR_INVALID_TYPESCRIPT|SyntaxError|Cannot use import|Unexpected token/i.test(tsOutput);
+      if (!isTsSyntaxError) {
         return { passed: false, output: tsOutput, sandboxed: true, timedOut: false };
       }
     }
 
-    // Strategy 2: Manual type stripping, run as .js
+    // Strategy 2: tsx runtime (handles enums, decorators, namespaces, etc.)
+    if (isTsxAvailable()) {
+      try {
+        const result = execSync(
+          `tsx "${tsPath}"`,
+          { ...execOpts, env: { ...sandboxEnv, NODE_OPTIONS: `--max-old-space-size=${maxMemory} --require "${preloadPath}"` } }
+        );
+        return { passed: true, output: result || 'All assertions passed (tsx)', sandboxed: true };
+      } catch (tsxErr) {
+        const isTimeout = tsxErr.killed || tsxErr.signal === 'SIGTERM';
+        if (isTimeout) {
+          return { passed: false, output: 'Execution timed out', sandboxed: true, timedOut: true };
+        }
+        const tsxOutput = tsxErr.stderr || tsxErr.stdout || tsxErr.message || '';
+
+        // If tsx ran the code but the test failed, that's a definitive result
+        const isTsxSyntaxError = /SyntaxError|Cannot find module|ERR_MODULE/i.test(tsxOutput);
+        if (!isTsxSyntaxError) {
+          return { passed: false, output: tsxOutput, sandboxed: true, timedOut: false };
+        }
+      }
+    }
+
+    // Strategy 3: Manual type stripping, run as .js
     const strippedWrapper = `
 'use strict';
 // Run user code (types manually stripped)
-${stripTypeAnnotations(code)}
+${stripTypeAnnotations(normalizedCode)}
 ;
 // Run tests
-${stripTypeAnnotations(testCode)}
+${stripTypeAnnotations(normalizedTest)}
 `;
     const jsPath = path.join(sandboxDir, 'test.js');
     fs.writeFileSync(jsPath, strippedWrapper, 'utf-8');
 
     const jsResult = execSync(
       `node ${memFlag} --require "${preloadPath}" "${jsPath}"`,
-      {
-        timeout,
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-        cwd: sandboxDir,
-        env: {
-          PATH: process.env.PATH,
-          NODE_PATH: '',
-          HOME: sandboxDir,
-          NODE_NO_WARNINGS: '1',
-        },
-      }
+      execOpts
     );
     return { passed: true, output: jsResult || 'All assertions passed (types stripped)', sandboxed: true };
   } catch (err) {

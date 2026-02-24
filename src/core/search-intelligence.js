@@ -8,131 +8,14 @@
  *   3. CONTEXTUAL RANKING: Weight results by usage frequency, recency, feedback
  *   4. CROSS-LANGUAGE:    Find Python equivalents when searching in JS, etc.
  *   5. CONSTRAINT FILTERS: "fast sort" → O(n log n), "safe parse" → with validation
+ *
+ * Data constants live in search-intelligence-data.js for simplicity.
  */
 
-// ─── Intent Signals ───
-
-const INTENT_PATTERNS = {
-  performance: {
-    triggers: /\b(fast|quick|efficient|optimiz|O\(|performance|speed|throughput|latency|benchmark)\b/i,
-    boost: { tags: ['algorithm', 'optimization', 'performance'], codeHints: ['cache', 'memo', 'pool', 'batch'] },
-    weight: 0.15,
-  },
-  safety: {
-    triggers: /\b(safe|secure|valid|sanitiz|guard|protect|prevent|defensive|robust)\b/i,
-    boost: { tags: ['validation', 'security', 'safe'], codeHints: ['try', 'catch', 'throw', 'assert', 'check'] },
-    weight: 0.15,
-  },
-  simplicity: {
-    triggers: /\b(simple|easy|basic|minimal|clean|readable|straightforward|concise|tiny)\b/i,
-    boost: { tags: ['utility', 'helper', 'simple'], codeHints: [] },
-    weight: 0.1,
-    penalize: { minLines: 20 }, // Penalize long code for "simple" queries
-  },
-  async: {
-    triggers: /\b(async|await|promise|concurrent|parallel|non-blocking|callback|event)\b/i,
-    boost: { tags: ['async', 'promise', 'concurrent'], codeHints: ['async', 'await', 'Promise', 'callback'] },
-    weight: 0.12,
-  },
-  functional: {
-    triggers: /\b(functional|immutable|pure|compose|pipe|chain|map|filter|reduce|declarative)\b/i,
-    boost: { tags: ['functional', 'composition', 'utility'], codeHints: ['map', 'filter', 'reduce', 'pipe', 'compose'] },
-    weight: 0.1,
-  },
-  testing: {
-    triggers: /\b(test|spec|mock|stub|assert|expect|should|coverage|unit|integration)\b/i,
-    boost: { tags: ['test', 'testing', 'mock'], codeHints: ['assert', 'expect', 'describe', 'it', 'test'] },
-    weight: 0.1,
-  },
-  architecture: {
-    triggers: /\b(split|refactor|modular|barrel|facade|extract|decompos|restructur|reorganiz|decouple|monolith|sub-?module|re-?export|separate concerns|single responsibility)\b/i,
-    boost: { tags: ['architecture', 'refactor', 'pattern', 'module'], codeHints: ['module.exports', 'require', 'import', 'export'] },
-    weight: 0.2,
-    structural: true,
-  },
-  designPattern: {
-    triggers: /\b(factory|singleton|observer|strategy|adapter|decorator|proxy|builder|middleware|plugin|registry|pub-?sub|event-?emitter)\b/i,
-    boost: { tags: ['pattern', 'design-pattern', 'architecture'], codeHints: ['class', 'interface', 'extends', 'implements'] },
-    weight: 0.15,
-    structural: true,
-  },
-};
-
-// ─── Common Typos & Abbreviations ───
-
-const CORRECTIONS = {
-  // Common misspellings
-  'debounse': 'debounce',
-  'throttel': 'throttle',
-  'memoize': 'memoize',
-  'memorize': 'memoize',
-  'memorise': 'memoize',
-  'seach': 'search',
-  'serach': 'search',
-  'valiate': 'validate',
-  'cahe': 'cache',
-  'chache': 'cache',
-  'queu': 'queue',
-  'quere': 'query',
-  'sotr': 'sort',
-  'algortihm': 'algorithm',
-  'algorithim': 'algorithm',
-  'recurive': 'recursive',
-  'recusive': 'recursive',
-  'asyncronous': 'asynchronous',
-  'promis': 'promise',
-  'flaten': 'flatten',
-  'flattern': 'flatten',
-  'concurency': 'concurrency',
-
-  // Abbreviations
-  'fn': 'function',
-  'cb': 'callback',
-  'arr': 'array',
-  'str': 'string',
-  'obj': 'object',
-  'num': 'number',
-  'len': 'length',
-  'idx': 'index',
-  'req': 'request',
-  'res': 'response',
-  'err': 'error',
-  'msg': 'message',
-  'ctx': 'context',
-  'cfg': 'config',
-  'opts': 'options',
-  'params': 'parameters',
-  'args': 'arguments',
-  'impl': 'implementation',
-  'util': 'utility',
-  'utils': 'utilities',
-  'regex': 'regular expression',
-  'fmt': 'format',
-  'iter': 'iterator',
-  'gen': 'generator',
-};
-
-// ─── Language Aliases ───
-
-const LANGUAGE_ALIASES = {
-  'js': 'javascript',
-  'ts': 'typescript',
-  'py': 'python',
-  'rb': 'ruby',
-  'rs': 'rust',
-  'cpp': 'c++',
-  'node': 'javascript',
-  'nodejs': 'javascript',
-  'deno': 'typescript',
-};
-
-const LANGUAGE_FAMILIES = {
-  javascript: ['typescript'],
-  typescript: ['javascript'],
-  python: [],
-  go: [],
-  rust: [],
-};
+const {
+  INTENT_PATTERNS, CORRECTIONS, LANGUAGE_ALIASES,
+  LANGUAGE_FAMILIES, KNOWN_LANGUAGES, ARCHITECTURAL_PATTERNS,
+} = require('./search-intelligence-data');
 
 // ─── Intent Parsing ───
 
@@ -150,48 +33,52 @@ function parseIntent(query) {
   const lower = query.toLowerCase().trim();
   const tokens = lower.split(/\s+/).filter(t => t.length > 0);
 
-  // Detect intents
+  const intents = detectIntents(lower);
+  const language = detectLanguage(tokens);
+  const constraints = detectConstraints(query);
+  const rewritten = rewriteQuery(tokens);
+
+  return { original: query, rewritten, tokens, intents, language, constraints };
+}
+
+/**
+ * Detect intent signals from query text.
+ */
+function detectIntents(lower) {
   const intents = [];
   for (const [name, pattern] of Object.entries(INTENT_PATTERNS)) {
     if (pattern.triggers.test(lower)) {
       intents.push({ name, weight: pattern.weight, boost: pattern.boost, structural: !!pattern.structural });
     }
   }
+  return intents;
+}
 
-  // Detect language intent
-  let language = null;
+/**
+ * Detect language from query tokens.
+ */
+function detectLanguage(tokens) {
   for (const token of tokens) {
-    if (LANGUAGE_ALIASES[token]) {
-      language = LANGUAGE_ALIASES[token];
-      break;
-    }
-    // Check if token IS a language name
-    if (['javascript', 'typescript', 'python', 'go', 'rust', 'java', 'ruby'].includes(token)) {
-      language = token;
-      break;
-    }
+    if (LANGUAGE_ALIASES[token]) return LANGUAGE_ALIASES[token];
+    if (KNOWN_LANGUAGES.has(token)) return token;
   }
+  return null;
+}
 
-  // Detect constraints
+/**
+ * Detect structured constraints from query text.
+ */
+function detectConstraints(query) {
   const constraints = {};
   if (/\bO\(\s*n\s*log\s*n\s*\)/i.test(query)) constraints.complexity = 'nlogn';
   if (/\bO\(\s*n\s*\)/i.test(query)) constraints.complexity = 'linear';
   if (/\bO\(\s*1\s*\)/i.test(query)) constraints.complexity = 'constant';
   if (/\b(no|without)\s+(dependencies|deps)\b/i.test(query)) constraints.zeroDeps = true;
   if (/\b(type|typed|typesafe|type-safe)\b/i.test(query)) constraints.typed = true;
-
-  // Rewrite query with corrections
-  const rewritten = rewriteQuery(tokens);
-
-  return {
-    original: query,
-    rewritten,
-    tokens,
-    intents,
-    language,
-    constraints,
-  };
+  return constraints;
 }
+
+// ─── Query Rewriting ───
 
 /**
  * Rewrite query tokens with typo corrections and abbreviation expansion.
@@ -201,11 +88,8 @@ function rewriteQuery(tokens) {
     const correction = CORRECTIONS[t];
     if (correction) return correction;
 
-    // Edit distance 1 corrections for common terms
     for (const [typo, fix] of Object.entries(CORRECTIONS)) {
-      if (editDistance(t, typo) <= 1 && t.length >= 3) {
-        return fix;
-      }
+      if (editDistance(t, typo) <= 1 && t.length >= 3) return fix;
     }
 
     return t;
@@ -243,11 +127,6 @@ function editDistance(a, b) {
 
 /**
  * Apply intent-based boosts to search results.
- * Enhances the base relevance score with contextual signals.
- *
- * @param {Array} results - Search results with base scores
- * @param {object} intent - Parsed intent from parseIntent()
- * @returns {Array} Re-ranked results
  */
 function applyIntentRanking(results, intent) {
   if (!results || results.length === 0) return results;
@@ -257,33 +136,22 @@ function applyIntentRanking(results, intent) {
     let boost = 0;
 
     for (const signal of intent.intents) {
-      // Tag boost
       const tags = result.tags || [];
-      const tagBoost = signal.boost.tags.filter(t => tags.includes(t)).length;
-      boost += tagBoost * signal.weight * 0.5;
+      boost += signal.boost.tags.filter(t => tags.includes(t)).length * signal.weight * 0.5;
 
-      // Code hint boost
       const code = result.code || '';
       const codeBoost = signal.boost.codeHints.filter(h => code.includes(h)).length;
       boost += Math.min(codeBoost * signal.weight * 0.3, signal.weight);
 
-      // Simplicity penalty for long code
       if (signal.name === 'simplicity' && signal.penalize) {
-        const lines = code.split('\n').length;
-        if (lines > signal.penalize.minLines) {
-          boost -= 0.1;
-        }
+        if (code.split('\n').length > signal.penalize.minLines) boost -= 0.1;
       }
     }
 
-    // Language family boost
     if (intent.language && result.language) {
       const family = LANGUAGE_FAMILIES[intent.language] || [];
-      if (result.language === intent.language) {
-        boost += 0.1;
-      } else if (family.includes(result.language)) {
-        boost += 0.05;
-      }
+      if (result.language === intent.language) boost += 0.1;
+      else if (family.includes(result.language)) boost += 0.05;
     }
 
     const enhancedScore = Math.min(1, Math.max(0, (result.matchScore || result.relevance || 0) + boost));
@@ -301,10 +169,6 @@ function applyIntentRanking(results, intent) {
 
 /**
  * Expand search to include related languages.
- * If searching for "sort" in JS, also consider TS results.
- *
- * @param {string} language - Primary language
- * @returns {Array} Languages to search (including family)
  */
 function expandLanguages(language) {
   if (!language) return [];
@@ -313,25 +177,16 @@ function expandLanguages(language) {
   return [resolved, ...family];
 }
 
-// ─── Smart Search ───
+// ─── Search Mode Selection ───
 
 /**
  * Select the optimal search mode based on parsed intent.
- * Performance/safety intents → semantic (deeper matching).
- * Simplicity/testing intents → hybrid (faster, keyword-heavy).
- * No intents → hybrid (default).
- *
- * @param {object} intent - Parsed intent from parseIntent()
- * @param {string} requestedMode - User-requested mode override
- * @returns {string} 'hybrid' | 'semantic'
  */
 function selectSearchMode(intent, requestedMode) {
   if (requestedMode && requestedMode !== 'auto') return requestedMode;
   if (!intent || intent.intents.length === 0) return 'hybrid';
 
   const intentNames = new Set(intent.intents.map(i => i.name));
-
-  // Deep semantic search for complex or structural intents
   if (intentNames.has('performance') || intentNames.has('safety') || intentNames.has('functional') ||
       intentNames.has('architecture') || intentNames.has('designPattern')) {
     return 'semantic';
@@ -340,13 +195,10 @@ function selectSearchMode(intent, requestedMode) {
   return 'hybrid';
 }
 
+// ─── Usage Boosts ───
+
 /**
  * Apply usage-based boosts to search results.
- * High-usage, high-success patterns get a ranking bump.
- *
- * @param {Array} results - Search results
- * @param {object} oracle - RemembranceOracle instance
- * @returns {Array} Results with usage boosts applied
  */
 function applyUsageBoosts(results, oracle) {
   if (!results || results.length === 0) return results;
@@ -359,11 +211,7 @@ function applyUsageBoosts(results, oracle) {
     return results.map(r => {
       const boost = boosts.get(r.id) || 0;
       if (boost > 0) {
-        return {
-          ...r,
-          matchScore: Math.min(1, (r.matchScore || 0) + boost),
-          usageBoost: boost,
-        };
+        return { ...r, matchScore: Math.min(1, (r.matchScore || 0) + boost), usageBoost: boost };
       }
       return r;
     }).sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
@@ -372,238 +220,50 @@ function applyUsageBoosts(results, oracle) {
   }
 }
 
+// ─── Constraint Filters ───
+
 /**
- * Intelligent search that combines intent parsing, query rewriting,
- * contextual ranking, and embedding-tier selection into a single call.
- *
- * The search pipeline:
- *   1. Parse intent → detect language, constraints, semantic signals
- *   2. Select search mode based on intent (auto-tier selection)
- *   3. Rewrite query with typo corrections
- *   4. Search with expanded languages
- *   5. Apply intent-based ranking boosts
- *   6. Apply usage-based boosts from insights
- *   7. Filter by constraints
- *   8. Deduplicate and suggest
- *
- * @param {object} oracle - RemembranceOracle instance
- * @param {string} query - Raw search query
- * @param {object} options - { language, limit, mode, embeddingEngine }
- * @returns {object} { results, intent, rewrittenQuery, suggestions, searchMode }
+ * Apply constraint filters to search results.
  */
-function smartSearch(oracle, query, options = {}) {
-  const { language, limit = 10, mode = 'auto', embeddingEngine } = options;
+function applyConstraintFilters(results, constraints) {
+  if (!constraints) return results;
 
-  // Step 1: Parse intent
-  const intent = parseIntent(query);
+  let filtered = results;
 
-  // Step 2: Select optimal search mode based on intent
-  const searchMode = selectSearchMode(intent, mode);
-
-  // Step 3: Use rewritten query for search
-  const searchQuery = intent.rewritten || query;
-  const searchLang = language || intent.language;
-
-  // Step 4: Search with expanded languages
-  let results = oracle.search(searchQuery, {
-    limit: limit * 2, // Over-fetch for re-ranking
-    language: searchLang,
-    mode: searchMode,
-  });
-
-  // Step 4b: If embedding engine provided and intent is complex, do secondary embedding search
-  if (embeddingEngine && intent.intents.length > 0 && results.length < limit) {
-    try {
-      const allPatterns = oracle.patterns.getAll();
-      const embeddingResults = embeddingEngine.search(searchQuery, allPatterns, {
-        limit: limit,
-        language: searchLang,
-      });
-      // Merge embedding results that aren't already in main results
-      const existingIds = new Set(results.map(r => r.id));
-      for (const er of embeddingResults) {
-        if (!existingIds.has(er.id)) {
-          results.push({
-            ...er,
-            matchScore: er._relevance?.relevance || 0,
-            embeddingMatch: true,
-          });
-        }
-      }
-    } catch {
-      // Embedding search is best-effort
-    }
-  }
-
-  // Step 5: If language was detected, also search family languages
-  if (searchLang) {
-    const family = expandLanguages(searchLang);
-    for (const lang of family) {
-      if (lang === searchLang) continue;
-      const familyResults = oracle.search(searchQuery, { limit: 5, language: lang, mode: searchMode });
-      results = results.concat(familyResults.map(r => ({ ...r, crossLanguage: true })));
-    }
-  }
-
-  // Step 6: Apply intent-based ranking
-  results = applyIntentRanking(results, intent);
-
-  // Step 7: Apply usage-based boosts from insights
-  results = applyUsageBoosts(results, oracle);
-
-  // Step 8: Apply constraint filters
-  if (intent.constraints.zeroDeps) {
-    results = results.filter(r => {
+  if (constraints.zeroDeps) {
+    filtered = filtered.filter(r => {
       const code = r.code || '';
       return !code.includes('require(') && !code.includes('import ');
     });
   }
-  if (intent.constraints.typed) {
-    results = results.filter(r => {
+
+  if (constraints.typed) {
+    filtered = filtered.filter(r => {
       const lang = (r.language || '').toLowerCase();
       const code = r.code || '';
       return lang === 'typescript' || code.includes(': string') || code.includes(': number');
     });
   }
 
-  // Step 9: Deduplicate by name
+  return filtered;
+}
+
+// ─── Deduplication ───
+
+/**
+ * Deduplicate results by name/id.
+ */
+function deduplicateResults(results) {
   const seen = new Set();
-  results = results.filter(r => {
+  return results.filter(r => {
     const key = r.name || r.id;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
-
-  // Step 10: Inject architectural results for structural queries
-  results = injectArchitecturalResults(results, intent, limit * 2);
-
-  // Step 11: Generate suggestions if few results
-  const suggestions = [];
-  if (results.length < 3) {
-    if (intent.rewritten !== intent.original) {
-      suggestions.push(`Did you mean: "${intent.rewritten}"?`);
-    }
-    if (intent.language) {
-      suggestions.push(`Try searching without language filter`);
-    }
-    if (intent.intents.length > 0) {
-      suggestions.push(`Detected intents: ${intent.intents.map(i => i.name).join(', ')}`);
-    }
-  }
-
-  return {
-    results: results.slice(0, limit),
-    intent,
-    rewrittenQuery: searchQuery,
-    corrections: intent.rewritten !== intent.original ? intent.rewritten : null,
-    suggestions,
-    totalMatches: results.length,
-    searchMode,
-  };
 }
 
-// ─── Built-In Architectural Patterns ───
-
-const ARCHITECTURAL_PATTERNS = [
-  {
-    id: 'arch:barrel-reexport',
-    name: 'Barrel Re-Export',
-    description: 'Split a monolithic module into focused sub-modules with a thin barrel file that re-exports everything. Preserves backward-compatible require() paths.',
-    tags: ['architecture', 'refactor', 'module', 'barrel', 'split'],
-    language: 'javascript',
-    code: `// barrel.js — thin re-export preserving original require path
-const subA = require('./module-sub-a');
-const subB = require('./module-sub-b');
-module.exports = { ...subA, ...subB };`,
-    source: 'builtin-architecture',
-    coherency: 1.0,
-  },
-  {
-    id: 'arch:facade-pattern',
-    name: 'Facade Pattern',
-    description: 'Provide a simplified interface to a complex subsystem. The facade delegates to sub-modules but exposes a clean, minimal API.',
-    tags: ['architecture', 'pattern', 'facade', 'api'],
-    language: 'javascript',
-    code: `// facade.js — simplified interface to complex subsystem
-const auth = require('./auth');
-const db = require('./database');
-const cache = require('./cache');
-
-module.exports = {
-  async getUser(id) {
-    const cached = cache.get('user:' + id);
-    if (cached) return cached;
-    const user = await db.findUser(id);
-    cache.set('user:' + id, user);
-    return user;
-  },
-};`,
-    source: 'builtin-architecture',
-    coherency: 1.0,
-  },
-  {
-    id: 'arch:strategy-pattern',
-    name: 'Strategy Pattern',
-    description: 'Define a family of algorithms, encapsulate each one, and make them interchangeable. Strategies let the algorithm vary independently from clients that use it.',
-    tags: ['architecture', 'pattern', 'strategy', 'design-pattern'],
-    language: 'javascript',
-    code: `// strategies.js — interchangeable algorithm implementations
-const strategies = {
-  json: { serialize: JSON.stringify, deserialize: JSON.parse },
-  csv: { serialize: toCsv, deserialize: parseCsv },
-};
-
-function process(data, format = 'json') {
-  const strategy = strategies[format];
-  if (!strategy) throw new Error('Unknown format: ' + format);
-  return strategy.serialize(data);
-}`,
-    source: 'builtin-architecture',
-    coherency: 1.0,
-  },
-  {
-    id: 'arch:plugin-registry',
-    name: 'Plugin Registry',
-    description: 'Extensible plugin system with registration, hooks, and lifecycle management. Plugins register themselves and are invoked at extension points.',
-    tags: ['architecture', 'pattern', 'plugin', 'registry', 'extensible'],
-    language: 'javascript',
-    code: `// registry.js — extensible plugin system
-const plugins = new Map();
-
-function register(name, plugin) {
-  if (plugins.has(name)) throw new Error('Plugin already registered: ' + name);
-  plugins.set(name, plugin);
-  if (typeof plugin.init === 'function') plugin.init();
-}
-
-function invoke(hook, ...args) {
-  for (const [, plugin] of plugins) {
-    if (typeof plugin[hook] === 'function') plugin[hook](...args);
-  }
-}`,
-    source: 'builtin-architecture',
-    coherency: 1.0,
-  },
-  {
-    id: 'arch:mixin-prototype',
-    name: 'Mixin / Prototype Extension',
-    description: 'Compose behavior from multiple sources onto a prototype. Each mixin is a plain object of methods that receives context via this.',
-    tags: ['architecture', 'pattern', 'mixin', 'composition'],
-    language: 'javascript',
-    code: `// Compose behavior from focused sub-modules
-const searchMethods = require('./search');
-const feedbackMethods = require('./feedback');
-
-class Oracle {
-  constructor(store) { this.store = store; }
-}
-
-Object.assign(Oracle.prototype, searchMethods, feedbackMethods);`,
-    source: 'builtin-architecture',
-    coherency: 1.0,
-  },
-];
+// ─── Architectural Injection ───
 
 /**
  * Inject architectural patterns into search results when structural intent is detected.
@@ -627,6 +287,108 @@ function injectArchitecturalResults(results, intent, limit) {
     .sort((a, b) => b.matchScore - a.matchScore);
 
   return [...archMatches, ...results].slice(0, limit);
+}
+
+// ─── Suggestion Generation ───
+
+/**
+ * Generate search suggestions when results are sparse.
+ */
+function generateSuggestions(results, intent) {
+  if (results.length >= 3) return [];
+
+  const suggestions = [];
+  if (intent.rewritten !== intent.original) suggestions.push(`Did you mean: "${intent.rewritten}"?`);
+  if (intent.language) suggestions.push(`Try searching without language filter`);
+  if (intent.intents.length > 0) suggestions.push(`Detected intents: ${intent.intents.map(i => i.name).join(', ')}`);
+  return suggestions;
+}
+
+// ─── Embedding Merge ───
+
+/**
+ * Merge embedding-based results into main results (best-effort).
+ */
+function mergeEmbeddingResults(results, oracle, query, intent, language, limit, embeddingEngine) {
+  if (!embeddingEngine || intent.intents.length === 0 || results.length >= limit) return results;
+
+  try {
+    const allPatterns = oracle.patterns.getAll();
+    const embeddingResults = embeddingEngine.search(query, allPatterns, { limit, language });
+    const existingIds = new Set(results.map(r => r.id));
+    for (const er of embeddingResults) {
+      if (!existingIds.has(er.id)) {
+        results.push({ ...er, matchScore: er._relevance?.relevance || 0, embeddingMatch: true });
+      }
+    }
+  } catch {
+    // Embedding search is best-effort
+  }
+
+  return results;
+}
+
+/**
+ * Fetch results from language-family expansion.
+ */
+function fetchFamilyResults(results, oracle, searchQuery, searchLang, searchMode) {
+  if (!searchLang) return results;
+
+  const family = expandLanguages(searchLang);
+  for (const lang of family) {
+    if (lang === searchLang) continue;
+    const familyResults = oracle.search(searchQuery, { limit: 5, language: lang, mode: searchMode });
+    results = results.concat(familyResults.map(r => ({ ...r, crossLanguage: true })));
+  }
+  return results;
+}
+
+// ─── Smart Search (Pipeline) ───
+
+/**
+ * Intelligent search that combines intent parsing, query rewriting,
+ * contextual ranking, and embedding-tier selection into a single call.
+ *
+ * Pipeline: parse → select mode → rewrite → search → embed → expand → rank → boost → filter → dedup → inject → suggest
+ *
+ * @param {object} oracle - RemembranceOracle instance
+ * @param {string} query - Raw search query
+ * @param {object} options - { language, limit, mode, embeddingEngine }
+ * @returns {object} { results, intent, rewrittenQuery, suggestions, searchMode }
+ */
+function smartSearch(oracle, query, options = {}) {
+  const { language, limit = 10, mode = 'auto', embeddingEngine } = options;
+
+  const intent = parseIntent(query);
+  const searchMode = selectSearchMode(intent, mode);
+  const searchQuery = intent.rewritten || query;
+  const searchLang = language || intent.language;
+
+  // Core search with over-fetch for re-ranking
+  let results = oracle.search(searchQuery, { limit: limit * 2, language: searchLang, mode: searchMode });
+
+  // Enrich: embeddings → family languages → intent ranking → usage boosts
+  results = mergeEmbeddingResults(results, oracle, searchQuery, intent, searchLang, limit, embeddingEngine);
+  results = fetchFamilyResults(results, oracle, searchQuery, searchLang, searchMode);
+  results = applyIntentRanking(results, intent);
+  results = applyUsageBoosts(results, oracle);
+
+  // Narrow: constraints → dedup → architectural injection → suggestions
+  results = applyConstraintFilters(results, intent.constraints);
+  results = deduplicateResults(results);
+  results = injectArchitecturalResults(results, intent, limit * 2);
+
+  const suggestions = generateSuggestions(results, intent);
+
+  return {
+    results: results.slice(0, limit),
+    intent,
+    rewrittenQuery: searchQuery,
+    corrections: intent.rewritten !== intent.original ? intent.rewritten : null,
+    suggestions,
+    totalMatches: results.length,
+    searchMode,
+  };
 }
 
 // ─── Exports ───

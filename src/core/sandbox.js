@@ -171,8 +171,31 @@ ${testCode}
 }
 
 /**
+ * Strip TypeScript type annotations from code (lightweight, no deps).
+ * Handles: param types, return types, generics, type/interface declarations.
+ */
+function stripTypeAnnotations(code) {
+  let result = code;
+  // Remove standalone interface/type declaration blocks
+  result = result.replace(/^(export\s+)?(interface|type)\s+\w[^\n]*\{[\s\S]*?^\}/gm, '');
+  // Remove single-line type/interface declarations
+  result = result.replace(/^(export\s+)?(type|interface)\s+[^\n]+;\s*$/gm, '');
+  // Remove : Type annotations from params and variables
+  result = result.replace(/:\s*(?:string|number|boolean|void|any|unknown|never|null|undefined|object|bigint|symbol|Function)\b(\[\])?\s*(?=[,)=\{;])/g, '');
+  // Remove generic type params <T, U> from function declarations
+  result = result.replace(/<\s*[A-Z]\w*(?:\s*(?:extends\s+\w+)?\s*,\s*[A-Z]\w*(?:\s*extends\s+\w+)?)*\s*>/g, '');
+  // Remove 'as Type' assertions
+  result = result.replace(/\s+as\s+(?:string|number|boolean|any|unknown|const)\b/g, '');
+  // Remove complex type annotations like : Record<...>, : Map<...>, etc.
+  result = result.replace(/:\s*(?:Record|Map|Set|Array|Promise|Partial|Required|Pick|Omit|ReadonlyArray)<[^>]+>\s*(?=[,)=\{;])/g, '');
+  // Remove return type annotations (function foo(): Type)
+  result = result.replace(/\)\s*:\s*(?:string|number|boolean|void|any|unknown|never|null|undefined|object|Promise<[^>]+>|[A-Z]\w*(?:\[\])?)\s*\{/g, ') {');
+  return result;
+}
+
+/**
  * Execute TypeScript code in a sandboxed subprocess.
- * Uses Node 22's --experimental-strip-types to strip TS syntax.
+ * Strategy: Try --experimental-strip-types first, fallback to manual strip as JS.
  */
 function sandboxTypeScript(code, testCode, options = {}) {
   const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY } = options;
@@ -200,12 +223,58 @@ ${code}
 ${testCode}
 `;
 
-    const filePath = path.join(sandboxDir, 'test.ts');
-    fs.writeFileSync(filePath, wrapper, 'utf-8');
-
     const memFlag = `--max-old-space-size=${maxMemory}`;
-    const result = execSync(
-      `node ${memFlag} --experimental-strip-types --require "${preloadPath}" "${filePath}"`,
+
+    // Strategy 1: Native --experimental-strip-types (.ts file)
+    const tsPath = path.join(sandboxDir, 'test.ts');
+    fs.writeFileSync(tsPath, wrapper, 'utf-8');
+
+    try {
+      const result = execSync(
+        `node ${memFlag} --experimental-strip-types --require "${preloadPath}" "${tsPath}"`,
+        {
+          timeout,
+          encoding: 'utf-8',
+          stdio: ['pipe', 'pipe', 'pipe'],
+          cwd: sandboxDir,
+          env: {
+            PATH: process.env.PATH,
+            NODE_PATH: '',
+            HOME: sandboxDir,
+            NODE_NO_WARNINGS: '1',
+          },
+        }
+      );
+      return { passed: true, output: result || 'All assertions passed', sandboxed: true };
+    } catch (tsErr) {
+      const isTimeout = tsErr.killed || tsErr.signal === 'SIGTERM';
+      if (isTimeout) {
+        return { passed: false, output: 'Execution timed out', sandboxed: true, timedOut: true };
+      }
+      const tsOutput = tsErr.stderr || tsErr.stdout || tsErr.message || '';
+
+      // If it's a syntax/import error from type-stripping, try fallback
+      const isTypeStripError = /ERR_UNSUPPORTED_|SyntaxError.*type|Cannot use import|Unexpected token/.test(tsOutput);
+      if (!isTypeStripError) {
+        // Test logic failure — TS compiled fine, test just failed
+        return { passed: false, output: tsOutput, sandboxed: true, timedOut: false };
+      }
+    }
+
+    // Strategy 2: Manual type stripping, run as .js
+    const strippedWrapper = `
+'use strict';
+// Run user code (types manually stripped)
+${stripTypeAnnotations(code)}
+;
+// Run tests
+${stripTypeAnnotations(testCode)}
+`;
+    const jsPath = path.join(sandboxDir, 'test.js');
+    fs.writeFileSync(jsPath, strippedWrapper, 'utf-8');
+
+    const jsResult = execSync(
+      `node ${memFlag} --require "${preloadPath}" "${jsPath}"`,
       {
         timeout,
         encoding: 'utf-8',
@@ -219,12 +288,7 @@ ${testCode}
         },
       }
     );
-
-    return {
-      passed: true,
-      output: result || 'All assertions passed',
-      sandboxed: true,
-    };
+    return { passed: true, output: jsResult || 'All assertions passed (types stripped)', sandboxed: true };
   } catch (err) {
     const isTimeout = err.killed || err.signal === 'SIGTERM';
     return {

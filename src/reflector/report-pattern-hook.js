@@ -246,11 +246,13 @@ function getPatternHookLogPath(rootDir) {
 
 /**
  * Record a pattern hook usage (called after healing with pattern context).
+ * Persists to both JSON log and SQLite healing_stats when oracle is available.
  *
  * @param {string} rootDir - Repository root
- * @param {object} entry - { filePath, patternGuided, patternName, improvement }
+ * @param {object} entry - { filePath, patternGuided, patternName, patternId, improvement, coherencyBefore, coherencyAfter, healingLoops, succeeded, healedCode }
+ * @param {object} [oracle] - Optional oracle instance for SQLite persistence
  */
-function recordPatternHookUsage(rootDir, entry) {
+function recordPatternHookUsage(rootDir, entry, oracle) {
   const { ensureDir, loadJSON, saveJSON, trimArray } = _scoring();
   const logPath = getPatternHookLogPath(rootDir);
   ensureDir(join(rootDir, '.remembrance'));
@@ -261,6 +263,33 @@ function recordPatternHookUsage(rootDir, entry) {
   });
   trimArray(log, 200);
   saveJSON(logPath, log);
+
+  // Persist to SQLite healing stats when oracle is available
+  if (oracle && entry.patternId) {
+    try {
+      const sqliteStore = oracle.patterns?._sqlite;
+      if (sqliteStore && typeof sqliteStore.recordHealingAttempt === 'function') {
+        sqliteStore.recordHealingAttempt({
+          patternId: entry.patternId,
+          succeeded: entry.succeeded !== false,
+          coherencyBefore: entry.coherencyBefore || null,
+          coherencyAfter: entry.coherencyAfter || null,
+          healingLoops: entry.healingLoops || 0,
+        });
+      }
+      // Store healed variant if improvement was positive
+      if (entry.healedCode && entry.coherencyAfter > entry.coherencyBefore && sqliteStore.addHealedVariant) {
+        sqliteStore.addHealedVariant({
+          parentPatternId: entry.patternId,
+          healedCode: entry.healedCode,
+          originalCoherency: entry.coherencyBefore || 0,
+          healedCoherency: entry.coherencyAfter || 0,
+          healingLoops: entry.healingLoops || 0,
+          healingStrategy: entry.patternGuided ? 'pattern-guided' : 'reflector',
+        });
+      }
+    } catch { /* best effort — never break the reflector */ }
+  }
 }
 
 /**

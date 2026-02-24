@@ -68,8 +68,74 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
       console.log('');
       for (const d of stats.details) {
         const icon = parseFloat(d.rate) >= 0.8 ? c.green('\u25CF') : parseFloat(d.rate) >= 0.5 ? c.yellow('\u25CF') : c.red('\u25CF');
-        console.log(`  ${icon} ${c.bold(d.name)} \u2014 ${d.successes}/${d.attempts} (${colorScore(d.rate)})`);
+        const deltaStr = d.avgDelta != null ? ` \u0394${d.avgDelta > 0 ? '+' : ''}${d.avgDelta}` : '';
+        const peakStr = d.peakCoherency != null ? ` peak:${d.peakCoherency}` : '';
+        console.log(`  ${icon} ${c.bold(d.name)} \u2014 ${d.successes}/${d.attempts} (${colorScore(d.rate)})${c.dim(deltaStr + peakStr)}`);
       }
+    }
+  };
+
+  handlers['healing-lineage'] = (args) => {
+    const id = args.id || args._sub;
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle healing-lineage')} <pattern-id>`); process.exit(1); }
+    const lineage = oracle.getHealingLineage(id);
+    console.log(`${c.boldCyan('Healing Lineage')} for ${c.bold(lineage.patternName)} [${c.dim(id)}]\n`);
+    console.log(`  Original coherency: ${colorScore(lineage.originalCoherency)}`);
+    console.log(`  Healing count:      ${c.bold(String(lineage.healingCount))}`);
+    if (lineage.bestCoherency != null) {
+      console.log(`  Best coherency:     ${colorScore(lineage.bestCoherency)}`);
+      console.log(`  Total improvement:  ${c.boldGreen('+' + (Math.round(lineage.totalImprovement * 1000) / 1000))}`);
+    }
+    if (lineage.variants.length > 0) {
+      console.log('');
+      console.log(`  ${c.bold('Variants:')}`);
+      for (const v of lineage.variants) {
+        const delta = v.delta > 0 ? c.green('+' + (Math.round(v.delta * 1000) / 1000)) : c.red(String(Math.round(v.delta * 1000) / 1000));
+        console.log(`    ${c.dim(v.id.slice(0, 8))} \u2014 ${colorScore(v.coherencyBefore)} \u2192 ${colorScore(v.coherencyAfter)} (${delta}) ${c.dim(v.strategy || '')} ${c.dim(v.healedAt || '')}`);
+      }
+    } else {
+      console.log(`\n  ${c.yellow('No healed variants yet.')}`);
+    }
+  };
+
+  handlers['healing-improved'] = (args) => {
+    const minDelta = parseFloat(args['min-delta']) || 0.2;
+    const results = oracle.queryHealingImprovement(minDelta);
+    console.log(`${c.boldCyan('Patterns improved >')} ${c.bold(String(minDelta))} ${c.boldCyan('through healing:')}\n`);
+    if (results.length === 0) {
+      console.log(`  ${c.yellow('No patterns found above threshold.')}`);
+      return;
+    }
+    for (const r of results) {
+      const delta = c.green('+' + r.bestDelta);
+      console.log(`  ${c.bold(r.name)} [${c.dim(r.language)}] \u2014 best: ${delta} avg: +${r.avgDelta} (${r.successes}/${r.attempts} heals) peak: ${colorScore(r.peakCoherency)}`);
+    }
+  };
+
+  handlers['healing-variants'] = (args) => {
+    const id = args.id || args._sub;
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle healing-variants')} <pattern-id>`); process.exit(1); }
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.patterns._sqlite;
+      if (!sqliteStore || !sqliteStore.getHealedVariants) {
+        console.error(c.boldRed('Error:') + ' Healing variants require SQLite store');
+        return;
+      }
+      const variants = sqliteStore.getHealedVariants(id);
+      if (variants.length === 0) {
+        console.log(c.yellow('No healed variants found for this pattern.'));
+        return;
+      }
+      console.log(`${c.boldCyan('Healed Variants')} for ${c.dim(id)} (${variants.length} total):\n`);
+      for (const v of variants) {
+        const delta = v.coherencyDelta > 0 ? c.green('+' + (Math.round(v.coherencyDelta * 1000) / 1000)) : c.red(String(Math.round(v.coherencyDelta * 1000) / 1000));
+        console.log(`  ${c.bold(v.id.slice(0, 12))} \u2014 coherency: ${colorScore(v.healedCoherency)} (${delta}) loops: ${v.healingLoops} strategy: ${c.dim(v.healingStrategy || 'N/A')}`);
+        console.log(`    ${c.dim(v.healedAt)}`);
+        if (v.whisper) console.log(`    ${c.dim('"' + v.whisper.slice(0, 100) + '"')}`);
+        console.log('');
+      }
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' ' + err.message);
     }
   };
 

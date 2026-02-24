@@ -55,17 +55,32 @@ module.exports = {
 
     let healedCode = patternData?.code || null;
     let healing = null;
+    let healedVariantId = null;
     if (heal && patternData && (decision.decision === 'pull' || decision.decision === 'evolve')) {
       try {
         const lang = language || patternData.language || 'javascript';
         const maxLoops = decision.decision === 'evolve' ? 3 : 2;
 
+        // Fractal loop closure: start healing from the best known healed variant
+        // instead of the original, so each heal builds on the last
+        let startCode = patternData.code;
+        let startedFromVariant = false;
+        if (this.patterns._sqlite && typeof this.patterns._sqlite.getBestHealedVariant === 'function') {
+          try {
+            const bestVariant = this.patterns._sqlite.getBestHealedVariant(patternData.id);
+            if (bestVariant && bestVariant.healedCoherency > (patternData.coherencyScore || 0)) {
+              startCode = bestVariant.healedCode;
+              startedFromVariant = true;
+            }
+          } catch { /* fall back to original code */ }
+        }
+
         this._emit({
           type: 'healing_start', patternId: patternData.id, patternName: patternData.name,
-          decision: decision.decision, maxLoops,
+          decision: decision.decision, maxLoops, startedFromVariant,
         });
 
-        healing = reflectionLoop(patternData.code, {
+        healing = reflectionLoop(startCode, {
           language: lang, description, tags, maxLoops,
           onLoop: (loopData) => {
             this._emit({
@@ -83,11 +98,45 @@ module.exports = {
           finalCoherence: healing.reflection?.finalCoherence, improvement: healing.reflection?.improvement,
           healingPath: healing.healingPath,
         });
+
+        // Store healed variant as linked lineage when coherency improved
+        const originalCoherency = patternData.coherencyScore || 0;
+        const healedCoherency = healing.fullCoherency || healing.coherence || 0;
+        if (healedCoherency > originalCoherency && this.patterns._sqlite) {
+          try {
+            const variant = this.patterns._sqlite.addHealedVariant({
+              parentPatternId: patternData.id,
+              healedCode: healing.code,
+              originalCoherency,
+              healedCoherency,
+              healingLoops: healing.loops,
+              healingStrategy: healing.healingPath?.[0]?.split(':')?.[0] || 'reflection',
+              healingSummary: healing.healingSummary || null,
+              whisper: healing.whisper || null,
+            });
+            healedVariantId = variant?.id || null;
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[resolve] healed variant storage failed:', e.message);
+          }
+        }
+
+        // Record healing stats to persistent storage
+        this._trackHealingSuccess(patternData.id, true, {
+          coherencyBefore: originalCoherency,
+          coherencyAfter: healedCoherency,
+          healingLoops: healing.loops,
+        });
       } catch (_) {
         healedCode = patternData.code;
         this._emit({
           type: 'healing_failed', patternId: patternData?.id, patternName: patternData?.name,
           error: _.message || 'Unknown healing error',
+        });
+
+        // Record failed healing attempt to persistent storage
+        this._trackHealingSuccess(patternData.id, false, {
+          coherencyBefore: patternData.coherencyScore || 0,
+          healingLoops: 0,
         });
       }
     }
@@ -106,7 +155,7 @@ module.exports = {
 
     return {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,
-      pattern: patternData, healedCode, whisper, candidateNotes,
+      pattern: patternData, healedCode, healedVariantId, whisper, candidateNotes,
       healing: healing ? {
         loops: healing.loops, originalCoherence: healing.reflection?.I_AM,
         finalCoherence: healing.reflection?.finalCoherence, improvement: healing.reflection?.improvement,

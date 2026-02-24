@@ -2,3 +2,6 @@ node_modules/
 .remembrance/
 *.log
 .DS_Store
+.env
+.env.local
+.env.*.local

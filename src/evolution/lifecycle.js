@@ -87,6 +87,10 @@ class LifecycleEngine {
     this._syncToGlobal = ctx.syncToGlobal || null;
     this._actOnInsights = ctx.actOnInsights || null;
 
+    // Cycle throttling — prevent thrashing when events fire rapidly
+    this._lastCycleTime = 0;
+    this._minCycleSeparation = 30000; // 30 seconds minimum between cycles
+
     // Event counters — track events between cycles
     this._counters = {
       feedbacks: 0,
@@ -273,6 +277,21 @@ class LifecycleEngine {
       durationMs: report.durationMs,
     });
 
+    // Record lifecycle cycle in temporal memory
+    try {
+      const tm = this.oracle?.getTemporalMemory?.();
+      if (tm) {
+        tm.record('__lifecycle__', 'evolved', {
+          context: `Cycle ${report.cycle}: ${report.evolution?.healed?.length || 0} healed, ${report.promotion?.promoted || 0} promoted`,
+          detail: JSON.stringify({
+            cycle: report.cycle,
+            triggeredBy: report.triggeredBy,
+            durationMs: report.durationMs,
+          }),
+        });
+      }
+    } catch { /* temporal memory not available */ }
+
     return report;
   }
 
@@ -335,6 +354,16 @@ class LifecycleEngine {
 
   _triggerCycle(reason) {
     try {
+      // Throttle: don't cycle more often than _minCycleSeparation
+      const now = Date.now();
+      if (now - this._lastCycleTime < this._minCycleSeparation) {
+        return null;
+      }
+      // Respect maintenance lock — avoid overlapping with daemon
+      if (this.oracle?._maintenanceInProgress) {
+        return null;
+      }
+      this._lastCycleTime = now;
       const report = this.runCycle();
       report.triggeredBy = reason;
       return report;

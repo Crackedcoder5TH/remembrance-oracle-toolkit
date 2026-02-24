@@ -130,6 +130,9 @@ function buildSpecialistPrompt(task, dimensions, context = {}) {
   if (context.language) {
     systemParts.push(`4. Write the solution in ${context.language}.`);
   }
+  if (context.deepMode) {
+    systemParts.push('5. DEEP MODE: Think step-by-step. Explain your reasoning before writing code. Consider multiple approaches and choose the best one. Be thorough and precise.');
+  }
 
   const userParts = [];
   if (context.existingCode) {

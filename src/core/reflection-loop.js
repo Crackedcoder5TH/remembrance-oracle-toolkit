@@ -8,6 +8,56 @@ const { observeCoherence } = require('./reflection-scorers');
 const { reflectionScore, MAX_LOOPS, TARGET_COHERENCE, R_EFF_BASE, R_EFF_ALPHA, EPSILON_BASE, H_RVA_WEIGHT, H_CANVAS_WEIGHT, DELTA_VOID_BASE, LAMBDA_LIGHT } = require('./reflection-serf');
 const { applySimplify, applySecure, applyReadable, applyUnify, applyCorrect, applyHeal, applyPatternGuidance } = require('./reflection-transforms');
 
+/**
+ * Per-dimension monotonicity threshold.
+ * Any individual dimension dropping by more than this amount rejects the candidate,
+ * even if the composite score improves. Prevents Goodhart-style gaming where total
+ * coherence rises while a specific quality (e.g. security, correctness) degrades.
+ */
+const DIMENSION_DROP_THRESHOLD = 0.05;
+
+const DIMENSION_DROP_DIAGNOSTICS = {
+  simplicity: 'Transform increased complexity — deeper nesting, longer lines, or less concise structure.',
+  readability: 'Transform reduced readability — mixed indentation, poor variable names, or lost clarity.',
+  security: 'Transform introduced security concerns — covenant violations, eval, var, or loose equality.',
+  unity: 'Transform broke style consistency — mixed camelCase/snake_case or mixed quote styles.',
+  correctness: 'Transform reduced correctness — unbalanced brackets, TODO markers, or empty catch blocks.',
+};
+
+/**
+ * Check whether a candidate's dimensions violate monotonicity against the current state.
+ * Returns an array of violations (empty = safe to accept).
+ */
+function checkDimensionMonotonicity(candidateDims, currentDims, threshold = DIMENSION_DROP_THRESHOLD) {
+  const violations = [];
+  for (const [dim, currentVal] of Object.entries(currentDims)) {
+    const candidateVal = candidateDims[dim];
+    if (candidateVal === undefined) continue;
+    // Guard against NaN — treat NaN dimensions as violations
+    if (Number.isNaN(currentVal) || Number.isNaN(candidateVal)) {
+      violations.push({
+        dimension: dim,
+        before: currentVal,
+        after: candidateVal,
+        drop: NaN,
+        diagnostic: `Dimension "${dim}" produced NaN — scoring failure.`,
+      });
+      continue;
+    }
+    const drop = currentVal - candidateVal;
+    if (drop > threshold) {
+      violations.push({
+        dimension: dim,
+        before: Math.round(currentVal * 1000) / 1000,
+        after: Math.round(candidateVal * 1000) / 1000,
+        drop: Math.round(drop * 1000) / 1000,
+        diagnostic: DIMENSION_DROP_DIAGNOSTICS[dim] || `Dimension "${dim}" regressed.`,
+      });
+    }
+  }
+  return violations;
+}
+
 function generateCandidates(code, language, options = {}) {
   const lang = language || detectLanguage(code);
   const transforms = [
@@ -20,8 +70,12 @@ function generateCandidates(code, language, options = {}) {
   ];
 
   const candidates = transforms.map(({ strategy, fn }) => {
-    const transformed = fn(code, lang);
-    return { strategy, code: transformed, changed: transformed !== code };
+    try {
+      const transformed = fn(code, lang);
+      return { strategy, code: transformed, changed: transformed !== code };
+    } catch {
+      return { strategy, code, changed: false };
+    }
   });
 
   if (options.patternExamples && options.patternExamples.length > 0) {
@@ -53,7 +107,7 @@ function generateWhisper(original, final, improvements, loops) {
 
   const primaryWhisper = whispers[topStrategy] || whispers.reflection;
   const delta = final.coherence - original.coherence;
-  const direction = delta > 0 ? 'rose' : delta < 0 ? 'held steady at' : 'remained at';
+  const direction = delta > 0 ? 'rose to' : delta < 0 ? 'fell to' : 'remained at';
 
   return {
     whisper: primaryWhisper,
@@ -64,9 +118,24 @@ function generateWhisper(original, final, improvements, loops) {
 }
 
 function reflectionLoop(code, options = {}) {
+  if (!code || typeof code !== 'string') {
+    return {
+      code: code || '', coherence: 0, fullCoherency: 0,
+      dimensions: {}, loops: 0, history: [],
+      whisper: 'No code provided.', healingSummary: 'No code to reflect on.', healingPath: [],
+      reflection: {
+        I_AM: 0, r_eff_base: R_EFF_BASE, r_eff_alpha: R_EFF_ALPHA,
+        epsilon_base: EPSILON_BASE, h_rva_weight: H_RVA_WEIGHT, h_canvas_weight: H_CANVAS_WEIGHT,
+        delta_void: DELTA_VOID_BASE, lambda_light: LAMBDA_LIGHT, cascadeBoost: 1,
+        collectiveIAM: 0, finalCoherence: 0, improvement: 0,
+      },
+    };
+  }
+
   const {
     language, maxLoops = MAX_LOOPS, targetCoherence = TARGET_COHERENCE,
     description = '', tags = [], cascadeBoost = 1, onLoop, patternExamples = [],
+    dimensionDropThreshold = DIMENSION_DROP_THRESHOLD,
   } = options;
 
   const lang = language || detectLanguage(code);
@@ -116,21 +185,57 @@ function reflectionLoop(code, options = {}) {
     }));
 
     withScores.sort((a, b) => b.reflectionScore - a.reflectionScore || b.coherence - a.coherence);
-    const winner = withScores[0];
+
+    // Per-dimension monotonicity guard: reject candidates that improve total
+    // coherence but degrade any single dimension beyond the threshold.
+    let winner = null;
+    const monotonicityRejections = [];
+    for (const candidate of withScores) {
+      const violations = checkDimensionMonotonicity(
+        candidate.dimensions, current.dimensions, dimensionDropThreshold
+      );
+      if (violations.length === 0) {
+        winner = candidate;
+        break;
+      }
+      monotonicityRejections.push({
+        strategy: candidate.strategy,
+        coherence: candidate.coherence,
+        reflectionScore: candidate.reflectionScore,
+        violations,
+      });
+    }
+
+    // If every candidate violates monotonicity, hold current state.
+    if (!winner) {
+      winner = {
+        strategy: 'monotonicity-hold',
+        code: current.code,
+        coherence: current.coherence,
+        dimensions: { ...current.dimensions },
+        fullCoherency: current.fullCoherency,
+        reflectionScore: 0,
+        changed: false,
+      };
+    }
 
     for (const [dim, val] of Object.entries(winner.dimensions)) {
       const delta = val - current.dimensions[dim];
       if (delta !== 0) improvements.push({ strategy: winner.strategy, dimension: dim, delta });
     }
 
-    history.push({
+    const historyEntry = {
       loop: loops, code: winner.code, coherence: winner.coherence,
       fullCoherency: winner.fullCoherency, dimensions: { ...winner.dimensions },
       strategy: winner.strategy, reflectionScore: winner.reflectionScore, changed: winner.changed,
       candidates: withScores.map(c => ({
         strategy: c.strategy, coherence: c.coherence, reflectionScore: c.reflectionScore, changed: c.changed,
       })),
-    });
+    };
+    if (monotonicityRejections.length > 0) {
+      historyEntry.monotonicityRejections = monotonicityRejections;
+    }
+    history.push(historyEntry);
 
     current = { code: winner.code, coherence: winner.coherence, dimensions: winner.dimensions, fullCoherency: winner.fullCoherency };
 
@@ -173,8 +278,9 @@ function formatReflectionResult(result) {
   lines.push('');
   lines.push('Dimensions:');
   for (const [dim, val] of Object.entries(result.dimensions)) {
-    const bar = '\u2588'.repeat(Math.round(val * 20));
-    const faded = '\u2591'.repeat(20 - Math.round(val * 20));
+    const filled = Math.max(0, Math.min(20, Math.round(val * 20)));
+    const bar = '\u2588'.repeat(filled);
+    const faded = '\u2591'.repeat(20 - filled);
     lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${val.toFixed(3)}`);
   }
   lines.push('');
@@ -192,4 +298,6 @@ module.exports = {
   formatReflectionResult,
   generateCandidates,
   generateWhisper,
+  checkDimensionMonotonicity,
+  DIMENSION_DROP_THRESHOLD,
 };

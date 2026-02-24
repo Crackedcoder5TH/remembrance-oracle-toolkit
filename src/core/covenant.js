@@ -38,6 +38,8 @@ let _customPrincipleRegistry = null;
 
 function setPrincipleRegistry(registry) {
   _customPrincipleRegistry = registry;
+  // Invalidate covenant cache — evolved principles change the result
+  _covenantCache.clear();
 }
 
 /**

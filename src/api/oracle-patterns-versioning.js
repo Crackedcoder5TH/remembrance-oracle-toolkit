@@ -50,7 +50,24 @@ module.exports = {
     return { passed: false, patternId, patternName: pattern.name, rolledBack: rollbackResult.success, restoredVersion: rollbackResult.restoredVersion };
   },
 
-  _trackHealingSuccess(patternId, succeeded) {
+  /**
+   * Track a healing attempt — persists to SQLite when available, falls back to in-memory Map.
+   * Accepts optional coherency context for richer stats.
+   */
+  _trackHealingSuccess(patternId, succeeded, context = {}) {
+    // Persist to SQLite if available
+    const sqliteStore = this.patterns._sqlite;
+    if (sqliteStore && typeof sqliteStore.recordHealingAttempt === 'function') {
+      sqliteStore.recordHealingAttempt({
+        patternId,
+        succeeded,
+        coherencyBefore: context.coherencyBefore || null,
+        coherencyAfter: context.coherencyAfter || null,
+        healingLoops: context.healingLoops || 0,
+      });
+    }
+
+    // Also update in-memory Map for backward compatibility within the same session
     if (!this._healingStats) this._healingStats = new Map();
     const stats = this._healingStats.get(patternId) || { attempts: 0, successes: 0 };
     stats.attempts++;
@@ -58,14 +75,52 @@ module.exports = {
     this._healingStats.set(patternId, stats);
   },
 
+  /**
+   * Get healing success rate — reads from SQLite if available, falls back to in-memory.
+   * Uses composite boost for battle-tested patterns when DB is available.
+   */
   getHealingSuccessRate(patternId) {
+    // Prefer persistent DB stats with composite battle-tested boost
+    const sqliteStore = this.patterns._sqlite;
+    if (sqliteStore && typeof sqliteStore.getHealingCompositeBoost === 'function') {
+      return sqliteStore.getHealingCompositeBoost(patternId);
+    }
+
+    // Fallback to in-memory
     if (!this._healingStats) return 1.0;
     const stats = this._healingStats.get(patternId);
     if (!stats || stats.attempts === 0) return 1.0;
     return stats.successes / stats.attempts;
   },
 
+  /**
+   * Get full healing stats — reads from SQLite if available, falls back to in-memory.
+   */
   healingStats() {
+    // Prefer persistent DB stats
+    const sqliteStore = this.patterns._sqlite;
+    if (sqliteStore && typeof sqliteStore.getAllHealingStats === 'function') {
+      const dbStats = sqliteStore.getAllHealingStats();
+      return {
+        patterns: dbStats.patterns,
+        totalAttempts: dbStats.totalAttempts,
+        totalSuccesses: dbStats.totalSuccesses,
+        overallRate: dbStats.totalAttempts > 0
+          ? (dbStats.totalSuccesses / dbStats.totalAttempts).toFixed(3)
+          : 'N/A',
+        details: dbStats.details.map(d => ({
+          id: d.id,
+          name: d.name,
+          attempts: d.attempts,
+          successes: d.successes,
+          rate: d.attempts > 0 ? (d.successes / d.attempts).toFixed(3) : 'N/A',
+          avgDelta: d.avgDelta,
+          peakCoherency: d.peakCoherency,
+        })),
+      };
+    }
+
+    // Fallback to in-memory
     if (!this._healingStats) return { patterns: 0, totalAttempts: 0, totalSuccesses: 0, details: [] };
     const details = [];
     let totalAttempts = 0, totalSuccesses = 0;
@@ -76,5 +131,28 @@ module.exports = {
       totalSuccesses += stats.successes;
     }
     return { patterns: this._healingStats.size, totalAttempts, totalSuccesses, overallRate: totalAttempts > 0 ? (totalSuccesses / totalAttempts).toFixed(3) : 'N/A', details };
+  },
+
+  /**
+   * Query patterns that improved more than a threshold through healing.
+   * Example: queryHealingImprovement(0.2) → patterns that improved 20%+
+   */
+  queryHealingImprovement(minDelta = 0.2) {
+    const sqliteStore = this.patterns._sqlite;
+    if (sqliteStore && typeof sqliteStore.queryHealingImprovement === 'function') {
+      return sqliteStore.queryHealingImprovement(minDelta);
+    }
+    return [];
+  },
+
+  /**
+   * Get healing lineage for a pattern — all healed variants with their ancestry.
+   */
+  getHealingLineage(patternId) {
+    const sqliteStore = this.patterns._sqlite;
+    if (sqliteStore && typeof sqliteStore.getHealingLineage === 'function') {
+      return sqliteStore.getHealingLineage(patternId);
+    }
+    return { patternId, patternName: 'unknown', healingCount: 0, variants: [] };
   },
 };

@@ -7,6 +7,7 @@ const { assignDimensions, buildSpecialistPrompt, parseAgentResponse } = require(
 const { scoreWithCoherency, crossScore, computePeerScores } = require('./cross-scoring');
 const { buildConsensus, quickConsensus, mergeTopOutputs } = require('./consensus');
 const { synthesizeWhisper, formatWhisper } = require('./whisper-synthesis');
+const { recordRun } = require('./swarm-history');
 
 /**
  * Main swarm orchestration — 7-step pipeline.
@@ -43,6 +44,10 @@ async function swarm(task, options = {}) {
     // Apply option overrides
     if (options.crossScoring !== undefined) config.crossScoring = options.crossScoring;
     if (options.autoFeedToReflector !== undefined) config.autoFeedToReflector = options.autoFeedToReflector;
+    // Deep mode: extend timeout
+    if (options._timeoutMultiplier) config.timeoutMs = config.timeoutMs * options._timeoutMultiplier;
+    // Expand mode: boost max agents
+    if (options._expandAgents) config.maxAgents = config.maxAgents + options._expandAgents;
 
     const providers = resolveProviders(config);
     if (providers.length === 0) {
@@ -87,6 +92,7 @@ async function swarm(task, options = {}) {
       const { system, user } = buildSpecialistPrompt(task, dims, {
         language: options.language,
         existingCode: options.existingCode,
+        deepMode: options._deepMode || false,
       });
 
       const start = Date.now();
@@ -222,7 +228,16 @@ async function swarm(task, options = {}) {
   const totalDurationMs = Date.now() - startTime;
   pool.shutdown();
 
-  return buildResult(id, task, steps, consensus, whisper, totalDurationMs);
+  const finalResult = buildResult(id, task, steps, consensus, whisper, totalDurationMs);
+
+  // Record to swarm history for the feedback loop
+  try {
+    recordRun(finalResult, { taskType: options.existingCode ? 'review' : 'code' }, options.rootDir);
+  } catch {
+    // History recording is best-effort, never block the result
+  }
+
+  return finalResult;
 }
 
 /**

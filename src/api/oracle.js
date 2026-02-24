@@ -25,6 +25,7 @@ const coreMethods = require('./oracle-core');
 const patternMethods = require('./oracle-patterns');
 const federationMethods = require('./oracle-federation');
 const llmMethods = require('./oracle-llm');
+const eternalMethods = require('./oracle-eternal');
 
 class RemembranceOracle {
   constructor(options = {}) {
@@ -46,6 +47,10 @@ class RemembranceOracle {
     // Wire healing success rate into pattern library's reliability scoring
     this._healingStats = new Map();
     this.patterns.setHealingRateProvider((id) => this.getHealingSuccessRate(id));
+
+    // Maintenance coordination lock — prevents daemon and lifecycle from overlapping
+    this._maintenanceInProgress = false;
+    this._maintenanceSource = null;
 
     // Debug Oracle — exponential debugging intelligence
     this._debugOracle = null; // Lazy-initialized on first debug call
@@ -103,7 +108,8 @@ Object.assign(
   coreMethods,
   patternMethods,
   federationMethods,
-  llmMethods
+  llmMethods,
+  eternalMethods
 );
 
 module.exports = { RemembranceOracle };

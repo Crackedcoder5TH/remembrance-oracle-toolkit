@@ -4,7 +4,7 @@
  * Dispatch map for all MCP tool calls. Each handler is a function
  * (oracle, args) => result that implements one tool's logic.
  *
- * 11 focused handlers (down from 55+).
+ * 12 focused handlers (down from 55+).
  * Extracted from the monolithic switch in server.js for maintainability.
  */
 
@@ -211,7 +211,51 @@ const HANDLERS = {
     }
   },
 
-  // ─── 11. Swarm (multi-agent orchestration) ───
+  // ─── 11. Healing (lineage, stats, variants, improvements) ───
+  oracle_healing(oracle, args) {
+    const action = args.action || 'stats';
+    switch (action) {
+      case 'lineage': {
+        if (!args.patternId) throw new Error('patternId is required for lineage action');
+        return oracle.getHealingLineage(args.patternId);
+      }
+      case 'stats': {
+        if (args.patternId) {
+          // Per-pattern stats
+          const sqliteStore = oracle.patterns._sqlite;
+          if (sqliteStore && typeof sqliteStore.getPatternHealingStats === 'function') {
+            return sqliteStore.getPatternHealingStats(args.patternId);
+          }
+          return { patternId: args.patternId, attempts: 0, successes: 0, rate: 1.0 };
+        }
+        // Aggregate stats
+        return oracle.healingStats();
+      }
+      case 'improved': {
+        return oracle.queryHealingImprovement(args.minDelta || 0.2);
+      }
+      case 'variants': {
+        if (!args.patternId) throw new Error('patternId is required for variants action');
+        const sqliteStore = oracle.patterns._sqlite;
+        if (sqliteStore && typeof sqliteStore.getHealedVariants === 'function') {
+          return sqliteStore.getHealedVariants(args.patternId);
+        }
+        return [];
+      }
+      case 'best': {
+        if (!args.patternId) throw new Error('patternId is required for best action');
+        const sqliteStore = oracle.patterns._sqlite;
+        if (sqliteStore && typeof sqliteStore.getBestHealedVariant === 'function') {
+          return sqliteStore.getBestHealedVariant(args.patternId);
+        }
+        return null;
+      }
+      default:
+        throw new Error(`Unknown healing action: ${action}. Use: lineage, stats, improved, variants, best`);
+    }
+  },
+
+  // ─── 12. Swarm (multi-agent orchestration) ───
   async oracle_swarm(oracle, args) {
     const action = args.action || 'code';
     const { swarm, swarmCode, swarmReview, swarmHeal, resolveProviders, loadSwarmConfig } = require('../swarm');

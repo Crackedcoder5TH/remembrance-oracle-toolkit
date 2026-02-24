@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { loadEnvFile } = require('./env-loader');
 
 /**
  * Remembrance dimensions — the specialist lenses for swarm agents.
@@ -34,6 +35,14 @@ const DEFAULT_SWARM_CONFIG = {
     peerScore: 0.4,
   },
   providers: {},
+  escalation: {
+    enabled: true,
+    coherenceFloor: 0.90,
+    maxRetries: 2,
+    modes: ['retry', 'expand', 'deep'],
+    deepTimeoutMultiplier: 2,
+    expandAgentBoost: 2,
+  },
 };
 
 /**
@@ -42,6 +51,9 @@ const DEFAULT_SWARM_CONFIG = {
  * @returns {object} Merged configuration
  */
 function loadSwarmConfig(rootDir) {
+  // Load .env file before resolving config (so API keys are in process.env)
+  loadEnvFile(rootDir);
+
   const configPath = path.join(rootDir || '.', '.remembrance', 'swarm-config.json');
   let userConfig = {};
   try {
@@ -111,6 +123,21 @@ function resolveProviders(config) {
     }
   }
 
+  // claude-code: local CLI provider, available if the binary exists on PATH
+  if (config.providers?.['claude-code']?.enabled !== false) {
+    const cliPath = config.providers?.['claude-code']?.cliPath || 'claude';
+    try {
+      require('child_process').execFileSync(cliPath, ['--version'], {
+        timeout: 3000,
+        stdio: 'pipe',
+        env: { ...process.env, CLAUDECODE: '' },
+      });
+      available.push('claude-code');
+    } catch {
+      // Claude CLI not installed or not reachable — skip silently
+    }
+  }
+
   return available;
 }
 
@@ -151,6 +178,7 @@ function getProviderModel(provider, config) {
     grok: 'grok-3',
     deepseek: 'deepseek-chat',
     ollama: 'llama3.1',
+    'claude-code': 'claude-sonnet-4-5-20250929',
   };
   return defaults[provider] || provider;
 }

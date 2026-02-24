@@ -81,10 +81,10 @@ const NAME_PENALTY = {
 
 /** Relevance composition weights (must sum to 1.0) */
 const RELEVANCE_WEIGHTS = {
-  TEXT_SCORE: 0.35,            // TF-IDF dominates
-  TAG_OVERLAP: 0.25,           // User-curated tags
-  LANGUAGE_MATCH: 0.15,        // Nice-to-have
-  COHERENCY: 0.25,             // Proven code ranks high
+  TEXT_SCORE: 0.60,            // TF-IDF dominates — semantic match is king
+  TAG_OVERLAP: 0.20,           // User-curated tags (often absent, keep weight modest)
+  LANGUAGE_MATCH: 0.20,        // Language alignment
+  COHERENCY: 0.00,             // Removed — coherency is scored in composite, not relevance
 };
 
 /** Default query parameters */
@@ -126,15 +126,16 @@ const VOTE_BOOST = {
 
 /** Composite score weights for decision engine */
 const DECISION_WEIGHTS = {
-  RELEVANCE: 0.35,
+  RELEVANCE: 0.50,
   COHERENCY: 0.25,
-  RELIABILITY: 0.20,
+  RELIABILITY: 0.15,
+  RELIABILITY_CAP: 1.2,
 };
 
 /** Minimum relevance required before pulling/evolving (prevents noise matches) */
 const RELEVANCE_GATES = {
-  FOR_PULL: 0.3,               // Conservative — must be relevant
-  FOR_EVOLVE: 0.2,             // More lenient — willing to fork weaker matches
+  FOR_PULL: 0.42,              // Must be semantically relevant to pull
+  FOR_EVOLVE: 0.33,            // Must be meaningfully relevant to evolve from
 };
 
 /** Complexity classification thresholds */

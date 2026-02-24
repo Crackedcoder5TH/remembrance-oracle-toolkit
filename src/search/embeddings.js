@@ -90,6 +90,36 @@ const CONCEPT_CLUSTERS = [
     triggers: ['parallel', 'concurrent', 'async', 'simultaneous', 'race', 'all', 'pool', 'worker', 'thread'],
     concepts: ['Promise.all', 'Promise.race', 'parallel', 'pool', 'worker', 'async', 'concurrent', 'semaphore', 'mutex', 'queue'],
   },
+  {
+    id: 'deduplication',
+    triggers: ['unique', 'distinct', 'dedupe', 'deduplicate', 'remove duplicate', 'no repeat', 'already seen', 'once'],
+    concepts: ['Set', 'unique', 'distinct', 'deduplicate', 'filter', 'Map', 'has', 'seen', 'hash', 'indexOf'],
+  },
+  {
+    id: 'pagination',
+    triggers: ['page', 'paginate', 'offset', 'limit', 'cursor', 'next page', 'infinite scroll', 'batch', 'chunk'],
+    concepts: ['paginate', 'offset', 'limit', 'cursor', 'page', 'slice', 'skip', 'take', 'batch', 'chunk'],
+  },
+  {
+    id: 'scheduling',
+    triggers: ['schedule', 'cron', 'interval', 'periodic', 'recurring', 'every', 'background', 'daemon', 'timer', 'tick'],
+    concepts: ['setInterval', 'setTimeout', 'cron', 'schedule', 'timer', 'tick', 'recurring', 'periodic', 'daemon', 'worker'],
+  },
+  {
+    id: 'normalization',
+    triggers: ['normalize', 'clean', 'sanitize', 'standardize', 'canonical', 'uniform', 'consistent'],
+    concepts: ['normalize', 'trim', 'toLowerCase', 'replace', 'sanitize', 'canonical', 'clean', 'strip'],
+  },
+  {
+    id: 'authentication',
+    triggers: ['login', 'auth', 'authenticate', 'sign in', 'credential', 'password', 'token', 'session', 'jwt', 'oauth'],
+    concepts: ['authenticate', 'authorize', 'jwt', 'token', 'session', 'password', 'hash', 'bcrypt', 'scrypt', 'oauth', 'login'],
+  },
+  {
+    id: 'state-management',
+    triggers: ['state', 'store', 'global', 'context', 'redux', 'zustand', 'signal', 'reactive', 'observable'],
+    concepts: ['state', 'store', 'dispatch', 'reducer', 'action', 'context', 'subscribe', 'observable', 'signal', 'reactive'],
+  },
 ];
 
 // ─── N-gram Embedding ───
@@ -269,6 +299,10 @@ function semanticSimilarity(query, document) {
  *
  * Returns ranked results with similarity scores.
  */
+// Query similarity cache — avoids recomputing embeddings for repeated queries
+const _querySimilarityCache = new Map();
+const _QUERY_CACHE_MAX = 64;
+
 function semanticSearch(items, query, options = {}) {
   if (!Array.isArray(items)) return [];
   if (query == null || typeof query !== 'string') return [];
@@ -279,6 +313,25 @@ function semanticSearch(items, query, options = {}) {
     filtered = filtered.filter(item =>
       (item.language || '').toLowerCase() === language.toLowerCase()
     );
+  }
+
+  // Pre-compute query concepts and n-grams once for reuse across all items
+  const queryLower = query.toLowerCase();
+  const queryCacheKey = queryLower.slice(0, 80);
+  let cachedQueryData = _querySimilarityCache.get(queryCacheKey);
+  if (!cachedQueryData) {
+    cachedQueryData = {
+      concepts: identifyConcepts(queryLower),
+      conceptIds: null,
+      expanded: expandQuery(query),
+      ngrams: charNgrams(queryLower, 2),
+    };
+    cachedQueryData.conceptIds = new Set(cachedQueryData.concepts.map(c => c.id));
+    if (_querySimilarityCache.size >= _QUERY_CACHE_MAX) {
+      const oldest = _querySimilarityCache.keys().next().value;
+      _querySimilarityCache.delete(oldest);
+    }
+    _querySimilarityCache.set(queryCacheKey, cachedQueryData);
   }
 
   const results = filtered.map(item => {

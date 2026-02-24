@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remembrance Oracle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Skip link for accessibility -->
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container">
+      <div class="header-inner">
+        <a href="/" class="logo">Remembrance Oracle</a>
+        <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+        </button>
+        <nav class="site-nav" aria-label="Main navigation">
+          <ul class="nav-list">
+            <li><a href="#features" class="nav-link">Features</a></li>
+            <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+            <li><a href="#patterns" class="nav-link">Patterns</a></li>
+            <li><a href="#community" class="nav-link">Community</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1 class="hero-title">Code Remembered.<br>Code Reborn.</h1>
+      <p class="hero-subtitle">The oracle that remembers every proven pattern — so you never rewrite what already works.</p>
+      <div class="hero-actions">
+        <a href="#features" class="btn btn-primary">Explore the Toolkit</a>
+        <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="btn btn-secondary">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content -->
+  <main id="main">
+
+    <!-- Features Section -->
+    <section id="features" class="section">
+      <div class="container">
+        <h2 class="section-title">Features</h2>
+        <div class="grid grid-3">
+          <article class="card">
+            <div class="card-icon">&#x1F50D;</div>
+            <h3 class="card-title">Search &amp; Resolve</h3>
+            <p class="card-text">Describe what you need — the oracle searches its memory and returns proven code with a PULL, EVOLVE, or GENERATE decision.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon">&#x1F504;</div>
+            <h3 class="card-title">Self-Healing Code</h3>
+            <p class="card-text">Patterns are iteratively healed until they pass the Covenant — 15 principles of code quality, scored across 5 dimensions.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon">&#x1F310;</div>
+            <h3 class="card-title">Three-Tier Storage</h3>
+            <p class="card-text">Local, Personal, and Community stores. Code flows from project to private library to shared kingdom — always with test proof.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon">&#x2699;</div>
+            <h3 class="card-title">Auto-Registration</h3>
+            <p class="card-text">Git hooks capture every new function you commit. No manual registration — the library grows with every proven commit.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon">&#x1F9EA;</div>
+            <h3 class="card-title">Candidate Pipeline</h3>
+            <p class="card-text">Language variants and refinements are spawned automatically. Candidates are promoted only when they pass tests.</p>
+          </article>
+          <article class="card">
+            <div class="card-icon">&#x1F916;</div>
+            <h3 class="card-title">MCP Server</h3>
+            <p class="card-text">10 focused tools exposed via the Model Context Protocol — search, resolve, submit, register, sync, and more from any AI client.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="section section-alt">
+      <div class="container">
+        <h2 class="section-title">How It Works</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-number">1</div>
+            <h3>Search</h3>
+            <p>Query the oracle before writing new code. It searches across all tiers for matching proven patterns.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <h3>Resolve</h3>
+            <p>The oracle returns <strong>PULL</strong> (use as-is), <strong>EVOLVE</strong> (adapt a match), or <strong>GENERATE</strong> (write new).</p>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <h3>Heal</h3>
+            <p>Code is iteratively refined against the Covenant until it reaches optimal coherency across all dimensions.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">4</div>
+            <h3>Prove</h3>
+            <p>Every pattern must have passing tests. No exceptions — the oracle only remembers what is proven.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">5</div>
+            <h3>Remember</h3>
+            <p>Proven code is stored, synced, and shared. The kingdom's library grows with every contribution.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Patterns Section -->
+    <section id="patterns" class="section">
+      <div class="container">
+        <h2 class="section-title">The Pattern Library</h2>
+        <p class="section-description">Every pattern in the oracle is scored for coherency across 5 dimensions. Only proven code survives.</p>
+        <div class="stats-bar">
+          <div class="stat">
+            <span class="stat-value" id="stat-patterns">--</span>
+            <span class="stat-label">Proven Patterns</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-candidates">--</span>
+            <span class="stat-label">Candidates</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-coherency">--</span>
+            <span class="stat-label">Avg Coherency</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="stat-languages">--</span>
+            <span class="stat-label">Languages</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Community Section -->
+    <section id="community" class="section section-alt">
+      <div class="container">
+        <h2 class="section-title">Join the Kingdom</h2>
+        <p class="section-description">Share your proven patterns with the community. Pull from the collective wisdom. The oracle grows stronger with every contributor.</p>
+        <div class="grid grid-2">
+          <div class="card">
+            <h3 class="card-title">Contribute</h3>
+            <p class="card-text">Write code, prove it with tests, and share it to the community store. Your patterns help every developer in the kingdom.</p>
+            <code class="card-code">node src/cli.js share</code>
+          </div>
+          <div class="card">
+            <h3 class="card-title">Pull Wisdom</h3>
+            <p class="card-text">Search the community library for battle-tested solutions. Why rewrite what the kingdom already knows?</p>
+            <code class="card-code">node src/cli.js community pull</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-inner">
+        <p class="footer-text">Remembrance Oracle Toolkit &mdash; Code remembered. Code reborn.</p>
+        <nav class="footer-nav" aria-label="Footer navigation">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit">GitHub</a>
+          <a href="#features">Features</a>
+          <a href="#how-it-works">How It Works</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

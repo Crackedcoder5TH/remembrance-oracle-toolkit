@@ -33,6 +33,17 @@ function checkDimensionMonotonicity(candidateDims, currentDims, threshold = DIME
   for (const [dim, currentVal] of Object.entries(currentDims)) {
     const candidateVal = candidateDims[dim];
     if (candidateVal === undefined) continue;
+    // Guard against NaN — treat NaN dimensions as violations
+    if (Number.isNaN(currentVal) || Number.isNaN(candidateVal)) {
+      violations.push({
+        dimension: dim,
+        before: currentVal,
+        after: candidateVal,
+        drop: NaN,
+        diagnostic: `Dimension "${dim}" produced NaN — scoring failure.`,
+      });
+      continue;
+    }
     const drop = currentVal - candidateVal;
     if (drop > threshold) {
       violations.push({
@@ -59,8 +70,12 @@ function generateCandidates(code, language, options = {}) {
   ];
 
   const candidates = transforms.map(({ strategy, fn }) => {
-    const transformed = fn(code, lang);
-    return { strategy, code: transformed, changed: transformed !== code };
+    try {
+      const transformed = fn(code, lang);
+      return { strategy, code: transformed, changed: transformed !== code };
+    } catch {
+      return { strategy, code, changed: false };
+    }
   });
 
   if (options.patternExamples && options.patternExamples.length > 0) {
@@ -92,7 +107,7 @@ function generateWhisper(original, final, improvements, loops) {
 
   const primaryWhisper = whispers[topStrategy] || whispers.reflection;
   const delta = final.coherence - original.coherence;
-  const direction = delta > 0 ? 'rose' : delta < 0 ? 'held steady at' : 'remained at';
+  const direction = delta > 0 ? 'rose to' : delta < 0 ? 'fell to' : 'remained at';
 
   return {
     whisper: primaryWhisper,
@@ -103,6 +118,20 @@ function generateWhisper(original, final, improvements, loops) {
 }
 
 function reflectionLoop(code, options = {}) {
+  if (!code || typeof code !== 'string') {
+    return {
+      code: code || '', coherence: 0, fullCoherency: 0,
+      dimensions: {}, loops: 0, history: [],
+      whisper: 'No code provided.', healingSummary: 'No code to reflect on.', healingPath: [],
+      reflection: {
+        I_AM: 0, r_eff_base: R_EFF_BASE, r_eff_alpha: R_EFF_ALPHA,
+        epsilon_base: EPSILON_BASE, h_rva_weight: H_RVA_WEIGHT, h_canvas_weight: H_CANVAS_WEIGHT,
+        delta_void: DELTA_VOID_BASE, lambda_light: LAMBDA_LIGHT, cascadeBoost: 1,
+        collectiveIAM: 0, finalCoherence: 0, improvement: 0,
+      },
+    };
+  }
+
   const {
     language, maxLoops = MAX_LOOPS, targetCoherence = TARGET_COHERENCE,
     description = '', tags = [], cascadeBoost = 1, onLoop, patternExamples = [],
@@ -249,8 +278,9 @@ function formatReflectionResult(result) {
   lines.push('');
   lines.push('Dimensions:');
   for (const [dim, val] of Object.entries(result.dimensions)) {
-    const bar = '\u2588'.repeat(Math.round(val * 20));
-    const faded = '\u2591'.repeat(20 - Math.round(val * 20));
+    const filled = Math.max(0, Math.min(20, Math.round(val * 20)));
+    const bar = '\u2588'.repeat(filled);
+    const faded = '\u2591'.repeat(20 - filled);
     lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${val.toFixed(3)}`);
   }
   lines.push('');

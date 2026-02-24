@@ -58,7 +58,7 @@ module.exports = {
       const codeKw = keywordScore(item.code || '') * 0.3;
       const kwScore = Math.max(nameKw, descKw, tagKw, codeKw);
       const semScore = semanticMap.get(item.id) || 0;
-      const matchScore = kwScore * 0.50 + semScore * 0.50;
+      const matchScore = kwScore * 0.40 + semScore * 0.60;
 
       return {
         source: item.source, id: item.id, name: item.name, description: item.description,

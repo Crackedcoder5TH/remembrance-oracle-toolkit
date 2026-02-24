@@ -25,6 +25,7 @@ const coreMethods = require('./oracle-core');
 const patternMethods = require('./oracle-patterns');
 const federationMethods = require('./oracle-federation');
 const llmMethods = require('./oracle-llm');
+const eternalMethods = require('./oracle-eternal');
 
 class RemembranceOracle {
   constructor(options = {}) {
@@ -103,7 +104,8 @@ Object.assign(
   coreMethods,
   patternMethods,
   federationMethods,
-  llmMethods
+  llmMethods,
+  eternalMethods
 );
 
 module.exports = { RemembranceOracle };

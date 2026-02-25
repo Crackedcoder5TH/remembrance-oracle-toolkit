@@ -47,6 +47,7 @@ export interface WebhookPayload {
     leadId: string;
     firstName: string;
     lastName: string;
+    dateOfBirth: string;
     email: string;
     phone: string;
     state: string;
@@ -129,6 +130,7 @@ export async function notifyLeadCreated(lead: {
   leadId: string;
   firstName: string;
   lastName: string;
+  dateOfBirth: string;
   email: string;
   phone: string;
   state: string;
@@ -147,6 +149,7 @@ export async function notifyLeadCreated(lead: {
       leadId: lead.leadId,
       firstName: lead.firstName,
       lastName: lead.lastName,
+      dateOfBirth: lead.dateOfBirth,
       email: lead.email,
       phone: lead.phone,
       state: lead.state,

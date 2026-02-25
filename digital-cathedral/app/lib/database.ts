@@ -107,6 +107,13 @@ function migrate(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at);
     CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
   `);
+
+  // Migration: add date_of_birth column to existing databases that lack it
+  const columns = db.prepare("PRAGMA table_info(leads)").all() as Array<{ name: string }>;
+  const hasDateOfBirth = columns.some((col) => col.name === "date_of_birth");
+  if (!hasDateOfBirth) {
+    db.exec("ALTER TABLE leads ADD COLUMN date_of_birth TEXT NOT NULL DEFAULT ''");
+  }
 }
 
 // --- Insert a new lead ---

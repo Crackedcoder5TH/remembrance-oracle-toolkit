@@ -101,7 +101,7 @@ export interface UseLeadFormReturn {
 }
 
 /**
- * Step 0: Identity   — firstName, lastName, state, coverageInterest
+ * Step 0: Identity   — firstName, lastName, dateOfBirth, state, coverageInterest
  * Step 1: Contact    — email, phone
  * Step 2: Consent    — tcpaConsent, privacyConsent → submit
  */

@@ -11,6 +11,7 @@ const { existsSync, writeFileSync } = require('fs');
 
 // ─── Lazy Require Helper (avoid circular deps with multi) ───
 const { multi: _multi } = require('./report-lazy');
+const { TIMEOUTS } = require('./scoring-utils');
 
 // =====================================================================
 // GitHub — Git/GitHub Operations
@@ -38,7 +39,7 @@ function git(command, cwd) {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 30000,
+      timeout: TIMEOUTS.GIT_LOCAL,
     }).trim();
   } catch (err) {
     const stderr = err.stderr ? err.stderr.toString().trim() : '';
@@ -55,7 +56,7 @@ function gh(command, cwd) {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 60000,
+      timeout: TIMEOUTS.GIT_REMOTE,
       env: { ...process.env },
     }).trim();
   } catch (err) {
@@ -165,7 +166,7 @@ function createHealingBranch(report, options = {}) {
         cwd,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 30000,
+        timeout: TIMEOUTS.GIT_LOCAL,
         env: { ...process.env, REMEMBRANCE_COMMIT_MSG: commitMsg },
       });
     } catch (err) {

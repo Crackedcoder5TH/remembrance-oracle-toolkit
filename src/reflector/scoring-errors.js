@@ -6,6 +6,7 @@
  */
 
 const { report: getReport } = require('./report-lazy');
+const { TIMEOUTS } = require('./scoring-utils');
 
 const ERROR_TYPES = {
   TRANSIENT: 'transient',
@@ -64,7 +65,7 @@ function withErrorHandling(operationName, fn, options = {}) {
 }
 
 function withRetry(operationName, fn, options = {}) {
-  const { maxRetries = 3, baseDelayMs = 100, rootDir = process.cwd(), context = {} } = options;
+  const { maxRetries = TIMEOUTS.RETRY_MAX, baseDelayMs = TIMEOUTS.RETRY_BASE_LOCAL, rootDir = process.cwd(), context = {} } = options;
   const startTime = Date.now();
   let lastError = null;
 
@@ -106,7 +107,7 @@ function withRetry(operationName, fn, options = {}) {
 const circuitState = new Map();
 
 function withCircuitBreaker(operationName, fn, options = {}) {
-  const { threshold = 5, cooldownMs = 60000, rootDir = process.cwd() } = options;
+  const { threshold = 5, cooldownMs = TIMEOUTS.CIRCUIT_COOLDOWN, rootDir = process.cwd() } = options;
 
   if (!circuitState.has(operationName)) {
     circuitState.set(operationName, { failures: 0, lastFailure: 0, open: false });

@@ -13,13 +13,14 @@ const { readFileSync, existsSync } = require('fs');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
 const { scoring: _scoring, multi: _multi, history: _history, patternHook: _patternHook, notifications: _notifications, autocommit: _autocommit } = require('./report-lazy');
+const { TIMEOUTS } = require('./scoring-utils');
 
 // =====================================================================
 // Dashboard — Reflector Dashboard
 // =====================================================================
 
 const _dashboardCache = new Map();
-const DASHBOARD_CACHE_TTL_MS = 5000;
+const DASHBOARD_CACHE_TTL_MS = TIMEOUTS.DASHBOARD_CACHE;
 
 function getDashboardCached(rootDir) {
   const entry = _dashboardCache.get(rootDir);

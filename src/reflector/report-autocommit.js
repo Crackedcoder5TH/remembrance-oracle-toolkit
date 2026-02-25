@@ -13,6 +13,7 @@ const { execSync } = require('child_process');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
 const { scoring: _scoring, github: _github, history: _history } = require('./report-lazy');
+const { TIMEOUTS } = require('./scoring-utils');
 
 // =====================================================================
 // Auto-Commit Safety
@@ -58,7 +59,7 @@ function runTestGate(rootDir, options = {}) {
   const {
     testCommand = config.autoCommit?.testCommand || 'npm test',
     buildCommand = config.autoCommit?.buildCommand || '',
-    timeoutMs = config.autoCommit?.testTimeoutMs || 120000,
+    timeoutMs = config.autoCommit?.testTimeoutMs || TIMEOUTS.TEST_GATE,
   } = options;
 
   const result = {
@@ -90,7 +91,7 @@ function runTestGate(rootDir, options = {}) {
 /**
  * Execute a single command with timeout, capturing output.
  */
-function runCommand(command, cwd, timeoutMs = 120000) {
+function runCommand(command, cwd, timeoutMs = TIMEOUTS.TEST_GATE) {
   const start = Date.now();
   try {
     const stdout = execSync(command, {

@@ -43,9 +43,12 @@ function _generateCandidateNotes(decision) {
   if (!decision.alternatives || decision.alternatives.length === 0) return null;
   if (!decision.pattern) return null;
   const winner = decision.pattern;
-  const winnerScore = decision.confidence;
+  // Use the winning alternative's composite score (not decision.confidence which is the decision-type confidence)
+  const winnerAlt = decision.alternatives.find(a => a.id === winner.id || a.name === winner.name);
+  const winnerScore = winnerAlt?.composite ?? decision.confidence;
   const notes = [];
   for (const alt of decision.alternatives) {
+    if (alt.id === winner.id || alt.name === winner.name) continue;
     const gap = winnerScore - (alt.composite || 0);
     if (gap <= 0) continue;
     let reason;

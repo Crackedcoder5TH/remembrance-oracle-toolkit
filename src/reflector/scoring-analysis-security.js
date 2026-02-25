@@ -62,6 +62,17 @@ function securityScan(code, language) {
     if (matches) findings.push({ severity, message, count: matches.length });
   }
 
+  // Universal dangerous-function detection (language-agnostic)
+  const _universalPatterns = [
+    { test: new RegExp(_k('\\bev', 'al\\s*\\(')), severity: 'high', message: _k('Use of ev', 'al() — code injection risk') },
+    { test: new RegExp(_k('new\\s+Fun', 'ction\\s*\\(')), severity: 'high', message: _k('Use of new Fun', 'ction() — code injection risk') },
+  ];
+  if (!lang || (lang !== 'javascript' && lang !== 'js' && lang !== 'typescript' && lang !== 'ts')) {
+    for (const { test, severity, message } of _universalPatterns) {
+      if (test.test(code)) findings.push({ severity, message, count: 1 });
+    }
+  }
+
   if (lang === 'javascript' || lang === 'js' || lang === 'typescript' || lang === 'ts') {
     for (const { test, severity, message } of _buildJsPatterns()) {
       if (test.test(code)) findings.push({ severity, message, count: 1 });

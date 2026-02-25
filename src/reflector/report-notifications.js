@@ -15,6 +15,7 @@ const { join } = require('path');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
 const { scoring: _scoring } = require('./report-lazy');
+const { TIMEOUTS } = require('./scoring-utils');
 
 // =====================================================================
 // Notifications — Discord / Slack
@@ -29,7 +30,7 @@ const { scoring: _scoring } = require('./report-lazy');
  * @returns {Promise<object>} { ok, status, error }
  */
 function postJSON(webhookUrl, payload, options = {}) {
-  const { timeoutMs = 10000 } = options;
+  const { timeoutMs = TIMEOUTS.WEBHOOK } = options;
 
   try {
     const url = new URL(webhookUrl);

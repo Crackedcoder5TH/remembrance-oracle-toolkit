@@ -5,4 +5,13 @@ export type {
   CoherenceResponse,
   CoherenceLogEntry,
 } from "./types";
-export { validateEmail } from "./validate";
+export type { LeadSubmission, LeadResponse } from "./types";
+export {
+  validateEmail,
+  validatePhone,
+  normalizePhone,
+  validateState,
+  validateName,
+  US_STATES,
+} from "./validate";
+export type { StateCode } from "./validate";

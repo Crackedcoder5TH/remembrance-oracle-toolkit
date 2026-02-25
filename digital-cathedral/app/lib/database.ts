@@ -222,6 +222,29 @@ export function getLeadCount(): Result<number, string> {
   }
 }
 
+// --- Delete a lead (CCPA compliance) ---
+export function deleteLeadByEmail(email: string): Result<{ deleted: number }, string> {
+  try {
+    const db = getDb();
+    const result = db.prepare("DELETE FROM leads WHERE email = ?").run(email.trim().toLowerCase());
+    return Ok({ deleted: result.changes });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Delete failed";
+    return Err(message);
+  }
+}
+
+export function deleteLeadById(leadId: string): Result<{ deleted: number }, string> {
+  try {
+    const db = getDb();
+    const result = db.prepare("DELETE FROM leads WHERE lead_id = ?").run(leadId);
+    return Ok({ deleted: result.changes });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Delete failed";
+    return Err(message);
+  }
+}
+
 // --- Row mapper ---
 function rowToLead(row: Record<string, unknown>): LeadRecord {
   return {

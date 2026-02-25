@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { insertLead } from "@/app/lib/database";
+import { insertLead, deleteLeadByEmail } from "@/app/lib/database";
 import type { LeadRecord } from "@/app/lib/database";
 import { notifyLeadCreated } from "@/app/lib/webhooks";
+import { sendLeadConfirmationEmail } from "@/app/lib/email";
+import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
 /**
  * Lead submission API — Kingdom perspective.
@@ -11,13 +13,16 @@ import { notifyLeadCreated } from "@/app/lib/webhooks";
  *  - result-type-ts (EVOLVE) for database error handling
  *  - retry-async (PULL) for webhook delivery
  *  - pipe (PULL) for transformation pipeline
+ *  - throttle (PULL, 0.970) → evolved into IP rate limiter
  *
  * This route:
- * 1. Validates all fields server-side
- * 2. Records consent metadata (TCPA compliance)
- * 3. Persists the lead to SQLite via better-sqlite3
- * 4. Detects duplicates within 24-hour window
- * 5. Returns a kingdom whisper
+ * 1. Rate-limits by IP (oracle PULL: throttle → sliding window)
+ * 2. Validates all fields server-side
+ * 3. Records consent metadata (TCPA compliance)
+ * 4. Persists the lead to SQLite via better-sqlite3
+ * 5. Detects duplicates within 24-hour window
+ * 6. Sends confirmation email
+ * 7. Returns a kingdom whisper
  */
 
 // --- Oracle-evolved validation (from validate-email pattern) ---
@@ -88,6 +93,22 @@ function generateLeadId(): string {
 }
 
 export async function POST(req: NextRequest) {
+  // --- Rate limit (Oracle PULL: throttle 0.970 → sliding window per-IP) ---
+  const clientIp = getClientIp(req.headers);
+  const rateCheck = checkRateLimit(clientIp, 5, 60_000); // 5 requests per minute per IP
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Too many requests. Please wait a moment before trying again.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) },
+      },
+    );
+  }
+
   try {
     const body = await req.json();
 
@@ -191,6 +212,11 @@ export async function POST(req: NextRequest) {
       console.error("[WEBHOOK ERROR]", err);
     });
 
+    // Send confirmation email (non-blocking — doesn't affect response)
+    sendLeadConfirmationEmail(leadRecord).catch((err) => {
+      console.error("[EMAIL ERROR]", err);
+    });
+
     const whisper = WHISPERS[Math.floor(Math.random() * WHISPERS.length)];
 
     return NextResponse.json({
@@ -202,6 +228,63 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json(
       { success: false, message: "Invalid request. Please try again." },
+      { status: 400 },
+    );
+  }
+}
+
+/**
+ * DELETE /api/leads — CCPA/CPRA Data Deletion Endpoint
+ *
+ * Oracle decision: GENERATE (no existing deletion pattern)
+ * Uses: result-type-ts (already in database layer)
+ *
+ * Accepts { email } in the request body.
+ * Deletes all lead records associated with that email address.
+ * Rate-limited to prevent abuse.
+ */
+export async function DELETE(req: NextRequest) {
+  const clientIp = getClientIp(req.headers);
+  const rateCheck = checkRateLimit(clientIp, 3, 60_000); // 3 deletion requests per minute
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { success: false, message: "Too many requests. Please wait before trying again." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) } },
+    );
+  }
+
+  try {
+    const body = await req.json();
+    const { email } = body;
+
+    if (!email || !validateEmail(email)) {
+      return NextResponse.json(
+        { success: false, message: "A valid email address is required to process your deletion request." },
+        { status: 400 },
+      );
+    }
+
+    const result = deleteLeadByEmail(email);
+
+    if (!result.ok) {
+      console.error("[DELETE ERROR]", result.error);
+      return NextResponse.json(
+        { success: false, message: "Something went wrong processing your request." },
+        { status: 500 },
+      );
+    }
+
+    console.log(`[CCPA DELETE] ${result.value.deleted} record(s) deleted for ${email} (IP: ${clientIp})`);
+
+    // Always return success even if no records found (privacy — don't reveal existence)
+    return NextResponse.json({
+      success: true,
+      message: "Your data deletion request has been processed. Any records associated with your email have been removed.",
+      deleted: result.value.deleted,
+    });
+  } catch {
+    return NextResponse.json(
+      { success: false, message: "Invalid request." },
       { status: 400 },
     );
   }

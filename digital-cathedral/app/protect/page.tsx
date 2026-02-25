@@ -56,6 +56,7 @@ const COVERAGE_OPTIONS = [
   { value: "whole", label: "Whole Life Insurance" },
   { value: "universal", label: "Universal Life Insurance" },
   { value: "final-expense", label: "Final Expense / Burial Insurance" },
+  { value: "annuity", label: "Annuity" },
   { value: "not-sure", label: "Not sure \u2014 I need guidance" },
 ];
 

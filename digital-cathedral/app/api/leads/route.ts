@@ -63,7 +63,7 @@ const VALID_STATES = new Set([
   "VT","VA","WA","WV","WI","WY",
 ]);
 
-const VALID_COVERAGE = new Set(["term", "whole", "universal", "final-expense", "not-sure"]);
+const VALID_COVERAGE = new Set(["term", "whole", "universal", "final-expense", "annuity", "not-sure"]);
 
 /** Whispers for the seeker — kingdom-aligned responses */
 const WHISPERS = [

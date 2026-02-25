@@ -607,7 +607,7 @@ describe('Reflector Scheduler — getStatus', () => {
 describe('MCP consolidated tools include reflector-related features', () => {
   it('MCP has consolidated 11 tools (reflector is accessed via module directly)', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 11, 'MCP should have exactly 11 consolidated tools');
+    assert.equal(TOOLS.length, 12, 'MCP should have exactly 11 consolidated tools');
     const names = TOOLS.map(t => t.name);
     assert.ok(names.includes('oracle_maintain'), 'oracle_maintain should exist for reflect/covenant actions');
   });

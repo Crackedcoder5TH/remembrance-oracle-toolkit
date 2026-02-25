@@ -11,6 +11,7 @@ next-env.d.ts
 # Build
 dist/
 build/
+*.tsbuildinfo
 
 # Environment
 .env
@@ -40,3 +41,6 @@ test-ledger/
 
 # Remembrance local store
 .remembrance/
+
+# Cathedral database
+.cathedral/

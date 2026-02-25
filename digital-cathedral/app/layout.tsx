@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { CookieConsent } from "./components/cookie-consent";
+import { ErrorReporter } from "./components/error-reporter";
+
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
 const SITE_URL = "https://digital-cathedral.vercel.app";
 const SITE_TITLE = "Digital Cathedral — Remembrance Oracle";
@@ -69,6 +73,32 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+// JSON-LD structured data for Google rich results
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      name: "[Company Name]",
+      url: BASE_URL,
+      description:
+        "Connect with licensed life insurance professionals in your state.",
+    },
+    {
+      "@type": "Organization",
+      name: "[Company Name]",
+      url: BASE_URL,
+      description:
+        "We connect consumers with licensed life insurance professionals. We are not an insurance company, agent, or broker.",
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer service",
+        availableLanguage: "English",
+      },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -76,7 +106,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[var(--bg-deep)]">{children}</body>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
+      <body className="min-h-screen bg-[var(--bg-deep)]">
+        {children}
+        <CookieConsent />
+        <ErrorReporter />
+      </body>
     </html>
   );
 }

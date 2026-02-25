@@ -7,14 +7,26 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        teal: {
-          cathedral: "#00A8A8",
+        navy: {
+          cathedral: "#1B2D4F",
         },
-        indigo: {
-          cathedral: "#1A1B3A",
+        "sky-accent": {
+          DEFAULT: "#6BA3D6",
         },
-        crimson: {
-          cathedral: "#E63946",
+        sage: {
+          cathedral: "#8CAA7E",
+        },
+        "emerald-accent": {
+          DEFAULT: "#2D8659",
+        },
+        "soft-gray": {
+          DEFAULT: "#F0F2F5",
+        },
+        "off-white": {
+          DEFAULT: "#FAFBFC",
+        },
+        "calm-error": {
+          DEFAULT: "#C9474B",
         },
       },
       fontFamily: {

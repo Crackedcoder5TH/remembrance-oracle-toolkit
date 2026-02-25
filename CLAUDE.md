@@ -1,8 +1,19 @@
 # Remembrance Oracle Toolkit — AI Instructions
 
-## The Reflex: Query Before Write
+## MANDATORY: Session Start Checkpoint
 
-Before writing any new function, utility, or pattern:
+At the **start of every coding session**, before any code is written, run:
+
+```bash
+node src/cli.js hooks install   # Ensure git hooks are active (idempotent, safe to re-run)
+node src/cli.js sync pull       # Pull latest patterns from personal store
+```
+
+This is NON-NEGOTIABLE. If hooks are not installed, patterns will not be captured.
+
+## MANDATORY: The Reflex — Query Before Write
+
+Before writing any new function, utility, or pattern, you MUST:
 
 1. **Search first**: `node src/cli.js search "<what you need>" --limit 3`
 2. **Resolve if match found**: `node src/cli.js resolve --description "<what you need>" --language <lang>`
@@ -10,9 +21,11 @@ Before writing any new function, utility, or pattern:
 4. **Adapt the code** if the oracle returns EVOLVE
 5. **Write new code** only if the oracle returns GENERATE or no match exists
 
-## The Feedback Loop: Report After Use
+Do NOT skip this step. The oracle exists so you don't reinvent proven patterns.
 
-After using a pulled pattern or writing new code that passes tests:
+## MANDATORY: The Feedback Loop — Report After Use
+
+After using a pulled pattern or writing new code that passes tests, you MUST:
 
 1. **Feed back success**: `node src/cli.js feedback --id <id> --success`
 2. **Register new patterns**: If you wrote a new utility function with tests, register it:
@@ -24,13 +37,25 @@ After using a pulled pattern or writing new code that passes tests:
    node src/cli.js submit --file <code.js> --test <test.js> --language javascript
    ```
 
+Do NOT batch these up. Report feedback immediately after each pattern is used or written.
+
+## MANDATORY: Session End Sweep
+
+Before ending a session or when the user says they are done, ALWAYS run:
+
+```bash
+node src/cli.js auto-submit    # Full pipeline: register + harvest + promote + sync
+```
+
+This is the safety net — it catches anything missed during the session. Never end a session without it.
+
 ## Auto-Registration (Automatic Pattern Capture)
 
 Pattern registration is now **automatic on every commit** via git hooks:
 
-1. **Install hooks once**: `node src/cli.js hooks install`
+1. **Hooks must be installed** (session start checkpoint handles this)
 2. **Every commit triggers**: diff analysis → function extraction → dedup → registration
-3. **No manual registration needed** — the post-commit hook calls `auto-register` → `harvest` → `promote` → `sync`
+3. **No manual registration needed per-commit** — the post-commit hook calls `auto-register` → `harvest` → `promote` → `sync`
 
 The pipeline:
 - **Step 0 — Auto-Register**: Analyzes `git diff` to find new/modified functions, matches them to test files, and registers individually
@@ -119,3 +144,7 @@ node --test tests/*.test.js               # Run all tests
 - The oracle threshold is 0.6 — code below this is rejected
 - Iterative healing can recover failed patterns via automated refinement
 - Registering proven code automatically spawns candidates (the loop runs itself)
+- **NEVER skip the session start checkpoint** — hooks + sync pull
+- **NEVER skip the query-before-write reflex** — search the oracle first
+- **NEVER skip the feedback loop** — report success immediately after use
+- **NEVER end a session without the end sweep** — `auto-submit` is the safety net

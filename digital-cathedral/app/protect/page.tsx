@@ -89,6 +89,12 @@ function formatPhoneInput(value: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+// --- Scribe's Quill: auto-capitalize names as user types ---
+// Oracle GENERATE (0.399) — no existing pattern for input masking
+function autoCapitalizeName(value: string): string {
+  return value.replace(/(?:^|\s|[-'])([a-z])/g, (match) => match.toUpperCase());
+}
+
 const INPUT_CLASS =
   "w-full bg-soft-gray text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-navy-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-accent/60 transition-all";
 
@@ -97,7 +103,7 @@ const SELECT_CLASS = INPUT_CLASS + " appearance-none";
 export default function ProtectPage() {
   const utm = useUtmTracking();
   const {
-    form, errors, loading, submitted, whisper, serverError,
+    form, errors, loading, submitted, whisper, leadId, serverError,
     step, totalSteps,
     updateField, handleSubmit, nextStep, prevStep,
   } = useLeadForm({ ...utm });
@@ -120,27 +126,90 @@ export default function ProtectPage() {
     }
   }, [step]);
 
-  // --- Submitted state ---
+  // --- Thank-You Chamber: post-submission confirmation ---
+  // Oracle GENERATE (0.396) — no existing pattern for post-submission thank-you
   if (submitted) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12" aria-label="Form submission confirmation">
+        {/* Success icon */}
+        <div className="mb-8">
+          <div className="w-20 h-20 rounded-full bg-emerald-accent/10 flex items-center justify-center mx-auto">
+            <svg className="w-10 h-10 text-emerald-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+        </div>
+
         <div className="w-full max-w-lg cathedral-surface p-8 cathedral-glow text-center" role="status">
           <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
             Covenant Received
           </div>
-          <h1 className="text-3xl font-light text-[var(--text-primary)] mb-4">
-            Your Legacy is Being Protected
+          <h1 className="text-3xl font-light text-[var(--text-primary)] mb-3">
+            Thank You, {form.firstName}
           </h1>
-          <p className="whisper-text text-lg leading-relaxed mb-6">
+          <p className="text-[var(--text-primary)] text-lg mb-6">
+            Your Legacy is Being Protected
+          </p>
+          <p className="whisper-text text-base leading-relaxed mb-8">
             &ldquo;{whisper}&rdquo;
           </p>
-          <p className="text-[var(--text-muted)] text-sm">
-            A licensed insurance professional will contact you within 1 business day
-            to discuss your coverage options. Check your email for confirmation.
-          </p>
+
+          {/* Reference number */}
+          {leadId && (
+            <div className="bg-soft-gray rounded-lg px-4 py-3 mb-8 inline-block">
+              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Reference Number</p>
+              <p className="text-sm font-mono text-[var(--text-primary)] select-all">{leadId}</p>
+            </div>
+          )}
+
+          {/* What happens next */}
+          <div className="border-t border-navy-cathedral/8 pt-6 mt-2">
+            <h2 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider mb-4">What Happens Next</h2>
+            <div className="space-y-4 text-left">
+              <div className="flex gap-3 items-start">
+                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">1</div>
+                <div>
+                  <p className="text-sm text-[var(--text-primary)] font-medium">Confirmation Email</p>
+                  <p className="text-xs text-[var(--text-muted)]">Check your inbox at <span className="font-medium">{form.email}</span> for a confirmation of your request.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">2</div>
+                <div>
+                  <p className="text-sm text-[var(--text-primary)] font-medium">Professional Review</p>
+                  <p className="text-xs text-[var(--text-muted)]">A licensed insurance professional in your area will review your information and coverage needs.</p>
+                </div>
+              </div>
+              <div className="flex gap-3 items-start">
+                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">3</div>
+                <div>
+                  <p className="text-sm text-[var(--text-primary)] font-medium">Personal Consultation</p>
+                  <p className="text-xs text-[var(--text-muted)]">Expect a call or email within <strong>1 business day</strong> to discuss your options — no obligation.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <footer className="mt-16 text-center text-xs text-[var(--text-muted)]">
+
+        {/* Navigation links */}
+        <div className="flex gap-4 mt-8">
+          <a
+            href="/"
+            className="px-6 py-3 rounded-lg text-sm font-medium border border-navy-cathedral/10 text-[var(--text-muted)] hover:border-navy-cathedral/25 transition-all"
+          >
+            Return Home
+          </a>
+          <a
+            href="/privacy"
+            className="px-6 py-3 rounded-lg text-sm font-medium text-emerald-accent hover:text-emerald-accent/80 transition-all"
+          >
+            Privacy Policy
+          </a>
+        </div>
+
+        <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
           <p>The kingdom protects what matters. Remember.</p>
+          <p>&copy; {new Date().getFullYear()} [Company Name]. All rights reserved.</p>
         </footer>
       </main>
     );
@@ -178,6 +247,20 @@ export default function ProtectPage() {
 
       {/* Multi-Step Lead Capture Form */}
       <form onSubmit={handleSubmit} className="w-full max-w-lg cathedral-surface p-6 md:p-8 space-y-6" noValidate aria-label="Life insurance quote request form">
+        {/* Siege Shield: Honeypot field — hidden from humans, visible to bots */}
+        <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "-9999px", opacity: 0, height: 0, overflow: "hidden" }}>
+          <label htmlFor="_hp_website">Website</label>
+          <input
+            id="_hp_website"
+            name="website"
+            type="text"
+            value={form._hp_website}
+            onChange={(e) => updateField("_hp_website", e.target.value)}
+            tabIndex={-1}
+            autoComplete="off"
+          />
+        </div>
+
         {/* Step Progress Indicator */}
         <StepProgress currentStep={step} totalSteps={totalSteps} />
 
@@ -187,12 +270,12 @@ export default function ProtectPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label htmlFor="firstName" className="block text-sm text-[var(--text-muted)]">First Name</label>
-                <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
+                <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", autoCapitalizeName(e.target.value))} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
                 {errors.firstName && <p id="firstName-error" className="text-calm-error text-xs" role="alert">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
                 <label htmlFor="lastName" className="block text-sm text-[var(--text-muted)]">Last Name</label>
-                <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
+                <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", autoCapitalizeName(e.target.value))} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
                 {errors.lastName && <p id="lastName-error" className="text-calm-error text-xs" role="alert">{errors.lastName}</p>}
               </div>
             </div>

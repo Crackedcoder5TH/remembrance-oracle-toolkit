@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { insertLead, deleteLeadByEmail } from "@/app/lib/database";
 import type { LeadRecord } from "@/app/lib/database";
 import { notifyLeadCreated } from "@/app/lib/webhooks";
-import { sendLeadConfirmationEmail } from "@/app/lib/email";
+import { sendLeadConfirmationEmail, sendAdminNotificationEmail } from "@/app/lib/email";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 import { broadcast } from "@/app/lib/lead-events";
 import { scoreLead } from "@/app/lib/lead-scoring";
+import { startRequestTimer } from "@/app/lib/logger";
+import { validateCsrfToken } from "@/app/lib/csrf";
+import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
 
 /**
  * Lead submission API — Kingdom perspective.
@@ -27,57 +30,7 @@ import { scoreLead } from "@/app/lib/lead-scoring";
  * 7. Returns a kingdom whisper
  */
 
-// --- Oracle-evolved validation (from validate-email pattern) ---
-function validateEmail(email: string): boolean {
-  if (typeof email !== "string") return false;
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email) && email.length <= 254;
-}
-
-function validatePhone(phone: string): boolean {
-  if (typeof phone !== "string") return false;
-  const digits = phone.replace(/\D/g, "");
-  return digits.length === 10 || (digits.length === 11 && digits.startsWith("1"));
-}
-
-function validateName(name: string): boolean {
-  if (typeof name !== "string") return false;
-  const trimmed = name.trim();
-  return trimmed.length >= 2 && trimmed.length <= 100 && /^[a-zA-Z\s'.,-]+$/.test(trimmed);
-}
-
-// --- Oracle GENERATE: date of birth with 18+ age gate ---
-function validateDob(dob: string): boolean {
-  if (typeof dob !== "string") return false;
-  const match = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return false;
-  const year = parseInt(match[1], 10);
-  const month = parseInt(match[2], 10);
-  const day = parseInt(match[3], 10);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
-  if (year < 1900 || year > new Date().getFullYear()) return false;
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
-  const today = new Date();
-  const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-  return date <= min18;
-}
-
-const VALID_STATES = new Set([
-  "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN",
-  "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
-  "NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT",
-  "VT","VA","WA","WV","WI","WY",
-]);
-
-const VALID_COVERAGE = new Set(["term", "whole", "universal", "final-expense", "annuity", "not-sure"]);
-
-const VALID_VETERAN_STATUS = new Set(["veteran", "non-veteran"]);
-
-const VALID_MILITARY_BRANCHES = new Set([
-  "army", "marine-corps", "navy", "air-force", "space-force",
-  "coast-guard", "national-guard", "reserves",
-]);
+// Validation now handled by the Armory (app/lib/validation.ts)
 
 /** Whispers for the seeker — kingdom-aligned responses */
 const WHISPERS = [
@@ -95,10 +48,14 @@ function generateLeadId(): string {
 }
 
 export async function POST(req: NextRequest) {
+  const { logger, finish } = startRequestTimer("POST", "/api/leads");
+
   // --- Rate limit (Oracle PULL: throttle 0.970 → sliding window per-IP) ---
   const clientIp = getClientIp(req.headers);
   const rateCheck = checkRateLimit(clientIp, 5, 60_000); // 5 requests per minute per IP
   if (!rateCheck.allowed) {
+    logger.warn("Rate limit exceeded", { clientIp });
+    finish(429);
     return NextResponse.json(
       {
         success: false,
@@ -111,77 +68,85 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // --- CSRF validation (Drawbridge) ---
+  if (!validateCsrfToken(req)) {
+    logger.warn("CSRF token mismatch", { clientIp });
+    finish(403);
+    return NextResponse.json(
+      { success: false, message: "Security validation failed. Please refresh the page and try again." },
+      { status: 403 },
+    );
+  }
+
   try {
     const body = await req.json();
 
-    const {
-      firstName,
-      lastName,
-      dateOfBirth,
-      email,
-      phone,
-      state,
-      coverageInterest,
-      veteranStatus,
-      militaryBranch,
-      tcpaConsent,
-      privacyConsent,
-      consentTimestamp,
-      consentText,
-    } = body;
-
-    // Server-side validation
-    const errors: string[] = [];
-
-    if (!validateName(firstName)) errors.push("Invalid first name.");
-    if (!validateName(lastName)) errors.push("Invalid last name.");
-    if (!validateDob(dateOfBirth)) errors.push("Invalid date of birth. You must be at least 18 years old.");
-    if (!validateEmail(email)) errors.push("Invalid email address.");
-    if (!validatePhone(phone)) errors.push("Invalid phone number.");
-    if (!VALID_STATES.has(state)) errors.push("Invalid state.");
-    if (!VALID_COVERAGE.has(coverageInterest)) errors.push("Invalid coverage interest.");
-    if (!VALID_VETERAN_STATUS.has(veteranStatus)) errors.push("Invalid veteran status.");
-    if (veteranStatus === "veteran" && militaryBranch && !VALID_MILITARY_BRANCHES.has(militaryBranch)) {
-      errors.push("Invalid military branch.");
+    // Siege Shield: Bot detection (honeypot + timing)
+    // 1. Honeypot: if the hidden field has any value, it's a bot
+    if (body._hp_website) {
+      logger.warn("Honeypot triggered", { clientIp });
+      finish(200); // Return fake success to not alert the bot
+      return NextResponse.json({
+        success: true,
+        message: "Your request has been received.",
+        leadId: "lead_" + Date.now().toString(36),
+        whisper: "Your intention has been noted.",
+      });
     }
-    if (veteranStatus === "veteran" && !militaryBranch) errors.push("Military branch is required for veterans.");
-    if (tcpaConsent !== true) errors.push("TCPA consent is required.");
-    if (privacyConsent !== true) errors.push("Privacy policy consent is required.");
-    if (!consentTimestamp) errors.push("Consent timestamp is required.");
-    if (!consentText) errors.push("Consent text is required.");
+    // 2. Timing: if submitted faster than 3 seconds after page load, likely a bot
+    const MIN_SUBMIT_TIME_MS = 3000;
+    if (body._hp_ts && typeof body._hp_ts === "number") {
+      const elapsed = Date.now() - body._hp_ts;
+      if (elapsed < MIN_SUBMIT_TIME_MS) {
+        logger.warn("Timing check failed — too fast", { elapsed, clientIp });
+        finish(200); // Fake success
+        return NextResponse.json({
+          success: true,
+          message: "Your request has been received.",
+          leadId: "lead_" + Date.now().toString(36),
+          whisper: "Your intention has been noted.",
+        });
+      }
+    }
 
-    if (errors.length > 0) {
+    // Armory: Schema-based validation (replaces inline checks)
+    const validation = validateLeadPayload(body);
+    if (!validation.valid) {
+      logger.warn("Validation failed", { errors: validation.errors, clientIp });
+      finish(400);
       return NextResponse.json(
-        { success: false, message: errors.join(" ") },
+        { success: false, message: validation.errors.join(" ") },
         { status: 400 },
       );
     }
+
+    const validated = validation.data;
 
     // Build the lead record with full consent metadata (TCPA compliance)
     const leadId = generateLeadId();
     const leadRecord: LeadRecord = {
       leadId,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      dateOfBirth,
-      email: email.trim().toLowerCase(),
-      phone: phone.replace(/\D/g, "").slice(-10),
-      state,
-      coverageInterest,
-      veteranStatus,
-      militaryBranch: veteranStatus === "veteran" ? (militaryBranch || "") : "",
+      firstName: validated.firstName,
+      lastName: validated.lastName,
+      dateOfBirth: validated.dateOfBirth,
+      email: validated.email,
+      phone: validated.phone,
+      state: validated.state,
+      coverageInterest: validated.coverageInterest,
+      veteranStatus: validated.veteranStatus,
+      militaryBranch: validated.militaryBranch,
       consentTcpa: true,
       consentPrivacy: true,
-      consentTimestamp,
-      consentText,
+      consentTimestamp: validated.consentTimestamp,
+      consentText: validated.consentText,
       consentIp: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
       consentUserAgent: req.headers.get("user-agent") || "unknown",
       consentPageUrl: req.headers.get("referer") || "/protect",
-      utmSource: body.utmSource || null,
-      utmMedium: body.utmMedium || null,
-      utmCampaign: body.utmCampaign || null,
-      utmTerm: body.utmTerm || null,
-      utmContent: body.utmContent || null,
+      utmSource: validated.utmSource || null,
+      utmMedium: validated.utmMedium || null,
+      utmCampaign: validated.utmCampaign || null,
+      utmTerm: validated.utmTerm || null,
+      utmContent: validated.utmContent || null,
       createdAt: new Date().toISOString(),
     };
 
@@ -191,6 +156,8 @@ export async function POST(req: NextRequest) {
     if (!dbResult.ok) {
       // Duplicate detection returns a user-friendly message
       if (dbResult.error.includes("Duplicate")) {
+        logger.info("Duplicate lead detected", { email: validated.email, clientIp });
+        finish(409);
         return NextResponse.json(
           {
             success: false,
@@ -200,18 +167,21 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.error("[DB ERROR]", dbResult.error);
+      logger.error("Database insert failed", { error: dbResult.error, leadId });
+      finish(500);
       return NextResponse.json(
         { success: false, message: "Something went wrong. Please try again." },
         { status: 500 },
       );
     }
 
-    console.log("[LEAD STORED]", leadId, `(row #${dbResult.value.id})`);
+    logger.info("Lead stored", { leadId, rowId: dbResult.value.id, state: validated.state, coverageInterest: validated.coverageInterest });
+
+    // Score the lead (used by SSE broadcast and admin email)
+    const leadScore = scoreLead(leadRecord);
 
     // Broadcast real-time event to connected admin dashboards (SSE)
     try {
-      const leadScore = scoreLead(leadRecord);
       broadcast({
         type: "lead.created",
         data: {
@@ -226,22 +196,29 @@ export async function POST(req: NextRequest) {
           createdAt: leadRecord.createdAt,
         },
       });
+      logger.debug("SSE broadcast sent", { leadId });
     } catch (err) {
-      console.error("[SSE BROADCAST ERROR]", err);
+      logger.error("SSE broadcast failed", { leadId, error: String(err) });
     }
 
     // Fire webhook notifications (non-blocking — doesn't affect response)
     notifyLeadCreated(leadRecord).catch((err) => {
-      console.error("[WEBHOOK ERROR]", err);
+      logger.error("Webhook notification failed", { leadId, error: String(err) });
     });
 
     // Send confirmation email (non-blocking — doesn't affect response)
     sendLeadConfirmationEmail(leadRecord).catch((err) => {
-      console.error("[EMAIL ERROR]", err);
+      logger.error("Email send failed", { leadId, error: String(err) });
+    });
+
+    // Messenger Relay: Send admin notification email
+    sendAdminNotificationEmail(leadRecord, leadScore).catch((err) => {
+      logger.error("Admin notification email failed", { leadId, error: String(err) });
     });
 
     const whisper = WHISPERS[Math.floor(Math.random() * WHISPERS.length)];
 
+    finish(200, { leadId });
     return NextResponse.json({
       success: true,
       message: "Your request has been received. A licensed insurance professional will contact you soon.",
@@ -249,6 +226,7 @@ export async function POST(req: NextRequest) {
       whisper,
     });
   } catch {
+    finish(400);
     return NextResponse.json(
       { success: false, message: "Invalid request. Please try again." },
       { status: 400 },
@@ -267,9 +245,13 @@ export async function POST(req: NextRequest) {
  * Rate-limited to prevent abuse.
  */
 export async function DELETE(req: NextRequest) {
+  const { logger, finish } = startRequestTimer("DELETE", "/api/leads");
+
   const clientIp = getClientIp(req.headers);
   const rateCheck = checkRateLimit(clientIp, 3, 60_000); // 3 deletion requests per minute
   if (!rateCheck.allowed) {
+    logger.warn("Rate limit exceeded on DELETE", { clientIp });
+    finish(429);
     return NextResponse.json(
       { success: false, message: "Too many requests. Please wait before trying again." },
       { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) } },
@@ -280,7 +262,9 @@ export async function DELETE(req: NextRequest) {
     const body = await req.json();
     const { email } = body;
 
-    if (!email || !validateEmail(email)) {
+    if (!email || !isValidEmail(email)) {
+      logger.warn("Invalid email on CCPA delete", { clientIp });
+      finish(400);
       return NextResponse.json(
         { success: false, message: "A valid email address is required to process your deletion request." },
         { status: 400 },
@@ -290,14 +274,16 @@ export async function DELETE(req: NextRequest) {
     const result = deleteLeadByEmail(email);
 
     if (!result.ok) {
-      console.error("[DELETE ERROR]", result.error);
+      logger.error("CCPA delete failed", { error: result.error, clientIp });
+      finish(500);
       return NextResponse.json(
         { success: false, message: "Something went wrong processing your request." },
         { status: 500 },
       );
     }
 
-    console.log(`[CCPA DELETE] ${result.value.deleted} record(s) deleted for ${email} (IP: ${clientIp})`);
+    logger.info("CCPA delete completed", { deleted: result.value.deleted, clientIp });
+    finish(200, { deleted: result.value.deleted });
 
     // Always return success even if no records found (privacy — don't reveal existence)
     return NextResponse.json({
@@ -306,6 +292,7 @@ export async function DELETE(req: NextRequest) {
       deleted: result.value.deleted,
     });
   } catch {
+    finish(400);
     return NextResponse.json(
       { success: false, message: "Invalid request." },
       { status: 400 },

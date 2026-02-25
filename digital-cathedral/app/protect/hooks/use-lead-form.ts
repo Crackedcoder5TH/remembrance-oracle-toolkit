@@ -7,6 +7,7 @@
  * validate-email (EVOLVE 0.661).
  */
 import { useState, useEffect, FormEvent, useCallback, useRef } from "react";
+import { trackFormStep, trackConversion } from "@/app/lib/analytics";
 
 // --- Oracle-pulled: pipe (coherency 0.970, PULL) ---
 function pipe<T>(...fns: Array<(val: T) => T>): (input: T) => T {
@@ -70,6 +71,8 @@ export interface LeadFormData {
   militaryBranch: string;
   tcpaConsent: boolean;
   privacyConsent: boolean;
+  // Siege Shield: honeypot field — must remain empty for humans
+  _hp_website: string;
 }
 
 export interface LeadFormErrors {
@@ -94,6 +97,7 @@ export interface UseLeadFormReturn {
   loading: boolean;
   submitted: boolean;
   whisper: string;
+  leadId: string;
   serverError: string;
   step: number;
   totalSteps: number;
@@ -195,13 +199,18 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     militaryBranch: "",
     tcpaConsent: false,
     privacyConsent: false,
+    _hp_website: "",
   });
   const [errors, setErrors] = useState<LeadFormErrors>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [whisper, setWhisper] = useState("");
+  const [leadId, setLeadId] = useState("");
   const [serverError, setServerError] = useState("");
   const [step, setStep] = useState(saved.current?.step ?? 0);
+
+  // Siege Shield: track page load time for timing-based bot detection
+  const pageLoadTime = useRef(Date.now());
 
   // --- Form state persistence: save draft on every change ---
   useEffect(() => {
@@ -242,7 +251,11 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     const errs = validateStep(step, form);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return false;
-    setStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1));
+    const nextStepNum = Math.min(step + 1, TOTAL_STEPS - 1);
+    setStep(nextStepNum);
+    // Treasury Ledger: track step progression for funnel analysis
+    const stepNames = ["Identity", "Contact", "Consent"];
+    trackFormStep(nextStepNum, stepNames[nextStepNum] || `Step ${nextStepNum + 1}`);
     return true;
   }, [step, form]);
 
@@ -265,9 +278,16 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     setLoading(true);
     setServerError("");
     try {
+      // Drawbridge: fetch CSRF token before submission
+      const csrfRes = await fetch("/api/csrf");
+      const csrfData = csrfRes.ok ? await csrfRes.json() : { token: "" };
+
       const res = await fetch("/api/leads", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfData.token,
+        },
         body: JSON.stringify({
           firstName: sanitizeInput(data.firstName),
           lastName: sanitizeInput(data.lastName),
@@ -282,6 +302,9 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
           privacyConsent: data.privacyConsent,
           consentTimestamp: new Date().toISOString(),
           consentText: TCPA_CONSENT_TEXT,
+          // Siege Shield: honeypot + timing check
+          _hp_website: data._hp_website,
+          _hp_ts: pageLoadTime.current,
           // UTM tracking — persisted from session
           ...(utmParams ? filterNullValues(utmParams) : {}),
         }),
@@ -292,8 +315,11 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
       }
       const result = await res.json();
       setSubmitted(true);
+      setLeadId(result.leadId || "");
       clearFormDraft(); // Clear saved draft on successful submission
       setWhisper(result.whisper || "Your intention has been received. A guardian will reach out.");
+      // Treasury Ledger: fire conversion event
+      trackConversion(result.leadId || "", data.coverageInterest, data.state);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
@@ -318,7 +344,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   }
 
   return {
-    form, errors, loading, submitted, whisper, serverError,
+    form, errors, loading, submitted, whisper, leadId, serverError,
     step, totalSteps: TOTAL_STEPS,
     updateField, handleSubmit, nextStep, prevStep, goToStep,
   };

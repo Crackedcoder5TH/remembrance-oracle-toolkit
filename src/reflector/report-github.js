@@ -157,8 +157,8 @@ function createHealingBranch(report, options = {}) {
       result.files.push(file.path);
     }
 
-    const healingCount = report.healedFiles.length;
-    const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper.message}\n\nAvg improvement: +${report.summary.avgImprovement.toFixed(3)}\nOverall health: ${report.collectiveWhisper.overallHealth}`;
+    const healingCount = report.healedFiles?.length ?? 0;
+    const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper?.message ?? ''}\n\nAvg improvement: +${(report.summary?.avgImprovement ?? 0).toFixed(3)}\nOverall health: ${report.collectiveWhisper?.overallHealth ?? 'unknown'}`;
 
     try {
       execSync('git commit -m "$REMEMBRANCE_COMMIT_MSG"', {
@@ -230,7 +230,7 @@ function openHealingPR(report, options = {}) {
   const { formatPRBody } = _multi();
   const body = formatPRBody(report);
 
-  const title = `Remembrance Pull: Healed Refinement (+${report.summary.avgImprovement.toFixed(3)})`;
+  const title = `Remembrance Pull: Healed Refinement (+${(report.summary?.avgImprovement ?? 0).toFixed(3)})`;
   const labels = 'remembrance,auto-heal';
 
   const escapedBody = body.replace(/'/g, "'\\''");
@@ -249,7 +249,7 @@ function openHealingPR(report, options = {}) {
       number: numberMatch ? parseInt(numberMatch[1]) : null,
     };
 
-    if (autoMerge && report.summary.autoMergeRecommended && prResult.number) {
+    if (autoMerge && report.summary?.autoMergeRecommended && prResult.number) {
       try {
         gh(`pr merge ${prResult.number} --auto --squash`, cwd);
         prResult.autoMergeEnabled = true;

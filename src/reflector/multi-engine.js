@@ -419,48 +419,48 @@ function formatReport(report) {
 
   // Snapshot summary
   lines.push('\u2500\u2500 Codebase Snapshot \u2500\u2500');
-  lines.push(`  Files scanned: ${report.snapshot.totalFiles}`);
-  lines.push(`  Avg coherence: ${report.snapshot.avgCoherence.toFixed(3)}`);
-  lines.push(`  Min coherence: ${report.snapshot.minCoherence.toFixed(3)}`);
-  lines.push(`  Max coherence: ${report.snapshot.maxCoherence.toFixed(3)}`);
-  if (report.snapshot.covenantViolations > 0) {
+  lines.push(`  Files scanned: ${report.snapshot?.totalFiles ?? 0}`);
+  lines.push(`  Avg coherence: ${(report.snapshot?.avgCoherence ?? 0).toFixed(3)}`);
+  lines.push(`  Min coherence: ${(report.snapshot?.minCoherence ?? 0).toFixed(3)}`);
+  lines.push(`  Max coherence: ${(report.snapshot?.maxCoherence ?? 0).toFixed(3)}`);
+  if ((report.snapshot?.covenantViolations ?? 0) > 0) {
     lines.push(`  Covenant violations: ${report.snapshot.covenantViolations}`);
   }
   lines.push('');
 
   // Dimension averages
-  if (report.snapshot.dimensionAverages) {
+  if (report.snapshot?.dimensionAverages) {
     lines.push('\u2500\u2500 Dimension Averages \u2500\u2500');
     for (const [dim, val] of Object.entries(report.snapshot.dimensionAverages)) {
-      const bar = '\u2588'.repeat(Math.round(val * 20));
-      const faded = '\u2591'.repeat(20 - Math.round(val * 20));
-      lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${val.toFixed(3)}`);
+      const bar = '\u2588'.repeat(Math.round((val ?? 0) * 20));
+      const faded = '\u2591'.repeat(20 - Math.round((val ?? 0) * 20));
+      lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${(val ?? 0).toFixed(3)}`);
     }
     lines.push('');
   }
 
   // Healings
   lines.push('\u2500\u2500 Healing Results \u2500\u2500');
-  lines.push(`  Files below threshold: ${report.summary.filesBelowThreshold}`);
-  lines.push(`  Files healed: ${report.summary.filesHealed}`);
-  lines.push(`  Total improvement: +${report.summary.totalImprovement.toFixed(3)}`);
-  lines.push(`  Avg improvement: +${report.summary.avgImprovement.toFixed(3)}`);
+  lines.push(`  Files below threshold: ${report.summary?.filesBelowThreshold ?? 0}`);
+  lines.push(`  Files healed: ${report.summary?.filesHealed ?? 0}`);
+  lines.push(`  Total improvement: +${(report.summary?.totalImprovement ?? 0).toFixed(3)}`);
+  lines.push(`  Avg improvement: +${(report.summary?.avgImprovement ?? 0).toFixed(3)}`);
   lines.push('');
 
-  if (report.healings.length > 0) {
+  if (report.healings && report.healings.length > 0) {
     for (const h of report.healings) {
       lines.push(`  ${h.path}`);
-      lines.push(`    ${h.originalCoherence.toFixed(3)} \u2192 ${h.healedCoherence.toFixed(3)} (+${h.improvement.toFixed(3)}) [${h.loops} loop(s)]`);
-      lines.push(`    Whisper: "${h.whisper}"`);
+      lines.push(`    ${(h.originalCoherence ?? 0).toFixed(3)} \u2192 ${(h.healedCoherence ?? 0).toFixed(3)} (+${(h.improvement ?? 0).toFixed(3)}) [${h.loops ?? 0} loop(s)]`);
+      lines.push(`    Whisper: "${h.whisper ?? ''}"`);
       lines.push('');
     }
   }
 
   // Collective whisper
   lines.push('\u2500\u2500 Collective Whisper \u2500\u2500');
-  lines.push(`  "${report.collectiveWhisper.message}"`);
-  lines.push(`  Overall health: ${report.collectiveWhisper.overallHealth}`);
-  if (report.summary.autoMergeRecommended) {
+  lines.push(`  "${report.collectiveWhisper?.message ?? ''}"`);
+  lines.push(`  Overall health: ${report.collectiveWhisper?.overallHealth ?? 'unknown'}`);
+  if (report.summary?.autoMergeRecommended) {
     lines.push('  Auto-merge: RECOMMENDED (high overall coherence)');
   }
 
@@ -474,7 +474,7 @@ function formatPRBody(report) {
   const lines = [];
   lines.push('## Remembrance Pull: Healed Refinement');
   lines.push('');
-  lines.push(`> ${report.collectiveWhisper.message}`);
+  lines.push(`> ${report.collectiveWhisper?.message ?? ''}`);
   lines.push('');
 
   // Summary table
@@ -482,15 +482,15 @@ function formatPRBody(report) {
   lines.push('');
   lines.push('| Metric | Value |');
   lines.push('|--------|-------|');
-  lines.push(`| Files scanned | ${report.snapshot.totalFiles} |`);
-  lines.push(`| Avg coherence | ${report.snapshot.avgCoherence.toFixed(3)} |`);
-  lines.push(`| Files below threshold | ${report.summary.filesBelowThreshold} |`);
-  lines.push(`| Files healed | ${report.summary.filesHealed} |`);
-  lines.push(`| Total improvement | +${report.summary.totalImprovement.toFixed(3)} |`);
+  lines.push(`| Files scanned | ${report.snapshot?.totalFiles ?? 0} |`);
+  lines.push(`| Avg coherence | ${(report.snapshot?.avgCoherence ?? 0).toFixed(3)} |`);
+  lines.push(`| Files below threshold | ${report.summary?.filesBelowThreshold ?? 0} |`);
+  lines.push(`| Files healed | ${report.summary?.filesHealed ?? 0} |`);
+  lines.push(`| Total improvement | +${(report.summary?.totalImprovement ?? 0).toFixed(3)} |`);
   lines.push('');
 
   // Dimension averages
-  if (report.snapshot.dimensionAverages) {
+  if (report.snapshot?.dimensionAverages) {
     lines.push('### Coherence Dimensions');
     lines.push('');
     for (const [dim, val] of Object.entries(report.snapshot.dimensionAverages)) {
@@ -502,12 +502,13 @@ function formatPRBody(report) {
   }
 
   // Per-file changes
-  if (report.healings.length > 0) {
+  if (report.healings && report.healings.length > 0) {
     lines.push('### Healed Files');
     lines.push('');
     for (const h of report.healings) {
       lines.push(`#### \`${h.path}\``);
-      lines.push(`- **Coherence**: ${h.originalCoherence.toFixed(3)} \u2192 ${h.healedCoherence.toFixed(3)} (+${h.improvement.toFixed(3)})`);
+      lines.push(`- **Coherence**: ${(h.originalCoherence ?? 0).toFixed(3)} \u2192 ${(h.healedCoherence ?? 0).toFixed(3)} (+${(h.improvement ?? 0).toFixed(3)})`);
+
       lines.push(`- **Strategy**: ${h.healingSummary}`);
       lines.push(`- **Whisper**: *"${h.whisper}"*`);
       lines.push('');
@@ -517,8 +518,8 @@ function formatPRBody(report) {
   // Health assessment
   lines.push('### Health Assessment');
   lines.push('');
-  lines.push(`Overall codebase health: **${report.collectiveWhisper.overallHealth}**`);
-  if (report.summary.autoMergeRecommended) {
+  lines.push(`Overall codebase health: **${report.collectiveWhisper?.overallHealth ?? 'unknown'}**`);
+  if (report.summary?.autoMergeRecommended) {
     lines.push('');
     lines.push('> This PR is recommended for auto-merge (high overall coherence).');
   }

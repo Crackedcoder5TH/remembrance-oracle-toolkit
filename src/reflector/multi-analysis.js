@@ -600,16 +600,16 @@ function formatMultiReport(report) {
 
   // Per-repo snapshots
   lines.push('\u2500\u2500 Per-Repo Coherence \u2500\u2500');
-  for (const repo of report.snapshot.repos) {
-    lines.push(`  ${repo.name.padEnd(30)} avg: ${repo.avgCoherence.toFixed(3)}  min: ${repo.minCoherence.toFixed(3)}  max: ${repo.maxCoherence.toFixed(3)}  files: ${repo.totalFiles}`);
+  for (const repo of (report.snapshot?.repos || [])) {
+    lines.push(`  ${(repo.name || '?').padEnd(30)} avg: ${(repo.avgCoherence ?? 0).toFixed(3)}  min: ${(repo.minCoherence ?? 0).toFixed(3)}  max: ${(repo.maxCoherence ?? 0).toFixed(3)}  files: ${repo.totalFiles ?? 0}`);
   }
-  lines.push(`  ${'COMBINED'.padEnd(30)} avg: ${report.snapshot.combined.avgCoherence.toFixed(3)}  files: ${report.snapshot.combined.totalFiles}`);
+  lines.push(`  ${'COMBINED'.padEnd(30)} avg: ${(report.snapshot?.combined?.avgCoherence ?? 0).toFixed(3)}  files: ${report.snapshot?.combined?.totalFiles ?? 0}`);
   lines.push('');
 
   // Dimension comparison
   if (report.comparison) {
     lines.push('\u2500\u2500 Dimension Comparison \u2500\u2500');
-    lines.push(`  Convergence score: ${report.comparison.convergenceScore.toFixed(3)}`);
+    lines.push(`  Convergence score: ${(report.comparison?.convergenceScore ?? 0).toFixed(3)}`);
     lines.push(`  Overall leader: ${report.comparison.coherenceLeader} (delta: ${report.comparison.coherenceDelta >= 0 ? '+' : ''}${report.comparison.coherenceDelta.toFixed(3)})`);
     lines.push('');
     for (const c of report.comparison.comparisons) {
@@ -628,13 +628,13 @@ function formatMultiReport(report) {
     lines.push(`  Diverged: ${report.drift.diverged}`);
     lines.push(`  Unique to ${report.drift.repoA.name}: ${report.drift.uniqueToA}`);
     lines.push(`  Unique to ${report.drift.repoB.name}: ${report.drift.uniqueToB}`);
-    lines.push(`  Avg drift: ${report.drift.avgDrift.toFixed(3)}`);
-    lines.push(`  Convergence: ${report.drift.convergenceScore.toFixed(3)}`);
+    lines.push(`  Avg drift: ${(report.drift?.avgDrift ?? 0).toFixed(3)}`);
+    lines.push(`  Convergence: ${(report.drift?.convergenceScore ?? 0).toFixed(3)}`);
     if (report.drift.details.diverged.length > 0) {
       lines.push('');
       lines.push('  Top diverged functions:');
       for (const d of report.drift.details.diverged.slice(0, 10)) {
-        lines.push(`    ${d.name} \u2014 drift: ${d.drift.toFixed(3)} (${d.status})`);
+        lines.push(`    ${d.name} \u2014 drift: ${(d.drift ?? 0).toFixed(3)} (${d.status})`);
         lines.push(`      ${d.fileA} vs ${d.fileB}`);
       }
     }
@@ -645,9 +645,9 @@ function formatMultiReport(report) {
   lines.push('\u2500\u2500 Unified Healing \u2500\u2500');
   lines.push(`  Unified threshold: ${report.healing.unifiedThreshold}`);
   lines.push(`  Total files healed: ${report.healing.summary.totalFilesHealed}`);
-  lines.push(`  Total improvement: +${report.healing.summary.totalImprovement.toFixed(3)}`);
-  for (const r of report.healing.repos) {
-    lines.push(`  ${r.name}: ${r.filesHealed} healed (+${r.totalImprovement.toFixed(3)})`);
+  lines.push(`  Total improvement: +${(report.healing?.summary?.totalImprovement ?? 0).toFixed(3)}`);
+  for (const r of (report.healing?.repos || [])) {
+    lines.push(`  ${r.name}: ${r.filesHealed} healed (+${(r.totalImprovement ?? 0).toFixed(3)})`);
   }
   lines.push('');
 
@@ -673,20 +673,20 @@ function formatMultiPRBody(report) {
   lines.push('');
   lines.push('| Metric | Value |');
   lines.push('|--------|-------|');
-  lines.push(`| Repos | ${report.summary.repoCount} |`);
-  lines.push(`| Combined coherence | ${report.summary.combinedCoherence.toFixed(3)} |`);
-  lines.push(`| Convergence | ${report.summary.convergenceScore.toFixed(3)} |`);
-  lines.push(`| Drift | ${report.summary.driftScore.toFixed(3)} |`);
-  lines.push(`| Files healed | ${report.summary.totalFilesHealed} |`);
-  lines.push(`| Total improvement | +${report.summary.totalImprovement.toFixed(3)} |`);
+  lines.push(`| Repos | ${report.summary?.repoCount ?? 0} |`);
+  lines.push(`| Combined coherence | ${(report.summary?.combinedCoherence ?? 0).toFixed(3)} |`);
+  lines.push(`| Convergence | ${(report.summary?.convergenceScore ?? 0).toFixed(3)} |`);
+  lines.push(`| Drift | ${(report.summary?.driftScore ?? 0).toFixed(3)} |`);
+  lines.push(`| Files healed | ${report.summary?.totalFilesHealed ?? 0} |`);
+  lines.push(`| Total improvement | +${(report.summary?.totalImprovement ?? 0).toFixed(3)} |`);
   lines.push('');
 
   // Per-repo
   lines.push('### Per-Repo Breakdown');
   lines.push('');
-  for (const repo of report.snapshot.repos) {
+  for (const repo of (report.snapshot?.repos || [])) {
     lines.push(`#### ${repo.name}`);
-    lines.push(`- **Avg coherence**: ${repo.avgCoherence.toFixed(3)}`);
+    lines.push(`- **Avg coherence**: ${(repo.avgCoherence ?? 0).toFixed(3)}`);
     lines.push(`- **Files**: ${repo.totalFiles}`);
     if (repo.belowThreshold.length > 0) {
       lines.push(`- **Below threshold**: ${repo.belowThreshold.length}`);

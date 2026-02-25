@@ -363,8 +363,8 @@ function formatOrchestration(result) {
   }
 
   // Healing
-  lines.push(`Healing: ${result.healing.filesHealed} files healed, avg improvement ${result.healing.avgImprovement.toFixed(3)}`);
-  if (result.healing.autoRolledBack) {
+  lines.push(`Healing: ${result.healing?.filesHealed ?? 0} files healed, avg improvement ${(result.healing?.avgImprovement ?? 0).toFixed(3)}`);
+  if (result.healing?.autoRolledBack) {
     lines.push('  AUTO-ROLLBACK: coherence dropped, changes reverted');
   }
 

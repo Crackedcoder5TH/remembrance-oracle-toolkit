@@ -69,6 +69,7 @@ function setNestedValue(obj, path, value) {
 }
 
 function getNestedValue(obj, path) {
+  if (!path) return undefined;
   const parts = path.split('.');
   let current = obj;
   for (const part of parts) {

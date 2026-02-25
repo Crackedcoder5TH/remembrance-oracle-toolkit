@@ -285,13 +285,13 @@ function findExistingReflectorPR(cwd) {
 /**
  * Generate the GitHub Actions workflow YAML for the Reflector BOT.
  */
-function generateReflectorWorkflow(config = {}) {
+function generateReflectorWorkflow(config) {
   const {
     schedule = '0 */6 * * *',
     minCoherence = 0.7,
     autoMerge = false,
     nodeVersion = '22',
-  } = config;
+  } = config || {};
 
   return `name: Remembrance Reflector BOT
 

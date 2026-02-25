@@ -200,6 +200,7 @@ function extractFunctionSignatures(code, language) {
  * Uses brace counting for JS/TS/Go/Rust, indentation for Python.
  */
 function extractFunctionBody(code, fnName, language) {
+  if (!code) return null;
   const lines = code.split('\n');
   const lang = (language || '').toLowerCase();
 
@@ -248,6 +249,8 @@ function extractFunctionBody(code, fnName, language) {
  * Uses Jaccard similarity on word tokens.
  */
 function codeSimilarity(codeA, codeB) {
+  if (!codeA && !codeB) return 1;
+  if (!codeA || !codeB) return 0;
   const tokensA = new Set((codeA.match(/\b\w+\b/g) || []).map(t => t.toLowerCase()));
   const tokensB = new Set((codeB.match(/\b\w+\b/g) || []).map(t => t.toLowerCase()));
   if (tokensA.size === 0 && tokensB.size === 0) return 1;
@@ -547,10 +550,11 @@ function multiReflect(repoPaths, config = {}) {
 // ─── Multi-Repo Whisper ───
 
 function generateMultiWhisper(snapshot, comparison, drift, healing) {
+  if (!snapshot) return { message: 'No multi-repo snapshot available.', overallHealth: 'unknown' };
   const parts = [];
 
   // Coherence status
-  const avg = snapshot.combined.avgCoherence;
+  const avg = snapshot.combined?.avgCoherence ?? 0;
   if (avg >= 0.8) {
     parts.push('The codebases rest in harmony.');
   } else if (avg >= 0.6) {
@@ -576,7 +580,7 @@ function generateMultiWhisper(snapshot, comparison, drift, healing) {
   }
 
   // Healing
-  if (healing.summary.totalFilesHealed > 0) {
+  if (healing?.summary?.totalFilesHealed > 0) {
     parts.push(healing.summary.convergenceWhisper);
   }
 

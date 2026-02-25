@@ -211,20 +211,20 @@ function dryRun(rootDir, config = {}) {
  * @param {object} config - Safety configuration
  * @returns {object} { approved, reason, requiresManualReview }
  */
-function checkApproval(report, config = {}) {
+function checkApproval(report, config) {
   const {
     requireApproval = false,
     autoMergeThreshold = 0.9,
     approvalFileThreshold = 10,
     autoMerge = false,
-  } = config;
+  } = config || {};
 
   if (!requireApproval && !autoMerge) {
     return { approved: true, reason: 'No approval gate configured', requiresManualReview: false };
   }
 
-  const filesHealed = report.summary ? report.summary.filesHealed : 0;
-  const avgCoherence = report.snapshot ? report.snapshot.avgCoherence : 0;
+  const filesHealed = report?.summary ? report.summary.filesHealed : 0;
+  const avgCoherence = report?.snapshot ? report.snapshot.avgCoherence : 0;
 
   if (filesHealed > approvalFileThreshold) {
     return {

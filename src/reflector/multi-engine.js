@@ -360,8 +360,9 @@ function reflect(rootDir, config = {}) {
 // ─── Collective Whisper ───
 
 function generateCollectiveWhisper(snapshot, healings) {
-  if (healings.length === 0) {
-    const avg = snapshot.aggregate.avgCoherence;
+  const safeHealings = healings || [];
+  if (safeHealings.length === 0) {
+    const avg = snapshot?.aggregate?.avgCoherence ?? 0;
     return {
       message: 'The codebase rests in coherence. No healing was needed this cycle.',
       overallHealth: avg >= 0.8 ? 'healthy' : avg >= 0.6 ? 'stable' : 'needs attention',
@@ -370,7 +371,7 @@ function generateCollectiveWhisper(snapshot, healings) {
 
   // Find the dominant healing strategy across all files
   const strategyCounts = {};
-  for (const h of healings) {
+  for (const h of safeHealings) {
     if (h.healingPath) {
       for (const path of h.healingPath) {
         const strategy = path.split(':')[0].trim();
@@ -395,9 +396,9 @@ function generateCollectiveWhisper(snapshot, healings) {
   return {
     message: messages[dominant] || messages.reflection,
     dominantStrategy: dominant,
-    filesHealed: healings.length,
-    overallHealth: snapshot.aggregate.avgCoherence >= 0.8 ? 'healthy'
-      : snapshot.aggregate.avgCoherence >= 0.6 ? 'stable'
+    filesHealed: safeHealings.length,
+    overallHealth: (snapshot?.aggregate?.avgCoherence ?? 0) >= 0.8 ? 'healthy'
+      : (snapshot?.aggregate?.avgCoherence ?? 0) >= 0.6 ? 'stable'
       : 'needs attention',
   };
 }

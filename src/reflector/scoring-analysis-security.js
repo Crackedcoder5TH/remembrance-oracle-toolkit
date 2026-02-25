@@ -8,6 +8,7 @@
 function _k(...parts) { return parts.join(''); }
 
 function stripStringsAndComments(code) {
+  if (!code) return '';
   return code
     .replace(/\/\/[^\n]*/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -52,6 +53,7 @@ function _buildPyPatterns() {
 }
 
 function securityScan(code, language) {
+  if (!code) return { score: 1, riskLevel: 'none', findings: [], totalFindings: 0 };
   const findings = [];
   const lang = (language || '').toLowerCase();
 

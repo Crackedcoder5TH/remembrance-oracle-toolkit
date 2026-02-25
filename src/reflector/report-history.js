@@ -60,7 +60,9 @@ function saveRunRecord(rootDir, record, options = {}) {
  * @param {object} options - { runId, trigger, branch }
  * @returns {object} Structured run record
  */
-function createRunRecord(report, preSnapshot, options = {}) {
+function createRunRecord(report, preSnapshot, options) {
+  const safeReport = report || {};
+  options = options || {};
   const {
     runId = `run-${Date.now()}`,
     trigger = 'manual',
@@ -70,9 +72,9 @@ function createRunRecord(report, preSnapshot, options = {}) {
 
   const beforeCoherence = preSnapshot
     ? (preSnapshot.aggregate ? preSnapshot.aggregate.avgCoherence : preSnapshot.avgCoherence || 0)
-    : (report.snapshot?.avgCoherence ?? 0);
+    : (safeReport.snapshot?.avgCoherence ?? 0);
 
-  const afterCoherence = report.snapshot?.avgCoherence ?? 0;
+  const afterCoherence = safeReport.snapshot?.avgCoherence ?? 0;
 
   return {
     id: runId,
@@ -85,15 +87,15 @@ function createRunRecord(report, preSnapshot, options = {}) {
       after: Math.round(afterCoherence * 1000) / 1000,
       delta: Math.round((afterCoherence - beforeCoherence) * 1000) / 1000,
     },
-    dimensions: report.snapshot?.dimensionAverages || {},
+    dimensions: safeReport.snapshot?.dimensionAverages || {},
     healing: {
-      filesScanned: report.summary?.filesScanned ?? 0,
-      filesBelowThreshold: report.summary?.filesBelowThreshold ?? 0,
-      filesHealed: report.summary?.filesHealed ?? 0,
-      totalImprovement: report.summary?.totalImprovement ?? 0,
-      avgImprovement: report.summary?.avgImprovement ?? 0,
+      filesScanned: safeReport.summary?.filesScanned ?? 0,
+      filesBelowThreshold: safeReport.summary?.filesBelowThreshold ?? 0,
+      filesHealed: safeReport.summary?.filesHealed ?? 0,
+      totalImprovement: safeReport.summary?.totalImprovement ?? 0,
+      avgImprovement: safeReport.summary?.avgImprovement ?? 0,
     },
-    changes: (report.healings || []).map(h => ({
+    changes: (safeReport.healings || []).map(h => ({
       path: h.path,
       language: h.language,
       before: h.originalCoherence,
@@ -101,11 +103,11 @@ function createRunRecord(report, preSnapshot, options = {}) {
       improvement: h.improvement,
       strategy: h.healingSummary || 'reflection',
     })),
-    whisper: report.collectiveWhisper
-      ? (typeof report.collectiveWhisper === 'string' ? report.collectiveWhisper : report.collectiveWhisper.message)
+    whisper: safeReport.collectiveWhisper
+      ? (typeof safeReport.collectiveWhisper === 'string' ? safeReport.collectiveWhisper : safeReport.collectiveWhisper.message)
       : '',
-    health: report.collectiveWhisper
-      ? (typeof report.collectiveWhisper === 'object' ? report.collectiveWhisper.overallHealth : 'unknown')
+    health: safeReport.collectiveWhisper
+      ? (typeof safeReport.collectiveWhisper === 'object' ? safeReport.collectiveWhisper.overallHealth : 'unknown')
       : 'unknown',
   };
 }
@@ -314,7 +316,9 @@ function generateTimeline(rootDir, count = 10) {
     lines.push(`    Coherence: ${coh} (${delta})`);
     lines.push(`    Healed: ${healed} file(s) | Health: ${health}`);
     if (run.whisper) {
-      lines.push(`    Whisper: "${run.whisper}"`);
+      let whisperMsg = typeof run.whisper === 'object' ? run.whisper.message : run.whisper;
+      if (whisperMsg) whisperMsg = whisperMsg.replace(/\[object Object\]/g, '(data)');
+      lines.push(`    Whisper: "${whisperMsg || ''}"`);
     }
     if (run.changes && run.changes.length > 0) {
       for (const ch of run.changes.slice(0, 3)) {

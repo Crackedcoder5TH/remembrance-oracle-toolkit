@@ -7,6 +7,7 @@
 const { stripStringsAndComments } = require('./scoring-analysis-security');
 
 function countDecisionPoints(code) {
+  if (!code) return 0;
   let count = 0;
   const keywords = [
     /\bif\s*\(/g, /\belse\s+if\s*\(/g, /\bfor\s*\(/g,
@@ -52,6 +53,7 @@ function extractBody(lines, startLine) {
 }
 
 function extractFunctionBodies(code) {
+  if (!code) return [];
   const functions = [];
   const lines = code.split('\n');
   const patterns = [
@@ -76,6 +78,7 @@ function extractFunctionBodies(code) {
 }
 
 function calculateCyclomaticComplexity(code) {
+  if (!code) return { total: 1, perFunction: [], avgPerFunction: 1, maxPerFunction: 1, functionCount: 0 };
   const stripped = stripStringsAndComments(code);
   const decisionPoints = countDecisionPoints(stripped);
   const functions = extractFunctionBodies(code);
@@ -99,6 +102,7 @@ function calculateCyclomaticComplexity(code) {
 }
 
 function analyzeCommentDensity(code) {
+  if (!code) return { density: 0, commentLines: 0, codeLines: 0, blankLines: 0, totalLines: 0, quality: 0, docstrings: 0 };
   const lines = code.split('\n');
   let commentLines = 0, codeLines = 0, blankLines = 0, inBlockComment = false, docstrings = 0;
 
@@ -128,6 +132,7 @@ function analyzeCommentDensity(code) {
 }
 
 function analyzeNestingDepth(code) {
+  if (!code) return { maxDepth: 0, avgDepth: 0, depthDistribution: {}, score: 1 };
   const stripped = stripStringsAndComments(code);
   let currentDepth = 0, maxDepth = 0;
   const depths = [];
@@ -162,6 +167,7 @@ function analyzeNestingDepth(code) {
 }
 
 function computeQualityMetrics(code, language) {
+  if (!code) return { totalLines: 0, codeLines: 0, avgLineLength: 0, maxLineLength: 0, longLines: 0, veryLongLines: 0, functionCount: 0, avgFunctionLength: 0, maxFunctionLength: 0, maxParams: 0, avgParams: 0, duplicateLines: 0, score: 1 };
   const lines = code.split('\n');
   const nonBlankLines = lines.filter(l => l.trim());
   const lineLengths = nonBlankLines.map(l => l.length);

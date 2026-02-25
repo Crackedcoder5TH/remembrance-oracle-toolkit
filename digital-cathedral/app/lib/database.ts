@@ -222,6 +222,100 @@ export function getLeadCount(): Result<number, string> {
   }
 }
 
+// --- Admin: filtered lead queries ---
+export interface LeadFilters {
+  state?: string;
+  coverageInterest?: string;
+  veteranStatus?: string;
+  search?: string; // search firstName, lastName, or email
+  startDate?: string;
+  endDate?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface LeadStats {
+  total: number;
+  today: number;
+  thisWeek: number;
+  thisMonth: number;
+  byState: Record<string, number>;
+  byCoverage: Record<string, number>;
+  byVeteranStatus: Record<string, number>;
+}
+
+export function getFilteredLeads(filters: LeadFilters): Result<{ leads: LeadRecord[]; total: number }, string> {
+  try {
+    const db = getDb();
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (filters.state) {
+      conditions.push("state = ?");
+      params.push(filters.state);
+    }
+    if (filters.coverageInterest) {
+      conditions.push("coverage_interest = ?");
+      params.push(filters.coverageInterest);
+    }
+    if (filters.veteranStatus) {
+      conditions.push("veteran_status = ?");
+      params.push(filters.veteranStatus);
+    }
+    if (filters.search) {
+      conditions.push("(first_name LIKE ? OR last_name LIKE ? OR email LIKE ?)");
+      const term = `%${filters.search}%`;
+      params.push(term, term, term);
+    }
+    if (filters.startDate) {
+      conditions.push("created_at >= ?");
+      params.push(filters.startDate);
+    }
+    if (filters.endDate) {
+      conditions.push("created_at <= ?");
+      params.push(filters.endDate);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const limit = filters.limit || 50;
+    const offset = filters.offset || 0;
+
+    const countRow = db.prepare(`SELECT COUNT(*) as count FROM leads ${where}`).get(...params) as { count: number };
+    const rows = db.prepare(`SELECT * FROM leads ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...params, limit, offset) as Record<string, unknown>[];
+
+    return Ok({ leads: rows.map(rowToLead), total: countRow.count });
+  } catch (err) {
+    return Err(err instanceof Error ? err.message : "Query failed");
+  }
+}
+
+export function getLeadStats(): Result<LeadStats, string> {
+  try {
+    const db = getDb();
+
+    const total = (db.prepare("SELECT COUNT(*) as c FROM leads").get() as { c: number }).c;
+    const today = (db.prepare("SELECT COUNT(*) as c FROM leads WHERE created_at >= date('now')").get() as { c: number }).c;
+    const thisWeek = (db.prepare("SELECT COUNT(*) as c FROM leads WHERE created_at >= date('now', '-7 days')").get() as { c: number }).c;
+    const thisMonth = (db.prepare("SELECT COUNT(*) as c FROM leads WHERE created_at >= date('now', '-30 days')").get() as { c: number }).c;
+
+    const byState: Record<string, number> = {};
+    const stateRows = db.prepare("SELECT state, COUNT(*) as c FROM leads GROUP BY state ORDER BY c DESC").all() as Array<{ state: string; c: number }>;
+    for (const r of stateRows) byState[r.state] = r.c;
+
+    const byCoverage: Record<string, number> = {};
+    const covRows = db.prepare("SELECT coverage_interest, COUNT(*) as c FROM leads GROUP BY coverage_interest ORDER BY c DESC").all() as Array<{ coverage_interest: string; c: number }>;
+    for (const r of covRows) byCoverage[r.coverage_interest] = r.c;
+
+    const byVeteranStatus: Record<string, number> = {};
+    const vetRows = db.prepare("SELECT veteran_status, COUNT(*) as c FROM leads GROUP BY veteran_status ORDER BY c DESC").all() as Array<{ veteran_status: string; c: number }>;
+    for (const r of vetRows) byVeteranStatus[r.veteran_status] = r.c;
+
+    return Ok({ total, today, thisWeek, thisMonth, byState, byCoverage, byVeteranStatus });
+  } catch (err) {
+    return Err(err instanceof Error ? err.message : "Query failed");
+  }
+}
+
 // --- Delete a lead (CCPA compliance) ---
 export function deleteLeadByEmail(email: string): Result<{ deleted: number }, string> {
   try {

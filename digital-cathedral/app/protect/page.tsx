@@ -15,6 +15,7 @@
  *   Step 3 — Consent:   TCPA + Privacy → submit
  */
 
+import { useEffect, useRef } from "react";
 import { useLeadForm } from "./hooks/use-lead-form";
 import { TcpaConsent } from "./components/tcpa-consent";
 import { StepProgress } from "./components/step-progress";
@@ -91,11 +92,29 @@ export default function ProtectPage() {
     updateField, handleSubmit, nextStep, prevStep,
   } = useLeadForm({ ...utm });
 
+  // --- Accessibility: focus management on step change ---
+  const stepContainerRef = useRef<HTMLDivElement>(null);
+  const prevStepRef = useRef(step);
+
+  useEffect(() => {
+    if (step !== prevStepRef.current) {
+      prevStepRef.current = step;
+      // Focus the first input in the new step after render
+      requestAnimationFrame(() => {
+        const container = stepContainerRef.current;
+        if (container) {
+          const firstInput = container.querySelector<HTMLElement>("input, select");
+          firstInput?.focus();
+        }
+      });
+    }
+  }, [step]);
+
   // --- Submitted state ---
   if (submitted) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-        <div className="w-full max-w-lg cathedral-surface p-8 cathedral-glow text-center">
+      <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12" aria-label="Form submission confirmation">
+        <div className="w-full max-w-lg cathedral-surface p-8 cathedral-glow text-center" role="status">
           <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
             Covenant Received
           </div>
@@ -142,24 +161,29 @@ export default function ProtectPage() {
         </p>
       </div>
 
+      {/* Screen reader: live region for step changes */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {`Step ${step + 1} of ${totalSteps}: ${["Your Identity", "Contact Information", "Review and Consent"][step]}`}
+      </div>
+
       {/* Multi-Step Lead Capture Form */}
-      <form onSubmit={handleSubmit} className="w-full max-w-lg cathedral-surface p-6 md:p-8 space-y-6" noValidate>
+      <form onSubmit={handleSubmit} className="w-full max-w-lg cathedral-surface p-6 md:p-8 space-y-6" noValidate aria-label="Life insurance quote request form">
         {/* Step Progress Indicator */}
         <StepProgress currentStep={step} totalSteps={totalSteps} />
 
         {/* --- Step 0: Identity --- */}
         {step === 0 && (
-          <div className="space-y-5 animate-in fade-in">
+          <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 1: Your Identity">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label htmlFor="firstName" className="block text-sm text-[var(--text-muted)]">First Name</label>
-                <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} placeholder="John" autoComplete="given-name" className={INPUT_CLASS} />
-                {errors.firstName && <p className="text-crimson-cathedral text-xs">{errors.firstName}</p>}
+                <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
+                {errors.firstName && <p id="firstName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
                 <label htmlFor="lastName" className="block text-sm text-[var(--text-muted)]">Last Name</label>
-                <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} placeholder="Doe" autoComplete="family-name" className={INPUT_CLASS} />
-                {errors.lastName && <p className="text-crimson-cathedral text-xs">{errors.lastName}</p>}
+                <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
+                {errors.lastName && <p id="lastName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.lastName}</p>}
               </div>
             </div>
 
@@ -171,47 +195,50 @@ export default function ProtectPage() {
                 value={form.dateOfBirth}
                 onChange={(e) => updateField("dateOfBirth", e.target.value)}
                 autoComplete="bday"
+                aria-required="true"
+                aria-invalid={!!errors.dateOfBirth}
+                aria-describedby={errors.dateOfBirth ? "dob-error dob-hint" : "dob-hint"}
                 className={INPUT_CLASS}
               />
-              <p className="text-[var(--text-muted)] text-xs">You must be at least 18 years old.</p>
-              {errors.dateOfBirth && <p className="text-crimson-cathedral text-xs">{errors.dateOfBirth}</p>}
+              <p id="dob-hint" className="text-[var(--text-muted)] text-xs">You must be at least 18 years old.</p>
+              {errors.dateOfBirth && <p id="dob-error" className="text-crimson-cathedral text-xs" role="alert">{errors.dateOfBirth}</p>}
             </div>
 
             <div className="space-y-1">
               <label htmlFor="state" className="block text-sm text-[var(--text-muted)]">State</label>
-              <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} className={SELECT_CLASS}>
+              <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} aria-required="true" aria-invalid={!!errors.state} aria-describedby={errors.state ? "state-error" : undefined} className={SELECT_CLASS}>
                 <option value="">Select your state...</option>
                 {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
               </select>
-              {errors.state && <p className="text-crimson-cathedral text-xs">{errors.state}</p>}
+              {errors.state && <p id="state-error" className="text-crimson-cathedral text-xs" role="alert">{errors.state}</p>}
             </div>
 
             <div className="space-y-1">
               <label htmlFor="coverage" className="block text-sm text-[var(--text-muted)]">Coverage Interest</label>
-              <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} className={SELECT_CLASS}>
+              <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={SELECT_CLASS}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {errors.coverageInterest && <p className="text-crimson-cathedral text-xs">{errors.coverageInterest}</p>}
+              {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
             </div>
 
             {/* Veteran Status */}
             <div className="space-y-1">
               <label htmlFor="veteranStatus" className="block text-sm text-[var(--text-muted)]">Veteran Status</label>
-              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} className={SELECT_CLASS}>
+              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={SELECT_CLASS}>
                 {VETERAN_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {errors.veteranStatus && <p className="text-crimson-cathedral text-xs">{errors.veteranStatus}</p>}
+              {errors.veteranStatus && <p id="veteran-error" className="text-crimson-cathedral text-xs" role="alert">{errors.veteranStatus}</p>}
             </div>
 
             {/* Military Branch — conditional subcategory (only shown for veterans) */}
             {form.veteranStatus === "veteran" && (
               <div className="space-y-1 animate-in fade-in">
                 <label htmlFor="militaryBranch" className="block text-sm text-[var(--text-muted)]">Branch of Service</label>
-                <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} className={SELECT_CLASS}>
+                <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={SELECT_CLASS}>
                   {MILITARY_BRANCH_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
-                <p className="text-[var(--text-muted)] text-xs">Thank you for your service.</p>
-                {errors.militaryBranch && <p className="text-crimson-cathedral text-xs">{errors.militaryBranch}</p>}
+                <p id="branch-hint" className="text-[var(--text-muted)] text-xs">Thank you for your service.</p>
+                {errors.militaryBranch && <p id="branch-error" className="text-crimson-cathedral text-xs" role="alert">{errors.militaryBranch}</p>}
               </div>
             )}
 
@@ -228,17 +255,17 @@ export default function ProtectPage() {
 
         {/* --- Step 1: Contact --- */}
         {step === 1 && (
-          <div className="space-y-5 animate-in fade-in">
+          <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 2: Contact Information">
             <div className="space-y-1">
               <label htmlFor="email" className="block text-sm text-[var(--text-muted)]">Email Address</label>
-              <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" className={INPUT_CLASS} />
-              {errors.email && <p className="text-crimson-cathedral text-xs">{errors.email}</p>}
+              <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" aria-required="true" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={INPUT_CLASS} />
+              {errors.email && <p id="email-error" className="text-crimson-cathedral text-xs" role="alert">{errors.email}</p>}
             </div>
 
             <div className="space-y-1">
               <label htmlFor="phone" className="block text-sm text-[var(--text-muted)]">Phone Number</label>
-              <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="(555) 123-4567" autoComplete="tel" className={INPUT_CLASS} />
-              {errors.phone && <p className="text-crimson-cathedral text-xs">{errors.phone}</p>}
+              <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="(555) 123-4567" autoComplete="tel" aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} className={INPUT_CLASS} />
+              {errors.phone && <p id="phone-error" className="text-crimson-cathedral text-xs" role="alert">{errors.phone}</p>}
             </div>
 
             {/* Navigation */}
@@ -263,9 +290,9 @@ export default function ProtectPage() {
 
         {/* --- Step 2: Consent & Submit --- */}
         {step === 2 && (
-          <div className="space-y-5 animate-in fade-in">
+          <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 3: Review and Consent">
             {/* Review summary */}
-            <div className="cathedral-surface p-4 text-sm space-y-1">
+            <div className="cathedral-surface p-4 text-sm space-y-1" role="region" aria-label="Review your information">
               <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-2">Your Information</p>
               <p className="text-[var(--text-primary)]">{form.firstName} {form.lastName}</p>
               <p className="text-[var(--text-muted)]">DOB: {form.dateOfBirth}</p>
@@ -304,7 +331,7 @@ export default function ProtectPage() {
 
             {/* Server Error */}
             {serverError && (
-              <div className="text-crimson-cathedral text-sm text-center py-2">{serverError}</div>
+              <div className="text-crimson-cathedral text-sm text-center py-2" role="alert" aria-live="assertive">{serverError}</div>
             )}
 
             {/* Navigation + Submit */}
@@ -319,6 +346,7 @@ export default function ProtectPage() {
               <button
                 type="submit"
                 disabled={loading}
+                aria-busy={loading}
                 className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? "Submitting..." : "Protect My Legacy"}

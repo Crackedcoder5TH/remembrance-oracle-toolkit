@@ -25,16 +25,16 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   return (
-    <div className="w-full space-y-3">
+    <div className="w-full space-y-3" role="navigation" aria-label="Form progress">
       {/* Whisper for current step */}
-      <p className="whisper-text text-xs text-center">
+      <p className="whisper-text text-xs text-center" aria-hidden="true">
         &ldquo;{STEP_WHISPERS[currentStep]}&rdquo;
       </p>
 
       {/* Step indicators */}
-      <div className="flex items-center justify-between">
+      <ol className="flex items-center justify-between list-none p-0 m-0" aria-label="Form steps">
         {STEP_LABELS.map((label, i) => (
-          <div key={label} className="flex flex-col items-center flex-1">
+          <li key={label} className="flex flex-col items-center flex-1" aria-current={i === currentStep ? "step" : undefined}>
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
                 i < currentStep
@@ -43,6 +43,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
                     ? "bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/60 cathedral-glow"
                     : "bg-[var(--bg-deep)] text-[var(--text-muted)] border border-teal-cathedral/10"
               }`}
+              aria-hidden="true"
             >
               {i < currentStep ? "\u2713" : i + 1}
             </div>
@@ -51,14 +52,22 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
                 i <= currentStep ? "text-teal-cathedral" : "text-[var(--text-muted)]"
               }`}
             >
+              <span className="sr-only">{i < currentStep ? "Completed: " : i === currentStep ? "Current: " : "Upcoming: "}</span>
               {label}
             </span>
-          </div>
+          </li>
         ))}
-      </div>
+      </ol>
 
       {/* Coherence bar */}
-      <div className="w-full h-1 rounded-full bg-[var(--bg-deep)] overflow-hidden">
+      <div
+        className="w-full h-1 rounded-full bg-[var(--bg-deep)] overflow-hidden"
+        role="progressbar"
+        aria-valuenow={Math.round(progress)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Form progress: ${Math.round(progress)}% complete`}
+      >
         <div
           className="h-full rounded-full transition-all duration-500 ease-out"
           style={{

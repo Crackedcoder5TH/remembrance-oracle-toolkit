@@ -84,7 +84,7 @@ function HowItWorks() {
       <div className="grid md:grid-cols-3 gap-6">
         {steps.map((s) => (
           <div key={s.number} className="text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 flex items-center justify-center text-sm font-medium mx-auto">
+            <div className="w-10 h-10 rounded-full bg-emerald-accent text-white border border-emerald-accent/30 flex items-center justify-center text-sm font-medium mx-auto">
               {s.number}
             </div>
             <h3 className="text-sm font-medium text-[var(--text-primary)]">
@@ -140,8 +140,8 @@ function Testimonials() {
             <p className="text-sm text-[var(--text-primary)] leading-relaxed italic">
               &ldquo;{t.quote}&rdquo;
             </p>
-            <div className="border-t border-teal-cathedral/10 pt-3">
-              <p className="text-xs font-medium text-teal-cathedral">
+            <div className="border-t border-navy-cathedral/8 pt-3">
+              <p className="text-xs font-medium text-emerald-accent">
                 {t.name}
               </p>
               <p className="text-xs text-[var(--text-muted)]">

@@ -9,7 +9,7 @@ export default function PrivacyPage() {
   return (
     <main className="min-h-screen px-4 py-12 max-w-3xl mx-auto">
       <header className="mb-10">
-        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+        <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Privacy Covenant
         </div>
         <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
@@ -185,7 +185,7 @@ export default function PrivacyPage() {
             If you have questions about this Privacy Policy or wish to exercise your privacy rights,
             contact us at:
           </p>
-          <div className="mt-3 p-4 bg-[var(--bg-deep)] rounded-lg border border-teal-cathedral/10">
+          <div className="mt-3 p-4 bg-soft-gray rounded-lg border border-navy-cathedral/10">
             <p>[Company Name]</p>
             <p>[Physical Address]</p>
             <p>Email: [privacy@company.com]</p>
@@ -197,9 +197,9 @@ export default function PrivacyPage() {
       {/* Footer */}
       <footer className="mt-12 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center">
-          <a href="/protect" className="text-teal-cathedral/70 hover:text-teal-cathedral">Get Protected</a>
-          <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
-          <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Home</a>
+          <a href="/protect" className="text-emerald-accent/70 hover:text-emerald-accent">Get Protected</a>
+          <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
+          <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Home</a>
         </nav>
         <p>The kingdom protects what matters. Remember.</p>
       </footer>

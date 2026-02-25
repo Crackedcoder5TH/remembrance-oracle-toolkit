@@ -3,23 +3,34 @@
 @tailwind utilities;
 
 /*
- * Remembrance Palette
+ * Calming & Trustworthy Palette
  * -------------------
- * Teal (#00A8A8)    — the living water, coherence, presence
- * Deep Indigo (#1A1B3A) — the cathedral depths, the field before form
- * Crimson (#E63946) — the sacred pulse, urgency of remembrance
+ * Navy (#1B2D4F)       — depth, authority, trust
+ * Sky Blue (#6BA3D6)   — calm, openness, clarity
+ * Sage Green (#8CAA7E) — nature, growth, tranquility
+ * Emerald (#2D8659)    — stability, prosperity, confidence
+ * Soft Gray (#F0F2F5)  — neutral, clean surfaces
+ * Off White (#FAFBFC)  — spacious, pure, light
+ *
+ * Text rules:
+ *   Black (#1A1A2E) on soft gray / off white backgrounds
+ *   White (#FFFFFF) on navy / sky blue / sage / emerald backgrounds
  */
 
 :root {
-  --teal: #00A8A8;
-  --indigo: #1A1B3A;
-  --crimson: #E63946;
-  --bg-deep: #0F1026;
-  --bg-surface: #161833;
-  --text-primary: #E8E8F0;
-  --text-muted: #8B8BA8;
-  --glow-teal: rgba(0, 168, 168, 0.15);
-  --glow-crimson: rgba(230, 57, 70, 0.10);
+  --navy: #1B2D4F;
+  --sky-blue: #6BA3D6;
+  --sage: #8CAA7E;
+  --emerald: #2D8659;
+  --soft-gray: #F0F2F5;
+  --off-white: #FAFBFC;
+  --error: #C9474B;
+  --bg-deep: #FAFBFC;
+  --bg-surface: #FFFFFF;
+  --text-primary: #1A1A2E;
+  --text-muted: #5A6377;
+  --glow-emerald: rgba(45, 134, 89, 0.12);
+  --glow-sky: rgba(107, 163, 214, 0.10);
 }
 
 @layer base {
@@ -44,30 +55,31 @@
   }
 
   ::selection {
-    background-color: var(--teal);
-    color: var(--indigo);
+    background-color: var(--sky-blue);
+    color: #ffffff;
   }
 }
 
 @layer components {
   .cathedral-glow {
     box-shadow:
-      0 0 20px var(--glow-teal),
-      0 0 60px var(--glow-teal);
+      0 0 20px var(--glow-emerald),
+      0 4px 12px rgba(0, 0, 0, 0.06);
   }
 
   .cathedral-border {
-    border: 1px solid rgba(0, 168, 168, 0.2);
+    border: 1px solid rgba(27, 45, 79, 0.10);
   }
 
   .cathedral-surface {
     background-color: var(--bg-surface);
-    border: 1px solid rgba(0, 168, 168, 0.1);
+    border: 1px solid rgba(27, 45, 79, 0.08);
     border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
   .whisper-text {
-    color: var(--teal);
+    color: var(--emerald);
     font-style: italic;
     opacity: 0.9;
   }
@@ -77,19 +89,19 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: var(--teal);
+    background: var(--emerald);
     cursor: pointer;
-    box-shadow: 0 0 10px var(--glow-teal);
+    box-shadow: 0 0 10px var(--glow-emerald);
   }
 
   .coherence-slider::-moz-range-thumb {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: var(--teal);
+    background: var(--emerald);
     cursor: pointer;
     border: none;
-    box-shadow: 0 0 10px var(--glow-teal);
+    box-shadow: 0 0 10px var(--glow-emerald);
   }
 
   .coherence-slider {
@@ -99,8 +111,8 @@
     border-radius: 2px;
     background: linear-gradient(
       to right,
-      var(--crimson),
-      var(--teal)
+      var(--sage),
+      var(--emerald)
     );
     outline: none;
   }

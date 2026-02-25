@@ -90,7 +90,7 @@ function formatPhoneInput(value: string): string {
 }
 
 const INPUT_CLASS =
-  "w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 transition-all";
+  "w-full bg-soft-gray text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-navy-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-accent/60 transition-all";
 
 const SELECT_CLASS = INPUT_CLASS + " appearance-none";
 
@@ -125,7 +125,7 @@ export default function ProtectPage() {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12" aria-label="Form submission confirmation">
         <div className="w-full max-w-lg cathedral-surface p-8 cathedral-glow text-center" role="status">
-          <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
+          <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
             Covenant Received
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)] mb-4">
@@ -150,7 +150,7 @@ export default function ProtectPage() {
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
       {/* Header */}
       <header className="text-center mb-10">
-        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+        <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           The Protection Covenant
         </div>
         <h1 className="text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4">
@@ -188,12 +188,12 @@ export default function ProtectPage() {
               <div className="space-y-1">
                 <label htmlFor="firstName" className="block text-sm text-[var(--text-muted)]">First Name</label>
                 <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
-                {errors.firstName && <p id="firstName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.firstName}</p>}
+                {errors.firstName && <p id="firstName-error" className="text-calm-error text-xs" role="alert">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
                 <label htmlFor="lastName" className="block text-sm text-[var(--text-muted)]">Last Name</label>
                 <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
-                {errors.lastName && <p id="lastName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.lastName}</p>}
+                {errors.lastName && <p id="lastName-error" className="text-calm-error text-xs" role="alert">{errors.lastName}</p>}
               </div>
             </div>
 
@@ -211,7 +211,7 @@ export default function ProtectPage() {
                 className={INPUT_CLASS}
               />
               <p id="dob-hint" className="text-[var(--text-muted)] text-xs">You must be at least 18 years old.</p>
-              {errors.dateOfBirth && <p id="dob-error" className="text-crimson-cathedral text-xs" role="alert">{errors.dateOfBirth}</p>}
+              {errors.dateOfBirth && <p id="dob-error" className="text-calm-error text-xs" role="alert">{errors.dateOfBirth}</p>}
             </div>
 
             <div className="space-y-1">
@@ -220,7 +220,7 @@ export default function ProtectPage() {
                 <option value="">Select your state...</option>
                 {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
               </select>
-              {errors.state && <p id="state-error" className="text-crimson-cathedral text-xs" role="alert">{errors.state}</p>}
+              {errors.state && <p id="state-error" className="text-calm-error text-xs" role="alert">{errors.state}</p>}
             </div>
 
             <div className="space-y-1">
@@ -228,7 +228,7 @@ export default function ProtectPage() {
               <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={SELECT_CLASS}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
+              {errors.coverageInterest && <p id="coverage-error" className="text-calm-error text-xs" role="alert">{errors.coverageInterest}</p>}
             </div>
 
             {/* Veteran Status */}
@@ -237,7 +237,7 @@ export default function ProtectPage() {
               <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={SELECT_CLASS}>
                 {VETERAN_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {errors.veteranStatus && <p id="veteran-error" className="text-crimson-cathedral text-xs" role="alert">{errors.veteranStatus}</p>}
+              {errors.veteranStatus && <p id="veteran-error" className="text-calm-error text-xs" role="alert">{errors.veteranStatus}</p>}
             </div>
 
             {/* Military Branch — conditional subcategory (only shown for veterans) */}
@@ -248,7 +248,7 @@ export default function ProtectPage() {
                   {MILITARY_BRANCH_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
                 <p id="branch-hint" className="text-[var(--text-muted)] text-xs">Thank you for your service.</p>
-                {errors.militaryBranch && <p id="branch-error" className="text-crimson-cathedral text-xs" role="alert">{errors.militaryBranch}</p>}
+                {errors.militaryBranch && <p id="branch-error" className="text-calm-error text-xs" role="alert">{errors.militaryBranch}</p>}
               </div>
             )}
 
@@ -256,7 +256,7 @@ export default function ProtectPage() {
             <button
               type="button"
               onClick={nextStep}
-              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
+              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
             >
               Continue
             </button>
@@ -269,13 +269,13 @@ export default function ProtectPage() {
             <div className="space-y-1">
               <label htmlFor="email" className="block text-sm text-[var(--text-muted)]">Email Address</label>
               <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" aria-required="true" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={INPUT_CLASS} />
-              {errors.email && <p id="email-error" className="text-crimson-cathedral text-xs" role="alert">{errors.email}</p>}
+              {errors.email && <p id="email-error" className="text-calm-error text-xs" role="alert">{errors.email}</p>}
             </div>
 
             <div className="space-y-1">
               <label htmlFor="phone" className="block text-sm text-[var(--text-muted)]">Phone Number</label>
               <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" autoComplete="tel" aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} className={INPUT_CLASS} />
-              {errors.phone && <p id="phone-error" className="text-crimson-cathedral text-xs" role="alert">{errors.phone}</p>}
+              {errors.phone && <p id="phone-error" className="text-calm-error text-xs" role="alert">{errors.phone}</p>}
             </div>
 
             {/* Navigation */}
@@ -283,14 +283,14 @@ export default function ProtectPage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-teal-cathedral/10 hover:border-teal-cathedral/30"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25"
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
               >
                 Continue
               </button>
@@ -321,13 +321,13 @@ export default function ProtectPage() {
               <button
                 type="button"
                 onClick={() => prevStep()}
-                className="text-teal-cathedral text-xs underline mt-1"
+                className="text-emerald-accent text-xs underline mt-1"
               >
                 Edit information
               </button>
             </div>
 
-            <div className="border-t border-teal-cathedral/10 pt-5" />
+            <div className="border-t border-navy-cathedral/8 pt-5" />
 
             {/* TCPA + Privacy Consent */}
             <TcpaConsent
@@ -341,7 +341,7 @@ export default function ProtectPage() {
 
             {/* Server Error */}
             {serverError && (
-              <div className="text-crimson-cathedral text-sm text-center py-2" role="alert" aria-live="assertive">{serverError}</div>
+              <div className="text-calm-error text-sm text-center py-2" role="alert" aria-live="assertive">{serverError}</div>
             )}
 
             {/* Navigation + Submit */}
@@ -349,7 +349,7 @@ export default function ProtectPage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-teal-cathedral/10 hover:border-teal-cathedral/30"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25"
               >
                 Back
               </button>
@@ -357,7 +357,7 @@ export default function ProtectPage() {
                 type="submit"
                 disabled={loading}
                 aria-busy={loading}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? "Submitting..." : "Protect My Legacy"}
               </button>
@@ -384,7 +384,7 @@ export default function ProtectPage() {
 
       {/* Do Not Sell Link — CCPA Compliance */}
       <div className="w-full max-w-lg mt-4 text-center">
-        <a href="/privacy#do-not-sell" className="text-xs text-teal-cathedral underline">
+        <a href="/privacy#do-not-sell" className="text-xs text-emerald-accent underline">
           Do Not Sell or Share My Personal Information
         </a>
       </div>
@@ -397,9 +397,9 @@ export default function ProtectPage() {
       {/* Footer */}
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center">
-          <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
-          <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
-          <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Home</a>
+          <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
+          <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
+          <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Home</a>
         </nav>
         <p>The kingdom protects what matters. Remember.</p>
         <p>&copy; {new Date().getFullYear()} [Company Name]. All rights reserved.</p>

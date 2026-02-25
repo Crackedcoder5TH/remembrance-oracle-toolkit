@@ -87,6 +87,8 @@ function readEnvOverrides(env) {
 }
 
 function applyOverrides(config, overrides) {
+  if (!config) return {};
+  if (!overrides) return deepClone(config);
   const result = deepClone(config);
   for (const [path, value] of Object.entries(overrides)) {
     if (path === '_mode') continue;
@@ -96,6 +98,7 @@ function applyOverrides(config, overrides) {
 }
 
 function resolveConfig(rootDir, options = {}) {
+  if (!rootDir) return deepClone(PRESET_MODES.balanced);
   const { mode, overrides = {}, env } = options;
   let config = loadCentralConfig(rootDir);
   const envOverrides = readEnvOverrides(env);
@@ -113,7 +116,9 @@ function resolveConfig(rootDir, options = {}) {
   return config;
 }
 
-function shouldAutoCreatePR(report, config = {}) {
+function shouldAutoCreatePR(report, config) {
+  if (!report) return { shouldOpenPR: false, reason: 'No report provided.', coherence: 0, threshold: 0.7 };
+  config = config || {};
   const threshold = config.thresholds?.minCoherenceForAutoPR
     || config.thresholds?.minCoherence
     || 0.7;
@@ -168,11 +173,13 @@ function setMode(rootDir, modeName) {
 }
 
 function getCurrentMode(rootDir) {
+  if (!rootDir) return 'custom';
   const config = loadCentralConfig(rootDir);
   return config._mode || 'custom';
 }
 
 function formatResolvedConfig(config) {
+  if (!config) return 'No configuration available.';
   const lines = [];
   const mode = config._mode || 'custom';
   lines.push(`── Reflector Configuration (mode: ${mode}) ──`);

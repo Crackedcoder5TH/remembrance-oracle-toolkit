@@ -108,6 +108,7 @@ function resetCentralConfig(rootDir, section) {
 }
 
 function validateConfig(config) {
+  if (!config) return { valid: true, issues: [] };
   const issues = [];
 
   if (config.thresholds) {
@@ -187,7 +188,7 @@ function validateConfig(config) {
 }
 
 function toEngineConfig(centralConfig) {
-  const c = centralConfig;
+  const c = centralConfig || {};
   return {
     minCoherence: c.thresholds?.minCoherence,
     autoMergeThreshold: c.thresholds?.autoMergeThreshold,
@@ -210,6 +211,7 @@ function toEngineConfig(centralConfig) {
 }
 
 function listConfigKeys(config, prefix = '') {
+  if (!config) return [];
   const keys = [];
   for (const [key, value] of Object.entries(config)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
@@ -228,6 +230,7 @@ function listConfigKeys(config, prefix = '') {
 }
 
 function formatCentralConfig(config) {
+  if (!config) return 'No configuration available.';
   const lines = [];
   lines.push('── Remembrance Reflector BOT Central Configuration ──');
   lines.push('');

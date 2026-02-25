@@ -13,7 +13,7 @@ const CATEGORIES = [
       { name: 'query', description: 'Query for relevant, proven code' },
       { name: 'search', description: 'Fuzzy search across patterns and history' },
       { name: 'smart-search', description: 'Intent-aware search with typo correction + ranking' },
-      { name: 'resolve', description: 'Smart retrieval — pull, evolve, or generate decision' },
+      { name: 'resolve', description: 'Smart retrieval \u2014 pull, evolve, or generate decision' },
       { name: 'validate', description: 'Validate code without storing' },
       { name: 'register', description: 'Register code as a named pattern in the library' },
       { name: 'feedback', description: 'Report if pulled code worked' },
@@ -39,7 +39,7 @@ const CATEGORIES = [
     name: 'Quality',
     commands: [
       { name: 'covenant', description: 'Check code against the Covenant seal' },
-      { name: 'reflect', description: 'Reflection loop — heal and refine code' },
+      { name: 'reflect', description: 'Reflection loop \u2014 heal and refine code' },
       { name: 'harvest', description: 'Bulk harvest patterns from a repo or directory' },
       { name: 'compose', description: 'Create a composed pattern from existing components' },
       { name: 'deps', description: 'Show dependency tree for a pattern' },
@@ -92,7 +92,7 @@ const CATEGORIES = [
       { name: 'transpile', description: 'Transpile pattern to another language' },
       { name: 'verify-transpile', description: 'Verify a transpiled pattern matches original' },
       { name: 'context', description: 'Export AI context for a pattern' },
-      { name: 'llm', description: 'Claude LLM engine — transpile/test/refine/analyze/explain' },
+      { name: 'llm', description: 'Claude LLM engine \u2014 transpile/test/refine/analyze/explain' },
     ],
   },
   {
@@ -116,9 +116,24 @@ const CATEGORIES = [
     ],
   },
   {
+    name: 'Self-Reflector Bot',
+    commands: [
+      { name: 'reflector', description: 'Self-reflector bot \u2014 coherence scanning, healing, multi-repo' },
+      { name: 'reflector run', description: 'Run the self-reflector on the current codebase' },
+      { name: 'reflector snapshot', description: 'Take a coherence snapshot without healing' },
+      { name: 'reflector safe-run', description: 'Run with full safety protections (backup + guard)' },
+      { name: 'reflector dry-run', description: 'Simulate healing without modifying files' },
+      { name: 'reflector evaluate', description: 'Evaluate a single file coherence' },
+      { name: 'reflector heal', description: 'Heal a single file via SERF reflection' },
+      { name: 'reflector multi', description: 'Multi-repo snapshot + compare + drift + heal' },
+      { name: 'reflector central', description: 'View/set/reset central configuration' },
+      { name: 'reflector history', description: 'View run history, trend charts, and statistics' },
+    ],
+  },
+  {
     name: 'Debug',
     commands: [
-      { name: 'debug', description: 'Debug oracle — capture/search/grow error\u2192fix patterns' },
+      { name: 'debug', description: 'Debug oracle \u2014 capture/search/grow error\u2192fix patterns' },
       { name: 'reliability', description: 'Pattern reliability statistics' },
     ],
   },
@@ -248,7 +263,7 @@ function getAllCommandNames() {
   const names = new Set();
   for (const cat of CATEGORIES) {
     for (const cmd of cat.commands) {
-      const base = cmd.name.split(' ')[0]; // 'registry list' → 'registry'
+      const base = cmd.name.split(' ')[0]; // 'registry list' \u2192 'registry'
       names.add(base);
       if (cmd.alias) names.add(cmd.alias);
     }

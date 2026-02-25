@@ -322,6 +322,7 @@ function startScheduler(rootDir, options = {}) {
  * @returns {number} Interval in hours
  */
 function parseCronInterval(expression) {
+  if (!expression) return 6;
   const lower = expression.toLowerCase().trim();
 
   if (lower === 'hourly' || lower === 'every hour') return 1;

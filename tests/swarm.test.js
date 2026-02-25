@@ -713,7 +713,7 @@ describe('Swarm MCP integration', () => {
 
   it('TOOLS has 11 entries', () => {
     const { TOOLS } = require('../src/mcp/tools');
-    assert.equal(TOOLS.length, 11);
+    assert.equal(TOOLS.length, 12);
   });
 });
 

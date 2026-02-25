@@ -50,7 +50,9 @@ function deltaIndicator(delta) {
  * @param {object} options - { includeDeepScore, includeSecurity, includeFiles }
  * @returns {string} Markdown PR body
  */
-function formatPRComment(report, options = {}) {
+function formatPRComment(report, options) {
+  if (!report) return '## Remembrance Pull: Healed Refinement\n\nNo report data available.';
+  options = options || {};
   const {
     includeDeepScore = true,
     includeSecurity = true,
@@ -228,6 +230,7 @@ function formatPRComment(report, options = {}) {
  * @returns {string} Markdown comment
  */
 function formatFileComment(fileResult) {
+  if (!fileResult) return '';
   const before = fileResult.before ?? fileResult.originalCoherence ?? 0;
   const after = fileResult.after ?? fileResult.healedCoherence ?? 0;
   const improvement = fileResult.improvement ?? (after - before);
@@ -253,6 +256,7 @@ function formatFileComment(fileResult) {
  * @returns {object} { title, summary, conclusion }
  */
 function formatCheckRun(report) {
+  if (!report) return { title: 'No data', summary: 'No report available.', conclusion: 'neutral' };
   const coherence = report.coherence || report.snapshot || {};
   const after = coherence.after ?? coherence.avgCoherence ?? 0;
   const healed = report.healing?.filesHealed ?? 0;

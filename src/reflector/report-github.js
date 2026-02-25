@@ -11,6 +11,7 @@ const { existsSync, writeFileSync } = require('fs');
 
 // ─── Lazy Require Helper (avoid circular deps with multi) ───
 const { multi: _multi } = require('./report-lazy');
+const { TIMEOUTS } = require('./scoring-utils');
 
 // =====================================================================
 // GitHub — Git/GitHub Operations
@@ -38,7 +39,7 @@ function git(command, cwd) {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 30000,
+      timeout: TIMEOUTS.GIT_LOCAL,
     }).trim();
   } catch (err) {
     const stderr = err.stderr ? err.stderr.toString().trim() : '';
@@ -55,7 +56,7 @@ function gh(command, cwd) {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
-      timeout: 60000,
+      timeout: TIMEOUTS.GIT_REMOTE,
       env: { ...process.env },
     }).trim();
   } catch (err) {
@@ -157,15 +158,15 @@ function createHealingBranch(report, options = {}) {
       result.files.push(file.path);
     }
 
-    const healingCount = report.healedFiles.length;
-    const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper.message}\n\nAvg improvement: +${report.summary.avgImprovement.toFixed(3)}\nOverall health: ${report.collectiveWhisper.overallHealth}`;
+    const healingCount = report.healedFiles?.length ?? 0;
+    const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper?.message ?? ''}\n\nAvg improvement: +${(report.summary?.avgImprovement ?? 0).toFixed(3)}\nOverall health: ${report.collectiveWhisper?.overallHealth ?? 'unknown'}`;
 
     try {
       execSync('git commit -m "$REMEMBRANCE_COMMIT_MSG"', {
         cwd,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 30000,
+        timeout: TIMEOUTS.GIT_LOCAL,
         env: { ...process.env, REMEMBRANCE_COMMIT_MSG: commitMsg },
       });
     } catch (err) {
@@ -230,7 +231,7 @@ function openHealingPR(report, options = {}) {
   const { formatPRBody } = _multi();
   const body = formatPRBody(report);
 
-  const title = `Remembrance Pull: Healed Refinement (+${report.summary.avgImprovement.toFixed(3)})`;
+  const title = `Remembrance Pull: Healed Refinement (+${(report.summary?.avgImprovement ?? 0).toFixed(3)})`;
   const labels = 'remembrance,auto-heal';
 
   const escapedBody = body.replace(/'/g, "'\\''");
@@ -249,7 +250,7 @@ function openHealingPR(report, options = {}) {
       number: numberMatch ? parseInt(numberMatch[1]) : null,
     };
 
-    if (autoMerge && report.summary.autoMergeRecommended && prResult.number) {
+    if (autoMerge && report.summary?.autoMergeRecommended && prResult.number) {
       try {
         gh(`pr merge ${prResult.number} --auto --squash`, cwd);
         prResult.autoMergeEnabled = true;
@@ -285,13 +286,13 @@ function findExistingReflectorPR(cwd) {
 /**
  * Generate the GitHub Actions workflow YAML for the Reflector BOT.
  */
-function generateReflectorWorkflow(config = {}) {
+function generateReflectorWorkflow(config) {
   const {
     schedule = '0 */6 * * *',
     minCoherence = 0.7,
     autoMerge = false,
     nodeVersion = '22',
-  } = config;
+  } = config || {};
 
   return `name: Remembrance Reflector BOT
 

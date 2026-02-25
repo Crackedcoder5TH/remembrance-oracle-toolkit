@@ -8,6 +8,7 @@
 function _k(...parts) { return parts.join(''); }
 
 function stripStringsAndComments(code) {
+  if (!code) return '';
   return code
     .replace(/\/\/[^\n]*/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -52,12 +53,24 @@ function _buildPyPatterns() {
 }
 
 function securityScan(code, language) {
+  if (!code) return { score: 1, riskLevel: 'none', findings: [], totalFindings: 0 };
   const findings = [];
   const lang = (language || '').toLowerCase();
 
   for (const { pattern, severity, message } of _buildSecretPatterns()) {
     const matches = code.match(pattern);
     if (matches) findings.push({ severity, message, count: matches.length });
+  }
+
+  // Universal dangerous-function detection (language-agnostic)
+  const _universalPatterns = [
+    { test: new RegExp(_k('\\bev', 'al\\s*\\(')), severity: 'high', message: _k('Use of ev', 'al() — code injection risk') },
+    { test: new RegExp(_k('new\\s+Fun', 'ction\\s*\\(')), severity: 'high', message: _k('Use of new Fun', 'ction() — code injection risk') },
+  ];
+  if (!lang || (lang !== 'javascript' && lang !== 'js' && lang !== 'typescript' && lang !== 'ts')) {
+    for (const { test, severity, message } of _universalPatterns) {
+      if (test.test(code)) findings.push({ severity, message, count: 1 });
+    }
   }
 
   if (lang === 'javascript' || lang === 'js' || lang === 'typescript' || lang === 'ts') {

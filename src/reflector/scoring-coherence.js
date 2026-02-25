@@ -30,6 +30,7 @@ const DEFAULT_WEIGHTS = {
 // ─── Syntax Validity ───
 
 function scoreSyntaxValidity(code, language) {
+  if (!code) return { score: 0, details: ['No code provided'] };
   let score = 1.0;
   const details = [];
 
@@ -72,6 +73,7 @@ function countBalanced(code, open, close) {
 // ─── Readability ───
 
 function scoreReadability(code, language) {
+  if (!code) return { score: 0, commentScore: 0, nestingScore: 0, qualityScore: 0, namingScore: 0, details: ['No code provided'] };
   const details = [];
   const comments = analyzeCommentDensity(code);
   const commentScore = comments.quality;
@@ -93,6 +95,7 @@ function scoreReadability(code, language) {
 }
 
 function scoreNamingQuality(code, language) {
+  if (!code) return 0.5;
   const lang = (language || '').toLowerCase();
   let score = 1.0;
   const funcNames = (code.match(/(?:function|const|let|var)\s+(\w+)/g) || [])
@@ -120,6 +123,7 @@ function scoreNamingQuality(code, language) {
 // ─── Security ───
 
 function scoreSecurity(code, language) {
+  if (!code) return { score: 1, riskLevel: 'none', findings: [], details: [] };
   const scan = securityScan(code, language);
   return {
     score: scan.score,

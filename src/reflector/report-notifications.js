@@ -15,6 +15,7 @@ const { join } = require('path');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
 const { scoring: _scoring } = require('./report-lazy');
+const { TIMEOUTS } = require('./scoring-utils');
 
 // =====================================================================
 // Notifications — Discord / Slack
@@ -29,7 +30,7 @@ const { scoring: _scoring } = require('./report-lazy');
  * @returns {Promise<object>} { ok, status, error }
  */
 function postJSON(webhookUrl, payload, options = {}) {
-  const { timeoutMs = 10000 } = options;
+  const { timeoutMs = TIMEOUTS.WEBHOOK } = options;
 
   try {
     const url = new URL(webhookUrl);
@@ -83,6 +84,7 @@ function postJSON(webhookUrl, payload, options = {}) {
  * Extract whisper text from a report.
  */
 function extractWhisper(report) {
+  if (!report) return '';
   if (typeof report.whisper === 'string') return report.whisper;
   if (report.whisper?.message) return report.whisper.message;
   if (typeof report.collectiveWhisper === 'string') return report.collectiveWhisper;
@@ -108,7 +110,9 @@ function detectPlatform(webhookUrl) {
  * @param {object} options - { repoName, prUrl }
  * @returns {object} Discord embed object
  */
-function formatDiscordEmbed(report, options = {}) {
+function formatDiscordEmbed(report, options) {
+  if (!report) return { embeds: [{ title: 'Remembrance Pull', description: 'No report data.', color: 0x999999, fields: [] }] };
+  options = options || {};
   const { repoName = 'unknown', prUrl } = options;
 
   const coherenceBefore = report.coherence?.before ?? report.safety?.preCoherence ?? 0;
@@ -165,7 +169,9 @@ async function sendDiscordNotification(webhookUrl, report, options = {}) {
  * @param {object} options - { repoName, prUrl }
  * @returns {object} Slack message payload
  */
-function formatSlackBlocks(report, options = {}) {
+function formatSlackBlocks(report, options) {
+  if (!report) return { blocks: [], text: 'No report data available.' };
+  options = options || {};
   const { repoName = 'unknown', prUrl } = options;
 
   const coherenceBefore = report.coherence?.before ?? report.safety?.preCoherence ?? 0;
@@ -259,6 +265,7 @@ function getNotificationLogPath(rootDir) {
  * Record a notification event.
  */
 function recordNotification(rootDir, entry) {
+  if (!rootDir) return;
   const { ensureDir, loadJSON, saveJSON, trimArray } = _scoring();
   ensureDir(join(rootDir, '.remembrance'));
   const logPath = getNotificationLogPath(rootDir);
@@ -272,6 +279,7 @@ function recordNotification(rootDir, entry) {
  * Load notification history.
  */
 function loadNotificationHistory(rootDir) {
+  if (!rootDir) return [];
   const { loadJSON } = _scoring();
   return loadJSON(getNotificationLogPath(rootDir), []);
 }
@@ -280,6 +288,7 @@ function loadNotificationHistory(rootDir) {
  * Get notification stats.
  */
 function notificationStats(rootDir) {
+  if (!rootDir) return { total: 0, sent: 0, failed: 0, successRate: 0 };
   const log = loadNotificationHistory(rootDir);
   if (log.length === 0) return { total: 0, sent: 0, failed: 0, successRate: 0 };
 

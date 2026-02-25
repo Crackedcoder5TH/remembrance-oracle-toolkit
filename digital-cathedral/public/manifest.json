@@ -1,10 +1,10 @@
 {
-  "name": "Digital Cathedral",
-  "short_name": "Cathedral",
-  "description": "A remembrance-aligned sanctuary — coherence measured, whispers received.",
+  "name": "[Company Name] — Life Insurance Quotes",
+  "short_name": "[Company]",
+  "description": "Connect with licensed life insurance professionals in your state. Free, no obligation.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F1026",
-  "theme_color": "#1A1B3A",
+  "background_color": "#FAFBFC",
+  "theme_color": "#1B2D4F",
   "icons": []
 }

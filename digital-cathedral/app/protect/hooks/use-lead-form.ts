@@ -57,7 +57,7 @@ const sanitizeInput = pipe(
 );
 
 export const TCPA_CONSENT_TEXT =
-  "By checking this box, I agree that [Company Name] may contact me at the phone number I provided above, including by autodialed or prerecorded calls and text messages, for marketing purposes. I understand this consent is not required to obtain any product or service. Message and data rates may apply. I have read and agree to the Privacy Policy and Terms of Service.";
+  "By checking this box, I agree that Digital Cathedral may contact me at the phone number I provided above, including by autodialed or prerecorded calls and text messages, for marketing purposes. I understand this consent is not required to obtain any product or service. Message and data rates may apply. I have read and agree to the Privacy Policy and Terms of Service.";
 
 export interface LeadFormData {
   firstName: string;

@@ -209,7 +209,7 @@ export default function ProtectPage() {
 
         <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
           <p>The kingdom protects what matters. Remember.</p>
-          <p>&copy; {new Date().getFullYear()} [Company Name]. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
         </footer>
       </main>
     );
@@ -452,7 +452,7 @@ export default function ProtectPage() {
       {/* Below-Form Disclaimers */}
       <div className="w-full max-w-lg mt-6 space-y-3 text-xs text-[var(--text-muted)] leading-relaxed">
         <p>
-          <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by [Company Name]
+          <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by Digital Cathedral
           and is not an insurance company, insurance agent, or insurance broker. We do not provide insurance
           quotes, bind insurance coverage, or provide insurance advice of any kind. Your information will
           be shared with one or more licensed insurance professionals who may contact you. Any insurance
@@ -485,7 +485,7 @@ export default function ProtectPage() {
           <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Home</a>
         </nav>
         <p>The kingdom protects what matters. Remember.</p>
-        <p>&copy; {new Date().getFullYear()} [Company Name]. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>
     </main>
   );

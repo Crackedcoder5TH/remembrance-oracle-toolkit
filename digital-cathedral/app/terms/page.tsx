@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — [Company Name]",
-  description: "Terms and conditions governing use of our life insurance lead generation website.",
+  title: "Terms of Service — Digital Cathedral",
+  description: "Terms and conditions governing use of the Digital Cathedral website.",
 };
 
 export default function TermsPage() {
@@ -25,8 +25,8 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">1. Agreement to Terms</h2>
           <p>
-            By accessing or using the website located at [website URL] (the &ldquo;Site&rdquo;),
-            operated by [Company Name] (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;),
+            By accessing or using the website located at https://digital-cathedral.vercel.app (the &ldquo;Site&rdquo;),
+            operated by Digital Cathedral (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;),
             you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree
             to these Terms, do not use the Site.
           </p>
@@ -87,7 +87,7 @@ export default function TermsPage() {
           </ul>
           <p className="mt-3">
             <strong className="text-[var(--text-primary)]">This consent is not a condition of purchasing any product or service.</strong> You
-            may revoke consent at any time by contacting us at [phone/email], replying STOP to any text
+            may revoke consent at any time by contacting us at privacy@digital-cathedral.app, replying STOP to any text
             message, or using the opt-out mechanism in any email. Standard message and data rates may apply.
           </p>
         </section>
@@ -97,7 +97,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">6. Third-Party Relationships</h2>
           <p>
             Licensed insurance professionals who contact you are independent third parties, not employees
-            or agents of [Company Name]. We are not responsible for their actions, advice, products, or
+            or agents of Digital Cathedral. We are not responsible for their actions, advice, products, or
             services. Any contract or agreement you enter into with an insurance professional or carrier
             is solely between you and that party.
           </p>
@@ -119,7 +119,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">8. Intellectual Property</h2>
           <p>
             All content on this Site, including text, graphics, logos, and software, is the property of
-            [Company Name] or its licensors and is protected by applicable intellectual property laws.
+            Digital Cathedral or its licensors and is protected by applicable intellectual property laws.
             You may not reproduce, distribute, or create derivative works from our content without our
             prior written permission.
           </p>
@@ -140,7 +140,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">10. Limitation of Liability</h2>
           <p>
-            TO THE MAXIMUM EXTENT PERMITTED BY LAW, [COMPANY NAME] SHALL NOT BE LIABLE FOR ANY INDIRECT,
+            TO THE MAXIMUM EXTENT PERMITTED BY LAW, DIGITAL CATHEDRAL SHALL NOT BE LIABLE FOR ANY INDIRECT,
             INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR
             USE OF THE SITE OR ANY INSURANCE PRODUCTS OR SERVICES OBTAINED THROUGH PROFESSIONALS
             CONNECTED VIA THE SITE. OUR TOTAL LIABILITY SHALL NOT EXCEED ONE HUNDRED DOLLARS ($100).
@@ -151,7 +151,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">11. Indemnification</h2>
           <p>
-            You agree to indemnify and hold harmless [Company Name], its officers, directors, employees,
+            You agree to indemnify and hold harmless Digital Cathedral, its officers, directors, employees,
             and agents from any claims, losses, damages, liabilities, and expenses (including reasonable
             attorneys&rsquo; fees) arising from your use of the Site, your submission of information,
             or your violation of these Terms.
@@ -162,9 +162,9 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">12. Governing Law & Disputes</h2>
           <p>
-            These Terms are governed by the laws of the State of [State], without regard to conflict of
+            These Terms are governed by the laws of the State of California, without regard to conflict of
             law principles. Any disputes arising from these Terms or your use of the Site shall be
-            resolved through binding arbitration in [City, State] in accordance with the rules of the
+            resolved through binding arbitration in San Francisco, California in accordance with the rules of the
             American Arbitration Association, except that either party may seek injunctive relief in
             any court of competent jurisdiction.
           </p>
@@ -187,10 +187,8 @@ export default function TermsPage() {
             For questions about these Terms, contact us at:
           </p>
           <div className="mt-3 p-4 bg-soft-gray rounded-lg border border-navy-cathedral/10">
-            <p>[Company Name]</p>
-            <p>[Physical Address]</p>
-            <p>Email: [legal@company.com]</p>
-            <p>Phone: [phone number]</p>
+            <p>Digital Cathedral</p>
+            <p>Email: legal@digital-cathedral.app</p>
           </div>
         </section>
       </div>

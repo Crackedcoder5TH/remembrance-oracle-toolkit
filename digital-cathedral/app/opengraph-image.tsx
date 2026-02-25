@@ -10,7 +10,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "[Company Name] — Life Insurance Quotes from Licensed Professionals";
+export const alt = "Digital Cathedral — Protect Your Legacy";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

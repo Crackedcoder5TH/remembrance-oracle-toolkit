@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   description:
     "Tell us about yourself and a licensed life insurance professional in your state will contact you with personalized coverage options. Free, no obligation.",
   openGraph: {
-    title: "Get a Free Life Insurance Quote — [Company Name]",
+    title: "Get a Free Life Insurance Quote — Digital Cathedral",
     description:
       "Connect with a licensed life insurance professional in your state. Term, whole, universal, and final expense options available.",
     url: "/protect",

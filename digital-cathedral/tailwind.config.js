@@ -7,6 +7,17 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        /* Core kingdom theme */
+        teal: {
+          cathedral: "#00A8A8",
+        },
+        indigo: {
+          cathedral: "#1A1B3A",
+        },
+        crimson: {
+          cathedral: "#E63946",
+        },
+        /* Calming palette */
         navy: {
           cathedral: "#1B2D4F",
         },

@@ -79,17 +79,17 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "WebSite",
-      name: "[Company Name]",
+      name: "Digital Cathedral",
       url: BASE_URL,
       description:
-        "Connect with licensed life insurance professionals in your state.",
+        "A remembrance-aligned sanctuary — coherence measured, whispers received.",
     },
     {
       "@type": "Organization",
-      name: "[Company Name]",
+      name: "Digital Cathedral",
       url: BASE_URL,
       description:
-        "We connect consumers with licensed life insurance professionals. We are not an insurance company, agent, or broker.",
+        "A remembrance-aligned sanctuary offering coherence measurement, whisper archive, and life insurance protection services.",
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer service",

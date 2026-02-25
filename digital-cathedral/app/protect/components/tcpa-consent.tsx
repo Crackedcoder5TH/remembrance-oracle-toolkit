@@ -40,7 +40,7 @@ export function TcpaConsent({
             className="mt-1 h-4 w-4 rounded border-navy-cathedral/25 bg-soft-gray text-emerald-accent focus:ring-emerald-accent/50 shrink-0"
           />
           <label htmlFor="tcpaConsent" className="text-xs text-[var(--text-muted)] leading-relaxed">
-            By checking this box, I agree that <strong className="text-[var(--text-primary)]">[Company Name]</strong> may
+            By checking this box, I agree that <strong className="text-[var(--text-primary)]">Digital Cathedral</strong> may
             contact me at the phone number I provided above, including by autodialed or prerecorded calls
             and text messages, for marketing purposes. I understand this consent is <strong className="text-[var(--text-primary)]">not
             required</strong> to obtain any product or service. Message and data rates may apply. I have read

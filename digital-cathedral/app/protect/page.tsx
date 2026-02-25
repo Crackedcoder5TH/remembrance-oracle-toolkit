@@ -1,16 +1,25 @@
 "use client";
 
 /**
- * ProtectPage — Life insurance lead capture (kingdom perspective).
+ * ProtectPage — Multi-step life insurance lead capture (kingdom perspective).
  *
  * Healed by the oracle: monolithic page split into:
- *  - useLeadForm hook (validation, submission, state) → hooks/use-lead-form.ts
+ *  - useLeadForm hook (multi-step validation, submission, state) → hooks/use-lead-form.ts
  *  - TcpaConsent component (FCC 2025 compliance) → components/tcpa-consent.tsx
+ *  - StepProgress component (coherence progression) → components/step-progress.tsx
  *  - This page: composition only
+ *
+ * Multi-step flow (kingdom coherence model):
+ *   Step 1 — Identity:  Name, state, coverage interest (low commitment)
+ *   Step 2 — Contact:   Email, phone
+ *   Step 3 — Consent:   TCPA + Privacy → submit
  */
 
 import { useLeadForm } from "./hooks/use-lead-form";
 import { TcpaConsent } from "./components/tcpa-consent";
+import { StepProgress } from "./components/step-progress";
+import { TrustSignals } from "./components/trust-signals";
+import { useUtmTracking } from "./hooks/use-utm-tracking";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" },
@@ -47,7 +56,7 @@ const COVERAGE_OPTIONS = [
   { value: "whole", label: "Whole Life Insurance" },
   { value: "universal", label: "Universal Life Insurance" },
   { value: "final-expense", label: "Final Expense / Burial Insurance" },
-  { value: "not-sure", label: "Not sure — I need guidance" },
+  { value: "not-sure", label: "Not sure \u2014 I need guidance" },
 ];
 
 const INPUT_CLASS =
@@ -56,8 +65,14 @@ const INPUT_CLASS =
 const SELECT_CLASS = INPUT_CLASS + " appearance-none";
 
 export default function ProtectPage() {
-  const { form, errors, loading, submitted, whisper, serverError, updateField, handleSubmit } = useLeadForm();
+  const utm = useUtmTracking();
+  const {
+    form, errors, loading, submitted, whisper, serverError,
+    step, totalSteps,
+    updateField, handleSubmit, nextStep, prevStep,
+  } = useLeadForm({ ...utm });
 
+  // --- Submitted state ---
   if (submitted) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
@@ -108,81 +123,148 @@ export default function ProtectPage() {
         </p>
       </div>
 
-      {/* Lead Capture Form */}
-      <form onSubmit={handleSubmit} className="w-full max-w-lg cathedral-surface p-6 md:p-8 space-y-5" noValidate>
-        {/* Name Row */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label htmlFor="firstName" className="block text-sm text-[var(--text-muted)]">First Name</label>
-            <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} placeholder="John" autoComplete="given-name" className={INPUT_CLASS} />
-            {errors.firstName && <p className="text-crimson-cathedral text-xs">{errors.firstName}</p>}
+      {/* Multi-Step Lead Capture Form */}
+      <form onSubmit={handleSubmit} className="w-full max-w-lg cathedral-surface p-6 md:p-8 space-y-6" noValidate>
+        {/* Step Progress Indicator */}
+        <StepProgress currentStep={step} totalSteps={totalSteps} />
+
+        {/* --- Step 0: Identity --- */}
+        {step === 0 && (
+          <div className="space-y-5 animate-in fade-in">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label htmlFor="firstName" className="block text-sm text-[var(--text-muted)]">First Name</label>
+                <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} placeholder="John" autoComplete="given-name" className={INPUT_CLASS} />
+                {errors.firstName && <p className="text-crimson-cathedral text-xs">{errors.firstName}</p>}
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="lastName" className="block text-sm text-[var(--text-muted)]">Last Name</label>
+                <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} placeholder="Doe" autoComplete="family-name" className={INPUT_CLASS} />
+                {errors.lastName && <p className="text-crimson-cathedral text-xs">{errors.lastName}</p>}
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="state" className="block text-sm text-[var(--text-muted)]">State</label>
+              <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} className={SELECT_CLASS}>
+                <option value="">Select your state...</option>
+                {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
+              </select>
+              {errors.state && <p className="text-crimson-cathedral text-xs">{errors.state}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="coverage" className="block text-sm text-[var(--text-muted)]">Coverage Interest</label>
+              <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} className={SELECT_CLASS}>
+                {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+              {errors.coverageInterest && <p className="text-crimson-cathedral text-xs">{errors.coverageInterest}</p>}
+            </div>
+
+            {/* Next button */}
+            <button
+              type="button"
+              onClick={nextStep}
+              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
+            >
+              Continue
+            </button>
           </div>
-          <div className="space-y-1">
-            <label htmlFor="lastName" className="block text-sm text-[var(--text-muted)]">Last Name</label>
-            <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} placeholder="Doe" autoComplete="family-name" className={INPUT_CLASS} />
-            {errors.lastName && <p className="text-crimson-cathedral text-xs">{errors.lastName}</p>}
-          </div>
-        </div>
-
-        {/* Email */}
-        <div className="space-y-1">
-          <label htmlFor="email" className="block text-sm text-[var(--text-muted)]">Email Address</label>
-          <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" className={INPUT_CLASS} />
-          {errors.email && <p className="text-crimson-cathedral text-xs">{errors.email}</p>}
-        </div>
-
-        {/* Phone */}
-        <div className="space-y-1">
-          <label htmlFor="phone" className="block text-sm text-[var(--text-muted)]">Phone Number</label>
-          <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="(555) 123-4567" autoComplete="tel" className={INPUT_CLASS} />
-          {errors.phone && <p className="text-crimson-cathedral text-xs">{errors.phone}</p>}
-        </div>
-
-        {/* State */}
-        <div className="space-y-1">
-          <label htmlFor="state" className="block text-sm text-[var(--text-muted)]">State</label>
-          <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} className={SELECT_CLASS}>
-            <option value="">Select your state...</option>
-            {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
-          </select>
-          {errors.state && <p className="text-crimson-cathedral text-xs">{errors.state}</p>}
-        </div>
-
-        {/* Coverage Interest */}
-        <div className="space-y-1">
-          <label htmlFor="coverage" className="block text-sm text-[var(--text-muted)]">Coverage Interest</label>
-          <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} className={SELECT_CLASS}>
-            {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-          </select>
-          {errors.coverageInterest && <p className="text-crimson-cathedral text-xs">{errors.coverageInterest}</p>}
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-teal-cathedral/10 pt-5" />
-
-        {/* TCPA + Privacy Consent (extracted component) */}
-        <TcpaConsent
-          tcpaChecked={form.tcpaConsent}
-          privacyChecked={form.privacyConsent}
-          onTcpaChange={(v) => updateField("tcpaConsent", v)}
-          onPrivacyChange={(v) => updateField("privacyConsent", v)}
-          tcpaError={errors.tcpaConsent}
-          privacyError={errors.privacyConsent}
-        />
-
-        {/* Server Error */}
-        {serverError && (
-          <div className="text-crimson-cathedral text-sm text-center py-2">{serverError}</div>
         )}
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {loading ? "Submitting..." : "Protect My Legacy"}
-        </button>
+        {/* --- Step 1: Contact --- */}
+        {step === 1 && (
+          <div className="space-y-5 animate-in fade-in">
+            <div className="space-y-1">
+              <label htmlFor="email" className="block text-sm text-[var(--text-muted)]">Email Address</label>
+              <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" className={INPUT_CLASS} />
+              {errors.email && <p className="text-crimson-cathedral text-xs">{errors.email}</p>}
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="phone" className="block text-sm text-[var(--text-muted)]">Phone Number</label>
+              <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} placeholder="(555) 123-4567" autoComplete="tel" className={INPUT_CLASS} />
+              {errors.phone && <p className="text-crimson-cathedral text-xs">{errors.phone}</p>}
+            </div>
+
+            {/* Navigation */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={prevStep}
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-teal-cathedral/10 hover:border-teal-cathedral/30"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={nextStep}
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* --- Step 2: Consent & Submit --- */}
+        {step === 2 && (
+          <div className="space-y-5 animate-in fade-in">
+            {/* Review summary */}
+            <div className="cathedral-surface p-4 text-sm space-y-1">
+              <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-2">Your Information</p>
+              <p className="text-[var(--text-primary)]">{form.firstName} {form.lastName}</p>
+              <p className="text-[var(--text-muted)]">{form.email}</p>
+              <p className="text-[var(--text-muted)]">{form.phone}</p>
+              <p className="text-[var(--text-muted)]">
+                {US_STATES.find(s => s.code === form.state)?.name} &middot;{" "}
+                {COVERAGE_OPTIONS.find(o => o.value === form.coverageInterest)?.label}
+              </p>
+              <button
+                type="button"
+                onClick={() => prevStep()}
+                className="text-teal-cathedral text-xs underline mt-1"
+              >
+                Edit information
+              </button>
+            </div>
+
+            <div className="border-t border-teal-cathedral/10 pt-5" />
+
+            {/* TCPA + Privacy Consent */}
+            <TcpaConsent
+              tcpaChecked={form.tcpaConsent}
+              privacyChecked={form.privacyConsent}
+              onTcpaChange={(v) => updateField("tcpaConsent", v)}
+              onPrivacyChange={(v) => updateField("privacyConsent", v)}
+              tcpaError={errors.tcpaConsent}
+              privacyError={errors.privacyConsent}
+            />
+
+            {/* Server Error */}
+            {serverError && (
+              <div className="text-crimson-cathedral text-sm text-center py-2">{serverError}</div>
+            )}
+
+            {/* Navigation + Submit */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={prevStep}
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-teal-cathedral/10 hover:border-teal-cathedral/30"
+              >
+                Back
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 hover:bg-teal-cathedral/30 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {loading ? "Submitting..." : "Protect My Legacy"}
+              </button>
+            </div>
+          </div>
+        )}
       </form>
 
       {/* Below-Form Disclaimers */}
@@ -206,6 +288,11 @@ export default function ProtectPage() {
         <a href="/privacy#do-not-sell" className="text-xs text-teal-cathedral underline">
           Do Not Sell or Share My Personal Information
         </a>
+      </div>
+
+      {/* Trust Signals — Social Proof & How It Works */}
+      <div className="w-full flex justify-center mt-16 px-4">
+        <TrustSignals />
       </div>
 
       {/* Footer */}

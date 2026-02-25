@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { CookieConsent } from "./components/cookie-consent";
 
 export const metadata: Metadata = {
   title: "Digital Cathedral — Remembrance Oracle",
@@ -22,7 +23,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[var(--bg-deep)]">{children}</body>
+      <body className="min-h-screen bg-[var(--bg-deep)]">
+        {children}
+        <CookieConsent />
+      </body>
     </html>
   );
 }

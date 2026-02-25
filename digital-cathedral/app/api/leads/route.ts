@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { insertLead } from "@/app/lib/database";
+import type { LeadRecord } from "@/app/lib/database";
+import { notifyLeadCreated } from "@/app/lib/webhooks";
 
 /**
  * Lead submission API — Kingdom perspective.
  *
  * Oracle patterns used:
  *  - validate-email (EVOLVE) for input validation
+ *  - result-type-ts (EVOLVE) for database error handling
+ *  - retry-async (PULL) for webhook delivery
  *  - pipe (PULL) for transformation pipeline
- *  - Coherence whisper system from digital-cathedral
  *
  * This route:
  * 1. Validates all fields server-side
  * 2. Records consent metadata (TCPA compliance)
- * 3. Stores the lead (placeholder — replace with real DB)
- * 4. Returns a kingdom whisper
+ * 3. Persists the lead to SQLite via better-sqlite3
+ * 4. Detects duplicates within 24-hour window
+ * 5. Returns a kingdom whisper
  */
 
 // --- Oracle-evolved validation (from validate-email pattern) ---
@@ -98,29 +103,57 @@ export async function POST(req: NextRequest) {
 
     // Build the lead record with full consent metadata (TCPA compliance)
     const leadId = generateLeadId();
-    const leadRecord = {
+    const leadRecord: LeadRecord = {
       leadId,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       email: email.trim().toLowerCase(),
-      phone: phone.replace(/\D/g, ""),
+      phone: phone.replace(/\D/g, "").slice(-10),
       state,
       coverageInterest,
-      consent: {
-        tcpa: true,
-        privacy: true,
-        timestamp: consentTimestamp,
-        text: consentText,
-        ip: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
-        userAgent: req.headers.get("user-agent") || "unknown",
-        pageUrl: req.headers.get("referer") || "/protect",
-      },
+      consentTcpa: true,
+      consentPrivacy: true,
+      consentTimestamp,
+      consentText,
+      consentIp: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
+      consentUserAgent: req.headers.get("user-agent") || "unknown",
+      consentPageUrl: req.headers.get("referer") || "/protect",
+      utmSource: body.utmSource || null,
+      utmMedium: body.utmMedium || null,
+      utmCampaign: body.utmCampaign || null,
+      utmTerm: body.utmTerm || null,
+      utmContent: body.utmContent || null,
       createdAt: new Date().toISOString(),
     };
 
-    // TODO: Replace with real database storage
-    // For now, log to server console as proof-of-concept
-    console.log("[LEAD RECEIVED]", JSON.stringify(leadRecord, null, 2));
+    // Persist to database (Result<T,E> pattern from oracle)
+    const dbResult = insertLead(leadRecord);
+
+    if (!dbResult.ok) {
+      // Duplicate detection returns a user-friendly message
+      if (dbResult.error.includes("Duplicate")) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "We've already received your request. A licensed professional will be in touch soon.",
+          },
+          { status: 409 },
+        );
+      }
+
+      console.error("[DB ERROR]", dbResult.error);
+      return NextResponse.json(
+        { success: false, message: "Something went wrong. Please try again." },
+        { status: 500 },
+      );
+    }
+
+    console.log("[LEAD STORED]", leadId, `(row #${dbResult.value.id})`);
+
+    // Fire webhook notifications (non-blocking — doesn't affect response)
+    notifyLeadCreated(leadRecord).catch((err) => {
+      console.error("[WEBHOOK ERROR]", err);
+    });
 
     const whisper = WHISPERS[Math.floor(Math.random() * WHISPERS.length)];
 

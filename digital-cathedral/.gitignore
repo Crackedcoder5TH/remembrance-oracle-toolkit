@@ -40,3 +40,6 @@ test-ledger/
 
 # Remembrance local store
 .remembrance/
+
+# Cathedral database
+.cathedral/

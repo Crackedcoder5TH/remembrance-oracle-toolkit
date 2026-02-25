@@ -1,8 +1,8 @@
 /**
- * useLeadForm — React hook for lead capture form logic.
+ * useLeadForm — React hook for multi-step lead capture form.
  * Oracle: GENERATE (0.370) — no existing pattern, write new
  *
- * Encapsulates: form state, validation, throttled submission, error handling.
+ * Encapsulates: multi-step state, per-step validation, throttled submission, error handling.
  * Uses oracle-pulled patterns: pipe (PULL 0.728), throttle (EVOLVE 0.704),
  * validate-email (EVOLVE 0.661).
  */
@@ -63,6 +63,8 @@ export interface LeadFormErrors {
   privacyConsent?: string;
 }
 
+export const TOTAL_STEPS = 3;
+
 export interface UseLeadFormReturn {
   form: LeadFormData;
   errors: LeadFormErrors;
@@ -70,11 +72,44 @@ export interface UseLeadFormReturn {
   submitted: boolean;
   whisper: string;
   serverError: string;
+  step: number;
+  totalSteps: number;
   updateField: (field: keyof LeadFormData, value: string | boolean) => void;
   handleSubmit: (e: FormEvent) => void;
+  nextStep: () => boolean;
+  prevStep: () => void;
+  goToStep: (step: number) => void;
 }
 
-export function useLeadForm(): UseLeadFormReturn {
+/**
+ * Step 0: Identity   — firstName, lastName, state, coverageInterest
+ * Step 1: Contact    — email, phone
+ * Step 2: Consent    — tcpaConsent, privacyConsent → submit
+ */
+function validateStep(step: number, form: LeadFormData): LeadFormErrors {
+  const errs: LeadFormErrors = {};
+
+  if (step === 0) {
+    if (!validateName(sanitizeInput(form.firstName))) errs.firstName = "Please enter a valid first name.";
+    if (!validateName(sanitizeInput(form.lastName))) errs.lastName = "Please enter a valid last name.";
+    if (!form.state) errs.state = "Please select your state.";
+    if (!form.coverageInterest) errs.coverageInterest = "Please select a coverage interest.";
+  }
+
+  if (step === 1) {
+    if (!validateEmail(sanitizeInput(form.email))) errs.email = "Please enter a valid email address.";
+    if (!validatePhone(form.phone)) errs.phone = "Please enter a valid 10-digit US phone number.";
+  }
+
+  if (step === 2) {
+    if (!form.tcpaConsent) errs.tcpaConsent = "Consent is required to be contacted.";
+    if (!form.privacyConsent) errs.privacyConsent = "You must agree to the Privacy Policy and Terms.";
+  }
+
+  return errs;
+}
+
+export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadFormReturn {
   const [form, setForm] = useState<LeadFormData>({
     firstName: "",
     lastName: "",
@@ -90,6 +125,7 @@ export function useLeadForm(): UseLeadFormReturn {
   const [submitted, setSubmitted] = useState(false);
   const [whisper, setWhisper] = useState("");
   const [serverError, setServerError] = useState("");
+  const [step, setStep] = useState(0);
 
   // Oracle throttle pattern: prevent double-submissions (ref-based for stability)
   const lastSubmitRef = useRef(0);
@@ -105,20 +141,32 @@ export function useLeadForm(): UseLeadFormReturn {
       }
       return prev;
     });
+    setServerError("");
   }, []);
 
-  function validate(): LeadFormErrors {
-    const errs: LeadFormErrors = {};
-    if (!validateName(sanitizeInput(form.firstName))) errs.firstName = "Please enter a valid first name.";
-    if (!validateName(sanitizeInput(form.lastName))) errs.lastName = "Please enter a valid last name.";
-    if (!validateEmail(sanitizeInput(form.email))) errs.email = "Please enter a valid email address.";
-    if (!validatePhone(form.phone)) errs.phone = "Please enter a valid 10-digit US phone number.";
-    if (!form.state) errs.state = "Please select your state.";
-    if (!form.coverageInterest) errs.coverageInterest = "Please select a coverage interest.";
-    if (!form.tcpaConsent) errs.tcpaConsent = "Consent is required to be contacted.";
-    if (!form.privacyConsent) errs.privacyConsent = "You must agree to the Privacy Policy and Terms.";
-    return errs;
-  }
+  // Validate current step and advance if valid. Returns true if step was valid.
+  const nextStep = useCallback((): boolean => {
+    const errs = validateStep(step, form);
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return false;
+    setStep((prev) => Math.min(prev + 1, TOTAL_STEPS - 1));
+    return true;
+  }, [step, form]);
+
+  const prevStep = useCallback(() => {
+    setErrors({});
+    setServerError("");
+    setStep((prev) => Math.max(prev - 1, 0));
+  }, []);
+
+  const goToStep = useCallback((target: number) => {
+    // Only allow going back, not skipping forward
+    if (target < step) {
+      setErrors({});
+      setServerError("");
+      setStep(target);
+    }
+  }, [step]);
 
   async function submitLead(data: LeadFormData) {
     setLoading(true);
@@ -138,6 +186,8 @@ export function useLeadForm(): UseLeadFormReturn {
           privacyConsent: data.privacyConsent,
           consentTimestamp: new Date().toISOString(),
           consentText: TCPA_CONSENT_TEXT,
+          // UTM tracking — persisted from session
+          ...(utmParams ? filterNullValues(utmParams) : {}),
         }),
       });
       if (!res.ok) {
@@ -156,7 +206,9 @@ export function useLeadForm(): UseLeadFormReturn {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const errs = validate();
+
+    // Validate final step
+    const errs = validateStep(step, form);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -168,5 +220,18 @@ export function useLeadForm(): UseLeadFormReturn {
     submitLead(form);
   }
 
-  return { form, errors, loading, submitted, whisper, serverError, updateField, handleSubmit };
+  return {
+    form, errors, loading, submitted, whisper, serverError,
+    step, totalSteps: TOTAL_STEPS,
+    updateField, handleSubmit, nextStep, prevStep, goToStep,
+  };
+}
+
+/** Strip null values from UTM params for API submission */
+function filterNullValues(obj: Record<string, string | null>): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== null) result[key] = value;
+  }
+  return result;
 }

@@ -14,7 +14,17 @@
  *  - Pagination
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+
+// --- Oracle-pulled: debounce (PULL 0.848, coherency 0.970) ---
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 interface LeadRow {
   leadId: string;
@@ -77,6 +87,7 @@ export default function AdminDashboard() {
   const [filterCoverage, setFilterCoverage] = useState("");
   const [filterVeteran, setFilterVeteran] = useState("");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 350); // 350ms debounce on search input
   const [page, setPage] = useState(0);
   const LIMIT = 25;
 
@@ -99,7 +110,7 @@ export default function AdminDashboard() {
     if (filterState) params.set("state", filterState);
     if (filterCoverage) params.set("coverage", filterCoverage);
     if (filterVeteran) params.set("veteran", filterVeteran);
-    if (search) params.set("search", search);
+    if (debouncedSearch) params.set("search", debouncedSearch);
     params.set("limit", String(LIMIT));
     params.set("offset", String(page * LIMIT));
 
@@ -112,7 +123,7 @@ export default function AdminDashboard() {
       setTotal(data.total);
     }
     setLoading(false);
-  }, [filterState, filterCoverage, filterVeteran, search, page, authHeaders]);
+  }, [filterState, filterCoverage, filterVeteran, debouncedSearch, page, authHeaders]);
 
   const handleLogin = async () => {
     setLoginError("");
@@ -145,6 +156,38 @@ export default function AdminDashboard() {
         URL.revokeObjectURL(url);
       });
   };
+
+  // --- Real-time notifications via SSE (Oracle GENERATE) ---
+  const [newLeadFlash, setNewLeadFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (!authenticated) return;
+    const es = new EventSource(`/api/admin/events?token=${encodeURIComponent(token)}`);
+
+    es.addEventListener("lead.created", (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        // Flash notification
+        setNewLeadFlash(`New lead: ${data.firstName} from ${data.state} (${data.tier})`);
+        setTimeout(() => setNewLeadFlash(null), 5000);
+        // Refresh data
+        fetchStats();
+        fetchLeads();
+      } catch {
+        // Ignore parse errors
+      }
+    });
+
+    es.onerror = () => {
+      // Will auto-reconnect via EventSource spec
+    };
+
+    return () => es.close();
+  }, [authenticated, token, fetchStats, fetchLeads]);
+
+  // Reset page when debounced search changes
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch]);
 
   useEffect(() => {
     if (authenticated) {
@@ -222,6 +265,17 @@ export default function AdminDashboard() {
         </button>
       </header>
 
+      {/* Real-time notification flash */}
+      {newLeadFlash && (
+        <div
+          className="mb-4 px-4 py-3 rounded-lg text-sm font-medium bg-teal-cathedral/20 text-teal-cathedral border border-teal-cathedral/30 animate-in fade-in"
+          role="status"
+          aria-live="polite"
+        >
+          {newLeadFlash}
+        </div>
+      )}
+
       {/* Stats Cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" role="region" aria-label="Lead statistics">
@@ -279,7 +333,7 @@ export default function AdminDashboard() {
             type="text"
             placeholder="Search name or email..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            onChange={(e) => { setSearch(e.target.value); }}
             aria-label="Search leads by name or email"
             className="bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-cathedral/60 col-span-2 md:col-span-1"
           />

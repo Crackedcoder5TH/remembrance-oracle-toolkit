@@ -4,6 +4,8 @@ import type { LeadRecord } from "@/app/lib/database";
 import { notifyLeadCreated } from "@/app/lib/webhooks";
 import { sendLeadConfirmationEmail } from "@/app/lib/email";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
+import { broadcast } from "@/app/lib/lead-events";
+import { scoreLead } from "@/app/lib/lead-scoring";
 
 /**
  * Lead submission API — Kingdom perspective.
@@ -206,6 +208,27 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("[LEAD STORED]", leadId, `(row #${dbResult.value.id})`);
+
+    // Broadcast real-time event to connected admin dashboards (SSE)
+    try {
+      const leadScore = scoreLead(leadRecord);
+      broadcast({
+        type: "lead.created",
+        data: {
+          leadId: leadRecord.leadId,
+          firstName: leadRecord.firstName,
+          lastName: leadRecord.lastName,
+          state: leadRecord.state,
+          coverageInterest: leadRecord.coverageInterest,
+          veteranStatus: leadRecord.veteranStatus,
+          score: leadScore.total,
+          tier: leadScore.tier,
+          createdAt: leadRecord.createdAt,
+        },
+      });
+    } catch (err) {
+      console.error("[SSE BROADCAST ERROR]", err);
+    }
 
     // Fire webhook notifications (non-blocking — doesn't affect response)
     notifyLeadCreated(leadRecord).catch((err) => {

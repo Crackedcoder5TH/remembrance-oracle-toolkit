@@ -6,7 +6,7 @@
  * Uses oracle-pulled patterns: pipe (PULL 0.728), throttle (EVOLVE 0.704),
  * validate-email (EVOLVE 0.661).
  */
-import { useState, FormEvent, useCallback, useRef } from "react";
+import { useState, useEffect, FormEvent, useCallback, useRef } from "react";
 
 // --- Oracle-pulled: pipe (coherency 0.970, PULL) ---
 function pipe<T>(...fns: Array<(val: T) => T>): (input: T) => T {
@@ -141,8 +141,49 @@ function validateStep(step: number, form: LeadFormData): LeadFormErrors {
   return errs;
 }
 
+// --- Oracle GENERATE: form state persistence via localStorage ---
+const STORAGE_KEY = "lead-form-draft";
+const STORAGE_STEP_KEY = "lead-form-step";
+
+function loadSavedForm(): { form: LeadFormData; step: number } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const stepRaw = localStorage.getItem(STORAGE_STEP_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LeadFormData;
+    // Never restore consent fields — user must re-check each session
+    parsed.tcpaConsent = false;
+    parsed.privacyConsent = false;
+    return { form: parsed, step: stepRaw ? Math.min(parseInt(stepRaw, 10) || 0, TOTAL_STEPS - 1) : 0 };
+  } catch {
+    return null;
+  }
+}
+
+function saveFormDraft(form: LeadFormData, step: number): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+    localStorage.setItem(STORAGE_STEP_KEY, String(step));
+  } catch {
+    // Storage full or unavailable — silently ignore
+  }
+}
+
+function clearFormDraft(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_STEP_KEY);
+  } catch {
+    // Silently ignore
+  }
+}
+
 export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadFormReturn {
-  const [form, setForm] = useState<LeadFormData>({
+  const saved = useRef(loadSavedForm());
+  const [form, setForm] = useState<LeadFormData>(saved.current?.form ?? {
     firstName: "",
     lastName: "",
     dateOfBirth: "",
@@ -160,7 +201,14 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const [submitted, setSubmitted] = useState(false);
   const [whisper, setWhisper] = useState("");
   const [serverError, setServerError] = useState("");
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(saved.current?.step ?? 0);
+
+  // --- Form state persistence: save draft on every change ---
+  useEffect(() => {
+    if (!submitted) {
+      saveFormDraft(form, step);
+    }
+  }, [form, step, submitted]);
 
   // Oracle throttle pattern: prevent double-submissions (ref-based for stability)
   const lastSubmitRef = useRef(0);
@@ -244,6 +292,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
       }
       const result = await res.json();
       setSubmitted(true);
+      clearFormDraft(); // Clear saved draft on successful submission
       setWhisper(result.whisper || "Your intention has been received. A guardian will reach out.");
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

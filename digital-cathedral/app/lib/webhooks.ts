@@ -16,6 +16,7 @@
  *  - Retry with exponential backoff (3 attempts)
  */
 import { createHmac } from "crypto";
+import { withCircuitBreaker, CircuitOpenError } from "./circuit-breaker";
 
 // --- Oracle-pulled: retry-async (coherency 1.000, PULL) ---
 async function retry<T>(
@@ -87,28 +88,32 @@ async function deliverWebhook(
   const signature = secret ? signPayload(body, secret) : "";
 
   try {
-    const response = await retry(
-      async () => {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Webhook-Event": payload.event,
-            "X-Webhook-Signature": signature ? `sha256=${signature}` : "",
-            "X-Webhook-Timestamp": payload.timestamp,
-          },
-          body,
-          signal: AbortSignal.timeout(10000),
-        });
+    const response = await withCircuitBreaker(
+      () => retry(
+        async () => {
+          const res = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Webhook-Event": payload.event,
+              "X-Webhook-Signature": signature ? `sha256=${signature}` : "",
+              "X-Webhook-Timestamp": payload.timestamp,
+            },
+            body,
+            signal: AbortSignal.timeout(10000),
+          });
 
-        if (!res.ok && res.status >= 500) {
-          throw new Error(`Server error: ${res.status}`);
-        }
+          if (!res.ok && res.status >= 500) {
+            throw new Error(`Server error: ${res.status}`);
+          }
 
-        return res;
-      },
-      3,
-      1000,
+          return res;
+        },
+        3,
+        1000,
+      ),
+      // Per-URL circuit breaker: 3 failures → open for 2 minutes
+      { name: `webhook-${new URL(url).hostname}`, failureThreshold: 3, resetTimeout: 120_000 },
     );
 
     return {
@@ -116,6 +121,10 @@ async function deliverWebhook(
       value: { url, status: response.status, success: response.ok },
     };
   } catch (err) {
+    if (err instanceof CircuitOpenError) {
+      console.warn(`[WEBHOOK CIRCUIT OPEN] ${url}: ${err.message}`);
+      return { ok: false, error: `${url}: Circuit open — skipping` };
+    }
     const message = err instanceof Error ? err.message : "Delivery failed";
     console.error(`[WEBHOOK FAILED] ${url}: ${message}`);
     return { ok: false, error: `${url}: ${message}` };

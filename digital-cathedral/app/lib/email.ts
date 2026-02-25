@@ -17,6 +17,8 @@
  *   COMPANY_NAME  — Company name for email content
  */
 
+import { withCircuitBreaker, CircuitOpenError } from "./circuit-breaker";
+
 // --- Oracle-pulled: retry-async (coherency 1.000) for delivery retry ---
 async function retry<T>(
   fn: () => Promise<T>,
@@ -187,7 +189,17 @@ export async function sendLeadConfirmationEmail(lead: {
 </body>
 </html>`.trim();
 
-  await sendEmail({ to: lead.email, from: fromAddress, subject, text, html });
-
-  console.log(`[EMAIL] Confirmation sent to ${lead.email} for lead ${lead.leadId}`);
+  try {
+    await withCircuitBreaker(
+      () => sendEmail({ to: lead.email, from: fromAddress, subject, text, html }),
+      { name: "email-sendgrid", failureThreshold: 5, resetTimeout: 60_000 },
+    );
+    console.log(`[EMAIL] Confirmation sent to ${lead.email} for lead ${lead.leadId}`);
+  } catch (err) {
+    if (err instanceof CircuitOpenError) {
+      console.warn(`[EMAIL] Circuit open — skipping email for lead ${lead.leadId}. ${err.message}`);
+    } else {
+      throw err;
+    }
+  }
 }

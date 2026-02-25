@@ -32,6 +32,23 @@ function validateName(name: string): boolean {
   return trimmed.length >= 2 && trimmed.length <= 100 && /^[a-zA-Z\s'.,-]+$/.test(trimmed);
 }
 
+// --- Oracle GENERATE: date of birth with 18+ age gate ---
+function validateDob(dob: string): boolean {
+  if (typeof dob !== "string") return false;
+  const match = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  if (year < 1900 || year > new Date().getFullYear()) return false;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  const today = new Date();
+  const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  return date <= min18;
+}
+
 // Oracle pipe pattern: chain sanitizers
 const sanitizeInput = pipe(
   (s: string) => s.trim(),
@@ -44,6 +61,7 @@ export const TCPA_CONSENT_TEXT =
 export interface LeadFormData {
   firstName: string;
   lastName: string;
+  dateOfBirth: string;
   email: string;
   phone: string;
   state: string;
@@ -55,6 +73,7 @@ export interface LeadFormData {
 export interface LeadFormErrors {
   firstName?: string;
   lastName?: string;
+  dateOfBirth?: string;
   email?: string;
   phone?: string;
   state?: string;
@@ -92,6 +111,11 @@ function validateStep(step: number, form: LeadFormData): LeadFormErrors {
   if (step === 0) {
     if (!validateName(sanitizeInput(form.firstName))) errs.firstName = "Please enter a valid first name.";
     if (!validateName(sanitizeInput(form.lastName))) errs.lastName = "Please enter a valid last name.";
+    if (!form.dateOfBirth) {
+      errs.dateOfBirth = "Please enter your date of birth.";
+    } else if (!validateDob(form.dateOfBirth)) {
+      errs.dateOfBirth = "You must be at least 18 years old to submit this form.";
+    }
     if (!form.state) errs.state = "Please select your state.";
     if (!form.coverageInterest) errs.coverageInterest = "Please select a coverage interest.";
   }
@@ -113,6 +137,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const [form, setForm] = useState<LeadFormData>({
     firstName: "",
     lastName: "",
+    dateOfBirth: "",
     email: "",
     phone: "",
     state: "",
@@ -178,6 +203,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
         body: JSON.stringify({
           firstName: sanitizeInput(data.firstName),
           lastName: sanitizeInput(data.lastName),
+          dateOfBirth: data.dateOfBirth,
           email: sanitizeInput(data.email),
           phone: data.phone.replace(/\D/g, ""),
           state: data.state,

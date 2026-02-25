@@ -39,6 +39,23 @@ function validateName(name: string): boolean {
   return trimmed.length >= 2 && trimmed.length <= 100 && /^[a-zA-Z\s'.,-]+$/.test(trimmed);
 }
 
+// --- Oracle GENERATE: date of birth with 18+ age gate ---
+function validateDob(dob: string): boolean {
+  if (typeof dob !== "string") return false;
+  const match = dob.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return false;
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  if (year < 1900 || year > new Date().getFullYear()) return false;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  const today = new Date();
+  const min18 = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  return date <= min18;
+}
+
 const VALID_STATES = new Set([
   "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN",
   "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
@@ -70,6 +87,7 @@ export async function POST(req: NextRequest) {
     const {
       firstName,
       lastName,
+      dateOfBirth,
       email,
       phone,
       state,
@@ -85,6 +103,7 @@ export async function POST(req: NextRequest) {
 
     if (!validateName(firstName)) errors.push("Invalid first name.");
     if (!validateName(lastName)) errors.push("Invalid last name.");
+    if (!validateDob(dateOfBirth)) errors.push("Invalid date of birth. You must be at least 18 years old.");
     if (!validateEmail(email)) errors.push("Invalid email address.");
     if (!validatePhone(phone)) errors.push("Invalid phone number.");
     if (!VALID_STATES.has(state)) errors.push("Invalid state.");
@@ -107,6 +126,7 @@ export async function POST(req: NextRequest) {
       leadId,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
+      dateOfBirth,
       email: email.trim().toLowerCase(),
       phone: phone.replace(/\D/g, "").slice(-10),
       state,

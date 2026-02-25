@@ -145,6 +145,20 @@ export default function ProtectPage() {
             </div>
 
             <div className="space-y-1">
+              <label htmlFor="dateOfBirth" className="block text-sm text-[var(--text-muted)]">Date of Birth</label>
+              <input
+                id="dateOfBirth"
+                type="date"
+                value={form.dateOfBirth}
+                onChange={(e) => updateField("dateOfBirth", e.target.value)}
+                autoComplete="bday"
+                className={INPUT_CLASS}
+              />
+              <p className="text-[var(--text-muted)] text-xs">You must be at least 18 years old.</p>
+              {errors.dateOfBirth && <p className="text-crimson-cathedral text-xs">{errors.dateOfBirth}</p>}
+            </div>
+
+            <div className="space-y-1">
               <label htmlFor="state" className="block text-sm text-[var(--text-muted)]">State</label>
               <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} className={SELECT_CLASS}>
                 <option value="">Select your state...</option>
@@ -214,6 +228,7 @@ export default function ProtectPage() {
             <div className="cathedral-surface p-4 text-sm space-y-1">
               <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-2">Your Information</p>
               <p className="text-[var(--text-primary)]">{form.firstName} {form.lastName}</p>
+              <p className="text-[var(--text-muted)]">DOB: {form.dateOfBirth}</p>
               <p className="text-[var(--text-muted)]">{form.email}</p>
               <p className="text-[var(--text-muted)]">{form.phone}</p>
               <p className="text-[var(--text-muted)]">

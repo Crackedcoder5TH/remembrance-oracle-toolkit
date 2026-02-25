@@ -26,6 +26,7 @@ export interface LeadRecord {
   leadId: string;
   firstName: string;
   lastName: string;
+  dateOfBirth: string;
   email: string;
   phone: string;
   state: string;
@@ -79,6 +80,7 @@ function migrate(db: Database.Database): void {
       lead_id TEXT UNIQUE NOT NULL,
       first_name TEXT NOT NULL,
       last_name TEXT NOT NULL,
+      date_of_birth TEXT NOT NULL DEFAULT '',
       email TEXT NOT NULL,
       phone TEXT NOT NULL,
       state TEXT NOT NULL,
@@ -125,14 +127,14 @@ export function insertLead(lead: LeadRecord): Result<{ id: number; leadId: strin
 
     const stmt = db.prepare(`
       INSERT INTO leads (
-        lead_id, first_name, last_name, email, phone, state,
+        lead_id, first_name, last_name, date_of_birth, email, phone, state,
         coverage_interest, consent_tcpa, consent_privacy,
         consent_timestamp, consent_text, consent_ip,
         consent_user_agent, consent_page_url,
         utm_source, utm_medium, utm_campaign, utm_term, utm_content,
         created_at
       ) VALUES (
-        ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?,
         ?, ?, ?,
         ?, ?,
@@ -142,7 +144,7 @@ export function insertLead(lead: LeadRecord): Result<{ id: number; leadId: strin
     `);
 
     const result = stmt.run(
-      lead.leadId, lead.firstName, lead.lastName, lead.email, lead.phone, lead.state,
+      lead.leadId, lead.firstName, lead.lastName, lead.dateOfBirth, lead.email, lead.phone, lead.state,
       lead.coverageInterest, lead.consentTcpa ? 1 : 0, lead.consentPrivacy ? 1 : 0,
       lead.consentTimestamp, lead.consentText, lead.consentIp,
       lead.consentUserAgent, lead.consentPageUrl,
@@ -205,6 +207,7 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
     leadId: row.lead_id as string,
     firstName: row.first_name as string,
     lastName: row.last_name as string,
+    dateOfBirth: (row.date_of_birth as string) || "",
     email: row.email as string,
     phone: row.phone as string,
     state: row.state as string,

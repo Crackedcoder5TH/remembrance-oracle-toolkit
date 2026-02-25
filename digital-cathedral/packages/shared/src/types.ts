@@ -24,6 +24,7 @@ export interface CoherenceLogEntry {
 export interface LeadSubmission {
   firstName: string;
   lastName: string;
+  dateOfBirth: string;
   email: string;
   phone: string;
   state: string;

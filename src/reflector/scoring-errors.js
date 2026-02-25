@@ -16,6 +16,7 @@ const ERROR_TYPES = {
 };
 
 function classifyError(err) {
+  if (!err) return ERROR_TYPES.FATAL;
   const msg = (err.message || '').toLowerCase();
   const code = err.code || '';
 
@@ -39,6 +40,7 @@ function classifyError(err) {
 }
 
 function withErrorHandling(operationName, fn, options = {}) {
+  if (typeof fn !== 'function') return { success: false, result: null, error: 'fn is not a function', errorType: ERROR_TYPES.CONFIG, durationMs: 0 };
   const { rootDir = process.cwd(), fallback = null, context = {}, logLevel = 'ERROR' } = options;
   const startTime = Date.now();
   try {
@@ -151,6 +153,7 @@ function getCircuitStatus(operationName) {
 }
 
 function buildErrorReport(rootDir, lastN = 50) {
+  if (!rootDir) return { totalErrors: 0, totalWarnings: 0, errorsByType: {}, recentErrors: [], recentWarnings: [], healthScore: 1.0 };
   const { readLogTail } = getReport();
   const lines = readLogTail(rootDir, lastN);
   const errors = lines.filter(l => l.includes('[ERROR]'));

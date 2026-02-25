@@ -52,6 +52,7 @@ function createSafetyBranch(rootDir, options = {}) {
  * @returns {object} { passed, steps[] }
  */
 function runTestGate(rootDir, options = {}) {
+  if (!rootDir) return { timestamp: new Date().toISOString(), passed: false, steps: [], failedStep: 'init', failReason: 'No rootDir provided' };
   const { resolveConfig } = _scoring();
   const config = resolveConfig(rootDir, { env: process.env });
   const {
@@ -135,7 +136,8 @@ function truncate(str, maxLen) {
  * @param {object} options - { healingBranch, baseBranch, safetyBranch, testResult, squash }
  * @returns {object} { merged, aborted, reason }
  */
-function mergeIfPassing(rootDir, options = {}) {
+function mergeIfPassing(rootDir, options) {
+  options = options || {};
   const { git } = _github();
   const {
     healingBranch,
@@ -373,6 +375,7 @@ function loadAutoCommitHistory(rootDir) {
  * Get auto-commit stats from history.
  */
 function autoCommitStats(rootDir) {
+  if (!rootDir) return { totalRuns: 0, merged: 0, aborted: 0, skipped: 0, successRate: 0 };
   const history = loadAutoCommitHistory(rootDir);
   if (history.length === 0) {
     return { totalRuns: 0, merged: 0, aborted: 0, skipped: 0, successRate: 0 };
@@ -399,6 +402,7 @@ function autoCommitStats(rootDir) {
  * Format auto-commit result as human-readable text.
  */
 function formatAutoCommit(result) {
+  if (!result) return 'No auto-commit result available.';
   const lines = [];
   lines.push('\u2500\u2500 Auto-Commit Safety Report \u2500\u2500');
   lines.push('');

@@ -39,6 +39,7 @@ function setDashboardCache(rootDir, data) {
  * @returns {object} Dashboard data
  */
 function gatherDashboardData(rootDir, options = {}) {
+  if (!rootDir) return { repo: 'unknown', mode: 'custom', thresholds: {}, trend: [], stats: {}, recentRuns: [], autoCommit: {}, notifications: {}, patternHook: {}, generatedAt: new Date().toISOString() };
   if (!options.bypassCache) {
     const cached = getDashboardCached(rootDir);
     if (cached) return cached;
@@ -161,6 +162,7 @@ function getCoherenceClass(n) {
  * @returns {string} HTML string
  */
 function generateDashboardHTML(data) {
+  if (!data) data = {};
   const trendJSON = JSON.stringify(data.trend || []);
   const recentJSON = JSON.stringify(data.recentRuns || []);
 

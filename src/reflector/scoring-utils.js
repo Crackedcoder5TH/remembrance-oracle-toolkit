@@ -8,6 +8,7 @@ const { readFileSync, writeFileSync, existsSync, mkdirSync } = require('fs');
 const { dirname } = require('path');
 
 function ensureDir(dir) {
+  if (!dir) return;
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 }
 
@@ -23,17 +24,22 @@ function loadJSON(filePath, fallback = null) {
 }
 
 function saveJSON(filePath, data) {
+  if (!filePath) return data;
   ensureDir(dirname(filePath));
   writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
   return data;
 }
 
 function trimArray(arr, maxLength) {
+  if (!arr) return [];
   while (arr.length > maxLength) arr.shift();
   return arr;
 }
 
 function deepMerge(target, source) {
+  if (!target && !source) return {};
+  if (!target) return deepClone(source);
+  if (!source) return deepClone(target);
   const result = deepClone(target);
   for (const [key, value] of Object.entries(source)) {
     if (value !== null && typeof value === 'object' && !Array.isArray(value) &&
@@ -57,6 +63,7 @@ function deepClone(value) {
 }
 
 function setNestedValue(obj, path, value) {
+  if (!obj || !path) return;
   const parts = path.split('.');
   let current = obj;
   for (let i = 0; i < parts.length - 1; i++) {

@@ -17,7 +17,9 @@
  *   White (#FFFFFF) on navy / sky blue / sage / emerald backgrounds
  */
 
+/* ─── Dark theme (default) ─── */
 :root {
+  /* Calming palette */
   --navy: #1B2D4F;
   --sky-blue: #6BA3D6;
   --sage: #8CAA7E;
@@ -25,12 +27,45 @@
   --soft-gray: #F0F2F5;
   --off-white: #FAFBFC;
   --error: #C9474B;
-  --bg-deep: #FAFBFC;
-  --bg-surface: #FFFFFF;
-  --text-primary: #1A1A2E;
-  --text-muted: #5A6377;
   --glow-emerald: rgba(45, 134, 89, 0.12);
   --glow-sky: rgba(107, 163, 214, 0.10);
+  /* Core theme */
+  --teal: #00A8A8;
+  --indigo: #1A1B3A;
+  --crimson: #E63946;
+  --bg-deep: #0F1026;
+  --bg-surface: #161833;
+  --text-primary: #E8E8F0;
+  --text-muted: #8B8BA8;
+  --glow-teal: rgba(0, 168, 168, 0.15);
+  --glow-crimson: rgba(230, 57, 70, 0.10);
+  --focus-ring: rgba(0, 168, 168, 0.6);
+}
+
+/* ─── Light theme ─── */
+[data-theme="light"] {
+  --bg-deep: #F4F3F0;
+  --bg-surface: #FFFFFF;
+  --text-primary: #1A1B3A;
+  --text-muted: #5A5A78;
+  --glow-teal: rgba(0, 168, 168, 0.25);
+  --glow-crimson: rgba(230, 57, 70, 0.15);
+  --focus-ring: rgba(0, 168, 168, 0.8);
+}
+
+[data-theme="light"] .cathedral-nav {
+  background-color: rgba(244, 243, 240, 0.9);
+  border-bottom-color: rgba(0, 168, 168, 0.15);
+}
+
+[data-theme="light"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 25%,
+    rgba(0, 168, 168, 0.12) 50%,
+    var(--bg-surface) 75%
+  );
+  background-size: 200% 100%;
 }
 
 @layer base {
@@ -121,8 +156,411 @@
     animation: gentle-pulse 3s ease-in-out infinite;
   }
 
+  .animate-fade-in {
+    animation: fade-in 700ms ease-out both;
+  }
+
   @keyframes gentle-pulse {
     0%, 100% { opacity: 0.7; }
     50% { opacity: 1; }
   }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .cathedral-nav {
+    background-color: rgba(15, 16, 38, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(0, 168, 168, 0.1);
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--bg-surface) 25%,
+      rgba(0, 168, 168, 0.08) 50%,
+      var(--bg-surface) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ─── Toast notifications ─── */
+  .toast-container {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+    pointer-events: none;
+    max-width: calc(100% - 2rem);
+  }
+
+  .toast {
+    pointer-events: auto;
+    padding: 0.625rem 1rem;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: toast-in 300ms ease-out both;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .toast-exiting {
+    animation: toast-out 250ms ease-in both;
+  }
+
+  .toast-success {
+    background-color: rgba(0, 168, 168, 0.15);
+    border: 1px solid rgba(0, 168, 168, 0.3);
+    color: var(--teal);
+  }
+
+  .toast-error {
+    background-color: rgba(230, 57, 70, 0.12);
+    border: 1px solid rgba(230, 57, 70, 0.3);
+    color: var(--crimson);
+  }
+
+  .toast-info {
+    background-color: var(--bg-surface);
+    border: 1px solid rgba(0, 168, 168, 0.15);
+    color: var(--text-primary);
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes toast-out {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(8px) scale(0.95);
+    }
+  }
+
+  /* ─── Form validation borders ─── */
+  .field-valid {
+    border-color: rgba(0, 168, 168, 0.5) !important;
+    box-shadow: 0 0 12px rgba(0, 168, 168, 0.08);
+  }
+
+  .field-invalid {
+    border-color: rgba(230, 57, 70, 0.5) !important;
+    box-shadow: 0 0 12px rgba(230, 57, 70, 0.08);
+  }
+
+  .field-helper {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    transition: opacity 200ms ease;
+  }
+
+  .field-helper-valid {
+    color: var(--teal);
+  }
+
+  .field-helper-invalid {
+    color: var(--crimson);
+  }
+
+  /* ─── Enhanced hover & active states ─── */
+  .cathedral-btn {
+    transition: all 200ms ease;
+  }
+
+  .cathedral-btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .cathedral-btn:active {
+    transform: translateY(0) scale(0.97);
+  }
+
+  .cathedral-link {
+    position: relative;
+    transition: color 200ms ease;
+  }
+
+  .cathedral-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    width: 0;
+    height: 1px;
+    background-color: var(--teal);
+    transition: width 250ms ease;
+  }
+
+  .cathedral-link:hover::after {
+    width: 100%;
+  }
+
+  .cathedral-link:hover {
+    color: var(--teal);
+  }
+}
+
+/* ─── Focus states (keyboard navigation) ─── */
+*:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove focus ring for mouse clicks */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Screen reader only — visually hidden but accessible */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ─── High contrast mode ─── */
+@media (prefers-contrast: more) {
+  :root,
+  [data-theme="light"] {
+    --teal: #009090;
+    --crimson: #CC2233;
+    --focus-ring: #00DDDD;
+  }
+
+  :root {
+    --bg-deep: #000000;
+    --bg-surface: #0A0A1A;
+    --text-primary: #FFFFFF;
+    --text-muted: #C0C0D0;
+    --glow-teal: rgba(0, 168, 168, 0.3);
+  }
+
+  [data-theme="light"] {
+    --bg-deep: #FFFFFF;
+    --bg-surface: #F0F0F0;
+    --text-primary: #000000;
+    --text-muted: #333348;
+  }
+
+  .cathedral-surface {
+    border-width: 2px;
+  }
+
+  .cathedral-nav {
+    border-bottom-width: 2px;
+  }
+
+  *:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* ─── Reduced motion (respects prefers-reduced-motion) ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .pulse-gentle {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .animate-fade-in {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .skeleton-shimmer {
+    animation: none !important;
+  }
+
+  .cathedral-btn:hover {
+    transform: none !important;
+  }
+
+  .cathedral-btn:active {
+    transform: none !important;
+  }
+
+  .toast {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .toast-exiting {
+    animation: none !important;
+    opacity: 0;
+  }
+}
+
+/* ─── Color-blind safe palette (deuteranopia / protanopia) ─── */
+@media (forced-colors: active) {
+  :root {
+    --teal: LinkText;
+    --crimson: VisitedText;
+    --bg-deep: Canvas;
+    --bg-surface: Canvas;
+    --text-primary: CanvasText;
+    --text-muted: GrayText;
+  }
+}
+
+/* Opt-in color-blind mode via [data-a11y-palette] attribute */
+[data-a11y-palette="deuteranopia"] {
+  /* Blue/Orange palette — distinguishable without red/green */
+  --teal: #0077BB;
+  --crimson: #EE7733;
+  --glow-teal: rgba(0, 119, 187, 0.15);
+  --glow-crimson: rgba(238, 119, 51, 0.10);
+  --focus-ring: rgba(0, 119, 187, 0.6);
+}
+
+[data-a11y-palette="deuteranopia"][data-theme="light"] {
+  --glow-teal: rgba(0, 119, 187, 0.25);
+  --glow-crimson: rgba(238, 119, 51, 0.15);
+  --focus-ring: rgba(0, 119, 187, 0.8);
+}
+
+[data-a11y-palette="protanopia"] {
+  /* Blue/Yellow palette — avoids red entirely */
+  --teal: #3366CC;
+  --crimson: #DDAA33;
+  --glow-teal: rgba(51, 102, 204, 0.15);
+  --glow-crimson: rgba(221, 170, 51, 0.10);
+  --focus-ring: rgba(51, 102, 204, 0.6);
+}
+
+[data-a11y-palette="protanopia"][data-theme="light"] {
+  --glow-teal: rgba(51, 102, 204, 0.25);
+  --glow-crimson: rgba(221, 170, 51, 0.15);
+  --focus-ring: rgba(51, 102, 204, 0.8);
+}
+
+[data-a11y-palette="tritanopia"] {
+  /* Red/Cyan palette — avoids blue/yellow confusion */
+  --teal: #009988;
+  --crimson: #CC3311;
+  --glow-teal: rgba(0, 153, 136, 0.15);
+  --glow-crimson: rgba(204, 51, 17, 0.10);
+  --focus-ring: rgba(0, 153, 136, 0.6);
+}
+
+[data-a11y-palette="tritanopia"][data-theme="light"] {
+  --glow-teal: rgba(0, 153, 136, 0.25);
+  --glow-crimson: rgba(204, 51, 17, 0.15);
+  --focus-ring: rgba(0, 153, 136, 0.8);
+}
+
+/* ─── Command Palette Overlay ─── */
+.cmd-palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 20vh;
+}
+
+.cmd-palette-box {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--bg-surface);
+  border: 1px solid rgba(0, 168, 168, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+}
+
+.cmd-palette-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(0, 168, 168, 0.1);
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  outline: none;
+}
+
+.cmd-palette-input::placeholder {
+  color: var(--text-muted);
+}
+
+.cmd-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.cmd-palette-item:hover,
+.cmd-palette-item[data-selected="true"] {
+  background-color: rgba(0, 168, 168, 0.08);
+  color: var(--text-primary);
+}
+
+.cmd-palette-item-key {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  opacity: 0.4;
+  font-family: monospace;
+}
+
+/* Whisper fade transition — used via inline classes */
+.duration-600 {
+  transition-duration: 600ms;
 }

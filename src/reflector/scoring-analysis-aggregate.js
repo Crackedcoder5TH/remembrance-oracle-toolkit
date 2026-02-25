@@ -13,6 +13,7 @@ const { securityScan } = require('./scoring-analysis-security');
 const { multi: getMulti } = require('./report-lazy');
 
 function deepScore(code, options = {}) {
+  if (!code) return { aggregate: 0, dimensions: {}, covenant: { sealed: false }, securityFindings: [] };
   const language = options.language || detectLanguage(code);
   const observation = observeCoherence(code, { language });
   const complexity = calculateCyclomaticComplexity(code);

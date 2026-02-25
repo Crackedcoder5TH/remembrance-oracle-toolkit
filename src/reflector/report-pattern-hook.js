@@ -25,6 +25,7 @@ const { scoring: _scoring } = require('./report-lazy');
  * @returns {object} { description, tags, language }
  */
 function extractFileHints(code, filePath) {
+  if (!code || !filePath) return { description: '', tags: [], language: 'unknown' };
   const language = detectLanguage(code);
   const name = basename(filePath, extname(filePath));
   const tags = [];
@@ -233,6 +234,7 @@ function hookBeforeHeal(filePath, options = {}) {
  * @returns {Map<string, object>} Map of filePath -> hook result
  */
 function batchPatternLookup(filePaths, options = {}) {
+  if (!filePaths) return new Map();
   const results = new Map();
   for (const fp of filePaths) {
     results.set(fp, hookBeforeHeal(fp, options));
@@ -296,6 +298,7 @@ function recordPatternHookUsage(rootDir, entry, oracle) {
  * Get the most-used patterns from guided healings.
  */
 function getTopPatterns(guidedEntries) {
+  if (!guidedEntries) return [];
   const counts = {};
   for (const e of guidedEntries) {
     if (e.patternName) {
@@ -315,6 +318,7 @@ function getTopPatterns(guidedEntries) {
  * @returns {object} Stats
  */
 function patternHookStats(rootDir) {
+  if (!rootDir) return { totalHealings: 0, patternGuided: 0, patternGuidedRate: 0, avgImprovement: { guided: 0, unguided: 0 } };
   const { loadJSON } = _scoring();
   const log = loadJSON(getPatternHookLogPath(rootDir), []);
   if (log.length === 0) {
@@ -345,6 +349,7 @@ function patternHookStats(rootDir) {
  * Format pattern hook result as human-readable text.
  */
 function formatPatternHook(hookResult) {
+  if (!hookResult) return 'No pattern hook result available.';
   const lines = [];
   lines.push('\u2500\u2500 Pattern Library Hook \u2500\u2500');
   lines.push('');

@@ -5,51 +5,69 @@ import { ErrorReporter } from "./components/error-reporter";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
+const SITE_URL = "https://digital-cathedral.vercel.app";
+const SITE_TITLE = "Digital Cathedral — Remembrance Oracle";
+const SITE_DESCRIPTION =
+  "A remembrance-aligned sanctuary where coherence is measured, whispers are received, and the kingdom is already here.";
+
 export const metadata: Metadata = {
-  metadataBase: new URL(BASE_URL),
   title: {
-    default: "[Company Name] — Life Insurance Quotes from Licensed Professionals",
-    template: "%s — [Company Name]",
+    default: SITE_TITLE,
+    template: "%s | Digital Cathedral",
   },
-  description:
-    "Connect with licensed life insurance professionals in your state. Get personalized term, whole, universal, and final expense coverage options — no obligation.",
+  description: SITE_DESCRIPTION,
   manifest: "/manifest.json",
-  icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
-  },
+  metadataBase: new URL(SITE_URL),
+  keywords: [
+    "digital cathedral",
+    "remembrance oracle",
+    "coherence",
+    "solana",
+    "whisper",
+    "blockchain",
+  ],
+  authors: [{ name: "Digital Cathedral" }],
+  creator: "Digital Cathedral",
+
+  // ─── Open Graph ───
   openGraph: {
     type: "website",
     locale: "en_US",
-    siteName: "[Company Name]",
-    title: "[Company Name] — Life Insurance Quotes from Licensed Professionals",
-    description:
-      "Connect with licensed life insurance professionals in your state. Get personalized coverage options — no obligation.",
-    url: BASE_URL,
+    url: SITE_URL,
+    siteName: "Digital Cathedral",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "[Company Name] — Life Insurance Coverage",
+        alt: "Digital Cathedral — The Kingdom is already here",
+        type: "image/svg+xml",
       },
     ],
   },
+
+  // ─── Twitter / X Cards ───
   twitter: {
     card: "summary_large_image",
-    title: "[Company Name] — Life Insurance Quotes",
-    description:
-      "Connect with licensed life insurance professionals. Personalized coverage options — no obligation.",
-    images: ["/og-image.png"],
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/og-image.svg"],
   },
-  robots: {
-    index: true,
-    follow: true,
+
+  // ─── Icons (SVG — universal modern browser support) ───
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: "/icon.svg",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FAFBFC",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#1A1B3A" },
+    { media: "(prefers-color-scheme: light)", color: "#F4F3F0" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

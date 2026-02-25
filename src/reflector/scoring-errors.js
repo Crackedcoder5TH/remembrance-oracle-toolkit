@@ -6,6 +6,7 @@
  */
 
 const { report: getReport } = require('./report-lazy');
+const { TIMEOUTS } = require('./scoring-utils');
 
 const ERROR_TYPES = {
   TRANSIENT: 'transient',
@@ -16,6 +17,7 @@ const ERROR_TYPES = {
 };
 
 function classifyError(err) {
+  if (!err) return ERROR_TYPES.FATAL;
   const msg = (err.message || '').toLowerCase();
   const code = err.code || '';
 
@@ -39,6 +41,7 @@ function classifyError(err) {
 }
 
 function withErrorHandling(operationName, fn, options = {}) {
+  if (typeof fn !== 'function') return { success: false, result: null, error: 'fn is not a function', errorType: ERROR_TYPES.CONFIG, durationMs: 0 };
   const { rootDir = process.cwd(), fallback = null, context = {}, logLevel = 'ERROR' } = options;
   const startTime = Date.now();
   try {
@@ -62,7 +65,7 @@ function withErrorHandling(operationName, fn, options = {}) {
 }
 
 function withRetry(operationName, fn, options = {}) {
-  const { maxRetries = 3, baseDelayMs = 100, rootDir = process.cwd(), context = {} } = options;
+  const { maxRetries = TIMEOUTS.RETRY_MAX, baseDelayMs = TIMEOUTS.RETRY_BASE_LOCAL, rootDir = process.cwd(), context = {} } = options;
   const startTime = Date.now();
   let lastError = null;
 
@@ -104,7 +107,7 @@ function withRetry(operationName, fn, options = {}) {
 const circuitState = new Map();
 
 function withCircuitBreaker(operationName, fn, options = {}) {
-  const { threshold = 5, cooldownMs = 60000, rootDir = process.cwd() } = options;
+  const { threshold = 5, cooldownMs = TIMEOUTS.CIRCUIT_COOLDOWN, rootDir = process.cwd() } = options;
 
   if (!circuitState.has(operationName)) {
     circuitState.set(operationName, { failures: 0, lastFailure: 0, open: false });
@@ -151,6 +154,7 @@ function getCircuitStatus(operationName) {
 }
 
 function buildErrorReport(rootDir, lastN = 50) {
+  if (!rootDir) return { totalErrors: 0, totalWarnings: 0, errorsByType: {}, recentErrors: [], recentWarnings: [], healthScore: 1.0 };
   const { readLogTail } = getReport();
   const lines = readLogTail(rootDir, lastN);
   const errors = lines.filter(l => l.includes('[ERROR]'));

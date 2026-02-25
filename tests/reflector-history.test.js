@@ -392,8 +392,8 @@ describe('History — reflector functions (MCP consolidated)', () => {
     assert.strictEqual(typeof report.readLogTail, 'function');
   });
 
-  it('MCP has 11 consolidated tools', () => {
+  it('MCP has 12 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 11);
+    assert.equal(TOOLS.length, 12);
   });
 });

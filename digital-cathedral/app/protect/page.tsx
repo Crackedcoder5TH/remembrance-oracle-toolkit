@@ -60,6 +60,24 @@ const COVERAGE_OPTIONS = [
   { value: "not-sure", label: "Not sure \u2014 I need guidance" },
 ];
 
+const VETERAN_STATUS_OPTIONS = [
+  { value: "", label: "Select veteran status..." },
+  { value: "veteran", label: "Veteran" },
+  { value: "non-veteran", label: "Non-Veteran" },
+];
+
+const MILITARY_BRANCH_OPTIONS = [
+  { value: "", label: "Select branch of service..." },
+  { value: "army", label: "U.S. Army" },
+  { value: "marine-corps", label: "U.S. Marine Corps" },
+  { value: "navy", label: "U.S. Navy" },
+  { value: "air-force", label: "U.S. Air Force" },
+  { value: "space-force", label: "U.S. Space Force" },
+  { value: "coast-guard", label: "U.S. Coast Guard" },
+  { value: "national-guard", label: "National Guard" },
+  { value: "reserves", label: "Reserves" },
+];
+
 const INPUT_CLASS =
   "w-full bg-[var(--bg-deep)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-teal-cathedral/20 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 transition-all";
 
@@ -176,6 +194,27 @@ export default function ProtectPage() {
               {errors.coverageInterest && <p className="text-crimson-cathedral text-xs">{errors.coverageInterest}</p>}
             </div>
 
+            {/* Veteran Status */}
+            <div className="space-y-1">
+              <label htmlFor="veteranStatus" className="block text-sm text-[var(--text-muted)]">Veteran Status</label>
+              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} className={SELECT_CLASS}>
+                {VETERAN_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+              {errors.veteranStatus && <p className="text-crimson-cathedral text-xs">{errors.veteranStatus}</p>}
+            </div>
+
+            {/* Military Branch — conditional subcategory (only shown for veterans) */}
+            {form.veteranStatus === "veteran" && (
+              <div className="space-y-1 animate-in fade-in">
+                <label htmlFor="militaryBranch" className="block text-sm text-[var(--text-muted)]">Branch of Service</label>
+                <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} className={SELECT_CLASS}>
+                  {MILITARY_BRANCH_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+                <p className="text-[var(--text-muted)] text-xs">Thank you for your service.</p>
+                {errors.militaryBranch && <p className="text-crimson-cathedral text-xs">{errors.militaryBranch}</p>}
+              </div>
+            )}
+
             {/* Next button */}
             <button
               type="button"
@@ -235,6 +274,12 @@ export default function ProtectPage() {
               <p className="text-[var(--text-muted)]">
                 {US_STATES.find(s => s.code === form.state)?.name} &middot;{" "}
                 {COVERAGE_OPTIONS.find(o => o.value === form.coverageInterest)?.label}
+              </p>
+              <p className="text-[var(--text-muted)]">
+                {VETERAN_STATUS_OPTIONS.find(o => o.value === form.veteranStatus)?.label}
+                {form.veteranStatus === "veteran" && form.militaryBranch && (
+                  <> &middot; {MILITARY_BRANCH_OPTIONS.find(o => o.value === form.militaryBranch)?.label}</>
+                )}
               </p>
               <button
                 type="button"

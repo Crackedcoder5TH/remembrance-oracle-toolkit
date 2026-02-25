@@ -65,6 +65,13 @@ const VALID_STATES = new Set([
 
 const VALID_COVERAGE = new Set(["term", "whole", "universal", "final-expense", "annuity", "not-sure"]);
 
+const VALID_VETERAN_STATUS = new Set(["veteran", "non-veteran"]);
+
+const VALID_MILITARY_BRANCHES = new Set([
+  "army", "marine-corps", "navy", "air-force", "space-force",
+  "coast-guard", "national-guard", "reserves",
+]);
+
 /** Whispers for the seeker — kingdom-aligned responses */
 const WHISPERS = [
   "Your intention to protect has been heard. A guardian approaches.",
@@ -92,6 +99,8 @@ export async function POST(req: NextRequest) {
       phone,
       state,
       coverageInterest,
+      veteranStatus,
+      militaryBranch,
       tcpaConsent,
       privacyConsent,
       consentTimestamp,
@@ -108,6 +117,11 @@ export async function POST(req: NextRequest) {
     if (!validatePhone(phone)) errors.push("Invalid phone number.");
     if (!VALID_STATES.has(state)) errors.push("Invalid state.");
     if (!VALID_COVERAGE.has(coverageInterest)) errors.push("Invalid coverage interest.");
+    if (!VALID_VETERAN_STATUS.has(veteranStatus)) errors.push("Invalid veteran status.");
+    if (veteranStatus === "veteran" && militaryBranch && !VALID_MILITARY_BRANCHES.has(militaryBranch)) {
+      errors.push("Invalid military branch.");
+    }
+    if (veteranStatus === "veteran" && !militaryBranch) errors.push("Military branch is required for veterans.");
     if (tcpaConsent !== true) errors.push("TCPA consent is required.");
     if (privacyConsent !== true) errors.push("Privacy policy consent is required.");
     if (!consentTimestamp) errors.push("Consent timestamp is required.");
@@ -131,6 +145,8 @@ export async function POST(req: NextRequest) {
       phone: phone.replace(/\D/g, "").slice(-10),
       state,
       coverageInterest,
+      veteranStatus,
+      militaryBranch: veteranStatus === "veteran" ? (militaryBranch || "") : "",
       consentTcpa: true,
       consentPrivacy: true,
       consentTimestamp,

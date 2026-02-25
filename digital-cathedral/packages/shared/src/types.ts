@@ -29,6 +29,8 @@ export interface LeadSubmission {
   phone: string;
   state: string;
   coverageInterest: string;
+  veteranStatus: string;
+  militaryBranch: string;
   tcpaConsent: boolean;
   privacyConsent: boolean;
   consentTimestamp: string;

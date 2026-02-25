@@ -66,6 +66,8 @@ export interface LeadFormData {
   phone: string;
   state: string;
   coverageInterest: string;
+  veteranStatus: string;
+  militaryBranch: string;
   tcpaConsent: boolean;
   privacyConsent: boolean;
 }
@@ -78,6 +80,8 @@ export interface LeadFormErrors {
   phone?: string;
   state?: string;
   coverageInterest?: string;
+  veteranStatus?: string;
+  militaryBranch?: string;
   tcpaConsent?: string;
   privacyConsent?: string;
 }
@@ -118,6 +122,10 @@ function validateStep(step: number, form: LeadFormData): LeadFormErrors {
     }
     if (!form.state) errs.state = "Please select your state.";
     if (!form.coverageInterest) errs.coverageInterest = "Please select a coverage interest.";
+    if (!form.veteranStatus) errs.veteranStatus = "Please select your veteran status.";
+    if (form.veteranStatus === "veteran" && !form.militaryBranch) {
+      errs.militaryBranch = "Please select your branch of service.";
+    }
   }
 
   if (step === 1) {
@@ -142,6 +150,8 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     phone: "",
     state: "",
     coverageInterest: "",
+    veteranStatus: "",
+    militaryBranch: "",
     tcpaConsent: false,
     privacyConsent: false,
   });
@@ -157,14 +167,24 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const THROTTLE_MS = 3000;
 
   const updateField = useCallback((field: keyof LeadFormData, value: string | boolean) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => {
-      if (prev[field as keyof LeadFormErrors]) {
-        const next = { ...prev };
-        delete next[field as keyof LeadFormErrors];
-        return next;
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Clear military branch when veteran status changes away from "veteran"
+      if (field === "veteranStatus" && value !== "veteran") {
+        next.militaryBranch = "";
       }
-      return prev;
+      return next;
+    });
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (next[field as keyof LeadFormErrors]) {
+        delete next[field as keyof LeadFormErrors];
+      }
+      // Clear military branch error when veteran status changes
+      if (field === "veteranStatus" && next.militaryBranch) {
+        delete next.militaryBranch;
+      }
+      return next;
     });
     setServerError("");
   }, []);
@@ -208,6 +228,8 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
           phone: data.phone.replace(/\D/g, ""),
           state: data.state,
           coverageInterest: data.coverageInterest,
+          veteranStatus: data.veteranStatus,
+          militaryBranch: data.veteranStatus === "veteran" ? data.militaryBranch : "",
           tcpaConsent: data.tcpaConsent,
           privacyConsent: data.privacyConsent,
           consentTimestamp: new Date().toISOString(),

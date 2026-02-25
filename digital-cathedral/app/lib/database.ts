@@ -31,6 +31,8 @@ export interface LeadRecord {
   phone: string;
   state: string;
   coverageInterest: string;
+  veteranStatus: string;
+  militaryBranch: string;
   consentTcpa: boolean;
   consentPrivacy: boolean;
   consentTimestamp: string;
@@ -85,6 +87,8 @@ function migrate(db: Database.Database): void {
       phone TEXT NOT NULL,
       state TEXT NOT NULL,
       coverage_interest TEXT NOT NULL,
+      veteran_status TEXT NOT NULL DEFAULT '',
+      military_branch TEXT NOT NULL DEFAULT '',
       consent_tcpa INTEGER NOT NULL DEFAULT 0,
       consent_privacy INTEGER NOT NULL DEFAULT 0,
       consent_timestamp TEXT NOT NULL,
@@ -108,11 +112,18 @@ function migrate(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
   `);
 
-  // Migration: add date_of_birth column to existing databases that lack it
+  // Migration: add columns to existing databases that lack them
   const columns = db.prepare("PRAGMA table_info(leads)").all() as Array<{ name: string }>;
-  const hasDateOfBirth = columns.some((col) => col.name === "date_of_birth");
-  if (!hasDateOfBirth) {
+  const columnNames = new Set(columns.map((col) => col.name));
+
+  if (!columnNames.has("date_of_birth")) {
     db.exec("ALTER TABLE leads ADD COLUMN date_of_birth TEXT NOT NULL DEFAULT ''");
+  }
+  if (!columnNames.has("veteran_status")) {
+    db.exec("ALTER TABLE leads ADD COLUMN veteran_status TEXT NOT NULL DEFAULT ''");
+  }
+  if (!columnNames.has("military_branch")) {
+    db.exec("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
   }
 }
 
@@ -135,7 +146,8 @@ export function insertLead(lead: LeadRecord): Result<{ id: number; leadId: strin
     const stmt = db.prepare(`
       INSERT INTO leads (
         lead_id, first_name, last_name, date_of_birth, email, phone, state,
-        coverage_interest, consent_tcpa, consent_privacy,
+        coverage_interest, veteran_status, military_branch,
+        consent_tcpa, consent_privacy,
         consent_timestamp, consent_text, consent_ip,
         consent_user_agent, consent_page_url,
         utm_source, utm_medium, utm_campaign, utm_term, utm_content,
@@ -143,6 +155,7 @@ export function insertLead(lead: LeadRecord): Result<{ id: number; leadId: strin
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?,
+        ?, ?,
         ?, ?, ?,
         ?, ?,
         ?, ?, ?, ?, ?,
@@ -152,7 +165,8 @@ export function insertLead(lead: LeadRecord): Result<{ id: number; leadId: strin
 
     const result = stmt.run(
       lead.leadId, lead.firstName, lead.lastName, lead.dateOfBirth, lead.email, lead.phone, lead.state,
-      lead.coverageInterest, lead.consentTcpa ? 1 : 0, lead.consentPrivacy ? 1 : 0,
+      lead.coverageInterest, lead.veteranStatus, lead.militaryBranch,
+      lead.consentTcpa ? 1 : 0, lead.consentPrivacy ? 1 : 0,
       lead.consentTimestamp, lead.consentText, lead.consentIp,
       lead.consentUserAgent, lead.consentPageUrl,
       lead.utmSource, lead.utmMedium, lead.utmCampaign, lead.utmTerm, lead.utmContent,
@@ -219,6 +233,8 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
     phone: row.phone as string,
     state: row.state as string,
     coverageInterest: row.coverage_interest as string,
+    veteranStatus: (row.veteran_status as string) || "",
+    militaryBranch: (row.military_branch as string) || "",
     consentTcpa: row.consent_tcpa === 1,
     consentPrivacy: row.consent_privacy === 1,
     consentTimestamp: row.consent_timestamp as string,

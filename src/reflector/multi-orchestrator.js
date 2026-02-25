@@ -165,9 +165,11 @@ function orchestrate(rootDir, options = {}) {
   let whisper;
   try {
     if (options.dryRun) {
-      whisper = healResult.collectiveWhisper || 'Dry-run complete. No changes applied.';
+      const cw = healResult.collectiveWhisper;
+      whisper = (typeof cw === 'object' ? cw?.message : cw) || 'Dry-run complete. No changes applied.';
     } else {
-      whisper = healResult.report?.collectiveWhisper || 'No healing required \u2014 codebase is coherent.';
+      const cw = healResult.report?.collectiveWhisper;
+      whisper = (typeof cw === 'object' ? cw?.message : cw) || 'No healing required \u2014 codebase is coherent.';
     }
     // Enrich with deep score health if available
     if (deepScoreResult) {

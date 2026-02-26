@@ -150,7 +150,7 @@ export default function HomePage() {
           <p className="text-[var(--text-primary)] text-lg mb-6">
             Your Legacy is Being Protected
           </p>
-          <p className="whisper-text text-base leading-relaxed mb-8">
+          <p className="text-emerald-accent italic opacity-90 text-base leading-relaxed mb-8">
             &ldquo;{whisper}&rdquo;
           </p>
 

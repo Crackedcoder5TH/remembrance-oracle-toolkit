@@ -1012,6 +1012,8 @@ export default function CathedralHome() {
     { id: "archive", label: "Go to Archive", action: () => { setSection("archive"); setView("oracle"); } },
     { id: "theme", label: "Toggle Theme", shortcut: "T", action: cycleTheme },
     { id: "palette", label: "Cycle Color-blind Palette", shortcut: "P", action: cyclePalette },
+    { id: "export-json", label: "Export History as JSON", action: exportHistoryJSON },
+    { id: "export-csv", label: "Export History as CSV", action: exportHistoryCSV },
     { id: "clear", label: "Clear Whisper History", action: () => { clearHistory(); addToast("Archive cleared", "info"); } },
     { id: "about", label: "About & Contact", action: () => { window.location.href = "/about"; } },
     { id: "privacy", label: "Privacy Policy", action: () => { window.location.href = "/privacy"; } },
@@ -1109,6 +1111,37 @@ export default function CathedralHome() {
   function clearHistory() {
     setHistory([]);
     saveHistory([]);
+  }
+
+  function exportHistoryJSON() {
+    if (history.length === 0) return;
+    const data = JSON.stringify(history, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cathedral-whispers-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addToast("Exported as JSON", "success");
+  }
+
+  function exportHistoryCSV() {
+    if (history.length === 0) return;
+    const header = "id,input,whisper,coherence,rating,inputHash,solanaSlot,timestamp";
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const rows = history.map((e) =>
+      [e.id, escape(e.input), escape(e.whisper), e.coherence, e.rating, e.inputHash, e.solanaSlot ?? "", e.timestamp].join(",")
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cathedral-whispers-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addToast("Exported as CSV", "success");
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1452,15 +1485,31 @@ export default function CathedralHome() {
                 Whisper Archive
               </h2>
               {history.length > 0 && (
-                <button
-                  onClick={() => {
-                    clearHistory();
-                    addToast("Archive cleared", "info");
-                  }}
-                  className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors cathedral-link"
-                >
-                  Clear All
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={exportHistoryJSON}
+                    className="text-xs text-[var(--text-muted)] hover:text-teal-cathedral transition-colors cathedral-link"
+                    aria-label="Export whisper history as JSON"
+                  >
+                    Export JSON
+                  </button>
+                  <button
+                    onClick={exportHistoryCSV}
+                    className="text-xs text-[var(--text-muted)] hover:text-teal-cathedral transition-colors cathedral-link"
+                    aria-label="Export whisper history as CSV"
+                  >
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      clearHistory();
+                      addToast("Archive cleared", "info");
+                    }}
+                    className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors cathedral-link"
+                  >
+                    Clear All
+                  </button>
+                </div>
               )}
             </div>
 

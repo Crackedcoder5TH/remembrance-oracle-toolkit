@@ -43,7 +43,7 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
+        <section id="how-it-works" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed scroll-mt-8">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
             How It Works
           </h2>

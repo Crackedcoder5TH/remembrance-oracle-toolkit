@@ -1,11 +1,5 @@
 /**
- * StepProgress — Multi-step form progress indicator with coherence visualization.
- * Oracle: GENERATE — no existing pattern in the kingdom.
- *
- * Maps the kingdom's coherence model to form steps:
- *   Step 1 (identity)  → coherence 0.33 — "The signal is forming..."
- *   Step 2 (contact)   → coherence 0.66 — "The outline is forming..."
- *   Step 3 (consent)   → coherence 1.00 — "Coherence confirmed."
+ * StepProgress — Multi-step form progress indicator.
  */
 
 interface StepProgressProps {
@@ -59,7 +53,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
         ))}
       </ol>
 
-      {/* Coherence bar */}
+      {/* Progress bar */}
       <div
         className="w-full h-1 rounded-full bg-soft-gray overflow-hidden"
         role="progressbar"

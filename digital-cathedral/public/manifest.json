@@ -1,14 +1,14 @@
 {
-  "name": "Digital Cathedral — Remembrance Oracle",
+  "name": "Digital Cathedral — Military Life Insurance",
   "short_name": "Cathedral",
-  "description": "A remembrance-aligned sanctuary — coherence measured, whispers received.",
+  "description": "Veteran-founded life insurance lead generation for military families.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0F1026",
   "theme_color": "#1A1B3A",
-  "categories": ["utilities", "lifestyle"],
+  "categories": ["insurance", "finance"],
   "icons": [
     {
       "src": "/icon.svg",

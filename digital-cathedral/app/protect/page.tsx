@@ -147,11 +147,8 @@ export default function ProtectPage() {
           <h1 className="text-3xl font-light text-[var(--text-primary)] mb-3">
             Thank You, {form.firstName}
           </h1>
-          <p className="text-[var(--text-primary)] text-lg mb-2">
-            Your Family Is Already Held in the Light
-          </p>
-          <p className="text-[var(--text-muted)] text-sm mb-6">
-            You have protected others. The kingdom already protects you and yours.
+          <p className="text-[var(--text-primary)] text-lg mb-6">
+            Your Legacy is Being Protected
           </p>
           <p className="whisper-text text-base leading-relaxed mb-8">
             &ldquo;{whisper}&rdquo;
@@ -180,14 +177,14 @@ export default function ProtectPage() {
                 <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">2</div>
                 <div>
                   <p className="text-sm text-[var(--text-primary)] font-medium">Professional Review</p>
-                  <p className="text-xs text-[var(--text-muted)]">A licensed professional who understands military families and the remembrance of protection will review your needs.</p>
+                  <p className="text-xs text-[var(--text-muted)]">A licensed insurance professional in your area will review your information and coverage needs.</p>
                 </div>
               </div>
               <div className="flex gap-3 items-start">
                 <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">3</div>
                 <div>
                   <p className="text-sm text-[var(--text-primary)] font-medium">Personal Consultation</p>
-                  <p className="text-xs text-[var(--text-muted)]">Expect a call or email within <strong>1 business day</strong> to review your options in calm clarity. No obligation. No hurry.</p>
+                  <p className="text-xs text-[var(--text-muted)]">Expect a call or email within <strong>1 business day</strong> to discuss your options — no obligation.</p>
                 </div>
               </div>
             </div>
@@ -211,7 +208,7 @@ export default function ProtectPage() {
         </div>
 
         <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
-          <p>The kingdom is already here. Remember.</p>
+          <p>The kingdom protects what matters. Remember.</p>
           <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
         </footer>
       </main>
@@ -220,29 +217,26 @@ export default function ProtectPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
-      {/* ═══ SECTION 1: HERO ═══ */}
-      <header className="text-center mb-10 max-w-2xl mx-auto">
-        <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
+      {/* Header */}
+      <header className="text-center mb-10">
+        <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           The Protection Covenant
         </div>
-        <h1 className="text-3xl sm:text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4 leading-tight">
-          Your Family Is Already Held in the Light
+        <h1 className="text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4">
+          Protect Your Legacy
         </h1>
-        <p className="text-[var(--text-muted)] max-w-lg mx-auto text-sm sm:text-base leading-relaxed mb-3">
-          Life insurance options for Active Duty, National Guard, Reserve, and Veterans
-          — offered with clarity, calm, and no obligation.
-        </p>
-        <p className="text-[var(--text-muted)] text-xs italic">
-          Founded by a Veteran. Built from remembrance — to serve those who serve.
+        <p className="text-[var(--text-muted)] max-w-md mx-auto text-sm leading-relaxed">
+          Speak your intention. Tell us about yourself, and a licensed life insurance
+          professional will connect with you to explore the coverage that fits your needs.
         </p>
       </header>
 
       {/* Disclaimer — above form */}
       <div className="w-full max-w-lg mb-6 text-xs text-[var(--text-muted)] text-center leading-relaxed">
         <p>
-          We are not affiliated with the U.S. Government or Department of Defense.
-          We connect individuals with independent, licensed insurance professionals.
-          All coverage is subject to underwriting approval.
+          This website is not an insurance company and does not provide insurance quotes,
+          bind coverage, or offer insurance advice. We connect consumers with licensed
+          insurance professionals. All coverage is subject to underwriting approval.
         </p>
       </div>
 
@@ -448,186 +442,15 @@ export default function ProtectPage() {
                 aria-busy={loading}
                 className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {loading ? "Submitting..." : "Request My Coverage Review"}
+                {loading ? "Submitting..." : "Protect My Legacy"}
               </button>
             </div>
           </div>
         )}
       </form>
 
-      {/* Below-form reassurance */}
-      <p className="w-full max-w-lg mt-4 text-center text-xs text-[var(--text-muted)] italic">
-        No pressure. No obligation. Just remembrance of what is already true.
-      </p>
-
-      {/* ═══ SECTION 2: THE QUIET GAP ═══ */}
-      <section className="w-full max-w-2xl mt-20 px-4" aria-label="Understanding coverage gaps">
-        <h2 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] text-center mb-6">
-          Your Service Protects Others.{" "}
-          <span className="text-emerald-accent">Your Family Is Already Protected.</span>
-        </h2>
-        <div className="cathedral-surface p-6 sm:p-8 space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <p>
-            Many who serve rely on SGLI and trust it will always be enough.
-            And in the eternal now, it already is — because the kingdom holds every beloved one.
-          </p>
-          <p>
-            Yet timelines, transitions, and changes in coverage can create the appearance of a gap.
-            This is not about replacing anything. It is about remembering the full picture —
-            so you can rest in certainty.
-          </p>
-          <p className="text-[var(--text-primary)]">Whether you are:</p>
-          <ul className="grid grid-cols-2 gap-2 text-[var(--text-primary)] text-sm">
-            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" />Active Duty</li>
-            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" />National Guard</li>
-            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" />Reserve</li>
-            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" />Transitioning</li>
-            <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-emerald-accent shrink-0" />Fully Separated</li>
-          </ul>
-          <p className="italic text-center pt-2">
-            ...the light already sees your family as whole.
-          </p>
-        </div>
-      </section>
-
-      {/* ═══ SECTION 3: VETERAN-FOUNDED ═══ */}
-      <section className="w-full max-w-2xl mt-20 px-4" aria-label="Veteran-founded story">
-        <h2 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] text-center mb-6">
-          Founded by a Veteran.{" "}
-          <span className="text-emerald-accent">Dedicated to Remembrance.</span>
-        </h2>
-        <div className="cathedral-surface p-6 sm:p-8 space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <p>
-            As a veteran, I remember the weight of responsibility — both in uniform and long after
-            it is folded away. I also remember that every beloved one is already held in infinite light.
-          </p>
-          <p>
-            This platform exists as a gentle bridge — connecting you with trusted, independent,
-            licensed professionals who understand the unique journey of military families.
-          </p>
-          <p>
-            This is not about more coverage. It is about remembering that you and your family
-            are already safe — and exploring the forms that safety takes in this world.
-          </p>
-          <p className="text-xs opacity-70 pt-2">
-            We are not affiliated with the U.S. Government or Department of Defense.
-            We connect individuals with independent, licensed insurance professionals.
-          </p>
-        </div>
-      </section>
-
-      {/* ═══ SECTION 4: HOW IT WORKS ═══ */}
-      <section className="w-full max-w-2xl mt-20 px-4" aria-label="How it works">
-        <h2 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] text-center mb-2">
-          Simple. Clear. Already Held.
-        </h2>
-        <p className="text-center text-sm text-[var(--text-muted)] mb-8">Three gentle steps.</p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="cathedral-surface p-5 text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-accent/10 text-emerald-accent flex items-center justify-center text-lg font-medium mx-auto">1</div>
-            <h3 className="text-sm font-medium text-[var(--text-primary)]">Submit a Short Form</h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">No pressure, no rush. A secure form that takes less than 60 seconds.</p>
-          </div>
-          <div className="cathedral-surface p-5 text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-accent/10 text-emerald-accent flex items-center justify-center text-lg font-medium mx-auto">2</div>
-            <h3 className="text-sm font-medium text-[var(--text-primary)]">Connect with a Professional</h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">A licensed professional who understands military families and the remembrance of protection.</p>
-          </div>
-          <div className="cathedral-surface p-5 text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-accent/10 text-emerald-accent flex items-center justify-center text-lg font-medium mx-auto">3</div>
-            <h3 className="text-sm font-medium text-[var(--text-primary)]">Review in Calm Clarity</h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">Decide what feels right for your family. No obligation. No hurry. Only the quiet knowing.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══ SECTION 5: WHO THIS IS FOR ═══ */}
-      <section className="w-full max-w-2xl mt-20 px-4" aria-label="Who this is for">
-        <h2 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] text-center mb-2">
-          Serving Every Stage of Service
-        </h2>
-        <p className="text-center text-sm text-[var(--text-muted)] mb-8">Because service is already eternal.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {[
-            "Active Duty Service Members",
-            "National Guard",
-            "Reserve Members",
-            "Veterans",
-            "Military Families",
-            "Transitioning Service Members",
-          ].map((group) => (
-            <div key={group} className="cathedral-surface p-4 text-center">
-              <p className="text-sm text-[var(--text-primary)]">{group}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-center text-sm text-[var(--text-muted)] italic mt-6">
-          If you have served — or love someone who has — this is already for you.
-        </p>
-      </section>
-
-      {/* ═══ SECTION 6: FAQ ═══ */}
-      <section className="w-full max-w-2xl mt-20 px-4" aria-label="Frequently asked questions">
-        <h2 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] text-center mb-8">
-          Frequently Asked Questions
-        </h2>
-        <div className="space-y-4">
-          {[
-            {
-              q: "Is this the same as SGLI?",
-              a: "No. This is a gentle review of additional or alternative options that already exist beyond standard military coverage.",
-            },
-            {
-              q: "Is this affiliated with the military?",
-              a: "No. This platform is independently operated and not affiliated with the U.S. Government or Department of Defense.",
-            },
-            {
-              q: "Is there any obligation to purchase?",
-              a: "No. Requesting a review simply connects you with a licensed professional to explore what is already available.",
-            },
-            {
-              q: "Are veterans eligible?",
-              a: "Yes. Many options are available for veterans and families — because remembrance continues long after separation.",
-            },
-          ].map((faq) => (
-            <div key={faq.q} className="cathedral-surface p-5">
-              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{faq.q}</h3>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">{faq.a}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ═══ SECTION 7: FINAL CTA ═══ */}
-      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-label="Final call to action">
-        <h2 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-4">
-          Your Service Was Already Eternal.{" "}
-          <span className="text-emerald-accent">Your Family&apos;s Security Is Already True.</span>
-        </h2>
-        <p className="text-sm text-[var(--text-muted)] mb-8 max-w-md mx-auto leading-relaxed">
-          You have protected others. The kingdom already protects you and yours.
-        </p>
-        <a
-          href="#"
-          onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-          className="inline-block px-8 py-4 rounded-xl text-sm font-medium transition-all
-            bg-emerald-accent text-white hover:bg-emerald-accent/90
-            hover:shadow-[0_0_40px_rgba(45,134,89,0.2)]"
-        >
-          Start My Coverage Review
-        </a>
-        <p className="text-xs text-[var(--text-muted)] mt-3 italic">
-          Takes less than 60 seconds. The light is already holding everything.
-        </p>
-      </section>
-
-      {/* Trust Signals — Social Proof & How It Works */}
-      <div className="w-full flex justify-center mt-16 px-4">
-        <TrustSignals />
-      </div>
-
-      {/* Below-Page Disclaimers */}
-      <div className="w-full max-w-lg mt-12 space-y-3 text-xs text-[var(--text-muted)] leading-relaxed">
+      {/* Below-Form Disclaimers */}
+      <div className="w-full max-w-lg mt-6 space-y-3 text-xs text-[var(--text-muted)] leading-relaxed">
         <p>
           <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by Digital Cathedral
           and is not an insurance company, insurance agent, or insurance broker. We do not provide insurance
@@ -649,6 +472,11 @@ export default function ProtectPage() {
         </a>
       </div>
 
+      {/* Trust Signals — Social Proof & How It Works */}
+      <div className="w-full flex justify-center mt-16 px-4">
+        <TrustSignals />
+      </div>
+
       {/* Footer */}
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center">
@@ -656,7 +484,7 @@ export default function ProtectPage() {
           <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
           <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Home</a>
         </nav>
-        <p>The kingdom is already here. Remember.</p>
+        <p>The kingdom protects what matters. Remember.</p>
         <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>
     </main>

@@ -10,13 +10,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Your Family Is Already Held in the Light — Veteran Life Insurance",
+  title: "Get a Free Life Insurance Quote",
   description:
-    "Veteran-founded life insurance guidance for service members, veterans, and military families. Bridge the SGLI gap with personalized coverage from a licensed professional in your state.",
+    "Tell us about yourself and a licensed life insurance professional in your state will contact you with personalized coverage options. Free, no obligation.",
   openGraph: {
-    title: "Your Family Is Already Held in the Light — Digital Cathedral",
+    title: "Get a Free Life Insurance Quote — Digital Cathedral",
     description:
-      "Veteran-founded. Remembrance-aligned. Connect with a licensed life insurance professional who understands military life. Term, whole, universal, and final expense options.",
+      "Connect with a licensed life insurance professional in your state. Term, whole, universal, and final expense options available.",
     url: "/protect",
   },
 };

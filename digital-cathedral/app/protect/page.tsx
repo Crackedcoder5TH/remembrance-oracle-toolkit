@@ -209,7 +209,7 @@ export default function ProtectPage() {
 
         <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
           <p>The kingdom protects what matters. Remember.</p>
-          <p>&copy; {new Date().getFullYear()} [Company Name]. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
         </footer>
       </main>
     );
@@ -217,17 +217,20 @@ export default function ProtectPage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
-      {/* Header */}
+      {/* Section 1: Hero — Above the Fold */}
       <header className="text-center mb-10">
         <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           The Protection Covenant
         </div>
         <h1 className="text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4">
-          Protect Your Legacy
+          Protect Your Family Beyond Basic Military Coverage.
         </h1>
-        <p className="text-[var(--text-muted)] max-w-md mx-auto text-sm leading-relaxed">
-          Speak your intention. Tell us about yourself, and a licensed life insurance
-          professional will connect with you to explore the coverage that fits your needs.
+        <p className="text-[var(--text-muted)] max-w-lg mx-auto text-sm leading-relaxed mb-3">
+          Life insurance options for Active Duty, National Guard, Reserve, and Veterans
+          — made clear and simple.
+        </p>
+        <p className="text-emerald-accent text-xs tracking-wide font-medium">
+          Founded by a Veteran. Built to Serve Military Families.
         </p>
       </header>
 
@@ -442,9 +445,10 @@ export default function ProtectPage() {
                 aria-busy={loading}
                 className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {loading ? "Submitting..." : "Protect My Legacy"}
+                {loading ? "Submitting..." : "Request My Coverage Review"}
               </button>
             </div>
+            <p className="text-center text-xs text-[var(--text-muted)] mt-2">No pressure. No obligation. Just clear options.</p>
           </div>
         )}
       </form>
@@ -452,7 +456,7 @@ export default function ProtectPage() {
       {/* Below-Form Disclaimers */}
       <div className="w-full max-w-lg mt-6 space-y-3 text-xs text-[var(--text-muted)] leading-relaxed">
         <p>
-          <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by [Company Name]
+          <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by Digital Cathedral
           and is not an insurance company, insurance agent, or insurance broker. We do not provide insurance
           quotes, bind insurance coverage, or provide insurance advice of any kind. Your information will
           be shared with one or more licensed insurance professionals who may contact you. Any insurance
@@ -472,6 +476,198 @@ export default function ProtectPage() {
         </a>
       </div>
 
+      {/* ═══════════════════════════════════════════════════════
+          Section 2: The Gap Most Don't Realize Exists
+          Oracle: GENERATE (0.380) — no matching pattern
+          ═══════════════════════════════════════════════════════ */}
+      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="gap-heading">
+        <h2 id="gap-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6">
+          Your Service Protects Others. But Is Your Family Fully Protected?
+        </h2>
+        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 text-left max-w-xl mx-auto">
+          <p>
+            Many service members rely solely on SGLI or assume their coverage will always be enough.
+          </p>
+          <p>
+            But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
+          </p>
+          <p className="font-medium text-[var(--text-primary)]">Whether you&rsquo;re:</p>
+          <ul className="grid grid-cols-2 gap-2 text-[var(--text-primary)] text-sm">
+            {["Active Duty", "National Guard", "Reserve", "Transitioning out", "Fully separated"].map((item) => (
+              <li key={item} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-accent flex-shrink-0" aria-hidden="true" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <p>
+            It&rsquo;s important to understand what options exist beyond basic military coverage.
+          </p>
+          <p className="italic text-[var(--text-primary)]">
+            This isn&rsquo;t about replacing anything.<br />
+            It&rsquo;s about understanding your full protection picture.
+          </p>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          Section 3: Veteran-Founded. Mission-Driven.
+          Oracle: GENERATE (0.374) — no matching pattern
+          ═══════════════════════════════════════════════════════ */}
+      <section className="w-full max-w-2xl mt-20 px-4" aria-labelledby="veteran-founded-heading">
+        <h2 id="veteran-founded-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6 text-center">
+          Founded by a Veteran. Dedicated to Serving Those Who Served.
+        </h2>
+
+        {/* Photo placeholder */}
+        <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-soft-gray border-2 border-emerald-accent/20 flex items-center justify-center">
+          <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        </div>
+
+        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 max-w-xl mx-auto">
+          <p>
+            As a veteran, I understand the responsibility that comes with wearing the uniform
+            — and the responsibility that continues after it comes off.
+          </p>
+          <p>
+            After serving, I saw how many military families weren&rsquo;t fully informed about
+            their life insurance options outside of standard military coverage.
+          </p>
+          <p className="text-[var(--text-primary)] font-medium">
+            This platform was created as a bridge.
+          </p>
+          <p>
+            When you request a review, we connect you with trusted, independent, licensed
+            insurance professionals who understand the unique needs of military families.
+          </p>
+          <p className="italic text-[var(--text-primary)]">
+            This is personal.<br />
+            Service doesn&rsquo;t end at separation — and neither should protection.
+          </p>
+          <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-navy-cathedral/8">
+            We are not affiliated with the U.S. Government or Department of Defense. We connect
+            individuals with independent, licensed insurance professionals.
+          </p>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          Section 4: How It Works
+          Oracle: GENERATE (0.374) — no matching pattern
+          ═══════════════════════════════════════════════════════ */}
+      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="how-it-works-heading">
+        <h2 id="how-it-works-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8">
+          Simple. Structured. Secure.
+        </h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { step: "1", title: "Submit", desc: "Submit a short, secure form." },
+            { step: "2", title: "Connect", desc: "We connect you with a licensed professional experienced in military family coverage." },
+            { step: "3", title: "Review", desc: "Review your options and decide what\u2019s right for your family." },
+          ].map((item) => (
+            <div key={item.step} className="cathedral-surface p-6 text-center">
+              <div className="w-10 h-10 rounded-full bg-emerald-accent text-white flex items-center justify-center text-sm font-medium mx-auto mb-3">
+                {item.step}
+              </div>
+              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-[var(--text-muted)] mt-6 italic">
+          No pressure. No obligation. Just clarity.
+        </p>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          Section 5: Who This Is For
+          Oracle: GENERATE (0.360) — no matching pattern
+          ═══════════════════════════════════════════════════════ */}
+      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="who-heading">
+        <h2 id="who-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-3">
+          Serving Every Stage of Service.
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] mb-8">This resource is built for:</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {[
+            "Active Duty Service Members",
+            "National Guard",
+            "Reserve Members",
+            "Veterans",
+            "Military Families",
+            "Transitioning Service Members",
+          ].map((category) => (
+            <div key={category} className="cathedral-surface p-4 text-center">
+              <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-[var(--text-primary)] mt-6 font-medium">
+          If you&rsquo;ve served — this is for you.
+        </p>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          Section 6: Frequently Asked Questions
+          Oracle: GENERATE (0.373) — no matching pattern
+          ═══════════════════════════════════════════════════════ */}
+      <section className="w-full max-w-2xl mt-20 px-4" aria-labelledby="faq-heading">
+        <h2 id="faq-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8 text-center">
+          Frequently Asked Questions
+        </h2>
+        <div className="space-y-6 max-w-xl mx-auto">
+          {[
+            {
+              q: "Is this the same as SGLI?",
+              a: "No. This is a review of additional or alternative life insurance options available outside standard military coverage.",
+            },
+            {
+              q: "Is this affiliated with the military?",
+              a: "No. This platform is independently operated and not affiliated with the U.S. Government or Department of Defense.",
+            },
+            {
+              q: "Is there an obligation to purchase?",
+              a: "No. Requesting a review simply connects you with a licensed professional to explore your options.",
+            },
+            {
+              q: "Are veterans eligible?",
+              a: "Yes. Many options are available for veterans, including those who have separated from service.",
+            },
+          ].map((item) => (
+            <div key={item.q} className="border-b border-navy-cathedral/8 pb-4">
+              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.q}</h3>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════
+          Section 7: Final Call to Action
+          Oracle: GENERATE (0.376) — no matching pattern
+          ═══════════════════════════════════════════════════════ */}
+      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="final-cta-heading">
+        <h2 id="final-cta-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-4">
+          Your Service Meant Something. So Does Your Family&rsquo;s Security.
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-2">
+          You&rsquo;ve protected others.
+        </p>
+        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-8">
+          Now let&rsquo;s make sure your family is protected too.
+        </p>
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="px-8 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+        >
+          Start My Coverage Review
+        </button>
+        <p className="text-xs text-[var(--text-muted)] mt-3">Takes less than 60 seconds.</p>
+      </section>
+
       {/* Trust Signals — Social Proof & How It Works */}
       <div className="w-full flex justify-center mt-16 px-4">
         <TrustSignals />
@@ -484,8 +680,7 @@ export default function ProtectPage() {
           <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
           <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Home</a>
         </nav>
-        <p>The kingdom protects what matters. Remember.</p>
-        <p>&copy; {new Date().getFullYear()} [Company Name]. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>
     </main>
   );

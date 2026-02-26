@@ -5,8 +5,42 @@ import type { CoherenceResponse, WhisperEntry } from "@cathedral/shared";
 
 const HISTORY_KEY = "cathedral-whisper-history";
 const THEME_KEY = "cathedral-theme";
+const FAVORITES_KEY = "cathedral-favorites";
+const SESSION_KEY = "cathedral-session";
 const MAX_HISTORY = 50;
 const MIN_PROMPT_LENGTH = 3;
+
+// ─── Session awareness ──────────────────────────────────────────────
+interface SessionData {
+  visitCount: number;
+  firstVisit: number;
+  lastVisit: number;
+  lastCoherence: number | null;
+}
+
+function loadSession(): SessionData {
+  if (typeof window === "undefined") return { visitCount: 0, firstVisit: Date.now(), lastVisit: Date.now(), lastCoherence: null };
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { visitCount: 0, firstVisit: Date.now(), lastVisit: Date.now(), lastCoherence: null };
+}
+
+function saveSession(data: SessionData): void {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(data)); } catch {}
+}
+
+function getWelcomeMessage(session: SessionData): string | null {
+  if (session.visitCount <= 1) return null;
+  const daysSince = Math.floor((Date.now() - session.lastVisit) / 86400000);
+  const visits = session.visitCount;
+  if (daysSince > 30) return `The cathedral has waited ${daysSince} days. Welcome home.`;
+  if (daysSince > 7) return "You return after a silence. The oracle remembers.";
+  if (visits >= 20) return "A devoted seeker. The oracle greets you by resonance.";
+  if (visits >= 5) return "Welcome back. Your patterns are remembered.";
+  return "The oracle recognizes you. Continue your inquiry.";
+}
 
 // ─── Toast Types ──────────────────────────────────────────────────────
 
@@ -60,6 +94,54 @@ function debounce<T extends (...args: Parameters<T>) => void>(
     clearTimeout(timer);
     timer = setTimeout(() => fn.apply(this, args), delay);
   };
+}
+
+// ─── Focus Trap hook (a11y) ───────────────────────────────────────────
+function useFocusTrap(active: boolean) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    previousFocusRef.current = document.activeElement as HTMLElement;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      const focusable = container!.querySelectorAll<HTMLElement>(focusableSelector);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    // Auto-focus first focusable element
+    const first = container.querySelector<HTMLElement>(focusableSelector);
+    if (first) setTimeout(() => first.focus(), 50);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [active]);
+
+  return containerRef;
 }
 
 // ─── Whisper pools keyed by coherency tier ───────────────────────────
@@ -142,6 +224,22 @@ function saveHistory(entries: WhisperEntry[]): void {
       HISTORY_KEY,
       JSON.stringify(entries.slice(0, MAX_HISTORY))
     );
+  } catch {}
+}
+
+function loadFavorites(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveFavorites(favs: Set<string>): void {
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favs]));
   } catch {}
 }
 
@@ -301,6 +399,15 @@ function CommandPalette({
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const trapRef = useFocusTrap(open);
+
+  // Prevent background scroll while palette is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [open]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -312,7 +419,7 @@ function CommandPalette({
     if (open) {
       setQuery("");
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => inputRef.current?.focus(), 80);
     }
   }, [open]);
 
@@ -339,7 +446,7 @@ function CommandPalette({
 
   return (
     <div className="cmd-palette-overlay" onClick={onClose} role="dialog" aria-label="Command palette" aria-modal="true">
-      <div className="cmd-palette-box animate-fade-in" onClick={(e) => e.stopPropagation()} onKeyDown={handleKeyDown}>
+      <div ref={trapRef} className="cmd-palette-box animate-fade-in" onClick={(e) => e.stopPropagation()} onKeyDown={handleKeyDown}>
         <input
           ref={inputRef}
           type="text"
@@ -354,17 +461,18 @@ function CommandPalette({
             <div className="px-4 py-3 text-xs text-[var(--text-muted)]">No matching commands</div>
           ) : (
             filtered.map((item, i) => (
-              <div
+              <button
                 key={item.id}
                 role="option"
                 aria-selected={i === selectedIndex}
                 data-selected={i === selectedIndex}
                 className="cmd-palette-item"
                 onClick={() => { item.action(); onClose(); }}
+                tabIndex={-1}
               >
                 <span>{item.label}</span>
                 {item.shortcut && <span className="cmd-palette-item-key">{item.shortcut}</span>}
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -504,13 +612,21 @@ function CopyButton({
 
 // ─── Share Buttons ──────────────────────────────────────────────────
 
+function buildShareLink(whisperText: string, coherence: number, inputHash: string): string {
+  const data = { w: whisperText, c: coherence, h: inputHash, t: Date.now() };
+  const encoded = btoa(JSON.stringify(data));
+  return `${window.location.origin}/whisper#${encoded}`;
+}
+
 function ShareButtons({
   whisperText,
   coherence,
+  inputHash,
   onToast,
 }: {
   whisperText: string;
   coherence: number;
+  inputHash?: string;
   onToast?: (msg: string, type: ToastType) => void;
 }) {
   const shareText = `"${whisperText}" — Coherence ${coherence.toFixed(3)} | Digital Cathedral`;
@@ -521,8 +637,29 @@ function ShareButtons({
     onToast?.("Opened share dialog", "info");
   }
 
+  function copyShareLink() {
+    const link = buildShareLink(whisperText, coherence, inputHash || "");
+    navigator.clipboard.writeText(link).then(() => {
+      onToast?.("Share link copied!", "success");
+    }).catch(() => {
+      onToast?.("Failed to copy link", "error");
+    });
+  }
+
   return (
     <div className="flex items-center gap-2">
+      <button
+        onClick={copyShareLink}
+        aria-label="Copy shareable link"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs transition-all cathedral-btn
+          text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+        <span>Link</span>
+      </button>
       <button
         onClick={shareOnX}
         aria-label="Share on X"
@@ -629,6 +766,7 @@ function Navbar({
   onCmdOpen: () => void;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuRef = useFocusTrap(mobileOpen);
 
   const navItems: { id: Section; label: string; count?: number }[] = [
     { id: "oracle", label: "Oracle" },
@@ -765,7 +903,7 @@ function Navbar({
 
       {/* Mobile dropdown */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-teal-cathedral/10 px-4 py-3 space-y-3 animate-fade-in" role="menu">
+        <div ref={mobileMenuRef} className="md:hidden border-t border-teal-cathedral/10 px-4 py-3 space-y-3 animate-fade-in" role="menu">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -936,6 +1074,10 @@ export default function CathedralHome() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [history, setHistory] = useState<WhisperEntry[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [session, setSession] = useState<SessionData>({ visitCount: 0, firstVisit: Date.now(), lastVisit: Date.now(), lastCoherence: null });
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [solana, setSolana] = useState<SolanaStatus>({
     connected: false,
     slot: null,
@@ -968,6 +1110,16 @@ export default function CathedralHome() {
   // Load history + ping Solana on mount (with abort guard)
   useEffect(() => {
     setHistory(loadHistory());
+    setFavorites(loadFavorites());
+    // Session awareness: increment visit count, update timestamps
+    const prev = loadSession();
+    const updated: SessionData = {
+      ...prev,
+      visitCount: prev.visitCount + 1,
+      lastVisit: prev.visitCount === 0 ? Date.now() : prev.lastVisit,
+    };
+    saveSession(updated);
+    setSession(updated);
     const controller = new AbortController();
     getSolanaStatus(controller.signal)
       .then((data) => setSolana({ connected: data.connected, slot: data.slot }))
@@ -991,14 +1143,20 @@ export default function CathedralHome() {
 
   // Filter history by search (oracle-evolved memoize, from pattern bb674cc519161f62)
   const filteredHistory = useMemo(() => {
+    let result = history;
+    if (showFavoritesOnly) {
+      result = result.filter((e) => favorites.has(e.id));
+    }
     const q = debouncedQuery.trim().toLowerCase();
-    if (!q) return history;
-    return history.filter(
-      (e) =>
-        e.whisper.toLowerCase().includes(q) ||
-        e.input.toLowerCase().includes(q)
-    );
-  }, [debouncedQuery, history]);
+    if (q) {
+      result = result.filter(
+        (e) =>
+          e.whisper.toLowerCase().includes(q) ||
+          e.input.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [debouncedQuery, history, showFavoritesOnly, favorites]);
 
   // Voice input for the oracle form
   const voice = useVoiceInput((text) => {
@@ -1012,6 +1170,8 @@ export default function CathedralHome() {
     { id: "archive", label: "Go to Archive", action: () => { setSection("archive"); setView("oracle"); } },
     { id: "theme", label: "Toggle Theme", shortcut: "T", action: cycleTheme },
     { id: "palette", label: "Cycle Color-blind Palette", shortcut: "P", action: cyclePalette },
+    { id: "export-json", label: "Export History as JSON", action: exportHistoryJSON },
+    { id: "export-csv", label: "Export History as CSV", action: exportHistoryCSV },
     { id: "clear", label: "Clear Whisper History", action: () => { clearHistory(); addToast("Archive cleared", "info"); } },
     { id: "about", label: "About & Contact", action: () => { window.location.href = "/about"; } },
     { id: "privacy", label: "Privacy Policy", action: () => { window.location.href = "/privacy"; } },
@@ -1096,6 +1256,12 @@ export default function CathedralHome() {
       setPrompt("");
       setPromptTouched(false);
       addToast("Whisper received", "success");
+      // Update session with latest coherence and timestamp
+      setSession((prev) => {
+        const next = { ...prev, lastCoherence: data.coherence, lastVisit: Date.now() };
+        saveSession(next);
+        return next;
+      });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       const msg = err instanceof Error ? err.message : "Something went wrong";
@@ -1109,6 +1275,52 @@ export default function CathedralHome() {
   function clearHistory() {
     setHistory([]);
     saveHistory([]);
+    setFavorites(new Set());
+    saveFavorites(new Set());
+  }
+
+  function toggleFavorite(id: string) {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      saveFavorites(next);
+      return next;
+    });
+  }
+
+  function exportHistoryJSON() {
+    if (history.length === 0) return;
+    const data = JSON.stringify(history, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cathedral-whispers-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addToast("Exported as JSON", "success");
+  }
+
+  function exportHistoryCSV() {
+    if (history.length === 0) return;
+    const header = "id,input,whisper,coherence,rating,inputHash,solanaSlot,timestamp";
+    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const rows = history.map((e) =>
+      [e.id, escape(e.input), escape(e.whisper), e.coherence, e.rating, e.inputHash, e.solanaSlot ?? "", e.timestamp].join(",")
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `cathedral-whispers-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    addToast("Exported as CSV", "success");
   }
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1222,6 +1434,32 @@ export default function CathedralHome() {
                 Remembrance Oracle
               </h1>
             </header>
+
+            {/* Welcome-back banner for returning visitors */}
+            {!welcomeDismissed && getWelcomeMessage(session) && (
+              <div className="w-full max-w-lg mb-4 animate-fade-in">
+                <div className="cathedral-surface px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[var(--text-muted)] italic">
+                      {getWelcomeMessage(session)}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-muted)] opacity-60">
+                      <span>Visit #{session.visitCount}</span>
+                      {session.lastCoherence !== null && (
+                        <span>Last coherence: <span className="text-teal-cathedral font-mono">{session.lastCoherence.toFixed(3)}</span></span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setWelcomeDismissed(true)}
+                    className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-xs"
+                    aria-label="Dismiss welcome message"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Coherency Slider with Live Whispers */}
             <section className="w-full max-w-lg cathedral-surface p-4 sm:p-6 md:p-8 mb-6" aria-label="Coherency slider">
@@ -1436,7 +1674,7 @@ export default function CathedralHome() {
                     <div className="text-xs text-[var(--text-muted)]">
                       Share
                     </div>
-                    <ShareButtons whisperText={whisper.whisper} coherence={whisper.coherence} onToast={addToast} />
+                    <ShareButtons whisperText={whisper.whisper} coherence={whisper.coherence} inputHash={whisper.inputHash} onToast={addToast} />
                   </div>
                 </div>
               </div>
@@ -1452,17 +1690,51 @@ export default function CathedralHome() {
                 Whisper Archive
               </h2>
               {history.length > 0 && (
-                <button
-                  onClick={() => {
-                    clearHistory();
-                    addToast("Archive cleared", "info");
-                  }}
-                  className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors cathedral-link"
-                >
-                  Clear All
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={exportHistoryJSON}
+                    className="text-xs text-[var(--text-muted)] hover:text-teal-cathedral transition-colors cathedral-link"
+                    aria-label="Export whisper history as JSON"
+                  >
+                    Export JSON
+                  </button>
+                  <button
+                    onClick={exportHistoryCSV}
+                    className="text-xs text-[var(--text-muted)] hover:text-teal-cathedral transition-colors cathedral-link"
+                    aria-label="Export whisper history as CSV"
+                  >
+                    Export CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      clearHistory();
+                      addToast("Archive cleared", "info");
+                    }}
+                    className="text-xs text-[var(--text-muted)] hover:text-crimson-cathedral transition-colors cathedral-link"
+                  >
+                    Clear All
+                  </button>
+                </div>
               )}
             </div>
+
+            {favorites.size > 0 && (
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  onClick={() => setShowFavoritesOnly((p) => !p)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
+                    showFavoritesOnly
+                      ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                      : "bg-transparent text-[var(--text-muted)] border-[var(--border-subtle)] hover:border-amber-500/30 hover:text-amber-400"
+                  }`}
+                  aria-pressed={showFavoritesOnly}
+                  aria-label={showFavoritesOnly ? "Show all whispers" : "Show favorites only"}
+                >
+                  <span>{showFavoritesOnly ? "★" : "☆"}</span>
+                  Favorites ({favorites.size})
+                </button>
+              </div>
+            )}
 
             {debouncedQuery.trim() && (
               <div className="text-xs text-[var(--text-muted)] mb-3">
@@ -1489,6 +1761,18 @@ export default function CathedralHome() {
                       className="cathedral-surface p-3 sm:p-4 space-y-2"
                     >
                       <div className="flex items-start justify-between gap-2">
+                        <button
+                          onClick={() => toggleFavorite(entry.id)}
+                          className={`shrink-0 text-base transition-colors ${
+                            favorites.has(entry.id)
+                              ? "text-amber-400 hover:text-amber-300"
+                              : "text-[var(--text-muted)] opacity-40 hover:opacity-80 hover:text-amber-400"
+                          }`}
+                          aria-label={favorites.has(entry.id) ? "Remove from favorites" : "Add to favorites"}
+                          aria-pressed={favorites.has(entry.id)}
+                        >
+                          {favorites.has(entry.id) ? "★" : "☆"}
+                        </button>
                         <p className="whisper-text text-sm leading-relaxed flex-1">
                           &ldquo;{entry.whisper}&rdquo;
                         </p>

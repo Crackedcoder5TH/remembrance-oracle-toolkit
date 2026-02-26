@@ -10,13 +10,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Get a Free Life Insurance Quote",
+  title: "Protect Your Family Beyond Basic Military Coverage",
   description:
-    "Tell us about yourself and a licensed life insurance professional in your state will contact you with personalized coverage options. Free, no obligation.",
+    "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.",
   openGraph: {
-    title: "Get a Free Life Insurance Quote — [Company Name]",
+    title: "Protect Your Family Beyond Basic Military Coverage — Digital Cathedral",
     description:
-      "Connect with a licensed life insurance professional in your state. Term, whole, universal, and final expense options available.",
+      "Veteran-founded. Connect with a licensed life insurance professional who understands military family coverage. Term, whole, universal, and final expense options.",
     url: "/protect",
   },
 };

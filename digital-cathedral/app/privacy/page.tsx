@@ -169,6 +169,54 @@ export default function PrivacyPage() {
           </ul>
         </section>
 
+        <section id="do-not-sell" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
+          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+            Do Not Sell or Share My Personal Information
+          </h2>
+          <p>
+            If you submitted information through our{" "}
+            <Link href="/protect" className="text-teal-cathedral hover:underline">
+              protection form
+            </Link>
+            , your contact details may be shared with licensed insurance
+            professionals. Under the California Consumer Privacy Act (CCPA/CPRA)
+            and similar state laws, this may constitute a &ldquo;sale&rdquo; or
+            &ldquo;sharing&rdquo; of personal information.
+          </p>
+          <p>
+            <strong className="text-[var(--text-primary)]">You have the right to opt out.</strong>{" "}
+            To exercise this right:
+          </p>
+          <ul className="list-disc list-inside space-y-2">
+            <li>
+              <strong className="text-[var(--text-primary)]">Email us:</strong>{" "}
+              Send a request to{" "}
+              <a
+                href="mailto:privacy@digital-cathedral.app"
+                className="text-teal-cathedral hover:underline"
+              >
+                privacy@digital-cathedral.app
+              </a>{" "}
+              with the subject line &ldquo;Do Not Sell or Share.&rdquo;
+            </li>
+            <li>
+              <strong className="text-[var(--text-primary)]">Right to Delete:</strong>{" "}
+              You may request deletion of all personal data we hold about you.
+              We will process deletion requests within 15 business days.
+            </li>
+            <li>
+              <strong className="text-[var(--text-primary)]">Right to Know:</strong>{" "}
+              You may request a copy of the personal information we have
+              collected about you in the preceding 12 months.
+            </li>
+          </ul>
+          <p>
+            We will not discriminate against you for exercising any of these
+            rights. Whisper data entered on the main oracle page is hashed and
+            stored locally in your browser — it is not sold or shared.
+          </p>
+        </section>
+
         <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
             Contact

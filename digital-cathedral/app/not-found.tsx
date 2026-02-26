@@ -10,7 +10,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Page Not Found — [Company Name]",
+  title: "Page Not Found — Digital Cathedral",
   description: "The page you're looking for doesn't exist. Let us help you find what you need.",
 };
 

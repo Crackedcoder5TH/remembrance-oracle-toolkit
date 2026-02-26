@@ -46,7 +46,12 @@ export interface LeadRecord {
 }
 
 // --- Database path ---
-const DB_DIR = path.join(process.cwd(), ".cathedral");
+// Vercel serverless has a read-only filesystem — only /tmp is writable.
+// In development, use project-local .cathedral/ directory.
+const IS_VERCEL = !!process.env.VERCEL;
+const DB_DIR = IS_VERCEL
+  ? path.join("/tmp", ".cathedral")
+  : path.join(process.cwd(), ".cathedral");
 const DB_PATH = path.join(DB_DIR, "leads.db");
 
 // --- Singleton connection ---

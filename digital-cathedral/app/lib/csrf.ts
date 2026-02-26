@@ -1,6 +1,5 @@
 /**
- * Drawbridge — CSRF protection for the kingdom.
- * Oracle: GENERATE (0.398) — no existing pattern, write new.
+ * CSRF Protection
  *
  * Double-submit cookie pattern:
  *  1. Server sets a random token in an httpOnly, sameSite=strict cookie

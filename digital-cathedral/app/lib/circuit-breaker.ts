@@ -1,9 +1,6 @@
 /**
  * Circuit Breaker — Fault tolerance for external services
  *
- * Oracle decision: EVOLVE from throttle (0.608, coherency 0.970)
- * Adapted throttle's time-window tracking into failure-window tracking.
- *
  * States:
  *  - CLOSED: Normal operation. Requests pass through.
  *  - OPEN: Too many failures. Requests are rejected immediately.

@@ -1,6 +1,5 @@
 /**
- * Herald System — Structured logging for the kingdom.
- * Oracle: GENERATE (0.359) — no existing pattern, write new.
+ * Structured Logging
  *
  * Features:
  *  - Unique request IDs for tracing

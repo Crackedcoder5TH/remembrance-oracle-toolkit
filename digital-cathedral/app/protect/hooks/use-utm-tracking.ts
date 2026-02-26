@@ -1,6 +1,5 @@
 /**
  * useUtmTracking — Capture and persist UTM parameters across the session.
- * Oracle: GENERATE — no existing pattern in the kingdom.
  *
  * Captures utm_source, utm_medium, utm_campaign, utm_term, utm_content
  * from the URL on first load, persists them in sessionStorage so they

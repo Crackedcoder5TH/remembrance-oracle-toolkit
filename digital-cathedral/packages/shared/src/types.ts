@@ -20,5 +20,5 @@ export interface LeadResponse {
   success: boolean;
   message: string;
   leadId?: string;
-  whisper?: string;
+  confirmationMessage?: string;
 }

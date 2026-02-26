@@ -10,7 +10,7 @@ export default function TermsPage() {
     <main className="min-h-screen px-4 py-12 max-w-3xl mx-auto">
       <header className="mb-10">
         <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
-          Terms of the Covenant
+          Terms of Service
         </div>
         <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
           Terms of Service

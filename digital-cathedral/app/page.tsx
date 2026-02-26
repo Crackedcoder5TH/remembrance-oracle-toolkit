@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * Home Page — Multi-step life insurance lead capture (kingdom perspective).
+ * Home Page — Multi-step life insurance lead capture.
  *
- * Healed by the oracle: monolithic page split into:
+ * Split into:
  *  - useLeadForm hook (multi-step validation, submission, state) → protect/hooks/use-lead-form.ts
  *  - TcpaConsent component (FCC 2025 compliance) → protect/components/tcpa-consent.tsx
- *  - StepProgress component (coherence progression) → protect/components/step-progress.tsx
+ *  - StepProgress component (progress indicator) → protect/components/step-progress.tsx
  *  - This page: composition only
  *
- * Multi-step flow (kingdom coherence model):
+ * Multi-step flow:
  *   Step 1 — Identity:  Name, state, coverage interest (low commitment)
  *   Step 2 — Contact:   Email, phone
  *   Step 3 — Consent:   TCPA + Privacy → submit
@@ -79,7 +79,6 @@ const MILITARY_BRANCH_OPTIONS = [
   { value: "reserves", label: "Reserves" },
 ];
 
-// --- Oracle GENERATE: phone auto-format (0.403, no matching pattern) ---
 // Live formats as user types: (555) 123-4567
 function formatPhoneInput(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 10);
@@ -89,8 +88,7 @@ function formatPhoneInput(value: string): string {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
-// --- Scribe's Quill: auto-capitalize names as user types ---
-// Oracle GENERATE (0.399) — no existing pattern for input masking
+// Auto-capitalize names as user types
 function autoCapitalizeName(value: string): string {
   return value.replace(/(?:^|\s|[-'])([a-z])/g, (match) => match.toUpperCase());
 }
@@ -103,7 +101,7 @@ const SELECT_CLASS = INPUT_CLASS + " appearance-none";
 export default function HomePage() {
   const utm = useUtmTracking();
   const {
-    form, errors, loading, submitted, whisper, leadId, serverError,
+    form, errors, loading, submitted, confirmationMessage, leadId, serverError,
     step, totalSteps,
     updateField, handleSubmit, nextStep, prevStep,
   } = useLeadForm({ ...utm });
@@ -126,8 +124,6 @@ export default function HomePage() {
     }
   }, [step]);
 
-  // --- Thank-You Chamber: post-submission confirmation ---
-  // Oracle GENERATE (0.396) — no existing pattern for post-submission thank-you
   if (submitted) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12" aria-label="Form submission confirmation">
@@ -142,7 +138,7 @@ export default function HomePage() {
 
         <div className="w-full max-w-lg cathedral-surface p-8 cathedral-glow text-center" role="status">
           <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
-            Covenant Received
+            Request Received
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)] mb-3">
             Thank You, {form.firstName}
@@ -151,7 +147,7 @@ export default function HomePage() {
             Your Legacy is Being Protected
           </p>
           <p className="text-emerald-accent italic opacity-90 text-base leading-relaxed mb-8">
-            &ldquo;{whisper}&rdquo;
+            &ldquo;{confirmationMessage}&rdquo;
           </p>
 
           {/* Reference number */}
@@ -220,7 +216,7 @@ export default function HomePage() {
       {/* Section 1: Hero — Above the Fold */}
       <header className="text-center mb-10">
         <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
-          The Protection Covenant
+          Protect What Matters Most
         </div>
         <h1 className="text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4">
           Protect Your Family Beyond Basic Military Coverage.

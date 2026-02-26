@@ -1,6 +1,5 @@
 /**
- * Armory — API request validation schemas for the kingdom.
- * Oracle: GENERATE (0.400) — no existing pattern, write new.
+ * API Request Validation
  *
  * Zero-dependency validation. Defines typed schemas for API payloads.
  * Returns structured errors so the API can respond with specific field messages.

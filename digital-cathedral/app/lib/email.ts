@@ -1,8 +1,5 @@
 /**
- * Lead Confirmation Email — Kingdom Messenger
- *
- * Oracle decision: GENERATE (no existing email pattern)
- * Evolved from: retry-async (PULL) for delivery retry
+ * Lead Confirmation Email
  *
  * Transactional email system with two modes:
  *  1. SMTP transport — when SMTP_HOST is configured (production)
@@ -19,7 +16,7 @@
 
 import { withCircuitBreaker, CircuitOpenError } from "./circuit-breaker";
 
-// --- Oracle-pulled: retry-async (coherency 1.000) for delivery retry ---
+// --- Retry with exponential backoff for delivery ---
 async function retry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 2,
@@ -156,7 +153,7 @@ export async function sendLeadConfirmationEmail(lead: {
     `This email was sent because a form was submitted with this email address at ${companyName}. If you believe this was sent in error, please disregard this message.`,
   ].join("\n");
 
-  // Messenger Relay: Branded email template with kingdom palette
+  // Branded HTML email template
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
   const html = `
 <!DOCTYPE html>
@@ -223,9 +220,7 @@ export async function sendLeadConfirmationEmail(lead: {
 }
 
 /**
- * Messenger Relay: Admin notification email when a new lead arrives.
- * Oracle: GENERATE — no existing pattern for admin notification emails.
- *
+ * Admin notification email when a new lead arrives.
  * Sends to ADMIN_EMAIL (env var) with lead details, score, and tier.
  */
 export async function sendAdminNotificationEmail(lead: {

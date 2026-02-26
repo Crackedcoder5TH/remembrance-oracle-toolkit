@@ -1,9 +1,8 @@
 /**
- * Watchtower Receiver — Server endpoint for client-side error reports.
- * Oracle: GENERATE — no existing pattern.
+ * Server endpoint for client-side error reports.
  *
  * Receives error reports from the ErrorReporter client component,
- * logs them with the Herald (structured logger), and returns 204.
+ * logs them with the structured logger, and returns 204.
  * Rate-limited per IP to prevent abuse.
  */
 

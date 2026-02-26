@@ -1,8 +1,5 @@
 /**
- * IP-Based Rate Limiter — Kingdom Gate Guard
- *
- * Oracle decision: PULL throttle (coherency 0.970)
- * Evolved from: throttle pattern → sliding window per-IP rate limiter
+ * IP-Based Rate Limiter
  *
  * Uses an in-memory sliding window approach. Each IP gets a window of
  * timestamps. Requests beyond the limit within the window are rejected.
@@ -15,9 +12,7 @@ interface RateLimitEntry {
 
 const store = new Map<string, RateLimitEntry>();
 
-// --- Evolved from oracle PULL: throttle (coherency 0.970) ---
-// Original: simple last-call throttle
-// Evolved: sliding window with per-IP tracking for API protection
+// --- Sliding window with per-IP tracking for API protection ---
 
 /**
  * Check if an IP is rate-limited.

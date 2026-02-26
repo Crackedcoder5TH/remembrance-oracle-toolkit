@@ -3,9 +3,7 @@ import { verifyAdmin } from "@/app/lib/admin-auth";
 import { getLeadStats } from "@/app/lib/database";
 
 /**
- * Admin Stats API — Kingdom Metrics
- *
- * Oracle decision: GENERATE
+ * Admin Stats API
  *
  * GET /api/admin/stats
  * Returns aggregate lead statistics for the dashboard.

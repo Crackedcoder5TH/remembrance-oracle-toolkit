@@ -1,7 +1,5 @@
 /**
- * Admin Authentication — Kingdom Gate
- *
- * Oracle decision: GENERATE (auth-plugin 0.840 too distant to EVOLVE)
+ * Admin Authentication
  *
  * Simple bearer token authentication for admin API routes.
  * Production-ready: token is set via ADMIN_API_KEY environment variable.

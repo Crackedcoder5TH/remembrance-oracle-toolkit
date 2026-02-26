@@ -1,8 +1,5 @@
 /**
- * Health Check — The Kingdom's Pulse
- *
- * Oracle decision: GENERATE (0.370) — no existing pattern, write new
- * Alternative noted: database (0.582) — integrated for DB connectivity check
+ * Health Check
  *
  * Returns system health status for uptime monitoring.
  * Checks: database connectivity, uptime, memory usage.

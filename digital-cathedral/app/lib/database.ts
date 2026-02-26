@@ -1,8 +1,5 @@
 /**
- * Lead Database — Kingdom Persistence Layer
- *
- * Oracle decision: GENERATE (no existing DB pattern)
- * Evolved from: result-type-ts (EVOLVE, coherency 1.000)
+ * Lead Database — Persistence Layer
  *
  * Uses better-sqlite3 for synchronous, embedded SQLite storage.
  * Stores leads with full TCPA consent records for compliance.
@@ -10,7 +7,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 
-// --- Evolved from oracle pattern: result-type-ts ---
+// --- Result type for typed error handling ---
 type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
 
 function Ok<T>(value: T): Result<T, never> {

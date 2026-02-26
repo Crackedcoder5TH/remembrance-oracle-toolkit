@@ -2,7 +2,6 @@
 
 /**
  * CookieConsent — CCPA/CPRA compliant cookie consent banner.
- * Oracle: GENERATE — no existing pattern in the kingdom.
  *
  * Compliance coverage:
  *  - California (CCPA/CPRA) — opt-out of sale/sharing

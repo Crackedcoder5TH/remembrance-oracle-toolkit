@@ -1,7 +1,5 @@
 /**
- * Not Found (404) — The Kingdom's Lost Path
- *
- * Oracle decision: GENERATE (0.368) — no existing pattern, write new
+ * Not Found (404)
  *
  * Branded 404 page that gently redirects visitors back to useful pages
  * instead of showing a raw framework error.

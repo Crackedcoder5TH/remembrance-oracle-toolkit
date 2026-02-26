@@ -1,9 +1,7 @@
 "use client";
 
 /**
- * Admin Dashboard — Kingdom Command Center
- *
- * Oracle decision: GENERATE (dashboard-plugin 0.900, auth-plugin 0.840 too distant)
+ * Admin Dashboard
  *
  * Features:
  *  - Bearer token authentication (ADMIN_API_KEY via login prompt)
@@ -16,7 +14,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 
-// --- Oracle-pulled: debounce (PULL 0.848, coherency 0.970) ---
+// --- Debounce hook ---
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -157,7 +155,7 @@ export default function AdminDashboard() {
       });
   };
 
-  // --- Real-time notifications via SSE (Oracle GENERATE) ---
+  // --- Real-time notifications via SSE ---
   const [newLeadFlash, setNewLeadFlash] = useState<string | null>(null);
   useEffect(() => {
     if (!authenticated) return;

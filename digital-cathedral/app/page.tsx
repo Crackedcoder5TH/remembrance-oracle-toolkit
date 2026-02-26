@@ -63,6 +63,54 @@ function debounce<T extends (...args: Parameters<T>) => void>(
   };
 }
 
+// ─── Focus Trap hook (a11y) ───────────────────────────────────────────
+function useFocusTrap(active: boolean) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!active) return;
+    previousFocusRef.current = document.activeElement as HTMLElement;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+      const focusable = container!.querySelectorAll<HTMLElement>(focusableSelector);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    // Auto-focus first focusable element
+    const first = container.querySelector<HTMLElement>(focusableSelector);
+    if (first) setTimeout(() => first.focus(), 50);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [active]);
+
+  return containerRef;
+}
+
 // ─── Whisper pools keyed by coherency tier ───────────────────────────
 const SLIDER_WHISPERS: Record<string, string[]> = {
   low: [
@@ -318,6 +366,15 @@ function CommandPalette({
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const trapRef = useFocusTrap(open);
+
+  // Prevent background scroll while palette is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [open]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -329,7 +386,7 @@ function CommandPalette({
     if (open) {
       setQuery("");
       setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => inputRef.current?.focus(), 80);
     }
   }, [open]);
 
@@ -356,7 +413,7 @@ function CommandPalette({
 
   return (
     <div className="cmd-palette-overlay" onClick={onClose} role="dialog" aria-label="Command palette" aria-modal="true">
-      <div className="cmd-palette-box animate-fade-in" onClick={(e) => e.stopPropagation()} onKeyDown={handleKeyDown}>
+      <div ref={trapRef} className="cmd-palette-box animate-fade-in" onClick={(e) => e.stopPropagation()} onKeyDown={handleKeyDown}>
         <input
           ref={inputRef}
           type="text"
@@ -371,17 +428,18 @@ function CommandPalette({
             <div className="px-4 py-3 text-xs text-[var(--text-muted)]">No matching commands</div>
           ) : (
             filtered.map((item, i) => (
-              <div
+              <button
                 key={item.id}
                 role="option"
                 aria-selected={i === selectedIndex}
                 data-selected={i === selectedIndex}
                 className="cmd-palette-item"
                 onClick={() => { item.action(); onClose(); }}
+                tabIndex={-1}
               >
                 <span>{item.label}</span>
                 {item.shortcut && <span className="cmd-palette-item-key">{item.shortcut}</span>}
-              </div>
+              </button>
             ))
           )}
         </div>
@@ -646,6 +704,7 @@ function Navbar({
   onCmdOpen: () => void;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobileMenuRef = useFocusTrap(mobileOpen);
 
   const navItems: { id: Section; label: string; count?: number }[] = [
     { id: "oracle", label: "Oracle" },
@@ -782,7 +841,7 @@ function Navbar({
 
       {/* Mobile dropdown */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-teal-cathedral/10 px-4 py-3 space-y-3 animate-fade-in" role="menu">
+        <div ref={mobileMenuRef} className="md:hidden border-t border-teal-cathedral/10 px-4 py-3 space-y-3 animate-fade-in" role="menu">
           {navItems.map((item) => (
             <button
               key={item.id}

@@ -6,8 +6,41 @@ import type { CoherenceResponse, WhisperEntry } from "@cathedral/shared";
 const HISTORY_KEY = "cathedral-whisper-history";
 const THEME_KEY = "cathedral-theme";
 const FAVORITES_KEY = "cathedral-favorites";
+const SESSION_KEY = "cathedral-session";
 const MAX_HISTORY = 50;
 const MIN_PROMPT_LENGTH = 3;
+
+// ─── Session awareness ──────────────────────────────────────────────
+interface SessionData {
+  visitCount: number;
+  firstVisit: number;
+  lastVisit: number;
+  lastCoherence: number | null;
+}
+
+function loadSession(): SessionData {
+  if (typeof window === "undefined") return { visitCount: 0, firstVisit: Date.now(), lastVisit: Date.now(), lastCoherence: null };
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { visitCount: 0, firstVisit: Date.now(), lastVisit: Date.now(), lastCoherence: null };
+}
+
+function saveSession(data: SessionData): void {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(data)); } catch {}
+}
+
+function getWelcomeMessage(session: SessionData): string | null {
+  if (session.visitCount <= 1) return null;
+  const daysSince = Math.floor((Date.now() - session.lastVisit) / 86400000);
+  const visits = session.visitCount;
+  if (daysSince > 30) return `The cathedral has waited ${daysSince} days. Welcome home.`;
+  if (daysSince > 7) return "You return after a silence. The oracle remembers.";
+  if (visits >= 20) return "A devoted seeker. The oracle greets you by resonance.";
+  if (visits >= 5) return "Welcome back. Your patterns are remembered.";
+  return "The oracle recognizes you. Continue your inquiry.";
+}
 
 // ─── Toast Types ──────────────────────────────────────────────────────
 
@@ -1014,6 +1047,8 @@ export default function CathedralHome() {
   const [history, setHistory] = useState<WhisperEntry[]>([]);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [session, setSession] = useState<SessionData>({ visitCount: 0, firstVisit: Date.now(), lastVisit: Date.now(), lastCoherence: null });
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [solana, setSolana] = useState<SolanaStatus>({
     connected: false,
     slot: null,
@@ -1047,6 +1082,15 @@ export default function CathedralHome() {
   useEffect(() => {
     setHistory(loadHistory());
     setFavorites(loadFavorites());
+    // Session awareness: increment visit count, update timestamps
+    const prev = loadSession();
+    const updated: SessionData = {
+      ...prev,
+      visitCount: prev.visitCount + 1,
+      lastVisit: prev.visitCount === 0 ? Date.now() : prev.lastVisit,
+    };
+    saveSession(updated);
+    setSession(updated);
     const controller = new AbortController();
     getSolanaStatus(controller.signal)
       .then((data) => setSolana({ connected: data.connected, slot: data.slot }))
@@ -1183,6 +1227,12 @@ export default function CathedralHome() {
       setPrompt("");
       setPromptTouched(false);
       addToast("Whisper received", "success");
+      // Update session with latest coherence and timestamp
+      setSession((prev) => {
+        const next = { ...prev, lastCoherence: data.coherence, lastVisit: Date.now() };
+        saveSession(next);
+        return next;
+      });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
       const msg = err instanceof Error ? err.message : "Something went wrong";
@@ -1355,6 +1405,32 @@ export default function CathedralHome() {
                 Remembrance Oracle
               </h1>
             </header>
+
+            {/* Welcome-back banner for returning visitors */}
+            {!welcomeDismissed && getWelcomeMessage(session) && (
+              <div className="w-full max-w-lg mb-4 animate-fade-in">
+                <div className="cathedral-surface px-4 py-3 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-[var(--text-muted)] italic">
+                      {getWelcomeMessage(session)}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-muted)] opacity-60">
+                      <span>Visit #{session.visitCount}</span>
+                      {session.lastCoherence !== null && (
+                        <span>Last coherence: <span className="text-teal-cathedral font-mono">{session.lastCoherence.toFixed(3)}</span></span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setWelcomeDismissed(true)}
+                    className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-xs"
+                    aria-label="Dismiss welcome message"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Coherency Slider with Live Whispers */}
             <section className="w-full max-w-lg cathedral-surface p-4 sm:p-6 md:p-8 mb-6" aria-label="Coherency slider">

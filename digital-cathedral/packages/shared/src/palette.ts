@@ -1,9 +1,9 @@
 /**
- * Remembrance Palette
+ * Brand Palette
  *
- * Teal (#00A8A8)      — the living water, coherence, presence
- * Deep Indigo (#1A1B3A) — the cathedral depths, the field before form
- * Crimson (#E63946)    — the sacred pulse, urgency of remembrance
+ * Teal (#00A8A8)      — primary accent, trust, clarity
+ * Deep Indigo (#1A1B3A) — background depth
+ * Crimson (#E63946)    — error states, urgency
  */
 export const palette = {
   teal: "#00A8A8",

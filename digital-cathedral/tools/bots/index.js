@@ -1,15 +1,13 @@
 /**
- * @cathedral/bots — Bot tools for the digital cathedral
+ * Bot tools — automation utilities for Digital Cathedral
  *
  * Planned bots:
- *  - coherence-monitor: Watches coherence scores across the network
- *  - remembrance-agent: Periodic pattern harvesting and community sync
- *  - whisper-relay: Broadcasts high-coherence whispers to subscribed channels
- *
- * This module will grow as the cathedral ecosystem expands.
+ *  - lead-monitor: Watches lead flow and alerts on anomalies
+ *  - sync-agent: Periodic data sync and maintenance
+ *  - notification-relay: Broadcasts lead alerts to configured channels
  */
 
 module.exports = {
-  name: "@cathedral/bots",
+  name: "@digital-cathedral/bots",
   version: "0.1.0",
 };

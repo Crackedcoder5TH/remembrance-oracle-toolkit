@@ -1,5 +1,5 @@
 /**
- * CSRF Token Endpoint — The Drawbridge gate.
+ * CSRF Token Endpoint.
  *
  * GET /api/csrf → returns a fresh CSRF token and sets it as an httpOnly cookie.
  * The client must send this token as X-CSRF-Token header on mutating requests.

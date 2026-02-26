@@ -113,45 +113,6 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
-  .whisper-text {
-    color: var(--emerald);
-    font-style: italic;
-    opacity: 0.9;
-  }
-
-  .coherence-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--emerald);
-    cursor: pointer;
-    box-shadow: 0 0 10px var(--glow-emerald);
-  }
-
-  .coherence-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--emerald);
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 0 10px var(--glow-emerald);
-  }
-
-  .coherence-slider {
-    appearance: none;
-    width: 100%;
-    height: 4px;
-    border-radius: 2px;
-    background: linear-gradient(
-      to right,
-      var(--sage),
-      var(--emerald)
-    );
-    outline: none;
-  }
-
   .pulse-gentle {
     animation: gentle-pulse 3s ease-in-out infinite;
   }
@@ -560,7 +521,7 @@
   font-family: monospace;
 }
 
-/* Whisper fade transition — used via inline classes */
+/* Utility transition duration */
 .duration-600 {
   transition-duration: 600ms;
 }

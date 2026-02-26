@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// once is available via oracle sandbox concatenation
+// once is available via isolated sandbox concatenation
 
 describe('once', () => {
   it('should call the function only once', () => {

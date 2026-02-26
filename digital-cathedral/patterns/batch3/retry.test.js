@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// retry is available via oracle sandbox concatenation
+// retry is available via isolated sandbox concatenation
 
 describe('retry', () => {
   it('should resolve on first attempt if fn succeeds', async () => {

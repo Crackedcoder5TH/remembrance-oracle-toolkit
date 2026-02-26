@@ -2,9 +2,8 @@
 
 /**
  * TrustSignals — Social proof, trust badges, and "How it works" section.
- * Oracle: GENERATE — no existing pattern in the kingdom.
  *
- * Banner Hall enhancement (Oracle GENERATE 0.383):
+ * Features:
  *  - Rotating testimonials with smooth fade transitions
  *  - Live activity counter ("X people requested quotes today")
  *  - Trust badges with staggered entrance animations
@@ -18,7 +17,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-// --- Live Activity Counter (Banner Hall) ---
+// --- Live Activity Counter ---
 function LiveActivityCounter() {
   const [count, setCount] = useState(0);
   const [visible, setVisible] = useState(false);
@@ -150,7 +149,7 @@ function HowItWorks() {
   );
 }
 
-// --- Rotating Testimonials (Banner Hall) ---
+// --- Rotating Testimonials ---
 const TESTIMONIALS = [
   {
     quote:

@@ -1,11 +1,5 @@
 /**
- * StepProgress — Multi-step form progress indicator with coherence visualization.
- * Oracle: GENERATE — no existing pattern in the kingdom.
- *
- * Maps the kingdom's coherence model to form steps:
- *   Step 1 (identity)  → coherence 0.33 — "The signal is forming..."
- *   Step 2 (contact)   → coherence 0.66 — "The outline is forming..."
- *   Step 3 (consent)   → coherence 1.00 — "Coherence confirmed."
+ * StepProgress — Multi-step form progress indicator.
  */
 
 interface StepProgressProps {
@@ -15,10 +9,10 @@ interface StepProgressProps {
 
 const STEP_LABELS = ["Identity", "Contact", "Consent"];
 
-const STEP_WHISPERS = [
-  "Begin with who you are...",
-  "The outline is forming. Keep going...",
-  "Almost there. Seal the covenant...",
+const STEP_HINTS = [
+  "Tell us about yourself...",
+  "How can we reach you?",
+  "Review and submit your request...",
 ];
 
 export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
@@ -26,9 +20,9 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
 
   return (
     <div className="w-full space-y-3" role="navigation" aria-label="Form progress">
-      {/* Whisper for current step */}
-      <p className="whisper-text text-xs text-center" aria-hidden="true">
-        &ldquo;{STEP_WHISPERS[currentStep]}&rdquo;
+      {/* Hint for current step */}
+      <p className="text-xs text-center text-[var(--text-muted)]" aria-hidden="true">
+        {STEP_HINTS[currentStep]}
       </p>
 
       {/* Step indicators */}
@@ -59,7 +53,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
         ))}
       </ol>
 
-      {/* Coherence bar */}
+      {/* Progress bar */}
       <div
         className="w-full h-1 rounded-full bg-soft-gray overflow-hidden"
         role="progressbar"

@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// timeoutPromise is available via oracle sandbox concatenation
+// timeoutPromise is available via isolated sandbox concatenation
 
 describe('timeoutPromise', () => {
   it('should resolve if promise settles before timeout', async () => {

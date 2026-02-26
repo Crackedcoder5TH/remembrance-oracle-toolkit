@@ -1,8 +1,6 @@
 /**
  * Lead Event Bus — Real-time notification system
  *
- * Oracle decision: GENERATE (websocket 0.649 too distant, SSE more appropriate for Next.js)
- *
  * Uses Server-Sent Events (SSE) for real-time admin notifications.
  * When a new lead is created, all connected admin dashboards receive
  * the update instantly without polling.

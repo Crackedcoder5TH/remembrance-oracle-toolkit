@@ -1,5 +1,5 @@
 // Digital Cathedral — Service Worker (PWA offline support)
-const CACHE_NAME = "cathedral-v1";
+const CACHE_NAME = "dc-insurance-v1";
 const OFFLINE_URL = "/";
 const networkRequest = self.fetch.bind(self);
 

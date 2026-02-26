@@ -1,6 +1,5 @@
 /**
  * TcpaConsent — TCPA-compliant consent checkboxes.
- * Oracle: GENERATE (0.371) — no existing pattern, write new
  *
  * FCC 2025 one-to-one consent rule compliant:
  *  - Single identified company per checkbox

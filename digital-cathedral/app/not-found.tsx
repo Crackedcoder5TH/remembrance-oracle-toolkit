@@ -1,7 +1,5 @@
 /**
- * Not Found (404) — The Kingdom's Lost Path
- *
- * Oracle decision: GENERATE (0.368) — no existing pattern, write new
+ * Not Found (404)
  *
  * Branded 404 page that gently redirects visitors back to useful pages
  * instead of showing a raw framework error.
@@ -28,13 +26,13 @@ export default function NotFoundPage() {
           </h1>
           <p className="text-sm text-[var(--text-muted)] leading-relaxed">
             The path you followed doesn&rsquo;t lead anywhere. Let us guide you
-            back to where the kingdom can help.
+            back to where we can help.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
-            href="/protect"
+            href="/"
             className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
           >
             Get a Quote
@@ -57,7 +55,7 @@ export default function NotFoundPage() {
       </div>
 
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)]">
-        <p>The kingdom is still here. Find your way back.</p>
+        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>
     </main>
   );

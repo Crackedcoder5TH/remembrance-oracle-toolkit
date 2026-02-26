@@ -1,6 +1,5 @@
 /**
  * useUtmTracking — Capture and persist UTM parameters across the session.
- * Oracle: GENERATE — no existing pattern in the kingdom.
  *
  * Captures utm_source, utm_medium, utm_campaign, utm_term, utm_content
  * from the URL on first load, persists them in sessionStorage so they
@@ -20,7 +19,7 @@ export interface UtmParams {
   landingPage: string | null;
 }
 
-const STORAGE_KEY = "cathedral_utm";
+const STORAGE_KEY = "dc_utm";
 
 const UTM_KEYS = [
   ["utm_source", "utmSource"],

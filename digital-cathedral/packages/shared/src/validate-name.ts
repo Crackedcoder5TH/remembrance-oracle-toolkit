@@ -1,6 +1,5 @@
 /**
  * Name validation — validates a human first or last name.
- * Oracle: GENERATE (0.390) — no existing pattern, write new
  * Accepts 2-100 characters: letters, spaces, apostrophes, hyphens, periods, commas.
  * Rejects script injection and non-alpha characters.
  */

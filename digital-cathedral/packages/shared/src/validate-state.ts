@@ -1,6 +1,5 @@
 /**
  * US state validation — complete list of 50 states + DC.
- * Oracle: GENERATE (0.379) — no existing pattern, write new
  * Provides typed state codes, state list for dropdowns, and validation.
  */
 

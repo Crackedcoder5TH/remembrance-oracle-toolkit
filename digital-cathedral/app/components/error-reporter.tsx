@@ -1,8 +1,7 @@
 "use client";
 
 /**
- * Watchtower — Client-side error reporting for the kingdom.
- * Oracle: GENERATE (0.386) — no existing pattern, write new.
+ * Client-side error reporting.
  *
  * Catches unhandled errors and promise rejections in the browser,
  * deduplicates them, and sends batched reports to /api/errors.

@@ -1,9 +1,5 @@
 /**
- * Lead Notification Webhook System — Kingdom Messengers
- *
- * Oracle patterns used:
- *  - retry-async (PULL, coherency 1.000) — exponential backoff for delivery
- *  - result-type-ts (EVOLVE, coherency 1.000) — typed error handling
+ * Lead Notification Webhook System
  *
  * Webhooks are configured via environment variables:
  *   WEBHOOK_URLS — comma-separated list of endpoint URLs
@@ -18,7 +14,7 @@
 import { createHmac } from "crypto";
 import { withCircuitBreaker, CircuitOpenError } from "./circuit-breaker";
 
-// --- Oracle-pulled: retry-async (coherency 1.000, PULL) ---
+// --- Retry with exponential backoff ---
 async function retry<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
@@ -38,7 +34,7 @@ async function retry<T>(
   throw lastError;
 }
 
-// --- Evolved from oracle pattern: result-type-ts ---
+// --- Result type for typed error handling ---
 type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E };
 
 export interface WebhookPayload {

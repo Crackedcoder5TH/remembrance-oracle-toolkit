@@ -1,6 +1,5 @@
 /**
- * Email validation — pulled from Remembrance Oracle (coherency: 1.000)
- * Pattern: validate-email [b0662ceff51d409b]
+ * Email validation.
  * Tags: validation, email, regex, input, sanitize
  */
 export function validateEmail(email: string): boolean {

@@ -5,9 +5,7 @@ import type { LeadFilters } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 
 /**
- * Admin Leads API — Kingdom Dashboard Data
- *
- * Oracle decision: GENERATE (dashboard-plugin 0.900 too distant to EVOLVE)
+ * Admin Leads API
  *
  * GET /api/admin/leads?state=TX&coverage=term&veteran=veteran&search=john&limit=50&offset=0
  * Returns filtered leads with scores, paginated.

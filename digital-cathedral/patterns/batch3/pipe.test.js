@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// pipe is available via oracle sandbox concatenation
+// pipe is available via isolated sandbox concatenation
 
 describe('pipe', () => {
   it('should compose functions left to right', () => {

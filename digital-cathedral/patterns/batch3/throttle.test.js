@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// throttle is available via oracle sandbox concatenation
+// throttle is available via isolated sandbox concatenation
 
 describe('throttle', () => {
   it('should invoke fn immediately on first call', () => {

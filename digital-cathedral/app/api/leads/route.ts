@@ -11,34 +11,27 @@ import { validateCsrfToken } from "@/app/lib/csrf";
 import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
 
 /**
- * Lead submission API — Kingdom perspective.
- *
- * Oracle patterns used:
- *  - validate-email (EVOLVE) for input validation
- *  - result-type-ts (EVOLVE) for database error handling
- *  - retry-async (PULL) for webhook delivery
- *  - pipe (PULL) for transformation pipeline
- *  - throttle (PULL, 0.970) → evolved into IP rate limiter
+ * Lead submission API.
  *
  * This route:
- * 1. Rate-limits by IP (oracle PULL: throttle → sliding window)
+ * 1. Rate-limits by IP (sliding window)
  * 2. Validates all fields server-side
  * 3. Records consent metadata (TCPA compliance)
  * 4. Persists the lead to SQLite via better-sqlite3
  * 5. Detects duplicates within 24-hour window
  * 6. Sends confirmation email
- * 7. Returns a kingdom whisper
+ * 7. Returns a confirmation message
  */
 
-// Validation now handled by the Armory (app/lib/validation.ts)
+// Validation handled by app/lib/validation.ts
 
-/** Whispers for the seeker — kingdom-aligned responses */
-const WHISPERS = [
-  "Your intention to protect has been heard. A guardian approaches.",
-  "The covenant is sealed. Someone who understands protection will reach out.",
-  "Legacy begins with intention. Yours has been received by the kingdom.",
-  "What you seek to protect already knows you care. A licensed guide will connect soon.",
-  "The cathedral holds your request. Expect a call from someone who can help.",
+/** Confirmation messages shown after successful submission */
+const CONFIRMATIONS = [
+  "Your request has been received. A licensed professional will reach out soon.",
+  "Thank you for taking the first step. Someone who understands military coverage will be in touch.",
+  "Your information is secure. A licensed insurance professional will contact you shortly.",
+  "We've received your request. Expect a call or email within 1 business day.",
+  "You're one step closer to protecting your family. A professional will reach out soon.",
 ];
 
 function generateLeadId(): string {
@@ -50,7 +43,7 @@ function generateLeadId(): string {
 export async function POST(req: NextRequest) {
   const { logger, finish } = startRequestTimer("POST", "/api/leads");
 
-  // --- Rate limit (Oracle PULL: throttle 0.970 → sliding window per-IP) ---
+  // Rate limit (sliding window per-IP)
   const clientIp = getClientIp(req.headers);
   const rateCheck = checkRateLimit(clientIp, 5, 60_000); // 5 requests per minute per IP
   if (!rateCheck.allowed) {
@@ -68,7 +61,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // --- CSRF validation (Drawbridge) ---
+  // CSRF validation
   if (!validateCsrfToken(req)) {
     logger.warn("CSRF token mismatch", { clientIp });
     finish(403);
@@ -81,7 +74,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Siege Shield: Bot detection (honeypot + timing)
+    // Bot detection (honeypot + timing)
     // 1. Honeypot: if the hidden field has any value, it's a bot
     if (body._hp_website) {
       logger.warn("Honeypot triggered", { clientIp });
@@ -90,7 +83,7 @@ export async function POST(req: NextRequest) {
         success: true,
         message: "Your request has been received.",
         leadId: "lead_" + Date.now().toString(36),
-        whisper: "Your intention has been noted.",
+        confirmationMessage: "Your intention has been noted.",
       });
     }
     // 2. Timing: if submitted faster than 3 seconds after page load, likely a bot
@@ -104,12 +97,12 @@ export async function POST(req: NextRequest) {
           success: true,
           message: "Your request has been received.",
           leadId: "lead_" + Date.now().toString(36),
-          whisper: "Your intention has been noted.",
+          confirmationMessage: "Your intention has been noted.",
         });
       }
     }
 
-    // Armory: Schema-based validation (replaces inline checks)
+    // Schema-based validation
     const validation = validateLeadPayload(body);
     if (!validation.valid) {
       logger.warn("Validation failed", { errors: validation.errors, clientIp });
@@ -141,7 +134,7 @@ export async function POST(req: NextRequest) {
       consentText: validated.consentText,
       consentIp: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
       consentUserAgent: req.headers.get("user-agent") || "unknown",
-      consentPageUrl: req.headers.get("referer") || "/protect",
+      consentPageUrl: req.headers.get("referer") || "/",
       utmSource: validated.utmSource || null,
       utmMedium: validated.utmMedium || null,
       utmCampaign: validated.utmCampaign || null,
@@ -150,7 +143,7 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     };
 
-    // Persist to database (Result<T,E> pattern from oracle)
+    // Persist to database
     const dbResult = insertLead(leadRecord);
 
     if (!dbResult.ok) {
@@ -211,19 +204,19 @@ export async function POST(req: NextRequest) {
       logger.error("Email send failed", { leadId, error: String(err) });
     });
 
-    // Messenger Relay: Send admin notification email
+    // Send admin notification email
     sendAdminNotificationEmail(leadRecord, leadScore).catch((err) => {
       logger.error("Admin notification email failed", { leadId, error: String(err) });
     });
 
-    const whisper = WHISPERS[Math.floor(Math.random() * WHISPERS.length)];
+    const confirmationMessage = CONFIRMATIONS[Math.floor(Math.random() * CONFIRMATIONS.length)];
 
     finish(200, { leadId });
     return NextResponse.json({
       success: true,
       message: "Your request has been received. A licensed insurance professional will contact you soon.",
       leadId,
-      whisper,
+      confirmationMessage,
     });
   } catch {
     finish(400);
@@ -236,9 +229,6 @@ export async function POST(req: NextRequest) {
 
 /**
  * DELETE /api/leads — CCPA/CPRA Data Deletion Endpoint
- *
- * Oracle decision: GENERATE (no existing deletion pattern)
- * Uses: result-type-ts (already in database layer)
  *
  * Accepts { email } in the request body.
  * Deletes all lead records associated with that email address.

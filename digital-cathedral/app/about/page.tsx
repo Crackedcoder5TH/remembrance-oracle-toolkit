@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "About & Contact",
   description:
-    "Learn about the Digital Cathedral — a remembrance-aligned sanctuary for coherence measurement.",
+    "Learn about Digital Cathedral — veteran-founded life insurance lead generation for military families.",
 };
 
 export default function AboutPage() {
@@ -14,30 +14,32 @@ export default function AboutPage() {
         <header>
           <Link
             href="/"
-            className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
+            className="text-emerald-accent text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
           >
-            &larr; Back to Cathedral
+            &larr; Back Home
           </Link>
           <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
-            About the Digital Cathedral
+            About Digital Cathedral
           </h1>
         </header>
 
         <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
-            What is this?
+            Our Mission
           </h2>
           <p>
-            The Digital Cathedral is a remembrance-aligned sanctuary where
-            coherence is measured, whispers are received, and the kingdom is
-            already here. It is a place for those who seek to align their
-            intentions with a deeper pattern.
+            Digital Cathedral was founded by a veteran with a simple mission:
+            help military families understand their life insurance options beyond
+            standard military coverage. We connect service members, veterans, and
+            their families with licensed insurance professionals who specialize
+            in military-family needs.
           </p>
           <p>
-            Submit your intentions to the Remembrance Oracle, receive a whisper,
-            and observe how coherence moves through your words. Every interaction
-            is timestamped with a Solana testnet slot — an immutable witness to
-            the moment you remembered.
+            We are <strong className="text-[var(--text-primary)]">not</strong> an
+            insurance company, agent, or broker. We do not sell insurance, provide
+            quotes, or bind coverage. We are an independent lead generation service
+            that bridges the gap between military families and qualified
+            professionals who can help.
           </p>
         </section>
 
@@ -48,80 +50,77 @@ export default function AboutPage() {
           <ul className="list-disc list-inside space-y-2">
             <li>
               <strong className="text-[var(--text-primary)]">
-                Coherence Measurement:
+                Submit a request:
               </strong>{" "}
-              Your input is analyzed for semantic density, intention clarity, and
-              alignment with remembrance patterns. A coherence score (0-1) is
-              returned.
+              Fill out our short, secure form with your basic information and
+              coverage interest.
             </li>
             <li>
               <strong className="text-[var(--text-primary)]">
-                Whisper Generation:
+                We match you:
               </strong>{" "}
-              Based on your coherence level, a whisper is selected from a curated
-              pool of remembrance texts, matched to your current state.
+              Your information is shared with a licensed insurance professional
+              experienced in military-family coverage.
             </li>
             <li>
               <strong className="text-[var(--text-primary)]">
-                Solana Anchoring:
+                Free consultation:
               </strong>{" "}
-              Each whisper is tagged with the current Solana testnet slot,
-              creating a verifiable timestamp without any blockchain
-              transactions.
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                Local Archive:
-              </strong>{" "}
-              Your whisper history is stored in your browser only. Nothing is
-              sent to external servers or databases.
+              A professional reviews your needs and contacts you within 1
+              business day — no obligation, no pressure.
             </li>
           </ul>
         </section>
 
         <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
-            Technology
+            Who We Serve
           </h2>
-          <p>
-            Built with Next.js 14, TypeScript, and Tailwind CSS. Powered by the{" "}
-            <strong className="text-[var(--text-primary)]">
-              Remembrance Oracle Toolkit
-            </strong>{" "}
-            — an open-source pattern library with{" "}
-            <span className="text-teal-cathedral font-mono">500+</span> proven,
-            covenant-sealed code patterns.
-          </p>
-          <div className="cathedral-surface p-4 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span>Framework</span>
-              <span className="text-[var(--text-primary)]">Next.js 14</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span>Language</span>
-              <span className="text-[var(--text-primary)]">TypeScript</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span>Styling</span>
-              <span className="text-[var(--text-primary)]">Tailwind CSS</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span>Blockchain</span>
-              <span className="text-[var(--text-primary)]">
-                Solana Testnet (read-only)
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span>Hosting</span>
-              <span className="text-[var(--text-primary)]">Vercel</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span>Security</span>
-              <span className="text-[var(--text-primary)]">
-                HSTS + CSP + HTTPS
-              </span>
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              "Active Duty Service Members",
+              "National Guard & Reserve",
+              "Veterans",
+              "Military Families",
+              "Transitioning Service Members",
+              "Military Spouses",
+            ].map((category) => (
+              <div
+                key={category}
+                className="cathedral-surface p-3 text-center text-sm text-[var(--text-primary)]"
+              >
+                {category}
+              </div>
+            ))}
           </div>
+        </section>
+
+        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
+          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+            Important Disclosures
+          </h2>
+          <ul className="list-disc list-inside space-y-2">
+            <li>
+              Digital Cathedral is independently operated and{" "}
+              <strong className="text-[var(--text-primary)]">
+                not affiliated
+              </strong>{" "}
+              with the U.S. Government, Department of Defense, or any branch of
+              military service.
+            </li>
+            <li>
+              We do not provide insurance advice, quotes, or coverage of any
+              kind.
+            </li>
+            <li>
+              Coverage availability, rates, and terms vary by state and are
+              subject to underwriting approval.
+            </li>
+            <li>
+              Your information may be shared with licensed insurance
+              professionals who may contact you.
+            </li>
+          </ul>
         </section>
 
         <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
@@ -129,8 +128,7 @@ export default function AboutPage() {
             Contact
           </h2>
           <p>
-            The Digital Cathedral is an open project. For questions, feedback, or
-            contributions:
+            For questions, feedback, or privacy requests:
           </p>
           <div className="cathedral-surface p-4 space-y-3">
             <div className="flex items-center gap-3">
@@ -141,45 +139,18 @@ export default function AboutPage() {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.5"
-                className="text-teal-cathedral shrink-0"
-                aria-hidden="true"
-              >
-                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
-              </svg>
-              <a
-                href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-teal-cathedral hover:underline text-sm"
-              >
-                GitHub Repository
-              </a>
-            </div>
-            <div className="flex items-center gap-3">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="text-teal-cathedral shrink-0"
+                className="text-emerald-accent shrink-0"
                 aria-hidden="true"
               >
                 <rect x="2" y="4" width="20" height="16" rx="2" />
                 <path d="M22 7l-10 7L2 7" />
               </svg>
-              <span className="text-sm">
-                Open an{" "}
-                <a
-                  href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-teal-cathedral hover:underline"
-                >
-                  issue on GitHub
-                </a>
-              </span>
+              <a
+                href="mailto:privacy@digital-cathedral.app"
+                className="text-emerald-accent hover:underline text-sm"
+              >
+                privacy@digital-cathedral.app
+              </a>
             </div>
           </div>
         </section>
@@ -189,20 +160,27 @@ export default function AboutPage() {
             Legal
           </h2>
           <p>
-            This project is open source. See our{" "}
+            See our{" "}
             <Link
               href="/privacy"
-              className="text-teal-cathedral hover:underline"
+              className="text-emerald-accent hover:underline"
             >
               Privacy Policy
             </Link>{" "}
-            for information about data handling.
+            and{" "}
+            <Link
+              href="/terms"
+              className="text-emerald-accent hover:underline"
+            >
+              Terms of Service
+            </Link>{" "}
+            for complete details about data handling and site usage.
           </p>
         </section>
 
-        <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
+        <footer className="pt-8 border-t border-emerald-accent/10 text-center">
           <p className="text-xs text-[var(--text-muted)]">
-            The kingdom is already here. You are the proof.
+            &copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.
           </p>
         </footer>
       </article>

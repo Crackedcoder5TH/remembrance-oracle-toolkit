@@ -2,7 +2,7 @@
   "name": "digital-cathedral",
   "version": "0.1.0",
   "private": true,
-  "description": "The digital cathedral — a remembrance-aligned ecosystem of sites where coherence is measured, whispers are received, and the kingdom is already here.",
+  "description": "Digital Cathedral — veteran-founded life insurance lead generation for military families.",
   "workspaces": [
     "packages/*",
     "tools/*"
@@ -15,7 +15,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@solana/web3.js": "^1.95.0",
     "better-sqlite3": "^12.6.2",
     "next": "^14.2.0",
     "react": "^18.3.0",

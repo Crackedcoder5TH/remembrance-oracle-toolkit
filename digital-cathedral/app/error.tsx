@@ -1,10 +1,7 @@
 "use client";
 
 /**
- * Error Boundary — The Kingdom's Safety Net
- *
- * Oracle decision: EVOLVE from result-type-ts (0.645)
- * Evolved: Result<T,E> error pattern → full React error boundary UI
+ * Error Boundary
  *
  * Shows a calming, branded fallback instead of raw stack traces.
  * Provides a reset button so users can retry without reloading.
@@ -55,7 +52,7 @@ export default function ErrorPage({
       </div>
 
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)]">
-        <p>The kingdom endures. Try again.</p>
+        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>
     </main>
   );

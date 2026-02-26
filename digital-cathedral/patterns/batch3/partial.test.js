@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// partial is available via oracle sandbox concatenation
+// partial is available via isolated sandbox concatenation
 
 describe('partial', () => {
   it('should partially apply the first argument', () => {

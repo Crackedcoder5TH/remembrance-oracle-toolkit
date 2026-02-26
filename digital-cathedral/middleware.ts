@@ -1,7 +1,5 @@
 /**
- * Next.js Middleware — The Kingdom Gate
- *
- * Oracle decision: GENERATE (0.363) — no existing pattern, write new
+ * Next.js Middleware
  *
  * Security headers applied to every response:
  *  - Content-Security-Policy (CSP) — prevent XSS, injection

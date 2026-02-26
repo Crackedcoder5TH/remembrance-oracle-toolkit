@@ -1,7 +1,5 @@
 /**
- * Lead Scoring Engine — Kingdom Value Assessor
- *
- * Oracle decision: GENERATE (priority-queue 0.850 + scoring-coherence 0.750 structural only)
+ * Lead Scoring Engine
  *
  * Weighted scoring algorithm that ranks leads by business value.
  * A veteran seeking term life in a high-population state scores higher

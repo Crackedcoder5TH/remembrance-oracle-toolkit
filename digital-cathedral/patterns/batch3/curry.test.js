@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// curry is available via oracle sandbox concatenation
+// curry is available via isolated sandbox concatenation
 
 describe('curry', () => {
   it('should curry a two-argument function', () => {

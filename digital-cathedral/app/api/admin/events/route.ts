@@ -5,8 +5,6 @@ import { subscribe, type LeadEvent } from "@/app/lib/lead-events";
 /**
  * SSE endpoint for real-time admin notifications.
  *
- * Oracle decision: GENERATE (SSE for Next.js App Router)
- *
  * Authenticated admins connect via EventSource to receive
  * real-time lead.created events without polling.
  *

@@ -5,9 +5,7 @@ import type { LeadFilters } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 
 /**
- * Admin CSV Export API — Kingdom Data Export
- *
- * Oracle decision: GENERATE
+ * Admin CSV Export API
  *
  * GET /api/admin/export?format=csv&state=TX&coverage=term
  * Exports filtered leads as CSV download.

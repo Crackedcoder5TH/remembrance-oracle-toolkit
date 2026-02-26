@@ -1,10 +1,8 @@
 /**
- * Loading — The Kingdom's Patience
- *
- * Oracle decision: GENERATE (0.364) — no existing pattern, write new
+ * Loading
  *
  * Skeleton loading state shown while server components render.
- * Uses a calming pulse animation that matches the cathedral aesthetic.
+ * Uses a calming pulse animation.
  */
 
 export default function Loading() {

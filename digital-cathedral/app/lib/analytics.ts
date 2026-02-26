@@ -1,6 +1,5 @@
 /**
- * Treasury Ledger — Conversion and analytics tracking for the kingdom.
- * Oracle: GENERATE (0.397) — no existing pattern, write new.
+ * Conversion and Analytics Tracking
  *
  * Privacy-first analytics:
  *  - Checks cookie consent before firing any tracking events

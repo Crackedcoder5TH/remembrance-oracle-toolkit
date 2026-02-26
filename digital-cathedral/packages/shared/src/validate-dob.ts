@@ -1,6 +1,5 @@
 /**
  * Date of Birth validation — minimum age enforcement.
- * Oracle: GENERATE (0.385) — no existing pattern, write new
  * Validates DOB string (YYYY-MM-DD) and ensures the person is at least 18 years old.
  */
 export function validateDob(dob: string): boolean {

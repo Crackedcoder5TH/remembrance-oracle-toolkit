@@ -1,7 +1,5 @@
 /**
- * Open Graph Image — The Kingdom's Social Banner
- *
- * Oracle decision: GENERATE — no existing pattern, write new
+ * Open Graph Image
  *
  * Auto-generated OG image using Next.js ImageResponse.
  * Shown when the site is shared on social media.

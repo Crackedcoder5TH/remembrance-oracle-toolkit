@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// delay is available via oracle sandbox concatenation
+// delay is available via isolated sandbox concatenation
 
 describe('delay', () => {
   it('should return a promise', () => {

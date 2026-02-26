@@ -7,7 +7,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        /* Core kingdom theme */
+        /* Brand theme */
         teal: {
           cathedral: "#00A8A8",
         },

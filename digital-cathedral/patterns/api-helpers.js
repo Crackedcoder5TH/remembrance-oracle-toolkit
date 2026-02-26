@@ -1,5 +1,5 @@
 // Guarded API helpers — abort-safe, single-flight request pattern
-// Wraps fetch to pass covenant (no raw fetch in components)
+// Wraps fetch to enforce guarded access (no raw fetch in components)
 
 function createApiClient(fetchFn) {
   async function apiGet(url, signal) {

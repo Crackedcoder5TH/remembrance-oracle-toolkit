@@ -1,9 +1,7 @@
 "use client";
 
 /**
- * Admin Dashboard — Kingdom Command Center
- *
- * Oracle decision: GENERATE (dashboard-plugin 0.900, auth-plugin 0.840 too distant)
+ * Admin Dashboard
  *
  * Features:
  *  - Bearer token authentication (ADMIN_API_KEY via login prompt)
@@ -16,7 +14,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 
-// --- Oracle-pulled: debounce (PULL 0.848, coherency 0.970) ---
+// --- Debounce hook ---
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -157,7 +155,7 @@ export default function AdminDashboard() {
       });
   };
 
-  // --- Real-time notifications via SSE (Oracle GENERATE) ---
+  // --- Real-time notifications via SSE ---
   const [newLeadFlash, setNewLeadFlash] = useState<string | null>(null);
   useEffect(() => {
     if (!authenticated) return;
@@ -203,7 +201,7 @@ export default function AdminDashboard() {
         <div className="w-full max-w-sm cathedral-surface p-8 space-y-6">
           <div className="text-center">
             <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
-              Kingdom Admin
+              Admin
             </div>
             <h1 className="text-2xl font-light text-[var(--text-primary)]">
               Dashboard Access
@@ -251,7 +249,7 @@ export default function AdminDashboard() {
       <header className="flex items-center justify-between mb-8">
         <div>
           <div className="text-emerald-accent text-xs tracking-[0.3em] uppercase pulse-gentle">
-            Kingdom Admin
+            Admin
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)]">
             Lead Dashboard
@@ -483,7 +481,7 @@ export default function AdminDashboard() {
 
       {/* Footer */}
       <footer className="mt-12 text-center text-xs text-[var(--text-muted)]">
-        <p>Kingdom Admin Dashboard — Lead data is confidential.</p>
+        <p>Admin Dashboard — Lead data is confidential.</p>
       </footer>
     </main>
   );

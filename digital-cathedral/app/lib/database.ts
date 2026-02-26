@@ -95,7 +95,7 @@ function migrate(db: Database.Database): void {
       consent_text TEXT NOT NULL,
       consent_ip TEXT NOT NULL DEFAULT 'unknown',
       consent_user_agent TEXT NOT NULL DEFAULT 'unknown',
-      consent_page_url TEXT NOT NULL DEFAULT '/protect',
+      consent_page_url TEXT NOT NULL DEFAULT '/',
       utm_source TEXT,
       utm_medium TEXT,
       utm_campaign TEXT,

@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       consentText: validated.consentText,
       consentIp: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
       consentUserAgent: req.headers.get("user-agent") || "unknown",
-      consentPageUrl: req.headers.get("referer") || "/protect",
+      consentPageUrl: req.headers.get("referer") || "/",
       utmSource: validated.utmSource || null,
       utmMedium: validated.utmMedium || null,
       utmCampaign: validated.utmCampaign || null,

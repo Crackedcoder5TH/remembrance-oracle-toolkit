@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     title: "Protect Your Family Beyond Basic Military Coverage — Digital Cathedral",
     description:
       "Veteran-founded. Connect with a licensed life insurance professional who understands military family coverage. Term, whole, universal, and final expense options.",
-    url: "/protect",
+    url: "/",
   },
 };
 

@@ -196,7 +196,7 @@ export default function TermsPage() {
       {/* Footer */}
       <footer className="mt-12 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center">
-          <a href="/protect" className="text-emerald-accent/70 hover:text-emerald-accent">Get Protected</a>
+          <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Get Protected</a>
           <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
           <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Home</a>
         </nav>

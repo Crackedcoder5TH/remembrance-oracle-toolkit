@@ -34,7 +34,7 @@ export default function NotFoundPage() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
-            href="/protect"
+            href="/"
             className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
           >
             Get a Quote

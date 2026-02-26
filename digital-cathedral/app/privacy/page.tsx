@@ -175,7 +175,7 @@ export default function PrivacyPage() {
           </h2>
           <p>
             If you submitted information through our{" "}
-            <Link href="/protect" className="text-teal-cathedral hover:underline">
+            <Link href="/" className="text-teal-cathedral hover:underline">
               protection form
             </Link>
             , your contact details may be shared with licensed insurance

@@ -6,9 +6,9 @@ import { ErrorReporter } from "./components/error-reporter";
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
 const SITE_URL = "https://digital-cathedral.vercel.app";
-const SITE_TITLE = "Digital Cathedral — Remembrance Oracle";
+const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Digital Cathedral";
 const SITE_DESCRIPTION =
-  "A remembrance-aligned sanctuary where coherence is measured, whispers are received, and the kingdom is already here.";
+  "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.";
 
 export const metadata: Metadata = {
   title: {
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
         url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "Digital Cathedral — The Kingdom is already here",
+        alt: "Digital Cathedral — Protect Your Legacy",
         type: "image/svg+xml",
       },
     ],

@@ -19,12 +19,14 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   metadataBase: new URL(SITE_URL),
   keywords: [
+    "life insurance",
+    "military life insurance",
+    "veteran life insurance",
+    "SGLI alternative",
+    "term life insurance",
+    "whole life insurance",
+    "military family coverage",
     "digital cathedral",
-    "remembrance oracle",
-    "coherence",
-    "solana",
-    "whisper",
-    "blockchain",
   ],
   authors: [{ name: "Digital Cathedral" }],
   creator: "Digital Cathedral",
@@ -82,14 +84,14 @@ const jsonLd = {
       name: "Digital Cathedral",
       url: BASE_URL,
       description:
-        "A remembrance-aligned sanctuary — coherence measured, whispers received.",
+        "Veteran-founded platform connecting military families with licensed life insurance professionals.",
     },
     {
       "@type": "Organization",
       name: "Digital Cathedral",
       url: BASE_URL,
       description:
-        "A remembrance-aligned sanctuary offering coherence measurement, whisper archive, and life insurance protection services.",
+        "Veteran-founded platform connecting Active Duty, National Guard, Reserve, and Veterans with licensed life insurance professionals.",
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer service",

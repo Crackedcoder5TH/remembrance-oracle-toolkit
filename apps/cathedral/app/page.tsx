@@ -19,7 +19,6 @@ import { useEffect, useRef } from "react";
 import { useLeadForm } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
-import { TrustSignals } from "./protect/components/trust-signals";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
 
 const US_STATES = [
@@ -466,43 +465,11 @@ export default function HomePage() {
       </div>
 
       {/* Do Not Sell Link — CCPA Compliance */}
-      <div className="w-full max-w-lg mt-4 text-center">
+      <div className="w-full max-w-lg mt-4 text-center mb-12">
         <a href="/privacy#do-not-sell" className="text-xs text-emerald-accent underline">
           Do Not Sell or Share My Personal Information
         </a>
       </div>
-
-      {/* Trust Signals */}
-      <div className="w-full flex justify-center mt-10 px-4">
-        <TrustSignals />
-      </div>
-
-      {/* Quick Links */}
-      <nav className="w-full max-w-lg mt-10 grid grid-cols-3 gap-3" aria-label="Learn more">
-        <a href="/about" className="cathedral-surface p-4 text-center hover:border-emerald-accent/30 transition-all group">
-          <p className="text-sm font-medium text-[var(--text-primary)] group-hover:text-emerald-accent transition-colors">About Us</p>
-          <p className="text-xs text-[var(--text-muted)] mt-1">Our mission &amp; story</p>
-        </a>
-        <a href="/faq" className="cathedral-surface p-4 text-center hover:border-emerald-accent/30 transition-all group">
-          <p className="text-sm font-medium text-[var(--text-primary)] group-hover:text-emerald-accent transition-colors">FAQ</p>
-          <p className="text-xs text-[var(--text-muted)] mt-1">Common questions</p>
-        </a>
-        <a href="/about#how-it-works" className="cathedral-surface p-4 text-center hover:border-emerald-accent/30 transition-all group">
-          <p className="text-sm font-medium text-[var(--text-primary)] group-hover:text-emerald-accent transition-colors">How It Works</p>
-          <p className="text-xs text-[var(--text-muted)] mt-1">3 simple steps</p>
-        </a>
-      </nav>
-
-      {/* Footer */}
-      <footer className="mt-12 text-center text-xs text-[var(--text-muted)] space-y-2">
-        <nav className="flex gap-4 justify-center">
-          <a href="/about" className="text-emerald-accent/70 hover:text-emerald-accent">About</a>
-          <a href="/faq" className="text-emerald-accent/70 hover:text-emerald-accent">FAQ</a>
-          <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
-          <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
-        </nav>
-        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
-      </footer>
     </main>
   );
 }

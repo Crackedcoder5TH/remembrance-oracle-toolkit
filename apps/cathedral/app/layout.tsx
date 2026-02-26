@@ -1,10 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { CookieConsent } from "./components/cookie-consent";
+import { ErrorReporter } from "./components/error-reporter";
+
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
 const SITE_URL = "https://digital-cathedral.vercel.app";
-const SITE_TITLE = "Digital Cathedral — Remembrance Oracle";
+const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Digital Cathedral";
 const SITE_DESCRIPTION =
-  "A remembrance-aligned sanctuary where coherence is measured, whispers are received, and the kingdom is already here.";
+  "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.";
 
 export const metadata: Metadata = {
   title: {
@@ -15,12 +19,14 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   metadataBase: new URL(SITE_URL),
   keywords: [
+    "life insurance",
+    "military life insurance",
+    "veteran life insurance",
+    "SGLI alternative",
+    "term life insurance",
+    "whole life insurance",
+    "military family coverage",
     "digital cathedral",
-    "remembrance oracle",
-    "coherence",
-    "solana",
-    "whisper",
-    "blockchain",
   ],
   authors: [{ name: "Digital Cathedral" }],
   creator: "Digital Cathedral",
@@ -38,7 +44,7 @@ export const metadata: Metadata = {
         url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "Digital Cathedral — The Kingdom is already here",
+        alt: "Digital Cathedral — Protect Your Legacy",
         type: "image/svg+xml",
       },
     ],
@@ -69,6 +75,32 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+// JSON-LD structured data for Google rich results
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      name: "Digital Cathedral",
+      url: BASE_URL,
+      description:
+        "Veteran-founded platform connecting military families with licensed life insurance professionals.",
+    },
+    {
+      "@type": "Organization",
+      name: "Digital Cathedral",
+      url: BASE_URL,
+      description:
+        "Veteran-founded platform connecting Active Duty, National Guard, Reserve, and Veterans with licensed life insurance professionals.",
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer service",
+        availableLanguage: "English",
+      },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -76,7 +108,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[var(--bg-deep)]">{children}</body>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
+      <body className="min-h-screen bg-[var(--bg-deep)]">
+        {children}
+        <CookieConsent />
+        <ErrorReporter />
+      </body>
     </html>
   );
 }

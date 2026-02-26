@@ -4,8 +4,7 @@
   "private": true,
   "description": "Digital Cathedral — veteran-founded life insurance lead generation for military families.",
   "workspaces": [
-    "packages/*",
-    "tools/*"
+    "packages/*"
   ],
   "scripts": {
     "dev": "next dev",

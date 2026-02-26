@@ -612,13 +612,21 @@ function CopyButton({
 
 // ─── Share Buttons ──────────────────────────────────────────────────
 
+function buildShareLink(whisperText: string, coherence: number, inputHash: string): string {
+  const data = { w: whisperText, c: coherence, h: inputHash, t: Date.now() };
+  const encoded = btoa(JSON.stringify(data));
+  return `${window.location.origin}/whisper#${encoded}`;
+}
+
 function ShareButtons({
   whisperText,
   coherence,
+  inputHash,
   onToast,
 }: {
   whisperText: string;
   coherence: number;
+  inputHash?: string;
   onToast?: (msg: string, type: ToastType) => void;
 }) {
   const shareText = `"${whisperText}" — Coherence ${coherence.toFixed(3)} | Digital Cathedral`;
@@ -629,8 +637,29 @@ function ShareButtons({
     onToast?.("Opened share dialog", "info");
   }
 
+  function copyShareLink() {
+    const link = buildShareLink(whisperText, coherence, inputHash || "");
+    navigator.clipboard.writeText(link).then(() => {
+      onToast?.("Share link copied!", "success");
+    }).catch(() => {
+      onToast?.("Failed to copy link", "error");
+    });
+  }
+
   return (
     <div className="flex items-center gap-2">
+      <button
+        onClick={copyShareLink}
+        aria-label="Copy shareable link"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs transition-all cathedral-btn
+          text-[var(--text-muted)] hover:text-teal-cathedral hover:bg-teal-cathedral/10"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+        <span>Link</span>
+      </button>
       <button
         onClick={shareOnX}
         aria-label="Share on X"
@@ -1645,7 +1674,7 @@ export default function CathedralHome() {
                     <div className="text-xs text-[var(--text-muted)]">
                       Share
                     </div>
-                    <ShareButtons whisperText={whisper.whisper} coherence={whisper.coherence} onToast={addToast} />
+                    <ShareButtons whisperText={whisper.whisper} coherence={whisper.coherence} inputHash={whisper.inputHash} onToast={addToast} />
                   </div>
                 </div>
               </div>

@@ -208,7 +208,7 @@ export default function HomePage() {
         </div>
 
         <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
-          <p>The kingdom protects what matters. Remember.</p>
+          <p>Protecting what matters most — your family.</p>
           <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
         </footer>
       </main>

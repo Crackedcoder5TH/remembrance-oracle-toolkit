@@ -9,10 +9,10 @@ interface StepProgressProps {
 
 const STEP_LABELS = ["Identity", "Contact", "Consent"];
 
-const STEP_WHISPERS = [
-  "Begin with who you are...",
-  "The outline is forming. Keep going...",
-  "Almost there. Seal the covenant...",
+const STEP_HINTS = [
+  "Tell us about yourself...",
+  "How can we reach you?",
+  "Review and submit your request...",
 ];
 
 export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
@@ -20,9 +20,9 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
 
   return (
     <div className="w-full space-y-3" role="navigation" aria-label="Form progress">
-      {/* Whisper for current step */}
-      <p className="whisper-text text-xs text-center" aria-hidden="true">
-        &ldquo;{STEP_WHISPERS[currentStep]}&rdquo;
+      {/* Hint for current step */}
+      <p className="text-xs text-center text-[var(--text-muted)]" aria-hidden="true">
+        {STEP_HINTS[currentStep]}
       </p>
 
       {/* Step indicators */}

@@ -28,7 +28,7 @@ export default function NotFoundPage() {
           </h1>
           <p className="text-sm text-[var(--text-muted)] leading-relaxed">
             The path you followed doesn&rsquo;t lead anywhere. Let us guide you
-            back to where the kingdom can help.
+            back to where we can help.
           </p>
         </div>
 
@@ -57,7 +57,7 @@ export default function NotFoundPage() {
       </div>
 
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)]">
-        <p>The kingdom is still here. Find your way back.</p>
+        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>
     </main>
   );

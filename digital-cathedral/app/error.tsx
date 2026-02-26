@@ -55,7 +55,7 @@ export default function ErrorPage({
       </div>
 
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)]">
-        <p>The kingdom endures. Try again.</p>
+        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>
     </main>
   );

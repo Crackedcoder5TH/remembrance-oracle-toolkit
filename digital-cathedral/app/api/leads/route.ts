@@ -32,13 +32,13 @@ import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
 
 // Validation now handled by the Armory (app/lib/validation.ts)
 
-/** Whispers for the seeker — kingdom-aligned responses */
-const WHISPERS = [
-  "Your intention to protect has been heard. A guardian approaches.",
-  "The covenant is sealed. Someone who understands protection will reach out.",
-  "Legacy begins with intention. Yours has been received by the kingdom.",
-  "What you seek to protect already knows you care. A licensed guide will connect soon.",
-  "The cathedral holds your request. Expect a call from someone who can help.",
+/** Confirmation messages shown after successful submission */
+const CONFIRMATIONS = [
+  "Your request has been received. A licensed professional will reach out soon.",
+  "Thank you for taking the first step. Someone who understands military coverage will be in touch.",
+  "Your information is secure. A licensed insurance professional will contact you shortly.",
+  "We've received your request. Expect a call or email within 1 business day.",
+  "You're one step closer to protecting your family. A professional will reach out soon.",
 ];
 
 function generateLeadId(): string {
@@ -216,7 +216,7 @@ export async function POST(req: NextRequest) {
       logger.error("Admin notification email failed", { leadId, error: String(err) });
     });
 
-    const whisper = WHISPERS[Math.floor(Math.random() * WHISPERS.length)];
+    const whisper = CONFIRMATIONS[Math.floor(Math.random() * CONFIRMATIONS.length)];
 
     finish(200, { leadId });
     return NextResponse.json({

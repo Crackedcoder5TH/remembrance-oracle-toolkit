@@ -317,7 +317,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
       setSubmitted(true);
       setLeadId(result.leadId || "");
       clearFormDraft(); // Clear saved draft on successful submission
-      setWhisper(result.whisper || "Your intention has been received. A guardian will reach out.");
+      setWhisper(result.whisper || "Your request has been received. A licensed professional will be in touch soon.");
       // Treasury Ledger: fire conversion event
       trackConversion(result.leadId || "", data.coverageInterest, data.state);
     } catch (err) {

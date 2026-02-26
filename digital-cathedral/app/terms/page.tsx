@@ -200,7 +200,7 @@ export default function TermsPage() {
           <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
           <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Home</a>
         </nav>
-        <p>The kingdom protects what matters. Remember.</p>
+        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>
     </main>
   );

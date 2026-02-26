@@ -203,7 +203,7 @@ export default function AdminDashboard() {
         <div className="w-full max-w-sm cathedral-surface p-8 space-y-6">
           <div className="text-center">
             <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
-              Kingdom Admin
+              Admin
             </div>
             <h1 className="text-2xl font-light text-[var(--text-primary)]">
               Dashboard Access
@@ -251,7 +251,7 @@ export default function AdminDashboard() {
       <header className="flex items-center justify-between mb-8">
         <div>
           <div className="text-emerald-accent text-xs tracking-[0.3em] uppercase pulse-gentle">
-            Kingdom Admin
+            Admin
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)]">
             Lead Dashboard
@@ -483,7 +483,7 @@ export default function AdminDashboard() {
 
       {/* Footer */}
       <footer className="mt-12 text-center text-xs text-[var(--text-muted)]">
-        <p>Kingdom Admin Dashboard — Lead data is confidential.</p>
+        <p>Admin Dashboard — Lead data is confidential.</p>
       </footer>
     </main>
   );

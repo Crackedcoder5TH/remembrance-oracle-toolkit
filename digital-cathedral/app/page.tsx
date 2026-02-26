@@ -246,7 +246,7 @@ export default function HomePage() {
 
       {/* Multi-Step Lead Capture Form */}
       <form onSubmit={handleSubmit} className="w-full max-w-lg cathedral-surface p-6 md:p-8 space-y-6" noValidate aria-label="Life insurance quote request form">
-        {/* Siege Shield: Honeypot field — hidden from humans, visible to bots */}
+        {/* Honeypot field — hidden from humans, visible to bots */}
         <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "-9999px", opacity: 0, height: 0, overflow: "hidden" }}>
           <label htmlFor="_hp_website">Website</label>
           <input

@@ -1,5 +1,5 @@
 /**
- * Test runner that concatenates each source+test pair (mimicking oracle sandbox)
+ * Test runner that concatenates each source+test pair (mimicking isolated sandbox)
  * and runs them via node --test.
  */
 const { execSync } = require('node:child_process');
@@ -29,7 +29,7 @@ for (const testFile of testFiles) {
   const combined = src + '\n' + test;
 
   // Write combined to temp file
-  const tmpFile = path.join(os.tmpdir(), `oracle-test-${baseName}`);
+  const tmpFile = path.join(os.tmpdir(), `sandbox-test-${baseName}`);
   fs.writeFileSync(tmpFile, combined);
 
   try {

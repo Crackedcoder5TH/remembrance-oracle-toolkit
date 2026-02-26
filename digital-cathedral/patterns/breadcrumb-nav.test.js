@@ -9,9 +9,9 @@ describe('breadcrumb-nav', () => {
   });
 
   it('two-level trail for named section', () => {
-    const trail = buildBreadcrumbs('archive', { archive: 'Whisper Archive' });
+    const trail = buildBreadcrumbs('archive', { archive: 'News Archive' });
     assert.strictEqual(trail.length, 2);
-    assert.strictEqual(trail[1].label, 'Whisper Archive');
+    assert.strictEqual(trail[1].label, 'News Archive');
     assert.strictEqual(trail[1].current, true);
   });
 

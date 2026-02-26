@@ -19,7 +19,7 @@ export interface UtmParams {
   landingPage: string | null;
 }
 
-const STORAGE_KEY = "cathedral_utm";
+const STORAGE_KEY = "dc_utm";
 
 const UTM_KEYS = [
   ["utm_source", "utmSource"],

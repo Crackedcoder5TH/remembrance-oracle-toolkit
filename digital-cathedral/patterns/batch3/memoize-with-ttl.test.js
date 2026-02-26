@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// memoizeWithTTL is available via oracle sandbox concatenation
+// memoizeWithTTL is available via isolated sandbox concatenation
 
 describe('memoizeWithTTL', () => {
   it('should cache results', () => {

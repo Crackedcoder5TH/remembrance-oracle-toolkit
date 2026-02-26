@@ -14,7 +14,7 @@
  */
 import { useState, useEffect } from "react";
 
-const STORAGE_KEY = "cathedral_cookie_consent";
+const STORAGE_KEY = "dc_cookie_consent";
 
 type ConsentChoice = "accepted" | "rejected" | "essential-only" | null;
 

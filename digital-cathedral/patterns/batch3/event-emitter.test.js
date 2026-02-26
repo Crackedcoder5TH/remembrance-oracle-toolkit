@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// createEventEmitter is available via oracle sandbox concatenation
+// createEventEmitter is available via isolated sandbox concatenation
 
 describe('createEventEmitter', () => {
   it('should register and emit events', () => {

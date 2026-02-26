@@ -35,12 +35,5 @@ Thumbs.db
 *.swp
 *.swo
 
-# Solana
-.anchor/
-test-ledger/
-
-# Remembrance local store
-.remembrance/
-
-# Cathedral database
+# Local data
 .cathedral/

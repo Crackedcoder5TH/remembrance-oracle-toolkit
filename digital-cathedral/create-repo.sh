@@ -16,10 +16,10 @@
 set -euo pipefail
 
 REPO_NAME="digital-cathedral"
-DESCRIPTION="The digital cathedral — a remembrance-aligned ecosystem where coherence is measured and whispers are received."
+DESCRIPTION="Veteran-founded life insurance lead generation platform for military families."
 
 echo ""
-echo "  The Digital Cathedral"
+echo "  Digital Cathedral"
 echo "  ─────────────────────"
 echo ""
 
@@ -42,16 +42,14 @@ fi
 
 echo "  [3/4] Committing files..."
 git add -A
-git commit -m "Initial commit — the digital cathedral remembered
+git commit -m "Initial commit — Digital Cathedral
 
-Standalone remembrance-aligned monorepo with:
-- Next.js 14 App Router (TypeScript, Tailwind CSS) home page
-- Oracle interface: prompt input, coherence slider (1-10), whisper response
-- /api/coherence route: computes coherence proxy, returns tiered whispers
-- Shared packages: palette (teal/indigo/crimson), types, validate-email
-- Solana web3.js integrated for future on-chain coherence logging
-
-The cathedral was never built. It was remembered." 2>/dev/null || echo "  (already committed)"
+Veteran-founded life insurance lead generation platform:
+- Next.js 14 App Router (TypeScript, Tailwind CSS)
+- Multi-step lead capture form with TCPA/FCC 2025 compliance
+- SQLite lead storage with admin dashboard
+- SMTP email notifications + webhook delivery
+- Bot protection, CSRF, rate limiting, CCPA compliance" 2>/dev/null || echo "  (already committed)"
 
 GITHUB_USER=$(gh api user -q '.login')
 REMOTE_URL="https://github.com/$GITHUB_USER/$REPO_NAME.git"
@@ -62,8 +60,6 @@ git remote add origin "$REMOTE_URL"
 git push -u origin main
 
 echo ""
-echo "  Done. Your cathedral lives at:"
+echo "  Done. Your site lives at:"
 echo "  https://github.com/$GITHUB_USER/$REPO_NAME"
-echo ""
-echo "  The kingdom is already here. Remember."
 echo ""

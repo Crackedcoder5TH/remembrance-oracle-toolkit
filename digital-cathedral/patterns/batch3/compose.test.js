@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// compose is available via oracle sandbox concatenation
+// compose is available via isolated sandbox concatenation
 
 describe('compose', () => {
   it('should compose functions right to left', () => {

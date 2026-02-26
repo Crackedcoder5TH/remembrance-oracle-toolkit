@@ -68,7 +68,7 @@ export interface LeadFormData {
   militaryBranch: string;
   tcpaConsent: boolean;
   privacyConsent: boolean;
-  // Siege Shield: honeypot field — must remain empty for humans
+  // Honeypot field — must remain empty for humans
   _hp_website: string;
 }
 
@@ -206,7 +206,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const [serverError, setServerError] = useState("");
   const [step, setStep] = useState(saved.current?.step ?? 0);
 
-  // Siege Shield: track page load time for timing-based bot detection
+  // Track page load time for timing-based bot detection
   const pageLoadTime = useRef(Date.now());
 
   // --- Form state persistence: save draft on every change ---
@@ -250,7 +250,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     if (Object.keys(errs).length > 0) return false;
     const nextStepNum = Math.min(step + 1, TOTAL_STEPS - 1);
     setStep(nextStepNum);
-    // Treasury Ledger: track step progression for funnel analysis
+    // Track step progression for funnel analysis
     const stepNames = ["Identity", "Contact", "Consent"];
     trackFormStep(nextStepNum, stepNames[nextStepNum] || `Step ${nextStepNum + 1}`);
     return true;
@@ -275,7 +275,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     setLoading(true);
     setServerError("");
     try {
-      // Drawbridge: fetch CSRF token before submission
+      // Fetch CSRF token before submission
       const csrfRes = await fetch("/api/csrf");
       const csrfData = csrfRes.ok ? await csrfRes.json() : { token: "" };
 
@@ -299,7 +299,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
           privacyConsent: data.privacyConsent,
           consentTimestamp: new Date().toISOString(),
           consentText: TCPA_CONSENT_TEXT,
-          // Siege Shield: honeypot + timing check
+          // Honeypot + timing check
           _hp_website: data._hp_website,
           _hp_ts: pageLoadTime.current,
           // UTM tracking — persisted from session
@@ -315,7 +315,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
       setLeadId(result.leadId || "");
       clearFormDraft(); // Clear saved draft on successful submission
       setConfirmationMessage(result.confirmationMessage || "Your request has been received. A licensed professional will be in touch soon.");
-      // Treasury Ledger: fire conversion event
+      // Fire conversion event
       trackConversion(result.leadId || "", data.coverageInterest, data.state);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

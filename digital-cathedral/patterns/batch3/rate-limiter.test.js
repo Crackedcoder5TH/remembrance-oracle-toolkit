@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// createRateLimiter is available via oracle sandbox concatenation
+// createRateLimiter is available via isolated sandbox concatenation
 
 describe('createRateLimiter', () => {
   it('should allow calls within the limit', () => {

@@ -125,7 +125,7 @@ export function startRequestTimer(method: string, path: string, requestId?: stri
 }
 
 /** Module-level logger for non-request contexts (startup, cron, etc.) */
-export const herald = {
+export const logger = {
   debug: (message: string, meta?: Record<string, unknown>) => log("debug", message, meta),
   info: (message: string, meta?: Record<string, unknown>) => log("info", message, meta),
   warn: (message: string, meta?: Record<string, unknown>) => log("warn", message, meta),

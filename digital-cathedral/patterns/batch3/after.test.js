@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// after is available via oracle sandbox concatenation
+// after is available via isolated sandbox concatenation
 
 describe('after', () => {
   it('should not invoke fn before n calls', () => {

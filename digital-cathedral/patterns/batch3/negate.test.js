@@ -1,7 +1,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 
-// negate is available via oracle sandbox concatenation
+// negate is available via isolated sandbox concatenation
 
 describe('negate', () => {
   it('should negate a truthy predicate', () => {

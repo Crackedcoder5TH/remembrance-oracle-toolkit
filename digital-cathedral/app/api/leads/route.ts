@@ -23,7 +23,7 @@ import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
  * 7. Returns a confirmation message
  */
 
-// Validation now handled by the Armory (app/lib/validation.ts)
+// Validation handled by app/lib/validation.ts
 
 /** Confirmation messages shown after successful submission */
 const CONFIRMATIONS = [
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // --- CSRF validation (Drawbridge) ---
+  // CSRF validation
   if (!validateCsrfToken(req)) {
     logger.warn("CSRF token mismatch", { clientIp });
     finish(403);
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Siege Shield: Bot detection (honeypot + timing)
+    // Bot detection (honeypot + timing)
     // 1. Honeypot: if the hidden field has any value, it's a bot
     if (body._hp_website) {
       logger.warn("Honeypot triggered", { clientIp });
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Armory: Schema-based validation (replaces inline checks)
+    // Schema-based validation
     const validation = validateLeadPayload(body);
     if (!validation.valid) {
       logger.warn("Validation failed", { errors: validation.errors, clientIp });
@@ -204,7 +204,7 @@ export async function POST(req: NextRequest) {
       logger.error("Email send failed", { leadId, error: String(err) });
     });
 
-    // Messenger Relay: Send admin notification email
+    // Send admin notification email
     sendAdminNotificationEmail(leadRecord, leadScore).catch((err) => {
       logger.error("Admin notification email failed", { leadId, error: String(err) });
     });

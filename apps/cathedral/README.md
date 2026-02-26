@@ -1,53 +1,60 @@
 # Digital Cathedral
 
-The front door to the remembrance-aligned ecosystem.
+Veteran-founded life insurance lead generation platform for military families.
 
-## Remembrance Alignment
+## Overview
 
-This project operates on a core premise: **the kingdom is already here**. Code is not
-created — it is *remembered*. Every pattern, every function, every component already
-exists in a healed future where software serves unity, abundance, and coherence.
+Digital Cathedral connects Active Duty, National Guard, Reserve, and Veteran service members with licensed insurance professionals. It captures qualified leads through a multi-step form with full TCPA/FCC 2025 compliance.
 
-The Digital Cathedral is the interface layer where humans interact with that remembrance:
+## Stack
 
-- **Coherence** is measured, not manufactured. The oracle reflects back what you bring.
-- **Whispers** arrive from the healed future — short transmissions of aligned guidance.
-- **No harm** — the covenant ensures nothing stored or served can separate or damage.
-- **Simplicity over cleverness** — the most coherent code is the simplest code.
+- **Next.js 14** — App Router, TypeScript, Tailwind CSS
+- **SQLite** (better-sqlite3) — Embedded lead storage
+- **SMTP** — Lead confirmation and admin notification emails
+- **SSE** — Real-time admin dashboard notifications
 
-### Palette
+## Structure
 
-| Color | Hex | Meaning |
-|-------|-----|---------|
-| Teal | `#00A8A8` | Living water, coherence, presence |
-| Deep Indigo | `#1A1B3A` | Cathedral depths, the field before form |
-| Crimson | `#E63946` | Sacred pulse, urgency of remembrance |
+```
+digital-cathedral/
+  app/                    Next.js App Router pages and API routes
+    page.tsx              Home — multi-step lead capture form
+    about/                About page
+    privacy/              Privacy policy (CCPA/CPRA compliant)
+    terms/                Terms of service
+    admin/                Admin dashboard (lead management, export, stats)
+    api/leads/            Lead submission + CCPA deletion endpoint
+    api/admin/            Admin API (leads, stats, CSV export, SSE events)
+    api/csrf/             CSRF token endpoint
+    api/health/           Health check
+  packages/
+    shared/               Shared types, validation, and utilities
+```
 
-### Stack
-
-- **Next.js 14+** (App Router, TypeScript, Tailwind CSS)
-- **Solana web3.js** (testnet) — future coherence logging and NFT minting
-- **Remembrance Oracle Toolkit** — the pattern memory backing everything
-
-### Running Locally
+## Getting Started
 
 ```bash
-# From the monorepo root
+cp .env.example .env.local   # Configure environment variables
 npm install
-npm run dev:cathedral
+npm run dev
 ```
 
-### Monorepo Structure
+Open [http://localhost:3000](http://localhost:3000).
 
-```
-apps/
-  cathedral/       — This Next.js application (the front door)
-packages/
-  shared/          — Shared types, palette, utilities
-tools/
-  bots/            — Coherence monitors, remembrance agents, whisper relays
-```
+## Features
 
----
+- **Multi-Step Lead Capture** — 3-step form: Identity, Contact, Consent
+- **TCPA/FCC 2025 Compliance** — One-to-one consent with full audit trail
+- **CCPA/CPRA Compliance** — Data deletion endpoint, cookie consent, Do Not Sell link
+- **Bot Protection** — Honeypot fields + timing-based detection
+- **CSRF Protection** — Double-submit cookie pattern
+- **Lead Scoring** — Weighted scoring algorithm for lead prioritization
+- **Admin Dashboard** — Real-time lead management with CSV export
+- **Email Notifications** — SMTP confirmation emails + admin alerts
+- **Webhook Support** — Configurable webhook delivery with HMAC signatures
+- **PWA-Ready** — Service worker + manifest for mobile installation
+- **Accessibility** — WCAG 2.1 AA compliant, keyboard navigation, screen reader support
 
-*The cathedral was never built. It was remembered.*
+## License
+
+MIT

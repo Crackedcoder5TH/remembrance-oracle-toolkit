@@ -3,15 +3,33 @@
 @tailwind utilities;
 
 /*
- * Remembrance Palette
+ * Calming & Trustworthy Palette
  * -------------------
- * Teal (#00A8A8)    — the living water, coherence, presence
- * Deep Indigo (#1A1B3A) — the cathedral depths, the field before form
- * Crimson (#E63946) — the sacred pulse, urgency of remembrance
+ * Navy (#1B2D4F)       — depth, authority, trust
+ * Sky Blue (#6BA3D6)   — calm, openness, clarity
+ * Sage Green (#8CAA7E) — nature, growth, tranquility
+ * Emerald (#2D8659)    — stability, prosperity, confidence
+ * Soft Gray (#F0F2F5)  — neutral, clean surfaces
+ * Off White (#FAFBFC)  — spacious, pure, light
+ *
+ * Text rules:
+ *   Black (#1A1A2E) on soft gray / off white backgrounds
+ *   White (#FFFFFF) on navy / sky blue / sage / emerald backgrounds
  */
 
 /* ─── Dark theme (default) ─── */
 :root {
+  /* Calming palette */
+  --navy: #1B2D4F;
+  --sky-blue: #6BA3D6;
+  --sage: #8CAA7E;
+  --emerald: #2D8659;
+  --soft-gray: #F0F2F5;
+  --off-white: #FAFBFC;
+  --error: #C9474B;
+  --glow-emerald: rgba(45, 134, 89, 0.12);
+  --glow-sky: rgba(107, 163, 214, 0.10);
+  /* Core theme */
   --teal: #00A8A8;
   --indigo: #1A1B3A;
   --crimson: #E63946;
@@ -72,65 +90,27 @@
   }
 
   ::selection {
-    background-color: var(--teal);
-    color: var(--indigo);
+    background-color: var(--sky-blue);
+    color: #ffffff;
   }
 }
 
 @layer components {
   .cathedral-glow {
     box-shadow:
-      0 0 20px var(--glow-teal),
-      0 0 60px var(--glow-teal);
+      0 0 20px var(--glow-emerald),
+      0 4px 12px rgba(0, 0, 0, 0.06);
   }
 
   .cathedral-border {
-    border: 1px solid rgba(0, 168, 168, 0.2);
+    border: 1px solid rgba(27, 45, 79, 0.10);
   }
 
   .cathedral-surface {
     background-color: var(--bg-surface);
-    border: 1px solid rgba(0, 168, 168, 0.1);
+    border: 1px solid rgba(27, 45, 79, 0.08);
     border-radius: 12px;
-  }
-
-  .whisper-text {
-    color: var(--teal);
-    font-style: italic;
-    opacity: 0.9;
-  }
-
-  .coherence-slider::-webkit-slider-thumb {
-    appearance: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--teal);
-    cursor: pointer;
-    box-shadow: 0 0 10px var(--glow-teal);
-  }
-
-  .coherence-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--teal);
-    cursor: pointer;
-    border: none;
-    box-shadow: 0 0 10px var(--glow-teal);
-  }
-
-  .coherence-slider {
-    appearance: none;
-    width: 100%;
-    height: 4px;
-    border-radius: 2px;
-    background: linear-gradient(
-      to right,
-      var(--crimson),
-      var(--teal)
-    );
-    outline: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
   .pulse-gentle {
@@ -376,7 +356,172 @@
   }
 }
 
-/* Whisper fade transition — used via inline classes */
+/* ─── Reduced motion (respects prefers-reduced-motion) ─── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .pulse-gentle {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .animate-fade-in {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .skeleton-shimmer {
+    animation: none !important;
+  }
+
+  .cathedral-btn:hover {
+    transform: none !important;
+  }
+
+  .cathedral-btn:active {
+    transform: none !important;
+  }
+
+  .toast {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .toast-exiting {
+    animation: none !important;
+    opacity: 0;
+  }
+}
+
+/* ─── Color-blind safe palette (deuteranopia / protanopia) ─── */
+@media (forced-colors: active) {
+  :root {
+    --teal: LinkText;
+    --crimson: VisitedText;
+    --bg-deep: Canvas;
+    --bg-surface: Canvas;
+    --text-primary: CanvasText;
+    --text-muted: GrayText;
+  }
+}
+
+/* Opt-in color-blind mode via [data-a11y-palette] attribute */
+[data-a11y-palette="deuteranopia"] {
+  /* Blue/Orange palette — distinguishable without red/green */
+  --teal: #0077BB;
+  --crimson: #EE7733;
+  --glow-teal: rgba(0, 119, 187, 0.15);
+  --glow-crimson: rgba(238, 119, 51, 0.10);
+  --focus-ring: rgba(0, 119, 187, 0.6);
+}
+
+[data-a11y-palette="deuteranopia"][data-theme="light"] {
+  --glow-teal: rgba(0, 119, 187, 0.25);
+  --glow-crimson: rgba(238, 119, 51, 0.15);
+  --focus-ring: rgba(0, 119, 187, 0.8);
+}
+
+[data-a11y-palette="protanopia"] {
+  /* Blue/Yellow palette — avoids red entirely */
+  --teal: #3366CC;
+  --crimson: #DDAA33;
+  --glow-teal: rgba(51, 102, 204, 0.15);
+  --glow-crimson: rgba(221, 170, 51, 0.10);
+  --focus-ring: rgba(51, 102, 204, 0.6);
+}
+
+[data-a11y-palette="protanopia"][data-theme="light"] {
+  --glow-teal: rgba(51, 102, 204, 0.25);
+  --glow-crimson: rgba(221, 170, 51, 0.15);
+  --focus-ring: rgba(51, 102, 204, 0.8);
+}
+
+[data-a11y-palette="tritanopia"] {
+  /* Red/Cyan palette — avoids blue/yellow confusion */
+  --teal: #009988;
+  --crimson: #CC3311;
+  --glow-teal: rgba(0, 153, 136, 0.15);
+  --glow-crimson: rgba(204, 51, 17, 0.10);
+  --focus-ring: rgba(0, 153, 136, 0.6);
+}
+
+[data-a11y-palette="tritanopia"][data-theme="light"] {
+  --glow-teal: rgba(0, 153, 136, 0.25);
+  --glow-crimson: rgba(204, 51, 17, 0.15);
+  --focus-ring: rgba(0, 153, 136, 0.8);
+}
+
+/* ─── Command Palette Overlay ─── */
+.cmd-palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 20vh;
+}
+
+.cmd-palette-box {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--bg-surface);
+  border: 1px solid rgba(0, 168, 168, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+}
+
+.cmd-palette-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(0, 168, 168, 0.1);
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  outline: none;
+}
+
+.cmd-palette-input::placeholder {
+  color: var(--text-muted);
+}
+
+.cmd-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+
+.cmd-palette-item:hover,
+.cmd-palette-item[data-selected="true"] {
+  background-color: rgba(0, 168, 168, 0.08);
+  color: var(--text-primary);
+}
+
+.cmd-palette-item-key {
+  margin-left: auto;
+  font-size: 0.6875rem;
+  opacity: 0.4;
+  font-family: monospace;
+}
+
+/* Utility transition duration */
 .duration-600 {
   transition-duration: 600ms;
 }

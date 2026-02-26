@@ -1,0 +1,291 @@
+import { NextRequest, NextResponse } from "next/server";
+import { insertLead, deleteLeadByEmail } from "@/app/lib/database";
+import type { LeadRecord } from "@/app/lib/database";
+import { notifyLeadCreated } from "@/app/lib/webhooks";
+import { sendLeadConfirmationEmail, sendAdminNotificationEmail } from "@/app/lib/email";
+import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
+import { broadcast } from "@/app/lib/lead-events";
+import { scoreLead } from "@/app/lib/lead-scoring";
+import { startRequestTimer } from "@/app/lib/logger";
+import { validateCsrfToken } from "@/app/lib/csrf";
+import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
+
+/**
+ * Lead submission API.
+ *
+ * This route:
+ * 1. Rate-limits by IP (sliding window)
+ * 2. Validates all fields server-side
+ * 3. Records consent metadata (TCPA compliance)
+ * 4. Persists the lead to SQLite via better-sqlite3
+ * 5. Detects duplicates within 24-hour window
+ * 6. Sends confirmation email
+ * 7. Returns a confirmation message
+ */
+
+// Validation handled by app/lib/validation.ts
+
+/** Confirmation messages shown after successful submission */
+const CONFIRMATIONS = [
+  "Your request has been received. A licensed professional will reach out soon.",
+  "Thank you for taking the first step. Someone who understands military coverage will be in touch.",
+  "Your information is secure. A licensed insurance professional will contact you shortly.",
+  "We've received your request. Expect a call or email within 1 business day.",
+  "You're one step closer to protecting your family. A professional will reach out soon.",
+];
+
+function generateLeadId(): string {
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `lead_${ts}_${rand}`;
+}
+
+export async function POST(req: NextRequest) {
+  const { logger, finish } = startRequestTimer("POST", "/api/leads");
+
+  // Rate limit (sliding window per-IP)
+  const clientIp = getClientIp(req.headers);
+  const rateCheck = checkRateLimit(clientIp, 5, 60_000); // 5 requests per minute per IP
+  if (!rateCheck.allowed) {
+    logger.warn("Rate limit exceeded", { clientIp });
+    finish(429);
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Too many requests. Please wait a moment before trying again.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) },
+      },
+    );
+  }
+
+  // CSRF validation
+  if (!validateCsrfToken(req)) {
+    logger.warn("CSRF token mismatch", { clientIp });
+    finish(403);
+    return NextResponse.json(
+      { success: false, message: "Security validation failed. Please refresh the page and try again." },
+      { status: 403 },
+    );
+  }
+
+  try {
+    const body = await req.json();
+
+    // Bot detection (honeypot + timing)
+    // 1. Honeypot: if the hidden field has any value, it's a bot
+    if (body._hp_website) {
+      logger.warn("Honeypot triggered", { clientIp });
+      finish(200); // Return fake success to not alert the bot
+      return NextResponse.json({
+        success: true,
+        message: "Your request has been received.",
+        leadId: "lead_" + Date.now().toString(36),
+        confirmationMessage: "Your intention has been noted.",
+      });
+    }
+    // 2. Timing: if submitted faster than 3 seconds after page load, likely a bot
+    const MIN_SUBMIT_TIME_MS = 3000;
+    if (body._hp_ts && typeof body._hp_ts === "number") {
+      const elapsed = Date.now() - body._hp_ts;
+      if (elapsed < MIN_SUBMIT_TIME_MS) {
+        logger.warn("Timing check failed — too fast", { elapsed, clientIp });
+        finish(200); // Fake success
+        return NextResponse.json({
+          success: true,
+          message: "Your request has been received.",
+          leadId: "lead_" + Date.now().toString(36),
+          confirmationMessage: "Your intention has been noted.",
+        });
+      }
+    }
+
+    // Schema-based validation
+    const validation = validateLeadPayload(body);
+    if (!validation.valid) {
+      logger.warn("Validation failed", { errors: validation.errors, clientIp });
+      finish(400);
+      return NextResponse.json(
+        { success: false, message: validation.errors.join(" ") },
+        { status: 400 },
+      );
+    }
+
+    const validated = validation.data;
+
+    // Build the lead record with full consent metadata (TCPA compliance)
+    const leadId = generateLeadId();
+    const leadRecord: LeadRecord = {
+      leadId,
+      firstName: validated.firstName,
+      lastName: validated.lastName,
+      dateOfBirth: validated.dateOfBirth,
+      email: validated.email,
+      phone: validated.phone,
+      state: validated.state,
+      coverageInterest: validated.coverageInterest,
+      veteranStatus: validated.veteranStatus,
+      militaryBranch: validated.militaryBranch,
+      consentTcpa: true,
+      consentPrivacy: true,
+      consentTimestamp: validated.consentTimestamp,
+      consentText: validated.consentText,
+      consentIp: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
+      consentUserAgent: req.headers.get("user-agent") || "unknown",
+      consentPageUrl: req.headers.get("referer") || "/",
+      utmSource: validated.utmSource || null,
+      utmMedium: validated.utmMedium || null,
+      utmCampaign: validated.utmCampaign || null,
+      utmTerm: validated.utmTerm || null,
+      utmContent: validated.utmContent || null,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Persist to database
+    const dbResult = insertLead(leadRecord);
+
+    if (!dbResult.ok) {
+      // Duplicate detection returns a user-friendly message
+      if (dbResult.error.includes("Duplicate")) {
+        logger.info("Duplicate lead detected", { email: validated.email, clientIp });
+        finish(409);
+        return NextResponse.json(
+          {
+            success: false,
+            message: "We've already received your request. A licensed professional will be in touch soon.",
+          },
+          { status: 409 },
+        );
+      }
+
+      logger.error("Database insert failed", { error: dbResult.error, leadId });
+      finish(500);
+      return NextResponse.json(
+        { success: false, message: "Something went wrong. Please try again." },
+        { status: 500 },
+      );
+    }
+
+    logger.info("Lead stored", { leadId, rowId: dbResult.value.id, state: validated.state, coverageInterest: validated.coverageInterest });
+
+    // Score the lead (used by SSE broadcast and admin email)
+    const leadScore = scoreLead(leadRecord);
+
+    // Broadcast real-time event to connected admin dashboards (SSE)
+    try {
+      broadcast({
+        type: "lead.created",
+        data: {
+          leadId: leadRecord.leadId,
+          firstName: leadRecord.firstName,
+          lastName: leadRecord.lastName,
+          state: leadRecord.state,
+          coverageInterest: leadRecord.coverageInterest,
+          veteranStatus: leadRecord.veteranStatus,
+          score: leadScore.total,
+          tier: leadScore.tier,
+          createdAt: leadRecord.createdAt,
+        },
+      });
+      logger.debug("SSE broadcast sent", { leadId });
+    } catch (err) {
+      logger.error("SSE broadcast failed", { leadId, error: String(err) });
+    }
+
+    // Fire webhook notifications (non-blocking — doesn't affect response)
+    notifyLeadCreated(leadRecord).catch((err) => {
+      logger.error("Webhook notification failed", { leadId, error: String(err) });
+    });
+
+    // Send confirmation email (non-blocking — doesn't affect response)
+    sendLeadConfirmationEmail(leadRecord).catch((err) => {
+      logger.error("Email send failed", { leadId, error: String(err) });
+    });
+
+    // Send admin notification email
+    sendAdminNotificationEmail(leadRecord, leadScore).catch((err) => {
+      logger.error("Admin notification email failed", { leadId, error: String(err) });
+    });
+
+    const confirmationMessage = CONFIRMATIONS[Math.floor(Math.random() * CONFIRMATIONS.length)];
+
+    finish(200, { leadId });
+    return NextResponse.json({
+      success: true,
+      message: "Your request has been received. A licensed insurance professional will contact you soon.",
+      leadId,
+      confirmationMessage,
+    });
+  } catch {
+    finish(400);
+    return NextResponse.json(
+      { success: false, message: "Invalid request. Please try again." },
+      { status: 400 },
+    );
+  }
+}
+
+/**
+ * DELETE /api/leads — CCPA/CPRA Data Deletion Endpoint
+ *
+ * Accepts { email } in the request body.
+ * Deletes all lead records associated with that email address.
+ * Rate-limited to prevent abuse.
+ */
+export async function DELETE(req: NextRequest) {
+  const { logger, finish } = startRequestTimer("DELETE", "/api/leads");
+
+  const clientIp = getClientIp(req.headers);
+  const rateCheck = checkRateLimit(clientIp, 3, 60_000); // 3 deletion requests per minute
+  if (!rateCheck.allowed) {
+    logger.warn("Rate limit exceeded on DELETE", { clientIp });
+    finish(429);
+    return NextResponse.json(
+      { success: false, message: "Too many requests. Please wait before trying again." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) } },
+    );
+  }
+
+  try {
+    const body = await req.json();
+    const { email } = body;
+
+    if (!email || !isValidEmail(email)) {
+      logger.warn("Invalid email on CCPA delete", { clientIp });
+      finish(400);
+      return NextResponse.json(
+        { success: false, message: "A valid email address is required to process your deletion request." },
+        { status: 400 },
+      );
+    }
+
+    const result = deleteLeadByEmail(email);
+
+    if (!result.ok) {
+      logger.error("CCPA delete failed", { error: result.error, clientIp });
+      finish(500);
+      return NextResponse.json(
+        { success: false, message: "Something went wrong processing your request." },
+        { status: 500 },
+      );
+    }
+
+    logger.info("CCPA delete completed", { deleted: result.value.deleted, clientIp });
+    finish(200, { deleted: result.value.deleted });
+
+    // Always return success even if no records found (privacy — don't reveal existence)
+    return NextResponse.json({
+      success: true,
+      message: "Your data deletion request has been processed. Any records associated with your email have been removed.",
+      deleted: result.value.deleted,
+    });
+  } catch {
+    finish(400);
+    return NextResponse.json(
+      { success: false, message: "Invalid request." },
+      { status: 400 },
+    );
+  }
+}

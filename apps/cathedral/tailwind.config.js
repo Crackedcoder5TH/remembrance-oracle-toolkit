@@ -7,6 +7,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        /* Brand theme */
         teal: {
           cathedral: "#00A8A8",
         },
@@ -15,6 +16,28 @@ module.exports = {
         },
         crimson: {
           cathedral: "#E63946",
+        },
+        /* Calming palette */
+        navy: {
+          cathedral: "#1B2D4F",
+        },
+        "sky-accent": {
+          DEFAULT: "#6BA3D6",
+        },
+        sage: {
+          cathedral: "#8CAA7E",
+        },
+        "emerald-accent": {
+          DEFAULT: "#2D8659",
+        },
+        "soft-gray": {
+          DEFAULT: "#F0F2F5",
+        },
+        "off-white": {
+          DEFAULT: "#FAFBFC",
+        },
+        "calm-error": {
+          DEFAULT: "#C9474B",
         },
       },
       fontFamily: {

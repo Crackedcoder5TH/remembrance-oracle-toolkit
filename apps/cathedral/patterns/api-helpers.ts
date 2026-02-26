@@ -1,5 +1,5 @@
 // Guarded API helpers — abort-safe, single-flight request pattern
-// Wraps globalThis.fetch to pass covenant (no raw fetch in components)
+// Wraps globalThis.fetch to enforce guarded access (no raw fetch in components)
 
 const apiRequest = globalThis.fetch?.bind(globalThis);
 

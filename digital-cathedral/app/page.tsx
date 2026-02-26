@@ -5,6 +5,7 @@ import type { CoherenceResponse, WhisperEntry } from "@cathedral/shared";
 
 const HISTORY_KEY = "cathedral-whisper-history";
 const THEME_KEY = "cathedral-theme";
+const FAVORITES_KEY = "cathedral-favorites";
 const MAX_HISTORY = 50;
 const MIN_PROMPT_LENGTH = 3;
 
@@ -142,6 +143,22 @@ function saveHistory(entries: WhisperEntry[]): void {
       HISTORY_KEY,
       JSON.stringify(entries.slice(0, MAX_HISTORY))
     );
+  } catch {}
+}
+
+function loadFavorites(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveFavorites(favs: Set<string>): void {
+  try {
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify([...favs]));
   } catch {}
 }
 
@@ -936,6 +953,8 @@ export default function CathedralHome() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [history, setHistory] = useState<WhisperEntry[]>([]);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [solana, setSolana] = useState<SolanaStatus>({
     connected: false,
     slot: null,
@@ -968,6 +987,7 @@ export default function CathedralHome() {
   // Load history + ping Solana on mount (with abort guard)
   useEffect(() => {
     setHistory(loadHistory());
+    setFavorites(loadFavorites());
     const controller = new AbortController();
     getSolanaStatus(controller.signal)
       .then((data) => setSolana({ connected: data.connected, slot: data.slot }))
@@ -991,14 +1011,20 @@ export default function CathedralHome() {
 
   // Filter history by search (oracle-evolved memoize, from pattern bb674cc519161f62)
   const filteredHistory = useMemo(() => {
+    let result = history;
+    if (showFavoritesOnly) {
+      result = result.filter((e) => favorites.has(e.id));
+    }
     const q = debouncedQuery.trim().toLowerCase();
-    if (!q) return history;
-    return history.filter(
-      (e) =>
-        e.whisper.toLowerCase().includes(q) ||
-        e.input.toLowerCase().includes(q)
-    );
-  }, [debouncedQuery, history]);
+    if (q) {
+      result = result.filter(
+        (e) =>
+          e.whisper.toLowerCase().includes(q) ||
+          e.input.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [debouncedQuery, history, showFavoritesOnly, favorites]);
 
   // Voice input for the oracle form
   const voice = useVoiceInput((text) => {
@@ -1111,6 +1137,21 @@ export default function CathedralHome() {
   function clearHistory() {
     setHistory([]);
     saveHistory([]);
+    setFavorites(new Set());
+    saveFavorites(new Set());
+  }
+
+  function toggleFavorite(id: string) {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      saveFavorites(next);
+      return next;
+    });
   }
 
   function exportHistoryJSON() {
@@ -1513,6 +1554,24 @@ export default function CathedralHome() {
               )}
             </div>
 
+            {favorites.size > 0 && (
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  onClick={() => setShowFavoritesOnly((p) => !p)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all border ${
+                    showFavoritesOnly
+                      ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                      : "bg-transparent text-[var(--text-muted)] border-[var(--border-subtle)] hover:border-amber-500/30 hover:text-amber-400"
+                  }`}
+                  aria-pressed={showFavoritesOnly}
+                  aria-label={showFavoritesOnly ? "Show all whispers" : "Show favorites only"}
+                >
+                  <span>{showFavoritesOnly ? "★" : "☆"}</span>
+                  Favorites ({favorites.size})
+                </button>
+              </div>
+            )}
+
             {debouncedQuery.trim() && (
               <div className="text-xs text-[var(--text-muted)] mb-3">
                 {filteredHistory.length} result
@@ -1538,6 +1597,18 @@ export default function CathedralHome() {
                       className="cathedral-surface p-3 sm:p-4 space-y-2"
                     >
                       <div className="flex items-start justify-between gap-2">
+                        <button
+                          onClick={() => toggleFavorite(entry.id)}
+                          className={`shrink-0 text-base transition-colors ${
+                            favorites.has(entry.id)
+                              ? "text-amber-400 hover:text-amber-300"
+                              : "text-[var(--text-muted)] opacity-40 hover:opacity-80 hover:text-amber-400"
+                          }`}
+                          aria-label={favorites.has(entry.id) ? "Remove from favorites" : "Add to favorites"}
+                          aria-pressed={favorites.has(entry.id)}
+                        >
+                          {favorites.has(entry.id) ? "★" : "☆"}
+                        </button>
                         <p className="whisper-text text-sm leading-relaxed flex-1">
                           &ldquo;{entry.whisper}&rdquo;
                         </p>

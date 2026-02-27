@@ -8,12 +8,55 @@
  *  - X-Content-Type-Options — prevent MIME sniffing
  *  - Referrer-Policy — control referrer leakage
  *  - Permissions-Policy — disable unnecessary browser features
+ *
+ * Admin route protection:
+ *  - /admin (except /admin/login) requires a valid session cookie
+ *  - Unauthenticated requests are redirected to /admin/login
  */
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const ADMIN_SESSION_COOKIE = "__admin_session";
+
+/**
+ * Lightweight session check for middleware (Edge runtime).
+ * Verifies the payload is unexpired JSON. Full HMAC signature
+ * verification happens at the API layer via admin-session.ts.
+ */
+function isSessionLikelyValid(token: string): boolean {
+  try {
+    const [payload] = token.split(".");
+    if (!payload) return false;
+
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const data = JSON.parse(json);
+
+    if (typeof data.exp !== "number") return false;
+    return data.exp > Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
+
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ─── Admin route protection ───
+  if (
+    pathname.startsWith("/admin") &&
+    !pathname.startsWith("/admin/login") &&
+    !pathname.startsWith("/api/admin/login")
+  ) {
+    const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+
+    if (!sessionCookie || !isSessionLikelyValid(sessionCookie)) {
+      const loginUrl = new URL("/admin/login", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // ─── Security headers ───
   const response = NextResponse.next();
   const headers = response.headers;
 

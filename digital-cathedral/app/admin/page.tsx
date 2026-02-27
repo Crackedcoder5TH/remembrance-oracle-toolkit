@@ -3,16 +3,19 @@
 /**
  * Admin Dashboard
  *
+ * Protected by middleware (session cookie required — see /admin/login).
+ *
  * Features:
- *  - Bearer token authentication (ADMIN_API_KEY via login prompt)
  *  - Lead stats overview (total, today, week, month)
  *  - Filterable lead table (state, coverage, veteran, search)
  *  - Lead scoring with tier badges (hot/warm/standard/cool)
  *  - CSV export
  *  - Pagination
+ *  - Real-time SSE notifications
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // --- Debounce hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -71,10 +74,7 @@ const COVERAGE_LABELS: Record<string, string> = {
 };
 
 export default function AdminDashboard() {
-  const [token, setToken] = useState("");
-  const [authenticated, setAuthenticated] = useState(false);
-  const [loginError, setLoginError] = useState("");
-
+  const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -85,22 +85,21 @@ export default function AdminDashboard() {
   const [filterCoverage, setFilterCoverage] = useState("");
   const [filterVeteran, setFilterVeteran] = useState("");
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 350); // 350ms debounce on search input
+  const debouncedSearch = useDebounce(search, 350);
   const [page, setPage] = useState(0);
   const LIMIT = 25;
 
-  const authHeaders = useCallback(
-    () => ({ Authorization: `Bearer ${token}` }),
-    [token],
-  );
-
   const fetchStats = useCallback(async () => {
-    const res = await fetch("/api/admin/stats", { headers: authHeaders() });
+    const res = await fetch("/api/admin/stats");
+    if (res.status === 401 || res.status === 403) {
+      router.push("/admin/login");
+      return;
+    }
     if (res.ok) {
       const data = await res.json();
       setStats(data.stats);
     }
-  }, [authHeaders]);
+  }, [router]);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -112,28 +111,14 @@ export default function AdminDashboard() {
     params.set("limit", String(LIMIT));
     params.set("offset", String(page * LIMIT));
 
-    const res = await fetch(`/api/admin/leads?${params}`, {
-      headers: authHeaders(),
-    });
+    const res = await fetch(`/api/admin/leads?${params}`);
     if (res.ok) {
       const data = await res.json();
       setLeads(data.leads);
       setTotal(data.total);
     }
     setLoading(false);
-  }, [filterState, filterCoverage, filterVeteran, debouncedSearch, page, authHeaders]);
-
-  const handleLogin = async () => {
-    setLoginError("");
-    const res = await fetch("/api/admin/stats", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      setAuthenticated(true);
-    } else {
-      setLoginError("Invalid API key. Check your ADMIN_API_KEY.");
-    }
-  };
+  }, [filterState, filterCoverage, filterVeteran, debouncedSearch, page]);
 
   const handleExport = () => {
     const params = new URLSearchParams();
@@ -141,9 +126,8 @@ export default function AdminDashboard() {
     if (filterCoverage) params.set("coverage", filterCoverage);
     if (filterVeteran) params.set("veteran", filterVeteran);
     if (search) params.set("search", search);
-    // Open in new tab — token sent via header won't work for direct download
-    // So we'll use a fetch + blob approach
-    fetch(`/api/admin/export?${params}`, { headers: authHeaders() })
+
+    fetch(`/api/admin/export?${params}`)
       .then((res) => res.blob())
       .then((blob) => {
         const url = URL.createObjectURL(blob);
@@ -155,19 +139,22 @@ export default function AdminDashboard() {
       });
   };
 
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.push("/admin/login");
+  };
+
   // --- Real-time notifications via SSE ---
   const [newLeadFlash, setNewLeadFlash] = useState<string | null>(null);
   useEffect(() => {
-    if (!authenticated) return;
-    const es = new EventSource(`/api/admin/events?token=${encodeURIComponent(token)}`);
+    // SSE uses cookies automatically — no query param token needed
+    const es = new EventSource("/api/admin/events");
 
     es.addEventListener("lead.created", (e) => {
       try {
         const data = JSON.parse(e.data);
-        // Flash notification
         setNewLeadFlash(`New lead: ${data.firstName} from ${data.state} (${data.tier})`);
         setTimeout(() => setNewLeadFlash(null), 5000);
-        // Refresh data
         fetchStats();
         fetchLeads();
       } catch {
@@ -180,7 +167,7 @@ export default function AdminDashboard() {
     };
 
     return () => es.close();
-  }, [authenticated, token, fetchStats, fetchLeads]);
+  }, [fetchStats, fetchLeads]);
 
   // Reset page when debounced search changes
   useEffect(() => {
@@ -188,57 +175,9 @@ export default function AdminDashboard() {
   }, [debouncedSearch]);
 
   useEffect(() => {
-    if (authenticated) {
-      fetchStats();
-      fetchLeads();
-    }
-  }, [authenticated, fetchStats, fetchLeads]);
-
-  // --- Login Screen ---
-  if (!authenticated) {
-    return (
-      <main className="min-h-screen flex items-center justify-center px-4">
-        <div className="w-full max-w-sm cathedral-surface p-8 space-y-6">
-          <div className="text-center">
-            <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
-              Admin
-            </div>
-            <h1 className="text-2xl font-light text-[var(--text-primary)]">
-              Dashboard Access
-            </h1>
-          </div>
-
-          <div className="space-y-3">
-            <label htmlFor="admin-token" className="block text-sm text-[var(--text-muted)]">
-              API Key
-            </label>
-            <input
-              id="admin-token"
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-              placeholder="Enter ADMIN_API_KEY"
-              className="w-full bg-soft-gray text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-navy-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-navy-cathedral/25 transition-all"
-              aria-describedby={loginError ? "login-error" : undefined}
-            />
-            {loginError && (
-              <p id="login-error" className="text-calm-error text-xs" role="alert">
-                {loginError}
-              </p>
-            )}
-          </div>
-
-          <button
-            onClick={handleLogin}
-            className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
-          >
-            Authenticate
-          </button>
-        </div>
-      </main>
-    );
-  }
+    fetchStats();
+    fetchLeads();
+  }, [fetchStats, fetchLeads]);
 
   const totalPages = Math.ceil(total / LIMIT);
 
@@ -255,12 +194,20 @@ export default function AdminDashboard() {
             Lead Dashboard
           </h1>
         </div>
-        <button
-          onClick={handleExport}
-          className="px-4 py-2 rounded-lg text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
-        >
-          Export CSV
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
+          >
+            Export CSV
+          </button>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 rounded-lg text-sm transition-all text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25"
+          >
+            Logout
+          </button>
+        </div>
       </header>
 
       {/* Real-time notification flash */}

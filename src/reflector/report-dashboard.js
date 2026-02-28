@@ -174,7 +174,7 @@ function generateDashboardHTML(data) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Remembrance Reflector BOT \u2014 ${escapeHTML(data.repo)}</title>
 <style>
-  :root { --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #c9d1d9; --green: #3fb950; --yellow: #d29922; --red: #f85149; --blue: #58a6ff; --dim: #8b949e; }
+  :root { --bg: #F0F2F5; --card: #FFFFFF; --border: #D0D4DA; --text: #1A1A2E; --green: #2D8659; --yellow: #d29922; --red: #C9474B; --blue: #1B2D4F; --dim: #5A6377; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 24px; }
   h1 { font-size: 24px; margin-bottom: 8px; }
@@ -190,9 +190,9 @@ function generateDashboardHTML(data) {
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); color: var(--dim); font-weight: 600; }
   td { padding: 8px; border-bottom: 1px solid var(--border); }
-  .bar-container { width: 100%; height: 20px; background: #21262d; border-radius: 4px; overflow: hidden; }
+  .bar-container { width: 100%; height: 20px; background: #E8EAED; border-radius: 4px; overflow: hidden; }
   .bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-  .chart-area { width: 100%; height: 200px; position: relative; background: #0d1117; border-radius: 4px; padding: 8px; }
+  .chart-area { width: 100%; height: 200px; position: relative; background: #F0F2F5; border-radius: 4px; padding: 8px; }
   canvas { width: 100% !important; height: 100% !important; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
   .badge-strict { background: #f851491a; color: var(--red); }
@@ -320,7 +320,7 @@ if (canvas && trend.length > 1) {
   const maxV = Math.max(...values, 1.0);
   const rangeV = maxV - minV || 1;
 
-  ctx.strokeStyle = '#30363d';
+  ctx.strokeStyle = '#D0D4DA';
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = pad.top + (plotH * i / 4);
@@ -328,7 +328,7 @@ if (canvas && trend.length > 1) {
     ctx.moveTo(pad.left, y);
     ctx.lineTo(w - pad.right, y);
     ctx.stroke();
-    ctx.fillStyle = '#8b949e';
+    ctx.fillStyle = '#5A6377';
     ctx.font = '11px sans-serif';
     ctx.fillText((maxV - (rangeV * i / 4)).toFixed(2), 4, y + 4);
   }

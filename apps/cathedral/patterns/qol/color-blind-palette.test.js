@@ -6,7 +6,7 @@ describe('color-blind-palette', function() {
     const p = getPalette('default');
     assert.equal(p.primary, '#00A8A8');
     assert.equal(p.danger, '#E63946');
-    assert.equal(p.bg, '#0F1026');
+    assert.equal(p.bg, '#F0F2F5');
   });
 
   it('getPalette returns deuteranopia palette', function() {

@@ -46,8 +46,8 @@ function LiveActivityCounter() {
       className={`flex items-center justify-center gap-2 transition-opacity duration-700 ${visible ? "opacity-100" : "opacity-0"}`}
     >
       <span className="relative flex h-2.5 w-2.5">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-accent/40"></span>
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-accent"></span>
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-cathedral/40"></span>
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-cathedral"></span>
       </span>
       <p className="text-sm text-[var(--text-muted)]">
         <span className="font-medium text-[var(--text-primary)]">{count} people</span> requested quotes today
@@ -133,7 +133,7 @@ function HowItWorks() {
       <div className="grid md:grid-cols-3 gap-6">
         {steps.map((s) => (
           <div key={s.number} className="text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-accent text-white border border-emerald-accent/30 flex items-center justify-center text-sm font-medium mx-auto">
+            <div className="w-10 h-10 rounded-full bg-teal-cathedral text-white border border-teal-cathedral/30 flex items-center justify-center text-sm font-medium mx-auto">
               {s.number}
             </div>
             <h3 className="text-sm font-medium text-[var(--text-primary)]">
@@ -229,8 +229,8 @@ function RotatingTestimonials() {
               <p className="text-sm text-[var(--text-primary)] leading-relaxed italic">
                 &ldquo;{t.quote}&rdquo;
               </p>
-              <div className="border-t border-navy-cathedral/8 pt-3">
-                <p className="text-xs font-medium text-emerald-accent">{t.name}</p>
+              <div className="border-t border-indigo-cathedral/8 pt-3">
+                <p className="text-xs font-medium text-teal-cathedral">{t.name}</p>
                 <p className="text-xs text-[var(--text-muted)]">
                   {t.location} &middot; {t.coverage}
                 </p>
@@ -246,8 +246,8 @@ function RotatingTestimonials() {
           <p className="text-sm text-[var(--text-primary)] leading-relaxed italic">
             &ldquo;{TESTIMONIALS[activeIndex].quote}&rdquo;
           </p>
-          <div className="border-t border-navy-cathedral/8 pt-3">
-            <p className="text-xs font-medium text-emerald-accent">
+          <div className="border-t border-indigo-cathedral/8 pt-3">
+            <p className="text-xs font-medium text-teal-cathedral">
               {TESTIMONIALS[activeIndex].name}
             </p>
             <p className="text-xs text-[var(--text-muted)]">
@@ -263,7 +263,7 @@ function RotatingTestimonials() {
           <button
             key={i}
             className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-              i === activeIndex ? "bg-emerald-accent w-4" : "bg-navy-cathedral/20"
+              i === activeIndex ? "bg-teal-cathedral w-4" : "bg-indigo-cathedral/20"
             }`}
             onClick={() => { setFading(true); setTimeout(() => { setActiveIndex(i); setFading(false); }, 300); }}
             role="tab"

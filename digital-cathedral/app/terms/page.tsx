@@ -9,7 +9,7 @@ export default function TermsPage() {
   return (
     <main className="min-h-screen px-4 py-12 max-w-3xl mx-auto">
       <header className="mb-10">
-        <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Terms of Service
         </div>
         <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
@@ -186,7 +186,7 @@ export default function TermsPage() {
           <p>
             For questions about these Terms, contact us at:
           </p>
-          <div className="mt-3 p-4 bg-soft-gray rounded-lg border border-navy-cathedral/10">
+          <div className="mt-3 p-4 bg-[var(--bg-surface)] rounded-lg border border-indigo-cathedral/10">
             <p>Digital Cathedral</p>
             <p>Email: legal@digital-cathedral.app</p>
           </div>
@@ -196,9 +196,9 @@ export default function TermsPage() {
       {/* Footer */}
       <footer className="mt-12 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center">
-          <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Get Protected</a>
-          <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
-          <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">Home</a>
+          <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Get Protected</a>
+          <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
+          <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Home</a>
         </nav>
         <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
       </footer>

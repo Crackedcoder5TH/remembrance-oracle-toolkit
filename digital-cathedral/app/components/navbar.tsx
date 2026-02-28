@@ -49,8 +49,8 @@ export function Navbar() {
   }, [menuOpen]);
 
   return (
-    <nav className="w-full bg-navy-cathedral text-white" aria-label="Main navigation">
-      <div className="max-w-6xl mx-auto px-4 flex items-center justify-between h-14">
+    <nav className="cathedral-nav w-full text-[var(--text-primary)] relative z-50" aria-label="Main navigation">
+      <div className="max-w-6xl mx-auto px-fib-21 flex items-center justify-between h-fib-55">
         {/* Left: Home dropdown */}
         <div className="relative">
           <button
@@ -58,26 +58,32 @@ export function Navbar() {
             onClick={() => setMenuOpen((v) => !v)}
             aria-expanded={menuOpen}
             aria-haspopup="true"
-            className="flex items-center gap-2 text-sm font-medium tracking-wide hover:text-emerald-accent transition-colors"
+            className="flex items-center gap-fib-8 text-sm font-medium tracking-wide hover:text-[var(--teal)] transition-colors"
           >
-            {/* Small cathedral icon */}
+            {/* Sacred geometry icon — Seed of Life simplified */}
             <svg
-              width="20"
-              height="20"
+              width="21"
+              height="21"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.5"
-              className="shrink-0"
+              strokeWidth="1"
+              className="shrink-0 text-[var(--teal)]"
               aria-hidden="true"
             >
-              <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6" />
+              <circle cx="12" cy="12" r="5" />
+              <circle cx="12" cy="7" r="5" opacity="0.4" />
+              <circle cx="16.33" cy="9.5" r="5" opacity="0.4" />
+              <circle cx="16.33" cy="14.5" r="5" opacity="0.4" />
+              <circle cx="12" cy="17" r="5" opacity="0.4" />
+              <circle cx="7.67" cy="14.5" r="5" opacity="0.4" />
+              <circle cx="7.67" cy="9.5" r="5" opacity="0.4" />
             </svg>
             Digital Cathedral
             {/* Chevron */}
             <svg
-              width="12"
-              height="12"
+              width="13"
+              height="13"
               viewBox="0 0 12 12"
               fill="none"
               stroke="currentColor"
@@ -94,7 +100,7 @@ export function Navbar() {
             <div
               ref={menuRef}
               role="menu"
-              className="absolute left-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-navy-cathedral/10 py-2 z-50"
+              className="absolute left-0 top-full mt-fib-3 w-56 rounded-[13px] py-fib-5 z-50 cathedral-surface"
             >
               {NAV_LINKS.map((link) => (
                 <Link
@@ -102,7 +108,7 @@ export function Navbar() {
                   href={link.href}
                   role="menuitem"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-2.5 text-sm text-navy-cathedral hover:bg-soft-gray transition-colors"
+                  className="block px-fib-21 py-fib-8 text-sm text-[var(--text-muted)] hover:text-[var(--teal)] hover:bg-[var(--bg-surface-hover)] transition-colors"
                 >
                   {link.label}
                 </Link>
@@ -114,7 +120,7 @@ export function Navbar() {
         {/* Right: Login button */}
         <Link
           href="/admin/login"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-white/20 hover:bg-white/10 transition-all"
+          className="flex items-center gap-fib-8 px-fib-21 py-fib-8 text-sm font-medium rounded-fib border border-[var(--teal)]/20 hover:bg-[var(--teal)]/10 hover:border-[var(--teal)]/40 transition-all"
         >
           <svg
             width="16"
@@ -123,7 +129,7 @@ export function Navbar() {
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
-            className="shrink-0"
+            className="shrink-0 text-[var(--teal)]"
             aria-hidden="true"
           >
             <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />

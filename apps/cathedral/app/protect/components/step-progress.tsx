@@ -32,10 +32,10 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-all ${
                 i < currentStep
-                  ? "bg-emerald-accent text-white"
+                  ? "bg-teal-cathedral text-white"
                   : i === currentStep
-                    ? "bg-emerald-accent/10 text-emerald-accent border border-emerald-accent/60 cathedral-glow"
-                    : "bg-soft-gray text-[var(--text-muted)] border border-navy-cathedral/10"
+                    ? "bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/60 cathedral-glow"
+                    : "bg-[var(--bg-surface)] text-[var(--text-muted)] border border-indigo-cathedral/10"
               }`}
               aria-hidden="true"
             >
@@ -43,7 +43,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
             </div>
             <span
               className={`text-xs mt-1 ${
-                i <= currentStep ? "text-emerald-accent" : "text-[var(--text-muted)]"
+                i <= currentStep ? "text-teal-cathedral" : "text-[var(--text-muted)]"
               }`}
             >
               <span className="sr-only">{i < currentStep ? "Completed: " : i === currentStep ? "Current: " : "Upcoming: "}</span>
@@ -55,7 +55,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
 
       {/* Progress bar */}
       <div
-        className="w-full h-1 rounded-full bg-soft-gray overflow-hidden"
+        className="w-full h-1 rounded-full bg-[var(--bg-surface)] overflow-hidden"
         role="progressbar"
         aria-valuenow={Math.round(progress)}
         aria-valuemin={0}

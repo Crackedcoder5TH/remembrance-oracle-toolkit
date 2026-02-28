@@ -16,7 +16,7 @@ export default function NotFoundPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md text-center space-y-6">
-        <div className="text-6xl font-light text-emerald-accent/30">
+        <div className="text-6xl font-light text-teal-cathedral/30">
           404
         </div>
 
@@ -33,23 +33,23 @@ export default function NotFoundPage() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
             href="/"
-            className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
+            className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >
             Get a Quote
           </a>
           <a
             href="/"
-            className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25"
+            className="px-5 py-2.5 rounded-lg text-sm font-medium transition-all text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
           >
             Go Home
           </a>
         </div>
 
-        <nav className="pt-4 border-t border-navy-cathedral/8">
+        <nav className="pt-4 border-t border-indigo-cathedral/8">
           <p className="text-xs text-[var(--text-muted)] mb-2">Or try one of these:</p>
           <div className="flex gap-4 justify-center text-xs">
-            <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
-            <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
+            <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
+            <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
           </div>
         </nav>
       </div>

@@ -200,7 +200,7 @@ export default function AdminDashboard() {
       <main className="min-h-screen flex items-center justify-center px-4">
         <div className="w-full max-w-sm cathedral-surface p-8 space-y-6">
           <div className="text-center">
-            <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+            <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
               Admin
             </div>
             <h1 className="text-2xl font-light text-[var(--text-primary)]">
@@ -219,11 +219,11 @@ export default function AdminDashboard() {
               onChange={(e) => setToken(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
               placeholder="Enter ADMIN_API_KEY"
-              className="w-full bg-soft-gray text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-navy-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-navy-cathedral/25 transition-all"
+              className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-indigo-cathedral/25 transition-all"
               aria-describedby={loginError ? "login-error" : undefined}
             />
             {loginError && (
-              <p id="login-error" className="text-calm-error text-xs" role="alert">
+              <p id="login-error" className="text-crimson-cathedral text-xs" role="alert">
                 {loginError}
               </p>
             )}
@@ -231,7 +231,7 @@ export default function AdminDashboard() {
 
           <button
             onClick={handleLogin}
-            className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
+            className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >
             Authenticate
           </button>
@@ -248,7 +248,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <header className="flex items-center justify-between mb-8">
         <div>
-          <div className="text-emerald-accent text-xs tracking-[0.3em] uppercase pulse-gentle">
+          <div className="text-teal-cathedral text-xs tracking-[0.3em] uppercase pulse-gentle">
             Admin
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)]">
@@ -257,7 +257,7 @@ export default function AdminDashboard() {
         </div>
         <button
           onClick={handleExport}
-          className="px-4 py-2 rounded-lg text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
+          className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
         >
           Export CSV
         </button>
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
       {/* Real-time notification flash */}
       {newLeadFlash && (
         <div
-          className="mb-4 px-4 py-3 rounded-lg text-sm font-medium bg-emerald-accent/10 text-emerald-accent border border-emerald-accent/20 animate-in fade-in"
+          className="mb-4 px-4 py-3 rounded-lg text-sm font-medium bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/20 animate-in fade-in"
           role="status"
           aria-live="polite"
         >
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
           </div>
           <div className="cathedral-surface p-4">
             <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider">Today</p>
-            <p className="text-2xl font-light text-emerald-accent mt-1">{stats.today}</p>
+            <p className="text-2xl font-light text-teal-cathedral mt-1">{stats.today}</p>
           </div>
           <div className="cathedral-surface p-4">
             <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider">This Week</p>
@@ -305,7 +305,7 @@ export default function AdminDashboard() {
               {Object.entries(stats.byVeteranStatus).map(([status, count]) => (
                 <div key={status} className="flex justify-between text-sm">
                   <span className="text-[var(--text-primary)] capitalize">{status || "Unknown"}</span>
-                  <span className="text-emerald-accent">{count}</span>
+                  <span className="text-teal-cathedral">{count}</span>
                 </div>
               ))}
             </div>
@@ -316,7 +316,7 @@ export default function AdminDashboard() {
               {Object.entries(stats.byCoverage).map(([cov, count]) => (
                 <div key={cov} className="flex justify-between text-sm">
                   <span className="text-[var(--text-primary)]">{COVERAGE_LABELS[cov] || cov}</span>
-                  <span className="text-emerald-accent">{count}</span>
+                  <span className="text-teal-cathedral">{count}</span>
                 </div>
               ))}
             </div>
@@ -333,13 +333,13 @@ export default function AdminDashboard() {
             value={search}
             onChange={(e) => { setSearch(e.target.value); }}
             aria-label="Search leads by name or email"
-            className="bg-soft-gray text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-navy-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy-cathedral/25 col-span-2 md:col-span-1"
+            className="bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 col-span-2 md:col-span-1"
           />
           <select
             value={filterState}
             onChange={(e) => { setFilterState(e.target.value); setPage(0); }}
             aria-label="Filter by state"
-            className="bg-soft-gray text-[var(--text-primary)] border border-navy-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy-cathedral/25 appearance-none"
+            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
             <option value="">All States</option>
             {["TX","FL","CA","NY","PA","OH","IL","GA","NC","VA","NJ","MI","TN","AZ"].map((s) => (
@@ -350,7 +350,7 @@ export default function AdminDashboard() {
             value={filterCoverage}
             onChange={(e) => { setFilterCoverage(e.target.value); setPage(0); }}
             aria-label="Filter by coverage type"
-            className="bg-soft-gray text-[var(--text-primary)] border border-navy-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy-cathedral/25 appearance-none"
+            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
             <option value="">All Coverage</option>
             {Object.entries(COVERAGE_LABELS).map(([val, label]) => (
@@ -361,7 +361,7 @@ export default function AdminDashboard() {
             value={filterVeteran}
             onChange={(e) => { setFilterVeteran(e.target.value); setPage(0); }}
             aria-label="Filter by veteran status"
-            className="bg-soft-gray text-[var(--text-primary)] border border-navy-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy-cathedral/25 appearance-none"
+            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
             <option value="">All Veteran Status</option>
             <option value="veteran">Veteran</option>
@@ -369,7 +369,7 @@ export default function AdminDashboard() {
           </select>
           <button
             onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setSearch(""); setPage(0); }}
-            className="text-sm text-emerald-accent underline py-2"
+            className="text-sm text-teal-cathedral underline py-2"
           >
             Clear Filters
           </button>
@@ -380,7 +380,7 @@ export default function AdminDashboard() {
       <div className="cathedral-surface overflow-x-auto" role="region" aria-label="Leads table">
         <table className="w-full text-sm" aria-label="Lead records">
           <thead>
-            <tr className="text-left text-[var(--text-muted)] text-xs uppercase tracking-wider border-b border-navy-cathedral/10">
+            <tr className="text-left text-[var(--text-muted)] text-xs uppercase tracking-wider border-b border-indigo-cathedral/10">
               <th className="px-4 py-3" scope="col">Score</th>
               <th className="px-4 py-3" scope="col">Name</th>
               <th className="px-4 py-3" scope="col">Contact</th>
@@ -408,7 +408,7 @@ export default function AdminDashboard() {
               leads.map((lead) => (
                 <tr
                   key={lead.leadId}
-                  className="border-b border-navy-cathedral/5 hover:bg-soft-gray/50 transition-colors"
+                  className="border-b border-indigo-cathedral/5 hover:bg-[var(--bg-surface)]/50 transition-colors"
                 >
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[lead.tier]}`}>
@@ -429,7 +429,7 @@ export default function AdminDashboard() {
                   </td>
                   <td className="px-4 py-3">
                     {lead.veteranStatus === "veteran" ? (
-                      <span className="text-emerald-accent text-xs">
+                      <span className="text-teal-cathedral text-xs">
                         Veteran{lead.militaryBranch ? ` (${lead.militaryBranch})` : ""}
                       </span>
                     ) : (
@@ -460,7 +460,7 @@ export default function AdminDashboard() {
               onClick={() => setPage(Math.max(0, page - 1))}
               disabled={page === 0}
               aria-label="Previous page"
-              className="px-3 py-1.5 rounded text-sm text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25 disabled:opacity-30"
+              className="px-3 py-1.5 rounded text-sm text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25 disabled:opacity-30"
             >
               Prev
             </button>
@@ -471,7 +471,7 @@ export default function AdminDashboard() {
               onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
               disabled={page >= totalPages - 1}
               aria-label="Next page"
-              className="px-3 py-1.5 rounded text-sm text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25 disabled:opacity-30"
+              className="px-3 py-1.5 rounded text-sm text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25 disabled:opacity-30"
             >
               Next
             </button>

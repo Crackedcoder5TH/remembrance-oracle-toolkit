@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         <header>
           <Link
             href="/"
-            className="text-emerald-accent text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
+            className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
           >
             &larr; Back Home
           </Link>
@@ -178,7 +178,7 @@ export default function PrivacyPage() {
             To exercise any of these rights, email{" "}
             <a
               href="mailto:privacy@digital-cathedral.app"
-              className="text-emerald-accent hover:underline"
+              className="text-teal-cathedral hover:underline"
             >
               privacy@digital-cathedral.app
             </a>
@@ -192,7 +192,7 @@ export default function PrivacyPage() {
           </h2>
           <p>
             If you submitted information through our{" "}
-            <Link href="/" className="text-emerald-accent hover:underline">
+            <Link href="/" className="text-teal-cathedral hover:underline">
               protection form
             </Link>
             , your contact details may be shared with licensed insurance
@@ -210,7 +210,7 @@ export default function PrivacyPage() {
               Send a request to{" "}
               <a
                 href="mailto:privacy@digital-cathedral.app"
-                className="text-emerald-accent hover:underline"
+                className="text-teal-cathedral hover:underline"
               >
                 privacy@digital-cathedral.app
               </a>{" "}
@@ -245,7 +245,7 @@ export default function PrivacyPage() {
                 href="https://vercel.com/legal/privacy-policy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-emerald-accent hover:underline"
+                className="text-teal-cathedral hover:underline"
               >
                 Vercel&apos;s privacy policy
               </a>
@@ -262,19 +262,19 @@ export default function PrivacyPage() {
             For privacy-related questions, email{" "}
             <a
               href="mailto:privacy@digital-cathedral.app"
-              className="text-emerald-accent hover:underline"
+              className="text-teal-cathedral hover:underline"
             >
               privacy@digital-cathedral.app
             </a>{" "}
             or visit our{" "}
-            <Link href="/about" className="text-emerald-accent hover:underline">
+            <Link href="/about" className="text-teal-cathedral hover:underline">
               About &amp; Contact
             </Link>{" "}
             page.
           </p>
         </section>
 
-        <footer className="pt-8 border-t border-emerald-accent/10 text-center">
+        <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
           <p className="text-xs text-[var(--text-muted)]">
             &copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.
           </p>

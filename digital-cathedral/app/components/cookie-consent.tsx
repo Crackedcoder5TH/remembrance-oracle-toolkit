@@ -75,7 +75,7 @@ export function CookieConsent() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4 md:p-6">
-      <div className="max-w-2xl mx-auto cathedral-surface p-5 md:p-6 shadow-lg border border-navy-cathedral/10">
+      <div className="max-w-2xl mx-auto cathedral-surface p-5 md:p-6 shadow-lg border border-indigo-cathedral/10">
         <div className="space-y-4">
           {/* Main message */}
           <div className="space-y-2">
@@ -91,11 +91,11 @@ export function CookieConsent() {
 
           {/* Details toggle */}
           {showDetails && (
-            <div className="space-y-3 border-t border-navy-cathedral/8 pt-3">
+            <div className="space-y-3 border-t border-indigo-cathedral/8 pt-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[var(--text-primary)]">Essential Cookies</span>
-                  <span className="text-xs text-emerald-accent">Always Active</span>
+                  <span className="text-xs text-teal-cathedral">Always Active</span>
                 </div>
                 <p className="text-xs text-[var(--text-muted)]">
                   Required for the website to function. Includes session management and security.
@@ -128,25 +128,25 @@ export function CookieConsent() {
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleAccept}
-              className="px-4 py-2 rounded-lg text-xs font-medium bg-emerald-accent text-white hover:bg-emerald-accent/90 transition-all"
+              className="px-4 py-2 rounded-lg text-xs font-medium bg-teal-cathedral text-white hover:bg-teal-cathedral/90 transition-all"
             >
               Accept All
             </button>
             <button
               onClick={handleEssentialOnly}
-              className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25 transition-all"
+              className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25 transition-all"
             >
               Essential Only
             </button>
             <button
               onClick={handleReject}
-              className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25 transition-all"
+              className="px-4 py-2 rounded-lg text-xs font-medium text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25 transition-all"
             >
               Reject All
             </button>
             <button
               onClick={() => setShowDetails(!showDetails)}
-              className="text-xs text-emerald-accent underline ml-auto"
+              className="text-xs text-teal-cathedral underline ml-auto"
             >
               {showDetails ? "Hide Details" : "Cookie Details"}
             </button>
@@ -155,9 +155,9 @@ export function CookieConsent() {
           {/* Privacy policy link */}
           <p className="text-xs text-[var(--text-muted)]">
             Learn more in our{" "}
-            <a href="/privacy" className="text-emerald-accent underline">Privacy Policy</a>.
+            <a href="/privacy" className="text-teal-cathedral underline">Privacy Policy</a>.
             California residents:{" "}
-            <a href="/privacy#do-not-sell" className="text-emerald-accent underline">
+            <a href="/privacy#do-not-sell" className="text-teal-cathedral underline">
               Do Not Sell or Share My Personal Information
             </a>.
           </p>

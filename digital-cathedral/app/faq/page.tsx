@@ -49,7 +49,7 @@ export default function FaqPage() {
         <header>
           <Link
             href="/"
-            className="text-emerald-accent text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
+            className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
           >
             &larr; Back Home
           </Link>
@@ -63,7 +63,7 @@ export default function FaqPage() {
 
         <div className="space-y-6">
           {FAQS.map((item) => (
-            <div key={item.q} className="border-b border-navy-cathedral/8 pb-5">
+            <div key={item.q} className="border-b border-indigo-cathedral/8 pb-5">
               <h2 className="text-sm font-medium text-[var(--text-primary)] mb-2">
                 {item.q}
               </h2>
@@ -80,7 +80,7 @@ export default function FaqPage() {
           </p>
           <a
             href="mailto:privacy@digital-cathedral.app"
-            className="text-emerald-accent text-sm hover:underline"
+            className="text-teal-cathedral text-sm hover:underline"
           >
             Contact us
           </a>
@@ -89,18 +89,18 @@ export default function FaqPage() {
         <div className="text-center pt-4">
           <Link
             href="/"
-            className="inline-block px-8 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90"
+            className="inline-block px-8 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >
             Start My Coverage Review
           </Link>
           <p className="text-xs text-[var(--text-muted)] mt-2">Takes less than 60 seconds.</p>
         </div>
 
-        <footer className="pt-8 border-t border-emerald-accent/10 text-center">
+        <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
           <nav className="flex gap-4 justify-center mb-3">
-            <Link href="/about" className="text-emerald-accent/70 hover:text-emerald-accent text-xs">About</Link>
-            <Link href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent text-xs">Privacy Policy</Link>
-            <Link href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent text-xs">Terms of Service</Link>
+            <Link href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">About</Link>
+            <Link href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Privacy Policy</Link>
+            <Link href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Terms of Service</Link>
           </nav>
           <p className="text-xs text-[var(--text-muted)]">
             &copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.

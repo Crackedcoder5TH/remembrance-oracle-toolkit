@@ -93,7 +93,7 @@ function autoCapitalizeName(value: string): string {
 }
 
 const INPUT_CLASS =
-  "w-full bg-soft-gray text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-navy-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-accent/60 transition-all";
+  "w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 transition-all";
 
 const SELECT_CLASS = INPUT_CLASS + " appearance-none";
 
@@ -128,15 +128,15 @@ export default function HomePage() {
       <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12" aria-label="Form submission confirmation">
         {/* Success icon */}
         <div className="mb-8">
-          <div className="w-20 h-20 rounded-full bg-emerald-accent/10 flex items-center justify-center mx-auto">
-            <svg className="w-10 h-10 text-emerald-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          <div className="w-20 h-20 rounded-full bg-teal-cathedral/10 flex items-center justify-center mx-auto">
+            <svg className="w-10 h-10 text-teal-cathedral" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
         </div>
 
         <div className="w-full max-w-lg cathedral-surface p-8 cathedral-glow text-center" role="status">
-          <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
+          <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
             Request Received
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)] mb-3">
@@ -145,38 +145,38 @@ export default function HomePage() {
           <p className="text-[var(--text-primary)] text-lg mb-6">
             Your Legacy is Being Protected
           </p>
-          <p className="text-emerald-accent italic opacity-90 text-base leading-relaxed mb-8">
+          <p className="text-teal-cathedral italic opacity-90 text-base leading-relaxed mb-8">
             &ldquo;{confirmationMessage}&rdquo;
           </p>
 
           {/* Reference number */}
           {leadId && (
-            <div className="bg-soft-gray rounded-lg px-4 py-3 mb-8 inline-block">
+            <div className="bg-[var(--bg-surface)] rounded-lg px-4 py-3 mb-8 inline-block">
               <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Reference Number</p>
               <p className="text-sm font-mono text-[var(--text-primary)] select-all">{leadId}</p>
             </div>
           )}
 
           {/* What happens next */}
-          <div className="border-t border-navy-cathedral/8 pt-6 mt-2">
+          <div className="border-t border-indigo-cathedral/8 pt-6 mt-2">
             <h2 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider mb-4">What Happens Next</h2>
             <div className="space-y-4 text-left">
               <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">1</div>
+                <div className="w-7 h-7 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">1</div>
                 <div>
                   <p className="text-sm text-[var(--text-primary)] font-medium">Confirmation Email</p>
                   <p className="text-xs text-[var(--text-muted)]">Check your inbox at <span className="font-medium">{form.email}</span> for a confirmation of your request.</p>
                 </div>
               </div>
               <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">2</div>
+                <div className="w-7 h-7 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">2</div>
                 <div>
                   <p className="text-sm text-[var(--text-primary)] font-medium">Professional Review</p>
                   <p className="text-xs text-[var(--text-muted)]">A licensed insurance professional in your area will review your information and coverage needs.</p>
                 </div>
               </div>
               <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">3</div>
+                <div className="w-7 h-7 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">3</div>
                 <div>
                   <p className="text-sm text-[var(--text-primary)] font-medium">Personal Consultation</p>
                   <p className="text-xs text-[var(--text-muted)]">Expect a call or email within <strong>1 business day</strong> to discuss your options — no obligation.</p>
@@ -190,13 +190,13 @@ export default function HomePage() {
         <div className="flex gap-4 mt-8">
           <a
             href="/"
-            className="px-6 py-3 rounded-lg text-sm font-medium border border-navy-cathedral/10 text-[var(--text-muted)] hover:border-navy-cathedral/25 transition-all"
+            className="px-6 py-3 rounded-lg text-sm font-medium border border-indigo-cathedral/10 text-[var(--text-muted)] hover:border-indigo-cathedral/25 transition-all"
           >
             Return Home
           </a>
           <a
             href="/privacy"
-            className="px-6 py-3 rounded-lg text-sm font-medium text-emerald-accent hover:text-emerald-accent/80 transition-all"
+            className="px-6 py-3 rounded-lg text-sm font-medium text-teal-cathedral hover:text-teal-cathedral/80 transition-all"
           >
             Privacy Policy
           </a>
@@ -219,7 +219,7 @@ export default function HomePage() {
         </h2>
 
         {/* Photo placeholder */}
-        <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-soft-gray border-2 border-emerald-accent/20 flex items-center justify-center">
+        <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-[var(--bg-surface)] border-2 border-teal-cathedral/20 flex items-center justify-center">
           <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
           </svg>
@@ -245,7 +245,7 @@ export default function HomePage() {
             This is personal.<br />
             Service doesn&rsquo;t end at separation — and neither should protection.
           </p>
-          <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-navy-cathedral/8">
+          <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-indigo-cathedral/8">
             We are not affiliated with the U.S. Government or Department of Defense. We connect
             individuals with independent, licensed insurance professionals.
           </p>
@@ -254,7 +254,7 @@ export default function HomePage() {
 
       {/* Hero — Above the Form */}
       <header className="text-center mb-10">
-        <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Protect What Matters Most
         </div>
         <h1 className="text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4">
@@ -264,7 +264,7 @@ export default function HomePage() {
           Life insurance options for Active Duty, National Guard, Reserve, and Veterans
           — made clear and simple.
         </p>
-        <p className="text-emerald-accent text-xs tracking-wide font-medium">
+        <p className="text-teal-cathedral text-xs tracking-wide font-medium">
           Founded by a Veteran. Built to Serve Military Families.
         </p>
       </header>
@@ -309,12 +309,12 @@ export default function HomePage() {
               <div className="space-y-1">
                 <label htmlFor="firstName" className="block text-sm text-[var(--text-muted)]">First Name</label>
                 <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", autoCapitalizeName(e.target.value))} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
-                {errors.firstName && <p id="firstName-error" className="text-calm-error text-xs" role="alert">{errors.firstName}</p>}
+                {errors.firstName && <p id="firstName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
                 <label htmlFor="lastName" className="block text-sm text-[var(--text-muted)]">Last Name</label>
                 <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", autoCapitalizeName(e.target.value))} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
-                {errors.lastName && <p id="lastName-error" className="text-calm-error text-xs" role="alert">{errors.lastName}</p>}
+                {errors.lastName && <p id="lastName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.lastName}</p>}
               </div>
             </div>
 
@@ -332,7 +332,7 @@ export default function HomePage() {
                 className={INPUT_CLASS}
               />
               <p id="dob-hint" className="text-[var(--text-muted)] text-xs">You must be at least 18 years old.</p>
-              {errors.dateOfBirth && <p id="dob-error" className="text-calm-error text-xs" role="alert">{errors.dateOfBirth}</p>}
+              {errors.dateOfBirth && <p id="dob-error" className="text-crimson-cathedral text-xs" role="alert">{errors.dateOfBirth}</p>}
             </div>
 
             <div className="space-y-1">
@@ -341,7 +341,7 @@ export default function HomePage() {
                 <option value="">Select your state...</option>
                 {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
               </select>
-              {errors.state && <p id="state-error" className="text-calm-error text-xs" role="alert">{errors.state}</p>}
+              {errors.state && <p id="state-error" className="text-crimson-cathedral text-xs" role="alert">{errors.state}</p>}
             </div>
 
             <div className="space-y-1">
@@ -349,7 +349,7 @@ export default function HomePage() {
               <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={SELECT_CLASS}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {errors.coverageInterest && <p id="coverage-error" className="text-calm-error text-xs" role="alert">{errors.coverageInterest}</p>}
+              {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
             </div>
 
             {/* Veteran Status */}
@@ -358,7 +358,7 @@ export default function HomePage() {
               <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={SELECT_CLASS}>
                 {VETERAN_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {errors.veteranStatus && <p id="veteran-error" className="text-calm-error text-xs" role="alert">{errors.veteranStatus}</p>}
+              {errors.veteranStatus && <p id="veteran-error" className="text-crimson-cathedral text-xs" role="alert">{errors.veteranStatus}</p>}
             </div>
 
             {/* Military Branch — conditional subcategory (only shown for veterans) */}
@@ -369,7 +369,7 @@ export default function HomePage() {
                   {MILITARY_BRANCH_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
                 <p id="branch-hint" className="text-[var(--text-muted)] text-xs">Thank you for your service.</p>
-                {errors.militaryBranch && <p id="branch-error" className="text-calm-error text-xs" role="alert">{errors.militaryBranch}</p>}
+                {errors.militaryBranch && <p id="branch-error" className="text-crimson-cathedral text-xs" role="alert">{errors.militaryBranch}</p>}
               </div>
             )}
 
@@ -377,7 +377,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={nextStep}
-              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
             >
               Continue
             </button>
@@ -390,13 +390,13 @@ export default function HomePage() {
             <div className="space-y-1">
               <label htmlFor="email" className="block text-sm text-[var(--text-muted)]">Email Address</label>
               <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" aria-required="true" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={INPUT_CLASS} />
-              {errors.email && <p id="email-error" className="text-calm-error text-xs" role="alert">{errors.email}</p>}
+              {errors.email && <p id="email-error" className="text-crimson-cathedral text-xs" role="alert">{errors.email}</p>}
             </div>
 
             <div className="space-y-1">
               <label htmlFor="phone" className="block text-sm text-[var(--text-muted)]">Phone Number</label>
               <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" autoComplete="tel" aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} className={INPUT_CLASS} />
-              {errors.phone && <p id="phone-error" className="text-calm-error text-xs" role="alert">{errors.phone}</p>}
+              {errors.phone && <p id="phone-error" className="text-crimson-cathedral text-xs" role="alert">{errors.phone}</p>}
             </div>
 
             {/* Navigation */}
@@ -404,14 +404,14 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
               >
                 Continue
               </button>
@@ -442,13 +442,13 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => prevStep()}
-                className="text-emerald-accent text-xs underline mt-1"
+                className="text-teal-cathedral text-xs underline mt-1"
               >
                 Edit information
               </button>
             </div>
 
-            <div className="border-t border-navy-cathedral/8 pt-5" />
+            <div className="border-t border-indigo-cathedral/8 pt-5" />
 
             {/* TCPA + Privacy Consent */}
             <TcpaConsent
@@ -462,7 +462,7 @@ export default function HomePage() {
 
             {/* Server Error */}
             {serverError && (
-              <div className="text-calm-error text-sm text-center py-2" role="alert" aria-live="assertive">{serverError}</div>
+              <div className="text-crimson-cathedral text-sm text-center py-2" role="alert" aria-live="assertive">{serverError}</div>
             )}
 
             {/* Navigation + Submit */}
@@ -470,7 +470,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
               >
                 Back
               </button>
@@ -478,7 +478,7 @@ export default function HomePage() {
                 type="submit"
                 disabled={loading}
                 aria-busy={loading}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? "Submitting..." : "Request My Coverage Review"}
               </button>
@@ -506,7 +506,7 @@ export default function HomePage() {
 
       {/* Do Not Sell Link — CCPA Compliance */}
       <div className="w-full max-w-lg mt-4 text-center">
-        <a href="/privacy#do-not-sell" className="text-xs text-emerald-accent underline">
+        <a href="/privacy#do-not-sell" className="text-xs text-teal-cathedral underline">
           Do Not Sell or Share My Personal Information
         </a>
       </div>
@@ -517,16 +517,16 @@ export default function HomePage() {
           Learn More
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          <a href="/about" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
+          <a href="/about" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
             About Us
           </a>
-          <a href="/about#how-it-works" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
+          <a href="/about#how-it-works" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
             How It Works
           </a>
-          <a href="/faq" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
+          <a href="/faq" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
             FAQ
           </a>
-          <a href="/about#who-we-serve" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
+          <a href="/about#who-we-serve" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
             Who We Serve
           </a>
         </div>
@@ -535,10 +535,10 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2 mb-8">
         <nav className="flex gap-4 justify-center flex-wrap">
-          <a href="/about" className="text-emerald-accent/70 hover:text-emerald-accent">About</a>
-          <a href="/faq" className="text-emerald-accent/70 hover:text-emerald-accent">FAQ</a>
-          <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
-          <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
+          <a href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral">About</a>
+          <a href="/faq" className="text-teal-cathedral/70 hover:text-teal-cathedral">FAQ</a>
+          <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
+          <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
         </nav>
         <p>Protecting what matters most — your family.</p>
         <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>

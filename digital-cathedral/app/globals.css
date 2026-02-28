@@ -3,69 +3,63 @@
 @tailwind utilities;
 
 /*
- * Calming & Trustworthy Palette
- * -------------------
- * Navy (#1B2D4F)       — depth, authority, trust
- * Sky Blue (#6BA3D6)   — calm, openness, clarity
- * Sage Green (#8CAA7E) — nature, growth, tranquility
- * Emerald (#2D8659)    — stability, prosperity, confidence
- * Soft Gray (#F0F2F5)  — neutral, clean surfaces
- * Off White (#FAFBFC)  — spacious, pure, light
+ * Kingdom Palette — Teal & Indigo with Crimson Accent
+ * ────────────────────────────────────────────────────
+ * Indigo (#1A1B3A)   — the deep foundation, cathedral vaults, authority
+ * Teal  (#00A8A8)    — the living light, interactivity, trust, flow
+ * Crimson (#E63946)  — sacred accent, energy, heartbeat (used sparingly)
+ *
+ * Fibonacci spacing scale:
+ *   1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233
+ *
+ * Golden ratio (φ): 1.618033988749895
  *
  * Text rules:
- *   Black (#1A1A2E) on soft gray / off white backgrounds
- *   White (#FFFFFF) on navy / sky blue / sage / emerald backgrounds
+ *   Light text (#E8E8F0) on indigo backgrounds
+ *   Teal (#00A8A8) for interactive elements / links
+ *   Crimson (#E63946) for errors and critical accents only
  */
 
-/* ─── Light theme (default) ─── */
+/* ─── Kingdom theme (default — dark indigo) ─── */
 :root {
-  /* Calming palette */
-  --navy: #1B2D4F;
-  --sky-blue: #6BA3D6;
-  --sage: #8CAA7E;
-  --emerald: #2D8659;
-  --soft-gray: #F0F2F5;
-  --off-white: #FAFBFC;
-  --error: #C9474B;
-  --glow-emerald: rgba(45, 134, 89, 0.12);
-  --glow-sky: rgba(107, 163, 214, 0.10);
-  /* Core theme */
+  /* Core Kingdom colors */
   --teal: #00A8A8;
   --indigo: #1A1B3A;
+  --indigo-light: #2A2B5A;
   --crimson: #E63946;
+
+  /* Surfaces */
+  --bg-deep: #0F1026;
+  --bg-surface: #161833;
+  --bg-surface-hover: #1E2048;
+
+  /* Text */
+  --text-primary: #E8E8F0;
+  --text-muted: #8B8BA8;
+
+  /* Glows */
+  --glow-teal: rgba(0, 168, 168, 0.15);
+  --glow-crimson: rgba(230, 57, 70, 0.10);
+  --glow-indigo: rgba(26, 27, 58, 0.4);
+
+  /* Focus */
+  --focus-ring: rgba(0, 168, 168, 0.6);
+
+  /* Sacred geometry opacity */
+  --geo-opacity: 0.07;
+}
+
+/* ─── Light theme (opt-in) ─── */
+[data-theme="light"] {
   --bg-deep: #F0F2F5;
   --bg-surface: #FFFFFF;
+  --bg-surface-hover: #E8EAF0;
   --text-primary: #1A1A2E;
   --text-muted: #5A6377;
   --glow-teal: rgba(0, 168, 168, 0.25);
   --glow-crimson: rgba(230, 57, 70, 0.15);
   --focus-ring: rgba(0, 168, 168, 0.8);
-}
-
-/* ─── Dark theme (opt-in) ─── */
-[data-theme="dark"] {
-  --bg-deep: #0F1026;
-  --bg-surface: #161833;
-  --text-primary: #E8E8F0;
-  --text-muted: #8B8BA8;
-  --glow-teal: rgba(0, 168, 168, 0.15);
-  --glow-crimson: rgba(230, 57, 70, 0.10);
-  --focus-ring: rgba(0, 168, 168, 0.6);
-}
-
-[data-theme="dark"] .cathedral-nav {
-  background-color: rgba(15, 16, 38, 0.85);
-  border-bottom-color: rgba(0, 168, 168, 0.1);
-}
-
-[data-theme="dark"] .skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    var(--bg-surface) 25%,
-    rgba(0, 168, 168, 0.08) 50%,
-    var(--bg-surface) 75%
-  );
-  background-size: 200% 100%;
+  --geo-opacity: 0.04;
 }
 
 @layer base {
@@ -86,33 +80,46 @@
     color: var(--text-primary);
     font-family: "Inter", system-ui, sans-serif;
     min-height: 100vh;
-    line-height: 1.6;
+    line-height: 1.618; /* Golden ratio line height */
   }
 
   ::selection {
-    background-color: var(--sky-blue);
+    background-color: var(--teal);
     color: #ffffff;
   }
 }
 
 @layer components {
+  /* ─── Cathedral surface — cards, panels ─── */
+  .cathedral-surface {
+    background-color: var(--bg-surface);
+    border: 1px solid rgba(0, 168, 168, 0.08);
+    border-radius: 13px; /* Fibonacci */
+    box-shadow:
+      0 0 21px var(--glow-teal),
+      0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
   .cathedral-glow {
     box-shadow:
-      0 0 20px var(--glow-emerald),
-      0 4px 12px rgba(0, 0, 0, 0.06);
+      0 0 34px var(--glow-teal),
+      0 0 8px rgba(0, 168, 168, 0.08),
+      0 5px 13px rgba(0, 0, 0, 0.15);
   }
 
   .cathedral-border {
-    border: 1px solid rgba(27, 45, 79, 0.10);
+    border: 1px solid rgba(0, 168, 168, 0.12);
   }
 
-  .cathedral-surface {
-    background-color: var(--bg-surface);
-    border: 1px solid rgba(27, 45, 79, 0.08);
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  /* ─── Navigation bar ─── */
+  .cathedral-nav {
+    background-color: rgba(15, 16, 38, 0.85);
+    backdrop-filter: blur(13px); /* Fibonacci */
+    -webkit-backdrop-filter: blur(13px);
+    border-bottom: 1px solid rgba(0, 168, 168, 0.1);
   }
 
+  /* ─── Animations ─── */
   .pulse-gentle {
     animation: gentle-pulse 3s ease-in-out infinite;
   }
@@ -129,7 +136,7 @@
   @keyframes fade-in {
     from {
       opacity: 0;
-      transform: translateY(12px);
+      transform: translateY(13px); /* Fibonacci */
     }
     to {
       opacity: 1;
@@ -137,13 +144,7 @@
     }
   }
 
-  .cathedral-nav {
-    background-color: rgba(27, 45, 79, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid rgba(27, 45, 79, 0.3);
-  }
-
+  /* ─── Shimmer skeleton ─── */
   .skeleton-shimmer {
     background: linear-gradient(
       90deg,
@@ -163,25 +164,25 @@
   /* ─── Toast notifications ─── */
   .toast-container {
     position: fixed;
-    bottom: 1.5rem;
+    bottom: 34px; /* Fibonacci */
     left: 50%;
     transform: translateX(-50%);
     z-index: 100;
     display: flex;
     flex-direction: column-reverse;
-    gap: 0.5rem;
+    gap: 8px; /* Fibonacci */
     pointer-events: none;
-    max-width: calc(100% - 2rem);
+    max-width: calc(100% - 34px); /* Fibonacci */
   }
 
   .toast {
     pointer-events: auto;
-    padding: 0.625rem 1rem;
-    border-radius: 10px;
+    padding: 8px 13px; /* Fibonacci */
+    border-radius: 13px; /* Fibonacci */
     font-size: 0.8125rem;
-    line-height: 1.4;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    line-height: 1.618;
+    backdrop-filter: blur(13px);
+    -webkit-backdrop-filter: blur(13px);
     animation: toast-in 300ms ease-out both;
     white-space: nowrap;
     text-align: center;
@@ -212,7 +213,7 @@
   @keyframes toast-in {
     from {
       opacity: 0;
-      transform: translateY(12px) scale(0.95);
+      transform: translateY(13px) scale(0.95);
     }
     to {
       opacity: 1;
@@ -231,20 +232,20 @@
     }
   }
 
-  /* ─── Form validation borders ─── */
+  /* ─── Form validation ─── */
   .field-valid {
     border-color: rgba(0, 168, 168, 0.5) !important;
-    box-shadow: 0 0 12px rgba(0, 168, 168, 0.08);
+    box-shadow: 0 0 13px rgba(0, 168, 168, 0.08);
   }
 
   .field-invalid {
     border-color: rgba(230, 57, 70, 0.5) !important;
-    box-shadow: 0 0 12px rgba(230, 57, 70, 0.08);
+    box-shadow: 0 0 13px rgba(230, 57, 70, 0.08);
   }
 
   .field-helper {
     font-size: 0.75rem;
-    margin-top: 0.25rem;
+    margin-top: 3px; /* Fibonacci */
     transition: opacity 200ms ease;
   }
 
@@ -256,13 +257,13 @@
     color: var(--crimson);
   }
 
-  /* ─── Enhanced hover & active states ─── */
+  /* ─── Buttons & links ─── */
   .cathedral-btn {
     transition: all 200ms ease;
   }
 
   .cathedral-btn:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px); /* Fibonacci */
   }
 
   .cathedral-btn:active {
@@ -292,21 +293,45 @@
   .cathedral-link:hover {
     color: var(--teal);
   }
+
+  /* ─── Sacred geometry accent borders ─── */
+  .geo-border {
+    border: 1px solid rgba(0, 168, 168, 0.08);
+    position: relative;
+  }
+
+  .geo-border::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      rgba(0, 168, 168, 0.15),
+      transparent 50%,
+      rgba(230, 57, 70, 0.08)
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    padding: 1px;
+    pointer-events: none;
+  }
 }
 
-/* ─── Focus states (keyboard navigation) ─── */
+/* ─── Focus states ─── */
 *:focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline-offset: 3px; /* Fibonacci */
+  border-radius: 5px; /* Fibonacci */
 }
 
-/* Remove focus ring for mouse clicks */
 *:focus:not(:focus-visible) {
   outline: none;
 }
 
-/* Screen reader only — visually hidden but accessible */
+/* Screen reader only */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -321,26 +346,22 @@
 
 /* ─── High contrast mode ─── */
 @media (prefers-contrast: more) {
-  :root,
-  [data-theme="dark"] {
-    --teal: #009090;
-    --crimson: #CC2233;
-    --focus-ring: #00DDDD;
-  }
-
   :root {
-    --bg-deep: #FFFFFF;
-    --bg-surface: #F0F0F0;
-    --text-primary: #000000;
-    --text-muted: #333348;
-    --glow-teal: rgba(0, 168, 168, 0.3);
-  }
-
-  [data-theme="dark"] {
+    --teal: #00CCCC;
+    --crimson: #FF4455;
+    --focus-ring: #00EEEE;
     --bg-deep: #000000;
     --bg-surface: #0A0A1A;
     --text-primary: #FFFFFF;
     --text-muted: #C0C0D0;
+    --glow-teal: rgba(0, 200, 200, 0.3);
+  }
+
+  [data-theme="light"] {
+    --bg-deep: #FFFFFF;
+    --bg-surface: #F0F0F0;
+    --text-primary: #000000;
+    --text-muted: #333348;
   }
 
   .cathedral-surface {
@@ -356,7 +377,7 @@
   }
 }
 
-/* ─── Reduced motion (respects prefers-reduced-motion) ─── */
+/* ─── Reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -367,40 +388,26 @@
     scroll-behavior: auto !important;
   }
 
-  .pulse-gentle {
-    animation: none !important;
-    opacity: 1;
-  }
-
-  .animate-fade-in {
-    animation: none !important;
-    opacity: 1;
-  }
-
-  .skeleton-shimmer {
-    animation: none !important;
-  }
-
-  .cathedral-btn:hover {
-    transform: none !important;
-  }
-
-  .cathedral-btn:active {
-    transform: none !important;
-  }
-
-  .toast {
+  .pulse-gentle,
+  .animate-fade-in,
+  .skeleton-shimmer,
+  .toast,
+  .toast-exiting {
     animation: none !important;
     opacity: 1;
   }
 
   .toast-exiting {
-    animation: none !important;
     opacity: 0;
+  }
+
+  .cathedral-btn:hover,
+  .cathedral-btn:active {
+    transform: none !important;
   }
 }
 
-/* ─── Color-blind safe palette (deuteranopia / protanopia) ─── */
+/* ─── Color-blind safe palettes ─── */
 @media (forced-colors: active) {
   :root {
     --teal: LinkText;
@@ -412,9 +419,7 @@
   }
 }
 
-/* Opt-in color-blind mode via [data-a11y-palette] attribute */
 [data-a11y-palette="deuteranopia"] {
-  /* Blue/Orange palette — distinguishable without red/green */
   --teal: #0077BB;
   --crimson: #EE7733;
   --glow-teal: rgba(0, 119, 187, 0.15);
@@ -422,14 +427,7 @@
   --focus-ring: rgba(0, 119, 187, 0.6);
 }
 
-[data-a11y-palette="deuteranopia"][data-theme="light"] {
-  --glow-teal: rgba(0, 119, 187, 0.25);
-  --glow-crimson: rgba(238, 119, 51, 0.15);
-  --focus-ring: rgba(0, 119, 187, 0.8);
-}
-
 [data-a11y-palette="protanopia"] {
-  /* Blue/Yellow palette — avoids red entirely */
   --teal: #3366CC;
   --crimson: #DDAA33;
   --glow-teal: rgba(51, 102, 204, 0.15);
@@ -437,14 +435,7 @@
   --focus-ring: rgba(51, 102, 204, 0.6);
 }
 
-[data-a11y-palette="protanopia"][data-theme="light"] {
-  --glow-teal: rgba(51, 102, 204, 0.25);
-  --glow-crimson: rgba(221, 170, 51, 0.15);
-  --focus-ring: rgba(51, 102, 204, 0.8);
-}
-
 [data-a11y-palette="tritanopia"] {
-  /* Red/Cyan palette — avoids blue/yellow confusion */
   --teal: #009988;
   --crimson: #CC3311;
   --glow-teal: rgba(0, 153, 136, 0.15);
@@ -452,20 +443,14 @@
   --focus-ring: rgba(0, 153, 136, 0.6);
 }
 
-[data-a11y-palette="tritanopia"][data-theme="light"] {
-  --glow-teal: rgba(0, 153, 136, 0.25);
-  --glow-crimson: rgba(204, 51, 17, 0.15);
-  --focus-ring: rgba(0, 153, 136, 0.8);
-}
-
-/* ─── Command Palette Overlay ─── */
+/* ─── Command Palette ─── */
 .cmd-palette-overlay {
   position: fixed;
   inset: 0;
   z-index: 200;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(5px); /* Fibonacci */
+  -webkit-backdrop-filter: blur(5px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -477,14 +462,14 @@
   max-width: 480px;
   background-color: var(--bg-surface);
   border: 1px solid rgba(0, 168, 168, 0.2);
-  border-radius: 12px;
+  border-radius: 13px; /* Fibonacci */
   overflow: hidden;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 34px 55px rgba(0, 0, 0, 0.4); /* Fibonacci */
 }
 
 .cmd-palette-input {
   width: 100%;
-  padding: 0.875rem 1rem;
+  padding: 13px 21px; /* Fibonacci */
   background: transparent;
   border: none;
   border-bottom: 1px solid rgba(0, 168, 168, 0.1);
@@ -500,8 +485,8 @@
 .cmd-palette-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.625rem 1rem;
+  gap: 13px; /* Fibonacci */
+  padding: 8px 21px; /* Fibonacci */
   font-size: 0.8125rem;
   color: var(--text-muted);
   cursor: pointer;
@@ -521,7 +506,7 @@
   font-family: monospace;
 }
 
-/* Utility transition duration */
+/* Utility */
 .duration-600 {
   transition-duration: 600ms;
 }

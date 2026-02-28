@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { CookieConsent } from "./components/cookie-consent";
 import { ErrorReporter } from "./components/error-reporter";
+import { Navbar } from "./components/navbar";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
@@ -115,6 +116,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[var(--bg-deep)]">
+        <Navbar />
         {children}
         <CookieConsent />
         <ErrorReporter />

@@ -213,7 +213,47 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
-      {/* Section 1: Hero — Above the Fold */}
+      {/* Veteran Story — First thing visitors see */}
+      <section className="w-full max-w-2xl mb-16 px-4" aria-labelledby="veteran-founded-heading-top">
+        <h2 id="veteran-founded-heading-top" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6 text-center">
+          Founded by a Veteran. Dedicated to Serving Those Who Served.
+        </h2>
+
+        {/* Photo placeholder */}
+        <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-soft-gray border-2 border-emerald-accent/20 flex items-center justify-center">
+          <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+          </svg>
+        </div>
+
+        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 max-w-xl mx-auto">
+          <p>
+            As a veteran, I understand the responsibility that comes with wearing the uniform
+            — and the responsibility that continues after it comes off.
+          </p>
+          <p>
+            After serving, I saw how many military families weren&rsquo;t fully informed about
+            their life insurance options outside of standard military coverage.
+          </p>
+          <p className="text-[var(--text-primary)] font-medium">
+            This platform was created as a bridge.
+          </p>
+          <p>
+            When you request a review, we connect you with trusted, independent, licensed
+            insurance professionals who understand the unique needs of military families.
+          </p>
+          <p className="italic text-[var(--text-primary)]">
+            This is personal.<br />
+            Service doesn&rsquo;t end at separation — and neither should protection.
+          </p>
+          <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-navy-cathedral/8">
+            We are not affiliated with the U.S. Government or Department of Defense. We connect
+            individuals with independent, licensed insurance professionals.
+          </p>
+        </div>
+      </section>
+
+      {/* Hero — Above the Form */}
       <header className="text-center mb-10">
         <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Protect What Matters Most
@@ -503,47 +543,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Section 3: Veteran-Founded. Mission-Driven. */}
-      <section className="w-full max-w-2xl mt-20 px-4" aria-labelledby="veteran-founded-heading">
-        <h2 id="veteran-founded-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6 text-center">
-          Founded by a Veteran. Dedicated to Serving Those Who Served.
-        </h2>
-
-        {/* Photo placeholder */}
-        <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-soft-gray border-2 border-emerald-accent/20 flex items-center justify-center">
-          <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-          </svg>
-        </div>
-
-        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 max-w-xl mx-auto">
-          <p>
-            As a veteran, I understand the responsibility that comes with wearing the uniform
-            — and the responsibility that continues after it comes off.
-          </p>
-          <p>
-            After serving, I saw how many military families weren&rsquo;t fully informed about
-            their life insurance options outside of standard military coverage.
-          </p>
-          <p className="text-[var(--text-primary)] font-medium">
-            This platform was created as a bridge.
-          </p>
-          <p>
-            When you request a review, we connect you with trusted, independent, licensed
-            insurance professionals who understand the unique needs of military families.
-          </p>
-          <p className="italic text-[var(--text-primary)]">
-            This is personal.<br />
-            Service doesn&rsquo;t end at separation — and neither should protection.
-          </p>
-          <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-navy-cathedral/8">
-            We are not affiliated with the U.S. Government or Department of Defense. We connect
-            individuals with independent, licensed insurance professionals.
-          </p>
-        </div>
-      </section>
-
-      {/* Section 4: How It Works */}
+      {/* Section 3: How It Works */}
       <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="how-it-works-heading">
         <h2 id="how-it-works-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8">
           Simple. Structured. Secure.
@@ -651,9 +651,32 @@ export default function HomePage() {
         <TrustSignals />
       </div>
 
+      {/* Learn More — Links to content pages */}
+      <section className="w-full max-w-lg mt-16 px-4" aria-label="Learn more">
+        <h2 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider text-center mb-6">
+          Learn More
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          <a href="/about" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
+            About Us
+          </a>
+          <a href="/about#how-it-works" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
+            How It Works
+          </a>
+          <a href="/faq" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
+            FAQ
+          </a>
+          <a href="/about#who-we-serve" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
+            Who We Serve
+          </a>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
-        <nav className="flex gap-4 justify-center">
+        <nav className="flex gap-4 justify-center flex-wrap">
+          <a href="/about" className="text-emerald-accent/70 hover:text-emerald-accent">About</a>
+          <a href="/faq" className="text-emerald-accent/70 hover:text-emerald-accent">FAQ</a>
           <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
           <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
         </nav>

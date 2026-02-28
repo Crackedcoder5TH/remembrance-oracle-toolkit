@@ -72,7 +72,7 @@ export default function AboutPage() {
           </ul>
         </section>
 
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
+        <section id="who-we-serve" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed scroll-mt-8">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
             Who We Serve
           </h2>

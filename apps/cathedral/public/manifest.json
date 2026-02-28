@@ -6,8 +6,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0F1026",
-  "theme_color": "#1A1B3A",
+  "background_color": "#F0F2F5",
+  "theme_color": "#1B2D4F",
   "categories": ["insurance", "finance"],
   "icons": [
     {

@@ -10,16 +10,17 @@
 }
 
 :root {
-  --color-bg: #0d1117;
-  --color-bg-alt: #161b22;
-  --color-surface: #1c2128;
-  --color-border: #30363d;
-  --color-text: #e6edf3;
-  --color-text-muted: #8b949e;
-  --color-primary: #58a6ff;
-  --color-primary-hover: #79c0ff;
-  --color-accent: #d2a8ff;
-  --color-success: #3fb950;
+  --color-bg: #F0F2F5;
+  --color-bg-alt: #E8EAED;
+  --color-surface: #FFFFFF;
+  --color-border: #D0D4DA;
+  --color-text: #1A1A2E;
+  --color-text-muted: #5A6377;
+  --color-primary: #1B2D4F;
+  --color-primary-hover: #2A4270;
+  --color-accent: #6BA3D6;
+  --color-success: #2D8659;
+  --color-navy: #1B2D4F;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
   --container-max: 1100px;
@@ -40,7 +41,7 @@ body {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-navy);
   text-decoration: none;
   transition: color var(--transition);
 }
@@ -59,8 +60,8 @@ img {
   position: absolute;
   top: -100%;
   left: 16px;
-  background: var(--color-primary);
-  color: var(--color-bg);
+  background: var(--color-navy);
+  color: #FFFFFF;
   padding: 8px 16px;
   border-radius: var(--radius);
   z-index: 1000;
@@ -83,9 +84,9 @@ img {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(13, 17, 23, 0.85);
+  background: rgba(27, 45, 79, 0.95);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid rgba(27, 45, 79, 0.3);
 }
 
 .header-inner {
@@ -98,12 +99,12 @@ img {
 .logo {
   font-size: 1.2rem;
   font-weight: 700;
-  color: var(--color-text);
+  color: #FFFFFF;
   letter-spacing: -0.02em;
 }
 
 .logo:hover {
-  color: var(--color-primary);
+  color: var(--color-accent);
 }
 
 /* --- Navigation --- */
@@ -114,14 +115,14 @@ img {
 }
 
 .nav-link {
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 0.9rem;
   font-weight: 500;
   transition: color var(--transition);
 }
 
 .nav-link:hover {
-  color: var(--color-text);
+  color: #FFFFFF;
 }
 
 /* --- Mobile Nav Toggle --- */
@@ -139,7 +140,7 @@ img {
   display: block;
   width: 24px;
   height: 2px;
-  background: var(--color-text);
+  background: #FFFFFF;
   border-radius: 2px;
   transition: transform var(--transition), opacity var(--transition);
 }
@@ -201,13 +202,13 @@ img {
 }
 
 .btn-primary {
-  background: var(--color-primary);
-  color: var(--color-bg);
+  background: var(--color-navy);
+  color: #FFFFFF;
 }
 
 .btn-primary:hover {
   background: var(--color-primary-hover);
-  color: var(--color-bg);
+  color: #FFFFFF;
 }
 
 .btn-secondary {
@@ -298,7 +299,7 @@ img {
   border-radius: var(--radius);
   font-family: var(--font-mono);
   font-size: 0.85rem;
-  color: var(--color-accent);
+  color: var(--color-navy);
   border: 1px solid var(--color-border);
 }
 
@@ -321,8 +322,8 @@ img {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: var(--color-primary);
-  color: var(--color-bg);
+  background: var(--color-navy);
+  color: #FFFFFF;
   font-weight: 700;
   font-size: 1.2rem;
   display: flex;
@@ -358,7 +359,7 @@ img {
   display: block;
   font-size: 2rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: var(--color-navy);
   font-family: var(--font-mono);
 }
 
@@ -370,7 +371,8 @@ img {
 
 /* --- Footer --- */
 .site-footer {
-  border-top: 1px solid var(--color-border);
+  background: var(--color-navy);
+  border-top: none;
   padding: 32px 0;
 }
 
@@ -383,7 +385,7 @@ img {
 }
 
 .footer-text {
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 0.88rem;
 }
 
@@ -393,12 +395,12 @@ img {
 }
 
 .footer-nav a {
-  color: var(--color-text-muted);
+  color: rgba(255, 255, 255, 0.75);
   font-size: 0.88rem;
 }
 
 .footer-nav a:hover {
-  color: var(--color-text);
+  color: #FFFFFF;
 }
 
 /* --- Responsive --- */
@@ -413,8 +415,8 @@ img {
     top: 64px;
     left: 0;
     right: 0;
-    background: var(--color-bg);
-    border-bottom: 1px solid var(--color-border);
+    background: var(--color-navy);
+    border-bottom: 1px solid rgba(27, 45, 79, 0.3);
     padding: 16px 24px;
   }
 

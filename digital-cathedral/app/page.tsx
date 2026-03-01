@@ -378,7 +378,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={nextStep}
-              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
             >
               Continue
             </button>
@@ -412,7 +412,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
               >
                 Continue
               </button>
@@ -479,7 +479,7 @@ export default function HomePage() {
                 type="submit"
                 disabled={loading}
                 aria-busy={loading}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? "Submitting..." : "Request My Coverage Review"}
               </button>
@@ -639,7 +639,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="px-8 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+          className="px-8 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
         >
           Start My Coverage Review
         </button>

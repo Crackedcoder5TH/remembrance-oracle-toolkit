@@ -60,24 +60,39 @@ export function Navbar() {
             aria-haspopup="true"
             className="flex items-center gap-fib-8 text-sm font-medium tracking-wide hover:text-[var(--teal)] transition-colors"
           >
-            {/* Sacred geometry icon — Seed of Life simplified */}
+            {/* Heart-hands with angel wings icon */}
             <svg
-              width="21"
-              height="21"
-              viewBox="0 0 24 24"
+              width="26"
+              height="26"
+              viewBox="0 0 48 48"
               fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              className="shrink-0 text-[var(--teal)]"
+              className="shrink-0"
               aria-hidden="true"
             >
-              <circle cx="12" cy="12" r="5" />
-              <circle cx="12" cy="7" r="5" opacity="0.4" />
-              <circle cx="16.33" cy="9.5" r="5" opacity="0.4" />
-              <circle cx="16.33" cy="14.5" r="5" opacity="0.4" />
-              <circle cx="12" cy="17" r="5" opacity="0.4" />
-              <circle cx="7.67" cy="14.5" r="5" opacity="0.4" />
-              <circle cx="7.67" cy="9.5" r="5" opacity="0.4" />
+              <defs>
+                <linearGradient id="nav-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#B8860B" />
+                  <stop offset="50%" stopColor="#FFD700" />
+                  <stop offset="100%" stopColor="#DAA520" />
+                </linearGradient>
+              </defs>
+              {/* Light rays behind */}
+              <line x1="24" y1="4" x2="24" y2="10" stroke="#FFD700" strokeWidth="0.7" opacity="0.4" />
+              <line x1="14" y1="7" x2="17" y2="12" stroke="#FFD700" strokeWidth="0.5" opacity="0.3" />
+              <line x1="34" y1="7" x2="31" y2="12" stroke="#FFD700" strokeWidth="0.5" opacity="0.3" />
+              <line x1="8" y1="14" x2="13" y2="16" stroke="#FFD700" strokeWidth="0.5" opacity="0.2" />
+              <line x1="40" y1="14" x2="35" y2="16" stroke="#FFD700" strokeWidth="0.5" opacity="0.2" />
+              {/* Left wing */}
+              <path d="M22 18 Q16 10 6 12 Q4 13 5 15 Q8 16 11 18 Q14 20 18 22 Z" fill="url(#nav-gold)" opacity="0.7" />
+              <path d="M20 20 Q14 14 8 15 Q10 17 14 20 Z" fill="#B8860B" opacity="0.3" />
+              {/* Right wing */}
+              <path d="M26 18 Q32 10 42 12 Q44 13 43 15 Q40 16 37 18 Q34 20 30 22 Z" fill="url(#nav-gold)" opacity="0.7" />
+              <path d="M28 20 Q34 14 40 15 Q38 17 34 20 Z" fill="#B8860B" opacity="0.3" />
+              {/* Hands forming heart shape */}
+              <path d="M24 38 Q18 32 16 28 Q14 24 16 21 Q18 18 21 19 Q23 20 24 23 Q25 20 27 19 Q30 18 32 21 Q34 24 32 28 Q30 32 24 38 Z" fill="none" stroke="url(#nav-gold)" strokeWidth="1.5" strokeLinejoin="round" />
+              {/* Small cross at center of heart */}
+              <line x1="24" y1="24" x2="24" y2="30" stroke="#FFD700" strokeWidth="1" opacity="0.8" />
+              <line x1="21.5" y1="26.5" x2="26.5" y2="26.5" stroke="#FFD700" strokeWidth="1" opacity="0.8" />
             </svg>
             Digital Cathedral
             {/* Chevron */}

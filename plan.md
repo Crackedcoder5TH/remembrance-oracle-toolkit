@@ -1,236 +1,151 @@
-# Swarm Orchestrator Module — Implementation Plan
+# Implementation Plan: Google Sign-In + Auto-Admin Role Assignment
 
-## Oracle Verdict: EVOLVE
-Foundations to evolve from:
-- `multi-orchestrator.js` (0.790) → 8-step pipeline pattern
-- `generateCollectiveWhisper` (0.840) → whisper synthesis
-- `voting` (0.576) → agent consensus mechanism
-- `pipe` (0.970) → functional composition
-- `coherency.js` → 5-dimension scoring engine
+## Oracle Insights
+- **Decision: GENERATE** — No existing Google OAuth or role-assignment patterns in the oracle. The closest match was `validate-email` (EVOLVE, 0.584) which we can reuse for email validation during admin checks.
+- After implementation, we'll register these as new patterns for future reuse.
 
-## Architecture
+---
 
+## Current State
+- **Auth**: API key-based login -> HMAC-signed session cookie (`__admin_session`)
+- **Framework**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS
+- **DB**: SQLite via `better-sqlite3` (leads table only, no users table)
+- **Middleware**: Edge runtime, checks session cookie for `/admin/*` routes
+
+---
+
+## Architecture Decision: NextAuth.js (Auth.js v5)
+
+Using `next-auth` v5 — the standard for Next.js Google OAuth:
+- Handles OAuth flow, token refresh, CSRF protection out of the box
+- Works with App Router and Edge middleware
+- No need to manually handle Google's OAuth endpoints
+- Session stored in a signed JWT (fits existing cookie-based approach)
+
+---
+
+## Implementation Steps
+
+### Step 1: Install Dependencies
+```bash
+npm install next-auth@beta
 ```
-src/swarm/
-├── index.js              # Public API barrel export
-├── swarm-orchestrator.js # Main orchestrator (routes, collects, synthesizes)
-├── agent-pool.js         # Agent registry + provider adapters (Claude, GPT, Gemini, Grok, DeepSeek, Llama)
-├── dimension-router.js   # Maps remembrance dimensions → specialist agents
-├── cross-scoring.js      # Agents score each other's outputs via coherency
-├── consensus.js          # Weighted voting + aggregation → winner selection
-├── whisper-synthesis.js  # Final whisper from all agent voices
-└── swarm-config.js       # Configuration defaults + provider key management
+(v5/beta is the App Router-native version)
+
+### Step 2: Add Environment Variables
+New env vars in `.env.local` and `.env.example`:
 ```
-
-## File-by-File Plan
-
-### 1. `src/swarm/swarm-config.js` — Configuration
-```javascript
-// Default config for the swarm
-module.exports = {
-  DEFAULT_SWARM_CONFIG: {
-    minAgents: 3,
-    maxAgents: 9,
-    consensusThreshold: 0.7,      // Minimum agreement for winner
-    timeoutMs: 30000,              // Per-agent timeout
-    dimensions: ['simplicity', 'correctness', 'readability', 'security', 'efficiency', 'unity', 'fidelity'],
-    crossScoring: true,            // Agents score each other
-    autoFeedToReflector: true,     // Winner auto-fed to Reflector
-    providers: {}                  // { claude: { apiKey, model }, openai: { apiKey, model }, ... }
-  },
-  loadSwarmConfig(rootDir),        // Load from .remembrance/swarm-config.json
-  saveSwarmConfig(rootDir, config), // Persist
-  resolveProviders(config),        // Validate which providers have keys
-}
+GOOGLE_CLIENT_ID=           # From Google Cloud Console
+GOOGLE_CLIENT_SECRET=       # From Google Cloud Console
+NEXTAUTH_SECRET=            # Random secret for JWT signing
+NEXTAUTH_URL=               # Your site URL
+ADMIN_EMAILS=               # Comma-separated Google emails that get admin access
 ```
 
-### 2. `src/swarm/agent-pool.js` — Provider Adapters
-```javascript
-// Each provider adapter implements:
-//   { name, send(prompt, options) → { response, meta } }
-//
-// Supported providers:
-//   - claude (Anthropic API)
-//   - openai (GPT-4o/4.5)
-//   - gemini (Google AI)
-//   - grok (xAI)
-//   - deepseek (DeepSeek API)
-//   - ollama (local Llama/Mistral/etc.)
-//
-// Exports:
-//   createAgentPool(config) → { agents[], send(agentName, prompt), sendAll(prompt), shutdown() }
-//   getAvailableProviders(config) → string[]
-//
-// Each adapter:
-//   - Uses native fetch (Node 22+)
-//   - Respects timeoutMs
-//   - Returns structured { code, explanation, confidence, dimension }
-//   - Handles rate limits with exponential backoff
-```
+### Step 3: Create Auth Configuration (`app/lib/auth-config.ts`)
+- Configure Google provider
+- Define session callback to inject `role` into the JWT/session
+- Check user's email against `ADMIN_EMAILS` env var
+- Return `role: "admin"` or `role: "user"` accordingly
 
-### 3. `src/swarm/dimension-router.js` — Specialist Assignment
-```javascript
-// Maps each remembrance dimension to a specialist agent
-// If 7 dimensions and 5 agents → some agents cover 2 dimensions
-// If 9 agents → each dimension gets 1+ agent, extras become "generalists"
-//
-// Exports:
-//   assignDimensions(agents, dimensions) → Map<agentName, dimension[]>
-//   buildSpecialistPrompt(task, dimension, context) → string
-//     Each agent gets a system prompt focused on their dimension:
-//     - simplicity agent: "Prioritize the simplest possible solution..."
-//     - correctness agent: "Focus on edge cases, error handling, type safety..."
-//     - security agent: "Evaluate for OWASP top 10, injection, XSS..."
-//     - etc.
-```
+### Step 4: Create Auth Route Handler (`app/api/auth/[...nextauth]/route.ts`)
+- Standard NextAuth catch-all route
+- Exports GET and POST handlers
 
-### 4. `src/swarm/cross-scoring.js` — Mutual Evaluation
-```javascript
-// After all agents produce outputs, each agent scores the others
-// Uses the existing computeCoherencyScore() as the baseline
-//
-// Exports:
-//   crossScore(agentOutputs, agents, coherencyFn) → scoringMatrix
-//     scoringMatrix[agentA][agentB] = { score, reasoning }
-//   computePeerScores(scoringMatrix) → Map<agentName, avgPeerScore>
-//
-// The scoring prompt:
-//   "Given this code produced by another agent, score it 0-1 on [dimension].
-//    Explain your reasoning briefly."
-//
-// Optimization: If crossScoring is disabled, skip this step and use
-// only coherencyFn scores (faster, fewer API calls)
-```
+### Step 5: Create Admin Emails Config (`app/lib/admin-emails.ts`)
+- Reads `ADMIN_EMAILS` from env (comma-separated)
+- Exports `isAdminEmail(email: string): boolean`
+- Server-side only — never exposed to the client
 
-### 5. `src/swarm/consensus.js` — Voting + Aggregation
-```javascript
-// Combines self-scores + peer-scores + coherency scores into final ranking
-//
-// Exports:
-//   buildConsensus(agentOutputs, peerScores, coherencyScores, config) → {
-//     winner: { agent, code, score, dimension },
-//     rankings: [{ agent, totalScore, breakdown }],
-//     agreement: 0-1,  // How much agents agree on the winner
-//     dissent: [{ agent, reasoning }],  // Minority opinions
-//   }
-//
-// Scoring formula:
-//   totalScore = (coherencyScore * 0.4) + (selfConfidence * 0.2) + (avgPeerScore * 0.4)
-//
-// Agreement calculation:
-//   agreement = fraction of agents whose top pick matches the winner
-//
-// Tie-breaking: highest coherency score wins
-```
+### Step 6: Update Admin Session (`app/lib/admin-session.ts`)
+- Add `createGoogleSessionToken(email, role)` — embeds email + role in the signed payload
+- Update `verifySessionToken` to return the payload (email, role, exp) instead of just boolean
+- Keep backward compatibility with existing API key sessions
 
-### 6. `src/swarm/whisper-synthesis.js` — Final Voice
-```javascript
-// Synthesizes a collective whisper from all agent perspectives
-//
-// Exports:
-//   synthesizeWhisper(consensus, agentOutputs, task) → {
-//     message: string,      // Human-readable summary
-//     dimensions: {},        // Per-dimension insight from specialist
-//     agreement: number,     // Consensus strength
-//     dissent: string[],     // Notable minority views
-//     recommendation: string // PULL / EVOLVE / GENERATE
-//   }
-//
-// Reuses generateCollectiveWhisper() pattern from multi-engine.js
-```
+### Step 7: Create Google Auth Callback Route (`app/api/admin/google-callback/route.ts`)
+- After Google OAuth, checks if email is in admin list
+- Creates signed session cookie with role embedded
+- Redirects to `/admin` or shows "not authorized" message
 
-### 7. `src/swarm/swarm-orchestrator.js` — Main Pipeline
-```javascript
-// The heart of the swarm. 7-step pipeline:
-//
-// Step 1: CONFIGURE   — Load config, resolve available providers
-// Step 2: ASSEMBLE    — Create agent pool, assign dimensions
-// Step 3: DISPATCH    — Send task to all agents in parallel
-// Step 4: COLLECT     — Gather responses, handle timeouts/failures
-// Step 5: CROSS-SCORE — Agents evaluate each other (optional)
-// Step 6: CONSENSUS   — Weighted vote → winner
-// Step 7: INTEGRATE   — Feed winner to Reflector + Oracle
-//
-// Exports:
-//   swarm(task, options) → SwarmResult
-//   swarmCode(description, language, options) → SwarmResult  // Code generation
-//   swarmReview(code, options) → SwarmResult                 // Code review
-//   swarmHeal(filePath, options) → SwarmResult               // Healing via swarm
-//   formatSwarmResult(result) → string                       // Terminal output
-//
-// SwarmResult = {
-//   task, winner, rankings, agreement, whisper,
-//   steps: [{ name, status, durationMs }],
-//   totalDurationMs, agentCount,
-// }
-```
+### Step 8: Update Login Page (`app/admin/login/page.tsx`)
+- Add large "Sign in with Google" button as the **primary** action (top of form)
+- Keep API key input as a small "Or use API key" fallback below
+- Use `signIn("google")` from next-auth/react
+- Google button gets cathedral styling (teal theme)
 
-### 8. `src/swarm/index.js` — Public API
-```javascript
-module.exports = {
-  swarm, swarmCode, swarmReview, swarmHeal,
-  createAgentPool, getAvailableProviders,
-  buildConsensus, crossScore,
-  synthesizeWhisper,
-  formatSwarmResult,
-  DEFAULT_SWARM_CONFIG, loadSwarmConfig,
-};
-```
+### Step 9: Update Middleware (`middleware.ts`)
+- Update `isSessionLikelyValid` to handle new payload format (with email/role)
+- Allow `/api/auth/*` routes through (NextAuth needs these)
+- Keep existing admin route protection logic
+- Update CSP to allow `accounts.google.com` and `*.googleusercontent.com`
 
-## CLI Integration
+### Step 10: Update `verifyAdmin` (`app/lib/admin-auth.ts`)
+- Add Method 0: Google session with admin role (checked first)
+- Extract role from session payload
+- If role === "admin", allow access
+- If role === "user", return 403 "Not an admin"
+- Keep existing Method 1 (session cookie) and Method 2 (bearer token) as fallbacks
 
-Add to `src/cli/commands/swarm.js`:
-```
-node src/cli.js swarm "implement a debounce function" --language javascript
-node src/cli.js swarm review --file src/utils.js
-node src/cli.js swarm heal --file src/broken.js
-node src/cli.js swarm config                    # Show/edit swarm config
-node src/cli.js swarm providers                  # List available providers
-node src/cli.js swarm status                     # Last run, agent stats
-```
+### Step 11: Update `.env.example`
+- Add all new Google/NextAuth env vars with comments
 
-## MCP Integration
+### Step 12: Update CSP in `next.config.mjs`
+- Add Google domains to `connect-src`, `script-src`, `img-src`
+- Required for Google's OAuth redirect flow
 
-Add 1 new consolidated MCP tool:
-```
-oracle_swarm — Swarm orchestration (code/review/heal/config via `action` param)
-  Inputs: { action, task?, code?, filePath?, language?, options? }
-```
+---
 
-## Test Plan
+## File Changes Summary
 
-`tests/swarm.test.js`:
-1. Config loading/saving/defaults
-2. Agent pool creation with mock providers
-3. Dimension assignment (balanced distribution)
-4. Cross-scoring matrix computation
-5. Consensus building (winner selection, agreement calc, tie-breaking)
-6. Whisper synthesis from multi-agent outputs
-7. Full pipeline with mock agents (no real API calls)
-8. Timeout handling (agent doesn't respond)
-9. Graceful degradation (only 1 provider available)
-10. Integration with Reflector (winner fed to healFile)
+| File | Action | What |
+|------|--------|------|
+| `package.json` | Edit | Add `next-auth` dependency |
+| `.env.example` | Edit | Add Google OAuth + admin email vars |
+| `app/lib/auth-config.ts` | **New** | NextAuth config with Google provider + role injection |
+| `app/api/auth/[...nextauth]/route.ts` | **New** | NextAuth API route handler |
+| `app/lib/admin-emails.ts` | **New** | Admin email list check (server-side) |
+| `app/lib/admin-session.ts` | Edit | Add role-aware session tokens |
+| `app/lib/admin-auth.ts` | Edit | Add Google session verification |
+| `app/admin/login/page.tsx` | Edit | Add Google button as primary sign-in |
+| `middleware.ts` | Edit | Allow auth routes, update session check, update CSP |
+| `next.config.mjs` | Edit | Update CSP headers for Google domains |
 
-## Implementation Order
+---
 
-1. `swarm-config.js` + tests — Foundation
-2. `agent-pool.js` + tests — Provider adapters with mocks
-3. `dimension-router.js` + tests — Specialist assignment
-4. `cross-scoring.js` + tests — Mutual evaluation
-5. `consensus.js` + tests — Voting engine
-6. `whisper-synthesis.js` + tests — Final voice
-7. `swarm-orchestrator.js` + tests — Main pipeline
-8. `index.js` — Barrel export
-9. CLI commands (`src/cli/commands/swarm.js`)
-10. MCP tool (`oracle_swarm` in tools.js)
-11. Full integration test with mock swarm
+## Security Considerations
+- Admin emails stored server-side only (env var), never sent to client
+- Google OAuth tokens verified by NextAuth (not manually)
+- Existing API key auth preserved as fallback
+- Session cookies remain httpOnly, secure, sameSite strict
+- CSP updated minimally — only Google's required domains added
+- Role is signed into the JWT — cannot be tampered with client-side
 
-## Key Design Decisions
+---
 
-- **No real API calls in tests** — All tests use mock providers
-- **Graceful degradation** — Works with 1 agent (just no cross-scoring)
-- **Provider-agnostic** — Each adapter normalizes to same interface
-- **Reuses coherency engine** — Not a separate scoring system
-- **Reuses whisper pattern** — Same narrative style as Reflector
-- **Local-first** — Ollama support means it works fully offline
-- **Pipeline pattern** — Same step-tracking as multi-orchestrator
+## How It Works (User Flow)
+
+### Regular User
+1. Visits `/admin/login`
+2. Sees big "Sign in with Google" button
+3. Clicks -> Google OAuth redirect -> signs in
+4. Email NOT in admin list -> shown "You don't have admin access" message
+
+### Admin User
+1. Visits `/admin/login`
+2. Clicks "Sign in with Google"
+3. Email IS in admin list -> session cookie set with `role: "admin"`
+4. Redirected to `/admin` dashboard — full access
+
+### API/Programmatic Access
+1. Still works with `Authorization: Bearer <ADMIN_API_KEY>` header
+2. No change to existing behavior
+
+---
+
+## Google Cloud Console Setup (User Action Required)
+1. Go to https://console.cloud.google.com/
+2. Create a project (or use existing)
+3. Enable "Google Identity" API
+4. Go to Credentials -> Create OAuth 2.0 Client ID
+5. Set authorized redirect URI: `https://yourdomain.com/api/auth/callback/google`
+6. Copy Client ID and Client Secret into `.env.local`

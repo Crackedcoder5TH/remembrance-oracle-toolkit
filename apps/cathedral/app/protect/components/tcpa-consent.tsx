@@ -39,7 +39,7 @@ export function TcpaConsent({
             className="mt-1 h-4 w-4 rounded border-gray-300 bg-gray-50 text-teal-cathedral focus:ring-teal-cathedral/50 shrink-0"
           />
           <label htmlFor="tcpaConsent" className="text-xs text-gray-600 leading-relaxed">
-            By checking this box, I agree that <strong className="text-black">ValorLegacy</strong> may
+            By checking this box, I agree that <strong className="text-black">Valor Legacies</strong> may
             contact me at the phone number I provided above, including by autodialed or prerecorded calls
             and text messages, for marketing purposes. I understand this consent is <strong className="text-black">not
             required</strong> to obtain any product or service. Message and data rates may apply. I have read

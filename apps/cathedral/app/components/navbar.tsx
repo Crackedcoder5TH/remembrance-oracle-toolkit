@@ -94,7 +94,7 @@ export function Navbar() {
               <line x1="24" y1="24" x2="24" y2="30" stroke="#FFD700" strokeWidth="1" opacity="0.8" />
               <line x1="21.5" y1="26.5" x2="26.5" y2="26.5" stroke="#FFD700" strokeWidth="1" opacity="0.8" />
             </svg>
-            <span className="text-[var(--teal)]">ValorLegacy</span>
+            <span className="text-[var(--teal)]">Valor Legacies</span>
             {/* Chevron */}
             <svg
               width="13"

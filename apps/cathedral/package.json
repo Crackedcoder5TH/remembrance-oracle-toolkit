@@ -2,7 +2,7 @@
   "name": "digital-cathedral",
   "version": "0.1.0",
   "private": true,
-  "description": "ValorLegacy — veteran-founded life insurance lead generation for military families.",
+  "description": "Valor Legacies — veteran-founded life insurance lead generation for military families.",
   "workspaces": [
     "packages/*"
   ],

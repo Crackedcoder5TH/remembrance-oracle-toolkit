@@ -8,14 +8,14 @@ import { SacredGeometryBg } from "./components/sacred-geometry-bg";
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
 const SITE_URL = "https://digital-cathedral.vercel.app";
-const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | ValorLegacy";
+const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Valor Legacies";
 const SITE_DESCRIPTION =
   "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.";
 
 export const metadata: Metadata = {
   title: {
     default: SITE_TITLE,
-    template: "%s | ValorLegacy",
+    template: "%s | Valor Legacies",
   },
   description: SITE_DESCRIPTION,
   manifest: "/manifest.json",
@@ -30,15 +30,15 @@ export const metadata: Metadata = {
     "military family coverage",
     "digital cathedral",
   ],
-  authors: [{ name: "ValorLegacy" }],
-  creator: "ValorLegacy",
+  authors: [{ name: "Valor Legacies" }],
+  creator: "Valor Legacies",
 
   // ─── Open Graph ───
   openGraph: {
     type: "website",
     locale: "en_US",
     url: SITE_URL,
-    siteName: "ValorLegacy",
+    siteName: "Valor Legacies",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: [
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
         url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "ValorLegacy — Protect Your Legacy",
+        alt: "Valor Legacies — Protect Your Legacy",
         type: "image/svg+xml",
       },
     ],
@@ -83,14 +83,14 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "WebSite",
-      name: "ValorLegacy",
+      name: "Valor Legacies",
       url: BASE_URL,
       description:
         "Veteran-founded platform connecting military families with licensed life insurance professionals.",
     },
     {
       "@type": "Organization",
-      name: "ValorLegacy",
+      name: "Valor Legacies",
       url: BASE_URL,
       description:
         "Veteran-founded platform connecting Active Duty, National Guard, Reserve, and Veterans with licensed life insurance professionals.",

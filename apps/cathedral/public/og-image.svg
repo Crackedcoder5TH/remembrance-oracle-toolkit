@@ -21,7 +21,7 @@
   <circle cx="600" cy="200" r="120" fill="#00A8A8" opacity="0.04"/>
   <!-- Title -->
   <text x="600" y="360" text-anchor="middle" font-family="system-ui, sans-serif" font-size="56" font-weight="300" fill="#E8E8F0">
-    ValorLegacy
+    Valor Legacies
   </text>
   <!-- Subtitle -->
   <text x="600" y="420" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#00A8A8" opacity="0.9">

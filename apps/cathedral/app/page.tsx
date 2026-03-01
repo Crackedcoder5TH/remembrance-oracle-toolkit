@@ -229,7 +229,7 @@ export default function HomePage() {
 
         <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
           <p>Protecting what matters most — your family.</p>
-          <p>&copy; {new Date().getFullYear()} ValorLegacy. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
         </footer>
       </main>
     );
@@ -516,7 +516,7 @@ export default function HomePage() {
       {/* Below-Form Disclaimers */}
       <div className="w-full max-w-lg mt-6 space-y-3 text-xs text-[var(--text-muted)] leading-relaxed">
         <p>
-          <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by ValorLegacy
+          <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by Valor Legacies
           and is not an insurance company, insurance agent, or insurance broker. We do not provide insurance
           quotes, bind insurance coverage, or provide insurance advice of any kind. Your information will
           be shared with one or more licensed insurance professionals who may contact you. Any insurance
@@ -566,7 +566,7 @@ export default function HomePage() {
           <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
         </nav>
         <p>Protecting what matters most — your family.</p>
-        <p>&copy; {new Date().getFullYear()} ValorLegacy. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
       </footer>
     </main>
   );

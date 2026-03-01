@@ -116,7 +116,7 @@ export async function sendLeadConfirmationEmail(lead: {
   coverageInterest: string;
   leadId: string;
 }): Promise<void> {
-  const companyName = process.env.COMPANY_NAME || "ValorLegacy";
+  const companyName = process.env.COMPANY_NAME || "Valor Legacies";
   const fromAddress = process.env.EMAIL_FROM || `noreply@example.com`;
 
   const coverageLabels: Record<string, string> = {
@@ -236,7 +236,7 @@ export async function sendAdminNotificationEmail(lead: {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) return; // No admin email configured — skip silently
 
-  const companyName = process.env.COMPANY_NAME || "ValorLegacy";
+  const companyName = process.env.COMPANY_NAME || "Valor Legacies";
   const fromAddress = process.env.EMAIL_FROM || "noreply@example.com";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 

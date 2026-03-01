@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Frequently Asked Questions",
   description:
-    "Common questions about ValorLegacy, military life insurance options, SGLI alternatives, and how our free coverage review works.",
+    "Common questions about Valor Legacies, military life insurance options, SGLI alternatives, and how our free coverage review works.",
 };
 
 const FAQS = [
@@ -14,7 +14,7 @@ const FAQS = [
   },
   {
     q: "Is this affiliated with the military or government?",
-    a: "No. ValorLegacy is independently operated and not affiliated with the U.S. Government, Department of Defense, or any branch of military service.",
+    a: "No. Valor Legacies is independently operated and not affiliated with the U.S. Government, Department of Defense, or any branch of military service.",
   },
   {
     q: "Is there any obligation to purchase?",
@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "Do you sell insurance?",
-    a: "No. ValorLegacy is not an insurance company, agent, or broker. We do not sell insurance, provide quotes, or bind coverage. We connect consumers with licensed professionals.",
+    a: "No. Valor Legacies is not an insurance company, agent, or broker. We do not sell insurance, provide quotes, or bind coverage. We connect consumers with licensed professionals.",
   },
   {
     q: "Who will contact me?",
@@ -103,7 +103,7 @@ export default function FaqPage() {
             <Link href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Terms of Service</Link>
           </nav>
           <p className="text-xs text-[var(--text-muted)]">
-            &copy; {new Date().getFullYear()} ValorLegacy. All rights reserved.
+            &copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.
           </p>
         </footer>
       </article>

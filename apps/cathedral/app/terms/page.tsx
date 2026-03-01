@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — ValorLegacy",
-  description: "Terms and conditions governing use of the ValorLegacy website.",
+  title: "Terms of Service — Valor Legacies",
+  description: "Terms and conditions governing use of the Valor Legacies website.",
 };
 
 export default function TermsPage() {
@@ -26,7 +26,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">1. Agreement to Terms</h2>
           <p>
             By accessing or using the website located at https://digital-cathedral.vercel.app (the &ldquo;Site&rdquo;),
-            operated by ValorLegacy (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;),
+            operated by Valor Legacies (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;),
             you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree
             to these Terms, do not use the Site.
           </p>
@@ -97,7 +97,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">6. Third-Party Relationships</h2>
           <p>
             Licensed insurance professionals who contact you are independent third parties, not employees
-            or agents of ValorLegacy. We are not responsible for their actions, advice, products, or
+            or agents of Valor Legacies. We are not responsible for their actions, advice, products, or
             services. Any contract or agreement you enter into with an insurance professional or carrier
             is solely between you and that party.
           </p>
@@ -119,7 +119,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">8. Intellectual Property</h2>
           <p>
             All content on this Site, including text, graphics, logos, and software, is the property of
-            ValorLegacy or its licensors and is protected by applicable intellectual property laws.
+            Valor Legacies or its licensors and is protected by applicable intellectual property laws.
             You may not reproduce, distribute, or create derivative works from our content without our
             prior written permission.
           </p>
@@ -151,7 +151,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">11. Indemnification</h2>
           <p>
-            You agree to indemnify and hold harmless ValorLegacy, its officers, directors, employees,
+            You agree to indemnify and hold harmless Valor Legacies, its officers, directors, employees,
             and agents from any claims, losses, damages, liabilities, and expenses (including reasonable
             attorneys&rsquo; fees) arising from your use of the Site, your submission of information,
             or your violation of these Terms.
@@ -187,7 +187,7 @@ export default function TermsPage() {
             For questions about these Terms, contact us at:
           </p>
           <div className="mt-3 p-4 bg-[var(--bg-surface)] rounded-lg border border-indigo-cathedral/10">
-            <p>ValorLegacy</p>
+            <p>Valor Legacies</p>
             <p>Email: legal@digital-cathedral.app</p>
           </div>
         </section>
@@ -200,7 +200,7 @@ export default function TermsPage() {
           <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
           <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Home</a>
         </nav>
-        <p>&copy; {new Date().getFullYear()} ValorLegacy. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
       </footer>
     </main>
   );

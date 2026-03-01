@@ -1,5 +1,5 @@
 /**
- * Bot tools — automation utilities for Digital Cathedral
+ * Bot tools — automation utilities for Valor Legacies
  *
  * Planned bots:
  *  - lead-monitor: Watches lead flow and alerts on anomalies

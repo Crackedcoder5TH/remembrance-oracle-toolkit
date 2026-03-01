@@ -19,6 +19,7 @@ import { useEffect, useRef } from "react";
 import { useLeadForm } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
+import { TrustSignals } from "./protect/components/trust-signals";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
 
 const US_STATES = [
@@ -536,6 +537,145 @@ export default function HomePage() {
         </a>
       </div>
 
+      {/* Section 2: The Gap Most Don't Realize Exists */}
+      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="gap-heading">
+        <h2 id="gap-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6">
+          Your Service Protects Others. But Is Your Family Fully Protected?
+        </h2>
+        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 text-left max-w-xl mx-auto">
+          <p>
+            Many service members rely solely on SGLI or assume their coverage will always be enough.
+          </p>
+          <p>
+            But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
+          </p>
+          <p className="font-medium text-[var(--text-primary)]">Whether you&rsquo;re:</p>
+          <ul className="grid grid-cols-2 gap-2 text-[var(--text-primary)] text-sm">
+            {["Active Duty", "National Guard", "Reserve", "Transitioning out", "Fully separated"].map((item) => (
+              <li key={item} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-cathedral flex-shrink-0" aria-hidden="true" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <p>
+            It&rsquo;s important to understand what options exist beyond basic military coverage.
+          </p>
+          <p className="italic text-[var(--text-primary)]">
+            This isn&rsquo;t about replacing anything.<br />
+            It&rsquo;s about understanding your full protection picture.
+          </p>
+        </div>
+      </section>
+
+      {/* Section 3: How It Works */}
+      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="how-it-works-heading">
+        <h2 id="how-it-works-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8">
+          Simple. Structured. Secure.
+        </h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { step: "1", title: "Submit", desc: "Submit a short, secure form." },
+            { step: "2", title: "Connect", desc: "We connect you with a licensed professional experienced in military family coverage." },
+            { step: "3", title: "Review", desc: "Review your options and decide what\u2019s right for your family." },
+          ].map((item) => (
+            <div key={item.step} className="cathedral-surface p-6 text-center">
+              <div className="w-10 h-10 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-sm font-medium mx-auto mb-3">
+                {item.step}
+              </div>
+              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-[var(--text-muted)] mt-6 italic">
+          No pressure. No obligation. Just clarity.
+        </p>
+      </section>
+
+      {/* Section 5: Who This Is For */}
+      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="who-heading">
+        <h2 id="who-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-3">
+          Serving Every Stage of Service.
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] mb-8">This resource is built for:</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {[
+            "Active Duty Service Members",
+            "National Guard",
+            "Reserve Members",
+            "Veterans",
+            "Military Families",
+            "Transitioning Service Members",
+          ].map((category) => (
+            <div key={category} className="cathedral-surface p-4 text-center">
+              <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-[var(--text-primary)] mt-6 font-medium">
+          If you&rsquo;ve served — this is for you.
+        </p>
+      </section>
+
+      {/* Section 6: Frequently Asked Questions */}
+      <section className="w-full max-w-2xl mt-20 px-4" aria-labelledby="faq-heading">
+        <h2 id="faq-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8 text-center">
+          Frequently Asked Questions
+        </h2>
+        <div className="space-y-6 max-w-xl mx-auto">
+          {[
+            {
+              q: "Is this the same as SGLI?",
+              a: "No. This is a review of additional or alternative life insurance options available outside standard military coverage.",
+            },
+            {
+              q: "Is this affiliated with the military?",
+              a: "No. This platform is independently operated and not affiliated with the U.S. Government or Department of Defense.",
+            },
+            {
+              q: "Is there an obligation to purchase?",
+              a: "No. Requesting a review simply connects you with a licensed professional to explore your options.",
+            },
+            {
+              q: "Are veterans eligible?",
+              a: "Yes. Many options are available for veterans, including those who have separated from service.",
+            },
+          ].map((item) => (
+            <div key={item.q} className="border-b border-indigo-cathedral/8 pb-4">
+              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.q}</h3>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed">{item.a}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Section 7: Final Call to Action */}
+      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="final-cta-heading">
+        <h2 id="final-cta-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-4">
+          Your Service Meant Something. So Does Your Family&rsquo;s Security.
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-2">
+          You&rsquo;ve protected others.
+        </p>
+        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-8">
+          Now let&rsquo;s make sure your family is protected too.
+        </p>
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="px-8 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
+        >
+          Start My Coverage Review
+        </button>
+        <p className="text-xs text-[var(--text-muted)] mt-3">Takes less than 60 seconds.</p>
+      </section>
+
+      {/* Trust Signals — Social Proof & How It Works */}
+      <div className="w-full flex justify-center mt-16 px-4">
+        <TrustSignals />
+      </div>
+
       {/* Learn More — Links to content sections */}
       <section className="w-full max-w-lg mt-16 px-4" aria-label="Learn more">
         <h2 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider text-center mb-6">
@@ -558,14 +698,13 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2 mb-8">
+      <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center flex-wrap">
           <a href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral">About</a>
           <a href="/faq" className="text-teal-cathedral/70 hover:text-teal-cathedral">FAQ</a>
           <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
           <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
         </nav>
-        <p>Protecting what matters most — your family.</p>
         <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
       </footer>
     </main>

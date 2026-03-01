@@ -235,14 +235,14 @@ export default function HomePage() {
             After serving, I saw how many military families weren&rsquo;t fully informed about
             their life insurance options outside of standard military coverage.
           </p>
-          <p className="metallic-gold font-medium text-base">
+          <p className="metallic-gold font-medium">
             This platform was created as a bridge.
           </p>
           <p className="metallic-gold">
             When you request a review, we connect you with trusted, independent, licensed
             insurance professionals who understand the unique needs of military families.
           </p>
-          <p className="metallic-gold italic font-medium text-base">
+          <p className="metallic-gold italic font-medium">
             This is personal.<br />
             Service doesn&rsquo;t end at separation — and neither should protection.
           </p>

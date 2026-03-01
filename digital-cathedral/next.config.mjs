@@ -35,16 +35,16 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
-          // CSP — allow self, inline styles (Tailwind), and specific external sources
+          // CSP — allow self, inline styles (Tailwind), Google OAuth, and specific external sources
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com https://accounts.google.com",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com",
+              "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com https://*.googleusercontent.com",
               "font-src 'self' fonts.gstatic.com",
-              "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com api.stripe.com",
+              "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com api.stripe.com https://accounts.google.com https://oauth2.googleapis.com",
               "frame-src 'self' js.stripe.com hooks.stripe.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",

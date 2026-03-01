@@ -308,19 +308,19 @@ export default function HomePage() {
           <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 1: Your Identity">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="firstName" className="block text-sm text-gray-700">First Name</label>
+                <label htmlFor="firstName" className="block text-sm text-gray-900">First Name</label>
                 <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", autoCapitalizeName(e.target.value))} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
                 {errors.firstName && <p id="firstName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
-                <label htmlFor="lastName" className="block text-sm text-gray-700">Last Name</label>
+                <label htmlFor="lastName" className="block text-sm text-gray-900">Last Name</label>
                 <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", autoCapitalizeName(e.target.value))} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
                 {errors.lastName && <p id="lastName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.lastName}</p>}
               </div>
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="dateOfBirth" className="block text-sm text-gray-700">Date of Birth</label>
+              <label htmlFor="dateOfBirth" className="block text-sm text-gray-900">Date of Birth</label>
               <input
                 id="dateOfBirth"
                 type="date"
@@ -337,7 +337,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="state" className="block text-sm text-gray-700">State</label>
+              <label htmlFor="state" className="block text-sm text-gray-900">State</label>
               <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} aria-required="true" aria-invalid={!!errors.state} aria-describedby={errors.state ? "state-error" : undefined} className={SELECT_CLASS}>
                 <option value="">Select your state...</option>
                 {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
@@ -346,7 +346,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="coverage" className="block text-sm text-gray-700">Coverage Interest</label>
+              <label htmlFor="coverage" className="block text-sm text-gray-900">Coverage Interest</label>
               <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={SELECT_CLASS}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
@@ -355,7 +355,7 @@ export default function HomePage() {
 
             {/* Veteran Status */}
             <div className="space-y-1">
-              <label htmlFor="veteranStatus" className="block text-sm text-gray-700">Veteran Status</label>
+              <label htmlFor="veteranStatus" className="block text-sm text-gray-900">Veteran Status</label>
               <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={SELECT_CLASS}>
                 {VETERAN_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
@@ -365,7 +365,7 @@ export default function HomePage() {
             {/* Military Branch — conditional subcategory (only shown for veterans) */}
             {form.veteranStatus === "veteran" && (
               <div className="space-y-1 animate-in fade-in">
-                <label htmlFor="militaryBranch" className="block text-sm text-gray-700">Branch of Service</label>
+                <label htmlFor="militaryBranch" className="block text-sm text-gray-900">Branch of Service</label>
                 <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={SELECT_CLASS}>
                   {MILITARY_BRANCH_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
@@ -389,13 +389,13 @@ export default function HomePage() {
         {step === 1 && (
           <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 2: Contact Information">
             <div className="space-y-1">
-              <label htmlFor="email" className="block text-sm text-gray-700">Email Address</label>
+              <label htmlFor="email" className="block text-sm text-gray-900">Email Address</label>
               <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" aria-required="true" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={INPUT_CLASS} />
               {errors.email && <p id="email-error" className="text-crimson-cathedral text-xs" role="alert">{errors.email}</p>}
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="phone" className="block text-sm text-gray-700">Phone Number</label>
+              <label htmlFor="phone" className="block text-sm text-gray-900">Phone Number</label>
               <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" autoComplete="tel" aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} className={INPUT_CLASS} />
               {errors.phone && <p id="phone-error" className="text-crimson-cathedral text-xs" role="alert">{errors.phone}</p>}
             </div>

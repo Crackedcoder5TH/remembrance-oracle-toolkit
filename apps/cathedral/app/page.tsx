@@ -284,7 +284,7 @@ export default function HomePage() {
       </div>
 
       {/* Multi-Step Lead Capture Form */}
-      <form onSubmit={handleSubmit} className="w-full max-w-lg bg-[#F5F5F0] text-black rounded-[13px] shadow-[0_0_34px_rgba(0,168,168,0.12)] p-6 md:p-8 space-y-6" noValidate aria-label="Life insurance quote request form">
+      <form onSubmit={handleSubmit} className="w-full max-w-lg bg-[#E8E8E8] text-black rounded-[13px] shadow-[0_0_34px_rgba(0,168,168,0.12)] p-6 md:p-8 space-y-6" noValidate aria-label="Life insurance quote request form">
         {/* Honeypot field — hidden from humans, visible to bots */}
         <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "-9999px", opacity: 0, height: 0, overflow: "hidden" }}>
           <label htmlFor="_hp_website">Website</label>

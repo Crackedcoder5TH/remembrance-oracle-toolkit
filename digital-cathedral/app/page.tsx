@@ -242,7 +242,7 @@ export default function HomePage() {
             When you request a review, we connect you with trusted, independent, licensed
             insurance professionals who understand the unique needs of military families.
           </p>
-          <p className="italic text-[var(--text-primary)]">
+          <p className="metallic-gold italic font-medium text-base">
             This is personal.<br />
             Service doesn&rsquo;t end at separation — and neither should protection.
           </p>

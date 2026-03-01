@@ -123,8 +123,8 @@ function validateStep(step: number, form: LeadFormData): LeadFormErrors {
     }
     if (!form.state) errs.state = "Please select your state.";
     if (!form.coverageInterest) errs.coverageInterest = "Please select a coverage interest.";
-    if (!form.veteranStatus) errs.veteranStatus = "Please select your veteran status.";
-    if (form.veteranStatus === "veteran" && !form.militaryBranch) {
+    if (!form.veteranStatus) errs.veteranStatus = "Please select your military status.";
+    if (form.veteranStatus && form.veteranStatus !== "non-military" && !form.militaryBranch) {
       errs.militaryBranch = "Please select your branch of service.";
     }
   }
@@ -223,8 +223,8 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const updateField = useCallback((field: keyof LeadFormData, value: string | boolean) => {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
-      // Clear military branch when veteran status changes away from "veteran"
-      if (field === "veteranStatus" && value !== "veteran") {
+      // Clear military branch when status changes (user must re-select for new status)
+      if (field === "veteranStatus") {
         next.militaryBranch = "";
       }
       return next;
@@ -294,7 +294,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
           state: data.state,
           coverageInterest: data.coverageInterest,
           veteranStatus: data.veteranStatus,
-          militaryBranch: data.veteranStatus === "veteran" ? data.militaryBranch : "",
+          militaryBranch: data.veteranStatus && data.veteranStatus !== "non-military" ? data.militaryBranch : "",
           tcpaConsent: data.tcpaConsent,
           privacyConsent: data.privacyConsent,
           consentTimestamp: new Date().toISOString(),

@@ -61,23 +61,48 @@ const COVERAGE_OPTIONS = [
   { value: "not-sure", label: "Not sure \u2014 I need guidance" },
 ];
 
-const VETERAN_STATUS_OPTIONS = [
-  { value: "", label: "Select veteran status..." },
+const MILITARY_STATUS_OPTIONS = [
+  { value: "", label: "Select military status..." },
+  { value: "active-duty", label: "Active-Duty" },
+  { value: "reserve", label: "Reserve" },
+  { value: "national-guard", label: "National Guard" },
   { value: "veteran", label: "Veteran" },
-  { value: "non-veteran", label: "Non-Veteran" },
+  { value: "non-military", label: "Non-Military (family member)" },
 ];
 
-const MILITARY_BRANCH_OPTIONS = [
-  { value: "", label: "Select branch of service..." },
-  { value: "army", label: "U.S. Army" },
-  { value: "marine-corps", label: "U.S. Marine Corps" },
-  { value: "navy", label: "U.S. Navy" },
-  { value: "air-force", label: "U.S. Air Force" },
-  { value: "space-force", label: "U.S. Space Force" },
-  { value: "coast-guard", label: "U.S. Coast Guard" },
-  { value: "national-guard", label: "National Guard" },
-  { value: "reserves", label: "Reserves" },
-];
+const BRANCH_OPTIONS_BY_STATUS: Record<string, { value: string; label: string }[]> = {
+  "active-duty": [
+    { value: "", label: "Select branch of service..." },
+    { value: "army", label: "U.S. Army" },
+    { value: "navy", label: "U.S. Navy" },
+    { value: "air-force", label: "U.S. Air Force" },
+    { value: "marine-corps", label: "U.S. Marine Corps" },
+    { value: "space-force", label: "U.S. Space Force" },
+    { value: "coast-guard", label: "Coast Guard" },
+  ],
+  "reserve": [
+    { value: "", label: "Select branch of service..." },
+    { value: "army", label: "U.S. Army" },
+    { value: "navy", label: "U.S. Navy" },
+    { value: "air-force", label: "U.S. Air Force" },
+    { value: "marine-corps", label: "U.S. Marine Corps" },
+    { value: "coast-guard", label: "Coast Guard" },
+  ],
+  "national-guard": [
+    { value: "", label: "Select branch of service..." },
+    { value: "air-national-guard", label: "Air National Guard" },
+    { value: "army-national-guard", label: "Army National Guard" },
+  ],
+  "veteran": [
+    { value: "", label: "Select branch of service..." },
+    { value: "army", label: "U.S. Army" },
+    { value: "navy", label: "U.S. Navy" },
+    { value: "air-force", label: "U.S. Air Force" },
+    { value: "marine-corps", label: "U.S. Marine Corps" },
+    { value: "space-force", label: "U.S. Space Force" },
+    { value: "coast-guard", label: "Coast Guard" },
+  ],
+};
 
 // Live formats as user types: (555) 123-4567
 function formatPhoneInput(value: string): string {
@@ -353,21 +378,21 @@ export default function HomePage() {
               {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
             </div>
 
-            {/* Veteran Status */}
+            {/* Military Status */}
             <div className="space-y-1">
-              <label htmlFor="veteranStatus" className="block text-sm font-bold text-gray-900">Veteran Status</label>
+              <label htmlFor="veteranStatus" className="block text-sm font-bold text-gray-900">Military Status</label>
               <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={SELECT_CLASS}>
-                {VETERAN_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                {MILITARY_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
               {errors.veteranStatus && <p id="veteran-error" className="text-crimson-cathedral text-xs" role="alert">{errors.veteranStatus}</p>}
             </div>
 
-            {/* Military Branch — conditional subcategory (only shown for veterans) */}
-            {form.veteranStatus === "veteran" && (
+            {/* Branch of Service — conditional subcategory (shown for all except non-military) */}
+            {form.veteranStatus && form.veteranStatus !== "non-military" && BRANCH_OPTIONS_BY_STATUS[form.veteranStatus] && (
               <div className="space-y-1 animate-in fade-in">
                 <label htmlFor="militaryBranch" className="block text-sm font-bold text-gray-900">Branch of Service</label>
                 <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={SELECT_CLASS}>
-                  {MILITARY_BRANCH_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  {BRANCH_OPTIONS_BY_STATUS[form.veteranStatus].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
                 <p id="branch-hint" className="text-gray-500 text-xs">Thank you for your service.</p>
                 {errors.militaryBranch && <p id="branch-error" className="text-crimson-cathedral text-xs" role="alert">{errors.militaryBranch}</p>}
@@ -435,9 +460,9 @@ export default function HomePage() {
                 {COVERAGE_OPTIONS.find(o => o.value === form.coverageInterest)?.label}
               </p>
               <p className="text-gray-600">
-                {VETERAN_STATUS_OPTIONS.find(o => o.value === form.veteranStatus)?.label}
-                {form.veteranStatus === "veteran" && form.militaryBranch && (
-                  <> &middot; {MILITARY_BRANCH_OPTIONS.find(o => o.value === form.militaryBranch)?.label}</>
+                {MILITARY_STATUS_OPTIONS.find(o => o.value === form.veteranStatus)?.label}
+                {form.veteranStatus && form.veteranStatus !== "non-military" && form.militaryBranch && (
+                  <> &middot; {BRANCH_OPTIONS_BY_STATUS[form.veteranStatus]?.find(o => o.value === form.militaryBranch)?.label}</>
                 )}
               </p>
               <button

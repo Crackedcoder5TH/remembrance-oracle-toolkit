@@ -234,7 +234,7 @@ export default function HomePage() {
             After serving, I saw how many military families weren&rsquo;t fully informed about
             their life insurance options outside of standard military coverage.
           </p>
-          <p className="text-[var(--text-primary)] font-medium">
+          <p className="metallic-gold font-medium text-base">
             This platform was created as a bridge.
           </p>
           <p className="metallic-gold">

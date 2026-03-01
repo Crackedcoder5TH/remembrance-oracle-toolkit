@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Digital Cathedral privacy policy — how we handle your data with transparency and respect.",
+    "ValorLegacy privacy policy — how we handle your data with transparency and respect.",
 };
 
 export default function PrivacyPage() {
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
             Overview
           </h2>
           <p>
-            Digital Cathedral is a veteran-founded lead generation service that
+            ValorLegacy is a veteran-founded lead generation service that
             connects military families with licensed insurance professionals. We
             respect your privacy and are committed to transparency about how your
             data is handled. This policy explains what data we collect, how we
@@ -108,7 +108,7 @@ export default function PrivacyPage() {
             Cookies &amp; Tracking
           </h2>
           <p>
-            Digital Cathedral does <strong className="text-[var(--text-primary)]">not</strong> use
+            ValorLegacy does <strong className="text-[var(--text-primary)]">not</strong> use
             third-party cookies or advertising pixels. We do not use Google
             Analytics, Facebook Pixel, or any similar tracking service.
           </p>
@@ -276,7 +276,7 @@ export default function PrivacyPage() {
 
         <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
           <p className="text-xs text-[var(--text-muted)]">
-            &copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.
+            &copy; {new Date().getFullYear()} ValorLegacy. All rights reserved.
           </p>
         </footer>
       </article>

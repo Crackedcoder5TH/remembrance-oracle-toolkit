@@ -1,4 +1,4 @@
-// Digital Cathedral — Service Worker (PWA offline support)
+// ValorLegacy — Service Worker (PWA offline support)
 const CACHE_NAME = "dc-insurance-v1";
 const OFFLINE_URL = "/";
 const networkRequest = self.fetch.bind(self);

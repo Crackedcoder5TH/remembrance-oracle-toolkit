@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "About & Contact",
   description:
-    "Learn about Digital Cathedral — veteran-founded life insurance lead generation for military families.",
+    "Learn about ValorLegacy — veteran-founded life insurance lead generation for military families.",
 };
 
 export default function AboutPage() {
@@ -19,7 +19,7 @@ export default function AboutPage() {
             &larr; Back Home
           </Link>
           <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
-            About Digital Cathedral
+            About ValorLegacy
           </h1>
         </header>
 
@@ -28,7 +28,7 @@ export default function AboutPage() {
             Our Mission
           </h2>
           <p>
-            Digital Cathedral was founded by a veteran with a simple mission:
+            ValorLegacy was founded by a veteran with a simple mission:
             help military families understand their life insurance options beyond
             standard military coverage. We connect service members, veterans, and
             their families with licensed insurance professionals who specialize
@@ -101,7 +101,7 @@ export default function AboutPage() {
           </h2>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              Digital Cathedral is independently operated and{" "}
+              ValorLegacy is independently operated and{" "}
               <strong className="text-[var(--text-primary)]">
                 not affiliated
               </strong>{" "}
@@ -180,7 +180,7 @@ export default function AboutPage() {
 
         <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
           <p className="text-xs text-[var(--text-muted)]">
-            &copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.
+            &copy; {new Date().getFullYear()} ValorLegacy. All rights reserved.
           </p>
         </footer>
       </article>

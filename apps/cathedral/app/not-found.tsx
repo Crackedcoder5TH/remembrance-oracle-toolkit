@@ -8,7 +8,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Page Not Found — Digital Cathedral",
+  title: "Page Not Found — ValorLegacy",
   description: "The page you're looking for doesn't exist. Let us help you find what you need.",
 };
 
@@ -55,7 +55,7 @@ export default function NotFoundPage() {
       </div>
 
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)]">
-        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} ValorLegacy. All rights reserved.</p>
       </footer>
     </main>
   );

@@ -1,10 +1,10 @@
-# Digital Cathedral
+# ValorLegacy
 
 Veteran-founded life insurance lead generation platform for military families.
 
 ## Overview
 
-Digital Cathedral connects Active Duty, National Guard, Reserve, and Veteran service members with licensed insurance professionals. It captures qualified leads through a multi-step form with full TCPA/FCC 2025 compliance.
+ValorLegacy connects Active Duty, National Guard, Reserve, and Veteran service members with licensed insurance professionals. It captures qualified leads through a multi-step form with full TCPA/FCC 2025 compliance.
 
 ## Stack
 

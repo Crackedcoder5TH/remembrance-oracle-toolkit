@@ -8,14 +8,14 @@ import { BouncingEmblemBg } from "./components/bouncing-emblem-bg";
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
 const SITE_URL = "https://digital-cathedral.vercel.app";
-const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Digital Cathedral";
+const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | ValorLegacy";
 const SITE_DESCRIPTION =
   "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.";
 
 export const metadata: Metadata = {
   title: {
     default: SITE_TITLE,
-    template: "%s | Digital Cathedral",
+    template: "%s | ValorLegacy",
   },
   description: SITE_DESCRIPTION,
   manifest: "/manifest.json",
@@ -30,15 +30,15 @@ export const metadata: Metadata = {
     "military family coverage",
     "digital cathedral",
   ],
-  authors: [{ name: "Digital Cathedral" }],
-  creator: "Digital Cathedral",
+  authors: [{ name: "ValorLegacy" }],
+  creator: "ValorLegacy",
 
   // ─── Open Graph ───
   openGraph: {
     type: "website",
     locale: "en_US",
     url: SITE_URL,
-    siteName: "Digital Cathedral",
+    siteName: "ValorLegacy",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: [
@@ -46,7 +46,7 @@ export const metadata: Metadata = {
         url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "Digital Cathedral — Protect Your Legacy",
+        alt: "ValorLegacy — Protect Your Legacy",
         type: "image/svg+xml",
       },
     ],
@@ -83,14 +83,14 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "WebSite",
-      name: "Digital Cathedral",
+      name: "ValorLegacy",
       url: BASE_URL,
       description:
         "Veteran-founded platform connecting military families with licensed life insurance professionals.",
     },
     {
       "@type": "Organization",
-      name: "Digital Cathedral",
+      name: "ValorLegacy",
       url: BASE_URL,
       description:
         "Veteran-founded platform connecting Active Duty, National Guard, Reserve, and Veterans with licensed life insurance professionals.",

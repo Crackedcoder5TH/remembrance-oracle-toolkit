@@ -283,7 +283,7 @@ export default function HomePage() {
         <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Protect What Matters Most
         </div>
-        <h1 className="text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4">
+        <h1 className="text-base md:text-xl font-light text-[var(--text-primary)] mb-4">
           Protect Your Family Beyond Basic Military Coverage.
         </h1>
         <p className="metallic-gold max-w-lg mx-auto text-sm leading-relaxed mb-3">

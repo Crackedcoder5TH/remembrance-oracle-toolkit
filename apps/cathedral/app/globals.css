@@ -119,6 +119,32 @@
     border-bottom: 1px solid rgba(0, 168, 168, 0.1);
   }
 
+  /* ─── Metallic Gold — Kingdom's Voice ─── */
+  .metallic-gold {
+    background: linear-gradient(
+      135deg,
+      #B8860B 0%,
+      #FFD700 25%,
+      #FFF8DC 45%,
+      #FFD700 55%,
+      #DAA520 75%,
+      #B8860B 100%
+    );
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gold-shimmer 5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.3));
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  @keyframes gold-shimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
   /* ─── Animations ─── */
   .pulse-gentle {
     animation: gentle-pulse 3s ease-in-out infinite;
@@ -391,6 +417,7 @@
   .pulse-gentle,
   .animate-fade-in,
   .skeleton-shimmer,
+  .metallic-gold,
   .toast,
   .toast-exiting {
     animation: none !important;

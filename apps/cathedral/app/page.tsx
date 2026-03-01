@@ -240,7 +240,7 @@ export default function HomePage() {
       {/* Veteran Story — First thing visitors see */}
       <section className="w-full max-w-2xl mb-16 px-4" aria-labelledby="veteran-founded-heading">
         <h2 id="veteran-founded-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6 text-center">
-          Founded by a Veteran. Dedicated to Serving Those Who Served.
+          Dedicated to Serving Those Who Served.
         </h2>
 
         {/* Photo placeholder */}

@@ -3,7 +3,7 @@ import "./globals.css";
 import { CookieConsent } from "./components/cookie-consent";
 import { ErrorReporter } from "./components/error-reporter";
 import { Navbar } from "./components/navbar";
-import { SacredGeometryBg } from "./components/sacred-geometry-bg";
+import { BouncingEmblemBg } from "./components/bouncing-emblem-bg";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
@@ -117,7 +117,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[var(--bg-deep)]">
-        <SacredGeometryBg />
+        <BouncingEmblemBg />
         <Navbar />
         {children}
         <CookieConsent />

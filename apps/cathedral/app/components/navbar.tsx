@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { PatrioticEmblem } from "./patriotic-emblem";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -60,25 +61,8 @@ export function Navbar() {
             aria-haspopup="true"
             className="flex items-center gap-fib-8 text-sm font-medium tracking-wide hover:text-[var(--teal)] transition-colors"
           >
-            {/* Sacred geometry icon — Seed of Life simplified */}
-            <svg
-              width="21"
-              height="21"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              className="shrink-0 text-[var(--teal)]"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="5" />
-              <circle cx="12" cy="7" r="5" opacity="0.4" />
-              <circle cx="16.33" cy="9.5" r="5" opacity="0.4" />
-              <circle cx="16.33" cy="14.5" r="5" opacity="0.4" />
-              <circle cx="12" cy="17" r="5" opacity="0.4" />
-              <circle cx="7.67" cy="14.5" r="5" opacity="0.4" />
-              <circle cx="7.67" cy="9.5" r="5" opacity="0.4" />
-            </svg>
+            {/* Patriotic emblem — Kingdom's seal */}
+            <PatrioticEmblem size={28} className="shrink-0" />
             Digital Cathedral
             {/* Chevron */}
             <svg

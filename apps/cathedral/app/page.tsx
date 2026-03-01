@@ -226,18 +226,18 @@ export default function HomePage() {
         </div>
 
         <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 max-w-xl mx-auto">
-          <p>
+          <p className="text-gold-cathedral">
             As a veteran, I understand the responsibility that comes with wearing the uniform
             — and the responsibility that continues after it comes off.
           </p>
-          <p>
+          <p className="text-gold-cathedral">
             After serving, I saw how many military families weren&rsquo;t fully informed about
             their life insurance options outside of standard military coverage.
           </p>
           <p className="text-[var(--text-primary)] font-medium">
             This platform was created as a bridge.
           </p>
-          <p>
+          <p className="text-gold-cathedral">
             When you request a review, we connect you with trusted, independent, licensed
             insurance professionals who understand the unique needs of military families.
           </p>
@@ -260,7 +260,7 @@ export default function HomePage() {
         <h1 className="text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4">
           Protect Your Family Beyond Basic Military Coverage.
         </h1>
-        <p className="text-[var(--text-muted)] max-w-lg mx-auto text-sm leading-relaxed mb-3">
+        <p className="text-gold-cathedral max-w-lg mx-auto text-sm leading-relaxed mb-3">
           Life insurance options for Active Duty, National Guard, Reserve, and Veterans
           — made clear and simple.
         </p>

@@ -18,6 +18,9 @@ module.exports = {
         crimson: {
           cathedral: "#E63946",
         },
+        gold: {
+          cathedral: "#FFD700",
+        },
         /* Supporting tones */
         "soft-gray": {
           DEFAULT: "#F0F2F5",

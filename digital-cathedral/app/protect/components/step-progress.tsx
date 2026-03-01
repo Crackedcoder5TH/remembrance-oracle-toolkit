@@ -21,7 +21,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
   return (
     <div className="w-full space-y-3" role="navigation" aria-label="Form progress">
       {/* Hint for current step */}
-      <p className="text-xs text-center text-[var(--text-muted)]" aria-hidden="true">
+      <p className="text-xs text-center text-gray-500" aria-hidden="true">
         {STEP_HINTS[currentStep]}
       </p>
 
@@ -35,7 +35,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
                   ? "bg-teal-cathedral text-white"
                   : i === currentStep
                     ? "bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/60 cathedral-glow"
-                    : "bg-[var(--bg-surface)] text-[var(--text-muted)] border border-indigo-cathedral/10"
+                    : "bg-gray-100 text-gray-400 border border-gray-300"
               }`}
               aria-hidden="true"
             >
@@ -43,7 +43,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
             </div>
             <span
               className={`text-xs mt-1 ${
-                i <= currentStep ? "text-teal-cathedral" : "text-[var(--text-muted)]"
+                i <= currentStep ? "text-teal-cathedral" : "text-gray-400"
               }`}
             >
               <span className="sr-only">{i < currentStep ? "Completed: " : i === currentStep ? "Current: " : "Upcoming: "}</span>
@@ -55,7 +55,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
 
       {/* Progress bar */}
       <div
-        className="w-full h-1 rounded-full bg-[var(--bg-surface)] overflow-hidden"
+        className="w-full h-1 rounded-full bg-gray-200 overflow-hidden"
         role="progressbar"
         aria-valuenow={Math.round(progress)}
         aria-valuemin={0}
@@ -66,8 +66,8 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
           className="h-full rounded-full transition-all duration-500 ease-out"
           style={{
             width: `${progress}%`,
-            background: `linear-gradient(to right, var(--sage), var(--emerald))`,
-            boxShadow: progress > 50 ? "0 0 8px var(--glow-emerald)" : undefined,
+            background: `linear-gradient(to right, #00A8A8, #008888)`,
+            boxShadow: progress > 50 ? "0 0 8px rgba(0,168,168,0.3)" : undefined,
           }}
         />
       </div>

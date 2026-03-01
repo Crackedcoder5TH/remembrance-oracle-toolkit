@@ -36,12 +36,12 @@ export function TcpaConsent({
             type="checkbox"
             checked={tcpaChecked}
             onChange={(e) => onTcpaChange(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-indigo-cathedral/25 bg-[var(--bg-surface)] text-teal-cathedral focus:ring-teal-cathedral/50 shrink-0"
+            className="mt-1 h-4 w-4 rounded border-gray-300 bg-gray-50 text-teal-cathedral focus:ring-teal-cathedral/50 shrink-0"
           />
-          <label htmlFor="tcpaConsent" className="text-xs text-[var(--text-muted)] leading-relaxed">
-            By checking this box, I agree that <strong className="text-[var(--text-primary)]">Digital Cathedral</strong> may
+          <label htmlFor="tcpaConsent" className="text-xs text-gray-600 leading-relaxed">
+            By checking this box, I agree that <strong className="text-black">Digital Cathedral</strong> may
             contact me at the phone number I provided above, including by autodialed or prerecorded calls
-            and text messages, for marketing purposes. I understand this consent is <strong className="text-[var(--text-primary)]">not
+            and text messages, for marketing purposes. I understand this consent is <strong className="text-black">not
             required</strong> to obtain any product or service. Message and data rates may apply. I have read
             and agree to the{" "}
             <a href="/privacy" className="text-teal-cathedral underline">Privacy Policy</a> and{" "}
@@ -59,9 +59,9 @@ export function TcpaConsent({
             type="checkbox"
             checked={privacyChecked}
             onChange={(e) => onPrivacyChange(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-indigo-cathedral/25 bg-[var(--bg-surface)] text-teal-cathedral focus:ring-teal-cathedral/50 shrink-0"
+            className="mt-1 h-4 w-4 rounded border-gray-300 bg-gray-50 text-teal-cathedral focus:ring-teal-cathedral/50 shrink-0"
           />
-          <label htmlFor="privacyConsent" className="text-xs text-[var(--text-muted)] leading-relaxed">
+          <label htmlFor="privacyConsent" className="text-xs text-gray-600 leading-relaxed">
             I acknowledge that my information will be shared with licensed insurance professionals
             who may contact me about life insurance options. I understand I can opt out at any time.
             See our <a href="/privacy" className="text-teal-cathedral underline">Privacy Policy</a> for

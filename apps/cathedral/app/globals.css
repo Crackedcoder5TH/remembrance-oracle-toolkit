@@ -140,6 +140,30 @@
     letter-spacing: 0.01em;
   }
 
+  /* Metallic gold button — border + glow variant */
+  .metallic-gold-btn {
+    border: 1.5px solid #DAA520;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.15), inset 0 0 8px rgba(255, 215, 0, 0.05);
+    transition: all 300ms ease;
+  }
+
+  .metallic-gold-btn:hover {
+    border-color: #FFD700;
+    box-shadow: 0 0 13px rgba(255, 215, 0, 0.3), inset 0 0 13px rgba(255, 215, 0, 0.08);
+  }
+
+  /* Metallic gold icon — for SVG strokes */
+  .metallic-gold-icon {
+    color: #DAA520;
+    filter: drop-shadow(0 0 3px rgba(255, 215, 0, 0.25));
+    transition: color 300ms ease, filter 300ms ease;
+  }
+
+  .metallic-gold-btn:hover .metallic-gold-icon {
+    color: #FFD700;
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.4));
+  }
+
   @keyframes gold-shimmer {
     0%, 100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }

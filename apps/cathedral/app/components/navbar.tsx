@@ -120,7 +120,7 @@ export function Navbar() {
         {/* Right: Login button */}
         <Link
           href="/admin"
-          className="flex items-center gap-fib-8 px-fib-21 py-fib-8 text-sm font-medium rounded-fib border border-[var(--teal)]/20 hover:bg-[var(--teal)]/10 hover:border-[var(--teal)]/40 transition-all"
+          className="metallic-gold-btn flex items-center gap-fib-8 px-fib-21 py-fib-8 text-sm font-medium rounded-fib transition-all"
         >
           <svg
             width="16"
@@ -129,12 +129,12 @@ export function Navbar() {
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
-            className="shrink-0 text-[var(--teal)]"
+            className="shrink-0 metallic-gold-icon"
             aria-hidden="true"
           >
             <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
           </svg>
-          Login
+          <span className="metallic-gold">Login</span>
         </Link>
       </div>
     </nav>

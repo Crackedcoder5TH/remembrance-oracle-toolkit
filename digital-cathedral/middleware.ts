@@ -42,11 +42,17 @@ function isSessionLikelyValid(token: string): boolean {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ─── Allow NextAuth routes through (OAuth flow) ───
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+
   // ─── Admin route protection ───
   if (
     pathname.startsWith("/admin") &&
     !pathname.startsWith("/admin/login") &&
-    !pathname.startsWith("/api/admin/login")
+    !pathname.startsWith("/api/admin/login") &&
+    !pathname.startsWith("/api/admin/google-callback")
   ) {
     const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
 
@@ -60,19 +66,19 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const headers = response.headers;
 
-  // Content-Security-Policy — allow self + inline styles (Tailwind) + data: images
+  // Content-Security-Policy — allow self + inline styles (Tailwind) + data: images + Google OAuth
   headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://accounts.google.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
+      "img-src 'self' data: https: https://*.googleusercontent.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self'",
+      "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      "form-action 'self' https://accounts.google.com",
     ].join("; "),
   );
 

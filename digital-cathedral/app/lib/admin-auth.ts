@@ -1,27 +1,47 @@
 /**
  * Admin Authentication
  *
- * Two authentication methods (checked in order):
- *  1. Session cookie (__admin_session) — set by /api/admin/login, HMAC-signed
- *  2. Bearer token (Authorization header) — for programmatic/API access
+ * Three authentication methods (checked in order):
+ *  1. Google OAuth session cookie — set after Google sign-in, includes role
+ *  2. Legacy session cookie (__admin_session) — set by /api/admin/login, HMAC-signed
+ *  3. Bearer token (Authorization header) — for programmatic/API access
  *
  * Environment variables:
- *   ADMIN_API_KEY — required for admin access (any string, min 16 chars recommended)
+ *   ADMIN_API_KEY — required for bearer token access (any string, min 16 chars recommended)
+ *   ADMIN_EMAILS — comma-separated Google emails that get admin role automatically
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { verifySessionToken, ADMIN_SESSION_COOKIE } from "./admin-session";
+import {
+  verifySessionToken,
+  verifyAndDecodeSessionToken,
+  ADMIN_SESSION_COOKIE,
+} from "./admin-session";
 
 /**
- * Verify admin authentication from session cookie or Authorization header.
+ * Verify admin authentication from Google session, legacy session, or bearer token.
  *
- * Returns null if authenticated, or a NextResponse with 401/403/503 if not.
+ * Returns null if authenticated as admin, or a NextResponse with 401/403/503 if not.
  */
 export function verifyAdmin(req: NextRequest): NextResponse | null {
-  // Method 1: Session cookie (from /admin/login flow)
+  // Method 1: Session cookie with role (Google OAuth or legacy)
   const sessionCookie = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  if (sessionCookie && verifySessionToken(sessionCookie)) {
-    return null; // Authenticated via session
+  if (sessionCookie) {
+    const payload = verifyAndDecodeSessionToken(sessionCookie);
+    if (payload) {
+      // Google session — has role field
+      if (payload.role) {
+        if (payload.role === "admin") {
+          return null; // Authenticated as admin via Google
+        }
+        return NextResponse.json(
+          { success: false, message: "You don't have admin access." },
+          { status: 403 },
+        );
+      }
+      // Legacy session (no role field) — treat as admin (API key login)
+      return null;
+    }
   }
 
   // Method 2: Bearer token (for programmatic access)

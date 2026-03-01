@@ -25,19 +25,19 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
-          // CSP — allow self, inline styles (Tailwind), and specific external sources
+          // CSP — allow self, inline styles (Tailwind), Google OAuth, and specific external sources
           {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              "img-src 'self' data: blob: https://*.googleusercontent.com",
               "font-src 'self'",
-              "connect-src 'self'",
+              "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
-              "form-action 'self'",
+              "form-action 'self' https://accounts.google.com",
               "upgrade-insecure-requests",
             ].join("; "),
           },

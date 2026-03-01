@@ -21,7 +21,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
   return (
     <div className="w-full space-y-3" role="navigation" aria-label="Form progress">
       {/* Hint for current step */}
-      <p className="text-xs text-center text-gray-500" aria-hidden="true">
+      <p className="text-xs text-center text-black font-bold" aria-hidden="true">
         {STEP_HINTS[currentStep]}
       </p>
 
@@ -42,9 +42,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
               {i < currentStep ? "\u2713" : i + 1}
             </div>
             <span
-              className={`text-xs mt-1 ${
-                i <= currentStep ? "text-teal-cathedral" : "text-gray-400"
-              }`}
+              className="text-xs mt-1 font-bold text-black"
             >
               <span className="sr-only">{i < currentStep ? "Completed: " : i === currentStep ? "Current: " : "Upcoming: "}</span>
               {label}

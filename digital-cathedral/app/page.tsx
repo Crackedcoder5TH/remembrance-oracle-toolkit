@@ -299,7 +299,7 @@ export default function HomePage() {
 
       {/* The Gap Most Don't Realize Exists */}
       <section className="w-full max-w-2xl mb-16 px-4 text-center" aria-labelledby="gap-heading">
-        <h2 id="gap-heading" className={`${SECTION_HEADING} mb-6`}>
+        <h2 id="gap-heading" className="text-lg md:text-xl font-light text-red-500 mb-6">
           Your Service Protects Others. But Is Your Family Fully Protected?
         </h2>
         <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 text-left max-w-xl mx-auto">

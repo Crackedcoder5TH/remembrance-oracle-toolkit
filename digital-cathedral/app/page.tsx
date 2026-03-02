@@ -299,15 +299,6 @@ export default function HomePage() {
           <p>
             But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
           </p>
-          <p className="font-medium text-[var(--text-primary)]">Whether you&rsquo;re:</p>
-          <ul className="grid grid-cols-2 gap-2 text-[var(--text-primary)] text-sm">
-            {["Active Duty", "National Guard", "Reserve", "Transitioning out", "Fully separated"].map((item) => (
-              <li key={item} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-cathedral flex-shrink-0" aria-hidden="true" />
-                {item}
-              </li>
-            ))}
-          </ul>
 
           {/* Serving Every Stage of Service */}
           <h3 className="text-lg font-medium text-[var(--text-primary)] text-center mt-6">

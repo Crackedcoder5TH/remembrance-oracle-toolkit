@@ -60,16 +60,17 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const headers = response.headers;
 
-  // Content-Security-Policy — allow self + inline styles (Tailwind) + data: images
+  // Content-Security-Policy — synced with next.config.mjs
+  // Must match to avoid the middleware overriding config headers
   headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
+      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self'",
+      "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

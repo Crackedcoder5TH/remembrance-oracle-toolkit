@@ -720,6 +720,26 @@ class SqliteAdapter implements DbAdapter {
 }
 
 // =============================================================================
+// Noop Adapter (Vercel without DATABASE_URL — returns errors, doesn't crash)
+// =============================================================================
+
+class NoopAdapter implements DbAdapter {
+  private fail<T>(op: string): Promise<Result<T, string>> {
+    return Promise.resolve(Err(`DATABASE_URL not configured. Set it in Vercel environment variables to enable ${op}.`));
+  }
+  async initialize(): Promise<void> {}
+  insertLead(): Promise<Result<{ id: number; leadId: string }, string>> { return this.fail("lead storage"); }
+  getLeadById(): Promise<Result<LeadRecord | null, string>> { return this.fail("lead lookup"); }
+  getLeadsByEmail(): Promise<Result<LeadRecord[], string>> { return this.fail("lead lookup"); }
+  getRecentLeads(): Promise<Result<LeadRecord[], string>> { return this.fail("lead listing"); }
+  getLeadCount(): Promise<Result<number, string>> { return Promise.resolve(Ok(0)); }
+  getFilteredLeads(): Promise<Result<{ leads: LeadRecord[]; total: number }, string>> { return this.fail("lead filtering"); }
+  getLeadStats(): Promise<Result<LeadStats, string>> { return this.fail("stats"); }
+  deleteLeadByEmail(): Promise<Result<{ deleted: number }, string>> { return this.fail("lead deletion"); }
+  deleteLeadById(): Promise<Result<{ deleted: number }, string>> { return this.fail("lead deletion"); }
+}
+
+// =============================================================================
 // Adapter Selection — singleton
 // =============================================================================
 
@@ -731,6 +751,11 @@ function getAdapter(): DbAdapter {
   if (process.env.DATABASE_URL) {
     console.log("[database] Using PostgreSQL adapter (DATABASE_URL detected)");
     _adapter = new PostgresAdapter();
+  } else if (process.env.VERCEL) {
+    // On Vercel without DATABASE_URL, better-sqlite3 (native addon) won't work.
+    // Return a stub that returns clear errors so the site still renders.
+    console.warn("[database] No DATABASE_URL on Vercel — database operations will fail. Set DATABASE_URL in Vercel environment variables.");
+    _adapter = new NoopAdapter();
   } else {
     console.log("[database] Using SQLite adapter (no DATABASE_URL — local dev mode)");
     _adapter = new SqliteAdapter();

@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@cathedral/shared"],
 
+  // Exclude native addons from serverless bundles (better-sqlite3 is dev-only)
+  serverExternalPackages: ["better-sqlite3"],
+
   // ─── Security Headers (HTTPS everywhere) ───
   async headers() {
     return [

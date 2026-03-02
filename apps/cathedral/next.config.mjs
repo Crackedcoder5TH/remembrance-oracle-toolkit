@@ -4,7 +4,9 @@ const nextConfig = {
   transpilePackages: ["@cathedral/shared"],
 
   // better-sqlite3 is a native C++ addon — must not be bundled by webpack
-  serverExternalPackages: ["better-sqlite3"],
+  experimental: {
+    serverComponentsExternalPackages: ["better-sqlite3"],
+  },
 
   // ─── Security Headers (HTTPS everywhere) ───
   async headers() {

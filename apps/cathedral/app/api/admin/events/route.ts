@@ -5,24 +5,23 @@ import { subscribe, type LeadEvent } from "@/app/lib/lead-events";
 /**
  * SSE endpoint for real-time admin notifications.
  *
- * Authenticated admins connect via EventSource to receive
- * real-time lead.created events without polling.
+ * Authentication: session cookie (sent automatically by EventSource)
+ * or query param token (fallback for programmatic access).
  *
  * Usage (client):
- *   const es = new EventSource("/api/admin/events?token=<ADMIN_API_KEY>");
- *   es.addEventListener("lead.created", (e) => { ... });
+ *   const es = new EventSource("/api/admin/events");
  */
 export async function GET(req: NextRequest) {
-  // Verify admin — check token from query param (EventSource can't set headers)
-  const token = req.nextUrl.searchParams.get("token");
-  if (!token) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  // Method 1: Session cookie (EventSource sends cookies automatically)
+  const authError = verifyAdmin(req);
 
-  // Verify token against ADMIN_API_KEY
-  const adminKey = process.env.ADMIN_API_KEY;
-  if (!adminKey || token !== adminKey) {
-    return new Response("Forbidden", { status: 403 });
+  // Method 2: Query param fallback (for programmatic access)
+  if (authError) {
+    const token = req.nextUrl.searchParams.get("token");
+    const adminKey = process.env.ADMIN_API_KEY;
+    if (!token || !adminKey || token !== adminKey) {
+      return new Response("Unauthorized", { status: 401 });
+    }
   }
 
   const encoder = new TextEncoder();

@@ -629,7 +629,7 @@ export default function HomePage() {
 
       {/* Section 6: Frequently Asked Questions */}
       <section className="w-full max-w-2xl mt-20 px-4" aria-labelledby="faq-heading">
-        <h2 id="faq-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8 text-center">
+        <h2 id="faq-heading" className={`${SECTION_HEADING} mb-8 text-center`}>
           Frequently Asked Questions
         </h2>
         <div className="space-y-6 max-w-xl mx-auto">

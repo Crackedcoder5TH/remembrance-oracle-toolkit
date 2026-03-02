@@ -121,7 +121,8 @@ img {
   transition: color var(--transition);
 }
 
-.nav-link:hover {
+.nav-link:hover,
+.nav-link.active {
   color: #FFFFFF;
 }
 
@@ -220,6 +221,21 @@ img {
 .btn-secondary:hover {
   border-color: var(--color-text-muted);
   color: var(--color-text);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.nav-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.nav-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* --- Sections --- */

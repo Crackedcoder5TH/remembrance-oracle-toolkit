@@ -38,6 +38,18 @@
     });
   });
 
+  // --- Throttle (oracle pattern: 1dc32fccc413f932, coherency 0.970) ---
+  function throttle(fn, limit) {
+    var lastCall = 0;
+    return function() {
+      var now = Date.now();
+      if (now - lastCall >= limit) {
+        lastCall = now;
+        fn.apply(this, arguments);
+      }
+    };
+  }
+
   // --- Active Nav Highlighting on Scroll ---
   const sections = document.querySelectorAll('.section[id]');
   const navLinks = document.querySelectorAll('.nav-link');
@@ -51,7 +63,6 @@
       const link = document.querySelector('.nav-link[href="#' + id + '"]');
       if (link) {
         if (scrollY >= top && scrollY < top + height) {
-          link.style.color = '';
           link.classList.add('active');
         } else {
           link.classList.remove('active');
@@ -60,7 +71,7 @@
     });
   }
 
-  window.addEventListener('scroll', highlightNav, { passive: true });
+  window.addEventListener('scroll', throttle(highlightNav, 100), { passive: true });
   highlightNav();
 
   // --- Animate Stats on Scroll ---
@@ -94,7 +105,7 @@
     }
   }
 
-  window.addEventListener('scroll', checkStatsVisible, { passive: true });
+  window.addEventListener('scroll', throttle(checkStatsVisible, 200), { passive: true });
   checkStatsVisible();
 
   // --- Header Shrink on Scroll ---

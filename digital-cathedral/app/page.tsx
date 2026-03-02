@@ -278,6 +278,37 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* The Gap Most Don't Realize Exists */}
+      <section className="w-full max-w-2xl mb-16 px-4 text-center" aria-labelledby="gap-heading">
+        <h2 id="gap-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6">
+          Your Service Protects Others. But Is Your Family Fully Protected?
+        </h2>
+        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 text-left max-w-xl mx-auto">
+          <p>
+            Many service members rely solely on SGLI or assume their coverage will always be enough.
+          </p>
+          <p>
+            But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
+          </p>
+          <p className="font-medium text-[var(--text-primary)]">Whether you&rsquo;re:</p>
+          <ul className="grid grid-cols-2 gap-2 text-[var(--text-primary)] text-sm">
+            {["Active Duty", "National Guard", "Reserve", "Transitioning out", "Fully separated"].map((item) => (
+              <li key={item} className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-teal-cathedral flex-shrink-0" aria-hidden="true" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          <p>
+            It&rsquo;s important to understand what options exist beyond basic military coverage.
+          </p>
+          <p className="italic text-[var(--text-primary)]">
+            This isn&rsquo;t about replacing anything.<br />
+            It&rsquo;s about understanding your full protection picture.
+          </p>
+        </div>
+      </section>
+
       {/* Hero — Above the Form */}
       <header className="text-center mb-10">
         <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
@@ -536,37 +567,6 @@ export default function HomePage() {
           Do Not Sell or Share My Personal Information
         </a>
       </div>
-
-      {/* Section 2: The Gap Most Don't Realize Exists */}
-      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="gap-heading">
-        <h2 id="gap-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6">
-          Your Service Protects Others. But Is Your Family Fully Protected?
-        </h2>
-        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 text-left max-w-xl mx-auto">
-          <p>
-            Many service members rely solely on SGLI or assume their coverage will always be enough.
-          </p>
-          <p>
-            But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
-          </p>
-          <p className="font-medium text-[var(--text-primary)]">Whether you&rsquo;re:</p>
-          <ul className="grid grid-cols-2 gap-2 text-[var(--text-primary)] text-sm">
-            {["Active Duty", "National Guard", "Reserve", "Transitioning out", "Fully separated"].map((item) => (
-              <li key={item} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-teal-cathedral flex-shrink-0" aria-hidden="true" />
-                {item}
-              </li>
-            ))}
-          </ul>
-          <p>
-            It&rsquo;s important to understand what options exist beyond basic military coverage.
-          </p>
-          <p className="italic text-[var(--text-primary)]">
-            This isn&rsquo;t about replacing anything.<br />
-            It&rsquo;s about understanding your full protection picture.
-          </p>
-        </div>
-      </section>
 
       {/* Section 3: How It Works */}
       <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="how-it-works-heading">

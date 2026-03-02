@@ -337,6 +337,31 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Section 3: How It Works */}
+      <section className="w-full max-w-2xl mb-16 px-4 text-center" aria-labelledby="how-it-works-heading">
+        <h2 id="how-it-works-heading" className={`${SECTION_HEADING} mb-8`}>
+          Simple. Structured. Secure.
+        </h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { step: "1", title: "Submit", desc: "Submit a short, secure form." },
+            { step: "2", title: "Connect", desc: "We connect you with a licensed professional experienced in military family coverage." },
+            { step: "3", title: "Review", desc: "Review your options and decide what\u2019s right for your family." },
+          ].map((item) => (
+            <div key={item.step} className="cathedral-surface p-6 text-center">
+              <div className="w-10 h-10 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-sm font-medium mx-auto mb-3">
+                {item.step}
+              </div>
+              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-[var(--text-muted)] mt-6 italic">
+          No pressure. No obligation. Just clarity.
+        </p>
+      </section>
+
       {/* Hero — Above the Form */}
       <header className="text-center mb-10">
         <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
@@ -595,31 +620,6 @@ export default function HomePage() {
           Do Not Sell or Share My Personal Information
         </a>
       </div>
-
-      {/* Section 3: How It Works */}
-      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="how-it-works-heading">
-        <h2 id="how-it-works-heading" className={`${SECTION_HEADING} mb-8`}>
-          Simple. Structured. Secure.
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { step: "1", title: "Submit", desc: "Submit a short, secure form." },
-            { step: "2", title: "Connect", desc: "We connect you with a licensed professional experienced in military family coverage." },
-            { step: "3", title: "Review", desc: "Review your options and decide what\u2019s right for your family." },
-          ].map((item) => (
-            <div key={item.step} className="cathedral-surface p-6 text-center">
-              <div className="w-10 h-10 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-sm font-medium mx-auto mb-3">
-                {item.step}
-              </div>
-              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h3>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-sm text-[var(--text-muted)] mt-6 italic">
-          No pressure. No obligation. Just clarity.
-        </p>
-      </section>
 
       {/* Section 6: Frequently Asked Questions */}
       <section className="w-full max-w-2xl mt-20 px-4" aria-labelledby="faq-heading">

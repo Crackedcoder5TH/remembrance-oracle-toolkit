@@ -12,7 +12,7 @@ import { scoreLead } from "@/app/lib/lead-scoring";
  * Protected by bearer token (ADMIN_API_KEY).
  */
 export async function GET(req: NextRequest) {
-  const authError = verifyAdmin(req);
+  const authError = await verifyAdmin(req);
   if (authError) return authError;
 
   const params = req.nextUrl.searchParams;

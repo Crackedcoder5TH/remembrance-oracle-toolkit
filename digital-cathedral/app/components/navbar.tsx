@@ -154,6 +154,14 @@ export function Navbar() {
             <span className="text-sm text-[var(--text-primary)] hidden sm:inline">
               {session.user.name?.split(" ")[0]}
             </span>
+            {(session.user as Record<string, unknown>).isAdmin && (
+              <Link
+                href="/admin"
+                className="text-xs text-teal-cathedral hover:text-teal-cathedral/80 transition-colors"
+              >
+                Admin
+              </Link>
+            )}
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"

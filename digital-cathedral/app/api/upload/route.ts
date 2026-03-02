@@ -10,7 +10,7 @@ const VALID_SLOTS = ["logo", "profile"];
 export async function POST(request: NextRequest) {
   try {
     // Admin authentication required
-    const authError = verifyAdmin(request);
+    const authError = await verifyAdmin(request);
     if (authError) return authError;
 
     const formData = await request.formData();

@@ -621,38 +621,6 @@ export default function HomePage() {
         </a>
       </div>
 
-      {/* Section 6: Frequently Asked Questions */}
-      <section className="w-full max-w-2xl mt-20 px-4" aria-labelledby="faq-heading">
-        <h2 id="faq-heading" className={`${SECTION_HEADING} mb-8 text-center`}>
-          Frequently Asked Questions
-        </h2>
-        <div className="space-y-6 max-w-xl mx-auto">
-          {[
-            {
-              q: "Is this the same as SGLI?",
-              a: "No. This is a review of additional or alternative life insurance options available outside standard military coverage.",
-            },
-            {
-              q: "Is this affiliated with the military?",
-              a: "No. This platform is independently operated and not affiliated with the U.S. Government or Department of Defense.",
-            },
-            {
-              q: "Is there an obligation to purchase?",
-              a: "No. Requesting a review simply connects you with a licensed professional to explore your options.",
-            },
-            {
-              q: "Are veterans eligible?",
-              a: "Yes. Many options are available for veterans, including those who have separated from service.",
-            },
-          ].map((item) => (
-            <div key={item.q} className="border-b border-indigo-cathedral/8 pb-4">
-              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.q}</h3>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">{item.a}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Section 7: Final Call to Action */}
       <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="final-cta-heading">
         <h2 id="final-cta-heading" className={`${SECTION_HEADING} mb-4`}>

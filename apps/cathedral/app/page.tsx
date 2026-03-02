@@ -302,13 +302,15 @@ export default function HomePage() {
         <h2 id="gap-heading" className="text-lg md:text-xl font-light text-red-500 mb-6">
           Your Service Protects Others. But Is Your Family Fully Protected?
         </h2>
-        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 text-left max-w-xl mx-auto">
-          <p>
-            Many service members rely solely on SGLI or assume their coverage will always be enough.
-          </p>
-          <p>
-            But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
-          </p>
+        <div className="text-sm text-[var(--text-muted)] leading-relaxed text-left max-w-xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <p>
+              Many service members rely solely on SGLI or assume their coverage will always be enough.
+            </p>
+            <p>
+              But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
+            </p>
+          </div>
 
           {/* Serving Every Stage of Service */}
           <h3 className="text-lg font-medium text-[var(--text-primary)] text-center mt-6">

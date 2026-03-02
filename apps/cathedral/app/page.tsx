@@ -316,7 +316,6 @@ export default function HomePage() {
           <h3 className="text-lg font-medium text-[var(--text-primary)] text-center mt-6">
             Serving Every Stage of Service.
           </h3>
-          <p className="text-center">This resource is built for:</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
               "Active Duty Service Members",

@@ -8,11 +8,10 @@
  *  - Live activity counter ("X people requested quotes today")
  *  - Trust badges with staggered entrance animations
  *
- * Four sections:
+ * Three sections:
  *  1. Live activity indicator (social proof)
  *  2. Trust badges (security, licensing, privacy)
- *  3. How it works (3-step process)
- *  4. Rotating testimonials
+ *  3. Rotating testimonials
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -98,53 +97,6 @@ function TrustBadges() {
           </p>
         </div>
       ))}
-    </div>
-  );
-}
-
-// --- How It Works ---
-function HowItWorks() {
-  const steps = [
-    {
-      number: "1",
-      title: "Tell Us About You",
-      description:
-        "Share your basic information and the type of life insurance coverage you're interested in.",
-    },
-    {
-      number: "2",
-      title: "Get Matched",
-      description:
-        "We connect you with a licensed insurance professional in your state who specializes in your coverage needs.",
-    },
-    {
-      number: "3",
-      title: "Explore Your Options",
-      description:
-        "Your matched professional will contact you to discuss personalized coverage options at no obligation.",
-    },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-light text-[var(--text-primary)] text-center">
-        How It Works
-      </h2>
-      <div className="grid md:grid-cols-3 gap-6">
-        {steps.map((s) => (
-          <div key={s.number} className="text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-teal-cathedral text-white border border-teal-cathedral/30 flex items-center justify-center text-sm font-medium mx-auto">
-              {s.number}
-            </div>
-            <h3 className="text-sm font-medium text-[var(--text-primary)]">
-              {s.title}
-            </h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              {s.description}
-            </p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -287,7 +239,6 @@ export function TrustSignals() {
     <div className="w-full max-w-4xl space-y-12">
       <LiveActivityCounter />
       <TrustBadges />
-      <HowItWorks />
       <RotatingTestimonials />
     </div>
   );

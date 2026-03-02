@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "About & Contact",
   description:
-    "Learn about Digital Cathedral — veteran-founded life insurance lead generation for military families.",
+    "Learn about Valor Legacies — veteran-founded life insurance lead generation for military families.",
 };
 
 export default function AboutPage() {
@@ -14,12 +14,12 @@ export default function AboutPage() {
         <header>
           <Link
             href="/"
-            className="text-emerald-accent text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
+            className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
           >
             &larr; Back Home
           </Link>
           <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
-            About Digital Cathedral
+            About Valor Legacies
           </h1>
         </header>
 
@@ -28,7 +28,7 @@ export default function AboutPage() {
             Our Mission
           </h2>
           <p>
-            Digital Cathedral was founded by a veteran with a simple mission:
+            Valor Legacies was founded by a veteran with a simple mission:
             help military families understand their life insurance options beyond
             standard military coverage. We connect service members, veterans, and
             their families with licensed insurance professionals who specialize
@@ -101,7 +101,7 @@ export default function AboutPage() {
           </h2>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              Digital Cathedral is independently operated and{" "}
+              Valor Legacies is independently operated and{" "}
               <strong className="text-[var(--text-primary)]">
                 not affiliated
               </strong>{" "}
@@ -139,7 +139,7 @@ export default function AboutPage() {
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="1.5"
-                className="text-emerald-accent shrink-0"
+                className="text-teal-cathedral shrink-0"
                 aria-hidden="true"
               >
                 <rect x="2" y="4" width="20" height="16" rx="2" />
@@ -147,7 +147,7 @@ export default function AboutPage() {
               </svg>
               <a
                 href="mailto:privacy@digital-cathedral.app"
-                className="text-emerald-accent hover:underline text-sm"
+                className="text-teal-cathedral hover:underline text-sm"
               >
                 privacy@digital-cathedral.app
               </a>
@@ -163,14 +163,14 @@ export default function AboutPage() {
             See our{" "}
             <Link
               href="/privacy"
-              className="text-emerald-accent hover:underline"
+              className="text-teal-cathedral hover:underline"
             >
               Privacy Policy
             </Link>{" "}
             and{" "}
             <Link
               href="/terms"
-              className="text-emerald-accent hover:underline"
+              className="text-teal-cathedral hover:underline"
             >
               Terms of Service
             </Link>{" "}
@@ -178,9 +178,9 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <footer className="pt-8 border-t border-emerald-accent/10 text-center">
+        <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
           <p className="text-xs text-[var(--text-muted)]">
-            &copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.
+            &copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.
           </p>
         </footer>
       </article>

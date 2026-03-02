@@ -20,6 +20,8 @@ import { useLeadForm } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
 import { TrustSignals } from "./protect/components/trust-signals";
+import { ImageUpload } from "./components/image-upload";
+import { useIsAdmin } from "./protect/hooks/use-is-admin";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
 
 const US_STATES = [
@@ -61,23 +63,46 @@ const COVERAGE_OPTIONS = [
   { value: "not-sure", label: "Not sure \u2014 I need guidance" },
 ];
 
-const VETERAN_STATUS_OPTIONS = [
-  { value: "", label: "Select veteran status..." },
+const MILITARY_STATUS_OPTIONS = [
+  { value: "", label: "Select military status..." },
+  { value: "active-duty", label: "Active-Duty" },
+  { value: "reserve", label: "Reserve" },
+  { value: "national-guard", label: "National Guard" },
   { value: "veteran", label: "Veteran" },
-  { value: "non-veteran", label: "Non-Veteran" },
+  { value: "non-military", label: "Non-Military (family member)" },
 ];
 
-const MILITARY_BRANCH_OPTIONS = [
-  { value: "", label: "Select branch of service..." },
+const BRANCH_PLACEHOLDER = { value: "", label: "Select branch of service..." };
+
+const BRANCHES_FULL = [
+  BRANCH_PLACEHOLDER,
   { value: "army", label: "U.S. Army" },
-  { value: "marine-corps", label: "U.S. Marine Corps" },
   { value: "navy", label: "U.S. Navy" },
   { value: "air-force", label: "U.S. Air Force" },
+  { value: "marine-corps", label: "U.S. Marine Corps" },
   { value: "space-force", label: "U.S. Space Force" },
-  { value: "coast-guard", label: "U.S. Coast Guard" },
-  { value: "national-guard", label: "National Guard" },
-  { value: "reserves", label: "Reserves" },
+  { value: "coast-guard", label: "Coast Guard" },
 ];
+
+const BRANCHES_NO_SPACE = [
+  BRANCH_PLACEHOLDER,
+  { value: "army", label: "U.S. Army" },
+  { value: "navy", label: "U.S. Navy" },
+  { value: "air-force", label: "U.S. Air Force" },
+  { value: "marine-corps", label: "U.S. Marine Corps" },
+  { value: "coast-guard", label: "Coast Guard" },
+];
+
+const BRANCH_OPTIONS_BY_STATUS: Record<string, { value: string; label: string }[]> = {
+  "active-duty": BRANCHES_FULL,
+  "reserve": BRANCHES_NO_SPACE,
+  "national-guard": [
+    BRANCH_PLACEHOLDER,
+    { value: "air-national-guard", label: "Air National Guard" },
+    { value: "army-national-guard", label: "Army National Guard" },
+  ],
+  "veteran": BRANCHES_FULL,
+};
 
 // Live formats as user types: (555) 123-4567
 function formatPhoneInput(value: string): string {
@@ -94,11 +119,28 @@ function autoCapitalizeName(value: string): string {
 }
 
 const INPUT_CLASS =
-  "w-full bg-soft-gray text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-navy-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-emerald-accent/60 transition-all";
-
+  "w-full bg-gray-50 text-black placeholder-gray-400 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 transition-all";
 const SELECT_CLASS = INPUT_CLASS + " appearance-none";
+const LABEL_CLASS = "block text-sm font-bold text-gray-900";
+const BTN_PRIMARY = "py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]";
+const BTN_BACK = "py-3 rounded-lg font-medium text-sm transition-all text-gray-500 border border-gray-300 hover:border-gray-400";
+const SECTION_HEADING = "text-2xl md:text-3xl font-light text-[var(--text-primary)]";
+
+const NEXT_STEPS = [
+  { title: "Confirmation Email", desc: "Check your inbox for a confirmation of your request." },
+  { title: "Professional Review", desc: "A licensed insurance professional in your area will review your information and coverage needs." },
+  { title: "Personal Consultation", desc: "Expect a call or email within 1 business day to discuss your options — no obligation." },
+];
+
+const FOOTER_LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/faq", label: "FAQ" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms of Service" },
+];
 
 export default function HomePage() {
+  const isAdmin = useIsAdmin();
   const utm = useUtmTracking();
   const {
     form, errors, loading, submitted, confirmationMessage, leadId, serverError,
@@ -129,15 +171,15 @@ export default function HomePage() {
       <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12" aria-label="Form submission confirmation">
         {/* Success icon */}
         <div className="mb-8">
-          <div className="w-20 h-20 rounded-full bg-emerald-accent/10 flex items-center justify-center mx-auto">
-            <svg className="w-10 h-10 text-emerald-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          <div className="w-20 h-20 rounded-full bg-teal-cathedral/10 flex items-center justify-center mx-auto">
+            <svg className="w-10 h-10 text-teal-cathedral" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
         </div>
 
         <div className="w-full max-w-lg cathedral-surface p-8 cathedral-glow text-center" role="status">
-          <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
+          <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-4 pulse-gentle">
             Request Received
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)] mb-3">
@@ -146,43 +188,31 @@ export default function HomePage() {
           <p className="text-[var(--text-primary)] text-lg mb-6">
             Your Legacy is Being Protected
           </p>
-          <p className="text-emerald-accent italic opacity-90 text-base leading-relaxed mb-8">
+          <p className="text-teal-cathedral italic opacity-90 text-base leading-relaxed mb-8">
             &ldquo;{confirmationMessage}&rdquo;
           </p>
 
           {/* Reference number */}
           {leadId && (
-            <div className="bg-soft-gray rounded-lg px-4 py-3 mb-8 inline-block">
+            <div className="bg-[var(--bg-surface)] rounded-lg px-4 py-3 mb-8 inline-block">
               <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">Reference Number</p>
               <p className="text-sm font-mono text-[var(--text-primary)] select-all">{leadId}</p>
             </div>
           )}
 
           {/* What happens next */}
-          <div className="border-t border-navy-cathedral/8 pt-6 mt-2">
+          <div className="border-t border-indigo-cathedral/8 pt-6 mt-2">
             <h2 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider mb-4">What Happens Next</h2>
             <div className="space-y-4 text-left">
-              <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">1</div>
-                <div>
-                  <p className="text-sm text-[var(--text-primary)] font-medium">Confirmation Email</p>
-                  <p className="text-xs text-[var(--text-muted)]">Check your inbox at <span className="font-medium">{form.email}</span> for a confirmation of your request.</p>
+              {NEXT_STEPS.map((s, i) => (
+                <div key={i} className="flex gap-3 items-start">
+                  <div className="w-7 h-7 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">{i + 1}</div>
+                  <div>
+                    <p className="text-sm text-[var(--text-primary)] font-medium">{s.title}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{s.desc}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">2</div>
-                <div>
-                  <p className="text-sm text-[var(--text-primary)] font-medium">Professional Review</p>
-                  <p className="text-xs text-[var(--text-muted)]">A licensed insurance professional in your area will review your information and coverage needs.</p>
-                </div>
-              </div>
-              <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-emerald-accent text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">3</div>
-                <div>
-                  <p className="text-sm text-[var(--text-primary)] font-medium">Personal Consultation</p>
-                  <p className="text-xs text-[var(--text-muted)]">Expect a call or email within <strong>1 business day</strong> to discuss your options — no obligation.</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -191,13 +221,13 @@ export default function HomePage() {
         <div className="flex gap-4 mt-8">
           <a
             href="/"
-            className="px-6 py-3 rounded-lg text-sm font-medium border border-navy-cathedral/10 text-[var(--text-muted)] hover:border-navy-cathedral/25 transition-all"
+            className="px-6 py-3 rounded-lg text-sm font-medium border border-indigo-cathedral/10 text-[var(--text-muted)] hover:border-indigo-cathedral/25 transition-all"
           >
             Return Home
           </a>
           <a
             href="/privacy"
-            className="px-6 py-3 rounded-lg text-sm font-medium text-emerald-accent hover:text-emerald-accent/80 transition-all"
+            className="px-6 py-3 rounded-lg text-sm font-medium text-teal-cathedral hover:text-teal-cathedral/80 transition-all"
           >
             Privacy Policy
           </a>
@@ -205,7 +235,7 @@ export default function HomePage() {
 
         <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
           <p>Protecting what matters most — your family.</p>
-          <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
         </footer>
       </main>
     );
@@ -215,57 +245,129 @@ export default function HomePage() {
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
       {/* Veteran Story — First thing visitors see */}
       <section className="w-full max-w-2xl mb-16 px-4" aria-labelledby="veteran-founded-heading-top">
-        <h2 id="veteran-founded-heading-top" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6 text-center">
-          Founded by a Veteran. Dedicated to Serving Those Who Served.
+        <h2 id="veteran-founded-heading-top" className={`${SECTION_HEADING} mb-6 text-center`}>
+          Dedicated to Serving Those Who Served.
         </h2>
 
-        {/* Photo placeholder */}
-        <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-soft-gray border-2 border-emerald-accent/20 flex items-center justify-center">
-          <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-          </svg>
-        </div>
+        {/* Profile photo — uploadable when admin */}
+        <ImageUpload
+          slot="profile"
+          alt="Founder profile photo"
+          editable={isAdmin}
+          className="w-32 h-32 mx-auto mb-6 rounded-full bg-[var(--bg-surface)] border-2 border-teal-cathedral/20 flex items-center justify-center overflow-hidden"
+          imgClassName="w-full h-full object-cover rounded-full"
+          fallback={
+            <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+          }
+        />
 
         <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 max-w-xl mx-auto">
-          <p>
+          <p className="metallic-gold">
             As a veteran, I understand the responsibility that comes with wearing the uniform
             — and the responsibility that continues after it comes off.
           </p>
-          <p>
+          <p className="metallic-gold">
             After serving, I saw how many military families weren&rsquo;t fully informed about
             their life insurance options outside of standard military coverage.
           </p>
-          <p className="text-[var(--text-primary)] font-medium">
+          <p className="metallic-gold font-medium">
             This platform was created as a bridge.
           </p>
-          <p>
+          <p className="metallic-gold">
             When you request a review, we connect you with trusted, independent, licensed
             insurance professionals who understand the unique needs of military families.
           </p>
-          <p className="italic text-[var(--text-primary)]">
+          <p className="metallic-gold italic font-medium">
             This is personal.<br />
             Service doesn&rsquo;t end at separation — and neither should protection.
           </p>
-          <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-navy-cathedral/8">
+          <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-indigo-cathedral/8">
             We are not affiliated with the U.S. Government or Department of Defense. We connect
             individuals with independent, licensed insurance professionals.
           </p>
         </div>
       </section>
 
+      {/* The Gap Most Don't Realize Exists */}
+      <section className="w-full max-w-2xl mb-16 px-4 text-center" aria-labelledby="gap-heading">
+        <h2 id="gap-heading" className="text-lg md:text-xl font-light text-red-500 mb-6">
+          Your Service Protects Others. But Is Your Family Fully Protected?
+        </h2>
+        <div className="text-sm text-[var(--text-muted)] leading-relaxed text-left max-w-xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+            <p>
+              Many service members rely solely on SGLI or assume their coverage will always be enough.
+            </p>
+            <p>
+              But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
+            </p>
+          </div>
+
+          {/* Serving Every Stage of Service */}
+          <h3 className="text-lg font-medium text-[var(--text-primary)] text-center mt-6">
+            Serving Every Stage of Service.
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              "Active Duty Service Members",
+              "National Guard",
+              "Reserve Members",
+              "Veterans",
+              "Military Families",
+              "Transitioning Service Members",
+            ].map((category) => (
+              <div key={category} className="cathedral-surface p-4 text-center">
+                <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-[var(--text-primary)] text-center font-medium">
+            If you&rsquo;ve served — this is for you.
+          </p>
+
+        </div>
+      </section>
+
+      {/* Section 3: How It Works */}
+      <section className="w-full max-w-2xl mb-16 px-4 text-center" aria-labelledby="how-it-works-heading">
+        <h2 id="how-it-works-heading" className={`${SECTION_HEADING} mb-8`}>
+          Simple. Structured. Secure.
+        </h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { step: "1", title: "Submit", desc: "Submit a short, secure form." },
+            { step: "2", title: "Connect", desc: "We connect you with a licensed professional experienced in military family coverage." },
+            { step: "3", title: "Review", desc: "Review your options and decide what\u2019s right for your family." },
+          ].map((item) => (
+            <div key={item.step} className="cathedral-surface p-6 text-center">
+              <div className="w-10 h-10 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-sm font-medium mx-auto mb-3">
+                {item.step}
+              </div>
+              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-[var(--text-muted)] mt-6 italic">
+          No pressure. No obligation. Just clarity.
+        </p>
+      </section>
+
       {/* Hero — Above the Form */}
       <header className="text-center mb-10">
-        <div className="text-emerald-accent text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Protect What Matters Most
         </div>
-        <h1 className="text-4xl md:text-5xl font-light text-[var(--text-primary)] mb-4">
+        <h1 className={`${SECTION_HEADING} mb-4`}>
           Protect Your Family Beyond Basic Military Coverage.
         </h1>
-        <p className="text-[var(--text-muted)] max-w-lg mx-auto text-sm leading-relaxed mb-3">
+        <p className="metallic-gold max-w-lg mx-auto text-sm leading-relaxed mb-3">
           Life insurance options for Active Duty, National Guard, Reserve, and Veterans
           — made clear and simple.
         </p>
-        <p className="text-emerald-accent text-xs tracking-wide font-medium">
+        <p className="text-teal-cathedral text-xs tracking-wide font-medium">
           Founded by a Veteran. Built to Serve Military Families.
         </p>
       </header>
@@ -285,7 +387,7 @@ export default function HomePage() {
       </div>
 
       {/* Multi-Step Lead Capture Form */}
-      <form onSubmit={handleSubmit} className="w-full max-w-lg cathedral-surface p-6 md:p-8 space-y-6" noValidate aria-label="Life insurance quote request form">
+      <form onSubmit={handleSubmit} className="w-full max-w-lg bg-[#9E9E9E] text-black rounded-[13px] shadow-[0_0_34px_rgba(0,168,168,0.12)] p-6 md:p-8 space-y-6" noValidate aria-label="Life insurance quote request form">
         {/* Honeypot field — hidden from humans, visible to bots */}
         <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "-9999px", opacity: 0, height: 0, overflow: "hidden" }}>
           <label htmlFor="_hp_website">Website</label>
@@ -308,19 +410,19 @@ export default function HomePage() {
           <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 1: Your Identity">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="firstName" className="block text-sm text-[var(--text-muted)]">First Name</label>
+                <label htmlFor="firstName" className={LABEL_CLASS}>First Name</label>
                 <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", autoCapitalizeName(e.target.value))} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
-                {errors.firstName && <p id="firstName-error" className="text-calm-error text-xs" role="alert">{errors.firstName}</p>}
+                {errors.firstName && <p id="firstName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
-                <label htmlFor="lastName" className="block text-sm text-[var(--text-muted)]">Last Name</label>
+                <label htmlFor="lastName" className={LABEL_CLASS}>Last Name</label>
                 <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", autoCapitalizeName(e.target.value))} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
-                {errors.lastName && <p id="lastName-error" className="text-calm-error text-xs" role="alert">{errors.lastName}</p>}
+                {errors.lastName && <p id="lastName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.lastName}</p>}
               </div>
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="dateOfBirth" className="block text-sm text-[var(--text-muted)]">Date of Birth</label>
+              <label htmlFor="dateOfBirth" className={LABEL_CLASS}>Date of Birth</label>
               <input
                 id="dateOfBirth"
                 type="date"
@@ -332,45 +434,45 @@ export default function HomePage() {
                 aria-describedby={errors.dateOfBirth ? "dob-error dob-hint" : "dob-hint"}
                 className={INPUT_CLASS}
               />
-              <p id="dob-hint" className="text-[var(--text-muted)] text-xs">You must be at least 18 years old.</p>
-              {errors.dateOfBirth && <p id="dob-error" className="text-calm-error text-xs" role="alert">{errors.dateOfBirth}</p>}
+              <p id="dob-hint" className="text-gray-500 text-xs">You must be at least 18 years old.</p>
+              {errors.dateOfBirth && <p id="dob-error" className="text-crimson-cathedral text-xs" role="alert">{errors.dateOfBirth}</p>}
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="state" className="block text-sm text-[var(--text-muted)]">State</label>
+              <label htmlFor="state" className={LABEL_CLASS}>State</label>
               <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} aria-required="true" aria-invalid={!!errors.state} aria-describedby={errors.state ? "state-error" : undefined} className={SELECT_CLASS}>
                 <option value="">Select your state...</option>
                 {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
               </select>
-              {errors.state && <p id="state-error" className="text-calm-error text-xs" role="alert">{errors.state}</p>}
+              {errors.state && <p id="state-error" className="text-crimson-cathedral text-xs" role="alert">{errors.state}</p>}
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="coverage" className="block text-sm text-[var(--text-muted)]">Coverage Interest</label>
+              <label htmlFor="coverage" className={LABEL_CLASS}>Coverage Interest</label>
               <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={SELECT_CLASS}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {errors.coverageInterest && <p id="coverage-error" className="text-calm-error text-xs" role="alert">{errors.coverageInterest}</p>}
+              {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
             </div>
 
-            {/* Veteran Status */}
+            {/* Military Status */}
             <div className="space-y-1">
-              <label htmlFor="veteranStatus" className="block text-sm text-[var(--text-muted)]">Veteran Status</label>
+              <label htmlFor="veteranStatus" className={LABEL_CLASS}>Military Status</label>
               <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={SELECT_CLASS}>
-                {VETERAN_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                {MILITARY_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
-              {errors.veteranStatus && <p id="veteran-error" className="text-calm-error text-xs" role="alert">{errors.veteranStatus}</p>}
+              {errors.veteranStatus && <p id="veteran-error" className="text-crimson-cathedral text-xs" role="alert">{errors.veteranStatus}</p>}
             </div>
 
-            {/* Military Branch — conditional subcategory (only shown for veterans) */}
-            {form.veteranStatus === "veteran" && (
+            {/* Branch of Service — conditional subcategory (shown for all except non-military) */}
+            {form.veteranStatus && form.veteranStatus !== "non-military" && BRANCH_OPTIONS_BY_STATUS[form.veteranStatus] && (
               <div className="space-y-1 animate-in fade-in">
-                <label htmlFor="militaryBranch" className="block text-sm text-[var(--text-muted)]">Branch of Service</label>
+                <label htmlFor="militaryBranch" className={LABEL_CLASS}>Branch of Service</label>
                 <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={SELECT_CLASS}>
-                  {MILITARY_BRANCH_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  {BRANCH_OPTIONS_BY_STATUS[form.veteranStatus].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
-                <p id="branch-hint" className="text-[var(--text-muted)] text-xs">Thank you for your service.</p>
-                {errors.militaryBranch && <p id="branch-error" className="text-calm-error text-xs" role="alert">{errors.militaryBranch}</p>}
+                <p id="branch-hint" className="text-gray-500 text-xs">Thank you for your service.</p>
+                {errors.militaryBranch && <p id="branch-error" className="text-crimson-cathedral text-xs" role="alert">{errors.militaryBranch}</p>}
               </div>
             )}
 
@@ -378,7 +480,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={nextStep}
-              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+              className={`w-full ${BTN_PRIMARY}`}
             >
               Continue
             </button>
@@ -389,15 +491,15 @@ export default function HomePage() {
         {step === 1 && (
           <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 2: Contact Information">
             <div className="space-y-1">
-              <label htmlFor="email" className="block text-sm text-[var(--text-muted)]">Email Address</label>
+              <label htmlFor="email" className={LABEL_CLASS}>Email Address</label>
               <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" aria-required="true" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={INPUT_CLASS} />
-              {errors.email && <p id="email-error" className="text-calm-error text-xs" role="alert">{errors.email}</p>}
+              {errors.email && <p id="email-error" className="text-crimson-cathedral text-xs" role="alert">{errors.email}</p>}
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="phone" className="block text-sm text-[var(--text-muted)]">Phone Number</label>
+              <label htmlFor="phone" className={LABEL_CLASS}>Phone Number</label>
               <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" autoComplete="tel" aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} className={INPUT_CLASS} />
-              {errors.phone && <p id="phone-error" className="text-calm-error text-xs" role="alert">{errors.phone}</p>}
+              {errors.phone && <p id="phone-error" className="text-crimson-cathedral text-xs" role="alert">{errors.phone}</p>}
             </div>
 
             {/* Navigation */}
@@ -405,14 +507,14 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25"
+                className={`flex-1 ${BTN_BACK}`}
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+                className={`flex-1 ${BTN_PRIMARY}`}
               >
                 Continue
               </button>
@@ -424,32 +526,32 @@ export default function HomePage() {
         {step === 2 && (
           <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 3: Review and Consent">
             {/* Review summary */}
-            <div className="cathedral-surface p-4 text-sm space-y-1" role="region" aria-label="Review your information">
-              <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-2">Your Information</p>
-              <p className="text-[var(--text-primary)]">{form.firstName} {form.lastName}</p>
-              <p className="text-[var(--text-muted)]">DOB: {form.dateOfBirth}</p>
-              <p className="text-[var(--text-muted)]">{form.email}</p>
-              <p className="text-[var(--text-muted)]">{form.phone}</p>
-              <p className="text-[var(--text-muted)]">
+            <div className="bg-gray-50 rounded-[13px] p-4 text-sm space-y-1" role="region" aria-label="Review your information">
+              <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">Your Information</p>
+              <p className="text-black font-medium">{form.firstName} {form.lastName}</p>
+              <p className="text-gray-600">DOB: {form.dateOfBirth}</p>
+              <p className="text-gray-600">{form.email}</p>
+              <p className="text-gray-600">{form.phone}</p>
+              <p className="text-gray-600">
                 {US_STATES.find(s => s.code === form.state)?.name} &middot;{" "}
                 {COVERAGE_OPTIONS.find(o => o.value === form.coverageInterest)?.label}
               </p>
-              <p className="text-[var(--text-muted)]">
-                {VETERAN_STATUS_OPTIONS.find(o => o.value === form.veteranStatus)?.label}
-                {form.veteranStatus === "veteran" && form.militaryBranch && (
-                  <> &middot; {MILITARY_BRANCH_OPTIONS.find(o => o.value === form.militaryBranch)?.label}</>
+              <p className="text-gray-600">
+                {MILITARY_STATUS_OPTIONS.find(o => o.value === form.veteranStatus)?.label}
+                {form.veteranStatus && form.veteranStatus !== "non-military" && form.militaryBranch && (
+                  <> &middot; {BRANCH_OPTIONS_BY_STATUS[form.veteranStatus]?.find(o => o.value === form.militaryBranch)?.label}</>
                 )}
               </p>
               <button
                 type="button"
                 onClick={() => prevStep()}
-                className="text-emerald-accent text-xs underline mt-1"
+                className="text-teal-cathedral text-xs underline mt-1"
               >
                 Edit information
               </button>
             </div>
 
-            <div className="border-t border-navy-cathedral/8 pt-5" />
+            <div className="border-t border-gray-200 pt-5" />
 
             {/* TCPA + Privacy Consent */}
             <TcpaConsent
@@ -463,7 +565,7 @@ export default function HomePage() {
 
             {/* Server Error */}
             {serverError && (
-              <div className="text-calm-error text-sm text-center py-2" role="alert" aria-live="assertive">{serverError}</div>
+              <div className="text-crimson-cathedral text-sm text-center py-2" role="alert" aria-live="assertive">{serverError}</div>
             )}
 
             {/* Navigation + Submit */}
@@ -471,7 +573,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-[var(--text-muted)] border border-navy-cathedral/10 hover:border-navy-cathedral/25"
+                className={`flex-1 ${BTN_BACK}`}
               >
                 Back
               </button>
@@ -479,12 +581,12 @@ export default function HomePage() {
                 type="submit"
                 disabled={loading}
                 aria-busy={loading}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`flex-1 ${BTN_PRIMARY} disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 {loading ? "Submitting..." : "Request My Coverage Review"}
               </button>
             </div>
-            <p className="text-center text-xs text-[var(--text-muted)] mt-2">No pressure. No obligation. Just clear options.</p>
+            <p className="text-center text-xs text-gray-500 mt-2">No pressure. No obligation. Just clear options.</p>
           </div>
         )}
       </form>
@@ -492,7 +594,7 @@ export default function HomePage() {
       {/* Below-Form Disclaimers */}
       <div className="w-full max-w-lg mt-6 space-y-3 text-xs text-[var(--text-muted)] leading-relaxed">
         <p>
-          <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by Digital Cathedral
+          <strong className="text-[var(--text-primary)]">Important:</strong> This website is operated by Valor Legacies
           and is not an insurance company, insurance agent, or insurance broker. We do not provide insurance
           quotes, bind insurance coverage, or provide insurance advice of any kind. Your information will
           be shared with one or more licensed insurance professionals who may contact you. Any insurance
@@ -507,127 +609,14 @@ export default function HomePage() {
 
       {/* Do Not Sell Link — CCPA Compliance */}
       <div className="w-full max-w-lg mt-4 text-center">
-        <a href="/privacy#do-not-sell" className="text-xs text-emerald-accent underline">
+        <a href="/privacy#do-not-sell" className="text-xs text-teal-cathedral underline">
           Do Not Sell or Share My Personal Information
         </a>
       </div>
 
-      {/* Section 2: The Gap Most Don't Realize Exists */}
-      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="gap-heading">
-        <h2 id="gap-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6">
-          Your Service Protects Others. But Is Your Family Fully Protected?
-        </h2>
-        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 text-left max-w-xl mx-auto">
-          <p>
-            Many service members rely solely on SGLI or assume their coverage will always be enough.
-          </p>
-          <p>
-            But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
-          </p>
-          <p className="font-medium text-[var(--text-primary)]">Whether you&rsquo;re:</p>
-          <ul className="grid grid-cols-2 gap-2 text-[var(--text-primary)] text-sm">
-            {["Active Duty", "National Guard", "Reserve", "Transitioning out", "Fully separated"].map((item) => (
-              <li key={item} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-accent flex-shrink-0" aria-hidden="true" />
-                {item}
-              </li>
-            ))}
-          </ul>
-          <p>
-            It&rsquo;s important to understand what options exist beyond basic military coverage.
-          </p>
-          <p className="italic text-[var(--text-primary)]">
-            This isn&rsquo;t about replacing anything.<br />
-            It&rsquo;s about understanding your full protection picture.
-          </p>
-        </div>
-      </section>
-
-      {/* Section 3: How It Works */}
-      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="how-it-works-heading">
-        <h2 id="how-it-works-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8">
-          Simple. Structured. Secure.
-        </h2>
-        <div className="grid md:grid-cols-3 gap-6">
-          {[
-            { step: "1", title: "Submit", desc: "Submit a short, secure form." },
-            { step: "2", title: "Connect", desc: "We connect you with a licensed professional experienced in military family coverage." },
-            { step: "3", title: "Review", desc: "Review your options and decide what\u2019s right for your family." },
-          ].map((item) => (
-            <div key={item.step} className="cathedral-surface p-6 text-center">
-              <div className="w-10 h-10 rounded-full bg-emerald-accent text-white flex items-center justify-center text-sm font-medium mx-auto mb-3">
-                {item.step}
-              </div>
-              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h3>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-sm text-[var(--text-muted)] mt-6 italic">
-          No pressure. No obligation. Just clarity.
-        </p>
-      </section>
-
-      {/* Section 5: Who This Is For */}
-      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="who-heading">
-        <h2 id="who-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-3">
-          Serving Every Stage of Service.
-        </h2>
-        <p className="text-sm text-[var(--text-muted)] mb-8">This resource is built for:</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {[
-            "Active Duty Service Members",
-            "National Guard",
-            "Reserve Members",
-            "Veterans",
-            "Military Families",
-            "Transitioning Service Members",
-          ].map((category) => (
-            <div key={category} className="cathedral-surface p-4 text-center">
-              <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-sm text-[var(--text-primary)] mt-6 font-medium">
-          If you&rsquo;ve served — this is for you.
-        </p>
-      </section>
-
-      {/* Section 6: Frequently Asked Questions */}
-      <section className="w-full max-w-2xl mt-20 px-4" aria-labelledby="faq-heading">
-        <h2 id="faq-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8 text-center">
-          Frequently Asked Questions
-        </h2>
-        <div className="space-y-6 max-w-xl mx-auto">
-          {[
-            {
-              q: "Is this the same as SGLI?",
-              a: "No. This is a review of additional or alternative life insurance options available outside standard military coverage.",
-            },
-            {
-              q: "Is this affiliated with the military?",
-              a: "No. This platform is independently operated and not affiliated with the U.S. Government or Department of Defense.",
-            },
-            {
-              q: "Is there an obligation to purchase?",
-              a: "No. Requesting a review simply connects you with a licensed professional to explore your options.",
-            },
-            {
-              q: "Are veterans eligible?",
-              a: "Yes. Many options are available for veterans, including those who have separated from service.",
-            },
-          ].map((item) => (
-            <div key={item.q} className="border-b border-navy-cathedral/8 pb-4">
-              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.q}</h3>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">{item.a}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Section 7: Final Call to Action */}
       <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="final-cta-heading">
-        <h2 id="final-cta-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-4">
+        <h2 id="final-cta-heading" className={`${SECTION_HEADING} mb-4`}>
           Your Service Meant Something. So Does Your Family&rsquo;s Security.
         </h2>
         <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-2">
@@ -639,7 +628,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="px-8 py-3 rounded-lg font-medium text-sm transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 hover:shadow-[0_0_30px_rgba(45,134,89,0.15)]"
+          className={`px-8 ${BTN_PRIMARY}`}
         >
           Start My Coverage Review
         </button>
@@ -651,36 +640,14 @@ export default function HomePage() {
         <TrustSignals />
       </div>
 
-      {/* Learn More — Links to content pages */}
-      <section className="w-full max-w-lg mt-16 px-4" aria-label="Learn more">
-        <h2 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider text-center mb-6">
-          Learn More
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          <a href="/about" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
-            About Us
-          </a>
-          <a href="/about#how-it-works" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
-            How It Works
-          </a>
-          <a href="/faq" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
-            FAQ
-          </a>
-          <a href="/about#who-we-serve" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-emerald-accent/30 transition-all">
-            Who We Serve
-          </a>
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center flex-wrap">
-          <a href="/about" className="text-emerald-accent/70 hover:text-emerald-accent">About</a>
-          <a href="/faq" className="text-emerald-accent/70 hover:text-emerald-accent">FAQ</a>
-          <a href="/privacy" className="text-emerald-accent/70 hover:text-emerald-accent">Privacy Policy</a>
-          <a href="/terms" className="text-emerald-accent/70 hover:text-emerald-accent">Terms of Service</a>
+          {FOOTER_LINKS.map((l) => (
+            <a key={l.href} href={l.href} className="text-teal-cathedral/70 hover:text-teal-cathedral">{l.label}</a>
+          ))}
         </nav>
-        <p>&copy; {new Date().getFullYear()} Digital Cathedral. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
       </footer>
     </main>
   );

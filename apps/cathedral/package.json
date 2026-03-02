@@ -2,7 +2,7 @@
   "name": "digital-cathedral",
   "version": "0.1.0",
   "private": true,
-  "description": "Digital Cathedral — veteran-founded life insurance lead generation for military families.",
+  "description": "Valor Legacies — veteran-founded life insurance lead generation for military families.",
   "workspaces": [
     "packages/*"
   ],
@@ -16,6 +16,7 @@
   "dependencies": {
     "better-sqlite3": "^12.6.2",
     "next": "^14.2.0",
+    "next-auth": "^4.24.13",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"
   },

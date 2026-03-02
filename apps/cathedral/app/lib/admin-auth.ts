@@ -1,22 +1,50 @@
 /**
  * Admin Authentication
  *
- * Simple bearer token authentication for admin API routes.
- * Production-ready: token is set via ADMIN_API_KEY environment variable.
+ * Three authentication methods (checked in order):
+ *  1. NextAuth session token — Google OAuth users listed in ADMIN_EMAILS
+ *  2. Session cookie (__admin_session) — set by /api/admin/login, HMAC-signed
+ *  3. Bearer token (Authorization header) — for programmatic/API access
  *
  * Environment variables:
- *   ADMIN_API_KEY — required for admin access (any string, min 16 chars recommended)
+ *   ADMIN_API_KEY   — required for API key / legacy admin access
+ *   ADMIN_EMAILS    — comma-separated Google emails granted admin access
+ *   NEXTAUTH_SECRET — required for NextAuth JWT verification
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { verifySessionToken, ADMIN_SESSION_COOKIE } from "./admin-session";
+
+/** Comma-separated list of admin emails (case-insensitive). */
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 /**
- * Verify admin authentication from request headers.
- * Expects: Authorization: Bearer <ADMIN_API_KEY>
+ * Verify admin authentication.
  *
- * Returns null if authenticated, or a NextResponse with 401/403 if not.
+ * Returns null if authenticated, or a NextResponse with 401/403/503 if not.
  */
-export function verifyAdmin(req: NextRequest): NextResponse | null {
+export async function verifyAdmin(req: NextRequest): Promise<NextResponse | null> {
+  // Method 1: NextAuth JWT — check if Google-authenticated user is an admin
+  try {
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    if (token?.email && ADMIN_EMAILS.includes((token.email as string).toLowerCase())) {
+      return null; // Authenticated via Google OAuth admin email
+    }
+  } catch {
+    // NextAuth not configured or token invalid — fall through
+  }
+
+  // Method 2: Session cookie (from /api/admin/login flow)
+  const sessionCookie = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  if (sessionCookie && verifySessionToken(sessionCookie)) {
+    return null; // Authenticated via session
+  }
+
+  // Method 3: Bearer token (for programmatic access)
   const adminKey = process.env.ADMIN_API_KEY;
 
   if (!adminKey) {
@@ -35,8 +63,8 @@ export function verifyAdmin(req: NextRequest): NextResponse | null {
     );
   }
 
-  const [scheme, token] = authHeader.split(" ");
-  if (scheme !== "Bearer" || !token) {
+  const [scheme, bearerToken] = authHeader.split(" ");
+  if (scheme !== "Bearer" || !bearerToken) {
     return NextResponse.json(
       { success: false, message: "Invalid authorization format. Use: Bearer <token>" },
       { status: 401 },
@@ -44,14 +72,14 @@ export function verifyAdmin(req: NextRequest): NextResponse | null {
   }
 
   // Constant-time comparison to prevent timing attacks
-  if (!timingSafeEqual(token, adminKey)) {
+  if (!timingSafeEqual(bearerToken, adminKey)) {
     return NextResponse.json(
       { success: false, message: "Invalid credentials." },
       { status: 403 },
     );
   }
 
-  return null; // Authenticated
+  return null; // Authenticated via bearer token
 }
 
 /** Constant-time string comparison */

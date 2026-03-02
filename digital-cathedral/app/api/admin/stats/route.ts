@@ -10,10 +10,10 @@ import { getLeadStats } from "@/app/lib/database";
  * Protected by bearer token (ADMIN_API_KEY).
  */
 export async function GET(req: NextRequest) {
-  const authError = verifyAdmin(req);
+  const authError = await verifyAdmin(req);
   if (authError) return authError;
 
-  const result = getLeadStats();
+  const result = await getLeadStats();
 
   if (!result.ok) {
     return NextResponse.json(

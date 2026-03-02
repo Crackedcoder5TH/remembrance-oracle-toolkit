@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────
-# create-repo.sh — Publish the Digital Cathedral as its own
+# create-repo.sh — Publish the Valor Legacies as its own
 # GitHub repository. Run from inside this directory.
 #
 # Usage:
@@ -19,7 +19,7 @@ REPO_NAME="digital-cathedral"
 DESCRIPTION="Veteran-founded life insurance lead generation platform for military families."
 
 echo ""
-echo "  Digital Cathedral"
+echo "  Valor Legacies"
 echo "  ─────────────────────"
 echo ""
 
@@ -42,7 +42,7 @@ fi
 
 echo "  [3/4] Committing files..."
 git add -A
-git commit -m "Initial commit — Digital Cathedral
+git commit -m "Initial commit — Valor Legacies
 
 Veteran-founded life insurance lead generation platform:
 - Next.js 14 App Router (TypeScript, Tailwind CSS)

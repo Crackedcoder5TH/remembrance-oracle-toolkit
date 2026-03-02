@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <div className="text-emerald-accent text-xs tracking-[0.3em] uppercase mb-3">
+          <div className="text-teal-cathedral text-xs tracking-[0.3em] uppercase mb-3">
             Admin Gate
           </div>
           <h1 className="text-2xl font-light text-[var(--text-primary)]">
@@ -62,26 +62,26 @@ export default function AdminLoginPage() {
               value={key}
               onChange={(e) => setKey(e.target.value)}
               required
-              className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--bg-deep)] text-[var(--text-primary)] border border-navy-cathedral/10 focus:border-emerald-accent/50 focus:outline-none transition-colors"
+              className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--bg-deep)] text-[var(--text-primary)] border border-indigo-cathedral/10 focus:border-teal-cathedral/50 focus:outline-none transition-colors"
               placeholder="Enter admin API key"
             />
           </div>
 
           {error && (
-            <p className="text-calm-error text-sm text-center">{error}</p>
+            <p className="text-crimson-cathedral text-sm text-center">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading || !key.trim()}
-            className="w-full py-2.5 rounded-lg text-sm font-medium transition-all bg-emerald-accent text-white hover:bg-emerald-accent/90 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-2.5 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? "Authenticating..." : "Enter"}
           </button>
         </form>
 
         <p className="text-center text-xs text-[var(--text-muted)]">
-          <a href="/" className="text-emerald-accent/70 hover:text-emerald-accent">
+          <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">
             &larr; Back home
           </a>
         </p>

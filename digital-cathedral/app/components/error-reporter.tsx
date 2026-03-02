@@ -5,10 +5,12 @@
  *
  * Catches unhandled errors and promise rejections in the browser,
  * deduplicates them, and sends batched reports to /api/errors.
+ * Also forwards errors to Sentry when configured.
  * Mount this once in the root layout.
  */
 
 import { useEffect } from "react";
+import { initSentry, captureException } from "../lib/sentry";
 
 interface ErrorReport {
   message: string;
@@ -70,6 +72,9 @@ function buildReport(
  */
 export function ErrorReporter() {
   useEffect(() => {
+    // Initialize Sentry on mount (safe to call multiple times)
+    initSentry();
+
     function handleError(event: ErrorEvent) {
       sendReport(
         buildReport("error", event.message || "Unknown error", {
@@ -79,6 +84,13 @@ export function ErrorReporter() {
           col: event.colno,
         }),
       );
+
+      // Forward to Sentry
+      captureException(event.error ?? event.message, {
+        source: event.filename,
+        line: event.lineno,
+        col: event.colno,
+      });
     }
 
     function handleRejection(event: PromiseRejectionEvent) {
@@ -94,6 +106,9 @@ export function ErrorReporter() {
           stack: reason instanceof Error ? reason.stack?.slice(0, 2000) : undefined,
         }),
       );
+
+      // Forward to Sentry
+      captureException(reason, { type: "unhandledrejection" });
     }
 
     window.addEventListener("error", handleError);

@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@cathedral/shared"],
 
+  // Exclude native addons from serverless bundles (better-sqlite3 is dev-only)
+  serverExternalPackages: ["better-sqlite3"],
+
   // ─── Security Headers (HTTPS everywhere) ───
   async headers() {
     return [
@@ -30,11 +33,11 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              "img-src 'self' data: blob: www.googletagmanager.com www.facebook.com",
               "font-src 'self'",
-              "connect-src 'self'",
+              "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",

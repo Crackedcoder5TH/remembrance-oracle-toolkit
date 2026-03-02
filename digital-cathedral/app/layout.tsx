@@ -3,18 +3,21 @@ import "./globals.css";
 import { CookieConsent } from "./components/cookie-consent";
 import { ErrorReporter } from "./components/error-reporter";
 import { Navbar } from "./components/navbar";
+import { SacredGeometryBg } from "./components/sacred-geometry-bg";
+import { AnalyticsScripts } from "./components/analytics-scripts";
+import { AuthProvider } from "./components/auth-provider";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
 
 const SITE_URL = "https://digital-cathedral.vercel.app";
-const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Digital Cathedral";
+const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Valor Legacies";
 const SITE_DESCRIPTION =
   "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.";
 
 export const metadata: Metadata = {
   title: {
     default: SITE_TITLE,
-    template: "%s | Digital Cathedral",
+    template: "%s | Valor Legacies",
   },
   description: SITE_DESCRIPTION,
   manifest: "/manifest.json",
@@ -29,15 +32,15 @@ export const metadata: Metadata = {
     "military family coverage",
     "digital cathedral",
   ],
-  authors: [{ name: "Digital Cathedral" }],
-  creator: "Digital Cathedral",
+  authors: [{ name: "Valor Legacies" }],
+  creator: "Valor Legacies",
 
   // ─── Open Graph ───
   openGraph: {
     type: "website",
     locale: "en_US",
     url: SITE_URL,
-    siteName: "Digital Cathedral",
+    siteName: "Valor Legacies",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: [
@@ -45,7 +48,7 @@ export const metadata: Metadata = {
         url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "Digital Cathedral — Protect Your Legacy",
+        alt: "Valor Legacies — Protect Your Legacy",
         type: "image/svg+xml",
       },
     ],
@@ -82,14 +85,14 @@ const jsonLd = {
   "@graph": [
     {
       "@type": "WebSite",
-      name: "Digital Cathedral",
+      name: "Valor Legacies",
       url: BASE_URL,
       description:
         "Veteran-founded platform connecting military families with licensed life insurance professionals.",
     },
     {
       "@type": "Organization",
-      name: "Digital Cathedral",
+      name: "Valor Legacies",
       url: BASE_URL,
       description:
         "Veteran-founded platform connecting Active Duty, National Guard, Reserve, and Veterans with licensed life insurance professionals.",
@@ -116,10 +119,14 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[var(--bg-deep)]">
-        <Navbar />
-        {children}
-        <CookieConsent />
-        <ErrorReporter />
+        <AuthProvider>
+          <SacredGeometryBg />
+          <Navbar />
+          {children}
+          <CookieConsent />
+          <ErrorReporter />
+        </AuthProvider>
+        <AnalyticsScripts />
       </body>
     </html>
   );

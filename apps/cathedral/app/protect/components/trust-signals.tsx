@@ -8,11 +8,10 @@
  *  - Live activity counter ("X people requested quotes today")
  *  - Trust badges with staggered entrance animations
  *
- * Four sections:
+ * Three sections:
  *  1. Live activity indicator (social proof)
  *  2. Trust badges (security, licensing, privacy)
- *  3. How it works (3-step process)
- *  4. Rotating testimonials
+ *  3. Rotating testimonials
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -46,8 +45,8 @@ function LiveActivityCounter() {
       className={`flex items-center justify-center gap-2 transition-opacity duration-700 ${visible ? "opacity-100" : "opacity-0"}`}
     >
       <span className="relative flex h-2.5 w-2.5">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-accent/40"></span>
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-accent"></span>
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-cathedral/40"></span>
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-cathedral"></span>
       </span>
       <p className="text-sm text-[var(--text-muted)]">
         <span className="font-medium text-[var(--text-primary)]">{count} people</span> requested quotes today
@@ -98,53 +97,6 @@ function TrustBadges() {
           </p>
         </div>
       ))}
-    </div>
-  );
-}
-
-// --- How It Works ---
-function HowItWorks() {
-  const steps = [
-    {
-      number: "1",
-      title: "Tell Us About You",
-      description:
-        "Share your basic information and the type of life insurance coverage you're interested in.",
-    },
-    {
-      number: "2",
-      title: "Get Matched",
-      description:
-        "We connect you with a licensed insurance professional in your state who specializes in your coverage needs.",
-    },
-    {
-      number: "3",
-      title: "Explore Your Options",
-      description:
-        "Your matched professional will contact you to discuss personalized coverage options at no obligation.",
-    },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-light text-[var(--text-primary)] text-center">
-        How It Works
-      </h2>
-      <div className="grid md:grid-cols-3 gap-6">
-        {steps.map((s) => (
-          <div key={s.number} className="text-center space-y-3">
-            <div className="w-10 h-10 rounded-full bg-emerald-accent text-white border border-emerald-accent/30 flex items-center justify-center text-sm font-medium mx-auto">
-              {s.number}
-            </div>
-            <h3 className="text-sm font-medium text-[var(--text-primary)]">
-              {s.title}
-            </h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              {s.description}
-            </p>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
@@ -229,8 +181,8 @@ function RotatingTestimonials() {
               <p className="text-sm text-[var(--text-primary)] leading-relaxed italic">
                 &ldquo;{t.quote}&rdquo;
               </p>
-              <div className="border-t border-navy-cathedral/8 pt-3">
-                <p className="text-xs font-medium text-emerald-accent">{t.name}</p>
+              <div className="border-t border-indigo-cathedral/8 pt-3">
+                <p className="text-xs font-medium text-teal-cathedral">{t.name}</p>
                 <p className="text-xs text-[var(--text-muted)]">
                   {t.location} &middot; {t.coverage}
                 </p>
@@ -246,8 +198,8 @@ function RotatingTestimonials() {
           <p className="text-sm text-[var(--text-primary)] leading-relaxed italic">
             &ldquo;{TESTIMONIALS[activeIndex].quote}&rdquo;
           </p>
-          <div className="border-t border-navy-cathedral/8 pt-3">
-            <p className="text-xs font-medium text-emerald-accent">
+          <div className="border-t border-indigo-cathedral/8 pt-3">
+            <p className="text-xs font-medium text-teal-cathedral">
               {TESTIMONIALS[activeIndex].name}
             </p>
             <p className="text-xs text-[var(--text-muted)]">
@@ -263,7 +215,7 @@ function RotatingTestimonials() {
           <button
             key={i}
             className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-              i === activeIndex ? "bg-emerald-accent w-4" : "bg-navy-cathedral/20"
+              i === activeIndex ? "bg-teal-cathedral w-4" : "bg-indigo-cathedral/20"
             }`}
             onClick={() => { setFading(true); setTimeout(() => { setActiveIndex(i); setFading(false); }, 300); }}
             role="tab"
@@ -287,7 +239,6 @@ export function TrustSignals() {
     <div className="w-full max-w-4xl space-y-12">
       <LiveActivityCounter />
       <TrustBadges />
-      <HowItWorks />
       <RotatingTestimonials />
     </div>
   );

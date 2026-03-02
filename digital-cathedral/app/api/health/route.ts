@@ -15,7 +15,7 @@ export async function GET() {
   // Database connectivity check — use getLeadCount as a lightweight ping
   try {
     const { getLeadCount } = await import("@/app/lib/database");
-    const result = getLeadCount();
+    const result = await getLeadCount();
     checks.database = result.ok
       ? { status: "healthy", detail: `${result.value} leads stored` }
       : { status: "unhealthy", detail: result.error };

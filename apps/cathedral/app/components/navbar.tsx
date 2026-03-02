@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 import { ImageUpload } from "./image-upload";
 import { useIsAdmin } from "../protect/hooks/use-is-admin";
 
@@ -18,6 +19,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const isAdmin = useIsAdmin();
+  const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -138,25 +140,47 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Right: Login button */}
-        <Link
-          href="/admin"
-          className="metallic-gold-btn flex items-center gap-fib-8 px-fib-21 py-fib-8 text-sm font-medium rounded-fib transition-all"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            className="shrink-0 metallic-gold-icon"
-            aria-hidden="true"
+        {/* Right: Auth state */}
+        {session?.user ? (
+          <div className="flex items-center gap-fib-8">
+            {session.user.image && (
+              <img
+                src={session.user.image}
+                alt=""
+                className="w-7 h-7 rounded-full"
+                referrerPolicy="no-referrer"
+              />
+            )}
+            <span className="text-sm text-[var(--text-primary)] hidden sm:inline">
+              {session.user.name?.split(" ")[0]}
+            </span>
+            <button
+              onClick={() => signOut({ callbackUrl: "/" })}
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : (
+          <Link
+            href="/login"
+            className="metallic-gold-btn flex items-center gap-fib-8 px-fib-21 py-fib-8 text-sm font-medium rounded-fib transition-all"
           >
-            <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-          </svg>
-          <span className="metallic-gold">Login</span>
-        </Link>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="shrink-0 metallic-gold-icon"
+              aria-hidden="true"
+            >
+              <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+            </svg>
+            <span className="metallic-gold">Login</span>
+          </Link>
+        )}
       </div>
     </nav>
   );

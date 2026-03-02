@@ -44,6 +44,22 @@ interface EmailMessage {
   html: string;
 }
 
+// Shared coverage labels (full and short forms)
+const COVERAGE_LABELS_FULL: Record<string, string> = {
+  term: "Term Life Insurance", whole: "Whole Life Insurance",
+  universal: "Universal Life Insurance", "final-expense": "Final Expense / Burial Insurance",
+  annuity: "Annuity", "not-sure": "Insurance Guidance",
+};
+const COVERAGE_LABELS_SHORT: Record<string, string> = {
+  term: "Term Life", whole: "Whole Life", universal: "Universal Life",
+  "final-expense": "Final Expense", annuity: "Annuity", "not-sure": "Needs Guidance",
+};
+
+// Shared env helpers
+const getCompanyName = () => process.env.COMPANY_NAME || "Valor Legacies";
+const getFromAddress = () => process.env.EMAIL_FROM || "noreply@example.com";
+const getSiteUrl = () => process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
+
 /**
  * Send an email via SMTP or log to console in dev.
  */
@@ -116,19 +132,9 @@ export async function sendLeadConfirmationEmail(lead: {
   coverageInterest: string;
   leadId: string;
 }): Promise<void> {
-  const companyName = process.env.COMPANY_NAME || "Valor Legacies";
-  const fromAddress = process.env.EMAIL_FROM || `noreply@example.com`;
-
-  const coverageLabels: Record<string, string> = {
-    "term": "Term Life Insurance",
-    "whole": "Whole Life Insurance",
-    "universal": "Universal Life Insurance",
-    "final-expense": "Final Expense / Burial Insurance",
-    "annuity": "Annuity",
-    "not-sure": "Insurance Guidance",
-  };
-
-  const coverageLabel = coverageLabels[lead.coverageInterest] || lead.coverageInterest;
+  const companyName = getCompanyName();
+  const fromAddress = getFromAddress();
+  const coverageLabel = COVERAGE_LABELS_FULL[lead.coverageInterest] || lead.coverageInterest;
 
   const subject = `${companyName} — We Received Your Request`;
 
@@ -153,8 +159,7 @@ export async function sendLeadConfirmationEmail(lead: {
     `This email was sent because a form was submitted with this email address at ${companyName}. If you believe this was sent in error, please disregard this message.`,
   ].join("\n");
 
-  // Branded HTML email template
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
+  const siteUrl = getSiteUrl();
   const html = `
 <!DOCTYPE html>
 <html>
@@ -236,20 +241,10 @@ export async function sendAdminNotificationEmail(lead: {
   const adminEmail = process.env.ADMIN_EMAIL;
   if (!adminEmail) return; // No admin email configured — skip silently
 
-  const companyName = process.env.COMPANY_NAME || "Valor Legacies";
-  const fromAddress = process.env.EMAIL_FROM || "noreply@example.com";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
-
-  const coverageLabels: Record<string, string> = {
-    "term": "Term Life",
-    "whole": "Whole Life",
-    "universal": "Universal Life",
-    "final-expense": "Final Expense",
-    "annuity": "Annuity",
-    "not-sure": "Needs Guidance",
-  };
-
-  const coverageLabel = coverageLabels[lead.coverageInterest] || lead.coverageInterest;
+  const companyName = getCompanyName();
+  const fromAddress = getFromAddress();
+  const siteUrl = getSiteUrl();
+  const coverageLabel = COVERAGE_LABELS_SHORT[lead.coverageInterest] || lead.coverageInterest;
   const tierColors: Record<string, string> = {
     hot: "#C9474B",
     warm: "#D4883C",

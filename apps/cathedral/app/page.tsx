@@ -70,38 +70,36 @@ const MILITARY_STATUS_OPTIONS = [
   { value: "non-military", label: "Non-Military (family member)" },
 ];
 
+const BRANCH_PLACEHOLDER = { value: "", label: "Select branch of service..." };
+
+const BRANCHES_FULL = [
+  BRANCH_PLACEHOLDER,
+  { value: "army", label: "U.S. Army" },
+  { value: "navy", label: "U.S. Navy" },
+  { value: "air-force", label: "U.S. Air Force" },
+  { value: "marine-corps", label: "U.S. Marine Corps" },
+  { value: "space-force", label: "U.S. Space Force" },
+  { value: "coast-guard", label: "Coast Guard" },
+];
+
+const BRANCHES_NO_SPACE = [
+  BRANCH_PLACEHOLDER,
+  { value: "army", label: "U.S. Army" },
+  { value: "navy", label: "U.S. Navy" },
+  { value: "air-force", label: "U.S. Air Force" },
+  { value: "marine-corps", label: "U.S. Marine Corps" },
+  { value: "coast-guard", label: "Coast Guard" },
+];
+
 const BRANCH_OPTIONS_BY_STATUS: Record<string, { value: string; label: string }[]> = {
-  "active-duty": [
-    { value: "", label: "Select branch of service..." },
-    { value: "army", label: "U.S. Army" },
-    { value: "navy", label: "U.S. Navy" },
-    { value: "air-force", label: "U.S. Air Force" },
-    { value: "marine-corps", label: "U.S. Marine Corps" },
-    { value: "space-force", label: "U.S. Space Force" },
-    { value: "coast-guard", label: "Coast Guard" },
-  ],
-  "reserve": [
-    { value: "", label: "Select branch of service..." },
-    { value: "army", label: "U.S. Army" },
-    { value: "navy", label: "U.S. Navy" },
-    { value: "air-force", label: "U.S. Air Force" },
-    { value: "marine-corps", label: "U.S. Marine Corps" },
-    { value: "coast-guard", label: "Coast Guard" },
-  ],
+  "active-duty": BRANCHES_FULL,
+  "reserve": BRANCHES_NO_SPACE,
   "national-guard": [
-    { value: "", label: "Select branch of service..." },
+    BRANCH_PLACEHOLDER,
     { value: "air-national-guard", label: "Air National Guard" },
     { value: "army-national-guard", label: "Army National Guard" },
   ],
-  "veteran": [
-    { value: "", label: "Select branch of service..." },
-    { value: "army", label: "U.S. Army" },
-    { value: "navy", label: "U.S. Navy" },
-    { value: "air-force", label: "U.S. Air Force" },
-    { value: "marine-corps", label: "U.S. Marine Corps" },
-    { value: "space-force", label: "U.S. Space Force" },
-    { value: "coast-guard", label: "Coast Guard" },
-  ],
+  "veteran": BRANCHES_FULL,
 };
 
 // Live formats as user types: (555) 123-4567
@@ -120,8 +118,31 @@ function autoCapitalizeName(value: string): string {
 
 const INPUT_CLASS =
   "w-full bg-gray-50 text-black placeholder-gray-400 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 transition-all";
-
 const SELECT_CLASS = INPUT_CLASS + " appearance-none";
+const LABEL_CLASS = "block text-sm font-bold text-gray-900";
+const BTN_PRIMARY = "py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]";
+const BTN_BACK = "py-3 rounded-lg font-medium text-sm transition-all text-gray-500 border border-gray-300 hover:border-gray-400";
+const SECTION_HEADING = "text-2xl md:text-3xl font-light text-[var(--text-primary)]";
+
+const NEXT_STEPS = [
+  { title: "Confirmation Email", desc: "Check your inbox for a confirmation of your request." },
+  { title: "Professional Review", desc: "A licensed insurance professional in your area will review your information and coverage needs." },
+  { title: "Personal Consultation", desc: "Expect a call or email within 1 business day to discuss your options — no obligation." },
+];
+
+const LEARN_MORE_LINKS = [
+  { href: "/about", label: "About Us" },
+  { href: "/about#how-it-works", label: "How It Works" },
+  { href: "/faq", label: "FAQ" },
+  { href: "/about#who-we-serve", label: "Who We Serve" },
+];
+
+const FOOTER_LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/faq", label: "FAQ" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/terms", label: "Terms of Service" },
+];
 
 export default function HomePage() {
   const utm = useUtmTracking();
@@ -187,27 +208,15 @@ export default function HomePage() {
           <div className="border-t border-indigo-cathedral/8 pt-6 mt-2">
             <h2 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider mb-4">What Happens Next</h2>
             <div className="space-y-4 text-left">
-              <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">1</div>
-                <div>
-                  <p className="text-sm text-[var(--text-primary)] font-medium">Confirmation Email</p>
-                  <p className="text-xs text-[var(--text-muted)]">Check your inbox at <span className="font-medium">{form.email}</span> for a confirmation of your request.</p>
+              {NEXT_STEPS.map((s, i) => (
+                <div key={i} className="flex gap-3 items-start">
+                  <div className="w-7 h-7 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">{i + 1}</div>
+                  <div>
+                    <p className="text-sm text-[var(--text-primary)] font-medium">{s.title}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{s.desc}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">2</div>
-                <div>
-                  <p className="text-sm text-[var(--text-primary)] font-medium">Professional Review</p>
-                  <p className="text-xs text-[var(--text-muted)]">A licensed insurance professional in your area will review your information and coverage needs.</p>
-                </div>
-              </div>
-              <div className="flex gap-3 items-start">
-                <div className="w-7 h-7 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5">3</div>
-                <div>
-                  <p className="text-sm text-[var(--text-primary)] font-medium">Personal Consultation</p>
-                  <p className="text-xs text-[var(--text-muted)]">Expect a call or email within <strong>1 business day</strong> to discuss your options — no obligation.</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -240,7 +249,7 @@ export default function HomePage() {
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
       {/* Veteran Story — First thing visitors see */}
       <section className="w-full max-w-2xl mb-16 px-4" aria-labelledby="veteran-founded-heading">
-        <h2 id="veteran-founded-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6 text-center">
+        <h2 id="veteran-founded-heading" className={`${SECTION_HEADING} mb-6 text-center`}>
           Dedicated to Serving Those Who Served.
         </h2>
 
@@ -280,7 +289,7 @@ export default function HomePage() {
 
       {/* The Gap Most Don't Realize Exists */}
       <section className="w-full max-w-2xl mb-16 px-4 text-center" aria-labelledby="gap-heading">
-        <h2 id="gap-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-6">
+        <h2 id="gap-heading" className={`${SECTION_HEADING} mb-6`}>
           Your Service Protects Others. But Is Your Family Fully Protected?
         </h2>
         <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 text-left max-w-xl mx-auto">
@@ -299,6 +308,30 @@ export default function HomePage() {
               </li>
             ))}
           </ul>
+
+          {/* Serving Every Stage of Service */}
+          <h3 className="text-lg font-medium text-[var(--text-primary)] text-center mt-6">
+            Serving Every Stage of Service.
+          </h3>
+          <p className="text-center">This resource is built for:</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              "Active Duty Service Members",
+              "National Guard",
+              "Reserve Members",
+              "Veterans",
+              "Military Families",
+              "Transitioning Service Members",
+            ].map((category) => (
+              <div key={category} className="cathedral-surface p-4 text-center">
+                <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-[var(--text-primary)] text-center font-medium">
+            If you&rsquo;ve served — this is for you.
+          </p>
+
           <p>
             It&rsquo;s important to understand what options exist beyond basic military coverage.
           </p>
@@ -314,7 +347,7 @@ export default function HomePage() {
         <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Protect What Matters Most
         </div>
-        <h1 className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-4">
+        <h1 className={`${SECTION_HEADING} mb-4`}>
           Protect Your Family Beyond Basic Military Coverage.
         </h1>
         <p className="metallic-gold max-w-lg mx-auto text-sm leading-relaxed mb-3">
@@ -364,19 +397,19 @@ export default function HomePage() {
           <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 1: Your Identity">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="firstName" className="block text-sm font-bold text-gray-900">First Name</label>
+                <label htmlFor="firstName" className={LABEL_CLASS}>First Name</label>
                 <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", autoCapitalizeName(e.target.value))} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
                 {errors.firstName && <p id="firstName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
-                <label htmlFor="lastName" className="block text-sm font-bold text-gray-900">Last Name</label>
+                <label htmlFor="lastName" className={LABEL_CLASS}>Last Name</label>
                 <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", autoCapitalizeName(e.target.value))} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
                 {errors.lastName && <p id="lastName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.lastName}</p>}
               </div>
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="dateOfBirth" className="block text-sm font-bold text-gray-900">Date of Birth</label>
+              <label htmlFor="dateOfBirth" className={LABEL_CLASS}>Date of Birth</label>
               <input
                 id="dateOfBirth"
                 type="date"
@@ -393,7 +426,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="state" className="block text-sm font-bold text-gray-900">State</label>
+              <label htmlFor="state" className={LABEL_CLASS}>State</label>
               <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} aria-required="true" aria-invalid={!!errors.state} aria-describedby={errors.state ? "state-error" : undefined} className={SELECT_CLASS}>
                 <option value="">Select your state...</option>
                 {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
@@ -402,7 +435,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="coverage" className="block text-sm font-bold text-gray-900">Coverage Interest</label>
+              <label htmlFor="coverage" className={LABEL_CLASS}>Coverage Interest</label>
               <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={SELECT_CLASS}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
@@ -411,7 +444,7 @@ export default function HomePage() {
 
             {/* Military Status */}
             <div className="space-y-1">
-              <label htmlFor="veteranStatus" className="block text-sm font-bold text-gray-900">Military Status</label>
+              <label htmlFor="veteranStatus" className={LABEL_CLASS}>Military Status</label>
               <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={SELECT_CLASS}>
                 {MILITARY_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
@@ -421,7 +454,7 @@ export default function HomePage() {
             {/* Branch of Service — conditional subcategory (shown for all except non-military) */}
             {form.veteranStatus && form.veteranStatus !== "non-military" && BRANCH_OPTIONS_BY_STATUS[form.veteranStatus] && (
               <div className="space-y-1 animate-in fade-in">
-                <label htmlFor="militaryBranch" className="block text-sm font-bold text-gray-900">Branch of Service</label>
+                <label htmlFor="militaryBranch" className={LABEL_CLASS}>Branch of Service</label>
                 <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={SELECT_CLASS}>
                   {BRANCH_OPTIONS_BY_STATUS[form.veteranStatus].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
@@ -434,7 +467,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={nextStep}
-              className="w-full py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
+              className={`w-full ${BTN_PRIMARY}`}
             >
               Continue
             </button>
@@ -445,13 +478,13 @@ export default function HomePage() {
         {step === 1 && (
           <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 2: Contact Information">
             <div className="space-y-1">
-              <label htmlFor="email" className="block text-sm font-bold text-gray-900">Email Address</label>
+              <label htmlFor="email" className={LABEL_CLASS}>Email Address</label>
               <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" aria-required="true" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={INPUT_CLASS} />
               {errors.email && <p id="email-error" className="text-crimson-cathedral text-xs" role="alert">{errors.email}</p>}
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="phone" className="block text-sm font-bold text-gray-900">Phone Number</label>
+              <label htmlFor="phone" className={LABEL_CLASS}>Phone Number</label>
               <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" autoComplete="tel" aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} className={INPUT_CLASS} />
               {errors.phone && <p id="phone-error" className="text-crimson-cathedral text-xs" role="alert">{errors.phone}</p>}
             </div>
@@ -461,14 +494,14 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-gray-500 border border-gray-300 hover:border-gray-400"
+                className={`flex-1 ${BTN_BACK}`}
               >
                 Back
               </button>
               <button
                 type="button"
                 onClick={nextStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
+                className={`flex-1 ${BTN_PRIMARY}`}
               >
                 Continue
               </button>
@@ -527,7 +560,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={prevStep}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all text-gray-500 border border-gray-300 hover:border-gray-400"
+                className={`flex-1 ${BTN_BACK}`}
               >
                 Back
               </button>
@@ -535,7 +568,7 @@ export default function HomePage() {
                 type="submit"
                 disabled={loading}
                 aria-busy={loading}
-                className="flex-1 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)] disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`flex-1 ${BTN_PRIMARY} disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 {loading ? "Submitting..." : "Request My Coverage Review"}
               </button>
@@ -570,7 +603,7 @@ export default function HomePage() {
 
       {/* Section 3: How It Works */}
       <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="how-it-works-heading">
-        <h2 id="how-it-works-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-8">
+        <h2 id="how-it-works-heading" className={`${SECTION_HEADING} mb-8`}>
           Simple. Structured. Secure.
         </h2>
         <div className="grid md:grid-cols-3 gap-6">
@@ -590,31 +623,6 @@ export default function HomePage() {
         </div>
         <p className="text-sm text-[var(--text-muted)] mt-6 italic">
           No pressure. No obligation. Just clarity.
-        </p>
-      </section>
-
-      {/* Section 5: Who This Is For */}
-      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="who-heading">
-        <h2 id="who-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-3">
-          Serving Every Stage of Service.
-        </h2>
-        <p className="text-sm text-[var(--text-muted)] mb-8">This resource is built for:</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {[
-            "Active Duty Service Members",
-            "National Guard",
-            "Reserve Members",
-            "Veterans",
-            "Military Families",
-            "Transitioning Service Members",
-          ].map((category) => (
-            <div key={category} className="cathedral-surface p-4 text-center">
-              <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-sm text-[var(--text-primary)] mt-6 font-medium">
-          If you&rsquo;ve served — this is for you.
         </p>
       </section>
 
@@ -652,7 +660,7 @@ export default function HomePage() {
 
       {/* Section 7: Final Call to Action */}
       <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="final-cta-heading">
-        <h2 id="final-cta-heading" className="text-2xl md:text-3xl font-light text-[var(--text-primary)] mb-4">
+        <h2 id="final-cta-heading" className={`${SECTION_HEADING} mb-4`}>
           Your Service Meant Something. So Does Your Family&rsquo;s Security.
         </h2>
         <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-2">
@@ -664,7 +672,7 @@ export default function HomePage() {
         <button
           type="button"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="px-8 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]"
+          className={`px-8 ${BTN_PRIMARY}`}
         >
           Start My Coverage Review
         </button>
@@ -682,28 +690,20 @@ export default function HomePage() {
           Learn More
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          <a href="/about" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
-            About Us
-          </a>
-          <a href="/about#how-it-works" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
-            How It Works
-          </a>
-          <a href="/faq" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
-            FAQ
-          </a>
-          <a href="/about#who-we-serve" className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
-            Who We Serve
-          </a>
+          {LEARN_MORE_LINKS.map((l) => (
+            <a key={l.href} href={l.href} className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
+              {l.label}
+            </a>
+          ))}
         </div>
       </section>
 
       {/* Footer */}
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center flex-wrap">
-          <a href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral">About</a>
-          <a href="/faq" className="text-teal-cathedral/70 hover:text-teal-cathedral">FAQ</a>
-          <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
-          <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
+          {FOOTER_LINKS.map((l) => (
+            <a key={l.href} href={l.href} className="text-teal-cathedral/70 hover:text-teal-cathedral">{l.label}</a>
+          ))}
         </nav>
         <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
       </footer>

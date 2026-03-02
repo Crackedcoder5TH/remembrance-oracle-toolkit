@@ -6,11 +6,6 @@
 import { useState, useEffect, FormEvent, useCallback, useRef } from "react";
 import { trackFormStep, trackConversion } from "@/app/lib/analytics";
 
-// Pipe: chain functions left-to-right
-function pipe<T>(...fns: Array<(val: T) => T>): (input: T) => T {
-  return (input: T) => fns.reduce((val, fn) => fn(val), input);
-}
-
 // Email validation
 function validateEmail(email: string): boolean {
   if (typeof email !== "string") return false;
@@ -47,11 +42,8 @@ function validateDob(dob: string): boolean {
   return date <= min18;
 }
 
-// Chain sanitizers
-const sanitizeInput = pipe(
-  (s: string) => s.trim(),
-  (s: string) => s.replace(/[<>]/g, ""),
-);
+// Sanitize: trim + strip angle brackets
+const sanitizeInput = (s: string) => s.trim().replace(/[<>]/g, "");
 
 export const TCPA_CONSENT_TEXT =
   "By checking this box, I agree that Valor Legacies may contact me at the phone number I provided above, including by autodialed or prerecorded calls and text messages, for marketing purposes. I understand this consent is not required to obtain any product or service. Message and data rates may apply. I have read and agree to the Privacy Policy and Terms of Service.";
@@ -182,22 +174,15 @@ function clearFormDraft(): void {
   }
 }
 
+const INITIAL_FORM: LeadFormData = {
+  firstName: "", lastName: "", dateOfBirth: "", email: "", phone: "",
+  state: "", coverageInterest: "", veteranStatus: "", militaryBranch: "",
+  tcpaConsent: false, privacyConsent: false, _hp_website: "",
+};
+
 export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadFormReturn {
   const saved = useRef(loadSavedForm());
-  const [form, setForm] = useState<LeadFormData>(saved.current?.form ?? {
-    firstName: "",
-    lastName: "",
-    dateOfBirth: "",
-    email: "",
-    phone: "",
-    state: "",
-    coverageInterest: "",
-    veteranStatus: "",
-    militaryBranch: "",
-    tcpaConsent: false,
-    privacyConsent: false,
-    _hp_website: "",
-  });
+  const [form, setForm] = useState<LeadFormData>(saved.current?.form ?? INITIAL_FORM);
   const [errors, setErrors] = useState<LeadFormErrors>({});
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);

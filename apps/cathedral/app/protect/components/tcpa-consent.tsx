@@ -18,6 +18,8 @@ interface TcpaConsentProps {
   privacyError?: string;
 }
 
+const CHECKBOX_CLASS = "mt-1 h-4 w-4 rounded border-gray-300 bg-gray-50 text-teal-cathedral focus:ring-teal-cathedral/50 shrink-0";
+
 export function TcpaConsent({
   tcpaChecked,
   privacyChecked,
@@ -36,7 +38,7 @@ export function TcpaConsent({
             type="checkbox"
             checked={tcpaChecked}
             onChange={(e) => onTcpaChange(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-gray-300 bg-gray-50 text-teal-cathedral focus:ring-teal-cathedral/50 shrink-0"
+            className={CHECKBOX_CLASS}
           />
           <label htmlFor="tcpaConsent" className="text-xs text-gray-600 leading-relaxed">
             By checking this box, I agree that <strong className="text-black">Valor Legacies</strong> may
@@ -59,7 +61,7 @@ export function TcpaConsent({
             type="checkbox"
             checked={privacyChecked}
             onChange={(e) => onPrivacyChange(e.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-gray-300 bg-gray-50 text-teal-cathedral focus:ring-teal-cathedral/50 shrink-0"
+            className={CHECKBOX_CLASS}
           />
           <label htmlFor="privacyConsent" className="text-xs text-gray-600 leading-relaxed">
             I acknowledge that my information will be shared with licensed insurance professionals

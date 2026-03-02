@@ -154,7 +154,7 @@ export function Navbar() {
             <span className="text-sm text-[var(--text-primary)] hidden sm:inline">
               {session.user.name?.split(" ")[0]}
             </span>
-            {(session.user as Record<string, unknown>).isAdmin && (
+            {Boolean((session.user as Record<string, unknown>).isAdmin) && (
               <Link
                 href="/admin"
                 className="text-xs text-teal-cathedral hover:text-teal-cathedral/80 transition-colors"

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+import { verifyAdmin } from "../../lib/admin-auth";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -8,6 +9,10 @@ const VALID_SLOTS = ["logo", "profile"];
 
 export async function POST(request: NextRequest) {
   try {
+    // Admin authentication required
+    const authError = verifyAdmin(request);
+    if (authError) return authError;
+
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const slot = formData.get("slot") as string | null;

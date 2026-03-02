@@ -1,22 +1,30 @@
 /**
  * Admin Authentication
  *
- * Simple bearer token authentication for admin API routes.
- * Production-ready: token is set via ADMIN_API_KEY environment variable.
+ * Two authentication methods (checked in order):
+ *  1. Session cookie (__admin_session) — set by /api/admin/login, HMAC-signed
+ *  2. Bearer token (Authorization header) — for programmatic/API access
  *
  * Environment variables:
  *   ADMIN_API_KEY — required for admin access (any string, min 16 chars recommended)
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { verifySessionToken, ADMIN_SESSION_COOKIE } from "./admin-session";
 
 /**
- * Verify admin authentication from request headers.
- * Expects: Authorization: Bearer <ADMIN_API_KEY>
+ * Verify admin authentication from session cookie or Authorization header.
  *
- * Returns null if authenticated, or a NextResponse with 401/403 if not.
+ * Returns null if authenticated, or a NextResponse with 401/403/503 if not.
  */
 export function verifyAdmin(req: NextRequest): NextResponse | null {
+  // Method 1: Session cookie (from /admin/login flow)
+  const sessionCookie = req.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  if (sessionCookie && verifySessionToken(sessionCookie)) {
+    return null; // Authenticated via session
+  }
+
+  // Method 2: Bearer token (for programmatic access)
   const adminKey = process.env.ADMIN_API_KEY;
 
   if (!adminKey) {
@@ -51,7 +59,7 @@ export function verifyAdmin(req: NextRequest): NextResponse | null {
     );
   }
 
-  return null; // Authenticated
+  return null; // Authenticated via bearer token
 }
 
 /** Constant-time string comparison */

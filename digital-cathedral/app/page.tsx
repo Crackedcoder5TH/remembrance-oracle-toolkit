@@ -21,6 +21,7 @@ import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
 import { TrustSignals } from "./protect/components/trust-signals";
 import { ImageUpload } from "./components/image-upload";
+import { useIsAdmin } from "./protect/hooks/use-is-admin";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
 
 const US_STATES = [
@@ -146,6 +147,7 @@ const FOOTER_LINKS = [
 ];
 
 export default function HomePage() {
+  const isAdmin = useIsAdmin();
   const utm = useUtmTracking();
   const {
     form, errors, loading, submitted, confirmationMessage, leadId, serverError,
@@ -254,10 +256,11 @@ export default function HomePage() {
           Dedicated to Serving Those Who Served.
         </h2>
 
-        {/* Uploadable profile photo */}
+        {/* Profile photo — uploadable when admin */}
         <ImageUpload
           slot="profile"
           alt="Founder profile photo"
+          editable={isAdmin}
           className="w-32 h-32 mx-auto mb-6 rounded-full bg-[var(--bg-surface)] border-2 border-teal-cathedral/20 flex items-center justify-center overflow-hidden"
           imgClassName="w-full h-full object-cover rounded-full"
           fallback={

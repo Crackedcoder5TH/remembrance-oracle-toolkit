@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { ImageUpload } from "./image-upload";
+import { useIsAdmin } from "../protect/hooks/use-is-admin";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -16,6 +17,7 @@ const NAV_LINKS = [
 ];
 
 export function Navbar() {
+  const isAdmin = useIsAdmin();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -61,10 +63,11 @@ export function Navbar() {
             aria-haspopup="true"
             className="flex items-center gap-fib-8 text-sm font-medium tracking-wide hover:text-[var(--teal)] transition-colors"
           >
-            {/* Uploadable logo icon */}
+            {/* Logo icon — uploadable when admin */}
             <ImageUpload
               slot="logo"
               alt="Valor Legacies logo"
+              editable={isAdmin}
               className="shrink-0 w-[26px] h-[26px] rounded overflow-hidden"
               imgClassName="w-full h-full object-contain"
               fallback={

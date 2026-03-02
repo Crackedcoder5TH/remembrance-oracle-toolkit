@@ -13,11 +13,13 @@ interface ImageUploadProps {
   imgClassName?: string;
   /** alt text for the uploaded image */
   alt?: string;
+  /** Enable upload UI — only true for authenticated admins */
+  editable?: boolean;
 }
 
 const STORAGE_KEY_PREFIX = "uploaded-image-";
 
-export function ImageUpload({ slot, fallback, className = "", imgClassName = "", alt = "Uploaded image" }: ImageUploadProps) {
+export function ImageUpload({ slot, fallback, className = "", imgClassName = "", alt = "Uploaded image", editable = false }: ImageUploadProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -65,6 +67,19 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
     e.target.value = "";
   }
 
+  // Read-only mode: just display image or fallback, no upload UI
+  if (!editable) {
+    return (
+      <div className={className}>
+        {imageUrl ? (
+          <img src={imageUrl} alt={alt} className={imgClassName} />
+        ) : (
+          fallback
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`relative group cursor-pointer ${className}`}
@@ -80,7 +95,7 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
         fallback
       )}
 
-      {/* Upload overlay — visible on hover */}
+      {/* Upload overlay — visible on hover (admin only) */}
       <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-inherit pointer-events-none">
         <span className="text-white text-xs font-medium px-2 py-1 bg-black/60 rounded">
           {uploading ? "Uploading..." : "Upload"}

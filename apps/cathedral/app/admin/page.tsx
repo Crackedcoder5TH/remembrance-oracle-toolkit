@@ -129,6 +129,12 @@ export default function AdminDashboard() {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (res.ok) {
+      // Set session cookie for admin features on public pages (image upload, etc.)
+      await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: token }),
+      });
       setAuthenticated(true);
     } else {
       setLoginError("Invalid API key. Check your ADMIN_API_KEY.");

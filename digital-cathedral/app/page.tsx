@@ -334,13 +334,6 @@ export default function HomePage() {
             If you&rsquo;ve served — this is for you.
           </p>
 
-          <p>
-            It&rsquo;s important to understand what options exist beyond basic military coverage.
-          </p>
-          <p className="italic text-[var(--text-primary)]">
-            This isn&rsquo;t about replacing anything.<br />
-            It&rsquo;s about understanding your full protection picture.
-          </p>
         </div>
       </section>
 

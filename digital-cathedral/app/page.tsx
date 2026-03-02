@@ -132,13 +132,6 @@ const NEXT_STEPS = [
   { title: "Personal Consultation", desc: "Expect a call or email within 1 business day to discuss your options — no obligation." },
 ];
 
-const LEARN_MORE_LINKS = [
-  { href: "/about", label: "About Us" },
-  { href: "/about#how-it-works", label: "How It Works" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/about#who-we-serve", label: "Who We Serve" },
-];
-
 const FOOTER_LINKS = [
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
@@ -646,20 +639,6 @@ export default function HomePage() {
       <div className="w-full flex justify-center mt-16 px-4">
         <TrustSignals />
       </div>
-
-      {/* Learn More — Links to content sections */}
-      <section className="w-full max-w-lg mt-16 px-4" aria-label="Learn more">
-        <h2 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider text-center mb-6">
-          Learn More
-        </h2>
-        <div className="grid grid-cols-2 gap-3">
-          {LEARN_MORE_LINKS.map((l) => (
-            <a key={l.href} href={l.href} className="cathedral-surface p-4 text-center text-sm text-[var(--text-primary)] font-medium hover:border-teal-cathedral/30 transition-all">
-              {l.label}
-            </a>
-          ))}
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="mt-16 text-center text-xs text-[var(--text-muted)] space-y-2">

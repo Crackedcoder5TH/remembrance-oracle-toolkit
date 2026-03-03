@@ -318,7 +318,7 @@ export default function HomePage() {
               "Military Families",
               "Transitioning Service Members",
             ].map((category) => (
-              <div key={category} className="cathedral-surface p-4 text-center">
+              <div key={category} className="cathedral-surface border-2 border-teal-cathedral/40 p-4 text-center">
                 <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
               </div>
             ))}

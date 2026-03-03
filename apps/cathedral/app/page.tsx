@@ -296,7 +296,7 @@ export default function HomePage() {
           Your Service Protects Others. But Is Your Family Fully Protected?
         </h2>
         <div className="text-sm text-[var(--text-muted)] leading-relaxed text-left max-w-xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 text-center text-[var(--text-primary)]">
             <p>
               Many service members rely solely on SGLI or assume their coverage will always be enough.
             </p>

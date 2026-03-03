@@ -73,15 +73,10 @@ function TrustBadges() {
       title: "Privacy Protected",
       description: "CCPA/CPRA compliant — your data, your control",
     },
-    {
-      icon: "\u23F1\uFE0F",
-      title: "No Obligation",
-      description: "Free quotes with zero pressure — consent is never required",
-    },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {badges.map((badge, i) => (
         <div
           key={badge.title}

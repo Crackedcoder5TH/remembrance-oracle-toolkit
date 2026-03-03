@@ -306,7 +306,7 @@ export default function HomePage() {
           </div>
 
           {/* Serving Every Stage of Service */}
-          <h3 className="text-lg font-medium text-[var(--text-primary)] text-center mt-6">
+          <h3 className="text-xl md:text-2xl font-light tracking-wide text-[var(--text-primary)] text-center mt-8 mb-6">
             Serving Every Stage of Service.
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -323,7 +323,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <p className="text-sm text-[var(--text-primary)] text-center font-medium">
+          <p className="text-sm text-[var(--text-primary)] text-center font-medium mt-6">
             If you&rsquo;ve served — this is for you.
           </p>
 
@@ -613,27 +613,6 @@ export default function HomePage() {
           Do Not Sell or Share My Personal Information
         </a>
       </div>
-
-      {/* Section 7: Final Call to Action */}
-      <section className="w-full max-w-2xl mt-20 px-4 text-center" aria-labelledby="final-cta-heading">
-        <h2 id="final-cta-heading" className={`${SECTION_HEADING} mb-4`}>
-          Your Service Meant Something. So Does Your Family&rsquo;s Security.
-        </h2>
-        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-2">
-          You&rsquo;ve protected others.
-        </p>
-        <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-8">
-          Now let&rsquo;s make sure your family is protected too.
-        </p>
-        <button
-          type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className={`px-8 ${BTN_PRIMARY}`}
-        >
-          Start My Coverage Review
-        </button>
-        <p className="text-xs text-[var(--text-muted)] mt-3">Takes less than 60 seconds.</p>
-      </section>
 
       {/* Trust Signals — Social Proof & How It Works */}
       <div className="w-full flex justify-center mt-16 px-4">

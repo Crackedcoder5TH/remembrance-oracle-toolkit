@@ -323,7 +323,7 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-          <p className="text-sm text-[var(--text-primary)] text-center font-medium mt-6">
+          <p className="text-sm metallic-gold text-center font-medium mt-6">
             If you&rsquo;ve served — this is for you.
           </p>
 

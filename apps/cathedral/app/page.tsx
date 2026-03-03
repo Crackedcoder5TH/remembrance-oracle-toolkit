@@ -357,7 +357,7 @@ export default function HomePage() {
 
       {/* Hero — Above the Form */}
       <header className="text-center mb-10">
-        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+        <div className="text-teal-cathedral text-lg tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Protect What Matters Most
         </div>
         <h1 className={`${SECTION_HEADING} mb-4`}>

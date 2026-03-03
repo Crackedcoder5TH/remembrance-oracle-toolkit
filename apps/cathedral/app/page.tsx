@@ -306,7 +306,7 @@ export default function HomePage() {
           </div>
 
           {/* Serving Every Stage of Service */}
-          <h3 className="text-xl md:text-2xl font-light tracking-wide text-teal-cathedral text-center mt-8 mb-6">
+          <h3 className="text-xl md:text-2xl font-light tracking-wide text-teal-cathedral text-center mt-14 mb-6">
             Serving Every Stage of Service.
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

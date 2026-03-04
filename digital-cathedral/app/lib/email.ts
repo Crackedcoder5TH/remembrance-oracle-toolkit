@@ -10,7 +10,7 @@
  *   SMTP_PORT     — SMTP port (default: 587)
  *   SMTP_USER     — SMTP username / API key name
  *   SMTP_PASS     — SMTP password / API key
- *   EMAIL_FROM    — Sender address (e.g., "noreply@yourdomain.com")
+ *   EMAIL_FROM    — Sender address (e.g., "noreply@valorlegacies.com")
  *   COMPANY_NAME  — Company name for email content
  */
 

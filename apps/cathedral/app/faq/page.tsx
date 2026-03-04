@@ -79,7 +79,7 @@ export default function FaqPage() {
             Have a question not answered here?
           </p>
           <a
-            href="mailto:privacy@digital-cathedral.app"
+            href="mailto:valorlegacies@gmail.com"
             className="text-teal-cathedral text-sm hover:underline"
           >
             Contact us

@@ -146,10 +146,10 @@ export default function AboutPage() {
                 <path d="M22 7l-10 7L2 7" />
               </svg>
               <a
-                href="mailto:privacy@digital-cathedral.app"
+                href="mailto:valorlegacies@gmail.com"
                 className="text-teal-cathedral hover:underline text-sm"
               >
-                privacy@digital-cathedral.app
+                valorlegacies@gmail.com
               </a>
             </div>
           </div>

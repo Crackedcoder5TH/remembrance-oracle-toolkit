@@ -188,7 +188,7 @@ export default function TermsPage() {
           </p>
           <div className="mt-3 p-4 bg-[var(--bg-surface)] rounded-lg border border-indigo-cathedral/10">
             <p>Valor Legacies</p>
-            <p>Email: legal@digital-cathedral.app</p>
+            <p>Email: valorlegacies@gmail.com</p>
           </div>
         </section>
       </div>

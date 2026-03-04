@@ -66,8 +66,8 @@ export default function AboutPage() {
               <strong className="text-[var(--text-primary)]">
                 Free consultation:
               </strong>{" "}
-              A professional reviews your needs and contacts you within 1
-              business day — no obligation, no pressure.
+              A professional reviews your needs and contacts you within 1-3
+              business days — no obligation, no pressure.
             </li>
           </ul>
         </section>

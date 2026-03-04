@@ -435,7 +435,7 @@ export default function HomePage() {
                 aria-describedby={errors.dateOfBirth ? "dob-error dob-hint" : "dob-hint"}
                 className={INPUT_CLASS}
               />
-              <p id="dob-hint" className="text-gray-500 text-xs">You must be at least 18 years old.</p>
+              <p id="dob-hint" className="text-crimson-cathedral text-xs">You must be at least 18 years old.</p>
               {errors.dateOfBirth && <p id="dob-error" className="text-crimson-cathedral text-xs" role="alert">{errors.dateOfBirth}</p>}
             </div>
 

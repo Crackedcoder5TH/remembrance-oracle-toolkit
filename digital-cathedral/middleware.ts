@@ -16,8 +16,15 @@
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 const ADMIN_SESSION_COOKIE = "__admin_session";
+
+/** Comma-separated list of admin emails (case-insensitive). */
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 /**
  * Lightweight session check for middleware (Edge runtime).
@@ -39,7 +46,7 @@ function isSessionLikelyValid(token: string): boolean {
   }
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ─── Admin route protection ───
@@ -48,9 +55,24 @@ export function middleware(request: NextRequest) {
     !pathname.startsWith("/admin/login") &&
     !pathname.startsWith("/api/admin/login")
   ) {
+    // Method 1: Legacy session cookie
     const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    const hasLegacySession = sessionCookie && isSessionLikelyValid(sessionCookie);
 
-    if (!sessionCookie || !isSessionLikelyValid(sessionCookie)) {
+    // Method 2: NextAuth JWT — Google OAuth admin user
+    let hasOAuthAdmin = false;
+    if (!hasLegacySession) {
+      try {
+        const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+        if (token?.email && ADMIN_EMAILS.includes((token.email as string).toLowerCase())) {
+          hasOAuthAdmin = true;
+        }
+      } catch {
+        // NextAuth not configured — fall through
+      }
+    }
+
+    if (!hasLegacySession && !hasOAuthAdmin) {
       const loginUrl = new URL("/admin/login", request.url);
       return NextResponse.redirect(loginUrl);
     }
@@ -68,12 +90,12 @@ export function middleware(request: NextRequest) {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com",
+      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com",
       "font-src 'self' https://fonts.gstatic.com",
       "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      "form-action 'self' https://accounts.google.com",
     ].join("; "),
   );
 

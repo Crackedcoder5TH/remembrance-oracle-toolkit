@@ -1,0 +1,19 @@
+{
+  "name": "oauth-autoconfig",
+  "version": "1.0.0",
+  "description": "CLI tool that auto-configures OAuth providers (Google, Facebook, GitHub, Apple) for any framework.",
+  "main": "src/index.js",
+  "bin": {
+    "oauth-autoconfig": "./bin/cli.js"
+  },
+  "scripts": {
+    "start": "node bin/cli.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": ["oauth", "cli", "nextauth", "google-oauth", "facebook-oauth", "github-oauth", "apple-oauth", "auto-config"],
+  "author": "Crackedcoder5TH",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

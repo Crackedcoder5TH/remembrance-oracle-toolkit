@@ -432,6 +432,108 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         return;
       }
 
+      // ─── Submit code ───
+      if (pathname === '/api/submit' && req.method === 'POST') {
+        const { canWrite } = require('../auth/auth');
+        if (authManager && !canWrite(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        safeReadBody(req, res, (body) => {
+          if (!body.code) { sendJSON(res, { error: 'code is required' }, 400); return; }
+          const result = oracleInstance.submit(body.code, {
+            language: body.language,
+            description: body.description,
+            tags: body.tags,
+            testCode: body.testCode,
+          });
+          sendJSON(res, result);
+        });
+        return;
+      }
+
+      // ─── Resolve (PULL/EVOLVE/GENERATE decision) ───
+      if (pathname === '/api/resolve' && req.method === 'POST') {
+        safeReadBody(req, res, (body) => {
+          if (!body.description) { sendJSON(res, { error: 'description is required' }, 400); return; }
+          const result = oracleInstance.resolve({
+            description: body.description,
+            tags: body.tags,
+            language: body.language,
+            minCoherency: body.minCoherency,
+          });
+          sendJSON(res, result);
+        });
+        return;
+      }
+
+      // ─── Register pattern ───
+      if (pathname === '/api/register' && req.method === 'POST') {
+        const { canWrite } = require('../auth/auth');
+        if (authManager && !canWrite(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        safeReadBody(req, res, (body) => {
+          if (!body.code) { sendJSON(res, { error: 'code is required' }, 400); return; }
+          const result = oracleInstance.registerPattern({
+            name: body.name,
+            code: body.code,
+            language: body.language || 'javascript',
+            description: body.description,
+            tags: body.tags,
+            testCode: body.testCode,
+          });
+          sendJSON(res, result);
+        });
+        return;
+      }
+
+      // ─── Feedback ───
+      if (pathname === '/api/feedback' && req.method === 'POST') {
+        const { canWrite } = require('../auth/auth');
+        if (authManager && !canWrite(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        safeReadBody(req, res, (body) => {
+          if (!body.id) { sendJSON(res, { error: 'id is required' }, 400); return; }
+          if (typeof body.success !== 'boolean') { sendJSON(res, { error: 'success (boolean) is required' }, 400); return; }
+          const result = oracleInstance.feedback(body.id, body.success);
+          sendJSON(res, result);
+        });
+        return;
+      }
+
+      // ─── API Key management ───
+      if (pathname === '/api/api-keys' && req.method === 'POST') {
+        if (!authManager) { sendJSON(res, { error: 'Auth not enabled' }, 501); return; }
+        const { canManageUsers } = require('../auth/auth');
+        if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        safeReadBody(req, res, (body) => {
+          const crypto = require('crypto');
+          const username = body.username || `api-${crypto.randomBytes(4).toString('hex')}`;
+          const password = crypto.randomBytes(32).toString('hex');
+          const role = body.role || 'contributor';
+          const user = authManager.createUser(username, password, role);
+          sendJSON(res, user);
+        });
+        return;
+      }
+
+      const apiKeyDeleteMatch = pathname.match(/^\/api\/api-keys\/([^/]+)$/);
+      if (apiKeyDeleteMatch && req.method === 'DELETE') {
+        if (!authManager) { sendJSON(res, { error: 'Auth not enabled' }, 501); return; }
+        const { canManageUsers } = require('../auth/auth');
+        if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        const deleted = authManager.deleteUser(apiKeyDeleteMatch[1]);
+        if (!deleted) { sendJSON(res, { error: 'User not found' }, 404); return; }
+        sendJSON(res, { deleted: true });
+        return;
+      }
+
+      const apiKeyRotateMatch = pathname.match(/^\/api\/api-keys\/([^/]+)\/rotate$/);
+      if (apiKeyRotateMatch && req.method === 'POST') {
+        if (!authManager) { sendJSON(res, { error: 'Auth not enabled' }, 501); return; }
+        const { canManageUsers } = require('../auth/auth');
+        if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        const result = authManager.revokeApiKey(apiKeyRotateMatch[1]);
+        if (!result) { sendJSON(res, { error: 'User not found' }, 404); return; }
+        sendJSON(res, result);
+        return;
+      }
+
       // ─── Serve dashboard HTML ───
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(getDashboardHTML());

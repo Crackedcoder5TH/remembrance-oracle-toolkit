@@ -1,3 +1,8 @@
+// Sanitize env vars that must be single URLs before Next.js or NextAuth reads them
+if (process.env.NEXTAUTH_URL?.includes(",")) {
+  process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.split(",")[0].trim();
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -5,6 +10,7 @@ const nextConfig = {
   // Exclude native addons from serverless bundles (better-sqlite3 is optional/dev-only)
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
+    instrumentationHook: true,
   },
 
   // ─── Security Headers (HTTPS everywhere) ───

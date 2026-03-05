@@ -177,10 +177,10 @@ export default function PrivacyPage() {
           <p>
             To exercise any of these rights, email{" "}
             <a
-              href="mailto:privacy@digital-cathedral.app"
+              href="mailto:valorlegacies@gmail.com"
               className="text-teal-cathedral hover:underline"
             >
-              privacy@digital-cathedral.app
+              valorlegacies@gmail.com
             </a>
             .
           </p>
@@ -209,10 +209,10 @@ export default function PrivacyPage() {
               <strong className="text-[var(--text-primary)]">Email us:</strong>{" "}
               Send a request to{" "}
               <a
-                href="mailto:privacy@digital-cathedral.app"
+                href="mailto:valorlegacies@gmail.com"
                 className="text-teal-cathedral hover:underline"
               >
-                privacy@digital-cathedral.app
+                valorlegacies@gmail.com
               </a>{" "}
               with the subject line &ldquo;Do Not Sell or Share.&rdquo;
             </li>
@@ -261,10 +261,10 @@ export default function PrivacyPage() {
           <p>
             For privacy-related questions, email{" "}
             <a
-              href="mailto:privacy@digital-cathedral.app"
+              href="mailto:valorlegacies@gmail.com"
               className="text-teal-cathedral hover:underline"
             >
-              privacy@digital-cathedral.app
+              valorlegacies@gmail.com
             </a>{" "}
             or visit our{" "}
             <Link href="/about" className="text-teal-cathedral hover:underline">

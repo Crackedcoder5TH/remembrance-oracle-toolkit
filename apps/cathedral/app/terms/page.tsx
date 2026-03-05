@@ -87,7 +87,7 @@ export default function TermsPage() {
           </ul>
           <p className="mt-3">
             <strong className="text-[var(--text-primary)]">This consent is not a condition of purchasing any product or service.</strong> You
-            may revoke consent at any time by contacting us at privacy@digital-cathedral.app, replying STOP to any text
+            may revoke consent at any time by contacting us at valorlegacies@gmail.com, replying STOP to any text
             message, or using the opt-out mechanism in any email. Standard message and data rates may apply.
           </p>
         </section>
@@ -188,7 +188,7 @@ export default function TermsPage() {
           </p>
           <div className="mt-3 p-4 bg-[var(--bg-surface)] rounded-lg border border-indigo-cathedral/10">
             <p>Valor Legacies</p>
-            <p>Email: legal@digital-cathedral.app</p>
+            <p>Email: valorlegacies@gmail.com</p>
           </div>
         </section>
       </div>

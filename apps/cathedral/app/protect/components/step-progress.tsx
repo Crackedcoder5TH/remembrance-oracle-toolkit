@@ -35,7 +35,7 @@ export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
                   ? "bg-teal-cathedral text-white"
                   : i === currentStep
                     ? "bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/60 cathedral-glow"
-                    : "bg-gray-100 text-gray-400 border border-gray-300"
+                    : "bg-gray-100 text-[#1B3A5C] border border-gray-300"
               }`}
               aria-hidden="true"
             >

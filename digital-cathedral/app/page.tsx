@@ -44,7 +44,8 @@ const US_STATES = [
   { code: "NY", name: "New York" }, { code: "NC", name: "North Carolina" },
   { code: "ND", name: "North Dakota" }, { code: "OH", name: "Ohio" },
   { code: "OK", name: "Oklahoma" }, { code: "OR", name: "Oregon" },
-  { code: "PA", name: "Pennsylvania" }, { code: "RI", name: "Rhode Island" },
+  { code: "PA", name: "Pennsylvania" }, { code: "PR", name: "Puerto Rico" },
+  { code: "RI", name: "Rhode Island" },
   { code: "SC", name: "South Carolina" }, { code: "SD", name: "South Dakota" },
   { code: "TN", name: "Tennessee" }, { code: "TX", name: "Texas" },
   { code: "UT", name: "Utah" }, { code: "VT", name: "Vermont" },
@@ -249,17 +250,19 @@ export default function HomePage() {
           Dedicated to Serving Those Who Served.
         </h2>
 
-        {/* Profile photo — uploadable when admin */}
+        {/* Veteran group photo — uploadable when admin */}
         <ImageUpload
-          slot="profile"
-          alt="Founder profile photo"
+          slot="veteran-group"
+          alt="Military service members group photo"
           editable={isAdmin}
-          className="w-32 h-32 mx-auto mb-6 rounded-full bg-[var(--bg-surface)] border-2 border-teal-cathedral/20 flex items-center justify-center overflow-hidden"
-          imgClassName="w-full h-full object-cover rounded-full"
+          className="w-full max-w-xl mx-auto mb-8 rounded-lg bg-[var(--bg-surface)] border border-teal-cathedral/20 flex items-center justify-center overflow-hidden"
+          imgClassName="w-full h-auto object-cover rounded-lg"
           fallback={
-            <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-            </svg>
+            <div className="w-full h-48 flex items-center justify-center">
+              <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+              </svg>
+            </div>
           }
         />
 
@@ -296,7 +299,7 @@ export default function HomePage() {
           Your Service Protects Others. But Is Your Family Fully Protected?
         </h2>
         <div className="text-sm text-[var(--text-muted)] leading-relaxed text-left max-w-xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 text-center text-[var(--text-primary)]">
             <p>
               Many service members rely solely on SGLI or assume their coverage will always be enough.
             </p>
@@ -306,7 +309,7 @@ export default function HomePage() {
           </div>
 
           {/* Serving Every Stage of Service */}
-          <h3 className="text-xl md:text-2xl font-light tracking-wide text-[var(--text-primary)] text-center mt-8 mb-6">
+          <h3 className="text-xl md:text-2xl font-light tracking-wide text-teal-cathedral text-center mt-14 mb-6">
             Serving Every Stage of Service.
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -318,12 +321,12 @@ export default function HomePage() {
               "Military Families",
               "Transitioning Service Members",
             ].map((category) => (
-              <div key={category} className="cathedral-surface p-4 text-center">
+              <div key={category} className="cathedral-surface border-2 border-teal-cathedral/40 p-4 text-center">
                 <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
               </div>
             ))}
           </div>
-          <p className="text-sm text-[var(--text-primary)] text-center font-medium mt-6">
+          <p className="text-sm metallic-gold text-center font-medium mt-6">
             If you&rsquo;ve served — this is for you.
           </p>
 
@@ -357,7 +360,7 @@ export default function HomePage() {
 
       {/* Hero — Above the Form */}
       <header className="text-center mb-10">
-        <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
+        <div className="text-teal-cathedral text-lg tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Protect What Matters Most
         </div>
         <h1 className={`${SECTION_HEADING} mb-4`}>
@@ -434,7 +437,7 @@ export default function HomePage() {
                 aria-describedby={errors.dateOfBirth ? "dob-error dob-hint" : "dob-hint"}
                 className={INPUT_CLASS}
               />
-              <p id="dob-hint" className="text-gray-500 text-xs">You must be at least 18 years old.</p>
+              <p id="dob-hint" className="text-crimson-cathedral text-xs">You must be at least 18 years old.</p>
               {errors.dateOfBirth && <p id="dob-error" className="text-crimson-cathedral text-xs" role="alert">{errors.dateOfBirth}</p>}
             </div>
 

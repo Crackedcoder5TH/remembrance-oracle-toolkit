@@ -1,9 +1,9 @@
 /**
- * US state validation — complete list of 50 states + DC.
+ * US state validation — complete list of 50 states + DC + territories.
  * Provides typed state codes, state list for dropdowns, and validation.
  */
 
-/** US states + DC for lead form dropdowns. */
+/** US states + DC + territories for lead form dropdowns. */
 export const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" },
   { code: "AZ", name: "Arizona" }, { code: "AR", name: "Arkansas" },
@@ -24,7 +24,8 @@ export const US_STATES = [
   { code: "NY", name: "New York" }, { code: "NC", name: "North Carolina" },
   { code: "ND", name: "North Dakota" }, { code: "OH", name: "Ohio" },
   { code: "OK", name: "Oklahoma" }, { code: "OR", name: "Oregon" },
-  { code: "PA", name: "Pennsylvania" }, { code: "RI", name: "Rhode Island" },
+  { code: "PA", name: "Pennsylvania" }, { code: "PR", name: "Puerto Rico" },
+  { code: "RI", name: "Rhode Island" },
   { code: "SC", name: "South Carolina" }, { code: "SD", name: "South Dakota" },
   { code: "TN", name: "Tennessee" }, { code: "TX", name: "Texas" },
   { code: "UT", name: "Utah" }, { code: "VT", name: "Vermont" },

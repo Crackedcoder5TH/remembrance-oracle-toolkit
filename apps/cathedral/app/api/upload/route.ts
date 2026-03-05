@@ -5,7 +5,7 @@ import { verifyAdmin } from "../../lib/admin-auth";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
-const VALID_SLOTS = ["logo", "profile"];
+const VALID_SLOTS = ["logo", "profile", "veteran-group"];
 
 export async function POST(request: NextRequest) {
   try {

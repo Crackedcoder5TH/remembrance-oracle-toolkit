@@ -4,6 +4,7 @@ import { CookieConsent } from "./components/cookie-consent";
 import { ErrorReporter } from "./components/error-reporter";
 import { Navbar } from "./components/navbar";
 import { SacredGeometryBg } from "./components/sacred-geometry-bg";
+import { AnalyticsScripts } from "./components/analytics-scripts";
 import { AuthProvider } from "./components/auth-provider";
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
@@ -125,6 +126,7 @@ export default function RootLayout({
           <CookieConsent />
           <ErrorReporter />
         </AuthProvider>
+        <AnalyticsScripts />
       </body>
     </html>
   );

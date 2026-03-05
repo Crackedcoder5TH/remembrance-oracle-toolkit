@@ -245,8 +245,8 @@ export default function HomePage() {
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
       {/* Veteran Story — First thing visitors see */}
-      <section className="w-full max-w-2xl mb-16 px-4" aria-labelledby="veteran-founded-heading">
-        <h2 id="veteran-founded-heading" className={`${SECTION_HEADING} mb-6 text-center`}>
+      <section className="w-full max-w-2xl mb-16 px-4" aria-labelledby="veteran-founded-heading-top">
+        <h2 id="veteran-founded-heading-top" className={`${SECTION_HEADING} mb-6 text-center`}>
           Dedicated to Serving Those Who Served.
         </h2>
 

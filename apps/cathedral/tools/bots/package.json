@@ -1,0 +1,8 @@
+{
+  "name": "@digital-cathedral/bots",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bot tools for Valor Legacies — lead monitors, sync agents, notification relays",
+  "main": "index.js",
+  "scripts": {}
+}

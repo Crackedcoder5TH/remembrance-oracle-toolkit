@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     offset: 0,
   };
 
-  const result = getFilteredLeads(filters);
+  const result = await getFilteredLeads(filters);
 
   if (!result.ok) {
     return NextResponse.json(

@@ -1,9 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@cathedral/shared"],
 
-  // Exclude native addons from serverless bundles (better-sqlite3 is dev-only)
+  // Exclude native addons from serverless bundles (better-sqlite3 is optional/dev-only)
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
   },

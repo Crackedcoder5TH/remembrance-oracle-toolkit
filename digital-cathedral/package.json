@@ -3,10 +3,6 @@
   "version": "0.1.0",
   "private": true,
   "description": "Valor Legacies — veteran-founded life insurance lead generation for military families.",
-  "workspaces": [
-    "packages/*",
-    "tools/*"
-  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

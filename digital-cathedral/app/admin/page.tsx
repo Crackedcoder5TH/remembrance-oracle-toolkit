@@ -308,12 +308,15 @@ export default function AdminDashboard() {
           <select
             value={filterVeteran}
             onChange={(e) => { setFilterVeteran(e.target.value); setPage(0); }}
-            aria-label="Filter by veteran status"
+            aria-label="Filter by military status"
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
-            <option value="">All Veteran Status</option>
+            <option value="">All Military Status</option>
+            <option value="active-duty">Active-Duty</option>
+            <option value="reserve">Reserve</option>
+            <option value="national-guard">National Guard</option>
             <option value="veteran">Veteran</option>
-            <option value="non-veteran">Non-Veteran</option>
+            <option value="non-military">Non-Military</option>
           </select>
           <button
             onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setSearch(""); setPage(0); }}

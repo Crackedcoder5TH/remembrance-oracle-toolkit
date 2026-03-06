@@ -588,7 +588,7 @@ export default function ClientPortal() {
                     type="text"
                     value={paymentForm.fundAmount}
                     onChange={(e) => setPaymentForm((prev) => ({ ...prev, fundAmount: e.target.value.replace(/[^0-9.]/g, "") }))}
-                    className="w-32 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-cathedral"
+                    className="w-32 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-cathedral"
                     placeholder="100.00"
                   />
                   <span className="text-xs text-[var(--text-muted)]">USD (min $5.00)</span>
@@ -610,7 +610,7 @@ export default function ClientPortal() {
                     onChange={(e) => setPaymentForm((prev) => ({ ...prev, cardholderName: e.target.value }))}
                     placeholder="John A. Smith"
                     autoComplete="cc-name"
-                    className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
+                    className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
                   />
                 </div>
 
@@ -626,7 +626,7 @@ export default function ClientPortal() {
                       autoComplete="cc-number"
                       inputMode="numeric"
                       maxLength={19}
-                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral pr-16"
+                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral pr-16"
                     />
                     {getCardBrand(paymentForm.cardNumber) && (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-teal-cathedral">
@@ -644,7 +644,7 @@ export default function ClientPortal() {
                       value={paymentForm.expMonth}
                       onChange={(e) => setPaymentForm((prev) => ({ ...prev, expMonth: e.target.value }))}
                       autoComplete="cc-exp-month"
-                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral appearance-none"
+                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral appearance-none"
                     >
                       <option value="">MM</option>
                       {Array.from({ length: 12 }, (_, i) => {
@@ -659,7 +659,7 @@ export default function ClientPortal() {
                       value={paymentForm.expYear}
                       onChange={(e) => setPaymentForm((prev) => ({ ...prev, expYear: e.target.value }))}
                       autoComplete="cc-exp-year"
-                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral appearance-none"
+                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral appearance-none"
                     >
                       <option value="">YYYY</option>
                       {Array.from({ length: 10 }, (_, i) => {
@@ -678,7 +678,7 @@ export default function ClientPortal() {
                       autoComplete="cc-csc"
                       inputMode="numeric"
                       maxLength={4}
-                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
+                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
                     />
                   </div>
                 </div>
@@ -698,7 +698,7 @@ export default function ClientPortal() {
                     onChange={(e) => setPaymentForm((prev) => ({ ...prev, billingAddress: e.target.value }))}
                     placeholder="123 Main Street, Suite 100"
                     autoComplete="street-address"
-                    className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
+                    className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
                   />
                 </div>
 
@@ -711,7 +711,7 @@ export default function ClientPortal() {
                       onChange={(e) => setPaymentForm((prev) => ({ ...prev, billingCity: e.target.value }))}
                       placeholder="Dallas"
                       autoComplete="address-level2"
-                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
+                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
                     />
                   </div>
                   <div>
@@ -720,7 +720,7 @@ export default function ClientPortal() {
                       value={paymentForm.billingState}
                       onChange={(e) => setPaymentForm((prev) => ({ ...prev, billingState: e.target.value }))}
                       autoComplete="address-level1"
-                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral appearance-none"
+                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral appearance-none"
                     >
                       <option value="">Select</option>
                       {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.code}</option>)}
@@ -736,7 +736,7 @@ export default function ClientPortal() {
                       autoComplete="postal-code"
                       inputMode="numeric"
                       maxLength={10}
-                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
+                      className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-teal-cathedral"
                     />
                   </div>
                 </div>

@@ -187,7 +187,7 @@ export default function AdminDashboard() {
       {/* Header */}
       <header className="flex items-center justify-between mb-8">
         <div>
-          <div className="text-teal-cathedral text-xs tracking-[0.3em] uppercase pulse-gentle">
+          <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase pulse-gentle">
             Admin
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)]">

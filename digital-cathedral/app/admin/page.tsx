@@ -197,8 +197,14 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={handleExport}
+            onClick={() => router.push("/admin/clients")}
             className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+          >
+            Client Management
+          </button>
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 rounded-lg text-sm transition-all text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
           >
             Export CSV
           </button>

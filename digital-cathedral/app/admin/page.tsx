@@ -16,6 +16,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { US_STATES } from "../../packages/shared/src/validate-state";
 
 // --- Debounce hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -289,8 +290,8 @@ export default function AdminDashboard() {
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
             <option value="">All States</option>
-            {["TX","FL","CA","NY","PA","OH","IL","GA","NC","VA","NJ","MI","TN","AZ"].map((s) => (
-              <option key={s} value={s}>{s}</option>
+            {US_STATES.map((s) => (
+              <option key={s.code} value={s.code}>{s.name}</option>
             ))}
           </select>
           <select

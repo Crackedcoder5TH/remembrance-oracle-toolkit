@@ -3,6 +3,8 @@ import { insertLead, deleteLeadByEmail } from "@/app/lib/database";
 import type { LeadRecord } from "@/app/lib/database";
 import { notifyLeadCreated } from "@/app/lib/webhooks";
 import { sendLeadConfirmationEmail, sendAdminNotificationEmail } from "@/app/lib/email";
+import { sendLeadSms, sendAdminSms } from "@/app/lib/sms";
+import { pushLeadToCrm } from "@/app/lib/crm";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 import { broadcast } from "@/app/lib/lead-events";
 import { scoreLead } from "@/app/lib/lead-scoring";
@@ -17,10 +19,11 @@ import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
  * 1. Rate-limits by IP (sliding window)
  * 2. Validates all fields server-side
  * 3. Records consent metadata (TCPA compliance)
- * 4. Persists the lead to SQLite via better-sqlite3
+ * 4. Persists the lead to database (PostgreSQL in production, SQLite in dev)
  * 5. Detects duplicates within 24-hour window
- * 6. Sends confirmation email
- * 7. Returns a confirmation message
+ * 6. Sends confirmation email + SMS
+ * 7. Pushes lead to CRM (HubSpot / Salesforce)
+ * 8. Returns a confirmation message
  */
 
 // Validation handled by app/lib/validation.ts
@@ -144,7 +147,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Persist to database
-    const dbResult = insertLead(leadRecord);
+    const dbResult = await insertLead(leadRecord);
 
     if (!dbResult.ok) {
       // Duplicate detection returns a user-friendly message
@@ -209,6 +212,23 @@ export async function POST(req: NextRequest) {
       logger.error("Admin notification email failed", { leadId, error: String(err) });
     });
 
+    // Send SMS notifications (non-blocking — doesn't affect response)
+    sendLeadSms(leadRecord).catch((err) => {
+      logger.error("Lead SMS failed", { leadId, error: String(err) });
+    });
+
+    const adminPhone = process.env.ADMIN_PHONE;
+    if (adminPhone) {
+      sendAdminSms(leadRecord, adminPhone).catch((err) => {
+        logger.error("Admin SMS failed", { leadId, error: String(err) });
+      });
+    }
+
+    // Push lead to CRM (non-blocking — doesn't affect response)
+    pushLeadToCrm(leadRecord).catch((err) => {
+      logger.error("CRM push failed", { leadId, error: String(err) });
+    });
+
     const confirmationMessage = CONFIRMATIONS[Math.floor(Math.random() * CONFIRMATIONS.length)];
 
     finish(200, { leadId });
@@ -261,7 +281,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const result = deleteLeadByEmail(email);
+    const result = await deleteLeadByEmail(email);
 
     if (!result.ok) {
       logger.error("CCPA delete failed", { error: result.error, clientIp });

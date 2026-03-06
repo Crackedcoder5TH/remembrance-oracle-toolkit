@@ -1,11 +1,16 @@
+// Sanitize env vars that must be single URLs before Next.js or NextAuth reads them
+if (process.env.NEXTAUTH_URL?.includes(",")) {
+  process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.split(",")[0].trim();
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ["@cathedral/shared"],
 
-  // better-sqlite3 is a native C++ addon — must not be bundled by webpack
+  // Exclude native addons from serverless bundles (better-sqlite3 is optional/dev-only)
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
+    instrumentationHook: true,
   },
 
   // ─── Security Headers (HTTPS everywhere) ───
@@ -35,14 +40,14 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob:",
+              "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com",
               "font-src 'self'",
-              "connect-src 'self'",
+              "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com",
               "frame-ancestors 'none'",
               "base-uri 'self'",
-              "form-action 'self'",
+              "form-action 'self' https://accounts.google.com",
               "upgrade-insecure-requests",
             ].join("; "),
           },

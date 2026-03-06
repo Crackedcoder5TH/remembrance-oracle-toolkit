@@ -1,6 +1,11 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
+// Sanitize NEXTAUTH_URL — take only the first URL if comma-separated
+if (process.env.NEXTAUTH_URL?.includes(",")) {
+  process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.split(",")[0].trim();
+}
+
 /** Comma-separated list of admin emails (case-insensitive). */
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
   .split(",")

@@ -8,6 +8,7 @@ import { pushLeadToCrm } from "@/app/lib/crm";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 import { broadcast } from "@/app/lib/lead-events";
 import { scoreLead } from "@/app/lib/lead-scoring";
+import { distributeLead } from "@/app/lib/lead-distribution";
 import { startRequestTimer } from "@/app/lib/logger";
 import { validateCsrfToken } from "@/app/lib/csrf";
 import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
@@ -227,6 +228,15 @@ export async function POST(req: NextRequest) {
     // Push lead to CRM (non-blocking — doesn't affect response)
     pushLeadToCrm(leadRecord).catch((err) => {
       logger.error("CRM push failed", { leadId, error: String(err) });
+    });
+
+    // Distribute lead to matching client buyers (non-blocking)
+    distributeLead(leadRecord, leadScore).then((distResult) => {
+      if (distResult.distributed) {
+        logger.info("Lead distributed", { leadId, purchases: distResult.purchases.length });
+      }
+    }).catch((err) => {
+      logger.error("Lead distribution failed", { leadId, error: String(err) });
     });
 
     const confirmationMessage = CONFIRMATIONS[Math.floor(Math.random() * CONFIRMATIONS.length)];

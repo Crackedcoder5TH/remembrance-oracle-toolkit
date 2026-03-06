@@ -16,6 +16,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { US_STATES } from "../../packages/shared/src/validate-state";
 
 // --- Debounce hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -196,8 +197,20 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={handleExport}
+            onClick={() => router.push("/admin/leads")}
             className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+          >
+            Lead Management
+          </button>
+          <button
+            onClick={() => router.push("/admin/clients")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+          >
+            Client Management
+          </button>
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 rounded-lg text-sm transition-all text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
           >
             Export CSV
           </button>
@@ -289,8 +302,8 @@ export default function AdminDashboard() {
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
             <option value="">All States</option>
-            {["TX","FL","CA","NY","PA","OH","IL","GA","NC","VA","NJ","MI","TN","AZ"].map((s) => (
-              <option key={s} value={s}>{s}</option>
+            {US_STATES.map((s) => (
+              <option key={s.code} value={s.code}>{s.name}</option>
             ))}
           </select>
           <select
@@ -307,12 +320,15 @@ export default function AdminDashboard() {
           <select
             value={filterVeteran}
             onChange={(e) => { setFilterVeteran(e.target.value); setPage(0); }}
-            aria-label="Filter by veteran status"
+            aria-label="Filter by military status"
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
-            <option value="">All Veteran Status</option>
+            <option value="">All Military Status</option>
+            <option value="active-duty">Active-Duty</option>
+            <option value="reserve">Reserve</option>
+            <option value="national-guard">National Guard</option>
             <option value="veteran">Veteran</option>
-            <option value="non-veteran">Non-Veteran</option>
+            <option value="non-military">Non-Military</option>
           </select>
           <button
             onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setSearch(""); setPage(0); }}
@@ -327,13 +343,13 @@ export default function AdminDashboard() {
       <div className="cathedral-surface overflow-x-auto" role="region" aria-label="Leads table">
         <table className="w-full text-sm" aria-label="Lead records">
           <thead>
-            <tr className="text-left text-[var(--text-muted)] text-xs uppercase tracking-wider border-b border-indigo-cathedral/10">
+            <tr className="text-left text-xs uppercase tracking-wider border-b border-indigo-cathedral/10 metallic-gold">
               <th className="px-4 py-3" scope="col">Score</th>
               <th className="px-4 py-3" scope="col">Name</th>
               <th className="px-4 py-3" scope="col">Contact</th>
               <th className="px-4 py-3" scope="col">State</th>
               <th className="px-4 py-3" scope="col">Coverage</th>
-              <th className="px-4 py-3" scope="col">Veteran</th>
+              <th className="px-4 py-3" scope="col">Status</th>
               <th className="px-4 py-3" scope="col">Source</th>
               <th className="px-4 py-3" scope="col">Date</th>
             </tr>

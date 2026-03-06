@@ -4,11 +4,13 @@ import { CookieConsent } from "./components/cookie-consent";
 import { ErrorReporter } from "./components/error-reporter";
 import { Navbar } from "./components/navbar";
 import { SacredGeometryBg } from "./components/sacred-geometry-bg";
+import { AnalyticsScripts } from "./components/analytics-scripts";
 import { AuthProvider } from "./components/auth-provider";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
+/** Take the first URL if env var contains comma-separated values. */
+const BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
 
-const SITE_URL = "https://digital-cathedral.vercel.app";
+const SITE_URL = BASE_URL;
 const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Valor Legacies";
 const SITE_DESCRIPTION =
   "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.";
@@ -125,6 +127,7 @@ export default function RootLayout({
           <CookieConsent />
           <ErrorReporter />
         </AuthProvider>
+        <AnalyticsScripts />
       </body>
     </html>
   );

@@ -8,28 +8,94 @@
  *  - X-Content-Type-Options — prevent MIME sniffing
  *  - Referrer-Policy — control referrer leakage
  *  - Permissions-Policy — disable unnecessary browser features
+ *
+ * Admin route protection:
+ *  - /admin (except /admin/login) requires a valid session cookie
+ *  - Unauthenticated requests are redirected to /admin/login
  */
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-export function middleware(request: NextRequest) {
+const ADMIN_SESSION_COOKIE = "__admin_session";
+
+/** Comma-separated list of admin emails (case-insensitive). */
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+/**
+ * Lightweight session check for middleware (Edge runtime).
+ * Verifies the payload is unexpired JSON. Full HMAC signature
+ * verification happens at the API layer via admin-session.ts.
+ */
+function isSessionLikelyValid(token: string): boolean {
+  try {
+    const [payload] = token.split(".");
+    if (!payload) return false;
+
+    const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
+    const data = JSON.parse(json);
+
+    if (typeof data.exp !== "number") return false;
+    return data.exp > Math.floor(Date.now() / 1000);
+  } catch {
+    return false;
+  }
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ─── Admin route protection ───
+  if (
+    pathname.startsWith("/admin") &&
+    !pathname.startsWith("/admin/login") &&
+    !pathname.startsWith("/api/admin/login")
+  ) {
+    // Method 1: Legacy session cookie
+    const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+    const hasLegacySession = sessionCookie && isSessionLikelyValid(sessionCookie);
+
+    // Method 2: NextAuth JWT — Google OAuth admin user
+    let hasOAuthAdmin = false;
+    if (!hasLegacySession) {
+      try {
+        const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+        if (token?.email && ADMIN_EMAILS.includes((token.email as string).toLowerCase())) {
+          hasOAuthAdmin = true;
+        }
+      } catch {
+        // NextAuth not configured — fall through
+      }
+    }
+
+    if (!hasLegacySession && !hasOAuthAdmin) {
+      const loginUrl = new URL("/admin/login", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // ─── Security headers ───
   const response = NextResponse.next();
   const headers = response.headers;
 
-  // Content-Security-Policy — allow self + inline styles (Tailwind) + data: images
+  // Content-Security-Policy — synced with next.config.mjs
+  // Must match to avoid the middleware overriding config headers
   headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
+      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self'",
+      "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      "form-action 'self' https://accounts.google.com",
     ].join("; "),
   );
 

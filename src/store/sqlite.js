@@ -934,7 +934,7 @@ class SQLiteStore {
     const now = new Date().toISOString();
 
     this.db.prepare(`
-      INSERT INTO candidates (id, name, code, language, pattern_type, complexity,
+      INSERT OR IGNORE INTO candidates (id, name, code, language, pattern_type, complexity,
         description, tags, coherency_total, coherency_json, test_code,
         parent_pattern, generation_method, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

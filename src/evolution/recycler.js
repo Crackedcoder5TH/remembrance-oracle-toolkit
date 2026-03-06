@@ -1280,7 +1280,7 @@ class PatternRecycler {
    * @returns {{ attempted, promoted, failed, details }}
    */
   autoPromote() {
-    const candidates = this.oracle.patterns.getCandidates();
+    const candidates = this.oracle.patterns.getCandidates({ minCoherency: 0.6 });
     const withTests = candidates.filter(c => c.testCode);
 
     const report = {

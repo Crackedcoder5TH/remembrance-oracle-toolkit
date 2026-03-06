@@ -215,6 +215,20 @@ export default function AdminClientsPage() {
     if (selectedClient?.clientId === clientId) fetchClientDetail(clientId);
   };
 
+  const handleSeedTestClient = async () => {
+    const res = await fetch("/api/admin/seed-client", { method: "POST" });
+    const data = await res.json();
+    if (data.success) {
+      setMessage(`Test client ready! Email: ${data.credentials.email} | Password: ${data.credentials.password}`);
+      fetchClients();
+      fetchStats();
+    } else {
+      setMessage(data.message || "Failed to seed test client.");
+    }
+  };
+
+  const [message, setMessage] = useState("");
+
   const totalPages = Math.ceil(totalClients / LIMIT);
 
   const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -229,6 +243,12 @@ export default function AdminClientsPage() {
         </div>
         <div className="flex gap-3">
           <button
+            onClick={handleSeedTestClient}
+            className="px-4 py-2 rounded-lg text-sm transition-all text-[var(--text-muted)] border border-amber-500/30 hover:border-amber-500/60 hover:text-amber-400"
+          >
+            Seed Test Client
+          </button>
+          <button
             onClick={() => setShowCreate(true)}
             className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >
@@ -242,6 +262,14 @@ export default function AdminClientsPage() {
           </button>
         </div>
       </header>
+
+      {/* Message flash */}
+      {message && (
+        <div className="mb-4 px-4 py-3 rounded-lg text-sm bg-teal-cathedral/10 text-teal-cathedral border border-teal-cathedral/20" role="status">
+          {message}
+          <button onClick={() => setMessage("")} className="float-right text-teal-cathedral/60 hover:text-teal-cathedral">&times;</button>
+        </div>
+      )}
 
       {/* Stats Cards */}
       {stats && (

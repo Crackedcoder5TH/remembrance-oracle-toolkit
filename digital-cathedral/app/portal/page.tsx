@@ -840,7 +840,7 @@ export default function ClientPortal() {
           </p>
 
           <div className="space-y-6">
-            <div>
+            <div className="rounded-lg p-4" style={{ border: '1px solid #DAA520', boxShadow: '0 0 6px rgba(255, 215, 0, 0.15)' }}>
               <label className="block text-xs text-[var(--text-muted)] uppercase mb-2">Distribution Mode</label>
               <select value={filters.distributionMode} onChange={(e) => setFilters({ ...filters, distributionMode: e.target.value })}
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none">
@@ -850,7 +850,7 @@ export default function ClientPortal() {
               </select>
             </div>
 
-            <div>
+            <div className="rounded-lg p-4" style={{ border: '1px solid #DAA520', boxShadow: '0 0 6px rgba(255, 215, 0, 0.15)' }}>
               <label className="block text-xs text-[var(--text-muted)] uppercase mb-2">Minimum Lead Score</label>
               <input type="number" value={filters.minScore} onChange={(e) => setFilters({ ...filters, minScore: parseInt(e.target.value) || 0 })}
                 min="0" max="100"
@@ -858,7 +858,7 @@ export default function ClientPortal() {
               <p className="text-xs text-[var(--text-muted)] mt-1">0–100. Higher = hotter leads only.</p>
             </div>
 
-            <div>
+            <div className="rounded-lg p-4" style={{ border: '1px solid #DAA520', boxShadow: '0 0 6px rgba(255, 215, 0, 0.15)' }}>
               <label className="block text-xs text-[var(--text-muted)] uppercase mb-2">Max Lead Age (hours)</label>
               <input type="number" value={filters.maxLeadAge} onChange={(e) => setFilters({ ...filters, maxLeadAge: parseInt(e.target.value) || 72 })}
                 min="1" max="168"

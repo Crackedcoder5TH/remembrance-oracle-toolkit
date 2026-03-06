@@ -72,7 +72,7 @@ const VALID_STATES = new Set([
 ]);
 
 const VALID_COVERAGE = new Set(["term", "whole", "universal", "final-expense", "annuity", "not-sure"]);
-const VALID_VETERAN_STATUS = new Set(["veteran", "non-veteran"]);
+const VALID_VETERAN_STATUS = new Set(["active-duty", "reserve", "national-guard", "veteran", "non-military"]);
 const VALID_MILITARY_BRANCHES = new Set([
   "army", "marine-corps", "navy", "air-force", "space-force",
   "coast-guard", "national-guard", "reserves",
@@ -151,10 +151,10 @@ export function validateLeadPayload(body: unknown): ValidationResult {
     errors.push("Invalid veteran status.");
   }
 
-  // Military branch (required only for veterans)
-  if (b.veteranStatus === "veteran") {
+  // Military branch (required for all military service categories)
+  if (b.veteranStatus && b.veteranStatus !== "non-military") {
     if (!isString(b.militaryBranch) || !VALID_MILITARY_BRANCHES.has(b.militaryBranch)) {
-      errors.push("Military branch is required for veterans.");
+      errors.push("Military branch is required for military service members.");
     }
   }
 
@@ -179,7 +179,7 @@ export function validateLeadPayload(body: unknown): ValidationResult {
       state: b.state as string,
       coverageInterest: b.coverageInterest as string,
       veteranStatus: b.veteranStatus as string,
-      militaryBranch: b.veteranStatus === "veteran" ? (b.militaryBranch as string) : "",
+      militaryBranch: b.veteranStatus !== "non-military" ? (b.militaryBranch as string) : "",
       tcpaConsent: true,
       privacyConsent: true,
       consentTimestamp: b.consentTimestamp as string,

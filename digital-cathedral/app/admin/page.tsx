@@ -259,8 +259,8 @@ export default function AdminDashboard() {
       {/* Veteran + Coverage Breakdown */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <div className="cathedral-surface p-4" role="region" aria-label="Veteran status breakdown">
-            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-3">Veteran Status</p>
+          <div className="cathedral-surface p-4" role="region" aria-label="Service category breakdown">
+            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-3">Service Category</p>
             <div className="space-y-2">
               {Object.entries(stats.byVeteranStatus).map(([status, count]) => (
                 <div key={status} className="flex justify-between text-sm">
@@ -320,7 +320,7 @@ export default function AdminDashboard() {
           <select
             value={filterVeteran}
             onChange={(e) => { setFilterVeteran(e.target.value); setPage(0); }}
-            aria-label="Filter by military status"
+            aria-label="Filter by service category"
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
             <option value="">All Military Status</option>
@@ -391,12 +391,12 @@ export default function AdminDashboard() {
                     {COVERAGE_LABELS[lead.coverageInterest] || lead.coverageInterest}
                   </td>
                   <td className="px-4 py-3">
-                    {lead.veteranStatus === "veteran" ? (
-                      <span className="text-teal-cathedral text-xs">
-                        Veteran{lead.militaryBranch ? ` (${lead.militaryBranch})` : ""}
-                      </span>
+                    {lead.veteranStatus === "non-military" ? (
+                      <span className="text-[var(--text-muted)] text-xs">Non-Military</span>
                     ) : (
-                      <span className="text-[var(--text-muted)] text-xs">Non-Veteran</span>
+                      <span className="text-teal-cathedral text-xs capitalize">
+                        {lead.veteranStatus?.replace("-", " ")}{lead.militaryBranch ? ` (${lead.militaryBranch})` : ""}
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-[var(--text-muted)] text-xs">

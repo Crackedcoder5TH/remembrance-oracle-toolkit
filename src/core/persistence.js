@@ -113,7 +113,7 @@ function transferPattern(pattern, targetStore) {
  * This is the automatic private sync — runs on every `oracle sync`.
  */
 function syncToGlobal(localStore, options = {}) {
-  const { verbose = false, dryRun = false, minCoherency = 0.6 } = options;
+  const { verbose = false, dryRun = false, minCoherency = 0.0 } = options;
   const personalStore = openPersonalStore();
   if (!personalStore) {
     return { synced: 0, skipped: 0, total: 0, error: 'No SQLite available' };
@@ -355,7 +355,7 @@ function shareToCommunity(localStore, options = {}) {
  * Users can browse and selectively pull community patterns.
  */
 function pullFromCommunity(localStore, options = {}) {
-  const { verbose = false, dryRun = false, language, minCoherency = 0.6, maxPull = Infinity, nameFilter } = options;
+  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = Infinity, nameFilter } = options;
   const communityStore = openCommunityStore();
   if (!communityStore) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };

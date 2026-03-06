@@ -139,7 +139,7 @@ function startDaemon(oracle, options = {}) {
           const { syncToGlobal } = require('../core/persistence');
           const sqliteStore = oracle.store?.getSQLiteStore?.();
           if (sqliteStore) {
-            syncToGlobal(sqliteStore, { minCoherency: 0.6 });
+            syncToGlobal(sqliteStore, { minCoherency: 0.0 });
             report.sync = { synced: true };
           }
         } catch (err) {

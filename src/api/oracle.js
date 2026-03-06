@@ -82,7 +82,7 @@ class RemembranceOracle {
         if (hasGlobalStore()) {
           const sqliteStore = this.store.getSQLiteStore ? this.store.getSQLiteStore() : null;
           if (sqliteStore) {
-            syncFromGlobal(sqliteStore, { minCoherency: 0.6 });
+            syncFromGlobal(sqliteStore, { minCoherency: 0.0 });
           }
         }
       } catch (e) {

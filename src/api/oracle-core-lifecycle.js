@@ -67,7 +67,7 @@ module.exports = {
         const { syncToGlobal } = require('../core/persistence');
         const sqliteStore = this.store.getSQLiteStore();
         if (sqliteStore) {
-          syncToGlobal(sqliteStore, { minCoherency: 0.6 });
+          syncToGlobal(sqliteStore, { minCoherency: 0.0 });
           report.synced = true;
         }
       } catch (e) {

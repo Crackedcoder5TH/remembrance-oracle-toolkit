@@ -8,3 +8,7 @@ node_modules/
 .cursor/
 .vscode/
 .mcp.json
+.idea/
+.oracle-vim.vim
+.oracle-coc-settings.json
+.oracle-emacs.el

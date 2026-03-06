@@ -97,6 +97,7 @@ function getDashboardScript(resilientFetchSource) {
     if (panelName === 'debug' && !window._debugLoaded) loadDebugStats();
     if (panelName === 'teams' && !window._teamsLoaded) loadTeams();
     if (panelName === 'admin' && !window._adminLoaded) loadAdmin();
+    if (panelName === 'healing' && !window._healingLoaded) loadHealingPanel();
   }
 
   navItems.forEach(function(item) {
@@ -948,6 +949,98 @@ function getDashboardScript(resilientFetchSource) {
   });
 
   // ─── Admin Tab ───
+  // ─── Healing Panel ───
+  var healingFeedEntries = [];
+
+  function loadHealingPanel() {
+    window._healingLoaded = true;
+    resilientFetch('/api/healing/stats').then(function(resp) { return resp.json(); }).then(function(data) {
+      document.getElementById('heal-tracked').textContent = data.tracked || 0;
+      document.getElementById('heal-total').textContent = data.totalAttempts || 0;
+      document.getElementById('heal-rate').textContent = data.rate ? (data.rate * 100).toFixed(1) + '%' : 'N/A';
+
+      // Build history list
+      var container = document.getElementById('healing-history-list');
+      if (!data.patterns || data.patterns.length === 0) {
+        container.innerHTML = emptyState('&#10024;', 'No healing history yet. Patterns will appear here after being healed.');
+        return;
+      }
+      var html = '<table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr style="border-bottom:1px solid var(--border);text-align:left;">' +
+        '<th style="padding:6px 8px;">Pattern</th>' +
+        '<th style="padding:6px 8px;">Attempts</th>' +
+        '<th style="padding:6px 8px;">Successes</th>' +
+        '<th style="padding:6px 8px;">Best</th>' +
+        '<th style="padding:6px 8px;">Strategy</th>' +
+        '<th style="padding:6px 8px;">Last</th></tr></thead><tbody>';
+      data.patterns.forEach(function(p) {
+        var rate = p.attempts > 0 ? ((p.successes / p.attempts) * 100).toFixed(0) + '%' : 'N/A';
+        html += '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:6px 8px;font-weight:bold;">' + escapeHtml(p.pattern_name || p.pattern_id || 'unknown') + '</td>' +
+          '<td style="padding:6px 8px;">' + (p.attempts || 0) + '</td>' +
+          '<td style="padding:6px 8px;">' + (p.successes || 0) + ' (' + rate + ')</td>' +
+          '<td style="padding:6px 8px;color:var(--accent);">' + (p.best_coherency || 0).toFixed(3) + '</td>' +
+          '<td style="padding:6px 8px;">' + escapeHtml(p.last_strategy || '-') + '</td>' +
+          '<td style="padding:6px 8px;color:var(--fg3);">' + escapeHtml((p.last_attempt || '').slice(0, 19)) + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }).catch(function(err) {
+      document.getElementById('healing-history-list').innerHTML = '<div style="color:var(--fg3)">Failed to load healing stats: ' + escapeHtml(err.message) + '</div>';
+    });
+  }
+
+  function appendHealingFeedEntry(icon, text, color) {
+    var feed = document.getElementById('healing-live-feed');
+    if (!feed) return;
+    // Clear empty state on first entry
+    if (healingFeedEntries.length === 0) feed.innerHTML = '';
+    var ts = new Date().toLocaleTimeString();
+    var entry = document.createElement('div');
+    entry.style.cssText = 'padding:4px 0;border-bottom:1px solid var(--border);color:' + (color || 'var(--fg1)');
+    entry.innerHTML = '<span style="color:var(--fg3);margin-right:8px;">' + ts + '</span>' + icon + ' ' + escapeHtml(text);
+    feed.prepend(entry);
+    healingFeedEntries.push(entry);
+    // Keep only last 50 entries
+    if (healingFeedEntries.length > 50) {
+      var old = healingFeedEntries.shift();
+      if (old.parentNode) old.remove();
+    }
+    // Update active count
+    var activeEl = document.getElementById('heal-active');
+    if (activeEl) activeEl.textContent = document.querySelectorAll('#healing-banner').length > 0 ? '1' : '0';
+  }
+
+  // Wire healing WebSocket events to the feed
+  var origHandleWSEvent = handleWSEvent;
+  handleWSEvent = function(data) {
+    origHandleWSEvent(data);
+    if (data.type === 'healing_start') {
+      appendHealingFeedEntry('&#10024;', 'Started healing ' + (data.patternName || 'unknown') + ' (' + (data.decision || '') + ')', '#a78bfa');
+      var activeEl = document.getElementById('heal-active');
+      if (activeEl) activeEl.textContent = '1';
+    }
+    if (data.type === 'healing_progress') {
+      appendHealingFeedEntry('&#128260;', 'Loop ' + data.loop + '/' + data.maxLoops + ' for ' + (data.patternName || '') + ' — coherence: ' + (data.coherence || 0).toFixed(3) + ' (' + (data.strategy || '') + ')', 'var(--fg2)');
+    }
+    if (data.type === 'healing_complete') {
+      var sign = (data.improvement || 0) >= 0 ? '+' : '';
+      appendHealingFeedEntry('&#9989;', 'Healed ' + (data.patternName || '') + ' → ' + (data.finalCoherence || 0).toFixed(3) + ' (' + sign + (data.improvement || 0).toFixed(3) + ') in ' + (data.loops || 0) + ' loop(s)', '#22c55e');
+      var activeEl = document.getElementById('heal-active');
+      if (activeEl) activeEl.textContent = '0';
+      // Refresh stats
+      if (window._healingLoaded) loadHealingPanel();
+    }
+    if (data.type === 'healing_failed') {
+      appendHealingFeedEntry('&#10060;', 'Failed: ' + (data.patternName || '') + ' — ' + (data.error || 'unknown'), '#ef4444');
+      var activeEl = document.getElementById('heal-active');
+      if (activeEl) activeEl.textContent = '0';
+    }
+  };
+
+  var refreshHealingBtn = document.getElementById('refresh-healing-btn');
+  if (refreshHealingBtn) refreshHealingBtn.addEventListener('click', function() { window._healingLoaded = false; loadHealingPanel(); });
+
   function loadAdmin() {
     window._adminLoaded = true;
     // Load users

@@ -13,25 +13,81 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     const verbose = args.verbose === 'true' || args.verbose === true;
     const dryRun = parseDryRun(args);
     const { PERSONAL_DIR } = require('../../core/persistence');
+    const { SyncQueue } = require('../../store/sync-queue');
+    const queue = new SyncQueue();
+
+    // Handle queue sub-commands
+    if (direction === 'queue') {
+      const qStats = queue.stats();
+      console.log(c.boldCyan('Sync Queue Status') + '\n');
+      console.log(`  Pending:   ${c.bold(String(qStats.pending))}`);
+      console.log(`  Failed:    ${c.boldRed(String(qStats.failed))}`);
+      console.log(`  Completed: ${c.dim(String(qStats.completed))}`);
+      console.log(`  Total:     ${c.dim(String(qStats.total))}`);
+      return;
+    }
+
+    if (direction === 'drain') {
+      const pending = queue.pending();
+      if (pending.length === 0) {
+        console.log(c.dim('Sync queue is empty — nothing to drain.'));
+        return;
+      }
+      console.log(`Draining ${pending.length} queued sync operation(s)...\n`);
+      queue.drain((op) => {
+        if (op.type === 'push') return oracle.syncToGlobal(op.options || {});
+        if (op.type === 'pull') return oracle.syncFromGlobal(op.options || {});
+        return oracle.sync(op.options || {});
+      }).then((result) => {
+        console.log(`  Drained: ${c.boldGreen(String(result.drained))}`);
+        console.log(`  Failed:  ${c.boldRed(String(result.failed))}`);
+        console.log(`  Remaining: ${c.dim(String(result.remaining))}`);
+      });
+      return;
+    }
 
     console.log(c.boldCyan('Personal Sync') + c.dim(` — ${PERSONAL_DIR}\n`));
 
-    if (direction === 'push' || direction === 'to') {
-      const report = oracle.syncToGlobal({ verbose, dryRun });
-      console.log(`Pushed to personal: ${c.boldGreen(String(report.synced))} patterns`);
-      console.log(`  Duplicates:       ${c.dim(String(report.duplicates))}`);
-      console.log(`  Skipped:          ${c.dim(String(report.skipped))}`);
-    } else if (direction === 'pull' || direction === 'from') {
-      const lang = args.language;
-      const maxPull = parseInt(args['max-pull']) || Infinity;
-      const report = oracle.syncFromGlobal({ verbose, dryRun, language: lang, maxPull });
-      console.log(`Pulled from personal: ${c.boldGreen(String(report.pulled))} patterns`);
-      console.log(`  Duplicates:         ${c.dim(String(report.duplicates))}`);
-      console.log(`  Skipped:            ${c.dim(String(report.skipped))}`);
-    } else {
-      const report = oracle.sync({ verbose, dryRun });
-      console.log(`${c.bold('Push')} (local → personal): ${c.boldGreen(String(report.push.synced))} synced, ${c.dim(String(report.push.duplicates))} duplicates`);
-      console.log(`${c.bold('Pull')} (personal → local): ${c.boldGreen(String(report.pull.pulled))} pulled, ${c.dim(String(report.pull.duplicates))} duplicates`);
+    try {
+      if (direction === 'push' || direction === 'to') {
+        const report = oracle.syncToGlobal({ verbose, dryRun });
+        console.log(`Pushed to personal: ${c.boldGreen(String(report.synced))} patterns`);
+        console.log(`  Duplicates:       ${c.dim(String(report.duplicates))}`);
+        console.log(`  Skipped:          ${c.dim(String(report.skipped))}`);
+      } else if (direction === 'pull' || direction === 'from') {
+        const lang = args.language;
+        const maxPull = parseInt(args['max-pull']) || Infinity;
+        const report = oracle.syncFromGlobal({ verbose, dryRun, language: lang, maxPull });
+        console.log(`Pulled from personal: ${c.boldGreen(String(report.pulled))} patterns`);
+        console.log(`  Duplicates:         ${c.dim(String(report.duplicates))}`);
+        console.log(`  Skipped:            ${c.dim(String(report.skipped))}`);
+      } else {
+        const report = oracle.sync({ verbose, dryRun });
+        console.log(`${c.bold('Push')} (local → personal): ${c.boldGreen(String(report.push.synced))} synced, ${c.dim(String(report.push.duplicates))} duplicates`);
+        console.log(`${c.bold('Pull')} (personal → local): ${c.boldGreen(String(report.pull.pulled))} pulled, ${c.dim(String(report.pull.duplicates))} duplicates`);
+      }
+
+      // If sync succeeded and there are queued operations, try to drain
+      const qStats = queue.stats();
+      if (qStats.pending > 0) {
+        console.log(c.dim(`\n  Draining ${qStats.pending} queued operation(s)...`));
+        queue.drain((op) => {
+          if (op.type === 'push') return oracle.syncToGlobal(op.options || {});
+          if (op.type === 'pull') return oracle.syncFromGlobal(op.options || {});
+          return oracle.sync(op.options || {});
+        }).catch(() => {});
+      }
+    } catch (err) {
+      // Sync failed — queue for offline retry
+      queue.enqueue({
+        type: direction === 'push' || direction === 'to' ? 'push' : direction === 'pull' || direction === 'from' ? 'pull' : 'both',
+        scope: 'personal',
+        options: { verbose, language: args.language },
+      });
+      const qStats = queue.stats();
+      console.log(c.yellow(`Sync failed: ${err.message}`));
+      console.log(c.dim(`  Operation queued for retry (${qStats.pending} pending)`));
+      console.log(c.dim(`  Run ${c.cyan('oracle sync drain')} to retry queued operations`));
     }
 
     if (dryRun) console.log(c.yellow('\n(dry run — no changes made)'));

@@ -1,26 +1,30 @@
 name: 'Remembrance Oracle'
-description: 'AI code memory — stores only proven code and serves the most relevant, highest-coherency snippets'
+description: 'AI code memory — validate, query, search, and manage proven code patterns in CI/CD pipelines'
 author: 'Crackedcoder5TH'
+
+branding:
+  icon: 'database'
+  color: 'purple'
 
 inputs:
   command:
-    description: 'Command to run: submit, query, validate, stats, feedback, prune'
+    description: 'Command to run: submit, query, search, resolve, validate, stats, patterns, feedback, inspect, prune, harvest, maintain, auto-submit, covenant, security-scan'
     required: true
     default: 'stats'
   file:
-    description: 'Path to code file (for submit/validate)'
+    description: 'Path to code file (for submit/validate/covenant/security-scan)'
     required: false
   test-file:
     description: 'Path to test file (for submit/validate)'
     required: false
   description:
-    description: 'Description (for submit/query)'
+    description: 'Description (for submit/query/search/resolve)'
     required: false
   tags:
     description: 'Comma-separated tags (for submit/query)'
     required: false
   language:
-    description: 'Language (for submit/query)'
+    description: 'Language filter (javascript, python, typescript, rust, go)'
     required: false
   entry-id:
     description: 'Entry ID (for feedback/inspect)'
@@ -33,9 +37,16 @@ inputs:
     required: false
     default: '0.5'
   limit:
-    description: 'Max results (for query)'
+    description: 'Max results (for query/search)'
     required: false
     default: '5'
+  path:
+    description: 'Directory path (for harvest)'
+    required: false
+    default: '.'
+  args:
+    description: 'Additional CLI arguments (passed through to the command)'
+    required: false
 
 outputs:
   result:
@@ -44,6 +55,10 @@ outputs:
     description: 'Whether submitted code was accepted (submit only)'
   coherency-score:
     description: 'Coherency score of submitted/validated code'
+  decision:
+    description: 'PULL/EVOLVE/GENERATE decision (resolve only)'
+  sealed:
+    description: 'Whether covenant is sealed (covenant only)'
 
 runs:
   using: 'node20'

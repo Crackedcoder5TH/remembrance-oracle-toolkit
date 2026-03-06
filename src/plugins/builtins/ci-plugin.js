@@ -28,6 +28,21 @@ module.exports = {
       autoSubmit, autoRegister,
     };
 
+    // Auto-track submissions for CI feedback reporting
+    const reporter = new CIFeedbackReporter(ctx.oracle);
+
+    ctx.hooks.onAfterSubmit((result) => {
+      if (result.accepted && result.entry?.id) {
+        reporter.trackSubmission(result.entry.id, result.entry.name || 'unnamed');
+        ctx.logger.debug(`CI tracking submission: ${result.entry.id}`);
+      }
+    });
+
+    ctx.hooks.onPatternRegistered((pattern) => {
+      reporter.trackSubmission(pattern.id, pattern.name || 'unnamed');
+      ctx.logger.debug(`CI tracking pattern: ${pattern.name || pattern.id}`);
+    });
+
     ctx.logger.info('CI plugin activated — git hooks and automation available');
 
     return function deactivate() {

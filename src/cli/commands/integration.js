@@ -45,6 +45,23 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
       return;
     }
 
+    // Non-MCP editor configs (vim, emacs, jetbrains)
+    const nonMcpEditors = ['vim', 'neovim', 'nvim', 'emacs', 'jetbrains', 'intellij', 'webstorm', 'pycharm'];
+    if (sub && nonMcpEditors.includes(sub.toLowerCase())) {
+      const { installEditorConfig } = require('../../ide/mcp-install');
+      const result = installEditorConfig(sub.toLowerCase());
+      if (result.success) {
+        console.log(`\n${c.boldCyan('Editor Config Installed')}\n`);
+        for (const f of result.files) {
+          console.log(`  ${c.green('\u2713')} ${c.dim(f)}`);
+        }
+        console.log(`\n  ${result.instructions}`);
+      } else {
+        console.log(`${c.red('\u2717')} ${result.error}`);
+      }
+      return;
+    }
+
     const target = sub && sub !== 'all' ? sub : null;
     const useNpx = args.npx || false;
     const opts = useNpx ? { command: 'npx' } : {};
@@ -66,30 +83,67 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
         console.log(`  ${icon} ${c.bold(editor.padEnd(16))} ${result.success ? c.dim(result.path) : result.error}`);
         if (result.success) installed++;
       }
-      console.log(`\n  ${c.boldGreen(installed + ' editors configured.')}`);
-      console.log(`  ${c.dim('Restart your editor to activate the oracle MCP server.')}`);
+      console.log(`\n  ${c.boldGreen(installed + ' MCP editors configured.')}`);
+      console.log(`  ${c.dim('Also available: oracle mcp-install vim|emacs|jetbrains')}`);
     }
   };
 
   handlers['plugin'] = (args) => {
     const { PluginManager } = require('../../plugins/manager');
+    const { listBuiltins, loadBuiltinPlugin, loadAllBuiltins } = require('../../plugins/builtins');
     const pm = new PluginManager(oracle, { pluginDir: path.join(process.cwd(), '.remembrance', 'plugins') });
     const sub = args._sub;
 
     if (sub === 'load') {
       const pluginPath = args._positional[1];
-      if (!pluginPath) { console.error(c.boldRed('Error:') + ' provide a plugin path'); process.exit(1); }
+      if (!pluginPath) { console.error(c.boldRed('Error:') + ' provide a plugin path or builtin name (dashboard, cloud, auth, ide, ci)'); process.exit(1); }
+
       try {
-        const manifest = pm.load(pluginPath);
+        // Check if it's a builtin name
+        const builtins = listBuiltins();
+        let manifest;
+        if (builtins.includes(pluginPath)) {
+          manifest = loadBuiltinPlugin(pm, pluginPath);
+        } else {
+          manifest = pm.load(pluginPath);
+        }
         console.log(`${c.green('\u2713')} Loaded plugin ${c.bold(manifest.name)} v${manifest.version}`);
         if (manifest.description) console.log(`  ${c.dim(manifest.description)}`);
       } catch (e) {
         console.error(c.boldRed('Error:') + ' ' + e.message);
       }
+    } else if (sub === 'load-all') {
+      try {
+        const manifests = loadAllBuiltins(pm);
+        console.log(`${c.green('\u2713')} Loaded ${manifests.length} built-in plugins:\n`);
+        for (const m of manifests) {
+          console.log(`  ${c.bold(m.name)} v${m.version}`);
+          if (m.description) console.log(`    ${c.dim(m.description)}`);
+        }
+      } catch (e) {
+        console.error(c.boldRed('Error:') + ' ' + e.message);
+      }
+    } else if (sub === 'builtins') {
+      const builtins = listBuiltins();
+      console.log(`\n${c.boldCyan('Available Built-in Plugins')}\n`);
+      for (const name of builtins) {
+        try {
+          const plugin = require(`../../plugins/builtins/${name}-plugin`);
+          console.log(`  ${c.bold(name)} v${plugin.version}`);
+          if (plugin.description) console.log(`    ${c.dim(plugin.description)}`);
+        } catch {
+          console.log(`  ${c.bold(name)}`);
+        }
+      }
+      console.log(`\n  Load with: ${c.cyan('oracle plugin load <name>')}`);
+      console.log(`  Load all:  ${c.cyan('oracle plugin load-all')}`);
     } else if (sub === 'list') {
       const list = pm.list();
       if (list.length === 0) {
+        const builtins = listBuiltins();
         console.log(c.dim('No plugins loaded'));
+        console.log(`\n  ${builtins.length} built-in plugins available: ${builtins.join(', ')}`);
+        console.log(`  Load with: ${c.cyan('oracle plugin load <name>')} or ${c.cyan('oracle plugin load-all')}`);
       } else {
         console.log(`\n${c.boldCyan('Loaded Plugins')}\n`);
         for (const p of list) {
@@ -109,9 +163,11 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
       }
     } else {
       console.log(`\n${c.boldCyan('Plugin Commands')}\n`);
-      console.log(`  ${c.cyan('oracle plugin load <path>')}   \u2014 Load a plugin`);
-      console.log(`  ${c.cyan('oracle plugin list')}          \u2014 List loaded plugins`);
-      console.log(`  ${c.cyan('oracle plugin unload <name>')} \u2014 Unload a plugin`);
+      console.log(`  ${c.cyan('oracle plugin load <path|name>')} \u2014 Load a plugin (path or builtin name)`);
+      console.log(`  ${c.cyan('oracle plugin load-all')}          \u2014 Load all built-in plugins`);
+      console.log(`  ${c.cyan('oracle plugin builtins')}          \u2014 List available built-in plugins`);
+      console.log(`  ${c.cyan('oracle plugin list')}              \u2014 List loaded plugins`);
+      console.log(`  ${c.cyan('oracle plugin unload <name>')}     \u2014 Unload a plugin`);
     }
   };
 

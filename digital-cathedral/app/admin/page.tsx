@@ -337,7 +337,7 @@ export default function AdminDashboard() {
               <th className="px-4 py-3" scope="col">Contact</th>
               <th className="px-4 py-3" scope="col">State</th>
               <th className="px-4 py-3" scope="col">Coverage</th>
-              <th className="px-4 py-3" scope="col">Veteran</th>
+              <th className="px-4 py-3" scope="col">Status</th>
               <th className="px-4 py-3" scope="col">Source</th>
               <th className="px-4 py-3" scope="col">Date</th>
             </tr>

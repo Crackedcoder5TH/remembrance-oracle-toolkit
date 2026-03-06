@@ -112,7 +112,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       const { syncToGlobal } = require('../core/persistence');
       const sqliteStore = oracle.store?.getSQLiteStore?.();
       if (sqliteStore) {
-        const syncResult = syncToGlobal(sqliteStore, { minCoherency: 0.6 });
+        const syncResult = syncToGlobal(sqliteStore, { minCoherency: 0.0 });
         report.synced = true;
         if (!silent && syncResult?.synced > 0) {
           log(`Synced ${syncResult.synced} pattern(s) to personal store`);

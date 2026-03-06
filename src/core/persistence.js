@@ -119,16 +119,11 @@ function syncToGlobal(localStore, options = {}) {
     return { synced: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
-  // Auto-deduplicate the personal store before syncing (clean up historical cruft)
-  if (typeof personalStore.deduplicatePatterns === 'function') {
-    personalStore.deduplicatePatterns();
-  }
-
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore.getAllPatterns();
   const personalIndex = new Set(personalPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
-  const report = { synced: 0, skipped: 0, duplicates: 0, total: localPatterns.length, details: [] };
+  const report = { synced: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of localPatterns) {
     const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
@@ -164,6 +159,20 @@ function syncToGlobal(localStore, options = {}) {
     report.details.push({ name: pattern.name, language: pattern.language, direction: 'to-personal' });
   }
 
+  // Sync candidates to personal store (prevents loss on .remembrance/ deletion)
+  try {
+    report.candidates = _syncCandidatesToPersonal(localStore, personalStore, { verbose, dryRun });
+  } catch (err) {
+    if (verbose) console.log(`  [WARN] candidate sync failed: ${err.message}`);
+  }
+
+  // Sync debug patterns to personal store
+  try {
+    report.debug = _syncDebugToPersonal(localStore, personalStore, { verbose, dryRun });
+  } catch (err) {
+    if (verbose) console.log(`  [WARN] debug sync failed: ${err.message}`);
+  }
+
   return report;
 }
 
@@ -171,27 +180,17 @@ function syncToGlobal(localStore, options = {}) {
  * Pull patterns from personal store into local store.
  */
 function syncFromGlobal(localStore, options = {}) {
-  const { verbose = false, dryRun = false, language, minCoherency = 0.6, maxPull = Infinity } = options;
+  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = Infinity } = options;
   const personalStore = openPersonalStore();
   if (!personalStore) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
-  }
-
-  // Deduplicate the personal store first (removes historical cruft)
-  if (typeof personalStore.deduplicatePatterns === 'function') {
-    personalStore.deduplicatePatterns();
-  }
-
-  // Deduplicate local store too
-  if (typeof localStore.deduplicatePatterns === 'function') {
-    localStore.deduplicatePatterns();
   }
 
   const personalPatterns = personalStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
   const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
-  const report = { pulled: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, details: [] };
+  const report = { pulled: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, candidates: { pulled: 0, duplicates: 0 }, debug: { pulled: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of personalPatterns) {
     if (report.pulled >= maxPull) break;
@@ -231,6 +230,20 @@ function syncFromGlobal(localStore, options = {}) {
       console.log(`  [←PULL] ${pattern.name} (${pattern.language}) coherency: ${coherency.toFixed ? coherency.toFixed(3) : coherency}`);
     }
     report.details.push({ name: pattern.name, language: pattern.language, direction: 'from-personal' });
+  }
+
+  // Pull candidates from personal store
+  try {
+    report.candidates = _syncCandidatesFromPersonal(localStore, personalStore, { verbose, dryRun });
+  } catch (err) {
+    if (verbose) console.log(`  [WARN] candidate pull failed: ${err.message}`);
+  }
+
+  // Pull debug patterns from personal store
+  try {
+    report.debug = _syncDebugFromPersonal(localStore, personalStore, { verbose, dryRun });
+  } catch (err) {
+    if (verbose) console.log(`  [WARN] debug pull failed: ${err.message}`);
   }
 
   return report;
@@ -839,6 +852,241 @@ function debugGlobalStats() {
     personal: stats.personal,
     community: stats.community,
   };
+}
+
+// ─── Candidate Sync Helpers ───
+
+/**
+ * Sync candidates from local to personal store (push direction).
+ * Prevents candidate loss when .remembrance/ is deleted.
+ */
+function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const report = { synced: 0, duplicates: 0 };
+
+  // Ensure candidates table exists on personal store
+  _ensureCandidatesSchema(personalStore);
+
+  let localCandidates;
+  try {
+    localCandidates = localStore.db.prepare(
+      'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC'
+    ).all();
+  } catch { return report; }
+
+  if (localCandidates.length === 0) return report;
+
+  let personalCandidates;
+  try {
+    personalCandidates = personalStore.db.prepare(
+      'SELECT name, language FROM candidates'
+    ).all();
+  } catch { personalCandidates = []; }
+
+  const personalIndex = new Set(personalCandidates.map(
+    c => `${c.name.toLowerCase()}:${(c.language || 'unknown').toLowerCase()}`
+  ));
+
+  for (const candidate of localCandidates) {
+    const key = `${candidate.name.toLowerCase()}:${(candidate.language || 'unknown').toLowerCase()}`;
+    if (personalIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        _transferCandidate(candidate, personalStore);
+      } catch { continue; }
+    }
+
+    personalIndex.add(key);
+    report.synced++;
+    if (verbose) console.log(`  [SYNC→ candidate] ${candidate.name} (${candidate.language})`);
+  }
+
+  return report;
+}
+
+/**
+ * Sync candidates from personal to local store (pull direction).
+ */
+function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const report = { pulled: 0, duplicates: 0 };
+
+  let personalCandidates;
+  try {
+    personalCandidates = personalStore.db.prepare(
+      'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC'
+    ).all();
+  } catch { return report; }
+
+  if (personalCandidates.length === 0) return report;
+
+  // Ensure candidates table exists on local store (it should, but be safe)
+  _ensureCandidatesSchema(localStore);
+
+  let localCandidates;
+  try {
+    localCandidates = localStore.db.prepare('SELECT name, language FROM candidates').all();
+  } catch { localCandidates = []; }
+
+  const localIndex = new Set(localCandidates.map(
+    c => `${c.name.toLowerCase()}:${(c.language || 'unknown').toLowerCase()}`
+  ));
+
+  for (const candidate of personalCandidates) {
+    const key = `${candidate.name.toLowerCase()}:${(candidate.language || 'unknown').toLowerCase()}`;
+    if (localIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        _transferCandidate(candidate, localStore);
+      } catch { continue; }
+    }
+
+    localIndex.add(key);
+    report.pulled++;
+    if (verbose) console.log(`  [←PULL candidate] ${candidate.name} (${candidate.language})`);
+  }
+
+  return report;
+}
+
+function _ensureCandidatesSchema(store) {
+  try {
+    store.db.exec(`
+      CREATE TABLE IF NOT EXISTS candidates (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        language TEXT DEFAULT 'unknown',
+        pattern_type TEXT DEFAULT 'utility',
+        complexity TEXT DEFAULT 'composite',
+        description TEXT DEFAULT '',
+        tags TEXT DEFAULT '[]',
+        coherency_total REAL DEFAULT 0,
+        coherency_json TEXT DEFAULT '{}',
+        test_code TEXT,
+        parent_pattern TEXT,
+        generation_method TEXT DEFAULT 'variant',
+        promoted_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_candidates_language ON candidates(language);
+      CREATE INDEX IF NOT EXISTS idx_candidates_coherency ON candidates(coherency_total);
+    `);
+  } catch { /* table already exists */ }
+}
+
+function _transferCandidate(candidate, targetStore) {
+  targetStore.db.prepare(`
+    INSERT OR IGNORE INTO candidates (id, name, code, language, pattern_type, complexity,
+      description, tags, coherency_total, coherency_json, test_code,
+      parent_pattern, generation_method, promoted_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    candidate.id, candidate.name, candidate.code, candidate.language || 'unknown',
+    candidate.pattern_type || 'utility', candidate.complexity || 'composite',
+    candidate.description || '', candidate.tags || '[]',
+    candidate.coherency_total ?? 0, candidate.coherency_json || '{}',
+    candidate.test_code || null,
+    candidate.parent_pattern || null, candidate.generation_method || 'variant',
+    candidate.promoted_at || null, candidate.created_at, candidate.updated_at
+  );
+}
+
+/**
+ * Inline debug sync for syncToGlobal (avoids calling the heavier syncDebugToPersonal).
+ */
+function _syncDebugToPersonal(localStore, personalStore, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const report = { synced: 0, duplicates: 0 };
+
+  _ensureDebugSchema(personalStore);
+
+  let localDebug;
+  try {
+    localDebug = localStore.db.prepare('SELECT * FROM debug_patterns ORDER BY confidence DESC').all();
+  } catch { return report; }
+
+  if (localDebug.length === 0) return report;
+
+  let personalDebug;
+  try {
+    personalDebug = personalStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
+  } catch { personalDebug = []; }
+
+  const personalIndex = new Set(personalDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
+
+  for (const dp of localDebug) {
+    const key = `${dp.fingerprint_hash}:${dp.language}`;
+    if (personalIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        _transferDebugPattern(dp, personalStore);
+      } catch { continue; }
+    }
+
+    personalIndex.add(key);
+    report.synced++;
+    if (verbose) console.log(`  [SYNC→ debug] ${dp.error_class}:${dp.error_category} (${dp.language})`);
+  }
+
+  return report;
+}
+
+/**
+ * Inline debug pull for syncFromGlobal.
+ */
+function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const report = { pulled: 0, duplicates: 0 };
+
+  _ensureDebugSchema(localStore);
+
+  let personalDebug;
+  try {
+    personalDebug = personalStore.db.prepare('SELECT * FROM debug_patterns ORDER BY confidence DESC').all();
+  } catch { return report; }
+
+  if (personalDebug.length === 0) return report;
+
+  let localDebug;
+  try {
+    localDebug = localStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
+  } catch { localDebug = []; }
+
+  const localIndex = new Set(localDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
+
+  for (const dp of personalDebug) {
+    const key = `${dp.fingerprint_hash}:${dp.language}`;
+    if (localIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        _transferDebugPattern(dp, localStore);
+      } catch { continue; }
+    }
+
+    localIndex.add(key);
+    report.pulled++;
+    if (verbose) console.log(`  [←PULL debug] ${dp.error_class}:${dp.error_category} (${dp.language})`);
+  }
+
+  return report;
 }
 
 // ─── Debug Helpers ───

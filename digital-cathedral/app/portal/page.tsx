@@ -603,7 +603,7 @@ export default function ClientPortal() {
 
                 {/* Cardholder Name */}
                 <div className="mb-3">
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">Cardholder Name</label>
+                  <label className="block text-xs text-white mb-1">Cardholder Name</label>
                   <input
                     type="text"
                     value={paymentForm.cardholderName}
@@ -616,7 +616,7 @@ export default function ClientPortal() {
 
                 {/* Card Number */}
                 <div className="mb-3">
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">Card Number</label>
+                  <label className="block text-xs text-white mb-1">Card Number</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -639,7 +639,7 @@ export default function ClientPortal() {
                 {/* Expiry + CVV */}
                 <div className="grid grid-cols-3 gap-3 mb-3">
                   <div>
-                    <label className="block text-xs text-[var(--text-muted)] mb-1">Month</label>
+                    <label className="block text-xs text-white mb-1">Month</label>
                     <select
                       value={paymentForm.expMonth}
                       onChange={(e) => setPaymentForm((prev) => ({ ...prev, expMonth: e.target.value }))}
@@ -654,7 +654,7 @@ export default function ClientPortal() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-[var(--text-muted)] mb-1">Year</label>
+                    <label className="block text-xs text-white mb-1">Year</label>
                     <select
                       value={paymentForm.expYear}
                       onChange={(e) => setPaymentForm((prev) => ({ ...prev, expYear: e.target.value }))}
@@ -669,7 +669,7 @@ export default function ClientPortal() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-[var(--text-muted)] mb-1">CVV</label>
+                    <label className="block text-xs text-white mb-1">CVV</label>
                     <input
                       type="text"
                       value={paymentForm.cvv}
@@ -691,7 +691,7 @@ export default function ClientPortal() {
                 <label className="block text-xs metallic-gold uppercase tracking-wider mb-3">Billing Address</label>
 
                 <div className="mb-3">
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">Street Address</label>
+                  <label className="block text-xs text-white mb-1">Street Address</label>
                   <input
                     type="text"
                     value={paymentForm.billingAddress}
@@ -704,7 +704,7 @@ export default function ClientPortal() {
 
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs text-[var(--text-muted)] mb-1">City</label>
+                    <label className="block text-xs text-white mb-1">City</label>
                     <input
                       type="text"
                       value={paymentForm.billingCity}
@@ -715,7 +715,7 @@ export default function ClientPortal() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-[var(--text-muted)] mb-1">State</label>
+                    <label className="block text-xs text-white mb-1">State</label>
                     <select
                       value={paymentForm.billingState}
                       onChange={(e) => setPaymentForm((prev) => ({ ...prev, billingState: e.target.value }))}
@@ -727,7 +727,7 @@ export default function ClientPortal() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-[var(--text-muted)] mb-1">ZIP Code</label>
+                    <label className="block text-xs text-white mb-1">ZIP Code</label>
                     <input
                       type="text"
                       value={paymentForm.billingZip}

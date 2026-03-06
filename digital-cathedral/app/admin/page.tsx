@@ -197,6 +197,12 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-3">
           <button
+            onClick={() => router.push("/admin/leads")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+          >
+            Lead Management
+          </button>
+          <button
             onClick={() => router.push("/admin/clients")}
             className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >

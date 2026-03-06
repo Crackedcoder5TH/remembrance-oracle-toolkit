@@ -724,19 +724,70 @@ class SqliteAdapter implements DbAdapter {
 // =============================================================================
 
 class NoopAdapter implements DbAdapter {
-  private fail<T>(op: string): Promise<Result<T, string>> {
-    return Promise.resolve(Err(`DATABASE_URL not configured. Set it in Vercel environment variables to enable ${op}.`));
-  }
   async initialize(): Promise<void> {}
-  insertLead(): Promise<Result<{ id: number; leadId: string }, string>> { return this.fail("lead storage"); }
-  getLeadById(): Promise<Result<LeadRecord | null, string>> { return this.fail("lead lookup"); }
-  getLeadsByEmail(): Promise<Result<LeadRecord[], string>> { return this.fail("lead lookup"); }
-  getRecentLeads(): Promise<Result<LeadRecord[], string>> { return this.fail("lead listing"); }
-  getLeadCount(): Promise<Result<number, string>> { return Promise.resolve(Ok(0)); }
-  getFilteredLeads(): Promise<Result<{ leads: LeadRecord[]; total: number }, string>> { return this.fail("lead filtering"); }
-  getLeadStats(): Promise<Result<LeadStats, string>> { return this.fail("stats"); }
-  deleteLeadByEmail(): Promise<Result<{ deleted: number }, string>> { return this.fail("lead deletion"); }
-  deleteLeadById(): Promise<Result<{ deleted: number }, string>> { return this.fail("lead deletion"); }
+
+  insertLead(lead: LeadRecord): Promise<Result<{ id: number; leadId: string }, string>> {
+    // In demo mode, report success so the seed UI shows results
+    return Promise.resolve(Ok({ id: 0, leadId: lead.leadId }));
+  }
+
+  async getLeadById(leadId: string): Promise<Result<LeadRecord | null, string>> {
+    const { DEMO_LEADS } = await import("./demo-leads");
+    const lead = DEMO_LEADS.find((l) => l.leadId === leadId) || null;
+    return Ok(lead);
+  }
+
+  async getLeadsByEmail(email: string): Promise<Result<LeadRecord[], string>> {
+    const { DEMO_LEADS } = await import("./demo-leads");
+    return Ok(DEMO_LEADS.filter((l) => l.email === email));
+  }
+
+  async getRecentLeads(limit: number): Promise<Result<LeadRecord[], string>> {
+    const { DEMO_LEADS } = await import("./demo-leads");
+    return Ok(DEMO_LEADS.slice(0, limit));
+  }
+
+  async getLeadCount(): Promise<Result<number, string>> {
+    const { DEMO_LEADS } = await import("./demo-leads");
+    return Ok(DEMO_LEADS.length);
+  }
+
+  async getFilteredLeads(filters: LeadFilters): Promise<Result<{ leads: LeadRecord[]; total: number }, string>> {
+    const { DEMO_LEADS } = await import("./demo-leads");
+    let leads = [...DEMO_LEADS];
+
+    if (filters.state) leads = leads.filter((l) => l.state === filters.state);
+    if (filters.coverageInterest) leads = leads.filter((l) => l.coverageInterest === filters.coverageInterest);
+    if (filters.veteranStatus) leads = leads.filter((l) => l.veteranStatus === filters.veteranStatus);
+    if (filters.search) {
+      const term = filters.search.toLowerCase();
+      leads = leads.filter((l) =>
+        l.firstName.toLowerCase().includes(term)
+        || l.lastName.toLowerCase().includes(term)
+        || l.email.toLowerCase().includes(term)
+      );
+    }
+
+    const total = leads.length;
+    const offset = filters.offset || 0;
+    const limit = filters.limit || 50;
+    leads = leads.slice(offset, offset + limit);
+
+    return Ok({ leads, total });
+  }
+
+  async getLeadStats(): Promise<Result<LeadStats, string>> {
+    const { getDemoStats } = await import("./demo-leads");
+    return Ok(getDemoStats());
+  }
+
+  deleteLeadByEmail(): Promise<Result<{ deleted: number }, string>> {
+    return Promise.resolve(Ok({ deleted: 0 }));
+  }
+
+  deleteLeadById(): Promise<Result<{ deleted: number }, string>> {
+    return Promise.resolve(Ok({ deleted: 0 }));
+  }
 }
 
 // =============================================================================

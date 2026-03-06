@@ -1078,30 +1078,88 @@ class SqliteClientAdapter implements ClientDbAdapter {
 // =============================================================================
 
 class NoopClientAdapter implements ClientDbAdapter {
-  private fail<T>(op: string): Promise<Result<T, string>> {
-    return Promise.resolve(Err(`DATABASE_URL not configured. ${op} unavailable.`));
-  }
   async initialize(): Promise<void> {}
-  insertClient(): Promise<Result<{ clientId: string }, string>> { return this.fail("Client creation"); }
-  getClientById(): Promise<Result<ClientRecord | null, string>> { return this.fail("Client lookup"); }
-  getClientByEmail(): Promise<Result<ClientRecord | null, string>> { return this.fail("Client lookup"); }
-  updateClient(): Promise<Result<{ updated: boolean }, string>> { return this.fail("Client update"); }
-  getFilteredClients(): Promise<Result<{ clients: ClientRecord[]; total: number }, string>> { return this.fail("Client listing"); }
-  getClientFilters(): Promise<Result<ClientFilters | null, string>> { return this.fail("Filters"); }
-  upsertClientFilters(): Promise<Result<{ saved: boolean }, string>> { return this.fail("Filters"); }
-  insertPurchase(): Promise<Result<{ purchaseId: string }, string>> { return this.fail("Purchases"); }
-  getPurchasesByClient(): Promise<Result<{ purchases: LeadPurchase[]; total: number }, string>> { return this.fail("Purchases"); }
-  getPurchasesByLead(): Promise<Result<LeadPurchase[], string>> { return this.fail("Purchases"); }
-  updatePurchaseStatus(): Promise<Result<{ updated: boolean }, string>> { return this.fail("Purchases"); }
-  getAllPurchases(): Promise<Result<{ purchases: LeadPurchase[]; total: number }, string>> { return this.fail("Purchases"); }
+
+  insertClient(client: ClientRecord): Promise<Result<{ clientId: string }, string>> {
+    return Promise.resolve(Ok({ clientId: client.clientId }));
+  }
+
+  async getClientById(clientId: string): Promise<Result<ClientRecord | null, string>> {
+    const { DEMO_CLIENT } = await import("./demo-client");
+    return Ok(clientId === DEMO_CLIENT.clientId ? DEMO_CLIENT : null);
+  }
+
+  async getClientByEmail(email: string): Promise<Result<ClientRecord | null, string>> {
+    const { DEMO_CLIENT } = await import("./demo-client");
+    return Ok(email === DEMO_CLIENT.email ? DEMO_CLIENT : null);
+  }
+
+  updateClient(): Promise<Result<{ updated: boolean }, string>> {
+    return Promise.resolve(Ok({ updated: true }));
+  }
+
+  async getFilteredClients(): Promise<Result<{ clients: ClientRecord[]; total: number }, string>> {
+    const { DEMO_CLIENT } = await import("./demo-client");
+    return Ok({ clients: [DEMO_CLIENT], total: 1 });
+  }
+
+  async getClientFilters(clientId: string): Promise<Result<ClientFilters | null, string>> {
+    const { DEMO_CLIENT_FILTERS } = await import("./demo-client");
+    return Ok(clientId === DEMO_CLIENT_FILTERS.clientId ? DEMO_CLIENT_FILTERS : null);
+  }
+
+  upsertClientFilters(): Promise<Result<{ saved: boolean }, string>> {
+    return Promise.resolve(Ok({ saved: true }));
+  }
+
+  insertPurchase(): Promise<Result<{ purchaseId: string }, string>> {
+    return Promise.resolve(Ok({ purchaseId: "purchase_demo_001" }));
+  }
+
+  async getPurchasesByClient(): Promise<Result<{ purchases: LeadPurchase[]; total: number }, string>> {
+    return Ok({ purchases: [], total: 0 });
+  }
+
+  async getPurchasesByLead(): Promise<Result<LeadPurchase[], string>> {
+    return Ok([]);
+  }
+
+  updatePurchaseStatus(): Promise<Result<{ updated: boolean }, string>> {
+    return Promise.resolve(Ok({ updated: true }));
+  }
+
+  async getAllPurchases(): Promise<Result<{ purchases: LeadPurchase[]; total: number }, string>> {
+    return Ok({ purchases: [], total: 0 });
+  }
+
   getClientDailyPurchaseCount(): Promise<Result<number, string>> { return Promise.resolve(Ok(0)); }
   getClientMonthlyPurchaseCount(): Promise<Result<number, string>> { return Promise.resolve(Ok(0)); }
-  insertBilling(): Promise<Result<{ billingId: string }, string>> { return this.fail("Billing"); }
-  getBillingByClient(): Promise<Result<ClientBilling[], string>> { return this.fail("Billing"); }
-  updateBillingStatus(): Promise<Result<{ updated: boolean }, string>> { return this.fail("Billing"); }
-  getClientStats(): Promise<Result<ClientStats, string>> { return this.fail("Stats"); }
-  getRevenueByClient(): Promise<Result<Array<{ clientId: string; companyName: string; totalRevenue: number; totalPurchases: number }>, string>> { return this.fail("Revenue"); }
-  updateClientBalance(): Promise<Result<{ newBalance: number }, string>> { return this.fail("Balance"); }
+
+  insertBilling(): Promise<Result<{ billingId: string }, string>> {
+    return Promise.resolve(Ok({ billingId: "billing_demo_001" }));
+  }
+
+  async getBillingByClient(): Promise<Result<ClientBilling[], string>> {
+    return Ok([]);
+  }
+
+  updateBillingStatus(): Promise<Result<{ updated: boolean }, string>> {
+    return Promise.resolve(Ok({ updated: true }));
+  }
+
+  async getClientStats(): Promise<Result<ClientStats, string>> {
+    const { getDemoClientStats } = await import("./demo-client");
+    return Ok(getDemoClientStats());
+  }
+
+  async getRevenueByClient(): Promise<Result<Array<{ clientId: string; companyName: string; totalRevenue: number; totalPurchases: number }>, string>> {
+    const { DEMO_CLIENT } = await import("./demo-client");
+    return Ok([{ clientId: DEMO_CLIENT.clientId, companyName: DEMO_CLIENT.companyName, totalRevenue: 0, totalPurchases: 0 }]);
+  }
+
+  updateClientBalance(): Promise<Result<{ newBalance: number }, string>> {
+    return Promise.resolve(Ok({ newBalance: 50000 }));
+  }
 }
 
 // =============================================================================

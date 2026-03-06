@@ -25,6 +25,7 @@ interface SeedResult {
   status: string;
   leadId?: string;
   tier?: string;
+  score?: number;
 }
 
 interface SeedClientResult {
@@ -44,6 +45,8 @@ export default function AdminLeadManagement() {
   const router = useRouter();
   const [seedLoading, setSeedLoading] = useState(false);
   const [seedResults, setSeedResults] = useState<SeedResult[] | null>(null);
+  const [seedMessage, setSeedMessage] = useState("");
+  const [seedDemoMode, setSeedDemoMode] = useState(false);
   const [seedError, setSeedError] = useState("");
 
   const [clientLoading, setClientLoading] = useState(false);
@@ -54,11 +57,15 @@ export default function AdminLeadManagement() {
     setSeedLoading(true);
     setSeedError("");
     setSeedResults(null);
+    setSeedMessage("");
+    setSeedDemoMode(false);
     try {
       const res = await fetch("/api/admin/seed-lead", { method: "POST" });
       const data = await res.json();
       if (data.success) {
         setSeedResults(data.leads);
+        setSeedMessage(data.message || "");
+        setSeedDemoMode(!!data.demoMode);
       } else {
         setSeedError(data.message || "Failed to seed leads.");
       }
@@ -162,8 +169,16 @@ export default function AdminLeadManagement() {
       {/* Seed Lead Results */}
       {seedResults && (
         <div className="cathedral-surface p-6 mb-6">
+          {seedDemoMode && (
+            <div className="mb-4 px-4 py-3 rounded-lg text-sm bg-amber-50 text-amber-800 border border-amber-200">
+              Demo mode — no database connected. Leads are served from built-in demo data.
+            </div>
+          )}
+          {seedMessage && (
+            <p className="text-sm text-emerald-600 mb-4">{seedMessage}</p>
+          )}
           <h3 className="text-sm font-medium text-[var(--text-primary)] uppercase tracking-wider mb-4">
-            Seeded Leads
+            Test Leads
           </h3>
           <div className="space-y-3">
             {seedResults.map((r, i) => (
@@ -173,8 +188,9 @@ export default function AdminLeadManagement() {
               >
                 <div className="flex items-center gap-3">
                   {r.tier && (
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[r.tier] || ""}`}>
-                      {r.tier}
+                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[r.tier] || ""}`}>
+                      {r.score != null && <span>{r.score}</span>}
+                      <span className="opacity-70">{r.tier}</span>
                     </span>
                   )}
                   <span className="text-sm text-[var(--text-primary)]">{r.name}</span>
@@ -183,7 +199,7 @@ export default function AdminLeadManagement() {
                   {r.leadId && (
                     <span className="text-xs text-[var(--text-muted)] font-mono">{r.leadId}</span>
                   )}
-                  <span className={`text-xs font-medium ${r.status === "created" ? "text-emerald-600" : "text-amber-600"}`}>
+                  <span className={`text-xs font-medium ${r.status === "created" ? "text-emerald-600" : r.status === "already exists" ? "text-amber-600" : "text-red-600"}`}>
                     {r.status}
                   </span>
                 </div>

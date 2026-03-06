@@ -331,7 +331,7 @@ export default function AdminDashboard() {
       <div className="cathedral-surface overflow-x-auto" role="region" aria-label="Leads table">
         <table className="w-full text-sm" aria-label="Lead records">
           <thead>
-            <tr className="text-left text-[var(--text-muted)] text-xs uppercase tracking-wider border-b border-indigo-cathedral/10">
+            <tr className="text-left text-xs uppercase tracking-wider border-b border-indigo-cathedral/10 metallic-gold">
               <th className="px-4 py-3" scope="col">Score</th>
               <th className="px-4 py-3" scope="col">Name</th>
               <th className="px-4 py-3" scope="col">Contact</th>

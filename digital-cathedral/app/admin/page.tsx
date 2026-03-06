@@ -210,13 +210,13 @@ export default function AdminDashboard() {
           </button>
           <button
             onClick={handleExport}
-            className="px-4 py-2 rounded-lg text-sm transition-all text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-teal-cathedral/70 border border-teal-cathedral/20 hover:border-teal-cathedral/40 hover:text-teal-cathedral"
           >
             Export CSV
           </button>
           <button
             onClick={handleLogout}
-            className="px-4 py-2 rounded-lg text-sm transition-all text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
+            className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-teal-cathedral/70 border border-teal-cathedral/20 hover:border-teal-cathedral/40 hover:text-teal-cathedral"
           >
             Logout
           </button>
@@ -238,19 +238,19 @@ export default function AdminDashboard() {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" role="region" aria-label="Lead statistics">
           <div className="cathedral-surface p-4">
-            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider">Total Leads</p>
+            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium">Total Leads</p>
             <p className="text-2xl font-light text-[var(--text-primary)] mt-1">{stats.total}</p>
           </div>
           <div className="cathedral-surface p-4">
-            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider">Today</p>
+            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium">Today</p>
             <p className="text-2xl font-light text-teal-cathedral mt-1">{stats.today}</p>
           </div>
           <div className="cathedral-surface p-4">
-            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider">This Week</p>
+            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium">This Week</p>
             <p className="text-2xl font-light text-[var(--text-primary)] mt-1">{stats.thisWeek}</p>
           </div>
           <div className="cathedral-surface p-4">
-            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider">This Month</p>
+            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium">This Month</p>
             <p className="text-2xl font-light text-[var(--text-primary)] mt-1">{stats.thisMonth}</p>
           </div>
         </div>
@@ -260,7 +260,7 @@ export default function AdminDashboard() {
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div className="cathedral-surface p-4" role="region" aria-label="Service category breakdown">
-            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-3">Service Category</p>
+            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium mb-3">Service Category</p>
             <div className="space-y-2">
               {Object.entries(stats.byVeteranStatus).map(([status, count]) => (
                 <div key={status} className="flex justify-between text-sm">
@@ -271,7 +271,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="cathedral-surface p-4" role="region" aria-label="Coverage type breakdown">
-            <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider mb-3">Coverage Interest</p>
+            <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium mb-3">Coverage Interest</p>
             <div className="space-y-2">
               {Object.entries(stats.byCoverage).map(([cov, count]) => (
                 <div key={cov} className="flex justify-between text-sm">

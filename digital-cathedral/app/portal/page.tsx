@@ -335,7 +335,7 @@ export default function ClientPortal() {
       {/* Header */}
       <header className="flex items-center justify-between mb-8">
         <div>
-          <div className="text-teal-cathedral text-xs tracking-[0.3em] uppercase pulse-gentle">Client Portal</div>
+          <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase pulse-gentle">Client Portal</div>
           <h1 className="text-2xl font-light text-[var(--text-primary)]">{profile.companyName}</h1>
           <p className="text-sm text-[var(--text-muted)]">{profile.contactName}</p>
         </div>

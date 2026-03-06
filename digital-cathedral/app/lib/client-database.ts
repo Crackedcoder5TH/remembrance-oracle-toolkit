@@ -1114,11 +1114,17 @@ function getClientAdapter(): ClientDbAdapter {
   if (_clientAdapter) return _clientAdapter;
 
   if (process.env.DATABASE_URL) {
+    console.log("[client-database] Using PostgreSQL adapter (DATABASE_URL detected)");
     _clientAdapter = new PostgresClientAdapter();
-  } else if (process.env.VERCEL) {
-    _clientAdapter = new NoopClientAdapter();
   } else {
-    _clientAdapter = new SqliteClientAdapter();
+    // Use SQLite for local dev and any environment without DATABASE_URL
+    try {
+      _clientAdapter = new SqliteClientAdapter();
+      console.log("[client-database] Using SQLite adapter (local mode)");
+    } catch {
+      console.warn("[client-database] SQLite unavailable — using noop adapter");
+      _clientAdapter = new NoopClientAdapter();
+    }
   }
 
   return _clientAdapter;

@@ -64,6 +64,13 @@ const COVERAGE_OPTIONS = [
   { value: "not-sure", label: "Not sure \u2014 I need guidance" },
 ];
 
+const PURCHASE_INTENT_OPTIONS = [
+  { value: "", label: "How serious are you about coverage?" },
+  { value: "protect-family", label: "I will protect my family" },
+  { value: "want-protection", label: "I want to protect them" },
+  { value: "exploring", label: "I'm just exploring my options" },
+];
+
 const MILITARY_STATUS_OPTIONS = [
   { value: "", label: "Select military status..." },
   { value: "active-duty", label: "Active-Duty" },
@@ -458,6 +465,14 @@ export default function HomePage() {
               {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
             </div>
 
+            <div className="space-y-1">
+              <label htmlFor="purchaseIntent" className={LABEL_CLASS}>How Serious Are You?</label>
+              <select id="purchaseIntent" value={form.purchaseIntent} onChange={(e) => updateField("purchaseIntent", e.target.value)} aria-required="true" aria-invalid={!!errors.purchaseIntent} aria-describedby={errors.purchaseIntent ? "intent-error" : undefined} className={SELECT_CLASS}>
+                {PURCHASE_INTENT_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+              {errors.purchaseIntent && <p id="intent-error" className="text-crimson-cathedral text-xs" role="alert">{errors.purchaseIntent}</p>}
+            </div>
+
             {/* Military Status */}
             <div className="space-y-1">
               <label htmlFor="veteranStatus" className={LABEL_CLASS}>Military Status</label>
@@ -538,6 +553,9 @@ export default function HomePage() {
               <p className="text-gray-600">
                 {US_STATES.find(s => s.code === form.state)?.name} &middot;{" "}
                 {COVERAGE_OPTIONS.find(o => o.value === form.coverageInterest)?.label}
+              </p>
+              <p className="text-gray-600">
+                {PURCHASE_INTENT_OPTIONS.find(o => o.value === form.purchaseIntent)?.label}
               </p>
               <p className="text-gray-600">
                 {MILITARY_STATUS_OPTIONS.find(o => o.value === form.veteranStatus)?.label}

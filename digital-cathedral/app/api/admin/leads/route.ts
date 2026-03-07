@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
       dateOfBirth: lead.dateOfBirth,
       state: lead.state,
       coverageInterest: lead.coverageInterest,
+      purchaseIntent: lead.purchaseIntent,
       veteranStatus: lead.veteranStatus,
       militaryBranch: lead.militaryBranch,
       utmSource: lead.utmSource,

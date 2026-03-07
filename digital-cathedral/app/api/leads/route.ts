@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
       phone: validated.phone,
       state: validated.state,
       coverageInterest: validated.coverageInterest,
+      purchaseIntent: validated.purchaseIntent,
       veteranStatus: validated.veteranStatus,
       militaryBranch: validated.militaryBranch,
       consentTcpa: true,

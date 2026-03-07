@@ -56,6 +56,7 @@ export interface LeadFormData {
   phone: string;
   state: string;
   coverageInterest: string;
+  purchaseIntent: string;
   veteranStatus: string;
   militaryBranch: string;
   tcpaConsent: boolean;
@@ -72,6 +73,7 @@ export interface LeadFormErrors {
   phone?: string;
   state?: string;
   coverageInterest?: string;
+  purchaseIntent?: string;
   veteranStatus?: string;
   militaryBranch?: string;
   tcpaConsent?: string;
@@ -115,6 +117,7 @@ function validateStep(step: number, form: LeadFormData): LeadFormErrors {
     }
     if (!form.state) errs.state = "Please select your state.";
     if (!form.coverageInterest) errs.coverageInterest = "Please select a coverage interest.";
+    if (!form.purchaseIntent) errs.purchaseIntent = "Please select your level of interest.";
     if (!form.veteranStatus) errs.veteranStatus = "Please select your military status.";
     if (form.veteranStatus && form.veteranStatus !== "non-military" && !form.militaryBranch) {
       errs.militaryBranch = "Please select your branch of service.";
@@ -176,7 +179,7 @@ function clearFormDraft(): void {
 
 const INITIAL_FORM: LeadFormData = {
   firstName: "", lastName: "", dateOfBirth: "", email: "", phone: "",
-  state: "", coverageInterest: "", veteranStatus: "", militaryBranch: "",
+  state: "", coverageInterest: "", purchaseIntent: "", veteranStatus: "", militaryBranch: "",
   tcpaConsent: false, privacyConsent: false, _hp_website: "",
 };
 
@@ -278,6 +281,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
           phone: data.phone.replace(/\D/g, ""),
           state: data.state,
           coverageInterest: data.coverageInterest,
+          purchaseIntent: data.purchaseIntent,
           veteranStatus: data.veteranStatus,
           militaryBranch: data.veteranStatus && data.veteranStatus !== "non-military" ? data.militaryBranch : "",
           tcpaConsent: data.tcpaConsent,

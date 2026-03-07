@@ -30,6 +30,7 @@ export interface LeadRecord {
   phone: string;
   state: string;
   coverageInterest: string;
+  purchaseIntent: string;
   veteranStatus: string;
   militaryBranch: string;
   consentTcpa: boolean;
@@ -100,6 +101,7 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
     phone: row.phone as string,
     state: row.state as string,
     coverageInterest: row.coverage_interest as string,
+    purchaseIntent: (row.purchase_intent as string) || "",
     veteranStatus: (row.veteran_status as string) || "",
     militaryBranch: (row.military_branch as string) || "",
     consentTcpa: row.consent_tcpa === 1 || row.consent_tcpa === true,
@@ -161,6 +163,7 @@ class PostgresAdapter implements DbAdapter {
         phone TEXT NOT NULL,
         state TEXT NOT NULL,
         coverage_interest TEXT NOT NULL,
+        purchase_intent TEXT NOT NULL DEFAULT '',
         veteran_status TEXT NOT NULL DEFAULT '',
         military_branch TEXT NOT NULL DEFAULT '',
         consent_tcpa BOOLEAN NOT NULL DEFAULT FALSE,
@@ -197,6 +200,9 @@ class PostgresAdapter implements DbAdapter {
     if (!columnNames.has("date_of_birth")) {
       await pool.query("ALTER TABLE leads ADD COLUMN date_of_birth TEXT NOT NULL DEFAULT ''");
     }
+    if (!columnNames.has("purchase_intent")) {
+      await pool.query("ALTER TABLE leads ADD COLUMN purchase_intent TEXT NOT NULL DEFAULT ''");
+    }
     if (!columnNames.has("veteran_status")) {
       await pool.query("ALTER TABLE leads ADD COLUMN veteran_status TEXT NOT NULL DEFAULT ''");
     }
@@ -227,7 +233,7 @@ class PostgresAdapter implements DbAdapter {
       const result = await pool.query(
         `INSERT INTO leads (
           lead_id, first_name, last_name, date_of_birth, email, phone, state,
-          coverage_interest, veteran_status, military_branch,
+          coverage_interest, purchase_intent, veteran_status, military_branch,
           consent_tcpa, consent_privacy,
           consent_timestamp, consent_text, consent_ip,
           consent_user_agent, consent_page_url,
@@ -235,17 +241,17 @@ class PostgresAdapter implements DbAdapter {
           created_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7,
-          $8, $9, $10,
-          $11, $12,
-          $13, $14, $15,
-          $16, $17,
-          $18, $19, $20, $21, $22,
-          $23
+          $8, $9, $10, $11,
+          $12, $13,
+          $14, $15, $16,
+          $17, $18,
+          $19, $20, $21, $22, $23,
+          $24
         ) RETURNING id`,
         [
           lead.leadId, lead.firstName, lead.lastName, lead.dateOfBirth,
           lead.email, lead.phone, lead.state,
-          lead.coverageInterest, lead.veteranStatus, lead.militaryBranch,
+          lead.coverageInterest, lead.purchaseIntent, lead.veteranStatus, lead.militaryBranch,
           lead.consentTcpa, lead.consentPrivacy,
           lead.consentTimestamp, lead.consentText, lead.consentIp,
           lead.consentUserAgent, lead.consentPageUrl,
@@ -481,6 +487,7 @@ class SqliteAdapter implements DbAdapter {
         phone TEXT NOT NULL,
         state TEXT NOT NULL,
         coverage_interest TEXT NOT NULL,
+        purchase_intent TEXT NOT NULL DEFAULT '',
         veteran_status TEXT NOT NULL DEFAULT '',
         military_branch TEXT NOT NULL DEFAULT '',
         consent_tcpa INTEGER NOT NULL DEFAULT 0,
@@ -513,6 +520,9 @@ class SqliteAdapter implements DbAdapter {
     if (!columnNames.has("date_of_birth")) {
       db.exec("ALTER TABLE leads ADD COLUMN date_of_birth TEXT NOT NULL DEFAULT ''");
     }
+    if (!columnNames.has("purchase_intent")) {
+      db.exec("ALTER TABLE leads ADD COLUMN purchase_intent TEXT NOT NULL DEFAULT ''");
+    }
     if (!columnNames.has("veteran_status")) {
       db.exec("ALTER TABLE leads ADD COLUMN veteran_status TEXT NOT NULL DEFAULT ''");
     }
@@ -540,7 +550,7 @@ class SqliteAdapter implements DbAdapter {
       const stmt = db.prepare(`
         INSERT INTO leads (
           lead_id, first_name, last_name, date_of_birth, email, phone, state,
-          coverage_interest, veteran_status, military_branch,
+          coverage_interest, purchase_intent, veteran_status, military_branch,
           consent_tcpa, consent_privacy,
           consent_timestamp, consent_text, consent_ip,
           consent_user_agent, consent_page_url,
@@ -548,7 +558,7 @@ class SqliteAdapter implements DbAdapter {
           created_at
         ) VALUES (
           ?, ?, ?, ?, ?, ?, ?,
-          ?, ?, ?,
+          ?, ?, ?, ?,
           ?, ?,
           ?, ?, ?,
           ?, ?,
@@ -560,7 +570,7 @@ class SqliteAdapter implements DbAdapter {
       const result = stmt.run(
         lead.leadId, lead.firstName, lead.lastName, lead.dateOfBirth,
         lead.email, lead.phone, lead.state,
-        lead.coverageInterest, lead.veteranStatus, lead.militaryBranch,
+        lead.coverageInterest, lead.purchaseIntent, lead.veteranStatus, lead.militaryBranch,
         lead.consentTcpa ? 1 : 0, lead.consentPrivacy ? 1 : 0,
         lead.consentTimestamp, lead.consentText, lead.consentIp,
         lead.consentUserAgent, lead.consentPageUrl,

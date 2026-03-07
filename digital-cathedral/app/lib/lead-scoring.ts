@@ -17,6 +17,7 @@ export interface LeadScore {
   tier: "hot" | "warm" | "standard" | "cool";
   factors: {
     coverage: number;
+    intent: number;
     veteran: number;
     state: number;
     completeness: number;
@@ -24,29 +25,37 @@ export interface LeadScore {
   };
 }
 
-// --- Coverage interest weights (max 30 points) ---
+// --- Coverage interest weights (max 25 points) ---
 const COVERAGE_WEIGHTS: Record<string, number> = {
-  "term": 28,
-  "whole": 30,
-  "universal": 25,
-  "final-expense": 26,
-  "annuity": 22,
-  "not-sure": 10,
+  "term": 23,
+  "whole": 25,
+  "universal": 21,
+  "final-expense": 22,
+  "annuity": 18,
+  "not-sure": 8,
 };
 
-// --- Service category weights (max 20 points) ---
+// --- Purchase intent weights (max 20 points) ---
+// Self-reported buying intent — one of the strongest conversion signals.
+const INTENT_WEIGHTS: Record<string, number> = {
+  "protect-family": 20,
+  "want-protection": 12,
+  "exploring": 5,
+};
+
+// --- Service category weights (max 18 points) ---
 // Active-duty and veterans have access to SGLI/VGLI conversion, group rates,
 // and specialized underwriting — higher value to carriers.
 // Reserve and National Guard also qualify for military-specific products.
 const VETERAN_WEIGHTS: Record<string, number> = {
-  "active-duty": 20,
-  "veteran": 20,
-  "reserve": 18,
-  "national-guard": 18,
-  "non-military": 8,
+  "active-duty": 18,
+  "veteran": 18,
+  "reserve": 16,
+  "national-guard": 16,
+  "non-military": 7,
 };
 
-// --- High-volume insurance states (max 20 points) ---
+// --- High-volume insurance states (max 17 points) ---
 // Top states by life insurance policy density and premium volume
 const HIGH_VALUE_STATES = new Set([
   "TX", "FL", "CA", "NY", "PA", "OH", "IL", "GA", "NC", "VA",
@@ -63,6 +72,7 @@ const MEDIUM_VALUE_STATES = new Set([
  */
 export function scoreLead(lead: {
   coverageInterest: string;
+  purchaseIntent?: string;
   veteranStatus: string;
   militaryBranch: string;
   state: string;
@@ -73,38 +83,41 @@ export function scoreLead(lead: {
   dateOfBirth: string;
   createdAt: string;
 }): LeadScore {
-  // Coverage factor (0–30)
-  const coverage = COVERAGE_WEIGHTS[lead.coverageInterest] || 10;
+  // Coverage factor (0–25)
+  const coverage = COVERAGE_WEIGHTS[lead.coverageInterest] || 8;
 
-  // Veteran factor (0–20)
+  // Intent factor (0–20)
+  const intent = INTENT_WEIGHTS[lead.purchaseIntent || ""] || 5;
+
+  // Veteran factor (0–18)
   let veteran = VETERAN_WEIGHTS[lead.veteranStatus] || 5;
   // Bonus for specific branch identification (indicates engagement)
   if (lead.veteranStatus !== "non-military" && lead.militaryBranch) {
-    veteran = Math.min(20, veteran + 2);
+    veteran = Math.min(18, veteran + 2);
   }
 
-  // State factor (0–20)
-  let state = 10; // default
-  if (HIGH_VALUE_STATES.has(lead.state)) state = 20;
-  else if (MEDIUM_VALUE_STATES.has(lead.state)) state = 15;
+  // State factor (0–17)
+  let state = 9; // default
+  if (HIGH_VALUE_STATES.has(lead.state)) state = 17;
+  else if (MEDIUM_VALUE_STATES.has(lead.state)) state = 13;
 
-  // Completeness factor (0–15)
+  // Completeness factor (0–10)
   let completeness = 0;
-  if (lead.firstName) completeness += 3;
-  if (lead.lastName) completeness += 3;
-  if (lead.email) completeness += 3;
-  if (lead.phone) completeness += 3;
-  if (lead.dateOfBirth) completeness += 3;
+  if (lead.firstName) completeness += 2;
+  if (lead.lastName) completeness += 2;
+  if (lead.email) completeness += 2;
+  if (lead.phone) completeness += 2;
+  if (lead.dateOfBirth) completeness += 2;
 
-  // Recency factor (0–15)
-  let recency = 15;
+  // Recency factor (0–10)
+  let recency = 10;
   const ageMs = Date.now() - new Date(lead.createdAt).getTime();
   const ageHours = ageMs / (1000 * 60 * 60);
-  if (ageHours > 72) recency = 3;
-  else if (ageHours > 24) recency = 7;
-  else if (ageHours > 6) recency = 11;
+  if (ageHours > 72) recency = 2;
+  else if (ageHours > 24) recency = 5;
+  else if (ageHours > 6) recency = 8;
 
-  const total = Math.min(100, coverage + veteran + state + completeness + recency);
+  const total = Math.min(100, coverage + intent + veteran + state + completeness + recency);
 
   let tier: LeadScore["tier"];
   if (total >= 90) tier = "hot";
@@ -115,6 +128,6 @@ export function scoreLead(lead: {
   return {
     total,
     tier,
-    factors: { coverage, veteran, state, completeness, recency },
+    factors: { coverage, intent, veteran, state, completeness, recency },
   };
 }

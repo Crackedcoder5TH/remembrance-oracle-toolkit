@@ -49,9 +49,16 @@ class AIConnector {
       case 'register-pattern':
         return this._registerPattern(params);
       case 'pattern-stats':
+      case 'patterns':
         return this._patternStats();
+      case 'search':
+        return this._search(params);
+      case 'validate':
+        return this._validate(params);
+      case 'harvest':
+        return this._harvest(params);
       default:
-        return { error: `Unknown action: ${action}`, availableActions: ['submit', 'query', 'feedback', 'inspect', 'stats', 'prune', 'resolve', 'register-pattern', 'pattern-stats'] };
+        return { error: `Unknown action: ${action}`, availableActions: ['submit', 'query', 'search', 'resolve', 'validate', 'feedback', 'inspect', 'stats', 'prune', 'register-pattern', 'pattern-stats', 'harvest'] };
     }
   }
 
@@ -157,6 +164,50 @@ class AIConnector {
 
   _patternStats() {
     return { action: 'pattern-stats', ...this.oracle.patternStats() };
+  }
+
+  _search(params) {
+    const query = params.description || params.query || '';
+    const results = this.oracle.search(query, {
+      limit: params.limit || 5,
+      language: params.language,
+    });
+    return {
+      action: 'search',
+      count: results.length,
+      results: results.map(r => ({
+        id: r.id,
+        name: r.name,
+        description: r.description,
+        language: r.language,
+        coherencyScore: r.coherencyScore,
+        matchScore: r.matchScore,
+        tags: r.tags,
+      })),
+    };
+  }
+
+  _validate(params) {
+    const { validateCode } = require('../core/validator');
+    const result = validateCode(params.code, {
+      language: params.language,
+      testCode: params.testCode || params.test_code,
+    });
+    return {
+      action: 'validate',
+      valid: result.valid,
+      coherencyScore: result.coherencyScore?.total,
+      dimensions: result.coherencyScore,
+      covenantSealed: result.covenantResult?.sealed,
+    };
+  }
+
+  _harvest(params) {
+    const { harvest } = require('../ci/harvest');
+    const result = harvest(this.oracle, params.path || '.', {
+      language: params.language,
+    });
+    return { action: 'harvest', ...result };
   }
 }
 

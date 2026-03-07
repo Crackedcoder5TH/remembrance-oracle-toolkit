@@ -195,6 +195,243 @@ function uninstallFrom(editor) {
   return removeFromConfig(configPath);
 }
 
+// ─── Non-MCP Editor Configs ───
+
+/**
+ * Generate a Vim/Neovim plugin config for ALE or coc.nvim.
+ * Writes oracle as an external linter + completion source.
+ */
+function generateVimConfig() {
+  const cliPath = path.resolve(__dirname, '..', 'cli.js');
+  return {
+    'ale_config': `" ~/.vimrc or ~/.config/nvim/init.vim — Oracle via ALE
+" Add oracle as a linter for JavaScript/TypeScript/Python
+let g:ale_linters = {
+\\  'javascript': ['oracle'],
+\\  'typescript': ['oracle'],
+\\  'python': ['oracle'],
+\\}
+
+" Custom ALE linter definition
+call ale#linter#Define('javascript', {
+\\  'name': 'oracle',
+\\  'executable': 'node',
+\\  'command': 'node ${cliPath} covenant --file %s --json',
+\\  'callback': 'ale#handlers#oracle#Handle',
+\\  'lint_file': 1,
+\\})
+
+" Map: search oracle for word under cursor
+nnoremap <leader>os :!node ${cliPath} search "<cword>"<CR>
+" Map: resolve from oracle
+nnoremap <leader>or :!node ${cliPath} resolve --description "<cword>"<CR>
+" Map: submit current file
+nnoremap <leader>ou :!node ${cliPath} submit --file %<CR>
+" Map: validate current file
+nnoremap <leader>ov :!node ${cliPath} covenant --file %<CR>
+`,
+    'coc_config': `// coc-settings.json — Oracle as a coc.nvim language server
+{
+  "languageserver": {
+    "oracle": {
+      "command": "node",
+      "args": ["${cliPath}", "mcp"],
+      "filetypes": ["javascript", "typescript", "python", "go", "rust"],
+      "rootPatterns": [".remembrance", "package.json", ".git"]
+    }
+  }
+}
+`,
+  };
+}
+
+/**
+ * Generate an Emacs config for flycheck + company-mode oracle integration.
+ */
+function generateEmacsConfig() {
+  const cliPath = path.resolve(__dirname, '..', 'cli.js');
+  return `;;; oracle.el — Remembrance Oracle integration for Emacs
+;;; Add to ~/.emacs or ~/.emacs.d/init.el
+
+;; Flycheck checker — oracle covenant
+(flycheck-define-checker oracle-covenant
+  "Check code against the Remembrance Oracle covenant."
+  :command ("node" "${cliPath}" "covenant" "--file" source "--json")
+  :error-patterns
+  ((error line-start "VIOLATION:" (message) line-end))
+  :modes (js-mode js2-mode typescript-mode python-mode go-mode rust-mode))
+
+(add-to-list 'flycheck-checkers 'oracle-covenant)
+
+;; Interactive commands
+(defun oracle-search (query)
+  "Search the Remembrance Oracle for a pattern."
+  (interactive "sOracle search: ")
+  (let ((buf (get-buffer-create "*oracle-search*")))
+    (with-current-buffer buf
+      (erase-buffer)
+      (call-process "node" nil buf nil "${cliPath}" "search" query)
+      (goto-char (point-min)))
+    (display-buffer buf)))
+
+(defun oracle-resolve (description)
+  "Resolve code from the oracle (PULL/EVOLVE/GENERATE)."
+  (interactive "sDescribe what you need: ")
+  (let ((buf (get-buffer-create "*oracle-resolve*")))
+    (with-current-buffer buf
+      (erase-buffer)
+      (call-process "node" nil buf nil "${cliPath}" "resolve" "--description" description)
+      (goto-char (point-min)))
+    (display-buffer buf)))
+
+(defun oracle-validate-buffer ()
+  "Validate the current buffer with the oracle covenant."
+  (interactive)
+  (let ((file (buffer-file-name)))
+    (if file
+        (let ((buf (get-buffer-create "*oracle-validate*")))
+          (with-current-buffer buf
+            (erase-buffer)
+            (call-process "node" nil buf nil "${cliPath}" "covenant" "--file" file)
+            (goto-char (point-min)))
+          (display-buffer buf))
+      (message "Buffer has no file"))))
+
+(defun oracle-submit-buffer ()
+  "Submit the current buffer to the oracle."
+  (interactive)
+  (let ((file (buffer-file-name)))
+    (if file
+        (let ((buf (get-buffer-create "*oracle-submit*")))
+          (with-current-buffer buf
+            (erase-buffer)
+            (call-process "node" nil buf nil "${cliPath}" "submit" "--file" file)
+            (goto-char (point-min)))
+          (display-buffer buf))
+      (message "Buffer has no file"))))
+
+;; Keybindings (under C-c o prefix)
+(global-set-key (kbd "C-c o s") 'oracle-search)
+(global-set-key (kbd "C-c o r") 'oracle-resolve)
+(global-set-key (kbd "C-c o v") 'oracle-validate-buffer)
+(global-set-key (kbd "C-c o u") 'oracle-submit-buffer)
+
+(provide 'oracle)
+;;; oracle.el ends here
+`;
+}
+
+/**
+ * Generate a JetBrains external tool configuration.
+ * Works with IntelliJ, WebStorm, PyCharm, GoLand, RustRover, etc.
+ */
+function generateJetBrainsConfig() {
+  const cliPath = path.resolve(__dirname, '..', 'cli.js');
+  return `<!-- .idea/tools/Oracle.xml — JetBrains External Tools -->
+<!-- Import via: Settings → Tools → External Tools → Import -->
+<toolSet name="Remembrance Oracle">
+  <tool name="Oracle Search" description="Search proven code patterns" showInMainMenu="true"
+        showInEditor="true" showInProject="true" showInSearchPopup="true"
+        disabled="false" useConsole="true" showConsoleOnStdOut="true"
+        showConsoleOnStdErr="true" synchronizeAfterRun="false">
+    <exec>
+      <option name="COMMAND" value="node" />
+      <option name="PARAMETERS" value="${cliPath} search &quot;$Prompt$&quot;" />
+      <option name="WORKING_DIRECTORY" value="$ProjectFileDir$" />
+    </exec>
+  </tool>
+  <tool name="Oracle Resolve" description="Smart pull/evolve/generate from oracle" showInMainMenu="true"
+        showInEditor="true" showInProject="true" showInSearchPopup="true"
+        disabled="false" useConsole="true" showConsoleOnStdOut="true"
+        showConsoleOnStdErr="true" synchronizeAfterRun="false">
+    <exec>
+      <option name="COMMAND" value="node" />
+      <option name="PARAMETERS" value="${cliPath} resolve --description &quot;$Prompt$&quot;" />
+      <option name="WORKING_DIRECTORY" value="$ProjectFileDir$" />
+    </exec>
+  </tool>
+  <tool name="Oracle Validate" description="Run covenant check on current file" showInMainMenu="true"
+        showInEditor="true" showInProject="true" showInSearchPopup="true"
+        disabled="false" useConsole="true" showConsoleOnStdOut="true"
+        showConsoleOnStdErr="true" synchronizeAfterRun="false">
+    <exec>
+      <option name="COMMAND" value="node" />
+      <option name="PARAMETERS" value="${cliPath} covenant --file $FilePath$" />
+      <option name="WORKING_DIRECTORY" value="$ProjectFileDir$" />
+    </exec>
+  </tool>
+  <tool name="Oracle Submit" description="Submit current file to the oracle" showInMainMenu="true"
+        showInEditor="true" showInProject="true" showInSearchPopup="true"
+        disabled="false" useConsole="true" showConsoleOnStdOut="true"
+        showConsoleOnStdErr="true" synchronizeAfterRun="false">
+    <exec>
+      <option name="COMMAND" value="node" />
+      <option name="PARAMETERS" value="${cliPath} submit --file $FilePath$" />
+      <option name="WORKING_DIRECTORY" value="$ProjectFileDir$" />
+    </exec>
+  </tool>
+  <tool name="Oracle Security Scan" description="Scan current file for security issues" showInMainMenu="true"
+        showInEditor="true" showInProject="true" showInSearchPopup="true"
+        disabled="false" useConsole="true" showConsoleOnStdOut="true"
+        showConsoleOnStdErr="true" synchronizeAfterRun="false">
+    <exec>
+      <option name="COMMAND" value="node" />
+      <option name="PARAMETERS" value="${cliPath} security-scan --file $FilePath$" />
+      <option name="WORKING_DIRECTORY" value="$ProjectFileDir$" />
+    </exec>
+  </tool>
+</toolSet>
+`;
+}
+
+/**
+ * Install editor-specific configs and print instructions.
+ * @param {string} editor - 'vim', 'emacs', or 'jetbrains'
+ * @returns {object} { success, files, instructions }
+ */
+function installEditorConfig(editor) {
+  const cwd = process.cwd();
+
+  if (editor === 'vim' || editor === 'neovim' || editor === 'nvim') {
+    const configs = generateVimConfig();
+    const vimrcPath = path.join(cwd, '.oracle-vim.vim');
+    const cocPath = path.join(cwd, '.oracle-coc-settings.json');
+    fs.writeFileSync(vimrcPath, configs.ale_config);
+    fs.writeFileSync(cocPath, configs.coc_config);
+    return {
+      success: true,
+      files: [vimrcPath, cocPath],
+      instructions: `Add to your ~/.vimrc:  source ${vimrcPath}\nOr for coc.nvim: copy ${cocPath} to coc-settings.json`,
+    };
+  }
+
+  if (editor === 'emacs') {
+    const config = generateEmacsConfig();
+    const elPath = path.join(cwd, '.oracle-emacs.el');
+    fs.writeFileSync(elPath, config);
+    return {
+      success: true,
+      files: [elPath],
+      instructions: `Add to ~/.emacs.d/init.el:  (load "${elPath}")`,
+    };
+  }
+
+  if (editor === 'jetbrains' || editor === 'intellij' || editor === 'webstorm' || editor === 'pycharm') {
+    const config = generateJetBrainsConfig();
+    const ideaDir = path.join(cwd, '.idea', 'tools');
+    if (!fs.existsSync(ideaDir)) fs.mkdirSync(ideaDir, { recursive: true });
+    const xmlPath = path.join(ideaDir, 'Oracle.xml');
+    fs.writeFileSync(xmlPath, config);
+    return {
+      success: true,
+      files: [xmlPath],
+      instructions: `JetBrains tools installed at ${xmlPath}\nAccess via: Tools → External Tools → Remembrance Oracle`,
+    };
+  }
+
+  return { success: false, error: `Unknown editor: ${editor}. Supported: vim, emacs, jetbrains` };
+}
+
 module.exports = {
   SERVER_NAME,
   getConfigPaths,
@@ -206,4 +443,8 @@ module.exports = {
   uninstallFrom,
   updateConfigFile,
   removeFromConfig,
+  generateVimConfig,
+  generateEmacsConfig,
+  generateJetBrainsConfig,
+  installEditorConfig,
 };

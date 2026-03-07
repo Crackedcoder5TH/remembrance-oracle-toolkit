@@ -364,9 +364,197 @@ function _fetchJson(url, options = {}) {
   });
 }
 
+// ─── Multi-Remote Conflict Resolution ───
+
+/**
+ * Conflict resolution strategies for 3+ simultaneous remotes.
+ */
+const CONFLICT_STRATEGIES = {
+  HIGHEST_COHERENCY: 'highest-coherency',
+  MOST_TESTED: 'most-tested',
+  MOST_USED: 'most-used',
+  NEWEST: 'newest',
+};
+
+/**
+ * Resolve conflicts when the same pattern exists on multiple remotes.
+ * Picks the winner based on the chosen strategy.
+ *
+ * @param {Array} candidates — Array of { remote, pattern } for the same name
+ * @param {string} strategy — Resolution strategy (default: highest-coherency)
+ * @returns {object} Winner { remote, pattern, reason }
+ */
+function resolveConflict(candidates, strategy = CONFLICT_STRATEGIES.HIGHEST_COHERENCY) {
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return { ...candidates[0], reason: 'only-candidate' };
+
+  let sorted;
+  switch (strategy) {
+    case CONFLICT_STRATEGIES.MOST_TESTED:
+      sorted = candidates.sort((a, b) => (b.pattern.hasTests ? 1 : 0) - (a.pattern.hasTests ? 1 : 0)
+        || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
+      break;
+    case CONFLICT_STRATEGIES.MOST_USED:
+      sorted = candidates.sort((a, b) => (b.pattern.usageCount || 0) - (a.pattern.usageCount || 0)
+        || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
+      break;
+    case CONFLICT_STRATEGIES.NEWEST:
+      sorted = candidates.sort((a, b) => (b.pattern.codeHash || '').localeCompare(a.pattern.codeHash || '')
+        || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
+      break;
+    default: // HIGHEST_COHERENCY
+      sorted = candidates.sort((a, b) => (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
+  }
+
+  return { remote: sorted[0].remote, pattern: sorted[0].pattern, reason: strategy };
+}
+
+/**
+ * Negotiate simultaneously with multiple remote oracles.
+ * Resolves conflicts when the same pattern name exists on 3+ remotes.
+ *
+ * @param {object} oracle — Local RemembranceOracle instance
+ * @param {Array} remotes — Array of { url, token, name }
+ * @param {object} options — { strategy, pullUnique, pullSuperior, minCoherency }
+ * @returns {Promise<object>} Multi-negotiation result
+ */
+async function negotiateMulti(oracle, remotes, options = {}) {
+  const {
+    strategy = CONFLICT_STRATEGIES.HIGHEST_COHERENCY,
+    pullSuperior = true,
+    pullUnique = true,
+    minCoherency = 0.7,
+  } = options;
+
+  const result = {
+    timestamp: new Date().toISOString(),
+    remotes: remotes.map(r => r.name || r.url),
+    strategy,
+    manifests: {},
+    conflicts: [],
+    resolved: [],
+    pulled: 0,
+    skipped: 0,
+    errors: [],
+  };
+
+  // Step 1: Gather manifests from all remotes in parallel
+  const localManifest = generateManifest(oracle);
+  const manifestPromises = remotes.map(async (remote) => {
+    try {
+      const response = await _fetchJson(`${remote.url}/api/negotiate/manifest`, {
+        method: 'POST',
+        token: remote.token,
+        body: { manifest: localManifest },
+      });
+      return { remote: remote.name || remote.url, manifest: response?.manifest || [] };
+    } catch (err) {
+      result.errors.push(`${remote.name || remote.url}: ${err.message}`);
+      return { remote: remote.name || remote.url, manifest: [] };
+    }
+  });
+
+  const manifestResults = await Promise.all(manifestPromises);
+  for (const m of manifestResults) {
+    result.manifests[m.remote] = m.manifest.length;
+  }
+
+  // Step 2: Build a unified view — group by pattern name across all remotes
+  const byName = new Map(); // name → [{ remote, pattern }]
+  for (const { remote, manifest } of manifestResults) {
+    for (const pattern of manifest) {
+      const key = pattern.name;
+      if (!byName.has(key)) byName.set(key, []);
+      byName.get(key).push({ remote, pattern });
+    }
+  }
+
+  // Step 3: Identify conflicts (same name on 2+ remotes)
+  const localByName = new Map(localManifest.map(p => [p.name, p]));
+  const toPull = []; // { remote, patternId }
+
+  for (const [name, candidates] of byName) {
+    const localPattern = localByName.get(name);
+
+    if (candidates.length > 1) {
+      // Conflict: multiple remotes have this pattern
+      const winner = resolveConflict(candidates, strategy);
+      result.conflicts.push({
+        name,
+        candidates: candidates.map(c => ({ remote: c.remote, coherency: c.pattern.coherency })),
+        winner: { remote: winner.remote, coherency: winner.pattern.coherency, reason: winner.reason },
+      });
+
+      // Pull winner if it's better than local
+      if (pullSuperior && localPattern) {
+        if (winner.pattern.coherency > localPattern.coherency + 0.02 && winner.pattern.coherency >= minCoherency) {
+          toPull.push({ remote: winner.remote, patternId: winner.pattern.id });
+          result.resolved.push({ name, action: 'upgrade', from: winner.remote });
+        }
+      } else if (pullUnique && !localPattern && winner.pattern.coherency >= minCoherency) {
+        toPull.push({ remote: winner.remote, patternId: winner.pattern.id });
+        result.resolved.push({ name, action: 'pull-unique', from: winner.remote });
+      }
+    } else if (candidates.length === 1) {
+      // No conflict — single remote has this pattern
+      const c = candidates[0];
+      if (pullSuperior && localPattern && c.pattern.coherency > localPattern.coherency + 0.02 && c.pattern.coherency >= minCoherency) {
+        toPull.push({ remote: c.remote, patternId: c.pattern.id });
+      } else if (pullUnique && !localPattern && c.pattern.coherency >= minCoherency && c.pattern.hasTests) {
+        toPull.push({ remote: c.remote, patternId: c.pattern.id });
+      }
+    }
+  }
+
+  // Step 4: Pull resolved patterns from the winning remotes
+  const pullByRemote = new Map(); // remote → [patternId]
+  for (const { remote, patternId } of toPull) {
+    if (!pullByRemote.has(remote)) pullByRemote.set(remote, []);
+    pullByRemote.get(remote).push(patternId);
+  }
+
+  for (const [remoteName, patternIds] of pullByRemote) {
+    const remote = remotes.find(r => (r.name || r.url) === remoteName);
+    if (!remote) continue;
+
+    try {
+      const offered = await _fetchJson(`${remote.url}/api/negotiate/request`, {
+        method: 'POST',
+        token: remote.token,
+        body: { patternIds },
+      });
+
+      if (offered && Array.isArray(offered.patterns)) {
+        for (const p of offered.patterns) {
+          try {
+            const submitResult = oracle.submit(p.code, {
+              language: p.language,
+              name: p.name,
+              tags: p.tags || [],
+              description: p.description,
+              testCode: p.testCode,
+            });
+            if (submitResult.stored) result.pulled++;
+            else result.skipped++;
+          } catch {
+            result.skipped++;
+          }
+        }
+      }
+    } catch (err) {
+      result.errors.push(`Pull from ${remoteName}: ${err.message}`);
+    }
+  }
+
+  return result;
+}
+
 module.exports = {
   negotiate,
+  negotiateMulti,
   generateManifest,
   compareManifests,
+  resolveConflict,
   addNegotiationEndpoints,
+  CONFLICT_STRATEGIES,
 };

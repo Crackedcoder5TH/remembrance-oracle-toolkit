@@ -57,13 +57,13 @@ function _evaluateCandidate(candidate, provenPatterns, options) {
   }
 
   const covenant = covenantCheck(candidate.code);
-  if (!covenant.passed) {
+  if (!covenant.sealed) {
     return { status: 'vetoed', reason: `covenant: ${covenant.violations?.[0]?.principle || 'failed'}` };
   }
 
   if (candidate.testCode) {
     try {
-      const testResult = sandboxExecute(candidate.code, candidate.testCode, { language: candidate.language });
+      const testResult = sandboxExecute(candidate.code, candidate.testCode, candidate.language);
       if (!testResult.passed) {
         return { status: 'vetoed', reason: 'test execution failed' };
       }
@@ -176,8 +176,8 @@ module.exports = {
   autoPromote() { return this.recycler.autoPromote(); },
 
   smartAutoPromote(options = {}) {
-    const { dryRun = false } = options;
-    const candidates = this.patterns.getCandidates();
+    const { dryRun = false, minCoherency = 0.9 } = options;
+    const candidates = this.patterns.getCandidates({ minCoherency });
     const provenPatterns = this.patterns.getAll();
     const report = { promoted: 0, skipped: 0, vetoed: 0, total: candidates.length, details: [] };
 

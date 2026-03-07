@@ -277,6 +277,30 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         return;
       }
 
+      // ─── Healing stats ───
+      if (pathname === '/api/healing/stats') {
+        try {
+          const sqliteStore = oracleInstance.store.getSQLiteStore();
+          if (!sqliteStore) { sendJSON(res, { tracked: 0, totalAttempts: 0, totalSuccesses: 0, rate: 0, patterns: [] }); return; }
+          try {
+            sqliteStore.db.exec('CREATE TABLE IF NOT EXISTS healing_memory (id TEXT PRIMARY KEY, pattern_id TEXT, pattern_name TEXT, attempts INTEGER DEFAULT 0, successes INTEGER DEFAULT 0, best_coherency REAL DEFAULT 0, last_attempt TEXT, last_strategy TEXT)');
+          } catch { /* table might exist */ }
+          const rows = sqliteStore.db.prepare('SELECT * FROM healing_memory ORDER BY last_attempt DESC LIMIT 50').all();
+          const totalAttempts = rows.reduce((s, r) => s + (r.attempts || 0), 0);
+          const totalSuccesses = rows.reduce((s, r) => s + (r.successes || 0), 0);
+          sendJSON(res, {
+            tracked: rows.length,
+            totalAttempts,
+            totalSuccesses,
+            rate: totalAttempts > 0 ? (totalSuccesses / totalAttempts) : 0,
+            patterns: rows,
+          });
+        } catch (err) {
+          sendJSON(res, { tracked: 0, totalAttempts: 0, totalSuccesses: 0, rate: 0, patterns: [], error: err.message });
+        }
+        return;
+      }
+
       // ─── Teams ───
       if (pathname === '/api/teams' && req.method === 'GET') {
         const sqliteStore = oracleInstance.store.getSQLiteStore();

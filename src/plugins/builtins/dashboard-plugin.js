@@ -18,6 +18,20 @@ module.exports = {
     // Expose dashboard factory on the oracle for CLI/programmatic use
     ctx.oracle._dashboardFactory = { createDashboardServer, startDashboard, createRateLimiter };
 
+    // Track live stats for the dashboard
+    let submissions = 0;
+    let registrations = 0;
+
+    ctx.hooks.onAfterSubmit((result) => {
+      submissions++;
+      ctx.logger.debug(`Submission #${submissions}: ${result.accepted ? 'accepted' : 'rejected'}`);
+    });
+
+    ctx.hooks.onPatternRegistered((pattern) => {
+      registrations++;
+      ctx.logger.debug(`Pattern registered: ${pattern.name || pattern.id} (#${registrations})`);
+    });
+
     ctx.logger.info('Dashboard plugin activated — use oracle.startDashboard() or CLI "oracle dashboard"');
 
     return function deactivate() {

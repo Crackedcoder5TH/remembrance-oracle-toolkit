@@ -103,7 +103,7 @@ For AI clients that support MCP, start the server:
 node src/cli.js mcp
 ```
 
-This exposes 10 focused tools:
+This exposes 12 focused tools:
 
 - **oracle_search** — unified search (basic, smart/intent-aware, structured query)
 - **oracle_resolve** — smart retrieval (PULL/EVOLVE/GENERATE decision)
@@ -115,6 +115,8 @@ This exposes 10 focused tools:
 - **oracle_sync** — sync across tiers (personal/community/both via `scope` param)
 - **oracle_harvest** — bulk harvest patterns from repos/directories
 - **oracle_maintain** — maintenance (full-cycle/candidates/promote/synthesize/reflect/covenant via `action` param)
+- **oracle_healing** — healing memory (lineage/stats/improved/variants/best via `action` param)
+- **oracle_swarm** — multi-agent orchestration (code/review/heal/status/providers via `action` param)
 
 ## Quick Reference
 

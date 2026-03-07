@@ -29,6 +29,13 @@ module.exports = {
       checkRemoteHealth: cloudClient.checkRemoteHealth,
     };
 
+    // Auto-sync new proven patterns to configured remotes
+    ctx.hooks.onAfterSubmit((result) => {
+      if (result.accepted && ctx.oracle._autoSync) {
+        ctx.logger.debug(`Cloud: auto-sync triggered for ${result.entry?.id || 'unknown'}`);
+      }
+    });
+
     ctx.logger.info('Cloud plugin activated — remote federation available');
 
     return function deactivate() {

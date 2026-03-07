@@ -5,3 +5,10 @@ node_modules/
 .env
 .env.local
 .env.*.local
+.cursor/
+.vscode/
+.mcp.json
+.idea/
+.oracle-vim.vim
+.oracle-coc-settings.json
+.oracle-emacs.el

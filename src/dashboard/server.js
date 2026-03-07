@@ -148,6 +148,9 @@ ${getDashboardCSS()}
     <div class="nav-item" data-panel="charts">
       <span class="nav-icon">&#9650;</span> Charts
     </div>
+    <div class="nav-item" data-panel="healing">
+      <span class="nav-icon">&#10024;</span> Healing
+    </div>
     <div class="nav-section">System</div>
     <div class="nav-item" data-panel="admin">
       <span class="nav-icon">&#9881;</span> Admin
@@ -336,6 +339,33 @@ ${getDashboardCSS()}
   <div class="card" style="padding:20px">
     <div class="card-title" style="margin-bottom:12px">Coherence Sparkline (by pattern creation order)</div>
     <svg id="chart-sparkline" width="100%" height="100" viewBox="0 0 800 100"></svg>
+  </div>
+</div>
+
+<!-- ─── HEALING TAB ─── -->
+<div id="panel-healing" class="panel">
+  <div class="page-header">
+    <div><div class="page-title">Healing Observatory</div><div class="page-desc">Live SERF reflection loop visualization and healing history</div></div>
+    <button class="btn btn-ghost" id="refresh-healing-btn">Refresh</button>
+  </div>
+  <div class="stats-row" id="healing-stats-grid">
+    <div class="stat-card"><div class="stat-label">Tracked Patterns</div><div class="stat-value" id="heal-tracked">--</div></div>
+    <div class="stat-card"><div class="stat-label">Total Heals</div><div class="stat-value" id="heal-total">--</div></div>
+    <div class="stat-card"><div class="stat-label">Success Rate</div><div class="stat-value" id="heal-rate">--</div></div>
+    <div class="stat-card"><div class="stat-label">Active Loops</div><div class="stat-value" id="heal-active">0</div></div>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:20px">
+    <div class="card-title" style="margin-bottom:12px">Live Healing Feed</div>
+    <div id="healing-live-feed" style="font-family:monospace;font-size:0.85em;max-height:300px;overflow-y:auto;background:var(--bg1);padding:12px;border-radius:8px;">
+      <div class="empty-state" style="padding:20px">
+        <div class="empty-icon">&#10024;</div>
+        <div class="empty-text">No active healing loops. Trigger a resolve or maintain to see live healing.</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px">
+    <div class="card-title" style="margin-bottom:12px">Healing History</div>
+    <div id="healing-history-list" style="font-family:monospace;font-size:0.85em;">Loading...</div>
   </div>
 </div>
 

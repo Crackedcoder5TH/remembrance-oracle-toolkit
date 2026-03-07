@@ -3,7 +3,7 @@
  *
  * Weighted scoring algorithm that ranks leads by business value.
  * A veteran seeking term life in a high-population state scores higher
- * than an undecided non-veteran in a low-volume market.
+ * than an undecided non-military lead in a low-volume market.
  *
  * Score range: 0–100
  *   90–100: Hot (immediate follow-up)
@@ -34,12 +34,16 @@ const COVERAGE_WEIGHTS: Record<string, number> = {
   "not-sure": 10,
 };
 
-// --- Veteran status weights (max 20 points) ---
-// Veterans have access to SGLI/VGLI conversion, group rates, and
-// specialized underwriting — higher value to carriers
+// --- Service category weights (max 20 points) ---
+// Active-duty and veterans have access to SGLI/VGLI conversion, group rates,
+// and specialized underwriting — higher value to carriers.
+// Reserve and National Guard also qualify for military-specific products.
 const VETERAN_WEIGHTS: Record<string, number> = {
+  "active-duty": 20,
   "veteran": 20,
-  "non-veteran": 8,
+  "reserve": 18,
+  "national-guard": 18,
+  "non-military": 8,
 };
 
 // --- High-volume insurance states (max 20 points) ---
@@ -75,7 +79,7 @@ export function scoreLead(lead: {
   // Veteran factor (0–20)
   let veteran = VETERAN_WEIGHTS[lead.veteranStatus] || 5;
   // Bonus for specific branch identification (indicates engagement)
-  if (lead.veteranStatus === "veteran" && lead.militaryBranch) {
+  if (lead.veteranStatus !== "non-military" && lead.militaryBranch) {
     veteran = Math.min(20, veteran + 2);
   }
 

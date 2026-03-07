@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   const headers = [
     "Lead ID", "First Name", "Last Name", "Email", "Phone", "DOB",
-    "State", "Coverage", "Veteran Status", "Military Branch",
+    "State", "Coverage", "Purchase Intent", "Veteran Status", "Military Branch",
     "Score", "Tier", "UTM Source", "UTM Medium", "UTM Campaign",
     "Created At",
   ];
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
       lead.dateOfBirth,
       lead.state,
       lead.coverageInterest,
+      lead.purchaseIntent,
       lead.veteranStatus,
       lead.militaryBranch,
       String(score.total),

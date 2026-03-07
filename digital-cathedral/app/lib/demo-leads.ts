@@ -51,7 +51,7 @@ export const DEMO_LEADS: LeadRecord[] = [
     phone: "3055551002",
     state: "FL",
     coverageInterest: "term",
-    veteranStatus: "non-veteran",
+    veteranStatus: "non-military",
     militaryBranch: "",
     consentTcpa: true,
     consentPrivacy: true,
@@ -76,8 +76,8 @@ export const DEMO_LEADS: LeadRecord[] = [
     phone: "4045551003",
     state: "GA",
     coverageInterest: "final-expense",
-    veteranStatus: "veteran",
-    militaryBranch: "Marines",
+    veteranStatus: "active-duty",
+    militaryBranch: "marine-corps",
     consentTcpa: true,
     consentPrivacy: true,
     consentTimestamp: tenHoursAgo,
@@ -101,8 +101,8 @@ export const DEMO_LEADS: LeadRecord[] = [
     phone: "7205551004",
     state: "CO",
     coverageInterest: "annuity",
-    veteranStatus: "non-veteran",
-    militaryBranch: "",
+    veteranStatus: "reserve",
+    militaryBranch: "army",
     consentTcpa: true,
     consentPrivacy: true,
     consentTimestamp: thirtyHoursAgo,
@@ -126,7 +126,7 @@ export const DEMO_LEADS: LeadRecord[] = [
     phone: "3075551005",
     state: "WY",
     coverageInterest: "not-sure",
-    veteranStatus: "non-veteran",
+    veteranStatus: "non-military",
     militaryBranch: "",
     consentTcpa: true,
     consentPrivacy: true,
@@ -158,8 +158,7 @@ export function getDemoStats(): LeadStats {
     byState[lead.state] = (byState[lead.state] || 0) + 1;
     byCoverage[lead.coverageInterest] = (byCoverage[lead.coverageInterest] || 0) + 1;
 
-    const vetKey = lead.veteranStatus === "veteran" ? "veteran" : "non-veteran";
-    byVeteranStatus[vetKey] = (byVeteranStatus[vetKey] || 0) + 1;
+    byVeteranStatus[lead.veteranStatus] = (byVeteranStatus[lead.veteranStatus] || 0) + 1;
 
     const ageMs = now - new Date(lead.createdAt).getTime();
     const ageHours = ageMs / (1000 * 60 * 60);

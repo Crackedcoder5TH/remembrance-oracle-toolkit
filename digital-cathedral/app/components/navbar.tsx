@@ -204,24 +204,6 @@ export function Navbar() {
               </svg>
               Client Login
             </Link>
-            <Link
-              href="/login"
-              className="metallic-gold-btn flex items-center gap-fib-8 px-fib-21 py-fib-8 text-sm font-medium rounded-fib transition-all"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="shrink-0 metallic-gold-icon"
-                aria-hidden="true"
-              >
-                <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-              </svg>
-              <span className="metallic-gold">Login</span>
-            </Link>
           </div>
         )}
       </div>

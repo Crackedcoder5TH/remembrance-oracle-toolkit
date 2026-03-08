@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { list, getDownloadUrl } from "@vercel/blob";
+import { list, get } from "@vercel/blob";
 
 const VALID_SLOTS = ["logo", "profile", "veteran-group", "founder-photo"];
 
-const MIME_MAP: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  svg: "image/svg+xml",
-  gif: "image/gif",
-};
-
-/** GET /api/image?slot=profile — proxies the blob image so it renders in <img> tags */
+/** GET /api/image?slot=profile — proxies the private blob so it renders in <img> tags */
 export async function GET(request: NextRequest) {
   try {
     const slot = request.nextUrl.searchParams.get("slot");
@@ -21,27 +12,20 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await list({ prefix: `uploads/${slot}` });
-    const blob = result.blobs[0];
-    if (!blob) {
+    const blobMeta = result.blobs[0];
+    if (!blobMeta) {
       return new NextResponse("Not found", { status: 404 });
     }
 
-    // Get a signed URL and fetch the actual image bytes server-side
-    const downloadUrl = await getDownloadUrl(blob.url);
-    const imageRes = await fetch(downloadUrl);
-    if (!imageRes.ok) {
-      return new NextResponse("Failed to fetch image", { status: 502 });
+    // Fetch the blob contents server-side using the token (works with private stores)
+    const blobData = await get(blobMeta.url, { access: "private" });
+    if (!blobData.stream) {
+      return new NextResponse("Image not available", { status: 502 });
     }
 
-    const imageBuffer = await imageRes.arrayBuffer();
-
-    // Determine content type from the blob pathname extension
-    const ext = blob.pathname.split(".").pop()?.toLowerCase() || "";
-    const contentType = MIME_MAP[ext] || "application/octet-stream";
-
-    return new NextResponse(imageBuffer, {
+    return new NextResponse(blobData.stream as ReadableStream, {
       headers: {
-        "Content-Type": contentType,
+        "Content-Type": blobData.blob.contentType || "application/octet-stream",
         "Cache-Control": "public, max-age=300, s-maxage=600",
       },
     });

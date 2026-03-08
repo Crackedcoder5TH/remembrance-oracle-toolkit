@@ -8,6 +8,15 @@ const VALID_SLOTS = ["logo", "profile", "veteran-group", "founder-photo"];
 
 export async function POST(request: NextRequest) {
   try {
+    // Check for Blob token before anything else
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error("[UPLOAD] BLOB_READ_WRITE_TOKEN is not set");
+      return NextResponse.json(
+        { error: "Image storage is not configured. Add BLOB_READ_WRITE_TOKEN to your Vercel environment variables." },
+        { status: 503 },
+      );
+    }
+
     // Admin authentication required
     const authError = await verifyAdmin(request);
     if (authError) return authError;
@@ -48,9 +57,10 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ url: blob.url, slot });
-  } catch (err) {
-    console.error("[UPLOAD] Error:", err);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[UPLOAD] Error:", message, err);
+    return NextResponse.json({ error: `Upload failed: ${message}` }, { status: 500 });
   }
 }
 

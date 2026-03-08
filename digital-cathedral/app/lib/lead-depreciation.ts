@@ -66,7 +66,7 @@ export const PURCHASE_TIERS = new Proxy([] as PurchaseTier[], {
     if (typeof prop === "string" && !isNaN(Number(prop))) {
       return tiers[Number(prop)];
     }
-    return (tiers as Record<string | symbol, unknown>)[prop];
+    return (tiers as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
 

@@ -2,20 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyClient } from "@/app/lib/client-auth";
 import {
   getClientById,
-  createPurchase,
-  updateClientBalance,
   getPurchasesByLead,
   getClientDailyPurchaseCount,
   getClientMonthlyPurchaseCount,
-  generatePurchaseId,
 } from "@/app/lib/client-database";
 import { getLeadById } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
+import { stripe } from "@/app/lib/stripe";
 
 /**
  * Client Purchase API
  *
- * POST /api/client/purchase — Buy a lead
+ * POST /api/client/purchase — Create a Stripe Checkout Session for a lead purchase.
+ * Returns a checkout URL that the client is redirected to for payment.
+ * The purchase is fulfilled in /api/client/purchase/success after payment.
  */
 export async function POST(req: NextRequest) {
   const auth = await verifyClient(req);
@@ -83,65 +83,39 @@ export async function POST(req: NextRequest) {
     const isExclusive = exclusive === true;
     const price = isExclusive ? client.exclusivePrice : client.pricePerLead;
 
-    // Balance check
-    if (client.balance < price) {
-      return NextResponse.json(
-        { success: false, message: `Insufficient balance. Need $${(price / 100).toFixed(2)}, have $${(client.balance / 100).toFixed(2)}.` },
-        { status: 402 }
-      );
-    }
+    // Create Stripe Checkout Session (pay-per-lead, no stored balance)
+    const origin = req.headers.get("origin") || req.headers.get("host") || "";
+    const baseUrl = origin.startsWith("http") ? origin : `https://${origin}`;
 
-    // Deduct balance
-    const balanceResult = await updateClientBalance(auth.clientId, -price);
-    if (!balanceResult.ok) {
-      return NextResponse.json({ success: false, message: "Payment failed." }, { status: 500 });
-    }
-
-    // Create purchase
-    const returnDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
-    const purchaseId = generatePurchaseId();
-
-    const purchaseResult = await createPurchase({
-      purchaseId,
-      leadId,
-      clientId: auth.clientId,
-      pricePaid: price,
-      purchasedAt: new Date().toISOString(),
-      status: "delivered",
-      exclusive: isExclusive,
-      returnReason: "",
-      returnDeadline,
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      payment_method_types: ["card", "us_bank_account", "cashapp"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            unit_amount: price,
+            product_data: {
+              name: `${isExclusive ? "Exclusive" : "Shared"} Lead — ${lead.state}`,
+              description: `Lead #${leadId.slice(0, 12)}… | ${lead.coverageInterest} | Score: ${score.total}`,
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        clientId: auth.clientId,
+        leadId,
+        exclusive: isExclusive ? "true" : "false",
+        price: String(price),
+      },
+      success_url: `${baseUrl}/portal?tab=purchases&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/portal?tab=leads&payment=cancelled`,
     });
 
-    if (!purchaseResult.ok) {
-      // Refund on failure
-      await updateClientBalance(auth.clientId, price);
-      return NextResponse.json({ success: false, message: "Purchase failed." }, { status: 500 });
-    }
-
-    // Return full lead data now that it's purchased
     return NextResponse.json({
       success: true,
-      purchaseId,
-      lead: {
-        leadId: lead.leadId,
-        firstName: lead.firstName,
-        lastName: lead.lastName,
-        email: lead.email,
-        phone: lead.phone,
-        dateOfBirth: lead.dateOfBirth,
-        state: lead.state,
-        coverageInterest: lead.coverageInterest,
-        veteranStatus: lead.veteranStatus,
-        militaryBranch: lead.militaryBranch,
-        score: score.total,
-        tier: score.tier,
-        createdAt: lead.createdAt,
-      },
-      pricePaid: price,
-      exclusive: isExclusive,
-      returnDeadline,
-      newBalance: balanceResult.value.newBalance,
+      checkoutUrl: session.url,
     });
   } catch {
     return NextResponse.json({ success: false, message: "Invalid request." }, { status: 400 });

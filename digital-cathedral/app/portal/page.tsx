@@ -179,6 +179,35 @@ export default function ClientPortal() {
     else if (tab === "filters") fetchFilters();
   }, [tab, fetchLeads, fetchPurchases, fetchBilling, fetchFilters]);
 
+  // Handle payment return from Stripe Checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const sessionId = params.get("session_id");
+    const tabParam = params.get("tab") as Tab | null;
+
+    if (tabParam) setTab(tabParam);
+
+    if (payment === "success" && sessionId) {
+      // Fulfill the purchase via the success callback
+      fetch(`/api/client/purchase/success?session_id=${sessionId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setMessage(`Lead purchased! ${data.exclusive ? "(Exclusive)" : "(Shared)"} — $${(data.pricePaid / 100).toFixed(2)}`);
+          } else {
+            setMessage(data.message || "Purchase fulfillment issue — contact support.");
+          }
+        })
+        .catch(() => setMessage("Could not verify payment — contact support."));
+      // Clean URL params
+      window.history.replaceState({}, "", "/portal");
+    } else if (payment === "cancelled") {
+      setMessage("Payment cancelled. You have not been charged.");
+      window.history.replaceState({}, "", "/portal");
+    }
+  }, []);
+
   const handlePurchase = async (leadId: string, exclusive: boolean) => {
     setMessage("");
     const res = await fetch("/api/client/purchase", {
@@ -187,9 +216,9 @@ export default function ClientPortal() {
       body: JSON.stringify({ leadId, exclusive }),
     });
     const data = await res.json();
-    if (data.success) {
-      setMessage(`Lead purchased! ${exclusive ? "(Exclusive)" : "(Shared)"} — $${(data.pricePaid / 100).toFixed(2)}`);
-      fetchLeads();
+    if (data.success && data.checkoutUrl) {
+      // Redirect to Stripe Checkout
+      window.location.href = data.checkoutUrl;
     } else {
       setMessage(data.message || "Purchase failed.");
     }
@@ -430,6 +459,56 @@ export default function ClientPortal() {
             </div>
           </div>
 
+          {/* How Payment Works */}
+          <div className="cathedral-surface p-6">
+            <h3 className="text-lg font-light text-[var(--text-primary)] mb-1">How Payment Works</h3>
+            <p className="text-sm text-[var(--text-muted)] mb-5">
+              Pay per lead at checkout — no stored balance needed. When you click &ldquo;Buy&rdquo; on a lead, you&apos;ll be taken to a secure Stripe checkout page.
+            </p>
+
+            <div className="mb-4">
+              <p className="text-xs metallic-gold uppercase tracking-wider mb-3">Accepted Payment Methods</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-indigo-cathedral/10 bg-[var(--bg-surface)]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-teal-cathedral shrink-0" aria-hidden="true">
+                    <path d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-[var(--text-primary)] font-medium">Credit / Debit Card</p>
+                    <p className="text-xs text-[var(--text-muted)]">Visa, Mastercard, Amex</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-indigo-cathedral/10 bg-[var(--bg-surface)]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-teal-cathedral shrink-0" aria-hidden="true">
+                    <path d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-[var(--text-primary)] font-medium">Bank Account</p>
+                    <p className="text-xs text-[var(--text-muted)]">ACH direct debit</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-indigo-cathedral/10 bg-[var(--bg-surface)]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-teal-cathedral shrink-0" aria-hidden="true">
+                    <path d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm text-[var(--text-primary)] font-medium">Cash App</p>
+                    <p className="text-xs text-[var(--text-muted)]">Cash App Pay</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-[var(--bg-surface)] border border-indigo-cathedral/10">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 mt-0.5 text-teal-cathedral" aria-hidden="true">
+                <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              <p className="text-xs text-[var(--text-muted)]">
+                All payments are securely processed by Stripe. We never see or store your payment details.
+              </p>
+            </div>
+          </div>
+
           {/* Transaction History */}
           <div className="cathedral-surface overflow-x-auto">
             <div className="px-4 py-3 border-b border-indigo-cathedral/10">
@@ -446,7 +525,7 @@ export default function ClientPortal() {
               </thead>
               <tbody>
                 {billing.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)]">No transactions yet. Add funds to get started.</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)]">No transactions yet. Purchase a lead to get started.</td></tr>
                 ) : (
                   billing.map((b) => (
                     <tr key={b.billingId} className="border-b border-indigo-cathedral/5">

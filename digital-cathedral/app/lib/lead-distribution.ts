@@ -5,7 +5,6 @@
  *   - Client filters (state, coverage, veteran, min score)
  *   - Cap enforcement (daily + monthly limits)
  *   - Distribution mode (exclusive, shared, round-robin)
- *   - Balance checks (prepaid model)
  *
  * Called after a lead is persisted, scored, and broadcast.
  */
@@ -16,7 +15,6 @@ import {
   getClientDailyPurchaseCount,
   getClientMonthlyPurchaseCount,
   createPurchase,
-  updateClientBalance,
   generatePurchaseId,
 } from "./client-database";
 import type { ClientRecord, LeadPurchase } from "./client-database";
@@ -123,12 +121,6 @@ async function matchClientToLead(
     return { match: false, exclusive: false, reason: `Coverage ${lead.coverageInterest} not wanted` };
   }
 
-  // Check balance
-  const price = client.pricePerLead;
-  if (client.balance < price) {
-    return { match: false, exclusive: false, reason: "Insufficient balance" };
-  }
-
   // Check daily cap
   const dailyResult = await getClientDailyPurchaseCount(client.clientId);
   if (dailyResult.ok && dailyResult.value >= client.dailyCap) {
@@ -189,10 +181,6 @@ async function executePurchase(
 ): Promise<{ clientId: string; purchaseId: string; exclusive: boolean } | null> {
   const price = exclusive ? client.exclusivePrice : client.pricePerLead;
 
-  // Deduct balance
-  const balanceResult = await updateClientBalance(client.clientId, -price);
-  if (!balanceResult.ok) return null;
-
   // Create return deadline (72 hours from now)
   const returnDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
@@ -209,11 +197,7 @@ async function executePurchase(
   };
 
   const result = await createPurchase(purchase);
-  if (!result.ok) {
-    // Refund on failure
-    await updateClientBalance(client.clientId, price);
-    return null;
-  }
+  if (!result.ok) return null;
 
   return { clientId: client.clientId, purchaseId: purchase.purchaseId, exclusive };
 }

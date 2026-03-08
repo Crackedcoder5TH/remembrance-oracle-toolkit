@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { useLeadForm } from "./protect/hooks/use-lead-form";
+import { useLeadForm, FIELD_STEP } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
 import { TrustSignals } from "./protect/components/trust-signals";
@@ -128,8 +128,14 @@ function autoCapitalizeName(value: string): string {
 }
 
 const INPUT_CLASS =
-  "w-full bg-gray-50 text-black placeholder-gray-400 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/60 transition-all";
-const SELECT_CLASS = INPUT_CLASS + " appearance-none";
+  "w-full bg-gray-50 text-black placeholder-gray-400 border rounded-lg px-4 py-3 text-sm focus:outline-none transition-all";
+const INPUT_NORMAL = INPUT_CLASS + " border-gray-300 focus:border-teal-cathedral/60";
+const INPUT_ERROR = INPUT_CLASS + " border-red-500 border-2 bg-red-50/30 focus:border-red-500";
+const SELECT_NORMAL = INPUT_NORMAL + " appearance-none";
+const SELECT_ERROR = INPUT_ERROR + " appearance-none";
+
+function inputClass(hasError: boolean) { return hasError ? INPUT_ERROR : INPUT_NORMAL; }
+function selectClass(hasError: boolean) { return hasError ? SELECT_ERROR : SELECT_NORMAL; }
 const LABEL_CLASS = "block text-sm font-bold text-gray-900";
 const BTN_PRIMARY = "py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 hover:shadow-[0_0_30px_rgba(0,168,168,0.15)]";
 const BTN_BACK = "py-3 rounded-lg font-medium text-sm transition-all text-gray-500 border border-gray-300 hover:border-gray-400";
@@ -153,8 +159,8 @@ export default function HomePage() {
   const utm = useUtmTracking();
   const {
     form, errors, loading, submitted, confirmationMessage, leadId, serverError,
-    step, totalSteps,
-    updateField, handleSubmit, nextStep, prevStep,
+    step, totalSteps, submitAttempted, missingFields,
+    updateField, handleSubmit, nextStep, prevStep, goToStep,
   } = useLeadForm({ ...utm });
 
   // --- Accessibility: focus management on step change ---
@@ -422,12 +428,12 @@ export default function HomePage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label htmlFor="firstName" className={LABEL_CLASS}>First Name</label>
-                <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", autoCapitalizeName(e.target.value))} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={INPUT_CLASS} />
+                <input id="firstName" type="text" value={form.firstName} onChange={(e) => updateField("firstName", autoCapitalizeName(e.target.value))} placeholder="John" autoComplete="given-name" aria-required="true" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? "firstName-error" : undefined} className={inputClass(!!errors.firstName)} />
                 {errors.firstName && <p id="firstName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.firstName}</p>}
               </div>
               <div className="space-y-1">
                 <label htmlFor="lastName" className={LABEL_CLASS}>Last Name</label>
-                <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", autoCapitalizeName(e.target.value))} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={INPUT_CLASS} />
+                <input id="lastName" type="text" value={form.lastName} onChange={(e) => updateField("lastName", autoCapitalizeName(e.target.value))} placeholder="Doe" autoComplete="family-name" aria-required="true" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? "lastName-error" : undefined} className={inputClass(!!errors.lastName)} />
                 {errors.lastName && <p id="lastName-error" className="text-crimson-cathedral text-xs" role="alert">{errors.lastName}</p>}
               </div>
             </div>
@@ -443,7 +449,7 @@ export default function HomePage() {
                 aria-required="true"
                 aria-invalid={!!errors.dateOfBirth}
                 aria-describedby={errors.dateOfBirth ? "dob-error dob-hint" : "dob-hint"}
-                className={INPUT_CLASS}
+                className={inputClass(!!errors.dateOfBirth)}
               />
               <p id="dob-hint" className="text-crimson-cathedral text-xs">You must be at least 18 years old.</p>
               {errors.dateOfBirth && <p id="dob-error" className="text-crimson-cathedral text-xs" role="alert">{errors.dateOfBirth}</p>}
@@ -451,7 +457,7 @@ export default function HomePage() {
 
             <div className="space-y-1">
               <label htmlFor="state" className={LABEL_CLASS}>State</label>
-              <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} aria-required="true" aria-invalid={!!errors.state} aria-describedby={errors.state ? "state-error" : undefined} className={SELECT_CLASS}>
+              <select id="state" value={form.state} onChange={(e) => updateField("state", e.target.value)} aria-required="true" aria-invalid={!!errors.state} aria-describedby={errors.state ? "state-error" : undefined} className={selectClass(!!errors.state)}>
                 <option value="">Select your state...</option>
                 {US_STATES.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
               </select>
@@ -460,7 +466,7 @@ export default function HomePage() {
 
             <div className="space-y-1">
               <label htmlFor="coverage" className={LABEL_CLASS}>Coverage Interest</label>
-              <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={SELECT_CLASS}>
+              <select id="coverage" value={form.coverageInterest} onChange={(e) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={selectClass(!!errors.coverageInterest)}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
               {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
@@ -468,7 +474,7 @@ export default function HomePage() {
 
             <div className="space-y-1">
               <label htmlFor="purchaseIntent" className={LABEL_CLASS}>How Serious Are You?</label>
-              <select id="purchaseIntent" value={form.purchaseIntent} onChange={(e) => updateField("purchaseIntent", e.target.value)} aria-required="true" aria-invalid={!!errors.purchaseIntent} aria-describedby={errors.purchaseIntent ? "intent-error" : undefined} className={SELECT_CLASS}>
+              <select id="purchaseIntent" value={form.purchaseIntent} onChange={(e) => updateField("purchaseIntent", e.target.value)} aria-required="true" aria-invalid={!!errors.purchaseIntent} aria-describedby={errors.purchaseIntent ? "intent-error" : undefined} className={selectClass(!!errors.purchaseIntent)}>
                 {PURCHASE_INTENT_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
               {errors.purchaseIntent && <p id="intent-error" className="text-crimson-cathedral text-xs" role="alert">{errors.purchaseIntent}</p>}
@@ -477,7 +483,7 @@ export default function HomePage() {
             {/* Military Status */}
             <div className="space-y-1">
               <label htmlFor="veteranStatus" className={LABEL_CLASS}>Military Status</label>
-              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={SELECT_CLASS}>
+              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={selectClass(!!errors.veteranStatus)}>
                 {MILITARY_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
               {errors.veteranStatus && <p id="veteran-error" className="text-crimson-cathedral text-xs" role="alert">{errors.veteranStatus}</p>}
@@ -487,7 +493,7 @@ export default function HomePage() {
             {form.veteranStatus && form.veteranStatus !== "non-military" && BRANCH_OPTIONS_BY_STATUS[form.veteranStatus] && (
               <div className="space-y-1 animate-in fade-in">
                 <label htmlFor="militaryBranch" className={LABEL_CLASS}>Branch of Service</label>
-                <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={SELECT_CLASS}>
+                <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={selectClass(!!errors.militaryBranch)}>
                   {BRANCH_OPTIONS_BY_STATUS[form.veteranStatus].map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                 </select>
                 <p id="branch-hint" className="text-gray-500 text-xs">Thank you for your service.</p>
@@ -511,13 +517,13 @@ export default function HomePage() {
           <div ref={stepContainerRef} className="space-y-5 animate-in fade-in" role="group" aria-label="Step 2: Contact Information">
             <div className="space-y-1">
               <label htmlFor="email" className={LABEL_CLASS}>Email Address</label>
-              <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" aria-required="true" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={INPUT_CLASS} />
+              <input id="email" type="email" value={form.email} onChange={(e) => updateField("email", e.target.value)} placeholder="john.doe@example.com" autoComplete="email" aria-required="true" aria-invalid={!!errors.email} aria-describedby={errors.email ? "email-error" : undefined} className={inputClass(!!errors.email)} />
               {errors.email && <p id="email-error" className="text-crimson-cathedral text-xs" role="alert">{errors.email}</p>}
             </div>
 
             <div className="space-y-1">
               <label htmlFor="phone" className={LABEL_CLASS}>Phone Number</label>
-              <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" autoComplete="tel" aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} className={INPUT_CLASS} />
+              <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", formatPhoneInput(e.target.value))} placeholder="(555) 123-4567" autoComplete="tel" aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? "phone-error" : undefined} className={inputClass(!!errors.phone)} />
               {errors.phone && <p id="phone-error" className="text-crimson-cathedral text-xs" role="alert">{errors.phone}</p>}
             </div>
 
@@ -588,6 +594,42 @@ export default function HomePage() {
             {/* Server Error */}
             {serverError && (
               <div className="text-crimson-cathedral text-sm text-center py-2" role="alert" aria-live="assertive">{serverError}</div>
+            )}
+
+            {/* Missing Fields Summary — shown after submit attempt */}
+            {submitAttempted && missingFields.length > 0 && (
+              <div className="rounded-lg border-2 border-red-400 bg-red-50 p-4" role="alert" aria-live="assertive" id="missing-fields-summary">
+                <p className="text-red-700 font-bold text-sm mb-2">Please complete the following fields before submitting:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  {missingFields.map((mf) => (
+                    <li key={mf.field} className="text-red-600 text-sm">
+                      <button
+                        type="button"
+                        className="text-red-600 underline hover:text-red-800 font-medium"
+                        onClick={() => {
+                          const targetStep = FIELD_STEP[mf.field];
+                          if (targetStep !== step) {
+                            goToStep(targetStep);
+                          }
+                          // Wait for React to render the target step, then scroll + focus
+                          setTimeout(() => {
+                            const idMap: Record<string, string> = { coverageInterest: "coverage" };
+                            const elId = idMap[mf.field] || mf.field;
+                            const el = document.getElementById(elId);
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "center" });
+                              el.focus();
+                            }
+                          }, 100);
+                        }}
+                      >
+                        {mf.label}
+                      </button>
+                      <span className="text-red-500 text-xs ml-1">— {mf.error}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             {/* Navigation + Submit */}

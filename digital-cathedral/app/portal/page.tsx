@@ -59,11 +59,14 @@ interface AvailableLead {
   createdAt: string;
   purchased: boolean;
   available: boolean;
-  pricePerLead?: number;
-  exclusivePrice?: number;
+  buyerCount?: number;
   ageInDays?: number;
-  isHolding?: boolean;
-  stepsDown?: number;
+  tierPrices?: Array<{
+    name: string;
+    maxBuyers: number;
+    price: number;
+    soldOut: boolean;
+  }>;
 }
 
 interface Purchase {
@@ -212,16 +215,15 @@ export default function ClientPortal() {
     }
   }, []);
 
-  const handlePurchase = async (leadId: string, exclusive: boolean) => {
+  const handlePurchase = async (leadId: string, tierIndex: number) => {
     setMessage("");
     const res = await fetch("/api/client/purchase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ leadId, exclusive }),
+      body: JSON.stringify({ leadId, tierIndex }),
     });
     const data = await res.json();
     if (data.success && data.checkoutUrl) {
-      // Redirect to Stripe Checkout
       window.location.href = data.checkoutUrl;
     } else {
       setMessage(data.message || "Purchase failed.");
@@ -361,11 +363,7 @@ export default function ClientPortal() {
                         {lead.ageInDays !== undefined ? (
                           <div>
                             <span className="text-[var(--text-primary)]">{lead.ageInDays < 1 ? "<1" : Math.floor(lead.ageInDays)}d</span>
-                            {lead.isHolding ? (
-                              <span className="block text-emerald-600 text-[10px]">Max price</span>
-                            ) : (
-                              <span className="block text-amber-600 text-[10px]">{lead.stepsDown} drop{lead.stepsDown !== 1 ? "s" : ""}</span>
-                            )}
+                            <span className="block text-[var(--text-muted)] text-[10px]">{lead.buyerCount || 0} buyer{(lead.buyerCount || 0) !== 1 ? "s" : ""}</span>
                           </div>
                         ) : (
                           <span className="text-[var(--text-muted)]">{new Date(lead.createdAt).toLocaleDateString()}</span>
@@ -379,23 +377,30 @@ export default function ClientPortal() {
                             <p className="text-[var(--text-muted)]">{lead.email}</p>
                             <p className="text-[var(--text-muted)]">{lead.phone}</p>
                           </div>
-                        ) : lead.available ? (
-                          <div className="flex flex-col gap-1.5">
-                            <button
-                              onClick={() => handlePurchase(lead.leadId, false)}
-                              className="px-2 py-1 rounded text-xs bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
-                            >
-                              Buy {lead.pricePerLead ? formatCents(lead.pricePerLead) : ""}
-                            </button>
-                            <button
-                              onClick={() => handlePurchase(lead.leadId, true)}
-                              className="px-2 py-1 rounded text-xs bg-amber-100 text-amber-700 hover:bg-amber-200"
-                            >
-                              Exclusive {lead.exclusivePrice ? formatCents(lead.exclusivePrice) : ""}
-                            </button>
-                            {!lead.isHolding && lead.stepsDown && lead.stepsDown > 0 && (
-                              <span className="text-[10px] text-amber-600 text-center">Price reduced</span>
-                            )}
+                        ) : lead.available && lead.tierPrices ? (
+                          <div className="flex flex-col gap-1">
+                            {lead.tierPrices.map((tp, idx) => {
+                              const tierBtnStyles = [
+                                "bg-indigo-600 text-white hover:bg-indigo-700",       // Exclusive
+                                "bg-violet-100 text-violet-700 hover:bg-violet-200",   // Semi-Exclusive
+                                "bg-amber-100 text-amber-700 hover:bg-amber-200",      // Warm Shared
+                                "bg-sky-100 text-sky-700 hover:bg-sky-200",             // Cool Shared
+                              ];
+                              const soldOutStyle = "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200";
+                              return (
+                                <button
+                                  key={tp.name}
+                                  disabled={tp.soldOut}
+                                  onClick={() => handlePurchase(lead.leadId, idx)}
+                                  className={`px-2 py-1 rounded text-[11px] transition-all ${tp.soldOut ? soldOutStyle : tierBtnStyles[idx]}`}
+                                >
+                                  {tp.soldOut
+                                    ? `${tp.name} — Sold Out`
+                                    : `${tp.name} ${formatCents(tp.price)}`}
+                                  <span className="opacity-60 ml-0.5">({tp.maxBuyers})</span>
+                                </button>
+                              );
+                            })}
                           </div>
                         ) : (
                           <span className="text-[var(--text-muted)] text-xs">Below min score</span>
@@ -465,18 +470,24 @@ export default function ClientPortal() {
       {/* ─── Billing Tab ─── */}
       {tab === "billing" && (
         <div className="space-y-6">
-          {/* Pricing Overview */}
+          {/* Pricing Tiers */}
           <div className="cathedral-surface p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-[var(--text-muted)] uppercase">Shared Lead Price</p>
-                <p className="text-lg text-[var(--text-primary)]">{profile ? formatCents(profile.pricePerLead) : "—"}</p>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text-muted)] uppercase">Exclusive Lead Price</p>
-                <p className="text-lg text-[var(--text-primary)]">{profile ? formatCents(profile.exclusivePrice) : "—"}</p>
-              </div>
+            <h3 className="text-lg font-light text-[var(--text-primary)] mb-4">Lead Pricing Tiers</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { name: "Exclusive", buyers: "1 buyer", price: 12000, color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+                { name: "Semi-Exclusive", buyers: "2 buyers", price: 10000, color: "bg-violet-50 text-violet-700 border-violet-200" },
+                { name: "Warm Shared", buyers: "3–4 buyers", price: 8000, color: "bg-amber-50 text-amber-700 border-amber-200" },
+                { name: "Cool Shared", buyers: "5–6 buyers", price: 6000, color: "bg-sky-50 text-sky-700 border-sky-200" },
+              ].map((t) => (
+                <div key={t.name} className={`rounded-lg border p-4 text-center ${t.color}`}>
+                  <p className="text-xs font-bold uppercase tracking-wider mb-1">{t.name}</p>
+                  <p className="text-2xl font-bold">{formatCents(t.price)}</p>
+                  <p className="text-xs opacity-70 mt-1">{t.buyers}</p>
+                </div>
+              ))}
             </div>
+            <p className="text-xs text-[var(--text-muted)] mt-3">All leads: $120 max, $60 floor. Prices depreciate over time based on tier.</p>
           </div>
 
           {/* How Payment Works */}
@@ -531,9 +542,9 @@ export default function ClientPortal() {
 
           {/* Lead Price Depreciation Model */}
           <div className="cathedral-surface p-6">
-            <h3 className="text-lg font-light text-[var(--text-primary)] mb-1">Lead Pricing Model</h3>
+            <h3 className="text-lg font-light text-[var(--text-primary)] mb-1">Price Depreciation Simulator</h3>
             <p className="text-sm text-[var(--text-muted)] mb-5">
-              Lead prices decrease over time. Hot leads start at full price and drop daily after a hold period. Buy early for the best leads at peak value.
+              Lead prices decrease over time. Drag the slider to see how each tier depreciates as a lead ages. All prices have a $60 floor.
             </p>
 
             {/* Day Simulator */}
@@ -556,40 +567,29 @@ export default function ClientPortal() {
               </div>
             </div>
 
-            {/* Tier price cards */}
+            {/* Tier price cards — buyer-count based */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {(["hot", "warm", "standard", "cool"] as const).map((tier) => {
-                const configs: Record<string, { max: number; hold: number; drop: number; interval: number; floor: number }> = {
-                  hot:      { max: 10000, hold: 3, drop: 500, interval: 1, floor: 2500 },
-                  warm:     { max: 7500,  hold: 2, drop: 500, interval: 1, floor: 1500 },
-                  standard: { max: 5000,  hold: 1, drop: 500, interval: 1, floor: 1000 },
-                  cool:     { max: 2500,  hold: 0, drop: 300, interval: 1, floor: 500 },
-                };
-                const c = configs[tier];
+              {([
+                { name: "Exclusive",      max: 12000, hold: 3, drop: 500, floor: 6000, buyers: "1 buyer",    bg: "bg-indigo-50", text: "text-indigo-700", bar: "bg-indigo-400" },
+                { name: "Semi-Exclusive", max: 10000, hold: 2, drop: 500, floor: 6000, buyers: "2 buyers",   bg: "bg-violet-50", text: "text-violet-700", bar: "bg-violet-400" },
+                { name: "Warm Shared",    max: 8000,  hold: 1, drop: 300, floor: 6000, buyers: "3–4 buyers", bg: "bg-amber-50",  text: "text-amber-700",  bar: "bg-amber-400" },
+                { name: "Cool Shared",    max: 6000,  hold: 0, drop: 0,   floor: 6000, buyers: "5–6 buyers", bg: "bg-sky-50",    text: "text-sky-700",    bar: "bg-sky-400" },
+              ]).map((c) => {
                 const t = depreciationDay;
                 const holding = t <= c.hold;
-                const steps = holding ? 0 : Math.floor((t - c.hold) / c.interval);
+                const steps = holding ? 0 : Math.floor((t - c.hold) / 1);
                 const price = Math.max(c.floor, c.max - c.drop * steps);
-                const pct = Math.round((price / c.max) * 100);
-
-                const tierColors: Record<string, { bg: string; text: string; bar: string }> = {
-                  hot:      { bg: "bg-red-50", text: "text-red-700", bar: "bg-red-400" },
-                  warm:     { bg: "bg-amber-50", text: "text-amber-700", bar: "bg-amber-400" },
-                  standard: { bg: "bg-emerald-50", text: "text-emerald-700", bar: "bg-emerald-400" },
-                  cool:     { bg: "bg-sky-50", text: "text-sky-700", bar: "bg-sky-400" },
-                };
-                const tc = tierColors[tier];
+                const pct = Math.round((price / 12000) * 100); // normalized to $120 max
 
                 return (
-                  <div key={tier} className={`rounded-lg border border-indigo-cathedral/10 p-3 ${tc.bg}`}>
-                    <p className={`text-xs font-bold uppercase tracking-wider ${tc.text} mb-1`}>{tier}</p>
-                    <p className={`text-xl font-bold ${tc.text}`}>{formatCents(price)}</p>
+                  <div key={c.name} className={`rounded-lg border border-indigo-cathedral/10 p-3 ${c.bg}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${c.text} mb-0.5`}>{c.name}</p>
+                    <p className={`text-xl font-bold ${c.text}`}>{formatCents(price)}</p>
                     <p className="text-[10px] text-[var(--text-muted)] mb-2">
-                      {holding ? `Holds ${c.hold}d` : `${steps} drop${steps !== 1 ? "s" : ""}`} &middot; floor {formatCents(c.floor)}
+                      {c.buyers} &middot; {holding && c.hold > 0 ? `Holds ${c.hold}d` : c.drop > 0 ? `${steps} drop${steps !== 1 ? "s" : ""}` : "Flat"} &middot; floor {formatCents(c.floor)}
                     </p>
-                    {/* Progress bar */}
                     <div className="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                      <div className={`h-full rounded-full ${tc.bar} transition-all duration-300`} style={{ width: `${pct}%` }} />
+                      <div className={`h-full rounded-full ${c.bar} transition-all duration-300`} style={{ width: `${pct}%` }} />
                     </div>
                     <p className="text-[10px] text-[var(--text-muted)] mt-1 text-right">{pct}% of max</p>
                   </div>
@@ -599,7 +599,7 @@ export default function ClientPortal() {
 
             <div className="mt-4 px-3 py-2.5 rounded-lg bg-[var(--bg-surface)] border border-indigo-cathedral/10">
               <p className="text-xs text-[var(--text-muted)]">
-                <span className="text-teal-cathedral font-medium">Tip:</span> Hot leads hold their maximum price for 3 days before dropping $5/day. Buy early for the highest-quality leads at peak value, or wait for reduced pricing on aging leads.
+                <span className="text-teal-cathedral font-medium">Tip:</span> Exclusive leads hold at $120 for 3 days before dropping $5/day. Semi-Exclusive starts at $100 with a 2-day hold. All tiers bottom out at $60. Buy early for the best value.
               </p>
             </div>
           </div>

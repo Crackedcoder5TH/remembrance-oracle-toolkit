@@ -3,7 +3,7 @@ import { verifyClient } from "@/app/lib/client-auth";
 import { getFilteredLeads } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { getClientById, getPurchasesByLead } from "@/app/lib/client-database";
-import { getLeadPrice, getExclusivePrice } from "@/app/lib/lead-depreciation";
+import { getAllTierPrices } from "@/app/lib/lead-depreciation";
 
 /**
  * Client Leads API
@@ -40,16 +40,19 @@ export async function GET(req: NextRequest) {
     result.value.leads.map(async (lead) => {
       const score = scoreLead(lead);
 
-      // Check if already purchased by this client
+      // Check all active purchases for this lead
       const purchasesResult = await getPurchasesByLead(lead.leadId);
-      const purchased = purchasesResult.ok
-        ? purchasesResult.value.some((p) => p.clientId === auth.clientId && p.status !== "returned")
-        : false;
+      const activePurchases = purchasesResult.ok
+        ? purchasesResult.value.filter((p) => p.status === "delivered")
+        : [];
+      const activeBuyerCount = activePurchases.length;
+
+      const purchased = activePurchases.some((p) => p.clientId === auth.clientId);
 
       // Check if exclusively purchased by someone else
-      const exclusivelyTaken = purchasesResult.ok
-        ? purchasesResult.value.some((p) => p.exclusive && p.status === "delivered" && p.clientId !== auth.clientId)
-        : false;
+      const exclusivelyTaken = activePurchases.some(
+        (p) => p.exclusive && p.clientId !== auth.clientId
+      );
 
       if (exclusivelyTaken) return null; // Hide exclusively purchased leads
 
@@ -69,15 +72,18 @@ export async function GET(req: NextRequest) {
           createdAt: lead.createdAt,
           purchased: true,
           available: false,
+          buyerCount: activeBuyerCount,
         };
       }
 
-      // Calculate depreciated price based on lead age and tier
-      const { price: depreciatedPrice, ageInDays, isHolding, stepsDown } = getLeadPrice(
-        lead.createdAt,
-        score.tier
-      );
-      const exclusiveDepreciated = getExclusivePrice(depreciatedPrice);
+      // Calculate all tier prices with sold-out status
+      const tierPrices = getAllTierPrices(lead.createdAt, activeBuyerCount);
+      const ageMs = Date.now() - new Date(lead.createdAt).getTime();
+      const ageInDays = Math.max(0, ageMs / (1000 * 60 * 60 * 24));
+
+      // Check if completely sold out (all tiers maxed)
+      const completelySoldOut = tierPrices.every((t) => t.soldOut);
+      if (completelySoldOut) return null;
 
       return {
         leadId: lead.leadId,
@@ -89,11 +95,14 @@ export async function GET(req: NextRequest) {
         createdAt: lead.createdAt,
         purchased: false,
         available: score.total >= client.minScore,
-        pricePerLead: depreciatedPrice,
-        exclusivePrice: exclusiveDepreciated,
+        buyerCount: activeBuyerCount,
         ageInDays: Math.round(ageInDays * 10) / 10,
-        isHolding,
-        stepsDown,
+        tierPrices: tierPrices.map((tp) => ({
+          name: tp.tier.name,
+          maxBuyers: tp.tier.maxBuyers,
+          price: tp.price,
+          soldOut: tp.soldOut,
+        })),
       };
     })
   );

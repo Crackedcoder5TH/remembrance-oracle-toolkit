@@ -1,21 +1,78 @@
 /**
  * Lead Price Depreciation Engine
  *
- * Implements time-based step-function depreciation for lead pricing.
- * Hot leads start at maximum price and depreciate in steps as they age.
+ * Fixed pricing tiers based on buyer exclusivity:
+ *   - Exclusive   (1 buyer):    $120
+ *   - Semi-exclusive (2 buyers): $100
+ *   - Warm shared (3–4 buyers):  $80
+ *   - Cool shared (5–6 buyers):  $60
  *
- * Equation:
- *   P(t) = maxPrice − dropAmount × max(0, ⌊(t − holdDays) / dropInterval⌋)
+ * Time-based depreciation still applies via the step-function:
+ *   P(t) = basePrice − dropAmount × max(0, ⌊(t − holdDays) / dropInterval⌋)
  *   P(t) = max(floor, P(t))
  *
- * Where:
- *   t          = lead age in days
- *   maxPrice   = starting price (cents)
- *   holdDays   = days at max price before depreciation begins
- *   dropAmount = price drop per step (cents)
- *   dropInterval = days between each price drop
- *   floor      = minimum price (cents) — never goes below this
+ * All leads: max $120.00, floor $60.00
  */
+
+// =============================================================================
+// Buyer-count pricing tiers
+// =============================================================================
+
+export interface PurchaseTier {
+  name: string;
+  maxBuyers: number;
+  basePrice: number;  // cents
+}
+
+/** Fixed pricing tiers ordered from most to least exclusive. */
+export const PURCHASE_TIERS: PurchaseTier[] = [
+  { name: "Exclusive",      maxBuyers: 1, basePrice: 12000 }, // $120
+  { name: "Semi-Exclusive",  maxBuyers: 2, basePrice: 10000 }, // $100
+  { name: "Warm Shared",    maxBuyers: 4, basePrice: 8000 },  // $80
+  { name: "Cool Shared",    maxBuyers: 6, basePrice: 6000 },  // $60
+];
+
+/** Maximum price any lead can be (cents). */
+export const MAX_PRICE = 12000; // $120.00
+
+/** Minimum price any lead can be (cents). */
+export const PRICE_FLOOR = 6000; // $60.00
+
+/**
+ * Get the purchase tier and price based on how many buyers to allow.
+ * The `tierIndex` maps to PURCHASE_TIERS: 0 = exclusive, 1 = semi, 2 = warm, 3 = cool.
+ */
+export function getTierByIndex(tierIndex: number): PurchaseTier {
+  return PURCHASE_TIERS[Math.max(0, Math.min(tierIndex, PURCHASE_TIERS.length - 1))];
+}
+
+/**
+ * Determine which tier a lead is currently in based on active buyer count.
+ * Returns the tier info and whether the lead is sold out at this tier.
+ */
+export function getLeadBuyerStatus(activeBuyerCount: number): {
+  currentTier: PurchaseTier;
+  soldOut: boolean;
+  availableTiers: Array<PurchaseTier & { soldOut: boolean }>;
+} {
+  // Find which tiers are still available
+  const availableTiers = PURCHASE_TIERS.map((tier) => ({
+    ...tier,
+    soldOut: activeBuyerCount >= tier.maxBuyers,
+  }));
+
+  // The "current" tier is the smallest tier the lead hasn't exceeded
+  const currentTier = PURCHASE_TIERS.find((t) => activeBuyerCount < t.maxBuyers)
+    || PURCHASE_TIERS[PURCHASE_TIERS.length - 1];
+
+  const soldOut = activeBuyerCount >= PURCHASE_TIERS[PURCHASE_TIERS.length - 1].maxBuyers;
+
+  return { currentTier, soldOut, availableTiers };
+}
+
+// =============================================================================
+// Time-based depreciation (applied on top of tier pricing)
+// =============================================================================
 
 export interface DepreciationConfig {
   maxPrice: number;      // cents — starting price
@@ -26,48 +83,42 @@ export interface DepreciationConfig {
 }
 
 /**
- * Default depreciation configs by lead tier.
- *
- * Hot leads hold value longest and drop slowly.
- * Cool leads start cheaper and depreciate faster.
+ * Depreciation config for each buyer-count tier.
+ * All tiers share the same $60 floor but start at different base prices.
  */
 export const TIER_DEPRECIATION: Record<string, DepreciationConfig> = {
-  hot: {
-    maxPrice: 10000,   // $100.00
+  Exclusive: {
+    maxPrice: 12000,   // $120.00
     holdDays: 3,       // holds full price for 3 days
     dropAmount: 500,   // $5.00 per step
     dropInterval: 1,   // drops every day after hold
-    floor: 2500,       // never below $25.00
+    floor: 6000,       // never below $60.00
   },
-  warm: {
-    maxPrice: 7500,    // $75.00
+  "Semi-Exclusive": {
+    maxPrice: 10000,   // $100.00
     holdDays: 2,       // holds for 2 days
     dropAmount: 500,   // $5.00 per step
     dropInterval: 1,   // drops daily
-    floor: 1500,       // never below $15.00
+    floor: 6000,       // never below $60.00
   },
-  standard: {
-    maxPrice: 5000,    // $50.00
+  "Warm Shared": {
+    maxPrice: 8000,    // $80.00
     holdDays: 1,       // holds for 1 day
-    dropAmount: 500,   // $5.00 per step
-    dropInterval: 1,   // drops daily
-    floor: 1000,       // never below $10.00
-  },
-  cool: {
-    maxPrice: 2500,    // $25.00
-    holdDays: 0,       // starts depreciating immediately
     dropAmount: 300,   // $3.00 per step
     dropInterval: 1,   // drops daily
-    floor: 500,        // never below $5.00
+    floor: 6000,       // never below $60.00
+  },
+  "Cool Shared": {
+    maxPrice: 6000,    // $60.00 (already at floor)
+    holdDays: 0,
+    dropAmount: 0,
+    dropInterval: 1,
+    floor: 6000,       // $60.00 flat
   },
 };
 
 /**
  * Calculate the depreciated price for a lead.
- *
- * @param ageInDays  - How old the lead is (fractional days OK, floored internally)
- * @param config     - Depreciation parameters
- * @returns Price in cents
  */
 export function calculateDepreciatedPrice(
   ageInDays: number,
@@ -84,17 +135,11 @@ export function calculateDepreciatedPrice(
 }
 
 /**
- * Get the current depreciated price for a lead based on its age and tier.
- *
- * @param createdAt  - ISO date string when the lead was created
- * @param tier       - Lead tier (hot, warm, standard, cool)
- * @param overrides  - Optional partial overrides to the tier's default config
- * @returns Object with price, config used, age, and whether it's in hold phase
+ * Get the current price for a specific purchase tier, factoring in lead age.
  */
 export function getLeadPrice(
   createdAt: string,
-  tier: string,
-  overrides?: Partial<DepreciationConfig>
+  tierName: string,
 ): {
   price: number;
   ageInDays: number;
@@ -102,10 +147,8 @@ export function getLeadPrice(
   stepsDown: number;
   config: DepreciationConfig;
 } {
-  const config: DepreciationConfig = {
-    ...(TIER_DEPRECIATION[tier] || TIER_DEPRECIATION.standard),
-    ...overrides,
-  };
+  const config: DepreciationConfig =
+    TIER_DEPRECIATION[tierName] || TIER_DEPRECIATION["Cool Shared"];
 
   const ageMs = Date.now() - new Date(createdAt).getTime();
   const ageInDays = Math.max(0, ageMs / (1000 * 60 * 60 * 24));
@@ -120,12 +163,29 @@ export function getLeadPrice(
 }
 
 /**
- * Calculate the exclusive price from a depreciated shared price.
- * Exclusive leads carry a premium multiplier (default 2x).
+ * Get all tier prices for a lead at its current age.
+ * Returns each tier with its depreciated price and sold-out status.
  */
-export function getExclusivePrice(
-  sharedPrice: number,
-  multiplier: number = 2.0
-): number {
-  return Math.round(sharedPrice * multiplier);
+export function getAllTierPrices(
+  createdAt: string,
+  activeBuyerCount: number
+): Array<{
+  tier: PurchaseTier;
+  price: number;
+  soldOut: boolean;
+  isHolding: boolean;
+  stepsDown: number;
+}> {
+  const { availableTiers } = getLeadBuyerStatus(activeBuyerCount);
+
+  return availableTiers.map((t) => {
+    const { price, isHolding, stepsDown } = getLeadPrice(createdAt, t.name);
+    return {
+      tier: { name: t.name, maxBuyers: t.maxBuyers, basePrice: t.basePrice },
+      price,
+      soldOut: t.soldOut,
+      isHolding,
+      stepsDown,
+    };
+  });
 }

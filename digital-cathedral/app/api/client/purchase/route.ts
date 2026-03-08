@@ -8,15 +8,17 @@ import {
 } from "@/app/lib/client-database";
 import { getLeadById } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
-import { getLeadPrice, getExclusivePrice } from "@/app/lib/lead-depreciation";
+import { getLeadPrice, PURCHASE_TIERS, getTierByIndex } from "@/app/lib/lead-depreciation";
 import { stripe } from "@/app/lib/stripe";
 
 /**
  * Client Purchase API
  *
  * POST /api/client/purchase — Create a Stripe Checkout Session for a lead purchase.
- * Returns a checkout URL that the client is redirected to for payment.
- * The purchase is fulfilled in /api/client/purchase/success after payment.
+ *
+ * Body: { leadId: string, tierIndex: number }
+ *   tierIndex: 0 = Exclusive ($120, 1 buyer), 1 = Semi-Exclusive ($100, 2 buyers),
+ *              2 = Warm Shared ($80, 3-4 buyers), 3 = Cool Shared ($60, 5-6 buyers)
  */
 export async function POST(req: NextRequest) {
   const auth = await verifyClient(req);
@@ -24,11 +26,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { leadId, exclusive } = body;
+    const { leadId, tierIndex } = body;
 
     if (!leadId) {
       return NextResponse.json({ success: false, message: "leadId is required." }, { status: 400 });
     }
+
+    const selectedTierIndex = typeof tierIndex === "number" ? tierIndex : 3; // default to cool shared
+    const selectedTier = getTierByIndex(selectedTierIndex);
 
     // Get client
     const clientResult = await getClientById(auth.clientId);
@@ -50,22 +55,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Lead score below your minimum threshold." }, { status: 400 });
     }
 
-    // Check if already purchased by this client
+    // Check existing purchases for this lead
     const existingPurchases = await getPurchasesByLead(leadId);
     if (existingPurchases.ok) {
-      const alreadyOwned = existingPurchases.value.some(
-        (p) => p.clientId === auth.clientId && p.status !== "returned"
-      );
-      if (alreadyOwned) {
+      const activePurchases = existingPurchases.value.filter((p) => p.status === "delivered");
+
+      // Already purchased by this client?
+      if (activePurchases.some((p) => p.clientId === auth.clientId)) {
         return NextResponse.json({ success: false, message: "You already own this lead." }, { status: 409 });
       }
 
-      // Check if exclusively purchased by someone else
-      const exclusivelyTaken = existingPurchases.value.some(
-        (p) => p.exclusive && p.status === "delivered"
-      );
-      if (exclusivelyTaken) {
+      // Exclusively purchased by someone else?
+      if (activePurchases.some((p) => p.exclusive)) {
         return NextResponse.json({ success: false, message: "This lead is no longer available." }, { status: 409 });
+      }
+
+      // Enforce buyer cap for the selected tier
+      if (activePurchases.length >= selectedTier.maxBuyers) {
+        return NextResponse.json({
+          success: false,
+          message: `${selectedTier.name} tier is sold out (${activePurchases.length}/${selectedTier.maxBuyers} buyers).`,
+        }, { status: 409 });
       }
     }
 
@@ -80,12 +90,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Monthly purchase cap reached." }, { status: 429 });
     }
 
-    // Price calculation — use depreciated price based on lead age and tier
-    const isExclusive = exclusive === true;
-    const { price: depreciatedPrice } = getLeadPrice(lead.createdAt, score.tier);
-    const price = isExclusive ? getExclusivePrice(depreciatedPrice) : depreciatedPrice;
+    // Price calculation — tier base price with time-based depreciation
+    const isExclusive = selectedTierIndex === 0;
+    const { price } = getLeadPrice(lead.createdAt, selectedTier.name);
 
-    // Create Stripe Checkout Session (pay-per-lead, no stored balance)
+    // Create Stripe Checkout Session
     const origin = req.headers.get("origin") || req.headers.get("host") || "";
     const baseUrl = origin.startsWith("http") ? origin : `https://${origin}`;
 
@@ -98,8 +107,8 @@ export async function POST(req: NextRequest) {
             currency: "usd",
             unit_amount: price,
             product_data: {
-              name: `${isExclusive ? "Exclusive" : "Shared"} Lead — ${lead.state}`,
-              description: `Lead #${leadId.slice(0, 12)}… | ${lead.coverageInterest} | Score: ${score.total}`,
+              name: `${selectedTier.name} Lead — ${lead.state}`,
+              description: `Lead #${leadId.slice(0, 12)}… | ${lead.coverageInterest} | Score: ${score.total} | Max ${selectedTier.maxBuyers} buyer${selectedTier.maxBuyers > 1 ? "s" : ""}`,
             },
           },
           quantity: 1,
@@ -109,6 +118,7 @@ export async function POST(req: NextRequest) {
         clientId: auth.clientId,
         leadId,
         exclusive: isExclusive ? "true" : "false",
+        tierName: selectedTier.name,
         price: String(price),
       },
       success_url: `${baseUrl}/portal?tab=purchases&payment=success&session_id={CHECKOUT_SESSION_ID}`,

@@ -6,10 +6,16 @@
  * than an undecided non-military lead in a low-volume market.
  *
  * Score range: 0–100
- *   90–100: Hot (immediate follow-up)
- *   70–89:  Warm (same-day follow-up)
- *   50–69:  Standard (next-business-day)
- *   0–49:   Cool (batch queue)
+ *   85–100: Hot (immediate follow-up, highest quality)
+ *   70–84:  Warm (same-day follow-up)
+ *   55–69:  Standard (next-business-day)
+ *   0–54:   Cool (batch queue)
+ *
+ * Note: Score determines lead quality tier, NOT pricing.
+ * Pricing is based on buyer exclusivity:
+ *   Exclusive (1 buyer): $120 | Semi-Exclusive (2): $100
+ *   Warm Shared (3-4): $80   | Cool Shared (5-6): $60
+ * All prices depreciate over time with a $60 floor.
  */
 
 export interface LeadScore {
@@ -103,6 +109,8 @@ export function scoreLead(lead: {
   else if (MEDIUM_VALUE_STATES.has(lead.state)) state = 13;
 
   // Completeness factor (0–10)
+  // All forms are fully validated before submission — every field is required.
+  // Score reflects whether the data was actually provided (guards against API-direct submissions).
   let completeness = 0;
   if (lead.firstName) completeness += 2;
   if (lead.lastName) completeness += 2;
@@ -120,10 +128,13 @@ export function scoreLead(lead: {
 
   const total = Math.min(100, coverage + intent + veteran + state + completeness + recency);
 
+  // Tier thresholds — since all forms are fully completed (completeness = 10),
+  // the effective score range for real submissions is ~40–100.
+  // Adjusted thresholds to distribute leads meaningfully across tiers.
   let tier: LeadScore["tier"];
-  if (total >= 90) tier = "hot";
+  if (total >= 85) tier = "hot";
   else if (total >= 70) tier = "warm";
-  else if (total >= 50) tier = "standard";
+  else if (total >= 55) tier = "standard";
   else tier = "cool";
 
   return {

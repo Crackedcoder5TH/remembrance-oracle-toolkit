@@ -20,6 +20,7 @@ import {
 import type { ClientRecord, LeadPurchase } from "./client-database";
 import type { LeadRecord } from "./database";
 import type { LeadScore } from "./lead-scoring";
+import { PURCHASE_TIERS } from "./lead-depreciation";
 
 export interface DistributionResult {
   leadId: string;
@@ -179,7 +180,9 @@ async function executePurchase(
   lead: LeadRecord,
   exclusive: boolean
 ): Promise<{ clientId: string; purchaseId: string; exclusive: boolean } | null> {
-  const price = exclusive ? client.exclusivePrice : client.pricePerLead;
+  // Use buyer-count tier pricing: Exclusive = $120, Cool Shared = $60
+  const tier = exclusive ? PURCHASE_TIERS[0] : PURCHASE_TIERS[PURCHASE_TIERS.length - 1];
+  const price = tier.basePrice;
 
   // Create return deadline (72 hours from now)
   const returnDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();

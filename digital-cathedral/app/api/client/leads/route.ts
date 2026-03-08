@@ -3,6 +3,7 @@ import { verifyClient } from "@/app/lib/client-auth";
 import { getFilteredLeads } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { getClientById, getPurchasesByLead } from "@/app/lib/client-database";
+import { getLeadPrice, getExclusivePrice } from "@/app/lib/lead-depreciation";
 
 /**
  * Client Leads API
@@ -71,6 +72,13 @@ export async function GET(req: NextRequest) {
         };
       }
 
+      // Calculate depreciated price based on lead age and tier
+      const { price: depreciatedPrice, ageInDays, isHolding, stepsDown } = getLeadPrice(
+        lead.createdAt,
+        score.tier
+      );
+      const exclusiveDepreciated = getExclusivePrice(depreciatedPrice);
+
       return {
         leadId: lead.leadId,
         state: lead.state,
@@ -81,8 +89,11 @@ export async function GET(req: NextRequest) {
         createdAt: lead.createdAt,
         purchased: false,
         available: score.total >= client.minScore,
-        pricePerLead: client.pricePerLead,
-        exclusivePrice: client.exclusivePrice,
+        pricePerLead: depreciatedPrice,
+        exclusivePrice: exclusiveDepreciated,
+        ageInDays: Math.round(ageInDays * 10) / 10,
+        isHolding,
+        stepsDown,
       };
     })
   );

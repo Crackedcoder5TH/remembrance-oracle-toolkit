@@ -8,6 +8,7 @@ import {
 } from "@/app/lib/client-database";
 import { getLeadById } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
+import { getLeadPrice, getExclusivePrice } from "@/app/lib/lead-depreciation";
 import { stripe } from "@/app/lib/stripe";
 
 /**
@@ -79,9 +80,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Monthly purchase cap reached." }, { status: 429 });
     }
 
-    // Price calculation
+    // Price calculation — use depreciated price based on lead age and tier
     const isExclusive = exclusive === true;
-    const price = isExclusive ? client.exclusivePrice : client.pricePerLead;
+    const { price: depreciatedPrice } = getLeadPrice(lead.createdAt, score.tier);
+    const price = isExclusive ? getExclusivePrice(depreciatedPrice) : depreciatedPrice;
 
     // Create Stripe Checkout Session (pay-per-lead, no stored balance)
     const origin = req.headers.get("origin") || req.headers.get("host") || "";

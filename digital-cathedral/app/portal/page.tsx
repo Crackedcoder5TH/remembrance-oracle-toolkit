@@ -61,6 +61,9 @@ interface AvailableLead {
   available: boolean;
   pricePerLead?: number;
   exclusivePrice?: number;
+  ageInDays?: number;
+  isHolding?: boolean;
+  stepsDown?: number;
 }
 
 interface Purchase {
@@ -106,6 +109,7 @@ export default function ClientPortal() {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [depreciationDay, setDepreciationDay] = useState(0);
 
   // Lead filters
   const [filterState, setFilterState] = useState("");
@@ -329,7 +333,7 @@ export default function ClientPortal() {
                   <th className="px-4 py-3">State</th>
                   <th className="px-4 py-3">Coverage</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Date</th>
+                  <th className="px-4 py-3">Age</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
@@ -353,7 +357,20 @@ export default function ClientPortal() {
                           ? <span className="text-[var(--text-muted)] text-xs">Non-Military</span>
                           : <span className="text-teal-cathedral text-xs capitalize">{lead.veteranStatus?.replace("-", " ")}</span>}
                       </td>
-                      <td className="px-4 py-3 text-[var(--text-muted)] text-xs">{new Date(lead.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-xs">
+                        {lead.ageInDays !== undefined ? (
+                          <div>
+                            <span className="text-[var(--text-primary)]">{lead.ageInDays < 1 ? "<1" : Math.floor(lead.ageInDays)}d</span>
+                            {lead.isHolding ? (
+                              <span className="block text-emerald-600 text-[10px]">Max price</span>
+                            ) : (
+                              <span className="block text-amber-600 text-[10px]">{lead.stepsDown} drop{lead.stepsDown !== 1 ? "s" : ""}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[var(--text-muted)]">{new Date(lead.createdAt).toLocaleDateString()}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         {lead.purchased ? (
                           <div className="text-xs">
@@ -363,7 +380,7 @@ export default function ClientPortal() {
                             <p className="text-[var(--text-muted)]">{lead.phone}</p>
                           </div>
                         ) : lead.available ? (
-                          <div className="flex gap-2">
+                          <div className="flex flex-col gap-1.5">
                             <button
                               onClick={() => handlePurchase(lead.leadId, false)}
                               className="px-2 py-1 rounded text-xs bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
@@ -376,6 +393,9 @@ export default function ClientPortal() {
                             >
                               Exclusive {lead.exclusivePrice ? formatCents(lead.exclusivePrice) : ""}
                             </button>
+                            {!lead.isHolding && lead.stepsDown && lead.stepsDown > 0 && (
+                              <span className="text-[10px] text-amber-600 text-center">Price reduced</span>
+                            )}
                           </div>
                         ) : (
                           <span className="text-[var(--text-muted)] text-xs">Below min score</span>
@@ -505,6 +525,81 @@ export default function ClientPortal() {
               </svg>
               <p className="text-xs text-[var(--text-muted)]">
                 All payments are securely processed by Stripe. We never see or store your payment details.
+              </p>
+            </div>
+          </div>
+
+          {/* Lead Price Depreciation Model */}
+          <div className="cathedral-surface p-6">
+            <h3 className="text-lg font-light text-[var(--text-primary)] mb-1">Lead Pricing Model</h3>
+            <p className="text-sm text-[var(--text-muted)] mb-5">
+              Lead prices decrease over time. Hot leads start at full price and drop daily after a hold period. Buy early for the best leads at peak value.
+            </p>
+
+            {/* Day Simulator */}
+            <div className="mb-5">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs metallic-gold uppercase tracking-wider">Simulate Lead Age</span>
+                <span className="text-sm text-[var(--text-primary)] font-mono">Day {depreciationDay}</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={30}
+                value={depreciationDay}
+                onChange={(e) => setDepreciationDay(parseInt(e.target.value))}
+                className="w-full accent-teal-cathedral"
+              />
+              <div className="flex justify-between text-[10px] text-[var(--text-muted)] mt-1">
+                <span>Day 0 (new)</span>
+                <span>Day 30</span>
+              </div>
+            </div>
+
+            {/* Tier price cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {(["hot", "warm", "standard", "cool"] as const).map((tier) => {
+                const configs: Record<string, { max: number; hold: number; drop: number; interval: number; floor: number }> = {
+                  hot:      { max: 10000, hold: 3, drop: 500, interval: 1, floor: 2500 },
+                  warm:     { max: 7500,  hold: 2, drop: 500, interval: 1, floor: 1500 },
+                  standard: { max: 5000,  hold: 1, drop: 500, interval: 1, floor: 1000 },
+                  cool:     { max: 2500,  hold: 0, drop: 300, interval: 1, floor: 500 },
+                };
+                const c = configs[tier];
+                const t = depreciationDay;
+                const holding = t <= c.hold;
+                const steps = holding ? 0 : Math.floor((t - c.hold) / c.interval);
+                const price = Math.max(c.floor, c.max - c.drop * steps);
+                const pct = Math.round((price / c.max) * 100);
+
+                const tierColors: Record<string, { bg: string; text: string; bar: string }> = {
+                  hot:      { bg: "bg-red-50", text: "text-red-700", bar: "bg-red-400" },
+                  warm:     { bg: "bg-amber-50", text: "text-amber-700", bar: "bg-amber-400" },
+                  standard: { bg: "bg-emerald-50", text: "text-emerald-700", bar: "bg-emerald-400" },
+                  cool:     { bg: "bg-sky-50", text: "text-sky-700", bar: "bg-sky-400" },
+                };
+                const tc = tierColors[tier];
+
+                return (
+                  <div key={tier} className={`rounded-lg border border-indigo-cathedral/10 p-3 ${tc.bg}`}>
+                    <p className={`text-xs font-bold uppercase tracking-wider ${tc.text} mb-1`}>{tier}</p>
+                    <p className={`text-xl font-bold ${tc.text}`}>{formatCents(price)}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mb-2">
+                      {holding ? `Holds ${c.hold}d` : `${steps} drop${steps !== 1 ? "s" : ""}`} &middot; floor {formatCents(c.floor)}
+                    </p>
+                    {/* Progress bar */}
+                    <div className="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
+                      <div className={`h-full rounded-full ${tc.bar} transition-all duration-300`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1 text-right">{pct}% of max</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 px-3 py-2.5 rounded-lg bg-[var(--bg-surface)] border border-indigo-cathedral/10">
+              <p className="text-xs text-[var(--text-muted)]">
+                <span className="text-teal-cathedral font-medium">Tip:</span> Hot leads hold their maximum price for 3 days before dropping $5/day. Buy early for the highest-quality leads at peak value, or wait for reduced pricing on aging leads.
               </p>
             </div>
           </div>

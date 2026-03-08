@@ -1,124 +1,148 @@
 /**
  * Lead Price Depreciation Engine
  *
- * Fixed pricing tiers based on buyer exclusivity:
+ * Reads pricing tiers and depreciation settings from admin-configurable storage.
+ * All values are adjustable via the Admin Portal > Pricing page.
+ *
+ * Default pricing tiers (buyer exclusivity):
  *   - Exclusive   (1 buyer):    $120
  *   - Semi-exclusive (2 buyers): $100
  *   - Warm shared (3–4 buyers):  $80
  *   - Cool shared (5–6 buyers):  $60
  *
- * Time-based depreciation still applies via the step-function:
+ * Time-based depreciation:
  *   P(t) = basePrice − dropAmount × max(0, ⌊(t − holdDays) / dropInterval⌋)
  *   P(t) = max(floor, P(t))
- *
- * All leads: max $120.00, floor $60.00
  */
 
+import { getPricingConfig, type TierConfig, type PricingConfig } from "./pricing-config";
+
+// Re-export types for convenience
+export type { TierConfig, PricingConfig };
+
 // =============================================================================
-// Buyer-count pricing tiers
+// Public interface (matches the shapes consumers expect)
 // =============================================================================
 
 export interface PurchaseTier {
   name: string;
   maxBuyers: number;
-  basePrice: number;  // cents
+  basePrice: number;
 }
 
-/** Fixed pricing tiers ordered from most to least exclusive. */
-export const PURCHASE_TIERS: PurchaseTier[] = [
-  { name: "Exclusive",      maxBuyers: 1, basePrice: 12000 }, // $120
-  { name: "Semi-Exclusive",  maxBuyers: 2, basePrice: 10000 }, // $100
-  { name: "Warm Shared",    maxBuyers: 4, basePrice: 8000 },  // $80
-  { name: "Cool Shared",    maxBuyers: 6, basePrice: 6000 },  // $60
-];
+export interface DepreciationConfig {
+  maxPrice: number;
+  holdDays: number;
+  dropAmount: number;
+  dropInterval: number;
+  floor: number;
+}
 
-/** Maximum price any lead can be (cents). */
-export const MAX_PRICE = 12000; // $120.00
+// =============================================================================
+// Config accessors — always read from the admin-configurable store
+// =============================================================================
 
-/** Minimum price any lead can be (cents). */
-export const PRICE_FLOOR = 6000; // $60.00
+/** Get all purchase tiers from the current config. */
+export function getPurchaseTiers(): PurchaseTier[] {
+  const config = getPricingConfig();
+  return config.tiers.map((t) => ({
+    name: t.name,
+    maxBuyers: t.maxBuyers,
+    basePrice: t.basePrice,
+  }));
+}
 
-/**
- * Get the purchase tier and price based on how many buyers to allow.
- * The `tierIndex` maps to PURCHASE_TIERS: 0 = exclusive, 1 = semi, 2 = warm, 3 = cool.
- */
+/** Convenience: PURCHASE_TIERS as a getter for backwards compatibility. */
+export const PURCHASE_TIERS = new Proxy([] as PurchaseTier[], {
+  get(_target, prop) {
+    const tiers = getPurchaseTiers();
+    if (prop === "length") return tiers.length;
+    if (prop === Symbol.iterator) return tiers[Symbol.iterator].bind(tiers);
+    if (prop === "map") return tiers.map.bind(tiers);
+    if (prop === "find") return tiers.find.bind(tiers);
+    if (prop === "filter") return tiers.filter.bind(tiers);
+    if (prop === "every") return tiers.every.bind(tiers);
+    if (prop === "forEach") return tiers.forEach.bind(tiers);
+    if (typeof prop === "string" && !isNaN(Number(prop))) {
+      return tiers[Number(prop)];
+    }
+    return (tiers as Record<string | symbol, unknown>)[prop];
+  },
+});
+
+/** Get the max price ceiling from config. */
+export function getMaxPrice(): number {
+  return getPricingConfig().maxPrice;
+}
+
+/** Get the price floor from config. */
+export function getPriceFloor(): number {
+  return getPricingConfig().priceFloor;
+}
+
+/** Get a tier by its index (clamped to valid range). */
 export function getTierByIndex(tierIndex: number): PurchaseTier {
-  return PURCHASE_TIERS[Math.max(0, Math.min(tierIndex, PURCHASE_TIERS.length - 1))];
+  const tiers = getPurchaseTiers();
+  const idx = Math.max(0, Math.min(tierIndex, tiers.length - 1));
+  return tiers[idx];
 }
 
+/** Build a DepreciationConfig for a given tier name. */
+function getDepreciationForTier(tierName: string): DepreciationConfig {
+  const config = getPricingConfig();
+  const tier = config.tiers.find((t) => t.name === tierName);
+  if (tier) {
+    return {
+      maxPrice: tier.basePrice,
+      holdDays: tier.holdDays,
+      dropAmount: tier.dropAmount,
+      dropInterval: tier.dropInterval,
+      floor: config.priceFloor,
+    };
+  }
+  // Fallback to last tier (cheapest)
+  const fallback = config.tiers[config.tiers.length - 1];
+  return {
+    maxPrice: fallback.basePrice,
+    holdDays: fallback.holdDays,
+    dropAmount: fallback.dropAmount,
+    dropInterval: fallback.dropInterval,
+    floor: config.priceFloor,
+  };
+}
+
+// =============================================================================
+// Buyer-count status
+// =============================================================================
+
 /**
- * Determine which tier a lead is currently in based on active buyer count.
- * Returns the tier info and whether the lead is sold out at this tier.
+ * Determine buyer status for a lead based on active buyer count.
  */
 export function getLeadBuyerStatus(activeBuyerCount: number): {
   currentTier: PurchaseTier;
   soldOut: boolean;
   availableTiers: Array<PurchaseTier & { soldOut: boolean }>;
 } {
-  // Find which tiers are still available
-  const availableTiers = PURCHASE_TIERS.map((tier) => ({
+  const tiers = getPurchaseTiers();
+  const availableTiers = tiers.map((tier) => ({
     ...tier,
     soldOut: activeBuyerCount >= tier.maxBuyers,
   }));
 
-  // The "current" tier is the smallest tier the lead hasn't exceeded
-  const currentTier = PURCHASE_TIERS.find((t) => activeBuyerCount < t.maxBuyers)
-    || PURCHASE_TIERS[PURCHASE_TIERS.length - 1];
+  const currentTier = tiers.find((t) => activeBuyerCount < t.maxBuyers)
+    || tiers[tiers.length - 1];
 
-  const soldOut = activeBuyerCount >= PURCHASE_TIERS[PURCHASE_TIERS.length - 1].maxBuyers;
+  const soldOut = activeBuyerCount >= tiers[tiers.length - 1].maxBuyers;
 
   return { currentTier, soldOut, availableTiers };
 }
 
 // =============================================================================
-// Time-based depreciation (applied on top of tier pricing)
+// Depreciation calculation
 // =============================================================================
 
-export interface DepreciationConfig {
-  maxPrice: number;      // cents — starting price
-  holdDays: number;      // days at max price before drops begin
-  dropAmount: number;    // cents per step
-  dropInterval: number;  // days between each step
-  floor: number;         // cents — minimum price
-}
-
 /**
- * Depreciation config for each buyer-count tier.
- * All tiers share the same $60 floor but start at different base prices.
- */
-export const TIER_DEPRECIATION: Record<string, DepreciationConfig> = {
-  Exclusive: {
-    maxPrice: 12000,   // $120.00
-    holdDays: 3,       // holds full price for 3 days
-    dropAmount: 500,   // $5.00 per step
-    dropInterval: 1,   // drops every day after hold
-    floor: 6000,       // never below $60.00
-  },
-  "Semi-Exclusive": {
-    maxPrice: 10000,   // $100.00
-    holdDays: 2,       // holds for 2 days
-    dropAmount: 500,   // $5.00 per step
-    dropInterval: 1,   // drops daily
-    floor: 6000,       // never below $60.00
-  },
-  "Warm Shared": {
-    maxPrice: 8000,    // $80.00
-    holdDays: 1,       // holds for 1 day
-    dropAmount: 300,   // $3.00 per step
-    dropInterval: 1,   // drops daily
-    floor: 6000,       // never below $60.00
-  },
-  "Cool Shared": {
-    maxPrice: 6000,    // $60.00 (already at floor)
-    holdDays: 0,
-    dropAmount: 0,
-    dropInterval: 1,
-    floor: 6000,       // $60.00 flat
-  },
-};
-
-/**
- * Calculate the depreciated price for a lead.
+ * Calculate the depreciated price for a lead at a given age.
  */
 export function calculateDepreciatedPrice(
   ageInDays: number,
@@ -127,10 +151,8 @@ export function calculateDepreciatedPrice(
   if (ageInDays <= config.holdDays) {
     return config.maxPrice;
   }
-
   const steps = Math.floor((ageInDays - config.holdDays) / config.dropInterval);
   const price = config.maxPrice - config.dropAmount * steps;
-
   return Math.max(config.floor, price);
 }
 
@@ -147,9 +169,7 @@ export function getLeadPrice(
   stepsDown: number;
   config: DepreciationConfig;
 } {
-  const config: DepreciationConfig =
-    TIER_DEPRECIATION[tierName] || TIER_DEPRECIATION["Cool Shared"];
-
+  const config = getDepreciationForTier(tierName);
   const ageMs = Date.now() - new Date(createdAt).getTime();
   const ageInDays = Math.max(0, ageMs / (1000 * 60 * 60 * 24));
 
@@ -164,7 +184,6 @@ export function getLeadPrice(
 
 /**
  * Get all tier prices for a lead at its current age.
- * Returns each tier with its depreciated price and sold-out status.
  */
 export function getAllTierPrices(
   createdAt: string,

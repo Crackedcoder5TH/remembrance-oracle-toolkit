@@ -112,7 +112,7 @@ export default function ClientPortal() {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [depreciationDay, setDepreciationDay] = useState(0);
+
 
   // Lead filters
   const [filterState, setFilterState] = useState("");
@@ -381,10 +381,10 @@ export default function ClientPortal() {
                           <div className="flex flex-col gap-1">
                             {lead.tierPrices.map((tp, idx) => {
                               const tierBtnStyles = [
-                                "bg-indigo-600 text-white hover:bg-indigo-700",       // Exclusive
-                                "bg-violet-100 text-violet-700 hover:bg-violet-200",   // Semi-Exclusive
-                                "bg-amber-100 text-amber-700 hover:bg-amber-200",      // Warm Shared
-                                "bg-sky-100 text-sky-700 hover:bg-sky-200",             // Cool Shared
+                                "metallic-gold-card text-yellow-800 hover:brightness-110",   // Exclusive — Gold
+                                "metallic-silver-card text-gray-700 hover:brightness-110",   // Semi-Exclusive — Silver
+                                "metallic-bronze-card text-amber-900 hover:brightness-110",  // Warm Shared — Bronze
+                                "metallic-sky-card text-sky-800 hover:brightness-110",       // Cool Shared — Sky Blue
                               ];
                               const soldOutStyle = "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200";
                               return (
@@ -475,19 +475,18 @@ export default function ClientPortal() {
             <h3 className="text-lg font-light text-[var(--text-primary)] mb-4">Lead Pricing Tiers</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { name: "Exclusive", buyers: "1 buyer", price: 12000, color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-                { name: "Semi-Exclusive", buyers: "2 buyers", price: 10000, color: "bg-violet-50 text-violet-700 border-violet-200" },
-                { name: "Warm Shared", buyers: "3–4 buyers", price: 8000, color: "bg-amber-50 text-amber-700 border-amber-200" },
-                { name: "Cool Shared", buyers: "5–6 buyers", price: 6000, color: "bg-sky-50 text-sky-700 border-sky-200" },
+                { name: "Exclusive", buyers: "1 buyer", price: 12000, cardClass: "metallic-gold-card", labelClass: "metallic-gold" },
+                { name: "Semi-Exclusive", buyers: "2 buyers", price: 10000, cardClass: "metallic-silver-card", labelClass: "metallic-silver" },
+                { name: "Warm Shared", buyers: "3–4 buyers", price: 8000, cardClass: "metallic-bronze-card", labelClass: "metallic-bronze" },
+                { name: "Cool Shared", buyers: "5–6 buyers", price: 6000, cardClass: "metallic-sky-card", labelClass: "metallic-sky" },
               ].map((t) => (
-                <div key={t.name} className={`rounded-lg border p-4 text-center ${t.color}`}>
-                  <p className="text-xs font-bold uppercase tracking-wider mb-1">{t.name}</p>
-                  <p className="text-2xl font-bold">{formatCents(t.price)}</p>
-                  <p className="text-xs opacity-70 mt-1">{t.buyers}</p>
+                <div key={t.name} className={`rounded-lg p-4 text-center ${t.cardClass}`}>
+                  <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${t.labelClass}`}>{t.name}</p>
+                  <p className={`text-2xl font-bold ${t.labelClass}`}>{formatCents(t.price)}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">{t.buyers}</p>
                 </div>
               ))}
             </div>
-            <p className="text-xs text-[var(--text-muted)] mt-3">All leads: $120 max, $60 floor. Prices depreciate over time based on tier.</p>
           </div>
 
           {/* How Payment Works */}
@@ -536,70 +535,6 @@ export default function ClientPortal() {
               </svg>
               <p className="text-xs text-[var(--text-muted)]">
                 All payments are securely processed by Stripe. We never see or store your payment details.
-              </p>
-            </div>
-          </div>
-
-          {/* Lead Price Depreciation Model */}
-          <div className="cathedral-surface p-6">
-            <h3 className="text-lg font-light text-[var(--text-primary)] mb-1">Price Depreciation Simulator</h3>
-            <p className="text-sm text-[var(--text-muted)] mb-5">
-              Lead prices decrease over time. Drag the slider to see how each tier depreciates as a lead ages. All prices have a $60 floor.
-            </p>
-
-            {/* Day Simulator */}
-            <div className="mb-5">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs metallic-gold uppercase tracking-wider">Simulate Lead Age</span>
-                <span className="text-sm text-[var(--text-primary)] font-mono">Day {depreciationDay}</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={30}
-                value={depreciationDay}
-                onChange={(e) => setDepreciationDay(parseInt(e.target.value))}
-                className="w-full accent-teal-cathedral"
-              />
-              <div className="flex justify-between text-[10px] text-[var(--text-muted)] mt-1">
-                <span>Day 0 (new)</span>
-                <span>Day 30</span>
-              </div>
-            </div>
-
-            {/* Tier price cards — buyer-count based */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {([
-                { name: "Exclusive",      max: 12000, hold: 3, drop: 500, floor: 6000, buyers: "1 buyer",    bg: "bg-indigo-50", text: "text-indigo-700", bar: "bg-indigo-400" },
-                { name: "Semi-Exclusive", max: 10000, hold: 2, drop: 500, floor: 6000, buyers: "2 buyers",   bg: "bg-violet-50", text: "text-violet-700", bar: "bg-violet-400" },
-                { name: "Warm Shared",    max: 8000,  hold: 1, drop: 300, floor: 6000, buyers: "3–4 buyers", bg: "bg-amber-50",  text: "text-amber-700",  bar: "bg-amber-400" },
-                { name: "Cool Shared",    max: 6000,  hold: 0, drop: 0,   floor: 6000, buyers: "5–6 buyers", bg: "bg-sky-50",    text: "text-sky-700",    bar: "bg-sky-400" },
-              ]).map((c) => {
-                const t = depreciationDay;
-                const holding = t <= c.hold;
-                const steps = holding ? 0 : Math.floor((t - c.hold) / 1);
-                const price = Math.max(c.floor, c.max - c.drop * steps);
-                const pct = Math.round((price / 12000) * 100); // normalized to $120 max
-
-                return (
-                  <div key={c.name} className={`rounded-lg border border-indigo-cathedral/10 p-3 ${c.bg}`}>
-                    <p className={`text-[10px] font-bold uppercase tracking-wider ${c.text} mb-0.5`}>{c.name}</p>
-                    <p className={`text-xl font-bold ${c.text}`}>{formatCents(price)}</p>
-                    <p className="text-[10px] text-[var(--text-muted)] mb-2">
-                      {c.buyers} &middot; {holding && c.hold > 0 ? `Holds ${c.hold}d` : c.drop > 0 ? `${steps} drop${steps !== 1 ? "s" : ""}` : "Flat"} &middot; floor {formatCents(c.floor)}
-                    </p>
-                    <div className="w-full h-1.5 rounded-full bg-gray-200 overflow-hidden">
-                      <div className={`h-full rounded-full ${c.bar} transition-all duration-300`} style={{ width: `${pct}%` }} />
-                    </div>
-                    <p className="text-[10px] text-[var(--text-muted)] mt-1 text-right">{pct}% of max</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 px-3 py-2.5 rounded-lg bg-[var(--bg-surface)] border border-indigo-cathedral/10">
-              <p className="text-xs text-[var(--text-muted)]">
-                <span className="text-teal-cathedral font-medium">Tip:</span> Exclusive leads hold at $120 for 3 days before dropping $5/day. Semi-Exclusive starts at $100 with a 2-day hold. All tiers bottom out at $60. Buy early for the best value.
               </p>
             </div>
           </div>

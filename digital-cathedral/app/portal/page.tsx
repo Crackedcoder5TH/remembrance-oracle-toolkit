@@ -399,7 +399,7 @@ export default function ClientPortal() {
                   <th className="px-4 py-3">Score</th>
                   <th className="px-4 py-3">State</th>
                   <th className="px-4 py-3">Coverage</th>
-                  <th className="px-4 py-3">Veteran</th>
+                  <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Actions</th>
                 </tr>
@@ -420,9 +420,9 @@ export default function ClientPortal() {
                       <td className="px-4 py-3 text-[var(--text-primary)]">{lead.state}</td>
                       <td className="px-4 py-3 text-[var(--text-muted)]">{COVERAGE_LABELS[lead.coverageInterest] || lead.coverageInterest}</td>
                       <td className="px-4 py-3">
-                        {lead.veteranStatus === "veteran"
-                          ? <span className="text-teal-cathedral text-xs">Veteran</span>
-                          : <span className="text-[var(--text-muted)] text-xs">Non-Veteran</span>}
+                        {lead.veteranStatus === "non-military"
+                          ? <span className="text-[var(--text-muted)] text-xs">Non-Military</span>
+                          : <span className="text-teal-cathedral text-xs capitalize">{lead.veteranStatus?.replace("-", " ")}</span>}
                       </td>
                       <td className="px-4 py-3 text-[var(--text-muted)] text-xs">{new Date(lead.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">

@@ -255,6 +255,12 @@ export default function AdminDashboard() {
             Client Management
           </button>
           <button
+            onClick={() => router.push("/admin/pricing")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+          >
+            Pricing
+          </button>
+          <button
             onClick={handleExport}
             className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-teal-cathedral/70 border border-teal-cathedral/20 hover:border-teal-cathedral/40 hover:text-teal-cathedral"
           >

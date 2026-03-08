@@ -26,7 +26,7 @@ export const DEMO_CLIENT: ClientRecord = {
   pricePerLead: 2500,       // $25.00
   exclusivePrice: 5000,     // $50.00
   stateLicenses: JSON.stringify(["TX", "FL", "CA", "NY", "PA", "GA", "NC", "VA", "OH", "IL"]),
-  coverageTypes: JSON.stringify(["term", "whole", "final-expense", "universal", "annuity"]),
+  coverageTypes: JSON.stringify(["mortgage-protection", "income-replacement", "final-expense", "legacy", "retirement-savings", "guaranteed-income"]),
   dailyCap: 50,
   monthlyCap: 1000,
   minScore: 0,

@@ -21,11 +21,12 @@ import { US_STATES } from "../../packages/shared/src/validate-state";
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
 const COVERAGE_LABELS: Record<string, string> = {
-  "term": "Term Life",
-  "whole": "Whole Life",
-  "universal": "Universal Life",
-  "final-expense": "Final Expense",
-  "annuity": "Annuity",
+  "mortgage-protection": "Term Life",
+  "income-replacement": "Term Life",
+  "final-expense": "Whole Life (Final Expense)",
+  "legacy": "Whole Life",
+  "retirement-savings": "IUL",
+  "guaranteed-income": "Annuity",
   "not-sure": "Undecided",
 };
 

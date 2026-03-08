@@ -55,13 +55,14 @@ const US_STATES = [
 ];
 
 const COVERAGE_OPTIONS = [
-  { value: "", label: "Select your interest..." },
-  { value: "term", label: "Term Life Insurance" },
-  { value: "whole", label: "Whole Life Insurance" },
-  { value: "universal", label: "Universal Life Insurance" },
-  { value: "final-expense", label: "Final Expense / Burial Insurance" },
-  { value: "annuity", label: "Annuity" },
-  { value: "not-sure", label: "Not sure \u2014 I need guidance" },
+  { value: "", label: "What do you need protection for?" },
+  { value: "mortgage-protection", label: "Mortgage / Debt Protection" },
+  { value: "final-expense", label: "Final Expense / Burial" },
+  { value: "income-replacement", label: "Income Replacement" },
+  { value: "retirement-savings", label: "Tax-Free Retirement Savings" },
+  { value: "guaranteed-income", label: "Guaranteed Retirement Income" },
+  { value: "legacy", label: "Leave a Legacy" },
+  { value: "not-sure", label: "Not sure \u2014 help me decide" },
 ];
 
 const PURCHASE_INTENT_OPTIONS = [

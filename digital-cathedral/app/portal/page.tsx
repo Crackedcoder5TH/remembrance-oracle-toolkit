@@ -701,7 +701,7 @@ export default function ClientPortal() {
 
           <div className="space-y-6">
             <div className="rounded-lg p-4 border border-indigo-cathedral/10">
-              <label className="block text-xs text-[var(--text-muted)] uppercase mb-2">Distribution Mode</label>
+              <label className="block text-xs metallic-gold uppercase mb-2">Distribution Mode</label>
               <select value={filters.distributionMode} onChange={(e) => setFilters({ ...filters, distributionMode: e.target.value })}
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none">
                 <option value="shared">Shared (lower cost, lead may go to others)</option>
@@ -711,7 +711,7 @@ export default function ClientPortal() {
             </div>
 
             <div className="rounded-lg p-4 border border-indigo-cathedral/10">
-              <label className="block text-xs text-[var(--text-muted)] uppercase mb-2">Minimum Lead Score</label>
+              <label className="block text-xs metallic-gold uppercase mb-2">Minimum Lead Score</label>
               <input type="number" value={filters.minScore} onChange={(e) => setFilters({ ...filters, minScore: parseInt(e.target.value) || 0 })}
                 min="0" max="100"
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 w-32" />
@@ -719,7 +719,7 @@ export default function ClientPortal() {
             </div>
 
             <div className="rounded-lg p-4 border border-indigo-cathedral/10">
-              <label className="block text-xs text-[var(--text-muted)] uppercase mb-2">Max Lead Age (hours)</label>
+              <label className="block text-xs metallic-gold uppercase mb-2">Max Lead Age (hours)</label>
               <input type="number" value={filters.maxLeadAge} onChange={(e) => setFilters({ ...filters, maxLeadAge: parseInt(e.target.value) || 72 })}
                 min="1" max="168"
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 w-32" />

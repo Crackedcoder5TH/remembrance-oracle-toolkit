@@ -19,6 +19,7 @@ interface ImageUploadProps {
 
 export function ImageUpload({ slot, fallback, className = "", imgClassName = "", alt = "Uploaded image", editable = false }: ImageUploadProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -27,7 +28,10 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
     fetch(`/api/upload?slot=${encodeURIComponent(slot)}`)
       .then((res) => res.json())
       .then((data) => {
-        if (data.url) setImageUrl(data.url);
+        if (data.url) {
+          setImageUrl(data.url);
+          setImgError(false);
+        }
       })
       .catch(() => {
         // Blob store not configured yet — ignore
@@ -52,7 +56,9 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
         return;
       }
       const { url } = await res.json();
-      setImageUrl(url);
+      // Add cache-buster so browser doesn't show a stale/broken cached image
+      setImageUrl(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
+      setImgError(false);
     } catch {
       alert("Upload failed. Please try again.");
     } finally {
@@ -71,12 +77,14 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
     e.target.value = "";
   }
 
+  const showImage = imageUrl && !imgError;
+
   // Read-only mode: just display image or fallback, no upload UI
   if (!editable) {
     return (
       <div className={className}>
-        {imageUrl ? (
-          <img src={imageUrl} alt={alt} className={imgClassName} />
+        {showImage ? (
+          <img src={imageUrl} alt={alt} className={imgClassName} onError={() => setImgError(true)} />
         ) : (
           fallback
         )}
@@ -93,8 +101,8 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
       aria-label={`Upload ${slot} image`}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
     >
-      {imageUrl ? (
-        <img src={imageUrl} alt={alt} className={imgClassName} />
+      {showImage ? (
+        <img src={imageUrl} alt={alt} className={imgClassName} onError={() => setImgError(true)} />
       ) : (
         fallback
       )}

@@ -30,7 +30,7 @@ export const DEMO_CLIENT: ClientRecord = {
   dailyCap: 50,
   monthlyCap: 1000,
   minScore: 0,
-  balance: 50000,           // $500.00
+  balance: 0,
   createdAt: now,
   updatedAt: now,
 };

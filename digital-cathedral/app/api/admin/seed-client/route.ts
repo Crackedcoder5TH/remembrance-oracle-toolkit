@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     dailyCap: 50,
     monthlyCap: 1000,
     minScore: 0,
-    balance: 50000,           // $500.00 starting balance
+    balance: 0,
     createdAt: now,
     updatedAt: now,
   };
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     clientId,
     details: {
       companyName: client.companyName,
-      balance: "$500.00",
+      balance: "$0.00",
       pricePerLead: "$25.00",
       exclusivePrice: "$50.00",
       licensedStates: 10,

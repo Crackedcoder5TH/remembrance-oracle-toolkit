@@ -8,17 +8,13 @@
  *  - One-click lead purchase (shared or exclusive)
  *  - Purchase history with full lead data
  *  - Return requests (within 72-hour window)
- *  - Billing overview and balance
+ *  - Billing overview and pricing
  *  - Delivery filter management
  */
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { US_STATES } from "../../packages/shared/src/validate-state";
-
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
 
 const COVERAGE_LABELS: Record<string, string> = {
   "mortgage-protection": "Term Life",
@@ -42,7 +38,6 @@ interface ClientProfile {
   companyName: string;
   contactName: string;
   email: string;
-  balance: number;
   pricePerLead: number;
   exclusivePrice: number;
   dailyCap: number;
@@ -99,79 +94,6 @@ interface Filters {
 
 type Tab = "leads" | "purchases" | "billing" | "filters";
 
-/** Stripe Elements checkout form — renders inside an <Elements> provider. */
-function StripeCheckoutForm({
-  amount,
-  onSuccess,
-  onCancel,
-  onError,
-}: {
-  amount: string;
-  onSuccess: () => void;
-  onCancel: () => void;
-  onError: (msg: string) => void;
-}) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [processing, setProcessing] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-
-    setProcessing(true);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/portal?tab=billing&payment=success`,
-      },
-      redirect: "if_required",
-    });
-
-    if (error) {
-      onError(error.message || "Payment failed. Please try again.");
-      setProcessing(false);
-    } else {
-      onSuccess();
-      setProcessing(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm text-[var(--text-primary)]">
-          Amount: <span className="text-teal-cathedral font-medium">${parseFloat(amount).toFixed(2)}</span>
-        </p>
-        <button type="button" onClick={onCancel} className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] underline">
-          Change amount
-        </button>
-      </div>
-
-      <PaymentElement />
-
-      <button
-        type="submit"
-        disabled={!stripe || processing}
-        className="w-full px-6 py-3.5 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-50 flex items-center justify-center gap-2"
-      >
-        {processing ? (
-          <>
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Processing Payment...
-          </>
-        ) : (
-          `Pay $${parseFloat(amount).toFixed(2)}`
-        )}
-      </button>
-    </form>
-  );
-}
-
 export default function ClientPortal() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("leads");
@@ -179,17 +101,11 @@ export default function ClientPortal() {
   const [leads, setLeads] = useState<AvailableLead[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [billing, setBilling] = useState<BillingRecord[]>([]);
-  const [balance, setBalance] = useState(0);
   const [filters, setFilters] = useState<Filters>({
     states: [], coverageTypes: [], veteranOnly: false, minScore: 0, maxLeadAge: 72, distributionMode: "shared",
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-
-  // Payment state
-  const [fundAmount, setFundAmount] = useState("100.00");
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
 
   // Lead filters
   const [filterState, setFilterState] = useState("");
@@ -201,7 +117,6 @@ export default function ClientPortal() {
     if (res.ok) {
       const data = await res.json();
       setProfile(data.client);
-      setBalance(data.client.balance);
     }
   }, [router]);
 
@@ -233,7 +148,6 @@ export default function ClientPortal() {
     if (res.ok) {
       const data = await res.json();
       setBilling(data.billing || []);
-      setBalance(data.balance || 0);
     }
   }, []);
 
@@ -275,7 +189,6 @@ export default function ClientPortal() {
     const data = await res.json();
     if (data.success) {
       setMessage(`Lead purchased! ${exclusive ? "(Exclusive)" : "(Shared)"} — $${(data.pricePaid / 100).toFixed(2)}`);
-      setBalance(data.newBalance);
       fetchLeads();
     } else {
       setMessage(data.message || "Purchase failed.");
@@ -294,34 +207,6 @@ export default function ClientPortal() {
     const data = await res.json();
     setMessage(data.message || "Return submitted.");
     fetchPurchases();
-  };
-
-  const handleCreatePaymentIntent = async () => {
-    const amountCents = Math.round(parseFloat(fundAmount) * 100);
-    if (isNaN(amountCents) || amountCents < 500) { setMessage("Minimum fund amount is $5.00."); return; }
-    if (amountCents > 1000000) { setMessage("Maximum fund amount is $10,000.00."); return; }
-
-    setPaymentProcessing(true);
-    setMessage("");
-
-    try {
-      const res = await fetch("/api/client/create-payment-intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: amountCents }),
-      });
-      const data = await res.json();
-
-      if (data.success && data.clientSecret) {
-        setClientSecret(data.clientSecret);
-      } else {
-        setMessage(data.message || "Failed to initialize payment.");
-      }
-    } catch {
-      setMessage("Network error. Please try again.");
-    } finally {
-      setPaymentProcessing(false);
-    }
   };
 
   const handleSaveFilters = async () => {
@@ -359,10 +244,6 @@ export default function ClientPortal() {
           <p className="text-sm text-[var(--text-muted)]">{profile.contactName}</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-xs text-[var(--text-muted)] uppercase">Balance</p>
-            <p className="text-lg font-light text-teal-cathedral">{formatCents(balance)}</p>
-          </div>
           <button onClick={handleLogout} className="px-4 py-2 rounded-lg text-sm text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25">Logout</button>
         </div>
       </header>
@@ -535,13 +416,9 @@ export default function ClientPortal() {
       {/* ─── Billing Tab ─── */}
       {tab === "billing" && (
         <div className="space-y-6">
-          {/* Balance Overview */}
+          {/* Pricing Overview */}
           <div className="cathedral-surface p-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <p className="text-xs text-[var(--text-muted)] uppercase">Current Balance</p>
-                <p className="text-3xl font-light text-teal-cathedral">{formatCents(balance)}</p>
-              </div>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-[var(--text-muted)] uppercase">Shared Lead Price</p>
                 <p className="text-lg text-[var(--text-primary)]">{profile ? formatCents(profile.pricePerLead) : "—"}</p>
@@ -550,105 +427,7 @@ export default function ClientPortal() {
                 <p className="text-xs text-[var(--text-muted)] uppercase">Exclusive Lead Price</p>
                 <p className="text-lg text-[var(--text-primary)]">{profile ? formatCents(profile.exclusivePrice) : "—"}</p>
               </div>
-              <div>
-                <p className="text-xs text-[var(--text-muted)] uppercase">Leads Available</p>
-                <p className="text-lg text-[var(--text-primary)]">
-                  ~{profile ? Math.floor(balance / profile.pricePerLead) : 0} shared
-                </p>
-              </div>
             </div>
-          </div>
-
-          {/* Add Funds */}
-          <div className="cathedral-surface p-6">
-            <h3 className="text-lg font-light text-[var(--text-primary)] mb-1">Add Funds</h3>
-            <p className="text-sm text-[var(--text-muted)] mb-6">Add funds to your balance to purchase leads. Payments are securely processed by Stripe.</p>
-
-            {!clientSecret ? (
-              <div className="space-y-5">
-                {/* Fund Amount — Quick Select */}
-                <div>
-                  <label className="block text-xs metallic-gold uppercase tracking-wider mb-2">Fund Amount</label>
-                  <div className="flex gap-2 mb-3">
-                    {["50.00", "100.00", "250.00", "500.00", "1000.00"].map((amt) => (
-                      <button
-                        key={amt}
-                        onClick={() => setFundAmount(amt)}
-                        className={`px-3 py-1.5 rounded-lg text-sm transition-all ${
-                          fundAmount === amt
-                            ? "bg-teal-cathedral text-white"
-                            : "text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
-                        }`}
-                      >
-                        ${parseFloat(amt).toFixed(0)}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[var(--text-muted)]">$</span>
-                    <input
-                      type="text"
-                      value={fundAmount}
-                      onChange={(e) => setFundAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                      className="w-32 bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 ring-1 ring-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-cathedral"
-                      placeholder="100.00"
-                    />
-                    <span className="text-xs text-[var(--text-muted)]">USD (min $5.00)</span>
-                  </div>
-                </div>
-
-                {/* Security Note */}
-                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-[var(--bg-surface)] border border-indigo-cathedral/10">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 mt-0.5 text-teal-cathedral" aria-hidden="true">
-                    <path d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                  </svg>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    Your payment is securely processed by Stripe. We never see or store your card details.
-                  </p>
-                </div>
-
-                {/* Continue to Payment Button */}
-                <button
-                  onClick={handleCreatePaymentIntent}
-                  disabled={paymentProcessing}
-                  className="w-full px-6 py-3.5 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {paymentProcessing ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                      </svg>
-                      Initializing...
-                    </>
-                  ) : (
-                    <>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                        <path d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-                      </svg>
-                      Continue to Payment — ${parseFloat(fundAmount || "0").toFixed(2)}
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              <div>
-                <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "night", variables: { colorPrimary: "#2DD4BF" } } }}>
-                  <StripeCheckoutForm
-                    amount={fundAmount}
-                    onSuccess={() => {
-                      setClientSecret(null);
-                      setFundAmount("100.00");
-                      setMessage("Payment successful! Your balance will be updated shortly.");
-                      fetchBilling();
-                      fetchProfile();
-                    }}
-                    onCancel={() => setClientSecret(null)}
-                    onError={(msg) => setMessage(msg)}
-                  />
-                </Elements>
-              </div>
-            )}
           </div>
 
           {/* Transaction History */}

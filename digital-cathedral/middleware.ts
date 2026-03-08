@@ -82,17 +82,17 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const headers = response.headers;
 
-  // Content-Security-Policy — synced with next.config.mjs
-  // Must match to avoid the middleware overriding config headers
+  // Content-Security-Policy — MUST stay in sync with next.config.mjs
   headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io",
+      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com",
+      "font-src 'self' fonts.gstatic.com",
+      "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io api.stripe.com",
+      "frame-src 'self' js.stripe.com hooks.stripe.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self' https://accounts.google.com",

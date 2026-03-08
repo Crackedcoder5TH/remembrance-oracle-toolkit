@@ -19,13 +19,15 @@ export async function GET(request: NextRequest) {
 
     // Fetch the blob contents server-side using the token (works with private stores)
     const blobData = await get(blobMeta.url, { access: "private" });
-    if (!blobData.stream) {
+    if (!blobData || !blobData.stream) {
       return new NextResponse("Image not available", { status: 502 });
     }
 
+    const contentType = blobData.blob?.contentType || "application/octet-stream";
+
     return new NextResponse(blobData.stream as ReadableStream, {
       headers: {
-        "Content-Type": blobData.blob.contentType || "application/octet-stream",
+        "Content-Type": contentType,
         "Cache-Control": "public, max-age=300, s-maxage=600",
       },
     });

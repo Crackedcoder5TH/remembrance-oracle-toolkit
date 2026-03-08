@@ -53,3 +53,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }
+
+/** GET /api/upload?slot=veteran-group — public endpoint to look up current image URL */
+export async function GET(request: NextRequest) {
+  try {
+    const slot = request.nextUrl.searchParams.get("slot");
+    if (!slot || !VALID_SLOTS.includes(slot)) {
+      return NextResponse.json({ error: "Invalid slot" }, { status: 400 });
+    }
+
+    const result = await list({ prefix: `uploads/${slot}` });
+    const blob = result.blobs[0];
+    if (!blob) {
+      return NextResponse.json({ url: null, slot });
+    }
+
+    return NextResponse.json({ url: blob.url, slot });
+  } catch (err) {
+    console.error("[UPLOAD GET] Error:", err);
+    return NextResponse.json({ url: null });
+  }
+}

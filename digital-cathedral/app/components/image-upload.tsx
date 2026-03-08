@@ -17,20 +17,21 @@ interface ImageUploadProps {
   editable?: boolean;
 }
 
-const STORAGE_KEY_PREFIX = "uploaded-image-";
-
 export function ImageUpload({ slot, fallback, className = "", imgClassName = "", alt = "Uploaded image", editable = false }: ImageUploadProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Load saved image URL from localStorage on mount
+  // Fetch the current image URL from the server on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_PREFIX + slot);
-    if (saved) {
-      // Append cache-buster so browser reloads the image after re-upload
-      setImageUrl(saved + "?t=" + Date.now());
-    }
+    fetch(`/api/upload?slot=${encodeURIComponent(slot)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.url) setImageUrl(data.url);
+      })
+      .catch(() => {
+        // Blob store not configured yet — ignore
+      });
   }, [slot]);
 
   async function handleUpload(file: File) {
@@ -40,15 +41,18 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
       form.append("file", file);
       form.append("slot", slot);
 
-      const res = await fetch("/api/upload", { method: "POST", body: form });
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: form,
+        credentials: "include",
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         alert(body?.error || "Upload failed");
         return;
       }
       const { url } = await res.json();
-      localStorage.setItem(STORAGE_KEY_PREFIX + slot, url);
-      setImageUrl(url + "?t=" + Date.now());
+      setImageUrl(url);
     } catch {
       alert("Upload failed. Please try again.");
     } finally {

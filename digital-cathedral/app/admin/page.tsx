@@ -14,7 +14,7 @@
  *  - Real-time SSE notifications
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { US_STATES } from "../../packages/shared/src/validate-state";
 
@@ -146,6 +146,51 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   };
 
+  // --- Image upload state ---
+  const [imageSlots] = useState([
+    { slot: "veteran-group", label: "Veteran Group Photo", description: "Displayed in the 'About the Mission' section on the homepage" },
+    { slot: "logo", label: "Site Logo", description: "Displayed in the navigation bar" },
+  ]);
+  const [imageUrls, setImageUrls] = useState<Record<string, string | null>>({});
+  const [uploadingSlot, setUploadingSlot] = useState<string | null>(null);
+  const [uploadMessage, setUploadMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  useEffect(() => {
+    imageSlots.forEach(({ slot }) => {
+      fetch(`/api/upload?slot=${encodeURIComponent(slot)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.url) setImageUrls((prev) => ({ ...prev, [slot]: data.url }));
+        })
+        .catch(() => {});
+    });
+  }, [imageSlots]);
+
+  async function handleImageUpload(slot: string, file: File) {
+    setUploadingSlot(slot);
+    setUploadMessage(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("slot", slot);
+      const res = await fetch("/api/upload", { method: "POST", body: form, credentials: "include" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setUploadMessage({ text: body?.error || "Upload failed", type: "error" });
+        return;
+      }
+      const { url } = await res.json();
+      setImageUrls((prev) => ({ ...prev, [slot]: url }));
+      setUploadMessage({ text: `${slot} image uploaded successfully!`, type: "success" });
+      setTimeout(() => setUploadMessage(null), 4000);
+    } catch {
+      setUploadMessage({ text: "Upload failed. Please try again.", type: "error" });
+    } finally {
+      setUploadingSlot(null);
+    }
+  }
+
   // --- Real-time notifications via SSE ---
   const [newLeadFlash, setNewLeadFlash] = useState<string | null>(null);
   useEffect(() => {
@@ -256,6 +301,58 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Site Images */}
+      <div className="cathedral-surface p-6 mb-8" role="region" aria-label="Site images">
+        <h2 className="text-lg font-light text-[var(--text-primary)] mb-1">Site Images</h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">Upload or replace images displayed on the website.</p>
+
+        {uploadMessage && (
+          <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${uploadMessage.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+            {uploadMessage.text}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {imageSlots.map(({ slot, label, description }) => (
+            <div key={slot} className="border border-indigo-cathedral/10 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-1">{label}</h3>
+              <p className="text-xs text-[var(--text-muted)] mb-3">{description}</p>
+
+              {imageUrls[slot] ? (
+                <img
+                  src={imageUrls[slot]!}
+                  alt={label}
+                  className="w-full h-40 object-cover rounded-lg mb-3 bg-[var(--bg-surface)]"
+                />
+              ) : (
+                <div className="w-full h-40 rounded-lg mb-3 bg-[var(--bg-surface)] border border-dashed border-indigo-cathedral/20 flex items-center justify-center">
+                  <span className="text-xs text-[var(--text-muted)]">No image uploaded</span>
+                </div>
+              )}
+
+              <input
+                ref={(el) => { fileInputRefs.current[slot] = el; }}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(slot, file);
+                  e.target.value = "";
+                }}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRefs.current[slot]?.click()}
+                disabled={uploadingSlot === slot}
+                className="w-full px-4 py-2 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-50"
+              >
+                {uploadingSlot === slot ? "Uploading..." : imageUrls[slot] ? "Replace Image" : "Upload Image"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* Veteran + Coverage Breakdown */}
       {stats && (

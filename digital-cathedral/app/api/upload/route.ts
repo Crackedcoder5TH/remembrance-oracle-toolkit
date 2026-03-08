@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put, del, list } from "@vercel/blob";
+import { put, del, list, getDownloadUrl } from "@vercel/blob";
 import { verifyAdmin } from "../../lib/admin-auth";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/gif"];
@@ -52,11 +52,14 @@ export async function POST(request: NextRequest) {
     const pathname = `uploads/${slot}.${ext}`;
 
     const blob = await put(pathname, file, {
-      access: "public",
+      access: "private",
       addRandomSuffix: false,
     });
 
-    return NextResponse.json({ url: blob.url, slot });
+    // Generate a signed download URL for private blob stores
+    const downloadUrl = await getDownloadUrl(blob.url);
+
+    return NextResponse.json({ url: downloadUrl, slot });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[UPLOAD] Error:", message, err);
@@ -78,7 +81,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ url: null, slot });
     }
 
-    return NextResponse.json({ url: blob.url, slot });
+    // Generate a signed download URL for private blob stores
+    const downloadUrl = await getDownloadUrl(blob.url);
+
+    return NextResponse.json({ url: downloadUrl, slot });
   } catch (err) {
     console.error("[UPLOAD GET] Error:", err);
     return NextResponse.json({ url: null });

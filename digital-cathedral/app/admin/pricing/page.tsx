@@ -278,19 +278,19 @@ export default function AdminPricing() {
             const pct = config.maxPrice > 0 ? Math.round((price / config.maxPrice) * 100) : 100;
 
             const colors = [
-              { bg: "bg-indigo-50", text: "text-indigo-700", bar: "bg-indigo-400" },
-              { bg: "bg-violet-50", text: "text-violet-700", bar: "bg-violet-400" },
-              { bg: "bg-amber-50", text: "text-amber-700", bar: "bg-amber-400" },
-              { bg: "bg-sky-50", text: "text-sky-700", bar: "bg-sky-400" },
-              { bg: "bg-emerald-50", text: "text-emerald-700", bar: "bg-emerald-400" },
-              { bg: "bg-rose-50", text: "text-rose-700", bar: "bg-rose-400" },
+              { card: "metallic-gold-card", label: "metallic-gold", bar: "bg-yellow-500" },
+              { card: "metallic-silver-card", label: "metallic-silver", bar: "bg-gray-400" },
+              { card: "metallic-bronze-card", label: "metallic-bronze", bar: "bg-amber-600" },
+              { card: "metallic-sky-card", label: "metallic-sky", bar: "bg-sky-400" },
+              { card: "metallic-gold-card", label: "metallic-gold", bar: "bg-yellow-500" },
+              { card: "metallic-silver-card", label: "metallic-silver", bar: "bg-gray-400" },
             ];
             const c = colors[idx % colors.length];
 
             return (
-              <div key={idx} className={`rounded-lg border border-indigo-cathedral/10 p-3 ${c.bg}`}>
-                <p className={`text-[10px] font-bold uppercase tracking-wider ${c.text} mb-0.5`}>{tier.name}</p>
-                <p className={`text-xl font-bold ${c.text}`}>{formatCents(price)}</p>
+              <div key={idx} className={`rounded-lg p-3 ${c.card}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${c.label} mb-0.5`}>{tier.name}</p>
+                <p className={`text-xl font-bold ${c.label}`}>{formatCents(price)}</p>
                 <p className="text-[10px] text-[var(--text-muted)] mb-2">
                   {tier.maxBuyers} buyer{tier.maxBuyers !== 1 ? "s" : ""} &middot;
                   {holding && tier.holdDays > 0 ? ` Holds ${tier.holdDays}d` : tier.dropAmount > 0 ? ` ${steps} drop${steps !== 1 ? "s" : ""}` : " Flat"}

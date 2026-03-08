@@ -169,6 +169,93 @@
     50% { background-position: 100% 50%; }
   }
 
+  /* ─── Metallic Silver — Semi-Exclusive Tier ─── */
+  .metallic-silver {
+    background: linear-gradient(
+      135deg,
+      #808080 0%,
+      #C0C0C0 25%,
+      #F0F0F0 45%,
+      #C0C0C0 55%,
+      #A9A9A9 75%,
+      #808080 100%
+    );
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gold-shimmer 5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(192, 192, 192, 0.3));
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .metallic-silver-card {
+    background: linear-gradient(135deg, rgba(192,192,192,0.08) 0%, rgba(240,240,240,0.12) 50%, rgba(169,169,169,0.08) 100%);
+    border: 1px solid rgba(192,192,192,0.3);
+    box-shadow: 0 0 12px rgba(192,192,192,0.1), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+
+  /* ─── Metallic Bronze — Warm Shared Tier ─── */
+  .metallic-bronze {
+    background: linear-gradient(
+      135deg,
+      #8B4513 0%,
+      #CD7F32 25%,
+      #F4C587 45%,
+      #CD7F32 55%,
+      #A0522D 75%,
+      #8B4513 100%
+    );
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gold-shimmer 5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(205, 127, 50, 0.3));
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .metallic-bronze-card {
+    background: linear-gradient(135deg, rgba(205,127,50,0.08) 0%, rgba(244,197,135,0.12) 50%, rgba(160,82,45,0.08) 100%);
+    border: 1px solid rgba(205,127,50,0.3);
+    box-shadow: 0 0 12px rgba(205,127,50,0.1), inset 0 1px 0 rgba(244,197,135,0.15);
+  }
+
+  /* ─── Metallic Sky Blue — Cool Shared Tier ─── */
+  .metallic-sky {
+    background: linear-gradient(
+      135deg,
+      #4682B4 0%,
+      #87CEEB 25%,
+      #E0F0FF 45%,
+      #87CEEB 55%,
+      #6CA6CD 75%,
+      #4682B4 100%
+    );
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gold-shimmer 5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px rgba(135, 206, 235, 0.3));
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .metallic-sky-card {
+    background: linear-gradient(135deg, rgba(135,206,235,0.08) 0%, rgba(224,240,255,0.12) 50%, rgba(70,130,180,0.08) 100%);
+    border: 1px solid rgba(135,206,235,0.3);
+    box-shadow: 0 0 12px rgba(135,206,235,0.1), inset 0 1px 0 rgba(224,240,255,0.15);
+  }
+
+  .metallic-gold-card {
+    background: linear-gradient(135deg, rgba(184,134,11,0.08) 0%, rgba(255,215,0,0.12) 50%, rgba(218,165,32,0.08) 100%);
+    border: 1px solid rgba(218,165,32,0.3);
+    box-shadow: 0 0 12px rgba(255,215,0,0.1), inset 0 1px 0 rgba(255,248,220,0.15);
+  }
+
   /* ─── Animations ─── */
   .pulse-gentle {
     animation: gentle-pulse 3s ease-in-out infinite;
@@ -442,6 +529,9 @@
   .animate-fade-in,
   .skeleton-shimmer,
   .metallic-gold,
+  .metallic-silver,
+  .metallic-bronze,
+  .metallic-sky,
   .toast,
   .toast-exiting {
     animation: none !important;

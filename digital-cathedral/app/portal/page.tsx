@@ -381,10 +381,10 @@ export default function ClientPortal() {
                           <div className="flex flex-col gap-1">
                             {lead.tierPrices.map((tp, idx) => {
                               const tierBtnStyles = [
-                                "bg-indigo-600 text-white hover:bg-indigo-700",       // Exclusive
-                                "bg-violet-100 text-violet-700 hover:bg-violet-200",   // Semi-Exclusive
-                                "bg-amber-100 text-amber-700 hover:bg-amber-200",      // Warm Shared
-                                "bg-sky-100 text-sky-700 hover:bg-sky-200",             // Cool Shared
+                                "metallic-gold-card text-yellow-800 hover:brightness-110",   // Exclusive — Gold
+                                "metallic-silver-card text-gray-700 hover:brightness-110",   // Semi-Exclusive — Silver
+                                "metallic-bronze-card text-amber-900 hover:brightness-110",  // Warm Shared — Bronze
+                                "metallic-sky-card text-sky-800 hover:brightness-110",       // Cool Shared — Sky Blue
                               ];
                               const soldOutStyle = "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200";
                               return (
@@ -475,15 +475,15 @@ export default function ClientPortal() {
             <h3 className="text-lg font-light text-[var(--text-primary)] mb-4">Lead Pricing Tiers</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
-                { name: "Exclusive", buyers: "1 buyer", price: 12000, color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-                { name: "Semi-Exclusive", buyers: "2 buyers", price: 10000, color: "bg-violet-50 text-violet-700 border-violet-200" },
-                { name: "Warm Shared", buyers: "3–4 buyers", price: 8000, color: "bg-amber-50 text-amber-700 border-amber-200" },
-                { name: "Cool Shared", buyers: "5–6 buyers", price: 6000, color: "bg-sky-50 text-sky-700 border-sky-200" },
+                { name: "Exclusive", buyers: "1 buyer", price: 12000, cardClass: "metallic-gold-card", labelClass: "metallic-gold" },
+                { name: "Semi-Exclusive", buyers: "2 buyers", price: 10000, cardClass: "metallic-silver-card", labelClass: "metallic-silver" },
+                { name: "Warm Shared", buyers: "3–4 buyers", price: 8000, cardClass: "metallic-bronze-card", labelClass: "metallic-bronze" },
+                { name: "Cool Shared", buyers: "5–6 buyers", price: 6000, cardClass: "metallic-sky-card", labelClass: "metallic-sky" },
               ].map((t) => (
-                <div key={t.name} className={`rounded-lg border p-4 text-center ${t.color}`}>
-                  <p className="text-xs font-bold uppercase tracking-wider mb-1">{t.name}</p>
-                  <p className="text-2xl font-bold">{formatCents(t.price)}</p>
-                  <p className="text-xs opacity-70 mt-1">{t.buyers}</p>
+                <div key={t.name} className={`rounded-lg p-4 text-center ${t.cardClass}`}>
+                  <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${t.labelClass}`}>{t.name}</p>
+                  <p className={`text-2xl font-bold ${t.labelClass}`}>{formatCents(t.price)}</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">{t.buyers}</p>
                 </div>
               ))}
             </div>

@@ -22,7 +22,7 @@ export default function PrivacyPage() {
             Privacy Policy
           </h1>
           <p className="text-sm text-[var(--text-muted)]">
-            Last updated: February 2026
+            Last updated: March 2026
           </p>
         </header>
 
@@ -114,7 +114,7 @@ export default function PrivacyPage() {
           </p>
           <p>
             The only client-side storage used is <code>localStorage</code> for
-            functional preferences such as theme. These are not used for tracking.
+            functional preferences such as theme. This is not used for tracking.
           </p>
         </section>
 

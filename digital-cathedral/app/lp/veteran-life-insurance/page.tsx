@@ -6,7 +6,7 @@
  * Optimized for paid traffic (Google Ads, Facebook Ads).
  * Stripped-down, single-screen, 3-field form. No navigation distractions.
  *
- * Hidden fields: coverageInterest="term", veteranStatus="veteran"
+ * Hidden fields: coverageInterest="income-replacement", veteranStatus="veteran"
  * UTM params auto-captured from URL query string.
  */
 
@@ -181,7 +181,7 @@ export default function VeteranLifeInsuranceLandingPage() {
           email: sanitize(form.email),
           phone: form.phone.replace(/\D/g, ""),
           state: "",
-          coverageInterest: "term",
+          coverageInterest: "income-replacement",
           veteranStatus: "veteran",
           militaryBranch: "",
           tcpaConsent: form.tcpaConsent,
@@ -313,7 +313,7 @@ export default function VeteranLifeInsuranceLandingPage() {
           </div>
 
           {/* Hidden fields */}
-          <input type="hidden" name="coverageInterest" value="term" />
+          <input type="hidden" name="coverageInterest" value="income-replacement" />
           <input type="hidden" name="veteranStatus" value="veteran" />
 
           {/* Full Name */}

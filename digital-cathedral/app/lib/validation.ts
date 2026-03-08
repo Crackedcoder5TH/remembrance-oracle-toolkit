@@ -71,7 +71,7 @@ const VALID_STATES = new Set([
   "VT","VA","WA","WV","WI","WY",
 ]);
 
-const VALID_COVERAGE = new Set(["term", "whole", "universal", "final-expense", "annuity", "not-sure"]);
+const VALID_COVERAGE = new Set(["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "not-sure"]);
 const VALID_PURCHASE_INTENT = new Set(["protect-family", "want-protection", "exploring"]);
 const VALID_VETERAN_STATUS = new Set(["active-duty", "reserve", "national-guard", "veteran", "non-military"]);
 const VALID_MILITARY_BRANCHES = new Set([

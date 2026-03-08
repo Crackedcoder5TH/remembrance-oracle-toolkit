@@ -16,7 +16,7 @@ export default function TermsPage() {
           Terms of Service
         </h1>
         <p className="text-sm text-[var(--text-muted)]">
-          Last Updated: February 25, 2026 &mdash; Effective: February 25, 2026
+          Last Updated: March 8, 2026 &mdash; Effective: March 8, 2026
         </p>
       </header>
 
@@ -160,7 +160,7 @@ export default function TermsPage() {
 
         {/* 12. Governing Law */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">12. Governing Law & Disputes</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">12. Governing Law &amp; Disputes</h2>
           <p>
             These Terms are governed by the laws of the State of California, without regard to conflict of
             law principles. Any disputes arising from these Terms or your use of the Site shall be

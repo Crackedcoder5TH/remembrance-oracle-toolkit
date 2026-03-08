@@ -27,11 +27,12 @@ export interface LeadScore {
 
 // --- Coverage interest weights (max 25 points) ---
 const COVERAGE_WEIGHTS: Record<string, number> = {
-  "term": 23,
-  "whole": 25,
-  "universal": 21,
-  "final-expense": 22,
-  "annuity": 18,
+  "mortgage-protection": 23,   // → Term Life
+  "income-replacement": 23,    // → Term Life
+  "final-expense": 22,         // → Whole Life (small face)
+  "legacy": 25,                // → Whole Life
+  "retirement-savings": 21,    // → IUL
+  "guaranteed-income": 18,     // → Annuity
   "not-sure": 8,
 };
 

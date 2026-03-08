@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { put, del, list } from "@vercel/blob";
 import { verifyAdmin } from "../../lib/admin-auth";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
-const VALID_SLOTS = ["logo", "profile", "veteran-group"];
+const VALID_SLOTS = ["logo", "profile", "veteran-group", "founder-photo"];
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,18 +29,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File too large. Max 5 MB." }, { status: 400 });
     }
 
+    // Delete any existing blob for this slot (so we replace, not accumulate)
+    try {
+      const existing = await list({ prefix: `uploads/${slot}` });
+      for (const blob of existing.blobs) {
+        await del(blob.url);
+      }
+    } catch {
+      // First upload for this slot — nothing to delete
+    }
+
     const ext = file.name.split(".").pop()?.toLowerCase() || "png";
-    const filename = `${slot}.${ext}`;
+    const pathname = `uploads/${slot}.${ext}`;
 
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
+    const blob = await put(pathname, file, {
+      access: "public",
+      addRandomSuffix: false,
+    });
 
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const filePath = path.join(uploadsDir, filename);
-    await writeFile(filePath, bytes);
-
-    const url = `/uploads/${filename}`;
-    return NextResponse.json({ url, filename, slot });
+    return NextResponse.json({ url: blob.url, slot });
   } catch (err) {
     console.error("[UPLOAD] Error:", err);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });

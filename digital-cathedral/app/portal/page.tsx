@@ -741,8 +741,13 @@ export default function ClientPortal() {
         </div>
       )}
 
-      <footer className="mt-12 text-center text-xs text-[var(--text-muted)]">
+      <footer className="mt-12 text-center text-xs text-[var(--text-muted)] space-y-2">
+        <nav className="flex gap-4 justify-center">
+          <a href="/portal/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
+          <a href="/portal/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
+        </nav>
         <p>Client Portal — Lead data is confidential and for your use only.</p>
+        <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
       </footer>
     </main>
   );

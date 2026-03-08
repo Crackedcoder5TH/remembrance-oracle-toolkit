@@ -114,42 +114,9 @@ export default function TermsPage() {
           </p>
         </section>
 
-        {/* 8. Client Portal & Payments */}
+        {/* 8. Intellectual Property */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">8. Client Portal &amp; Payments</h2>
-          <p className="mb-3">
-            Licensed insurance professionals (&ldquo;Clients&rdquo;) may access our Client Portal to purchase
-            leads. By using the Client Portal, you agree to the following:
-          </p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>You must maintain a positive account balance to purchase leads.</li>
-            <li>All payments are processed securely by Stripe, Inc. We never store your full card details.</li>
-            <li>Funds added to your account balance are non-transferable between accounts.</li>
-            <li>Lead pricing is determined by your account tier and may change with 30 days&rsquo; notice.</li>
-            <li>Purchased leads are non-exclusive unless purchased at the exclusive rate.</li>
-            <li>You may not resell, redistribute, or share leads obtained through our platform.</li>
-          </ul>
-        </section>
-
-        {/* 9. Refunds & Disputes */}
-        <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">9. Refunds &amp; Disputes</h2>
-          <p className="mb-3">
-            Our full refund policy is available at{" "}
-            <a href="/refund-policy" className="text-teal-cathedral hover:underline">valorlegacies.com/refund-policy</a>.
-            Key points:
-          </p>
-          <ul className="list-disc list-inside space-y-1 ml-2">
-            <li>Refunds for invalid or duplicate leads must be requested within 72 hours of purchase.</li>
-            <li>Account balance refunds may be requested for unused funds.</li>
-            <li>All refund requests are reviewed within 5 business days.</li>
-            <li>Approved refunds are returned to the original payment method via Stripe.</li>
-          </ul>
-        </section>
-
-        {/* 10. Intellectual Property */}
-        <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">10. Intellectual Property</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">8. Intellectual Property</h2>
           <p>
             All content on this Site, including text, graphics, logos, and software, is the property of
             Valor Legacies or its licensors and is protected by applicable intellectual property laws.
@@ -158,9 +125,9 @@ export default function TermsPage() {
           </p>
         </section>
 
-        {/* 11. Disclaimer of Warranties */}
+        {/* 9. Disclaimer of Warranties */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">11. Disclaimer of Warranties</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">9. Disclaimer of Warranties</h2>
           <p>
             THE SITE IS PROVIDED &ldquo;AS IS&rdquo; AND &ldquo;AS AVAILABLE&rdquo; WITHOUT WARRANTIES
             OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF
@@ -169,9 +136,9 @@ export default function TermsPage() {
           </p>
         </section>
 
-        {/* 12. Limitation of Liability */}
+        {/* 10. Limitation of Liability */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">12. Limitation of Liability</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">10. Limitation of Liability</h2>
           <p>
             TO THE MAXIMUM EXTENT PERMITTED BY LAW, DIGITAL CATHEDRAL SHALL NOT BE LIABLE FOR ANY INDIRECT,
             INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR
@@ -180,9 +147,9 @@ export default function TermsPage() {
           </p>
         </section>
 
-        {/* 13. Indemnification */}
+        {/* 11. Indemnification */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">13. Indemnification</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">11. Indemnification</h2>
           <p>
             You agree to indemnify and hold harmless Valor Legacies, its officers, directors, employees,
             and agents from any claims, losses, damages, liabilities, and expenses (including reasonable
@@ -191,9 +158,9 @@ export default function TermsPage() {
           </p>
         </section>
 
-        {/* 14. Governing Law */}
+        {/* 12. Governing Law */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">14. Governing Law &amp; Disputes</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">12. Governing Law &amp; Disputes</h2>
           <p>
             These Terms are governed by the laws of the State of California, without regard to conflict of
             law principles. Any disputes arising from these Terms or your use of the Site shall be
@@ -203,9 +170,9 @@ export default function TermsPage() {
           </p>
         </section>
 
-        {/* 15. Changes */}
+        {/* 13. Changes */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">15. Changes to These Terms</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">13. Changes to These Terms</h2>
           <p>
             We may modify these Terms at any time. The &ldquo;Last Updated&rdquo; date indicates the most
             recent revision. Your continued use of the Site after changes constitutes acceptance of the
@@ -213,9 +180,9 @@ export default function TermsPage() {
           </p>
         </section>
 
-        {/* 16. Contact */}
+        {/* 14. Contact */}
         <section>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">16. Contact Us</h2>
+          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">14. Contact Us</h2>
           <p>
             For questions about these Terms, contact us at:
           </p>
@@ -231,7 +198,6 @@ export default function TermsPage() {
         <nav className="flex gap-4 justify-center">
           <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Get Protected</a>
           <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
-          <a href="/refund-policy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Refund Policy</a>
           <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Home</a>
         </nav>
         <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>

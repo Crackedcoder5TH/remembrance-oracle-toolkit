@@ -105,83 +105,16 @@ export default function PrivacyPage() {
 
         <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
-            Payment Processing
-          </h2>
-          <p>
-            If you are an insurance professional using our Client Portal, payments
-            for lead purchases are processed by{" "}
-            <a
-              href="https://stripe.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-teal-cathedral hover:underline"
-            >
-              Stripe, Inc.
-            </a>{" "}
-            We <strong className="text-[var(--text-primary)]">never</strong> see,
-            handle, or store your full credit card number, expiration date, or CVV.
-            All payment data is collected directly by Stripe through their secure,
-            PCI-DSS Level 1 compliant payment form embedded on our site.
-          </p>
-          <p>
-            When you make a payment, Stripe may share the following with us:
-          </p>
-          <ul className="list-disc list-inside space-y-2">
-            <li>The last four digits of your card number</li>
-            <li>Card brand (Visa, Mastercard, etc.)</li>
-            <li>Payment amount and status (succeeded, failed)</li>
-            <li>A unique transaction identifier</li>
-          </ul>
-          <p>
-            This information is used solely to maintain your account balance and
-            billing history. For details on how Stripe handles your payment data,
-            see{" "}
-            <a
-              href="https://stripe.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-teal-cathedral hover:underline"
-            >
-              Stripe&apos;s Privacy Policy
-            </a>
-            .
-          </p>
-        </section>
-
-        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
             Cookies &amp; Tracking
           </h2>
           <p>
-            Valor Legacies uses only essential cookies and third-party services
-            required for site functionality:
+            Valor Legacies does <strong className="text-[var(--text-primary)]">not</strong> use
+            third-party cookies or advertising pixels. We do not use Google
+            Analytics, Facebook Pixel, or any similar tracking service.
           </p>
-          <ul className="list-disc list-inside space-y-2">
-            <li>
-              <strong className="text-[var(--text-primary)]">Stripe:</strong>{" "}
-              Our payment processor may set cookies to enable fraud detection and
-              secure payment processing. These are strictly necessary for payment
-              functionality. See{" "}
-              <a
-                href="https://stripe.com/cookies-policy/legal"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-teal-cathedral hover:underline"
-              >
-                Stripe&apos;s Cookie Policy
-              </a>
-              .
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                Local storage:
-              </strong>{" "}
-              We use <code>localStorage</code> for functional preferences such as
-              theme. This is not used for tracking.
-            </li>
-          </ul>
           <p>
-            We do not use advertising pixels or retargeting cookies.
+            The only client-side storage used is <code>localStorage</code> for
+            functional preferences such as theme. This is not used for tracking.
           </p>
         </section>
 
@@ -315,19 +248,6 @@ export default function PrivacyPage() {
                 className="text-teal-cathedral hover:underline"
               >
                 Vercel&apos;s privacy policy
-              </a>
-              .
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">Stripe:</strong>{" "}
-              Payment processing. See{" "}
-              <a
-                href="https://stripe.com/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-teal-cathedral hover:underline"
-              >
-                Stripe&apos;s privacy policy
               </a>
               .
             </li>

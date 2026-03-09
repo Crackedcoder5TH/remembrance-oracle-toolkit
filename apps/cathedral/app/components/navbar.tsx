@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { ImageUpload } from "./image-upload";
 import { useIsAdmin } from "../protect/hooks/use-is-admin";
+import { usePortalSession } from "../protect/hooks/use-portal-session";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -17,6 +18,7 @@ const NAV_LINKS = [
 export function Navbar() {
   const isAdmin = useIsAdmin();
   const { data: session } = useSession();
+  const { user: portalUser } = usePortalSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -161,6 +163,27 @@ export function Navbar() {
             )}
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : portalUser ? (
+          <div className="flex items-center gap-fib-8">
+            <span className="text-sm text-[var(--text-primary)] hidden sm:inline">
+              {portalUser.firstName}
+            </span>
+            <Link
+              href="/portal/dashboard"
+              className="text-xs text-teal-cathedral hover:text-teal-cathedral/80 transition-colors"
+            >
+              My Portal
+            </Link>
+            <button
+              onClick={async () => {
+                await fetch("/api/portal/logout", { method: "POST" });
+                window.location.href = "/";
+              }}
               className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
             >
               Sign Out

@@ -19,6 +19,7 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 const ADMIN_SESSION_COOKIE = "__admin_session";
+const PORTAL_SESSION_COOKIE = "__portal_session";
 
 /** Comma-separated list of admin emails (case-insensitive). */
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
@@ -74,6 +75,22 @@ export async function middleware(request: NextRequest) {
 
     if (!hasLegacySession && !hasOAuthAdmin) {
       const loginUrl = new URL("/admin/login", request.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // ─── Portal route protection ───
+  if (
+    pathname.startsWith("/portal") &&
+    !pathname.startsWith("/portal/login") &&
+    !pathname.startsWith("/api/portal/login") &&
+    !pathname.startsWith("/api/portal/register")
+  ) {
+    const portalCookie = request.cookies.get(PORTAL_SESSION_COOKIE)?.value;
+    const hasPortalSession = portalCookie && isSessionLikelyValid(portalCookie);
+
+    if (!hasPortalSession) {
+      const loginUrl = new URL("/portal/login", request.url);
       return NextResponse.redirect(loginUrl);
     }
   }

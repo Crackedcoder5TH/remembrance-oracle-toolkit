@@ -4,6 +4,9 @@
  * Separate from admin auth. Uses HMAC-SHA256 signed cookies.
  * Cookie format: <payload>.<signature>
  * Payload: base64url(JSON.stringify({ clientId, email, exp }))
+ *
+ * In demo mode (no DATABASE_URL), authentication is bypassed entirely —
+ * all requests are auto-authenticated as the demo client.
  */
 
 import { createHmac } from "crypto";
@@ -11,7 +14,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getClientById } from "./client-database";
 
 const COOKIE_NAME = "__client_session";
-const SESSION_DURATION_S = 8 * 60 * 60; // 8 hours
+const SESSION_DURATION_S = 30 * 24 * 60 * 60; // 30 days
+
+/** True when no real database is configured — auto-auth as demo client. */
+function isDemoMode(): boolean {
+  return !process.env.DATABASE_URL;
+}
 
 function getSecret(): string {
   const key = process.env.CLIENT_SESSION_SECRET || process.env.ADMIN_API_KEY;
@@ -58,8 +66,17 @@ export function verifyClientSessionToken(token: string): { clientId: string; ema
 /**
  * Verify client authentication from request.
  * Returns the client ID if authenticated, or a 401 response.
+ *
+ * In demo mode (no DATABASE_URL), always returns the demo client —
+ * no login required.
  */
 export async function verifyClient(req: NextRequest): Promise<{ clientId: string } | NextResponse> {
+  // Demo mode — bypass auth entirely
+  if (isDemoMode()) {
+    const { DEMO_CLIENT } = await import("./demo-client");
+    return { clientId: DEMO_CLIENT.clientId };
+  }
+
   // Method 1: Session cookie
   const sessionCookie = req.cookies.get(COOKIE_NAME)?.value;
   if (sessionCookie) {

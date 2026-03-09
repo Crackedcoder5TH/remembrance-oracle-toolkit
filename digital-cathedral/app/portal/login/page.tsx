@@ -4,7 +4,7 @@
  * Client Portal Login Page
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function ClientLoginPage() {
@@ -13,6 +13,13 @@ export default function ClientLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // In demo mode, auto-login immediately on mount
+  useEffect(() => {
+    fetch("/api/client/profile").then((res) => {
+      if (res.ok) router.push("/portal");
+    }).catch(() => {});
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

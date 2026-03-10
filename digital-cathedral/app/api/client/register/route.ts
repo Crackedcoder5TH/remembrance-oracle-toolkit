@@ -16,9 +16,20 @@ import {
  * Client Registration API
  *
  * POST /api/client/register — Create a new client account and set session cookie.
+ * In demo mode (no DATABASE_URL), auto-succeeds with the demo client.
  */
 export async function POST(req: NextRequest) {
   try {
+    // Demo mode — no real database, auto-register as demo client
+    if (!process.env.DATABASE_URL) {
+      const { DEMO_CLIENT } = await import("@/app/lib/demo-client");
+      return NextResponse.json({
+        success: true,
+        clientId: DEMO_CLIENT.clientId,
+        companyName: DEMO_CLIENT.companyName,
+      });
+    }
+
     const body = await req.json();
     const { email, password, companyName, contactName, phone } = body;
 
@@ -40,7 +51,11 @@ export async function POST(req: NextRequest) {
     // Check if account already exists
     const existing = await getClientByEmail(email.trim().toLowerCase());
     if (!existing.ok) {
-      return NextResponse.json({ success: false, message: "Service unavailable." }, { status: 503 });
+      console.error("[register] DB lookup failed:", existing.error);
+      return NextResponse.json(
+        { success: false, message: "Database connection failed. Please try again shortly." },
+        { status: 503 },
+      );
     }
     if (existing.value) {
       return NextResponse.json(
@@ -78,6 +93,7 @@ export async function POST(req: NextRequest) {
     const result = await createClient(client);
     if (!result.ok) {
       const msg = result.error;
+      console.error("[register] Insert failed:", msg);
       if (typeof msg === "string" && (msg.includes("UNIQUE") || msg.includes("duplicate"))) {
         return NextResponse.json(
           { success: false, message: "An account with this email already exists." },
@@ -85,7 +101,7 @@ export async function POST(req: NextRequest) {
         );
       }
       return NextResponse.json(
-        { success: false, message: typeof msg === "string" ? msg : "Registration failed." },
+        { success: false, message: "Registration failed. Please try again." },
         { status: 500 },
       );
     }
@@ -108,7 +124,8 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch {
+  } catch (err) {
+    console.error("[register] Unexpected error:", err);
     return NextResponse.json(
       { success: false, message: "Invalid request." },
       { status: 400 },

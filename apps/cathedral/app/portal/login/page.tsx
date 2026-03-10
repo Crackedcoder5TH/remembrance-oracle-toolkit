@@ -211,6 +211,32 @@ export default function PortalLoginPage() {
           </button>
         </form>
 
+        <p className="text-center text-sm text-[var(--text-muted)]">
+          {mode === "login" ? (
+            <>
+              Don&apos;t have an account?{" "}
+              <button
+                type="button"
+                onClick={() => { setMode("signup"); setError(""); }}
+                className="text-teal-cathedral hover:text-teal-cathedral/80 font-medium transition-colors"
+              >
+                Sign up
+              </button>
+            </>
+          ) : (
+            <>
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => { setMode("login"); setError(""); }}
+                className="text-teal-cathedral hover:text-teal-cathedral/80 font-medium transition-colors"
+              >
+                Sign in
+              </button>
+            </>
+          )}
+        </p>
+
         <p className="text-center text-xs text-[var(--text-muted)]">
           <Link href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">
             &larr; Back home

@@ -20,6 +20,39 @@ function Err<E>(error: E): Result<never, E> {
   return { ok: false, error };
 }
 
+// --- Client (portal user) record types ---
+export interface ClientRecord {
+  id: number;
+  email: string;
+  passwordHash: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  state: string;
+  status: "active" | "suspended";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClientMessage {
+  id: number;
+  clientId: number;
+  direction: "inbound" | "outbound";
+  subject: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface ClientDocument {
+  id: number;
+  clientId: number;
+  name: string;
+  type: string;
+  url: string;
+  uploadedAt: string;
+}
+
 // --- Lead record types ---
 export interface LeadRecord {
   leadId: string;
@@ -85,6 +118,17 @@ interface DbAdapter {
   getLeadStats(): Promise<Result<LeadStats, string>>;
   deleteLeadByEmail(email: string): Promise<Result<{ deleted: number }, string>>;
   deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>>;
+
+  // --- Client (portal) methods ---
+  createClient(client: Omit<ClientRecord, "id" | "status" | "createdAt" | "updatedAt">): Promise<Result<{ id: number }, string>>;
+  getClientByEmail(email: string): Promise<Result<ClientRecord | null, string>>;
+  getClientById(id: number): Promise<Result<ClientRecord | null, string>>;
+  getClientLeads(email: string): Promise<Result<LeadRecord[], string>>;
+  getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>>;
+  createClientMessage(msg: Omit<ClientMessage, "id" | "read" | "createdAt">): Promise<Result<{ id: number }, string>>;
+  markMessageRead(messageId: number, clientId: number): Promise<Result<void, string>>;
+  getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>>;
+  createClientDocument(doc: Omit<ClientDocument, "id" | "uploadedAt">): Promise<Result<{ id: number }, string>>;
 }
 
 // =============================================================================
@@ -117,6 +161,44 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
     utmTerm: (row.utm_term as string) || null,
     utmContent: (row.utm_content as string) || null,
     createdAt: row.created_at as string,
+  };
+}
+
+function rowToClient(row: Record<string, unknown>): ClientRecord {
+  return {
+    id: row.id as number,
+    email: row.email as string,
+    passwordHash: row.password_hash as string,
+    firstName: row.first_name as string,
+    lastName: row.last_name as string,
+    phone: (row.phone as string) || "",
+    state: (row.state as string) || "",
+    status: (row.status as "active" | "suspended") || "active",
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+function rowToMessage(row: Record<string, unknown>): ClientMessage {
+  return {
+    id: row.id as number,
+    clientId: row.client_id as number,
+    direction: row.direction as "inbound" | "outbound",
+    subject: (row.subject as string) || "",
+    body: row.body as string,
+    read: row.read === true || row.read === 1,
+    createdAt: row.created_at as string,
+  };
+}
+
+function rowToDocument(row: Record<string, unknown>): ClientDocument {
+  return {
+    id: row.id as number,
+    clientId: row.client_id as number,
+    name: row.name as string,
+    type: row.type as string,
+    url: row.url as string,
+    uploadedAt: row.uploaded_at as string,
   };
 }
 
@@ -209,6 +291,48 @@ class PostgresAdapter implements DbAdapter {
     if (!columnNames.has("military_branch")) {
       await pool.query("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
     }
+
+    // --- Client portal tables ---
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS clients (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        phone TEXT NOT NULL DEFAULT '',
+        state TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT NOT NULL DEFAULT (NOW()::TEXT),
+        updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email)`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_messages (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        direction TEXT NOT NULL DEFAULT 'inbound',
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL,
+        read BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_client_messages_client ON client_messages(client_id)`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_documents (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'document',
+        url TEXT NOT NULL,
+        uploaded_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_client_documents_client ON client_documents(client_id)`);
 
     this.initialized = true;
   }
@@ -440,6 +564,138 @@ class PostgresAdapter implements DbAdapter {
       return Err(message);
     }
   }
+
+  // --- Client portal methods ---
+
+  async createClient(client: Omit<ClientRecord, "id" | "status" | "createdAt" | "updatedAt">): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        `INSERT INTO clients (email, password_hash, first_name, last_name, phone, state)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [client.email.trim().toLowerCase(), client.passwordHash, client.firstName, client.lastName, client.phone, client.state],
+      );
+      return Ok({ id: result.rows[0].id as number });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Create client failed";
+      if (msg.includes("unique") || msg.includes("duplicate")) {
+        return Err("An account with this email already exists.");
+      }
+      return Err(msg);
+    }
+  }
+
+  async getClientByEmail(email: string): Promise<Result<ClientRecord | null, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query("SELECT * FROM clients WHERE email = $1", [email.trim().toLowerCase()]);
+      if (result.rows.length === 0) return Ok(null);
+      return Ok(rowToClient(result.rows[0]));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async getClientById(id: number): Promise<Result<ClientRecord | null, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query("SELECT * FROM clients WHERE id = $1", [id]);
+      if (result.rows.length === 0) return Ok(null);
+      return Ok(rowToClient(result.rows[0]));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async getClientLeads(email: string): Promise<Result<LeadRecord[], string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "SELECT * FROM leads WHERE email = $1 ORDER BY created_at DESC",
+        [email.trim().toLowerCase()],
+      );
+      return Ok(result.rows.map(rowToLead));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "SELECT * FROM client_messages WHERE client_id = $1 ORDER BY created_at DESC",
+        [clientId],
+      );
+      return Ok(result.rows.map(rowToMessage));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async createClientMessage(msg: Omit<ClientMessage, "id" | "read" | "createdAt">): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        `INSERT INTO client_messages (client_id, direction, subject, body)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [msg.clientId, msg.direction, msg.subject, msg.body],
+      );
+      return Ok({ id: result.rows[0].id as number });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Send failed");
+    }
+  }
+
+  async markMessageRead(messageId: number, clientId: number): Promise<Result<void, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      await pool.query(
+        "UPDATE client_messages SET read = TRUE WHERE id = $1 AND client_id = $2",
+        [messageId, clientId],
+      );
+      return Ok(undefined);
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Update failed");
+    }
+  }
+
+  async getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "SELECT * FROM client_documents WHERE client_id = $1 ORDER BY uploaded_at DESC",
+        [clientId],
+      );
+      return Ok(result.rows.map(rowToDocument));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async createClientDocument(doc: Omit<ClientDocument, "id" | "uploadedAt">): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        `INSERT INTO client_documents (client_id, name, type, url)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [doc.clientId, doc.name, doc.type, doc.url],
+      );
+      return Ok({ id: result.rows[0].id as number });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Upload failed");
+    }
+  }
 }
 
 // =============================================================================
@@ -511,6 +767,41 @@ class SqliteAdapter implements DbAdapter {
       CREATE INDEX IF NOT EXISTS idx_leads_state ON leads(state);
       CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at);
       CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
+
+      CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        phone TEXT NOT NULL DEFAULT '',
+        state TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
+
+      CREATE TABLE IF NOT EXISTS client_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        direction TEXT NOT NULL DEFAULT 'inbound',
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL,
+        read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_client_messages_client ON client_messages(client_id);
+
+      CREATE TABLE IF NOT EXISTS client_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'document',
+        url TEXT NOT NULL,
+        uploaded_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_client_documents_client ON client_documents(client_id);
     `);
 
     // Migration: add columns to existing databases that lack them
@@ -727,6 +1018,118 @@ class SqliteAdapter implements DbAdapter {
       return Err(message);
     }
   }
+
+  // --- Client portal methods (SQLite) ---
+
+  async createClient(client: Omit<ClientRecord, "id" | "status" | "createdAt" | "updatedAt">): Promise<Result<{ id: number }, string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const result = db.prepare(
+        `INSERT INTO clients (email, password_hash, first_name, last_name, phone, state)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+      ).run(client.email.trim().toLowerCase(), client.passwordHash, client.firstName, client.lastName, client.phone, client.state);
+      return Ok({ id: result.lastInsertRowid as number });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Create client failed";
+      if (msg.includes("UNIQUE")) return Err("An account with this email already exists.");
+      return Err(msg);
+    }
+  }
+
+  async getClientByEmail(email: string): Promise<Result<ClientRecord | null, string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const row = db.prepare("SELECT * FROM clients WHERE email = ?").get(email.trim().toLowerCase()) as Record<string, unknown> | undefined;
+      if (!row) return Ok(null);
+      return Ok(rowToClient(row));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async getClientById(id: number): Promise<Result<ClientRecord | null, string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const row = db.prepare("SELECT * FROM clients WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+      if (!row) return Ok(null);
+      return Ok(rowToClient(row));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async getClientLeads(email: string): Promise<Result<LeadRecord[], string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const rows = db.prepare("SELECT * FROM leads WHERE email = ? ORDER BY created_at DESC").all(email.trim().toLowerCase()) as Record<string, unknown>[];
+      return Ok(rows.map(rowToLead));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const rows = db.prepare("SELECT * FROM client_messages WHERE client_id = ? ORDER BY created_at DESC").all(clientId) as Record<string, unknown>[];
+      return Ok(rows.map(rowToMessage));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async createClientMessage(msg: Omit<ClientMessage, "id" | "read" | "createdAt">): Promise<Result<{ id: number }, string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const result = db.prepare(
+        `INSERT INTO client_messages (client_id, direction, subject, body) VALUES (?, ?, ?, ?)`,
+      ).run(msg.clientId, msg.direction, msg.subject, msg.body);
+      return Ok({ id: result.lastInsertRowid as number });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Send failed");
+    }
+  }
+
+  async markMessageRead(messageId: number, clientId: number): Promise<Result<void, string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      db.prepare("UPDATE client_messages SET read = 1 WHERE id = ? AND client_id = ?").run(messageId, clientId);
+      return Ok(undefined);
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Update failed");
+    }
+  }
+
+  async getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const rows = db.prepare("SELECT * FROM client_documents WHERE client_id = ? ORDER BY uploaded_at DESC").all(clientId) as Record<string, unknown>[];
+      return Ok(rows.map(rowToDocument));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async createClientDocument(doc: Omit<ClientDocument, "id" | "uploadedAt">): Promise<Result<{ id: number }, string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const result = db.prepare(
+        `INSERT INTO client_documents (client_id, name, type, url) VALUES (?, ?, ?, ?)`,
+      ).run(doc.clientId, doc.name, doc.type, doc.url);
+      return Ok({ id: result.lastInsertRowid as number });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Upload failed");
+    }
+  }
 }
 
 // =============================================================================
@@ -747,6 +1150,15 @@ class NoopAdapter implements DbAdapter {
   getLeadStats(): Promise<Result<LeadStats, string>> { return this.fail("stats"); }
   deleteLeadByEmail(): Promise<Result<{ deleted: number }, string>> { return this.fail("lead deletion"); }
   deleteLeadById(): Promise<Result<{ deleted: number }, string>> { return this.fail("lead deletion"); }
+  createClient(): Promise<Result<{ id: number }, string>> { return this.fail("client registration"); }
+  getClientByEmail(): Promise<Result<ClientRecord | null, string>> { return this.fail("client lookup"); }
+  getClientById(): Promise<Result<ClientRecord | null, string>> { return this.fail("client lookup"); }
+  getClientLeads(): Promise<Result<LeadRecord[], string>> { return this.fail("client leads"); }
+  getClientMessages(): Promise<Result<ClientMessage[], string>> { return this.fail("client messages"); }
+  createClientMessage(): Promise<Result<{ id: number }, string>> { return this.fail("client messaging"); }
+  markMessageRead(): Promise<Result<void, string>> { return this.fail("message update"); }
+  getClientDocuments(): Promise<Result<ClientDocument[], string>> { return this.fail("client documents"); }
+  createClientDocument(): Promise<Result<{ id: number }, string>> { return this.fail("document upload"); }
 }
 
 // =============================================================================
@@ -812,4 +1224,42 @@ export async function deleteLeadByEmail(email: string): Promise<Result<{ deleted
 
 export async function deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>> {
   return getAdapter().deleteLeadById(leadId);
+}
+
+// --- Client (portal) exports ---
+
+export async function createClient(client: Omit<ClientRecord, "id" | "status" | "createdAt" | "updatedAt">): Promise<Result<{ id: number }, string>> {
+  return getAdapter().createClient(client);
+}
+
+export async function getClientByEmail(email: string): Promise<Result<ClientRecord | null, string>> {
+  return getAdapter().getClientByEmail(email);
+}
+
+export async function getClientById(id: number): Promise<Result<ClientRecord | null, string>> {
+  return getAdapter().getClientById(id);
+}
+
+export async function getClientLeads(email: string): Promise<Result<LeadRecord[], string>> {
+  return getAdapter().getClientLeads(email);
+}
+
+export async function getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>> {
+  return getAdapter().getClientMessages(clientId);
+}
+
+export async function createClientMessage(msg: Omit<ClientMessage, "id" | "read" | "createdAt">): Promise<Result<{ id: number }, string>> {
+  return getAdapter().createClientMessage(msg);
+}
+
+export async function markMessageRead(messageId: number, clientId: number): Promise<Result<void, string>> {
+  return getAdapter().markMessageRead(messageId, clientId);
+}
+
+export async function getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>> {
+  return getAdapter().getClientDocuments(clientId);
+}
+
+export async function createClientDocument(doc: Omit<ClientDocument, "id" | "uploadedAt">): Promise<Result<{ id: number }, string>> {
+  return getAdapter().createClientDocument(doc);
 }

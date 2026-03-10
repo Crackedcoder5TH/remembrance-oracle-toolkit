@@ -14,7 +14,7 @@ export default function ClientLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // In demo mode, auto-login immediately on mount
+  // Auto-redirect if already authenticated (demo mode always succeeds)
   useEffect(() => {
     fetch("/api/client/profile").then((res) => {
       if (res.ok) router.push("/portal");

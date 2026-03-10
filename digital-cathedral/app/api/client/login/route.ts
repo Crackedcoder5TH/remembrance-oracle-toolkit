@@ -5,23 +5,20 @@ import { createClientSessionToken, CLIENT_SESSION_COOKIE, CLIENT_SESSION_MAX_AGE
 /**
  * Client Login API
  *
- * POST /api/client/login — Authenticate client and set session cookie
- *
+ * POST /api/client/login — Authenticate client and set session cookie.
  * In demo mode (no DATABASE_URL), any credentials succeed — the demo
- * client is automatically authenticated.
+ * client is auto-authenticated without cookie or signing secret.
  */
 export async function POST(req: NextRequest) {
   try {
-    // Demo mode — skip credential check, auto-authenticate
+    // Oracle fix: demo mode — auto-succeed, no credentials needed
     if (!process.env.DATABASE_URL) {
       const { DEMO_CLIENT } = await import("@/app/lib/demo-client");
-      const response = NextResponse.json({
+      return NextResponse.json({
         success: true,
         clientId: DEMO_CLIENT.clientId,
         companyName: DEMO_CLIENT.companyName,
       });
-      // No cookie needed in demo mode — verifyClient bypasses auth
-      return response;
     }
 
     const body = await req.json();

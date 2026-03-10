@@ -5,8 +5,9 @@
  * Cookie format: <payload>.<signature>
  * Payload: base64url(JSON.stringify({ clientId, email, exp }))
  *
- * In demo mode (no DATABASE_URL), authentication is bypassed entirely —
- * all requests are auto-authenticated as the demo client.
+ * Oracle debug fix: in demo mode (no DATABASE_URL), auth is bypassed
+ * entirely — NoopAdapter returns demo data, verifyClient returns the
+ * demo client without requiring a signing secret or cookie.
  */
 
 import { createHmac } from "crypto";
@@ -16,7 +17,7 @@ import { getClientById } from "./client-database";
 const COOKIE_NAME = "__client_session";
 const SESSION_DURATION_S = 30 * 24 * 60 * 60; // 30 days
 
-/** True when no real database is configured — auto-auth as demo client. */
+/** True when no real database is configured — graceful degradation to demo client. */
 function isDemoMode(): boolean {
   return !process.env.DATABASE_URL;
 }
@@ -67,11 +68,11 @@ export function verifyClientSessionToken(token: string): { clientId: string; ema
  * Verify client authentication from request.
  * Returns the client ID if authenticated, or a 401 response.
  *
- * In demo mode (no DATABASE_URL), always returns the demo client —
- * no login required.
+ * In demo mode (no DATABASE_URL), always returns demo client —
+ * no cookie, no signing secret, no credentials required.
  */
 export async function verifyClient(req: NextRequest): Promise<{ clientId: string } | NextResponse> {
-  // Demo mode — bypass auth entirely
+  // Oracle fix: demo mode — bypass auth, return demo client directly
   if (isDemoMode()) {
     const { DEMO_CLIENT } = await import("./demo-client");
     return { clientId: DEMO_CLIENT.clientId };

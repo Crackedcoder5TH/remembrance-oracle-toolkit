@@ -49,11 +49,17 @@ function isSessionLikelyValid(token: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ─── Allow NextAuth routes through (OAuth flow) ───
+  if (pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
+
   // ─── Admin route protection ───
   if (
     pathname.startsWith("/admin") &&
     !pathname.startsWith("/admin/login") &&
-    !pathname.startsWith("/api/admin/login")
+    !pathname.startsWith("/api/admin/login") &&
+    !pathname.startsWith("/api/admin/google-callback")
   ) {
     // Method 1: Legacy session cookie
     const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
@@ -87,11 +93,11 @@ export async function middleware(request: NextRequest) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com https://accounts.google.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com",
+      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com https://*.googleusercontent.com",
       "font-src 'self' fonts.gstatic.com",
-      "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io api.stripe.com",
+      "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io api.stripe.com https://accounts.google.com https://oauth2.googleapis.com",
       "frame-src 'self' js.stripe.com hooks.stripe.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",

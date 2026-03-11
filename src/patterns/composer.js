@@ -724,7 +724,7 @@ class PatternComposer {
       }
 
       // Skip export default / export {}
-      if (/^export\s+(default\s+)?/.test(t) && /^export\s+\{/.test(t)) continue;
+      if (/^export\s+default\s+/.test(t) || /^export\s+\{/.test(t)) continue;
 
       filtered.push(line);
     }

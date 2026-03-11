@@ -34,6 +34,143 @@ const {
 
 const PATTERN_FILE = 'pattern-library.json';
 
+// ─── Atomic I/O — ported from Reflector Oracle's patternStore.js ───
+
+const LOCK_DELAYS = [50, 100, 200, 400, 800]; // ms backoff
+const STALE_LOCK_MS = 30000; // 30s = assume dead process
+
+/**
+ * Synchronous sleep that works in both main thread and workers.
+ */
+function syncSleep(ms) {
+  try {
+    const buf = new Int32Array(new SharedArrayBuffer(4));
+    Atomics.wait(buf, 0, 0, ms);
+  } catch {
+    const end = Date.now() + ms;
+    while (Date.now() < end) { /* spin */ }
+  }
+}
+
+/**
+ * Acquire an exclusive lockfile using O_CREAT|O_EXCL (atomic on POSIX).
+ * Retries with exponential backoff. Returns an unlock function.
+ */
+function acquireLock(storeDir, label = 'pattern-library') {
+  if (!fs.existsSync(storeDir)) {
+    fs.mkdirSync(storeDir, { recursive: true });
+  }
+  const lockPath = path.join(storeDir, '.pattern-library.lock');
+  for (let attempt = 0; attempt <= LOCK_DELAYS.length; attempt++) {
+    try {
+      const fd = fs.openSync(lockPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY);
+      fs.writeFileSync(fd, String(process.pid), 'utf-8');
+      fs.closeSync(fd);
+      return () => { try { fs.unlinkSync(lockPath); } catch { /* ok */ } };
+    } catch {
+      try {
+        const stat = fs.statSync(lockPath);
+        if (Date.now() - stat.mtimeMs > STALE_LOCK_MS) {
+          try { fs.unlinkSync(lockPath); } catch { /* ok */ }
+          continue;
+        }
+      } catch { continue; }
+      if (attempt < LOCK_DELAYS.length) {
+        syncSleep(LOCK_DELAYS[attempt]);
+      }
+    }
+  }
+  return () => {};
+}
+
+/**
+ * Load JSON with .bak recovery — prevents data loss on corruption.
+ */
+function loadJSONSafe(filePath, fallback) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      return parsed;
+    }
+  } catch { /* primary corrupted — try backup */ }
+
+  const bakPath = filePath + '.bak';
+  try {
+    if (fs.existsSync(bakPath)) {
+      const raw = fs.readFileSync(bakPath, 'utf-8');
+      const parsed = JSON.parse(raw);
+      try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch { /* best effort recovery */ }
+      return parsed;
+    }
+  } catch { /* backup also corrupted */ }
+
+  if (!fs.existsSync(filePath) && !fs.existsSync(bakPath)) {
+    return fallback;
+  }
+
+  return fallback;
+}
+
+/**
+ * Atomic write: serialize → write .tmp → backup current → rename.
+ */
+function atomicWriteJSON(filePath, data) {
+  const dir = path.dirname(filePath);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+  const json = JSON.stringify(data, null, 2);
+  const tmpPath = filePath + '.tmp';
+  fs.writeFileSync(tmpPath, json, 'utf-8');
+  if (fs.existsSync(filePath)) {
+    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch { /* ok */ }
+  }
+  fs.renameSync(tmpPath, filePath);
+}
+
+// ─── SERF Output Sanitizer — ported from Reflector Oracle's serfSanitizer.js ───
+
+/**
+ * Remove semicolons that break method chain continuations.
+ */
+function fixChainBreakingSemicolons(code) {
+  const lines = code.split('\n');
+  const result = [];
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    const trimmed = line.trimEnd();
+    if (trimmed.endsWith(';')) {
+      let nextIdx = i + 1;
+      while (nextIdx < lines.length && lines[nextIdx].trim() === '') nextIdx++;
+      if (nextIdx < lines.length && lines[nextIdx].trim().startsWith('.')) {
+        line = trimmed.slice(0, -1);
+      }
+    }
+    result.push(line);
+  }
+  return result.join('\n');
+}
+
+/**
+ * Remove semicolons inserted after continuation tokens: [ { ( , => || && ?
+ */
+function fixBracketSemicolons(code) {
+  return code.replace(
+    /^(.*(?:\[|\{|\(|,|=>|\|\||&&|\?)\s*);(\s*)$/gm,
+    '$1$2'
+  );
+}
+
+/**
+ * Sanitize SERF-healed code — fixes known transform bugs before storage.
+ */
+function sanitizePatternCode(code) {
+  if (!code || typeof code !== 'string') return code;
+  let result = code;
+  result = fixBracketSemicolons(result);
+  result = fixChainBreakingSemicolons(result);
+  return result;
+}
+
 const PATTERN_TYPES = [
   'algorithm', 'data-structure', 'utility', 'design-pattern',
   'validation', 'transformation', 'io', 'concurrency', 'testing',
@@ -110,11 +247,20 @@ class PatternLibrary {
   }
 
   _readJSON() {
-    return JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
+    const fallback = {
+      patterns: [],
+      meta: { created: new Date().toISOString(), version: 1, decisions: 0 },
+    };
+    return loadJSONSafe(this.libraryPath, fallback);
   }
 
   _writeJSON(data) {
-    fs.writeFileSync(this.libraryPath, JSON.stringify(data, null, 2), 'utf-8');
+    const unlock = acquireLock(this.storeDir);
+    try {
+      atomicWriteJSON(this.libraryPath, data);
+    } finally {
+      unlock();
+    }
   }
 
   _hash(str) {
@@ -129,7 +275,11 @@ class PatternLibrary {
    * @returns {object} The registered pattern record with id and coherency score
    */
   register(pattern) {
-    const coherency = computeCoherencyScore(pattern.code, {
+    // Sanitize code before scoring — fixes known SERF transform bugs
+    const sanitizedCode = sanitizePatternCode(pattern.code);
+    const patternWithCleanCode = { ...pattern, code: sanitizedCode };
+
+    const coherency = computeCoherencyScore(sanitizedCode, {
       language: pattern.language,
       testPassed: pattern.testPassed,
       historicalReliability: pattern.reliability ?? 0.5,
@@ -138,10 +288,10 @@ class PatternLibrary {
     if (this._backend === 'sqlite') {
       const patternData = {
         name: pattern.name,
-        code: pattern.code,
+        code: sanitizedCode,
         language: pattern.language || coherency.language,
-        patternType: pattern.patternType || classifyPattern(pattern.code, pattern.name),
-        complexity: pattern.complexity || inferComplexity(pattern.code),
+        patternType: pattern.patternType || classifyPattern(sanitizedCode, pattern.name),
+        complexity: pattern.complexity || inferComplexity(sanitizedCode),
         description: pattern.description || '',
         tags: pattern.tags || [],
         coherencyScore: coherency,
@@ -159,7 +309,7 @@ class PatternLibrary {
       return record;
     }
 
-    return this._registerJSON(pattern, coherency);
+    return this._registerJSON(patternWithCleanCode, coherency);
   }
 
   /**
@@ -490,22 +640,27 @@ class PatternLibrary {
 
   _readCandidatesJSON() {
     const p = this._candidatesPath();
-    if (!fs.existsSync(p)) return { candidates: [] };
-    return JSON.parse(fs.readFileSync(p, 'utf-8'));
+    return loadJSONSafe(p, { candidates: [] });
   }
 
   _writeCandidatesJSON(data) {
-    fs.writeFileSync(this._candidatesPath(), JSON.stringify(data, null, 2), 'utf-8');
+    const unlock = acquireLock(this.storeDir);
+    try {
+      atomicWriteJSON(this._candidatesPath(), data);
+    } finally {
+      unlock();
+    }
   }
 
   _addCandidateJSON(candidate) {
     const data = this._readCandidatesJSON();
-    const id = this._hash(candidate.code + candidate.name + Date.now());
+    const cleanCode = sanitizePatternCode(candidate.code);
+    const id = this._hash(cleanCode + candidate.name + Date.now());
     const now = new Date().toISOString();
     const record = {
       id,
       name: candidate.name,
-      code: candidate.code,
+      code: cleanCode,
       language: candidate.language || 'unknown',
       patternType: candidate.patternType || 'utility',
       complexity: candidate.complexity || inferComplexity(candidate.code),
@@ -828,6 +983,131 @@ class PatternLibrary {
         : 0,
     };
   }
+
+  // ─── Consolidation — deduplicate and merge patterns ───
+
+  /**
+   * Deduplicate patterns by name, keeping the highest-coherency version.
+   * Ported from Reflector Oracle's patternSync.js.
+   * @returns {object} { removed: number, remaining: number }
+   */
+  consolidate() {
+    if (this._backend === 'sqlite') {
+      // SQLite already enforces dedup via addPatternIfNotExists
+      return { removed: 0, remaining: this.getAll().length };
+    }
+
+    const data = this._readJSON();
+    const before = data.patterns.length;
+    data.patterns = deduplicatePatterns(data.patterns);
+    this._writeJSON(data);
+    return { removed: before - data.patterns.length, remaining: data.patterns.length };
+  }
+
+  /**
+   * Merge external patterns into the library, deduplicating by name.
+   * Higher coherency score wins. Ported from Reflector Oracle's patternSync.js.
+   * @param {Array} incoming - Array of pattern objects to merge
+   * @returns {object} { added: number, updated: number }
+   */
+  mergePatterns(incoming) {
+    if (!Array.isArray(incoming) || incoming.length === 0) {
+      return { added: 0, updated: 0 };
+    }
+
+    if (this._backend === 'sqlite') {
+      let added = 0, updated = 0;
+      for (const p of incoming) {
+        const result = this._sqlite.addPatternIfNotExists(p);
+        if (result) added++;
+        else updated++;
+      }
+      return { added, updated };
+    }
+
+    const data = this._readJSON();
+    const existingByName = new Map();
+    for (let i = 0; i < data.patterns.length; i++) {
+      const p = data.patterns[i];
+      if (p.name) existingByName.set(p.name.toLowerCase(), i);
+    }
+
+    let added = 0, updated = 0;
+    for (const p of incoming) {
+      if (!p.name) continue;
+      const cleanCode = sanitizePatternCode(p.code);
+      const key = p.name.toLowerCase();
+      const existingIdx = existingByName.get(key);
+
+      if (existingIdx != null) {
+        const existing = data.patterns[existingIdx];
+        const newScore = p.coherencyScore?.total ?? 0;
+        const oldScore = existing.coherencyScore?.total ?? 0;
+        if (newScore > oldScore) {
+          Object.assign(existing, p, { code: cleanCode, updatedAt: new Date().toISOString() });
+          updated++;
+        }
+      } else {
+        data.patterns.push({ ...p, code: cleanCode, createdAt: new Date().toISOString() });
+        existingByName.set(key, data.patterns.length - 1);
+        added++;
+      }
+    }
+
+    this._writeJSON(data);
+    return { added, updated };
+  }
+
+  /**
+   * Health check — validates library integrity and repairs if needed.
+   * @returns {object} { healthy: boolean, issues: string[], repaired: string[] }
+   */
+  healthCheck() {
+    const issues = [];
+    const repaired = [];
+
+    if (this._backend === 'sqlite') {
+      return { healthy: true, issues: [], repaired: [] };
+    }
+
+    // Check file readability
+    let data;
+    try {
+      data = this._readJSON();
+    } catch (err) {
+      issues.push(`Library file corrupt: ${err.message}`);
+      // Attempt backup recovery already handled by loadJSONSafe
+      return { healthy: false, issues, repaired };
+    }
+
+    // Check for patterns without names
+    const unnamed = data.patterns.filter(p => !p.name);
+    if (unnamed.length > 0) {
+      issues.push(`${unnamed.length} pattern(s) without names`);
+    }
+
+    // Check for duplicate names
+    const names = new Map();
+    for (const p of data.patterns) {
+      if (!p.name) continue;
+      const key = p.name.toLowerCase();
+      if (names.has(key)) {
+        issues.push(`Duplicate pattern name: ${p.name}`);
+      } else {
+        names.set(key, p);
+      }
+    }
+
+    // Auto-repair: deduplicate if needed
+    if (issues.some(i => i.startsWith('Duplicate'))) {
+      const before = data.patterns.length;
+      data.patterns = deduplicatePatterns(data.patterns);
+      this._writeJSON(data);
+      repaired.push(`Deduplicated ${before - data.patterns.length} patterns`);
+    }
+
+    return { healthy: issues.length === 0 || repaired.length > 0, issues, repaired };
+  }
 }
 
 // ─── Helpers ───
@@ -874,12 +1154,35 @@ function maxNestingDepth(code) {
   return max;
 }
 
+/**
+ * Deduplicate patterns by name, keeping the highest coherency score.
+ * Ported from Reflector Oracle's patternSync.js.
+ */
+function deduplicatePatterns(patterns) {
+  const byName = new Map();
+  for (const p of patterns) {
+    if (!p.name) continue;
+    const key = p.name.toLowerCase();
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, p);
+    } else if ((p.coherencyScore?.total ?? 0) > (existing.coherencyScore?.total ?? 0)) {
+      byName.set(key, { ...existing, ...p });
+    }
+  }
+  // Preserve unnamed patterns too
+  const unnamed = patterns.filter(p => !p.name);
+  return [...byName.values(), ...unnamed];
+}
+
 const { countBy } = require('../store/store-helpers');
 
 module.exports = {
   PatternLibrary,
   classifyPattern,
   inferComplexity,
+  deduplicatePatterns,
+  sanitizePatternCode,
   THRESHOLDS,
   PATTERN_TYPES,
   COMPLEXITY_TIERS,

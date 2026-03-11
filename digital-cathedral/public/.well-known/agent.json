@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "name": "Valor Legacies",
+  "description": "Veteran-focused life insurance lead generation platform with AI agent API",
+  "url": "https://valorlegacies.com",
+  "agent_api": {
+    "base_url": "https://valorlegacies.com/api/agent",
+    "authentication": {
+      "type": "bearer",
+      "description": "API key provided as Bearer token in Authorization header"
+    },
+    "schema_url": "https://valorlegacies.com/api/agent/schema",
+    "llms_txt": "https://valorlegacies.com/llms.txt",
+    "capabilities": [
+      "lead-submission",
+      "account-registration",
+      "consent-management"
+    ],
+    "consent_required": true,
+    "rate_limits": {
+      "leads": "10 per minute per key",
+      "consent": "10 per minute per key",
+      "registration": "5 per minute per key"
+    }
+  },
+  "supported_agents": [
+    "claude",
+    "gpt-4",
+    "gpt-4o",
+    "gemini",
+    "perplexity",
+    "custom"
+  ],
+  "discovery": {
+    "openapi": "/api/agent/schema",
+    "ai_plugin": "/.well-known/ai-plugin.json",
+    "llms_txt": "/llms.txt",
+    "robots_txt": "/robots.txt",
+    "sitemap": "/sitemap.xml"
+  },
+  "compliance": {
+    "tcpa": true,
+    "ccpa": true,
+    "fcc_2025": true,
+    "consent_flow": "Agent requests consent → human confirms via URL → agent proceeds with confirmed token"
+  },
+  "contact": {
+    "email": "support@valorlegacies.com",
+    "security": "security@valorlegacies.com"
+  }
+}

@@ -40,11 +40,47 @@ const FAQS = [
     q: "Who will contact me?",
     a: "A licensed insurance professional experienced in military-family coverage will review your information and reach out via phone or email.",
   },
+  {
+    q: "What types of coverage can I explore?",
+    a: "You can explore mortgage protection, final expense (burial/funeral), income replacement, retirement savings (IUL), guaranteed income (annuity), and legacy/wealth transfer options. If you're not sure, a licensed professional will help determine the best fit.",
+  },
+  {
+    q: "Can my AI assistant help me sign up?",
+    a: "Yes. Valor Legacies supports AI agent integration. If you're using an AI assistant like ChatGPT, Claude, or Gemini, it can help submit your information on your behalf — but only after you explicitly confirm consent through a secure verification link. Your AI assistant will guide you through the process.",
+  },
+  {
+    q: "How does the AI agent consent process work?",
+    a: "Your AI assistant requests permission to act on your behalf, and you'll receive a confirmation link. You must click the link to approve before any information is submitted. Consent expires after 24 hours and can be revoked at any time. No data is shared without your explicit approval.",
+  },
+  {
+    q: "Is my data protected?",
+    a: "Yes. We comply with TCPA, CCPA/CPRA, and FCC 2025 regulations. Your data is encrypted, stored securely, and never sold to third parties. You can request complete deletion of your data at any time.",
+  },
 ];
+
+// Schema.org FAQPage structured data — makes content available to AI crawlers
+// and enables Google FAQ rich results
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: item.a,
+    },
+  })),
+};
 
 export default function FaqPage() {
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+
       <article className="w-full max-w-2xl space-y-8">
         <header>
           <Link

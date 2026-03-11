@@ -31,10 +31,17 @@ export const metadata: Metadata = {
     "term life insurance",
     "whole life insurance",
     "military family coverage",
-    "digital cathedral",
+    "ai agent api",
   ],
   authors: [{ name: "Valor Legacies" }],
   creator: "Valor Legacies",
+
+  // AI agent discovery — tells crawlers where to find machine-readable info
+  other: {
+    "ai-instructions": "See /llms.txt for AI agent instructions and /api/agent/schema for OpenAPI spec",
+    "ai-plugin": "/.well-known/ai-plugin.json",
+    "ai-agent-api": "/api/agent/schema",
+  },
 
   // ─── Open Graph ───
   openGraph: {
@@ -114,6 +121,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* AI agent discovery links */}
+        <link rel="ai-instructions" href="/llms.txt" />
+        <link rel="ai-plugin" href="/.well-known/ai-plugin.json" />
+        <link rel="alternate" type="application/json" href="/api/agent/schema" title="Agent API Schema" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

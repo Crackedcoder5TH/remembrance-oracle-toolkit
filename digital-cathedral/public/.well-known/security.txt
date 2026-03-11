@@ -1,0 +1,7 @@
+Contact: mailto:security@valorlegacies.com
+Preferred-Languages: en
+Canonical: https://valorlegacies.com/.well-known/security.txt
+Encryption: none
+Acknowledgments: https://valorlegacies.com/about
+Policy: https://valorlegacies.com/privacy
+Hiring: https://valorlegacies.com/about

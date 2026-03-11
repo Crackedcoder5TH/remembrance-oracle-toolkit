@@ -41,7 +41,6 @@
     "action.yml"
   ],
   "workspaces": [
-    "apps/*",
     "packages/*",
     "tools/*"
   ],
@@ -55,8 +54,8 @@
     "seed": "node src/cli.js seed",
     "analytics": "node src/cli.js analytics --json",
     "postinstall": "node -e \"try{require('fs').mkdirSync('.remembrance',{recursive:true})}catch{}\"",
-    "dev:cathedral": "npm run dev --workspace=apps/cathedral",
-    "build:cathedral": "npm run build --workspace=apps/cathedral"
+    "dev:cathedral": "npm run dev --prefix digital-cathedral",
+    "build:cathedral": "npm run build --prefix digital-cathedral"
   },
   "keywords": [
     "ai",

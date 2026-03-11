@@ -1,12 +1,425 @@
 {
-  "exported": "2026-03-05T03:19:18.441Z",
-  "count": 34,
+  "exportedAt": "2026-03-11T06:31:59.681Z",
+  "count": 42,
   "patterns": [
     {
-      "id": "78f82d6bb039bccf",
+      "id": "c33a6b39f29a7c82",
+      "name": "binary-search-ts",
+      "code": "function binarySearch(arr: any[], target: any) {\n  let lo = 0, hi = arr.length - 1;\n  while (lo <= hi) {\n    const mid = (lo + hi) >>> 1;\n    if (arr[mid] === target) return mid;\n    if (arr[mid] < target) lo = mid + 1;\n    else hi = mid - 1;\n  }\n  return -1;\n}",
+      "language": "typescript",
+      "description": "Binary search on a sorted array — O(log n) (TypeScript variant)",
+      "tags": [
+        "algorithm",
+        "array",
+        "binary",
+        "binary-search",
+        "javascript",
+        "search",
+        "searching",
+        "sorted",
+        "sorting",
+        "typescript",
+        "has-javascript-variant"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 5,
+            "maxDepth": 4,
+            "lines": 10
+          }
+        },
+        "language": "typescript"
+      }
+    },
+    {
+      "id": "d621664760361c28",
+      "name": "merge-sort-ts",
+      "code": "function mergeSort(arr: any[]) {\n  if (arr.length <= 1) return arr;\n  const mid = arr.length >>> 1;\n  const left = mergeSort(arr.slice(0, mid));\n  const right = mergeSort(arr.slice(mid));\n  const result = [];\n  let i = 0, j = 0;\n  while (i < left.length && j < right.length) {\n    result.push(left[i] <= right[j] ? left[i++] : right[j++]);\n  }\n  while (i < left.length) result.push(left[i++]);\n  while (j < right.length) result.push(right[j++]);\n  return result;\n}",
+      "language": "typescript",
+      "description": "Merge sort — stable O(n log n) sorting (TypeScript variant)",
+      "tags": [
+        "algorithm",
+        "array",
+        "javascript",
+        "merge",
+        "merge-sort",
+        "pagination",
+        "recursive",
+        "searching",
+        "sort",
+        "sorting",
+        "stable",
+        "has-javascript-variant"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 5,
+            "maxDepth": 4,
+            "lines": 14
+          }
+        },
+        "language": "typescript"
+      }
+    },
+    {
+      "id": "760a546346a3a0d4",
+      "name": "breadth-first-search-ts",
+      "code": "function bfs(graph: any[], start: number) {\n  const visited = new Set([start]);\n  const queue = [start];\n  const result = [];\n  while (queue.length > 0) {\n    const node = queue.shift();\n    result.push(node);\n    for (const neighbor of (graph[node] || [])) {\n      if (!visited.has(neighbor)) {\n        visited.add(neighbor);\n        queue.push(neighbor);\n      }\n    }\n  }\n  return result;\n}",
+      "language": "typescript",
+      "description": "Breadth-first search on adjacency list graph (TypeScript variant)",
+      "tags": [
+        "adjacency",
+        "algorithm",
+        "array",
+        "data-structure",
+        "data-structures",
+        "deduplication",
+        "graph",
+        "graph-traversal",
+        "has-javascript-variant"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 4,
+            "maxDepth": 5,
+            "lines": 16
+          }
+        },
+        "language": "typescript"
+      }
+    },
+    {
+      "id": "8edd9bd9c1e2e742",
+      "name": "lru-cache-ts",
+      "code": "class LRUCache {\n  constructor(capacity) {\n    this.capacity = capacity;\n    this.cache = new Map();\n  }\n  get(key) {\n    if (!this.cache.has(key)) return undefined;\n    const val = this.cache.get(key);\n    this.cache.delete(key);\n    this.cache.set(key, val);\n    return val;\n  }\n  set(key, val) {\n    if (this.cache.has(key)) this.cache.delete(key);\n    else if (this.cache.size >= this.capacity) {\n      this.cache.delete(this.cache.keys().next().value);\n    }\n    this.cache.set(key, val);\n  }\n}",
+      "language": "typescript",
+      "description": "LRU Cache using Map for O(1) get/set with eviction (TypeScript variant)",
+      "tags": [
+        "array",
+        "cache",
+        "caching",
+        "class",
+        "data-structure",
+        "data-structures",
+        "database",
+        "deduplication",
+        "eviction",
+        "javascript",
+        "lru"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 5,
+            "maxDepth": 5,
+            "lines": 20
+          }
+        },
+        "language": "typescript"
+      }
+    },
+    {
+      "id": "d0480f98b667b365",
+      "name": "validate-email-ts",
+      "code": "function validateEmail(email: any[]) {\n  if (typeof email !== 'string') return false;\n  const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  return re.test(email) && email.length <= 254;\n}",
+      "language": "typescript",
+      "description": "Email validation with basic RFC compliance (TypeScript variant)",
+      "tags": [
+        "javascript",
+        "string",
+        "string-processing",
+        "testing",
+        "typescript",
+        "has-javascript-variant"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 2,
+            "maxDepth": 2,
+            "lines": 5
+          }
+        },
+        "language": "typescript"
+      }
+    },
+    {
+      "id": "851d04ea471a7de7",
+      "name": "vote-test-pattern-py",
+      "code": "def vote_test():\n    return 42",
+      "language": "python",
+      "description": " (Python variant)",
+      "tags": [
+        "javascript",
+        "python",
+        "test",
+        "validation"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 2
+          }
+        },
+        "language": "python"
+      }
+    },
+    {
+      "id": "e318965b267ac28b",
+      "name": "rep-test-pattern-py",
+      "code": "def rep_test():\n    return 99",
+      "language": "python",
+      "description": " (Python variant)",
+      "tags": [
+        "javascript",
+        "python",
+        "test",
+        "validation"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 2
+          }
+        },
+        "language": "python"
+      }
+    },
+    {
+      "id": "39b3414263144a36",
+      "name": "rep-weight-test-py",
+      "code": "def weight_test():\n    return 100",
+      "language": "python",
+      "description": " (Python variant)",
+      "tags": [
+        "javascript",
+        "python",
+        "test",
+        "validation"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 2
+          }
+        },
+        "language": "python"
+      }
+    },
+    {
+      "id": "7fc5a564fd2f4499",
+      "name": "ctx-test-fn-py",
+      "code": "def ctx_test():\n    return 1",
+      "language": "python",
+      "description": " (Python variant)",
+      "tags": [
+        "javascript",
+        "python",
+        "test",
+        "validation"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 2
+          }
+        },
+        "language": "python"
+      }
+    },
+    {
+      "id": "2695177a602f6410",
+      "name": "hover-test-fn-py",
+      "code": "def hover_test_fn(n):\n    return n + 1",
+      "language": "python",
+      "description": "Increment (Python variant)",
+      "tags": [
+        "javascript",
+        "python",
+        "test",
+        "validation"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 2
+          }
+        },
+        "language": "python"
+      }
+    },
+    {
+      "id": "8569bc14b3bca981",
+      "name": "def-test-py",
+      "code": "def def_test():\n    return 42",
+      "language": "python",
+      "description": " (Python variant)",
+      "tags": [
+        "javascript",
+        "python",
+        "test",
+        "validation"
+      ],
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 2
+          }
+        },
+        "language": "python"
+      }
+    },
+    {
+      "id": "6029364789e5bc98",
       "name": "lru-cache-rs",
       "code": "use std::collections::HashMap;\n\npub struct LruCache<K: std::hash::Hash + Eq + Clone, V> {\n    capacity: usize,\n    map: HashMap<K, (V, usize)>,\n    counter: usize,\n}\n\nimpl<K: std::hash::Hash + Eq + Clone, V> LruCache<K, V> {\n    pub fn new(capacity: usize) -> Self {\n        LruCache { capacity, map: HashMap::new(), counter: 0 }\n    }\n\n    pub fn get(&mut self, key: &K) -> Option<&V> {\n        if let Some(entry) = self.map.get_mut(key) {\n            self.counter += 1;\n            entry.1 = self.counter;\n            Some(&entry.0)\n        } else {\n            None\n        }\n    }\n\n    pub fn put(&mut self, key: K, value: V) {\n        self.counter += 1;\n        if self.map.contains_key(&key) {\n            self.map.insert(key, (value, self.counter));\n            return;\n        }\n        if self.map.len() >= self.capacity {\n            let lru_key = self.map.iter()\n                .min_by_key(|(_, (_, ts))| *ts)\n                .map(|(k, _)| k.clone())\n                .unwrap();\n            self.map.remove(&lru_key);\n        }\n        self.map.insert(key, (value, self.counter));\n    }\n}",
-      "testCode": "    use super::*;\n\n    #[test]\n    fn test_lru_cache() {\n        let mut c = LruCache::new(2);\n        c.put(\"a\", 1);\n        c.put(\"b\", 2);\n        assert_eq!(c.get(&\"a\"), Some(&1));\n        c.put(\"c\", 3);\n        assert_eq!(c.get(&\"b\"), None);\n        assert_eq!(c.get(&\"c\"), Some(&3));\n    }",
       "language": "rust",
       "description": "Generic LRU cache with HashMap — evicts least recently used",
       "tags": [
@@ -20,43 +433,76 @@
         "database",
         "eviction",
         "generic",
-        "hashmap",
         "lru"
       ],
-      "patternType": "data-structure",
-      "complexity": "architectural",
-      "coherency": 1
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 5,
+            "maxDepth": 6,
+            "lines": 35
+          }
+        },
+        "language": "rust"
+      }
     },
     {
-      "id": "9a08d4f624ed64bb",
+      "id": "82cf8850f852262d",
       "name": "retry-rs",
       "code": "use std::time::Duration;\n\npub fn retry<F, T, E>(attempts: u32, initial_delay: Duration, mut f: F) -> Result<T, E>\nwhere\n    F: FnMut() -> Result<T, E>,\n{\n    let mut delay = initial_delay;\n    for i in 0..attempts {\n        match f() {\n            Ok(val) => return Ok(val),\n            Err(e) => {\n                if i == attempts - 1 { return Err(e); }\n                std::thread::sleep(delay);\n                delay *= 2;\n            }\n        }\n    }\n    unreachable!()\n}",
-      "testCode": "    use super::*;\n    use std::time::Duration;\n\n    #[test]\n    fn test_retry() {\n        let mut count = 0u32;\n        let result = retry(3, Duration::from_millis(1), || -> Result<&str, &str> {\n            count += 1;\n            if count < 3 { Err(\"fail\") } else { Ok(\"ok\") }\n        });\n        assert_eq!(result, Ok(\"ok\"));\n        assert_eq!(count, 3);\n    }",
       "language": "rust",
       "description": "Generic retry with exponential backoff — works with any Result<T, E>",
       "tags": [
         "async",
         "async-control",
         "backoff",
-        "concurrency",
         "database",
         "error-handling",
         "exponential",
         "generic",
         "rate-limiting",
         "retry",
-        "retry-rs",
         "rust"
       ],
-      "patternType": "utility",
-      "complexity": "architectural",
-      "coherency": 1
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 3,
+            "maxDepth": 6,
+            "lines": 18
+          }
+        },
+        "language": "rust"
+      }
     },
     {
-      "id": "891e0745d7c0f34a",
+      "id": "400d7ad161d9dc04",
       "name": "binary-search-rs",
       "code": "pub fn binary_search(arr: &[i32], target: i32) -> Option<usize> {\n    let (mut lo, mut hi) = (0usize, arr.len());\n    while lo < hi {\n        let mid = lo + (hi - lo) / 2;\n        match arr[mid].cmp(&target) {\n            std::cmp::Ordering::Equal => return Some(mid),\n            std::cmp::Ordering::Less => lo = mid + 1,\n            std::cmp::Ordering::Greater => hi = mid,\n        }\n    }\n    None\n}",
-      "testCode": "    use super::*;\n\n    #[test]\n    fn test_binary_search() {\n        assert_eq!(binary_search(&[1,2,3,4,5], 3), Some(2));\n        assert_eq!(binary_search(&[1,2,3,4,5], 1), Some(0));\n        assert_eq!(binary_search(&[1,2,3,4,5], 6), None);\n        assert_eq!(binary_search(&[], 1), None);\n    }",
       "language": "rust",
       "description": "Binary search returning Option<usize> — idiomatic Rust",
       "tags": [
@@ -64,8 +510,6 @@
         "array",
         "binary",
         "binary-search",
-        "binary-search-rs",
-        "returning",
         "rust",
         "search",
         "searching",
@@ -73,15 +517,33 @@
         "sorted",
         "sorting"
       ],
-      "patternType": "algorithm",
-      "complexity": "composite",
-      "coherency": 1
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 2,
+            "maxDepth": 4,
+            "lines": 12
+          }
+        },
+        "language": "rust"
+      }
     },
     {
-      "id": "55dd55fe50928f63",
+      "id": "826b7e7238f3fd61",
       "name": "retry-go",
       "code": "package sandbox\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc Retry(attempts int, delay time.Duration, fn func() error) error {\n\tvar err error\n\tfor i := 0; i < attempts; i++ {\n\t\terr = fn()\n\t\tif err == nil {\n\t\t\treturn nil\n\t\t}\n\t\tif i < attempts-1 {\n\t\t\ttime.Sleep(delay)\n\t\t\tdelay *= 2\n\t\t}\n\t}\n\treturn fmt.Errorf(\"failed after %d attempts: %w\", attempts, err)\n}",
-      "testCode": "package sandbox\n\nimport (\n\t\"errors\"\n\t\"testing\"\n\t\"time\"\n)\n\nfunc TestRetry(t *testing.T) {\n\tcount := 0\n\terr := Retry(3, time.Millisecond, func() error {\n\t\tcount++\n\t\tif count < 3 { return errors.New(\"fail\") }\n\t\treturn nil\n\t})\n\tif err != nil { t.Fatalf(\"should succeed: %v\", err) }\n\tif count != 3 { t.Fatalf(\"attempts: %d\", count) }\n}",
       "language": "go",
       "description": "Retry with exponential backoff — robust error recovery",
       "tags": [
@@ -94,25 +556,41 @@
         "logging",
         "rate-limiting",
         "retry",
-        "retry-go",
         "utility"
       ],
-      "patternType": "utility",
-      "complexity": "composite",
-      "coherency": 1
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 4,
+            "maxDepth": 4,
+            "lines": 19
+          }
+        },
+        "language": "go"
+      }
     },
     {
-      "id": "eb9317b8ddd4aaea",
+      "id": "13dec68c2c192516",
       "name": "binary-search-go",
       "code": "package sandbox\n\nfunc BinarySearch(arr []int, target int) int {\n\tlo, hi := 0, len(arr)-1\n\tfor lo <= hi {\n\t\tmid := lo + (hi-lo)/2\n\t\tif arr[mid] == target {\n\t\t\treturn mid\n\t\t} else if arr[mid] < target {\n\t\t\tlo = mid + 1\n\t\t} else {\n\t\t\thi = mid - 1\n\t\t}\n\t}\n\treturn -1\n}",
-      "testCode": "package sandbox\n\nimport \"testing\"\n\nfunc TestBinarySearch(t *testing.T) {\n\tif BinarySearch([]int{1,2,3,4,5}, 3) != 2 { t.Fatal(\"mid\") }\n\tif BinarySearch([]int{1,2,3,4,5}, 1) != 0 { t.Fatal(\"first\") }\n\tif BinarySearch([]int{1,2,3,4,5}, 6) != -1 { t.Fatal(\"missing\") }\n\tif BinarySearch([]int{}, 1) != -1 { t.Fatal(\"empty\") }\n}",
       "language": "go",
       "description": "Binary search on sorted slice — O(log n)",
       "tags": [
         "algorithm",
         "binary",
         "binary-search",
-        "binary-search-go",
         "go",
         "pagination",
         "search",
@@ -121,111 +599,108 @@
         "sorted",
         "sorting"
       ],
-      "patternType": "algorithm",
-      "complexity": "composite",
-      "coherency": 1
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 6,
+            "maxDepth": 3,
+            "lines": 15
+          }
+        },
+        "language": "go"
+      }
     },
     {
-      "id": "951ff8f7430873f5",
+      "id": "ed2822faec11f5c3",
       "name": "result-type-ts",
       "code": "type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };\n\nfunction Ok<T>(value: T): Result<T, never> {\n  return { ok: true, value };\n}\n\nfunction Err<E>(error: E): Result<never, E> {\n  return { ok: false, error };\n}\n\nfunction unwrap<T, E>(result: Result<T, E>): T {\n  if (result.ok) return result.value;\n  throw result.error;\n}",
-      "testCode": "const ok = Ok(42);\nif (!ok.ok || ok.value !== 42) throw new Error(\"Ok failed\");\nconst err = Err(new Error(\"boom\"));\nif (err.ok) throw new Error(\"Err should not be ok\");\ntry { unwrap(err); throw new Error(\"should throw\"); } catch(e) { if (e.message !== \"boom\") throw e; }\nif (unwrap(Ok(\"hello\")) !== \"hello\") throw new Error(\"unwrap ok\");",
       "language": "typescript",
       "description": "Result type (Rust-style Ok/Err) for typed error handling",
       "tags": [
         "error-handling",
         "generic",
         "logging",
-        "result",
-        "result-type-ts",
-        "rust-style",
-        "type",
-        "type-safety",
         "typescript",
         "utility"
       ],
-      "patternType": "utility",
-      "complexity": "atomic",
-      "coherency": 1
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 2,
+            "maxDepth": 2,
+            "lines": 11
+          }
+        },
+        "language": "typescript"
+      }
     },
     {
-      "id": "532ac584b69151a7",
+      "id": "e8c59b103cc773ee",
       "name": "binary-search-py",
       "code": "def binary_search(arr, target):\n    lo, hi = 0, len(arr) - 1\n    while lo <= hi:\n        mid = (lo + hi) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            lo = mid + 1\n        else:\n            hi = mid - 1\n    return -1",
-      "testCode": "assert binary_search([1,2,3,4,5], 3) == 2, \"mid\"\nassert binary_search([1,2,3,4,5], 1) == 0, \"first\"\nassert binary_search([1,2,3,4,5], 6) == -1, \"missing\"\nassert binary_search([], 1) == -1, \"empty\"",
       "language": "python",
       "description": "Binary search on sorted list — O(log n)",
       "tags": [
         "algorithm",
         "binary",
         "binary-search",
-        "binary-search-py",
-        "list",
         "python",
         "search",
         "searching",
         "sorted",
         "sorting"
       ],
-      "patternType": "algorithm",
-      "complexity": "atomic",
-      "coherency": 1
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 4,
+            "maxDepth": 3,
+            "lines": 11
+          }
+        },
+        "language": "python"
+      }
     },
     {
-      "id": "09ad00af33ed4ca4",
-      "name": "validate-email",
-      "code": "function validateEmail(email) {\n  if (typeof email !== 'string') return false;\n  const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  return re.test(email) && email.length <= 254;\n}",
-      "testCode": "if (!validateEmail(\"user@example.com\")) throw new Error(\"valid\");\nif (!validateEmail(\"a@b.co\")) throw new Error(\"short valid\");\nif (validateEmail(\"@example.com\")) throw new Error(\"no local\");\nif (validateEmail(\"user@\")) throw new Error(\"no domain\");\nif (validateEmail(\"\")) throw new Error(\"empty\");\nif (validateEmail(null)) throw new Error(\"null\");\nif (validateEmail(\"has space@x.com\")) throw new Error(\"space\");",
-      "language": "javascript",
-      "description": "Email validation with basic RFC compliance",
-      "tags": [
-        "basic",
-        "email",
-        "input",
-        "javascript",
-        "regex",
-        "sanitize",
-        "string",
-        "string-processing",
-        "testing",
-        "typescript",
-        "validate-email",
-        "validation"
-      ],
-      "patternType": "validation",
-      "complexity": "atomic",
-      "coherency": 1
-    },
-    {
-      "id": "27a1bf0a0dda89fd",
-      "name": "lru-cache",
-      "code": "class LRUCache {\n  constructor(capacity) {\n    this.capacity = capacity;\n    this.cache = new Map();\n  }\n  get(key) {\n    if (!this.cache.has(key)) return undefined;\n    const val = this.cache.get(key);\n    this.cache.delete(key);\n    this.cache.set(key, val);\n    return val;\n  }\n  set(key, val) {\n    if (this.cache.has(key)) this.cache.delete(key);\n    else if (this.cache.size >= this.capacity) {\n      this.cache.delete(this.cache.keys().next().value);\n    }\n    this.cache.set(key, val);\n  }\n}",
-      "testCode": "const c = new LRUCache(2);\nc.set('a', 1); c.set('b', 2);\nif (c.get('a') !== 1) throw new Error(\"get a\");\nc.set('c', 3);\nif (c.get('b') !== undefined) throw new Error(\"evict b\");\nif (c.get('c') !== 3) throw new Error(\"get c\");",
-      "language": "javascript",
-      "description": "LRU Cache using Map for O(1) get/set with eviction",
-      "tags": [
-        "array",
-        "cache",
-        "caching",
-        "class",
-        "data-structure",
-        "data-structures",
-        "database",
-        "deduplication",
-        "eviction",
-        "iterator",
-        "javascript",
-        "lru"
-      ],
-      "patternType": "data-structure",
-      "complexity": "architectural",
-      "coherency": 1
-    },
-    {
-      "id": "8a4ff037e5af2538",
+      "id": "910f5878aa069d80",
       "name": "retry-async",
       "code": "async function retry(fn, maxRetries = 3, delay = 1000) {\n  let lastError;\n  for (let i = 0; i <= maxRetries; i++) {\n    try {\n      return await fn();\n    } catch (err) {\n      lastError = err;\n      if (i < maxRetries) {\n        await new Promise(r => setTimeout(r, delay * Math.pow(2, i)));\n      }\n    }\n  }\n  throw lastError;\n}",
-      "testCode": "let attempts = 0;\nconst fn = async () => { attempts++; if (attempts < 3) throw new Error(\"fail\"); return \"ok\"; };\nretry(fn, 3, 1).then(r => {\n  if (r !== \"ok\") throw new Error(\"result\");\n  if (attempts !== 3) throw new Error(\"attempts: \" + attempts);\n});",
       "language": "javascript",
       "description": "Retry with exponential backoff for async operations",
       "tags": [
@@ -238,138 +713,113 @@
         "javascript",
         "math",
         "rate-limiting",
-        "resilience",
         "retry",
-        "retry-async"
+        "has-typescript-variant"
       ],
-      "patternType": "utility",
-      "complexity": "architectural",
-      "coherency": 1
+      "coherency": {
+        "total": 1,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 4,
+            "maxDepth": 4,
+            "lines": 14
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "31877843f1f6bcf2",
-      "name": "breadth-first-search",
-      "code": "function bfs(graph, start) {\n  const visited = new Set([start]);\n  const queue = [start];\n  const result = [];\n  while (queue.length > 0) {\n    const node = queue.shift();\n    result.push(node);\n    for (const neighbor of (graph[node] || [])) {\n      if (!visited.has(neighbor)) {\n        visited.add(neighbor);\n        queue.push(neighbor);\n      }\n    }\n  }\n  return result;\n}",
-      "testCode": "const g = { a: ['b','c'], b: ['d'], c: ['d'], d: [] };\nconst r = bfs(g, 'a');\nif (r[0] !== 'a') throw new Error(\"start\");\nif (r.length !== 4) throw new Error(\"all nodes\");\nif (r.indexOf('b') > r.indexOf('d') && r.indexOf('c') > r.indexOf('d')) throw new Error(\"bfs order\");",
-      "language": "javascript",
-      "description": "Breadth-first search on adjacency list graph",
-      "tags": [
-        "adjacency",
-        "algorithm",
-        "array",
-        "bfs",
-        "breadth-first",
-        "breadth-first-search",
-        "data-structure",
-        "data-structures",
-        "deduplication",
-        "graph",
-        "graph-traversal",
-        "javascript"
-      ],
-      "patternType": "algorithm",
-      "complexity": "architectural",
-      "coherency": 1
-    },
-    {
-      "id": "9be4becbf3571c70",
-      "name": "merge-sort",
-      "code": "function mergeSort(arr) {\n  if (arr.length <= 1) return arr;\n  const mid = arr.length >>> 1;\n  const left = mergeSort(arr.slice(0, mid));\n  const right = mergeSort(arr.slice(mid));\n  const result = [];\n  let i = 0, j = 0;\n  while (i < left.length && j < right.length) {\n    result.push(left[i] <= right[j] ? left[i++] : right[j++]);\n  }\n  while (i < left.length) result.push(left[i++]);\n  while (j < right.length) result.push(right[j++]);\n  return result;\n}",
-      "testCode": "const r1 = mergeSort([5,3,8,1,9,2]);\nif (JSON.stringify(r1) !== '[1,2,3,5,8,9]') throw new Error(\"sort: \" + r1);\nif (JSON.stringify(mergeSort([])) !== '[]') throw new Error(\"empty\");\nif (JSON.stringify(mergeSort([1])) !== '[1]') throw new Error(\"single\");\nif (JSON.stringify(mergeSort([3,1,1,2])) !== '[1,1,2,3]') throw new Error(\"dups\");",
-      "language": "javascript",
-      "description": "Merge sort — stable O(n log n) sorting",
-      "tags": [
-        "algorithm",
-        "array",
-        "javascript",
-        "merge",
-        "merge-sort",
-        "pagination",
-        "recursive",
-        "searching",
-        "sort",
-        "sorting",
-        "stable"
-      ],
-      "patternType": "algorithm",
-      "complexity": "composite",
-      "coherency": 1
-    },
-    {
-      "id": "11abb04402f259e6",
-      "name": "binary-search",
-      "code": "function binarySearch(arr, target) {\n  let lo = 0, hi = arr.length - 1;\n  while (lo <= hi) {\n    const mid = (lo + hi) >>> 1;\n    if (arr[mid] === target) return mid;\n    if (arr[mid] < target) lo = mid + 1;\n    else hi = mid - 1;\n  }\n  return -1;\n}",
-      "testCode": "if (binarySearch([1,2,3,4,5], 3) !== 2) throw new Error(\"mid\");\nif (binarySearch([1,2,3,4,5], 1) !== 0) throw new Error(\"first\");\nif (binarySearch([1,2,3,4,5], 5) !== 4) throw new Error(\"last\");\nif (binarySearch([1,2,3,4,5], 6) !== -1) throw new Error(\"missing\");\nif (binarySearch([], 1) !== -1) throw new Error(\"empty\");",
-      "language": "javascript",
-      "description": "Binary search on a sorted array — O(log n)",
-      "tags": [
-        "algorithm",
-        "array",
-        "binary",
-        "binary-search",
-        "javascript",
-        "mid",
-        "search",
-        "searching",
-        "sorted",
-        "sorting"
-      ],
-      "patternType": "algorithm",
-      "complexity": "composite",
-      "coherency": 1
-    },
-    {
-      "id": "66654acd11883b42",
+      "id": "68ceb50078a4dd0b",
       "name": "memoize-py",
       "code": "def memoize(fn):\n    cache = {}\n    def wrapper(*args):\n        if args not in cache:\n            cache[args] = fn(*args)\n        return cache[args]\n    wrapper.cache = cache\n    return wrapper",
-      "testCode": "calls = 0\ndef add(a, b):\n    global calls\n    calls += 1\n    return a + b\nmemo_add = memoize(add)\nassert memo_add(1, 2) == 3\nassert memo_add(1, 2) == 3\nassert calls == 1, f\"should cache: {calls}\"",
       "language": "python",
       "description": "Memoize decorator — caches function results by arguments",
       "tags": [
         "cache",
         "caches",
         "caching",
-        "decorator",
         "error-handling",
         "functional",
         "memoize",
-        "memoize-py",
-        "performance",
         "python",
         "utility"
       ],
-      "patternType": "utility",
-      "complexity": "atomic",
-      "coherency": 0.99
+      "coherency": {
+        "total": 0.99,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 2,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 2,
+            "maxDepth": 3,
+            "lines": 8
+          }
+        },
+        "language": "python"
+      }
     },
     {
-      "id": "ffc49acb563709b5",
+      "id": "35b47c2d87e31f89",
       "name": "group-by",
       "code": "function groupBy(arr, keyFn) {\n  const groups = {};\n  for (const item of arr) {\n    const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];\n    (groups[key] = groups[key] || []).push(item);\n  }\n  return groups;\n}",
-      "testCode": "const data = [{n:'a',t:1},{n:'b',t:1},{n:'c',t:2}];\nconst g = groupBy(data, 't');\nif (g[1].length !== 2) throw new Error(\"group 1\");\nif (g[2].length !== 1) throw new Error(\"group 2\");\nconst g2 = groupBy(data, item => item.t);\nif (g2[1].length !== 2) throw new Error(\"fn key\");",
       "language": "javascript",
       "description": "Group array items by a key or function",
       "tags": [
-        "aggregate",
         "array",
         "data-transform",
-        "group",
-        "group-by",
-        "items",
         "javascript",
         "transformation",
         "typescript",
-        "utility"
+        "utility",
+        "has-typescript-variant"
       ],
-      "patternType": "transformation",
-      "complexity": "composite",
-      "coherency": 0.99
+      "coherency": {
+        "total": 0.99,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 3,
+            "maxDepth": 2,
+            "lines": 8
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "14df7e503279b339",
+      "id": "f5f2395a010bbbaf",
       "name": "trie",
       "code": "class Trie {\n  constructor() { this.root = {}; }\n  insert(word) {\n    let node = this.root;\n    for (const ch of word) { node = node[ch] = node[ch] || {}; }\n    node._end = true;\n  }\n  search(word) {\n    let node = this.root;\n    for (const ch of word) { if (!node[ch]) return false; node = node[ch]; }\n    return node._end === true;\n  }\n  startsWith(prefix) {\n    let node = this.root;\n    for (const ch of prefix) { if (!node[ch]) return false; node = node[ch]; }\n    return true;\n  }\n}",
-      "testCode": "const t = new Trie();\nt.insert(\"hello\"); t.insert(\"help\");\nif (!t.search(\"hello\")) throw new Error(\"find hello\");\nif (t.search(\"hell\")) throw new Error(\"partial\");\nif (!t.startsWith(\"hel\")) throw new Error(\"prefix\");\nif (t.startsWith(\"xyz\")) throw new Error(\"bad prefix\");",
       "language": "javascript",
       "description": "Trie (prefix tree) for fast string lookups and prefix search",
       "tags": [
@@ -380,70 +830,154 @@
         "database",
         "graph-traversal",
         "javascript",
-        "prefix",
         "search",
         "searching",
-        "string",
-        "tree"
+        "string"
       ],
-      "patternType": "data-structure",
-      "complexity": "architectural",
-      "coherency": 0.99
+      "coherency": {
+        "total": 0.99,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 0,
+          "classes": 1,
+          "complexity": {
+            "cyclomatic": 6,
+            "maxDepth": 4,
+            "lines": 18
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "c2d6a47ea6ad2f2f",
+      "id": "0daf629c97148657",
       "name": "deep-clone",
       "code": "function deepClone(obj) {\n  if (obj === null || typeof obj !== 'object') return obj;\n  if (obj instanceof Date) return new Date(obj.getTime());\n  if (obj instanceof RegExp) return new RegExp(obj.source, obj.flags);\n  if (Array.isArray(obj)) return obj.map(item => deepClone(item));\n  const cloned = {};\n  for (const key of Object.keys(obj)) {\n    cloned[key] = deepClone(obj[key]);\n  }\n  return cloned;\n}",
-      "testCode": "const orig = { a: 1, b: { c: [1,2,{d:3}] }, e: new Date(0) };\nconst clone = deepClone(orig);\nif (clone === orig) throw new Error(\"same ref\");\nif (clone.b === orig.b) throw new Error(\"shallow copy\");\nclone.b.c[2].d = 999;\nif (orig.b.c[2].d === 999) throw new Error(\"mutation leaked\");\nif (clone.e.getTime() !== 0) throw new Error(\"date clone\");\nif (deepClone(null) !== null) throw new Error(\"null\");\nif (deepClone(42) !== 42) throw new Error(\"primitive\");",
       "language": "javascript",
       "description": "Deep clone — recursively copies objects, arrays, dates, regexps",
       "tags": [
         "array",
-        "clone",
         "cloning",
         "data-structure",
         "data-transform",
         "date-time",
-        "deep",
-        "deep-clone",
-        "deep-copy",
-        "immutable",
         "javascript",
-        "object"
+        "object",
+        "has-typescript-variant"
       ],
-      "patternType": "utility",
-      "complexity": "composite",
-      "coherency": 0.99
+      "coherency": {
+        "total": 0.99,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 6,
+            "maxDepth": 2,
+            "lines": 11
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "fe000531d0577597",
+      "id": "8d17961a3b6aea6b",
+      "name": "completion-debounce",
+      "code": "function debounce(fn, delay) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), delay); }; }",
+      "language": "javascript",
+      "description": "",
+      "tags": [
+        "async-control",
+        "date-time",
+        "debounce",
+        "javascript",
+        "rate-limiting",
+        "scheduling",
+        "utility",
+        "has-typescript-variant"
+      ],
+      "coherency": {
+        "total": 0.97,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 2,
+            "lines": 1
+          }
+        },
+        "language": "javascript"
+      }
+    },
+    {
+      "id": "c4457ec715c741ad",
       "name": "merge-sort-rs",
       "code": "pub fn merge_sort(arr: &mut Vec<i32>) {\n    let len = arr.len();\n    if len <= 1 { return; }\n    let mid = len / 2;\n    let mut left = arr[..mid].to_vec();\n    let mut right = arr[mid..].to_vec();\n    merge_sort(&mut left);\n    merge_sort(&mut right);\n    let (mut i, mut j, mut k) = (0, 0, 0);\n    while i < left.len() && j < right.len() {\n        if left[i] <= right[j] { arr[k] = left[i]; i += 1; }\n        else { arr[k] = right[j]; j += 1; }\n        k += 1;\n    }\n    while i < left.len() { arr[k] = left[i]; i += 1; k += 1; }\n    while j < right.len() { arr[k] = right[j]; j += 1; k += 1; }\n}",
-      "testCode": "    use super::*;\n\n    #[test]\n    fn test_merge_sort() {\n        let mut v = vec![5,3,8,1,9,2];\n        merge_sort(&mut v);\n        assert_eq!(v, vec![1,2,3,5,8,9]);\n        let mut e: Vec<i32> = vec![];\n        merge_sort(&mut e);\n        assert!(e.is_empty());\n    }",
       "language": "rust",
       "description": "In-place merge sort for Vec<i32> — stable O(n log n)",
       "tags": [
         "algorithm",
-        "in-place",
         "merge",
         "merge-sort",
-        "merge-sort-rs",
         "rust",
         "searching",
         "sort",
         "sorting",
-        "stable",
-        "vec"
+        "stable"
       ],
-      "patternType": "algorithm",
-      "complexity": "composite",
-      "coherency": 0.97
+      "coherency": {
+        "total": 0.97,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 7,
+            "maxDepth": 4,
+            "lines": 17
+          }
+        },
+        "language": "rust"
+      }
     },
     {
-      "id": "b12c9b4cda02c589",
+      "id": "2598a759b690c419",
       "name": "flatten-deep",
       "code": "function flattenDeep(arr) {\n  const result = [];\n  const stack = [...arr];\n  while (stack.length > 0) {\n    const item = stack.pop();\n    if (Array.isArray(item)) {\n      stack.push(...item);\n    } else {\n      result.unshift(item);\n    }\n  }\n  return result;\n}",
-      "testCode": "if (JSON.stringify(flattenDeep([1,[2,[3,[4]]]])) !== '[1,2,3,4]') throw new Error(\"nested\");\nif (JSON.stringify(flattenDeep([])) !== '[]') throw new Error(\"empty\");\nif (JSON.stringify(flattenDeep([1,2,3])) !== '[1,2,3]') throw new Error(\"flat\");",
       "language": "javascript",
       "description": "Flatten deeply nested arrays iteratively (no recursion limit)",
       "tags": [
@@ -451,49 +985,77 @@
         "data-structure",
         "data-structures",
         "data-transform",
-        "deeply",
-        "flatten",
-        "flatten-deep",
-        "iterative",
         "javascript",
-        "nested",
         "pagination",
-        "transformation"
+        "transformation",
+        "has-typescript-variant"
       ],
-      "patternType": "transformation",
-      "complexity": "composite",
-      "coherency": 0.97
+      "coherency": {
+        "total": 0.97,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 3,
+            "maxDepth": 3,
+            "lines": 13
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "e3233718022b1af1",
+      "id": "075e4d27714791e8",
       "name": "pipe",
       "code": "function pipe(...fns) {\n  return function(input) {\n    return fns.reduce((val, fn) => fn(val), input);\n  };\n}",
-      "testCode": "const double = x => x * 2;\nconst inc = x => x + 1;\nconst str = x => String(x);\nconst transform = pipe(double, inc, str);\nif (transform(5) !== \"11\") throw new Error(\"pipe: \" + transform(5));\nif (pipe()(42) !== 42) throw new Error(\"empty pipe\");",
       "language": "javascript",
       "description": "Function pipe — compose left-to-right",
       "tags": [
         "array",
         "closure",
-        "compose",
-        "composition",
         "data-transform",
         "functional",
         "javascript",
-        "left-to-right",
-        "pipe",
         "stream",
-        "transform",
-        "ui"
+        "ui",
+        "has-typescript-variant"
       ],
-      "patternType": "utility",
-      "complexity": "composite",
-      "coherency": 0.97
+      "coherency": {
+        "total": 0.97,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 2,
+            "lines": 5
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "0d7192b9202e2edf",
+      "id": "be609dff13e8f592",
       "name": "memoize",
       "code": "function memoize(fn) {\n  const cache = new Map();\n  return function(...args) {\n    const key = JSON.stringify(args);\n    if (cache.has(key)) return cache.get(key);\n    const result = fn.apply(this, args);\n    cache.set(key, result);\n    return result;\n  };\n}",
-      "testCode": "let calls = 0;\nconst add = memoize((a, b) => { calls++; return a + b; });\nif (add(1, 2) !== 3) throw new Error(\"first call\");\nif (add(1, 2) !== 3) throw new Error(\"cached call\");\nif (calls !== 1) throw new Error(\"should cache: \" + calls);\nif (add(2, 3) !== 5) throw new Error(\"diff args\");\nif (calls !== 2) throw new Error(\"new args: \" + calls);",
       "language": "javascript",
       "description": "Memoize — caches function results by arguments",
       "tags": [
@@ -508,17 +1070,35 @@
         "functional",
         "javascript",
         "memoize",
-        "optimization"
+        "has-typescript-variant"
       ],
-      "patternType": "utility",
-      "complexity": "composite",
-      "coherency": 0.97
+      "coherency": {
+        "total": 0.97,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 2,
+            "maxDepth": 2,
+            "lines": 10
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "fa370f8a84994e0c",
+      "id": "f8e2f8c409371990",
       "name": "throttle",
       "code": "function throttle(fn, limit) {\n  let lastCall = 0;\n  return function(...args) {\n    const now = Date.now();\n    if (now - lastCall >= limit) {\n      lastCall = now;\n      return fn.apply(this, args);\n    }\n  };\n}",
-      "testCode": "let count = 0;\nconst t = throttle(() => count++, 50);\nt(); t(); t();\nif (count !== 1) throw new Error(\"should throttle: \" + count);",
       "language": "javascript",
       "description": "Throttle — limits function to one call per time window",
       "tags": [
@@ -526,24 +1106,40 @@
         "closure",
         "date-time",
         "javascript",
-        "limits",
-        "one",
         "pagination",
         "rate-limit",
         "rate-limiting",
-        "throttle",
         "timing",
-        "utility"
+        "utility",
+        "has-typescript-variant"
       ],
-      "patternType": "utility",
-      "complexity": "composite",
-      "coherency": 0.97
+      "coherency": {
+        "total": 0.97,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 2,
+            "maxDepth": 3,
+            "lines": 10
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "9f276e46248b9ff0",
+      "id": "d8bb797d06f3ef19",
       "name": "debounce",
       "code": "function debounce(fn, delay) {\n  let timer;\n  return function(...args) {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn.apply(this, args), delay);\n  };\n}",
-      "testCode": "const d = debounce(() => {}, 100);\nif (typeof d !== 'function') throw new Error(\"should return function\");",
       "language": "javascript",
       "description": "Debounce — delays function execution until pause in calls",
       "tags": [
@@ -552,23 +1148,39 @@
         "closure",
         "date-time",
         "debounce",
-        "delays",
-        "execution",
         "javascript",
         "rate-limit",
         "rate-limiting",
         "scheduling",
         "timing"
       ],
-      "patternType": "utility",
-      "complexity": "composite",
-      "coherency": 0.97
+      "coherency": {
+        "total": 0.97,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 2,
+            "lines": 7
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "7e9a5e72bfb5339c",
+      "id": "9f3f204a56f5e28e",
       "name": "depth-first-search",
       "code": "function dfs(graph, start, visited = new Set()) {\n  visited.add(start);\n  const result = [start];\n  for (const neighbor of (graph[start] || [])) {\n    if (!visited.has(neighbor)) {\n      result.push(...dfs(graph, neighbor, visited));\n    }\n  }\n  return result;\n}",
-      "testCode": "const g = { a: ['b','c'], b: ['d'], c: ['d'], d: [] };\nconst r = dfs(g, 'a');\nif (!r.includes('a') || !r.includes('b') || !r.includes('c') || !r.includes('d')) throw new Error(\"missing nodes\");\nif (r[0] !== 'a') throw new Error(\"should start at root\");\nif (r.length !== 4) throw new Error(\"should visit all: \" + r);",
       "language": "javascript",
       "description": "Depth-first search on adjacency list graph",
       "tags": [
@@ -577,23 +1189,38 @@
         "array",
         "data-structure",
         "deduplication",
-        "depth-first",
-        "depth-first-search",
-        "dfs",
         "graph",
         "graph-traversal",
         "javascript",
         "recursive"
       ],
-      "patternType": "algorithm",
-      "complexity": "architectural",
-      "coherency": 0.97
+      "coherency": {
+        "total": 0.97,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 3,
+            "maxDepth": 3,
+            "lines": 10
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "0c65d8cc7e9fc8e0",
+      "id": "cfe93788bb58b1c0",
       "name": "lru-cache-go",
       "code": "package sandbox\n\ntype LRUCache struct {\n\tcapacity int\n\titems    map[string]*node\n\thead     *node\n\ttail     *node\n}\n\ntype node struct {\n\tkey        string\n\tvalue      interface{}\n\tprev, next *node\n}\n\nfunc NewLRUCache(capacity int) *LRUCache {\n\thead := &node{}\n\ttail := &node{}\n\thead.next = tail\n\ttail.prev = head\n\treturn &LRUCache{capacity: capacity, items: make(map[string]*node), head: head, tail: tail}\n}\n\nfunc (c *LRUCache) Get(key string) (interface{}, bool) {\n\tif n, ok := c.items[key]; ok {\n\t\tc.moveToFront(n)\n\t\treturn n.value, true\n\t}\n\treturn nil, false\n}\n\nfunc (c *LRUCache) Put(key string, value interface{}) {\n\tif n, ok := c.items[key]; ok {\n\t\tn.value = value\n\t\tc.moveToFront(n)\n\t\treturn\n\t}\n\tn := &node{key: key, value: value}\n\tc.items[key] = n\n\tc.addToFront(n)\n\tif len(c.items) > c.capacity {\n\t\tback := c.tail.prev\n\t\tc.remove(back)\n\t\tdelete(c.items, back.key)\n\t}\n}\n\nfunc (c *LRUCache) moveToFront(n *node) { c.remove(n); c.addToFront(n) }\nfunc (c *LRUCache) addToFront(n *node) { n.prev = c.head; n.next = c.head.next; c.head.next.prev = n; c.head.next = n }\nfunc (c *LRUCache) remove(n *node) { n.prev.next = n.next; n.next.prev = n.prev }",
-      "testCode": "package sandbox\n\nimport \"testing\"\n\nfunc TestLRUCache(t *testing.T) {\n\tc := NewLRUCache(2)\n\tc.Put(\"a\", 1)\n\tc.Put(\"b\", 2)\n\tif v, ok := c.Get(\"a\"); !ok || v != 1 { t.Fatal(\"get a\") }\n\tc.Put(\"c\", 3)\n\tif _, ok := c.Get(\"b\"); ok { t.Fatal(\"should evict b\") }\n\tif v, ok := c.Get(\"c\"); !ok || v != 3 { t.Fatal(\"get c\") }\n}",
       "language": "go",
       "description": "LRU cache with O(1) get/put using doubly-linked list + hashmap",
       "tags": [
@@ -606,19 +1233,35 @@
         "deduplication",
         "eviction",
         "go",
-        "lru",
-        "lru-cache-go",
-        "map"
+        "lru"
       ],
-      "patternType": "data-structure",
-      "complexity": "composite",
-      "coherency": 0.96
+      "coherency": {
+        "total": 0.96,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 4,
+            "maxDepth": 4,
+            "lines": 44
+          }
+        },
+        "language": "go"
+      }
     },
     {
-      "id": "d22722555bf13793",
+      "id": "558fa1d515ac304c",
       "name": "typed-event-emitter-ts",
       "code": "type EventMap = Record<string, any>;\n\nclass TypedEmitter<T extends EventMap> {\n  private listeners: { [K in keyof T]?: Array<(payload: T[K]) => void> } = {};\n\n  on<K extends keyof T>(event: K, fn: (payload: T[K]) => void): void {\n    (this.listeners[event] = this.listeners[event] || []).push(fn);\n  }\n\n  off<K extends keyof T>(event: K, fn: (payload: T[K]) => void): void {\n    const fns = this.listeners[event];\n    if (fns) this.listeners[event] = fns.filter(f => f !== fn);\n  }\n\n  emit<K extends keyof T>(event: K, payload: T[K]): void {\n    for (const fn of this.listeners[event] || []) fn(payload);\n  }\n}",
-      "testCode": "const em = new TypedEmitter();\nlet got = null;\nconst handler = (v) => { got = v; };\nem.on('test', handler);\nem.emit('test', 42);\nif (got !== 42) throw new Error(\"emit failed: \" + got);\nem.off('test', handler);\nem.emit('test', 99);\nif (got !== 42) throw new Error(\"off failed: \" + got);",
       "language": "typescript",
       "description": "Type-safe event emitter with generics for event map",
       "tags": [
@@ -626,24 +1269,37 @@
         "caching",
         "class",
         "deduplication",
-        "emitter",
-        "event",
-        "events",
         "generic",
         "string",
-        "string-processing",
-        "type-safe",
-        "typed-emitter"
+        "string-processing"
       ],
-      "patternType": "design-pattern",
-      "complexity": "composite",
-      "coherency": 0.96
+      "coherency": {
+        "total": 0.96,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 3,
+            "maxDepth": 4,
+            "lines": 14
+          }
+        },
+        "language": "typescript"
+      }
     },
     {
-      "id": "b9896b7e321c0c08",
+      "id": "c10a7749c10d3caf",
       "name": "merge-sort-go",
       "code": "package sandbox\n\nfunc MergeSort(arr []int) []int {\n\tif len(arr) <= 1 {\n\t\treturn arr\n\t}\n\tmid := len(arr) / 2\n\tleft := MergeSort(arr[:mid])\n\tright := MergeSort(arr[mid:])\n\treturn merge(left, right)\n}\n\nfunc merge(a, b []int) []int {\n\tresult := make([]int, 0, len(a)+len(b))\n\ti, j := 0, 0\n\tfor i < len(a) && j < len(b) {\n\t\tif a[i] <= b[j] {\n\t\t\tresult = append(result, a[i])\n\t\t\ti++\n\t\t} else {\n\t\t\tresult = append(result, b[j])\n\t\t\tj++\n\t\t}\n\t}\n\tresult = append(result, a[i:]...)\n\tresult = append(result, b[j:]...)\n\treturn result\n}",
-      "testCode": "package sandbox\n\nimport (\n\t\"reflect\"\n\t\"testing\"\n)\n\nfunc TestMergeSort(t *testing.T) {\n\tgot := MergeSort([]int{5,3,8,1,9,2})\n\twant := []int{1,2,3,5,8,9}\n\tif !reflect.DeepEqual(got, want) { t.Fatalf(\"got %v want %v\", got, want) }\n\tif len(MergeSort([]int{})) != 0 { t.Fatal(\"empty\") }\n\tif MergeSort([]int{1})[0] != 1 { t.Fatal(\"single\") }\n}",
       "language": "go",
       "description": "Merge sort — stable O(n log n) sorting for slices",
       "tags": [
@@ -652,7 +1308,6 @@
         "go",
         "merge",
         "merge-sort",
-        "merge-sort-go",
         "pagination",
         "searching",
         "slice",
@@ -660,15 +1315,33 @@
         "sorting",
         "stable"
       ],
-      "patternType": "algorithm",
-      "complexity": "architectural",
-      "coherency": 0.94
+      "coherency": {
+        "total": 0.94,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 5,
+            "maxDepth": 5,
+            "lines": 26
+          }
+        },
+        "language": "go"
+      }
     },
     {
-      "id": "ca2f4d793193fdc5",
+      "id": "7477d99c3e5b0685",
       "name": "debounce-ts",
       "code": "function debounce<T extends (...args: any[]) => void>(fn: T, delay: number): T {\n  let timer: ReturnType<typeof setTimeout>;\n  return ((...args: Parameters<T>) => {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn(...args), delay);\n  }) as T;\n}",
-      "testCode": "let count = 0;\nconst inc = debounce(() => { count++; }, 50);\ninc(); inc(); inc();\nsetTimeout(() => {\n  if (count !== 0) throw new Error(\"should not fire yet: \" + count);\n  setTimeout(() => {\n    if (count !== 1) throw new Error(\"should fire once: \" + count);\n  }, 60);\n}, 20);",
       "language": "typescript",
       "description": "Debounce with TypeScript generics — preserves argument types",
       "tags": [
@@ -676,162 +1349,280 @@
         "async-control",
         "date-time",
         "debounce",
-        "debounce-ts",
         "generic",
-        "generics",
         "rate-limit",
         "rate-limiting",
         "scheduling",
         "typescript",
         "utility"
       ],
-      "patternType": "utility",
-      "complexity": "architectural",
-      "coherency": 0.94
+      "coherency": {
+        "total": 0.94,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "testProof": 1,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 5,
+            "lines": 7
+          }
+        },
+        "language": "typescript"
+      }
     },
     {
-      "id": "de74b8a0dc32ace1",
-      "name": "cli-utils",
-      "code": "'use strict';\n\nconst crypto = require('crypto');\n\n// ── ANSI Colors ──────────────────────────────────────────────────────────────\n\nconst c = {\n  reset: '\\x1b[0m',\n  bold: '\\x1b[1m',\n  dim: '\\x1b[2m',\n  red: '\\x1b[31m',\n  green: '\\x1b[32m',\n  yellow: '\\x1b[33m',\n  blue: '\\x1b[34m',\n  cyan: '\\x1b[36m',\n  gray: '\\x1b[90m',\n};\n\nfunction colorize(color, text) {\n  return `${color}${text}${c.reset}`;\n}\n\nconst log = {\n  info: (msg) => console.log(colorize(c.blue, '[info]'), msg),\n  success: (msg) => console.log(colorize(c.green, '[ok]'), msg),\n  warn: (msg) => console.log(colorize(c.yellow, '[warn]'), msg),\n  error: (msg) => console.error(colorize(c.red, '[error]'), msg),\n  dim: (msg) => console.log(colorize(c.dim, msg)),\n};\n\n// ── Arg Parser ───────────────────────────────────────────────────────────────\n\nfunction parseArgs(argv) {\n  const args = argv.slice(2); // skip node + script\n  const parsed = { _command: null, _positional: [], _flags: {} };\n\n  for (let i = 0; i < args.length; i++) {\n    if (args[i].startsWith('--')) {\n      const key = args[i].slice(2);\n      const next = args[i + 1];\n      if (next && !next.startsWith('--')) {\n        parsed._flags[key] = next;\n        i++;\n      } else {\n        parsed._flags[key] = true;\n      }\n    } else if (!parsed._command) {\n      parsed._command = args[i];\n    } else {\n      parsed._positional.push(args[i]);\n    }\n  }\n\n  parsed._sub = parsed._positional[0] || null;\n  return parsed;\n}\n\n// ── Helpers ──────────────────────────────────────────────────────────────────\n\nfunction maskSecret(secret) {\n  if (!secret || secret.length < 8) return '****';\n  return secret.slice(0, 4) + '****' + secret.slice(-4);\n}\n\nfunction generateSecret() {\n  return crypto.randomBytes(32).toString('hex');\n}\n\nmodule.exports = { c, colorize, log, parseArgs, maskSecret, generateSecret };\n",
+      "id": "018fe6fc37531758",
+      "name": "swarm-consensus-score",
+      "code": "function computeConsensusScore(agentOutputs, weights) {\n  const { coherency = 0.4, selfConfidence = 0.2, peerScore = 0.4 } = weights;\n  return agentOutputs.map(output => {\n    const total = (output.coherency || 0) * coherency\n      + (output.confidence || 0) * selfConfidence\n      + (output.peerScore || 0) * peerScore;\n    return { agent: output.agent, totalScore: Math.round(total * 1000) / 1000 };\n  }).sort((a, b) => b.totalScore - a.totalScore);\n}",
       "language": "javascript",
-      "description": "CLI utilities: zero-dep arg parser, ANSI colors, structured logging, secret masking",
+      "description": "Weighted consensus scoring for multi-agent swarm: combines coherency, self-confidence, and peer scores.",
       "tags": [
-        "ansi",
-        "argv",
-        "array",
-        "cli",
-        "cli-utils",
-        "color",
-        "colorize",
-        "crypto",
-        "error-handling",
+        "swarm",
+        "consensus",
+        "scoring",
+        "algorithm"
+      ],
+      "coherency": {
+        "total": 0.88,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 0.5,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 3,
+            "lines": 9
+          }
+        },
+        "language": "javascript"
+      }
+    },
+    {
+      "id": "49c773ab986eca54",
+      "name": "pattern-write-guard",
+      "code": "function writeGuard(newPatterns, diskPatterns) {\n  if (newPatterns.length < diskPatterns.length) {\n    const lost = diskPatterns.length - newPatterns.length;\n    throw new Error('WRITE GUARD: refusing to save ' + newPatterns.length + ' patterns over ' + diskPatterns.length + ' — would lose ' + lost + ' patterns');\n  }\n  return true;\n}",
+      "language": "javascript",
+      "description": "Write guard that prevents pattern count from decreasing. Safety net against data loss in pattern library.",
+      "tags": [
+        "safety",
+        "write-guard",
+        "patterns",
+        "infrastructure"
+      ],
+      "coherency": {
+        "total": 0.88,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 0.5,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 2,
+            "maxDepth": 2,
+            "lines": 7
+          }
+        },
+        "language": "javascript"
+      }
+    },
+    {
+      "id": "00128c196dff7000",
+      "name": "lockfile-acquire",
+      "code": "function acquireLock(dir, label) {\n  const fs = require('fs');\n  const path = require('path');\n  const LOCK_DELAYS = [50, 100, 200, 400, 800];\n  const STALE_LOCK_MS = 30000;\n  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n  const lockPath = path.join(dir, '.lock');\n  for (let attempt = 0; attempt <= LOCK_DELAYS.length; attempt++) {\n    try {\n      const fd = fs.openSync(lockPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY);\n      fs.writeFileSync(fd, String(process.pid), 'utf-8');\n      fs.closeSync(fd);\n      return () => { try { fs.unlinkSync(lockPath); } catch {} };\n    } catch {\n      try {\n        const stat = fs.statSync(lockPath);\n        if (Date.now() - stat.mtimeMs > STALE_LOCK_MS) {\n          try { fs.unlinkSync(lockPath); } catch {} continue;\n        }\n      } catch { continue; }\n      if (attempt < LOCK_DELAYS.length) {\n        const buf = new Int32Array(new SharedArrayBuffer(4));\n        Atomics.wait(buf, 0, 0, LOCK_DELAYS[attempt]);\n      }\n    }\n  }\n  return () => {};\n}",
+      "language": "javascript",
+      "description": "POSIX-atomic lockfile with O_CREAT|O_EXCL, exponential backoff, and stale lock detection.",
+      "tags": [
+        "locking",
+        "concurrency",
+        "safety",
+        "infrastructure"
+      ],
+      "coherency": {
+        "total": 0.88,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 0.5,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 9,
+            "maxDepth": 6,
+            "lines": 28
+          }
+        },
+        "language": "javascript"
+      }
+    },
+    {
+      "id": "1dda87e8e282f6eb",
+      "name": "test-pattern-mcp",
+      "code": "function greet(name) { return `Hello, ${name}!`; }",
+      "language": "javascript",
+      "description": "",
+      "tags": [
+        "greet",
         "javascript",
-        "logging",
-        "masking"
+        "test-pattern-mcp",
+        "validation"
       ],
-      "patternType": "transformation",
-      "complexity": "architectural",
-      "coherency": 0.86
+      "coherency": {
+        "total": 0.88,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 0.5,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 2,
+            "lines": 1
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "2628a11635ccdf52",
-      "name": "provider-registry",
-      "code": "'use strict';\n\n/**\n * OAuth provider definitions.\n * Each provider specifies the env vars it needs, the NextAuth import, and the provider config call.\n */\nconst PROVIDERS = {\n  google: {\n    name: 'Google',\n    envVars: {\n      GOOGLE_CLIENT_ID: { label: 'Client ID', secret: false },\n      GOOGLE_CLIENT_SECRET: { label: 'Client Secret', secret: true },\n    },\n    nextauth: {\n      import: 'import GoogleProvider from \"next-auth/providers/google\";',\n      config: `GoogleProvider({\n      clientId: process.env.GOOGLE_CLIENT_ID ?? \"\",\n      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? \"\",\n    })`,\n    },\n    docsUrl: 'https://console.cloud.google.com/apis/credentials',\n  },\n\n  github: {\n    name: 'GitHub',\n    envVars: {\n      GITHUB_CLIENT_ID: { label: 'Client ID', secret: false },\n      GITHUB_CLIENT_SECRET: { label: 'Client Secret', secret: true },\n    },\n    nextauth: {\n      import: 'import GitHubProvider from \"next-auth/providers/github\";',\n      config: `GitHubProvider({\n      clientId: process.env.GITHUB_CLIENT_ID ?? \"\",\n      clientSecret: process.env.GITHUB_CLIENT_SECRET ?? \"\",\n    })`,\n    },\n    docsUrl: 'https://github.com/settings/developers',\n  },\n\n  facebook: {\n    name: 'Facebook',\n    envVars: {\n      FACEBOOK_CLIENT_ID: { label: 'App ID', secret: false },\n      FACEBOOK_CLIENT_SECRET: { label: 'App Secret', secret: true },\n    },\n    nextauth: {\n      import: 'import FacebookProvider from \"next-auth/providers/facebook\";',\n      config: `FacebookProvider({\n      clientId: process.env.FACEBOOK_CLIENT_ID ?? \"\",\n      clientSecret: process.env.FACEBOOK_CLIENT_SECRET ?? \"\",\n    })`,\n    },\n    docsUrl: 'https://developers.facebook.com/apps',\n  },\n\n  discord: {\n    name: 'Discord',\n    envVars: {\n      DISCORD_CLIENT_ID: { label: 'Client ID', secret: false },\n      DISCORD_CLIENT_SECRET: { label: 'Client Secret', secret: true },\n    },\n    nextauth: {\n      import: 'import DiscordProvider from \"next-auth/providers/discord\";',\n      config: `DiscordProvider({\n      clientId: process.env.DISCORD_CLIENT_ID ?? \"\",\n      clientSecret: process.env.DISCORD_CLIENT_SECRET ?? \"\",\n    })`,\n    },\n    docsUrl: 'https://discord.com/developers/applications',\n  },\n\n  twitter: {\n    name: 'Twitter/X',\n    envVars: {\n      TWITTER_CLIENT_ID: { label: 'Client ID', secret: false },\n      TWITTER_CLIENT_SECRET: { label: 'Client Secret', secret: true },\n    },\n    nextauth: {\n      import: 'import TwitterProvider from \"next-auth/providers/twitter\";',\n      config: `TwitterProvider({\n      clientId: process.env.TWITTER_CLIENT_ID ?? \"\",\n      clientSecret: process.env.TWITTER_CLIENT_SECRET ?? \"\",\n      version: \"2.0\",\n    })`,\n    },\n    docsUrl: 'https://developer.twitter.com/en/portal/dashboard',\n  },\n};\n\n/** List of built-in provider keys */\nconst PROVIDER_NAMES = Object.keys(PROVIDERS);\n\n/**\n * Build a custom OIDC provider definition at runtime.\n * @param {string} name - Provider name (e.g. \"myoidc\")\n * @returns {object} Provider definition matching the PROVIDERS shape\n */\nfunction buildCustomProvider(name) {\n  const upper = name.toUpperCase().replace(/[^A-Z0-9]/g, '_');\n  return {\n    name: `Custom (${name})`,\n    envVars: {\n      [`${upper}_CLIENT_ID`]: { label: 'Client ID', secret: false },\n      [`${upper}_CLIENT_SECRET`]: { label: 'Client Secret', secret: true },\n      [`${upper}_ISSUER`]: { label: 'Issuer URL', secret: false },\n    },\n    nextauth: {\n      import: `// Custom OIDC provider: ${name}\\n// Uses the generic provider approach`,\n      config: `{\n      id: \"${name}\",\n      name: \"${name}\",\n      type: \"oidc\",\n      issuer: process.env.${upper}_ISSUER ?? \"\",\n      clientId: process.env.${upper}_CLIENT_ID ?? \"\",\n      clientSecret: process.env.${upper}_CLIENT_SECRET ?? \"\",\n    }`,\n    },\n    docsUrl: null,\n    custom: true,\n  };\n}\n\n/**\n * Get provider definition by name (built-in or custom).\n */\nfunction getProvider(name) {\n  const lower = name.toLowerCase();\n  if (PROVIDERS[lower]) return { key: lower, ...PROVIDERS[lower] };\n  return { key: lower, ...buildCustomProvider(lower) };\n}\n\nmodule.exports = { PROVIDERS, PROVIDER_NAMES, buildCustomProvider, getProvider };\n",
+      "id": "c8acdbc477889650",
+      "name": "rejected-submission",
+      "code": "function feedbackTest() { return true; }",
       "language": "javascript",
-      "description": "Declarative OAuth provider definitions with env vars, NextAuth imports, and config generation",
+      "description": "",
       "tags": [
-        "array",
-        "auth",
-        "authentication",
-        "build-custom-provider",
-        "config",
-        "declarative",
-        "get-provider",
         "javascript",
-        "network",
-        "nextauth",
-        "normalization",
-        "oauth"
+        "test",
+        "validation",
+        "has-typescript-variant"
       ],
-      "patternType": "io",
-      "complexity": "architectural",
-      "coherency": 0.84
+      "coherency": {
+        "total": 0.88,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "testProof": 0.5,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 1
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "3dae4ceac2aeab7f",
-      "name": "framework-detector",
-      "code": "'use strict';\n\nconst fs = require('fs');\nconst path = require('path');\n\n/**\n * Detect the project framework and configuration.\n * @param {string} projectDir\n * @returns {{ framework, hasNextAuth, routerType, envFile, packageJson }}\n */\nfunction detectProject(projectDir) {\n  const result = {\n    framework: null,\n    hasNextAuth: false,\n    routerType: null,   // 'app' or 'pages'\n    envFile: null,       // which .env file to use\n    packageJson: null,\n  };\n\n  // Read package.json\n  const pkgPath = path.join(projectDir, 'package.json');\n  try {\n    result.packageJson = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));\n  } catch {\n    return result;\n  }\n\n  const deps = {\n    ...result.packageJson.dependencies,\n    ...result.packageJson.devDependencies,\n  };\n\n  // Detect Next.js\n  if (deps['next']) {\n    result.framework = 'nextjs';\n\n    // Detect router type\n    if (fs.existsSync(path.join(projectDir, 'app'))) {\n      result.routerType = 'app';\n    } else if (fs.existsSync(path.join(projectDir, 'src', 'app'))) {\n      result.routerType = 'app';\n    } else if (fs.existsSync(path.join(projectDir, 'pages'))) {\n      result.routerType = 'pages';\n    } else {\n      result.routerType = 'app'; // default to App Router for new projects\n    }\n\n    // Check for next-auth\n    result.hasNextAuth = !!(deps['next-auth'] || deps['@auth/core']);\n  }\n\n  // Determine .env file\n  // Next.js prefers .env.local for secrets\n  if (result.framework === 'nextjs') {\n    result.envFile = path.join(projectDir, '.env.local');\n  } else {\n    result.envFile = path.join(projectDir, '.env');\n  }\n\n  return result;\n}\n\n/**\n * Check if a NextAuth route file already exists.\n */\nfunction hasExistingAuthRoute(projectDir, routerType) {\n  if (routerType === 'app') {\n    return fs.existsSync(path.join(projectDir, 'app', 'api', 'auth', '[...nextauth]', 'route.ts'))\n      || fs.existsSync(path.join(projectDir, 'app', 'api', 'auth', '[...nextauth]', 'route.js'));\n  }\n  return fs.existsSync(path.join(projectDir, 'pages', 'api', 'auth', '[...nextauth].ts'))\n    || fs.existsSync(path.join(projectDir, 'pages', 'api', 'auth', '[...nextauth].js'));\n}\n\nmodule.exports = { detectProject, hasExistingAuthRoute };\n",
+      "id": "95d5f309887b3766",
+      "name": "bak-recovery-load",
+      "code": "function loadJSONWithRecovery(filePath, fallback) {\n  const fs = require('fs');\n  try {\n    if (fs.existsSync(filePath)) {\n      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));\n    }\n  } catch {}\n  const bakPath = filePath + '.bak';\n  try {\n    if (fs.existsSync(bakPath)) {\n      const raw = fs.readFileSync(bakPath, 'utf-8');\n      const parsed = JSON.parse(raw);\n      try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch {}\n      return parsed;\n    }\n  } catch {}\n  if (!fs.existsSync(filePath) && !fs.existsSync(bakPath)) return fallback;\n  throw new Error('Both primary and backup corrupted: ' + filePath);\n}",
       "language": "javascript",
-      "description": "Detects Next.js project, router type, env file convention",
+      "description": "JSON loader with .bak recovery. Falls back to backup when primary is corrupted, restoring the primary from backup.",
       "tags": [
-        "auth",
-        "config",
-        "database",
-        "detect",
-        "detect-project",
-        "detects",
-        "error-handling",
-        "file-io",
-        "framework",
-        "framework-detector",
-        "has-existing-auth-route",
-        "javascript"
+        "io",
+        "recovery",
+        "resilience",
+        "infrastructure"
       ],
-      "patternType": "validation",
-      "complexity": "architectural",
-      "coherency": 0.84
+      "coherency": {
+        "total": 0.84,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "testProof": 0.5,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 7,
+            "maxDepth": 4,
+            "lines": 19
+          }
+        },
+        "language": "javascript"
+      }
     },
     {
-      "id": "ecd9c6ed27897b53",
-      "name": "env-parser",
-      "code": "'use strict';\n\nconst fs = require('fs');\nconst path = require('path');\n\n/**\n * Parse a .env file into an ordered list of entries.\n * Each entry is { type: 'comment'|'var'|'blank', key?, value?, raw }.\n */\nfunction parseEnvFile(content) {\n  const entries = [];\n  for (const line of content.split('\\n')) {\n    const trimmed = line.trim();\n    if (trimmed === '') {\n      entries.push({ type: 'blank', raw: '' });\n    } else if (trimmed.startsWith('#')) {\n      entries.push({ type: 'comment', raw: line });\n    } else {\n      const eqIdx = line.indexOf('=');\n      if (eqIdx !== -1) {\n        const key = line.slice(0, eqIdx).trim();\n        const value = line.slice(eqIdx + 1).trim();\n        entries.push({ type: 'var', key, value, raw: line });\n      } else {\n        entries.push({ type: 'comment', raw: line }); // malformed — treat as comment\n      }\n    }\n  }\n  return entries;\n}\n\n/**\n * Serialize entries back to .env string.\n */\nfunction serializeEnv(entries) {\n  return entries.map(e => {\n    if (e.type === 'blank') return '';\n    if (e.type === 'comment') return e.raw;\n    return `${e.key}=${e.value}`;\n  }).join('\\n');\n}\n\n/**\n * Read and parse a .env file. Returns { entries, vars } where vars is a key→value map.\n * Returns empty state if file doesn't exist.\n */\nfunction readEnv(filePath) {\n  let content = '';\n  try {\n    content = fs.readFileSync(filePath, 'utf8');\n  } catch {\n    return { entries: [], vars: {} };\n  }\n  const entries = parseEnvFile(content);\n  const vars = {};\n  for (const e of entries) {\n    if (e.type === 'var') vars[e.key] = e.value;\n  }\n  return { entries, vars };\n}\n\n/**\n * Write entries to a .env file. Creates parent directories if needed.\n */\nfunction writeEnv(filePath, entries) {\n  const dir = path.dirname(filePath);\n  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n  fs.writeFileSync(filePath, serializeEnv(entries) + '\\n', 'utf8');\n}\n\n/**\n * Merge new variables into an existing .env file.\n * - Never overwrites existing keys that have values\n * - Adds new keys at the end with an optional section comment\n * @param {string} filePath\n * @param {Object} newVars - { KEY: value } map\n * @param {string} [sectionComment] - e.g. \"# --- Google OAuth ---\"\n * @returns {{ added: string[], skipped: string[] }}\n */\nfunction mergeEnv(filePath, newVars, sectionComment) {\n  const { entries, vars } = readEnv(filePath);\n  const added = [];\n  const skipped = [];\n  const toAdd = [];\n\n  for (const [key, value] of Object.entries(newVars)) {\n    if (vars[key] && vars[key] !== '') {\n      skipped.push(key);\n    } else if (vars[key] === '') {\n      // Key exists but empty — update in-place\n      const entry = entries.find(e => e.type === 'var' && e.key === key);\n      if (entry) entry.value = value;\n      added.push(key);\n    } else {\n      toAdd.push({ key, value });\n      added.push(key);\n    }\n  }\n\n  if (toAdd.length > 0) {\n    entries.push({ type: 'blank', raw: '' });\n    if (sectionComment) {\n      entries.push({ type: 'comment', raw: sectionComment });\n    }\n    for (const { key, value } of toAdd) {\n      entries.push({ type: 'var', key, value, raw: `${key}=${value}` });\n    }\n  }\n\n  writeEnv(filePath, entries);\n  return { added, skipped };\n}\n\n/**\n * Remove variables from an env file by key.\n * @returns {string[]} Keys actually removed\n */\nfunction removeEnvVars(filePath, keys) {\n  const { entries } = readEnv(filePath);\n  const keySet = new Set(keys);\n  const removed = [];\n\n  const filtered = entries.filter(e => {\n    if (e.type === 'var' && keySet.has(e.key)) {\n      removed.push(e.key);\n      return false;\n    }\n    return true;\n  });\n\n  // Clean up consecutive blank lines\n  const cleaned = [];\n  for (let i = 0; i < filtered.length; i++) {\n    if (filtered[i].type === 'blank' && cleaned.length > 0 && cleaned[cleaned.length - 1].type === 'blank') {\n      continue;\n    }\n    cleaned.push(filtered[i]);\n  }\n\n  writeEnv(filePath, cleaned);\n  return removed;\n}\n\n/**\n * Ensure .env and .env.local are in .gitignore.\n */\nfunction ensureGitignore(projectDir) {\n  const gitignorePath = path.join(projectDir, '.gitignore');\n  let content = '';\n  try { content = fs.readFileSync(gitignorePath, 'utf8'); } catch { /* no .gitignore */ }\n\n  const lines = content.split('\\n');\n  const toAdd = [];\n\n  if (!lines.some(l => l.trim() === '.env')) toAdd.push('.env');\n  if (!lines.some(l => l.trim() === '.env.local')) toAdd.push('.env.local');\n  if (!lines.some(l => l.trim() === '.env*.local')) toAdd.push('.env*.local');\n\n  if (toAdd.length > 0) {\n    const section = '\\n# OAuth credentials — never commit\\n' + toAdd.join('\\n') + '\\n';\n    fs.writeFileSync(gitignorePath, content + section, 'utf8');\n    return toAdd;\n  }\n  return [];\n}\n\nmodule.exports = { parseEnvFile, serializeEnv, readEnv, writeEnv, mergeEnv, removeEnvVars, ensureGitignore };\n",
+      "id": "b3c30bdca2782571",
+      "name": "atomic-json-write",
+      "code": "function atomicWriteJSON(filePath, data) {\n  const fs = require('fs');\n  const path = require('path');\n  const dir = path.dirname(filePath);\n  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });\n  const json = JSON.stringify(data, null, 2);\n  const tmpPath = filePath + '.tmp';\n  fs.writeFileSync(tmpPath, json, 'utf-8');\n  if (fs.existsSync(filePath)) {\n    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch {}\n  }\n  fs.renameSync(tmpPath, filePath);\n}",
       "language": "javascript",
-      "description": "Env file parser/writer/merger preserving comments and order, plus gitignore updater",
+      "description": "Atomic JSON write with backup: write tmp, backup current, rename. Prevents half-written files on crash.",
       "tags": [
-        "algorithm",
-        "array",
-        "auth",
-        "config",
-        "data-structure",
-        "database",
-        "deduplication",
-        "dotenv",
-        "env",
-        "env-parser",
-        "error-handling",
-        "file"
+        "io",
+        "atomic",
+        "safety",
+        "infrastructure"
       ],
-      "patternType": "algorithm",
-      "complexity": "architectural",
-      "coherency": 0.81
-    },
-    {
-      "id": "ac015c6cf3b107aa",
-      "name": "nextauth-generator",
-      "code": "'use strict';\n\nconst fs = require('fs');\nconst path = require('path');\nconst { readEnv } = require('./env');\nconst { PROVIDERS, getProvider } = require('../providers/registry');\n\n/**\n * Determine which providers are configured by checking .env for non-empty client IDs.\n * @param {string} envPath - Path to .env or .env.local\n * @returns {string[]} Array of provider keys that have credentials set\n */\nfunction detectConfiguredProviders(envPath) {\n  const { vars } = readEnv(envPath);\n  const configured = [];\n\n  // Check built-in providers\n  for (const [key, provider] of Object.entries(PROVIDERS)) {\n    const idVar = Object.keys(provider.envVars).find(v => v.endsWith('_CLIENT_ID'));\n    if (idVar && vars[idVar] && vars[idVar] !== '') {\n      configured.push(key);\n    }\n  }\n\n  // Check for custom providers (pattern: <NAME>_CLIENT_ID + <NAME>_ISSUER)\n  for (const [varName, value] of Object.entries(vars)) {\n    if (varName.endsWith('_CLIENT_ID') && value) {\n      const prefix = varName.replace(/_CLIENT_ID$/, '');\n      const isBuiltIn = Object.values(PROVIDERS).some(p =>\n        Object.keys(p.envVars).includes(varName)\n      );\n      if (!isBuiltIn && vars[`${prefix}_ISSUER`]) {\n        configured.push(prefix.toLowerCase());\n      }\n    }\n  }\n\n  return configured;\n}\n\n/**\n * Generate the NextAuth [...nextauth]/route.ts file content.\n * @param {string[]} providerKeys - e.g. ['google', 'github']\n * @returns {string} TypeScript file content\n */\nfunction generateRouteContent(providerKeys) {\n  if (providerKeys.length === 0) {\n    return `import NextAuth from \"next-auth\";\n\nconst handler = NextAuth({\n  providers: [],\n  // Add providers using: plugger add <provider>\n});\n\nexport { handler as GET, handler as POST };\n`;\n  }\n\n  const providers = providerKeys.map(k => getProvider(k));\n  const imports = ['import NextAuth from \"next-auth\";'];\n  const configs = [];\n\n  for (const p of providers) {\n    imports.push(p.nextauth.import);\n    configs.push(`    ${p.nextauth.config},`);\n  }\n\n  return `${imports.join('\\n')}\n\nconst handler = NextAuth({\n  providers: [\n${configs.join('\\n')}\n  ],\n  pages: {\n    signIn: \"/login\",\n  },\n  callbacks: {\n    async session({ session, token }) {\n      if (session.user) {\n        (session.user as Record<string, unknown>).id = token.sub;\n      }\n      return session;\n    },\n  },\n  secret: process.env.NEXTAUTH_SECRET,\n});\n\nexport { handler as GET, handler as POST };\n`;\n}\n\n/**\n * Write or update the NextAuth route file.\n * @param {string} projectDir - Project root\n * @param {string[]} providerKeys - Configured providers\n * @param {object} options - { routerType: 'app'|'pages' }\n * @returns {string} Path to the written file\n */\nfunction writeNextAuthRoute(projectDir, providerKeys, options = {}) {\n  const routerType = options.routerType || 'app';\n  let routePath;\n\n  if (routerType === 'app') {\n    routePath = path.join(projectDir, 'app', 'api', 'auth', '[...nextauth]', 'route.ts');\n  } else {\n    routePath = path.join(projectDir, 'pages', 'api', 'auth', '[...nextauth].ts');\n  }\n\n  const dir = path.dirname(routePath);\n  if (!fs.existsSync(dir)) {\n    fs.mkdirSync(dir, { recursive: true });\n  }\n\n  const content = routerType === 'app'\n    ? generateRouteContent(providerKeys)\n    : generatePagesRouteContent(providerKeys);\n\n  fs.writeFileSync(routePath, content, 'utf8');\n  return routePath;\n}\n\n/**\n * Generate route content for Pages Router (pages/api/auth/[...nextauth].ts).\n */\nfunction generatePagesRouteContent(providerKeys) {\n  if (providerKeys.length === 0) {\n    return `import NextAuth from \"next-auth\";\n\nexport default NextAuth({\n  providers: [],\n  // Add providers using: plugger add <provider>\n});\n`;\n  }\n\n  const providers = providerKeys.map(k => getProvider(k));\n  const imports = ['import NextAuth from \"next-auth\";'];\n  const configs = [];\n\n  for (const p of providers) {\n    imports.push(p.nextauth.import);\n    configs.push(`    ${p.nextauth.config},`);\n  }\n\n  return `${imports.join('\\n')}\n\nexport default NextAuth({\n  providers: [\n${configs.join('\\n')}\n  ],\n  secret: process.env.NEXTAUTH_SECRET,\n});\n`;\n}\n\nmodule.exports = {\n  detectConfiguredProviders,\n  generateRouteContent,\n  generatePagesRouteContent,\n  writeNextAuthRoute,\n};\n",
-      "language": "javascript",
-      "description": "Generates NextAuth route files for App and Pages Router with dynamic provider composition",
-      "tags": [
-        "ai",
-        "algorithm",
-        "array",
-        "async",
-        "auth",
-        "authentication",
-        "codegen",
-        "config",
-        "data-structure",
-        "database",
-        "detect-configured-providers",
-        "file-io"
-      ],
-      "patternType": "data-structure",
-      "complexity": "architectural",
-      "coherency": 0.75
-    },
-    {
-      "id": "4ce28008b8dfbc18",
-      "name": "readline-prompts",
-      "code": "'use strict';\n\nconst readline = require('readline');\n\n/**\n * Ask a question and return the answer.\n * @param {string} question\n * @param {object} [options]\n * @param {boolean} [options.mask] - Mask input for secrets\n * @param {string} [options.defaultValue]\n * @returns {Promise<string>}\n */\nfunction ask(question, options = {}) {\n  return new Promise((resolve) => {\n    const rl = readline.createInterface({\n      input: process.stdin,\n      output: process.stdout,\n    });\n\n    const prompt = options.defaultValue\n      ? `${question} [${options.defaultValue}]: `\n      : `${question}: `;\n\n    rl.question(prompt, (answer) => {\n      rl.close();\n      resolve(answer.trim() || options.defaultValue || '');\n    });\n  });\n}\n\n/**\n * Ask for confirmation (y/n).\n * @param {string} question\n * @param {boolean} [defaultYes=true]\n * @returns {Promise<boolean>}\n */\nfunction confirm(question, defaultYes = true) {\n  const hint = defaultYes ? '[Y/n]' : '[y/N]';\n  return new Promise((resolve) => {\n    const rl = readline.createInterface({\n      input: process.stdin,\n      output: process.stdout,\n    });\n\n    rl.question(`${question} ${hint}: `, (answer) => {\n      rl.close();\n      const a = answer.trim().toLowerCase();\n      if (a === '') resolve(defaultYes);\n      else resolve(a === 'y' || a === 'yes');\n    });\n  });\n}\n\n/**\n * Ask for a selection from a list.\n * @param {string} question\n * @param {string[]} choices\n * @returns {Promise<string>}\n */\nfunction select(question, choices) {\n  return new Promise((resolve) => {\n    const rl = readline.createInterface({\n      input: process.stdin,\n      output: process.stdout,\n    });\n\n    console.log(`\\n${question}`);\n    choices.forEach((c, i) => console.log(`  ${i + 1}) ${c}`));\n\n    rl.question('\\nSelect (number): ', (answer) => {\n      rl.close();\n      const idx = parseInt(answer, 10) - 1;\n      if (idx >= 0 && idx < choices.length) {\n        resolve(choices[idx]);\n      } else {\n        resolve(choices[0]);\n      }\n    });\n  });\n}\n\n/**\n * Get provider credentials either from CLI flags or interactive prompts.\n * @param {object} provider - Provider definition from registry\n * @param {object} flags - CLI flags (e.g. { 'client-id': '...', 'client-secret': '...' })\n * @param {boolean} isInteractive - Whether to use interactive prompts\n * @returns {Promise<Object>} - Map of env var name → value\n */\nasync function getCredentials(provider, flags, isInteractive) {\n  const credentials = {};\n\n  for (const [envVar, config] of Object.entries(provider.envVars)) {\n    // Map env var names to common flag names\n    let flagValue = null;\n    if (envVar.endsWith('_CLIENT_ID')) flagValue = flags['client-id'];\n    else if (envVar.endsWith('_CLIENT_SECRET')) flagValue = flags['client-secret'];\n    else if (envVar.endsWith('_ISSUER')) flagValue = flags['issuer'];\n\n    if (flagValue) {\n      credentials[envVar] = flagValue;\n    } else if (isInteractive) {\n      const value = await ask(`  Enter ${config.label} for ${provider.name}`);\n      credentials[envVar] = value;\n    } else {\n      throw new Error(`Missing --${envVar.toLowerCase().replace(/_/g, '-')} for ${provider.name}`);\n    }\n  }\n\n  return credentials;\n}\n\nmodule.exports = { ask, confirm, select, getCredentials };\n",
-      "language": "javascript",
-      "description": "Zero-dep interactive readline prompts: ask, confirm, select, getCredentials",
-      "tags": [
-        "ai",
-        "array",
-        "ask",
-        "async",
-        "cli",
-        "config",
-        "confirm",
-        "data-structure",
-        "database",
-        "error-handling",
-        "factory",
-        "interactive"
-      ],
-      "patternType": "data-structure",
-      "complexity": "architectural",
-      "coherency": 0.75
+      "coherency": {
+        "total": 0.84,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "testProof": 0.5,
+          "historicalReliability": 0.5
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 4,
+            "maxDepth": 3,
+            "lines": 13
+          }
+        },
+        "language": "javascript"
+      }
     }
   ]
 }

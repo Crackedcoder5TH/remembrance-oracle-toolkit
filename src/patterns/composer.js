@@ -16,6 +16,8 @@
  *   });
  */
 
+const { sanitizePatternCode } = require('./library');
+
 // ─── Built-in Composition Templates ───
 
 const BUILT_IN_TEMPLATES = [
@@ -394,7 +396,7 @@ class PatternComposer {
         return {
           name: best.name || name,
           id: best.id,
-          code: best.code,
+          code: sanitizePatternCode(best.code),
           language: best.language || language,
           coherency: best.coherency,
           matchScore: best.matchScore || 0,
@@ -416,7 +418,7 @@ class PatternComposer {
       return {
         name: resolution.pattern.name || name,
         id: resolution.pattern.id,
-        code: resolution.pattern.code,
+        code: sanitizePatternCode(resolution.pattern.code),
         language: resolution.pattern.language || language,
         coherency: resolution.pattern.coherencyScore || resolution.confidence,
         matchScore: resolution.confidence,
@@ -724,7 +726,7 @@ class PatternComposer {
       }
 
       // Skip export default / export {}
-      if (/^export\s+(default\s+)?/.test(t) && /^export\s+\{/.test(t)) continue;
+      if (/^export\s+default\s+/.test(t) || /^export\s+\{/.test(t)) continue;
 
       filtered.push(line);
     }

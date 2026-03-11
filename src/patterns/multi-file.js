@@ -9,6 +9,19 @@
  */
 
 const crypto = require('crypto');
+const path = require('path');
+
+/**
+ * Validate that a rendered file path is safe (no traversal above root).
+ * Throws if the path escapes the output directory.
+ */
+function assertSafePath(filePath) {
+  const normalized = path.normalize(filePath);
+  if (path.isAbsolute(normalized) || normalized.startsWith('..')) {
+    throw new Error(`Path traversal detected: "${filePath}" resolves outside the output directory`);
+  }
+  return normalized;
+}
 
 // ─── Module Pattern ───
 
@@ -464,7 +477,7 @@ function scaffold(modulePattern, variables = {}, options = {}) {
   const prefix = options.outputDir || '';
 
   for (const file of modulePattern.files) {
-    const renderedPath = TemplateEngine.render(file.path, variables);
+    const renderedPath = assertSafePath(TemplateEngine.render(file.path, variables));
     const renderedCode = TemplateEngine.render(file.code, variables);
 
     files.push({
@@ -501,7 +514,7 @@ function compose(modules, variables = {}) {
     }
 
     for (const file of mod.files) {
-      const renderedPath = TemplateEngine.render(file.path, variables);
+      const renderedPath = assertSafePath(TemplateEngine.render(file.path, variables));
       if (seenPaths.has(renderedPath)) continue; // Skip duplicates
       seenPaths.add(renderedPath);
 

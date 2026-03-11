@@ -80,7 +80,7 @@ function acquireLock(storeDir, label = 'pattern-library') {
       }
     }
   }
-  return () => {};
+  throw new Error(`Failed to acquire lock for ${label} after ${LOCK_DELAYS.length + 1} attempts — another process may be holding the lock at ${storeDir}`);
 }
 
 /**

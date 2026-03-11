@@ -17,6 +17,42 @@ const { withRetry } = require('../core/resilience');
 
 const REMOTES_CONFIG_DIR = path.join(os.homedir(), '.remembrance');
 const REMOTES_CONFIG_PATH = path.join(REMOTES_CONFIG_DIR, 'remotes.json');
+const crypto = require('crypto');
+
+// ─── Token encryption at rest ───
+
+function _deriveKey() {
+  // Derive a stable encryption key from the machine's user identity + a fixed salt.
+  // This is NOT a substitute for a proper secret manager, but prevents plaintext
+  // tokens from sitting in the config file readable by any process.
+  const identity = `${os.hostname()}:${os.userInfo().username}:remembrance-oracle`;
+  return crypto.scryptSync(identity, 'remembrance-token-salt', 32);
+}
+
+function _encryptToken(plaintext) {
+  if (!plaintext) return plaintext;
+  const key = _deriveKey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return 'enc:' + iv.toString('hex') + ':' + tag.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function _decryptToken(stored) {
+  if (!stored || !stored.startsWith('enc:')) return stored; // plaintext fallback for migration
+  try {
+    const parts = stored.slice(4).split(':');
+    if (parts.length !== 3) return stored;
+    const [ivHex, tagHex, dataHex] = parts;
+    const key = _deriveKey();
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+    return decipher.update(Buffer.from(dataHex, 'hex'), null, 'utf8') + decipher.final('utf8');
+  } catch {
+    return stored; // If decryption fails, return as-is (possibly plaintext from older version)
+  }
+}
 
 // ─── HTTP Helper ───
 
@@ -239,12 +275,13 @@ function registerRemote(url, options = {}) {
   ensureDir(REMOTES_CONFIG_DIR);
   let config = loadRemotesConfig();
   const name = options.name || new URL(url).hostname;
+  const encryptedToken = options.token ? _encryptToken(options.token) : null;
   const existing = config.remotes.find(r => r.url === url);
   if (existing) {
     existing.name = name;
-    if (options.token) existing.token = options.token;
+    if (options.token) existing.token = encryptedToken;
   } else {
-    config.remotes.push({ url, name, token: options.token || null, addedAt: new Date().toISOString() });
+    config.remotes.push({ url, name, token: encryptedToken, addedAt: new Date().toISOString() });
   }
   fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2));
   return { registered: true, name, url, totalRemotes: config.remotes.length };
@@ -301,7 +338,7 @@ async function federatedRemoteSearch(query, options = {}) {
   const promises = remotes.map(async (remote) => {
     const client = new RemoteOracleClient(remote.url, {
       name: remote.name,
-      token: remote.token,
+      token: _decryptToken(remote.token),
       timeout,
     });
     try {
@@ -351,7 +388,7 @@ async function federatedRemoteSearch(query, options = {}) {
 async function checkRemoteHealth() {
   const remotes = listRemotes();
   const results = await Promise.all(remotes.map(async (remote) => {
-    const client = new RemoteOracleClient(remote.url, { name: remote.name });
+    const client = new RemoteOracleClient(remote.url, { name: remote.name, token: _decryptToken(remote.token) });
     const health = await client.health();
     return { name: remote.name, url: remote.url, ...health };
   }));
@@ -366,4 +403,6 @@ module.exports = {
   federatedRemoteSearch,
   checkRemoteHealth,
   request,
+  _encryptToken,
+  _decryptToken,
 };

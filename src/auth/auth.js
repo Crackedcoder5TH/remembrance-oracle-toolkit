@@ -403,9 +403,12 @@ class AuthManager {
  * Returns an Express/http-compatible middleware function that extracts auth
  * credentials from the request and populates `req.user`.
  *
- * Checks (in order):
- *   1. Authorization header: "Bearer <token>" or "ApiKey <key>"
- *   2. Query parameters: ?token=<token> or ?apiKey=<key>
+ * Auth is extracted from the Authorization header ONLY:
+ *   - "Bearer <token>" or "ApiKey <key>"
+ *
+ * Query-parameter auth (?token=, ?apiKey=) is intentionally NOT supported
+ * because tokens in URLs leak via server logs, Referer headers, and browser
+ * history.
  *
  * If the path is in `publicPaths`, the request is allowed through even
  * without credentials (req.user will be null).
@@ -424,7 +427,7 @@ function authMiddleware(authManager) {
 
     let user = null;
 
-    // 1. Check Authorization header
+    // Check Authorization header only (no query-parameter fallback)
     const authHeader = req.headers && req.headers['authorization'];
     if (authHeader) {
       const parts = authHeader.split(' ');
@@ -440,16 +443,6 @@ function authMiddleware(authManager) {
       }
     }
 
-    // 2. Fall back to query parameters
-    if (!user) {
-      const queryParams = parseQuery(req.url || '');
-      if (queryParams.token) {
-        user = authManager.validateToken(queryParams.token);
-      } else if (queryParams.apiKey) {
-        user = authManager.validateApiKey(queryParams.apiKey);
-      }
-    }
-
     if (user) {
       req.user = user;
       return next();
@@ -457,7 +450,7 @@ function authMiddleware(authManager) {
 
     // No valid auth found — 401
     res.statusCode = 401;
-    const body = JSON.stringify({ error: 'Unauthorized', message: 'Valid authentication required' });
+    const body = JSON.stringify({ error: 'Unauthorized', message: 'Valid authentication required. Use Authorization header with Bearer or ApiKey scheme.' });
     res.setHeader('Content-Type', 'application/json');
     res.end(body);
   };

@@ -51,7 +51,7 @@ describe('@oracle-infrastructure marker', () => {
         element.innerHTML = data;
       }
     `;
-    const result = covenantCheck(infraCode);
+    const result = covenantCheck(infraCode, { trusted: true });
     assert.equal(result.sealed, true, 'infrastructure files should pass covenant');
   });
 

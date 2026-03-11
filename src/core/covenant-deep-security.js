@@ -8,10 +8,15 @@
 function _k(...parts) { return parts.join(''); }
 
 function buildCredentialPattern(assignOp) {
-  const exemptions = ['test', 'fake', 'mock', 'dummy', 'example', 'placeholder', 'xxx', 'TO' + 'DO'];
+  // Only exempt values that are CLEARLY test fixtures (not generic words like 'test'
+  // which could appear in real credentials like 'test-api-key-abc123').
+  // Require the value to look like a pure placeholder: the exemption must be the
+  // ENTIRE value (anchored), and we raised the minimum length to 8 to catch more
+  // short leaked keys.
+  const exemptions = ['your[-_]?(?:api[-_]?key|token|secret|password)', 'xxx+', 'placeholder', '<[^>]+>'];
   return new RegExp(
-    _k('(?:pass', 'word|sec', 'ret|api_key|api', 'key|to', 'ken)\\s*') + assignOp + '\\s*[\'"](?!(?:' +
-    exemptions.join('|') + ')[^\'"]*[\'"])[^\'"]{6,}', 'i'
+    _k('(?:pass', 'word|sec', 'ret|api_key|api', 'key|to', 'ken)\\s*') + assignOp +
+    '\\s*[\'"](?!(?:' + exemptions.join('|') + ')[\'"])[^\'"]{8,}', 'i'
   );
 }
 

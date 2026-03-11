@@ -17,11 +17,11 @@ const { applySimplify, applySecure, applyReadable, applyUnify, applyCorrect, app
 const DIMENSION_DROP_THRESHOLD = 0.05;
 
 const DIMENSION_DROP_DIAGNOSTICS = {
-  simplicity: 'Transform increased complexity — deeper nesting, longer lines, or less concise structure.',
-  readability: 'Transform reduced readability — mixed indentation, poor variable names, or lost clarity.',
-  security: 'Transform introduced security concerns — covenant violations, eval, var, or loose equality.',
-  unity: 'Transform broke style consistency — mixed camelCase/snake_case or mixed quote styles.',
-  correctness: 'Transform reduced correctness — unbalanced brackets, TODO markers, or empty catch blocks.',
+  simplicity: 'Transform increased complexity — higher cyclomatic complexity or more lines of code.',
+  readability: 'Transform reduced readability — poor naming, broken structure, or lost doc coverage.',
+  security: 'Transform introduced security concerns — covenant violations, critical severity pattern, or unsafe code.',
+  unity: 'Transform broke abundance alignment — global state mutation, magic numbers, or reduced modularity.',
+  correctness: 'Transform reduced intuitive correctness — diverged from proven patterns or introduced structural issues.',
 };
 
 /**

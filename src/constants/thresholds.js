@@ -199,6 +199,73 @@ const CANDIDATE_MIN_COHERENCY = 0.5;
 /** Max ternary nesting for Python transpilation viability */
 const MAX_TERNARY_NESTING = 2;
 
+// ─── Reflection Dimension Weights (reflection-scorers.js) ───
+
+/** Hybrid coherency scorer weights — fixed, sum to 1.0.
+ *  S=Simplicity, R=Readability, N=No-Harm, U=Unity/Abundance, I=Intuitive Correctness */
+const REFLECTION_WEIGHTS = {
+  simplicity: 0.25,    // S — r_eff proxy (pull strength from minimalism)
+  readability: 0.20,   // R — γ_eff proxy (noise suppression)
+  security: 0.25,      // N — covenant veto proxy (non-negotiable)
+  unity: 0.20,         // U — γ_cascade proxy (collective flow)
+  correctness: 0.10,   // I — δ_void proxy (intuitive correctness / library similarity)
+};
+
+/** Simplicity (S) dimension config — LOC-weighted formula */
+const SIMPLICITY_CONFIG = {
+  MAX_COMPLEXITY: 15,       // Cyclomatic complexity ceiling (above = 0)
+  MAX_LOC: 50,              // Lines-of-code ceiling for penalty
+  COMPLEXITY_WEIGHT: 0.5,   // Weight of complexity in formula
+  LOC_WEIGHT: 0.5,          // Weight of LOC in formula
+  FLOOR: 0.15,              // Minimum score for any parseable code
+};
+
+/** Readability (R) dimension config — docstring-based formula */
+const READABILITY_CONFIG = {
+  NAMING_WEIGHT: 0.5,       // Weight of naming quality
+  STRUCTURE_WEIGHT: 0.3,    // Weight of lint/structure score
+  DOC_COVERAGE_WEIGHT: 0.2, // Weight of exported function docstrings
+};
+
+/** Security (N) severity tiers — covenant is absolute */
+const SECURITY_SEVERITY = {
+  CRITICAL_PATTERNS: [
+    /\beval\s*\(/,
+    /\bnew\s+Function\s*\(/,
+    /child_process/,
+    /innerHTML\s*=/,
+    /document\.write\s*\(/,
+    /\.exec\s*\(/,
+  ],
+  MEDIUM_PENALTY: 0.3,      // Per medium-severity finding
+  LOW_PENALTY: 0.1,         // Per low-severity finding
+};
+
+/** Unity (U) dimension — concrete abundance checks */
+const UNITY_CONFIG = {
+  GLOBAL_STATE_PATTERNS: [
+    /\bglobal\.\w+\s*=/,
+    /\bwindow\.\w+\s*=/,
+    /\bglobalThis\.\w+\s*=/,
+  ],
+  MAGIC_NUMBER_THRESHOLD: 3,  // Max magic numbers before penalty
+  MODULARITY_BONUS: 0.1,      // Bonus for exports/module.exports
+};
+
+/** Intuitive Correctness (I) dimension — AST + token similarity */
+const INTUITIVE_CONFIG = {
+  AST_WEIGHT: 0.5,             // Weight of structural (AST) similarity
+  TOKEN_WEIGHT: 0.5,           // Weight of semantic (token) similarity
+  FALLBACK_SCORE: 0.5,         // When no library patterns available
+};
+
+/** Coherency acceptance zones — three-tier decision */
+const COHERENCY_ZONES = {
+  ACCEPT: 0.85,        // >= 0.85: auto-accept into library
+  REVIEW: 0.75,        // 0.75–0.84: flag for human review or second-pass healing
+  VETO: 0.75,          // < 0.75: veto and rerun
+};
+
 module.exports = {
   // Coherency
   COHERENCY_WEIGHTS,
@@ -235,4 +302,12 @@ module.exports = {
   ITERATIVE_REFINE,
   CANDIDATE_MIN_COHERENCY,
   MAX_TERNARY_NESTING,
+  // Reflection dimension scoring
+  REFLECTION_WEIGHTS,
+  SIMPLICITY_CONFIG,
+  READABILITY_CONFIG,
+  SECURITY_SEVERITY,
+  UNITY_CONFIG,
+  INTUITIVE_CONFIG,
+  COHERENCY_ZONES,
 };

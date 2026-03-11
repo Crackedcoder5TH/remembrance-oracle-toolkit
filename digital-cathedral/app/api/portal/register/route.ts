@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, getClientByEmail } from "@/app/lib/database";
+import { createClient, getClientByEmail } from "@/app/lib/client-database";
 import { hashPassword } from "@/app/lib/password";
 import {
   createPortalSessionToken,

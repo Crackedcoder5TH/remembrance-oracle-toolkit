@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     );
 
     // Build confirmation URL
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com";
     const confirmationUrl = `${siteUrl}/api/agent/consent?token=${encodeURIComponent(token)}`;
 
     return NextResponse.json({

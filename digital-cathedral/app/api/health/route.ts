@@ -42,7 +42,19 @@ export async function GET() {
       uptime: `${Math.floor(uptimeMs / 1000)}s`,
       timestamp: new Date().toISOString(),
       checks,
+      _discovery: {
+        llms_txt: "/llms.txt",
+        openapi: "/api/agent/schema",
+        mcp: "/.well-known/mcp.json",
+        feed: "/feed.json",
+      },
     },
-    { status: allHealthy ? 200 : 503 },
+    {
+      status: allHealthy ? 200 : 503,
+      headers: {
+        "Cache-Control": "no-cache, must-revalidate",
+        "Link": '</llms.txt>; rel="ai-instructions", </api/agent/schema>; rel="describedby"',
+      },
+    },
   );
 }

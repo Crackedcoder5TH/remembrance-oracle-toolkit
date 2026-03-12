@@ -23,6 +23,13 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   manifest: "/manifest.json",
   metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: "/",
+    types: {
+      "application/feed+json": "/feed.json",
+      "application/json": "/api/agent/schema",
+    },
+  },
   keywords: [
     "life insurance",
     "military life insurance",
@@ -31,10 +38,17 @@ export const metadata: Metadata = {
     "term life insurance",
     "whole life insurance",
     "military family coverage",
-    "digital cathedral",
+    "ai agent api",
   ],
   authors: [{ name: "Valor Legacies" }],
   creator: "Valor Legacies",
+
+  // AI agent discovery — tells crawlers where to find machine-readable info
+  other: {
+    "ai-instructions": "See /llms.txt for AI agent instructions and /api/agent/schema for OpenAPI spec",
+    "ai-plugin": "/.well-known/ai-plugin.json",
+    "ai-agent-api": "/api/agent/schema",
+  },
 
   // ─── Open Graph ───
   openGraph: {
@@ -103,6 +117,38 @@ const jsonLd = {
         availableLanguage: "English",
       },
     },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: BASE_URL },
+        { "@type": "ListItem", position: 2, name: "About", item: `${BASE_URL}/about` },
+        { "@type": "ListItem", position: 3, name: "FAQ", item: `${BASE_URL}/faq` },
+        { "@type": "ListItem", position: 4, name: "Privacy Policy", item: `${BASE_URL}/privacy` },
+        { "@type": "ListItem", position: 5, name: "Terms of Service", item: `${BASE_URL}/terms` },
+      ],
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Valor Legacies Agent API",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "AI agent API for submitting life insurance leads on behalf of veterans and military families. Supports consent-based lead submission, account registration, and OpenAPI discovery.",
+      url: `${BASE_URL}/api/agent/schema`,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        description: "Free API access for authorized AI agents",
+      },
+      featureList: [
+        "Consent-based lead submission",
+        "Account registration",
+        "OpenAPI 3.1 schema discovery",
+        "MCP protocol support",
+        "TCPA/CCPA/FCC 2025 compliant",
+      ],
+    },
   ],
 };
 
@@ -114,6 +160,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* AI agent discovery links */}
+        <link rel="ai-instructions" href="/llms.txt" />
+        <link rel="ai-plugin" href="/.well-known/ai-plugin.json" />
+        <link rel="mcp-discovery" href="/.well-known/mcp.json" />
+        <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Valor Legacies Search" />
+        <link rel="alternate" type="application/feed+json" href="/feed.json" title="Valor Legacies JSON Feed" />
+        <link rel="alternate" type="application/json" href="/api/agent/schema" title="Agent API Schema" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -128,6 +181,11 @@ export default function RootLayout({
           <ErrorReporter />
         </AuthProvider>
         <AnalyticsScripts />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js')",
+          }}
+        />
       </body>
     </html>
   );

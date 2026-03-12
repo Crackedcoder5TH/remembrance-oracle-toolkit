@@ -1,0 +1,91 @@
+# Valor Legacies — AI Agent Instructions
+# https://valorlegacies.com/llms.txt
+
+> Valor Legacies is a veteran-focused life insurance lead generation platform.
+> AI agents can submit leads, register human users, and query available services.
+
+## What This Site Does
+
+Valor Legacies connects veterans, active-duty military, and their families with
+licensed life insurance professionals. The platform captures lead information
+through a TCPA-compliant form and routes qualified leads to insurance agents.
+
+## Agent API
+
+Base URL: /api/agent
+
+### Authentication
+All agent endpoints require a Bearer token in the Authorization header:
+  Authorization: Bearer <AGENT_API_KEY>
+
+### Available Endpoints
+
+#### POST /api/agent/leads
+Submit a life insurance lead on behalf of a human user.
+Requires explicit human consent (consent token from /api/agent/consent).
+
+Request body (JSON):
+  - firstName (string, required): Legal first name
+  - lastName (string, required): Legal last name
+  - dateOfBirth (string, required): YYYY-MM-DD format, must be 18+
+  - email (string, required): Valid email address
+  - phone (string, required): 10-digit US phone number
+  - state (string, required): 2-letter US state code (e.g., "TX", "CA")
+  - coverageInterest (string, required): One of: mortgage-protection, final-expense, income-replacement, retirement-savings, guaranteed-income, legacy, not-sure
+  - veteranStatus (string, required): One of: active-duty, reserve, national-guard, veteran, non-military
+  - militaryBranch (string, conditional): Required if veteranStatus is not "non-military". One of: army, marine-corps, navy, air-force, space-force, coast-guard, national-guard, reserves
+  - purchaseIntent (string, required): One of: protect-family, want-protection, exploring
+  - consentToken (string, required): Obtained from POST /api/agent/consent
+
+Response: { success, leadId, message }
+
+#### POST /api/agent/consent
+Generate a consent token for a human user. The human must explicitly approve.
+This creates a pending consent that must be confirmed by the human via email or
+the returned confirmation URL.
+
+Request body (JSON):
+  - email (string, required): The human's email address
+  - firstName (string, required): The human's first name
+  - agentIdentity (string, required): Name/identifier of the AI agent or model
+  - scope (string, required): What the agent is consenting to. One of: lead-submission, account-registration, both
+
+Response: { consentId, confirmationUrl, expiresAt }
+
+#### GET /api/agent/consent?token=<token>
+Check consent status or confirm consent (human-facing confirmation page).
+
+#### POST /api/agent/register
+Register a human user as a client (lead buyer) on the platform.
+Requires a confirmed consent token with scope "account-registration" or "both".
+
+Request body (JSON):
+  - email (string, required): The human's email address
+  - firstName (string, required): First name
+  - lastName (string, required): Last name
+  - phone (string, optional): Phone number
+  - state (string, optional): 2-letter state code
+  - consentToken (string, required): Confirmed consent token with registration scope
+
+Response: { success, message, loginUrl }
+
+#### GET /api/agent/schema
+Returns the full OpenAPI-compatible schema for all agent endpoints.
+No authentication required.
+
+## Coverage Types Explained
+- mortgage-protection: Term life to cover mortgage balance
+- final-expense: Whole life for burial/funeral costs
+- income-replacement: Term life to replace lost income
+- retirement-savings: Indexed Universal Life (IUL) for cash value growth
+- guaranteed-income: Annuity for guaranteed retirement income
+- legacy: Whole life for wealth transfer
+- not-sure: Unsure — agent will help determine best fit
+
+## Important Notes for AI Agents
+1. NEVER submit a lead without explicit human consent (consent token required)
+2. All consent tokens expire after 24 hours
+3. The human must confirm consent via email or confirmation URL before the token is valid
+4. Rate limit: 10 requests per minute per API key
+5. Lead data is protected under TCPA, CCPA, and FCC 2025 regulations
+6. Do not fabricate or hallucinate lead information — all data must come from the human

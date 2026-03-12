@@ -150,7 +150,35 @@ const HANDLERS = {
   // ─── 9. Harvest ───
   oracle_harvest(oracle, args) {
     const { harvest } = require('../ci/harvest');
-    return harvest(oracle, args.path, {
+    const path = require('path');
+    const os = require('os');
+
+    // Security: restrict local harvest paths to the project directory or home directory.
+    // Remote URLs (git clone) are allowed since they clone to a temp directory.
+    const source = args.path || '';
+    const isUrl = source.startsWith('http') || source.startsWith('git@') || source.includes('github.com');
+    if (!isUrl) {
+      const resolved = path.resolve(source);
+      const cwd = process.cwd();
+      const home = os.homedir();
+      const tmp = os.tmpdir();
+      const isBelowCwd = resolved.startsWith(cwd + path.sep) || resolved === cwd;
+      const isBelowHome = resolved.startsWith(home + path.sep) || resolved === home;
+      const isBelowTmp = resolved.startsWith(tmp + path.sep) || resolved === tmp;
+      if (!isBelowCwd && !isBelowHome && !isBelowTmp) {
+        throw new Error(
+          `Harvest path must be within the project directory or home directory. ` +
+          `Resolved "${resolved}" is outside allowed boundaries.`
+        );
+      }
+      // Block sensitive directories
+      const sensitive = ['.ssh', '.gnupg', '.aws', '.config', '.kube', '.docker'].map(d => path.join(home, d));
+      if (sensitive.some(s => resolved.startsWith(s + path.sep) || resolved === s)) {
+        throw new Error(`Harvest path "${resolved}" points to a sensitive directory.`);
+      }
+    }
+
+    return harvest(oracle, source, {
       language: args.language,
       dryRun: args.dryRun || false,
       splitMode: args.splitMode || 'file',

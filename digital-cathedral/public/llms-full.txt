@@ -1,0 +1,280 @@
+# Valor Legacies — Complete AI Agent Reference
+# https://valorlegacies.com/llms-full.txt
+#
+# This is the extended version of /llms.txt with complete documentation.
+# For the quick-start version, see /llms.txt
+
+## Company Overview
+
+Valor Legacies is a veteran-founded life insurance lead generation platform.
+We connect Active Duty, National Guard, Reserve, and Veterans with licensed
+life insurance professionals who specialize in military-family coverage.
+
+We are NOT an insurance company, agent, or broker. We do not sell insurance,
+provide quotes, or bind coverage. We generate leads and connect consumers with
+licensed professionals.
+
+Founded by a veteran. Built to serve military families.
+
+## What We Offer
+
+Free life insurance coverage review for:
+- Active Duty military (all branches)
+- National Guard members
+- Reserve members
+- Veterans (all eras)
+- Military spouses and family members
+- Non-military civilians (also eligible)
+
+## Coverage Types
+
+### Mortgage Protection
+Term life insurance designed to cover your mortgage balance if you pass away.
+Ensures your family can stay in their home. Typically 15-30 year terms matching
+the mortgage duration.
+
+### Final Expense
+Whole life insurance for burial, funeral, and end-of-life costs. Typically
+$5,000-$50,000 in coverage. No medical exam options available. Builds cash value
+over time.
+
+### Income Replacement
+Term life insurance to replace lost income for your dependents. Coverage amount
+typically 10-12x annual salary. Available in 10, 15, 20, or 30 year terms.
+
+### Retirement Savings (IUL)
+Indexed Universal Life insurance that combines life insurance protection with
+tax-advantaged cash value growth. Cash value is tied to stock market index
+performance with a guaranteed floor (no losses). Can be used as supplemental
+retirement income.
+
+### Guaranteed Income (Annuity)
+Fixed or indexed annuity for guaranteed retirement income. Provides a steady
+monthly payment for life or a specified period. Not technically life insurance
+but often paired with it for comprehensive planning.
+
+### Legacy / Wealth Transfer
+Permanent whole life insurance for intergenerational wealth transfer. Death
+benefit passes to beneficiaries tax-free. Used for estate planning, charitable
+giving, and legacy creation.
+
+## SGLI vs. Private Coverage
+
+SGLI (Servicemembers' Group Life Insurance) provides:
+- $400,000 maximum coverage (as of 2024)
+- Low-cost group rates while serving
+- Coverage ends 120 days after separation (VGLI conversion available)
+
+Private coverage through Valor Legacies professionals can supplement SGLI:
+- No coverage cap (higher amounts available)
+- Portable — you own the policy regardless of military status
+- Rates locked in at purchase age (younger = cheaper)
+- Cash value options (IUL, whole life) not available through SGLI
+- Can be tailored to specific needs (mortgage, income, legacy)
+
+## The Process
+
+1. **Fill out the form** (less than 60 seconds)
+   - Basic identity info (name, DOB, state)
+   - Coverage interest selection
+   - Military status and branch
+   - Contact info (email, phone)
+   - Consent checkboxes (TCPA compliant)
+
+2. **Get matched** (within 1 business day)
+   - A licensed insurance professional reviews your information
+   - They specialize in military-family coverage
+   - They contact you via phone or email
+
+3. **Review your options** (free, no obligation)
+   - The professional explains available options
+   - You choose what fits your family's needs
+   - No pressure, no obligation to purchase
+
+## States Served
+
+All 50 US states + District of Columbia + Puerto Rico.
+Coverage availability may vary by state and carrier.
+
+## AI Agent API
+
+### Base URL
+https://valorlegacies.com/api/agent
+
+### Authentication
+All agent endpoints (except /schema) require:
+  Authorization: Bearer <AGENT_API_KEY>
+
+API keys are issued to authorized AI agent developers. Each key is labeled
+with the agent identity (e.g., "claude", "gpt4", "custom-bot").
+
+### Endpoints
+
+#### 1. POST /api/agent/consent
+Creates a consent request that the human must confirm.
+
+**Why this exists**: TCPA requires explicit, informed consent before contact.
+AI agents cannot submit leads without the human's approval.
+
+**Request**:
+```json
+{
+  "email": "user@example.com",
+  "firstName": "John",
+  "agentIdentity": "Claude",
+  "scope": "lead-submission"
+}
+```
+
+**Scopes**:
+- `lead-submission` — allows submitting insurance leads
+- `account-registration` — allows creating a client account
+- `both` — allows both actions
+
+**Response**:
+```json
+{
+  "success": true,
+  "consentId": "consent_abc123_def456",
+  "confirmationUrl": "https://valorlegacies.com/api/agent/consent?token=...",
+  "pendingToken": "eyJ...",
+  "expiresAt": "2026-03-12T15:30:00.000Z",
+  "instructions": {
+    "forAgent": "Show the confirmationUrl to the human user...",
+    "forHuman": "John, please visit this link to confirm..."
+  }
+}
+```
+
+**Next step**: The human must visit `confirmationUrl` and click to confirm.
+The page will display a confirmed token that the agent can use.
+
+#### 2. GET /api/agent/consent?token=<token>
+Human-facing confirmation page. When the human visits this URL:
+- Displays what they're authorizing (scope, agent name)
+- Shows a confirmed token on success
+- The agent can then use this confirmed token for subsequent API calls
+
+#### 3. POST /api/agent/leads
+Submit a life insurance lead.
+
+**Required**: Confirmed consent token with scope "lead-submission" or "both".
+
+**Request**:
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "dateOfBirth": "1990-05-15",
+  "email": "john@example.com",
+  "phone": "5551234567",
+  "state": "TX",
+  "coverageInterest": "mortgage-protection",
+  "veteranStatus": "veteran",
+  "militaryBranch": "army",
+  "purchaseIntent": "protect-family",
+  "consentToken": "<confirmed-token>"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "leadId": "lead_abc123",
+  "message": "Lead submitted successfully...",
+  "score": 87,
+  "tier": "hot"
+}
+```
+
+**Lead Scoring Tiers**:
+- Hot (85-100): Immediate follow-up
+- Warm (70-84): Same-day follow-up
+- Standard (55-69): Next business day
+- Cool (0-54): Batch queue
+
+#### 4. POST /api/agent/register
+Register the human as a client (lead buyer) on the platform.
+
+**Required**: Confirmed consent token with scope "account-registration" or "both".
+
+**Request**:
+```json
+{
+  "email": "john@example.com",
+  "firstName": "John",
+  "lastName": "Smith",
+  "phone": "5551234567",
+  "state": "TX",
+  "consentToken": "<confirmed-token>"
+}
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "loginUrl": "https://valorlegacies.com/portal/login",
+  "temporaryPassword": "abc123xyz",
+  "instructions": {
+    "forHuman": "Sign in at the login URL with your email and temporary password."
+  }
+}
+```
+
+#### 5. GET /api/agent/schema
+Returns the full OpenAPI 3.1 schema for all agent endpoints.
+No authentication required. Cached for 1 hour.
+
+### Rate Limits
+- Leads: 10 per minute per API key
+- Consent: 10 per minute per API key
+- Registration: 5 per minute per API key
+
+### Error Codes
+- 400: Invalid request (missing/invalid fields)
+- 401: Missing or invalid API key
+- 403: Consent not confirmed or wrong scope
+- 409: Duplicate (lead already submitted or account exists)
+- 429: Rate limit exceeded (Retry-After header included)
+- 500: Server error (retry)
+- 503: Service unavailable
+
+## Compliance
+
+### TCPA (Telephone Consumer Protection Act)
+- One-to-one consent model (FCC 2025 rules)
+- Single identified company per consent
+- Unchecked by default (no pre-checked boxes)
+- Clear disclosure text
+- Consent is not a condition of purchase
+- Full consent metadata captured (timestamp, IP, user agent, page URL)
+
+### CCPA/CPRA (California Consumer Privacy Act)
+- Right to delete: DELETE /api/leads with email
+- Right to know: Full data disclosure on request
+- Do Not Sell: Link in footer and privacy page
+- No data sold to third parties
+
+### FCC 2025
+- Updated consent language per January 2025 FCC ruling
+- One consent = one company (no lead aggregator sharing)
+- Consent text explicitly names Valor Legacies
+
+## Discovery Files
+
+- `/llms.txt` — Quick-start AI instructions
+- `/llms-full.txt` — This file (complete reference)
+- `/.well-known/ai-plugin.json` — OpenAI plugin manifest
+- `/.well-known/agent.json` — Agent discovery specification
+- `/.well-known/security.txt` — Security contact info
+- `/api/agent/schema` — OpenAPI 3.1 specification
+- `/robots.txt` — Crawler permissions (AI crawlers explicitly welcomed)
+- `/sitemap.xml` — All indexable pages
+
+## Contact
+
+- General: support@valorlegacies.com
+- Security: security@valorlegacies.com
+- Website: https://valorlegacies.com

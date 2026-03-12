@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0",
+  "name": "Valor Legacies",
+  "description": "Veteran-focused life insurance lead generation platform with AI agent API. Connect veterans and military families with licensed life insurance professionals.",
+  "url": "https://valorlegacies.com",
+  "protocol": "mcp",
+  "capabilities": {
+    "tools": [
+      {
+        "name": "create_consent",
+        "description": "Create a consent request for a human user before submitting leads or registering accounts. Returns a confirmation URL the human must visit.",
+        "endpoint": "/api/agent/consent",
+        "method": "POST",
+        "authentication": "bearer",
+        "parameters": {
+          "email": { "type": "string", "required": true, "description": "The human's email address" },
+          "firstName": { "type": "string", "required": true, "description": "The human's first name" },
+          "agentIdentity": { "type": "string", "required": true, "description": "Name of the AI agent (e.g., 'Claude', 'GPT-4')" },
+          "scope": { "type": "string", "required": true, "enum": ["lead-submission", "account-registration", "both"], "description": "What the consent covers" }
+        }
+      },
+      {
+        "name": "submit_lead",
+        "description": "Submit a life insurance lead on behalf of a veteran or military family member who has confirmed consent.",
+        "endpoint": "/api/agent/leads",
+        "method": "POST",
+        "authentication": "bearer",
+        "parameters": {
+          "firstName": { "type": "string", "required": true },
+          "lastName": { "type": "string", "required": true },
+          "dateOfBirth": { "type": "string", "required": true, "description": "YYYY-MM-DD, must be 18+" },
+          "email": { "type": "string", "required": true },
+          "phone": { "type": "string", "required": true, "description": "10-digit US phone number" },
+          "state": { "type": "string", "required": true, "description": "2-letter US state code" },
+          "coverageInterest": { "type": "string", "required": true, "enum": ["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "not-sure"] },
+          "veteranStatus": { "type": "string", "required": true, "enum": ["active-duty", "reserve", "national-guard", "veteran", "non-military"] },
+          "purchaseIntent": { "type": "string", "required": true, "enum": ["protect-family", "want-protection", "exploring"] },
+          "consentToken": { "type": "string", "required": true, "description": "Confirmed consent token from create_consent" }
+        }
+      },
+      {
+        "name": "register_human",
+        "description": "Register a human as a client (lead buyer) on the platform. Requires consent with 'account-registration' or 'both' scope.",
+        "endpoint": "/api/agent/register",
+        "method": "POST",
+        "authentication": "bearer",
+        "parameters": {
+          "email": { "type": "string", "required": true },
+          "firstName": { "type": "string", "required": true },
+          "lastName": { "type": "string", "required": true },
+          "consentToken": { "type": "string", "required": true, "description": "Confirmed consent token with registration scope" }
+        }
+      },
+      {
+        "name": "get_schema",
+        "description": "Get the full OpenAPI schema for all agent endpoints. No authentication required.",
+        "endpoint": "/api/agent/schema",
+        "method": "GET",
+        "authentication": "none"
+      }
+    ],
+    "resources": [
+      {
+        "name": "llms_instructions",
+        "description": "Human-readable instructions for AI agents interacting with Valor Legacies",
+        "url": "/llms.txt",
+        "mimeType": "text/plain"
+      },
+      {
+        "name": "llms_full_instructions",
+        "description": "Comprehensive API documentation and integration guide for AI agents",
+        "url": "/llms-full.txt",
+        "mimeType": "text/plain"
+      }
+    ]
+  },
+  "authentication": {
+    "type": "bearer",
+    "description": "API key provided as Bearer token in Authorization header. Contact support@valorlegacies.com for API key provisioning.",
+    "token_url": null
+  },
+  "consent_required": true,
+  "consent_flow": "Agent requests consent via create_consent → human confirms by visiting confirmationUrl → agent proceeds with confirmed token",
+  "compliance": {
+    "tcpa": true,
+    "ccpa": true,
+    "fcc_2025": true
+  },
+  "rate_limits": {
+    "leads": "10 per minute per key",
+    "consent": "10 per minute per key",
+    "registration": "5 per minute per key"
+  },
+  "discovery": {
+    "openapi": "/api/agent/schema",
+    "ai_plugin": "/.well-known/ai-plugin.json",
+    "agent_json": "/.well-known/agent.json",
+    "llms_txt": "/llms.txt",
+    "robots_txt": "/robots.txt",
+    "sitemap": "/sitemap.xml"
+  },
+  "contact": {
+    "support": "support@valorlegacies.com",
+    "security": "security@valorlegacies.com"
+  }
+}

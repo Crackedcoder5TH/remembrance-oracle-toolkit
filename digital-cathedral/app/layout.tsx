@@ -124,6 +124,7 @@ export default function RootLayout({
         {/* AI agent discovery links */}
         <link rel="ai-instructions" href="/llms.txt" />
         <link rel="ai-plugin" href="/.well-known/ai-plugin.json" />
+        <link rel="mcp-discovery" href="/.well-known/mcp.json" />
         <link rel="alternate" type="application/json" href="/api/agent/schema" title="Agent API Schema" />
         <script
           type="application/ld+json"

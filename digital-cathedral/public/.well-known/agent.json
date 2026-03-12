@@ -35,6 +35,7 @@
     "openapi": "/api/agent/schema",
     "ai_plugin": "/.well-known/ai-plugin.json",
     "llms_txt": "/llms.txt",
+    "mcp": "/.well-known/mcp.json",
     "robots_txt": "/robots.txt",
     "sitemap": "/sitemap.xml"
   },

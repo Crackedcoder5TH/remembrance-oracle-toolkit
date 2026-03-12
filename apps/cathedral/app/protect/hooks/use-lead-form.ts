@@ -82,6 +82,30 @@ export interface LeadFormErrors {
 
 export const TOTAL_STEPS = 3;
 
+/** Human-readable labels for each form field (used in missing-fields summary). */
+export const FIELD_LABELS: Record<keyof LeadFormErrors, string> = {
+  firstName: "First Name",
+  lastName: "Last Name",
+  dateOfBirth: "Date of Birth",
+  email: "Email Address",
+  phone: "Phone Number",
+  state: "State",
+  coverageInterest: "Coverage Interest",
+  purchaseIntent: "How Serious Are You",
+  veteranStatus: "Military Status",
+  militaryBranch: "Branch of Service",
+  tcpaConsent: "TCPA Consent",
+  privacyConsent: "Privacy Policy Consent",
+};
+
+/** Which step each field belongs to, so we can navigate to the right step on error. */
+export const FIELD_STEP: Record<keyof LeadFormErrors, number> = {
+  firstName: 0, lastName: 0, dateOfBirth: 0, state: 0,
+  coverageInterest: 0, purchaseIntent: 0, veteranStatus: 0, militaryBranch: 0,
+  email: 1, phone: 1,
+  tcpaConsent: 2, privacyConsent: 2,
+};
+
 export interface UseLeadFormReturn {
   form: LeadFormData;
   errors: LeadFormErrors;
@@ -92,6 +116,8 @@ export interface UseLeadFormReturn {
   serverError: string;
   step: number;
   totalSteps: number;
+  submitAttempted: boolean;
+  missingFields: { field: keyof LeadFormErrors; label: string; error: string }[];
   updateField: (field: keyof LeadFormData, value: string | boolean) => void;
   handleSubmit: (e: FormEvent) => void;
   nextStep: () => boolean;
@@ -135,6 +161,15 @@ function validateStep(step: number, form: LeadFormData): LeadFormErrors {
   }
 
   return errs;
+}
+
+/** Validate all 3 steps at once. Returns combined errors. */
+function validateAllSteps(form: LeadFormData): LeadFormErrors {
+  return {
+    ...validateStep(0, form),
+    ...validateStep(1, form),
+    ...validateStep(2, form),
+  };
 }
 
 // Form state persistence via localStorage
@@ -193,6 +228,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const [leadId, setLeadId] = useState("");
   const [serverError, setServerError] = useState("");
   const [step, setStep] = useState(saved.current?.step ?? 0);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // Track page load time for timing-based bot detection
   const pageLoadTime = useRef(Date.now());
@@ -251,10 +287,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   }, []);
 
   const goToStep = useCallback((target: number) => {
-    // Only allow going back, not skipping forward
-    if (target < step) {
-      setErrors({});
-      setServerError("");
+    if (target >= 0 && target < TOTAL_STEPS && target !== step) {
       setStep(target);
     }
   }, [step]);
@@ -315,11 +348,32 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setSubmitAttempted(true);
 
-    // Validate final step
-    const errs = validateStep(step, form);
+    // Validate ALL steps — not just the current one
+    const errs = validateAllSteps(form);
     setErrors(errs);
-    if (Object.keys(errs).length > 0) return;
+
+    if (Object.keys(errs).length > 0) {
+      // Find the earliest step that has an error and navigate there
+      const errorFields = Object.keys(errs) as (keyof LeadFormErrors)[];
+      const steps = errorFields.map((f) => FIELD_STEP[f]);
+      const earliestStep = Math.min(...steps);
+      if (earliestStep !== step) {
+        setStep(earliestStep);
+      }
+      // Scroll to the first invalid field after React renders
+      requestAnimationFrame(() => {
+        const firstErrorField = errorFields
+          .sort((a, b) => FIELD_STEP[a] - FIELD_STEP[b])[0];
+        const el = document.getElementById(String(firstErrorField));
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.focus();
+        }
+      });
+      return;
+    }
 
     // Throttle guard
     const now = Date.now();
@@ -329,9 +383,15 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     submitLead(form);
   }
 
+  // Build the missing-fields list from current errors (for UI summary)
+  const missingFields = (Object.keys(errors) as (keyof LeadFormErrors)[])
+    .filter((f) => errors[f])
+    .sort((a, b) => FIELD_STEP[a] - FIELD_STEP[b])
+    .map((f) => ({ field: f, label: FIELD_LABELS[f], error: errors[f]! }));
+
   return {
     form, errors, loading, submitted, confirmationMessage, leadId, serverError,
-    step, totalSteps: TOTAL_STEPS,
+    step, totalSteps: TOTAL_STEPS, submitAttempted, missingFields,
     updateField, handleSubmit, nextStep, prevStep, goToStep,
   };
 }

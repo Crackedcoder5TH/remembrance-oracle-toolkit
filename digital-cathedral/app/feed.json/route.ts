@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
 
 const BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
 
-export async function GET() {
+export async function GET(request: Request) {
   const now = new Date().toISOString();
 
   const feed = {
@@ -85,10 +85,21 @@ export async function GET() {
     ],
   };
 
+  // Date-based ETag — changes daily to signal freshness
+  const dateTag = now.split("T")[0];
+  const etag = `"feed-${dateTag}"`;
+
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (ifNoneMatch === etag) {
+    return new Response(null, { status: 304 });
+  }
+
   return NextResponse.json(feed, {
     headers: {
       "Content-Type": "application/feed+json; charset=utf-8",
-      "Cache-Control": "public, max-age=3600, s-maxage=3600",
+      "Cache-Control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400",
+      "ETag": etag,
+      "Last-Modified": new Date().toUTCString(),
       "Access-Control-Allow-Origin": "*",
     },
   });

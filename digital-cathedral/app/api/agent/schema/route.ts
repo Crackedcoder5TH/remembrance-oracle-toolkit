@@ -225,11 +225,36 @@ const SCHEMA = {
   },
 };
 
-export async function GET() {
+// Stable ETag based on schema version — changes only when schema changes
+const SCHEMA_ETAG = `"agent-schema-v${SCHEMA.info.version}"`;
+
+export async function GET(request: Request) {
+  // Conditional request support — return 304 if unchanged
+  const ifNoneMatch = request.headers.get("if-none-match");
+  if (ifNoneMatch === SCHEMA_ETAG) {
+    return new Response(null, { status: 304 });
+  }
+
   return NextResponse.json(SCHEMA, {
     headers: {
-      "Cache-Control": "public, max-age=3600",
+      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      "ETag": SCHEMA_ETAG,
+      "Last-Modified": new Date("2025-01-01").toUTCString(),
       "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Accept, Authorization",
+    },
+  });
+}
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Accept, Authorization",
+      "Access-Control-Max-Age": "86400",
     },
   });
 }

@@ -201,6 +201,7 @@ export async function middleware(request: NextRequest) {
         headers: {
           "Cache-Control": "public, max-age=3600",
           "X-Content-Negotiation": "json-ld",
+          "Vary": "Accept, User-Agent",
           "Access-Control-Allow-Origin": "*",
         },
       },
@@ -251,6 +252,22 @@ export async function middleware(request: NextRequest) {
 
   // Prevent browsers from DNS-prefetching external domains
   headers.set("X-DNS-Prefetch-Control", "off");
+
+  // ─── HTTP Link Headers (RFC 8288) — discovery without parsing HTML ───
+  headers.set(
+    "Link",
+    [
+      '</llms.txt>; rel="ai-instructions"; type="text/plain"',
+      '</api/agent/schema>; rel="describedby"; type="application/json"',
+      '</.well-known/mcp.json>; rel="mcp-discovery"; type="application/json"',
+      '</.well-known/ai-plugin.json>; rel="ai-plugin"; type="application/json"',
+      '</feed.json>; rel="alternate"; type="application/feed+json"',
+      '</sitemap.xml>; rel="sitemap"; type="application/xml"',
+    ].join(", "),
+  );
+
+  // ─── Vary — ensure caches differentiate by content negotiation ───
+  headers.set("Vary", "Accept, User-Agent");
 
   // ─── X-Robots-Tag — fine-grained crawler control per route ───
   if (

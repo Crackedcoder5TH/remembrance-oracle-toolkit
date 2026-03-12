@@ -23,6 +23,13 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   manifest: "/manifest.json",
   metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: "/",
+    types: {
+      "application/feed+json": "/feed.json",
+      "application/json": "/api/agent/schema",
+    },
+  },
   keywords: [
     "life insurance",
     "military life insurance",
@@ -157,6 +164,7 @@ export default function RootLayout({
         <link rel="ai-instructions" href="/llms.txt" />
         <link rel="ai-plugin" href="/.well-known/ai-plugin.json" />
         <link rel="mcp-discovery" href="/.well-known/mcp.json" />
+        <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Valor Legacies Search" />
         <link rel="alternate" type="application/feed+json" href="/feed.json" title="Valor Legacies JSON Feed" />
         <link rel="alternate" type="application/json" href="/api/agent/schema" title="Agent API Schema" />
         <script

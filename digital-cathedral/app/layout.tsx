@@ -110,6 +110,38 @@ const jsonLd = {
         availableLanguage: "English",
       },
     },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: BASE_URL },
+        { "@type": "ListItem", position: 2, name: "About", item: `${BASE_URL}/about` },
+        { "@type": "ListItem", position: 3, name: "FAQ", item: `${BASE_URL}/faq` },
+        { "@type": "ListItem", position: 4, name: "Privacy Policy", item: `${BASE_URL}/privacy` },
+        { "@type": "ListItem", position: 5, name: "Terms of Service", item: `${BASE_URL}/terms` },
+      ],
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Valor Legacies Agent API",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "AI agent API for submitting life insurance leads on behalf of veterans and military families. Supports consent-based lead submission, account registration, and OpenAPI discovery.",
+      url: `${BASE_URL}/api/agent/schema`,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        description: "Free API access for authorized AI agents",
+      },
+      featureList: [
+        "Consent-based lead submission",
+        "Account registration",
+        "OpenAPI 3.1 schema discovery",
+        "MCP protocol support",
+        "TCPA/CCPA/FCC 2025 compliant",
+      ],
+    },
   ],
 };
 
@@ -125,6 +157,7 @@ export default function RootLayout({
         <link rel="ai-instructions" href="/llms.txt" />
         <link rel="ai-plugin" href="/.well-known/ai-plugin.json" />
         <link rel="mcp-discovery" href="/.well-known/mcp.json" />
+        <link rel="alternate" type="application/feed+json" href="/feed.json" title="Valor Legacies JSON Feed" />
         <link rel="alternate" type="application/json" href="/api/agent/schema" title="Agent API Schema" />
         <script
           type="application/ld+json"

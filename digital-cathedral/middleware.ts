@@ -135,6 +135,78 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  // ─── Content Negotiation for AI Bots ───
+  // When an AI crawler requests a public page with Accept: application/json,
+  // serve structured data instead of HTML so agents get machine-readable content.
+  const accept = request.headers.get("accept") || "";
+  const isPublicPage =
+    !pathname.startsWith("/api") &&
+    !pathname.startsWith("/admin") &&
+    !pathname.startsWith("/portal") &&
+    !pathname.startsWith("/_next") &&
+    !pathname.startsWith("/.well-known") &&
+    !pathname.includes(".");
+
+  if (crawler && isPublicPage && accept.includes("application/json")) {
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
+
+    // Page-specific structured data for known routes
+    const pageData: Record<string, object> = {
+      "/": {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Valor Legacies",
+        url: baseUrl,
+        description: "Veteran-focused life insurance platform connecting military families with licensed professionals.",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${baseUrl}/faq?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+      },
+      "/about": {
+        "@context": "https://schema.org",
+        "@type": "AboutPage",
+        name: "About Valor Legacies",
+        url: `${baseUrl}/about`,
+        description: "Veteran-founded platform connecting military families with licensed life insurance professionals.",
+      },
+      "/faq": {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        name: "Frequently Asked Questions",
+        url: `${baseUrl}/faq`,
+        description: "Common questions about Valor Legacies, military life insurance options, and AI agent consent.",
+      },
+    };
+
+    const data = pageData[pathname] || {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "Valor Legacies",
+      url: `${baseUrl}${pathname}`,
+    };
+
+    return NextResponse.json(
+      {
+        ...data,
+        _discovery: {
+          feed: `${baseUrl}/feed.json`,
+          llms_txt: `${baseUrl}/llms.txt`,
+          openapi: `${baseUrl}/api/agent/schema`,
+          mcp: `${baseUrl}/.well-known/mcp.json`,
+        },
+      },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=3600",
+          "X-Content-Negotiation": "json-ld",
+          "Access-Control-Allow-Origin": "*",
+        },
+      },
+    );
+  }
+
   // ─── Security headers ───
   const response = NextResponse.next();
   const headers = response.headers;

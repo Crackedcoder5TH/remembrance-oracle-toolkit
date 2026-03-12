@@ -282,23 +282,29 @@ export default function HomePage() {
 
         <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 max-w-xl mx-auto">
           <p className="metallic-gold">
-            As a veteran, I understand the responsibility that comes with wearing the uniform
-            — and the responsibility that continues after it comes off.
-          </p>
-          <p className="metallic-gold">
-            After serving, I saw how many military families weren&rsquo;t fully informed about
-            their life insurance options outside of standard military coverage.
+            As a veteran, I know what it means to carry responsibility both while you&rsquo;re
+            wearing the uniform and long after it&rsquo;s folded away. During my time in service
+            and especially after I transitioned to civilian life, I saw something that really
+            bothered me. A lot of military families believed their standard coverage was
+            enough&hellip; but they were never given the full picture about the life insurance
+            options actually available to them.
           </p>
           <p className="metallic-gold font-medium">
-            This platform was created as a bridge.
+            Too many of us were left in the dark. That&rsquo;s why I created this platform.
           </p>
           <p className="metallic-gold">
-            When you request a review, we connect you with trusted, independent, licensed
-            insurance professionals who understand the unique needs of military families.
+            My mission is simple: to make sure every service member and their families finally
+            get clear, honest information so they can make the best decisions for the people
+            they love.
+          </p>
+          <p className="metallic-gold">
+            When you request a review, we&rsquo;ll connect you with trusted, independent,
+            licensed professionals who truly understand the unique needs of military families.
+            No pressure. Just real guidance and options that actually fit your life.
           </p>
           <p className="metallic-gold italic font-medium">
-            This is personal.<br />
-            Service doesn&rsquo;t end at separation — and neither should protection.
+            Because the service we gave our country doesn&rsquo;t end when we take the uniform
+            off — and neither should the protection we give our families. 🇺🇸
           </p>
           <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-indigo-cathedral/8">
             We are not affiliated with the U.S. Government or Department of Defense. We connect

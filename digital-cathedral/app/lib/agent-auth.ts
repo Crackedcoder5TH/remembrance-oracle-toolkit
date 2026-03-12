@@ -2,23 +2,33 @@
  * Agent API Key Authentication
  *
  * AI agents authenticate via Bearer token in the Authorization header.
- * API keys are configured via AGENT_API_KEYS environment variable
- * (comma-separated list of key:label pairs).
+ * API keys are configured via AGENT_API_KEYS environment variable.
  *
- * Format: "key1:claude,key2:gpt4,key3:custom-bot"
+ * Supports two formats (auto-detected per entry):
+ *   Hashed (preferred):   "sha256hex:label"  (64-char hex before colon)
+ *   Plaintext (compat):   "key:label"        (hashed at parse time)
  *
- * Each key is associated with a label that identifies the agent in audit logs.
+ * Generate hashed keys:
+ *   node -e "console.log(require('crypto').createHash('sha256').update('my-key').digest('hex'))"
  */
 
 import { NextRequest } from "next/server";
-import { createHmac, randomBytes } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 
 export interface AgentIdentity {
   key: string;
   label: string;
 }
 
-/** Parse AGENT_API_KEYS environment variable into a map of key → label */
+/** SHA-256 hash a plaintext API key. */
+export function hashApiKey(plaintext: string): string {
+  return createHash("sha256").update(plaintext).digest("hex");
+}
+
+/**
+ * Parse AGENT_API_KEYS env var into a map of sha256-hash → label.
+ * Pre-hashed keys (64-char hex) are used as-is; plaintext keys are hashed on load.
+ */
 function getAgentKeys(): Map<string, string> {
   const raw = process.env.AGENT_API_KEYS || "";
   const keys = new Map<string, string>();
@@ -29,9 +39,12 @@ function getAgentKeys(): Map<string, string> {
 
     const colonIdx = trimmed.indexOf(":");
     if (colonIdx > 0) {
-      keys.set(trimmed.slice(0, colonIdx), trimmed.slice(colonIdx + 1));
+      const keyPart = trimmed.slice(0, colonIdx);
+      const label = trimmed.slice(colonIdx + 1);
+      const isPreHashed = /^[0-9a-f]{64}$/.test(keyPart);
+      keys.set(isPreHashed ? keyPart : hashApiKey(keyPart), label);
     } else {
-      keys.set(trimmed, "unknown-agent");
+      keys.set(hashApiKey(trimmed), "unknown-agent");
     }
   }
 
@@ -40,7 +53,8 @@ function getAgentKeys(): Map<string, string> {
 
 /**
  * Validate an agent API key from the request.
- * Returns the agent identity if valid, null otherwise.
+ * Hashes the incoming bearer token and compares against stored hashes
+ * using timing-safe comparison to prevent timing attacks.
  */
 export function authenticateAgent(req: NextRequest): AgentIdentity | null {
   const authHeader = req.headers.get("authorization");
@@ -50,12 +64,19 @@ export function authenticateAgent(req: NextRequest): AgentIdentity | null {
   if (!match) return null;
 
   const key = match[1].trim();
+  const incomingHash = hashApiKey(key);
+  const incomingBuf = Buffer.from(incomingHash, "hex");
+
   const keys = getAgentKeys();
-  const label = keys.get(key);
 
-  if (!label) return null;
+  for (const [storedHash, label] of keys) {
+    const storedBuf = Buffer.from(storedHash, "hex");
+    if (storedBuf.length === incomingBuf.length && timingSafeEqual(storedBuf, incomingBuf)) {
+      return { key: storedHash, label };
+    }
+  }
 
-  return { key, label };
+  return null;
 }
 
 // --- Consent Token System ---

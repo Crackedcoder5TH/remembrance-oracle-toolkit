@@ -7,16 +7,20 @@
  *  3. Bearer token (Authorization header) — for programmatic/API access
  *
  * Environment variables:
- *   ADMIN_API_KEY — required for bearer token access (any string, min 16 chars recommended)
+ *   ADMIN_API_KEY — comma-separated keys for rotation (first = current, rest = previous)
+ *                   Example: "new-key-2026,old-key-2025"
+ *                   Both keys work during rotation; remove old key after rollout.
  *   ADMIN_EMAILS — comma-separated Google emails that get admin role automatically
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
 import {
   verifySessionToken,
   verifyAndDecodeSessionToken,
   ADMIN_SESSION_COOKIE,
 } from "./admin-session";
+import { logger } from "./logger";
 
 /** Comma-separated list of admin emails (case-insensitive). */
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
@@ -51,10 +55,11 @@ export function verifyAdmin(req: NextRequest): NextResponse | null {
   }
 
   // Method 3: Bearer token (for programmatic access)
-  const adminKey = process.env.ADMIN_API_KEY;
+  // Supports comma-separated keys for rotation: "current-key,previous-key"
+  const adminKeysRaw = process.env.ADMIN_API_KEY;
 
-  if (!adminKey) {
-    console.error("[ADMIN AUTH] ADMIN_API_KEY environment variable is not set.");
+  if (!adminKeysRaw) {
+    logger.error("ADMIN_API_KEY environment variable is not set");
     return NextResponse.json(
       { success: false, message: "Admin access is not configured." },
       { status: 503 },
@@ -77,8 +82,11 @@ export function verifyAdmin(req: NextRequest): NextResponse | null {
     );
   }
 
-  // Constant-time comparison to prevent timing attacks
-  if (!timingSafeEqual(bearerToken, adminKey)) {
+  // Check against all configured keys (supports rotation)
+  const adminKeys = adminKeysRaw.split(",").map((k) => k.trim()).filter(Boolean);
+  const matched = adminKeys.some((key) => safeEqual(bearerToken, key));
+
+  if (!matched) {
     return NextResponse.json(
       { success: false, message: "Invalid credentials." },
       { status: 403 },
@@ -88,12 +96,10 @@ export function verifyAdmin(req: NextRequest): NextResponse | null {
   return null; // Authenticated via bearer token
 }
 
-/** Constant-time string comparison */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
+/** Constant-time string comparison using Node.js crypto. */
+function safeEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a);
+  const bBuf = Buffer.from(b);
+  if (aBuf.length !== bBuf.length) return false;
+  return cryptoTimingSafeEqual(aBuf, bBuf);
 }

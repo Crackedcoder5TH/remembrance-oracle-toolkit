@@ -17,6 +17,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { CSP_HEADER } from "./csp-directives.mjs";
 
 const ADMIN_SESSION_COOKIE = "__admin_session";
 
@@ -212,22 +213,8 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const headers = response.headers;
 
-  // Content-Security-Policy — MUST stay in sync with next.config.mjs
-  headers.set(
-    "Content-Security-Policy",
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com https://accounts.google.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com https://*.googleusercontent.com",
-      "font-src 'self' fonts.gstatic.com",
-      "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io api.stripe.com https://accounts.google.com https://oauth2.googleapis.com",
-      "frame-src 'self' js.stripe.com hooks.stripe.com",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self' https://accounts.google.com",
-    ].join("; "),
-  );
+  // Content-Security-Policy — shared with next.config.mjs via csp-directives.mjs
+  headers.set("Content-Security-Policy", CSP_HEADER);
 
   // HSTS — enforce HTTPS for 1 year, include subdomains
   headers.set(

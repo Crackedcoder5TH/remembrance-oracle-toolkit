@@ -3,22 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * AnimatedText — reveals text letter-by-letter with a staggered fade-in
- * when the element scrolls into view. Each letter rises up and fades in
- * with a slight delay, creating a typewriter-like wave effect.
+ * AnimatedText — reveals paragraphs word-by-word with a staggered fade-and-rise
+ * when the element scrolls into view. Split text into paragraphs with "\n".
  */
 export function AnimatedText({
   text,
   className = "",
-  letterDelay = 18,
-  animationDuration = 400,
+  wordDelay = 40,
 }: {
   text: string;
   className?: string;
-  letterDelay?: number;
-  animationDuration?: number;
+  wordDelay?: number;
 }) {
-  const containerRef = useRef<HTMLParagraphElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -32,31 +29,45 @@ export function AnimatedText({
           observer.disconnect();
         }
       },
-      { threshold: 0.3 },
+      { threshold: 0.15 },
     );
 
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
+  const paragraphs = text.split("\n").filter(Boolean);
+  let wordIndex = 0;
+
   return (
-    <p ref={containerRef} className={className} aria-label={text}>
-      {text.split("").map((char, i) => (
-        <span
-          key={i}
-          aria-hidden="true"
-          style={{
-            display: "inline-block",
-            opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0)" : "translateY(8px)",
-            transition: `opacity ${animationDuration}ms ease, transform ${animationDuration}ms ease`,
-            transitionDelay: visible ? `${i * letterDelay}ms` : "0ms",
-            whiteSpace: char === " " ? "pre" : undefined,
-          }}
-        >
-          {char}
-        </span>
-      ))}
-    </p>
+    <div ref={containerRef} className={className} aria-label={text}>
+      {paragraphs.map((para, pi) => {
+        const words = para.split(" ");
+        const spans = words.map((word, wi) => {
+          const idx = wordIndex++;
+          return (
+            <span
+              key={`${pi}-${wi}`}
+              aria-hidden="true"
+              style={{
+                display: "inline-block",
+                opacity: visible ? 1 : 0,
+                transform: visible ? "translateY(0)" : "translateY(6px)",
+                transition: `opacity 350ms ease, transform 350ms ease`,
+                transitionDelay: visible ? `${idx * wordDelay}ms` : "0ms",
+                marginRight: "0.3em",
+              }}
+            >
+              {word}
+            </span>
+          );
+        });
+        return (
+          <p key={pi} className="mb-4 last:mb-0">
+            {spans}
+          </p>
+        );
+      })}
+    </div>
   );
 }

@@ -23,6 +23,7 @@ import { TrustSignals } from "./protect/components/trust-signals";
 import { ImageUpload } from "./components/image-upload";
 import { useIsAdmin } from "./protect/hooks/use-is-admin";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
+import { AnimatedText } from "./components/animated-text";
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" },
@@ -281,14 +282,12 @@ export default function HomePage() {
         />
 
         <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 max-w-xl mx-auto">
-          <p className="metallic-gold">
-            As a veteran, I know what it means to carry responsibility both while you&rsquo;re
-            wearing the uniform and long after it&rsquo;s folded away. During my time in service
-            and especially after I transitioned to civilian life, I saw something that really
-            bothered me. A lot of military families believed their standard coverage was
-            enough&hellip; but they were never given the full picture about the life insurance
-            options actually available to them.
-          </p>
+          <AnimatedText
+            className="metallic-gold"
+            text="As a veteran, I know what it means to carry responsibility both while you're wearing the uniform and long after it's folded away. During my time in service and especially after I transitioned to civilian life, I saw something that really bothered me. A lot of military families believed their standard coverage was enough\u2026 but they were never given the full picture about the life insurance options actually available to them."
+            letterDelay={15}
+            animationDuration={350}
+          />
           <p className="metallic-gold font-medium">
             Too many of us were left in the dark. That&rsquo;s why I created this platform.
           </p>

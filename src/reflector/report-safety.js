@@ -9,6 +9,7 @@
 
 const { readFileSync, writeFileSync, existsSync, copyFileSync } = require('fs');
 const { join, relative, basename } = require('path');
+const { randomBytes } = require('crypto');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
 const { scoring: _scoring, multi: _multi, github: _github } = require('./report-lazy');
@@ -98,7 +99,7 @@ function createBackup(rootDir, options = {}) {
     label = '',
   } = options;
 
-  const backupId = `backup-${Date.now()}`;
+  const backupId = `backup-${Date.now()}-${randomBytes(4).toString('hex')}`;
   const timestamp = new Date().toISOString();
 
   const manifest = {

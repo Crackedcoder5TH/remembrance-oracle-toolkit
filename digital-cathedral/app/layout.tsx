@@ -101,12 +101,53 @@ const jsonLd = {
       "@type": "Organization",
       name: "Valor Legacies",
       url: BASE_URL,
+      logo: `${BASE_URL}/icon.svg`,
       description:
         "Veteran-founded platform connecting Active Duty, National Guard, Reserve, and Veterans with licensed life insurance professionals.",
+      foundingDate: "2024",
+      founder: {
+        "@type": "Person",
+        jobTitle: "Veteran & Founder",
+      },
+      areaServed: {
+        "@type": "Country",
+        name: "US",
+      },
+      knowsAbout: [
+        "Military life insurance",
+        "Veteran benefits",
+        "SGLI",
+        "VGLI",
+        "Term life insurance",
+        "Whole life insurance",
+      ],
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer service",
         availableLanguage: "English",
+      },
+    },
+    {
+      "@type": "Product",
+      name: "Life Insurance Coverage Review for Military Families",
+      description:
+        "Free, no-obligation life insurance coverage review connecting veterans, active duty, National Guard, and Reserve members with licensed insurance professionals.",
+      brand: {
+        "@type": "Brand",
+        name: "Valor Legacies",
+      },
+      category: "Life Insurance",
+      audience: {
+        "@type": "Audience",
+        audienceType: "Veterans, Active Duty, National Guard, Reserve, Military Families",
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        availability: "https://schema.org/InStock",
+        description: "Free coverage review — no cost, no obligation",
+        url: BASE_URL,
       },
     },
     {

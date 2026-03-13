@@ -120,6 +120,18 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
   };
 }
 
+function rowToMessage(row: Record<string, unknown>): ClientMessage {
+  return {
+    id: row.id as number,
+    clientId: row.client_id as number,
+    direction: row.direction as "inbound" | "outbound",
+    subject: (row.subject as string) || "",
+    body: row.body as string,
+    read: row.read === 1 || row.read === true,
+    createdAt: row.created_at as string,
+  };
+}
+
 // =============================================================================
 // PostgreSQL Adapter (production — Vercel / any hosted environment)
 // =============================================================================
@@ -209,6 +221,21 @@ class PostgresAdapter implements DbAdapter {
     if (!columnNames.has("military_branch")) {
       await pool.query("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
     }
+
+    // --- Client messages table ---
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_messages (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL,
+        direction TEXT NOT NULL DEFAULT 'inbound',
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL,
+        read BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_client ON client_messages(client_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_created ON client_messages(created_at)`);
 
     this.initialized = true;
   }
@@ -511,6 +538,22 @@ class SqliteAdapter implements DbAdapter {
       CREATE INDEX IF NOT EXISTS idx_leads_state ON leads(state);
       CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at);
       CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
+    `);
+
+    // --- Client messages table ---
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS client_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL,
+        direction TEXT NOT NULL DEFAULT 'inbound',
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL,
+        read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_messages_client ON client_messages(client_id);
+      CREATE INDEX IF NOT EXISTS idx_messages_created ON client_messages(created_at);
     `);
 
     // Migration: add columns to existing databases that lack them
@@ -892,10 +935,33 @@ export async function createClientMessage(msg: {
   subject: string;
   body: string;
 }): Promise<Result<{ id: number }, string>> {
-  // Messages table not yet implemented — return a stub ID
-  // TODO: Add client_messages table to adapters
-  console.log(`[PORTAL] Message from client ${msg.clientId}: ${msg.subject}`);
-  return { ok: true, value: { id: Date.now() } };
+  try {
+    const adapter = getAdapter();
+    await adapter.initialize();
+
+    if (adapter instanceof PostgresAdapter) {
+      const pool = await (adapter as unknown as { getPool(): Promise<{ query(q: string, p: unknown[]): Promise<{ rows: Record<string, unknown>[] }> }> }).getPool();
+      const result = await pool.query(
+        `INSERT INTO client_messages (client_id, direction, subject, body)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [msg.clientId, msg.direction, msg.subject, msg.body],
+      );
+      return Ok({ id: result.rows[0].id as number });
+    }
+
+    if (adapter instanceof SqliteAdapter) {
+      const db = (adapter as unknown as { getDb(): { prepare(q: string): { run(...p: unknown[]): { lastInsertRowid: number } } } }).getDb();
+      const result = db.prepare(
+        `INSERT INTO client_messages (client_id, direction, subject, body) VALUES (?, ?, ?, ?)`,
+      ).run(msg.clientId, msg.direction, msg.subject, msg.body);
+      return Ok({ id: result.lastInsertRowid as number });
+    }
+
+    // NoopAdapter — demo mode
+    return Ok({ id: Date.now() });
+  } catch (err) {
+    return Err(err instanceof Error ? err.message : "Failed to create message");
+  }
 }
 
 /** Mark a message as read. */
@@ -903,17 +969,65 @@ export async function markMessageRead(
   messageId: string,
   clientId: number,
 ): Promise<Result<{ updated: boolean }, string>> {
-  // Messages table not yet implemented
-  console.log(`[PORTAL] Message ${messageId} marked read by client ${clientId}`);
-  return { ok: true, value: { updated: true } };
+  try {
+    const adapter = getAdapter();
+    await adapter.initialize();
+
+    if (adapter instanceof PostgresAdapter) {
+      const pool = await (adapter as unknown as { getPool(): Promise<{ query(q: string, p: unknown[]): Promise<{ rowCount: number }> }> }).getPool();
+      const result = await pool.query(
+        `UPDATE client_messages SET read = TRUE WHERE id = $1 AND client_id = $2`,
+        [messageId, clientId],
+      );
+      return Ok({ updated: result.rowCount > 0 });
+    }
+
+    if (adapter instanceof SqliteAdapter) {
+      const db = (adapter as unknown as { getDb(): { prepare(q: string): { run(...p: unknown[]): { changes: number } } } }).getDb();
+      const result = db.prepare(
+        `UPDATE client_messages SET read = 1 WHERE id = ? AND client_id = ?`,
+      ).run(messageId, clientId);
+      return Ok({ updated: result.changes > 0 });
+    }
+
+    return Ok({ updated: true });
+  } catch (err) {
+    return Err(err instanceof Error ? err.message : "Failed to mark message read");
+  }
 }
 
 /** Get messages for a client (portal inbox). */
 export async function getClientMessages(
   clientId: number,
 ): Promise<Result<ClientMessage[], string>> {
-  // Messages table not yet implemented — return empty
-  return { ok: true, value: [] };
+  try {
+    const adapter = getAdapter();
+    await adapter.initialize();
+
+    if (adapter instanceof PostgresAdapter) {
+      const pool = await (adapter as unknown as { getPool(): Promise<{ query(q: string, p: unknown[]): Promise<{ rows: Record<string, unknown>[] }> }> }).getPool();
+      const result = await pool.query(
+        `SELECT id, client_id, direction, subject, body, read, created_at
+         FROM client_messages WHERE client_id = $1 ORDER BY created_at DESC`,
+        [clientId],
+      );
+      return Ok(result.rows.map(rowToMessage));
+    }
+
+    if (adapter instanceof SqliteAdapter) {
+      const db = (adapter as unknown as { getDb(): { prepare(q: string): { all(...p: unknown[]): Record<string, unknown>[] } } }).getDb();
+      const rows = db.prepare(
+        `SELECT id, client_id, direction, subject, body, read, created_at
+         FROM client_messages WHERE client_id = ? ORDER BY created_at DESC`,
+      ).all(clientId);
+      return Ok(rows.map(rowToMessage));
+    }
+
+    // NoopAdapter — return empty
+    return Ok([]);
+  } catch (err) {
+    return Err(err instanceof Error ? err.message : "Failed to get messages");
+  }
 }
 
 /** Client document record (portal documents). */

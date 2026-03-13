@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getClientByEmail, verifyPassword } from "@/app/lib/client-database";
 import { createClientSessionToken, CLIENT_SESSION_COOKIE, CLIENT_SESSION_MAX_AGE } from "@/app/lib/client-auth";
+import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
 /**
  * Client Login API
@@ -11,8 +12,18 @@ import { createClientSessionToken, CLIENT_SESSION_COOKIE, CLIENT_SESSION_MAX_AGE
  */
 export async function POST(req: NextRequest) {
   try {
-    // Oracle fix: demo mode — auto-succeed, no credentials needed
-    if (!process.env.DATABASE_URL) {
+    // Rate limit: 5 attempts per minute per IP
+    const clientIp = getClientIp(req.headers);
+    const rateCheck = checkRateLimit(clientIp, 5, 60_000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, message: "Too many login attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) } },
+      );
+    }
+
+    // Demo mode — auto-succeed (development only, never in production)
+    if (!process.env.DATABASE_URL && process.env.NODE_ENV !== "production") {
       const { DEMO_CLIENT } = await import("@/app/lib/demo-client");
       return NextResponse.json({
         success: true,

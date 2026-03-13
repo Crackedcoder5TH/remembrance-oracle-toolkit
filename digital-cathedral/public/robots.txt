@@ -1,0 +1,32 @@
+# Valor Legacies — robots.txt (static fallback)
+# Dynamic version at /robots.ts takes precedence in Next.js
+# This static file ensures crawlers that cannot execute dynamic routes still get directives
+
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /portal
+Disallow: /api/admin/
+Disallow: /api/portal/
+Disallow: /api/client/
+
+# AI Crawlers — explicitly welcome
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: Google-Extended
+User-agent: PerplexityBot
+User-agent: Amazonbot
+User-agent: cohere-ai
+Allow: /
+Allow: /api/agent/schema
+Allow: /llms.txt
+Allow: /.well-known/
+Disallow: /admin
+Disallow: /portal
+Disallow: /api/admin/
+Disallow: /api/portal/
+Disallow: /api/client/
+
+Sitemap: https://valorlegacies.com/sitemap.xml

@@ -4,7 +4,9 @@ import {
   updateClientBalance,
   createBilling,
   generateBillingId,
+  getClientById,
 } from "@/app/lib/client-database";
+import { createRequestLogger } from "@/app/lib/logger";
 import type Stripe from "stripe";
 
 /**
@@ -16,6 +18,7 @@ import type Stripe from "stripe";
  * Must verify the webhook signature using STRIPE_WEBHOOK_SECRET.
  */
 export async function POST(req: NextRequest) {
+  const log = createRequestLogger();
   const body = await req.text();
   const signature = req.headers.get("stripe-signature");
 
@@ -28,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error("STRIPE_WEBHOOK_SECRET is not set");
+    log.error("STRIPE_WEBHOOK_SECRET is not set");
     return NextResponse.json(
       { error: "Webhook not configured" },
       { status: 500 }
@@ -41,24 +44,36 @@ export async function POST(req: NextRequest) {
     event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("Webhook signature verification failed:", message);
+    log.error("Webhook signature verification failed", { detail: message });
     return NextResponse.json(
       { error: "Invalid signature" },
       { status: 400 }
     );
   }
 
+  log.info("Stripe webhook received", { eventType: event.type, eventId: event.id });
+
   if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
     const { clientId, type } = paymentIntent.metadata;
 
     if (type === "add_funds" && clientId) {
+      // Verify clientId exists and is active before crediting
+      const clientResult = await getClientById(clientId);
+      if (!clientResult.ok || !clientResult.value || clientResult.value.status !== "active") {
+        log.error("Webhook references invalid or inactive client", { clientId, paymentIntentId: paymentIntent.id });
+        return NextResponse.json(
+          { error: "Invalid client reference in payment metadata" },
+          { status: 400 }
+        );
+      }
+
       const amount = paymentIntent.amount;
 
       // Credit the client's balance
       const balanceResult = await updateClientBalance(clientId, amount);
       if (!balanceResult.ok) {
-        console.error(`Failed to credit balance for client ${clientId}`);
+        log.error("Failed to credit client balance", { clientId, amount });
         return NextResponse.json(
           { error: "Balance update failed" },
           { status: 500 }
@@ -78,6 +93,8 @@ export async function POST(req: NextRequest) {
         invoiceUrl: "",
         createdAt: now,
       });
+
+      log.info("Client balance credited", { clientId, amount });
     }
   }
 

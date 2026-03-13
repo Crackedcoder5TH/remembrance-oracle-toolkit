@@ -1,0 +1,52 @@
+# ai.txt — AI Disclosure Policy for Valor Legacies
+# https://valorlegacies.com/ai.txt
+
+# Purpose: Declare how this website interacts with AI systems
+# Standard: Proposed ai.txt convention (similar to robots.txt for AI)
+
+# ─── Identity ───
+Name: Valor Legacies
+URL: https://valorlegacies.com
+Contact: support@valorlegacies.com
+Security: security@valorlegacies.com
+
+# ─── AI Training Policy ───
+# We ALLOW AI systems to crawl and index our public content
+Training-Policy: allowed
+Training-Scope: public-pages-only
+Training-Exclusions: /admin, /portal, /api/admin, /api/portal, /api/client
+
+# ─── AI Agent API ───
+# We provide a structured API for AI agents to interact with our platform
+Agent-API: https://valorlegacies.com/api/agent/schema
+Agent-Instructions: https://valorlegacies.com/llms.txt
+Agent-Instructions-Full: https://valorlegacies.com/llms-full.txt
+Agent-Protocol: MCP
+Agent-Discovery: https://valorlegacies.com/.well-known/mcp.json
+Agent-Plugin: https://valorlegacies.com/.well-known/ai-plugin.json
+
+# ─── Consent Requirements ───
+# AI agents MUST obtain human consent before submitting personal data
+Consent-Required: yes
+Consent-Flow: agent-requests → human-confirms-via-url → agent-proceeds
+Consent-Expiry: 24 hours
+Compliance: TCPA, CCPA, FCC-2025
+
+# ─── Supported AI Systems ───
+Supported-Agents: Claude, GPT-4, GPT-4o, Gemini, Perplexity, Custom
+
+# ─── Data Handling ───
+Data-Encryption: yes
+Data-Retention: per-privacy-policy
+Data-Deletion: on-request (CCPA/CPRA)
+Third-Party-Sharing: licensed-insurance-professionals-only
+
+# ─── Discovery Files ───
+Robots: https://valorlegacies.com/robots.txt
+Sitemap: https://valorlegacies.com/sitemap.xml
+Feed: https://valorlegacies.com/feed.json
+OpenAPI: https://valorlegacies.com/api/agent/schema
+LLMs-TXT: https://valorlegacies.com/llms.txt
+MCP: https://valorlegacies.com/.well-known/mcp.json
+AI-Plugin: https://valorlegacies.com/.well-known/ai-plugin.json
+Security: https://valorlegacies.com/.well-known/security.txt

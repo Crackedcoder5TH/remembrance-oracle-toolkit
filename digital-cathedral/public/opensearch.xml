@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Valor Legacies</ShortName>
+  <Description>Search veteran life insurance FAQs and coverage options at Valor Legacies</Description>
+  <Tags>life insurance military veteran SGLI coverage</Tags>
+  <Contact>support@valorlegacies.com</Contact>
+  <Url type="text/html" template="https://valorlegacies.com/faq?q={searchTerms}"/>
+  <Url type="application/json" template="https://valorlegacies.com/api/agent/schema"/>
+  <Image height="64" width="64" type="image/svg+xml">https://valorlegacies.com/icon.svg</Image>
+  <InputEncoding>UTF-8</InputEncoding>
+  <OutputEncoding>UTF-8</OutputEncoding>
+</OpenSearchDescription>

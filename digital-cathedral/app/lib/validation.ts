@@ -64,16 +64,16 @@ function validateDob(dob: unknown): string | null {
   return null;
 }
 
-const VALID_STATES = new Set([
+export const VALID_STATES = new Set([
   "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN",
   "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
   "NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT",
   "VT","VA","WA","WV","WI","WY",
 ]);
 
-const VALID_COVERAGE = new Set(["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "not-sure"]);
-const VALID_PURCHASE_INTENT = new Set(["protect-family", "want-protection", "exploring"]);
-const VALID_VETERAN_STATUS = new Set(["active-duty", "reserve", "national-guard", "veteran", "non-military"]);
+export const VALID_COVERAGE = new Set(["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "not-sure"]);
+export const VALID_PURCHASE_INTENT = new Set(["protect-family", "want-protection", "exploring"]);
+export const VALID_VETERAN_STATUS = new Set(["active-duty", "reserve", "national-guard", "veteran", "non-military"]);
 const VALID_MILITARY_BRANCHES = new Set([
   "army", "marine-corps", "navy", "air-force", "space-force",
   "coast-guard", "national-guard", "reserves",
@@ -200,4 +200,37 @@ export function validateLeadPayload(body: unknown): ValidationResult {
       ...(isString(b.utmContent) && b.utmContent ? { utmContent: b.utmContent } : {}),
     },
   };
+}
+
+// ─── Client-side form helpers (shared by landing pages) ───
+
+/** Validate a name field (2-100 chars, letters/spaces/punctuation). */
+export function isValidName(name: string): boolean {
+  const trimmed = name.trim();
+  return trimmed.length >= 2 && trimmed.length <= 100 && /^[a-zA-Z\s'.,-]+$/.test(trimmed);
+}
+
+/** Validate a US phone number (10 digits, or 11 starting with 1). */
+export function isValidPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length === 10 || (digits.length === 11 && digits.startsWith("1"));
+}
+
+/** Format a phone string as (XXX) XXX-XXXX while typing. */
+export function formatPhoneInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+/** Auto-capitalize each word in a name. */
+export function autoCapitalizeName(value: string): string {
+  return value.replace(/(?:^|\s|[-'])([a-z])/g, (match) => match.toUpperCase());
+}
+
+/** Strip < and > to prevent basic injection in user input. */
+export function sanitizeInput(s: string): string {
+  return s.trim().replace(/[<>]/g, "");
 }

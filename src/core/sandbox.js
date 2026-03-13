@@ -366,7 +366,7 @@ function sandboxGo(code, testCode, options = {}) {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000,
-      env: { PATH: process.env.PATH, HOME: sandboxDir, GOPATH: path.join(sandboxDir, 'gopath') },
+      env: { PATH: process.env.PATH, HOME: sandboxDir, GOPATH: path.join(sandboxDir, 'gopath'), GOCACHE: process.env.GOCACHE || path.join(os.tmpdir(), 'go-build') },
     });
 
     const codePath = path.join(sandboxDir, 'code.go');
@@ -384,6 +384,7 @@ function sandboxGo(code, testCode, options = {}) {
         PATH: process.env.PATH,
         HOME: sandboxDir,
         GOPATH: path.join(sandboxDir, 'gopath'),
+        GOCACHE: process.env.GOCACHE || path.join(os.tmpdir(), 'go-build'),
         GOPROXY: 'off',
         GONOSUMCHECK: '*',
         GOFLAGS: '-mod=mod',

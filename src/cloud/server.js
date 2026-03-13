@@ -80,6 +80,7 @@ class CloudSyncServer {
     this.secret = options.secret || crypto.randomBytes(32).toString('hex');
     this.port = options.port || 3579;
     this.rateLimit = options.rateLimit || 120;
+    this.allowedOrigins = options.allowedOrigins || null; // null = same-origin only
     this.server = null;
     this.wsClients = new Set();
     this._users = new Map(); // In-memory user store (swap for DB in production)
@@ -124,8 +125,15 @@ class CloudSyncServer {
   // ─── HTTP Request Handler ───
 
   async _handleRequest(req, res) {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CORS — restrict to configured origins (no wildcard by default)
+    const origin = req.headers.origin;
+    if (this.allowedOrigins && origin) {
+      const allowed = Array.isArray(this.allowedOrigins) ? this.allowedOrigins : [this.allowedOrigins];
+      if (allowed.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+      }
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
@@ -300,7 +308,7 @@ class CloudSyncServer {
         return await this._handleSyncPush(req, res, user);
       }
       if (path === '/api/sync/pull' && method === 'POST') {
-        return await this._handleSyncPull(req, res, url);
+        return await this._handleSyncPull(req, res, url, user);
       }
 
       // Debug
@@ -485,7 +493,7 @@ class CloudSyncServer {
     this._json(res, 200, { synced, total: patterns.length });
   }
 
-  async _handleSyncPull(req, res, url) {
+  async _handleSyncPull(req, res, url, user) {
     const since = url.searchParams.get('since');
     const language = url.searchParams.get('language');
     const limit = parseInt(url.searchParams.get('limit')) || 100;
@@ -497,16 +505,23 @@ class CloudSyncServer {
       entries = entries.filter(e => e.language === language);
     }
 
-    const results = entries.slice(0, limit).map(e => ({
-      id: e.id,
-      name: e.name,
-      code: e.code,
-      testCode: e.testCode,
-      language: e.language,
-      tags: e.tags,
-      description: e.description,
-      coherency: e.coherencyScore?.total ?? e.coherency ?? 0,
-    }));
+    // Role-based response: viewers only see metadata, not full code
+    const canSeeCode = user && (user.role === 'admin' || user.role === 'contributor');
+    const results = entries.slice(0, limit).map(e => {
+      const base = {
+        id: e.id,
+        name: e.name,
+        language: e.language,
+        tags: e.tags,
+        description: e.description,
+        coherency: e.coherencyScore?.total ?? e.coherency ?? 0,
+      };
+      if (canSeeCode) {
+        base.code = e.code;
+        base.testCode = e.testCode;
+      }
+      return base;
+    });
 
     this._json(res, 200, { patterns: results, total: entries.length });
   }

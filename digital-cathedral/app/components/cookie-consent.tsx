@@ -38,6 +38,8 @@ function saveConsent(choice: ConsentChoice): void {
       STORAGE_KEY,
       JSON.stringify({ choice, timestamp: new Date().toISOString() }),
     );
+    // Notify same-tab listeners (analytics-scripts.tsx) immediately
+    window.dispatchEvent(new Event("cookie-consent-changed"));
   } catch {
     // Storage unavailable
   }

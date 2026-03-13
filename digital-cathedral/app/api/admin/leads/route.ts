@@ -3,6 +3,7 @@ import { verifyAdmin } from "@/app/lib/admin-auth";
 import { getFilteredLeads } from "@/app/lib/database";
 import type { LeadFilters } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
+import { VALID_STATES, VALID_COVERAGE, VALID_VETERAN_STATUS } from "@/app/lib/validation";
 
 /**
  * Admin Leads API
@@ -17,11 +18,39 @@ export async function GET(req: NextRequest) {
 
   const params = req.nextUrl.searchParams;
 
+  // Validate enum filter values against allowlists
+  const stateParam = params.get("state") || undefined;
+  const coverageParam = params.get("coverage") || undefined;
+  const veteranParam = params.get("veteran") || undefined;
+
+  if (stateParam && !VALID_STATES.has(stateParam)) {
+    return NextResponse.json(
+      { success: false, message: "Invalid state filter." },
+      { status: 400 },
+    );
+  }
+  if (coverageParam && !VALID_COVERAGE.has(coverageParam)) {
+    return NextResponse.json(
+      { success: false, message: "Invalid coverage filter." },
+      { status: 400 },
+    );
+  }
+  if (veteranParam && !VALID_VETERAN_STATUS.has(veteranParam)) {
+    return NextResponse.json(
+      { success: false, message: "Invalid veteran status filter." },
+      { status: 400 },
+    );
+  }
+
+  // Cap search string length to prevent abuse
+  const searchParam = params.get("search") || undefined;
+  const search = searchParam && searchParam.length <= 200 ? searchParam : undefined;
+
   const filters: LeadFilters = {
-    state: params.get("state") || undefined,
-    coverageInterest: params.get("coverage") || undefined,
-    veteranStatus: params.get("veteran") || undefined,
-    search: params.get("search") || undefined,
+    state: stateParam,
+    coverageInterest: coverageParam,
+    veteranStatus: veteranParam,
+    search,
     startDate: params.get("startDate") || undefined,
     endDate: params.get("endDate") || undefined,
     limit: Math.min(parseInt(params.get("limit") || "50") || 50, 200),

@@ -12,9 +12,32 @@ export const metadata: Metadata = {
   description: "The page you're looking for doesn't exist. Let us help you find what you need.",
 };
 
+// JSON-LD for 404 — tells crawlers this is an error page with discovery links
+const notFoundJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: "Page Not Found",
+  description: "This page does not exist. See discovery links for available resources.",
+  isPartOf: {
+    "@type": "WebSite",
+    name: "Valor Legacies",
+    url: "https://valorlegacies.com",
+  },
+  potentialAction: {
+    "@type": "ViewAction",
+    name: "Browse available pages",
+    target: "https://valorlegacies.com/sitemap.xml",
+  },
+};
+
 export default function NotFoundPage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(notFoundJsonLd) }}
+      />
+
       <div className="w-full max-w-md text-center space-y-6">
         <div className="text-6xl font-light text-teal-cathedral/30">
           404
@@ -45,12 +68,23 @@ export default function NotFoundPage() {
           </a>
         </div>
 
-        <nav className="pt-4 border-t border-indigo-cathedral/8">
+        <nav className="pt-4 border-t border-indigo-cathedral/8" aria-label="Helpful links">
           <p className="text-xs text-[var(--text-muted)] mb-2">Or try one of these:</p>
           <div className="flex gap-4 justify-center text-xs">
+            <a href="/faq" className="text-teal-cathedral/70 hover:text-teal-cathedral">FAQ</a>
+            <a href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral">About</a>
             <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
             <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
           </div>
+        </nav>
+
+        {/* AI crawler discovery — hidden from visual users, visible to bots */}
+        <nav className="sr-only" aria-label="AI agent discovery">
+          <a href="/llms.txt">AI Instructions</a>
+          <a href="/api/agent/schema">Agent API Schema</a>
+          <a href="/.well-known/mcp.json">MCP Discovery</a>
+          <a href="/feed.json">JSON Feed</a>
+          <a href="/sitemap.xml">Sitemap</a>
         </nav>
       </div>
 

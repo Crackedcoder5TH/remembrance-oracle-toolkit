@@ -21,6 +21,7 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Fetch the current image URL from the server on mount
@@ -52,7 +53,7 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        alert(body?.error || "Upload failed");
+        setNotification(body?.error || "Upload failed");
         return;
       }
       const { url } = await res.json();
@@ -60,7 +61,7 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
       setImageUrl(`${url}${url.includes("?") ? "&" : "?"}t=${Date.now()}`);
       setImgError(false);
     } catch {
-      alert("Upload failed. Please try again.");
+      setNotification("Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -105,6 +106,24 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
         <img src={imageUrl} alt={alt} className={imgClassName} onError={() => setImgError(true)} />
       ) : (
         fallback
+      )}
+
+      {/* Accessible error notification (replaces alert()) */}
+      {notification && (
+        <div
+          role="status"
+          aria-live="assertive"
+          className="absolute top-2 left-2 right-2 z-10 flex items-center justify-between gap-2 px-3 py-2 text-xs text-red-200 bg-red-900/90 rounded-lg"
+        >
+          <span>{notification}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); setNotification(null); }}
+            aria-label="Dismiss notification"
+            className="text-red-300 hover:text-white shrink-0"
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* Upload overlay — visible on hover (admin only) */}

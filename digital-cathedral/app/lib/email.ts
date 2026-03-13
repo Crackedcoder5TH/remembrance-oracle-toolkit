@@ -57,8 +57,20 @@ const COVERAGE_LABELS_SHORT: Record<string, string> = {
 
 // Shared env helpers
 const getCompanyName = () => process.env.COMPANY_NAME || "Valor Legacies";
-const getFromAddress = () => process.env.EMAIL_FROM || "noreply@example.com";
-const getSiteUrl = () => process.env.NEXT_PUBLIC_SITE_URL || "https://example.com";
+const getFromAddress = () => {
+  const addr = process.env.EMAIL_FROM;
+  if (!addr && process.env.NODE_ENV === "production") {
+    console.warn("[EMAIL] EMAIL_FROM not set — emails will use fallback address");
+  }
+  return addr || "noreply@valorlegacies.com";
+};
+const getSiteUrl = () => {
+  const url = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!url && process.env.NODE_ENV === "production") {
+    console.warn("[EMAIL] NEXT_PUBLIC_SITE_URL not set — emails will use fallback URL");
+  }
+  return url || "https://valorlegacies.com";
+};
 
 /**
  * Send an email via SMTP or log to console in dev.

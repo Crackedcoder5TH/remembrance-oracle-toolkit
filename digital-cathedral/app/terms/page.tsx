@@ -25,7 +25,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">1. Agreement to Terms</h2>
           <p>
-            By accessing or using the website located at https://digital-cathedral.vercel.app (the &ldquo;Site&rdquo;),
+            By accessing or using the website located at valorlegacies.com (the &ldquo;Site&rdquo;),
             operated by Valor Legacies (&ldquo;we,&rdquo; &ldquo;us,&rdquo; or &ldquo;our&rdquo;),
             you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). If you do not agree
             to these Terms, do not use the Site.
@@ -140,7 +140,7 @@ export default function TermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">10. Limitation of Liability</h2>
           <p>
-            TO THE MAXIMUM EXTENT PERMITTED BY LAW, DIGITAL CATHEDRAL SHALL NOT BE LIABLE FOR ANY INDIRECT,
+            TO THE MAXIMUM EXTENT PERMITTED BY LAW, VALOR LEGACIES SHALL NOT BE LIABLE FOR ANY INDIRECT,
             INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATED TO YOUR
             USE OF THE SITE OR ANY INSURANCE PRODUCTS OR SERVICES OBTAINED THROUGH PROFESSIONALS
             CONNECTED VIA THE SITE. OUR TOTAL LIABILITY SHALL NOT EXCEED ONE HUNDRED DOLLARS ($100).

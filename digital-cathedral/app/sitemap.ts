@@ -34,6 +34,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.5,
     },
+    // Landing pages for paid traffic
+    {
+      url: `${baseUrl}/lp/veteran-life-insurance`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${baseUrl}/lp/military-family`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
     // AI agent discovery endpoints — crawlers should index these
     {
       url: `${baseUrl}/llms.txt`,

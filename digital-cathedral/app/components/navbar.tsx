@@ -120,6 +120,7 @@ export function Navbar() {
             <div
               ref={menuRef}
               role="menu"
+              aria-label="Main navigation menu"
               className="absolute left-0 top-full mt-fib-3 w-56 rounded-[13px] py-fib-5 z-50 cathedral-surface"
             >
               {NAV_LINKS.map((link) => (
@@ -143,7 +144,7 @@ export function Navbar() {
             {session.user.image && (
               <img
                 src={session.user.image}
-                alt=""
+                alt={`${session.user.name || "User"}'s profile picture`}
                 className="w-7 h-7 rounded-full"
                 referrerPolicy="no-referrer"
               />

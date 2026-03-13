@@ -445,7 +445,8 @@ export default function AdminDashboard() {
 
       {/* Lead Table */}
       <div className="cathedral-surface overflow-x-auto" role="region" aria-label="Leads table">
-        <table className="w-full text-sm" aria-label="Lead records">
+        <table className="w-full text-sm">
+          <caption className="sr-only">Insurance leads with scores, contact details, and state information</caption>
           <thead>
             <tr className="text-left text-xs uppercase tracking-wider border-b border-indigo-cathedral/10 metallic-gold">
               <th className="px-4 py-3" scope="col">Score</th>

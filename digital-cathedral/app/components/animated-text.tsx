@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 /**
  * AnimatedText — reveals paragraphs word-by-word with a fun pop-in bounce
- * when the element scrolls into view. Words are fully visible by default
- * and only animate if JS + IntersectionObserver are available.
+ * and subtle gold shimmer on key words when the element scrolls into view.
+ * Words are fully visible by default (SSR/no-JS safe).
  * Split text into paragraphs with "\n".
  */
 export function AnimatedText({
@@ -18,10 +18,10 @@ export function AnimatedText({
   wordDelay?: number;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);   // JS loaded, hide words
-  const [visible, setVisible] = useState(false); // scrolled into view, animate in
+  const [ready, setReady] = useState(false);
+  const [visible, setVisible] = useState(false);
 
-  // Phase 1: mark ready so we can hide words (only after JS hydrates)
+  // Phase 1: mark ready after hydration
   useEffect(() => {
     setReady(true);
   }, []);
@@ -50,45 +50,57 @@ export function AnimatedText({
   let wordIndex = 0;
 
   return (
-    <div ref={containerRef} className={className} aria-label={text}>
-      {paragraphs.map((para, pi) => {
-        const words = para.split(" ");
-        const spans = words.map((word, wi) => {
-          const idx = wordIndex++;
-          // Before JS hydrates: words are fully visible (no animation)
-          // After ready but before visible: words hidden, waiting for scroll
-          // After visible: words animate in with staggered delay
-          const shouldHide = ready && !visible;
-          const shouldAnimate = ready && visible;
-          return (
-            <span
-              key={`${pi}-${wi}`}
-              aria-hidden="true"
-              style={{
-                display: "inline-block",
-                marginRight: "0.3em",
-                opacity: shouldHide ? 0 : 1,
-                transform: shouldAnimate
-                  ? "translateY(0) scale(1)"
-                  : shouldHide
-                    ? "translateY(10px) scale(0.85)"
+    <>
+      <style>{`
+        @keyframes gold-shimmer {
+          0%, 100% { color: inherit; }
+          50% { color: #d4a843; text-shadow: 0 0 8px rgba(212, 168, 67, 0.3); }
+        }
+        .word-shimmer-active {
+          animation: gold-shimmer 2s ease-in-out 1;
+        }
+      `}</style>
+      <div ref={containerRef} className={className} aria-label={text}>
+        {paragraphs.map((para, pi) => {
+          const words = para.split(" ");
+          const spans = words.map((word, wi) => {
+            const idx = wordIndex++;
+            const shouldHide = ready && !visible;
+            const shouldAnimate = ready && visible;
+            const isHighlight = /^(veteran|responsibility|families|protect|mission|love|service|guidance|country)$/i.test(
+              word.replace(/[.,!?…—]$/, ""),
+            );
+            return (
+              <span
+                key={`${pi}-${wi}`}
+                aria-hidden="true"
+                className={shouldAnimate && isHighlight ? "word-shimmer-active" : ""}
+                style={{
+                  display: "inline-block",
+                  marginRight: "0.3em",
+                  opacity: shouldHide ? 0 : 1,
+                  transform: shouldAnimate
+                    ? "translateY(0) scale(1)"
+                    : shouldHide
+                      ? "translateY(10px) scale(0.85)"
+                      : "none",
+                  transition: shouldAnimate
+                    ? "opacity 400ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)"
                     : "none",
-                transition: shouldAnimate
-                  ? `opacity 400ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1)`
-                  : "none",
-                transitionDelay: shouldAnimate ? `${idx * wordDelay}ms` : "0ms",
-              }}
-            >
-              {word}
-            </span>
+                  transitionDelay: shouldAnimate ? `${idx * wordDelay}ms` : "0ms",
+                }}
+              >
+                {word}
+              </span>
+            );
+          });
+          return (
+            <p key={pi} className="mb-4 last:mb-0">
+              {spans}
+            </p>
           );
-        });
-        return (
-          <p key={pi} className="mb-4 last:mb-0">
-            {spans}
-          </p>
-        );
-      })}
-    </div>
+        })}
+      </div>
+    </>
   );
 }

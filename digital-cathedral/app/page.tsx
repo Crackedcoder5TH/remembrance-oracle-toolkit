@@ -15,7 +15,7 @@
  *   Step 3 — Consent:   TCPA + Privacy → submit
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLeadForm, FIELD_STEP } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
@@ -155,9 +155,30 @@ const FOOTER_LINKS = [
   { href: "/terms", label: "Terms of Service" },
 ];
 
+const DEFAULT_VETERAN_STORY = [
+  "As a veteran, I know what it means to carry responsibility both while you\u2019re wearing the uniform and long after it\u2019s folded away. During my time in service and especially after I transitioned to civilian life, I saw something that really bothered me. A lot of military families believed their standard coverage was enough\u2026 but they were never given the full picture about the life insurance options actually available to them.",
+  "Too many of us were left in the dark. That\u2019s why I created this platform.",
+  "My mission is simple: to make sure every service member and their families finally get clear, honest information so they can make the best decisions for the people they love.",
+  "When you request a review, we\u2019ll connect you with trusted, independent, licensed professionals who truly understand the unique needs of military families. No pressure. Just real guidance and options that actually fit your life.",
+  "Because the service we gave our country doesn\u2019t end when we take the uniform off \u2014 and neither should the protection we give our families. \uD83C\uDDFA\uD83C\uDDF8",
+].join("\n");
+
 export default function HomePage() {
   const isAdmin = useIsAdmin();
   const utm = useUtmTracking();
+
+  // Fetch editable veteran story from API
+  const [veteranStory, setVeteranStory] = useState(DEFAULT_VETERAN_STORY);
+  useEffect(() => {
+    fetch("/api/site-content")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.content?.veteranStory) {
+          setVeteranStory(data.content.veteranStory);
+        }
+      })
+      .catch(() => {}); // fallback to default on error
+  }, []);
   const {
     form, errors, loading, submitted, confirmationMessage, leadId, serverError,
     step, totalSteps, submitAttempted, missingFields,
@@ -284,13 +305,7 @@ export default function HomePage() {
         <div className="text-sm text-[var(--text-muted)] leading-relaxed max-w-xl mx-auto">
           <AnimatedText
             className="metallic-gold"
-            text={[
-              "As a veteran, I know what it means to carry responsibility both while you\u2019re wearing the uniform and long after it\u2019s folded away. During my time in service and especially after I transitioned to civilian life, I saw something that really bothered me. A lot of military families believed their standard coverage was enough\u2026 but they were never given the full picture about the life insurance options actually available to them.",
-              "Too many of us were left in the dark. That\u2019s why I created this platform.",
-              "My mission is simple: to make sure every service member and their families finally get clear, honest information so they can make the best decisions for the people they love.",
-              "When you request a review, we\u2019ll connect you with trusted, independent, licensed professionals who truly understand the unique needs of military families. No pressure. Just real guidance and options that actually fit your life.",
-              "Because the service we gave our country doesn\u2019t end when we take the uniform off \u2014 and neither should the protection we give our families. \uD83C\uDDFA\uD83C\uDDF8",
-            ].join("\n")}
+            text={veteranStory}
             wordDelay={35}
           />
           <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-indigo-cathedral/8">

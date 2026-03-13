@@ -23,7 +23,7 @@ import { TrustSignals } from "./protect/components/trust-signals";
 import { ImageUpload } from "./components/image-upload";
 import { useIsAdmin } from "./protect/hooks/use-is-admin";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
-import { AnimatedText } from "./components/animated-text";
+
 
 const US_STATES = [
   { code: "AL", name: "Alabama" }, { code: "AK", name: "Alaska" },
@@ -303,11 +303,11 @@ export default function HomePage() {
         />
 
         <div className="text-sm text-[var(--text-muted)] leading-relaxed max-w-xl mx-auto">
-          <AnimatedText
-            className="metallic-gold"
-            text={veteranStory}
-            wordDelay={35}
-          />
+          <div className="metallic-gold">
+            {veteranStory.split("\n").filter(Boolean).map((para, i) => (
+              <p key={i} className="mb-4 last:mb-0">{para}</p>
+            ))}
+          </div>
           <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-indigo-cathedral/8">
             We are not affiliated with the U.S. Government or Department of Defense. We connect
             individuals with independent, licensed insurance professionals.

@@ -17,6 +17,9 @@ function getSecret(): string {
   // Use a dedicated secret or fall back to NEXTAUTH_SECRET
   const key = process.env.PORTAL_SESSION_SECRET || process.env.NEXTAUTH_SECRET;
   if (!key) throw new Error("PORTAL_SESSION_SECRET or NEXTAUTH_SECRET must be set");
+  if (!process.env.PORTAL_SESSION_SECRET && process.env.NODE_ENV === "production") {
+    console.warn("[AUTH] PORTAL_SESSION_SECRET not set — using NEXTAUTH_SECRET. Set a dedicated secret for production.");
+  }
   return key;
 }
 

@@ -88,6 +88,25 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // ─── Content-Type enforcement for JSON API routes ───
+  // Reject POST/PUT/PATCH requests to /api/ without application/json content type
+  // (except webhook endpoints that receive non-JSON payloads)
+  const method = request.method;
+  if (
+    pathname.startsWith("/api/") &&
+    !pathname.startsWith("/api/auth") &&
+    !pathname.startsWith("/api/webhooks/") &&
+    (method === "POST" || method === "PUT" || method === "PATCH")
+  ) {
+    const contentType = request.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return NextResponse.json(
+        { error: "Content-Type must be application/json" },
+        { status: 415 },
+      );
+    }
+  }
+
   // ─── Admin route protection ───
   if (
     pathname.startsWith("/admin") &&

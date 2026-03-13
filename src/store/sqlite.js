@@ -45,6 +45,7 @@ class SQLiteStore {
   _initSchema() {
     // Enable WAL mode for concurrent read performance and crash safety
     this.db.exec(`PRAGMA journal_mode = WAL`);
+    this.db.exec(`PRAGMA synchronous = NORMAL`);
     this.db.exec(`PRAGMA busy_timeout = 5000`);
 
     this.db.exec(`
@@ -124,9 +125,9 @@ class SQLiteStore {
         "SELECT 1 FROM sqlite_master WHERE type='index' AND name='idx_patterns_unique_name_lang'"
       ).get();
       if (!idxExists) {
-        // Remove duplicates before creating unique index (keep highest coherency)
-        this.db.exec(`
-          DELETE FROM patterns WHERE id NOT IN (
+        // Archive duplicates before removing them, then create unique index
+        const dupeRows = this.db.prepare(`
+          SELECT * FROM patterns WHERE id NOT IN (
             SELECT id FROM (
               SELECT id, ROW_NUMBER() OVER (
                 PARTITION BY LOWER(name), LOWER(language)
@@ -134,8 +135,28 @@ class SQLiteStore {
               ) AS rn FROM patterns
             ) WHERE rn = 1
           )
-        `);
-        this.db.exec(`CREATE UNIQUE INDEX idx_patterns_unique_name_lang ON patterns(name COLLATE NOCASE, language COLLATE NOCASE)`);
+        `).all();
+        this.db.exec('BEGIN');
+        try {
+          for (const row of dupeRows) {
+            this._archivePattern(row, 'schema-dedup');
+          }
+          this.db.exec(`
+            DELETE FROM patterns WHERE id NOT IN (
+              SELECT id FROM (
+                SELECT id, ROW_NUMBER() OVER (
+                  PARTITION BY LOWER(name), LOWER(language)
+                  ORDER BY coherency_total DESC, created_at ASC
+                ) AS rn FROM patterns
+              ) WHERE rn = 1
+            )
+          `);
+          this.db.exec(`CREATE UNIQUE INDEX idx_patterns_unique_name_lang ON patterns(name COLLATE NOCASE, language COLLATE NOCASE)`);
+          this.db.exec('COMMIT');
+        } catch (e) {
+          this.db.exec('ROLLBACK');
+          throw e;
+        }
       }
     } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] unique index creation failed:', e.message); }
 
@@ -237,6 +258,28 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_healed_coherency ON healed_variants(healed_coherency);
       CREATE INDEX IF NOT EXISTS idx_healed_delta ON healed_variants(coherency_delta);
       CREATE INDEX IF NOT EXISTS idx_healed_at ON healed_variants(healed_at);
+    `);
+
+    // Pattern archive — soft-delete safety net, preserves patterns before deletion
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS pattern_archive (
+        id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        language TEXT DEFAULT 'unknown',
+        pattern_type TEXT DEFAULT 'utility',
+        coherency_total REAL DEFAULT 0,
+        coherency_json TEXT DEFAULT '{}',
+        test_code TEXT,
+        tags TEXT DEFAULT '[]',
+        deleted_reason TEXT DEFAULT 'unknown',
+        deleted_at TEXT NOT NULL,
+        original_created_at TEXT,
+        full_row_json TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_archive_name ON pattern_archive(name);
+      CREATE INDEX IF NOT EXISTS idx_archive_deleted ON pattern_archive(deleted_at);
     `);
 
     // Healing stats table — persistent per-pattern healing history (replaces in-memory Map)
@@ -509,11 +552,18 @@ class SQLiteStore {
   pruneEntries(minCoherency = 0.4) {
     const before = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
     const pruned = this.db.prepare('SELECT id FROM entries WHERE coherency_total < ?').all(minCoherency);
-    this.db.prepare('DELETE FROM entries WHERE coherency_total < ?').run(minCoherency);
-    const after = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
-    for (const { id } of pruned) {
-      this._audit('prune', 'entries', id, { minCoherency });
+    this.db.exec('BEGIN');
+    try {
+      this.db.prepare('DELETE FROM entries WHERE coherency_total < ?').run(minCoherency);
+      for (const { id } of pruned) {
+        this._audit('prune', 'entries', id, { minCoherency });
+      }
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
     }
+    const after = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
     return { removed: before - after, remaining: after };
   }
 
@@ -639,7 +689,7 @@ class SQLiteStore {
    * Returns { removed, kept, byName }.
    */
   deduplicatePatterns() {
-    const all = this.db.prepare('SELECT id, name, language, coherency_total FROM patterns ORDER BY coherency_total DESC').all();
+    const all = this.db.prepare('SELECT * FROM patterns ORDER BY coherency_total DESC').all();
     const bestByKey = new Map();
     const toDelete = [];
 
@@ -648,14 +698,22 @@ class SQLiteStore {
       if (!bestByKey.has(key)) {
         bestByKey.set(key, row.id);
       } else {
-        toDelete.push(row.id);
+        toDelete.push(row);
       }
     }
 
     if (toDelete.length > 0) {
-      const deleteStmt = this.db.prepare('DELETE FROM patterns WHERE id = ?');
-      for (const id of toDelete) {
-        deleteStmt.run(id);
+      this.db.exec('BEGIN');
+      try {
+        const deleteStmt = this.db.prepare('DELETE FROM patterns WHERE id = ?');
+        for (const row of toDelete) {
+          this._archivePattern(row, 'deduplicated');
+          deleteStmt.run(row.id);
+        }
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
       }
     }
 
@@ -901,21 +959,32 @@ class SQLiteStore {
 
   retirePatterns(minScore = 0.30) {
     const rows = this.db.prepare('SELECT * FROM patterns').all();
-    let retired = 0;
+    const toRetire = [];
     for (const row of rows) {
       const coherency = row.coherency_total;
       const reliability = row.usage_count > 0 ? row.success_count / row.usage_count : 0.5;
       const composite = coherency * 0.6 + reliability * 0.4;
       if (composite < minScore) {
+        toRetire.push({ row, coherency, reliability, composite });
+      }
+    }
+    // Archive + delete in a single transaction for atomicity
+    this.db.exec('BEGIN');
+    try {
+      for (const { row, coherency, reliability, composite } of toRetire) {
+        this._archivePattern(row, 'retired');
         this.db.prepare('DELETE FROM patterns WHERE id = ?').run(row.id);
         this._audit('retire', 'patterns', row.id, {
           name: row.name, coherency, reliability, composite,
         });
-        retired++;
       }
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
     }
     const remaining = this.db.prepare('SELECT COUNT(*) as c FROM patterns').get().c;
-    return { retired, remaining };
+    return { retired: toRetire.length, remaining };
   }
 
   patternSummary() {
@@ -1065,11 +1134,18 @@ class SQLiteStore {
   pruneCandidates(minCoherency = 0.5) {
     const before = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
     const pruned = this.db.prepare('SELECT id FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').all(minCoherency);
-    this.db.prepare('DELETE FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').run(minCoherency);
-    const after = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
-    for (const { id } of pruned) {
-      this._audit('prune', 'candidates', id, { minCoherency });
+    this.db.exec('BEGIN');
+    try {
+      this.db.prepare('DELETE FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').run(minCoherency);
+      for (const { id } of pruned) {
+        this._audit('prune', 'candidates', id, { minCoherency });
+      }
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
     }
+    const after = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
     return { removed: before - after, remaining: after };
   }
 
@@ -1534,6 +1610,99 @@ class SQLiteStore {
       embeddingCount: embeddings.c,
       savedBytes: savedBytes?.saved || 0,
     };
+  }
+
+  /**
+   * Archive a pattern row before deletion (soft-delete safety net).
+   * Preserves full row data so patterns can be recovered if needed.
+   */
+  _archivePattern(row, reason = 'unknown') {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT OR IGNORE INTO pattern_archive
+        (id, name, code, language, pattern_type, coherency_total, coherency_json,
+         test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      row.id, row.name, row.code, row.language || 'unknown',
+      row.pattern_type || 'utility', row.coherency_total || 0,
+      row.coherency_json || '{}', row.test_code || null,
+      row.tags || '[]', reason, now, row.created_at || null,
+      JSON.stringify(row)
+    );
+  }
+
+  /**
+   * Restore archived patterns back into the patterns table.
+   * Returns { restored, skipped } counts.
+   */
+  restoreArchived(filter = {}) {
+    let sql = 'SELECT * FROM pattern_archive WHERE 1=1';
+    const params = [];
+    if (filter.reason) { sql += ' AND deleted_reason = ?'; params.push(filter.reason); }
+    if (filter.since) { sql += ' AND deleted_at >= ?'; params.push(filter.since); }
+    if (filter.id) { sql += ' AND id = ?'; params.push(filter.id); }
+
+    const rows = this.db.prepare(sql).all(...params);
+    let restored = 0, skipped = 0;
+
+    for (const row of rows) {
+      const existing = this.db.prepare('SELECT id FROM patterns WHERE id = ?').get(row.id);
+      if (existing) { skipped++; continue; }
+      try {
+        const full = JSON.parse(row.full_row_json);
+        this._insertPatternFromRow(full);
+        this.db.prepare('DELETE FROM pattern_archive WHERE id = ? AND deleted_at = ?').run(row.id, row.deleted_at);
+        this._audit('restore', 'patterns', row.id, { reason: row.deleted_reason });
+        restored++;
+      } catch { skipped++; }
+    }
+    return { restored, skipped, available: rows.length };
+  }
+
+  /**
+   * Insert a pattern from a raw DB row (used by restore).
+   */
+  _insertPatternFromRow(row) {
+    this.db.prepare(`
+      INSERT OR IGNORE INTO patterns
+        (id, name, code, language, pattern_type, complexity, description, tags,
+         coherency_total, coherency_json, variants, test_code, usage_count,
+         success_count, evolution_history, version, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      row.id, row.name, row.code, row.language || 'unknown',
+      row.pattern_type || 'utility', row.complexity || 'composite',
+      row.description || '', row.tags || '[]',
+      row.coherency_total || 0, row.coherency_json || '{}',
+      row.variants || '[]', row.test_code || null,
+      row.usage_count || 0, row.success_count || 0,
+      row.evolution_history || '[]', row.version || 1,
+      row.created_at || new Date().toISOString(),
+      row.updated_at || new Date().toISOString()
+    );
+  }
+
+  /**
+   * List archived patterns (for audit/review).
+   */
+  listArchived(limit = 100) {
+    return this.db.prepare(
+      'SELECT id, name, language, coherency_total, deleted_reason, deleted_at FROM pattern_archive ORDER BY deleted_at DESC LIMIT ?'
+    ).all(limit);
+  }
+
+  /**
+   * Clean orphaned fractal/holographic records that reference missing patterns.
+   */
+  cleanOrphans() {
+    const deltas = this.db.prepare(
+      'DELETE FROM fractal_deltas WHERE pattern_id NOT IN (SELECT id FROM patterns)'
+    ).run();
+    const embeddings = this.db.prepare(
+      'DELETE FROM holo_embeddings WHERE pattern_id NOT IN (SELECT id FROM patterns)'
+    ).run();
+    return { deletedDeltas: deltas.changes, deletedEmbeddings: embeddings.changes };
   }
 
   /**

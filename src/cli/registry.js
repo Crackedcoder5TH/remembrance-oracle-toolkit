@@ -33,6 +33,7 @@ const CATEGORIES = [
       { name: 'promote', description: 'Promote a candidate to proven with test proof' },
       { name: 'synthesize', description: 'Synthesize tests for candidates and auto-promote' },
       { name: 'bug-report', description: 'Generate a diagnostic bug report' },
+      { name: 'compress', description: 'Fractal compression and holographic encoding' },
     ],
   },
   {

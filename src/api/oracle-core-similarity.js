@@ -1,7 +1,13 @@
 /**
  * Oracle Core — Similarity detection.
  * Prevents near-duplicate pollution and routes close variants to candidates.
+ * Uses Jaccard token similarity + structural fingerprint comparison.
  */
+
+let _structuralFingerprint;
+try {
+  ({ structuralFingerprint: _structuralFingerprint } = require('../compression/fractal'));
+} catch { _structuralFingerprint = null; }
 
 // ─── Similarity Thresholds ───
 const SIMILARITY_REJECT_THRESHOLD = 0.95;    // >= 95% similar → reject (near-duplicate)
@@ -22,6 +28,21 @@ function _codeSimilarity(codeA, codeB) {
 }
 
 /**
+ * Compute structural similarity via fractal fingerprinting.
+ * Two code blocks with the same structure but different names score 1.0.
+ */
+function _structuralSimilarity(codeA, codeB, language) {
+  if (!_structuralFingerprint) return 0;
+  try {
+    const fpA = _structuralFingerprint(codeA, language);
+    const fpB = _structuralFingerprint(codeB, language);
+    return fpA.hash === fpB.hash ? 1.0 : 0.0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Check if submitted code is too similar to existing patterns.
  * Returns: { action: 'accept'|'candidate'|'reject', similarity, matchedPattern }
  */
@@ -33,7 +54,10 @@ function _checkSimilarity(code, patterns, language) {
   for (const pat of patterns) {
     // Only compare against same language
     if (lang && (pat.language || '').toLowerCase() !== lang) continue;
-    const sim = _codeSimilarity(code, pat.code || '');
+    const jaccard = _codeSimilarity(code, pat.code || '');
+    const structural = _structuralSimilarity(code, pat.code || '', lang);
+    // Blend: Jaccard 60% + structural 40%
+    const sim = structural > 0 ? jaccard * 0.6 + structural * 0.4 : jaccard;
     if (sim > maxSimilarity) {
       maxSimilarity = sim;
       matchedPattern = pat;
@@ -53,5 +77,6 @@ module.exports = {
   SIMILARITY_REJECT_THRESHOLD,
   SIMILARITY_CANDIDATE_THRESHOLD,
   _codeSimilarity,
+  _structuralSimilarity,
   _checkSimilarity,
 };

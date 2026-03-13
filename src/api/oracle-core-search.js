@@ -7,6 +7,12 @@ const { rankEntries } = require('../core/relevance');
 const { semanticSearch: semanticSearchEngine } = require('../search/embeddings');
 const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
 
+// Holographic search integration (graceful — returns empty if no pages exist)
+let _holoSearchPatterns;
+try {
+  ({ holoSearchPatterns: _holoSearchPatterns } = require('../compression/index'));
+} catch { _holoSearchPatterns = null; }
+
 module.exports = {
   /**
    * Queries the verified history store for matching code entries.
@@ -51,6 +57,16 @@ module.exports = {
     const semanticResults = semanticSearchEngine(items, term, { limit: items.length, minScore: 0, language });
     const semanticMap = new Map(semanticResults.map(r => [r.id, r.semanticScore]));
 
+    // Holographic search (third signal — graceful degradation)
+    let holoMap = new Map();
+    if (_holoSearchPatterns && this.store) {
+      try {
+        const holoResults = _holoSearchPatterns(this.store, term, { topK: 5 });
+        holoMap = new Map(holoResults.map(r => [r.patternId, r.score]));
+      } catch { /* no holo pages — fall through */ }
+    }
+    const hasHolo = holoMap.size > 0;
+
     const scored = items.map(item => {
       const nameKw = keywordScore(item.name || '') * 1.5;
       const descKw = keywordScore(item.description || '');
@@ -58,12 +74,17 @@ module.exports = {
       const codeKw = keywordScore(item.code || '') * 0.3;
       const kwScore = Math.max(nameKw, descKw, tagKw, codeKw);
       const semScore = semanticMap.get(item.id) || 0;
-      const matchScore = kwScore * 0.40 + semScore * 0.60;
+      const holoScore = holoMap.get(item.id) || 0;
+
+      // Three-signal blend when holo data exists, otherwise fallback to two-signal
+      const matchScore = hasHolo
+        ? kwScore * 0.30 + semScore * 0.45 + holoScore * 0.25
+        : kwScore * 0.40 + semScore * 0.60;
 
       return {
         source: item.source, id: item.id, name: item.name, description: item.description,
         language: item.language, tags: item.tags, coherency: item.coherency, code: item.code,
-        matchScore, keywordScore: kwScore, semanticScore: semScore,
+        matchScore, keywordScore: kwScore, semanticScore: semScore, holoScore,
       };
     }).filter(r => r.matchScore > 0);
 

@@ -257,6 +257,57 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_healing_stats_delta ON healing_stats(coherency_delta);
     `);
 
+    // Fractal compression tables — structural templates and deltas
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS fractal_templates (
+        id TEXT PRIMARY KEY,
+        skeleton TEXT NOT NULL,
+        language TEXT DEFAULT 'unknown',
+        member_count INTEGER DEFAULT 0,
+        avg_coherency REAL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_fractal_language ON fractal_templates(language);
+      CREATE INDEX IF NOT EXISTS idx_fractal_members ON fractal_templates(member_count);
+
+      CREATE TABLE IF NOT EXISTS fractal_deltas (
+        pattern_id TEXT PRIMARY KEY,
+        template_id TEXT NOT NULL,
+        delta_json TEXT NOT NULL,
+        original_size INTEGER,
+        delta_size INTEGER,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_delta_template ON fractal_deltas(template_id);
+    `);
+
+    // Holographic encoding tables — dense embeddings and family pages
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS holo_pages (
+        id TEXT PRIMARY KEY,
+        template_id TEXT,
+        centroid_vec TEXT NOT NULL,
+        interference_matrix TEXT,
+        member_ids TEXT NOT NULL,
+        member_count INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_holo_template ON holo_pages(template_id);
+      CREATE INDEX IF NOT EXISTS idx_holo_members ON holo_pages(member_count);
+
+      CREATE TABLE IF NOT EXISTS holo_embeddings (
+        pattern_id TEXT PRIMARY KEY,
+        embedding_vec TEXT NOT NULL,
+        embedding_version INTEGER DEFAULT 1,
+        created_at TEXT NOT NULL
+      );
+    `);
+
     // Initialize meta if not present
     const row = this.db.prepare('SELECT value FROM meta WHERE key = ?').get('version');
     if (!row) {
@@ -1338,6 +1389,151 @@ class SQLiteStore {
     const current = parseInt(this.getMeta('decisions') || '0', 10);
     this.setMeta('decisions', current + 1);
     return current + 1;
+  }
+
+  // ─── Fractal Compression CRUD ───
+
+  storeTemplate(template) {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT OR REPLACE INTO fractal_templates (id, skeleton, language, member_count, avg_coherency, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(template.id, template.skeleton, template.language || 'unknown',
+      template.memberCount || 0, template.avgCoherency || 0, now, now);
+  }
+
+  getTemplate(id) {
+    const row = this.db.prepare('SELECT * FROM fractal_templates WHERE id = ?').get(id);
+    if (!row) return null;
+    return {
+      id: row.id, skeleton: row.skeleton, language: row.language,
+      memberCount: row.member_count, avgCoherency: row.avg_coherency,
+      createdAt: row.created_at, updatedAt: row.updated_at,
+    };
+  }
+
+  getAllTemplates() {
+    return this.db.prepare('SELECT * FROM fractal_templates ORDER BY member_count DESC').all()
+      .map(row => ({
+        id: row.id, skeleton: row.skeleton, language: row.language,
+        memberCount: row.member_count, avgCoherency: row.avg_coherency,
+        createdAt: row.created_at, updatedAt: row.updated_at,
+      }));
+  }
+
+  storeDelta(delta) {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT OR REPLACE INTO fractal_deltas (pattern_id, template_id, delta_json, original_size, delta_size, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(delta.patternId, delta.templateId, JSON.stringify(delta.delta),
+      delta.originalSize || 0, delta.deltaSize || 0, now);
+  }
+
+  getDelta(patternId) {
+    const row = this.db.prepare('SELECT * FROM fractal_deltas WHERE pattern_id = ?').get(patternId);
+    if (!row) return null;
+    return {
+      patternId: row.pattern_id, templateId: row.template_id,
+      delta: JSON.parse(row.delta_json), originalSize: row.original_size,
+      deltaSize: row.delta_size, createdAt: row.created_at,
+    };
+  }
+
+  getDeltasByTemplate(templateId) {
+    return this.db.prepare('SELECT * FROM fractal_deltas WHERE template_id = ?').all(templateId)
+      .map(row => ({
+        patternId: row.pattern_id, templateId: row.template_id,
+        delta: JSON.parse(row.delta_json), originalSize: row.original_size,
+        deltaSize: row.delta_size, createdAt: row.created_at,
+      }));
+  }
+
+  // ─── Holographic Encoding CRUD ───
+
+  storeHoloPage(page) {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT OR REPLACE INTO holo_pages (id, template_id, centroid_vec, interference_matrix, member_ids, member_count, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(page.id, page.templateId || null, JSON.stringify(page.centroidVec),
+      page.interferenceMatrix ? JSON.stringify(page.interferenceMatrix) : null,
+      JSON.stringify(page.memberIds), page.memberCount || 0, now, now);
+  }
+
+  getHoloPage(id) {
+    const row = this.db.prepare('SELECT * FROM holo_pages WHERE id = ?').get(id);
+    if (!row) return null;
+    return {
+      id: row.id, templateId: row.template_id,
+      centroidVec: JSON.parse(row.centroid_vec),
+      interferenceMatrix: row.interference_matrix ? JSON.parse(row.interference_matrix) : null,
+      memberIds: JSON.parse(row.member_ids),
+      memberCount: row.member_count,
+      createdAt: row.created_at, updatedAt: row.updated_at,
+    };
+  }
+
+  getAllHoloPages() {
+    return this.db.prepare('SELECT * FROM holo_pages ORDER BY member_count DESC').all()
+      .map(row => ({
+        id: row.id, templateId: row.template_id,
+        centroidVec: JSON.parse(row.centroid_vec),
+        interferenceMatrix: row.interference_matrix ? JSON.parse(row.interference_matrix) : null,
+        memberIds: JSON.parse(row.member_ids),
+        memberCount: row.member_count,
+        createdAt: row.created_at, updatedAt: row.updated_at,
+      }));
+  }
+
+  storeHoloEmbedding(patternId, embeddingVec, version = 1) {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT OR REPLACE INTO holo_embeddings (pattern_id, embedding_vec, embedding_version, created_at)
+      VALUES (?, ?, ?, ?)
+    `).run(patternId, JSON.stringify(embeddingVec), version, now);
+  }
+
+  getHoloEmbedding(patternId) {
+    const row = this.db.prepare('SELECT * FROM holo_embeddings WHERE pattern_id = ?').get(patternId);
+    if (!row) return null;
+    return {
+      patternId: row.pattern_id,
+      embeddingVec: JSON.parse(row.embedding_vec),
+      version: row.embedding_version,
+      createdAt: row.created_at,
+    };
+  }
+
+  getAllHoloEmbeddings() {
+    return this.db.prepare('SELECT * FROM holo_embeddings').all()
+      .map(row => ({
+        patternId: row.pattern_id,
+        embeddingVec: JSON.parse(row.embedding_vec),
+        version: row.embedding_version,
+        createdAt: row.created_at,
+      }));
+  }
+
+  /**
+   * Get fractal compression statistics.
+   */
+  fractalStats() {
+    const templates = this.db.prepare('SELECT COUNT(*) as c FROM fractal_templates').get();
+    const deltas = this.db.prepare('SELECT COUNT(*) as c FROM fractal_deltas').get();
+    const pages = this.db.prepare('SELECT COUNT(*) as c FROM holo_pages').get();
+    const embeddings = this.db.prepare('SELECT COUNT(*) as c FROM holo_embeddings').get();
+    const savedBytes = this.db.prepare(
+      'SELECT SUM(original_size - delta_size) as saved FROM fractal_deltas WHERE original_size > delta_size'
+    ).get();
+
+    return {
+      templateCount: templates.c,
+      deltaCount: deltas.c,
+      pageCount: pages.c,
+      embeddingCount: embeddings.c,
+      savedBytes: savedBytes?.saved || 0,
+    };
   }
 
   /**

@@ -88,13 +88,6 @@ const TABS = [
 
 type Tab = (typeof TABS)[number];
 
-const STATUS_STYLES: Record<string, string> = {
-  confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  pending: "bg-amber-50 text-amber-700 border-amber-200",
-  expired: "bg-red-50 text-red-700 border-red-200",
-  revoked: "bg-sky-50 text-sky-700 border-sky-200",
-};
-
 const AGENT_COLORS: Record<string, string> = {
   claude: "bg-teal-cathedral",
   "gpt-4": "bg-emerald-500",
@@ -103,58 +96,6 @@ const AGENT_COLORS: Record<string, string> = {
   custom: "bg-amber-500",
 };
 
-// Mock consent rows for the consent tracking table
-function generateMockConsents(): Array<{
-  id: string;
-  agent: string;
-  email: string;
-  scope: string;
-  status: string;
-  timestamp: string;
-}> {
-  const agents = ["Claude", "GPT-4", "Gemini", "Perplexity", "Custom Agent"];
-  const scopes = ["lead-submission", "quote-request", "contact-info", "full-profile"];
-  const statuses = ["confirmed", "pending", "expired", "confirmed", "confirmed"];
-  const emails = [
-    "john.doe@email.com",
-    "sarah.m@gmail.com",
-    "mike.veteran@mail.com",
-    "lisa.jones@yahoo.com",
-    "carlos.r@outlook.com",
-    "amanda.w@proton.me",
-    "james.t@email.com",
-    "patricia.h@gmail.com",
-  ];
-
-  return Array.from({ length: 12 }, (_, i) => ({
-    id: `consent-${(1000 + i).toString(36)}`,
-    agent: agents[i % agents.length],
-    email: emails[i % emails.length],
-    scope: scopes[i % scopes.length],
-    status: statuses[i % statuses.length],
-    timestamp: new Date(Date.now() - i * 1000 * 60 * 60 * 3).toISOString(),
-  }));
-}
-
-// Mock crawler activity
-const CRAWLERS = [
-  { name: "GPTBot", status: "active", lastSeen: "2 hours ago", pages: 47 },
-  { name: "Claude-Web", status: "active", lastSeen: "35 minutes ago", pages: 32 },
-  { name: "PerplexityBot", status: "active", lastSeen: "4 hours ago", pages: 18 },
-  { name: "Google-Extended", status: "idle", lastSeen: "1 day ago", pages: 124 },
-  { name: "Bingbot (AI)", status: "active", lastSeen: "6 hours ago", pages: 56 },
-  { name: "Cohere-ai", status: "idle", lastSeen: "3 days ago", pages: 8 },
-];
-
-// Discovery recommendations
-const RECOMMENDATIONS = [
-  { text: "Add structured FAQ schema to improve AI answer accuracy", done: true },
-  { text: "Create /api/agent/register endpoint for agent self-registration", done: true },
-  { text: "Add MCP server configuration for direct tool integration", done: false },
-  { text: "Implement agent.json at /.well-known/agent.json", done: true },
-  { text: "Add AI-specific sitemap with priority hints", done: false },
-  { text: "Set up consent verification webhook for real-time validation", done: false },
-];
 
 // ---------------------------------------------------------------------------
 // Component
@@ -241,8 +182,6 @@ export default function AIAgentsAdmin() {
   const maxAgentLeads = data
     ? Math.max(...Object.values(data.agentLeads.byAgent), 1)
     : 1;
-
-  const mockConsents = generateMockConsents();
 
   // -------------------------------------------------------------------------
   // Render
@@ -360,26 +299,30 @@ export default function AIAgentsAdmin() {
                 <h2 className="text-lg font-light text-[var(--text-primary)] mb-4">
                   Leads by Agent
                 </h2>
-                <div className="space-y-3">
-                  {Object.entries(data.agentLeads.byAgent)
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([agent, count]) => (
-                      <div key={agent} className="flex items-center gap-3">
-                        <span className="text-sm text-[var(--text-primary)] w-24 capitalize">
-                          {agent}
-                        </span>
-                        <div className="flex-1 bg-[var(--bg-surface)] rounded-full h-6 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${AGENT_COLORS[agent] || "bg-gray-400"} transition-all duration-500`}
-                            style={{ width: `${Math.max((count / maxAgentLeads) * 100, 2)}%` }}
-                          />
+                {Object.keys(data.agentLeads.byAgent).length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)] py-4 text-center">No agent leads yet. Data will appear as agents submit leads.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {Object.entries(data.agentLeads.byAgent)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([agent, count]) => (
+                        <div key={agent} className="flex items-center gap-3">
+                          <span className="text-sm text-[var(--text-primary)] w-24 capitalize">
+                            {agent}
+                          </span>
+                          <div className="flex-1 bg-[var(--bg-surface)] rounded-full h-6 overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${AGENT_COLORS[agent] || "bg-gray-400"} transition-all duration-500`}
+                              style={{ width: `${Math.max((count / maxAgentLeads) * 100, 2)}%` }}
+                            />
+                          </div>
+                          <span className="text-sm text-[var(--text-muted)] w-12 text-right">
+                            {count}
+                          </span>
                         </div>
-                        <span className="text-sm text-[var(--text-muted)] w-12 text-right">
-                          {count}
-                        </span>
-                      </div>
-                    ))}
-                </div>
+                      ))}
+                  </div>
+                )}
               </div>
 
               {/* Recent Agent Activity */}
@@ -387,24 +330,28 @@ export default function AIAgentsAdmin() {
                 <h2 className="text-lg font-light text-[var(--text-primary)] mb-4">
                   Recent Agent Activity
                 </h2>
-                <div className="space-y-3">
-                  {data.topReferringAgents.map((agent) => (
-                    <div
-                      key={agent.agent}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--bg-surface)]"
-                    >
-                      <div>
-                        <span className="text-sm text-[var(--text-primary)]">{agent.agent}</span>
-                        <span className="text-xs text-[var(--text-muted)] ml-2">
-                          {agent.leads} leads
+                {data.topReferringAgents.length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)] py-4 text-center">No agent activity yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {data.topReferringAgents.map((agent) => (
+                      <div
+                        key={agent.agent}
+                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--bg-surface)]"
+                      >
+                        <div>
+                          <span className="text-sm text-[var(--text-primary)]">{agent.agent}</span>
+                          <span className="text-xs text-[var(--text-muted)] ml-2">
+                            {agent.leads} leads
+                          </span>
+                        </div>
+                        <span className="text-xs text-[var(--text-muted)]">
+                          {timeAgo(agent.lastActive)}
                         </span>
                       </div>
-                      <span className="text-xs text-[var(--text-muted)]">
-                        {timeAgo(agent.lastActive)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -428,7 +375,7 @@ export default function AIAgentsAdmin() {
                       Requested
                     </p>
                     <div className="mt-2 h-2 bg-blue-200 rounded-full">
-                      <div className="h-full bg-blue-500 rounded-full" style={{ width: "100%" }} />
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: data.consentMetrics.total > 0 ? "100%" : "0%" }} />
                     </div>
                   </div>
                   <div className="text-center">
@@ -442,7 +389,9 @@ export default function AIAgentsAdmin() {
                       <div
                         className="h-full bg-emerald-500 rounded-full"
                         style={{
-                          width: `${(data.consentMetrics.confirmed / data.consentMetrics.total) * 100}%`,
+                          width: data.consentMetrics.total > 0
+                            ? `${(data.consentMetrics.confirmed / data.consentMetrics.total) * 100}%`
+                            : "0%",
                         }}
                       />
                     </div>
@@ -458,7 +407,9 @@ export default function AIAgentsAdmin() {
                       <div
                         className="h-full bg-teal-cathedral rounded-full"
                         style={{
-                          width: `${(data.agentLeads.total / data.consentMetrics.total) * 100}%`,
+                          width: data.consentMetrics.total > 0
+                            ? `${(data.agentLeads.total / data.consentMetrics.total) * 100}%`
+                            : "0%",
                         }}
                       />
                     </div>
@@ -500,30 +451,11 @@ export default function AIAgentsAdmin() {
                     </tr>
                   </thead>
                   <tbody>
-                    {mockConsents.map((consent) => (
-                      <tr
-                        key={consent.id}
-                        className="border-b border-indigo-cathedral/5 hover:bg-[var(--bg-surface)]/50 transition-colors"
-                      >
-                        <td className="px-4 py-3 text-[var(--text-primary)]">{consent.agent}</td>
-                        <td className="px-4 py-3 text-[var(--text-muted)]">{consent.email}</td>
-                        <td className="px-4 py-3">
-                          <span className="text-xs font-mono text-[var(--text-muted)]">
-                            {consent.scope}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex px-2 py-0.5 rounded text-xs font-medium border ${STATUS_STYLES[consent.status] || ""}`}
-                          >
-                            {consent.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-[var(--text-muted)] text-xs whitespace-nowrap">
-                          {new Date(consent.timestamp).toLocaleString()}
-                        </td>
-                      </tr>
-                    ))}
+                    <tr>
+                      <td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)]">
+                        No consent requests yet. Data will appear as agents request consent.
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -576,34 +508,38 @@ export default function AIAgentsAdmin() {
                 <h2 className="text-lg font-light text-[var(--text-primary)] mb-4">
                   Request Volume by Endpoint
                 </h2>
-                <div className="space-y-3">
-                  {Object.entries(data.apiUsage.byEndpoint)
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([endpoint, count]) => {
-                      const maxEndpoint = Math.max(
-                        ...Object.values(data.apiUsage.byEndpoint),
-                        1,
-                      );
-                      return (
-                        <div key={endpoint} className="flex items-center gap-3">
-                          <span className="text-xs font-mono text-[var(--text-muted)] w-44 truncate">
-                            {endpoint}
-                          </span>
-                          <div className="flex-1 bg-[var(--bg-surface)] rounded-full h-5 overflow-hidden">
-                            <div
-                              className="h-full rounded-full bg-teal-cathedral/70 transition-all duration-500"
-                              style={{
-                                width: `${Math.max((count / maxEndpoint) * 100, 2)}%`,
-                              }}
-                            />
+                {Object.keys(data.apiUsage.byEndpoint).length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)] py-4 text-center">No API requests yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {Object.entries(data.apiUsage.byEndpoint)
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([endpoint, count]) => {
+                        const maxEndpoint = Math.max(
+                          ...Object.values(data.apiUsage.byEndpoint),
+                          1,
+                        );
+                        return (
+                          <div key={endpoint} className="flex items-center gap-3">
+                            <span className="text-xs font-mono text-[var(--text-muted)] w-44 truncate">
+                              {endpoint}
+                            </span>
+                            <div className="flex-1 bg-[var(--bg-surface)] rounded-full h-5 overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-teal-cathedral/70 transition-all duration-500"
+                                style={{
+                                  width: `${Math.max((count / maxEndpoint) * 100, 2)}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="text-sm text-[var(--text-muted)] w-16 text-right">
+                              {formatNum(count)}
+                            </span>
                           </div>
-                          <span className="text-sm text-[var(--text-muted)] w-16 text-right">
-                            {formatNum(count)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
 
               {/* Top Agents by Request Volume */}
@@ -611,31 +547,35 @@ export default function AIAgentsAdmin() {
                 <h2 className="text-lg font-light text-[var(--text-primary)] mb-4">
                   Top Agents by Request Volume
                 </h2>
-                <div className="space-y-3">
-                  {data.topReferringAgents
-                    .sort((a, b) => b.leads - a.leads)
-                    .map((agent, i) => (
-                      <div
-                        key={agent.agent}
-                        className="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--bg-surface)]"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-medium text-[var(--text-muted)] w-6">
-                            #{i + 1}
-                          </span>
-                          <span className="text-sm text-[var(--text-primary)]">{agent.agent}</span>
+                {data.topReferringAgents.length === 0 ? (
+                  <p className="text-sm text-[var(--text-muted)] py-4 text-center">No agent requests yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {data.topReferringAgents
+                      .sort((a, b) => b.leads - a.leads)
+                      .map((agent, i) => (
+                        <div
+                          key={agent.agent}
+                          className="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--bg-surface)]"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-medium text-[var(--text-muted)] w-6">
+                              #{i + 1}
+                            </span>
+                            <span className="text-sm text-[var(--text-primary)]">{agent.agent}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-sm text-teal-cathedral">
+                              {formatNum(agent.leads * 12)} requests
+                            </span>
+                            <span className="text-xs text-[var(--text-muted)]">
+                              {timeAgo(agent.lastActive)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-sm text-teal-cathedral">
-                            {formatNum(agent.leads * 12)} requests
-                          </span>
-                          <span className="text-xs text-[var(--text-muted)]">
-                            {timeAgo(agent.lastActive)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -674,74 +614,7 @@ export default function AIAgentsAdmin() {
                 <h2 className="text-lg font-light text-[var(--text-primary)] mb-4">
                   AI Crawler Activity
                 </h2>
-                <div className="space-y-3">
-                  {CRAWLERS.map((crawler) => (
-                    <div
-                      key={crawler.name}
-                      className="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--bg-surface)]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            crawler.status === "active" ? "bg-emerald-500" : "bg-gray-400"
-                          }`}
-                        />
-                        <span className="text-sm text-[var(--text-primary)]">{crawler.name}</span>
-                        <span
-                          className={`inline-flex px-2 py-0.5 rounded text-xs font-medium border ${
-                            crawler.status === "active"
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : "bg-gray-50 text-gray-600 border-gray-200"
-                          }`}
-                        >
-                          {crawler.status}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs text-[var(--text-muted)]">
-                          {crawler.pages} pages crawled
-                        </span>
-                        <span className="text-xs text-[var(--text-muted)]">
-                          {crawler.lastSeen}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recommendations */}
-              <div className="cathedral-surface p-6" role="region" aria-label="AI discoverability recommendations">
-                <h2 className="text-lg font-light text-[var(--text-primary)] mb-4">
-                  AI Discoverability Recommendations
-                </h2>
-                <div className="space-y-2">
-                  {RECOMMENDATIONS.map((rec, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 py-2 px-3 rounded-lg bg-[var(--bg-surface)]"
-                    >
-                      <span
-                        className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs ${
-                          rec.done
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {rec.done ? "\u2713" : "!"}
-                      </span>
-                      <span
-                        className={`text-sm ${
-                          rec.done
-                            ? "text-[var(--text-muted)] line-through"
-                            : "text-[var(--text-primary)]"
-                        }`}
-                      >
-                        {rec.text}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-sm text-[var(--text-muted)] py-4 text-center">No crawler activity detected yet.</p>
               </div>
             </div>
           )}

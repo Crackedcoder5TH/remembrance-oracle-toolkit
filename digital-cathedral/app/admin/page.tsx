@@ -261,6 +261,12 @@ export default function AdminDashboard() {
             Pricing
           </button>
           <button
+            onClick={() => router.push("/admin/ai-agents")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-indigo-600 text-white hover:bg-indigo-500"
+          >
+            AI Agents
+          </button>
+          <button
             onClick={handleExport}
             className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-teal-cathedral/70 border border-teal-cathedral/20 hover:border-teal-cathedral/40 hover:text-teal-cathedral"
           >

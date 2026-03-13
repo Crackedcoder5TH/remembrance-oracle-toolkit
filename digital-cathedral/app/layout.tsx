@@ -113,11 +113,33 @@ const jsonLd = {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Home", item: BASE_URL },
-        { "@type": "ListItem", position: 2, name: "About", item: `${BASE_URL}/about` },
-        { "@type": "ListItem", position: 3, name: "FAQ", item: `${BASE_URL}/faq` },
-        { "@type": "ListItem", position: 4, name: "Privacy Policy", item: `${BASE_URL}/privacy` },
-        { "@type": "ListItem", position: 5, name: "Terms of Service", item: `${BASE_URL}/terms` },
+        { "@type": "ListItem", position: 2, name: "Blog", item: `${BASE_URL}/blog` },
+        { "@type": "ListItem", position: 3, name: "Resources", item: `${BASE_URL}/resources` },
+        { "@type": "ListItem", position: 4, name: "About", item: `${BASE_URL}/about` },
+        { "@type": "ListItem", position: 5, name: "FAQ", item: `${BASE_URL}/faq` },
+        { "@type": "ListItem", position: 6, name: "Privacy Policy", item: `${BASE_URL}/privacy` },
+        { "@type": "ListItem", position: 7, name: "Terms of Service", item: `${BASE_URL}/terms` },
       ],
+    },
+    {
+      "@type": "Service",
+      name: "Free Life Insurance Coverage Review",
+      provider: {
+        "@type": "Organization",
+        name: "Valor Legacies",
+      },
+      description: "Free, no-obligation life insurance coverage review for veterans, active duty, National Guard, Reserve, and military families. Connects consumers with licensed insurance professionals.",
+      areaServed: "US",
+      audience: {
+        "@type": "Audience",
+        audienceType: "Military families, veterans, active duty service members",
+      },
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+        description: "Free coverage review — no cost, no obligation",
+      },
     },
     {
       "@type": "SoftwareApplication",

@@ -8,6 +8,8 @@ import { useIsAdmin } from "../protect/hooks/use-is-admin";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
+  { href: "/blog", label: "Blog" },
+  { href: "/resources", label: "Resources" },
   { href: "/about", label: "About Us" },
   { href: "/faq", label: "FAQ" },
   { href: "/privacy", label: "Privacy Policy" },

@@ -64,16 +64,16 @@ function validateDob(dob: unknown): string | null {
   return null;
 }
 
-const VALID_STATES = new Set([
+export const VALID_STATES = new Set([
   "AL","AK","AZ","AR","CA","CO","CT","DE","DC","FL","GA","HI","ID","IL","IN",
   "IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH",
   "NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT",
   "VT","VA","WA","WV","WI","WY",
 ]);
 
-const VALID_COVERAGE = new Set(["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "not-sure"]);
-const VALID_PURCHASE_INTENT = new Set(["protect-family", "want-protection", "exploring"]);
-const VALID_VETERAN_STATUS = new Set(["active-duty", "reserve", "national-guard", "veteran", "non-military"]);
+export const VALID_COVERAGE = new Set(["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "not-sure"]);
+export const VALID_PURCHASE_INTENT = new Set(["protect-family", "want-protection", "exploring"]);
+export const VALID_VETERAN_STATUS = new Set(["active-duty", "reserve", "national-guard", "veteran", "non-military"]);
 const VALID_MILITARY_BRANCHES = new Set([
   "army", "marine-corps", "navy", "air-force", "space-force",
   "coast-guard", "national-guard", "reserves",

@@ -4,6 +4,7 @@ import {
   updateClientBalance,
   createBilling,
   generateBillingId,
+  getClientById,
 } from "@/app/lib/client-database";
 import { createRequestLogger } from "@/app/lib/logger";
 import type Stripe from "stripe";
@@ -57,6 +58,16 @@ export async function POST(req: NextRequest) {
     const { clientId, type } = paymentIntent.metadata;
 
     if (type === "add_funds" && clientId) {
+      // Verify clientId exists and is active before crediting
+      const clientResult = await getClientById(clientId);
+      if (!clientResult.ok || !clientResult.value || clientResult.value.status !== "active") {
+        log.error("Webhook references invalid or inactive client", { clientId, paymentIntentId: paymentIntent.id });
+        return NextResponse.json(
+          { error: "Invalid client reference in payment metadata" },
+          { status: 400 }
+        );
+      }
+
       const amount = paymentIntent.amount;
 
       // Credit the client's balance

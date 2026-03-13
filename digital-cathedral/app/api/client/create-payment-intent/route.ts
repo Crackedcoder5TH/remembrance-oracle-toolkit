@@ -18,16 +18,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { amount } = body;
 
-    if (!amount || typeof amount !== "number" || amount < 500) {
+    if (
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      !Number.isInteger(amount) ||
+      amount < 500 ||
+      amount > 1000000
+    ) {
       return NextResponse.json(
-        { success: false, message: "Minimum fund amount is $5.00." },
-        { status: 400 }
-      );
-    }
-
-    if (amount > 1000000) {
-      return NextResponse.json(
-        { success: false, message: "Maximum fund amount is $10,000.00." },
+        { success: false, message: "Amount must be a whole number between $5.00 and $10,000.00." },
         { status: 400 }
       );
     }

@@ -7,9 +7,20 @@ import {
   PORTAL_SESSION_COOKIE,
   PORTAL_SESSION_MAX_AGE,
 } from "@/app/lib/portal-session";
+import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 3 registrations per minute per IP
+    const clientIp = getClientIp(req.headers);
+    const rateCheck = checkRateLimit(clientIp, 3, 60_000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) } },
+      );
+    }
+
     const body = await req.json();
     const { email, password, firstName, lastName, phone, state } = body;
 

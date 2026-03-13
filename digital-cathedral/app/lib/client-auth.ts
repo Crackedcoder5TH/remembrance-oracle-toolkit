@@ -17,9 +17,9 @@ import { getClientById } from "./client-database";
 const COOKIE_NAME = "__client_session";
 const SESSION_DURATION_S = 30 * 24 * 60 * 60; // 30 days
 
-/** True when no real database is configured — graceful degradation to demo client. */
+/** True when no real database is configured AND not in production — graceful degradation to demo client. */
 function isDemoMode(): boolean {
-  return !process.env.DATABASE_URL;
+  return !process.env.DATABASE_URL && process.env.NODE_ENV !== "production";
 }
 
 function getSecret(): string {

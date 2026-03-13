@@ -12,6 +12,7 @@
  *  - CSV export
  *  - Pagination
  *  - Real-time SSE notifications
+ *  - Editable homepage veteran story message
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -191,6 +192,49 @@ export default function AdminDashboard() {
     }
   }
 
+  // --- Editable veteran story message ---
+  const [veteranStory, setVeteranStory] = useState("");
+  const [storyLoading, setStoryLoading] = useState(false);
+  const [storySaving, setStorySaving] = useState(false);
+  const [storyMessage, setStoryMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    setStoryLoading(true);
+    fetch("/api/admin/site-content")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.content?.veteranStory) {
+          setVeteranStory(data.content.veteranStory);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setStoryLoading(false));
+  }, []);
+
+  async function handleSaveStory() {
+    setStorySaving(true);
+    setStoryMessage(null);
+    try {
+      const res = await fetch("/api/admin/site-content", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ veteranStory }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setStoryMessage({ text: body?.error || "Save failed", type: "error" });
+        return;
+      }
+      setStoryMessage({ text: "Message updated successfully!", type: "success" });
+      setTimeout(() => setStoryMessage(null), 4000);
+    } catch {
+      setStoryMessage({ text: "Save failed. Please try again.", type: "error" });
+    } finally {
+      setStorySaving(false);
+    }
+  }
+
   // --- Real-time notifications via SSE ---
   const [newLeadFlash, setNewLeadFlash] = useState<string | null>(null);
   useEffect(() => {
@@ -364,6 +408,47 @@ export default function AdminDashboard() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Editable Veteran Story Message */}
+      <div className="cathedral-surface p-6 mb-8" role="region" aria-label="Homepage message editor">
+        <h2 className="text-lg font-light text-[var(--text-primary)] mb-1">Homepage Message</h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          Edit the veteran story displayed on the homepage. Use blank lines to separate paragraphs.
+        </p>
+
+        {storyMessage && (
+          <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${storyMessage.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+            {storyMessage.text}
+          </div>
+        )}
+
+        {storyLoading ? (
+          <div className="text-sm text-[var(--text-muted)] py-8 text-center">Loading message...</div>
+        ) : (
+          <>
+            <textarea
+              value={veteranStory}
+              onChange={(e) => setVeteranStory(e.target.value)}
+              rows={12}
+              maxLength={5000}
+              className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/40 resize-y font-sans leading-relaxed"
+              placeholder="Enter the veteran story message..."
+            />
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-[var(--text-muted)]">
+                {veteranStory.length}/5000 characters
+              </p>
+              <button
+                onClick={handleSaveStory}
+                disabled={storySaving}
+                className="px-6 py-2 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-50"
+              >
+                {storySaving ? "Saving..." : "Save Message"}
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Veteran + Coverage Breakdown */}

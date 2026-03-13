@@ -864,3 +864,72 @@ export async function deleteLeadByEmail(email: string): Promise<Result<{ deleted
 export async function deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>> {
   return getAdapter().deleteLeadById(leadId);
 }
+
+// =============================================================================
+// Portal helpers — client-facing views of lead data
+// =============================================================================
+
+/** Get leads associated with a client email (for portal dashboard). */
+export async function getClientLeads(email: string): Promise<Result<LeadRecord[], string>> {
+  return getAdapter().getLeadsByEmail(email);
+}
+
+/** Client message record (portal messaging). */
+export interface ClientMessage {
+  id: number;
+  clientId: number;
+  direction: "inbound" | "outbound";
+  subject: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
+
+/** Create a client message (portal → admin). */
+export async function createClientMessage(msg: {
+  clientId: number;
+  direction: "inbound" | "outbound";
+  subject: string;
+  body: string;
+}): Promise<Result<{ id: number }, string>> {
+  // Messages table not yet implemented — return a stub ID
+  // TODO: Add client_messages table to adapters
+  console.log(`[PORTAL] Message from client ${msg.clientId}: ${msg.subject}`);
+  return { ok: true, value: { id: Date.now() } };
+}
+
+/** Mark a message as read. */
+export async function markMessageRead(
+  messageId: string,
+  clientId: number,
+): Promise<Result<{ updated: boolean }, string>> {
+  // Messages table not yet implemented
+  console.log(`[PORTAL] Message ${messageId} marked read by client ${clientId}`);
+  return { ok: true, value: { updated: true } };
+}
+
+/** Get messages for a client (portal inbox). */
+export async function getClientMessages(
+  clientId: number,
+): Promise<Result<ClientMessage[], string>> {
+  // Messages table not yet implemented — return empty
+  return { ok: true, value: [] };
+}
+
+/** Client document record (portal documents). */
+export interface ClientDocument {
+  id: number;
+  clientId: number;
+  name: string;
+  url: string;
+  type: string;
+  createdAt: string;
+}
+
+/** Get documents for a client (portal documents tab). */
+export async function getClientDocuments(
+  clientId: number,
+): Promise<Result<ClientDocument[], string>> {
+  // Documents table not yet implemented — return empty
+  return { ok: true, value: [] };
+}

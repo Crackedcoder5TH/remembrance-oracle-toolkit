@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientByEmail } from "@/app/lib/database";
+import { getClientByEmail } from "@/app/lib/client-database";
 import { verifyPassword } from "@/app/lib/password";
 import {
   createPortalSessionToken,
@@ -48,10 +48,10 @@ export async function POST(req: NextRequest) {
     }
 
     const token = createPortalSessionToken({
-      id: client.id,
+      id: parseInt(client.clientId.replace(/\D/g, "").slice(0, 8) || "0", 10),
       email: client.email,
-      firstName: client.firstName,
-      lastName: client.lastName,
+      firstName: client.contactName.split(" ")[0] || client.companyName,
+      lastName: client.contactName.split(" ").slice(1).join(" ") || "",
     });
 
     const res = NextResponse.json({ success: true });

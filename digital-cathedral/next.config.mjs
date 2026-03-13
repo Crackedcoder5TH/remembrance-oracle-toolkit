@@ -12,7 +12,6 @@ const nextConfig = {
   // Exclude native addons from serverless bundles (better-sqlite3 is optional/dev-only)
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
-    instrumentationHook: true,
   },
 
   // ─── Security Headers (HTTPS everywhere) ───

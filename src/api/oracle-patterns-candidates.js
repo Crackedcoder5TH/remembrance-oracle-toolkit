@@ -157,7 +157,26 @@ module.exports = {
       if (!dryRun) {
         try {
           const db = this.patterns._sqlite?.db || this.store?.db;
-          if (db) db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
+          if (db) {
+            // Archive before delete for recovery safety
+            const row = db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
+            if (row) {
+              const now = new Date().toISOString();
+              db.prepare(`
+                INSERT OR IGNORE INTO pattern_archive
+                  (id, name, code, language, pattern_type, coherency_total, coherency_json,
+                   test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                row.id, row.name, row.code, row.language || 'unknown',
+                row.pattern_type || 'utility', row.coherency_total || 0,
+                row.coherency_json || '{}', row.test_code || null,
+                row.tags || '[]', 'deep-clean:' + reason, now, row.created_at || null,
+                JSON.stringify(row)
+              );
+            }
+            db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
+          }
         } catch { /* skip */ }
       }
     }

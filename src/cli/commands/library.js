@@ -411,6 +411,104 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const pStats = oracle.patternStats();
     console.log(`\nLibrary: ${c.bold(String(pStats.totalPatterns))} proven + ${c.bold(String(cStats.totalCandidates))} candidates`);
   };
+
+  // ─── Fractal Compression & Holographic Encoding ───
+
+  handlers['compress'] = (args) => {
+    const { compressStore, getCompressionStats } = require('../../compression/index');
+    const sub = args._sub || 'run';
+
+    // Get the underlying SQLite store (compression needs direct access)
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+
+    if (sub === 'stats') {
+      const stats = getCompressionStats(store);
+      console.log(c.boldCyan('Fractal Compression Statistics:\n'));
+      console.log(`  Total patterns:      ${c.bold(String(stats.totalPatterns))}`);
+      console.log(`  Fractal families:    ${c.bold(String(stats.familyCount))}`);
+      console.log(`  Compressed patterns: ${c.bold(String(stats.compressedPatterns))} (${stats.totalPatterns > 0 ? ((stats.compressedPatterns / stats.totalPatterns) * 100).toFixed(1) : '0'}%)`);
+      console.log(`  Singleton patterns:  ${c.bold(String(stats.singletonPatterns))} (${stats.totalPatterns > 0 ? ((stats.singletonPatterns / stats.totalPatterns) * 100).toFixed(1) : '0'}%)`);
+      console.log(`  Templates stored:    ${c.bold(String(stats.templateCount))}`);
+      console.log(`  Avg family size:     ${c.bold(String(stats.avgFamilySize))}`);
+      console.log(`  Compression ratio:   ${c.bold(stats.compressionRatio + 'x')}`);
+      console.log(`  Storage saved:       ${c.bold(_formatBytes(stats.savedBytes))}`);
+
+      console.log(c.boldCyan('\nHolographic Encoding:\n'));
+      console.log(`  Pages:               ${c.bold(String(stats.pageCount))}`);
+      console.log(`  Embeddings cached:   ${c.bold(String(stats.embeddingCount))} / ${stats.totalPatterns}`);
+      console.log(`  Embedding dims:      ${c.bold(String(stats.embeddingDims))}`);
+
+      if (stats.serfReady != null) {
+        console.log(c.boldCyan('\nSERF Integration:\n'));
+        console.log(`  SERF-ready patterns: ${c.bold(String(stats.serfReady))}`);
+        console.log(`  Healing patterns:    ${c.bold(String(stats.serfHealing))}`);
+        console.log(`  Validation passed:   ${c.bold(String(stats.validationPassed))}`);
+        console.log(`  Validation failed:   ${stats.validationFailed > 0 ? c.red(String(stats.validationFailed)) : c.bold('0')}`);
+      }
+      return;
+    }
+
+    if (sub === 'families') {
+      const { detectFamilies } = require('../../compression/fractal');
+      const patterns = store.getAllPatterns ? store.getAllPatterns() : [];
+      const families = detectFamilies(patterns);
+
+      if (families.length === 0) {
+        console.log(c.dim('No fractal families detected. Run `compress` first.'));
+        return;
+      }
+
+      console.log(c.boldCyan(`Fractal Families: ${families.length}\n`));
+      const patternMap = new Map();
+      for (const p of patterns) patternMap.set(p.id, p);
+
+      for (const family of families.slice(0, 20)) {
+        const names = family.patternIds
+          .map(id => patternMap.get(id)?.name || id.slice(0, 8))
+          .slice(0, 5)
+          .join(', ');
+        const suffix = family.memberCount > 5 ? ` +${family.memberCount - 5} more` : '';
+        console.log(`  ${c.cyan('●')} ${c.bold(String(family.memberCount))} members: ${names}${suffix}`);
+      }
+      if (families.length > 20) {
+        console.log(c.dim(`  ... and ${families.length - 20} more families`));
+      }
+      return;
+    }
+
+    // Default: run full compression pipeline
+    const dryRun = args['dry-run'] || false;
+    const verbose = true;
+
+    console.log(c.boldCyan(`${dryRun ? '[DRY RUN] ' : ''}Fractal Compression + Holographic Encoding\n`));
+
+    const result = compressStore(store, { dryRun, verbose });
+
+    if (result.success) {
+      console.log(`\n${c.green('✓')} Compression complete:`);
+      console.log(`  Fractal families:  ${c.bold(String(result.familyCount))}`);
+      console.log(`  Singletons:        ${c.bold(String(result.singletonCount))}`);
+      console.log(`  Holo pages:        ${c.bold(String(result.pageCount))}`);
+      console.log(`  Embeddings:        ${c.bold(String(result.embeddingCount))}`);
+      if (result.stats.savedBytes > 0) {
+        console.log(`  Storage saved:     ${c.bold(_formatBytes(result.stats.savedBytes))}`);
+      }
+      console.log(`  Compression ratio: ${c.bold(result.stats.compressionRatio + 'x')}`);
+      if (result.serfReady != null) {
+        console.log(`  SERF ready:        ${c.bold(String(result.serfReady))}`);
+        console.log(`  SERF healing:      ${c.bold(String(result.serfHealing))}`);
+        console.log(`  Validation:        ${c.green(String(result.validationPassed) + ' passed')}${result.validationFailed > 0 ? ', ' + c.red(String(result.validationFailed) + ' failed') : ''}`);
+      }
+    } else {
+      console.log(c.red(result.message || 'Compression failed'));
+    }
+  };
+}
+
+function _formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 module.exports = { registerLibraryCommands };

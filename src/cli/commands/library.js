@@ -437,6 +437,14 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       console.log(`  Pages:               ${c.bold(String(stats.pageCount))}`);
       console.log(`  Embeddings cached:   ${c.bold(String(stats.embeddingCount))} / ${stats.totalPatterns}`);
       console.log(`  Embedding dims:      ${c.bold(String(stats.embeddingDims))}`);
+
+      if (stats.serfReady != null) {
+        console.log(c.boldCyan('\nSERF Integration:\n'));
+        console.log(`  SERF-ready patterns: ${c.bold(String(stats.serfReady))}`);
+        console.log(`  Healing patterns:    ${c.bold(String(stats.serfHealing))}`);
+        console.log(`  Validation passed:   ${c.bold(String(stats.validationPassed))}`);
+        console.log(`  Validation failed:   ${stats.validationFailed > 0 ? c.red(String(stats.validationFailed)) : c.bold('0')}`);
+      }
       return;
     }
 
@@ -486,6 +494,11 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
         console.log(`  Storage saved:     ${c.bold(_formatBytes(result.stats.savedBytes))}`);
       }
       console.log(`  Compression ratio: ${c.bold(result.stats.compressionRatio + 'x')}`);
+      if (result.serfReady != null) {
+        console.log(`  SERF ready:        ${c.bold(String(result.serfReady))}`);
+        console.log(`  SERF healing:      ${c.bold(String(result.serfHealing))}`);
+        console.log(`  Validation:        ${c.green(String(result.validationPassed) + ' passed')}${result.validationFailed > 0 ? ', ' + c.red(String(result.validationFailed) + ' failed') : ''}`);
+      }
     } else {
       console.log(c.red(result.message || 'Compression failed'));
     }

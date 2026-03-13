@@ -13,6 +13,11 @@
 
 const { structuralFingerprint, extractTemplates, detectFamilies, compressionStats, reconstruct } = require('./fractal');
 const { holoEmbed, createPage, holoSearch, cosineSimilarity, HOLO_DIMS } = require('./holographic');
+const {
+  prioritizeForCompression, partitionByReadiness,
+  healFamily, serfDimensions, serfEmbeddingDims,
+  validateReconstruction, validateAllReconstructions,
+} = require('./serf-integration');
 
 /**
  * Run the full compression pipeline on a store.
@@ -26,16 +31,20 @@ const { holoEmbed, createPage, holoSearch, cosineSimilarity, HOLO_DIMS } = requi
 function compressStore(store, options = {}) {
   const { dryRun = false, verbose = false } = options;
 
-  // Load all patterns
-  const patterns = store.getAllPatterns ? store.getAllPatterns() : [];
-  if (patterns.length === 0) {
+  // Load all patterns, prioritized by SERF coherence (stable patterns first)
+  const rawPatterns = store.getAllPatterns ? store.getAllPatterns() : [];
+  if (rawPatterns.length === 0) {
     return { success: true, message: 'No patterns to compress', stats: {} };
   }
 
-  // Step 1: Extract templates and detect families
+  const patterns = prioritizeForCompression(rawPatterns);
+  const { ready, healing } = partitionByReadiness(rawPatterns);
+
+  // Step 1: Extract templates and detect families (from SERF-ready patterns first)
   const { families, singletons } = extractTemplates(patterns);
 
   if (verbose) {
+    console.log(`  SERF ready: ${ready.length} patterns, healing: ${healing.length} patterns`);
     console.log(`  Detected ${families.length} fractal families, ${singletons.length} singletons`);
   }
 
@@ -114,10 +123,24 @@ function compressStore(store, options = {}) {
     }
   }
 
+  // Step 5: SERF validation of reconstructions
+  let validationResults = { passed: 0, failed: 0 };
+  if (!dryRun && families.length > 0) {
+    const validation = validateAllReconstructions(store);
+    validationResults = { passed: validation.passed.length, failed: validation.failed.length };
+    if (verbose && validation.failed.length > 0) {
+      console.log(`  ⚠ ${validation.failed.length} reconstruction(s) failed SERF validation`);
+    }
+  }
+
   const stats = compressionStats(patterns);
   stats.holoPages = pages.length;
   stats.holoEmbeddings = embeddingMap.size;
   stats.embeddingDims = HOLO_DIMS;
+  stats.serfReady = ready.length;
+  stats.serfHealing = healing.length;
+  stats.validationPassed = validationResults.passed;
+  stats.validationFailed = validationResults.failed;
 
   return {
     success: true,
@@ -125,6 +148,10 @@ function compressStore(store, options = {}) {
     singletonCount: singletons.length,
     pageCount: pages.length,
     embeddingCount: embeddingMap.size,
+    serfReady: ready.length,
+    serfHealing: healing.length,
+    validationPassed: validationResults.passed,
+    validationFailed: validationResults.failed,
     stats,
   };
 }
@@ -268,4 +295,12 @@ module.exports = {
   holoEmbed,
   createPage,
   holoSearch,
+  // SERF integration
+  prioritizeForCompression,
+  partitionByReadiness,
+  healFamily,
+  serfDimensions,
+  serfEmbeddingDims,
+  validateReconstruction,
+  validateAllReconstructions,
 };

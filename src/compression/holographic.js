@@ -6,7 +6,7 @@
  *   Dims 64-79:  Fractal family signature (structural identity)
  *   Dims 80-95:  Behavioral signature (what the pattern does)
  *   Dims 96-111: Dependency signature (composition graph position)
- *   Dims 112-127: Usage/reliability signature (empirical quality)
+ *   Dims 112-127: Usage/reliability + SERF signature (empirical quality + healing dimensions)
  *
  * Holographic pages group related patterns and store superposed embeddings
  * (centroids) + interference matrices for fast two-pass retrieval.
@@ -14,6 +14,12 @@
 
 const crypto = require('crypto');
 const { builtinEmbed, cosineSimilarity } = require('../search/embedding-engine');
+
+// SERF integration — fills dims 8-15 of usage/reliability signature
+let _serfEmbeddingDims;
+try {
+  ({ serfEmbeddingDims: _serfEmbeddingDims } = require('./serf-integration'));
+} catch { _serfEmbeddingDims = null; }
 
 const HOLO_DIMS = 128;
 
@@ -284,8 +290,13 @@ function _usageSignature(pattern) {
   vec[6] = Math.min((upvotes + downvotes) / 20, 1.0);
   // Dim 7: version maturity (normalized)
   vec[7] = Math.min((pattern.version || 1) / 10, 1.0);
-  // Dims 8-15: reserved for future reliability signals
-  // Leave as 0 for now
+  // Dims 8-15: SERF healing dimensions (simplicity, readability, security, unity, correctness, composite)
+  if (_serfEmbeddingDims && pattern.code) {
+    const serfDims = _serfEmbeddingDims(pattern.code, pattern.language);
+    for (let i = 0; i < 8 && i < serfDims.length; i++) {
+      vec[8 + i] = serfDims[i];
+    }
+  }
 
   return Array.from(vec);
 }

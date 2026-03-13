@@ -102,6 +102,9 @@ const CONSENT_DURATION_S = 24 * 60 * 60; // 24 hours
 function getConsentSecret(): string {
   const key = process.env.AGENT_CONSENT_SECRET || process.env.NEXTAUTH_SECRET || process.env.ADMIN_API_KEY;
   if (!key) throw new Error("AGENT_CONSENT_SECRET, NEXTAUTH_SECRET, or ADMIN_API_KEY must be set");
+  if (!process.env.AGENT_CONSENT_SECRET && process.env.NODE_ENV === "production") {
+    console.warn("[AUTH] AGENT_CONSENT_SECRET not set — using fallback secret. Set a dedicated secret for production.");
+  }
   return key;
 }
 

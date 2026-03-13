@@ -10,7 +10,9 @@
 
 export const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com https://accounts.google.com",
+  // 'unsafe-inline' kept as fallback for browsers that don't support 'strict-dynamic'.
+  // 'unsafe-eval' removed — not needed by Next.js 14 production builds.
+  "script-src 'self' 'unsafe-inline' www.googletagmanager.com connect.facebook.net js.stripe.com https://accounts.google.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com https://*.googleusercontent.com",
   "font-src 'self' fonts.gstatic.com",

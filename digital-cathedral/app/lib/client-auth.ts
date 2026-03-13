@@ -25,6 +25,9 @@ function isDemoMode(): boolean {
 function getSecret(): string {
   const key = process.env.CLIENT_SESSION_SECRET || process.env.ADMIN_API_KEY;
   if (!key) throw new Error("CLIENT_SESSION_SECRET or ADMIN_API_KEY is not set");
+  if (!process.env.CLIENT_SESSION_SECRET && process.env.NODE_ENV === "production") {
+    console.warn("[AUTH] CLIENT_SESSION_SECRET not set — falling back to ADMIN_API_KEY. Set a dedicated secret for production.");
+  }
   return key;
 }
 

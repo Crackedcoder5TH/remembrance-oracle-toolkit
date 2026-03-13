@@ -17,6 +17,14 @@ import { scoreLead } from "@/app/lib/lead-scoring";
  * - Local dev: inserts into SQLite
  */
 export async function POST(req: NextRequest) {
+  // Block seed endpoints in production to prevent test data creation
+  if (process.env.NODE_ENV === "production" && !process.env.ALLOW_SEED_ENDPOINTS) {
+    return NextResponse.json(
+      { success: false, message: "Seed endpoints are disabled in production." },
+      { status: 403 },
+    );
+  }
+
   const authError = await verifyAdmin(req);
   if (authError) return authError;
 

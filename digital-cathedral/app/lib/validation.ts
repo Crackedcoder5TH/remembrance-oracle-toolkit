@@ -201,3 +201,36 @@ export function validateLeadPayload(body: unknown): ValidationResult {
     },
   };
 }
+
+// ─── Client-side form helpers (shared by landing pages) ───
+
+/** Validate a name field (2-100 chars, letters/spaces/punctuation). */
+export function isValidName(name: string): boolean {
+  const trimmed = name.trim();
+  return trimmed.length >= 2 && trimmed.length <= 100 && /^[a-zA-Z\s'.,-]+$/.test(trimmed);
+}
+
+/** Validate a US phone number (10 digits, or 11 starting with 1). */
+export function isValidPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length === 10 || (digits.length === 11 && digits.startsWith("1"));
+}
+
+/** Format a phone string as (XXX) XXX-XXXX while typing. */
+export function formatPhoneInput(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+  if (digits.length === 0) return "";
+  if (digits.length <= 3) return `(${digits}`;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+/** Auto-capitalize each word in a name. */
+export function autoCapitalizeName(value: string): string {
+  return value.replace(/(?:^|\s|[-'])([a-z])/g, (match) => match.toUpperCase());
+}
+
+/** Strip < and > to prevent basic injection in user input. */
+export function sanitizeInput(s: string): string {
+  return s.trim().replace(/[<>]/g, "");
+}

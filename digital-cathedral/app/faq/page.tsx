@@ -9,6 +9,10 @@ export const metadata: Metadata = {
 
 const FAQS = [
   {
+    q: "What is the best life insurance for veterans?",
+    a: "The best life insurance for veterans depends on your needs. Term life is ideal for mortgage protection and income replacement. Whole life works well for final expense and legacy planning. Indexed Universal Life (IUL) offers retirement savings with life insurance protection. A licensed professional can help you compare options based on your service history, age, and family situation — at no cost.",
+  },
+  {
     q: "Is this the same as SGLI?",
     a: "No. This is a review of additional or alternative life insurance options available outside standard military coverage. SGLI (Servicemembers' Group Life Insurance) is a separate program administered by the VA.",
   },
@@ -55,6 +59,22 @@ const FAQS = [
   {
     q: "Is my data protected?",
     a: "Yes. We comply with TCPA, CCPA/CPRA, and FCC 2025 regulations. Your data is encrypted, stored securely, and never sold to third parties. You can request complete deletion of your data at any time.",
+  },
+  {
+    q: "What happens to my SGLI when I leave the military?",
+    a: "SGLI coverage continues for 120 days after separation at no cost. You then have 240 days to convert to VGLI (Veterans' Group Life Insurance) without health evidence. However, VGLI rates increase every 5 years. Many veterans find that private coverage with locked-in rates is more cost-effective long-term. We can help you compare both options.",
+  },
+  {
+    q: "Can I get life insurance with a VA disability rating?",
+    a: "Yes. Veterans with service-connected disabilities have several options. Guaranteed issue policies require no medical exam or health questions. You may also be eligible for S-DVI (Service-Disabled Veterans' Insurance) through the VA. A licensed professional can help you find the most affordable coverage for your situation.",
+  },
+  {
+    q: "How much life insurance does a military family need?",
+    a: "Financial advisors typically recommend 10-12 times your annual income in life insurance coverage. For military families, consider your BAH, base pay, special pay, and benefits that would stop if something happened. SGLI covers up to $400,000, but many families need additional coverage — especially those with mortgages, children, or a non-working spouse.",
+  },
+  {
+    q: "Does Valor Legacies serve all 50 states?",
+    a: "Yes. We serve all 50 states, the District of Columbia, and Puerto Rico. Coverage availability may vary by state and carrier, but our licensed professionals can find options in any state.",
   },
 ];
 
@@ -134,6 +154,8 @@ export default function FaqPage() {
 
         <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
           <nav className="flex gap-4 justify-center mb-3">
+            <Link href="/blog" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Blog</Link>
+            <Link href="/resources" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Resources</Link>
             <Link href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">About</Link>
             <Link href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Privacy Policy</Link>
             <Link href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Terms of Service</Link>

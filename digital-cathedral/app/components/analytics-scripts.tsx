@@ -14,10 +14,17 @@
 import { useEffect, useState } from "react";
 import Script from "next/script";
 
-/** Check if the user has accepted cookie consent */
+/** Check if the user has accepted cookie consent (stored in localStorage by cookie-consent component) */
 function hasConsent(): boolean {
-  if (typeof document === "undefined") return false;
-  return document.cookie.includes("cookie-consent=accepted");
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = localStorage.getItem("dc_cookie_consent");
+    if (!stored) return false;
+    const parsed = JSON.parse(stored);
+    return parsed.choice === "accepted";
+  } catch {
+    return false;
+  }
 }
 
 export function AnalyticsScripts() {
@@ -33,15 +40,34 @@ export function AnalyticsScripts() {
       return;
     }
 
-    // Poll for consent changes (user may accept cookies after page load)
-    const interval = setInterval(() => {
-      if (hasConsent()) {
+    // Listen for localStorage changes (fires when cookie-consent component saves choice)
+    function handleStorage(e: StorageEvent) {
+      if (e.key === "dc_cookie_consent" && hasConsent()) {
         setConsentGiven(true);
-        clearInterval(interval);
       }
-    }, 1000);
+    }
 
-    return () => clearInterval(interval);
+    // StorageEvent only fires from OTHER tabs; for same-tab, re-check on visibility change
+    function handleVisibility() {
+      if (!document.hidden && hasConsent()) {
+        setConsentGiven(true);
+      }
+    }
+
+    window.addEventListener("storage", handleStorage);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // Also dispatch a custom event from cookie-consent for same-tab immediate detection
+    function handleCustomConsent() {
+      if (hasConsent()) setConsentGiven(true);
+    }
+    window.addEventListener("cookie-consent-changed", handleCustomConsent);
+
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("cookie-consent-changed", handleCustomConsent);
+    };
   }, []);
 
   if (!consentGiven) return null;

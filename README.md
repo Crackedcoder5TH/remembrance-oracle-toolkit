@@ -341,6 +341,12 @@ The pre-commit hook blocks any staged file that violates the Covenant. The post-
 ## Architecture
 
 ```
+digital-cathedral/           — Valor Legacies website (Next.js 14, App Router)
+  app/                       — Pages, API routes, layouts
+  packages/shared/           — Shared types, validation, utilities
+  public/                    — Static assets (sitemap.xml, robots.txt, manifest, icons)
+  See digital-cathedral/README.md for full details.
+
 src/
   api/oracle.js          — Main Oracle API (submit, query, resolve, feedback, import, export)
   core/

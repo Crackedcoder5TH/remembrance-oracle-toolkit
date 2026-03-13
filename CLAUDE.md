@@ -1,5 +1,11 @@
 # Remembrance Oracle Toolkit — AI Instructions
 
+## Project Structure
+
+The Valor Legacies website lives in `digital-cathedral/` (not at the repo root).
+All website pages, API routes, and components are under `digital-cathedral/app/`.
+See `digital-cathedral/README.md` for the full website structure.
+
 ## MANDATORY: Session Start Checkpoint
 
 At the **start of every coding session**, before any code is written, run:

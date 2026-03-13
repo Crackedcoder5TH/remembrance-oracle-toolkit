@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, getClientByEmail } from "@/app/lib/client-database";
+import { createClient, getClientByEmail, generateClientId } from "@/app/lib/client-database";
+import type { ClientRecord } from "@/app/lib/client-database";
 import { hashPassword } from "@/app/lib/password";
 import {
   createPortalSessionToken,
@@ -41,14 +42,29 @@ export async function POST(req: NextRequest) {
 
     // Hash password and create client
     const passwordHash = await hashPassword(password);
-    const result = await createClient({
-      email,
-      passwordHash,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+    const now = new Date().toISOString();
+    const clientId = generateClientId();
+    const clientRecord: ClientRecord = {
+      clientId,
+      companyName: `${firstName.trim()} ${lastName.trim()}`,
+      contactName: `${firstName.trim()} ${lastName.trim()}`,
+      email: email.trim().toLowerCase(),
       phone: (phone || "").trim(),
-      state: (state || "").trim(),
-    });
+      passwordHash,
+      status: "active",
+      pricingTier: "standard",
+      pricePerLead: 2500,
+      exclusivePrice: 5000,
+      stateLicenses: state ? JSON.stringify([state.trim()]) : "[]",
+      coverageTypes: "[]",
+      dailyCap: 50,
+      monthlyCap: 1000,
+      minScore: 0,
+      balance: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const result = await createClient(clientRecord);
 
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
@@ -56,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     // Create session and set cookie
     const token = createPortalSessionToken({
-      id: result.value.id,
+      id: parseInt(clientId.replace(/\D/g, "").slice(0, 8) || "0", 10),
       email: email.trim().toLowerCase(),
       firstName: firstName.trim(),
       lastName: lastName.trim(),

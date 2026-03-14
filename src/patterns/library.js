@@ -513,8 +513,8 @@ class PatternLibrary {
       patternId: id,
       patternName: pattern.name,
       usageReliability: Math.round(usageReliability * 1000) / 1000,
-      usageCount: pattern.usageCount || 0,
-      successCount: pattern.successCount || 0,
+      usageCount: pattern.usageCount ?? 0,
+      successCount: pattern.successCount ?? 0,
       bugReports: bugCount,
       bugPenalty: Math.round(bugPenalty * 1000) / 1000,
       healingRate: Math.round(healingRate * 1000) / 1000,
@@ -921,8 +921,8 @@ class PatternLibrary {
     const data = this._readJSON();
     const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
-    pattern.usageCount = (pattern.usageCount || 0) + 1;
-    if (succeeded) pattern.successCount = (pattern.successCount || 0) + 1;
+    pattern.usageCount = (pattern.usageCount ?? 0) + 1;
+    if (succeeded) pattern.successCount = (pattern.successCount ?? 0) + 1;
     pattern.updatedAt = new Date().toISOString();
     this._writeJSON(data);
     return pattern;
@@ -1191,9 +1191,9 @@ function deduplicatePatterns(patterns) {
       byNameLang.set(key, {
         ...p,
         id: existing.id,
-        usageCount: existing.usageCount || p.usageCount || 0,
-        successCount: existing.successCount || p.successCount || 0,
-        bugReports: existing.bugReports || p.bugReports || 0,
+        usageCount: existing.usageCount ?? p.usageCount ?? 0,
+        successCount: existing.successCount ?? p.successCount ?? 0,
+        bugReports: existing.bugReports ?? p.bugReports ?? 0,
         createdAt: existing.createdAt || p.createdAt,
       });
     }

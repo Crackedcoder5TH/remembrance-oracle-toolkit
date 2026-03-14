@@ -120,8 +120,8 @@ function evolutionAdjustment(pattern, config = EVOLUTION_DEFAULTS) {
  * @returns {boolean}
  */
 function needsAutoHeal(pattern, config = EVOLUTION_DEFAULTS) {
-  const usage = pattern.usageCount || 0;
-  const success = pattern.successCount || 0;
+  const usage = pattern.usageCount ?? 0;
+  const success = pattern.successCount ?? 0;
   if (usage < config.autoHealMinUses) return false;
   return (success / usage) < config.autoHealThreshold;
 }
@@ -189,7 +189,7 @@ function captureRejection(code, metadata, validation) {
     description: metadata.description || '',
     tags: metadata.tags || [],
     failureReason: validation?.errors?.join('; ') || 'validation failed',
-    coherencyScore: validation?.coherencyScore || null,
+    coherencyScore: validation?.coherencyScore ?? null,
     capturedAt: new Date().toISOString(),
     source: 'rejected-submission',
   };
@@ -209,8 +209,8 @@ function detectRegressions(patterns, config = EVOLUTION_DEFAULTS) {
   const regressions = [];
 
   for (const p of patterns) {
-    const usage = p.usageCount || 0;
-    const success = p.successCount || 0;
+    const usage = p.usageCount ?? 0;
+    const success = p.successCount ?? 0;
     if (usage < config.regressionMinUses) continue;
 
     const currentRate = success / usage;

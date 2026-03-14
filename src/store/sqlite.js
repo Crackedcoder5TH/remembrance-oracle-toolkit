@@ -420,7 +420,7 @@ class SQLiteStore {
               p.description || '', JSON.stringify(p.tags || []),
               p.coherencyScore?.total ?? 0, JSON.stringify(p.coherencyScore || {}),
               JSON.stringify(p.variants || []), p.testCode || null,
-              p.usageCount || 0, p.successCount || 0,
+              p.usageCount ?? 0, p.successCount ?? 0,
               JSON.stringify(p.evolutionHistory || []),
               p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
             );
@@ -677,7 +677,7 @@ class SQLiteStore {
 
     if (existing) {
       // If new version has higher coherency, update the existing row
-      if (newCoherency > (existing.coherency_total || 0)) {
+      if (newCoherency > (existing.coherency_total ?? 0)) {
         const now = new Date().toISOString();
         this.db.prepare(`
           UPDATE patterns SET code = ?, description = ?, tags = ?,
@@ -1231,7 +1231,7 @@ class SQLiteStore {
   addHealedVariant(variant) {
     const id = this._hash(variant.healedCode + variant.parentPatternId + Date.now());
     const now = new Date().toISOString();
-    const delta = (variant.healedCoherency || 0) - (variant.originalCoherency || 0);
+    const delta = (variant.healedCoherency ?? 0) - (variant.originalCoherency ?? 0);
 
     this.db.prepare(`
       INSERT INTO healed_variants (id, parent_pattern_id, healed_code,
@@ -1241,8 +1241,8 @@ class SQLiteStore {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, variant.parentPatternId, variant.healedCode,
-      variant.originalCoherency || 0, variant.healedCoherency || 0, delta,
-      variant.healingLoops || 0, variant.healingStrategy || null,
+      variant.originalCoherency ?? 0, variant.healedCoherency ?? 0, delta,
+      variant.healingLoops ?? 0, variant.healingStrategy ?? null,
       variant.healingSummary || null, variant.whisper || null,
       now, now
     );
@@ -1329,7 +1329,7 @@ class SQLiteStore {
    */
   recordHealingAttempt(stat) {
     const now = new Date().toISOString();
-    const delta = (stat.coherencyAfter || 0) - (stat.coherencyBefore || 0);
+    const delta = (stat.coherencyAfter ?? 0) - (stat.coherencyBefore ?? 0);
 
     this.db.prepare(`
       INSERT INTO healing_stats (pattern_id, succeeded, coherency_before,
@@ -1371,8 +1371,8 @@ class SQLiteStore {
       attempts: summary.attempts || 0,
       successes: summary.successes || 0,
       rate: summary.attempts > 0 ? summary.successes / summary.attempts : 1.0,
-      avgCoherencyDelta: summary.avgDelta || 0,
-      peakCoherency: summary.peakCoherency || null,
+      avgCoherencyDelta: summary.avgDelta ?? 0,
+      peakCoherency: summary.peakCoherency ?? null,
       history: history.map(r => ({
         succeeded: r.succeeded === 1,
         coherencyBefore: r.coherency_before,
@@ -1515,7 +1515,7 @@ class SQLiteStore {
       INSERT OR REPLACE INTO fractal_templates (id, skeleton, language, member_count, avg_coherency, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(template.id, template.skeleton, template.language || 'unknown',
-      template.memberCount || 0, template.avgCoherency || 0, now, now);
+      template.memberCount ?? 0, template.avgCoherency ?? 0, now, now);
   }
 
   getTemplate(id) {

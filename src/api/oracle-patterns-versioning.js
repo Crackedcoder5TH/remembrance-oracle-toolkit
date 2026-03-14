@@ -61,8 +61,8 @@ module.exports = {
       sqliteStore.recordHealingAttempt({
         patternId,
         succeeded,
-        coherencyBefore: context.coherencyBefore || null,
-        coherencyAfter: context.coherencyAfter || null,
+        coherencyBefore: context.coherencyBefore ?? null,
+        coherencyAfter: context.coherencyAfter ?? null,
         healingLoops: context.healingLoops || 0,
       });
     }

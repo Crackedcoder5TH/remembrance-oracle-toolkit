@@ -663,10 +663,10 @@ class PatternLibrary {
       code: cleanCode,
       language: candidate.language || 'unknown',
       patternType: candidate.patternType || 'utility',
-      complexity: candidate.complexity || inferComplexity(candidate.code),
+      complexity: candidate.complexity || inferComplexity(cleanCode || ''),
       description: candidate.description || '',
       tags: candidate.tags || [],
-      coherencyTotal: candidate.coherencyTotal ?? 0,
+      coherencyTotal: candidate.coherencyTotal ?? candidate.coherencyScore?.total ?? 0,
       coherencyScore: candidate.coherencyScore || {},
       testCode: candidate.testCode || null,
       parentPattern: candidate.parentPattern || null,
@@ -767,6 +767,7 @@ class PatternLibrary {
       requires: resolved.map(p => p.id),
     });
 
+    if (!pattern) return { composed: false, reason: 'Registration failed — possible duplicate' };
     pattern.composedOf = resolved.map(p => ({ id: p.id, name: p.name }));
     if (this._backend === 'sqlite') {
       this._sqlite.updatePattern(pattern.id, {
@@ -1106,7 +1107,7 @@ class PatternLibrary {
       repaired.push(`Deduplicated ${before - data.patterns.length} patterns`);
     }
 
-    return { healthy: issues.length === 0 || repaired.length > 0, issues, repaired };
+    return { healthy: issues.length === 0 || issues.length <= repaired.length, issues, repaired };
   }
 }
 

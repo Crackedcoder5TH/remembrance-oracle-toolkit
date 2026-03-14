@@ -112,7 +112,7 @@ module.exports = {
       const oldTags = [...(pattern.tags || [])];
       const newTags = retagPattern(pattern);
       const diff = tagDiff(oldTags, newTags);
-      if (diff.added.length > minAdded) {
+      if (diff.added.length >= minAdded) {
         if (!dryRun) this.patterns.update(pattern.id, { tags: newTags });
         enriched++;
         totalTagsAdded += diff.added.length;
@@ -216,6 +216,7 @@ module.exports = {
       }
 
       if (evaluation.status === 'would-promote') {
+        report.wouldPromote = (report.wouldPromote || 0) + 1;
         report.details.push({ name: candidate.name, status: 'would-promote', coherency: evaluation.coherency });
         continue;
       }

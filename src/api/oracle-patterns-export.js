@@ -10,6 +10,7 @@ module.exports = {
     const b = this.patterns.getAll().find(p => p.id === idB) || this.store.get(idB);
     if (!a) return { error: `Entry ${idA} not found` };
     if (!b) return { error: `Entry ${idB} not found` };
+    if (!a.code || !b.code) return { error: 'One or both entries have no code' };
 
     const linesA = a.code.split('\n');
     const linesB = b.code.split('\n');

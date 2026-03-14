@@ -175,9 +175,9 @@ function computeStats(rootDir) {
     };
   }
 
-  const coherenceValues = runs.map(r => r.coherence?.after || 0);
-  const improvements = runs.map(r => r.healing?.avgImprovement || 0);
-  const filesHealed = runs.reduce((s, r) => s + (r.healing?.filesHealed || 0), 0);
+  const coherenceValues = runs.map(r => r.coherence?.after ?? 0);
+  const improvements = runs.map(r => r.healing?.avgImprovement ?? 0);
+  const filesHealed = runs.reduce((s, r) => s + (r.healing?.filesHealed ?? 0), 0);
 
   const avgCoherence = coherenceValues.reduce((s, v) => s + v, 0) / coherenceValues.length;
   const avgImprovement = improvements.reduce((s, v) => s + v, 0) / improvements.length;

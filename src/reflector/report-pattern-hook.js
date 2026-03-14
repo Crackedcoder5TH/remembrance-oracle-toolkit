@@ -277,9 +277,9 @@ function recordPatternHookUsage(rootDir, entry, oracle) {
         sqliteStore.recordHealingAttempt({
           patternId: entry.patternId,
           succeeded: entry.succeeded !== false,
-          coherencyBefore: entry.coherencyBefore || null,
-          coherencyAfter: entry.coherencyAfter || null,
-          healingLoops: entry.healingLoops || 0,
+          coherencyBefore: entry.coherencyBefore ?? null,
+          coherencyAfter: entry.coherencyAfter ?? null,
+          healingLoops: entry.healingLoops ?? 0,
         });
       }
       // Store healed variant if improvement was positive
@@ -287,9 +287,9 @@ function recordPatternHookUsage(rootDir, entry, oracle) {
         sqliteStore.addHealedVariant({
           parentPatternId: entry.patternId,
           healedCode: entry.healedCode,
-          originalCoherency: entry.coherencyBefore || 0,
-          healedCoherency: entry.coherencyAfter || 0,
-          healingLoops: entry.healingLoops || 0,
+          originalCoherency: entry.coherencyBefore ?? 0,
+          healedCoherency: entry.coherencyAfter ?? 0,
+          healingLoops: entry.healingLoops ?? 0,
           healingStrategy: entry.patternGuided ? 'pattern-guided' : 'reflector',
         });
       }

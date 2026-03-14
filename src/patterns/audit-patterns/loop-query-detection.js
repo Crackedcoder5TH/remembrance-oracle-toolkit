@@ -35,32 +35,42 @@ function detectLoopQuery(code) {
   const lines = code.split('\n');
 
   const queryPatterns = /\.getAll\w*\(\)|\.find\w*\(\)|\.query\(\)|\.select\(\)|\.fetch\(\)/;
-  let loopDepth = 0;
+
+  // Track brace depth to know when loop bodies end
+  // loopStack stores the braceDepth at which each loop started
+  let braceDepth = 0;
+  const loopStack = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
 
-    // Count opening braces that follow loop statements on the same line
+    // Check if line starts a loop — push current brace depth onto stack
     const loopMatch = /\bfor\s*\(|\bwhile\s*\(|\.forEach\s*\(|\.map\s*\(/.test(line);
-    if (loopMatch) loopDepth++;
-
-    // Count all closing braces for depth tracking (not just at line start)
-    const opens = (line.match(/\{/g) || []).length;
-    const closes = (line.match(/\}/g) || []).length;
-    const netClose = closes - opens;
-    // If net closing braces, decrease loop depth (but not below 0)
-    if (netClose > 0) {
-      loopDepth = Math.max(0, loopDepth - netClose);
+    if (loopMatch) {
+      loopStack.push(braceDepth);
     }
 
-    if (loopDepth > 0 && queryPatterns.test(line)) {
+    // Count braces on this line
+    const opens = (line.match(/\{/g) || []).length;
+    const closes = (line.match(/\}/g) || []).length;
+
+    // Check for query while inside a loop
+    if (loopStack.length > 0 && queryPatterns.test(line)) {
       const match = line.match(queryPatterns);
       warnings.push({
         line: i + 1,
         pattern: match ? match[0] : line.trim(),
         suggestion: 'Move query outside loop and use a Map for O(1) lookups',
       });
+    }
+
+    // Update brace depth
+    braceDepth += opens - closes;
+
+    // Pop loops whose body has closed (braceDepth returned to loop start level)
+    while (loopStack.length > 0 && braceDepth <= loopStack[loopStack.length - 1]) {
+      loopStack.pop();
     }
   }
 

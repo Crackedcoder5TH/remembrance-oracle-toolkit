@@ -165,4 +165,13 @@ describe('Loop Query Detection', () => {
   it('returns empty for empty string', () => {
     assert.deepStrictEqual(detectLoopQuery(''), []);
   });
+
+  it('does not flag queries after single-line loop closes', () => {
+    const code = [
+      'for (const x of items) { process(x); }',
+      'const patterns = store.getAllPatterns();',
+    ].join('\n');
+    const w = detectLoopQuery(code);
+    assert.equal(w.length, 0, 'Should not flag query after loop closes on same line');
+  });
 });

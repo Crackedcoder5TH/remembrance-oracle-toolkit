@@ -45,7 +45,7 @@ function scoreSyntaxValidity(code, language) {
   const covenant = covenantCheck(code, { language });
   if (!covenant.sealed) {
     score -= 0.2;
-    details.push(`Covenant violations: ${covenant.violations?.length || 'unknown'}`);
+    details.push(`Covenant violations: ${covenant.violations?.length ?? 'unknown'}`);
   }
 
   const nonBlank = code.split('\n').filter(l => l.trim()).length;
@@ -305,7 +305,7 @@ function computeRepoCoherence(rootDir, config = {}) {
   const dimAvgs = {};
   for (const dim of dimNames) {
     dimAvgs[dim] = Math.round(
-      (fileScores.reduce((s, f) => s + (f.dimensions[dim]?.score || 0), 0) / fileScores.length) * 1000
+      (fileScores.reduce((s, f) => s + (f.dimensions[dim]?.score ?? 0), 0) / fileScores.length) * 1000
     ) / 1000;
   }
 

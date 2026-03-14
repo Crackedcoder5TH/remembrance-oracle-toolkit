@@ -58,10 +58,10 @@ const _covenantCache = new Map();
 const _CACHE_MAX = 256;
 
 function _cacheKey(code) {
-  const len = code.length;
-  const head = code.slice(0, 64);
-  const tail = code.slice(-64);
-  return len + ':' + head + ':' + tail;
+  // Use a proper hash to avoid collisions between code strings
+  // that share the same length, prefix, and suffix but differ in the middle
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(code).digest('hex');
 }
 
 function covenantCheck(code, metadata = {}) {

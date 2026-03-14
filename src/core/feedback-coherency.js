@@ -106,7 +106,7 @@ function coherencyFeedback(code, coherencyScore, threshold = 0.6) {
   if (!coherencyScore || coherencyScore.total >= threshold) return [];
 
   const feedback = [];
-  const { breakdown } = coherencyScore;
+  const breakdown = coherencyScore.breakdown || {};
   feedback.push(`Coherency score ${coherencyScore.total.toFixed(3)} is below threshold ${threshold}.`);
 
   const lowDimensions = [];

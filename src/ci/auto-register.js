@@ -316,7 +316,10 @@ function autoRegister(oracle, cwd, options = {}) {
       } catch { report.failed++; }
     } else {
       // Split into individual functions and register new ones
-      const functions = extractFunctions(code, language, newFunctionNames.length > 0 ? newFunctionNames : null);
+      // Only register functions that appear in the diff; skip files where
+      // the diff touched only non-function code (whitespace, comments, etc.)
+      if (newFunctionNames.length === 0) continue;
+      const functions = extractFunctions(code, language, newFunctionNames);
 
       for (const fn of functions) {
         if (existingNames.has(fn.name)) {

@@ -20,7 +20,7 @@ const TOOLS = [
         tags: { type: 'array', items: { type: 'string' }, description: 'Filter by tags (structured query mode)' },
         description: { type: 'string', description: 'Description to match (structured query mode — used instead of query)' },
       },
-      required: ['query'],
+      required: [],
     },
   },
 

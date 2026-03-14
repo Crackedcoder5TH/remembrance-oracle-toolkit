@@ -1016,13 +1016,13 @@ class PatternLibrary {
     }
 
     if (this._backend === 'sqlite') {
-      let added = 0, updated = 0;
+      let added = 0, skipped = 0;
       for (const p of incoming) {
         const result = this._sqlite.addPatternIfNotExists(p);
         if (result) added++;
-        else updated++;
+        else skipped++;
       }
-      return { added, updated };
+      return { added, updated: 0, skipped };
     }
 
     const data = this._readJSON();
@@ -1159,20 +1159,21 @@ function maxNestingDepth(code) {
  * Ported from Reflector Oracle's patternSync.js.
  */
 function deduplicatePatterns(patterns) {
-  const byName = new Map();
+  const byNameLang = new Map();
   for (const p of patterns) {
     if (!p.name) continue;
-    const key = p.name.toLowerCase();
-    const existing = byName.get(key);
+    // Include language in key to preserve valid cross-language variants
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const existing = byNameLang.get(key);
     if (!existing) {
-      byName.set(key, p);
+      byNameLang.set(key, p);
     } else if ((p.coherencyScore?.total ?? 0) > (existing.coherencyScore?.total ?? 0)) {
-      byName.set(key, { ...existing, ...p });
+      byNameLang.set(key, { ...existing, ...p });
     }
   }
   // Preserve unnamed patterns too
   const unnamed = patterns.filter(p => !p.name);
-  return [...byName.values(), ...unnamed];
+  return [...byNameLang.values(), ...unnamed];
 }
 
 const { countBy } = require('../store/store-helpers');

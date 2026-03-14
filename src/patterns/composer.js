@@ -69,7 +69,6 @@ const KEYWORD_TO_PATTERN = {
   // Rate limiting
   'rate limit': 'rate-limiter',
   'rate-limit': 'rate-limiter',
-  'throttle': 'rate-limiter',
   'rate control': 'rate-limiter',
 
   // Middleware

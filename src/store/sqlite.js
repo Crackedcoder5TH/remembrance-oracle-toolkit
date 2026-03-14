@@ -811,34 +811,46 @@ class SQLiteStore {
     const now = new Date().toISOString();
     const weight = this.getVoteWeight(voter);
 
-    // Ensure voter profile exists and update stats
+    // Ensure voter profile exists
     const voterProfile = this.getVoter(voter);
-    this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
 
-    // Check for existing vote
+    // Check for existing vote before any mutations
     const existing = this.db.prepare('SELECT * FROM votes WHERE pattern_id = ? AND voter = ?').get(patternId, voter);
-    if (existing) {
-      if (existing.vote === voteVal) {
-        return { success: false, error: 'Already voted' };
-      }
-      // Change vote direction
-      this.db.prepare('UPDATE votes SET vote = ?, weight = ?, created_at = ? WHERE id = ?').run(voteVal, weight, now, existing.id);
-      if (voteVal === 1) {
-        this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1, downvotes = MAX(0, downvotes - 1) WHERE id = ?').run(patternId);
-      } else {
-        this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1, upvotes = MAX(0, upvotes - 1) WHERE id = ?').run(patternId);
-      }
-    } else {
-      const id = require('crypto').randomUUID();
-      this.db.prepare('INSERT INTO votes (id, pattern_id, voter, vote, weight, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, patternId, voter, voteVal, weight, now);
-      if (voteVal === 1) {
-        this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1 WHERE id = ?').run(patternId);
-      } else {
-        this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1 WHERE id = ?').run(patternId);
-      }
+    if (existing && existing.vote === voteVal) {
+      return { success: false, error: 'Already voted' };
     }
 
-    this._audit('vote', 'patterns', patternId, { voter, vote: voteVal, weight });
+    // Wrap all mutations in a transaction for atomicity
+    this.db.exec('BEGIN');
+    try {
+      // Update voter stats
+      this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
+
+      if (existing) {
+        // Change vote direction
+        this.db.prepare('UPDATE votes SET vote = ?, weight = ?, created_at = ? WHERE id = ?').run(voteVal, weight, now, existing.id);
+        if (voteVal === 1) {
+          this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1, downvotes = MAX(0, downvotes - 1) WHERE id = ?').run(patternId);
+        } else {
+          this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1, upvotes = MAX(0, upvotes - 1) WHERE id = ?').run(patternId);
+        }
+      } else {
+        const id = require('crypto').randomUUID();
+        this.db.prepare('INSERT INTO votes (id, pattern_id, voter, vote, weight, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, patternId, voter, voteVal, weight, now);
+        if (voteVal === 1) {
+          this.db.prepare('UPDATE patterns SET upvotes = upvotes + 1 WHERE id = ?').run(patternId);
+        } else {
+          this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1 WHERE id = ?').run(patternId);
+        }
+      }
+
+      this._audit('vote', 'patterns', patternId, { voter, vote: voteVal, weight });
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+
     const updated = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
     const upvotes = updated.upvotes || 0;
     const downvotes = updated.downvotes || 0;

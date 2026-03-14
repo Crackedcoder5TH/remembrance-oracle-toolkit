@@ -104,7 +104,7 @@ class MCPServer {
     }
 
     try {
-      const result = handler(this.oracle, args);
+      const result = await handler(this.oracle, args);
       return {
         jsonrpc: '2.0',
         id,

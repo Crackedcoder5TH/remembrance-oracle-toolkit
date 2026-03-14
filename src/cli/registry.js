@@ -141,7 +141,7 @@ const CATEGORIES = [
   {
     name: 'Integration',
     commands: [
-      { name: 'mcp', description: 'Start MCP server (JSON-RPC over stdio, 10 tools)' },
+      { name: 'mcp', description: 'Start MCP server (JSON-RPC over stdio, 12 tools)' },
       { name: 'mcp-install', description: 'Auto-register MCP in AI editors (Claude, Cursor, VS Code)' },
       { name: 'setup', description: 'Initialize oracle in current project', alias: 'init' },
       { name: 'dashboard', description: 'Start web dashboard (default port 3333) [auth]' },

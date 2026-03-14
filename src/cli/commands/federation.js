@@ -8,7 +8,7 @@ const { validatePort, parseDryRun, parseTags, parseMinCoherency } = require('../
 
 function registerFederationCommands(handlers, { oracle, jsonOut }) {
 
-  handlers['sync'] = (args) => {
+  handlers['sync'] = async (args) => {
     const direction = args._sub || 'both';
     const verbose = args.verbose === 'true' || args.verbose === true;
     const dryRun = parseDryRun(args);
@@ -34,17 +34,14 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
         return;
       }
       console.log(`Draining ${pending.length} queued sync operation(s)...\n`);
-      queue.drain((op) => {
+      const drainResult = await queue.drain((op) => {
         if (op.type === 'push') return oracle.syncToGlobal(op.options || {});
         if (op.type === 'pull') return oracle.syncFromGlobal(op.options || {});
         return oracle.sync(op.options || {});
-      }).then((result) => {
-        console.log(`  Drained: ${c.boldGreen(String(result.drained))}`);
-        console.log(`  Failed:  ${c.boldRed(String(result.failed))}`);
-        console.log(`  Remaining: ${c.dim(String(result.remaining))}`);
-      }).catch((err) => {
-        console.error(`  ${c.boldRed('Drain error:')} ${err.message}`);
       });
+      console.log(`  Drained: ${c.boldGreen(String(drainResult.drained))}`);
+      console.log(`  Failed:  ${c.boldRed(String(drainResult.failed))}`);
+      console.log(`  Remaining: ${c.dim(String(drainResult.remaining))}`);
       return;
     }
 
@@ -58,7 +55,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
         console.log(`  Skipped:          ${c.dim(String(report.skipped))}`);
       } else if (direction === 'pull' || direction === 'from') {
         const lang = args.language;
-        const maxPull = parseInt(args['max-pull']) || Infinity;
+        const maxPull = parseInt(args['max-pull'], 10) || 999999;
         const report = oracle.syncFromGlobal({ verbose, dryRun, language: lang, maxPull });
         console.log(`Pulled from personal: ${c.boldGreen(String(report.pulled))} patterns`);
         console.log(`  Duplicates:         ${c.dim(String(report.duplicates))}`);
@@ -144,7 +141,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
 
     if (sub === 'pull') {
       const lang = args.language;
-      const maxPull = parseInt(args['max-pull']) || Infinity;
+      const maxPull = parseInt(args['max-pull'], 10) || 999999;
       const nameFilter = args._positional.slice(1);
       const report = oracle.pullCommunity({
         verbose, dryRun, language: lang, maxPull,
@@ -245,7 +242,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
   handlers['cross-search'] = (args) => {
     const desc = args.description || args._rest;
     if (!desc) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle cross-search')} "<query>" [--language <lang>]`); process.exit(1); }
-    const result = oracle.crossRepoSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 });
+    const result = oracle.crossRepoSearch(desc, { language: args.language, limit: parseInt(args.limit, 10) || 20 });
     console.log(c.boldCyan(`Cross-repo search for "${desc}" across ${result.totalSearched} repos:\n`));
     if (result.repos.length > 0) {
       console.log(c.dim('  Repos searched:'));
@@ -268,7 +265,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     const term = args.description || args._rest;
     if (!term) { console.error(c.boldRed('Error:') + ` provide a query. Usage: ${c.cyan('oracle nearest <term>')}`); process.exit(1); }
     const { nearestTerms } = require('../../search/vectors');
-    const results = nearestTerms(term, parseInt(args.limit) || 10);
+    const results = nearestTerms(term, parseInt(args.limit, 10) || 10);
     console.log(`Nearest terms for ${c.cyan('"' + term + '"')}:\n`);
     for (const r of results) {
       const bar = '\u2588'.repeat(Math.round(r.similarity * 30));
@@ -332,7 +329,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     if (sub === 'search') {
       const desc = args.description || args._positional.slice(1).join(' ');
       if (!desc) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle remote search')} "<query>" [--language <lang>]`); process.exit(1); }
-      oracle.remoteSearch(desc, { language: args.language, limit: parseInt(args.limit) || 20 }).then(result => {
+      oracle.remoteSearch(desc, { language: args.language, limit: parseInt(args.limit, 10) || 20 }).then(result => {
         console.log(c.boldCyan(`Remote federated search: "${desc}"\n`));
         if (result.remotes.length > 0) {
           for (const r of result.remotes) {
@@ -369,7 +366,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     if (sub === 'start' || sub === 'serve') {
       const port = validatePort(args.port, 3579);
       const host = args.host || '0.0.0.0';
-      const server = new CloudSyncServer({ oracle, port, secret: args.secret, rateLimit: parseInt(args.rateLimit) || 120 });
+      const server = new CloudSyncServer({ oracle, port, secret: args.secret, rateLimit: parseInt(args.rateLimit, 10) || 120 });
       server.start().then((p) => {
         console.log(`\n${c.boldGreen('Oracle Cloud Server')} running on ${c.cyan('http://' + host + ':' + p)}\n`);
         console.log(`  ${c.bold('API Endpoints:')}`);

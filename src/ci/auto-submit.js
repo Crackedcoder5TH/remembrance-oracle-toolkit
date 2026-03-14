@@ -117,8 +117,12 @@ function autoSubmit(oracle, baseDir, options = {}) {
       if (sqliteStore) {
         const syncResult = syncToGlobal(sqliteStore, { minCoherency: 0.0 });
         report.synced = true;
-        if (!silent && syncResult?.synced > 0) {
-          log(`Synced ${syncResult.synced} pattern(s) to personal store`);
+        report.syncDetails = { synced: syncResult?.synced || 0, upgraded: syncResult?.upgraded || 0 };
+        if (!silent && (syncResult?.synced > 0 || syncResult?.upgraded > 0)) {
+          const parts = [];
+          if (syncResult.synced > 0) parts.push(`${syncResult.synced} synced`);
+          if (syncResult.upgraded > 0) parts.push(`${syncResult.upgraded} upgraded`);
+          log(`Personal store: ${parts.join(', ')}`);
         }
       }
     } catch (e) {

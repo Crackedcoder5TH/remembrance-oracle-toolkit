@@ -97,13 +97,32 @@ node -e "
     const { RemembranceOracle } = require(${JSON.stringify(path.resolve(__dirname, '../api/oracle'))});
     const oracle = new RemembranceOracle({ autoSeed: false });
     const result = autoSubmit(oracle, process.cwd(), { syncPersonal: true, silent: true });
-    const total = result.harvest.registered + result.promoted;
+    const total = (result.harvest.registered || 0) + (result.promoted || 0);
     if (total > 0) {
-      console.log('Oracle: ' + result.harvest.registered + ' harvested, ' + result.promoted + ' promoted' + (result.synced ? ', synced' : ''));
+      console.log('Oracle: ' + (result.harvest.registered || 0) + ' harvested, ' + (result.promoted || 0) + ' promoted' + (result.synced ? ', synced' : ''));
+    }
+    if (result.errors && result.errors.length > 0) {
+      // Log errors to persistent file so they are not silently lost
+      const fs = require('fs');
+      const path = require('path');
+      const logDir = path.join(process.cwd(), '.remembrance');
+      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
+      const logPath = path.join(logDir, 'hook-errors.log');
+      const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\n';
+      try { fs.appendFileSync(logPath, entry); } catch(_) {}
     }
   } catch(e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[hooks:postCommitScript] silent failure:', e?.message || e);
-    // Silently fail — don't block workflow
+    // Log to persistent file — never swallow errors silently
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const logDir = path.join(process.cwd(), '.remembrance');
+      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
+      const logPath = path.join(logDir, 'hook-errors.log');
+      const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\n';
+      try { fs.appendFileSync(logPath, entry); } catch(_) {}
+    } catch(_) {}
+    if (process.env.ORACLE_DEBUG) console.warn('[hooks:postCommitScript] failure:', e?.message || e);
   }
 " 2>/dev/null || true
 `;

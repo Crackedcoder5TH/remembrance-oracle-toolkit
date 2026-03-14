@@ -42,6 +42,8 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
         console.log(`  Drained: ${c.boldGreen(String(result.drained))}`);
         console.log(`  Failed:  ${c.boldRed(String(result.failed))}`);
         console.log(`  Remaining: ${c.dim(String(result.remaining))}`);
+      }).catch((err) => {
+        console.error(`  ${c.boldRed('Drain error:')} ${err.message}`);
       });
       return;
     }
@@ -75,7 +77,11 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
           if (op.type === 'push') return oracle.syncToGlobal(op.options || {});
           if (op.type === 'pull') return oracle.syncFromGlobal(op.options || {});
           return oracle.sync(op.options || {});
-        }).catch(() => {});
+        }).then((result) => {
+          console.log(c.dim(`  Queue drained: ${result.drained} succeeded, ${result.failed} failed`));
+        }).catch((err) => {
+          if (process.env.ORACLE_DEBUG) console.error('[sync] Queue drain failed:', err.message);
+        });
       }
     } catch (err) {
       // Sync failed — queue for offline retry

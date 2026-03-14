@@ -18,7 +18,7 @@ function registerSwarmCommands(handlers, { oracle, getCode, jsonOut }) {
         // Set a config value: --set key=value
         const [key, ...rest] = args.set.split('=');
         const value = rest.join('=');
-        if (key && value !== undefined) {
+        if (key && value) {
           const parsed = value === 'true' ? true : value === 'false' ? false : isNaN(value) ? value : Number(value);
           config[key] = parsed;
           saveSwarmConfig(process.cwd(), config);

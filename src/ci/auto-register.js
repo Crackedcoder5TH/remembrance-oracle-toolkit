@@ -44,6 +44,19 @@ function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
     if (!output) return [];
     return output.split('\n').filter(f => CODE_EXTS.test(f));
   } catch (e) {
+    // Fallback for initial commit: HEAD~1 doesn't exist, so diff the tree directly
+    if (range === 'HEAD~1..HEAD') {
+      try {
+        const output = execFileSync('git', ['diff-tree', '--no-commit-id', '--name-only', '-r', '--diff-filter=ACM', 'HEAD'], {
+          cwd,
+          encoding: 'utf-8',
+          timeout: 5000,
+        }).trim();
+        if (output) return output.split('\n').filter(f => CODE_EXTS.test(f));
+      } catch (fallbackErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[auto-register:getChangedFiles] fallback also failed:', fallbackErr?.message || fallbackErr);
+      }
+    }
     if (process.env.ORACLE_DEBUG) console.warn('[auto-register:getChangedFiles] returning empty array on error:', e?.message || e);
     return [];
   }

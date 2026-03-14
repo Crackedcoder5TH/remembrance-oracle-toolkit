@@ -1818,13 +1818,27 @@ class SQLiteStore {
    * Clean orphaned fractal/holographic records that reference missing patterns.
    */
   cleanOrphans() {
-    const deltas = this.db.prepare(
-      'DELETE FROM fractal_deltas WHERE pattern_id NOT IN (SELECT id FROM patterns)'
-    ).run();
-    const embeddings = this.db.prepare(
-      'DELETE FROM holo_embeddings WHERE pattern_id NOT IN (SELECT id FROM patterns)'
-    ).run();
-    return { deletedDeltas: deltas.changes, deletedEmbeddings: embeddings.changes };
+    let deletedDeltas = 0, deletedEmbeddings = 0, deletedHealedVariants = 0, deletedHealingStats = 0;
+    this.db.exec('BEGIN');
+    try {
+      deletedDeltas = this.db.prepare(
+        'DELETE FROM fractal_deltas WHERE pattern_id NOT IN (SELECT id FROM patterns)'
+      ).run().changes;
+      deletedEmbeddings = this.db.prepare(
+        'DELETE FROM holo_embeddings WHERE pattern_id NOT IN (SELECT id FROM patterns)'
+      ).run().changes;
+      deletedHealedVariants = this.db.prepare(
+        'DELETE FROM healed_variants WHERE parent_pattern_id NOT IN (SELECT id FROM patterns)'
+      ).run().changes;
+      deletedHealingStats = this.db.prepare(
+        'DELETE FROM healing_stats WHERE pattern_id NOT IN (SELECT id FROM patterns)'
+      ).run().changes;
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+    return { deletedDeltas, deletedEmbeddings, deletedHealedVariants, deletedHealingStats };
   }
 
   /**

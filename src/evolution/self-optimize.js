@@ -66,10 +66,10 @@ function selfImprove(ctx, options = {}) {
   const getPatterns = ctx.getPatterns || (() => ctx.patterns.getAll());
   const updatePattern = ctx.updatePattern || ((id, updates) => ctx.patterns.update(id, updates));
   const emit = ctx.emit || ((event) => { if (typeof ctx._emit === 'function') ctx._emit(event); });
-  const doAutoPromote = ctx.autoPromote || (() => { try { return ctx.autoPromote(); } catch { return { promoted: 0 }; } });
-  const doDeepClean = ctx.deepClean || ((opts) => { try { return ctx.deepClean(opts); } catch { return { removed: 0 }; } });
-  const doRetagAll = ctx.retagAll || ((opts) => { try { return ctx.retagAll(opts); } catch { return { enriched: 0 }; } });
-  const doRecycle = ctx.recycle || ((opts) => { try { return ctx.recycle(opts); } catch { return { healed: 0 }; } });
+  const doAutoPromote = ctx.autoPromote || (() => ({ promoted: 0 }));
+  const doDeepClean = ctx.deepClean || (() => ({ removed: 0 }));
+  const doRetagAll = ctx.retagAll || (() => ({ enriched: 0 }));
+  const doRecycle = ctx.recycle || (() => ({ healed: 0 }));
 
   const config = { ...OPTIMIZE_DEFAULTS, ...options };
   const startTime = Date.now();

@@ -77,9 +77,11 @@ function assignDimensions(agents, dimensions) {
   dimensions = dimensions || DIMENSIONS;
   const assignments = new Map();
 
-  // Initialize all agents with empty arrays
-  for (const agent of agents) {
-    assignments.set(agent.name, []);
+  // Use index-based keys to handle duplicate agent names
+  for (let i = 0; i < agents.length; i++) {
+    const key = agents[i].name + (assignments.has(agents[i].name) ? `_${i}` : '');
+    if (key !== agents[i].name) agents[i]._assignmentKey = key;
+    assignments.set(key, []);
   }
 
   if (agents.length === 0) return assignments;
@@ -87,7 +89,8 @@ function assignDimensions(agents, dimensions) {
   // Round-robin: distribute dimensions across agents
   for (let i = 0; i < dimensions.length; i++) {
     const agent = agents[i % agents.length];
-    assignments.get(agent.name).push(dimensions[i]);
+    const key = agent._assignmentKey || agent.name;
+    assignments.get(key).push(dimensions[i]);
   }
 
   // Agents without dimensions become generalists

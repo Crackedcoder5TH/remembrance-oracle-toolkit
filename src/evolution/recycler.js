@@ -630,11 +630,12 @@ class PatternRecycler {
       attempts: [],
     };
 
+    let lastHealedCode = pattern.code;
     for (let attempt = 0; attempt < this.maxHealAttempts; attempt++) {
       entry.attempts++;
       this.stats.totalAttempts++;
 
-      let codeToHeal = pattern.code;
+      let codeToHeal = lastHealedCode;
 
       // Void replenishment: when coherency is deeply stuck, inject scaffolding
       // from the nearest healthy pattern to bootstrap recovery
@@ -646,7 +647,7 @@ class PatternRecycler {
             // Inject the scaffold's structure as a comment-guide at the top
             // This gives the transforms something healthy to work from
             const scaffoldHint = `// Scaffold from ${scaffold.name} (coherency ${scaffold.coherencyScore?.total?.toFixed(3)})\n`;
-            codeToHeal = scaffoldHint + pattern.code;
+            codeToHeal = scaffoldHint + lastHealedCode;
             detail.voidScaffold = scaffold.name;
           }
         }
@@ -724,8 +725,8 @@ class PatternRecycler {
         recordViolation(healedCode, `Heal rejected: ${regResult.reason || 'unknown'}`, 'heal-failure');
       } catch { /* covenant evolution not available */ }
 
-      // Use healed code as input for next attempt
-      pattern.code = healedCode;
+      // Use healed code as input for next attempt (local copy, don't mutate original)
+      lastHealedCode = healedCode;
     }
 
     this.stats.stillFailed++;
@@ -886,12 +887,10 @@ class PatternRecycler {
       pyTest = jsToPythonTest(testCode, funcName, pyName);
     }
 
-    if (!pyTest) return null;
-
     return {
       name: `${name}-py`,
       code: pyCode,
-      testCode: pyTest,
+      testCode: pyTest || '',
       language: 'python',
       description: `${description} (Python variant)`,
       tags: [...(tags || []), 'variant', 'python'],

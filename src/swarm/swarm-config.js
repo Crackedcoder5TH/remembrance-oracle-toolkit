@@ -27,14 +27,14 @@ function _decryptKey(stored) {
   if (!stored || !stored.startsWith('enc:')) return stored;
   try {
     const parts = stored.slice(4).split(':');
-    if (parts.length !== 3) return stored;
+    if (parts.length !== 3) return null;
     const [ivHex, tagHex, dataHex] = parts;
     const key = _deriveKey();
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
     decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
     return decipher.update(Buffer.from(dataHex, 'hex'), null, 'utf8') + decipher.final('utf8');
   } catch {
-    return stored;
+    return null;
   }
 }
 

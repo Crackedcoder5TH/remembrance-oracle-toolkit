@@ -256,7 +256,10 @@ function autoRegister(oracle, cwd, options = {}) {
   // Step 2: Process each changed file
   for (const relFile of changedFiles) {
     let absFile;
-    try { absFile = safePath(relFile, cwd); } catch { continue; }
+    try { absFile = safePath(relFile, cwd); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-register:autoRegister] skipping item:', e?.message || e);
+      continue;
+    }
     if (!fs.existsSync(absFile)) continue;
 
     const language = detectLanguage(relFile);

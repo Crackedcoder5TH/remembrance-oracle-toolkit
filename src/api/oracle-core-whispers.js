@@ -30,7 +30,7 @@ const RESOLVE_WHISPERS = {
  */
 function _generateResolveWhisper(decision, pattern, healing) {
   const pool = RESOLVE_WHISPERS[decision.decision] || RESOLVE_WHISPERS.generate;
-  const seed = pattern ? pattern.name.length + (pattern.code?.length || 0) : 0;
+  const seed = pattern ? (pattern.name || '').length + (pattern.code?.length || 0) : 0;
   const base = pool[seed % pool.length];
   if (healing && healing.reflection?.improvement > 0) {
     const pct = (healing.reflection.improvement * 100).toFixed(1);

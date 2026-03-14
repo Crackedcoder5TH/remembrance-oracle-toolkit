@@ -61,13 +61,6 @@ module.exports = {
       }
     } catch { /* temporal memory not available */ }
 
-    const sqliteStore = this.patterns._sqlite;
-    if (sqliteStore) {
-      try { sqliteStore.updateVoterReputation(id, succeeded); } catch (e) {
-        if (process.env.ORACLE_DEBUG) console.warn('[oracle:patternFeedback] voter reputation update failed:', e.message);
-      }
-    }
-
     let healResult = null;
     if (!succeeded) {
       try {

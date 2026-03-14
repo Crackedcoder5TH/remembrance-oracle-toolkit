@@ -26,7 +26,7 @@ function _tryPromoteOrStore(oracle, candidate, parentId, method, report, autoPro
         tags: candidate.tags || [],
         patternType: candidate.patternType,
       });
-      if (proven) {
+      if (proven && proven.registered) {
         report.generated++;
         report.stored++;
         report.promoted++;

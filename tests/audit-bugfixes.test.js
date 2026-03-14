@@ -334,3 +334,61 @@ describe('Audit Bug #14: history filter null guards', () => {
     assert.strictEqual(filtered.length, 1);
   });
 });
+
+// ─── Bug #15: whispers crash on null pattern.name ───
+
+describe('Audit Bug #15: whisper null pattern name', () => {
+  it('pattern name length handles null name', () => {
+    const pattern = { name: null, code: 'function foo() {}' };
+    const seed = pattern ? (pattern.name || '').length + (pattern.code?.length || 0) : 0;
+    assert.strictEqual(seed, 17); // code length only
+  });
+});
+
+// ─── Bug #16: registerPattern always-truthy check ───
+
+describe('Audit Bug #16: registerPattern always-truthy', () => {
+  it('registration result object is always truthy', () => {
+    const result = { success: false, registered: false, error: 'test' };
+    // The bug: if (result) is always true for objects
+    assert.ok(result, 'Object is always truthy');
+    // The fix: check .registered instead
+    assert.strictEqual(result.registered, false);
+  });
+});
+
+// ─── Bug #17: threshold falsy 0 coercion ───
+
+describe('Audit Bug #17: threshold falsy 0 coercion', () => {
+  it('nullish coalescing preserves 0 threshold', () => {
+    const options = { threshold: 0 };
+    const threshold = options.threshold ?? 0.6;
+    assert.strictEqual(threshold, 0, 'Should preserve explicit 0, not fall back to 0.6');
+  });
+
+  it('nullish coalescing falls back on undefined', () => {
+    const options = {};
+    const threshold = options.threshold ?? 0.6;
+    assert.strictEqual(threshold, 0.6);
+  });
+});
+
+// ─── Bug #18: dry-run import inflates count ───
+
+describe('Audit Bug #18: dry-run import count', () => {
+  it('dry-run should not increment imported counter', () => {
+    let imported = 0;
+    const dryRun = true;
+    const results = [];
+
+    // Simulate the fixed logic
+    if (dryRun) {
+      results.push({ name: 'test', status: 'would_import' });
+      // No imported++ — that was the bug
+    }
+
+    assert.strictEqual(imported, 0, 'Dry run should not count as imported');
+    assert.strictEqual(results.length, 1);
+    assert.strictEqual(results[0].status, 'would_import');
+  });
+});

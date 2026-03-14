@@ -82,7 +82,7 @@ module.exports = {
       if (!p.code || !p.name) { errors.push(`Skipped pattern without code or name: ${p.name || '(unnamed)'}`); skipped++; continue; }
       const existing = this.patterns.getAll().find(ep => ep.name === p.name && ep.language === p.language);
       if (existing) { results.push({ name: p.name, status: 'duplicate', id: existing.id }); skipped++; continue; }
-      if (dryRun) { results.push({ name: p.name, status: 'would_import', language: p.language }); imported++; continue; }
+      if (dryRun) { results.push({ name: p.name, status: 'would_import', language: p.language }); continue; }
 
       const regResult = this.registerPattern({
         name: p.name, code: p.code, language: p.language || 'javascript',

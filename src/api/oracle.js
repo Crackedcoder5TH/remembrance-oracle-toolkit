@@ -32,13 +32,13 @@ class RemembranceOracle {
     this.store = options.store || new VerifiedHistoryStore(options.baseDir);
     const storeDir = this.store.storeDir || require('path').join(options.baseDir || process.cwd(), '.remembrance');
     this.patterns = options.patterns || new PatternLibrary(storeDir);
-    this.threshold = options.threshold || 0.6;
+    this.threshold = options.threshold ?? 0.6;
     this._listeners = [];
     this.autoGrow = options.autoGrow !== false;  // Auto-generate candidates on proven code
     this.autoSync = options.autoSync || false;    // Auto-sync to personal store on proven code
     this.recycler = new PatternRecycler(this, {
-      maxHealAttempts: options.maxHealAttempts || 3,
-      maxRefineLoops: options.maxRefineLoops || 5,
+      maxHealAttempts: options.maxHealAttempts ?? 3,
+      maxRefineLoops: options.maxRefineLoops ?? 5,
       generateVariants: options.generateVariants !== false,
       variantLanguages: options.variantLanguages || ['python', 'typescript'],
       verbose: options.verbose || false,
@@ -58,7 +58,7 @@ class RemembranceOracle {
     // Claude Bridge — native LLM engine (lazy-initialized)
     this._claude = options.claude || null;
     this._claudeOptions = {
-      timeout: options.claudeTimeout || 60000,
+      timeout: options.claudeTimeout ?? 60000,
       model: options.claudeModel || null,
       verbose: options.verbose || false,
     };

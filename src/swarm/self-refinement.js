@@ -183,7 +183,6 @@ function suggestOptimalWeights(rootDir) {
   const sum = suggested.coherency + suggested.selfConfidence + suggested.peerScore;
   suggested.coherency = Math.round((suggested.coherency / sum) * 100) / 100;
   suggested.selfConfidence = Math.round((suggested.selfConfidence / sum) * 100) / 100;
-  suggested.peerScore = Math.round(1 - suggested.coherency - suggested.selfConfidence * 100) / 100 || suggested.peerScore;
   // Ensure they sum to 1.0
   suggested.peerScore = Math.round((1 - suggested.coherency - suggested.selfConfidence) * 100) / 100;
 

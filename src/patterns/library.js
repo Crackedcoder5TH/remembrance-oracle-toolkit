@@ -355,7 +355,7 @@ class PatternLibrary {
       );
 
       const normalizedDesc = description.toLowerCase().replace(/[-_]/g, ' ');
-      const normalizedName = p.name.toLowerCase().replace(/[-_]/g, ' ');
+      const normalizedName = (p.name || '').toLowerCase().replace(/[-_]/g, ' ');
       const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? DECISION_BONUSES.NAME_MATCH : 0;
       const focusBonus = p.complexity === 'atomic' ? DECISION_BONUSES.ATOMIC_FOCUS : p.complexity === 'composite' ? DECISION_BONUSES.COMPOSITE_FOCUS : 0;
       const coherency = p.coherencyScore?.total ?? 0;
@@ -426,7 +426,7 @@ class PatternLibrary {
       pattern: scored.length > 0 ? scored[0].pattern : null,
       confidence: 1.0 - (best.composite || 0),
       reasoning: `Best match "${best.pattern.name}" scored too low (${best.composite.toFixed(3)}) — new pattern needed`,
-      alternatives: scored.slice(0, 3).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+      alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
     };
   }
 

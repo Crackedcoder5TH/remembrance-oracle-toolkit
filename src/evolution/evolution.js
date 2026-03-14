@@ -146,7 +146,7 @@ function autoHeal(pattern, options = {}) {
       tags: pattern.tags,
     });
 
-    if (!reflection.improved && reflection.code.trim() === (pattern.code || '').trim()) {
+    if (reflection.reflection?.improvement <= 0 && reflection.code.trim() === (pattern.code || '').trim()) {
       return null;
     }
 

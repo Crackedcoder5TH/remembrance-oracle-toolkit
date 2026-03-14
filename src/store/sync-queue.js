@@ -138,8 +138,9 @@ class SyncQueue {
               op.status = 'completed';
               drained++;
             } catch (retryErr) {
+              op.retries++;
               op.lastError = retryErr.message;
-              if (op.retries + 1 >= MAX_RETRIES) {
+              if (op.retries >= MAX_RETRIES) {
                 op.status = 'failed';
                 failed++;
               }

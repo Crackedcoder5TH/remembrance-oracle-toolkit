@@ -703,7 +703,7 @@ class SQLiteStore {
     const toDelete = [];
 
     for (const row of all) {
-      const key = `${row.name.toLowerCase()}:${(row.language || 'unknown').toLowerCase()}`;
+      const key = `${(row.name || '').toLowerCase()}:${(row.language || 'unknown').toLowerCase()}`;
       if (!bestByKey.has(key)) {
         bestByKey.set(key, row.id);
       } else {

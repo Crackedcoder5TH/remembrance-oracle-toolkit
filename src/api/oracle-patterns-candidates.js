@@ -216,7 +216,6 @@ module.exports = {
       }
 
       if (evaluation.status === 'would-promote') {
-        report.promoted++;
         report.details.push({ name: candidate.name, status: 'would-promote', coherency: evaluation.coherency });
         continue;
       }

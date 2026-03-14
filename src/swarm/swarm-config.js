@@ -195,14 +195,15 @@ function resolveProviders(config) {
 function getProviderKey(provider, config) {
   // Prefer environment variables over config-file keys (env vars are more secure)
   const envMap = {
-    claude: 'ANTHROPIC_API_KEY',
-    openai: 'OPENAI_API_KEY',
-    gemini: 'GOOGLE_API_KEY',
-    grok: 'GROK_API_KEY',
-    deepseek: 'DEEPSEEK_API_KEY',
+    claude: ['ANTHROPIC_API_KEY', 'CLAUDE_API_KEY'],
+    openai: ['OPENAI_API_KEY'],
+    gemini: ['GOOGLE_API_KEY', 'GEMINI_API_KEY'],
+    grok: ['GROK_API_KEY', 'XAI_API_KEY'],
+    deepseek: ['DEEPSEEK_API_KEY'],
   };
-  if (process.env[envMap[provider]]) {
-    return process.env[envMap[provider]];
+  const envKeys = envMap[provider] || [];
+  for (const key of envKeys) {
+    if (process.env[key]) return process.env[key];
   }
   if (config.providers?.[provider]?.apiKey) {
     return _decryptKey(config.providers[provider].apiKey);

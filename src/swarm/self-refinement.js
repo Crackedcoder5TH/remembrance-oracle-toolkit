@@ -225,7 +225,11 @@ function selfRefine(rootDir, options = {}) {
   const analysis = analyzeSwarmPerformance(rootDir);
   const weightSuggestion = suggestOptimalWeights(rootDir);
 
-  if (options.autoApply && weightSuggestion.weights !== weightSuggestion.current) {
+  const weightsChanged = !weightSuggestion.current ||
+    weightSuggestion.weights.coherency !== weightSuggestion.current.coherency ||
+    weightSuggestion.weights.selfConfidence !== weightSuggestion.current.selfConfidence ||
+    weightSuggestion.weights.peerScore !== weightSuggestion.current.peerScore;
+  if (options.autoApply && weightsChanged) {
     applyWeightSuggestion(weightSuggestion, rootDir);
   }
 

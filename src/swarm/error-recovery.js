@@ -39,7 +39,7 @@ function classifyError(error) {
   if (msg.includes('timeout') || msg.includes('abort') || msg.includes('timed out')) {
     return ERROR_CLASSES.TIMEOUT;
   }
-  if (msg.includes('401') || msg.includes('403') || msg.includes('auth') || msg.includes('key')) {
+  if (msg.includes('401') || msg.includes('403') || msg.includes('auth') || msg.includes('api key') || msg.includes('api_key') || msg.includes('invalid key')) {
     return ERROR_CLASSES.AUTH;
   }
   if (msg.includes('fetch') || msg.includes('econnrefused') || msg.includes('network') || msg.includes('dns')) {

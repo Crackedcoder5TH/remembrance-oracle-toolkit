@@ -165,7 +165,7 @@ function renderScoreChart(rankings, options = {}) {
   for (const r of rankings) {
     const name = r.agent.padEnd(maxName);
     const score = r.totalScore || 0;
-    const barLen = Math.round(score * width);
+    const barLen = Math.max(0, Math.min(width, Math.round(score * width)));
     const bar = '#'.repeat(barLen) + '.'.repeat(width - barLen);
     const marker = r === rankings[0] ? ' *' : '';
     lines.push(`  ${name} |${bar}| ${score.toFixed(3)}${marker}`);

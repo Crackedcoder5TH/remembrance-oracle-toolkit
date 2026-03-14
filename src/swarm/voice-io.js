@@ -185,8 +185,8 @@ function readVoiceInput(filePath) {
  */
 function sanitizeForShell(text) {
   return text
-    .replace(/["`$\\]/g, '')   // Remove shell-dangerous chars
-    .replace(/\n/g, '. ')      // Convert newlines to periods
+    .replace(/\n/g, '. ')      // Convert newlines to periods first
+    .replace(/[^a-zA-Z0-9 .,!?:'\-()]/g, '')  // Allowlist: only safe characters (no ; for shell safety)
     .replace(/\s+/g, ' ')      // Collapse whitespace
     .trim();
 }

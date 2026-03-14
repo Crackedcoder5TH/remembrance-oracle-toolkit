@@ -89,8 +89,8 @@ function buildNarrative(winner, rankings, agreement, dissent, task) {
   // Score breakdown
   lines.push('');
   lines.push('Score breakdown:');
-  const b = winner.breakdown;
-  lines.push(`  Coherency: ${b.coherency.toFixed(3)} | Self-confidence: ${b.selfConfidence.toFixed(3)} | Peer score: ${b.peerScore.toFixed(3)}`);
+  const b = winner.breakdown || {};
+  lines.push(`  Coherency: ${(b.coherency || 0).toFixed(3)} | Self-confidence: ${(b.selfConfidence || 0).toFixed(3)} | Peer score: ${(b.peerScore || 0).toFixed(3)}`);
 
   // Ranking summary
   if (rankings.length > 1) {
@@ -108,7 +108,7 @@ function buildNarrative(winner, rankings, agreement, dissent, task) {
     lines.push('');
     lines.push('Dissenting voices:');
     for (const d of dissent.slice(0, 3)) {
-      lines.push(`  ${d.agent} (${d.totalScore.toFixed(3)}): ${truncate(d.reasoning, 80)}`);
+      lines.push(`  ${d.agent} (${(d.totalScore || 0).toFixed(3)}): ${truncate(d.reasoning, 80)}`);
     }
   }
 

@@ -73,10 +73,10 @@ function transpile(code, targetLanguage) {
  */
 function extractTestCalls(testCode) {
   const calls = [];
-  const assertRe = /(\w+)\(([^)]*)\)\s*(?:===|!==|==|!=)\s*([^\s;,)]+)/g;
+  const assertRe = /(\w+)\(([^)]*)\)\s*(===|!==|==|!=)\s*([^\s;,)]+)/g;
   let m;
   while ((m = assertRe.exec(testCode)) !== null) {
-    calls.push({ func: m[1], args: m[2].trim(), expected: m[3].trim(), op: testCode.slice(m.index).includes('!==') || testCode.slice(m.index).includes('!=') ? '!=' : '==' });
+    calls.push({ func: m[1], args: m[2].trim(), expected: m[4].trim(), op: m[3].includes('!') ? '!=' : '==' });
   }
   const throwRe = /if\s*\(\s*(\w+)\(([^)]*)\)\s*(!==|!= |===|==)\s*([^)]+)\)\s*throw/g;
   while ((m = throwRe.exec(testCode)) !== null) {

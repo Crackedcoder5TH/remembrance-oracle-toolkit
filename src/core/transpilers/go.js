@@ -128,8 +128,7 @@ function toGoExpr(node) {
       let op = node.operator;
       if (op === '===' || op === '==') op = '==';
       if (op === '!==' || op === '!=') op = '!=';
-      if (op === '&&') op = '&&';
-      if (op === '||') op = '||';
+      // && and || are the same in Go as in JS — no conversion needed
       return `${toGoExpr(node.left)} ${op} ${toGoExpr(node.right)}`;
     }
 
@@ -195,7 +194,7 @@ function toGoExpr(node) {
       return `${toGoExpr(node.left)} ${node.operator} ${toGoExpr(node.right)}`;
 
     default:
-      return node.value || node.name || '';
+      return node.value != null ? String(node.value) : (node.name || '');
   }
 }
 

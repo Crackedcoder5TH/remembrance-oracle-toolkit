@@ -31,6 +31,7 @@ class SQLiteStore {
     this.storeDir = path.join(baseDir, DEFAULT_STORE_DIR);
     this.dbPath = path.join(this.storeDir, DB_FILE);
     this._ensureDir();
+    if (!DatabaseSync) throw new Error('node:sqlite is not available — Node 22+ is required');
     this.db = new DatabaseSync(this.dbPath);
     this._initSchema();
     this._migrateJSON();

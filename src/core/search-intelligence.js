@@ -89,7 +89,7 @@ function rewriteQuery(tokens) {
     if (correction) return correction;
 
     for (const [typo, fix] of Object.entries(CORRECTIONS)) {
-      if (editDistance(t, typo) <= 1 && t.length >= 3) return fix;
+      if (Math.abs(t.length - typo.length) <= 1 && editDistance(t, typo) <= 1 && t.length >= 3) return fix;
     }
 
     return t;

@@ -70,7 +70,7 @@ function covenantCheck(code, metadata = {}) {
   if (!hasMeta) {
     const key = _cacheKey(code);
     const cached = _covenantCache.get(key);
-    if (cached) return cached;
+    if (cached) return { ...cached, violations: [...cached.violations] };
   }
 
   const violations = [];

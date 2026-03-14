@@ -48,7 +48,8 @@ function toRust(ast, indent = 0) {
 
     case 'ForStatement': {
       const rangeInfo = detectRangePattern(ast, toRustExpr);
-      if (rangeInfo) {
+      // Only use range pattern for incrementing loops — Rust ranges don't support a step parameter
+      if (rangeInfo && !rangeInfo.args.includes('-1')) {
         const body = ast.body.map(n => toRust(n, indent + 1)).filter(Boolean).join('\n');
         return `${pad}for ${rangeInfo.var} in ${rangeInfo.args.replace(/,\s*/g, '..')} {\n${body}\n${pad}}`;
       }
@@ -209,7 +210,7 @@ function toRustExpr(node) {
       return `${toRustExpr(node.left)} ${node.operator} ${toRustExpr(node.right)}`;
 
     default:
-      return node.value || node.name || '';
+      return node.value != null ? String(node.value) : (node.name || '');
   }
 }
 

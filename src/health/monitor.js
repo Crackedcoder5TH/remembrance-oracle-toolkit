@@ -21,7 +21,8 @@ function getVersion() {
     const pkgPath = path.join(__dirname, '..', '..', 'package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
     return pkg.version || 'unknown';
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[monitor:getVersion] silent failure:', e?.message || e);
     return 'unknown';
   }
 }
@@ -187,13 +188,17 @@ function metrics(oracle) {
   let candidateStats = { total: 0, byMethod: {} };
   try {
     candidateStats = oracle.candidateStats();
-  } catch { /* candidates might not be available */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[monitor:metrics] candidates might not be available:', e?.message || e);
+  }
 
   // Entry stats
   let entryStats = { totalEntries: 0 };
   try {
     entryStats = oracle.stats();
-  } catch { /* stats might not be available */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[monitor:metrics] stats might not be available:', e?.message || e);
+  }
 
   const pullRate = totalUsage > 0 ? Math.round((totalSuccess / totalUsage) * 1000) / 1000 : 0;
 

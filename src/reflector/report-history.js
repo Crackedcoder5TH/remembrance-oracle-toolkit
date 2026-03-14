@@ -148,7 +148,8 @@ function readLogTail(rootDir, n = 20) {
     const content = readFileSync(logPath, 'utf-8');
     const lines = content.split('\n').filter(l => l.trim());
     return lines.slice(-n);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-history:readLogTail] returning empty array on error:', e?.message || e);
     return [];
   }
 }

@@ -32,7 +32,8 @@ function loadJSON(filePath, fallback = null) {
     if (existsSync(filePath)) {
       return JSON.parse(readFileSync(filePath, 'utf-8'));
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[scoring-utils:loadJSON] silent failure:', e?.message || e);
     // Fall through to fallback
   }
   return fallback !== null ? structuredClone(fallback) : null;

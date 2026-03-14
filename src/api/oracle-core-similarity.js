@@ -7,7 +7,10 @@
 let _structuralFingerprint;
 try {
   ({ structuralFingerprint: _structuralFingerprint } = require('../compression/fractal'));
-} catch { _structuralFingerprint = null; }
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-similarity:init] silent failure:', e?.message || e);
+  _structuralFingerprint = null;
+}
 
 // ─── Similarity Thresholds ───
 const SIMILARITY_REJECT_THRESHOLD = 0.95;    // >= 95% similar → reject (near-duplicate)
@@ -37,7 +40,8 @@ function _structuralSimilarity(codeA, codeB, language) {
     const fpA = _structuralFingerprint(codeA, language);
     const fpB = _structuralFingerprint(codeB, language);
     return fpA.hash === fpB.hash ? 1.0 : 0.0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-similarity:_structuralSimilarity] silent failure:', e?.message || e);
     return 0;
   }
 }

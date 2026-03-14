@@ -138,7 +138,9 @@ function executeTest(code, testCode, language, timeout) {
         });
         return { passed: true, output: 'All assertions passed' };
       } finally {
-        try { fs.unlinkSync(file); } catch {}
+        try { fs.unlinkSync(file); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
+        }
       }
     }
 
@@ -154,7 +156,9 @@ function executeTest(code, testCode, language, timeout) {
         });
         return { passed: true, output: output || 'All assertions passed' };
       } finally {
-        try { fs.unlinkSync(file); } catch {}
+        try { fs.unlinkSync(file); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
+        }
       }
     }
 

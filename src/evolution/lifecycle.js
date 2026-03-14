@@ -80,10 +80,10 @@ class LifecycleEngine {
     // Resolve context methods (support both OracleContext and raw oracle)
     this._on = ctx.on || ((cb) => { if (typeof ctx.on === 'function') return ctx.on(cb); return () => {}; });
     this._emit = ctx.emit || ((event) => { if (typeof ctx._emit === 'function') ctx._emit(event); });
-    this._autoPromote = ctx.autoPromote || (() => { try { return ctx.autoPromote(); } catch { return { promoted: 0 }; } });
-    this._retagAll = ctx.retagAll || ((opts) => { try { return ctx.retagAll(opts); } catch { return { enriched: 0 }; } });
-    this._deepClean = ctx.deepClean || ((opts) => { try { return ctx.deepClean(opts); } catch { return { removed: 0 }; } });
-    this._debugGrow = ctx.debugGrow || ((opts) => { try { return ctx.debugGrow(opts); } catch { return { processed: 0, generated: 0 }; } });
+    this._autoPromote = ctx.autoPromote || (() => { try { return ctx.autoPromote(); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:constructor] silent failure:', e?.message || e); return { promoted: 0 }; } });
+    this._retagAll = ctx.retagAll || ((opts) => { try { return ctx.retagAll(opts); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:constructor] silent failure:', e?.message || e); return { enriched: 0 }; } });
+    this._deepClean = ctx.deepClean || ((opts) => { try { return ctx.deepClean(opts); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:constructor] silent failure:', e?.message || e); return { removed: 0 }; } });
+    this._debugGrow = ctx.debugGrow || ((opts) => { try { return ctx.debugGrow(opts); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:constructor] silent failure:', e?.message || e); return { processed: 0, generated: 0 }; } });
     this._syncToGlobal = ctx.syncToGlobal || null;
     this._actOnInsights = ctx.actOnInsights || null;
 
@@ -123,7 +123,8 @@ class LifecycleEngine {
 
       try {
         this._handleEvent(event);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:start] silent failure:', e?.message || e);
         // Lifecycle never breaks the oracle
       }
     });
@@ -185,7 +186,8 @@ class LifecycleEngine {
         ...this.config.evolutionOptions,
         maxHeals: this.config.maxHealsPerCycle,
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:runCycle] recording error:', e?.message || e);
       report.evolution = { error: 'evolution cycle failed' };
     }
 
@@ -193,7 +195,8 @@ class LifecycleEngine {
     if (this.config.autoPromoteOnCycle) {
       try {
         report.promotion = this._autoPromote();
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:runCycle] recording error:', e?.message || e);
         report.promotion = { error: 'auto-promotion failed' };
       }
     }
@@ -202,7 +205,8 @@ class LifecycleEngine {
     if (this.config.autoRetagOnCycle) {
       try {
         report.retag = this._retagAll({ minAdded: 1 });
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:runCycle] recording error:', e?.message || e);
         report.retag = { error: 'retag failed' };
       }
     }
@@ -211,7 +215,8 @@ class LifecycleEngine {
     if (this.config.autoCleanOnCycle) {
       try {
         report.clean = this._deepClean({ dryRun: false });
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:runCycle] recording error:', e?.message || e);
         report.clean = { error: 'clean failed' };
       }
     }
@@ -230,7 +235,8 @@ class LifecycleEngine {
             report.sync = { synced: true };
           }
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:init] recording error:', e?.message || e);
         report.sync = { error: 'sync failed' };
       }
     }
@@ -249,7 +255,8 @@ class LifecycleEngine {
             maxHeals: this.config.maxHealsPerCycle,
           });
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:init] recording error:', e?.message || e);
         report.insights = { error: 'insights failed' };
       }
     }
@@ -258,7 +265,8 @@ class LifecycleEngine {
     if (this._counters.debugCaptures > 0) {
       try {
         report.debugGrowth = this._tryDebugGrow();
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:init] recording error:', e?.message || e);
         report.debugGrowth = { error: 'debug growth failed' };
       }
     }
@@ -290,7 +298,9 @@ class LifecycleEngine {
           }),
         });
       }
-    } catch { /* temporal memory not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:init] temporal memory not available:', e?.message || e);
+    }
 
     return report;
   }
@@ -367,7 +377,8 @@ class LifecycleEngine {
       const report = this.runCycle();
       report.triggeredBy = reason;
       return report;
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:_triggerCycle] returning null on error:', e?.message || e);
       return null;
     }
   }
@@ -375,7 +386,8 @@ class LifecycleEngine {
   _tryAutoPromote() {
     try {
       return this._autoPromote();
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:_tryAutoPromote] returning null on error:', e?.message || e);
       return null;
     }
   }
@@ -391,7 +403,8 @@ class LifecycleEngine {
         return result;
       }
       return null;
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:_tryAutoHeal] returning null on error:', e?.message || e);
       return null;
     }
   }
@@ -399,7 +412,8 @@ class LifecycleEngine {
   _tryDebugGrow() {
     try {
       return this._debugGrow({ minConfidence: 0.5 });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:_tryDebugGrow] returning null on error:', e?.message || e);
       return null;
     }
   }

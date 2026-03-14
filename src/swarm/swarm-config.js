@@ -33,7 +33,8 @@ function _decryptKey(stored) {
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
     decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
     return decipher.update(Buffer.from(dataHex, 'hex'), null, 'utf8') + decipher.final('utf8');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-config:_decryptKey] returning null on error:', e?.message || e);
     return null;
   }
 }
@@ -94,7 +95,8 @@ function loadSwarmConfig(rootDir) {
     if (fs.existsSync(configPath)) {
       userConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-config:loadSwarmConfig] silent failure:', e?.message || e);
     // Ignore invalid config, fall back to defaults
   }
   return {
@@ -178,7 +180,8 @@ function resolveProviders(config) {
         env: { ...process.env, CLAUDECODE: '' },
       });
       available.push('claude-code');
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[swarm-config:resolveProviders] silent failure:', e?.message || e);
       // Claude CLI not installed or not reachable — skip silently
     }
   }

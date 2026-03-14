@@ -129,6 +129,7 @@ module.exports = {
           healingLoops: healing.loops,
         });
       } catch (_) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-resolve:onLoop] silent failure:', _?.message || _);
         healedCode = patternData.code;
         this._emit({
           type: 'healing_failed', patternId: patternData?.id, patternName: patternData?.name,

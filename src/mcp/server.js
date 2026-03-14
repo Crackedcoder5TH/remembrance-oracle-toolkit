@@ -138,6 +138,7 @@ function startMCPServer(oracle) {
         process.stdout.write(JSON.stringify(response) + '\n');
       }
     } catch (err) {
+      if (process.env.ORACLE_DEBUG) console.warn('[server:startMCPServer] silent failure:', err?.message || err);
       const errorResponse = {
         jsonrpc: '2.0',
         id: null,

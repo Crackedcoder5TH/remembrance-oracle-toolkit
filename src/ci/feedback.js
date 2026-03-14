@@ -160,7 +160,8 @@ class CIFeedbackReporter {
     }
     try {
       return JSON.parse(fs.readFileSync(this.manifestPath, 'utf-8'));
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[feedback:_readManifest] silent failure:', e?.message || e);
       return { tracked: [] };
     }
   }
@@ -176,7 +177,8 @@ class CIFeedbackReporter {
     if (!fs.existsSync(this.logPath)) return [];
     try {
       return JSON.parse(fs.readFileSync(this.logPath, 'utf-8'));
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[feedback:_readLog] returning empty array on error:', e?.message || e);
       return [];
     }
   }

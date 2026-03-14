@@ -56,7 +56,9 @@ function extractCodeTags(code) {
   for (const detector of CONSTRUCT_DETECTORS) {
     try {
       if (detector.test(code)) detected.push(detector.tag);
-    } catch { /* pattern test failure — skip */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-tagger:extractCodeTags] pattern test failure — skip:', e?.message || e);
+    }
   }
 
   return [...new Set(detected)];

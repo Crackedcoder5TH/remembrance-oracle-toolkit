@@ -74,7 +74,8 @@ function createFileCopyBackup(rootDir, filePaths, manifest) {
         original: relPath,
         backup: backupPath,
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-safety:createFileCopyBackup] silent failure:', e?.message || e);
       // Skip unreadable files
     }
   }
@@ -363,7 +364,8 @@ function rollback(rootDir, options = {}) {
           copyFileSync(file.backup, targetPath);
           result.filesRestored++;
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[report-safety:init] silent failure:', e?.message || e);
         // Skip files that can't be restored
       }
     }

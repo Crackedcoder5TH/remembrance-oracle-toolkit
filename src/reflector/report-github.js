@@ -72,7 +72,8 @@ function isGhAvailable(cwd) {
   try {
     gh('auth status', cwd);
     return true;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:isGhAvailable] returning false on error:', e?.message || e);
     return false;
   }
 }
@@ -92,17 +93,20 @@ function getDefaultBranch(cwd) {
     const remote = git('remote show origin', cwd);
     const match = remote.match(/HEAD branch:\s*(\S+)/);
     if (match) return match[1];
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
     // Fallback
   }
   try {
     git('rev-parse --verify main', cwd);
     return 'main';
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
     try {
       git('rev-parse --verify master', cwd);
       return 'master';
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
       return 'main';
     }
   }
@@ -193,14 +197,16 @@ function createHealingBranch(report, options = {}) {
   } finally {
     try {
       git(`checkout ${currentBranch}`, cwd);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-github:init] silent failure:', e?.message || e);
       // Best effort
     }
 
     if (stashed) {
       try {
         git('stash pop', cwd);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[report-github:init] silent failure:', e?.message || e);
         // Best effort
       }
     }
@@ -254,7 +260,8 @@ function openHealingPR(report, options = {}) {
       try {
         gh(`pr merge ${prResult.number} --auto --squash`, cwd);
         prResult.autoMergeEnabled = true;
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[report-github:openHealingPR] silent failure:', e?.message || e);
         prResult.autoMergeEnabled = false;
       }
     }
@@ -278,7 +285,8 @@ function findExistingReflectorPR(cwd) {
     const output = gh('pr list --label remembrance --state open --json number,title,url', cwd);
     const prs = JSON.parse(output);
     return prs.length > 0 ? prs[0] : null;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:findExistingReflectorPR] returning null on error:', e?.message || e);
     return null;
   }
 }

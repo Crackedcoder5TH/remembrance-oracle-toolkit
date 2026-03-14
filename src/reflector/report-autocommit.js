@@ -151,13 +151,15 @@ function mergeIfPassing(rootDir, options) {
   if (!testResult || !testResult.passed) {
     try {
       git(`checkout ${baseBranch}`, rootDir);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:mergeIfPassing] silent failure:', e?.message || e);
       // Best effort
     }
 
     try {
       git(`branch -D ${healingBranch}`, rootDir);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:mergeIfPassing] silent failure:', e?.message || e);
       // Best effort
     }
 
@@ -183,7 +185,8 @@ function mergeIfPassing(rootDir, options) {
 
     try {
       git(`branch -D ${safetyBranch}`, rootDir);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:mergeIfPassing] silent failure:', e?.message || e);
       // Keep safety branch if delete fails
     }
 
@@ -197,7 +200,8 @@ function mergeIfPassing(rootDir, options) {
   } catch (err) {
     try {
       git('merge --abort', rootDir);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] silent failure:', e?.message || e);
       // Best effort
     }
 
@@ -275,7 +279,9 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
       testCommand: testCommand || 'npm test',
       buildCommand: buildCommand || '(none)',
     };
-    try { git(`branch -D ${safetyInfo.branch}`, rootDir); } catch { /* ignore */ }
+    try { git(`branch -D ${safetyInfo.branch}`, rootDir); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] ignore:', e?.message || e);
+    }
     result.durationMs = Date.now() - startTime;
     recordAutoCommit(rootDir, result);
     return result;
@@ -296,9 +302,15 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
     result.pipeline.push({ step: 'commit', status: 'ok', files: healedFiles.length });
   } catch (err) {
     result.pipeline.push({ step: 'commit', status: 'error', error: err.message });
-    try { git(`checkout ${autoCommitBaseBranch}`, rootDir); } catch { /* ignore */ }
-    try { git(`branch -D ${healingBranch}`, rootDir); } catch { /* ignore */ }
-    try { git(`branch -D ${safetyInfo.branch}`, rootDir); } catch { /* ignore */ }
+    try { git(`checkout ${autoCommitBaseBranch}`, rootDir); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] ignore:', e?.message || e);
+    }
+    try { git(`branch -D ${healingBranch}`, rootDir); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] ignore:', e?.message || e);
+    }
+    try { git(`branch -D ${safetyInfo.branch}`, rootDir); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] ignore:', e?.message || e);
+    }
     result.aborted = true;
     result.reason = `Failed to commit healed files: ${err.message}`;
     result.durationMs = Date.now() - startTime;

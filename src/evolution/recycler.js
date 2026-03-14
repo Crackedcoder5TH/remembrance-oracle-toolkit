@@ -216,7 +216,8 @@ class PatternRecycler {
           this.stats.captured++;
         }
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:code] silent failure:', e?.message || e);
       // Persistence is best-effort — never break the recycler
     }
   }
@@ -244,7 +245,8 @@ class PatternRecycler {
           healHistory: entry.healHistory,
         })
       );
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:_persistCapture] silent failure:', e?.message || e);
       // Best-effort persistence
     }
   }
@@ -264,7 +266,8 @@ class PatternRecycler {
         entry.id,
         JSON.stringify({ status: entry.status, attempts: entry.attempts })
       );
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:_persistHealResult] silent failure:', e?.message || e);
       // Best-effort
     }
   }
@@ -706,7 +709,9 @@ class PatternRecycler {
               detail: `coherency: ${attemptDetail.coherency.toFixed(3)}, cascade: ${this._cascadeBoost}x`,
             });
           }
-        } catch { /* temporal not available */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[recycler:init] temporal not available:', e?.message || e);
+        }
 
         if (this.verbose) {
           console.log(`  [HEALED] ${pattern.name} — attempt ${attempt + 1}, coherency ${attemptDetail.coherency.toFixed(3)} (cascade ${this._cascadeBoost}x)`);
@@ -723,7 +728,9 @@ class PatternRecycler {
       try {
         const { recordViolation } = require('../core/covenant-evolution');
         recordViolation(healedCode, `Heal rejected: ${regResult.reason || 'unknown'}`, 'heal-failure');
-      } catch { /* covenant evolution not available */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[recycler:init] covenant evolution not available:', e?.message || e);
+      }
 
       // Use healed code as input for next attempt (local copy, don't mutate original)
       lastHealedCode = healedCode;
@@ -816,7 +823,9 @@ class PatternRecycler {
       try {
         const check = verifyTranspilation(result.code, testCode, targetLang);
         verified = check.compiled;
-      } catch { /* compilation check failed, not fatal */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[recycler:name] compilation check failed, not fatal:', e?.message || e);
+      }
     }
 
     const suffix = targetLang === 'go' ? '-go' : '-rs';

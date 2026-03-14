@@ -129,7 +129,8 @@ function selfImprove(ctx, options = {}) {
           reason: result ? 'no improvement' : 'healing failed',
         });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
       report.healFailed.push({
         id: pattern.id,
         name: pattern.name,
@@ -142,7 +143,8 @@ function selfImprove(ctx, options = {}) {
   try {
     const promotion = doAutoPromote();
     report.promoted = promotion?.promoted || 0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
     // Best effort
   }
 
@@ -150,7 +152,8 @@ function selfImprove(ctx, options = {}) {
   try {
     const cleanResult = doDeepClean({ dryRun: false });
     report.cleaned = cleanResult?.removed || 0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
     // Best effort
   }
 
@@ -158,7 +161,8 @@ function selfImprove(ctx, options = {}) {
   try {
     const retagResult = doRetagAll({ minAdded: 1 });
     report.retagged = retagResult?.enriched || 0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
     // Best effort
   }
 
@@ -166,7 +170,8 @@ function selfImprove(ctx, options = {}) {
   try {
     const recycleResult = doRecycle({ maxAttempts: 5 });
     report.recovered = recycleResult?.healed || 0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
     // Best effort
   }
 
@@ -286,7 +291,8 @@ function selfOptimize(ctx, options = {}) {
           updatePattern(p.id, { coherencyScore: newScore });
           refreshed++;
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
         // Skip
       }
     }
@@ -337,7 +343,8 @@ function fullCycle(ctx, options = {}) {
   let evolutionReport = null;
   try {
     evolutionReport = evolve(ctx, options);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:fullCycle] recording error:', e?.message || e);
     evolutionReport = { error: 'evolution failed' };
   }
 
@@ -839,7 +846,9 @@ function pruneStuckCandidates(ctx, options = {}) {
           } else if (sqliteStore && typeof sqliteStore.deleteCandidate === 'function') {
             sqliteStore.deleteCandidate(p.id);
           }
-        } catch { /* best effort */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] best effort:', e?.message || e);
+        }
       }
     }
   }
@@ -1105,11 +1114,15 @@ function _deletePatternFallback(oracle, id) {
             row.tags || '[]', 'evolution-delete', now, row.created_at || null,
             JSON.stringify(row)
           );
-        } catch { /* archive table may not exist in all stores */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:_deletePatternFallback] archive table may not exist in all stores:', e?.message || e);
+        }
       }
       db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
     }
-  } catch { /* skip if delete not supported */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:_deletePatternFallback] skip if delete not supported:', e?.message || e);
+  }
 }
 
 module.exports = {

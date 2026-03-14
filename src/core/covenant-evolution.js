@@ -30,7 +30,8 @@ function loadEvolvedPrinciples(rootDir = process.cwd()) {
   try {
     const data = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(data);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:loadEvolvedPrinciples] silent failure:', e?.message || e);
     return { principles: [], violations: [], version: 1 };
   }
 }
@@ -113,7 +114,9 @@ function discoverPrinciples(options = {}) {
       if (autoPromote && pattern && cluster.count >= minOccurrences * 2) {
         try {
           promotePrinciple(proposal, rootDir);
-        } catch { /* promotion failed — non-fatal */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:discoverPrinciples] promotion failed — non-fatal:', e?.message || e);
+        }
       }
     }
   }
@@ -169,7 +172,8 @@ function createEvolvedRegistry(rootDir = process.cwd()) {
                 reason: `Evolved principle "${p.name}" violated (category: ${p.category})`,
               });
             }
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:check] silent failure:', e?.message || e);
             // Invalid regex — skip
           }
         }

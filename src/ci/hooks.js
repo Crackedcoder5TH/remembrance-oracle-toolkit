@@ -25,7 +25,8 @@ function findGitHooksDir(cwd) {
   try {
     const gitDir = execSync('git rev-parse --git-dir', { cwd, encoding: 'utf-8' }).trim();
     return path.resolve(cwd, gitDir, 'hooks');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[hooks:findGitHooksDir] returning null on error:', e?.message || e);
     return null;
   }
 }
@@ -60,6 +61,7 @@ for file in $STAGED; do
           process.exit(1);
         }
       } catch(e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[hooks:preCommitScript] silent failure:', e?.message || e);
         // Covenant module not found — skip
       }
     " 2>&1)
@@ -101,6 +103,7 @@ node -e "
       console.log('Oracle: ' + result.harvest.registered + ' harvested, ' + result.promoted + ' promoted' + (result.synced ? ', synced' : ''));
     }
   } catch(e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[hooks:postCommitScript] silent failure:', e?.message || e);
     // Silently fail — don't block workflow
   }
 " 2>/dev/null || true

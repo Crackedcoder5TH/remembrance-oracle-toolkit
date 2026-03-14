@@ -89,7 +89,8 @@ function loadEnvFile(rootDir, options = {}) {
   let content;
   try {
     content = fs.readFileSync(envPath, 'utf8');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[env-loader:loadEnvFile] silent failure:', e?.message || e);
     return result;
   }
 

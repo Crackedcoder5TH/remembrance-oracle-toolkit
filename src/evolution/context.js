@@ -86,11 +86,15 @@ function createOracleContext(oracle) {
                 row.tags || '[]', 'evolution-context-delete', now, row.created_at || null,
                 JSON.stringify(row)
               );
-            } catch { /* archive table may not exist */ }
+            } catch (e) {
+              if (process.env.ORACLE_DEBUG) console.warn('[context:deletePattern] archive table may not exist:', e?.message || e);
+            }
           }
           db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
         }
-      } catch { /* skip if delete not supported */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[context:deletePattern] skip if delete not supported:', e?.message || e);
+      }
     },
     pruneCandidates: (minCoherency) => {
       const sqliteStore = oracle.patterns._sqlite;
@@ -106,7 +110,9 @@ function createOracleContext(oracle) {
         if (sqliteStore && typeof sqliteStore.deleteCandidate === 'function') {
           sqliteStore.deleteCandidate(id);
         }
-      } catch { /* best effort */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[context:deleteCandidate] best effort:', e?.message || e);
+      }
     },
 
     // ─── Sync ───
@@ -118,7 +124,9 @@ function createOracleContext(oracle) {
           syncToGlobal(sqliteStore, opts);
           return { synced: true };
         }
-      } catch { /* best effort */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[context:syncToGlobal] best effort:', e?.message || e);
+      }
       return { synced: false };
     },
 
@@ -127,7 +135,9 @@ function createOracleContext(oracle) {
       try {
         const { actOnInsights } = require('../analytics/actionable-insights');
         return actOnInsights(oracle, opts);
-      } catch { /* best effort */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[context:actOnInsights] best effort:', e?.message || e);
+      }
       return null;
     },
 

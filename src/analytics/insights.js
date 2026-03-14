@@ -51,7 +51,9 @@ function trackEvent(oracle, event) {
       CREATE INDEX IF NOT EXISTS idx_insights_type ON insights_events(event_type);
       CREATE INDEX IF NOT EXISTS idx_insights_ts ON insights_events(timestamp);
     `);
-  } catch { /* table already exists */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:trackEvent] table already exists:', e?.message || e);
+  }
 
   try {
     db.prepare(`
@@ -66,7 +68,8 @@ function trackEvent(oracle, event) {
       event.outcome || null,
     );
     return true;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:trackEvent] returning false on error:', e?.message || e);
     return false;
   }
 }
@@ -110,7 +113,8 @@ function mostPulledPatterns(oracle, limit = 20) {
       successRate: r.usage_count > 0 ? Math.round(r.success_count / r.usage_count * 100) : 0,
       coherency: r.coherency_total,
     }));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:mostPulledPatterns] returning empty array on error:', e?.message || e);
     return [];
   }
 }
@@ -272,7 +276,8 @@ function searchAnalytics(oracle, limit = 20) {
       topQueries: topQueries.map(r => ({ query: r.query, count: r.count, foundRate: r.count > 0 ? Math.round(r.found_count / r.count * 100) : 0 })),
       zeroResults: zeroResults.map(r => ({ query: r.query, count: r.count })),
     };
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:searchAnalytics] silent failure:', e?.message || e);
     return { topQueries: [], zeroResults: [] };
   }
 }
@@ -309,7 +314,8 @@ function growthMetrics(oracle) {
         avgCoherency: Math.round((r.avg_coherency || 0) * 1000) / 1000,
       })),
     };
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:growthMetrics] silent failure:', e?.message || e);
     return { totalPatterns: oracle.patterns.getAll().length, periods: [] };
   }
 }

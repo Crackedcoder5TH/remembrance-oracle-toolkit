@@ -46,7 +46,8 @@ function syncSleep(ms) {
   try {
     const buf = new Int32Array(new SharedArrayBuffer(4));
     Atomics.wait(buf, 0, 0, ms);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:syncSleep] spin:', e?.message || e);
     const end = Date.now() + ms;
     while (Date.now() < end) { /* spin */ }
   }
@@ -66,15 +67,21 @@ function acquireLock(storeDir, label = 'pattern-library') {
       const fd = fs.openSync(lockPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY);
       fs.writeFileSync(fd, String(process.pid), 'utf-8');
       fs.closeSync(fd);
-      return () => { try { fs.unlinkSync(lockPath); } catch { /* ok */ } };
-    } catch {
+      return () => { try { fs.unlinkSync(lockPath); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e); } };
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e);
       try {
         const stat = fs.statSync(lockPath);
         if (Date.now() - stat.mtimeMs > STALE_LOCK_MS) {
-          try { fs.unlinkSync(lockPath); } catch { /* ok */ }
+          try { fs.unlinkSync(lockPath); } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e);
+          }
           continue;
         }
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] skipping item:', e?.message || e);
+        continue;
+      }
       if (attempt < LOCK_DELAYS.length) {
         syncSleep(LOCK_DELAYS[attempt]);
       }
@@ -92,17 +99,23 @@ function loadJSONSafe(filePath, fallback) {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       return parsed;
     }
-  } catch { /* primary corrupted — try backup */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] primary corrupted — try backup:', e?.message || e);
+  }
 
   const bakPath = filePath + '.bak';
   try {
     if (fs.existsSync(bakPath)) {
       const raw = fs.readFileSync(bakPath, 'utf-8');
       const parsed = JSON.parse(raw);
-      try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch { /* best effort recovery */ }
+      try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] best effort recovery:', e?.message || e);
+      }
       return parsed;
     }
-  } catch { /* backup also corrupted */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] backup also corrupted:', e?.message || e);
+  }
 
   if (!fs.existsSync(filePath) && !fs.existsSync(bakPath)) {
     return fallback;
@@ -122,7 +135,9 @@ function atomicWriteJSON(filePath, data) {
   const tmpPath = filePath + '.tmp';
   fs.writeFileSync(tmpPath, json, 'utf-8');
   if (fs.existsSync(filePath)) {
-    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch { /* ok */ }
+    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[library:atomicWriteJSON] ok:', e?.message || e);
+    }
   }
   fs.renameSync(tmpPath, filePath);
 }
@@ -213,7 +228,9 @@ function tryGetSQLite(storeDir) {
     }
     VerifiedHistoryStore._sqliteInstances.set(storeDir, instance);
     return instance;
-  } catch { /* SQLite not available — fall back to JSON */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:tryGetSQLite] SQLite not available — fall back to JSON:', e?.message || e);
+  }
   return null;
 }
 
@@ -376,7 +393,8 @@ class PatternLibrary {
         const { evolutionAdjustment } = require('../evolution/evolution');
         const adj = evolutionAdjustment(p);
         evolutionPenalty = adj.total;
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:normalizedName] silent failure:', e?.message || e);
         // Evolution module not available — no penalty
       }
 

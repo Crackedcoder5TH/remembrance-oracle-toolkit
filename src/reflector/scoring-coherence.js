@@ -155,7 +155,10 @@ function scoreTestProof(filePath, rootDir) {
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       testFile = candidate;
-      try { testCode = readFileSync(candidate, 'utf-8'); } catch { continue; }
+      try { testCode = readFileSync(candidate, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[scoring-coherence:scoreTestProof] skipping item:', e?.message || e);
+        continue;
+      }
       break;
     }
   }

@@ -29,7 +29,8 @@ function loadHistory(rootDir) {
     if (fs.existsSync(filePath)) {
       return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-history:loadHistory] silent failure:', e?.message || e);
     // Corrupted file, start fresh
   }
   return { runs: [], providerStats: {} };

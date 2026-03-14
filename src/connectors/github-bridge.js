@@ -28,7 +28,8 @@ function parseIssueCommand(issueBody) {
   if (codeBlockMatch) {
     try {
       return JSON.parse(codeBlockMatch[1].trim());
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[github-bridge:parseIssueCommand] silent failure:', e?.message || e);
       // fall through
     }
   }
@@ -36,7 +37,8 @@ function parseIssueCommand(issueBody) {
   // Try to parse the entire body as JSON
   try {
     return JSON.parse(issueBody.trim());
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[github-bridge:parseIssueCommand] silent failure:', e?.message || e);
     // fall through
   }
 

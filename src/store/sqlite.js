@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { safePath } = require('../core/safe-path');
 
 const DEFAULT_STORE_DIR = '.remembrance';
 const DB_FILE = 'oracle.db';
@@ -28,8 +29,9 @@ try {
 
 class SQLiteStore {
   constructor(baseDir = process.cwd()) {
-    this.storeDir = path.join(baseDir, DEFAULT_STORE_DIR);
-    this.dbPath = path.join(this.storeDir, DB_FILE);
+    const resolvedBase = path.resolve(baseDir);
+    this.storeDir = safePath(DEFAULT_STORE_DIR, resolvedBase);
+    this.dbPath = safePath(DB_FILE, this.storeDir);
     this._ensureDir();
     if (!DatabaseSync) throw new Error('node:sqlite is not available — Node 22+ is required');
     this.db = new DatabaseSync(this.dbPath);

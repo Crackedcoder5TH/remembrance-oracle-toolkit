@@ -91,7 +91,8 @@ function withRetry(operationName, fn, options = {}) {
       try {
         const buf = new SharedArrayBuffer(4);
         Atomics.wait(new Int32Array(buf), 0, 0, delay);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[scoring-errors:withRetry] spin fallback:', e?.message || e);
         const waitUntil = Date.now() + delay;
         while (Date.now() < waitUntil) { /* spin fallback */ }
       }

@@ -25,7 +25,9 @@ function generateManifest(oracle) {
 
   // Include temporal health in manifest for richer negotiation
   let temporal = null;
-  try { temporal = oracle.getTemporalMemory?.(); } catch { /* unavailable */ }
+  try { temporal = oracle.getTemporalMemory?.(); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[negotiation:generateManifest] unavailable:', e?.message || e);
+  }
 
   return patterns.map(p => {
     let health = null;
@@ -33,7 +35,9 @@ function generateManifest(oracle) {
       try {
         const h = temporal.analyzeHealth(p.id);
         health = { status: h.status, successRate: h.successRate };
-      } catch { /* skip */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[negotiation:generateManifest] skip:', e?.message || e);
+      }
     }
     return {
       id: p.id,
@@ -153,7 +157,9 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
           blindSpotDomains.add(spot.domain);
         }
       }
-    } catch { /* coverage map unavailable */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[negotiation:init] coverage map unavailable:', e?.message || e);
+    }
 
     // Step 3: REQUEST — ask for superior patterns
     if (pullSuperior && opportunities.peerSuperior.length > 0) {
@@ -181,7 +187,8 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
               });
               if (submitResult.stored) result.pulled++;
               else result.skipped++;
-            } catch {
+            } catch (e) {
+              if (process.env.ORACLE_DEBUG) console.warn('[negotiation:init] silent failure:', e?.message || e);
               result.skipped++;
             }
           }
@@ -222,7 +229,8 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
               });
               if (submitResult.stored) result.pulled++;
               else result.skipped++;
-            } catch {
+            } catch (e) {
+              if (process.env.ORACLE_DEBUG) console.warn('[negotiation:bInBlindSpot] silent failure:', e?.message || e);
               result.skipped++;
             }
           }
@@ -354,7 +362,10 @@ function _fetchJson(url, options = {}) {
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => {
         try { resolve(JSON.parse(data)); }
-        catch { resolve(null); }
+        catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[negotiation:_fetchJson] resolving null on error:', e?.message || e);
+          resolve(null);
+        }
       });
     });
     req.on('error', () => resolve(null));
@@ -536,7 +547,8 @@ async function negotiateMulti(oracle, remotes, options = {}) {
             });
             if (submitResult.stored) result.pulled++;
             else result.skipped++;
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[negotiation:init] silent failure:', e?.message || e);
             result.skipped++;
           }
         }

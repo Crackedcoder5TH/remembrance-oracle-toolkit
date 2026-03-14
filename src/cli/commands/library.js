@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('../../core/safe-path');
 const { c, colorScore, colorStatus, colorDecision, colorSource } = require('../colors');
 const { validatePositiveInt, validateCoherency, validateId, parseDryRun, parseTags, parseMinCoherency } = require('../validate-args');
 
@@ -79,10 +80,10 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   handlers['register'] = (args) => {
     if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
     let code, testCode;
-    try { code = fs.readFileSync(path.resolve(args.file), 'utf-8'); }
+    try { code = fs.readFileSync(safePath(args.file, process.cwd()), 'utf-8'); }
     catch (e) { console.error(c.boldRed('Error:') + ` Cannot read file: ${e.message}`); process.exit(1); }
     if (args.test) {
-      try { testCode = fs.readFileSync(path.resolve(args.test), 'utf-8'); }
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
       catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
     }
     const tags = parseTags(args);
@@ -217,7 +218,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       tags,
     });
     if (args.file) {
-      fs.writeFileSync(path.resolve(args.file), output, 'utf-8');
+      fs.writeFileSync(safePath(args.file, process.cwd()), output, 'utf-8');
       console.log(`${c.boldGreen('Exported')} to ${c.cyan(args.file)}`);
     } else {
       console.log(output);
@@ -226,7 +227,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['import'] = (args) => {
     if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle import --file patterns.json [--dry-run]')}`); process.exit(1); }
-    const data = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const data = fs.readFileSync(safePath(args.file, process.cwd()), 'utf-8');
     const dryRun = parseDryRun(args);
     const result = oracle.import(data, { dryRun, author: args.author || 'cli-import' });
     if (dryRun) console.log(c.dim('(dry run — no changes written)\n'));
@@ -374,7 +375,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
     let testCode;
     if (args.test) {
-      try { testCode = fs.readFileSync(path.resolve(args.test), 'utf-8'); }
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
       catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
     }
     const result = oracle.promote(id, testCode);

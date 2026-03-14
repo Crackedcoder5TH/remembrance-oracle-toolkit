@@ -215,7 +215,8 @@ function applyUsageBoosts(results, oracle) {
       }
       return r;
     }).sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[search-intelligence:applyUsageBoosts] silent failure:', e?.message || e);
     return results;
   }
 }
@@ -321,7 +322,8 @@ function mergeEmbeddingResults(results, oracle, query, intent, language, limit, 
         results.push({ ...er, matchScore: er._relevance?.relevance || 0, embeddingMatch: true });
       }
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[search-intelligence:mergeEmbeddingResults] silent failure:', e?.message || e);
     // Embedding search is best-effort
   }
 

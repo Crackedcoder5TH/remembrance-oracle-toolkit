@@ -319,7 +319,8 @@ function createAgentPool(config, providerNames) {
   for (const name of providerNames) {
     try {
       agents.push(createAdapter(name, config));
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[agent-pool:createAgentPool] silent failure:', e?.message || e);
       // Skip unavailable providers silently
     }
   }

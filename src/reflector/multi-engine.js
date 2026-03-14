@@ -48,7 +48,8 @@ function scanDirectory(rootDir, config = {}) {
     let entries;
     try {
       entries = readdirSync(dir);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[multi-engine:walk] returning on error:', e?.message || e);
       return; // Skip unreadable directories
     }
 
@@ -59,7 +60,8 @@ function scanDirectory(rootDir, config = {}) {
       let stat;
       try {
         stat = statSync(fullPath);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[multi-engine:walk] skipping item:', e?.message || e);
         continue; // Skip unreadable files
       }
 
@@ -280,7 +282,8 @@ function reflect(rootDir, config = {}) {
     if (opts.usePatternHook !== false) {
       try {
         patternContext = hookBeforeHeal(file.path, { rootDir });
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[multi-engine:reflect] silent failure:', e?.message || e);
         // Pattern hook failure is non-fatal
       }
     }
@@ -304,7 +307,8 @@ function reflect(rootDir, config = {}) {
             patternName: patternContext.bestMatch?.name || null,
             improvement: healing.improvement,
           });
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[multi-engine:reflect] silent failure:', e?.message || e);
           // Recording failure is non-fatal
         }
       }

@@ -203,7 +203,8 @@ async function dispatchWithRecovery(agents, prompt, options = {}, fallbackOpts =
               result.response = `\`\`\`\n${cached[0].code}\n\`\`\`\nCONFIDENCE: ${cached[0].coherency || 0.6}\n(Cached from oracle pattern: ${cached[0].name || 'unknown'})`;
               result.fromCache = true;
             }
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[error-recovery:onError] silent failure:', e?.message || e);
             // Oracle cache unavailable
           }
         }

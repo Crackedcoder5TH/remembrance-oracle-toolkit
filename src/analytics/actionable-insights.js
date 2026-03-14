@@ -92,7 +92,8 @@ function healStalePatterns(oracle, options = {}) {
           action: 'no-improvement',
         });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healStalePatterns] operation failed:', e?.message || e);
       report.failed++;
     }
   }
@@ -154,7 +155,8 @@ function healLowFeedback(oracle, options = {}) {
       } else {
         report.skipped++;
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healLowFeedback] operation failed:', e?.message || e);
       report.failed++;
     }
   }
@@ -206,7 +208,8 @@ function healOverEvolved(oracle, options = {}) {
       } else {
         report.skipped++;
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healOverEvolved] operation failed:', e?.message || e);
       report.failed++;
     }
   }
@@ -272,21 +275,24 @@ function actOnInsights(oracle, options = {}) {
   // 1. Heal stale low-quality patterns
   try {
     report.staleHealing = healStalePatterns(oracle, options);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] operation failed:', e?.message || e);
     report.staleHealing = { error: 'failed' };
   }
 
   // 2. Heal patterns with low feedback rates
   try {
     report.feedbackHealing = healLowFeedback(oracle, options);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] operation failed:', e?.message || e);
     report.feedbackHealing = { error: 'failed' };
   }
 
   // 3. Heal over-evolved patterns
   try {
     report.overEvolvedHealing = healOverEvolved(oracle, options);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] operation failed:', e?.message || e);
     report.overEvolvedHealing = { error: 'failed' };
   }
 
@@ -294,7 +300,8 @@ function actOnInsights(oracle, options = {}) {
   try {
     const patterns = oracle.patterns.getAll();
     report.regressions = detectRegressions(patterns);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] operation failed:', e?.message || e);
     report.regressions = { error: 'failed' };
   }
 
@@ -302,7 +309,8 @@ function actOnInsights(oracle, options = {}) {
   try {
     const boosts = computeUsageBoosts(oracle);
     report.usageBoosts = boosts.size;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] falling back to zero:', e?.message || e);
     report.usageBoosts = 0;
   }
 

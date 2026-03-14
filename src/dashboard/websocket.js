@@ -27,7 +27,8 @@ function setupWebSocket(server, oracleInstance) {
         const data = safeJsonParse(msg, null);
         if (!data) return;
         // subscribe is a no-op acknowledgement
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[websocket:setupWebSocket] silent failure:', e?.message || e);
         // Ignore malformed messages
       }
     });
@@ -37,7 +38,8 @@ function setupWebSocket(server, oracleInstance) {
         console.error('[dashboard] WebSocket error:', err.message);
       }
     });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[websocket:setupWebSocket] silent failure:', e?.message || e);
     // WebSocket module not available — dashboard works without it
   }
 

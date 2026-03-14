@@ -198,7 +198,8 @@ function preflightOracleSearch(task, oracle, options = {}) {
         coherency: r.coherency || r.coherencyScore || 0,
         tags: r.tags || '',
       }));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[prompt-templates:preflightOracleSearch] returning empty array on error:', e?.message || e);
     return [];
   }
 }

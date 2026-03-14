@@ -46,7 +46,10 @@ function verifyToken(token, secret) {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
-  } catch { return null; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[server:verifyToken] returning null on error:', e?.message || e);
+    return null;
+  }
 }
 
 // ─── Password Hashing (scrypt, no dependencies) ───
@@ -108,7 +111,9 @@ class CloudSyncServer {
   stop() {
     return new Promise((resolve) => {
       for (const ws of this.wsClients) {
-        try { ws.close(); } catch { /* ignore */ }
+        try { ws.close(); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[server:stop] ignore:', e?.message || e);
+        }
       }
       this.wsClients.clear();
       if (this.server) {
@@ -293,7 +298,8 @@ class CloudSyncServer {
       if (path === '/api/candidates' && method === 'GET') {
         try {
           return this._json(res, 200, this.oracle.getCandidates());
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[server:init] silent failure:', e?.message || e);
           return this._json(res, 200, { candidates: [] });
         }
       }
@@ -486,7 +492,9 @@ class CloudSyncServer {
           testCode: p.testCode,
         });
         if (result.stored) synced++;
-      } catch { /* skip failed */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[server:_handleSyncPush] skip failed:', e?.message || e);
+      }
     }
 
     this._broadcast({ type: 'sync_push', user: user.username, count: synced });
@@ -642,7 +650,9 @@ class CloudSyncServer {
       } else if (msg.type === 'ping') {
         this._wsSend(ws, { type: 'pong' });
       }
-    } catch { /* ignore malformed messages */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[server:masked] ignore malformed messages:', e?.message || e);
+    }
   }
 
   _wsSend(ws, data) {
@@ -660,7 +670,9 @@ class CloudSyncServer {
       }
       payload.copy(frame, offset);
       ws.socket.write(frame);
-    } catch { /* ignore write errors */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[server:_wsSend] ignore write errors:', e?.message || e);
+    }
   }
 
   _broadcast(data) {

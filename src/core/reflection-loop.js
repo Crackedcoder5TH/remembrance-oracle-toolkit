@@ -243,7 +243,9 @@ function reflectionLoop(code, options = {}) {
     if (typeof onLoop === 'function') {
       try {
         onLoop({ loop: loops, coherence: current.coherence, strategy: winner.strategy, reflectionScore: winner.reflectionScore, changed: winner.changed });
-      } catch (_) { /* listener errors don't break healing */ }
+      } catch (_) {
+        if (process.env.ORACLE_DEBUG) console.warn('[reflection-loop:init] listener errors don\'t break healing:', _?.message || _);
+      }
     }
   }
 

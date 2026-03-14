@@ -312,7 +312,8 @@ function discoverReposSync(query, options = {}) {
       topics: item.topics || [],
       updatedAt: item.updated_at,
     }));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:language] returning empty array on error:', e?.message || e);
     return [];
   }
 }
@@ -398,7 +399,8 @@ function detectLicenseFromClone(repoUrl) {
       execSync('git sparse-checkout set LICENSE LICENSE.md COPYING COPYING.md', {
         cwd: tmpDir, timeout: 5000, stdio: 'pipe', encoding: 'utf-8',
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] silent failure:', e?.message || e);
       // sparse-checkout may not be available in all git versions
     }
 
@@ -427,15 +429,20 @@ function detectLicenseFromClone(repoUrl) {
       try {
         const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
         if (pkg.license) return pkg.license;
-      } catch { /* ignore */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] ignore:', e?.message || e);
+      }
     }
 
     return 'unknown';
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] ignore:', e?.message || e);
     return 'unknown';
   } finally {
     if (tmpDir) {
-      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:init] ignore:', e?.message || e);
+      }
     }
   }
 }
@@ -492,7 +499,8 @@ function getRepoCommitHash(repoUrl, branch) {
     });
     const match = output.match(/^([0-9a-f]+)\s/);
     return match ? match[1] : null;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:getRepoCommitHash] returning null on error:', e?.message || e);
     return null;
   }
 }

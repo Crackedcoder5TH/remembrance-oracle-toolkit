@@ -149,7 +149,8 @@ function _fingerprintJS(code, options = {}) {
   let tokens;
   try {
     tokens = tokenize(code);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[fractal:_fingerprintJS] silent failure:', e?.message || e);
     return _fingerprintGeneric(code, 'javascript', options);
   }
 

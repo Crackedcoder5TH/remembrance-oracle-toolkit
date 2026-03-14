@@ -52,7 +52,9 @@ function generateCoverageMap(oracle) {
 
   // Initialize temporal memory for health-aware scoring
   let temporal = null;
-  try { temporal = oracle.getTemporalMemory?.(); } catch { /* unavailable */ }
+  try { temporal = oracle.getTemporalMemory?.(); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[coverage-map:now] unavailable:', e?.message || e);
+  }
 
   // Domain coverage
   const domainCoverage = {};
@@ -79,7 +81,9 @@ function generateCoverageMap(oracle) {
         const health = temporal.analyzeHealth(p.id);
         if (health.status === 'regressed') healthMultiplier = 0.5;
         else if (health.status === 'recovered') healthMultiplier = 0.9;
-      } catch { /* skip */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[coverage-map:now] skip:', e?.message || e);
+      }
     }
 
     for (const domain of DOMAINS) {

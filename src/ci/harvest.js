@@ -16,6 +16,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { safePath } = require('../core/safe-path');
 const { discoverPatterns, extractFunctionNames, detectLanguage } = require('./auto-seed');
 
 const SKIP_DIRS = new Set([
@@ -309,7 +310,10 @@ function harvest(oracle, source, options = {}) {
           result.skipped++;
           result.patterns.push({ name: d.name, status: 'skipped', reason: reg.reason });
         }
-      } catch { result.failed++; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[harvest:init] operation failed:', e?.message || e);
+        result.failed++;
+      }
     }
 
     // Register standalone patterns (split by function or file)
@@ -331,7 +335,10 @@ function harvest(oracle, source, options = {}) {
             } else {
               result.skipped++;
             }
-          } catch { result.failed++; }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] operation failed:', e?.message || e);
+            result.failed++;
+          }
         }
       } else {
         const name = path.basename(s.file, path.extname(s.file));
@@ -350,11 +357,16 @@ function harvest(oracle, source, options = {}) {
             result.skipped++;
             result.patterns.push({ name, status: 'skipped', reason: reg.reason });
           }
-        } catch { result.failed++; }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] operation failed:', e?.message || e);
+          result.failed++;
+        }
       }
     }
 
-    try { oracle._emit({ type: 'harvest_complete', source, registered: result.registered }); } catch { /* best effort */ }
+    try { oracle._emit({ type: 'harvest_complete', source, registered: result.registered }); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] best effort:', e?.message || e);
+    }
     return result;
   } finally {
     if (isTemp && repoDir) {

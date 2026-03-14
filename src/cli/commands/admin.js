@@ -218,7 +218,9 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
             const staged = execSync('git diff --cached --name-only --diff-filter=ACM', { encoding: 'utf-8' })
               .trim().split('\n').filter(f => /\.(js|ts|py|go|rs)$/.test(f));
             files.push(...staged);
-          } catch { /* not in a git repo */ }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[admin:init] not in a git repo:', e?.message || e);
+          }
         }
         if (files.length === 0) { console.log(c.dim('No staged source files to check.')); return; }
         const result = runPreCommitCheck(files);

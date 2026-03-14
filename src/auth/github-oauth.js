@@ -19,7 +19,8 @@ const crypto = require('crypto');
 function _parseResponse(data) {
   try {
     return JSON.parse(data);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:_parseResponse] silent failure:', e?.message || e);
     const parsed = {};
     data.split('&').forEach(pair => {
       const [k, v] = pair.split('=');
@@ -247,7 +248,10 @@ class GitHubIdentity {
           'SELECT * FROM github_identities WHERE voter_id = ?'
         ).get(voterId);
         return row || null;
-      } catch { return null; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:getIdentity] returning null on error:', e?.message || e);
+        return null;
+      }
     }
     return this._identities.get(voterId) || null;
   }
@@ -269,7 +273,10 @@ class GitHubIdentity {
         return this.store.db.prepare(
           'SELECT * FROM github_identities ORDER BY contributions DESC LIMIT ?'
         ).all(limit);
-      } catch { return []; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:listIdentities] returning empty array on error:', e?.message || e);
+        return [];
+      }
     }
     return Array.from(this._identities.values()).slice(0, limit);
   }
@@ -303,7 +310,10 @@ class GitHubIdentity {
       try {
         this.store.db.prepare('DELETE FROM github_identities WHERE voter_id = ?').run(voterId);
         return true;
-      } catch { return false; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:removeIdentity] returning false on error:', e?.message || e);
+        return false;
+      }
     }
     return this._identities.delete(voterId);
   }

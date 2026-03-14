@@ -64,6 +64,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       log(`Auto-registered ${regResult.registered} new function(s) from diff`);
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:autoSubmit] silent failure:', e?.message || e);
     report.errors.push(`auto-register: ${e.message}`);
   }
 
@@ -85,6 +86,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       log(`Harvested ${harvestResult.registered} new pattern(s)`);
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:extraction] silent failure:', e?.message || e);
     report.errors.push(`harvest: ${e.message}`);
   }
 
@@ -103,6 +105,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       }
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:extraction] silent failure:', e?.message || e);
     report.errors.push(`promote: ${e.message}`);
   }
 
@@ -119,6 +122,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
         }
       }
     } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
       report.errors.push(`sync: ${e.message}`);
     }
   }
@@ -136,6 +140,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
         }
       }
     } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
       report.errors.push(`share: ${e.message}`);
     }
   }
@@ -149,7 +154,8 @@ function autoSubmit(oracle, baseDir, options = {}) {
       synced: report.synced,
       shared: report.shared,
     });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
     // Best-effort event emission
   }
 
@@ -176,7 +182,8 @@ function shouldAutoSubmit(cwd) {
 
     const codeExts = /\.(js|ts|py|go|rs|jsx|tsx)$/;
     return changed.split('\n').some(f => codeExts.test(f));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:shouldAutoSubmit] silent failure:', e?.message || e);
     // If git command fails (initial commit, etc.), run anyway
     return true;
   }

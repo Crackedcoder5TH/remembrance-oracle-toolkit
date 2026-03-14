@@ -604,7 +604,8 @@ function shareDebugPatterns(localStore, options = {}) {
   let localDebug;
   try {
     localDebug = localStore.db.prepare(sql).all(...params);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:shareDebugPatterns] silent failure:', e?.message || e);
     return { shared: 0, skipped: 0, total: 0, error: 'No debug_patterns table in local store' };
   }
 
@@ -612,7 +613,8 @@ function shareDebugPatterns(localStore, options = {}) {
   let communityDebug;
   try {
     communityDebug = communityStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:shareDebugPatterns] falling back to empty array:', e?.message || e);
     communityDebug = [];
   }
   const communityIndex = new Set(communityDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
@@ -676,14 +678,16 @@ function pullDebugPatterns(localStore, options = {}) {
     if (language) { sql += ' AND language = ?'; params.push(language); }
     sql += ' ORDER BY confidence DESC';
     communityDebug = communityStore.db.prepare(sql).all(...params);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:pullDebugPatterns] silent failure:', e?.message || e);
     return { pulled: 0, skipped: 0, total: 0, error: 'No debug_patterns in community store' };
   }
 
   let localDebug;
   try {
     localDebug = localStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:pullDebugPatterns] falling back to empty array:', e?.message || e);
     localDebug = [];
   }
   const localIndex = new Set(localDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
@@ -739,14 +743,16 @@ function syncDebugToPersonal(localStore, options = {}) {
     localDebug = localStore.db.prepare(
       'SELECT * FROM debug_patterns WHERE confidence >= ? ORDER BY confidence DESC'
     ).all(minConfidence);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:syncDebugToPersonal] silent failure:', e?.message || e);
     return { synced: 0, skipped: 0, total: 0, error: 'No debug_patterns table' };
   }
 
   let personalDebug;
   try {
     personalDebug = personalStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:syncDebugToPersonal] falling back to empty array:', e?.message || e);
     personalDebug = [];
   }
   const personalIndex = new Set(personalDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
@@ -763,7 +769,8 @@ function syncDebugToPersonal(localStore, options = {}) {
     if (!dryRun) {
       try {
         _transferDebugPattern(dp, personalStore);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:syncDebugToPersonal] skipping item:', e?.message || e);
         report.skipped++;
         continue;
       }
@@ -807,7 +814,8 @@ function federatedDebugSearch(localStore, params = {}) {
         seen.add(key);
         results.push({ ...match, source });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[persistence:federatedDebugSearch] silent failure:', e?.message || e);
       // Store doesn't have debug_patterns table yet, skip
     }
   }
@@ -872,7 +880,10 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
     localCandidates = localStore.db.prepare(
       'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC'
     ).all();
-  } catch { return report; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] returning partial report on error:', e?.message || e);
+    return report;
+  }
 
   if (localCandidates.length === 0) return report;
 
@@ -881,7 +892,10 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
     personalCandidates = personalStore.db.prepare(
       'SELECT name, language FROM candidates'
     ).all();
-  } catch { personalCandidates = []; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] falling back to empty array:', e?.message || e);
+    personalCandidates = [];
+  }
 
   const personalIndex = new Set(personalCandidates.map(
     c => `${c.name.toLowerCase()}:${(c.language || 'unknown').toLowerCase()}`
@@ -897,7 +911,10 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
     if (!dryRun) {
       try {
         _transferCandidate(candidate, personalStore);
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] skipping item:', e?.message || e);
+        continue;
+      }
     }
 
     personalIndex.add(key);
@@ -920,7 +937,10 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
     personalCandidates = personalStore.db.prepare(
       'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC'
     ).all();
-  } catch { return report; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] returning partial report on error:', e?.message || e);
+    return report;
+  }
 
   if (personalCandidates.length === 0) return report;
 
@@ -930,7 +950,10 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
   let localCandidates;
   try {
     localCandidates = localStore.db.prepare('SELECT name, language FROM candidates').all();
-  } catch { localCandidates = []; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] falling back to empty array:', e?.message || e);
+    localCandidates = [];
+  }
 
   const localIndex = new Set(localCandidates.map(
     c => `${c.name.toLowerCase()}:${(c.language || 'unknown').toLowerCase()}`
@@ -946,7 +969,10 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
     if (!dryRun) {
       try {
         _transferCandidate(candidate, localStore);
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] skipping item:', e?.message || e);
+        continue;
+      }
     }
 
     localIndex.add(key);
@@ -981,7 +1007,9 @@ function _ensureCandidatesSchema(store) {
       CREATE INDEX IF NOT EXISTS idx_candidates_language ON candidates(language);
       CREATE INDEX IF NOT EXISTS idx_candidates_coherency ON candidates(coherency_total);
     `);
-  } catch { /* table already exists */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_ensureCandidatesSchema] table already exists:', e?.message || e);
+  }
 }
 
 function _transferCandidate(candidate, targetStore) {
@@ -1013,14 +1041,20 @@ function _syncDebugToPersonal(localStore, personalStore, options = {}) {
   let localDebug;
   try {
     localDebug = localStore.db.prepare('SELECT * FROM debug_patterns ORDER BY confidence DESC').all();
-  } catch { return report; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugToPersonal] returning partial report on error:', e?.message || e);
+    return report;
+  }
 
   if (localDebug.length === 0) return report;
 
   let personalDebug;
   try {
     personalDebug = personalStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch { personalDebug = []; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugToPersonal] falling back to empty array:', e?.message || e);
+    personalDebug = [];
+  }
 
   const personalIndex = new Set(personalDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
 
@@ -1034,7 +1068,10 @@ function _syncDebugToPersonal(localStore, personalStore, options = {}) {
     if (!dryRun) {
       try {
         _transferDebugPattern(dp, personalStore);
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugToPersonal] skipping item:', e?.message || e);
+        continue;
+      }
     }
 
     personalIndex.add(key);
@@ -1057,14 +1094,20 @@ function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
   let personalDebug;
   try {
     personalDebug = personalStore.db.prepare('SELECT * FROM debug_patterns ORDER BY confidence DESC').all();
-  } catch { return report; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugFromPersonal] returning partial report on error:', e?.message || e);
+    return report;
+  }
 
   if (personalDebug.length === 0) return report;
 
   let localDebug;
   try {
     localDebug = localStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch { localDebug = []; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugFromPersonal] falling back to empty array:', e?.message || e);
+    localDebug = [];
+  }
 
   const localIndex = new Set(localDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
 
@@ -1078,7 +1121,10 @@ function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
     if (!dryRun) {
       try {
         _transferDebugPattern(dp, localStore);
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugFromPersonal] skipping item:', e?.message || e);
+        continue;
+      }
     }
 
     localIndex.add(key);
@@ -1175,7 +1221,9 @@ function discoverRepoStores(options = {}) {
         }
       });
     }
-  } catch { /* config read error */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:discoverRepoStores] config read error:', e?.message || e);
+  }
 
   // Add explicit paths
   for (const p of additionalPaths) {
@@ -1199,7 +1247,9 @@ function discoverRepoStores(options = {}) {
           discovered.add(siblingPath);
         }
       }
-    } catch { /* permission or read error */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[persistence:discoverRepoStores] permission or read error:', e?.message || e);
+    }
   }
 
   return Array.from(discovered);
@@ -1215,7 +1265,9 @@ function registerRepo(repoPath) {
     if (fs.existsSync(REPOS_CONFIG_PATH)) {
       config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
     }
-  } catch { /* fresh config */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:registerRepo] fresh config:', e?.message || e);
+  }
 
   const resolved = path.resolve(repoPath);
   if (!config.repos.includes(resolved)) {
@@ -1237,7 +1289,9 @@ function listRepos() {
         return { path: r, name: path.basename(r), active: exists };
       });
     }
-  } catch { /* config error */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:listRepos] config error:', e?.message || e);
+  }
   return [];
 }
 
@@ -1287,7 +1341,9 @@ function crossRepoSearch(description, options = {}) {
       }
 
       repoInfo.push({ name: repoName, path: repoPath, patterns: patterns.length, matches: matchCount });
-    } catch { /* store open failed — skip */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[persistence:crossRepoSearch] store open failed — skip:', e?.message || e);
+    }
   }
 
   // Sort by match score

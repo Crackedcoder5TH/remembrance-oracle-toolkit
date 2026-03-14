@@ -68,6 +68,7 @@ function _evaluateCandidate(candidate, provenPatterns, options) {
         return { status: 'vetoed', reason: 'test execution failed' };
       }
     } catch (_) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-patterns-candidates:_evaluateCandidate] silent failure:', _?.message || _);
       return { status: 'vetoed', reason: 'sandbox error' };
     }
   }
@@ -177,7 +178,9 @@ module.exports = {
             }
             db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
           }
-        } catch { /* skip */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[oracle-patterns-candidates:code] skip:', e?.message || e);
+        }
       }
     }
 

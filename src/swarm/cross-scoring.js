@@ -33,7 +33,8 @@ function scoreWithCoherency(agentOutputs, coherencyFn) {
         total: result.total || 0,
         breakdown: result.breakdown || {},
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[cross-scoring:scoreWithCoherency] silent failure:', e?.message || e);
       scores.set(output.agent, { total: 0, breakdown: {} });
     }
   }
@@ -103,7 +104,8 @@ async function crossScore(agentOutputs, pool, dimensions) {
         const scoreMatch = response.match(/SCORE:\s*([\d.]+)/i);
         const score = scoreMatch ? Math.min(1, Math.max(0, parseFloat(scoreMatch[1]))) : 0.5;
         return { reviewer, reviewee, score, reasoning: response.slice(0, 200) };
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[cross-scoring:crossScore] silent failure:', e?.message || e);
         return { reviewer, reviewee, score: 0.5, reasoning: 'Review failed (timeout or error)' };
       }
     })

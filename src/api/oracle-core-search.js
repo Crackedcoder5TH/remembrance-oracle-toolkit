@@ -11,7 +11,10 @@ const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-
 let _holoSearchPatterns;
 try {
   ({ holoSearchPatterns: _holoSearchPatterns } = require('../compression/index'));
-} catch { _holoSearchPatterns = null; }
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-search:init] silent failure:', e?.message || e);
+  _holoSearchPatterns = null;
+}
 
 module.exports = {
   /**
@@ -63,7 +66,9 @@ module.exports = {
       try {
         const holoResults = _holoSearchPatterns(this.store, term, { topK: 5 });
         holoMap = new Map(holoResults.map(r => [r.patternId, r.score]));
-      } catch { /* no holo pages — fall through */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-search:keywordScore] no holo pages — fall through:', e?.message || e);
+      }
     }
     const hasHolo = holoMap.size > 0;
 

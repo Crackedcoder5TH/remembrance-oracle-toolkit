@@ -140,7 +140,9 @@ module.exports = {
           detail: `Registered with coherency ${validation.coherencyScore?.total?.toFixed(3) || 'N/A'}`,
         });
       }
-    } catch { /* temporal memory not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-submit:init] temporal memory not available:', e?.message || e);
+    }
 
     const growthReport = this._autoGrowFrom(registered);
     return { success: true, registered: true, pattern: registered, validation, growth: growthReport };

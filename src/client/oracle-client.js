@@ -52,7 +52,8 @@ class OracleClient {
             } else {
               resolve(parsed);
             }
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[oracle-client:_request] silent failure:', e?.message || e);
             if (res.statusCode >= 400) {
               const err = new Error(`HTTP ${res.statusCode}`);
               err.status = res.statusCode;

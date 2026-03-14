@@ -13,7 +13,8 @@
 let DatabaseSync;
 try {
   ({ DatabaseSync } = require('node:sqlite'));
-} catch {
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[versioning:init] silent failure:', e?.message || e);
   DatabaseSync = null;
 }
 
@@ -33,7 +34,8 @@ class VersionManager {
         this._db = sqliteStore.db;
         this._initSchema();
         this._useSQLite = true;
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[versioning:constructor] silent failure:', e?.message || e);
         // Fall back to in-memory if schema init fails
       }
     }

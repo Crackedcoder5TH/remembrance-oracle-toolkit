@@ -23,7 +23,9 @@ module.exports = {
           successRate: updated.reliability.historicalScore,
         });
       }
-    } catch { /* temporal memory not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-feedback:feedback] temporal memory not available:', e?.message || e);
+    }
 
     let healResult = null;
     if (!succeeded) {
@@ -59,7 +61,9 @@ module.exports = {
       if (tm) {
         tm.record(id, succeeded ? 'success' : 'failure', { context: 'pattern-feedback' });
       }
-    } catch { /* temporal memory not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-feedback:patternFeedback] temporal memory not available:', e?.message || e);
+    }
 
     let healResult = null;
     if (!succeeded) {

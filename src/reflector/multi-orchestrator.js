@@ -249,7 +249,8 @@ function orchestrate(rootDir, options = {}) {
       };
       // Fire-and-forget: notifyFromReport is async, orchestrate is sync
       notifyFromReport(rootDir, notifyReport, { prUrl: result.prUrl }).catch(() => {});
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[multi-orchestrator:init] silent failure:', e?.message || e);
       // Notification failure is non-fatal
     }
   }

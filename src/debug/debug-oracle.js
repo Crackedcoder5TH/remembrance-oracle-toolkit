@@ -382,7 +382,8 @@ class DebugOracle {
       const score = computeCoherencyScore(fixCode, { language, description: fixDescription, tags });
       coherencyTotal = score.total;
       coherencyJson = score;
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[debug-oracle:init] silent failure:', e?.message || e);
       coherencyTotal = 0.5; // Default for fixes that can't be scored
     }
 
@@ -805,7 +806,8 @@ class DebugOracle {
       });
 
       return this._getDebugPattern(id);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[debug-oracle:_storeVariant] returning null on error:', e?.message || e);
       return null;
     }
   }
@@ -841,7 +843,8 @@ class DebugOracle {
       });
 
       return this._getDebugPattern(id);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[debug-oracle:_storeErrorVariant] returning null on error:', e?.message || e);
       return null;
     }
   }

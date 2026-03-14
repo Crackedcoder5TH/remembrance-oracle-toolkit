@@ -25,11 +25,17 @@ function detectVoiceCapabilities() {
   let stt = null;
 
   if (platform === 'darwin') {
-    try { execSync('which say', { stdio: 'ignore' }); tts = 'say'; } catch {}
+    try { execSync('which say', { stdio: 'ignore' }); tts = 'say'; } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[voice-io:detectVoiceCapabilities] silent failure:', e?.message || e);
+    }
   } else if (platform === 'linux') {
-    try { execSync('which espeak', { stdio: 'ignore' }); tts = 'espeak'; } catch {}
+    try { execSync('which espeak', { stdio: 'ignore' }); tts = 'espeak'; } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[voice-io:detectVoiceCapabilities] silent failure:', e?.message || e);
+    }
     if (!tts) {
-      try { execSync('which festival', { stdio: 'ignore' }); tts = 'festival'; } catch {}
+      try { execSync('which festival', { stdio: 'ignore' }); tts = 'festival'; } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[voice-io:detectVoiceCapabilities] silent failure:', e?.message || e);
+      }
     }
   } else if (platform === 'win32') {
     // PowerShell SAPI always available on Windows
@@ -37,7 +43,9 @@ function detectVoiceCapabilities() {
   }
 
   // STT detection (optional, rarer)
-  try { execSync('which whisper', { stdio: 'ignore' }); stt = 'whisper'; } catch {}
+  try { execSync('which whisper', { stdio: 'ignore' }); stt = 'whisper'; } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[voice-io:detectVoiceCapabilities] silent failure:', e?.message || e);
+  }
 
   return { tts, stt, platform };
 }
@@ -91,7 +99,8 @@ function speak(text, options = {}) {
         return { spoken: false, engine: null };
     }
     return { spoken: true, engine };
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[voice-io:speak] silent failure:', e?.message || e);
     return { spoken: false, engine };
   }
 }
@@ -175,7 +184,8 @@ function readVoiceInput(filePath) {
     if (!fs.existsSync(filePath)) return null;
     const content = fs.readFileSync(filePath, 'utf8').trim();
     return content.length > 0 ? content : null;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[voice-io:readVoiceInput] returning null on error:', e?.message || e);
     return null;
   }
 }

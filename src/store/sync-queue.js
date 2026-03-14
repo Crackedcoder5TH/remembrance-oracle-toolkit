@@ -41,7 +41,9 @@ class SyncQueue {
         const data = JSON.parse(fs.readFileSync(this._queueFile, 'utf-8'));
         return Array.isArray(data) ? data : [];
       }
-    } catch { /* corrupted file — start fresh */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:_load] corrupted file — start fresh:', e?.message || e);
+    }
     return [];
   }
 
@@ -138,6 +140,7 @@ class SyncQueue {
               op.status = 'completed';
               drained++;
             } catch (retryErr) {
+              if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:drain] operation failed:', retryErr?.message || retryErr);
               op.retries++;
               op.lastError = retryErr.message;
               if (op.retries >= MAX_RETRIES) {

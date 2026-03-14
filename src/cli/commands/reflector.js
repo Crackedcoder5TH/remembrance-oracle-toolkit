@@ -525,7 +525,9 @@ ${c.bold('Options:')}
       else if (value === 'false') value = false;
       else if (!isNaN(parseFloat(value)) && String(parseFloat(value)) === value) value = parseFloat(value);
       else if (value.startsWith('[') && value.endsWith(']')) {
-        try { value = JSON.parse(value); } catch { /* keep as string */ }
+        try { value = JSON.parse(value); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[reflector:init] keep as string:', e?.message || e);
+        }
       }
       const config = setCentralValue(process.cwd(), args.key, value);
       const validation = validateConfig(config);

@@ -53,7 +53,8 @@ class VerifiedHistoryStore {
           VerifiedHistoryStore._sqliteInstances.set(this.storeDir, this._sqlite);
         }
         this._backend = 'sqlite';
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[history:constructor] silent failure:', e?.message || e);
         this._ensureJSONStore();
       }
     } else {
@@ -79,17 +80,22 @@ class VerifiedHistoryStore {
     const fallback = { entries: [], meta: { created: new Date().toISOString(), version: 1 } };
     try {
       return JSON.parse(fs.readFileSync(this.historyPath, 'utf-8'));
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[history:_readJSON] best effort:', e?.message || e);
       // Primary file corrupted — try backup
       const bakPath = this.historyPath + '.bak';
       try {
         if (fs.existsSync(bakPath)) {
           const raw = fs.readFileSync(bakPath, 'utf-8');
           const parsed = JSON.parse(raw);
-          try { fs.writeFileSync(this.historyPath, raw, 'utf-8'); } catch { /* best effort */ }
+          try { fs.writeFileSync(this.historyPath, raw, 'utf-8'); } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[history:_readJSON] best effort:', e?.message || e);
+          }
           return parsed;
         }
-      } catch { /* backup also corrupted */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[history:_readJSON] backup also corrupted:', e?.message || e);
+      }
       return fallback;
     }
   }
@@ -99,7 +105,9 @@ class VerifiedHistoryStore {
     const tmpPath = this.historyPath + '.tmp';
     fs.writeFileSync(tmpPath, json, 'utf-8');
     if (fs.existsSync(this.historyPath)) {
-      try { fs.copyFileSync(this.historyPath, this.historyPath + '.bak'); } catch { /* ok */ }
+      try { fs.copyFileSync(this.historyPath, this.historyPath + '.bak'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[history:_writeJSON] ok:', e?.message || e);
+      }
     }
     fs.renameSync(tmpPath, this.historyPath);
   }

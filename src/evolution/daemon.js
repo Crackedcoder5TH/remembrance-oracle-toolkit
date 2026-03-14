@@ -55,7 +55,9 @@ function startDaemon(oracle, options = {}) {
     try {
       const registry = createEvolvedRegistry();
       setPrincipleRegistry(registry);
-    } catch { /* evolved principles not yet created */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[daemon:startDaemon] evolved principles not yet created:', e?.message || e);
+    }
   }
 
   // Initialize temporal memory
@@ -66,7 +68,9 @@ function startDaemon(oracle, options = {}) {
       if (sqliteStore) {
         temporal = new TemporalMemory(sqliteStore);
       }
-    } catch { /* temporal tracking not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[daemon:startDaemon] temporal tracking not available:', e?.message || e);
+    }
   }
 
   function log(msg) {
@@ -162,7 +166,9 @@ function startDaemon(oracle, options = {}) {
                   domain: spot.domain,
                   suggestion: spot.suggestion,
                 });
-              } catch { /* emit not available */ }
+              } catch (e) {
+                if (process.env.ORACLE_DEBUG) console.warn('[daemon:init] emit not available:', e?.message || e);
+              }
             }
             log(`  Coverage gaps: ${report.coverage.blindSpots.map(b => b.domain).join(', ')}`);
           }
@@ -210,7 +216,9 @@ function startDaemon(oracle, options = {}) {
                       `Temporal regression detected: ${reg.possibleCause || 'unknown'}`,
                       null
                     );
-                  } catch { /* capture failed */ }
+                  } catch (e) {
+                    if (process.env.ORACLE_DEBUG) console.warn('[daemon:init] capture failed:', e?.message || e);
+                  }
                 }
               }
             }

@@ -158,7 +158,8 @@ function discoverPatterns(baseDir, options = {}) {
             name: path.basename(sourceFile, path.extname(sourceFile)),
           });
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[auto-seed:discoverPatterns] silent failure:', e?.message || e);
         // Skip files that can't be read
       }
     }
@@ -214,7 +215,8 @@ function autoSeed(oracle, baseDir, options = {}) {
       } else {
         result.skipped++;
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-seed:autoSeed] operation failed:', e?.message || e);
       result.failed++;
     }
   }

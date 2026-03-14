@@ -67,7 +67,10 @@ function repoScore(rootDir, config = {}) {
 
   for (const filePath of filePaths) {
     let code;
-    try { code = readFileSync(filePath, 'utf-8'); } catch { continue; }
+    try { code = readFileSync(filePath, 'utf-8'); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[scoring-analysis-aggregate:repoScore] skipping item:', e?.message || e);
+      continue;
+    }
     if (!code.trim()) continue;
     const relPath = relative(rootDir, filePath);
     codeCache[relPath] = code;
@@ -133,7 +136,10 @@ function crossFileAnalysis(rootDir, fileScores, codeCache) {
   const _cache = codeCache || Object.create(null);
   const _readCode = (filePath) => {
     if (_cache[filePath]) return _cache[filePath];
-    try { return readFileSync(resolve(rootDir, filePath), 'utf-8'); } catch { return null; }
+    try { return readFileSync(resolve(rootDir, filePath), 'utf-8'); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[scoring-analysis-aggregate:_readCode] returning null on error:', e?.message || e);
+      return null;
+    }
   };
   const findings = [];
 

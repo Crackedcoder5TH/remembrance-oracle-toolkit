@@ -50,7 +50,8 @@ function setupAuth(oracleInstance, options) {
         authManager = new AuthManager(sqliteStore);
       }
       authMw = authMiddleware(authManager);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[middleware:setupAuth] silent failure:', e?.message || e);
       // Auth module not available
     }
   }
@@ -62,7 +63,8 @@ function setupVersionManager(oracleInstance) {
     const { VersionManager } = require('../core/versioning');
     const sqliteStore = oracleInstance.store.getSQLiteStore();
     return new VersionManager(sqliteStore);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[middleware:setupVersionManager] returning null on error:', e?.message || e);
     return null;
   }
 }

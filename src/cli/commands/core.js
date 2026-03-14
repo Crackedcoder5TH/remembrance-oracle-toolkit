@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('../../core/safe-path');
 const { c, colorScore, colorStatus } = require('../colors');
 const { validatePositiveInt, validateCoherency, validateId, parseTags } = require('../validate-args');
 
@@ -59,7 +60,7 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
     if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
     let testCode;
     if (args.test) {
-      try { testCode = fs.readFileSync(path.resolve(args.test), 'utf-8'); }
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
       catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
     }
     const tags = parseTags(args);
@@ -118,7 +119,7 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
   handlers['validate'] = (args) => {
     const code = getCode(args);
     if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    const testCode = args.test ? fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8') : undefined;
     const { validateCode } = require('../../core/validator');
     const result = validateCode(code, { language: args.language, testCode });
     if (jsonOut()) { console.log(JSON.stringify(result)); return; }

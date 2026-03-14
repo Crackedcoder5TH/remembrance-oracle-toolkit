@@ -140,6 +140,98 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
+  handlers['refresh-coherency'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.refreshAllCoherency !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required for coherency refresh');
+        process.exit(1);
+      }
+      const result = sqliteStore.refreshAllCoherency();
+      console.log(c.boldCyan('Coherency Refresh:'));
+      console.log(`  Patterns:   ${c.bold(String(result.total))}`);
+      console.log(`  Updated:    ${c.boldGreen(String(result.updated))}`);
+      console.log(`  Avg before: ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:  ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Coherency refresh error: ' + err.message);
+    }
+  };
+
+  handlers['synthesize-proven'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.synthesizeForUntested !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required for test synthesis');
+        process.exit(1);
+      }
+      const result = sqliteStore.synthesizeForUntested();
+      console.log(c.boldCyan('Test Synthesis for Proven Patterns:'));
+      console.log(`  Untested:     ${c.bold(String(result.total))}`);
+      console.log(`  Synthesized:  ${c.boldGreen(String(result.synthesized))}`);
+      console.log(`  Failed:       ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+      console.log(`  Avg before:   ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:    ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Synthesis error: ' + err.message);
+    }
+  };
+
+  handlers['bootstrap-reliability'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.bootstrapReliability !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required');
+        process.exit(1);
+      }
+      const result = sqliteStore.bootstrapReliability();
+      console.log(c.boldCyan('Bootstrap Reliability:'));
+      console.log(`  Zero-usage:    ${c.bold(String(result.total))}`);
+      console.log(`  Bootstrapped:  ${c.boldGreen(String(result.bootstrapped))}`);
+      console.log(`  Avg before:    ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:     ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Bootstrap error: ' + err.message);
+    }
+  };
+
+  handlers['fix-untested'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.fixUntestedPatterns !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required');
+        process.exit(1);
+      }
+      const result = sqliteStore.fixUntestedPatterns();
+      console.log(c.boldCyan('Fix Untested Patterns:'));
+      console.log(`  Total:     ${c.bold(String(result.total))}`);
+      console.log(`  Fixed:     ${c.boldGreen(String(result.fixed))}`);
+      console.log(`  Skipped:   ${c.dim(String(result.skipped))}`);
+      console.log(`  Avg before: ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:  ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Fix error: ' + err.message);
+    }
+  };
+
+  handlers['fix-completeness'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.fixCompleteness !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required');
+        process.exit(1);
+      }
+      const result = sqliteStore.fixCompleteness();
+      console.log(c.boldCyan('Fix Completeness:'));
+      console.log(`  Total:     ${c.bold(String(result.total))}`);
+      console.log(`  Fixed:     ${c.boldGreen(String(result.fixed))}`);
+      console.log(`  Avg before: ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:  ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Fix completeness error: ' + err.message);
+    }
+  };
+
   handlers['ci-feedback'] = (args) => {
     const { CIFeedbackReporter } = require('../../ci/feedback');
     const reporter = new CIFeedbackReporter(oracle);

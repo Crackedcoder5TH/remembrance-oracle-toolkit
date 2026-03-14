@@ -169,6 +169,8 @@ const CATEGORIES = [
       { name: 'auto-submit', description: 'Auto harvest, promote, and sync patterns (post-commit pipeline)' },
       { name: 'auto-register', description: 'Register new functions from latest commit (diff-targeted)' },
       { name: 'auto-seed', description: 'Auto-discover and seed patterns from test suite' },
+      { name: 'refresh-coherency', description: 'Recompute coherency scores using actual usage data' },
+      { name: 'synthesize-proven', description: 'Synthesize tests for proven patterns lacking test_code' },
       { name: 'ci-feedback', description: 'Report CI test results' },
       { name: 'ci-stats', description: 'Show CI feedback tracking statistics' },
       { name: 'ci-track', description: 'Track CI pipeline for a pattern' },

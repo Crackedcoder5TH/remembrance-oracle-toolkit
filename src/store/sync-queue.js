@@ -42,7 +42,20 @@ class SyncQueue {
         return Array.isArray(data) ? data : [];
       }
     } catch (e) {
-      if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:_load] corrupted file — start fresh:', e?.message || e);
+      if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:_load] primary corrupted — try backup:', e?.message || e);
+      // Attempt .bak recovery
+      const bakPath = this._queueFile + '.bak';
+      try {
+        if (fs.existsSync(bakPath)) {
+          const raw = fs.readFileSync(bakPath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          const data = Array.isArray(parsed) ? parsed : [];
+          try { fs.writeFileSync(this._queueFile, raw, 'utf-8'); } catch (_) { /* best effort */ }
+          return data;
+        }
+      } catch (bakErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:_load] backup also corrupted:', bakErr?.message || bakErr);
+      }
     }
     return [];
   }
@@ -55,7 +68,14 @@ class SyncQueue {
       if (!fs.existsSync(this._queueDir)) {
         fs.mkdirSync(this._queueDir, { recursive: true });
       }
-      fs.writeFileSync(this._queueFile, JSON.stringify(this._queue, null, 2));
+      // Atomic write: tmp → backup → rename
+      const json = JSON.stringify(this._queue, null, 2);
+      const tmpPath = this._queueFile + '.tmp';
+      fs.writeFileSync(tmpPath, json, 'utf-8');
+      if (fs.existsSync(this._queueFile)) {
+        try { fs.copyFileSync(this._queueFile, this._queueFile + '.bak'); } catch (_) { /* best effort */ }
+      }
+      fs.renameSync(tmpPath, this._queueFile);
     } catch (err) {
       if (process.env.ORACLE_DEBUG) console.error('[sync-queue] save error:', err.message);
     }

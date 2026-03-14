@@ -27,12 +27,25 @@ const EVOLVED_PRINCIPLES_FILE = '.remembrance/evolved-principles.json';
  */
 function loadEvolvedPrinciples(rootDir = process.cwd()) {
   const filePath = path.join(rootDir, EVOLVED_PRINCIPLES_FILE);
+  const fallback = { principles: [], violations: [], version: 1 };
   try {
     const data = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(data);
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:loadEvolvedPrinciples] silent failure:', e?.message || e);
-    return { principles: [], violations: [], version: 1 };
+    if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:loadEvolvedPrinciples] primary corrupted — try backup:', e?.message || e);
+    // Attempt .bak recovery
+    const bakPath = filePath + '.bak';
+    try {
+      if (fs.existsSync(bakPath)) {
+        const raw = fs.readFileSync(bakPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (_) { /* best effort */ }
+        return parsed;
+      }
+    } catch (bakErr) {
+      if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:loadEvolvedPrinciples] backup also corrupted:', bakErr?.message || bakErr);
+    }
+    return fallback;
   }
 }
 
@@ -43,7 +56,14 @@ function saveEvolvedPrinciples(data, rootDir = process.cwd()) {
   const filePath = path.join(rootDir, EVOLVED_PRINCIPLES_FILE);
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  // Atomic write: tmp → backup → rename
+  const json = JSON.stringify(data, null, 2);
+  const tmpPath = filePath + '.tmp';
+  fs.writeFileSync(tmpPath, json, 'utf-8');
+  if (fs.existsSync(filePath)) {
+    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch (_) { /* best effort */ }
+  }
+  fs.renameSync(tmpPath, filePath);
 }
 
 /**

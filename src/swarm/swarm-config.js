@@ -126,7 +126,14 @@ function saveSwarmConfig(rootDir, config) {
       }
     }
   }
-  fs.writeFileSync(configPath, JSON.stringify(safeCopy, null, 2));
+  // Atomic write: tmp → backup → rename
+  const json = JSON.stringify(safeCopy, null, 2);
+  const tmpPath = configPath + '.tmp';
+  fs.writeFileSync(tmpPath, json, 'utf-8');
+  if (fs.existsSync(configPath)) {
+    try { fs.copyFileSync(configPath, configPath + '.bak'); } catch (_) { /* best effort */ }
+  }
+  fs.renameSync(tmpPath, configPath);
 }
 
 /**

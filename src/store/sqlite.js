@@ -285,6 +285,42 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_archive_deleted ON pattern_archive(deleted_at);
     `);
 
+    // Candidate archive — soft-delete safety net for pruned candidates
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS candidate_archive (
+        id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        code TEXT NOT NULL,
+        language TEXT DEFAULT 'unknown',
+        coherency_total REAL DEFAULT 0,
+        parent_pattern TEXT,
+        generation_method TEXT,
+        deleted_reason TEXT DEFAULT 'unknown',
+        deleted_at TEXT NOT NULL,
+        original_created_at TEXT,
+        full_row_json TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_candidate_archive_name ON candidate_archive(name);
+      CREATE INDEX IF NOT EXISTS idx_candidate_archive_deleted ON candidate_archive(deleted_at);
+    `);
+
+    // Entry archive — soft-delete safety net for pruned entries
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS entry_archive (
+        id TEXT NOT NULL,
+        code TEXT NOT NULL,
+        language TEXT DEFAULT 'unknown',
+        coherency_total REAL DEFAULT 0,
+        deleted_reason TEXT DEFAULT 'unknown',
+        deleted_at TEXT NOT NULL,
+        original_created_at TEXT,
+        full_row_json TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_entry_archive_deleted ON entry_archive(deleted_at);
+    `);
+
     // Healing stats table — persistent per-pattern healing history (replaces in-memory Map)
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS healing_stats (
@@ -568,11 +604,12 @@ class SQLiteStore {
     const before = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
     this.db.exec('BEGIN');
     try {
-      const pruned = this.db.prepare('SELECT id FROM entries WHERE coherency_total < ?').all(minCoherency);
-      this.db.prepare('DELETE FROM entries WHERE coherency_total < ?').run(minCoherency);
-      for (const { id } of pruned) {
-        this._audit('prune', 'entries', id, { minCoherency });
+      const pruned = this.db.prepare('SELECT * FROM entries WHERE coherency_total < ?').all(minCoherency);
+      for (const row of pruned) {
+        this._archiveEntry(row, 'pruned');
+        this._audit('prune', 'entries', row.id, { minCoherency });
       }
+      this.db.prepare('DELETE FROM entries WHERE coherency_total < ?').run(minCoherency);
       this.db.exec('COMMIT');
     } catch (e) {
       this.db.exec('ROLLBACK');
@@ -1179,11 +1216,12 @@ class SQLiteStore {
     const before = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
     this.db.exec('BEGIN');
     try {
-      const pruned = this.db.prepare('SELECT id FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').all(minCoherency);
-      this.db.prepare('DELETE FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').run(minCoherency);
-      for (const { id } of pruned) {
-        this._audit('prune', 'candidates', id, { minCoherency });
+      const pruned = this.db.prepare('SELECT * FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').all(minCoherency);
+      for (const row of pruned) {
+        this._archiveCandidate(row, 'pruned');
+        this._audit('prune', 'candidates', row.id, { minCoherency });
       }
+      this.db.prepare('DELETE FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').run(minCoherency);
       this.db.exec('COMMIT');
     } catch (e) {
       this.db.exec('ROLLBACK');
@@ -1675,6 +1713,41 @@ class SQLiteStore {
       row.coherency_json || '{}', row.test_code || null,
       row.tags || '[]', reason, now, row.created_at || null,
       JSON.stringify(row)
+    );
+  }
+
+  /**
+   * Archive a candidate row before deletion (soft-delete safety net).
+   */
+  _archiveCandidate(row, reason = 'unknown') {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT OR IGNORE INTO candidate_archive
+        (id, name, code, language, coherency_total, parent_pattern,
+         generation_method, deleted_reason, deleted_at, original_created_at, full_row_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      row.id, row.name, row.code, row.language || 'unknown',
+      row.coherency_total || 0, row.parent_pattern || null,
+      row.generation_method || 'variant', reason, now,
+      row.created_at || null, JSON.stringify(row)
+    );
+  }
+
+  /**
+   * Archive an entry row before deletion (soft-delete safety net).
+   */
+  _archiveEntry(row, reason = 'unknown') {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT OR IGNORE INTO entry_archive
+        (id, code, language, coherency_total, deleted_reason,
+         deleted_at, original_created_at, full_row_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      row.id, row.code, row.language || 'unknown',
+      row.coherency_total || 0, reason, now,
+      row.created_at || null, JSON.stringify(row)
     );
   }
 

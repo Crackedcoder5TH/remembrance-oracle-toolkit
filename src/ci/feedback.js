@@ -161,7 +161,19 @@ class CIFeedbackReporter {
     try {
       return JSON.parse(fs.readFileSync(this.manifestPath, 'utf-8'));
     } catch (e) {
-      if (process.env.ORACLE_DEBUG) console.warn('[feedback:_readManifest] silent failure:', e?.message || e);
+      if (process.env.ORACLE_DEBUG) console.warn('[feedback:_readManifest] primary corrupted — try backup:', e?.message || e);
+      // Attempt .bak recovery
+      const bakPath = this.manifestPath + '.bak';
+      try {
+        if (fs.existsSync(bakPath)) {
+          const raw = fs.readFileSync(bakPath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          try { fs.writeFileSync(this.manifestPath, raw, 'utf-8'); } catch (_) { /* best effort */ }
+          return parsed;
+        }
+      } catch (bakErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[feedback:_readManifest] backup also corrupted:', bakErr?.message || bakErr);
+      }
       return { tracked: [] };
     }
   }
@@ -170,7 +182,14 @@ class CIFeedbackReporter {
     if (!fs.existsSync(this.storeDir)) {
       fs.mkdirSync(this.storeDir, { recursive: true });
     }
-    fs.writeFileSync(this.manifestPath, JSON.stringify(data, null, 2), 'utf-8');
+    // Atomic write: tmp → backup → rename
+    const json = JSON.stringify(data, null, 2);
+    const tmpPath = this.manifestPath + '.tmp';
+    fs.writeFileSync(tmpPath, json, 'utf-8');
+    if (fs.existsSync(this.manifestPath)) {
+      try { fs.copyFileSync(this.manifestPath, this.manifestPath + '.bak'); } catch (_) { /* best effort */ }
+    }
+    fs.renameSync(tmpPath, this.manifestPath);
   }
 
   _readLog() {
@@ -178,7 +197,19 @@ class CIFeedbackReporter {
     try {
       return JSON.parse(fs.readFileSync(this.logPath, 'utf-8'));
     } catch (e) {
-      if (process.env.ORACLE_DEBUG) console.warn('[feedback:_readLog] returning empty array on error:', e?.message || e);
+      if (process.env.ORACLE_DEBUG) console.warn('[feedback:_readLog] primary corrupted — try backup:', e?.message || e);
+      // Attempt .bak recovery
+      const bakPath = this.logPath + '.bak';
+      try {
+        if (fs.existsSync(bakPath)) {
+          const raw = fs.readFileSync(bakPath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          try { fs.writeFileSync(this.logPath, raw, 'utf-8'); } catch (_) { /* best effort */ }
+          return parsed;
+        }
+      } catch (bakErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[feedback:_readLog] backup also corrupted:', bakErr?.message || bakErr);
+      }
       return [];
     }
   }
@@ -188,7 +219,14 @@ class CIFeedbackReporter {
     log.push(entry);
     // Keep last 1000 entries
     const trimmed = log.slice(-1000);
-    fs.writeFileSync(this.logPath, JSON.stringify(trimmed, null, 2), 'utf-8');
+    // Atomic write: tmp → backup → rename
+    const json = JSON.stringify(trimmed, null, 2);
+    const tmpPath = this.logPath + '.tmp';
+    fs.writeFileSync(tmpPath, json, 'utf-8');
+    if (fs.existsSync(this.logPath)) {
+      try { fs.copyFileSync(this.logPath, this.logPath + '.bak'); } catch (_) { /* best effort */ }
+    }
+    fs.renameSync(tmpPath, this.logPath);
   }
 }
 

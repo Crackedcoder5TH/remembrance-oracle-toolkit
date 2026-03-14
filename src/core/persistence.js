@@ -122,19 +122,43 @@ function syncToGlobal(localStore, options = {}) {
 
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore.getAllPatterns();
-  const personalIndex = new Set(personalPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
+  // Build coherency index so we can detect when local has improved over personal
+  const personalCoherencyIndex = new Map();
+  for (const p of personalPatterns) {
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    personalCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
+  }
 
-  const report = { synced: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
+  const report = { synced: 0, upgraded: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of localPatterns) {
     const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
 
-    if (personalIndex.has(key)) {
-      report.duplicates++;
+    if (personalCoherencyIndex.has(key)) {
+      const personalCoherency = personalCoherencyIndex.get(key);
+      if (coherency > personalCoherency) {
+        // Local version improved — update personal store with higher-coherency version
+        if (!dryRun) {
+          try {
+            transferPattern(pattern, personalStore);
+          } catch (err) {
+            if (verbose) console.log(`  [SKIP-UPGRADE] ${pattern.name}: ${err.message}`);
+            report.skipped++;
+            continue;
+          }
+        }
+        report.upgraded++;
+        if (verbose) {
+          console.log(`  [UPGRADE→] ${pattern.name} (${pattern.language}) coherency: ${personalCoherency.toFixed ? personalCoherency.toFixed(3) : personalCoherency} → ${coherency.toFixed ? coherency.toFixed(3) : coherency}`);
+        }
+        report.details.push({ name: pattern.name, language: pattern.language, direction: 'to-personal', action: 'upgrade' });
+      } else {
+        report.duplicates++;
+      }
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
@@ -151,7 +175,7 @@ function syncToGlobal(localStore, options = {}) {
     }
 
     // Track what we just added so we don't re-add duplicates from the same batch
-    personalIndex.add(key);
+    personalCoherencyIndex.set(key, coherency);
 
     report.synced++;
     if (verbose) {
@@ -189,16 +213,42 @@ function syncFromGlobal(localStore, options = {}) {
 
   const personalPatterns = personalStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
-  const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
+  // Build coherency index so we can detect when personal has improved over local
+  const localCoherencyIndex = new Map();
+  for (const p of localPatterns) {
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    localCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
+  }
 
-  const report = { pulled: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, candidates: { pulled: 0, duplicates: 0 }, debug: { pulled: 0, duplicates: 0 }, details: [] };
+  const report = { pulled: 0, upgraded: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, candidates: { pulled: 0, duplicates: 0 }, debug: { pulled: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of personalPatterns) {
-    if (report.pulled >= maxPull) break;
+    if ((report.pulled + report.upgraded) >= maxPull) break;
 
     const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
-    if (localIndex.has(key)) {
-      report.duplicates++;
+    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
+
+    if (localCoherencyIndex.has(key)) {
+      const localCoherency = localCoherencyIndex.get(key);
+      if (coherency > localCoherency) {
+        // Personal version is better — update local store
+        if (!dryRun) {
+          try {
+            transferPattern(pattern, localStore);
+          } catch (err) {
+            if (verbose) console.log(`  [SKIP-UPGRADE] ${pattern.name}: ${err.message}`);
+            report.skipped++;
+            continue;
+          }
+        }
+        report.upgraded++;
+        if (verbose) {
+          console.log(`  [←UPGRADE] ${pattern.name} (${pattern.language}) coherency: ${localCoherency.toFixed ? localCoherency.toFixed(3) : localCoherency} → ${coherency.toFixed ? coherency.toFixed(3) : coherency}`);
+        }
+        report.details.push({ name: pattern.name, language: pattern.language, direction: 'from-personal', action: 'upgrade' });
+      } else {
+        report.duplicates++;
+      }
       continue;
     }
 
@@ -207,7 +257,6 @@ function syncFromGlobal(localStore, options = {}) {
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
@@ -224,7 +273,7 @@ function syncFromGlobal(localStore, options = {}) {
     }
 
     // Track what we just added so duplicates in personal don't get re-pulled
-    localIndex.add(key);
+    localCoherencyIndex.set(key, coherency);
 
     report.pulled++;
     if (verbose) {

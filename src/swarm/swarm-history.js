@@ -25,15 +25,27 @@ const MAX_HISTORY_ENTRIES = 500;
  */
 function loadHistory(rootDir) {
   const filePath = path.join(rootDir || '.', '.remembrance', HISTORY_FILE);
+  const fallback = { runs: [], providerStats: {} };
   try {
     if (fs.existsSync(filePath)) {
       return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     }
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[swarm-history:loadHistory] silent failure:', e?.message || e);
-    // Corrupted file, start fresh
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-history:loadHistory] primary corrupted — try backup:', e?.message || e);
+    // Attempt .bak recovery
+    const bakPath = filePath + '.bak';
+    try {
+      if (fs.existsSync(bakPath)) {
+        const raw = fs.readFileSync(bakPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (_) { /* best effort */ }
+        return parsed;
+      }
+    } catch (bakErr) {
+      if (process.env.ORACLE_DEBUG) console.warn('[swarm-history:loadHistory] backup also corrupted:', bakErr?.message || bakErr);
+    }
   }
-  return { runs: [], providerStats: {} };
+  return fallback;
 }
 
 /**
@@ -52,7 +64,14 @@ function saveHistory(rootDir, history) {
     history.runs = history.runs.slice(-MAX_HISTORY_ENTRIES);
   }
 
-  fs.writeFileSync(filePath, JSON.stringify(history, null, 2));
+  // Atomic write: tmp → backup → rename
+  const json = JSON.stringify(history, null, 2);
+  const tmpPath = filePath + '.tmp';
+  fs.writeFileSync(tmpPath, json, 'utf-8');
+  if (fs.existsSync(filePath)) {
+    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch (_) { /* best effort */ }
+  }
+  fs.renameSync(tmpPath, filePath);
 }
 
 /**

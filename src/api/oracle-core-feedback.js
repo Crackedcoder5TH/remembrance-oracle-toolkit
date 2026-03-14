@@ -31,15 +31,22 @@ module.exports = {
     if (!succeeded) {
       try {
         const { needsAutoHeal, autoHeal } = require('../evolution/evolution');
+        const { covenantCheck } = require('../core/covenant');
         const pattern = this.patterns._sqlite
           ? this.patterns._sqlite.getPattern(id)
           : this.patterns.getAll().find(p => p.id === id);
         if (pattern && needsAutoHeal(pattern)) {
           const healed = autoHeal(pattern);
           if (healed && healed.improvement > 0) {
-            this.patterns.update(id, { code: healed.code, coherencyScore: healed.coherencyScore });
-            healResult = { healed: true, improvement: healed.improvement, newCoherency: healed.newCoherency };
-            this._emit({ type: 'auto_heal', id, improvement: healed.improvement, newCoherency: healed.newCoherency });
+            // Re-validate healed code against the Covenant before storing
+            const check = covenantCheck(healed.code, { description: `auto-heal:${id}`, trusted: false });
+            if (check.sealed) {
+              this.patterns.update(id, { code: healed.code, coherencyScore: healed.coherencyScore });
+              healResult = { healed: true, improvement: healed.improvement, newCoherency: healed.newCoherency };
+              this._emit({ type: 'auto_heal', id, improvement: healed.improvement, newCoherency: healed.newCoherency });
+            } else if (process.env.ORACLE_DEBUG) {
+              console.warn(`[oracle:feedback] auto-heal rejected by covenant for ${id}`);
+            }
           }
         }
       } catch (e) {
@@ -71,12 +78,19 @@ module.exports = {
     if (!succeeded) {
       try {
         const { needsAutoHeal, autoHeal } = require('../evolution/evolution');
+        const { covenantCheck } = require('../core/covenant');
         if (needsAutoHeal(updated)) {
           const healed = autoHeal(updated);
           if (healed && healed.improvement > 0) {
-            this.patterns.update(id, { code: healed.code, coherencyScore: healed.coherencyScore });
-            healResult = { healed: true, improvement: healed.improvement, newCoherency: healed.newCoherency };
-            this._emit({ type: 'auto_heal', id, improvement: healed.improvement });
+            // Re-validate healed code against the Covenant before storing
+            const check = covenantCheck(healed.code, { description: `auto-heal:${id}`, trusted: false });
+            if (check.sealed) {
+              this.patterns.update(id, { code: healed.code, coherencyScore: healed.coherencyScore });
+              healResult = { healed: true, improvement: healed.improvement, newCoherency: healed.newCoherency };
+              this._emit({ type: 'auto_heal', id, improvement: healed.improvement });
+            } else if (process.env.ORACLE_DEBUG) {
+              console.warn(`[oracle:patternFeedback] auto-heal rejected by covenant for ${id}`);
+            }
           }
         }
       } catch (e) {

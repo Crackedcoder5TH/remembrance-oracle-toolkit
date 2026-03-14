@@ -44,7 +44,9 @@ function verifyToken(token, secret) {
   if (sig !== expected) return null;
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    // Require exp claim — tokens without expiry are rejected
+    if (!payload.exp) return null;
+    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[server:verifyToken] returning null on error:', e?.message || e);

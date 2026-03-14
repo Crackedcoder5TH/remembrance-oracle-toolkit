@@ -19,6 +19,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { covenantCheck, safeJsonParse } = require('./covenant');
 
 const GLOBAL_DIR = path.join(os.homedir(), '.remembrance');
 const PERSONAL_DIR = path.join(GLOBAL_DIR, 'personal');
@@ -83,13 +84,13 @@ function transferPattern(pattern, targetStore) {
     patternType: pattern.pattern_type || pattern.patternType || 'utility',
     complexity: pattern.complexity || 'composite',
     description: pattern.description || '',
-    tags: typeof pattern.tags === 'string' ? JSON.parse(pattern.tags) : (pattern.tags || []),
+    tags: typeof pattern.tags === 'string' ? safeJsonParse(pattern.tags, []) : (pattern.tags || []),
     coherencyScore: typeof pattern.coherency_json === 'string'
-      ? JSON.parse(pattern.coherency_json)
+      ? safeJsonParse(pattern.coherency_json, {})
       : (pattern.coherencyScore || {}),
     testCode: pattern.test_code || pattern.testCode || null,
     evolutionHistory: typeof pattern.evolution_history === 'string'
-      ? JSON.parse(pattern.evolution_history)
+      ? safeJsonParse(pattern.evolution_history, [])
       : (pattern.evolutionHistory || []),
   };
 
@@ -180,7 +181,7 @@ function syncToGlobal(localStore, options = {}) {
  * Pull patterns from personal store into local store.
  */
 function syncFromGlobal(localStore, options = {}) {
-  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = Infinity } = options;
+  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = 999999 } = options;
   const personalStore = openPersonalStore();
   if (!personalStore) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
@@ -355,7 +356,7 @@ function shareToCommunity(localStore, options = {}) {
  * Users can browse and selectively pull community patterns.
  */
 function pullFromCommunity(localStore, options = {}) {
-  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = Infinity, nameFilter } = options;
+  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = 999999, nameFilter } = options;
   const communityStore = openCommunityStore();
   if (!communityStore) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
@@ -397,6 +398,25 @@ function pullFromCommunity(localStore, options = {}) {
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
+    }
+
+    // Re-validate community patterns against the Covenant before accepting
+    if (pattern.code) {
+      try {
+        const check = covenantCheck(pattern.code, { description: pattern.name, trusted: false });
+        if (!check.sealed) {
+          if (verbose) {
+            const reasons = (check.violations || []).map(v => v.reason).join('; ');
+            console.log(`  [REJECT] ${pattern.name}: Covenant violation — ${reasons}`);
+          }
+          report.skipped++;
+          continue;
+        }
+      } catch (err) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:pullFromCommunity] covenant check failed:', err?.message || err);
+        report.skipped++;
+        continue;
+      }
     }
 
     if (!dryRun) {
@@ -662,7 +682,7 @@ function shareDebugPatterns(localStore, options = {}) {
  * Pull debug patterns from community store into local.
  */
 function pullDebugPatterns(localStore, options = {}) {
-  const { verbose = false, dryRun = false, minConfidence = 0.3, category, language, limit = Infinity } = options;
+  const { verbose = false, dryRun = false, minConfidence = 0.3, category, language, limit = 999999 } = options;
   const communityStore = openCommunityStore();
   if (!communityStore) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };

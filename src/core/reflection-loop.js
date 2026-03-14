@@ -73,7 +73,8 @@ function generateCandidates(code, language, options = {}) {
     try {
       const transformed = fn(code, lang);
       return { strategy, code: transformed, changed: transformed !== code };
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.error(`[reflection] ${strategy} transform failed:`, e.message);
       return { strategy, code, changed: false };
     }
   });

@@ -304,7 +304,7 @@ class PatternLibrary {
       if (!record) {
         // Duplicate with equal/higher coherency — return the existing one
         const existing = this._sqlite.getPatternByName(pattern.name);
-        return existing;
+        return existing || null;
       }
       return record;
     }
@@ -381,7 +381,7 @@ class PatternLibrary {
       }
 
       const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
-      const composite = relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus - evolutionPenalty;
+      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus - evolutionPenalty);
 
       return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
     }).sort((a, b) => b.composite - a.composite);
@@ -1168,7 +1168,15 @@ function deduplicatePatterns(patterns) {
     if (!existing) {
       byNameLang.set(key, p);
     } else if ((p.coherencyScore?.total ?? 0) > (existing.coherencyScore?.total ?? 0)) {
-      byNameLang.set(key, { ...existing, ...p });
+      // Merge: take better code/scores from p, but preserve usage history from existing
+      byNameLang.set(key, {
+        ...p,
+        id: existing.id,
+        usageCount: existing.usageCount || p.usageCount || 0,
+        successCount: existing.successCount || p.successCount || 0,
+        bugReports: existing.bugReports || p.bugReports || 0,
+        createdAt: existing.createdAt || p.createdAt,
+      });
     }
   }
   // Preserve unnamed patterns too

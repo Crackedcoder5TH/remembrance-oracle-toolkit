@@ -267,7 +267,7 @@ function computeCoherencyScore(code, metadata = {}) {
     return { total: 0, breakdown: { syntaxValid: 0, completeness: 0, consistency: 0, testProof: 0, historicalReliability: 0 } };
   }
   const language = metadata.language || detectLanguage(code);
-  const testProof = metadata.testPassed ? 1.0 : metadata.testPassed === false ? 0.0 : COHERENCY_DEFAULTS.TEST_PROOF_FALLBACK;
+  const testProof = metadata.testPassed === true ? 1.0 : metadata.testPassed === false ? 0.0 : COHERENCY_DEFAULTS.TEST_PROOF_FALLBACK;
   const historicalReliability = metadata.historicalReliability ?? COHERENCY_DEFAULTS.HISTORICAL_RELIABILITY_FALLBACK;
 
   const scores = {

@@ -76,11 +76,32 @@ class VerifiedHistoryStore {
   }
 
   _readJSON() {
-    return JSON.parse(fs.readFileSync(this.historyPath, 'utf-8'));
+    const fallback = { entries: [], meta: { created: new Date().toISOString(), version: 1 } };
+    try {
+      return JSON.parse(fs.readFileSync(this.historyPath, 'utf-8'));
+    } catch {
+      // Primary file corrupted — try backup
+      const bakPath = this.historyPath + '.bak';
+      try {
+        if (fs.existsSync(bakPath)) {
+          const raw = fs.readFileSync(bakPath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          try { fs.writeFileSync(this.historyPath, raw, 'utf-8'); } catch { /* best effort */ }
+          return parsed;
+        }
+      } catch { /* backup also corrupted */ }
+      return fallback;
+    }
   }
 
   _writeJSON(data) {
-    fs.writeFileSync(this.historyPath, JSON.stringify(data, null, 2), 'utf-8');
+    const json = JSON.stringify(data, null, 2);
+    const tmpPath = this.historyPath + '.tmp';
+    fs.writeFileSync(tmpPath, json, 'utf-8');
+    if (fs.existsSync(this.historyPath)) {
+      try { fs.copyFileSync(this.historyPath, this.historyPath + '.bak'); } catch { /* ok */ }
+    }
+    fs.renameSync(tmpPath, this.historyPath);
   }
 
   _hash(code) {

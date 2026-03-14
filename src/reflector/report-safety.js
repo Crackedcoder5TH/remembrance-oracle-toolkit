@@ -98,7 +98,7 @@ function createBackup(rootDir, options = {}) {
     label = '',
   } = options;
 
-  const backupId = `backup-${Date.now()}`;
+  const backupId = `backup-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const timestamp = new Date().toISOString();
 
   const manifest = {

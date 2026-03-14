@@ -78,8 +78,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['register'] = (args) => {
     if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
-    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let code, testCode;
+    try { code = fs.readFileSync(path.resolve(args.file), 'utf-8'); }
+    catch (e) { console.error(c.boldRed('Error:') + ` Cannot read file: ${e.message}`); process.exit(1); }
+    if (args.test) {
+      try { testCode = fs.readFileSync(path.resolve(args.test), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const tags = parseTags(args);
     const result = oracle.registerPattern({
       name: args.name || path.basename(args.file, path.extname(args.file)),
@@ -90,10 +95,12 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       testCode,
       author: args.author || process.env.USER || 'cli-user',
     });
-    if (result.registered) {
+    if (result.registered && result.pattern) {
       console.log(`${c.boldGreen('Pattern registered:')} ${c.bold(result.pattern.name)} [${c.cyan(result.pattern.id)}]`);
       console.log(`Type: ${c.magenta(result.pattern.patternType)} | Complexity: ${c.blue(result.pattern.complexity)}`);
-      console.log(`Coherency: ${colorScore(result.pattern.coherencyScore.total)}`);
+      console.log(`Coherency: ${colorScore(result.pattern.coherencyScore?.total ?? 0)}`);
+    } else if (result.registered) {
+      console.log(`${c.boldGreen('Pattern registered')}`);
     } else {
       console.log(`${colorStatus(false)}: ${c.red(result.reason)}`);
     }
@@ -365,13 +372,19 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       return;
     }
 
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let testCode;
+    if (args.test) {
+      try { testCode = fs.readFileSync(path.resolve(args.test), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const result = oracle.promote(id, testCode);
 
-    if (result.promoted) {
+    if (result.promoted && result.pattern) {
       console.log(`${c.boldGreen('Promoted:')} ${c.bold(result.pattern.name)} → proven`);
       console.log(`  Coherency: ${colorScore(result.coherency)}`);
       console.log(`  ID: ${c.cyan(result.pattern.id)}`);
+    } else if (result.promoted) {
+      console.log(`${c.boldGreen('Promoted')} → proven`);
     } else {
       console.log(`${c.boldRed('Failed:')} ${result.reason}`);
     }

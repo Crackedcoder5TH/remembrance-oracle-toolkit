@@ -176,6 +176,7 @@ function uninstallHooks(cwd = process.cwd()) {
     // If the whole file is ours, delete it. Otherwise, remove our section.
     const lines = content.split('\n');
     const markerIdx = lines.findIndex(l => l.includes(HOOK_MARKER));
+    if (markerIdx < 0) continue; // No marker found, skip (shouldn't happen after includes check)
     if (markerIdx <= 1) {
       // The whole file is ours (marker is at line 0 or 1)
       fs.unlinkSync(hookPath);

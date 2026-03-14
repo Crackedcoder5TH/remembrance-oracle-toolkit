@@ -57,7 +57,11 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
   handlers['submit'] = (args) => {
     const code = getCode(args);
     if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let testCode;
+    if (args.test) {
+      try { testCode = fs.readFileSync(path.resolve(args.test), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const tags = parseTags(args);
     const result = oracle.submit(code, {
       description: args.description || '',

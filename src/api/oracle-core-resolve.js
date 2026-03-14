@@ -72,7 +72,9 @@ module.exports = {
               startCode = bestVariant.healedCode;
               startedFromVariant = true;
             }
-          } catch { /* fall back to original code */ }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.error('[resolve] Healing variant lookup failed:', e.message);
+          }
         }
 
         this._emit({
@@ -150,7 +152,9 @@ module.exports = {
       try {
         this.patterns.recordUsage(patternData.id, true);
         this._emit({ type: 'feedback', id: patternData.id, succeeded: true, source: 'auto-resolve' });
-      } catch { /* best effort — never break resolve */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.error('[resolve] Usage feedback recording failed:', e.message);
+      }
     }
 
     return {

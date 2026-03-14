@@ -110,52 +110,54 @@ class SyncQueue {
     let drained = 0;
     let failed = 0;
 
-    for (const op of this._queue) {
-      if (op.status !== 'pending') continue;
+    try {
+      for (const op of this._queue) {
+        if (op.status !== 'pending') continue;
 
-      op.lastAttempt = new Date().toISOString();
+        op.lastAttempt = new Date().toISOString();
 
-      try {
-        await executor(op);
-        op.status = 'completed';
-        drained++;
-      } catch (err) {
-        op.retries++;
-        op.lastError = err.message;
+        try {
+          await executor(op);
+          op.status = 'completed';
+          drained++;
+        } catch (err) {
+          op.retries++;
+          op.lastError = err.message;
 
-        if (op.retries >= MAX_RETRIES) {
-          op.status = 'failed';
-          failed++;
-        } else {
-          // Exponential backoff
-          const delay = BASE_DELAY_MS * Math.pow(2, op.retries - 1);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          if (op.retries >= MAX_RETRIES) {
+            op.status = 'failed';
+            failed++;
+          } else {
+            // Exponential backoff
+            const delay = BASE_DELAY_MS * Math.pow(2, op.retries - 1);
+            await new Promise(resolve => setTimeout(resolve, delay));
 
-          // Retry once more inline
-          try {
-            await executor(op);
-            op.status = 'completed';
-            drained++;
-          } catch (retryErr) {
-            op.lastError = retryErr.message;
-            if (op.retries + 1 >= MAX_RETRIES) {
-              op.status = 'failed';
-              failed++;
+            // Retry once more inline
+            try {
+              await executor(op);
+              op.status = 'completed';
+              drained++;
+            } catch (retryErr) {
+              op.lastError = retryErr.message;
+              if (op.retries + 1 >= MAX_RETRIES) {
+                op.status = 'failed';
+                failed++;
+              }
             }
           }
         }
       }
+    } finally {
+      // Clean completed entries older than 24h
+      const cutoff = Date.now() - 86400000;
+      this._queue = this._queue.filter(op => {
+        if (op.status === 'completed' && new Date(op.createdAt).getTime() < cutoff) return false;
+        return true;
+      });
+
+      this._save();
+      this._draining = false;
     }
-
-    // Clean completed entries older than 24h
-    const cutoff = Date.now() - 86400000;
-    this._queue = this._queue.filter(op => {
-      if (op.status === 'completed' && new Date(op.createdAt).getTime() < cutoff) return false;
-      return true;
-    });
-
-    this._save();
-    this._draining = false;
 
     if (this._onDrained && this.pending().length === 0) {
       this._onDrained({ drained, failed });

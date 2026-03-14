@@ -551,9 +551,9 @@ class SQLiteStore {
 
   pruneEntries(minCoherency = 0.4) {
     const before = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
-    const pruned = this.db.prepare('SELECT id FROM entries WHERE coherency_total < ?').all(minCoherency);
     this.db.exec('BEGIN');
     try {
+      const pruned = this.db.prepare('SELECT id FROM entries WHERE coherency_total < ?').all(minCoherency);
       this.db.prepare('DELETE FROM entries WHERE coherency_total < ?').run(minCoherency);
       for (const { id } of pruned) {
         this._audit('prune', 'entries', id, { minCoherency });
@@ -568,15 +568,24 @@ class SQLiteStore {
   }
 
   entrySummary() {
+    const agg = this.db.prepare('SELECT COUNT(*) as cnt, ROUND(AVG(coherency_total), 3) as avg_c FROM entries').get();
+    const langs = this.db.prepare('SELECT DISTINCT language FROM entries').all().map(r => r.language);
+    // topTags still needs full scan since tags are JSON arrays
     const entries = this.getAllEntries();
     return {
-      totalEntries: entries.length,
-      languages: [...new Set(entries.map(e => e.language))],
-      avgCoherency: entries.length > 0
-        ? Math.round(entries.reduce((s, e) => s + (e.coherencyScore?.total ?? 0), 0) / entries.length * 1000) / 1000
-        : 0,
+      totalEntries: agg.cnt,
+      languages: langs,
+      avgCoherency: agg.avg_c || 0,
       topTags: getTopTags(entries, 10),
     };
+  }
+
+  /**
+   * Safe JSON parse — returns fallback on malformed data instead of throwing.
+   */
+  _safeJSON(str, fallback) {
+    if (!str) return fallback;
+    try { return JSON.parse(str); } catch { return fallback; }
   }
 
   _rowToEntry(row) {
@@ -585,9 +594,9 @@ class SQLiteStore {
       code: row.code,
       language: row.language,
       description: row.description,
-      tags: JSON.parse(row.tags || '[]'),
+      tags: this._safeJSON(row.tags, []),
       author: row.author,
-      coherencyScore: JSON.parse(row.coherency_json || '{}'),
+      coherencyScore: this._safeJSON(row.coherency_json, {}),
       validation: {
         testPassed: row.test_passed == null ? null : row.test_passed === 1,
         testOutput: row.test_output,
@@ -813,16 +822,18 @@ class SQLiteStore {
 
     // Ensure voter profile exists
     const voterProfile = this.getVoter(voter);
+    if (!voterProfile) return { success: false, error: 'Failed to initialize voter profile' };
 
-    // Check for existing vote before any mutations
-    const existing = this.db.prepare('SELECT * FROM votes WHERE pattern_id = ? AND voter = ?').get(patternId, voter);
-    if (existing && existing.vote === voteVal) {
-      return { success: false, error: 'Already voted' };
-    }
-
-    // Wrap all mutations in a transaction for atomicity
+    // Wrap all checks and mutations in a transaction for atomicity (prevents TOCTOU races)
     this.db.exec('BEGIN');
     try {
+      // Check for existing vote inside the transaction
+      const existing = this.db.prepare('SELECT * FROM votes WHERE pattern_id = ? AND voter = ?').get(patternId, voter);
+      if (existing && existing.vote === voteVal) {
+        this.db.exec('ROLLBACK');
+        return { success: false, error: 'Already voted' };
+      }
+
       // Update voter stats
       this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
 
@@ -1021,15 +1032,15 @@ class SQLiteStore {
       patternType: row.pattern_type,
       complexity: row.complexity,
       description: row.description,
-      tags: JSON.parse(row.tags || '[]'),
-      coherencyScore: JSON.parse(row.coherency_json || '{}'),
-      variants: JSON.parse(row.variants || '[]'),
+      tags: this._safeJSON(row.tags, []),
+      coherencyScore: this._safeJSON(row.coherency_json, {}),
+      variants: this._safeJSON(row.variants, []),
       testCode: row.test_code,
       usageCount: row.usage_count,
       successCount: row.success_count,
-      evolutionHistory: JSON.parse(row.evolution_history || '[]'),
-      requires: JSON.parse(row.requires || '[]'),
-      composedOf: JSON.parse(row.composed_of || '[]'),
+      evolutionHistory: this._safeJSON(row.evolution_history, []),
+      requires: this._safeJSON(row.requires, []),
+      composedOf: this._safeJSON(row.composed_of, []),
       bugReports: row.bug_reports || 0,
       upvotes: row.upvotes || 0,
       downvotes: row.downvotes || 0,
@@ -1145,9 +1156,9 @@ class SQLiteStore {
    */
   pruneCandidates(minCoherency = 0.5) {
     const before = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
-    const pruned = this.db.prepare('SELECT id FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').all(minCoherency);
     this.db.exec('BEGIN');
     try {
+      const pruned = this.db.prepare('SELECT id FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').all(minCoherency);
       this.db.prepare('DELETE FROM candidates WHERE promoted_at IS NULL AND coherency_total < ?').run(minCoherency);
       for (const { id } of pruned) {
         this._audit('prune', 'candidates', id, { minCoherency });
@@ -1184,9 +1195,9 @@ class SQLiteStore {
       patternType: row.pattern_type,
       complexity: row.complexity,
       description: row.description,
-      tags: JSON.parse(row.tags || '[]'),
+      tags: this._safeJSON(row.tags, []),
       coherencyTotal: row.coherency_total,
-      coherencyScore: JSON.parse(row.coherency_json || '{}'),
+      coherencyScore: this._safeJSON(row.coherency_json, {}),
       testCode: row.test_code,
       parentPattern: row.parent_pattern,
       generationMethod: row.generation_method,
@@ -1523,7 +1534,7 @@ class SQLiteStore {
     if (!row) return null;
     return {
       patternId: row.pattern_id, templateId: row.template_id,
-      delta: JSON.parse(row.delta_json), originalSize: row.original_size,
+      delta: this._safeJSON(row.delta_json, {}), originalSize: row.original_size,
       deltaSize: row.delta_size, createdAt: row.created_at,
     };
   }
@@ -1532,7 +1543,7 @@ class SQLiteStore {
     return this.db.prepare('SELECT * FROM fractal_deltas WHERE template_id = ?').all(templateId)
       .map(row => ({
         patternId: row.pattern_id, templateId: row.template_id,
-        delta: JSON.parse(row.delta_json), originalSize: row.original_size,
+        delta: this._safeJSON(row.delta_json, {}), originalSize: row.original_size,
         deltaSize: row.delta_size, createdAt: row.created_at,
       }));
   }
@@ -1554,9 +1565,9 @@ class SQLiteStore {
     if (!row) return null;
     return {
       id: row.id, templateId: row.template_id,
-      centroidVec: JSON.parse(row.centroid_vec),
-      interferenceMatrix: row.interference_matrix ? JSON.parse(row.interference_matrix) : null,
-      memberIds: JSON.parse(row.member_ids),
+      centroidVec: this._safeJSON(row.centroid_vec, []),
+      interferenceMatrix: row.interference_matrix ? this._safeJSON(row.interference_matrix, null) : null,
+      memberIds: this._safeJSON(row.member_ids, []),
       memberCount: row.member_count,
       createdAt: row.created_at, updatedAt: row.updated_at,
     };
@@ -1566,9 +1577,9 @@ class SQLiteStore {
     return this.db.prepare('SELECT * FROM holo_pages ORDER BY member_count DESC').all()
       .map(row => ({
         id: row.id, templateId: row.template_id,
-        centroidVec: JSON.parse(row.centroid_vec),
-        interferenceMatrix: row.interference_matrix ? JSON.parse(row.interference_matrix) : null,
-        memberIds: JSON.parse(row.member_ids),
+        centroidVec: this._safeJSON(row.centroid_vec, []),
+        interferenceMatrix: row.interference_matrix ? this._safeJSON(row.interference_matrix, null) : null,
+        memberIds: this._safeJSON(row.member_ids, []),
         memberCount: row.member_count,
         createdAt: row.created_at, updatedAt: row.updated_at,
       }));
@@ -1587,7 +1598,7 @@ class SQLiteStore {
     if (!row) return null;
     return {
       patternId: row.pattern_id,
-      embeddingVec: JSON.parse(row.embedding_vec),
+      embeddingVec: this._safeJSON(row.embedding_vec, []),
       version: row.embedding_version,
       createdAt: row.created_at,
     };
@@ -1597,7 +1608,7 @@ class SQLiteStore {
     return this.db.prepare('SELECT * FROM holo_embeddings').all()
       .map(row => ({
         patternId: row.pattern_id,
-        embeddingVec: JSON.parse(row.embedding_vec),
+        embeddingVec: this._safeJSON(row.embedding_vec, []),
         version: row.embedding_version,
         createdAt: row.created_at,
       }));
@@ -1667,7 +1678,10 @@ class SQLiteStore {
         this.db.prepare('DELETE FROM pattern_archive WHERE id = ? AND deleted_at = ?').run(row.id, row.deleted_at);
         this._audit('restore', 'patterns', row.id, { reason: row.deleted_reason });
         restored++;
-      } catch { skipped++; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.error(`[sqlite:restoreArchived] Failed to restore ${row.id}:`, e.message);
+        skipped++;
+      }
     }
     return { restored, skipped, available: rows.length };
   }

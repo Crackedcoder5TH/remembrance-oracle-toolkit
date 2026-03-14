@@ -1299,10 +1299,29 @@ class PatternRecycler {
     };
 
     for (const candidate of withTests) {
-      // Skip if already exists as a proven pattern
+      // Skip if already exists as a proven pattern — mark promoted only if
+      // the existing pattern has equal or higher coherency (proves candidate is redundant)
       const existing = this.oracle.patterns.getAll().find(p => p.name === candidate.name);
       if (existing) {
-        this.oracle.patterns.promoteCandidate(candidate.id);
+        const existingCoherency = existing.coherencyScore?.total ?? 0;
+        const candidateCoherency = candidate.coherencyTotal ?? 0;
+        if (existingCoherency >= candidateCoherency) {
+          // Existing pattern is at least as good — safe to mark candidate as promoted
+          this.oracle.patterns.promoteCandidate(candidate.id);
+        }
+        // If candidate has higher coherency, let it go through full validation below
+        // so it can upgrade the existing pattern
+        else {
+          report.attempted++;
+          const result = this.promoteWithProof(candidate.id, candidate.testCode);
+          if (result.promoted) {
+            report.promoted++;
+            report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency });
+          } else {
+            report.failed++;
+            report.details.push({ name: candidate.name, status: 'failed', reason: result.reason });
+          }
+        }
         continue;
       }
 

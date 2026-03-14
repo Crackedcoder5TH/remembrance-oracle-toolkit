@@ -17,6 +17,7 @@ const path = require('path');
 
 const MAX_RETRIES = 4;
 const BASE_DELAY_MS = 2000;
+const DEFAULT_RETENTION_MS = 7 * 86400000; // 7 days (was 24h — too aggressive)
 
 class SyncQueue {
   /**
@@ -28,6 +29,7 @@ class SyncQueue {
     this._queueDir = options.queueDir || path.join(process.cwd(), '.remembrance');
     this._queueFile = path.join(this._queueDir, 'sync-queue.json');
     this._onDrained = options.onDrained || null;
+    this._retentionMs = options.retentionMs || DEFAULT_RETENTION_MS;
     this._draining = false;
     this._queue = this._load();
   }
@@ -173,8 +175,8 @@ class SyncQueue {
         }
       }
     } finally {
-      // Clean completed entries older than 24h
-      const cutoff = Date.now() - 86400000;
+      // Clean completed entries older than retention period (default 7 days)
+      const cutoff = Date.now() - this._retentionMs;
       this._queue = this._queue.filter(op => {
         if (op.status === 'completed' && new Date(op.createdAt).getTime() < cutoff) return false;
         return true;

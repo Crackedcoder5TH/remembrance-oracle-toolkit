@@ -407,6 +407,10 @@ class SQLiteStore {
     const historyPath = path.join(this.storeDir, LEGACY_HISTORY);
     const patternsPath = path.join(this.storeDir, LEGACY_PATTERNS);
 
+    // Track which files to rename — only rename AFTER both migrations succeed
+    // to prevent half-migrated state where one file is renamed but the other fails
+    const toRename = [];
+
     if (fs.existsSync(historyPath)) {
       try {
         const data = JSON.parse(fs.readFileSync(historyPath, 'utf-8'));
@@ -434,8 +438,7 @@ class SQLiteStore {
           });
           migrateAll();
         }
-        // Rename old file so migration doesn't re-run
-        fs.renameSync(historyPath, historyPath + '.migrated');
+        toRename.push(historyPath);
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] history JSON migration failed:', e.message);
       }
@@ -468,9 +471,18 @@ class SQLiteStore {
           });
           migrateAll();
         }
-        fs.renameSync(patternsPath, patternsPath + '.migrated');
+        toRename.push(patternsPath);
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[sqlite:migration] patterns JSON migration failed:', e.message);
+      }
+    }
+
+    // Rename all legacy files only after both migrations succeeded
+    for (const filePath of toRename) {
+      try {
+        fs.renameSync(filePath, filePath + '.migrated');
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn(`[sqlite:migration] rename failed for ${path.basename(filePath)}:`, e.message);
       }
     }
   }
@@ -714,35 +726,46 @@ class SQLiteStore {
     const name = pattern.name;
     const newCoherency = pattern.coherencyScore?.total ?? 0;
 
-    const existing = this.db.prepare(
-      'SELECT id, coherency_total FROM patterns WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) LIMIT 1'
-    ).get(name, lang);
+    // Wrap check-then-write in transaction to prevent TOCTOU race and partial updates
+    this.db.exec('BEGIN');
+    try {
+      const existing = this.db.prepare(
+        'SELECT id, coherency_total FROM patterns WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) LIMIT 1'
+      ).get(name, lang);
 
-    if (existing) {
-      // If new version has higher coherency, update the existing row
-      if (newCoherency > (existing.coherency_total ?? 0)) {
-        const now = new Date().toISOString();
-        this.db.prepare(`
-          UPDATE patterns SET code = ?, description = ?, tags = ?,
-            coherency_total = ?, coherency_json = ?, test_code = ?,
-            pattern_type = ?, complexity = ?, evolution_history = ?,
-            updated_at = ?, version = version + 1
-          WHERE id = ?
-        `).run(
-          pattern.code, pattern.description || '',
-          JSON.stringify(pattern.tags || []),
-          newCoherency, JSON.stringify(pattern.coherencyScore || {}),
-          pattern.testCode || null,
-          pattern.patternType || 'utility', pattern.complexity || 'composite',
-          JSON.stringify(pattern.evolutionHistory || []),
-          now, existing.id
-        );
-        return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(existing.id));
+      if (existing) {
+        // If new version has higher coherency, update the existing row
+        if (newCoherency > (existing.coherency_total ?? 0)) {
+          const now = new Date().toISOString();
+          this.db.prepare(`
+            UPDATE patterns SET code = ?, description = ?, tags = ?,
+              coherency_total = ?, coherency_json = ?, test_code = ?,
+              pattern_type = ?, complexity = ?, evolution_history = ?,
+              updated_at = ?, version = version + 1
+            WHERE id = ?
+          `).run(
+            pattern.code, pattern.description || '',
+            JSON.stringify(pattern.tags || []),
+            newCoherency, JSON.stringify(pattern.coherencyScore || {}),
+            pattern.testCode || null,
+            pattern.patternType || 'utility', pattern.complexity || 'composite',
+            JSON.stringify(pattern.evolutionHistory || []),
+            now, existing.id
+          );
+          this.db.exec('COMMIT');
+          return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(existing.id));
+        }
+        this.db.exec('COMMIT');
+        return null; // Existing has equal or higher coherency — skip
       }
-      return null; // Existing has equal or higher coherency — skip
-    }
 
-    return this._insertPattern(pattern);
+      const result = this._insertPattern(pattern);
+      this.db.exec('COMMIT');
+      return result;
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
   }
 
   /**

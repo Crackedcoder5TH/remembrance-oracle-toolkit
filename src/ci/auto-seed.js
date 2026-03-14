@@ -27,13 +27,21 @@ function detectLanguage(filePath) {
 }
 
 function matchGlob(filePath, pattern) {
+  // Validate pattern length to prevent ReDoS with crafted inputs
+  if (typeof pattern !== 'string' || pattern.length > 500) return false;
+  if (typeof filePath !== 'string') return false;
   const regexStr = pattern
     .replace(/[.+^${}()|[\]\\]/g, '\\$&')
     .replace(/\*\*/g, '\0')
     .replace(/\*/g, '[^/]*')
     .replace(/\0/g, '.*')
     .replace(/\?/g, '.');
-  return new RegExp('^' + regexStr + '$').test(filePath);
+  try {
+    return new RegExp('^' + regexStr + '$').test(filePath);
+  } catch (_) {
+    // If the regex is invalid (shouldn't happen with our escaping, but defend anyway)
+    return false;
+  }
 }
 
 function walkDir(dir, results = []) {

@@ -19,6 +19,7 @@
 const { VerifiedHistoryStore } = require('../store/history');
 const { PatternLibrary } = require('../patterns/library');
 const { PatternRecycler } = require('../evolution/recycler');
+const { initAuditLog } = require('../core/audit-logger');
 
 // Mixin modules — each exports an object of methods for the prototype
 const coreMethods = require('./oracle-core');
@@ -62,6 +63,14 @@ class RemembranceOracle {
       model: options.claudeModel || null,
       verbose: options.verbose || false,
     };
+
+    // Initialise audit logging
+    try {
+      const storeDir = this.store.storeDir || require('path').join(options.baseDir || process.cwd(), '.remembrance');
+      initAuditLog(path.dirname(storeDir));
+    } catch (_) {
+      // Audit init failures are non-fatal
+    }
 
     // Auto-seed on first run if library is empty
     const wasEmpty = this.patterns.getAll().length === 0;

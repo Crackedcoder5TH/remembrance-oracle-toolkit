@@ -20,7 +20,11 @@ function createRateLimiter(options = {}) {
   if (cleanup.unref) cleanup.unref();
 
   return function rateLimitMiddleware(req, res, next) {
-    const forwarded = req.headers?.['x-forwarded-for'];
+    // Only trust X-Forwarded-For when running behind a validated proxy.
+    // req.trustProxy must be explicitly set by the server when a known reverse
+    // proxy (nginx, ALB, etc.) is in front. Without this, clients can spoof
+    // their IP by sending an arbitrary X-Forwarded-For header.
+    const forwarded = req.trustProxy ? req.headers?.['x-forwarded-for'] : null;
     const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket.remoteAddress || '127.0.0.1');
     const now = Date.now();
     const timestamps = (hits.get(ip) || []).filter(t => now - t < windowMs);

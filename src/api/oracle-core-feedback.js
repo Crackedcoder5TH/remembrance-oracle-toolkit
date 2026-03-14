@@ -3,6 +3,8 @@
  * Records usage feedback and triggers automatic healing for failing patterns.
  */
 
+const { auditLog } = require('../core/audit-logger');
+
 module.exports = {
   /**
    * Records usage feedback for a verified history entry.
@@ -54,6 +56,7 @@ module.exports = {
       }
     }
 
+    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated.reliability.historicalScore, healed: !!healResult?.healed } });
     return { success: true, newReliability: updated.reliability.historicalScore, healResult };
   },
 
@@ -98,6 +101,7 @@ module.exports = {
       }
     }
 
+    auditLog('pattern_feedback', { id, success: succeeded, meta: { usageCount: updated.usageCount, healed: !!healResult?.healed } });
     return { success: true, usageCount: updated.usageCount, successCount: updated.successCount, healResult };
   },
 };

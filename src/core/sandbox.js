@@ -53,7 +53,12 @@ Module._load = function(request, parent, isMain) {
   return _origLoad(request, parent, isMain);
 };
 `;
-    fs.writeFileSync(preloadPath, preload, 'utf-8');
+    // Write with restrictive permissions (owner-only) then make read-only
+    // to close TOCTOU race between write and exec
+    const fd = fs.openSync(preloadPath, 'w', 0o600);
+    fs.writeSync(fd, preload);
+    fs.closeSync(fd);
+    fs.chmodSync(preloadPath, 0o400);
 
     // Write the actual code + test
     const wrapper = `
@@ -66,7 +71,10 @@ ${testCode}
 `;
 
     const filePath = path.join(sandboxDir, 'test.js');
-    fs.writeFileSync(filePath, wrapper, 'utf-8');
+    const fdTest = fs.openSync(filePath, 'w', 0o600);
+    fs.writeSync(fdTest, wrapper);
+    fs.closeSync(fdTest);
+    fs.chmodSync(filePath, 0o400);
 
     const memFlag = `--max-old-space-size=${maxMemory}`;
     const result = execSync(
@@ -262,7 +270,11 @@ Module._load = function(request, parent, isMain) {
   return _origLoad(request, parent, isMain);
 };
 `;
-    fs.writeFileSync(preloadPath, preload, 'utf-8');
+    // Write with restrictive permissions then make read-only (TOCTOU mitigation)
+    const fdPre = fs.openSync(preloadPath, 'w', 0o600);
+    fs.writeSync(fdPre, preload);
+    fs.closeSync(fdPre);
+    fs.chmodSync(preloadPath, 0o400);
 
     const wrapper = `
 'use strict';

@@ -162,6 +162,7 @@ function _generateName(description) {
     .replace(/[^a-z0-9\s]/g, '')
     .split(/\s+/)
     .filter(w => w.length > 2 && !['the', 'and', 'for', 'with', 'that', 'this', 'from', 'into'].includes(w));
+  if (words.length === 0) return `composed-${Date.now()}`;
   return words.slice(0, 3).map((w, i) => i === 0 ? w : w[0].toUpperCase() + w.slice(1)).join('');
 }
 

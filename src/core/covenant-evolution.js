@@ -212,7 +212,8 @@ function _inferPattern(snippets) {
 }
 
 function _categoryToName(category) {
-  const words = category.replace(/[-_]/g, ' ').split(' ');
+  const words = category.replace(/[-_]/g, ' ').split(' ').filter(w => w.length > 0);
+  if (words.length === 0) return 'The Guard';
   return 'The ' + words.map(w => w[0].toUpperCase() + w.slice(1)).join(' ') + ' Guard';
 }
 

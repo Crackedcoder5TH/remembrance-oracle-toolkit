@@ -65,8 +65,8 @@ function _cacheKey(code) {
 }
 
 function covenantCheck(code, metadata = {}) {
-  // Fast-path: if no metadata, check cache
-  const hasMeta = metadata.description || (metadata.tags && metadata.tags.length);
+  // Fast-path: if no metadata and not trusted, check cache
+  const hasMeta = metadata.description || (metadata.tags && metadata.tags.length) || metadata.trusted;
   if (!hasMeta) {
     const key = _cacheKey(code);
     const cached = _covenantCache.get(key);

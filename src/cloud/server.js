@@ -624,7 +624,10 @@ class CloudSyncServer {
         offset = 4;
       } else if (length === 127) {
         if (data.length < 10) return;
+        const high = data.readUInt32BE(2);
+        if (high !== 0) return; // Reject frames > 4 GB (upper 32 bits must be 0)
         length = Number(data.readBigUInt64BE(2));
+        if (length > 16 * 1024 * 1024) return; // Cap at 16 MB
         offset = 10;
       }
 
@@ -704,11 +707,38 @@ class CloudSyncServer {
   }
 
   async _readBody(req) {
-    return new Promise((resolve) => {
+    const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
+    return new Promise((resolve, reject) => {
       let body = '';
-      req.on('data', chunk => { body += chunk; });
+      let aborted = false;
+
+      const timeout = setTimeout(() => {
+        if (!aborted) {
+          aborted = true;
+          req.destroy();
+          reject(new Error('Request body read timed out'));
+        }
+      }, 30000);
+
+      req.on('data', chunk => {
+        body += chunk;
+        if (body.length > MAX_BODY_SIZE) {
+          aborted = true;
+          clearTimeout(timeout);
+          req.destroy();
+          reject(new Error('Request body too large'));
+        }
+      });
       req.on('end', () => {
-        resolve(safeJsonParse(body, {}));
+        clearTimeout(timeout);
+        if (!aborted) resolve(safeJsonParse(body, {}));
+      });
+      req.on('error', () => {
+        clearTimeout(timeout);
+        if (!aborted) {
+          aborted = true;
+          reject(new Error('Request body read failed'));
+        }
       });
     });
   }

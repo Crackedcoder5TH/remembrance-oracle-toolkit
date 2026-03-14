@@ -46,10 +46,13 @@ function transpile(code, targetLanguage) {
       case 'typescript':
         output = toTypeScript(ast);
         break;
-      case 'go':
+      case 'go': {
         output = toGo(ast);
-        imports = detectGoImports(output);
+        const goResult = detectGoImports(output);
+        imports = goResult.imports;
+        output = goResult.code;
         break;
+      }
       case 'rust':
         output = toRust(ast);
         break;

@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { detectLogicInconsistency } = require('../src/patterns/audit-patterns/logic-inconsistency-check');
 
 const code = "if (status === 'would-promote') {\n  report.promoted++;\n  continue;\n}";
 const w1 = detectLogicInconsistency(code);

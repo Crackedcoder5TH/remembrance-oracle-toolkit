@@ -1,6 +1,6 @@
 const assert = require('assert');
+const { detectNullPropertyAccess } = require('../src/patterns/audit-patterns/null-property-access-guard');
 
-// detectNullPropertyAccess is available from the combined code+test
 const w1 = detectNullPropertyAccess('const name = item.name.toLowerCase();');
 assert(w1.length > 0, 'Should detect unguarded .name.toLowerCase()');
 

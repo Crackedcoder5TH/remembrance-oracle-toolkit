@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { detectWrongPropertyAccess } = require('../src/patterns/audit-patterns/wrong-property-access');
 
 const w1 = detectWrongPropertyAccess('if (!reflection.improved) return null;');
 assert(w1.length > 0, 'Should flag .improved on reflection');

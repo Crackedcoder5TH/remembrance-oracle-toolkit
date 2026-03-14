@@ -1,4 +1,5 @@
 const assert = require('assert');
+const { detectPrecedenceIssues } = require('../src/patterns/audit-patterns/operator-precedence-check');
 
 const w1 = detectPrecedenceIssues('const x = Math.round(1 - y - z * 100) / 100;');
 assert(w1.length > 0, 'Should detect precedence issue');

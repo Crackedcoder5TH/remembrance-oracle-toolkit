@@ -125,7 +125,13 @@ class LLMClient {
       const req = proto.request(options, (res) => {
         let data = '';
         res.on('data', chunk => { data += chunk; });
-        res.on('end', () => resolve(data));
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(data);
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}: ${data.slice(0, 200)}`));
+          }
+        });
       });
       req.on('error', reject);
       req.setTimeout(30000, () => { req.destroy(); reject(new Error('LLM request timeout')); });

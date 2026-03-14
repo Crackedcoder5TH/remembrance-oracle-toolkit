@@ -309,7 +309,7 @@ function detectGoImports(output) {
     const importBlock = `import (\n${imports.map(i => `\t${i}`).join('\n')}\n)`;
     output = output.replace('package main\n', `package main\n\n${importBlock}\n`);
   }
-  return imports;
+  return { imports, code: output };
 }
 
 module.exports = {

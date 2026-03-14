@@ -58,8 +58,10 @@ function securityScan(code, language) {
   const lang = (language || '').toLowerCase();
   const strippedCode = stripStringsAndComments(code);
 
+  // Secret patterns must match against original code (not stripped) because
+  // stripStringsAndComments removes string contents — the very values we're checking
   for (const { pattern, severity, message } of _buildSecretPatterns()) {
-    const matches = strippedCode.match(pattern);
+    const matches = code.match(pattern);
     if (matches) findings.push({ severity, message, count: matches.length });
   }
 

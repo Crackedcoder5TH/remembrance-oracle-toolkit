@@ -5,7 +5,7 @@
  * Uses lazy require for ./multi to avoid circular deps.
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const { join } = require('path');
 const { existsSync, writeFileSync } = require('fs');
 
@@ -16,6 +16,18 @@ const { TIMEOUTS } = require('./scoring-utils');
 // =====================================================================
 // GitHub — Git/GitHub Operations
 // =====================================================================
+
+/**
+ * Validate a git branch name — reject shell metacharacters.
+ */
+function sanitizeBranchName(name) {
+  if (!name || typeof name !== 'string') throw new Error('Invalid branch name');
+  // Only allow alphanumeric, dash, underscore, slash, dot
+  if (!/^[a-zA-Z0-9._\/-]+$/.test(name)) {
+    throw new Error(`Unsafe branch name: ${name}`);
+  }
+  return name;
+}
 
 /**
  * Generate a unique healing branch name.
@@ -142,8 +154,8 @@ function createHealingBranch(report, options = {}) {
   }
 
   const currentBranch = getCurrentBranch(cwd);
-  const base = baseBranch || currentBranch;
-  const branch = branchName || generateBranchName();
+  const base = sanitizeBranchName(baseBranch || currentBranch);
+  const branch = sanitizeBranchName(branchName || generateBranchName());
   const result = { branch, baseBranch: base, commits: 0, files: [] };
 
   let stashed = false;
@@ -240,13 +252,21 @@ function openHealingPR(report, options = {}) {
   const title = `Remembrance Pull: Healed Refinement (+${(report.summary?.avgImprovement ?? 0).toFixed(3)})`;
   const labels = 'remembrance,auto-heal';
 
-  const escapedBody = body.replace(/'/g, "'\\''");
-
   try {
-    const output = gh(
-      `pr create --title '${title}' --body '${escapedBody}' --base ${baseBranch} --head ${branch} --label '${labels}'`,
-      cwd
-    );
+    const output = execFileSync('gh', [
+      'pr', 'create',
+      '--title', title,
+      '--body', body,
+      '--base', baseBranch,
+      '--head', branch,
+      '--label', labels,
+    ], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: TIMEOUTS.GIT_REMOTE,
+      env: { ...process.env },
+    }).trim();
 
     const urlMatch = output.match(/https:\/\/github\.com\/[^\s]+/);
     const numberMatch = output.match(/\/pull\/(\d+)/);

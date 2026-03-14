@@ -17,7 +17,7 @@
  *   oracle registry discover "sorting algorithms"  # Search GitHub for repos
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -293,10 +293,12 @@ function discoverReposSync(query, options = {}) {
   const apiUrl = `https://api.github.com/search/repositories?q=${encodedQ}&sort=${sort}&order=desc&per_page=${Math.min(limit, 30)}`;
 
   try {
-    const response = execSync(
-      `curl -s -H "User-Agent: remembrance-oracle-toolkit" -H "Accept: application/vnd.github.v3+json" "${apiUrl}"`,
-      { timeout: 20000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-    );
+    const response = execFileSync('curl', [
+      '-s',
+      '-H', 'User-Agent: remembrance-oracle-toolkit',
+      '-H', 'Accept: application/vnd.github.v3+json',
+      apiUrl,
+    ], { timeout: 20000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
 
     const json = JSON.parse(response);
     if (!json.items) return [];
@@ -390,7 +392,7 @@ function detectLicenseFromClone(repoUrl) {
   let tmpDir;
   try {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-license-'));
-    execSync(`git clone --depth 1 --filter=blob:none --sparse ${repoUrl} ${tmpDir}`, {
+    execFileSync('git', ['clone', '--depth', '1', '--filter=blob:none', '--sparse', repoUrl, tmpDir], {
       timeout: 30000, stdio: 'pipe', encoding: 'utf-8',
     });
 
@@ -494,9 +496,9 @@ function trackProvenance(oracle, harvestResult, provenance) {
 function getRepoCommitHash(repoUrl, branch) {
   try {
     const ref = branch || 'HEAD';
-    const output = execSync(`git ls-remote ${repoUrl} ${ref}`, {
+    const output = execFileSync('git', ['ls-remote', repoUrl, ref], {
       timeout: 15000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    }).toString();
     const match = output.match(/^([0-9a-f]+)\s/);
     return match ? match[1] : null;
   } catch (e) {

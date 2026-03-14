@@ -15,7 +15,7 @@
 
 const { AIConnector } = require('./connector');
 const { parseIssueCommand, formatAsComment } = require('./github-bridge');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const connector = new AIConnector({ provider: 'github', modelId: 'actions' });
 
@@ -57,11 +57,11 @@ function handleIssue() {
   // Post comment back to the issue
   if (process.env.GITHUB_TOKEN && repo) {
     try {
-      const escaped = comment.replace(/'/g, "'\\''");
-      execSync(
-        `gh issue comment ${issueNumber} --repo ${repo} --body '${escaped}'`,
-        { stdio: 'inherit', env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN } }
-      );
+      execFileSync('gh', [
+        'issue', 'comment', String(issueNumber),
+        '--repo', String(repo),
+        '--body', comment,
+      ], { stdio: 'inherit', env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN } });
       if (process.env.ORACLE_DEBUG) console.log('Comment posted successfully');
     } catch (err) {
       console.error('Failed to post comment:', err.message);

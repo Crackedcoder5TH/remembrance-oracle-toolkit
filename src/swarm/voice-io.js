@@ -1,6 +1,6 @@
 'use strict';
 
-const { execSync, exec } = require('child_process');
+const { execSync, execFileSync, exec } = require('child_process');
 
 /**
  * Voice Input / Whisper Output Module
@@ -73,26 +73,27 @@ function speak(text, options = {}) {
   const safe = sanitizeForShell(text).slice(0, 2000);
 
   try {
+    const execOpts = { stdio: 'ignore', timeout: 30000 };
     switch (engine) {
       case 'say': {
-        const rate = options.rate || 180;
-        const voice = options.voice || '';
-        const voiceFlag = voice ? `-v "${voice}"` : '';
-        execSync(`say ${voiceFlag} -r ${rate} "${safe}"`, { stdio: 'ignore', timeout: 30000 });
+        const rate = String(Math.max(1, Math.min(500, parseInt(options.rate, 10) || 180)));
+        const voice = options.voice ? sanitizeForShell(String(options.voice)).slice(0, 100) : '';
+        const args = voice ? ['-v', voice, '-r', rate, safe] : ['-r', rate, safe];
+        execFileSync('say', args, execOpts);
         break;
       }
       case 'espeak': {
-        const rate = options.rate || 160;
-        execSync(`espeak -s ${rate} "${safe}"`, { stdio: 'ignore', timeout: 30000 });
+        const rate = String(Math.max(1, Math.min(500, parseInt(options.rate, 10) || 160)));
+        execFileSync('espeak', ['-s', rate, safe], execOpts);
         break;
       }
       case 'festival': {
-        execSync(`echo "${safe}" | festival --tts`, { stdio: 'ignore', timeout: 30000 });
+        execFileSync('festival', ['--tts'], { ...execOpts, input: safe });
         break;
       }
       case 'powershell-sapi': {
         const psCmd = `Add-Type -AssemblyName System.speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Speak('${safe.replace(/'/g, "''")}')`;
-        execSync(`powershell -Command "${psCmd}"`, { stdio: 'ignore', timeout: 30000 });
+        execFileSync('powershell', ['-Command', psCmd], execOpts);
         break;
       }
       default:

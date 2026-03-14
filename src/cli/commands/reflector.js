@@ -64,7 +64,7 @@ ${c.bold('Options:')}
       const { runReflector } = require('../../reflector/multi');
       const opts = {
         minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
-        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files'], 10) : undefined,
         push: args.push === true,
         openPR: args['open-pr'] === true,
         autoMerge: args['auto-merge'] === true,
@@ -102,7 +102,7 @@ ${c.bold('Options:')}
       const { takeSnapshot } = require('../../reflector/multi');
       const opts = {
         minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
-        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files'], 10) : undefined,
       };
       console.log(c.boldCyan('Taking Coherence Snapshot...\n'));
       const snap = takeSnapshot(process.cwd(), opts);
@@ -258,7 +258,7 @@ ${c.bold('Options:')}
       const { multiReflect, formatMultiReport } = require('../../reflector/multi');
       const opts = {
         minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
-        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files'], 10) : undefined,
       };
       console.log(c.boldCyan('Running Multi-Repo Reflector...\n'));
       const report = multiReflect(repos, opts);
@@ -275,7 +275,7 @@ ${c.bold('Options:')}
       }
       const { multiSnapshot, compareDimensions } = require('../../reflector/multi');
       const opts = {
-        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files'], 10) : undefined,
       };
       console.log(c.boldCyan('Comparing Dimensions...\n'));
       const snap = multiSnapshot(repos, opts);
@@ -305,7 +305,7 @@ ${c.bold('Options:')}
       }
       const { detectDrift } = require('../../reflector/multi');
       const opts = {
-        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files'], 10) : undefined,
       };
       console.log(c.boldCyan('Detecting Pattern Drift...\n'));
       const drift = detectDrift(repos, opts);
@@ -333,7 +333,7 @@ ${c.bold('Options:')}
       const { dryRun } = require('../../reflector/report');
       const opts = {
         minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
-        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files'], 10) : undefined,
       };
       console.log(c.boldCyan('Dry-Run: Simulating Healing...\n'));
       const result = dryRun(process.cwd(), opts);
@@ -387,7 +387,7 @@ ${c.bold('Options:')}
       const { safeReflect } = require('../../reflector/report');
       const opts = {
         minCoherence: args['min-coherence'] ? parseFloat(args['min-coherence']) : undefined,
-        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files'], 10) : undefined,
         push: args.push === true,
         openPR: args['open-pr'] === true,
         autoMerge: args['auto-merge'] === true,
@@ -468,7 +468,7 @@ ${c.bold('Options:')}
     if (sub === 'repo-score') {
       const { repoScore } = require('../../reflector/scoring');
       const opts = {
-        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files']) : undefined,
+        maxFilesPerRun: args['max-files'] ? parseInt(args['max-files'], 10) : undefined,
       };
       console.log(c.boldCyan('Computing Repo-Level Deep Score...\n'));
       const result = repoScore(process.cwd(), opts);
@@ -556,7 +556,7 @@ ${c.bold('Options:')}
 
     if (sub === 'history') {
       const { generateTimeline, loadHistoryV2 } = require('../../reflector/report');
-      const count = args.last ? parseInt(args.last) : 10;
+      const count = args.last ? parseInt(args.last, 10) : 10;
       if (jsonOut()) {
         console.log(JSON.stringify(loadHistoryV2(process.cwd()), null, 2));
         return;
@@ -569,9 +569,9 @@ ${c.bold('Options:')}
     if (sub === 'trend') {
       const { generateTrendChart, loadHistoryV2 } = require('../../reflector/report');
       const opts = {
-        width: args.width ? parseInt(args.width) : 60,
-        height: args.height ? parseInt(args.height) : 15,
-        last: args.last ? parseInt(args.last) : 30,
+        width: args.width ? parseInt(args.width, 10) : 60,
+        height: args.height ? parseInt(args.height, 10) : 15,
+        last: args.last ? parseInt(args.last, 10) : 30,
       };
       if (jsonOut()) {
         const history = loadHistoryV2(process.cwd());
@@ -608,7 +608,7 @@ ${c.bold('Options:')}
 
     if (sub === 'log') {
       const { readLogTail } = require('../../reflector/report');
-      const n = args.last ? parseInt(args.last) : 20;
+      const n = args.last ? parseInt(args.last, 10) : 20;
       const lines = readLogTail(process.cwd(), n);
       if (jsonOut()) { console.log(JSON.stringify(lines)); return; }
       if (lines.length === 0) {

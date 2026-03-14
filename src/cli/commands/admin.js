@@ -49,7 +49,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       return;
     }
     const entries = sqliteStore.getAuditLog({
-      limit: parseInt(args.limit) || 20,
+      limit: parseInt(args.limit, 10) || 20,
       table: args.table,
       id: args.id,
       action: args.action,
@@ -284,7 +284,7 @@ ${c.bold('Subcommands:')}
     if (sub === 'search') {
       const query = args._positional[1];
       if (!query) { console.error(c.boldRed('Error:') + ' provide a search query'); process.exit(1); }
-      const results = searchRegistry(query, { language: args.language, limit: parseInt(args.limit) || 10 });
+      const results = searchRegistry(query, { language: args.language, limit: parseInt(args.limit, 10) || 10 });
       if (jsonOut()) { console.log(JSON.stringify(results)); return; }
       if (results.length === 0) {
         console.log(c.yellow('\nNo repos found matching: ') + c.bold(query));
@@ -326,7 +326,7 @@ ${c.bold('Subcommands:')}
           language: args.language,
           dryRun,
           splitMode: args.split || 'file',
-          maxFiles: parseInt(args['max-files']) || 200,
+          maxFiles: parseInt(args['max-files'], 10) || 200,
           skipLicenseCheck: true,
         });
         const r = result.results[0];
@@ -358,7 +358,7 @@ ${c.bold('Subcommands:')}
         language: args.language,
         dryRun,
         splitMode: args.split || 'file',
-        maxFiles: parseInt(args['max-files']) || 100,
+        maxFiles: parseInt(args['max-files'], 10) || 100,
       });
       for (const r of result.results) {
         const icon = r.status === 'success' ? c.green('\u2713') : r.status === 'skipped' ? c.yellow('\u25CB') : c.red('\u2717');
@@ -377,8 +377,8 @@ ${c.bold('Subcommands:')}
       console.log(c.dim('\nSearching GitHub...'));
       const repos = discoverReposSync(query, {
         language: args.language,
-        minStars: parseInt(args['min-stars']) || 100,
-        limit: parseInt(args.limit) || 10,
+        minStars: parseInt(args['min-stars'], 10) || 100,
+        limit: parseInt(args.limit, 10) || 10,
       });
       if (jsonOut()) { console.log(JSON.stringify(repos)); return; }
       if (repos.length === 0) {

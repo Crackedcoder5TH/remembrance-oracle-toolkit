@@ -23,7 +23,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['top-voted'] = (args) => {
-    const limit = parseInt(args.limit) || 20;
+    const limit = parseInt(args.limit, 10) || 20;
     const patterns = oracle.topVoted(limit);
     if (patterns.length === 0) {
       console.log(c.dim('No voted patterns yet.'));
@@ -56,7 +56,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
         }
       }
     } else if (sub === 'top' || sub === 'leaderboard') {
-      const limit = parseInt(args.limit) || 20;
+      const limit = parseInt(args.limit, 10) || 20;
       const voters = oracle.topVoters(limit);
       if (voters.length === 0) { console.log(c.dim('No voters yet.')); return; }
       console.log(c.boldCyan(`Top ${voters.length} contributors by reputation:\n`));
@@ -124,7 +124,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
     }
 
     if (sub === 'status' || sub === 'identities') {
-      const identities = ghIdentity.listIdentities(parseInt(args.limit) || 20);
+      const identities = ghIdentity.listIdentities(parseInt(args.limit, 10) || 20);
       if (identities.length === 0) {
         console.log(c.dim('No verified GitHub identities.'));
         console.log(`${c.dim('Link your GitHub:')} ${c.cyan('oracle github verify --token <PAT>')}`);

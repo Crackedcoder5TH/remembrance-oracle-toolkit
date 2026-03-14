@@ -72,7 +72,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
 
   handlers['context'] = (args) => {
     const format = args.format || args._sub || 'markdown';
-    const maxPatterns = parseInt(args.limit) || 50;
+    const maxPatterns = parseInt(args.limit, 10) || 50;
     const includeCode = args.code === 'true' || args.code === true;
     const output = args.output || args.file;
 
@@ -216,7 +216,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
     }
 
     if (sub === 'generate') {
-      const max = parseInt(args.max) || 10;
+      const max = parseInt(args.max, 10) || 10;
       console.log(`${c.dim('Generating LLM-enhanced candidates...')}`);
       const result = oracle.llmGenerate({ maxPatterns: max });
       console.log(`${c.boldGreen('\u2713 Generation complete')} via ${c.cyan(result.method)}`);

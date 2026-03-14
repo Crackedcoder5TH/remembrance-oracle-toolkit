@@ -15,7 +15,7 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
     console.log(`${c.dim('Running self-improve → self-optimize → self-evolve...')}\n`);
 
     const report = oracle.fullOptimizationCycle({
-      maxHealsPerRun: parseInt(args.max) || 20,
+      maxHealsPerRun: parseInt(args.max, 10) || 20,
     });
     if (jsonOut()) { console.log(JSON.stringify(report)); return; }
 
@@ -151,7 +151,7 @@ ${c.bold('Commands:')}
 
     if (sub === 'tags') {
       const dryRun = parseDryRun(args);
-      const minUsage = parseInt(args['min-usage']) || 2;
+      const minUsage = parseInt(args['min-usage'], 10) || 2;
       console.log(`\n${c.boldCyan('Consolidating Tags')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
       const report = oracle.consolidateTags({ minUsage, dryRun });
@@ -247,7 +247,7 @@ ${c.bold('Commands:')}
 
     if (sub === 'all') {
       const dryRun = parseDryRun(args);
-      const maxIterations = args['max-iterations'] != null ? parseInt(args['max-iterations']) : undefined;
+      const maxIterations = args['max-iterations'] != null ? parseInt(args['max-iterations'], 10) : undefined;
       console.log(`\n${c.boldCyan('Iterative Polish')}${dryRun ? c.dim(' (dry run)') : ''}`);
       console.log(`${c.dim('Running self-reflection loop: polish → evaluate → repeat until convergence...')}\n`);
 

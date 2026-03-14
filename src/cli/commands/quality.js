@@ -18,8 +18,8 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
   handlers['deep-clean'] = (args) => {
     const dryRun = parseDryRun(args);
     const result = oracle.deepClean({
-      minCodeLength: parseInt(args['min-code-length']) || 35,
-      minNameLength: parseInt(args['min-name-length']) || 3,
+      minCodeLength: parseInt(args['min-code-length'], 10) || 35,
+      minNameLength: parseInt(args['min-name-length'], 10) || 3,
       dryRun,
     });
     console.log(`${dryRun ? c.yellow('DRY RUN — ') : ''}Deep Clean Results:`);
@@ -126,7 +126,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     const { reflectionLoop } = require('../../core/reflection');
     const result = reflectionLoop(code, {
       language: args.language,
-      maxLoops: parseInt(args.loops) || 3,
+      maxLoops: parseInt(args.loops, 10) || 3,
       targetCoherence: parseFloat(args.target) || 0.9,
       description: args.description || '',
       tags: parseTags(args),
@@ -238,7 +238,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
         dryRun,
         splitMode: args.split || 'file',
         branch: args.branch,
-        maxFiles: parseInt(args['max-files']) || 200,
+        maxFiles: parseInt(args['max-files'], 10) || 200,
       });
       console.log(c.boldCyan(`Harvest: ${source}\n`));
       console.log(`  Discovered: ${c.bold(String(result.harvested))}`);
@@ -268,7 +268,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     const { PatternRecycler } = require('../../evolution/recycler');
     const { SEEDS, EXTENDED_SEEDS } = require('../../patterns/seed-helpers');
 
-    const depth = parseInt(args.depth) || 2;
+    const depth = parseInt(args.depth, 10) || 2;
     const allSeeds = [...SEEDS, ...EXTENDED_SEEDS];
 
     console.log(c.boldCyan('Pattern Recycler') + ' \u2014 exponential growth engine\n');

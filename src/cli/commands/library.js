@@ -212,7 +212,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : undefined;
     const output = oracle.export({
       format: args.format || (args.file && args.file.endsWith('.md') ? 'markdown' : 'json'),
-      limit: parseInt(args.limit) || 20,
+      limit: parseInt(args.limit, 10) || 20,
       minCoherency: parseMinCoherency(args, 0.5),
       language: args.language,
       tags,
@@ -288,7 +288,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
     if (candidates.length > 0) {
       console.log(`\n${c.bold('Candidates:')}`);
-      const limit = parseInt(args.limit) || 20;
+      const limit = parseInt(args.limit, 10) || 20;
       for (const cand of candidates.slice(0, limit)) {
         const parent = cand.parentPattern ? c.dim(` ← ${cand.parentPattern}`) : '';
         console.log(`  ${c.cyan(cand.id.slice(0, 8))} ${c.bold(cand.name)} (${c.blue(cand.language)}) coherency: ${colorScore(cand.coherencyTotal)}${parent}`);
@@ -302,7 +302,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   handlers['generate'] = (args) => {
     const languages = (args.languages || 'python,typescript').split(',').map(s => s.trim());
     const methods = (args.methods || 'variant,iterative-refine,approach-swap').split(',').map(s => s.trim());
-    const maxPatterns = parseInt(args['max-patterns']) || Infinity;
+    const maxPatterns = parseInt(args['max-patterns'], 10) || 999999;
     const minCoherency = parseMinCoherency(args, 0.5);
 
     console.log(c.boldCyan('Continuous Generation') + ' — proven → coherency → candidates\n');
@@ -392,7 +392,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['synthesize'] = (args) => {
-    const maxCandidates = parseInt(args['max-candidates']) || Infinity;
+    const maxCandidates = parseInt(args['max-candidates'], 10) || 999999;
     const dryRun = parseDryRun(args);
     const autoPromoteFlag = args['no-promote'] ? false : true;
 

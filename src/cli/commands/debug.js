@@ -88,7 +88,7 @@ ${c.bold('Options:')}
         errorMessage,
         stackTrace: args.stack || '',
         language: args.language,
-        limit: parseInt(args.limit) || 5,
+        limit: parseInt(args.limit, 10) || 5,
         federated: args.local !== true,
       });
       if (jsonOut()) { console.log(JSON.stringify(results)); return; }
@@ -127,7 +127,7 @@ ${c.bold('Options:')}
 
     if (sub === 'grow') {
       const minConfidence = parseFloat(args['min-confidence']) || 0.5;
-      const maxPatterns = parseInt(args['max-patterns']) || Infinity;
+      const maxPatterns = parseInt(args['max-patterns'], 10) || 999999;
       console.log(c.boldCyan('Debug Growth Engine') + ' \u2014 exponential variant generation\n');
       const report = oracle.debugGrow({ minConfidence, maxPatterns });
       console.log(`  Processed:  ${c.bold(String(report.processed))} patterns`);
@@ -174,7 +174,7 @@ ${c.bold('Options:')}
       if (args.language) filters.language = args.language;
       if (args.category) filters.category = args.category;
       if (args['min-confidence']) filters.minConfidence = parseFloat(args['min-confidence']);
-      filters.limit = parseInt(args.limit) || 20;
+      filters.limit = parseInt(args.limit, 10) || 20;
       const patterns = oracle.debugPatterns(filters);
       if (jsonOut()) { console.log(JSON.stringify(patterns)); return; }
       if (patterns.length === 0) {
@@ -233,7 +233,7 @@ ${c.bold('Options:')}
       const report = oracle.debugPullCommunity({
         verbose, dryRun, category: args.category, language: args.language,
         minConfidence: parseFloat(args['min-confidence']) || 0.3,
-        limit: parseInt(args.limit) || Infinity,
+        limit: parseInt(args.limit, 10) || 999999,
       });
       console.log(`  Pulled:     ${c.boldGreen(String(report.pulled))}`);
       console.log(`  Duplicates: ${c.dim(String(report.duplicates))}`);

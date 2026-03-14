@@ -35,7 +35,8 @@ function cloneRepo(repoUrl, options = {}) {
   args.push(repoUrl, tmpDir);
 
   try {
-    execSync(args.join(' '), { timeout: 60000, stdio: 'pipe', encoding: 'utf-8' });
+    const { execFileSync } = require('child_process');
+    execFileSync(args[0], args.slice(1), { timeout: 60000, stdio: 'pipe', encoding: 'utf-8' });
     return tmpDir;
   } catch (err) {
     fs.rmSync(tmpDir, { recursive: true, force: true });

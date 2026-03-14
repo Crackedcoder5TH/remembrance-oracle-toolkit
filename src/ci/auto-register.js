@@ -17,7 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 const { extractFunctionNames, detectLanguage } = require('./auto-seed');
 const { splitFunctions } = require('./harvest');
@@ -33,7 +33,8 @@ const CODE_EXTS = /\.(js|ts|py|go|rs|jsx|tsx)$/;
  */
 function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
   try {
-    const output = execSync(`git diff --name-only --diff-filter=ACM ${range}`, {
+    if (!/^[\w.~^/]+(?:\.\.\.?[\w.~^/]+)?$/.test(range)) throw new Error('Invalid git range');
+    const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACM', range], {
       cwd,
       encoding: 'utf-8',
       timeout: 5000,
@@ -57,7 +58,8 @@ function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
  */
 function getAddedCode(cwd, file, range = 'HEAD~1..HEAD') {
   try {
-    const diff = execSync(`git diff -U0 ${range} -- "${file}"`, {
+    if (!/^[\w.~^/]+(?:\.\.\.?[\w.~^/]+)?$/.test(range)) throw new Error('Invalid git range');
+    const diff = execFileSync('git', ['diff', '-U0', range, '--', file], {
       cwd,
       encoding: 'utf-8',
       timeout: 5000,

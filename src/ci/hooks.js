@@ -50,7 +50,7 @@ for file in $STAGED; do
   if [ -f "$file" ]; then
     result=$(ORACLE_CHECK_FILE="$file" node -e "
       try {
-        const { covenantCheck } = require('${path.resolve(__dirname, '../core/covenant')}');
+        const { covenantCheck } = require(${JSON.stringify(path.resolve(__dirname, '../core/covenant'))});
         const fs = require('fs');
         const f = process.env.ORACLE_CHECK_FILE;
         const code = fs.readFileSync(f, 'utf-8');
@@ -91,9 +91,9 @@ ${HOOK_MARKER}
 
 node -e "
   try {
-    const { shouldAutoSubmit, autoSubmit } = require('${path.resolve(__dirname, './auto-submit')}');
+    const { shouldAutoSubmit, autoSubmit } = require(${JSON.stringify(path.resolve(__dirname, './auto-submit'))});
     if (!shouldAutoSubmit(process.cwd())) process.exit(0);
-    const { RemembranceOracle } = require('${path.resolve(__dirname, '../api/oracle')}');
+    const { RemembranceOracle } = require(${JSON.stringify(path.resolve(__dirname, '../api/oracle'))});
     const oracle = new RemembranceOracle({ autoSeed: false });
     const result = autoSubmit(oracle, process.cwd(), { syncPersonal: true, silent: true });
     const total = result.harvest.registered + result.promoted;
@@ -128,8 +128,8 @@ function installHooks(cwd = process.cwd()) {
       // Already installed — overwrite
       fs.writeFileSync(preCommitPath, preCommitScript());
     } else {
-      // Append to existing hook
-      fs.appendFileSync(preCommitPath, '\n' + preCommitScript());
+      // Append to existing hook (strip shebang to avoid duplicate)
+      fs.appendFileSync(preCommitPath, '\n' + preCommitScript().replace(/^#!\/bin\/sh\n/, ''));
     }
   } else {
     fs.writeFileSync(preCommitPath, preCommitScript());
@@ -144,7 +144,7 @@ function installHooks(cwd = process.cwd()) {
     if (existing.includes(HOOK_MARKER)) {
       fs.writeFileSync(postCommitPath, postCommitScript());
     } else {
-      fs.appendFileSync(postCommitPath, '\n' + postCommitScript());
+      fs.appendFileSync(postCommitPath, '\n' + postCommitScript().replace(/^#!\/bin\/sh\n/, ''));
     }
   } else {
     fs.writeFileSync(postCommitPath, postCommitScript());

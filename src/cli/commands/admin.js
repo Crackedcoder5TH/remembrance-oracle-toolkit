@@ -435,7 +435,7 @@ ${c.bold('Subcommands:')}
     if (sub === 'duplicates') {
       console.log(c.dim('\nScanning for duplicates...'));
       const dupes = findDuplicates(oracle, {
-        threshold: parseFloat(args.threshold) || 0.85,
+        threshold: args.threshold != null ? parseFloat(args.threshold) : 0.85,
         language: args.language,
       });
       if (jsonOut()) { console.log(JSON.stringify(dupes)); return; }

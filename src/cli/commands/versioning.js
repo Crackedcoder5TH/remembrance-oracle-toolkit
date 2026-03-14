@@ -32,7 +32,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
   handlers['rollback'] = (args) => {
     const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle rollback')} <pattern-id> [--version <n>]`); process.exit(1); }
-    const version = parseInt(args.version) || undefined;
+    const version = args.version != null ? parseInt(args.version) : undefined;
     const result = oracle.rollback(id, version);
     if (result.success) {
       console.log(`${c.boldGreen('Rolled back:')} ${c.bold(result.patternName)} \u2192 v${result.restoredVersion}`);

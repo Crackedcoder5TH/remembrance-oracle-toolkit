@@ -19,7 +19,7 @@ function registerSwarmCommands(handlers, { oracle, getCode, jsonOut }) {
         const [key, ...rest] = args.set.split('=');
         const value = rest.join('=');
         if (key && value) {
-          const parsed = value === 'true' ? true : value === 'false' ? false : isNaN(value) ? value : Number(value);
+          const parsed = value === 'true' ? true : value === 'false' ? false : (isNaN(value) || value.trim() === '') ? value : Number(value);
           config[key] = parsed;
           saveSwarmConfig(process.cwd(), config);
           console.log(`${c.boldGreen('Set')} ${c.bold(key)} = ${c.cyan(String(parsed))}`);
@@ -97,7 +97,7 @@ function registerSwarmCommands(handlers, { oracle, getCode, jsonOut }) {
         language: args.language,
         oracle,
       });
-      if (jsonOut(args, result)) return;
+      if (jsonOut()) { console.log(JSON.stringify(result)); return; }
       console.log(formatSwarmResult(result));
       return;
     }
@@ -113,7 +113,7 @@ function registerSwarmCommands(handlers, { oracle, getCode, jsonOut }) {
         language: args.language,
         oracle,
       });
-      if (jsonOut(args, result)) return;
+      if (jsonOut()) { console.log(JSON.stringify(result)); return; }
       console.log(formatSwarmResult(result));
       return;
     }

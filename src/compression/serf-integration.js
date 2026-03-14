@@ -258,13 +258,15 @@ function validateAllReconstructions(store) {
   const passed = [];
   const failed = [];
 
+  const allPatterns = store.getAllPatterns();
+  const patternMap = new Map(allPatterns.map(p => [p.id, p]));
+
   for (const template of templates) {
     const deltas = store.getDeltasByTemplate(template.id);
 
     for (const d of deltas) {
       // Get original pattern code
-      const patterns = store.getAllPatterns();
-      const pattern = patterns.find(p => p.id === d.patternId);
+      const pattern = patternMap.get(d.patternId);
       if (!pattern) continue;
 
       const result = validateReconstruction(

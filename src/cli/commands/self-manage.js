@@ -119,7 +119,7 @@ ${c.bold('Commands:')}
       console.log(`\n${c.boldCyan('Consolidating Near-Duplicates')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
       const report = oracle.consolidateDuplicates({
-        similarityThreshold: parseFloat(args.threshold) || undefined,
+        similarityThreshold: args.threshold != null ? parseFloat(args.threshold) : undefined,
         dryRun,
       });
 
@@ -247,7 +247,7 @@ ${c.bold('Commands:')}
 
     if (sub === 'all') {
       const dryRun = parseDryRun(args);
-      const maxIterations = parseInt(args['max-iterations']) || undefined;
+      const maxIterations = args['max-iterations'] != null ? parseInt(args['max-iterations']) : undefined;
       console.log(`\n${c.boldCyan('Iterative Polish')}${dryRun ? c.dim(' (dry run)') : ''}`);
       console.log(`${c.dim('Running self-reflection loop: polish → evaluate → repeat until convergence...')}\n`);
 

@@ -965,7 +965,7 @@ class PatternLibrary {
     const before = data.patterns.length;
     data.patterns = data.patterns.filter(p => {
       const coherency = p.coherencyScore?.total ?? 0;
-      const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
+      const reliability = (p.usageCount ?? 0) > 0 ? (p.successCount ?? 0) / p.usageCount : 0.5;
       return (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
     });
     this._writeJSON(data);

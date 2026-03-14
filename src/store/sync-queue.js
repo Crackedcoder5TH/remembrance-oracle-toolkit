@@ -205,7 +205,9 @@ function withOfflineQueue(syncFn, queue, operationType) {
       const result = await syncFn(store, options);
       // If sync succeeded, try to drain the queue too
       if (queue.pending().length > 0) {
-        queue.drain((op) => syncFn(store, op.options || {})).catch(() => {});
+        queue.drain((op) => syncFn(store, op.options || {})).catch((drainErr) => {
+          if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:drain] queue drain failed:', drainErr?.message || drainErr);
+        });
       }
       return result;
     } catch (err) {

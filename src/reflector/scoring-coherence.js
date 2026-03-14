@@ -91,7 +91,7 @@ function scoreReadability(code, language) {
   details.push(`Naming quality: ${namingScore.toFixed(3)}`);
 
   const score = (commentScore * 0.30) + (nestingScore * 0.25) + (qualityScore * 0.25) + (namingScore * 0.20);
-  return { score: Math.round(score * 1000) / 1000, commentScore, nestingScore, qualityScore, namingScore, details };
+  return { score: Math.round(Math.max(0, Math.min(1, score)) * 1000) / 1000, commentScore, nestingScore, qualityScore, namingScore, details };
 }
 
 function scoreNamingQuality(code, language) {

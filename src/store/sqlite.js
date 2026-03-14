@@ -382,18 +382,21 @@ class SQLiteStore {
               times_used, times_succeeded, historical_score, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
-          for (const e of data.entries) {
-            insert.run(
-              e.id, e.code, e.language || 'unknown', e.description || '',
-              JSON.stringify(e.tags || []), e.author || 'anonymous',
-              e.coherencyScore?.total ?? 0, JSON.stringify(e.coherencyScore || {}),
-              e.validation?.testPassed == null ? null : (e.validation.testPassed ? 1 : 0),
-              e.validation?.testOutput || null, e.validation?.validatedAt || null,
-              e.reliability?.timesUsed || 0, e.reliability?.timesSucceeded || 0,
-              e.reliability?.historicalScore ?? 1.0,
-              e.createdAt || new Date().toISOString(), e.updatedAt || new Date().toISOString()
-            );
-          }
+          const migrateAll = this.db.transaction(() => {
+            for (const e of data.entries) {
+              insert.run(
+                e.id, e.code, e.language || 'unknown', e.description || '',
+                JSON.stringify(e.tags || []), e.author || 'anonymous',
+                e.coherencyScore?.total ?? 0, JSON.stringify(e.coherencyScore || {}),
+                e.validation?.testPassed == null ? null : (e.validation.testPassed ? 1 : 0),
+                e.validation?.testOutput || null, e.validation?.validatedAt || null,
+                e.reliability?.timesUsed || 0, e.reliability?.timesSucceeded || 0,
+                e.reliability?.historicalScore ?? 1.0,
+                e.createdAt || new Date().toISOString(), e.updatedAt || new Date().toISOString()
+              );
+            }
+          });
+          migrateAll();
         }
         // Rename old file so migration doesn't re-run
         fs.renameSync(historyPath, historyPath + '.migrated');
@@ -413,18 +416,21 @@ class SQLiteStore {
               usage_count, success_count, evolution_history, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
-          for (const p of data.patterns) {
-            insert.run(
-              p.id, p.name, p.code, p.language || 'unknown',
-              p.patternType || 'utility', p.complexity || 'composite',
-              p.description || '', JSON.stringify(p.tags || []),
-              p.coherencyScore?.total ?? 0, JSON.stringify(p.coherencyScore || {}),
-              JSON.stringify(p.variants || []), p.testCode || null,
-              p.usageCount ?? 0, p.successCount ?? 0,
-              JSON.stringify(p.evolutionHistory || []),
-              p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
-            );
-          }
+          const migrateAll = this.db.transaction(() => {
+            for (const p of data.patterns) {
+              insert.run(
+                p.id, p.name, p.code, p.language || 'unknown',
+                p.patternType || 'utility', p.complexity || 'composite',
+                p.description || '', JSON.stringify(p.tags || []),
+                p.coherencyScore?.total ?? 0, JSON.stringify(p.coherencyScore || {}),
+                JSON.stringify(p.variants || []), p.testCode || null,
+                p.usageCount ?? 0, p.successCount ?? 0,
+                JSON.stringify(p.evolutionHistory || []),
+                p.createdAt || new Date().toISOString(), p.updatedAt || new Date().toISOString()
+              );
+            }
+          });
+          migrateAll();
         }
         fs.renameSync(patternsPath, patternsPath + '.migrated');
       } catch (e) {

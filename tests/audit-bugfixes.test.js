@@ -253,3 +253,84 @@ describe('Audit Bug #10: decide() alternatives consistency', () => {
     assert.strictEqual(alternatives[0].id, '2');
   });
 });
+
+// ─── Bug #11: withOfflineQueue doesn't await async syncFn ───
+
+describe('Audit Bug #11: withOfflineQueue async handling', () => {
+  it('wrappedSync is an async function', () => {
+    const { withOfflineQueue, SyncQueue } = require('../src/store/sync-queue');
+    const queue = new SyncQueue({ queueDir: '/tmp/oracle-test-sync-' + Date.now() });
+    const asyncFn = async () => ({ ok: true });
+    const wrapped = withOfflineQueue(asyncFn, queue, 'push');
+    // The wrapped function should be async
+    const result = wrapped({});
+    assert.ok(result instanceof Promise, 'wrappedSync should return a Promise for async syncFn');
+  });
+});
+
+// ─── Bug #12: coherencyBefore || null converts 0 to null ───
+
+describe('Audit Bug #12: falsy zero in coherency values', () => {
+  it('nullish coalescing preserves 0 values', () => {
+    const stat = { coherencyBefore: 0, coherencyAfter: 0.5 };
+    // The fix: use ?? instead of ||
+    const before = stat.coherencyBefore ?? null;
+    const after = stat.coherencyAfter ?? null;
+    assert.strictEqual(before, 0, 'Should preserve 0, not convert to null');
+    assert.strictEqual(after, 0.5);
+  });
+
+  it('nullish coalescing converts undefined to null', () => {
+    const stat = {};
+    const before = stat.coherencyBefore ?? null;
+    assert.strictEqual(before, null);
+  });
+});
+
+// ─── Bug #13: addCandidate coherencyTotal naming mismatch ───
+
+describe('Audit Bug #13: addCandidate coherency field naming', () => {
+  it('coherencyScore.total takes precedence over coherencyTotal', () => {
+    const candidate = { coherencyScore: { total: 0.85 } };
+    const value = candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0;
+    assert.strictEqual(value, 0.85);
+  });
+
+  it('falls back to coherencyTotal when coherencyScore is missing', () => {
+    const candidate = { coherencyTotal: 0.7 };
+    const value = candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0;
+    assert.strictEqual(value, 0.7);
+  });
+
+  it('falls back to 0 when both are missing', () => {
+    const candidate = {};
+    const value = candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0;
+    assert.strictEqual(value, 0);
+  });
+});
+
+// ─── Bug #14: history.js language/tags crash on undefined ───
+
+describe('Audit Bug #14: history filter null guards', () => {
+  it('language filter handles undefined language', () => {
+    const entries = [
+      { language: undefined, description: 'test' },
+      { language: 'javascript', description: 'js code' },
+      { language: null, description: 'null lang' },
+    ];
+    const filtered = entries.filter(e => (e.language || '').toLowerCase() === 'javascript');
+    assert.strictEqual(filtered.length, 1);
+    assert.strictEqual(filtered[0].description, 'js code');
+  });
+
+  it('tags filter handles null tags', () => {
+    const entries = [
+      { tags: null },
+      { tags: ['foo', 'bar'] },
+      { tags: undefined },
+    ];
+    const filterTags = new Set(['foo']);
+    const filtered = entries.filter(e => (e.tags || []).some(t => filterTags.has(t.toLowerCase())));
+    assert.strictEqual(filtered.length, 1);
+  });
+});

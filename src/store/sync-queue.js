@@ -196,9 +196,9 @@ class SyncQueue {
  * @returns {Function} Wrapped function
  */
 function withOfflineQueue(syncFn, queue, operationType) {
-  return function wrappedSync(store, options = {}) {
+  return async function wrappedSync(store, options = {}) {
     try {
-      const result = syncFn(store, options);
+      const result = await syncFn(store, options);
       // If sync succeeded, try to drain the queue too
       if (queue.pending().length > 0) {
         queue.drain((op) => syncFn(store, op.options || {})).catch(() => {});

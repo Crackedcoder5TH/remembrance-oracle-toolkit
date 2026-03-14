@@ -194,14 +194,14 @@ class VerifiedHistoryStore {
     const data = this._readJSON();
     let entries = data.entries;
     if (filters.language) {
-      entries = entries.filter(e => e.language.toLowerCase() === filters.language.toLowerCase());
+      entries = entries.filter(e => (e.language || '').toLowerCase() === filters.language.toLowerCase());
     }
     if (filters.minCoherency != null) {
       entries = entries.filter(e => (e.coherencyScore?.total ?? 0) >= filters.minCoherency);
     }
     if (filters.tags && filters.tags.length > 0) {
       const filterTags = new Set(filters.tags.map(t => t.toLowerCase()));
-      entries = entries.filter(e => e.tags.some(t => filterTags.has(t.toLowerCase())));
+      entries = entries.filter(e => (e.tags || []).some(t => filterTags.has(t.toLowerCase())));
     }
     return entries;
   }

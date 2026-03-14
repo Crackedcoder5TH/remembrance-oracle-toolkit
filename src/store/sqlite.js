@@ -1085,7 +1085,7 @@ class SQLiteStore {
       id, candidate.name, candidate.code, candidate.language || 'unknown',
       candidate.patternType || 'utility', candidate.complexity || 'composite',
       candidate.description || '', JSON.stringify(candidate.tags || []),
-      candidate.coherencyTotal ?? 0, JSON.stringify(candidate.coherencyScore || {}),
+      candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0, JSON.stringify(candidate.coherencyScore || {}),
       candidate.testCode || null,
       candidate.parentPattern || null, candidate.generationMethod || 'variant',
       now, now
@@ -1322,7 +1322,7 @@ class SQLiteStore {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       stat.patternId, stat.succeeded ? 1 : 0,
-      stat.coherencyBefore || null, stat.coherencyAfter || null, delta,
+      stat.coherencyBefore ?? null, stat.coherencyAfter ?? null, delta,
       stat.healingLoops || 0, now
     );
   }

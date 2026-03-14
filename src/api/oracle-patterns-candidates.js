@@ -163,7 +163,7 @@ module.exports = {
             const row = db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
             if (row) {
               const now = new Date().toISOString();
-              db.prepare(`
+              const archiveResult = db.prepare(`
                 INSERT OR IGNORE INTO pattern_archive
                   (id, name, code, language, pattern_type, coherency_total, coherency_json,
                    test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
@@ -175,6 +175,14 @@ module.exports = {
                 row.tags || '[]', 'deep-clean:' + reason, now, row.created_at || null,
                 JSON.stringify(row)
               );
+              // Verify archive before allowing delete
+              if (archiveResult.changes === 0) {
+                const archived = db.prepare('SELECT 1 FROM pattern_archive WHERE id = ?').get(row.id);
+                if (!archived) {
+                  if (process.env.ORACLE_DEBUG) console.warn(`[oracle-patterns-candidates:deepClean] ABORT delete of ${id} — archive failed`);
+                  continue;
+                }
+              }
             }
             db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
           }

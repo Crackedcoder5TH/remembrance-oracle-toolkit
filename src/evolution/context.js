@@ -88,6 +88,8 @@ function createOracleContext(oracle) {
               );
             } catch (e) {
               if (process.env.ORACLE_DEBUG) console.warn('[context:deletePattern] archive table may not exist:', e?.message || e);
+              // Archive failed — abort deletion to prevent data loss
+              return;
             }
           }
           db.prepare('DELETE FROM patterns WHERE id = ?').run(id);

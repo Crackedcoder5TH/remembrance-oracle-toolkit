@@ -1116,8 +1116,11 @@ function _deletePatternFallback(oracle, id) {
           );
         } catch (e) {
           if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:_deletePatternFallback] archive table may not exist in all stores:', e?.message || e);
+          // Archive failed — abort deletion to prevent data loss
+          return;
         }
       }
+      // Only delete after confirmed archive (or if no archiveExists check needed)
       db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
     }
   } catch (e) {

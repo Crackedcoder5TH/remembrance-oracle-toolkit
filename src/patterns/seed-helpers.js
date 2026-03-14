@@ -6,7 +6,13 @@ const { readFileSync } = require('fs');
 const path = require('path');
 
 function loadJSON(filename) {
-  return JSON.parse(readFileSync(path.join(__dirname, filename), 'utf-8'));
+  const filePath = path.join(__dirname, filename);
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf-8'));
+  } catch (e) {
+    console.error(`[seed-helpers:loadJSON] CRITICAL — failed to load ${filename}: ${e.message}`);
+    return []; // Return empty array so oracle can still initialise with partial seeds
+  }
 }
 
 // ─── Data loaders (lazy, cached) ───

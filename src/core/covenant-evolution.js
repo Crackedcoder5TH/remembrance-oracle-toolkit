@@ -61,7 +61,11 @@ function saveEvolvedPrinciples(data, rootDir = process.cwd()) {
   const tmpPath = filePath + '.tmp';
   fs.writeFileSync(tmpPath, json, 'utf-8');
   if (fs.existsSync(filePath)) {
-    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch (_) { /* best effort */ }
+    try {
+      fs.copyFileSync(filePath, filePath + '.bak');
+    } catch (e) {
+      console.warn(`[covenant-evolution:save] WARNING — backup failed: ${e?.message || e}. Recovery may be incomplete if write is interrupted.`);
+    }
   }
   fs.renameSync(tmpPath, filePath);
 }

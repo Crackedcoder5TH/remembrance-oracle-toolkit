@@ -135,8 +135,11 @@ function atomicWriteJSON(filePath, data) {
   const tmpPath = filePath + '.tmp';
   fs.writeFileSync(tmpPath, json, 'utf-8');
   if (fs.existsSync(filePath)) {
-    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch (e) {
-      if (process.env.ORACLE_DEBUG) console.warn('[library:atomicWriteJSON] ok:', e?.message || e);
+    try {
+      fs.copyFileSync(filePath, filePath + '.bak');
+    } catch (e) {
+      // Backup failed — warn loudly since .bak recovery won't work if rename crashes
+      console.warn(`[library:atomicWriteJSON] WARNING — backup failed for ${path.basename(filePath)}: ${e?.message || e}. Recovery may be incomplete if write is interrupted.`);
     }
   }
   fs.renameSync(tmpPath, filePath);

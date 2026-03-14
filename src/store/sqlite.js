@@ -1702,7 +1702,7 @@ class SQLiteStore {
    */
   _archivePattern(row, reason = 'unknown') {
     const now = new Date().toISOString();
-    this.db.prepare(`
+    const result = this.db.prepare(`
       INSERT OR IGNORE INTO pattern_archive
         (id, name, code, language, pattern_type, coherency_total, coherency_json,
          test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
@@ -1714,6 +1714,14 @@ class SQLiteStore {
       row.tags || '[]', reason, now, row.created_at || null,
       JSON.stringify(row)
     );
+    // Verify archive actually wrote — INSERT OR IGNORE silently skips on conflict
+    if (result.changes === 0) {
+      // Row already archived (same id) — verify it exists before allowing deletion
+      const exists = this.db.prepare('SELECT 1 FROM pattern_archive WHERE id = ?').get(row.id);
+      if (!exists) {
+        throw new Error(`[sqlite:_archivePattern] ABORT — failed to archive pattern ${row.id} (${row.name}), refusing to delete`);
+      }
+    }
   }
 
   /**
@@ -1721,7 +1729,7 @@ class SQLiteStore {
    */
   _archiveCandidate(row, reason = 'unknown') {
     const now = new Date().toISOString();
-    this.db.prepare(`
+    const result = this.db.prepare(`
       INSERT OR IGNORE INTO candidate_archive
         (id, name, code, language, coherency_total, parent_pattern,
          generation_method, deleted_reason, deleted_at, original_created_at, full_row_json)
@@ -1732,6 +1740,13 @@ class SQLiteStore {
       row.generation_method || 'variant', reason, now,
       row.created_at || null, JSON.stringify(row)
     );
+    // Verify archive actually wrote — refuse deletion if archive failed
+    if (result.changes === 0) {
+      const exists = this.db.prepare('SELECT 1 FROM candidate_archive WHERE id = ?').get(row.id);
+      if (!exists) {
+        throw new Error(`[sqlite:_archiveCandidate] ABORT — failed to archive candidate ${row.id} (${row.name}), refusing to delete`);
+      }
+    }
   }
 
   /**
@@ -1739,7 +1754,7 @@ class SQLiteStore {
    */
   _archiveEntry(row, reason = 'unknown') {
     const now = new Date().toISOString();
-    this.db.prepare(`
+    const result = this.db.prepare(`
       INSERT OR IGNORE INTO entry_archive
         (id, code, language, coherency_total, deleted_reason,
          deleted_at, original_created_at, full_row_json)
@@ -1749,6 +1764,13 @@ class SQLiteStore {
       row.coherency_total || 0, reason, now,
       row.created_at || null, JSON.stringify(row)
     );
+    // Verify archive actually wrote — refuse deletion if archive failed
+    if (result.changes === 0) {
+      const exists = this.db.prepare('SELECT 1 FROM entry_archive WHERE id = ?').get(row.id);
+      if (!exists) {
+        throw new Error(`[sqlite:_archiveEntry] ABORT — failed to archive entry ${row.id}, refusing to delete`);
+      }
+    }
   }
 
   /**
@@ -1771,6 +1793,13 @@ class SQLiteStore {
       try {
         const full = JSON.parse(row.full_row_json);
         this._insertPatternFromRow(full);
+        // Verify the pattern was actually inserted before removing from archive
+        const inserted = this.db.prepare('SELECT 1 FROM patterns WHERE id = ?').get(row.id);
+        if (!inserted) {
+          if (process.env.ORACLE_DEBUG) console.warn(`[sqlite:restoreArchived] INSERT OR IGNORE did not insert ${row.id} — keeping archive`);
+          skipped++;
+          continue;
+        }
         this.db.prepare('DELETE FROM pattern_archive WHERE id = ? AND deleted_at = ?').run(row.id, row.deleted_at);
         this._audit('restore', 'patterns', row.id, { reason: row.deleted_reason });
         restored++;

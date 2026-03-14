@@ -33,6 +33,13 @@ function initAuditLog(baseDir) {
   fs.mkdirSync(_auditDir, { recursive: true });
   const logPath = path.join(_auditDir, 'audit.jsonl');
   _auditStream = fs.createWriteStream(logPath, { flags: 'a', encoding: 'utf-8' });
+  // Handle stream errors so they don't crash the process or silently lose data
+  _auditStream.on('error', (err) => {
+    if (process.env.ORACLE_DEBUG) console.error('[audit-logger] stream error — audit entries may be lost:', err.message);
+    // Attempt to re-open the stream on next write
+    try { _auditStream.destroy(); } catch (_) { /* already destroyed */ }
+    _auditStream = null;
+  });
 }
 
 /**
@@ -54,6 +61,18 @@ function auditLog(action, details = {}) {
       traceId: crypto.randomBytes(6).toString('hex'),
     };
     const line = JSON.stringify(entry) + '\n';
+    // Auto-reinitialize if stream was destroyed by error handler
+    if (!_auditStream && _auditDir) {
+      try {
+        const logPath = path.join(_auditDir, 'audit.jsonl');
+        _auditStream = fs.createWriteStream(logPath, { flags: 'a', encoding: 'utf-8' });
+        _auditStream.on('error', (err) => {
+          if (process.env.ORACLE_DEBUG) console.error('[audit-logger] stream error:', err.message);
+          try { _auditStream.destroy(); } catch (_) {}
+          _auditStream = null;
+        });
+      } catch (_) { /* cannot reinitialize — entries lost until explicit re-init */ }
+    }
     if (_auditStream && !_auditStream.destroyed) {
       _auditStream.write(line);
     }

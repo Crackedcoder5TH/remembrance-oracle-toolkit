@@ -87,6 +87,41 @@ describe('Security Scan Bypass Detection', () => {
     const code = `function calculate(x) { return x * 2; }`;
     assert.deepStrictEqual(detectSecurityScanBypass(code), []);
   });
+
+  it('detects raw code matching in security function', () => {
+    const code = [
+      'function securityCheck(code) {',
+      '  if (/eval/.test(code)) {',
+      '    return { risk: "high" };',
+      '  }',
+      '}',
+    ].join('\n');
+    const w = detectSecurityScanBypass(code);
+    assert.ok(w.length > 0, 'Should detect raw code matching without stripping');
+  });
+
+  it('does not flag when strip is called first', () => {
+    const code = [
+      'function securityScan(code) {',
+      '  const stripped = stripStringsAndComments(code);',
+      '  if (/eval/.test(stripped)) {',
+      '    return { risk: "high" };',
+      '  }',
+      '}',
+    ].join('\n');
+    const w = detectSecurityScanBypass(code);
+    assert.strictEqual(w.length, 0, 'Should not flag when strip is called');
+  });
+
+  it('detects const-based validator function names', () => {
+    const code = [
+      'const validateInput = function(code) {',
+      '  if (/eval/.test(code)) return false;',
+      '}',
+    ].join('\n');
+    const w = detectSecurityScanBypass(code);
+    assert.ok(w.length > 0, 'Should detect const-based validator');
+  });
 });
 
 describe('Loop Query Detection', () => {
@@ -112,7 +147,22 @@ describe('Loop Query Detection', () => {
     assert.equal(w.length, 0, 'Should not flag query outside loop');
   });
 
+  it('detects query in while loop', () => {
+    const code = [
+      'while (hasMore) {',
+      '  const data = store.getAllItems();',
+      '  process(data);',
+      '}',
+    ].join('\n');
+    const w = detectLoopQuery(code);
+    assert.ok(w.length > 0, 'Should detect query in while loop');
+  });
+
   it('returns empty for null input', () => {
     assert.deepStrictEqual(detectLoopQuery(null), []);
+  });
+
+  it('returns empty for empty string', () => {
+    assert.deepStrictEqual(detectLoopQuery(''), []);
   });
 });

@@ -33,9 +33,9 @@ function detectLogicInconsistency(code) {
 
     // Pattern: dry-run/preview/would- status that modifies counters
     if (/(?:dry.?run|preview|would|simulate|test.?mode)/i.test(line)) {
-      // Check next few lines for counter increments
+      // Check next few lines for counter increments or state mutations
       for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-        if (/\+\+|--|\+=\s*1|-=\s*1/.test(lines[j]) && /count|total|promoted|processed|completed/.test(lines[j])) {
+        if (/\+\+|--|\+=\s*\d|-=\s*\d|=\s*\w+\s*\+\s*\d/.test(lines[j]) && /count|total|promoted|processed|completed|imported/.test(lines[j])) {
           warnings.push({
             line: j + 1,
             pattern: lines[j].trim(),

@@ -41,8 +41,18 @@ function detectLoopQuery(code) {
     const line = lines[i];
     if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
 
-    if (/\bfor\s*\(|\bwhile\s*\(|\.forEach\s*\(|\.map\s*\(/.test(line)) loopDepth++;
-    if (/^\s*\}/.test(line) && loopDepth > 0) loopDepth--;
+    // Count opening braces that follow loop statements on the same line
+    const loopMatch = /\bfor\s*\(|\bwhile\s*\(|\.forEach\s*\(|\.map\s*\(/.test(line);
+    if (loopMatch) loopDepth++;
+
+    // Count all closing braces for depth tracking (not just at line start)
+    const opens = (line.match(/\{/g) || []).length;
+    const closes = (line.match(/\}/g) || []).length;
+    const netClose = closes - opens;
+    // If net closing braces, decrease loop depth (but not below 0)
+    if (netClose > 0) {
+      loopDepth = Math.max(0, loopDepth - netClose);
+    }
 
     if (loopDepth > 0 && queryPatterns.test(line)) {
       const match = line.match(queryPatterns);

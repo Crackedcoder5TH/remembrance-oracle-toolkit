@@ -41,7 +41,11 @@ function detectPrecedenceIssues(code) {
     if (mathRoundBug) {
       const inner = mathRoundBug[1];
       // Check if there are parentheses around the + or - operands
-      if (!inner.includes('(') || inner.lastIndexOf('(') < inner.lastIndexOf('+') && inner.lastIndexOf('(') < inner.lastIndexOf('-')) {
+      // Check if parens are absent, or if existing parens come before +/- operators
+      const lastParen = inner.lastIndexOf('(');
+      const lastPlus = inner.lastIndexOf('+');
+      const lastMinus = inner.lastIndexOf('-');
+      if (!inner.includes('(') || (lastParen < lastPlus || lastParen < lastMinus)) {
         warnings.push({
           line: i + 1,
           expression: mathRoundBug[0],

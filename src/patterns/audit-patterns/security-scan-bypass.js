@@ -38,7 +38,7 @@ function detectSecurityScanBypass(code) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    if (/function\s+\w*[Ss]ecurity\w*|function\s+\w*[Ss]can\w*|function\s+\w*[Aa]udit\w*/.test(line)) {
+    if (/(?:function\s+|const\s+|let\s+|var\s+)\w*(?:[Ss]ecurity|[Ss]can|[Aa]udit|[Vv]alidat|[Cc]heck|[Dd]etect|[Aa]nalyz)\w*/.test(line)) {
       inSecurityScanFn = true;
       hasStripCall = false;
       fnStartLine = i;

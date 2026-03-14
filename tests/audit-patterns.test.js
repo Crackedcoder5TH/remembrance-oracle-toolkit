@@ -41,6 +41,23 @@ describe('Null Property Access Detection', () => {
     const warnings = detectNullPropertyAccess(code);
     assert.strictEqual(warnings.length, 0);
   });
+
+  it('does not flag optional chaining on method call', () => {
+    const code = `const name = item.name?.toLowerCase();`;
+    const warnings = detectNullPropertyAccess(code);
+    assert.strictEqual(warnings.length, 0, 'Should not flag optional chaining');
+  });
+
+  it('does not flag ternary guard', () => {
+    const code = `const name = item.name ? item.name.toLowerCase() : '';`;
+    const warnings = detectNullPropertyAccess(code);
+    assert.strictEqual(warnings.length, 0, 'Should not flag ternary guard');
+  });
+
+  it('returns empty for non-string input', () => {
+    assert.deepStrictEqual(detectNullPropertyAccess(42), []);
+    assert.deepStrictEqual(detectNullPropertyAccess({}), []);
+  });
 });
 
 describe('Operator Precedence Detection', () => {
@@ -50,8 +67,18 @@ describe('Operator Precedence Detection', () => {
     assert.ok(warnings.length > 0, 'Should detect precedence issue in Math.round');
   });
 
+  it('does not flag properly parenthesized Math.round', () => {
+    const code = `const x = Math.round((1 - y - z) * 100) / 100;`;
+    const warnings = detectPrecedenceIssues(code);
+    assert.strictEqual(warnings.length, 0, 'Should not flag correct parenthesization');
+  });
+
   it('returns empty for null input', () => {
     assert.deepStrictEqual(detectPrecedenceIssues(null), []);
+  });
+
+  it('returns empty for empty string', () => {
+    assert.deepStrictEqual(detectPrecedenceIssues(''), []);
   });
 });
 
@@ -95,6 +122,16 @@ describe('Logic Inconsistency Detection', () => {
     ].join('\n');
     const warnings = detectLogicInconsistency(code);
     assert.ok(warnings.length > 0, 'Should detect counter in dry-run');
+  });
+
+  it('detects += mutation in dry-run block', () => {
+    const code = [
+      "if (dryRun) {",
+      '  report.imported += 1;',
+      '}',
+    ].join('\n');
+    const warnings = detectLogicInconsistency(code);
+    assert.ok(warnings.length > 0, 'Should detect += mutation in dry-run');
   });
 
   it('returns empty for null input', () => {

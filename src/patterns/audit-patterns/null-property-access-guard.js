@@ -44,6 +44,10 @@ function detectNullPropertyAccess(code) {
         if (line.includes(`${match[1]}?.${match[2]}`) || line.includes(`${match[1]} && ${match[1]}.${match[2]}`)) return false;
         // Skip if wrapped in (x || default)
         if (line.includes(`(${match[1]}.${match[2]} || `)) return false;
+        // Skip if the method call itself uses optional chaining
+        if (line.includes(`${match[2]}?.`)) return false;
+        // Skip ternary guards: x.y ? x.y.method() : fallback
+        if (new RegExp(`${match[1]}\\.${match[2]}\\s*\\?`).test(line)) return false;
         return true;
       },
       suggestion: (match) => `Consider: (${match[1]}.${match[2]} || '').method() or ${match[1]}.${match[2]}?.method()`,

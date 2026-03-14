@@ -49,22 +49,21 @@ fi
 FAILED=0
 for file in $STAGED; do
   if [ -f "$file" ]; then
-    result=$(ORACLE_CHECK_FILE="$file" node -e "
+    result=$(ORACLE_CHECK_FILE="$file" node -e '
       try {
         const { covenantCheck } = require(${JSON.stringify(path.resolve(__dirname, '../core/covenant'))});
-        const fs = require('fs');
+        const fs = require("fs");
         const f = process.env.ORACLE_CHECK_FILE;
-        const code = fs.readFileSync(f, 'utf-8');
+        const code = fs.readFileSync(f, "utf-8");
         const r = covenantCheck(code, { description: f, trusted: true });
         if (!r.sealed) {
-          r.violations.forEach(v => console.error('COVENANT BROKEN [' + v.name + ']: ' + v.reason + ' — ' + f));
+          r.violations.forEach(v => console.error("COVENANT BROKEN [" + v.name + "]: " + v.reason + " — " + f));
           process.exit(1);
         }
       } catch(e) {
-        if (process.env.ORACLE_DEBUG) console.warn('[hooks:preCommitScript] silent failure:', e?.message || e);
         // Covenant module not found — skip
       }
-    " 2>&1)
+    ' 2>&1)
     if [ $? -ne 0 ]; then
       echo "$result"
       FAILED=1

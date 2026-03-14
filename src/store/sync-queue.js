@@ -113,8 +113,9 @@ class SyncQueue {
     let failed = 0;
 
     try {
-      for (const op of this._queue) {
-        if (op.status !== 'pending') continue;
+      // Snapshot pending ops — avoid mutating array during iteration
+      const pending = this._queue.filter(op => op.status === 'pending');
+      for (const op of pending) {
 
         op.lastAttempt = new Date().toISOString();
 

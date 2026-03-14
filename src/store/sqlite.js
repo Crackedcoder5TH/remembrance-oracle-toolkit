@@ -542,11 +542,17 @@ class SQLiteStore {
     const version = (row.version || 1) + 1;
     const now = new Date().toISOString();
 
-    this.db.prepare(`
+    const result = this.db.prepare(`
       UPDATE entries SET times_used = ?, times_succeeded = ?, historical_score = ?,
         version = ?, updated_at = ?
       WHERE id = ? AND version = ?
     `).run(timesUsed, timesSucceeded, historicalScore, version, now, id, row.version || 1);
+
+    // Optimistic lock failed — another process updated the row between our read and write
+    if (result.changes === 0) {
+      if (process.env.ORACLE_DEBUG) console.warn(`[sqlite:recordEntryUsage] version conflict for ${id} — retrying`);
+      return this.recordEntryUsage(id, succeeded); // Retry with fresh read
+    }
 
     this._audit('usage', 'entries', id, { succeeded, timesUsed, historicalScore });
     return this._rowToEntry(this.db.prepare('SELECT * FROM entries WHERE id = ?').get(id));
@@ -797,10 +803,16 @@ class SQLiteStore {
     const version = (row.version || 1) + 1;
     const now = new Date().toISOString();
 
-    this.db.prepare(`
+    const result = this.db.prepare(`
       UPDATE patterns SET usage_count = ?, success_count = ?, version = ?, updated_at = ?
       WHERE id = ? AND version = ?
     `).run(usageCount, successCount, version, now, id, row.version || 1);
+
+    // Optimistic lock failed — retry with fresh read
+    if (result.changes === 0) {
+      if (process.env.ORACLE_DEBUG) console.warn(`[sqlite:recordPatternUsage] version conflict for ${id} — retrying`);
+      return this.recordPatternUsage(id, succeeded);
+    }
 
     this._audit('usage', 'patterns', id, { succeeded, usageCount, successCount });
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
@@ -1488,9 +1500,11 @@ class SQLiteStore {
   }
 
   incrementDecisions() {
-    const current = parseInt(this.getMeta('decisions') || '0', 10);
-    this.setMeta('decisions', current + 1);
-    return current + 1;
+    // Atomic increment — single UPDATE avoids TOCTOU race between getMeta and setMeta
+    this.db.prepare(
+      "INSERT INTO meta (key, value) VALUES ('decisions', '1') ON CONFLICT(key) DO UPDATE SET value = CAST(CAST(value AS INTEGER) + 1 AS TEXT)"
+    ).run();
+    return parseInt(this.getMeta('decisions') || '0', 10);
   }
 
   // ─── Fractal Compression CRUD ───

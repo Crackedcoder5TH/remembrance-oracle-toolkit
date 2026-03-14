@@ -46,9 +46,13 @@ class VerifiedHistoryStore {
         if (!VerifiedHistoryStore._sqliteInstances) {
           VerifiedHistoryStore._sqliteInstances = new Map();
         }
-        if (VerifiedHistoryStore._sqliteInstances.has(this.storeDir)) {
-          this._sqlite = VerifiedHistoryStore._sqliteInstances.get(this.storeDir);
-        } else {
+        const cached = VerifiedHistoryStore._sqliteInstances.get(this.storeDir);
+        // Verify cached instance is still open — a closed DB will throw on any query
+        if (cached) {
+          try { cached.db.prepare('SELECT 1').get(); this._sqlite = cached; }
+          catch { VerifiedHistoryStore._sqliteInstances.delete(this.storeDir); }
+        }
+        if (!this._sqlite) {
           this._sqlite = new SQLiteStoreClass(baseDir);
           VerifiedHistoryStore._sqliteInstances.set(this.storeDir, this._sqlite);
         }

@@ -152,6 +152,9 @@ module.exports = {
    * Evolves an existing pattern by creating a new version linked to the parent.
    */
   evolvePattern(parentId, newCode, metadata = {}) {
+    if (newCode == null || typeof newCode !== 'string' || newCode.trim().length === 0) {
+      return { success: false, evolved: false, error: 'Invalid input: newCode must be a non-empty string' };
+    }
     const evolved = this.patterns.evolve(parentId, newCode, metadata);
     if (!evolved) return { success: false, evolved: false, error: `Pattern ${parentId} not found` };
 

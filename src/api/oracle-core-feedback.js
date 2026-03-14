@@ -31,7 +31,9 @@ module.exports = {
     if (!succeeded) {
       try {
         const { needsAutoHeal, autoHeal } = require('../evolution/evolution');
-        const pattern = this.patterns.getAll().find(p => p.id === id);
+        const pattern = this.patterns._sqlite
+          ? this.patterns._sqlite.getPattern(id)
+          : this.patterns.getAll().find(p => p.id === id);
         if (pattern && needsAutoHeal(pattern)) {
           const healed = autoHeal(pattern);
           if (healed && healed.improvement > 0) {

@@ -656,9 +656,9 @@ function consolidateDuplicates(ctx, options = {}) {
       });
     } else {
       // Same-language exact duplicates: only delete if similarity is extremely high (>= 0.98)
-      // and the loser has lower coherency. Never delete patterns with high coherency.
+      // and the loser has low coherency. Never delete patterns with coherency >= 0.7.
       const loserCoherency = loser.coherencyScore?.total ?? 0;
-      if (similarity >= 0.98 && loserCoherency < 0.9) {
+      if (similarity >= 0.98 && loserCoherency < 0.7) {
         if (!dryRun) {
           deletePattern(loser.id);
         }
@@ -1111,38 +1111,44 @@ function _deletePatternFallback(oracle, id) {
     if (db) {
       // Archive before delete for recovery safety
       const row = db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
-      if (row) {
-        // SAFETY: Refuse to delete high-coherency patterns or those with tests
-        const coherency = row.coherency_total || 0;
-        if (coherency >= 0.8) {
-          if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] BLOCKED deletion of high-coherency pattern ${id} (${coherency})`);
-          return;
-        }
-        if (row.test_code && row.test_code.trim().length > 20) {
-          if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] BLOCKED deletion of tested pattern ${id}`);
-          return;
-        }
-        const now = new Date().toISOString();
-        try {
-          db.prepare(`
-            INSERT OR IGNORE INTO pattern_archive
-              (id, name, code, language, pattern_type, coherency_total, coherency_json,
-               test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(
-            row.id, row.name, row.code, row.language || 'unknown',
-            row.pattern_type || 'utility', row.coherency_total || 0,
-            row.coherency_json || '{}', row.test_code || null,
-            row.tags || '[]', 'evolution-delete', now, row.created_at || null,
-            JSON.stringify(row)
-          );
-        } catch (e) {
-          if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:_deletePatternFallback] archive table may not exist in all stores:', e?.message || e);
-          // Archive failed — abort deletion to prevent data loss
-          return;
-        }
+      if (!row) return; // Nothing to delete
+      // SAFETY: Refuse to delete high-coherency patterns or those with tests
+      const coherency = row.coherency_total || 0;
+      if (coherency >= 0.7) {
+        if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] BLOCKED deletion of high-coherency pattern ${id} (${coherency})`);
+        return;
       }
-      // Only delete after confirmed archive (or if no archiveExists check needed)
+      if (row.test_code && row.test_code.trim().length > 20) {
+        if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] BLOCKED deletion of tested pattern ${id}`);
+        return;
+      }
+      const now = new Date().toISOString();
+      try {
+        const archiveResult = db.prepare(`
+          INSERT OR IGNORE INTO pattern_archive
+            (id, name, code, language, pattern_type, coherency_total, coherency_json,
+             test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          row.id, row.name, row.code, row.language || 'unknown',
+          row.pattern_type || 'utility', row.coherency_total || 0,
+          row.coherency_json || '{}', row.test_code || null,
+          row.tags || '[]', 'evolution-delete', now, row.created_at || null,
+          JSON.stringify(row)
+        );
+        // Verify archive succeeded before deleting
+        if (archiveResult.changes === 0) {
+          const exists = db.prepare('SELECT 1 FROM pattern_archive WHERE id = ?').get(row.id);
+          if (!exists) {
+            if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] ABORT — archive failed for ${id}`);
+            return;
+          }
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:_deletePatternFallback] archive table may not exist in all stores:', e?.message || e);
+        // Archive failed — abort deletion to prevent data loss
+        return;
+      }
       db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
     }
   } catch (e) {

@@ -772,7 +772,8 @@ class SQLiteStore {
    * Remove duplicate patterns, keeping the highest-coherency row for each (name, language).
    * Returns { removed, kept, byName }.
    */
-  deduplicatePatterns() {
+  deduplicatePatterns(options = {}) {
+    const { maxRemovals = 100 } = options;
     const all = this.db.prepare('SELECT * FROM patterns ORDER BY coherency_total DESC').all();
     const bestByKey = new Map();
     const toDelete = [];
@@ -786,11 +787,14 @@ class SQLiteStore {
       }
     }
 
-    if (toDelete.length > 0) {
+    // SAFETY: Cap removals per run to prevent mass deletion
+    const capped = toDelete.slice(0, maxRemovals);
+
+    if (capped.length > 0) {
       this.db.exec('BEGIN');
       try {
         const deleteStmt = this.db.prepare('DELETE FROM patterns WHERE id = ?');
-        for (const row of toDelete) {
+        for (const row of capped) {
           this._archivePattern(row, 'deduplicated');
           deleteStmt.run(row.id);
         }
@@ -801,7 +805,7 @@ class SQLiteStore {
       }
     }
 
-    return { removed: toDelete.length, kept: bestByKey.size };
+    return { removed: capped.length, kept: bestByKey.size, totalDuplicates: toDelete.length };
   }
 
   getAllPatterns(filters = {}) {

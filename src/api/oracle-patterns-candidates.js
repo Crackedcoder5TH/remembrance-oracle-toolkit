@@ -147,12 +147,12 @@ module.exports = {
       }
     }
 
-    // SAFETY: Never delete patterns with high coherency (>= 0.8) or test code
+    // SAFETY: Never delete patterns with coherency >= 0.7 or test code
     for (const [id] of toRemove) {
       const p = all.find(x => x.id === id);
       if (!p) continue;
       const coherency = p.coherencyScore?.total ?? p.coherency_total ?? 0;
-      if (coherency >= 0.8) { toRemove.delete(id); continue; }
+      if (coherency >= 0.7) { toRemove.delete(id); continue; }
       if (p.test_code && p.test_code.trim().length > 20) { toRemove.delete(id); continue; }
     }
 

@@ -157,6 +157,7 @@ const CATEGORIES = [
       { name: 'audit', description: 'View append-only audit log' },
       { name: 'prune', description: 'Remove low-coherency entries' },
       { name: 'deep-clean', description: 'Remove duplicates, stubs, and trivial patterns' },
+      { name: 'restore', description: 'Restore lost/archived patterns (stats, lost, <name>)' },
       { name: 'rollback', description: 'Rollback a pattern to a previous version' },
       { name: 'import', description: 'Import patterns from exported JSON' },
       { name: 'export', description: 'Export top patterns as JSON or markdown' },

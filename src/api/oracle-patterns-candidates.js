@@ -129,7 +129,7 @@ module.exports = {
   },
 
   deepClean(options = {}) {
-    const { minCodeLength = 35, minNameLength = 3, removeDuplicates = true, removeStubs = true, dryRun = false } = options;
+    const { minCodeLength = 35, minNameLength = 3, removeDuplicates = true, removeStubs = true, dryRun = false, maxRemovals = 50 } = options;
     const all = this.patterns.getAll();
     const toRemove = removeDuplicates ? _findDuplicates(all) : new Map();
 
@@ -145,6 +145,22 @@ module.exports = {
       if (tags.includes('harvested') && code.length < minCodeLength && name.length < minNameLength) {
         toRemove.set(p.id, 'too-short');
       }
+    }
+
+    // SAFETY: Never delete patterns with high coherency (>= 0.8) or test code
+    for (const [id] of toRemove) {
+      const p = all.find(x => x.id === id);
+      if (!p) continue;
+      const coherency = p.coherencyScore?.total ?? p.coherency_total ?? 0;
+      if (coherency >= 0.8) { toRemove.delete(id); continue; }
+      if (p.test_code && p.test_code.trim().length > 20) { toRemove.delete(id); continue; }
+    }
+
+    // SAFETY: Cap total removals per run to prevent mass deletion
+    if (toRemove.size > maxRemovals) {
+      const entries = [...toRemove.entries()];
+      toRemove.clear();
+      for (let i = 0; i < maxRemovals; i++) toRemove.set(entries[i][0], entries[i][1]);
     }
 
     let duplicates = 0, stubs = 0, tooShort = 0;

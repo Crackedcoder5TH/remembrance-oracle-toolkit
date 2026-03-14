@@ -148,9 +148,9 @@ function selfImprove(ctx, options = {}) {
     // Best effort
   }
 
-  // Step 3: Deep clean (remove duplicates, stubs)
+  // Step 3: Deep clean (remove duplicates, stubs) — capped to prevent mass deletion
   try {
-    const cleanResult = doDeepClean({ dryRun: false });
+    const cleanResult = doDeepClean({ dryRun: false, maxRemovals: 20 });
     report.cleaned = cleanResult?.removed || 0;
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
@@ -627,8 +627,12 @@ function consolidateDuplicates(ctx, options = {}) {
     const loser = keeper === existing ? duplicate : existing;
 
     if (isLangVariant) {
+      // SAFETY: Never delete language variants — they are valuable typed/ported code.
+      // Instead, cross-link them via tags so they can be discovered together.
       const variantTag = `has-${loser.language}-variant`;
       const keeperTags = new Set(keeper.tags || []);
+      const loserTag = `has-${keeper.language}-variant`;
+      const loserTags = new Set(loser.tags || []);
 
       if (!keeperTags.has(variantTag)) {
         keeperTags.add(variantTag);
@@ -636,30 +640,38 @@ function consolidateDuplicates(ctx, options = {}) {
           updatePattern(keeper.id, { tags: [...keeperTags] });
         }
       }
-
-      if (!dryRun) {
-        deletePattern(loser.id);
+      if (!loserTags.has(loserTag)) {
+        loserTags.add(loserTag);
+        if (!dryRun) {
+          updatePattern(loser.id, { tags: [...loserTags] });
+        }
       }
 
+      // Do NOT delete — just link
       report.linked.push({
         kept: { id: keeper.id, name: keeper.name, language: keeper.language, coherency: existingCoherency >= duplicateCoherency ? existingCoherency : duplicateCoherency },
-        removed: { id: loser.id, name: loser.name, language: loser.language, coherency: existingCoherency >= duplicateCoherency ? duplicateCoherency : existingCoherency },
+        linked: { id: loser.id, name: loser.name, language: loser.language, coherency: existingCoherency >= duplicateCoherency ? duplicateCoherency : existingCoherency },
         similarity: Math.round(similarity * 1000) / 1000,
         variantTag,
       });
     } else {
-      if (!dryRun) {
-        deletePattern(loser.id);
+      // Same-language exact duplicates: only delete if similarity is extremely high (>= 0.98)
+      // and the loser has lower coherency. Never delete patterns with high coherency.
+      const loserCoherency = loser.coherencyScore?.total ?? 0;
+      if (similarity >= 0.98 && loserCoherency < 0.9) {
+        if (!dryRun) {
+          deletePattern(loser.id);
+        }
+        report.removed.push({ id: loser.id, name: loser.name, reason: 'same-language-duplicate' });
       }
 
       report.merged.push({
         kept: { id: keeper.id, name: keeper.name, coherency: Math.max(existingCoherency, duplicateCoherency) },
         removed: { id: loser.id, name: loser.name, coherency: Math.min(existingCoherency, duplicateCoherency) },
         similarity: Math.round(similarity * 1000) / 1000,
+        deleted: similarity >= 0.98 && loserCoherency < 0.9,
       });
     }
-
-    report.removed.push({ id: loser.id, name: loser.name, reason: isLangVariant ? 'language-variant' : 'same-language-duplicate' });
   }
 
   report.durationMs = Date.now() - startTime;
@@ -1100,6 +1112,16 @@ function _deletePatternFallback(oracle, id) {
       // Archive before delete for recovery safety
       const row = db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
       if (row) {
+        // SAFETY: Refuse to delete high-coherency patterns or those with tests
+        const coherency = row.coherency_total || 0;
+        if (coherency >= 0.8) {
+          if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] BLOCKED deletion of high-coherency pattern ${id} (${coherency})`);
+          return;
+        }
+        if (row.test_code && row.test_code.trim().length > 20) {
+          if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] BLOCKED deletion of tested pattern ${id}`);
+          return;
+        }
         const now = new Date().toISOString();
         try {
           db.prepare(`

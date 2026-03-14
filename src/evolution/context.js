@@ -72,6 +72,16 @@ function createOracleContext(oracle) {
           // Archive before delete for recovery safety
           const row = db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
           if (row) {
+            // SAFETY: Refuse to delete high-coherency patterns or those with tests
+            const coherency = row.coherency_total || 0;
+            if (coherency >= 0.8) {
+              if (process.env.ORACLE_DEBUG) console.warn(`[context:deletePattern] BLOCKED deletion of high-coherency pattern ${id} (${coherency})`);
+              return;
+            }
+            if (row.test_code && row.test_code.trim().length > 20) {
+              if (process.env.ORACLE_DEBUG) console.warn(`[context:deletePattern] BLOCKED deletion of tested pattern ${id}`);
+              return;
+            }
             const now = new Date().toISOString();
             try {
               db.prepare(`

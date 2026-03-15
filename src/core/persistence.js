@@ -232,6 +232,7 @@ function syncFromGlobal(localStore, options = {}) {
   for (const pattern of personalPatterns) {
     if ((report.pulled + report.upgraded) >= maxPull) break;
 
+    if (!pattern.name) { report.skipped++; continue; }
     const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
 

@@ -133,6 +133,16 @@ function createPage(pageId, members, templateId = null) {
   }
 
   const dims = members[0].embedding.length;
+
+  // Validate all members have the same embedding dimensions
+  for (let i = 1; i < members.length; i++) {
+    if (!members[i].embedding || members[i].embedding.length !== dims) {
+      throw new Error(
+        `createPage: dimension mismatch — member ${i} has ${members[i].embedding?.length ?? 0} dims, expected ${dims}`
+      );
+    }
+  }
+
   const centroid = new Float64Array(dims);
 
   // Compute centroid (element-wise mean)

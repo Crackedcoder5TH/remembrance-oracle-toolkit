@@ -546,7 +546,9 @@ class PatternLibrary {
    * Bug reports penalize the pattern's reliability score.
    */
   reportBug(id, description) {
-    const pattern = this.getAll().find(p => p.id === id);
+    const pattern = this._backend === 'sqlite'
+      ? this._sqlite.getPattern(id)
+      : this.getAll().find(p => p.id === id);
     if (!pattern) return { success: false, reason: 'Pattern not found' };
 
     const bugCount = (pattern.bugReports || 0) + 1;
@@ -569,7 +571,9 @@ class PatternLibrary {
    * Get full reliability breakdown for a pattern.
    */
   getReliability(id) {
-    const pattern = this.getAll().find(p => p.id === id);
+    const pattern = this._backend === 'sqlite'
+      ? this._sqlite.getPattern(id)
+      : this.getAll().find(p => p.id === id);
     if (!pattern) return null;
 
     const usageReliability = pattern.usageCount > 0 ? pattern.successCount / pattern.usageCount : 0.5;

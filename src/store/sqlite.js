@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const log = require('../core/logger');
 const { safePath } = require('../core/safe-path');
 const { computeCoherencyScore } = require('../core/coherency');
 const { synthesizeTests } = require('../evolution/test-synth');
@@ -52,6 +53,7 @@ class SQLiteStore {
     this.db.exec(`PRAGMA journal_mode = WAL`);
     this.db.exec(`PRAGMA synchronous = NORMAL`);
     this.db.exec(`PRAGMA busy_timeout = 5000`);
+    this.db.exec(`PRAGMA foreign_keys = ON`);
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS entries (
@@ -393,6 +395,23 @@ class SQLiteStore {
       );
     `);
 
+    // FK enforcement is done in storeDelta() and storeHoloPage() methods
+    // via soft checks with structured logging (see _checkFractalFK helper)
+
+    // Validation results — persists reconstruction pass/fail results
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS validation_results (
+        pattern_id TEXT NOT NULL,
+        template_id TEXT NOT NULL,
+        valid INTEGER NOT NULL,
+        original_coherence REAL,
+        reconstructed_coherence REAL,
+        coherence_delta REAL,
+        validated_at TEXT NOT NULL,
+        PRIMARY KEY (pattern_id, template_id)
+      );
+    `);
+
     // Initialize meta if not present
     const row = this.db.prepare('SELECT value FROM meta WHERE key = ?').get('version');
     if (!row) {
@@ -510,6 +529,32 @@ class SQLiteStore {
       INSERT INTO audit_log (timestamp, action, target_table, target_id, detail, actor)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(new Date().toISOString(), action, table, id, JSON.stringify(detail), actor);
+
+    // Rotate: cap at 10K rows and 30-day TTL (run every ~100 inserts to avoid overhead)
+    if (!this._auditRotateCounter) this._auditRotateCounter = 0;
+    if (++this._auditRotateCounter >= 100) {
+      this._auditRotateCounter = 0;
+      this._rotateAuditLog();
+    }
+  }
+
+  _rotateAuditLog() {
+    const MAX_ROWS = 10000;
+    const TTL_DAYS = 30;
+    const cutoff = new Date(Date.now() - TTL_DAYS * 86400000).toISOString();
+
+    // Delete entries older than TTL
+    this.db.prepare('DELETE FROM audit_log WHERE timestamp < ?').run(cutoff);
+
+    // If still over cap, keep only the most recent MAX_ROWS
+    const count = this.db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    if (count > MAX_ROWS) {
+      this.db.prepare(`
+        DELETE FROM audit_log WHERE seq NOT IN (
+          SELECT seq FROM audit_log ORDER BY seq DESC LIMIT ?
+        )
+      `).run(MAX_ROWS);
+    }
   }
 
   /**
@@ -589,7 +634,7 @@ class SQLiteStore {
     return row ? this._rowToEntry(row) : null;
   }
 
-  recordEntryUsage(id, succeeded) {
+  recordEntryUsage(id, succeeded, _retryCount = 0) {
     const row = this.db.prepare('SELECT * FROM entries WHERE id = ?').get(id);
     if (!row) return null;
 
@@ -607,8 +652,12 @@ class SQLiteStore {
 
     // Optimistic lock failed — another process updated the row between our read and write
     if (result.changes === 0) {
-      if (process.env.ORACLE_DEBUG) console.warn(`[sqlite:recordEntryUsage] version conflict for ${id} — retrying`);
-      return this.recordEntryUsage(id, succeeded); // Retry with fresh read
+      if (_retryCount >= 3) {
+        log.warn('sqlite', `recordEntryUsage version conflict for ${id} — max retries exceeded`);
+        return null;
+      }
+      log.debug('sqlite', `recordEntryUsage version conflict for ${id} — retrying`, { attempt: _retryCount + 1 });
+      return this.recordEntryUsage(id, succeeded, _retryCount + 1);
     }
 
     this._audit('usage', 'entries', id, { succeeded, timesUsed, historicalScore });
@@ -871,7 +920,7 @@ class SQLiteStore {
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
   }
 
-  recordPatternUsage(id, succeeded) {
+  recordPatternUsage(id, succeeded, _retryCount = 0) {
     const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
     if (!row) return null;
 
@@ -901,10 +950,14 @@ class SQLiteStore {
       newCoherency.total, JSON.stringify(newCoherency),
       id, row.version || 1);
 
-    // Optimistic lock failed — retry with fresh read
+    // Optimistic lock failed — retry with fresh read (capped at 3 attempts)
     if (result.changes === 0) {
-      if (process.env.ORACLE_DEBUG) console.warn(`[sqlite:recordPatternUsage] version conflict for ${id} — retrying`);
-      return this.recordPatternUsage(id, succeeded);
+      if (_retryCount >= 3) {
+        log.warn('sqlite', `recordPatternUsage version conflict for ${id} — max retries exceeded`);
+        return null;
+      }
+      log.debug('sqlite', `recordPatternUsage version conflict for ${id} — retrying`, { attempt: _retryCount + 1 });
+      return this.recordPatternUsage(id, succeeded, _retryCount + 1);
     }
 
     this._audit('usage', 'patterns', id, { succeeded, usageCount, successCount, coherency: newCoherency.total });
@@ -1550,6 +1603,17 @@ class SQLiteStore {
   // ─── Candidate methods — coherent-but-unproven patterns ───
 
   addCandidate(candidate) {
+    // Dedup gate: hash the code content to prevent duplicate candidates
+    const codeHash = this._hash(candidate.code || '');
+    const existing = this.db.prepare(
+      'SELECT id FROM candidates WHERE id = ?'
+    ).get(codeHash.slice(0, 16));
+    // Also check for identical code in existing candidates
+    const dupCheck = this.db.prepare(
+      'SELECT id FROM candidates WHERE code = ? LIMIT 1'
+    ).get(candidate.code || '');
+    if (dupCheck) return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(dupCheck.id));
+
     const id = this._hash(candidate.code + candidate.name + Date.now());
     const now = new Date().toISOString();
 
@@ -2008,6 +2072,11 @@ class SQLiteStore {
   }
 
   storeDelta(delta) {
+    // Soft FK check: warn if template doesn't exist
+    if (delta.templateId) {
+      const tmpl = this.db.prepare('SELECT 1 FROM fractal_templates WHERE id = ?').get(delta.templateId);
+      if (!tmpl) log.warn('sqlite', `storeDelta: template ${delta.templateId} not found (orphan delta for ${delta.patternId})`);
+    }
     const now = new Date().toISOString();
     this.db.prepare(`
       INSERT OR REPLACE INTO fractal_deltas (pattern_id, template_id, delta_json, original_size, delta_size, created_at)
@@ -2038,6 +2107,11 @@ class SQLiteStore {
   // ─── Holographic Encoding CRUD ───
 
   storeHoloPage(page) {
+    // Soft FK check: warn if template doesn't exist
+    if (page.templateId) {
+      const tmpl = this.db.prepare('SELECT 1 FROM fractal_templates WHERE id = ?').get(page.templateId);
+      if (!tmpl) log.warn('sqlite', `storeHoloPage: template ${page.templateId} not found (orphan page ${page.id})`);
+    }
     const now = new Date().toISOString();
     this.db.prepare(`
       INSERT OR REPLACE INTO holo_pages (id, template_id, centroid_vec, interference_matrix, member_ids, member_count, created_at, updated_at)
@@ -2128,24 +2202,59 @@ class SQLiteStore {
    * same transaction that deletes the pattern.
    */
   _cleanupFractalData(patternId) {
-    // Remove the pattern's fractal delta and update the template member count
+    // Remove the pattern's fractal delta and update the template member count atomically
     const delta = this.db.prepare('SELECT template_id FROM fractal_deltas WHERE pattern_id = ?').get(patternId);
     if (delta) {
       this.db.prepare('DELETE FROM fractal_deltas WHERE pattern_id = ?').run(patternId);
-      // Decrement template member count; remove template if no members remain
-      const remaining = this.db.prepare(
-        'SELECT COUNT(*) as c FROM fractal_deltas WHERE template_id = ?'
-      ).get(delta.template_id);
-      if (remaining.c === 0) {
-        this.db.prepare('DELETE FROM fractal_templates WHERE id = ?').run(delta.template_id);
-      } else {
-        this.db.prepare(
-          'UPDATE fractal_templates SET member_count = ?, updated_at = ? WHERE id = ?'
-        ).run(remaining.c, new Date().toISOString(), delta.template_id);
-      }
+      // Atomic decrement; delete template if count drops to zero
+      this.db.prepare(
+        'UPDATE fractal_templates SET member_count = member_count - 1, updated_at = ? WHERE id = ?'
+      ).run(new Date().toISOString(), delta.template_id);
+      this.db.prepare(
+        'DELETE FROM fractal_templates WHERE id = ? AND member_count <= 0'
+      ).run(delta.template_id);
     }
     // Remove the pattern's holographic embedding
     this.db.prepare('DELETE FROM holo_embeddings WHERE pattern_id = ?').run(patternId);
+
+    // Update holo_pages.member_ids — remove this pattern from any page that references it
+    const pages = this.db.prepare('SELECT id, member_ids FROM holo_pages').all();
+    for (const page of pages) {
+      const memberIds = this._safeJSON(page.member_ids, []);
+      const idx = memberIds.indexOf(patternId);
+      if (idx !== -1) {
+        memberIds.splice(idx, 1);
+        if (memberIds.length === 0) {
+          this.db.prepare('DELETE FROM holo_pages WHERE id = ?').run(page.id);
+        } else {
+          this.db.prepare(
+            'UPDATE holo_pages SET member_ids = ?, member_count = ?, updated_at = ? WHERE id = ?'
+          ).run(JSON.stringify(memberIds), memberIds.length, new Date().toISOString(), page.id);
+        }
+      }
+    }
+  }
+
+  storeValidationResult(result) {
+    this.db.prepare(`
+      INSERT OR REPLACE INTO validation_results
+        (pattern_id, template_id, valid, original_coherence, reconstructed_coherence, coherence_delta, validated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      result.patternId, result.templateId || '', result.valid ? 1 : 0,
+      result.originalCoherence ?? 0, result.reconstructedCoherence ?? 0,
+      result.delta ?? 0, new Date().toISOString()
+    );
+  }
+
+  getValidationResults() {
+    return this.db.prepare('SELECT * FROM validation_results ORDER BY validated_at DESC').all()
+      .map(r => ({
+        patternId: r.pattern_id, templateId: r.template_id,
+        valid: r.valid === 1, originalCoherence: r.original_coherence,
+        reconstructedCoherence: r.reconstructed_coherence,
+        coherenceDelta: r.coherence_delta, validatedAt: r.validated_at,
+      }));
   }
 
   /**

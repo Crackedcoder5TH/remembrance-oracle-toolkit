@@ -24,11 +24,20 @@ const { parseStructuredDescription, structuralSimilarity } = require('../core/st
 const { applyDecayToScore, computeFreshnessBoost } = require('../core/confidence-decay');
 
 // Fractal-library bridge (graceful — returns neutral values if unavailable)
-let _holoDecisionBoost, _familyStabilitySignal, _familyDecayModifier, _integratePatternIncremental;
+// Decision-engine helpers still needed directly; mutation integration moved to FractalStore.
+let _holoDecisionBoost, _familyStabilitySignal, _familyDecayModifier;
 try {
-  ({ holoDecisionBoost: _holoDecisionBoost, familyStabilitySignal: _familyStabilitySignal, familyDecayModifier: _familyDecayModifier, integratePatternIncremental: _integratePatternIncremental } = require('../compression/fractal-library-bridge'));
+  ({ holoDecisionBoost: _holoDecisionBoost, familyStabilitySignal: _familyStabilitySignal, familyDecayModifier: _familyDecayModifier } = require('../compression/fractal-library-bridge'));
 } catch (e) {
   if (process.env.ORACLE_DEBUG) console.warn('[library:init] fractal-library bridge not available:', e?.message || e);
+}
+
+// FractalStore middleware — wraps SQLiteStore so every mutation auto-maintains fractal data.
+let FractalStore;
+try {
+  ({ FractalStore } = require('../store/fractal-store'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[library:init] FractalStore not available:', e?.message || e);
 }
 const {
   DECISION_THRESHOLDS,
@@ -255,7 +264,9 @@ class PatternLibrary {
 
     const sqlite = tryGetSQLite(storeDir);
     if (sqlite) {
-      this._sqlite = sqlite;
+      // Wrap in FractalStore so every mutation auto-maintains embeddings & families.
+      // Falls back to raw SQLiteStore if FractalStore is unavailable.
+      this._sqlite = FractalStore ? new FractalStore(sqlite) : sqlite;
       this._backend = 'sqlite';
     } else {
       this._ensureJSON();
@@ -330,19 +341,14 @@ class PatternLibrary {
         variants: pattern.variants || [],
         testCode: pattern.testCode || null,
       };
-      // Use dedup-safe insert: skip or update if (name, language) already exists
+      // Use dedup-safe insert: skip or update if (name, language) already exists.
+      // FractalStore.addPatternIfNotExists auto-integrates embeddings & families.
       const record = this._sqlite.addPatternIfNotExists(patternData);
       this._sqlite.incrementDecisions();
       if (!record) {
         // Duplicate with equal/higher coherency — return the existing one
         const existing = this._sqlite.getPatternByName(pattern.name);
         return existing || null;
-      }
-      // Incrementally integrate into fractal compression + holographic embeddings
-      if (_integratePatternIncremental && record.id) {
-        try { _integratePatternIncremental(record, this._sqlite); } catch (e) {
-          if (process.env.ORACLE_DEBUG) console.warn('[library:register] incremental fractal integration:', e?.message);
-        }
       }
       return record;
     }

@@ -34,6 +34,7 @@ const CATEGORIES = [
       { name: 'synthesize', description: 'Synthesize tests for candidates and auto-promote' },
       { name: 'bug-report', description: 'Generate a diagnostic bug report' },
       { name: 'compress', description: 'Fractal compression and holographic encoding' },
+      { name: 'cluster', description: 'Cluster patterns by structural similarity (run, isomorphisms)' },
     ],
   },
   {

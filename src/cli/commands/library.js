@@ -517,6 +517,44 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       console.log(c.red(result.message || 'Compression failed'));
     }
   };
+
+  handlers['cluster'] = (args) => {
+    const { clusterPatterns, findIsomorphisms } = require('../../patterns/clustering');
+    const patterns = oracle.patterns.getAll();
+    const threshold = args.threshold ? parseFloat(args.threshold) : 0.45;
+    const sub = args._sub || 'run';
+
+    if (sub === 'isomorphisms' || sub === 'iso') {
+      const isos = findIsomorphisms(patterns, { threshold });
+      if (isos.length === 0) {
+        console.log(c.dim('No cross-domain isomorphisms found.'));
+        return;
+      }
+      console.log(c.boldCyan(`Found ${isos.length} cross-domain isomorphism(s):\n`));
+      for (const iso of isos.slice(0, 20)) {
+        console.log(`  ${c.bold(iso.patternA.name)} ${c.dim(`[${iso.patternA.domain}]`)} ↔ ${c.bold(iso.patternB.name)} ${c.dim(`[${iso.patternB.domain}]`)}`);
+        console.log(`    Structural: ${colorScore(iso.similarity.structural.toFixed(3))} | Code: ${colorScore(iso.similarity.code.toFixed(3))} | Total: ${colorScore(iso.similarity.total.toFixed(3))}`);
+      }
+      return;
+    }
+
+    const clusters = clusterPatterns(patterns, { threshold });
+    const crossDomain = clusters.filter(cl => cl.crossDomain);
+    console.log(c.boldCyan(`Clustering: ${patterns.length} patterns → ${clusters.length} cluster(s)\n`));
+    console.log(`  Cross-domain clusters: ${c.bold(String(crossDomain.length))}`);
+    console.log(`  Single-domain clusters: ${c.bold(String(clusters.length - crossDomain.length))}\n`);
+
+    const toShow = args.all ? clusters : clusters.filter(cl => cl.members.length > 1).slice(0, 15);
+    for (const cl of toShow) {
+      const domainLabel = cl.crossDomain ? c.yellow(' [CROSS-DOMAIN]') : '';
+      console.log(`${c.bold(cl.id)}${domainLabel} (${cl.members.length} members, avg sim: ${colorScore(cl.avgSimilarity.toFixed(3))})`);
+      for (const m of cl.members.slice(0, 5)) {
+        console.log(`  - ${c.cyan(m.name || m.id)} ${c.dim(`[${m.language || 'unknown'}]`)}`);
+      }
+      if (cl.members.length > 5) console.log(`  ${c.dim(`  ... and ${cl.members.length - 5} more`)}`);
+      console.log('');
+    }
+  };
 }
 
 function _formatBytes(bytes) {

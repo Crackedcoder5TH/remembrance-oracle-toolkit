@@ -22,6 +22,14 @@ const { computeCoherencyScore } = require('../core/coherency');
 const { computeRelevance } = require('../core/relevance');
 const { parseStructuredDescription, structuralSimilarity } = require('../core/structured-description');
 const { applyDecayToScore, computeFreshnessBoost } = require('../core/confidence-decay');
+
+// Fractal-library bridge (graceful — returns neutral values if unavailable)
+let _holoDecisionBoost, _familyStabilitySignal, _familyDecayModifier;
+try {
+  ({ holoDecisionBoost: _holoDecisionBoost, familyStabilitySignal: _familyStabilitySignal, familyDecayModifier: _familyDecayModifier } = require('../compression/fractal-library-bridge'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[library:init] fractal-library bridge not available:', e?.message || e);
+}
 const {
   DECISION_THRESHOLDS,
   HASH_TRUNCATION_LENGTH,
@@ -415,14 +423,24 @@ class PatternLibrary {
       }
 
       // Confidence decay — penalize stale, reward fresh
-      const decayResult = applyDecayToScore(coherency, p);
+      // Family stability slows decay for patterns in proven structural families
+      const store = this._sqlite || (this.store && this.store.getSQLiteStore ? this.store.getSQLiteStore() : null);
+      const decayModifier = _familyDecayModifier ? _familyDecayModifier(p.id, store) : 1.0;
+      const decayResult = applyDecayToScore(coherency, p, { halfLifeDays: 90 * decayModifier });
       const freshnessBoost = computeFreshnessBoost(p);
       const decayedCoherency = decayResult.adjusted + freshnessBoost;
 
-      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
-      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus + structuralBoost - evolutionPenalty);
+      // Holographic embedding boost — uses 128D vectors when available
+      let holoBoost = 0;
+      if (_holoDecisionBoost) {
+        const holo = _holoDecisionBoost({ description, tags, language }, p, store);
+        holoBoost = holo.boost;
+      }
 
-      return { pattern: p, relevance: relevance.relevance, coherency, decayedCoherency, reliability, structuralSimilarity: structSim, composite };
+      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
+      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus + structuralBoost + holoBoost - evolutionPenalty);
+
+      return { pattern: p, relevance: relevance.relevance, coherency, decayedCoherency, reliability, structuralSimilarity: structSim, holoBoost, composite };
     }).sort((a, b) => b.composite - a.composite);
 
     // Guard: if all patterns were filtered out during scoring, generate

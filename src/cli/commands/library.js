@@ -555,6 +555,41 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       console.log('');
     }
   };
+
+  handlers['audit-integration'] = (args) => {
+    const { auditIntegration } = require('../../compression/fractal-library-bridge');
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : null;
+    const report = auditIntegration(store, oracle.patterns);
+
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(c.boldCyan('Fractal ↔ Library Integration Audit\n'));
+    console.log(`  Total patterns:       ${c.bold(String(report.totalPatterns))}`);
+    console.log(`  With embeddings:      ${c.bold(String(report.withEmbeddings))} (${report.totalPatterns > 0 ? ((report.withEmbeddings / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+    console.log(`  In fractal families:  ${c.bold(String(report.withFamilies))} (${report.totalPatterns > 0 ? ((report.withFamilies / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+    console.log(`  Structured descs:     ${c.bold(String(report.withStructuredDesc))} (${report.totalPatterns > 0 ? ((report.withStructuredDesc / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+
+    if (report.familyStats.totalFamilies > 0) {
+      console.log(`\n${c.bold('Family Statistics:')}`);
+      console.log(`  Total families:       ${c.bold(String(report.familyStats.totalFamilies))}`);
+      console.log(`  Avg family size:      ${c.bold(String(report.familyStats.avgSize))}`);
+      console.log(`  Avg family coherency: ${colorScore(String(report.familyStats.avgCoherency))}`);
+    }
+
+    if (report.gaps.length > 0) {
+      console.log(`\n${c.bold('Gaps:')}`);
+      for (const gap of report.gaps) {
+        console.log(`  ${c.yellow('⚠')} ${gap}`);
+      }
+    }
+
+    if (report.recommendations.length > 0) {
+      console.log(`\n${c.bold('Recommendations:')}`);
+      for (const rec of report.recommendations) {
+        console.log(`  ${c.cyan('→')} ${rec}`);
+      }
+    }
+  };
 }
 
 function _formatBytes(bytes) {

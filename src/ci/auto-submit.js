@@ -168,6 +168,25 @@ function autoSubmit(oracle, baseDir, options = {}) {
     report.errors.push(`debug-sweep: ${e.message}`);
   }
 
+  // Step 6: Retention sweep — purge old archives, rotate entries
+  try {
+    const sqliteStore = oracle.store?.getSQLiteStore?.();
+    if (sqliteStore && typeof sqliteStore.retentionSweep === 'function') {
+      const retention = sqliteStore.retentionSweep({ dryRun });
+      report.retention = retention;
+      const totalRemoved = (retention.candidateArchive?.removed || 0) +
+        (retention.patternArchive?.removed || 0) +
+        (retention.entries?.staleRemoved || 0) +
+        (retention.entries?.duplicateRemoved || 0);
+      if (!silent && totalRemoved > 0) {
+        log(`Retention sweep: ${totalRemoved} stale row(s) purged`);
+      }
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:retention] silent failure:', e?.message || e);
+    report.errors.push(`retention: ${e.message}`);
+  }
+
   // Emit event for lifecycle engine
   try {
     oracle._emit({

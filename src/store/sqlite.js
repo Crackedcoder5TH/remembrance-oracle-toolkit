@@ -2705,6 +2705,120 @@ class SQLiteStore {
     return { beforeMB, afterMB, savedMB: beforeMB != null && afterMB != null ? Math.round((beforeMB - afterMB) * 100) / 100 : null };
   }
 
+  // ─── Archive Retention — prevent unbounded archive growth ───
+
+  /**
+   * Purge candidate_archive, keeping only the most recent `keepRecent` rows.
+   * @param {object} options - { keepRecent, dryRun }
+   * @returns {{ before, after, removed }}
+   */
+  purgeCandidateArchive(options = {}) {
+    const { keepRecent = 1000, dryRun = false } = options;
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM candidate_archive').get().c;
+    if (before <= keepRecent) return { before, after: before, removed: 0 };
+
+    if (!dryRun) {
+      this.db.prepare(`
+        DELETE FROM candidate_archive WHERE rowid NOT IN (
+          SELECT rowid FROM candidate_archive ORDER BY deleted_at DESC LIMIT ?
+        )
+      `).run(keepRecent);
+      this._audit('purge', 'candidate_archive', 'bulk', { keepRecent, removed: before - keepRecent });
+    }
+    const after = dryRun ? keepRecent : this.db.prepare('SELECT COUNT(*) as c FROM candidate_archive').get().c;
+    return { before, after, removed: before - after };
+  }
+
+  /**
+   * Trim pattern_archive to at most `maxVersions` per pattern (by name).
+   * Keeps the most recent versions (by deleted_at) for each pattern name.
+   * @param {object} options - { maxVersions, dryRun }
+   * @returns {{ before, after, removed }}
+   */
+  purgePatternArchive(options = {}) {
+    const { maxVersions = 3, dryRun = false } = options;
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM pattern_archive').get().c;
+
+    // Find rows to delete: for each name, keep only the most recent maxVersions
+    const excess = this.db.prepare(`
+      SELECT rowid FROM pattern_archive WHERE rowid NOT IN (
+        SELECT rowid FROM (
+          SELECT rowid, ROW_NUMBER() OVER (PARTITION BY name ORDER BY deleted_at DESC) as rn
+          FROM pattern_archive
+        ) WHERE rn <= ?
+      )
+    `).all(maxVersions);
+
+    if (!dryRun && excess.length > 0) {
+      const delStmt = this.db.prepare('DELETE FROM pattern_archive WHERE rowid = ?');
+      for (const row of excess) delStmt.run(row.rowid);
+      this._audit('purge', 'pattern_archive', 'bulk', { maxVersions, removed: excess.length });
+    }
+    const after = dryRun ? before - excess.length : this.db.prepare('SELECT COUNT(*) as c FROM pattern_archive').get().c;
+    return { before, after, removed: excess.length };
+  }
+
+  /**
+   * Rotate the entries table: archive untested, zero-usage entries older than maxAgeDays,
+   * and entries that duplicate patterns already in the library.
+   * @param {object} options - { maxAgeDays, dryRun }
+   * @returns {{ staleRemoved, duplicateRemoved, remaining }}
+   */
+  rotateEntries(options = {}) {
+    const { maxAgeDays = 60, dryRun = false } = options;
+    const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+
+    // Stale: untested, unused, old
+    const stale = this.db.prepare(`
+      SELECT * FROM entries
+      WHERE (test_passed IS NULL OR test_passed = 0)
+        AND times_used = 0
+        AND created_at < ?
+    `).all(cutoff);
+
+    // Duplicates: entries whose code already exists in patterns
+    const dupes = this.db.prepare(`
+      SELECT e.* FROM entries e
+      INNER JOIN patterns p ON e.code = p.code AND e.language = p.language
+    `).all();
+
+    if (!dryRun && (stale.length > 0 || dupes.length > 0)) {
+      const delStmt = this.db.prepare('DELETE FROM entries WHERE id = ?');
+      const seen = new Set();
+      for (const row of stale) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        this._archiveEntry(row, 'stale-rotated');
+        delStmt.run(row.id);
+      }
+      for (const row of dupes) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        this._archiveEntry(row, 'duplicate-of-pattern');
+        delStmt.run(row.id);
+      }
+      this._audit('rotate', 'entries', 'bulk', { stale: stale.length, dupes: dupes.length });
+    }
+
+    const remaining = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    return { staleRemoved: stale.length, duplicateRemoved: dupes.length, remaining };
+  }
+
+  /**
+   * Run a full retention sweep: purge all archive tables and rotate entries.
+   * Intended to be called periodically (e.g., on auto-submit or maintenance).
+   * @param {object} options - { dryRun }
+   * @returns {object} Combined report
+   */
+  retentionSweep(options = {}) {
+    const { dryRun = false } = options;
+    const candidateArchive = this.purgeCandidateArchive({ keepRecent: 1000, dryRun });
+    const patternArchive = this.purgePatternArchive({ maxVersions: 3, dryRun });
+    const entries = this.rotateEntries({ maxAgeDays: 60, dryRun });
+    const auditLog = this.rotateAuditLogNow();
+    return { candidateArchive, patternArchive, entries, auditLog };
+  }
+
   /**
    * Close the database connection.
    */

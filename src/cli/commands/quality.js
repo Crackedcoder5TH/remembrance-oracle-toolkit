@@ -284,6 +284,36 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     console.log(PatternRecycler.formatReport(report));
     console.log(c.boldCyan('\u2500'.repeat(50)));
   };
+  handlers['retention'] = (args) => {
+    const dryRun = parseDryRun(args);
+    const sqliteStore = oracle.store?.getSQLiteStore?.() || oracle.patterns?._sqlite;
+    if (!sqliteStore) { console.error(c.boldRed('Error:') + ' No SQLite store available.'); process.exit(1); }
+
+    if (jsonOut()) {
+      console.log(JSON.stringify(sqliteStore.retentionSweep({ dryRun })));
+      return;
+    }
+
+    console.log(c.boldCyan('Retention Sweep') + (dryRun ? c.yellow(' (dry run)') : '') + '\n');
+    const result = sqliteStore.retentionSweep({ dryRun });
+
+    console.log(`  ${c.bold('candidate_archive:')} ${c.boldRed(String(result.candidateArchive.removed))} purged (${result.candidateArchive.before} → ${result.candidateArchive.after})`);
+    console.log(`  ${c.bold('pattern_archive:')}   ${c.boldRed(String(result.patternArchive.removed))} purged (${result.patternArchive.before} → ${result.patternArchive.after})`);
+    console.log(`  ${c.bold('entries:')}           ${c.boldRed(String(result.entries.staleRemoved))} stale + ${c.boldRed(String(result.entries.duplicateRemoved))} dupes removed (${result.entries.remaining} remaining)`);
+    console.log(`  ${c.bold('audit_log:')}         ${result.auditLog.removed} rotated (${result.auditLog.before} → ${result.auditLog.after})`);
+
+    if (!dryRun) {
+      console.log(`\n  ${c.dim('Run')} ${c.cyan('oracle vacuum')} ${c.dim('to reclaim disk space.')}`);
+    }
+  };
+
+  handlers['vacuum'] = (args) => {
+    const sqliteStore = oracle.store?.getSQLiteStore?.() || oracle.patterns?._sqlite;
+    if (!sqliteStore) { console.error(c.boldRed('Error:') + ' No SQLite store available.'); process.exit(1); }
+    const result = sqliteStore.vacuum();
+    console.log(`VACUUM complete: ${result.beforeMB} MB → ${result.afterMB} MB (saved ${c.boldGreen(String(result.savedMB))} MB)`);
+  };
+
   handlers['restore'] = (args) => {
     const dryRun = parseDryRun(args);
     const name = args._sub || args.name;

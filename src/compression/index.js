@@ -48,10 +48,33 @@ function compressStore(store, options = {}) {
     console.log(`  Detected ${families.length} fractal families, ${singletons.length} singletons`);
   }
 
-  // Step 2: Store templates and deltas (unless dry run)
+  // Step 2: Validate reconstructions BEFORE storing, exclude broken families
+  const validFamilies = [];
+  let validationResults = { passed: 0, failed: 0 };
+
+  for (const family of families) {
+    let familyValid = true;
+    for (const member of family.members) {
+      const reconstructed = reconstruct(family.skeleton, member.delta);
+      // Validate that re-fingerprinting the reconstruction produces the same skeleton hash
+      // (exact character match isn't possible since the skeleton is space-joined tokens)
+      const refp = structuralFingerprint(reconstructed, family.language || 'javascript');
+      if (refp.hash !== family.templateId) {
+        familyValid = false;
+        validationResults.failed++;
+        if (verbose) {
+          console.log(`  ⚠ Reconstruction hash mismatch for ${member.patternId} in family ${family.templateId}`);
+        }
+        break;
+      }
+      validationResults.passed++;
+    }
+    if (familyValid) validFamilies.push(family);
+  }
+
+  // Store only validated templates and deltas
   if (!dryRun) {
-    for (const family of families) {
-      // Store template
+    for (const family of validFamilies) {
       store.storeTemplate({
         id: family.templateId,
         skeleton: family.skeleton,
@@ -60,7 +83,6 @@ function compressStore(store, options = {}) {
         avgCoherency: _avgCoherency(family.members, patterns),
       });
 
-      // Store deltas for each member
       for (const member of family.members) {
         store.storeDelta({
           patternId: member.patternId,
@@ -77,8 +99,8 @@ function compressStore(store, options = {}) {
   const embeddingMap = new Map();
   const familyHashMap = new Map();  // patternId → familyHash for consistent family encoding
 
-  // Build family hash map
-  for (const family of families) {
+  // Build family hash map (only from validated families)
+  for (const family of validFamilies) {
     for (const member of family.members) {
       familyHashMap.set(member.patternId, family.templateId);
     }
@@ -94,13 +116,13 @@ function compressStore(store, options = {}) {
     }
   }
 
-  // Step 4: Build holographic pages from families
+  // Step 4: Build holographic pages from validated families
   const pages = [];
 
-  for (const family of families) {
+  for (const family of validFamilies) {
     const members = family.members
       .map(m => ({ patternId: m.patternId, embedding: embeddingMap.get(m.patternId) }))
-      .filter(m => m.embedding);
+      .filter(m => m.embedding && Array.isArray(m.embedding) && m.embedding.length > 0);
 
     if (members.length >= 2) {
       const page = createPage(family.templateId, members, family.templateId);
@@ -123,16 +145,6 @@ function compressStore(store, options = {}) {
     }
   }
 
-  // Step 5: SERF validation of reconstructions
-  let validationResults = { passed: 0, failed: 0 };
-  if (!dryRun && families.length > 0) {
-    const validation = validateAllReconstructions(store);
-    validationResults = { passed: validation.passed.length, failed: validation.failed.length };
-    if (verbose && validation.failed.length > 0) {
-      console.log(`  ⚠ ${validation.failed.length} reconstruction(s) failed SERF validation`);
-    }
-  }
-
   const stats = compressionStats(patterns);
   stats.holoPages = pages.length;
   stats.holoEmbeddings = embeddingMap.size;
@@ -144,7 +156,7 @@ function compressStore(store, options = {}) {
 
   return {
     success: true,
-    familyCount: families.length,
+    familyCount: validFamilies.length,
     singletonCount: singletons.length,
     pageCount: pages.length,
     embeddingCount: embeddingMap.size,
@@ -257,14 +269,18 @@ function _clusterSingletons(singletons, embeddingMap) {
     if (used.has(seed.id)) continue;
 
     const seedEmb = embeddingMap.get(seed.id);
-    if (!seedEmb) { used.add(seed.id); continue; }
+    if (!seedEmb || !Array.isArray(seedEmb) || seedEmb.length === 0) { used.add(seed.id); continue; }
 
     const cluster = [{ patternId: seed.id, embedding: seedEmb }];
     used.add(seed.id);
 
     // Find up to 4 nearest unused singletons
     const candidates = singletons
-      .filter(s => !used.has(s.id) && embeddingMap.has(s.id))
+      .filter(s => {
+        if (used.has(s.id)) return false;
+        const emb = embeddingMap.get(s.id);
+        return emb && Array.isArray(emb) && emb.length > 0;
+      })
       .map(s => ({ id: s.id, sim: cosineSimilarity(seedEmb, embeddingMap.get(s.id)) }))
       .sort((a, b) => b.sim - a.sim)
       .slice(0, 4);

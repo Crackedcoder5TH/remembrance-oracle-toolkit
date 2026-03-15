@@ -138,6 +138,21 @@ const RELEVANCE_GATES = {
   FOR_EVOLVE: 0.33,            // Must be meaningfully relevant to evolve from
 };
 
+/**
+ * Two-Phase Scoring — separates "is this the right pattern?" from "is this pattern any good?"
+ *
+ * Phase 1 (Relevance Gate): Pure relevance score from keyword/semantic/structural/holo signals.
+ *   Patterns below PHASE1_GATE are skipped entirely — no amount of quality can rescue irrelevance.
+ *
+ * Phase 2 (Quality Ranking): Among patterns that pass the gate, final score blends relevance + quality.
+ *   RELEVANCE_BLEND controls how much of the final score comes from relevance vs quality.
+ */
+const TWO_PHASE_SCORING = {
+  PHASE1_GATE: 0.30,           // Minimum pure-relevance score to enter Phase 2
+  RELEVANCE_BLEND: 0.60,       // Phase 2: 60% relevance, 40% quality
+  QUALITY_BLEND: 0.40,         // Phase 2: complement (1 - RELEVANCE_BLEND)
+};
+
 /** Complexity classification thresholds */
 const COMPLEXITY_TIERS = {
   ATOMIC: { MAX_LINES: 15, MAX_NESTING: 2 },
@@ -224,6 +239,7 @@ module.exports = {
   VOTE_BOOST,
   DECISION_WEIGHTS,
   RELEVANCE_GATES,
+  TWO_PHASE_SCORING,
   COMPLEXITY_TIERS,
   RETIREMENT_WEIGHTS,
   // Recycler

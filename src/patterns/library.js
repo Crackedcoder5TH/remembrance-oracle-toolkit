@@ -49,6 +49,7 @@ const {
   RELEVANCE_GATES,
   COMPLEXITY_TIERS: COMPLEXITY_TIER_LIMITS,
   RETIREMENT_WEIGHTS,
+  TWO_PHASE_SCORING,
 } = require('../constants/thresholds');
 
 const PATTERN_FILE = 'pattern-library.json';
@@ -388,7 +389,15 @@ class PatternLibrary {
     // Parse request description into structured form for structural matching
     const requestStructured = parseStructuredDescription(description, { tags });
 
+    // ── Two-Phase Scoring ──
+    // Phase 1 (Relevance Gate): compute pure relevance from keyword/semantic/structural/holo signals.
+    //   Patterns below the gate are skipped — no amount of quality can rescue irrelevance.
+    // Phase 2 (Quality Ranking): among passing patterns, blend relevance + quality for final score.
+
+    const store = this._sqlite || (this.store && this.store.getSQLiteStore ? this.store.getSQLiteStore() : null);
+
     const scored = patterns.map(p => {
+      // ── Phase 1: Pure relevance score ──
       const relevance = computeRelevance(
         { description, tags, language },
         {
@@ -404,26 +413,49 @@ class PatternLibrary {
       const normalizedDesc = description.toLowerCase().replace(/[-_]/g, ' ');
       const normalizedName = (p.name || '').toLowerCase().replace(/[-_]/g, ' ');
       const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? DECISION_BONUSES.NAME_MATCH : 0;
-      const focusBonus = p.complexity === 'atomic' ? DECISION_BONUSES.ATOMIC_FOCUS : p.complexity === 'composite' ? DECISION_BONUSES.COMPOSITE_FOCUS : 0;
-      const coherency = p.coherencyScore?.total ?? 0;
 
-      // Structural similarity boost — compare structured descriptions
-      let structuralBoost = 0;
+      // Structural similarity — part of relevance, not quality
       const patternStructured = p.structuredDescription || parseStructuredDescription(p.description || '', { code: p.code, tags: p.tags || [] });
       const structSim = structuralSimilarity(requestStructured, patternStructured);
-      if (structSim > 0.5) structuralBoost = structSim * 0.10; // Up to 10% boost
+      const structuralBoost = structSim > 0.5 ? structSim * 0.10 : 0;
 
-      // Enhanced reliability: usage success + bug reports + healing success + community votes
+      // Holographic embedding — part of relevance, not quality
+      let holoBoost = 0;
+      if (_holoDecisionBoost) {
+        const holo = _holoDecisionBoost({ description, tags, language }, p, store);
+        holoBoost = holo.boost;
+      }
+
+      // Pure relevance: semantic match + name affinity + structural + holographic
+      // These all answer "is this the right pattern?" — no quality signals allowed here
+      const relevanceScore = Math.min(1.0, relevance.relevance + nameBonus + structuralBoost + holoBoost);
+
+      // ── Phase 1 Gate: skip patterns with insufficient relevance ──
+      if (relevanceScore < TWO_PHASE_SCORING.PHASE1_GATE) {
+        return { pattern: p, relevance: relevance.relevance, relevanceScore, coherency: 0, decayedCoherency: 0, reliability: 0, structuralSimilarity: structSim, holoBoost, qualityScore: 0, composite: 0, gated: true };
+      }
+
+      // ── Phase 2: Quality score (only for patterns that passed the gate) ──
+      const coherency = p.coherencyScore?.total ?? 0;
+      const focusBonus = p.complexity === 'atomic' ? DECISION_BONUSES.ATOMIC_FOCUS : p.complexity === 'composite' ? DECISION_BONUSES.COMPOSITE_FOCUS : 0;
+
+      // Reliability: usage success + bug reports + healing success + community votes
       const usageReliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
       const bugCount = p.bugReports || 0;
       const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * BUG_PENALTY_MULTIPLIER) : 1.0;
       const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(p.id) : 1.0;
-      // Weighted vote scoring — uses reputation-weighted scores when available
       const weightedScore = p.weightedVoteScore ?? ((p.upvotes || 0) - (p.downvotes || 0));
       const voteBoost = weightedScore > 0 ? Math.min(VOTE_BOOST.MAX, weightedScore * VOTE_BOOST.MULTIPLIER) : Math.max(VOTE_BOOST.MIN, weightedScore * VOTE_BOOST.MULTIPLIER);
       const reliability = usageReliability * bugPenalty * healingRate + voteBoost;
+      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
 
-      // Evolution adjustments: penalize stale + over-evolved patterns
+      // Confidence decay — penalize stale, reward fresh
+      const decayModifier = _familyDecayModifier ? _familyDecayModifier(p.id, store) : 1.0;
+      const decayResult = applyDecayToScore(coherency, p, { halfLifeDays: 90 * decayModifier });
+      const freshnessBoost = computeFreshnessBoost(p);
+      const decayedCoherency = decayResult.adjusted + freshnessBoost;
+
+      // Evolution penalty
       let evolutionPenalty = 0;
       try {
         const { evolutionAdjustment } = require('../evolution/evolution');
@@ -431,30 +463,16 @@ class PatternLibrary {
         evolutionPenalty = adj.total;
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[library:normalizedName] silent failure:', e?.message || e);
-        // Evolution module not available — no penalty
       }
 
-      // Confidence decay — penalize stale, reward fresh
-      // Family stability slows decay for patterns in proven structural families
-      const store = this._sqlite || (this.store && this.store.getSQLiteStore ? this.store.getSQLiteStore() : null);
-      const decayModifier = _familyDecayModifier ? _familyDecayModifier(p.id, store) : 1.0;
-      const decayResult = applyDecayToScore(coherency, p, { halfLifeDays: 90 * decayModifier });
-      const freshnessBoost = computeFreshnessBoost(p);
-      const decayedCoherency = decayResult.adjusted + freshnessBoost;
+      // Quality score: coherency × reliability × decay × focus — answers "is this pattern any good?"
+      const scaledFocusBonus = focusBonus * relevanceScore;
+      const qualityScore = Math.min(1.0, Math.max(0, decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + scaledFocusBonus - evolutionPenalty) / (DECISION_WEIGHTS.COHERENCY + DECISION_WEIGHTS.RELIABILITY));
 
-      // Holographic embedding boost — uses 128D vectors when available
-      let holoBoost = 0;
-      if (_holoDecisionBoost) {
-        const holo = _holoDecisionBoost({ description, tags, language }, p, store);
-        holoBoost = holo.boost;
-      }
+      // Final composite: blend relevance (60%) + quality (40%)
+      const composite = Math.min(1.0, relevanceScore * TWO_PHASE_SCORING.RELEVANCE_BLEND + qualityScore * TWO_PHASE_SCORING.QUALITY_BLEND);
 
-      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
-      // Scale focusBonus by relevance — complexity bonus should only boost relevant patterns
-      const scaledFocusBonus = focusBonus * relevance.relevance;
-      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + scaledFocusBonus + structuralBoost + holoBoost - evolutionPenalty);
-
-      return { pattern: p, relevance: relevance.relevance, coherency, decayedCoherency, reliability, structuralSimilarity: structSim, holoBoost, composite };
+      return { pattern: p, relevance: relevance.relevance, relevanceScore, coherency, decayedCoherency, reliability, structuralSimilarity: structSim, holoBoost, qualityScore, composite, gated: false };
     }).sort((a, b) => b.composite - a.composite);
 
     // Guard: if all patterns were filtered out during scoring, generate
@@ -470,25 +488,26 @@ class PatternLibrary {
 
     const best = scored[0];
     const threshold = minCoherency ?? THRESHOLDS.pull;
+    const altMapper = s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite });
 
-    if (best.composite >= threshold && best.relevance >= RELEVANCE_GATES.FOR_PULL) {
+    if (best.composite >= threshold && best.relevanceScore >= RELEVANCE_GATES.FOR_PULL) {
       return {
         decision: 'pull',
         pattern: best.pattern,
         confidence: best.composite,
-        reasoning: `Pattern "${best.pattern.name}" matches with composite score ${best.composite.toFixed(3)} (relevance=${best.relevance.toFixed(3)}, coherency=${best.coherency.toFixed(3)}, reliability=${best.reliability.toFixed(3)})`,
-        alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+        reasoning: `Pattern "${best.pattern.name}" matches with composite score ${best.composite.toFixed(3)} (relevance=${best.relevanceScore.toFixed(3)}, quality=${(best.qualityScore || 0).toFixed(3)}, coherency=${best.coherency.toFixed(3)}, reliability=${best.reliability.toFixed(3)})`,
+        alternatives: scored.slice(1, 4).map(altMapper),
       };
     }
 
     const evolveThreshold = Math.min(threshold, THRESHOLDS.evolve);
-    if (best.composite >= evolveThreshold && best.relevance >= RELEVANCE_GATES.FOR_EVOLVE) {
+    if (best.composite >= evolveThreshold && best.relevanceScore >= RELEVANCE_GATES.FOR_EVOLVE) {
       return {
         decision: 'evolve',
         pattern: best.pattern,
         confidence: best.composite,
         reasoning: `Pattern "${best.pattern.name}" is a partial match (${best.composite.toFixed(3)}) — can be evolved to fit`,
-        alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+        alternatives: scored.slice(1, 4).map(altMapper),
       };
     }
 
@@ -497,7 +516,7 @@ class PatternLibrary {
       pattern: scored.length > 0 ? scored[0].pattern : null,
       confidence: 1.0 - (best.composite || 0),
       reasoning: `Best match "${best.pattern.name}" scored too low (${best.composite.toFixed(3)}) — new pattern needed`,
-      alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+      alternatives: scored.slice(1, 4).map(altMapper),
     };
   }
 

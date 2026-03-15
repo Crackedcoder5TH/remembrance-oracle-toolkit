@@ -4,6 +4,7 @@
  */
 
 const { auditLog } = require('../core/audit-logger');
+const { captureFeedbackDebug } = require('../ci/auto-debug');
 
 module.exports = {
   /**
@@ -56,6 +57,16 @@ module.exports = {
       }
     }
 
+    // Auto-capture debug patterns from failed feedback and forward healed code
+    if (!succeeded) {
+      try {
+        const entry = this.store.get(id);
+        captureFeedbackDebug(this, id, entry, healResult);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[feedback] auto-debug capture failed:', e?.message || e);
+      }
+    }
+
     auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated.reliability.historicalScore, healed: !!healResult?.healed } });
     return { success: true, newReliability: updated.reliability.historicalScore, healResult };
   },
@@ -98,6 +109,15 @@ module.exports = {
         }
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle:patternFeedback] auto-heal failed:', e.message);
+      }
+    }
+
+    // Auto-capture debug patterns from failed pattern feedback
+    if (!succeeded) {
+      try {
+        captureFeedbackDebug(this, id, updated, healResult);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[patternFeedback] auto-debug capture failed:', e?.message || e);
       }
     }
 

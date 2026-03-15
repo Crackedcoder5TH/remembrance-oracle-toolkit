@@ -149,6 +149,25 @@ function autoSubmit(oracle, baseDir, options = {}) {
     }
   }
 
+  // Step 5: Debug sweep — grow debug variants + sync debug patterns
+  try {
+    const { debugSweep } = require('./auto-debug');
+    const debugResult = debugSweep(oracle, { silent, dryRun });
+    report.debugSweep = {
+      grown: debugResult.grown?.stored || 0,
+      synced: debugResult.synced?.synced || 0,
+    };
+    if (!silent && (report.debugSweep.grown > 0 || report.debugSweep.synced > 0)) {
+      log(`Debug sweep: ${report.debugSweep.grown} grown, ${report.debugSweep.synced} synced`);
+    }
+    if (debugResult.errors.length > 0) {
+      report.errors.push(...debugResult.errors.map(e => `debug-sweep: ${e}`));
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:debugSweep] silent failure:', e?.message || e);
+    report.errors.push(`debug-sweep: ${e.message}`);
+  }
+
   // Emit event for lifecycle engine
   try {
     oracle._emit({
@@ -157,6 +176,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       promoted: report.promoted,
       synced: report.synced,
       shared: report.shared,
+      debugSweep: report.debugSweep,
     });
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);

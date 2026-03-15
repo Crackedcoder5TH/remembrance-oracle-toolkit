@@ -7,6 +7,7 @@ const { reflectionLoop } = require('../core/reflection');
 const { _generateResolveWhisper, _generateCandidateNotes } = require('./oracle-core-whispers');
 const { parseIntent, ARCHITECTURAL_PATTERNS } = require('../core/search-intelligence');
 const { auditLog } = require('../core/audit-logger');
+const { captureResolveDebug } = require('../ci/auto-debug');
 
 module.exports = {
   /**
@@ -161,7 +162,8 @@ module.exports = {
 
     auditLog('resolve', { id: patternData?.id, name: patternData?.name, success: true, language: patternData?.language, meta: { decision: decision.decision, confidence: decision.confidence, healed: !!healing } });
 
-    return {
+    // Auto-capture debug patterns from healing results (healed code forwarding)
+    const resolveResult = {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,
       pattern: patternData, healedCode, healedVariantId, whisper, candidateNotes,
       healing: healing ? {
@@ -171,5 +173,14 @@ module.exports = {
       } : null,
       alternatives: decision.alternatives, historyMatches: historyResults,
     };
+
+    // Auto-capture debug patterns and forward healed code
+    try {
+      captureResolveDebug(this, resolveResult, request);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[resolve] auto-debug capture failed:', e?.message || e);
+    }
+
+    return resolveResult;
   },
 };

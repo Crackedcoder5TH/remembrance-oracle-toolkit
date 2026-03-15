@@ -82,11 +82,36 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       console.log(`  Promoted:   ${c.boldGreen(String(result.promoted))} candidate(s)`);
       console.log(`  Synced:     ${result.synced ? c.boldGreen('yes') : c.dim('no')}`);
       console.log(`  Shared:     ${result.shared ? c.boldGreen('yes') : c.dim('no')}`);
+      if (result.debugSweep) {
+        console.log(`  Debug:      ${c.boldGreen(String(result.debugSweep.grown || 0))} grown, ${c.boldGreen(String(result.debugSweep.synced || 0))} synced`);
+      }
       if (result.errors.length > 0) {
         console.log(`  Errors:     ${c.boldRed(result.errors.join(', '))}`);
       }
     } catch (err) {
       console.error(c.boldRed('Error:') + ' Auto-submit error: ' + err.message);
+    }
+  };
+
+  handlers['auto-debug-sweep'] = (args) => {
+    try {
+      const { debugSweep } = require('../../ci/auto-debug');
+      const dryRun = parseDryRun(args);
+      const minConfidence = parseFloat(args['min-confidence']) || 0.3;
+      const result = debugSweep(oracle, { dryRun, minConfidence });
+      console.log(c.boldCyan('Auto-Debug Sweep Report:'));
+      if (result.grown) {
+        console.log(`  Grown:    ${c.boldGreen(String(result.grown.stored || 0))} variant(s) from ${c.bold(String(result.grown.processed || 0))} pattern(s)`);
+      }
+      if (result.synced) {
+        console.log(`  Synced:   ${c.boldGreen(String(result.synced.synced || 0))} debug pattern(s) to personal store`);
+      }
+      if (result.errors.length > 0) {
+        console.log(`  Errors:   ${c.boldRed(result.errors.join(', '))}`);
+      }
+      if (dryRun) console.log(c.yellow('\n(dry run — no changes made)'));
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Auto-debug sweep error: ' + err.message);
     }
   };
 

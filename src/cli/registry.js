@@ -171,6 +171,7 @@ const CATEGORIES = [
       { name: 'verify', description: 'Verify pattern integrity' },
       { name: 'healing-stats', description: 'Show SERF healing statistics' },
       { name: 'auto-submit', description: 'Auto harvest, promote, and sync patterns (post-commit pipeline)' },
+      { name: 'auto-debug-sweep', description: 'Grow debug variants and sync debug patterns to personal store' },
       { name: 'auto-register', description: 'Register new functions from latest commit (diff-targeted)' },
       { name: 'auto-seed', description: 'Auto-discover and seed patterns from test suite' },
       { name: 'refresh-coherency', description: 'Recompute coherency scores using actual usage data' },

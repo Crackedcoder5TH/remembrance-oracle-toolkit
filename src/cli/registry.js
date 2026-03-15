@@ -104,6 +104,7 @@ const CATEGORIES = [
       { name: 'consolidate', description: 'Consolidate duplicates, tags, and candidates (--dry-run)' },
       { name: 'polish', description: 'Full polish cycle: consolidate + improve + optimize + evolve' },
       { name: 'lifecycle', description: 'Always-on lifecycle engine (start, stop, status, run, history)' },
+      { name: 'decay', description: 'Show confidence decay report for stale patterns' },
     ],
   },
   {

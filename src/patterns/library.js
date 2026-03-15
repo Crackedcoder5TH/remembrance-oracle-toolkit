@@ -21,6 +21,7 @@ const crypto = require('crypto');
 const { computeCoherencyScore } = require('../core/coherency');
 const { computeRelevance } = require('../core/relevance');
 const { parseStructuredDescription, structuralSimilarity } = require('../core/structured-description');
+const { applyDecayToScore, computeFreshnessBoost } = require('../core/confidence-decay');
 const {
   DECISION_THRESHOLDS,
   HASH_TRUNCATION_LENGTH,
@@ -413,10 +414,15 @@ class PatternLibrary {
         // Evolution module not available — no penalty
       }
 
-      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
-      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus + structuralBoost - evolutionPenalty);
+      // Confidence decay — penalize stale, reward fresh
+      const decayResult = applyDecayToScore(coherency, p);
+      const freshnessBoost = computeFreshnessBoost(p);
+      const decayedCoherency = decayResult.adjusted + freshnessBoost;
 
-      return { pattern: p, relevance: relevance.relevance, coherency, reliability, structuralSimilarity: structSim, composite };
+      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
+      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus + structuralBoost - evolutionPenalty);
+
+      return { pattern: p, relevance: relevance.relevance, coherency, decayedCoherency, reliability, structuralSimilarity: structSim, composite };
     }).sort((a, b) => b.composite - a.composite);
 
     // Guard: if all patterns were filtered out during scoring, generate

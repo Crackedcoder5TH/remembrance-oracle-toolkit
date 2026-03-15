@@ -399,6 +399,30 @@ ${c.bold('Commands:')}
     console.error(c.boldRed('Error:') + ` Unknown lifecycle subcommand: ${sub}. Run ${c.cyan('oracle lifecycle help')} for usage.`);
     process.exit(1);
   };
+
+  handlers['decay'] = (args) => {
+    const { decayPass } = require('../../core/confidence-decay');
+    const patterns = oracle.patterns.getAll();
+    const report = decayPass(patterns);
+
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(c.boldCyan(`Confidence Decay Report\n`));
+    console.log(`  Total patterns:   ${c.bold(String(report.total))}`);
+    console.log(`  Decayed:          ${report.decayed > 0 ? c.yellow(String(report.decayed)) : c.bold('0')}`);
+    console.log(`  Fresh:            ${c.green(String(report.fresh))}\n`);
+
+    const decayed = report.patterns.filter(r => r.decayed).sort((a, b) => a.factor - b.factor);
+    if (decayed.length > 0) {
+      console.log(c.bold('Most decayed patterns:'));
+      for (const d of decayed.slice(0, 15)) {
+        const arrow = d.original !== d.adjusted ? ` → ${colorScore(d.adjusted.toFixed(3))}` : '';
+        console.log(`  ${c.cyan(d.name || d.id)} — ${colorScore(d.original.toFixed(3))}${arrow} (${d.daysSinceUse}d idle, ×${d.factor})`);
+      }
+    } else {
+      console.log(c.dim('All patterns are fresh — no decay applied.'));
+    }
+  };
 }
 
 module.exports = { registerSelfManageCommands };

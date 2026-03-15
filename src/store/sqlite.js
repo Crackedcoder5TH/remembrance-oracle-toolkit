@@ -1614,6 +1614,31 @@ class SQLiteStore {
     ).get(candidate.code || '');
     if (dupCheck) return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(dupCheck.id));
 
+    // Dedup guard: check if a candidate with same (name, language) exists with equal or higher coherency
+    const candidateCoherency = candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0;
+    const nameLangDup = this.db.prepare(
+      'SELECT id, coherency_total FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL AND coherency_total >= ? LIMIT 1'
+    ).get(candidate.name, candidate.language || 'unknown', candidateCoherency);
+    if (nameLangDup) return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(nameLangDup.id));
+
+    // Candidate cap: enforce max 5 variants per (name, language) — skip if at cap
+    const MAX_CANDIDATES_PER_GROUP = 5;
+    const groupCount = this.db.prepare(
+      'SELECT COUNT(*) as c FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL'
+    ).get(candidate.name, candidate.language || 'unknown').c;
+    if (groupCount >= MAX_CANDIDATES_PER_GROUP) {
+      // Only allow insert if this candidate has higher coherency than the worst in the group
+      const worst = this.db.prepare(
+        'SELECT id, coherency_total FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL ORDER BY coherency_total ASC LIMIT 1'
+      ).get(candidate.name, candidate.language || 'unknown');
+      if (worst && candidateCoherency <= worst.coherency_total) {
+        return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL ORDER BY coherency_total DESC LIMIT 1').get(candidate.name, candidate.language || 'unknown'));
+      }
+      // Evict the worst to make room
+      this._archiveCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(worst.id), 'cap-evicted');
+      this.db.prepare('DELETE FROM candidates WHERE id = ?').run(worst.id);
+    }
+
     const id = this._hash(candidate.code + candidate.name + Date.now());
     const now = new Date().toISOString();
 
@@ -2429,6 +2454,255 @@ class SQLiteStore {
       throw e;
     }
     return { deletedDeltas, deletedEmbeddings, deletedHealedVariants, deletedHealingStats };
+  }
+
+  // ─── Candidate Deduplication — keep only best per (name, language) ───
+
+  /**
+   * Deduplicate candidates: keep only the highest-coherency variant per (name, language) pair.
+   * Archives removed candidates before deletion.
+   * @param {object} options - { dryRun, maxPerGroup }
+   * @returns {{ removed, kept, groups }}
+   */
+  deduplicateCandidates(options = {}) {
+    const { dryRun = false, maxPerGroup = 1 } = options;
+    const all = this.db.prepare(
+      'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC, created_at ASC'
+    ).all();
+
+    // Group by (name, language)
+    const groups = new Map();
+    for (const row of all) {
+      const key = `${(row.name || '').toLowerCase()}:${(row.language || 'unknown').toLowerCase()}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    }
+
+    const toDelete = [];
+    for (const [, rows] of groups) {
+      // Already sorted by coherency DESC — keep first maxPerGroup, delete rest
+      for (let i = maxPerGroup; i < rows.length; i++) {
+        toDelete.push(rows[i]);
+      }
+    }
+
+    if (!dryRun && toDelete.length > 0) {
+      this.db.exec('BEGIN');
+      try {
+        const deleteStmt = this.db.prepare('DELETE FROM candidates WHERE id = ?');
+        for (const row of toDelete) {
+          this._archiveCandidate(row, 'deduplicated');
+          deleteStmt.run(row.id);
+        }
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
+      }
+    }
+
+    return { removed: toDelete.length, kept: all.length - toDelete.length, groups: groups.size };
+  }
+
+  // ─── Orphan Candidate Cleanup ───
+
+  /**
+   * Remove candidates whose parent_pattern no longer exists in the patterns table.
+   * @param {object} options - { dryRun }
+   * @returns {{ removed }}
+   */
+  cleanOrphanCandidates(options = {}) {
+    const { dryRun = false } = options;
+    const orphans = this.db.prepare(`
+      SELECT * FROM candidates
+      WHERE parent_pattern IS NOT NULL
+        AND parent_pattern NOT IN (SELECT name FROM patterns)
+        AND promoted_at IS NULL
+    `).all();
+
+    if (!dryRun && orphans.length > 0) {
+      this.db.exec('BEGIN');
+      try {
+        const deleteStmt = this.db.prepare('DELETE FROM candidates WHERE id = ?');
+        for (const row of orphans) {
+          this._archiveCandidate(row, 'orphan');
+          deleteStmt.run(row.id);
+        }
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
+      }
+    }
+
+    return { removed: orphans.length };
+  }
+
+  // ─── Entry Pruning — lifecycle for unused entries ───
+
+  /**
+   * Prune entries that have never been validated (test_passed IS NULL)
+   * and are older than the specified number of days.
+   * @param {object} options - { dryRun, maxAgeDays }
+   * @returns {{ removed, remaining }}
+   */
+  pruneStaleEntries(options = {}) {
+    const { dryRun = false, maxAgeDays = 90 } = options;
+    const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+
+    const stale = this.db.prepare(`
+      SELECT * FROM entries
+      WHERE test_passed IS NULL
+        AND times_used = 0
+        AND created_at < ?
+    `).all(cutoff);
+
+    if (!dryRun && stale.length > 0) {
+      this.db.exec('BEGIN');
+      try {
+        const deleteStmt = this.db.prepare('DELETE FROM entries WHERE id = ?');
+        for (const row of stale) {
+          this._archiveEntry(row, 'stale-pruned');
+          this._audit('prune', 'entries', row.id, { maxAgeDays, reason: 'stale' });
+          deleteStmt.run(row.id);
+        }
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
+      }
+    }
+
+    const remaining = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    return { removed: stale.length, remaining };
+  }
+
+  // ─── Audit Log Retention — force rotation now ───
+
+  /**
+   * Force audit log rotation: apply TTL and row cap immediately.
+   * @returns {{ before, after }}
+   */
+  rotateAuditLogNow() {
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    this._rotateAuditLog();
+    const after = this.db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    return { before, after, removed: before - after };
+  }
+
+  // ─── Candidate Cap — enforce max variants per (name, language) ───
+
+  /**
+   * Enforce a cap on candidates per (name, language) pair.
+   * Keeps the top N by coherency, archives and deletes the rest.
+   * @param {object} options - { maxPerGroup, dryRun }
+   * @returns {{ removed, kept, groups }}
+   */
+  capCandidates(options = {}) {
+    const { maxPerGroup = 5, dryRun = false } = options;
+    return this.deduplicateCandidates({ dryRun, maxPerGroup });
+  }
+
+  // ─── Oracle Health Check ───
+
+  /**
+   * Run comprehensive health checks on the oracle database.
+   * @returns {object} Health report with warnings and stats.
+   */
+  healthCheck() {
+    const stats = {};
+    const warnings = [];
+
+    // Database size
+    const fs = require('fs');
+    try {
+      const dbStat = fs.statSync(this.dbPath);
+      stats.dbSizeMB = Math.round(dbStat.size / 1024 / 1024 * 100) / 100;
+      if (stats.dbSizeMB > 100) {
+        warnings.push({ level: 'high', message: `Database size is ${stats.dbSizeMB} MB — consider VACUUM and deduplication` });
+      }
+    } catch (e) {
+      stats.dbSizeMB = null;
+    }
+
+    // Pattern count
+    stats.patterns = this.db.prepare('SELECT COUNT(*) as c FROM patterns').get().c;
+
+    // Candidate stats
+    stats.candidates = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
+    stats.candidateGroups = this.db.prepare('SELECT COUNT(DISTINCT LOWER(name) || \':\' || LOWER(language)) as c FROM candidates WHERE promoted_at IS NULL').get().c;
+    stats.candidateDuplicationRatio = stats.candidateGroups > 0
+      ? Math.round(stats.candidates / stats.candidateGroups * 100) / 100
+      : 0;
+    if (stats.candidateDuplicationRatio > 5) {
+      warnings.push({ level: 'high', message: `Candidate duplication ratio is ${stats.candidateDuplicationRatio}x — run dedup-candidates` });
+    }
+
+    // Orphan candidates
+    stats.orphanCandidates = this.db.prepare(`
+      SELECT COUNT(*) as c FROM candidates
+      WHERE parent_pattern IS NOT NULL
+        AND parent_pattern NOT IN (SELECT name FROM patterns)
+        AND promoted_at IS NULL
+    `).get().c;
+    if (stats.orphanCandidates > 0) {
+      warnings.push({ level: 'medium', message: `${stats.orphanCandidates} orphan candidate(s) pointing to non-existent parents` });
+    }
+
+    // Entry stats
+    stats.entries = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    stats.untestedEntries = this.db.prepare('SELECT COUNT(*) as c FROM entries WHERE test_passed IS NULL AND times_used = 0').get().c;
+    if (stats.untestedEntries > stats.entries * 0.5 && stats.untestedEntries > 100) {
+      warnings.push({ level: 'medium', message: `${stats.untestedEntries} entries never validated — consider pruning stale entries` });
+    }
+
+    // Audit log
+    stats.auditLogSize = this.db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    if (stats.auditLogSize > 10000) {
+      warnings.push({ level: 'medium', message: `Audit log has ${stats.auditLogSize} entries — rotation may be needed` });
+    }
+
+    // Sync status
+    const persistence = require('../core/persistence');
+    stats.personalStoreExists = persistence.hasGlobalStore();
+    if (!stats.personalStoreExists) {
+      warnings.push({ level: 'high', message: 'Personal store does not exist — sync push has never succeeded' });
+    }
+
+    // Average coherency
+    const avgRow = this.db.prepare('SELECT AVG(coherency_total) as avg FROM patterns').get();
+    stats.avgCoherency = avgRow.avg != null ? Math.round(avgRow.avg * 1000) / 1000 : 0;
+
+    // Fragmentation estimate (page_count * page_size vs freelist_count * page_size)
+    try {
+      const pageCount = this.db.prepare('PRAGMA page_count').get().page_count;
+      const freePages = this.db.prepare('PRAGMA freelist_count').get().freelist_count;
+      const pageSize = this.db.prepare('PRAGMA page_size').get().page_size;
+      stats.fragmentationPct = pageCount > 0 ? Math.round(freePages / pageCount * 100 * 10) / 10 : 0;
+      if (stats.fragmentationPct > 20) {
+        warnings.push({ level: 'medium', message: `Database fragmentation is ${stats.fragmentationPct}% — run VACUUM` });
+      }
+    } catch (e) {
+      stats.fragmentationPct = null;
+    }
+
+    return { stats, warnings, healthy: warnings.filter(w => w.level === 'high').length === 0 };
+  }
+
+  // ─── VACUUM ───
+
+  /**
+   * Run VACUUM to reclaim space and defragment the database.
+   * @returns {{ beforeMB, afterMB }}
+   */
+  vacuum() {
+    const fs = require('fs');
+    let beforeMB = null;
+    try { beforeMB = Math.round(fs.statSync(this.dbPath).size / 1024 / 1024 * 100) / 100; } catch (e) {}
+    this.db.exec('VACUUM');
+    let afterMB = null;
+    try { afterMB = Math.round(fs.statSync(this.dbPath).size / 1024 / 1024 * 100) / 100; } catch (e) {}
+    return { beforeMB, afterMB, savedMB: beforeMB != null && afterMB != null ? Math.round((beforeMB - afterMB) * 100) / 100 : null };
   }
 
   /**

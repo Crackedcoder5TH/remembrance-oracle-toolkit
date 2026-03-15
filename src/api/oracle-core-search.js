@@ -6,6 +6,7 @@
 const { rankEntries } = require('../core/relevance');
 const { semanticSearch: semanticSearchEngine } = require('../search/embeddings');
 const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
+const { trackSearch } = require('../core/session-tracker');
 
 // Holographic search integration (graceful — routes through FractalStore when available,
 // falls back to direct compression/index import for non-FractalStore setups)
@@ -103,7 +104,7 @@ module.exports = {
     }).filter(r => r.matchScore > 0);
 
     const seen = new Set();
-    return scored
+    const finalResults = scored
       .sort((a, b) => b.matchScore - a.matchScore || (b.coherency ?? 0) - (a.coherency ?? 0))
       .filter(r => {
         const key = (r.code || '').slice(0, 100);
@@ -112,6 +113,11 @@ module.exports = {
         return true;
       })
       .slice(0, limit);
+
+    // Track search interaction for session summary
+    try { trackSearch(term, finalResults, { mode, language, limit }); } catch (_) { /* non-fatal */ }
+
+    return finalResults;
   },
 
   _semanticOnly(items, query, limit) {

@@ -9,6 +9,7 @@ const { parseIntent, ARCHITECTURAL_PATTERNS } = require('../core/search-intellig
 const { auditLog } = require('../core/audit-logger');
 const { captureResolveDebug } = require('../ci/auto-debug');
 const { applyPromptTag } = require('../core/oracle-config');
+const { trackResolve } = require('../core/session-tracker');
 
 module.exports = {
   /**
@@ -184,6 +185,9 @@ module.exports = {
 
     // Append prompt tag when enabled
     applyPromptTag(resolveResult);
+
+    // Track resolve interaction for session summary
+    try { trackResolve(resolveResult, request); } catch (_) { /* non-fatal */ }
 
     return resolveResult;
   },

@@ -152,6 +152,7 @@ const CATEGORIES = [
       { name: 'deploy', description: 'Start production-ready server (configurable via env vars) [auth]' },
       { name: 'hooks', description: 'Install/uninstall git hooks' },
       { name: 'config', description: 'Oracle toggle (on/off) and prompt tag configuration' },
+      { name: 'session-summary', description: 'Show summary of what the oracle said and whispered this session' },
       { name: 'plugin', description: 'Manage plugins (load, list, unload)' },
     ],
   },

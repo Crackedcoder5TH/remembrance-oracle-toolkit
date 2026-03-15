@@ -59,7 +59,9 @@ function compose(oracle, description, options = {}) {
 
   // Step 1b: Adjust scores by temporal health — avoid regressed patterns
   let temporal = null;
-  try { temporal = oracle.getTemporalMemory?.(); } catch { /* unavailable */ }
+  try { temporal = oracle.getTemporalMemory?.(); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[pattern-composer:compose] unavailable:', e?.message || e);
+  }
 
   if (temporal) {
     for (const m of matches) {
@@ -68,7 +70,9 @@ function compose(oracle, description, options = {}) {
         if (health.status === 'regressed') m.semanticScore *= 0.3;
         else if (health.status === 'healthy') m.semanticScore *= 1.1;
         else if (health.status === 'recovered') m.semanticScore *= 0.9;
-      } catch { /* skip */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[pattern-composer:compose] skip:', e?.message || e);
+      }
     }
     matches.sort((a, b) => b.semanticScore - a.semanticScore);
   }
@@ -111,7 +115,9 @@ function compose(oracle, description, options = {}) {
         });
         result.autoRegistered = true;
       }
-    } catch { /* auto-registration failed — non-fatal */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[pattern-composer:signatures] auto-registration failed — non-fatal:', e?.message || e);
+    }
   }
 
   return result;
@@ -162,6 +168,7 @@ function _generateName(description) {
     .replace(/[^a-z0-9\s]/g, '')
     .split(/\s+/)
     .filter(w => w.length > 2 && !['the', 'and', 'for', 'with', 'that', 'this', 'from', 'into'].includes(w));
+  if (words.length === 0) return `composed-${Date.now()}`;
   return words.slice(0, 3).map((w, i) => i === 0 ? w : w[0].toUpperCase() + w.slice(1)).join('');
 }
 

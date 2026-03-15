@@ -1,5 +1,7 @@
 node_modules/
 .remembrance/
+oracle.db
+store.db
 *.log
 .DS_Store
 .env

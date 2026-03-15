@@ -28,7 +28,8 @@ function createSandboxDir() {
 function cleanupSandboxDir(dir) {
   try {
     fs.rmSync(dir, { recursive: true, force: true });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[sandbox:cleanupSandboxDir] silent failure:', e?.message || e);
     // Best effort cleanup
   }
 }
@@ -52,7 +53,12 @@ Module._load = function(request, parent, isMain) {
   return _origLoad(request, parent, isMain);
 };
 `;
-    fs.writeFileSync(preloadPath, preload, 'utf-8');
+    // Write with restrictive permissions (owner-only) then make read-only
+    // to close TOCTOU race between write and exec
+    const fd = fs.openSync(preloadPath, 'w', 0o600);
+    fs.writeSync(fd, preload);
+    fs.closeSync(fd);
+    fs.chmodSync(preloadPath, 0o400);
 
     // Write the actual code + test
     const wrapper = `
@@ -65,7 +71,10 @@ ${testCode}
 `;
 
     const filePath = path.join(sandboxDir, 'test.js');
-    fs.writeFileSync(filePath, wrapper, 'utf-8');
+    const fdTest = fs.openSync(filePath, 'w', 0o600);
+    fs.writeSync(fdTest, wrapper);
+    fs.closeSync(fdTest);
+    fs.chmodSync(filePath, 0o400);
 
     const memFlag = `--max-old-space-size=${maxMemory}`;
     const result = execSync(
@@ -225,7 +234,8 @@ function isTsxAvailable() {
   try {
     execSync('tsx --version', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 });
     _tsxAvailable = true;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[sandbox:isTsxAvailable] silent failure:', e?.message || e);
     _tsxAvailable = false;
   }
   return _tsxAvailable;
@@ -260,7 +270,11 @@ Module._load = function(request, parent, isMain) {
   return _origLoad(request, parent, isMain);
 };
 `;
-    fs.writeFileSync(preloadPath, preload, 'utf-8');
+    // Write with restrictive permissions then make read-only (TOCTOU mitigation)
+    const fdPre = fs.openSync(preloadPath, 'w', 0o600);
+    fs.writeSync(fdPre, preload);
+    fs.closeSync(fdPre);
+    fs.chmodSync(preloadPath, 0o400);
 
     const wrapper = `
 'use strict';
@@ -286,6 +300,7 @@ ${normalizedTest}
       );
       return { passed: true, output: result || 'All assertions passed', sandboxed: true };
     } catch (tsErr) {
+      if (process.env.ORACLE_DEBUG) console.warn('[sandbox:function] silent failure:', tsErr?.message || tsErr);
       const isTimeout = tsErr.killed || tsErr.signal === 'SIGTERM';
       if (isTimeout) {
         return { passed: false, output: 'Execution timed out', sandboxed: true, timedOut: true };
@@ -308,6 +323,7 @@ ${normalizedTest}
         );
         return { passed: true, output: result || 'All assertions passed (tsx)', sandboxed: true };
       } catch (tsxErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[sandbox:init] silent failure:', tsxErr?.message || tsxErr);
         const isTimeout = tsxErr.killed || tsxErr.signal === 'SIGTERM';
         if (isTimeout) {
           return { passed: false, output: 'Execution timed out', sandboxed: true, timedOut: true };

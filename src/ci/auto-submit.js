@@ -64,6 +64,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       log(`Auto-registered ${regResult.registered} new function(s) from diff`);
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:autoSubmit] silent failure:', e?.message || e);
     report.errors.push(`auto-register: ${e.message}`);
   }
 
@@ -85,6 +86,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       log(`Harvested ${harvestResult.registered} new pattern(s)`);
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:extraction] silent failure:', e?.message || e);
     report.errors.push(`harvest: ${e.message}`);
   }
 
@@ -103,6 +105,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       }
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:extraction] silent failure:', e?.message || e);
     report.errors.push(`promote: ${e.message}`);
   }
 
@@ -114,11 +117,16 @@ function autoSubmit(oracle, baseDir, options = {}) {
       if (sqliteStore) {
         const syncResult = syncToGlobal(sqliteStore, { minCoherency: 0.0 });
         report.synced = true;
-        if (!silent && syncResult?.synced > 0) {
-          log(`Synced ${syncResult.synced} pattern(s) to personal store`);
+        report.syncDetails = { synced: syncResult?.synced || 0, upgraded: syncResult?.upgraded || 0 };
+        if (!silent && (syncResult?.synced > 0 || syncResult?.upgraded > 0)) {
+          const parts = [];
+          if (syncResult.synced > 0) parts.push(`${syncResult.synced} synced`);
+          if (syncResult.upgraded > 0) parts.push(`${syncResult.upgraded} upgraded`);
+          log(`Personal store: ${parts.join(', ')}`);
         }
       }
     } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
       report.errors.push(`sync: ${e.message}`);
     }
   }
@@ -136,6 +144,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
         }
       }
     } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
       report.errors.push(`share: ${e.message}`);
     }
   }
@@ -149,7 +158,8 @@ function autoSubmit(oracle, baseDir, options = {}) {
       synced: report.synced,
       shared: report.shared,
     });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
     // Best-effort event emission
   }
 
@@ -176,7 +186,8 @@ function shouldAutoSubmit(cwd) {
 
     const codeExts = /\.(js|ts|py|go|rs|jsx|tsx)$/;
     return changed.split('\n').some(f => codeExts.test(f));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:shouldAutoSubmit] silent failure:', e?.message || e);
     // If git command fails (initial commit, etc.), run anyway
     return true;
   }

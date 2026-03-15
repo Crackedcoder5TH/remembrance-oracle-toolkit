@@ -6,7 +6,13 @@ const { readFileSync } = require('fs');
 const path = require('path');
 
 function loadJSON(filename) {
-  return JSON.parse(readFileSync(path.join(__dirname, filename), 'utf-8'));
+  const filePath = path.join(__dirname, filename);
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf-8'));
+  } catch (e) {
+    console.error(`[seed-helpers:loadJSON] CRITICAL — failed to load ${filename}: ${e.message}`);
+    return []; // Return empty array so oracle can still initialise with partial seeds
+  }
 }
 
 // ─── Data loaders (lazy, cached) ───
@@ -99,9 +105,15 @@ function seedNativeLibrary(oracle, options = {}) {
   const existingNames = new Set(existing.map(p => p.name));
 
   let allSeeds = [];
-  try { allSeeds.push(...getPythonSeeds()); } catch { /* no python seeds */ }
-  try { allSeeds.push(...getGoSeeds()); } catch { /* no go seeds */ }
-  try { allSeeds.push(...getRustSeeds()); } catch { /* no rust seeds */ }
+  try { allSeeds.push(...getPythonSeeds()); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[seed-helpers:seedNativeLibrary] no python seeds:', e?.message || e);
+  }
+  try { allSeeds.push(...getGoSeeds()); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[seed-helpers:seedNativeLibrary] no go seeds:', e?.message || e);
+  }
+  try { allSeeds.push(...getRustSeeds()); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[seed-helpers:seedNativeLibrary] no rust seeds:', e?.message || e);
+  }
 
   let registered = 0, skipped = 0, failed = 0;
 

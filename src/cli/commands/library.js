@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('../../core/safe-path');
 const { c, colorScore, colorStatus, colorDecision, colorSource } = require('../colors');
 const { validatePositiveInt, validateCoherency, validateId, parseDryRun, parseTags, parseMinCoherency } = require('../validate-args');
 
@@ -78,8 +79,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['register'] = (args) => {
     if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
-    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let code, testCode;
+    try { code = fs.readFileSync(safePath(args.file, process.cwd()), 'utf-8'); }
+    catch (e) { console.error(c.boldRed('Error:') + ` Cannot read file: ${e.message}`); process.exit(1); }
+    if (args.test) {
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const tags = parseTags(args);
     const result = oracle.registerPattern({
       name: args.name || path.basename(args.file, path.extname(args.file)),
@@ -90,10 +96,12 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       testCode,
       author: args.author || process.env.USER || 'cli-user',
     });
-    if (result.registered) {
+    if (result.registered && result.pattern) {
       console.log(`${c.boldGreen('Pattern registered:')} ${c.bold(result.pattern.name)} [${c.cyan(result.pattern.id)}]`);
       console.log(`Type: ${c.magenta(result.pattern.patternType)} | Complexity: ${c.blue(result.pattern.complexity)}`);
-      console.log(`Coherency: ${colorScore(result.pattern.coherencyScore.total)}`);
+      console.log(`Coherency: ${colorScore(result.pattern.coherencyScore?.total ?? 0)}`);
+    } else if (result.registered) {
+      console.log(`${c.boldGreen('Pattern registered')}`);
     } else {
       console.log(`${colorStatus(false)}: ${c.red(result.reason)}`);
     }
@@ -204,13 +212,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : undefined;
     const output = oracle.export({
       format: args.format || (args.file && args.file.endsWith('.md') ? 'markdown' : 'json'),
-      limit: parseInt(args.limit) || 20,
+      limit: parseInt(args.limit, 10) || 20,
       minCoherency: parseMinCoherency(args, 0.5),
       language: args.language,
       tags,
     });
     if (args.file) {
-      fs.writeFileSync(path.resolve(args.file), output, 'utf-8');
+      fs.writeFileSync(safePath(args.file, process.cwd()), output, 'utf-8');
       console.log(`${c.boldGreen('Exported')} to ${c.cyan(args.file)}`);
     } else {
       console.log(output);
@@ -219,7 +227,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['import'] = (args) => {
     if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle import --file patterns.json [--dry-run]')}`); process.exit(1); }
-    const data = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const data = fs.readFileSync(safePath(args.file, process.cwd()), 'utf-8');
     const dryRun = parseDryRun(args);
     const result = oracle.import(data, { dryRun, author: args.author || 'cli-import' });
     if (dryRun) console.log(c.dim('(dry run — no changes written)\n'));
@@ -280,7 +288,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
     if (candidates.length > 0) {
       console.log(`\n${c.bold('Candidates:')}`);
-      const limit = parseInt(args.limit) || 20;
+      const limit = parseInt(args.limit, 10) || 20;
       for (const cand of candidates.slice(0, limit)) {
         const parent = cand.parentPattern ? c.dim(` ← ${cand.parentPattern}`) : '';
         console.log(`  ${c.cyan(cand.id.slice(0, 8))} ${c.bold(cand.name)} (${c.blue(cand.language)}) coherency: ${colorScore(cand.coherencyTotal)}${parent}`);
@@ -294,7 +302,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   handlers['generate'] = (args) => {
     const languages = (args.languages || 'python,typescript').split(',').map(s => s.trim());
     const methods = (args.methods || 'variant,iterative-refine,approach-swap').split(',').map(s => s.trim());
-    const maxPatterns = parseInt(args['max-patterns']) || Infinity;
+    const maxPatterns = parseInt(args['max-patterns'], 10) || 999999;
     const minCoherency = parseMinCoherency(args, 0.5);
 
     console.log(c.boldCyan('Continuous Generation') + ' — proven → coherency → candidates\n');
@@ -365,20 +373,26 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       return;
     }
 
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let testCode;
+    if (args.test) {
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const result = oracle.promote(id, testCode);
 
-    if (result.promoted) {
+    if (result.promoted && result.pattern) {
       console.log(`${c.boldGreen('Promoted:')} ${c.bold(result.pattern.name)} → proven`);
       console.log(`  Coherency: ${colorScore(result.coherency)}`);
       console.log(`  ID: ${c.cyan(result.pattern.id)}`);
+    } else if (result.promoted) {
+      console.log(`${c.boldGreen('Promoted')} → proven`);
     } else {
       console.log(`${c.boldRed('Failed:')} ${result.reason}`);
     }
   };
 
   handlers['synthesize'] = (args) => {
-    const maxCandidates = parseInt(args['max-candidates']) || Infinity;
+    const maxCandidates = parseInt(args['max-candidates'], 10) || 999999;
     const dryRun = parseDryRun(args);
     const autoPromoteFlag = args['no-promote'] ? false : true;
 
@@ -501,6 +515,79 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       }
     } else {
       console.log(c.red(result.message || 'Compression failed'));
+    }
+  };
+
+  handlers['cluster'] = (args) => {
+    const { clusterPatterns, findIsomorphisms } = require('../../patterns/clustering');
+    const patterns = oracle.patterns.getAll();
+    const threshold = args.threshold ? parseFloat(args.threshold) : 0.45;
+    const sub = args._sub || 'run';
+
+    if (sub === 'isomorphisms' || sub === 'iso') {
+      const isos = findIsomorphisms(patterns, { threshold });
+      if (isos.length === 0) {
+        console.log(c.dim('No cross-domain isomorphisms found.'));
+        return;
+      }
+      console.log(c.boldCyan(`Found ${isos.length} cross-domain isomorphism(s):\n`));
+      for (const iso of isos.slice(0, 20)) {
+        console.log(`  ${c.bold(iso.patternA.name)} ${c.dim(`[${iso.patternA.domain}]`)} ↔ ${c.bold(iso.patternB.name)} ${c.dim(`[${iso.patternB.domain}]`)}`);
+        console.log(`    Structural: ${colorScore(iso.similarity.structural.toFixed(3))} | Code: ${colorScore(iso.similarity.code.toFixed(3))} | Total: ${colorScore(iso.similarity.total.toFixed(3))}`);
+      }
+      return;
+    }
+
+    const clusters = clusterPatterns(patterns, { threshold });
+    const crossDomain = clusters.filter(cl => cl.crossDomain);
+    console.log(c.boldCyan(`Clustering: ${patterns.length} patterns → ${clusters.length} cluster(s)\n`));
+    console.log(`  Cross-domain clusters: ${c.bold(String(crossDomain.length))}`);
+    console.log(`  Single-domain clusters: ${c.bold(String(clusters.length - crossDomain.length))}\n`);
+
+    const toShow = args.all ? clusters : clusters.filter(cl => cl.members.length > 1).slice(0, 15);
+    for (const cl of toShow) {
+      const domainLabel = cl.crossDomain ? c.yellow(' [CROSS-DOMAIN]') : '';
+      console.log(`${c.bold(cl.id)}${domainLabel} (${cl.members.length} members, avg sim: ${colorScore(cl.avgSimilarity.toFixed(3))})`);
+      for (const m of cl.members.slice(0, 5)) {
+        console.log(`  - ${c.cyan(m.name || m.id)} ${c.dim(`[${m.language || 'unknown'}]`)}`);
+      }
+      if (cl.members.length > 5) console.log(`  ${c.dim(`  ... and ${cl.members.length - 5} more`)}`);
+      console.log('');
+    }
+  };
+
+  handlers['audit-integration'] = (args) => {
+    const { auditIntegration } = require('../../compression/fractal-library-bridge');
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : null;
+    const report = auditIntegration(store, oracle.patterns);
+
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(c.boldCyan('Fractal ↔ Library Integration Audit\n'));
+    console.log(`  Total patterns:       ${c.bold(String(report.totalPatterns))}`);
+    console.log(`  With embeddings:      ${c.bold(String(report.withEmbeddings))} (${report.totalPatterns > 0 ? ((report.withEmbeddings / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+    console.log(`  In fractal families:  ${c.bold(String(report.withFamilies))} (${report.totalPatterns > 0 ? ((report.withFamilies / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+    console.log(`  Structured descs:     ${c.bold(String(report.withStructuredDesc))} (${report.totalPatterns > 0 ? ((report.withStructuredDesc / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+
+    if (report.familyStats.totalFamilies > 0) {
+      console.log(`\n${c.bold('Family Statistics:')}`);
+      console.log(`  Total families:       ${c.bold(String(report.familyStats.totalFamilies))}`);
+      console.log(`  Avg family size:      ${c.bold(String(report.familyStats.avgSize))}`);
+      console.log(`  Avg family coherency: ${colorScore(String(report.familyStats.avgCoherency))}`);
+    }
+
+    if (report.gaps.length > 0) {
+      console.log(`\n${c.bold('Gaps:')}`);
+      for (const gap of report.gaps) {
+        console.log(`  ${c.yellow('⚠')} ${gap}`);
+      }
+    }
+
+    if (report.recommendations.length > 0) {
+      console.log(`\n${c.bold('Recommendations:')}`);
+      for (const rec of report.recommendations) {
+        console.log(`  ${c.cyan('→')} ${rec}`);
+      }
     }
   };
 }

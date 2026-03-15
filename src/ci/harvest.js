@@ -16,6 +16,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { safePath } = require('../core/safe-path');
 const { discoverPatterns, extractFunctionNames, detectLanguage } = require('./auto-seed');
 
 const SKIP_DIRS = new Set([
@@ -35,7 +36,8 @@ function cloneRepo(repoUrl, options = {}) {
   args.push(repoUrl, tmpDir);
 
   try {
-    execSync(args.join(' '), { timeout: 60000, stdio: 'pipe', encoding: 'utf-8' });
+    const { execFileSync } = require('child_process');
+    execFileSync(args[0], args.slice(1), { timeout: 60000, stdio: 'pipe', encoding: 'utf-8' });
     return tmpDir;
   } catch (err) {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -105,7 +107,7 @@ function splitFunctions(code, language) {
 
   if (language === 'javascript' || language === 'typescript') {
     // Match function declarations and arrow functions
-    const re = /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)\s*\{|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^=])\s*=>\s*(?:\{|[^{]))/g;
+    const re = /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)\s*\{|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^=\s]+)\s*=>\s*(?:\{|[^{]))/g;
     let match;
     while ((match = re.exec(code)) !== null) {
       const name = match[1] || match[2];
@@ -164,12 +166,53 @@ function extractBody(code, start) {
   if (braceStart === -1) return null;
 
   let depth = 0;
-  for (let i = braceStart; i < code.length; i++) {
-    if (code[i] === '{') depth++;
-    if (code[i] === '}') depth--;
+  let i = braceStart;
+  while (i < code.length) {
+    const ch = code[i];
+    // Skip string literals
+    if (ch === "'" || ch === '"' || ch === '`') {
+      i++;
+      if (ch === '`') {
+        // Template literal — handle ${...} nesting
+        while (i < code.length && code[i] !== '`') {
+          if (code[i] === '\\') { i += 2; continue; }
+          if (code[i] === '$' && code[i + 1] === '{') {
+            let td = 1; i += 2;
+            while (i < code.length && td > 0) {
+              if (code[i] === '{') td++;
+              else if (code[i] === '}') td--;
+              if (td > 0) i++;
+            }
+          }
+          i++;
+        }
+        i++; continue;
+      }
+      while (i < code.length) {
+        if (code[i] === '\\') { i += 2; continue; }
+        if (code[i] === ch) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    // Skip single-line comments
+    if (ch === '/' && code[i + 1] === '/') {
+      const nl = code.indexOf('\n', i + 2);
+      i = nl === -1 ? code.length : nl + 1;
+      continue;
+    }
+    // Skip block comments
+    if (ch === '/' && code[i + 1] === '*') {
+      const end = code.indexOf('*/', i + 2);
+      i = end === -1 ? code.length : end + 2;
+      continue;
+    }
+    if (ch === '{') depth++;
+    if (ch === '}') depth--;
     if (depth === 0) {
       return code.slice(start, i + 1);
     }
+    i++;
   }
   return null;
 }
@@ -267,7 +310,10 @@ function harvest(oracle, source, options = {}) {
           result.skipped++;
           result.patterns.push({ name: d.name, status: 'skipped', reason: reg.reason });
         }
-      } catch { result.failed++; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[harvest:init] operation failed:', e?.message || e);
+        result.failed++;
+      }
     }
 
     // Register standalone patterns (split by function or file)
@@ -289,7 +335,10 @@ function harvest(oracle, source, options = {}) {
             } else {
               result.skipped++;
             }
-          } catch { result.failed++; }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] operation failed:', e?.message || e);
+            result.failed++;
+          }
         }
       } else {
         const name = path.basename(s.file, path.extname(s.file));
@@ -308,11 +357,16 @@ function harvest(oracle, source, options = {}) {
             result.skipped++;
             result.patterns.push({ name, status: 'skipped', reason: reg.reason });
           }
-        } catch { result.failed++; }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] operation failed:', e?.message || e);
+          result.failed++;
+        }
       }
     }
 
-    oracle._emit({ type: 'harvest_complete', source, registered: result.registered });
+    try { oracle._emit({ type: 'harvest_complete', source, registered: result.registered }); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] best effort:', e?.message || e);
+    }
     return result;
   } finally {
     if (isTemp && repoDir) {

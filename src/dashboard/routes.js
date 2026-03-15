@@ -143,7 +143,8 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         try {
           const { nearestTerms } = require('../search/vectors');
           sendJSON(res, nearestTerms(query, 15));
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
           sendJSON(res, []);
         }
         return;
@@ -258,7 +259,8 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
           if (!sqliteStore) { sendJSON(res, []); return; }
           const debugOracle = new DebugOracle(sqliteStore);
           sendJSON(res, debugOracle.search({ errorMessage: query, limit: parseInt(parsed.query.limit) || 10 }));
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
           sendJSON(res, []);
         }
         return;
@@ -271,20 +273,24 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
           const sqliteStore = oracleInstance.store.getSQLiteStore();
           if (!sqliteStore) { sendJSON(res, { totalPatterns: 0 }); return; }
           sendJSON(res, new DebugOracle(sqliteStore).stats());
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
           sendJSON(res, { totalPatterns: 0, avgConfidence: 0, byCategory: {}, byLanguage: {} });
         }
         return;
       }
 
-      // ─── Healing stats ───
+      // ─── Healing stats (requires authenticated user) ───
       if (pathname === '/api/healing/stats') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         try {
           const sqliteStore = oracleInstance.store.getSQLiteStore();
           if (!sqliteStore) { sendJSON(res, { tracked: 0, totalAttempts: 0, totalSuccesses: 0, rate: 0, patterns: [] }); return; }
           try {
             sqliteStore.db.exec('CREATE TABLE IF NOT EXISTS healing_memory (id TEXT PRIMARY KEY, pattern_id TEXT, pattern_name TEXT, attempts INTEGER DEFAULT 0, successes INTEGER DEFAULT 0, best_coherency REAL DEFAULT 0, last_attempt TEXT, last_strategy TEXT)');
-          } catch { /* table might exist */ }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[routes:init] table might exist:', e?.message || e);
+          }
           const rows = sqliteStore.db.prepare('SELECT * FROM healing_memory ORDER BY last_attempt DESC LIMIT 50').all();
           const totalAttempts = rows.reduce((s, r) => s + (r.attempts || 0), 0);
           const totalSuccesses = rows.reduce((s, r) => s + (r.successes || 0), 0);
@@ -317,7 +323,8 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
             return { ...t, memberCount: members?.count || 0 };
           });
           sendJSON(res, enriched);
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
           sendJSON(res, []);
         }
         return;
@@ -379,8 +386,9 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         return;
       }
 
-      // ─── Insights ───
+      // ─── Insights (requires authenticated user) ───
       if (pathname === '/api/insights') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         try {
           const { generateInsights } = require('../analytics/insights');
           sendJSON(res, generateInsights(oracleInstance, parsed.query));
@@ -389,6 +397,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       }
 
       if (pathname === '/api/insights/act' && req.method === 'POST') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         try {
           const { actOnInsights } = require('../analytics/actionable-insights');
           sendJSON(res, actOnInsights(oracleInstance));
@@ -397,6 +406,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       }
 
       if (pathname === '/api/insights/boosts') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         try {
           const { computeUsageBoosts } = require('../analytics/actionable-insights');
           const boosts = computeUsageBoosts(oracleInstance);
@@ -415,15 +425,26 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       if (pathname === '/api/lifecycle/run' && req.method === 'POST') { sendJSON(res, oracleInstance.getLifecycle().runCycle()); return; }
       if (pathname === '/api/lifecycle/history') { sendJSON(res, oracleInstance.getLifecycle().getHistory()); return; }
 
-      // ─── Debug grow/patterns ───
+      // ─── Debug grow/patterns (requires admin) ───
       if (pathname === '/api/debug/grow' && req.method === 'POST') {
+        if (authManager) {
+          const { canManageUsers } = require('../auth/auth');
+          if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        }
         try { sendJSON(res, oracleInstance.debugGrow(parsed.query || {})); }
         catch (err) { sendJSON(res, { error: err.message }, 500); }
         return;
       }
       if (pathname === '/api/debug/patterns') {
+        if (authManager) {
+          const { canManageUsers } = require('../auth/auth');
+          if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        }
         try { sendJSON(res, oracleInstance.debugPatterns(parsed.query || {})); }
-        catch { sendJSON(res, []); }
+        catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
+          sendJSON(res, []);
+        }
         return;
       }
 

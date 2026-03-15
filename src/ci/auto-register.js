@@ -17,7 +17,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
+const { safePath } = require('../core/safe-path');
 
 const { extractFunctionNames, detectLanguage } = require('./auto-seed');
 const { splitFunctions } = require('./harvest');
@@ -33,7 +34,8 @@ const CODE_EXTS = /\.(js|ts|py|go|rs|jsx|tsx)$/;
  */
 function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
   try {
-    const output = execSync(`git diff --name-only --diff-filter=ACM ${range}`, {
+    if (!/^[\w.~^/]+(?:\.\.\.?[\w.~^/]+)?$/.test(range)) throw new Error('Invalid git range');
+    const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACM', range], {
       cwd,
       encoding: 'utf-8',
       timeout: 5000,
@@ -41,7 +43,21 @@ function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
 
     if (!output) return [];
     return output.split('\n').filter(f => CODE_EXTS.test(f));
-  } catch {
+  } catch (e) {
+    // Fallback for initial commit: HEAD~1 doesn't exist, so diff the tree directly
+    if (range === 'HEAD~1..HEAD') {
+      try {
+        const output = execFileSync('git', ['diff-tree', '--no-commit-id', '--name-only', '-r', '--diff-filter=ACM', 'HEAD'], {
+          cwd,
+          encoding: 'utf-8',
+          timeout: 5000,
+        }).trim();
+        if (output) return output.split('\n').filter(f => CODE_EXTS.test(f));
+      } catch (fallbackErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[auto-register:getChangedFiles] fallback also failed:', fallbackErr?.message || fallbackErr);
+      }
+    }
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:getChangedFiles] returning empty array on error:', e?.message || e);
     return [];
   }
 }
@@ -57,7 +73,8 @@ function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
  */
 function getAddedCode(cwd, file, range = 'HEAD~1..HEAD') {
   try {
-    const diff = execSync(`git diff -U0 ${range} -- "${file}"`, {
+    if (!/^[\w.~^/]+(?:\.\.\.?[\w.~^/]+)?$/.test(range)) throw new Error('Invalid git range');
+    const diff = execFileSync('git', ['diff', '-U0', range, '--', file], {
       cwd,
       encoding: 'utf-8',
       timeout: 5000,
@@ -69,7 +86,8 @@ function getAddedCode(cwd, file, range = 'HEAD~1..HEAD') {
       .filter(line => line.startsWith('+') && !line.startsWith('+++'))
       .map(line => line.slice(1))
       .join('\n');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:getAddedCode] returning empty string on error:', e?.message || e);
     return '';
   }
 }
@@ -137,7 +155,8 @@ function isRegistered(oracle, name) {
     // Fallback: search the store
     const results = oracle.search(name, { limit: 5 });
     return results.some(r => r.name === name);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:isRegistered] returning false on error:', e?.message || e);
     return false;
   }
 }
@@ -242,13 +261,18 @@ function autoRegister(oracle, cwd, options = {}) {
     if (typeof oracle.patterns?.getAll === 'function') {
       existingNames = new Set(oracle.patterns.getAll().map(p => p.name));
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:lookups] silent failure:', e?.message || e);
     // Fallback: check per-function
   }
 
   // Step 2: Process each changed file
   for (const relFile of changedFiles) {
-    const absFile = path.resolve(cwd, relFile);
+    let absFile;
+    try { absFile = safePath(relFile, cwd); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-register:autoRegister] skipping item:', e?.message || e);
+      continue;
+    }
     if (!fs.existsSync(absFile)) continue;
 
     const language = detectLanguage(relFile);
@@ -257,7 +281,10 @@ function autoRegister(oracle, cwd, options = {}) {
     let code;
     try {
       code = fs.readFileSync(absFile, 'utf-8');
-    } catch { continue; }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-register:lookups] skipping item:', e?.message || e);
+      continue;
+    }
 
     // Skip files that are too large or too small
     if (code.length > 50000 || code.length < 30) continue;
@@ -270,7 +297,9 @@ function autoRegister(oracle, cwd, options = {}) {
     const testFile = findTestFile(absFile, cwd);
     let testCode = null;
     if (testFile) {
-      try { testCode = fs.readFileSync(testFile, 'utf-8'); } catch { /* no test */ }
+      try { testCode = fs.readFileSync(testFile, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[auto-register:lookups] no test:', e?.message || e);
+      }
     }
 
     report.files.push({
@@ -313,10 +342,16 @@ function autoRegister(oracle, cwd, options = {}) {
           report.skipped++;
           report.patterns.push({ name, file: relFile, status: 'skipped', reason: reg.reason });
         }
-      } catch { report.failed++; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[auto-register:init] operation failed:', e?.message || e);
+        report.failed++;
+      }
     } else {
       // Split into individual functions and register new ones
-      const functions = extractFunctions(code, language, newFunctionNames.length > 0 ? newFunctionNames : null);
+      // Only register functions that appear in the diff; skip files where
+      // the diff touched only non-function code (whitespace, comments, etc.)
+      if (newFunctionNames.length === 0) continue;
+      const functions = extractFunctions(code, language, newFunctionNames);
 
       for (const fn of functions) {
         if (existingNames.has(fn.name)) {
@@ -349,7 +384,10 @@ function autoRegister(oracle, cwd, options = {}) {
             report.skipped++;
             report.patterns.push({ name: fn.name, file: relFile, status: 'skipped', reason: reg.reason });
           }
-        } catch { report.failed++; }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[auto-register:from] operation failed:', e?.message || e);
+          report.failed++;
+        }
       }
     }
   }
@@ -361,7 +399,8 @@ function autoRegister(oracle, cwd, options = {}) {
       registered: report.registered,
       files: report.files.length,
     });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:from] silent failure:', e?.message || e);
     // Best-effort
   }
 

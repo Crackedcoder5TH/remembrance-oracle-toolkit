@@ -134,7 +134,7 @@ node src/cli.js hooks install              # Install git hooks (covenant + auto-
 node src/cli.js sync push                  # Sync to personal store
 node src/cli.js share                      # Share to community store
 node src/cli.js debug search --error "..."  # Search debug patterns
-node src/cli.js mcp                        # Start MCP server (10 tools)
+node src/cli.js mcp                        # Start MCP server (12 tools)
 node --test tests/*.test.js               # Run all tests
 ```
 

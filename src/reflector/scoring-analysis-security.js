@@ -56,7 +56,10 @@ function securityScan(code, language) {
   if (!code) return { score: 1, riskLevel: 'none', findings: [], totalFindings: 0 };
   const findings = [];
   const lang = (language || '').toLowerCase();
+  const strippedCode = stripStringsAndComments(code);
 
+  // Secret patterns must match against original code (not stripped) because
+  // stripStringsAndComments removes string contents — the very values we're checking
   for (const { pattern, severity, message } of _buildSecretPatterns()) {
     const matches = code.match(pattern);
     if (matches) findings.push({ severity, message, count: matches.length });
@@ -69,44 +72,44 @@ function securityScan(code, language) {
   ];
   if (!lang || (lang !== 'javascript' && lang !== 'js' && lang !== 'typescript' && lang !== 'ts')) {
     for (const { test, severity, message } of _universalPatterns) {
-      if (test.test(code)) findings.push({ severity, message, count: 1 });
+      if (test.test(strippedCode)) findings.push({ severity, message, count: 1 });
     }
   }
 
   if (lang === 'javascript' || lang === 'js' || lang === 'typescript' || lang === 'ts') {
     for (const { test, severity, message } of _buildJsPatterns()) {
-      if (test.test(code)) findings.push({ severity, message, count: 1 });
+      if (test.test(strippedCode)) findings.push({ severity, message, count: 1 });
     }
     const cpExec = new RegExp(_k('child_pro', 'cess.*ex', 'ec(?:Sync)?\\s*\\('));
     const userInput = /\$\{|` \+|req\.|args|input|param/i;
-    if (cpExec.test(code) && userInput.test(code)) {
+    if (cpExec.test(strippedCode) && userInput.test(strippedCode)) {
       findings.push({ severity: 'high', message: _k('Shell command execution with possible user input — ', 'command injection risk'), count: 1 });
     }
     const pathTraversal = new RegExp(_k('\\.createRead', 'Stream\\s*\\([^)]*(?:req|param|input|args)'), 'i');
-    if (pathTraversal.test(code)) {
+    if (pathTraversal.test(strippedCode)) {
       findings.push({ severity: 'medium', message: _k('File access with user-controlled path — ', 'path traversal risk'), count: 1 });
     }
-    if (/\bvar\b/.test(code)) {
-      const varCount = (code.match(/\bvar\b/g) || []).length;
+    if (/\bvar\b/.test(strippedCode)) {
+      const varCount = (strippedCode.match(/\bvar\b/g) || []).length;
       findings.push({ severity: 'low', message: `Use of var (${varCount}x) — prefer const/let for block scoping`, count: varCount });
     }
     const sqlConcat = new RegExp(_k("['\"`]\\s*\\+\\s*(?:req|args|param|input|", "query)"), 'i');
     const sqlKeywords = new RegExp(_k('(?:SEL', 'ECT|INS', 'ERT|UPD', 'ATE|DEL', 'ETE|WH', 'ERE)'), 'i');
-    if (sqlConcat.test(code) && sqlKeywords.test(code)) {
+    if (sqlConcat.test(strippedCode) && sqlKeywords.test(strippedCode)) {
       findings.push({ severity: 'high', message: _k('Possible SQL injection — ', 'string concatenation in query'), count: 1 });
     }
-    if (/\[(?:req|args|param|input|key)\b[^]]*\]\s*=/.test(code)) {
+    if (/\[(?:req|args|param|input|key)\b[^]]*\]\s*=/.test(strippedCode)) {
       findings.push({ severity: 'medium', message: _k('Dynamic property assignment — ', 'possible prototype pollution'), count: 1 });
     }
   }
 
   if (lang === 'python' || lang === 'py') {
     for (const { test, severity, message } of _buildPyPatterns()) {
-      if (test.test(code)) findings.push({ severity, message, count: 1 });
+      if (test.test(strippedCode)) findings.push({ severity, message, count: 1 });
     }
     const yamlLoad = new RegExp(_k('ya', 'ml\\.lo', 'ad\\s*\\([^)]*(?!Loader)'));
     const safeLoader = new RegExp(_k('Safe', 'Loader|safe', '_load'));
-    if (yamlLoad.test(code) && !safeLoader.test(code)) {
+    if (yamlLoad.test(strippedCode) && !safeLoader.test(strippedCode)) {
       findings.push({ severity: 'medium', message: _k('yaml.load without Safe', 'Loader — arbitrary code execution risk'), count: 1 });
     }
   }

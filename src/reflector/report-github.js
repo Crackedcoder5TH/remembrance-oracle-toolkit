@@ -5,7 +5,7 @@
  * Uses lazy require for ./multi to avoid circular deps.
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const { join } = require('path');
 const { existsSync, writeFileSync } = require('fs');
 
@@ -16,6 +16,18 @@ const { TIMEOUTS } = require('./scoring-utils');
 // =====================================================================
 // GitHub — Git/GitHub Operations
 // =====================================================================
+
+/**
+ * Validate a git branch name — reject shell metacharacters.
+ */
+function sanitizeBranchName(name) {
+  if (!name || typeof name !== 'string') throw new Error('Invalid branch name');
+  // Only allow alphanumeric, dash, underscore, slash, dot
+  if (!/^[a-zA-Z0-9._\/-]+$/.test(name)) {
+    throw new Error(`Unsafe branch name: ${name}`);
+  }
+  return name;
+}
 
 /**
  * Generate a unique healing branch name.
@@ -72,7 +84,8 @@ function isGhAvailable(cwd) {
   try {
     gh('auth status', cwd);
     return true;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:isGhAvailable] returning false on error:', e?.message || e);
     return false;
   }
 }
@@ -92,17 +105,20 @@ function getDefaultBranch(cwd) {
     const remote = git('remote show origin', cwd);
     const match = remote.match(/HEAD branch:\s*(\S+)/);
     if (match) return match[1];
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
     // Fallback
   }
   try {
     git('rev-parse --verify main', cwd);
     return 'main';
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
     try {
       git('rev-parse --verify master', cwd);
       return 'master';
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
       return 'main';
     }
   }
@@ -138,8 +154,8 @@ function createHealingBranch(report, options = {}) {
   }
 
   const currentBranch = getCurrentBranch(cwd);
-  const base = baseBranch || currentBranch;
-  const branch = branchName || generateBranchName();
+  const base = sanitizeBranchName(baseBranch || currentBranch);
+  const branch = sanitizeBranchName(branchName || generateBranchName());
   const result = { branch, baseBranch: base, commits: 0, files: [] };
 
   let stashed = false;
@@ -193,14 +209,16 @@ function createHealingBranch(report, options = {}) {
   } finally {
     try {
       git(`checkout ${currentBranch}`, cwd);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-github:init] silent failure:', e?.message || e);
       // Best effort
     }
 
     if (stashed) {
       try {
         git('stash pop', cwd);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[report-github:init] silent failure:', e?.message || e);
         // Best effort
       }
     }
@@ -234,13 +252,21 @@ function openHealingPR(report, options = {}) {
   const title = `Remembrance Pull: Healed Refinement (+${(report.summary?.avgImprovement ?? 0).toFixed(3)})`;
   const labels = 'remembrance,auto-heal';
 
-  const escapedBody = body.replace(/'/g, "'\\''");
-
   try {
-    const output = gh(
-      `pr create --title '${title}' --body '${escapedBody}' --base ${baseBranch} --head ${branch} --label '${labels}'`,
-      cwd
-    );
+    const output = execFileSync('gh', [
+      'pr', 'create',
+      '--title', title,
+      '--body', body,
+      '--base', baseBranch,
+      '--head', branch,
+      '--label', labels,
+    ], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: TIMEOUTS.GIT_REMOTE,
+      env: { ...process.env },
+    }).trim();
 
     const urlMatch = output.match(/https:\/\/github\.com\/[^\s]+/);
     const numberMatch = output.match(/\/pull\/(\d+)/);
@@ -254,7 +280,8 @@ function openHealingPR(report, options = {}) {
       try {
         gh(`pr merge ${prResult.number} --auto --squash`, cwd);
         prResult.autoMergeEnabled = true;
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[report-github:openHealingPR] silent failure:', e?.message || e);
         prResult.autoMergeEnabled = false;
       }
     }
@@ -278,7 +305,8 @@ function findExistingReflectorPR(cwd) {
     const output = gh('pr list --label remembrance --state open --json number,title,url', cwd);
     const prs = JSON.parse(output);
     return prs.length > 0 ? prs[0] : null;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:findExistingReflectorPR] returning null on error:', e?.message || e);
     return null;
   }
 }

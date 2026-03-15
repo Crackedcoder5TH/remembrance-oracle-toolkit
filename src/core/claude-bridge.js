@@ -42,13 +42,16 @@ function findClaudeCLI() {
     try {
       execFileSync('which', [candidate], { stdio: 'pipe', timeout: 5000 });
       return candidate;
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[claude-bridge:findClaudeCLI] not found:', e?.message || e);
       // Try direct path existence
       if (candidate !== 'claude') {
         try {
           fs.accessSync(candidate, fs.constants.X_OK);
           return candidate;
-        } catch { /* not found */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[claude-bridge:findClaudeCLI] not found:', e?.message || e);
+        }
       }
     }
   }
@@ -57,7 +60,8 @@ function findClaudeCLI() {
   try {
     execFileSync('claude', ['--version'], { stdio: 'pipe', timeout: 5000 });
     return 'claude';
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[claude-bridge:findClaudeCLI] returning null on error:', e?.message || e);
     return null;
   }
 }
@@ -351,7 +355,9 @@ Output ONLY valid JSON, no markdown or explanations.`;
       // Extract JSON from response
       const jsonMatch = response.match(/\{[\s\S]*\}/);
       if (jsonMatch) return JSON.parse(jsonMatch[0]);
-    } catch { /* parse failure */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[claude-bridge:analyze] parse failure:', e?.message || e);
+    }
     return null;
   }
 

@@ -4,6 +4,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('../../core/safe-path');
 const { c, colorScore, colorStatus } = require('../colors');
 const { validatePositiveInt, validateCoherency, validateId, parseTags } = require('../validate-args');
 
@@ -57,7 +58,11 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
   handlers['submit'] = (args) => {
     const code = getCode(args);
     if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let testCode;
+    if (args.test) {
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const tags = parseTags(args);
     const result = oracle.submit(code, {
       description: args.description || '',
@@ -114,7 +119,7 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
   handlers['validate'] = (args) => {
     const code = getCode(args);
     if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    const testCode = args.test ? fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8') : undefined;
     const { validateCode } = require('../../core/validator');
     const result = validateCode(code, { language: args.language, testCode });
     if (jsonOut()) { console.log(JSON.stringify(result)); return; }
@@ -162,6 +167,56 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
     const result = oracle.feedback(id, succeeded);
     if (result.success) {
       console.log(`Updated reliability: ${colorScore(result.newReliability)}`);
+    } else {
+      console.log(c.red(result.error));
+    }
+  };
+
+  handlers['submit-noncode'] = (args) => {
+    const { submitNonCode, nonCodeFeedback } = require('../../api/oracle-noncode');
+
+    const content = args.content || args._rest || '';
+    const description = args.description || '';
+    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const domain = args.domain || undefined;
+    const author = args.author || 'anonymous';
+
+    // If --file is provided, read content from file
+    let finalContent = content;
+    if (args.file) {
+      try {
+        finalContent = fs.readFileSync(path.resolve(args.file), 'utf-8');
+      } catch (e) {
+        console.error(c.boldRed('Error:') + ` Could not read file: ${e.message}`);
+        process.exit(1);
+      }
+    }
+
+    if (!finalContent) {
+      console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle submit-noncode')} --content "..." --description "..." [--domain <domain>] [--tags <tags>]`);
+      process.exit(1);
+    }
+
+    const result = submitNonCode(
+      { content: finalContent, description, tags, domain, author },
+      oracle.store,
+      oracle.patterns
+    );
+
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+
+    if (result.success) {
+      console.log(`${c.boldGreen('Submitted')} non-code pattern: ${c.cyan(result.entry.id)}`);
+      console.log(`  Domain:      ${c.magenta(result.structured?.domain || 'general')}`);
+      console.log(`  Coherency:   ${colorScore(result.entry.coherencyScore.total.toFixed(3))} (baseline — grows with feedback)`);
+      console.log(`  Transform:   ${c.dim(result.structured?.transform || 'N/A')}`);
+      if (result.structured?.inputs?.length > 0) {
+        console.log(`  Inputs:      ${result.structured.inputs.join(', ')}`);
+      }
+      if (result.structured?.outputs?.length > 0) {
+        console.log(`  Outputs:     ${result.structured.outputs.join(', ')}`);
+      }
+      console.log(`\n  ${c.dim('Use')} ${c.cyan(`oracle feedback --id ${result.entry.id} --success`)} ${c.dim('to build confidence')}`);
     } else {
       console.log(c.red(result.error));
     }

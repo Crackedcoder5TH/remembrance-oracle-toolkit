@@ -49,7 +49,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       return;
     }
     const entries = sqliteStore.getAuditLog({
-      limit: parseInt(args.limit) || 20,
+      limit: parseInt(args.limit, 10) || 20,
       table: args.table,
       id: args.id,
       action: args.action,
@@ -140,6 +140,98 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
+  handlers['refresh-coherency'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.refreshAllCoherency !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required for coherency refresh');
+        process.exit(1);
+      }
+      const result = sqliteStore.refreshAllCoherency();
+      console.log(c.boldCyan('Coherency Refresh:'));
+      console.log(`  Patterns:   ${c.bold(String(result.total))}`);
+      console.log(`  Updated:    ${c.boldGreen(String(result.updated))}`);
+      console.log(`  Avg before: ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:  ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Coherency refresh error: ' + err.message);
+    }
+  };
+
+  handlers['synthesize-proven'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.synthesizeForUntested !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required for test synthesis');
+        process.exit(1);
+      }
+      const result = sqliteStore.synthesizeForUntested();
+      console.log(c.boldCyan('Test Synthesis for Proven Patterns:'));
+      console.log(`  Untested:     ${c.bold(String(result.total))}`);
+      console.log(`  Synthesized:  ${c.boldGreen(String(result.synthesized))}`);
+      console.log(`  Failed:       ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+      console.log(`  Avg before:   ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:    ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Synthesis error: ' + err.message);
+    }
+  };
+
+  handlers['bootstrap-reliability'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.bootstrapReliability !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required');
+        process.exit(1);
+      }
+      const result = sqliteStore.bootstrapReliability();
+      console.log(c.boldCyan('Bootstrap Reliability:'));
+      console.log(`  Zero-usage:    ${c.bold(String(result.total))}`);
+      console.log(`  Bootstrapped:  ${c.boldGreen(String(result.bootstrapped))}`);
+      console.log(`  Avg before:    ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:     ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Bootstrap error: ' + err.message);
+    }
+  };
+
+  handlers['fix-untested'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.fixUntestedPatterns !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required');
+        process.exit(1);
+      }
+      const result = sqliteStore.fixUntestedPatterns();
+      console.log(c.boldCyan('Fix Untested Patterns:'));
+      console.log(`  Total:     ${c.bold(String(result.total))}`);
+      console.log(`  Fixed:     ${c.boldGreen(String(result.fixed))}`);
+      console.log(`  Skipped:   ${c.dim(String(result.skipped))}`);
+      console.log(`  Avg before: ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:  ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Fix error: ' + err.message);
+    }
+  };
+
+  handlers['fix-completeness'] = () => {
+    try {
+      const sqliteStore = oracle.store.getSQLiteStore();
+      if (!sqliteStore || typeof sqliteStore.fixCompleteness !== 'function') {
+        console.error(c.boldRed('Error:') + ' SQLite store required');
+        process.exit(1);
+      }
+      const result = sqliteStore.fixCompleteness();
+      console.log(c.boldCyan('Fix Completeness:'));
+      console.log(`  Total:     ${c.bold(String(result.total))}`);
+      console.log(`  Fixed:     ${c.boldGreen(String(result.fixed))}`);
+      console.log(`  Avg before: ${colorScore(result.avgBefore)}`);
+      console.log(`  Avg after:  ${colorScore(result.avgAfter)}`);
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Fix completeness error: ' + err.message);
+    }
+  };
+
   handlers['ci-feedback'] = (args) => {
     const { CIFeedbackReporter } = require('../../ci/feedback');
     const reporter = new CIFeedbackReporter(oracle);
@@ -218,7 +310,9 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
             const staged = execSync('git diff --cached --name-only --diff-filter=ACM', { encoding: 'utf-8' })
               .trim().split('\n').filter(f => /\.(js|ts|py|go|rs)$/.test(f));
             files.push(...staged);
-          } catch { /* not in a git repo */ }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[admin:init] not in a git repo:', e?.message || e);
+          }
         }
         if (files.length === 0) { console.log(c.dim('No staged source files to check.')); return; }
         const result = runPreCommitCheck(files);
@@ -282,7 +376,7 @@ ${c.bold('Subcommands:')}
     if (sub === 'search') {
       const query = args._positional[1];
       if (!query) { console.error(c.boldRed('Error:') + ' provide a search query'); process.exit(1); }
-      const results = searchRegistry(query, { language: args.language, limit: parseInt(args.limit) || 10 });
+      const results = searchRegistry(query, { language: args.language, limit: parseInt(args.limit, 10) || 10 });
       if (jsonOut()) { console.log(JSON.stringify(results)); return; }
       if (results.length === 0) {
         console.log(c.yellow('\nNo repos found matching: ') + c.bold(query));
@@ -324,7 +418,7 @@ ${c.bold('Subcommands:')}
           language: args.language,
           dryRun,
           splitMode: args.split || 'file',
-          maxFiles: parseInt(args['max-files']) || 200,
+          maxFiles: parseInt(args['max-files'], 10) || 200,
           skipLicenseCheck: true,
         });
         const r = result.results[0];
@@ -356,7 +450,7 @@ ${c.bold('Subcommands:')}
         language: args.language,
         dryRun,
         splitMode: args.split || 'file',
-        maxFiles: parseInt(args['max-files']) || 100,
+        maxFiles: parseInt(args['max-files'], 10) || 100,
       });
       for (const r of result.results) {
         const icon = r.status === 'success' ? c.green('\u2713') : r.status === 'skipped' ? c.yellow('\u25CB') : c.red('\u2717');
@@ -375,8 +469,8 @@ ${c.bold('Subcommands:')}
       console.log(c.dim('\nSearching GitHub...'));
       const repos = discoverReposSync(query, {
         language: args.language,
-        minStars: parseInt(args['min-stars']) || 100,
-        limit: parseInt(args.limit) || 10,
+        minStars: parseInt(args['min-stars'], 10) || 100,
+        limit: parseInt(args.limit, 10) || 10,
       });
       if (jsonOut()) { console.log(JSON.stringify(repos)); return; }
       if (repos.length === 0) {
@@ -435,7 +529,7 @@ ${c.bold('Subcommands:')}
     if (sub === 'duplicates') {
       console.log(c.dim('\nScanning for duplicates...'));
       const dupes = findDuplicates(oracle, {
-        threshold: parseFloat(args.threshold) || 0.85,
+        threshold: args.threshold != null ? parseFloat(args.threshold) : 0.85,
         language: args.language,
       });
       if (jsonOut()) { console.log(JSON.stringify(dupes)); return; }

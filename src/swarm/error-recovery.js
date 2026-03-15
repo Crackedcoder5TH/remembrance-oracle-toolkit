@@ -39,7 +39,7 @@ function classifyError(error) {
   if (msg.includes('timeout') || msg.includes('abort') || msg.includes('timed out')) {
     return ERROR_CLASSES.TIMEOUT;
   }
-  if (msg.includes('401') || msg.includes('403') || msg.includes('auth') || msg.includes('key')) {
+  if (msg.includes('401') || msg.includes('403') || msg.includes('auth') || msg.includes('api key') || msg.includes('api_key') || msg.includes('invalid key')) {
     return ERROR_CLASSES.AUTH;
   }
   if (msg.includes('fetch') || msg.includes('econnrefused') || msg.includes('network') || msg.includes('dns')) {
@@ -203,7 +203,8 @@ async function dispatchWithRecovery(agents, prompt, options = {}, fallbackOpts =
               result.response = `\`\`\`\n${cached[0].code}\n\`\`\`\nCONFIDENCE: ${cached[0].coherency || 0.6}\n(Cached from oracle pattern: ${cached[0].name || 'unknown'})`;
               result.fromCache = true;
             }
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[error-recovery:onError] silent failure:', e?.message || e);
             // Oracle cache unavailable
           }
         }

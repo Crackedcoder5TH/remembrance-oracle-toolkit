@@ -17,7 +17,7 @@
  *   oracle registry discover "sorting algorithms"  # Search GitHub for repos
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -293,10 +293,12 @@ function discoverReposSync(query, options = {}) {
   const apiUrl = `https://api.github.com/search/repositories?q=${encodedQ}&sort=${sort}&order=desc&per_page=${Math.min(limit, 30)}`;
 
   try {
-    const response = execSync(
-      `curl -s -H "User-Agent: remembrance-oracle-toolkit" -H "Accept: application/vnd.github.v3+json" "${apiUrl}"`,
-      { timeout: 20000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-    );
+    const response = execFileSync('curl', [
+      '-s',
+      '-H', 'User-Agent: remembrance-oracle-toolkit',
+      '-H', 'Accept: application/vnd.github.v3+json',
+      apiUrl,
+    ], { timeout: 20000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
 
     const json = JSON.parse(response);
     if (!json.items) return [];
@@ -312,7 +314,8 @@ function discoverReposSync(query, options = {}) {
       topics: item.topics || [],
       updatedAt: item.updated_at,
     }));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:language] returning empty array on error:', e?.message || e);
     return [];
   }
 }
@@ -389,7 +392,7 @@ function detectLicenseFromClone(repoUrl) {
   let tmpDir;
   try {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-license-'));
-    execSync(`git clone --depth 1 --filter=blob:none --sparse ${repoUrl} ${tmpDir}`, {
+    execFileSync('git', ['clone', '--depth', '1', '--filter=blob:none', '--sparse', repoUrl, tmpDir], {
       timeout: 30000, stdio: 'pipe', encoding: 'utf-8',
     });
 
@@ -398,7 +401,8 @@ function detectLicenseFromClone(repoUrl) {
       execSync('git sparse-checkout set LICENSE LICENSE.md COPYING COPYING.md', {
         cwd: tmpDir, timeout: 5000, stdio: 'pipe', encoding: 'utf-8',
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] silent failure:', e?.message || e);
       // sparse-checkout may not be available in all git versions
     }
 
@@ -427,15 +431,20 @@ function detectLicenseFromClone(repoUrl) {
       try {
         const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
         if (pkg.license) return pkg.license;
-      } catch { /* ignore */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] ignore:', e?.message || e);
+      }
     }
 
     return 'unknown';
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] ignore:', e?.message || e);
     return 'unknown';
   } finally {
     if (tmpDir) {
-      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:init] ignore:', e?.message || e);
+      }
     }
   }
 }
@@ -487,12 +496,13 @@ function trackProvenance(oracle, harvestResult, provenance) {
 function getRepoCommitHash(repoUrl, branch) {
   try {
     const ref = branch || 'HEAD';
-    const output = execSync(`git ls-remote ${repoUrl} ${ref}`, {
+    const output = execFileSync('git', ['ls-remote', repoUrl, ref], {
       timeout: 15000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    }).toString();
     const match = output.match(/^([0-9a-f]+)\s/);
     return match ? match[1] : null;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:getRepoCommitHash] returning null on error:', e?.message || e);
     return null;
   }
 }

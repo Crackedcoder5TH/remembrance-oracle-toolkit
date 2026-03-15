@@ -25,7 +25,8 @@ function findGitHooksDir(cwd) {
   try {
     const gitDir = execSync('git rev-parse --git-dir', { cwd, encoding: 'utf-8' }).trim();
     return path.resolve(cwd, gitDir, 'hooks');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[hooks:findGitHooksDir] returning null on error:', e?.message || e);
     return null;
   }
 }
@@ -48,21 +49,21 @@ fi
 FAILED=0
 for file in $STAGED; do
   if [ -f "$file" ]; then
-    result=$(ORACLE_CHECK_FILE="$file" node -e "
+    result=$(ORACLE_CHECK_FILE="$file" node -e '
       try {
-        const { covenantCheck } = require('${path.resolve(__dirname, '../core/covenant')}');
-        const fs = require('fs');
+        const { covenantCheck } = require(${JSON.stringify(path.resolve(__dirname, '../core/covenant'))});
+        const fs = require("fs");
         const f = process.env.ORACLE_CHECK_FILE;
-        const code = fs.readFileSync(f, 'utf-8');
+        const code = fs.readFileSync(f, "utf-8");
         const r = covenantCheck(code, { description: f, trusted: true });
         if (!r.sealed) {
-          r.violations.forEach(v => console.error('COVENANT BROKEN [' + v.name + ']: ' + v.reason + ' — ' + f));
+          r.violations.forEach(v => console.error("COVENANT BROKEN [" + v.name + "]: " + v.reason + " — " + f));
           process.exit(1);
         }
       } catch(e) {
         // Covenant module not found — skip
       }
-    " 2>&1)
+    ' 2>&1)
     if [ $? -ne 0 ]; then
       echo "$result"
       FAILED=1
@@ -91,17 +92,37 @@ ${HOOK_MARKER}
 
 node -e "
   try {
-    const { shouldAutoSubmit, autoSubmit } = require('${path.resolve(__dirname, './auto-submit')}');
+    const { shouldAutoSubmit, autoSubmit } = require(${JSON.stringify(path.resolve(__dirname, './auto-submit'))});
     if (!shouldAutoSubmit(process.cwd())) process.exit(0);
-    const { RemembranceOracle } = require('${path.resolve(__dirname, '../api/oracle')}');
+    const { RemembranceOracle } = require(${JSON.stringify(path.resolve(__dirname, '../api/oracle'))});
     const oracle = new RemembranceOracle({ autoSeed: false });
     const result = autoSubmit(oracle, process.cwd(), { syncPersonal: true, silent: true });
-    const total = result.harvest.registered + result.promoted;
+    const total = (result.harvest.registered || 0) + (result.promoted || 0);
     if (total > 0) {
-      console.log('Oracle: ' + result.harvest.registered + ' harvested, ' + result.promoted + ' promoted' + (result.synced ? ', synced' : ''));
+      console.log('Oracle: ' + (result.harvest.registered || 0) + ' harvested, ' + (result.promoted || 0) + ' promoted' + (result.synced ? ', synced' : ''));
+    }
+    if (result.errors && result.errors.length > 0) {
+      // Log errors to persistent file so they are not silently lost
+      const fs = require('fs');
+      const path = require('path');
+      const logDir = path.join(process.cwd(), '.remembrance');
+      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
+      const logPath = path.join(logDir, 'hook-errors.log');
+      const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\n';
+      try { fs.appendFileSync(logPath, entry); } catch(_) {}
     }
   } catch(e) {
-    // Silently fail — don't block workflow
+    // Log to persistent file — never swallow errors silently
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const logDir = path.join(process.cwd(), '.remembrance');
+      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
+      const logPath = path.join(logDir, 'hook-errors.log');
+      const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\n';
+      try { fs.appendFileSync(logPath, entry); } catch(_) {}
+    } catch(_) {}
+    if (process.env.ORACLE_DEBUG) console.warn('[hooks:postCommitScript] failure:', e?.message || e);
   }
 " 2>/dev/null || true
 `;
@@ -128,8 +149,8 @@ function installHooks(cwd = process.cwd()) {
       // Already installed — overwrite
       fs.writeFileSync(preCommitPath, preCommitScript());
     } else {
-      // Append to existing hook
-      fs.appendFileSync(preCommitPath, '\n' + preCommitScript());
+      // Append to existing hook (strip shebang to avoid duplicate)
+      fs.appendFileSync(preCommitPath, '\n' + preCommitScript().replace(/^#!\/bin\/sh\n/, ''));
     }
   } else {
     fs.writeFileSync(preCommitPath, preCommitScript());
@@ -144,7 +165,7 @@ function installHooks(cwd = process.cwd()) {
     if (existing.includes(HOOK_MARKER)) {
       fs.writeFileSync(postCommitPath, postCommitScript());
     } else {
-      fs.appendFileSync(postCommitPath, '\n' + postCommitScript());
+      fs.appendFileSync(postCommitPath, '\n' + postCommitScript().replace(/^#!\/bin\/sh\n/, ''));
     }
   } else {
     fs.writeFileSync(postCommitPath, postCommitScript());
@@ -176,6 +197,7 @@ function uninstallHooks(cwd = process.cwd()) {
     // If the whole file is ours, delete it. Otherwise, remove our section.
     const lines = content.split('\n');
     const markerIdx = lines.findIndex(l => l.includes(HOOK_MARKER));
+    if (markerIdx < 0) continue; // No marker found, skip (shouldn't happen after includes check)
     if (markerIdx <= 1) {
       // The whole file is ours (marker is at line 0 or 1)
       fs.unlinkSync(hookPath);

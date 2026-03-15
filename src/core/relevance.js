@@ -23,6 +23,7 @@ const {
  * @returns {string[]} Array of normalized tokens
  */
 function tokenize(text) {
+  if (!text || typeof text !== 'string') return [];
   return text
     .toLowerCase()
     .replace(/[^a-z0-9_\-]/g, ' ')

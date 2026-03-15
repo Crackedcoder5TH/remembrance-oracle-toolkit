@@ -35,6 +35,7 @@ class WebSocketServer {
         try {
           handler(...args);
         } catch (err) {
+          if (process.env.ORACLE_DEBUG) console.warn('[websocket:_emit] silent failure:', err?.message || err);
           if (event !== 'error') {
             this._emit('error', err);
           }

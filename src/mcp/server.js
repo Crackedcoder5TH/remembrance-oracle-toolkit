@@ -19,10 +19,91 @@ const { HANDLERS } = require('./handlers');
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_INFO = { name: 'remembrance-oracle', version: '3.0.0' };
 
+// ─── Per-tool rate limit tiers ───
+// read-only tools get a generous limit; write/compute tools are tighter
+const RATE_LIMITS = {
+  // Read-only: 60 calls per minute
+  oracle_search:   { windowMs: 60000, maxCalls: 60 },
+  oracle_resolve:  { windowMs: 60000, maxCalls: 60 },
+  oracle_stats:    { windowMs: 60000, maxCalls: 60 },
+  oracle_feedback: { windowMs: 60000, maxCalls: 60 },
+  oracle_healing:  { windowMs: 60000, maxCalls: 60 },
+  // Write tools: 20 calls per minute
+  oracle_submit:   { windowMs: 60000, maxCalls: 20 },
+  oracle_register: { windowMs: 60000, maxCalls: 20 },
+  oracle_debug:    { windowMs: 60000, maxCalls: 30 },
+  oracle_sync:     { windowMs: 60000, maxCalls: 10 },
+  // Expensive compute: 5 calls per minute
+  oracle_harvest:  { windowMs: 60000, maxCalls: 5 },
+  oracle_maintain: { windowMs: 60000, maxCalls: 5 },
+  oracle_swarm:    { windowMs: 60000, maxCalls: 5 },
+};
+
+// ─── Numeric parameter bounds ───
+const NUMERIC_BOUNDS = {
+  limit:           { min: 1, max: 100 },
+  maxFiles:        { min: 1, max: 500 },
+  maxHealsPerRun:  { min: 1, max: 50 },
+  maxCandidates:   { min: 1, max: 100 },
+  maxLoops:        { min: 1, max: 10 },
+  minCoherency:    { min: 0, max: 1 },
+  targetCoherence: { min: 0, max: 1 },
+  minDelta:        { min: 0, max: 1 },
+};
+
 class MCPServer {
-  constructor(oracle) {
+  constructor(oracle, options = {}) {
     this.oracle = oracle || new RemembranceOracle();
     this._initialized = false;
+    this._rateLimits = options.rateLimits || RATE_LIMITS;
+    this._numericBounds = options.numericBounds || NUMERIC_BOUNDS;
+    // Per-tool call timestamps for sliding window rate limiting
+    this._callLog = new Map();
+    // Cleanup stale entries every 2 minutes
+    this._cleanupTimer = setInterval(() => this._cleanupCallLog(), 120000);
+    if (this._cleanupTimer.unref) this._cleanupTimer.unref();
+  }
+
+  _cleanupCallLog() {
+    const now = Date.now();
+    for (const [tool, timestamps] of this._callLog) {
+      const limit = this._rateLimits[tool];
+      if (!limit) { this._callLog.delete(tool); continue; }
+      const valid = timestamps.filter(t => now - t < limit.windowMs);
+      if (valid.length === 0) this._callLog.delete(tool);
+      else this._callLog.set(tool, valid);
+    }
+  }
+
+  /**
+   * Check per-tool rate limit. Returns null if allowed, or an error message if exceeded.
+   */
+  _checkRateLimit(toolName) {
+    const limit = this._rateLimits[toolName];
+    if (!limit) return null; // No limit configured — allow
+    const now = Date.now();
+    const timestamps = (this._callLog.get(toolName) || []).filter(t => now - t < limit.windowMs);
+    if (timestamps.length >= limit.maxCalls) {
+      const retryAfter = Math.ceil(limit.windowMs / 1000);
+      return `Rate limit exceeded for ${toolName}: max ${limit.maxCalls} calls per ${retryAfter}s. Try again later.`;
+    }
+    timestamps.push(now);
+    this._callLog.set(toolName, timestamps);
+    return null;
+  }
+
+  /**
+   * Clamp numeric parameters to safe bounds.
+   */
+  _clampNumericParams(args) {
+    if (!args || typeof args !== 'object') return args;
+    const clamped = { ...args };
+    for (const [key, bounds] of Object.entries(this._numericBounds)) {
+      if (key in clamped && typeof clamped[key] === 'number') {
+        clamped[key] = Math.max(bounds.min, Math.min(bounds.max, clamped[key]));
+      }
+    }
+    return clamped;
   }
 
   async handleRequest(msg) {
@@ -94,6 +175,16 @@ class MCPServer {
       };
     }
 
+    // Per-tool rate limiting
+    const rateLimitError = this._checkRateLimit(name);
+    if (rateLimitError) {
+      return {
+        jsonrpc: '2.0',
+        id,
+        error: { code: -32000, message: rateLimitError },
+      };
+    }
+
     const handler = HANDLERS[name];
     if (!handler) {
       return {
@@ -103,8 +194,11 @@ class MCPServer {
       };
     }
 
+    // Clamp numeric parameters to safe bounds
+    const clampedArgs = this._clampNumericParams(args);
+
     try {
-      const result = handler(this.oracle, args);
+      const result = await handler(this.oracle, clampedArgs);
       return {
         jsonrpc: '2.0',
         id,
@@ -138,6 +232,7 @@ function startMCPServer(oracle) {
         process.stdout.write(JSON.stringify(response) + '\n');
       }
     } catch (err) {
+      if (process.env.ORACLE_DEBUG) console.warn('[server:startMCPServer] silent failure:', err?.message || err);
       const errorResponse = {
         jsonrpc: '2.0',
         id: null,
@@ -167,4 +262,4 @@ if (require.main === module) {
   startMCPServer();
 }
 
-module.exports = { MCPServer, startMCPServer, TOOLS };
+module.exports = { MCPServer, startMCPServer, TOOLS, RATE_LIMITS, NUMERIC_BOUNDS };

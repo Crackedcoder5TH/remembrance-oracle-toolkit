@@ -58,19 +58,19 @@ const _covenantCache = new Map();
 const _CACHE_MAX = 256;
 
 function _cacheKey(code) {
-  const len = code.length;
-  const head = code.slice(0, 64);
-  const tail = code.slice(-64);
-  return len + ':' + head + ':' + tail;
+  // Use a proper hash to avoid collisions between code strings
+  // that share the same length, prefix, and suffix but differ in the middle
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(code).digest('hex');
 }
 
 function covenantCheck(code, metadata = {}) {
-  // Fast-path: if no metadata, check cache
-  const hasMeta = metadata.description || (metadata.tags && metadata.tags.length);
+  // Fast-path: if no metadata and not trusted, check cache
+  const hasMeta = metadata.description || (metadata.tags && metadata.tags.length) || metadata.trusted;
   if (!hasMeta) {
     const key = _cacheKey(code);
     const cached = _covenantCache.get(key);
-    if (cached) return cached;
+    if (cached) return { ...cached, violations: [...cached.violations] };
   }
 
   const violations = [];
@@ -275,11 +275,28 @@ function deepSecurityScan(code, options = {}) {
 
 /**
  * Safe JSON.parse that strips prototype pollution keys.
+ * The JSON.parse reviver is called bottom-up for every key at every nesting
+ * level, so filtering dangerous keys here covers the entire tree — no
+ * separate recursive walk is needed.  We also reject non-plain-object values
+ * sitting behind these keys to block `{"constructor":{"prototype":…}}` style
+ * payloads where the *value* carries the poison even though the outer key is
+ * innocuous.
  */
 function safeJsonParse(str, fallback = {}) {
   try {
+    const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
     return JSON.parse(str, (key, value) => {
-      if (key === '__proto__' || key === 'constructor' || key === 'prototype') return undefined;
+      if (DANGEROUS_KEYS.has(key)) return undefined;
+      // Deep defence: if any value is an object that still contains a
+      // dangerous key (e.g. arrived via a Symbol or numeric key we can't
+      // foresee), strip it now.
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        for (const dk of DANGEROUS_KEYS) {
+          if (Object.prototype.hasOwnProperty.call(value, dk)) {
+            delete value[dk];
+          }
+        }
+      }
       return value;
     });
   } catch (err) {

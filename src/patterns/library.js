@@ -20,6 +20,16 @@ const path = require('path');
 const crypto = require('crypto');
 const { computeCoherencyScore } = require('../core/coherency');
 const { computeRelevance } = require('../core/relevance');
+const { parseStructuredDescription, structuralSimilarity } = require('../core/structured-description');
+const { applyDecayToScore, computeFreshnessBoost } = require('../core/confidence-decay');
+
+// Fractal-library bridge (graceful — returns neutral values if unavailable)
+let _holoDecisionBoost, _familyStabilitySignal, _familyDecayModifier;
+try {
+  ({ holoDecisionBoost: _holoDecisionBoost, familyStabilitySignal: _familyStabilitySignal, familyDecayModifier: _familyDecayModifier } = require('../compression/fractal-library-bridge'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[library:init] fractal-library bridge not available:', e?.message || e);
+}
 const {
   DECISION_THRESHOLDS,
   HASH_TRUNCATION_LENGTH,
@@ -46,7 +56,8 @@ function syncSleep(ms) {
   try {
     const buf = new Int32Array(new SharedArrayBuffer(4));
     Atomics.wait(buf, 0, 0, ms);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:syncSleep] spin:', e?.message || e);
     const end = Date.now() + ms;
     while (Date.now() < end) { /* spin */ }
   }
@@ -66,15 +77,21 @@ function acquireLock(storeDir, label = 'pattern-library') {
       const fd = fs.openSync(lockPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY);
       fs.writeFileSync(fd, String(process.pid), 'utf-8');
       fs.closeSync(fd);
-      return () => { try { fs.unlinkSync(lockPath); } catch { /* ok */ } };
-    } catch {
+      return () => { try { fs.unlinkSync(lockPath); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e); } };
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e);
       try {
         const stat = fs.statSync(lockPath);
         if (Date.now() - stat.mtimeMs > STALE_LOCK_MS) {
-          try { fs.unlinkSync(lockPath); } catch { /* ok */ }
+          try { fs.unlinkSync(lockPath); } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e);
+          }
           continue;
         }
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] skipping item:', e?.message || e);
+        continue;
+      }
       if (attempt < LOCK_DELAYS.length) {
         syncSleep(LOCK_DELAYS[attempt]);
       }
@@ -92,17 +109,23 @@ function loadJSONSafe(filePath, fallback) {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       return parsed;
     }
-  } catch { /* primary corrupted — try backup */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] primary corrupted — try backup:', e?.message || e);
+  }
 
   const bakPath = filePath + '.bak';
   try {
     if (fs.existsSync(bakPath)) {
       const raw = fs.readFileSync(bakPath, 'utf-8');
       const parsed = JSON.parse(raw);
-      try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch { /* best effort recovery */ }
+      try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] best effort recovery:', e?.message || e);
+      }
       return parsed;
     }
-  } catch { /* backup also corrupted */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] backup also corrupted:', e?.message || e);
+  }
 
   if (!fs.existsSync(filePath) && !fs.existsSync(bakPath)) {
     return fallback;
@@ -122,7 +145,12 @@ function atomicWriteJSON(filePath, data) {
   const tmpPath = filePath + '.tmp';
   fs.writeFileSync(tmpPath, json, 'utf-8');
   if (fs.existsSync(filePath)) {
-    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch { /* ok */ }
+    try {
+      fs.copyFileSync(filePath, filePath + '.bak');
+    } catch (e) {
+      // Backup failed — warn loudly since .bak recovery won't work if rename crashes
+      console.warn(`[library:atomicWriteJSON] WARNING — backup failed for ${path.basename(filePath)}: ${e?.message || e}. Recovery may be incomplete if write is interrupted.`);
+    }
   }
   fs.renameSync(tmpPath, filePath);
 }
@@ -213,7 +241,9 @@ function tryGetSQLite(storeDir) {
     }
     VerifiedHistoryStore._sqliteInstances.set(storeDir, instance);
     return instance;
-  } catch { /* SQLite not available — fall back to JSON */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:tryGetSQLite] SQLite not available — fall back to JSON:', e?.message || e);
+  }
   return null;
 }
 
@@ -286,6 +316,7 @@ class PatternLibrary {
     });
 
     if (this._backend === 'sqlite') {
+      const structured = pattern.structuredDescription || parseStructuredDescription(pattern.description || '', { code: sanitizedCode, tags: pattern.tags || [] });
       const patternData = {
         name: pattern.name,
         code: sanitizedCode,
@@ -293,6 +324,7 @@ class PatternLibrary {
         patternType: pattern.patternType || classifyPattern(sanitizedCode, pattern.name),
         complexity: pattern.complexity || inferComplexity(sanitizedCode),
         description: pattern.description || '',
+        structuredDescription: structured,
         tags: pattern.tags || [],
         coherencyScore: coherency,
         variants: pattern.variants || [],
@@ -304,7 +336,7 @@ class PatternLibrary {
       if (!record) {
         // Duplicate with equal/higher coherency — return the existing one
         const existing = this._sqlite.getPatternByName(pattern.name);
-        return existing;
+        return existing || null;
       }
       return record;
     }
@@ -341,6 +373,9 @@ class PatternLibrary {
       };
     }
 
+    // Parse request description into structured form for structural matching
+    const requestStructured = parseStructuredDescription(description, { tags });
+
     const scored = patterns.map(p => {
       const relevance = computeRelevance(
         { description, tags, language },
@@ -355,10 +390,16 @@ class PatternLibrary {
       );
 
       const normalizedDesc = description.toLowerCase().replace(/[-_]/g, ' ');
-      const normalizedName = p.name.toLowerCase().replace(/[-_]/g, ' ');
+      const normalizedName = (p.name || '').toLowerCase().replace(/[-_]/g, ' ');
       const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? DECISION_BONUSES.NAME_MATCH : 0;
       const focusBonus = p.complexity === 'atomic' ? DECISION_BONUSES.ATOMIC_FOCUS : p.complexity === 'composite' ? DECISION_BONUSES.COMPOSITE_FOCUS : 0;
       const coherency = p.coherencyScore?.total ?? 0;
+
+      // Structural similarity boost — compare structured descriptions
+      let structuralBoost = 0;
+      const patternStructured = p.structuredDescription || parseStructuredDescription(p.description || '', { code: p.code, tags: p.tags || [] });
+      const structSim = structuralSimilarity(requestStructured, patternStructured);
+      if (structSim > 0.5) structuralBoost = structSim * 0.10; // Up to 10% boost
 
       // Enhanced reliability: usage success + bug reports + healing success + community votes
       const usageReliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
@@ -376,14 +417,30 @@ class PatternLibrary {
         const { evolutionAdjustment } = require('../evolution/evolution');
         const adj = evolutionAdjustment(p);
         evolutionPenalty = adj.total;
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:normalizedName] silent failure:', e?.message || e);
         // Evolution module not available — no penalty
       }
 
-      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
-      const composite = relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus - evolutionPenalty;
+      // Confidence decay — penalize stale, reward fresh
+      // Family stability slows decay for patterns in proven structural families
+      const store = this._sqlite || (this.store && this.store.getSQLiteStore ? this.store.getSQLiteStore() : null);
+      const decayModifier = _familyDecayModifier ? _familyDecayModifier(p.id, store) : 1.0;
+      const decayResult = applyDecayToScore(coherency, p, { halfLifeDays: 90 * decayModifier });
+      const freshnessBoost = computeFreshnessBoost(p);
+      const decayedCoherency = decayResult.adjusted + freshnessBoost;
 
-      return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
+      // Holographic embedding boost — uses 128D vectors when available
+      let holoBoost = 0;
+      if (_holoDecisionBoost) {
+        const holo = _holoDecisionBoost({ description, tags, language }, p, store);
+        holoBoost = holo.boost;
+      }
+
+      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
+      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus + structuralBoost + holoBoost - evolutionPenalty);
+
+      return { pattern: p, relevance: relevance.relevance, coherency, decayedCoherency, reliability, structuralSimilarity: structSim, holoBoost, composite };
     }).sort((a, b) => b.composite - a.composite);
 
     // Guard: if all patterns were filtered out during scoring, generate
@@ -426,7 +483,7 @@ class PatternLibrary {
       pattern: scored.length > 0 ? scored[0].pattern : null,
       confidence: 1.0 - (best.composite || 0),
       reasoning: `Best match "${best.pattern.name}" scored too low (${best.composite.toFixed(3)}) — new pattern needed`,
-      alternatives: scored.slice(0, 3).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+      alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
     };
   }
 
@@ -495,8 +552,8 @@ class PatternLibrary {
       patternId: id,
       patternName: pattern.name,
       usageReliability: Math.round(usageReliability * 1000) / 1000,
-      usageCount: pattern.usageCount || 0,
-      successCount: pattern.successCount || 0,
+      usageCount: pattern.usageCount ?? 0,
+      successCount: pattern.successCount ?? 0,
       bugReports: bugCount,
       bugPenalty: Math.round(bugPenalty * 1000) / 1000,
       healingRate: Math.round(healingRate * 1000) / 1000,
@@ -663,10 +720,10 @@ class PatternLibrary {
       code: cleanCode,
       language: candidate.language || 'unknown',
       patternType: candidate.patternType || 'utility',
-      complexity: candidate.complexity || inferComplexity(candidate.code),
+      complexity: candidate.complexity || inferComplexity(cleanCode || ''),
       description: candidate.description || '',
       tags: candidate.tags || [],
-      coherencyTotal: candidate.coherencyTotal ?? 0,
+      coherencyTotal: candidate.coherencyTotal ?? candidate.coherencyScore?.total ?? 0,
       coherencyScore: candidate.coherencyScore || {},
       testCode: candidate.testCode || null,
       parentPattern: candidate.parentPattern || null,
@@ -767,6 +824,7 @@ class PatternLibrary {
       requires: resolved.map(p => p.id),
     });
 
+    if (!pattern) return { composed: false, reason: 'Registration failed — possible duplicate' };
     pattern.composedOf = resolved.map(p => ({ id: p.id, name: p.name }));
     if (this._backend === 'sqlite') {
       this._sqlite.updatePattern(pattern.id, {
@@ -872,6 +930,7 @@ class PatternLibrary {
     }
 
     const id = this._hash(pattern.code + pattern.name + Date.now());
+    const structured = pattern.structuredDescription || parseStructuredDescription(pattern.description || '', { code: pattern.code, tags: pattern.tags || [] });
     const record = {
       id,
       name: pattern.name,
@@ -880,6 +939,7 @@ class PatternLibrary {
       patternType: pattern.patternType || classifyPattern(pattern.code, pattern.name),
       complexity: pattern.complexity || inferComplexity(pattern.code),
       description: pattern.description || '',
+      structuredDescription: structured,
       tags: pattern.tags || [],
       coherencyScore: coherency,
       variants: pattern.variants || [],
@@ -902,8 +962,8 @@ class PatternLibrary {
     const data = this._readJSON();
     const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
-    pattern.usageCount = (pattern.usageCount || 0) + 1;
-    if (succeeded) pattern.successCount = (pattern.successCount || 0) + 1;
+    pattern.usageCount = (pattern.usageCount ?? 0) + 1;
+    if (succeeded) pattern.successCount = (pattern.successCount ?? 0) + 1;
     pattern.updatedAt = new Date().toISOString();
     this._writeJSON(data);
     return pattern;
@@ -946,7 +1006,7 @@ class PatternLibrary {
     const before = data.patterns.length;
     data.patterns = data.patterns.filter(p => {
       const coherency = p.coherencyScore?.total ?? 0;
-      const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
+      const reliability = (p.usageCount ?? 0) > 0 ? (p.successCount ?? 0) / p.usageCount : 0.5;
       return (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
     });
     this._writeJSON(data);
@@ -1016,13 +1076,13 @@ class PatternLibrary {
     }
 
     if (this._backend === 'sqlite') {
-      let added = 0, updated = 0;
+      let added = 0, skipped = 0;
       for (const p of incoming) {
         const result = this._sqlite.addPatternIfNotExists(p);
         if (result) added++;
-        else updated++;
+        else skipped++;
       }
-      return { added, updated };
+      return { added, updated: 0, skipped };
     }
 
     const data = this._readJSON();
@@ -1106,7 +1166,7 @@ class PatternLibrary {
       repaired.push(`Deduplicated ${before - data.patterns.length} patterns`);
     }
 
-    return { healthy: issues.length === 0 || repaired.length > 0, issues, repaired };
+    return { healthy: issues.length === 0 || issues.length <= repaired.length, issues, repaired };
   }
 }
 
@@ -1159,20 +1219,29 @@ function maxNestingDepth(code) {
  * Ported from Reflector Oracle's patternSync.js.
  */
 function deduplicatePatterns(patterns) {
-  const byName = new Map();
+  const byNameLang = new Map();
   for (const p of patterns) {
     if (!p.name) continue;
-    const key = p.name.toLowerCase();
-    const existing = byName.get(key);
+    // Include language in key to preserve valid cross-language variants
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const existing = byNameLang.get(key);
     if (!existing) {
-      byName.set(key, p);
+      byNameLang.set(key, p);
     } else if ((p.coherencyScore?.total ?? 0) > (existing.coherencyScore?.total ?? 0)) {
-      byName.set(key, { ...existing, ...p });
+      // Merge: take better code/scores from p, but preserve usage history from existing
+      byNameLang.set(key, {
+        ...p,
+        id: existing.id,
+        usageCount: existing.usageCount ?? p.usageCount ?? 0,
+        successCount: existing.successCount ?? p.successCount ?? 0,
+        bugReports: existing.bugReports ?? p.bugReports ?? 0,
+        createdAt: existing.createdAt || p.createdAt,
+      });
     }
   }
   // Preserve unnamed patterns too
   const unnamed = patterns.filter(p => !p.name);
-  return [...byName.values(), ...unnamed];
+  return [...byNameLang.values(), ...unnamed];
 }
 
 const { countBy } = require('../store/store-helpers');

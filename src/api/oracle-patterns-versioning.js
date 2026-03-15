@@ -43,7 +43,9 @@ module.exports = {
         this._trackHealingSuccess(patternId, true);
         return { passed: true, patternId, patternName: pattern.name };
       }
-    } catch (_) { /* fall through to rollback */ }
+    } catch (_) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-patterns-versioning:verifyOrRollback] fall through to rollback:', _?.message || _);
+    }
 
     this._trackHealingSuccess(patternId, false);
     const rollbackResult = this.rollback(patternId);
@@ -61,8 +63,8 @@ module.exports = {
       sqliteStore.recordHealingAttempt({
         patternId,
         succeeded,
-        coherencyBefore: context.coherencyBefore || null,
-        coherencyAfter: context.coherencyAfter || null,
+        coherencyBefore: context.coherencyBefore ?? null,
+        coherencyAfter: context.coherencyAfter ?? null,
         healingLoops: context.healingLoops || 0,
       });
     }

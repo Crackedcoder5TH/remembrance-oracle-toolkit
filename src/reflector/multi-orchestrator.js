@@ -96,7 +96,7 @@ function orchestrate(rootDir, options = {}) {
       health: deepScoreResult.health,
       securityFindings: deepScoreResult.securityFindings.length,
       worstFile: deepScoreResult.worstFiles[0]?.path || null,
-      worstScore: deepScoreResult.worstFiles[0]?.score || null,
+      worstScore: deepScoreResult.worstFiles[0]?.score ?? null,
     });
   } catch (err) {
     steps.push({ name: 'deep-score', status: 'error', error: err.message, durationMs: Date.now() - step3Start });
@@ -249,7 +249,8 @@ function orchestrate(rootDir, options = {}) {
       };
       // Fire-and-forget: notifyFromReport is async, orchestrate is sync
       notifyFromReport(rootDir, notifyReport, { prUrl: result.prUrl }).catch(() => {});
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[multi-orchestrator:init] silent failure:', e?.message || e);
       // Notification failure is non-fatal
     }
   }

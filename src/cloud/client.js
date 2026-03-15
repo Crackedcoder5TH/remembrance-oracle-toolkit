@@ -49,7 +49,8 @@ function _decryptToken(stored) {
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
     decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
     return decipher.update(Buffer.from(dataHex, 'hex'), null, 'utf8') + decipher.final('utf8');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[client:_decryptToken] silent failure:', e?.message || e);
     return stored; // If decryption fails, return as-is (possibly plaintext from older version)
   }
 }
@@ -76,7 +77,8 @@ function request(url, options = {}) {
       res.on('end', () => {
         try {
           resolve({ status: res.statusCode, data: JSON.parse(data) });
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[client:request] silent failure:', e?.message || e);
           resolve({ status: res.statusCode, data: { raw: data } });
         }
       });
@@ -147,7 +149,8 @@ class RemoteOracleClient {
         ...(res.data || {}),
         latencyMs: Date.now() - start,
       };
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[client:health] silent failure:', e?.message || e);
       return { online: false, latencyMs: Date.now() - start };
     }
   }
@@ -316,7 +319,9 @@ function loadRemotesConfig() {
     if (fs.existsSync(REMOTES_CONFIG_PATH)) {
       return JSON.parse(fs.readFileSync(REMOTES_CONFIG_PATH, 'utf-8'));
     }
-  } catch { /* fresh config */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[client:loadRemotesConfig] fresh config:', e?.message || e);
+  }
   return { remotes: [] };
 }
 

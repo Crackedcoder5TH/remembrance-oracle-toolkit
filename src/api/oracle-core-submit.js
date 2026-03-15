@@ -6,6 +6,7 @@
 const { validateCode } = require('../core/validator');
 const { autoTag } = require('../core/auto-tagger');
 const { _checkSimilarity } = require('./oracle-core-similarity');
+const { auditLog } = require('../core/audit-logger');
 
 module.exports = {
   /**
@@ -70,6 +71,7 @@ module.exports = {
       author, coherencyScore: validation.coherencyScore, testPassed: validation.testPassed, testOutput: validation.testOutput,
     });
     this._emit({ type: 'entry_added', id: entry.id, language: validation.coherencyScore.language, description });
+    auditLog('submit', { id: entry.id, actor: author, language: validation.coherencyScore.language, success: true, meta: { description: description.slice(0, 120) } });
     return { success: true, accepted: true, entry, validation, similarity: simCheck.similarity };
   },
 
@@ -140,9 +142,12 @@ module.exports = {
           detail: `Registered with coherency ${validation.coherencyScore?.total?.toFixed(3) || 'N/A'}`,
         });
       }
-    } catch { /* temporal memory not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-submit:init] temporal memory not available:', e?.message || e);
+    }
 
     const growthReport = this._autoGrowFrom(registered);
+    auditLog('register', { id: registered.id, name: pattern.name, actor: pattern.author || 'oracle-pattern-library', language: registered.language, success: true });
     return { success: true, registered: true, pattern: registered, validation, growth: growthReport };
   },
 
@@ -150,6 +155,9 @@ module.exports = {
    * Evolves an existing pattern by creating a new version linked to the parent.
    */
   evolvePattern(parentId, newCode, metadata = {}) {
+    if (newCode == null || typeof newCode !== 'string' || newCode.trim().length === 0) {
+      return { success: false, evolved: false, error: 'Invalid input: newCode must be a non-empty string' };
+    }
     const evolved = this.patterns.evolve(parentId, newCode, metadata);
     if (!evolved) return { success: false, evolved: false, error: `Pattern ${parentId} not found` };
 
@@ -158,6 +166,7 @@ module.exports = {
       tags: evolved.tags, author: metadata.author || 'oracle-evolution', coherencyScore: evolved.coherencyScore,
     });
     this._emit({ type: 'pattern_evolved', id: evolved.id, name: evolved.name, parentId });
+    auditLog('evolve', { id: evolved.id, name: evolved.name, actor: metadata.author || 'oracle-evolution', language: evolved.language, success: true, meta: { parentId } });
     return { success: true, evolved: true, pattern: evolved };
   },
 };

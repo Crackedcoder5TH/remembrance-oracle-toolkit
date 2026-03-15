@@ -83,7 +83,8 @@ function queryPatternsForFile(code, filePath, options = {}) {
   try {
     const dir = storeDir || join(process.cwd(), '.remembrance');
     library = new PatternLibrary(dir);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-pattern-hook:queryPatternsForFile] silent failure:', e?.message || e);
     return { matches: [], decision: 'generate', bestMatch: null, query: hints };
   }
 
@@ -96,7 +97,8 @@ function queryPatternsForFile(code, filePath, options = {}) {
   let allPatterns;
   try {
     allPatterns = library.getAll();
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-pattern-hook:queryPatternsForFile] falling back to empty array:', e?.message || e);
     allPatterns = [];
   }
 
@@ -197,7 +199,8 @@ function hookBeforeHeal(filePath, options = {}) {
   let code;
   try {
     code = readFileSync(filePath, 'utf-8');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-pattern-hook:hookBeforeHeal] silent failure:', e?.message || e);
     return {
       filePath,
       query: null,
@@ -274,9 +277,9 @@ function recordPatternHookUsage(rootDir, entry, oracle) {
         sqliteStore.recordHealingAttempt({
           patternId: entry.patternId,
           succeeded: entry.succeeded !== false,
-          coherencyBefore: entry.coherencyBefore || null,
-          coherencyAfter: entry.coherencyAfter || null,
-          healingLoops: entry.healingLoops || 0,
+          coherencyBefore: entry.coherencyBefore ?? null,
+          coherencyAfter: entry.coherencyAfter ?? null,
+          healingLoops: entry.healingLoops ?? 0,
         });
       }
       // Store healed variant if improvement was positive
@@ -284,13 +287,15 @@ function recordPatternHookUsage(rootDir, entry, oracle) {
         sqliteStore.addHealedVariant({
           parentPatternId: entry.patternId,
           healedCode: entry.healedCode,
-          originalCoherency: entry.coherencyBefore || 0,
-          healedCoherency: entry.coherencyAfter || 0,
-          healingLoops: entry.healingLoops || 0,
+          originalCoherency: entry.coherencyBefore ?? 0,
+          healedCoherency: entry.coherencyAfter ?? 0,
+          healingLoops: entry.healingLoops ?? 0,
           healingStrategy: entry.patternGuided ? 'pattern-guided' : 'reflector',
         });
       }
-    } catch { /* best effort — never break the reflector */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-pattern-hook:recordPatternHookUsage] best effort — never break the reflector:', e?.message || e);
+    }
   }
 }
 

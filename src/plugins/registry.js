@@ -378,7 +378,8 @@ class SearchProviderRegistry {
             }
           }
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[registry:search] silent failure:', e?.message || e);
         // Provider failure is non-fatal
       }
     }

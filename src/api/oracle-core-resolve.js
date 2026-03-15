@@ -6,6 +6,7 @@
 const { reflectionLoop } = require('../core/reflection');
 const { _generateResolveWhisper, _generateCandidateNotes } = require('./oracle-core-whispers');
 const { parseIntent, ARCHITECTURAL_PATTERNS } = require('../core/search-intelligence');
+const { auditLog } = require('../core/audit-logger');
 
 module.exports = {
   /**
@@ -72,7 +73,9 @@ module.exports = {
               startCode = bestVariant.healedCode;
               startedFromVariant = true;
             }
-          } catch { /* fall back to original code */ }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.error('[resolve] Healing variant lookup failed:', e.message);
+          }
         }
 
         this._emit({
@@ -127,6 +130,7 @@ module.exports = {
           healingLoops: healing.loops,
         });
       } catch (_) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-resolve:onLoop] silent failure:', _?.message || _);
         healedCode = patternData.code;
         this._emit({
           type: 'healing_failed', patternId: patternData?.id, patternName: patternData?.name,
@@ -150,8 +154,12 @@ module.exports = {
       try {
         this.patterns.recordUsage(patternData.id, true);
         this._emit({ type: 'feedback', id: patternData.id, succeeded: true, source: 'auto-resolve' });
-      } catch { /* best effort — never break resolve */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.error('[resolve] Usage feedback recording failed:', e.message);
+      }
     }
+
+    auditLog('resolve', { id: patternData?.id, name: patternData?.name, success: true, language: patternData?.language, meta: { decision: decision.decision, confidence: decision.confidence, healed: !!healing } });
 
     return {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,

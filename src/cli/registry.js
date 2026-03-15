@@ -18,6 +18,7 @@ const CATEGORIES = [
       { name: 'register', description: 'Register code as a named pattern in the library' },
       { name: 'feedback', description: 'Report if pulled code worked' },
       { name: 'inspect', description: 'Inspect a stored entry' },
+      { name: 'submit-noncode', description: 'Submit non-code pattern (no test file required)' },
       { name: 'init', description: 'Initialize oracle in current project', alias: 'setup' },
     ],
   },
@@ -34,6 +35,8 @@ const CATEGORIES = [
       { name: 'synthesize', description: 'Synthesize tests for candidates and auto-promote' },
       { name: 'bug-report', description: 'Generate a diagnostic bug report' },
       { name: 'compress', description: 'Fractal compression and holographic encoding' },
+      { name: 'cluster', description: 'Cluster patterns by structural similarity (run, isomorphisms)' },
+      { name: 'audit-integration', description: 'Audit fractal ↔ library integration health' },
     ],
   },
   {
@@ -103,6 +106,7 @@ const CATEGORIES = [
       { name: 'consolidate', description: 'Consolidate duplicates, tags, and candidates (--dry-run)' },
       { name: 'polish', description: 'Full polish cycle: consolidate + improve + optimize + evolve' },
       { name: 'lifecycle', description: 'Always-on lifecycle engine (start, stop, status, run, history)' },
+      { name: 'decay', description: 'Show confidence decay report for stale patterns' },
     ],
   },
   {
@@ -141,7 +145,7 @@ const CATEGORIES = [
   {
     name: 'Integration',
     commands: [
-      { name: 'mcp', description: 'Start MCP server (JSON-RPC over stdio, 10 tools)' },
+      { name: 'mcp', description: 'Start MCP server (JSON-RPC over stdio, 12 tools)' },
       { name: 'mcp-install', description: 'Auto-register MCP in AI editors (Claude, Cursor, VS Code)' },
       { name: 'setup', description: 'Initialize oracle in current project', alias: 'init' },
       { name: 'dashboard', description: 'Start web dashboard (default port 3333) [auth]' },
@@ -157,6 +161,7 @@ const CATEGORIES = [
       { name: 'audit', description: 'View append-only audit log' },
       { name: 'prune', description: 'Remove low-coherency entries' },
       { name: 'deep-clean', description: 'Remove duplicates, stubs, and trivial patterns' },
+      { name: 'restore', description: 'Restore lost/archived patterns (stats, lost, <name>)' },
       { name: 'rollback', description: 'Rollback a pattern to a previous version' },
       { name: 'import', description: 'Import patterns from exported JSON' },
       { name: 'export', description: 'Export top patterns as JSON or markdown' },
@@ -168,6 +173,8 @@ const CATEGORIES = [
       { name: 'auto-submit', description: 'Auto harvest, promote, and sync patterns (post-commit pipeline)' },
       { name: 'auto-register', description: 'Register new functions from latest commit (diff-targeted)' },
       { name: 'auto-seed', description: 'Auto-discover and seed patterns from test suite' },
+      { name: 'refresh-coherency', description: 'Recompute coherency scores using actual usage data' },
+      { name: 'synthesize-proven', description: 'Synthesize tests for proven patterns lacking test_code' },
       { name: 'ci-feedback', description: 'Report CI test results' },
       { name: 'ci-stats', description: 'Show CI feedback tracking statistics' },
       { name: 'ci-track', description: 'Track CI pipeline for a pattern' },

@@ -105,7 +105,8 @@ function builtinEmbed(text) {
     for (let i = 0; i < 32 && i < wordVec.length; i++) {
       vec[32 + i] = wordVec[i];
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:builtinEmbed] silent failure:', e?.message || e);
     // vectors.js not available — leave zeros
   }
 
@@ -162,7 +163,8 @@ function checkOllama(options = {}) {
             /embed|minilm|nomic|bge|gte|e5/i.test(m)
           );
           resolve({ available: true, models, embeddingModels });
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:models] silent failure:', e?.message || e);
           resolve({ available: false });
         }
       });
@@ -199,7 +201,8 @@ function ollamaEmbed(text, options = {}) {
         try {
           const parsed = JSON.parse(data);
           resolve(parsed.embedding || null);
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:ollamaEmbed] resolving null on error:', e?.message || e);
           resolve(null);
         }
       });
@@ -292,7 +295,9 @@ class EmbeddingEngine {
               this._setCache(key, vec);
               return vec;
             }
-          } catch { /* fall through */ }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:embedAsync] fall through:', e?.message || e);
+          }
         }
       }
     }

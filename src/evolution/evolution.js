@@ -120,8 +120,8 @@ function evolutionAdjustment(pattern, config = EVOLUTION_DEFAULTS) {
  * @returns {boolean}
  */
 function needsAutoHeal(pattern, config = EVOLUTION_DEFAULTS) {
-  const usage = pattern.usageCount || 0;
-  const success = pattern.successCount || 0;
+  const usage = pattern.usageCount ?? 0;
+  const success = pattern.successCount ?? 0;
   if (usage < config.autoHealMinUses) return false;
   return (success / usage) < config.autoHealThreshold;
 }
@@ -146,7 +146,7 @@ function autoHeal(pattern, options = {}) {
       tags: pattern.tags,
     });
 
-    if (!reflection.improved && reflection.code.trim() === (pattern.code || '').trim()) {
+    if (reflection.reflection?.improvement <= 0 && reflection.code.trim() === (pattern.code || '').trim()) {
       return null;
     }
 
@@ -164,7 +164,8 @@ function autoHeal(pattern, options = {}) {
       newCoherency: newCoherency.total,
       coherencyScore: newCoherency,
     };
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[evolution:autoHeal] returning null on error:', e?.message || e);
     return null;
   }
 }
@@ -188,7 +189,7 @@ function captureRejection(code, metadata, validation) {
     description: metadata.description || '',
     tags: metadata.tags || [],
     failureReason: validation?.errors?.join('; ') || 'validation failed',
-    coherencyScore: validation?.coherencyScore || null,
+    coherencyScore: validation?.coherencyScore ?? null,
     capturedAt: new Date().toISOString(),
     source: 'rejected-submission',
   };
@@ -208,8 +209,8 @@ function detectRegressions(patterns, config = EVOLUTION_DEFAULTS) {
   const regressions = [];
 
   for (const p of patterns) {
-    const usage = p.usageCount || 0;
-    const success = p.successCount || 0;
+    const usage = p.usageCount ?? 0;
+    const success = p.successCount ?? 0;
     if (usage < config.regressionMinUses) continue;
 
     const currentRate = success / usage;
@@ -269,7 +270,8 @@ function recheckCoherency(patterns, config = EVOLUTION_DEFAULTS) {
           coherencyScore: newScore,
         });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[evolution:daysSince] silent failure:', e?.message || e);
       // Skip patterns that fail scoring
     }
   }
@@ -335,7 +337,8 @@ function evolve(ctx, options = {}) {
           newCoherency: healResult.newCoherency,
           loops: healResult.loops,
         });
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[evolution:evolve] silent failure:', e?.message || e);
         report.healFailed.push({ id: pattern.id, name: pattern.name, reason: 'update failed' });
       }
     } else {
@@ -354,7 +357,8 @@ function evolve(ctx, options = {}) {
       updatePattern(update.id, {
         coherencyScore: update.coherencyScore,
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[evolution:init] silent failure:', e?.message || e);
       // Best effort
     }
   }

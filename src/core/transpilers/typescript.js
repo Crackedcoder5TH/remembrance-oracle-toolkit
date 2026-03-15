@@ -97,9 +97,24 @@ function toTypeScript(ast, indent = 0) {
     case 'ThrowStatement':
       return `${pad}throw ${toTsExpr(ast.argument)};`;
 
-    case 'ForStatement':
-    case 'ForOfStatement':
-    case 'WhileStatement':
+    case 'ForStatement': {
+      const init = ast.init ? toTypeScript(ast.init, 0).trim().replace(/;$/, '') : '';
+      const test = ast.test ? toTsExpr(ast.test) : '';
+      const update = ast.update ? toTsExpr(ast.update) : '';
+      const body = ast.body.map(n => toTypeScript(n, indent + 1)).filter(Boolean).join('\n');
+      return `${pad}for (${init}; ${test}; ${update}) {\n${body}\n${pad}}`;
+    }
+
+    case 'ForOfStatement': {
+      const body = ast.body.map(n => toTypeScript(n, indent + 1)).filter(Boolean).join('\n');
+      return `${pad}for (const ${ast.variable} of ${toTsExpr(ast.iterable)}) {\n${body}\n${pad}}`;
+    }
+
+    case 'WhileStatement': {
+      const body = ast.body.map(n => toTypeScript(n, indent + 1)).filter(Boolean).join('\n');
+      return `${pad}while (${toTsExpr(ast.test)}) {\n${body}\n${pad}}`;
+    }
+
     case 'ExpressionStatement':
     case 'Comment':
       return `${pad}${toTsExpr(ast)};`.replace(/;;$/, ';');
@@ -149,7 +164,7 @@ function toTsExpr(node) {
       result += '`';
       return result;
     }
-    default: return node.value || node.name || '';
+    default: return node.value != null ? String(node.value) : (node.name || '');
   }
 }
 

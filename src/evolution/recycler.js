@@ -216,7 +216,8 @@ class PatternRecycler {
           this.stats.captured++;
         }
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:code] silent failure:', e?.message || e);
       // Persistence is best-effort — never break the recycler
     }
   }
@@ -244,7 +245,8 @@ class PatternRecycler {
           healHistory: entry.healHistory,
         })
       );
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:_persistCapture] silent failure:', e?.message || e);
       // Best-effort persistence
     }
   }
@@ -264,7 +266,8 @@ class PatternRecycler {
         entry.id,
         JSON.stringify({ status: entry.status, attempts: entry.attempts })
       );
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:_persistHealResult] silent failure:', e?.message || e);
       // Best-effort
     }
   }
@@ -630,11 +633,12 @@ class PatternRecycler {
       attempts: [],
     };
 
+    let lastHealedCode = pattern.code;
     for (let attempt = 0; attempt < this.maxHealAttempts; attempt++) {
       entry.attempts++;
       this.stats.totalAttempts++;
 
-      let codeToHeal = pattern.code;
+      let codeToHeal = lastHealedCode;
 
       // Void replenishment: when coherency is deeply stuck, inject scaffolding
       // from the nearest healthy pattern to bootstrap recovery
@@ -646,7 +650,7 @@ class PatternRecycler {
             // Inject the scaffold's structure as a comment-guide at the top
             // This gives the transforms something healthy to work from
             const scaffoldHint = `// Scaffold from ${scaffold.name} (coherency ${scaffold.coherencyScore?.total?.toFixed(3)})\n`;
-            codeToHeal = scaffoldHint + pattern.code;
+            codeToHeal = scaffoldHint + lastHealedCode;
             detail.voidScaffold = scaffold.name;
           }
         }
@@ -705,7 +709,9 @@ class PatternRecycler {
               detail: `coherency: ${attemptDetail.coherency.toFixed(3)}, cascade: ${this._cascadeBoost}x`,
             });
           }
-        } catch { /* temporal not available */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[recycler:init] temporal not available:', e?.message || e);
+        }
 
         if (this.verbose) {
           console.log(`  [HEALED] ${pattern.name} — attempt ${attempt + 1}, coherency ${attemptDetail.coherency.toFixed(3)} (cascade ${this._cascadeBoost}x)`);
@@ -722,10 +728,12 @@ class PatternRecycler {
       try {
         const { recordViolation } = require('../core/covenant-evolution');
         recordViolation(healedCode, `Heal rejected: ${regResult.reason || 'unknown'}`, 'heal-failure');
-      } catch { /* covenant evolution not available */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[recycler:init] covenant evolution not available:', e?.message || e);
+      }
 
-      // Use healed code as input for next attempt
-      pattern.code = healedCode;
+      // Use healed code as input for next attempt (local copy, don't mutate original)
+      lastHealedCode = healedCode;
     }
 
     this.stats.stillFailed++;
@@ -815,7 +823,9 @@ class PatternRecycler {
       try {
         const check = verifyTranspilation(result.code, testCode, targetLang);
         verified = check.compiled;
-      } catch { /* compilation check failed, not fatal */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[recycler:name] compilation check failed, not fatal:', e?.message || e);
+      }
     }
 
     const suffix = targetLang === 'go' ? '-go' : '-rs';
@@ -886,12 +896,10 @@ class PatternRecycler {
       pyTest = jsToPythonTest(testCode, funcName, pyName);
     }
 
-    if (!pyTest) return null;
-
     return {
       name: `${name}-py`,
       code: pyCode,
-      testCode: pyTest,
+      testCode: pyTest || '',
       language: 'python',
       description: `${description} (Python variant)`,
       tags: [...(tags || []), 'variant', 'python'],
@@ -1291,10 +1299,29 @@ class PatternRecycler {
     };
 
     for (const candidate of withTests) {
-      // Skip if already exists as a proven pattern
+      // Skip if already exists as a proven pattern — mark promoted only if
+      // the existing pattern has equal or higher coherency (proves candidate is redundant)
       const existing = this.oracle.patterns.getAll().find(p => p.name === candidate.name);
       if (existing) {
-        this.oracle.patterns.promoteCandidate(candidate.id);
+        const existingCoherency = existing.coherencyScore?.total ?? 0;
+        const candidateCoherency = candidate.coherencyTotal ?? 0;
+        if (existingCoherency >= candidateCoherency) {
+          // Existing pattern is at least as good — safe to mark candidate as promoted
+          this.oracle.patterns.promoteCandidate(candidate.id);
+        }
+        // If candidate has higher coherency, let it go through full validation below
+        // so it can upgrade the existing pattern
+        else {
+          report.attempted++;
+          const result = this.promoteWithProof(candidate.id, candidate.testCode);
+          if (result.promoted) {
+            report.promoted++;
+            report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency });
+          } else {
+            report.failed++;
+            report.details.push({ name: candidate.name, status: 'failed', reason: result.reason });
+          }
+        }
         continue;
       }
 

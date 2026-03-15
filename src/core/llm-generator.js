@@ -72,8 +72,9 @@ class LLMClient {
 
     const parsed = new URL(`${url}/v1/messages`);
     const response = await this._request({
+      protocol: parsed.protocol,
       hostname: parsed.hostname,
-      port: parsed.port || 443,
+      port: parsed.port || (parsed.protocol === 'http:' ? 80 : 443),
       path: parsed.pathname,
       method: 'POST',
       headers: {
@@ -102,8 +103,9 @@ class LLMClient {
 
     const parsed = new URL(`${url}/v1/chat/completions`);
     const response = await this._request({
+      protocol: parsed.protocol,
       hostname: parsed.hostname,
-      port: parsed.port || 443,
+      port: parsed.port || (parsed.protocol === 'http:' ? 80 : 443),
       path: parsed.pathname,
       method: 'POST',
       headers: {
@@ -119,11 +121,17 @@ class LLMClient {
 
   _request(options, body) {
     return new Promise((resolve, reject) => {
-      const proto = options.port === 80 ? http : https;
+      const proto = options.protocol === 'http:' ? http : https;
       const req = proto.request(options, (res) => {
         let data = '';
         res.on('data', chunk => { data += chunk; });
-        res.on('end', () => resolve(data));
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(data);
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}: ${data.slice(0, 200)}`));
+          }
+        });
       });
       req.on('error', reject);
       req.setTimeout(30000, () => { req.destroy(); reject(new Error('LLM request timeout')); });

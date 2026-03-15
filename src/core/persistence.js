@@ -19,6 +19,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { covenantCheck, safeJsonParse } = require('./covenant');
 
 const GLOBAL_DIR = path.join(os.homedir(), '.remembrance');
 const PERSONAL_DIR = path.join(GLOBAL_DIR, 'personal');
@@ -83,13 +84,13 @@ function transferPattern(pattern, targetStore) {
     patternType: pattern.pattern_type || pattern.patternType || 'utility',
     complexity: pattern.complexity || 'composite',
     description: pattern.description || '',
-    tags: typeof pattern.tags === 'string' ? JSON.parse(pattern.tags) : (pattern.tags || []),
+    tags: typeof pattern.tags === 'string' ? safeJsonParse(pattern.tags, []) : (pattern.tags || []),
     coherencyScore: typeof pattern.coherency_json === 'string'
-      ? JSON.parse(pattern.coherency_json)
+      ? safeJsonParse(pattern.coherency_json, {})
       : (pattern.coherencyScore || {}),
     testCode: pattern.test_code || pattern.testCode || null,
     evolutionHistory: typeof pattern.evolution_history === 'string'
-      ? JSON.parse(pattern.evolution_history)
+      ? safeJsonParse(pattern.evolution_history, [])
       : (pattern.evolutionHistory || []),
   };
 
@@ -121,19 +122,43 @@ function syncToGlobal(localStore, options = {}) {
 
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore.getAllPatterns();
-  const personalIndex = new Set(personalPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
+  // Build coherency index so we can detect when local has improved over personal
+  const personalCoherencyIndex = new Map();
+  for (const p of personalPatterns) {
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    personalCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
+  }
 
-  const report = { synced: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
+  const report = { synced: 0, upgraded: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of localPatterns) {
     const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
 
-    if (personalIndex.has(key)) {
-      report.duplicates++;
+    if (personalCoherencyIndex.has(key)) {
+      const personalCoherency = personalCoherencyIndex.get(key);
+      if (coherency > personalCoherency) {
+        // Local version improved — update personal store with higher-coherency version
+        if (!dryRun) {
+          try {
+            transferPattern(pattern, personalStore);
+          } catch (err) {
+            if (verbose) console.log(`  [SKIP-UPGRADE] ${pattern.name}: ${err.message}`);
+            report.skipped++;
+            continue;
+          }
+        }
+        report.upgraded++;
+        if (verbose) {
+          console.log(`  [UPGRADE→] ${pattern.name} (${pattern.language}) coherency: ${personalCoherency.toFixed ? personalCoherency.toFixed(3) : personalCoherency} → ${coherency.toFixed ? coherency.toFixed(3) : coherency}`);
+        }
+        report.details.push({ name: pattern.name, language: pattern.language, direction: 'to-personal', action: 'upgrade' });
+      } else {
+        report.duplicates++;
+      }
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
@@ -150,7 +175,7 @@ function syncToGlobal(localStore, options = {}) {
     }
 
     // Track what we just added so we don't re-add duplicates from the same batch
-    personalIndex.add(key);
+    personalCoherencyIndex.set(key, coherency);
 
     report.synced++;
     if (verbose) {
@@ -173,6 +198,13 @@ function syncToGlobal(localStore, options = {}) {
     if (verbose) console.log(`  [WARN] debug sync failed: ${err.message}`);
   }
 
+  // Sync pattern archives to personal store (safety net for deleted patterns)
+  try {
+    report.archives = _syncArchivesToPersonal(localStore, personalStore, { verbose, dryRun });
+  } catch (err) {
+    if (verbose) console.log(`  [WARN] archive sync failed: ${err.message}`);
+  }
+
   return report;
 }
 
@@ -180,7 +212,7 @@ function syncToGlobal(localStore, options = {}) {
  * Pull patterns from personal store into local store.
  */
 function syncFromGlobal(localStore, options = {}) {
-  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = Infinity } = options;
+  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = 999999 } = options;
   const personalStore = openPersonalStore();
   if (!personalStore) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
@@ -188,16 +220,42 @@ function syncFromGlobal(localStore, options = {}) {
 
   const personalPatterns = personalStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
-  const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
+  // Build coherency index so we can detect when personal has improved over local
+  const localCoherencyIndex = new Map();
+  for (const p of localPatterns) {
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    localCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
+  }
 
-  const report = { pulled: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, candidates: { pulled: 0, duplicates: 0 }, debug: { pulled: 0, duplicates: 0 }, details: [] };
+  const report = { pulled: 0, upgraded: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, candidates: { pulled: 0, duplicates: 0 }, debug: { pulled: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of personalPatterns) {
-    if (report.pulled >= maxPull) break;
+    if ((report.pulled + report.upgraded) >= maxPull) break;
 
     const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
-    if (localIndex.has(key)) {
-      report.duplicates++;
+    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
+
+    if (localCoherencyIndex.has(key)) {
+      const localCoherency = localCoherencyIndex.get(key);
+      if (coherency > localCoherency) {
+        // Personal version is better — update local store
+        if (!dryRun) {
+          try {
+            transferPattern(pattern, localStore);
+          } catch (err) {
+            if (verbose) console.log(`  [SKIP-UPGRADE] ${pattern.name}: ${err.message}`);
+            report.skipped++;
+            continue;
+          }
+        }
+        report.upgraded++;
+        if (verbose) {
+          console.log(`  [←UPGRADE] ${pattern.name} (${pattern.language}) coherency: ${localCoherency.toFixed ? localCoherency.toFixed(3) : localCoherency} → ${coherency.toFixed ? coherency.toFixed(3) : coherency}`);
+        }
+        report.details.push({ name: pattern.name, language: pattern.language, direction: 'from-personal', action: 'upgrade' });
+      } else {
+        report.duplicates++;
+      }
       continue;
     }
 
@@ -206,7 +264,6 @@ function syncFromGlobal(localStore, options = {}) {
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
@@ -223,7 +280,7 @@ function syncFromGlobal(localStore, options = {}) {
     }
 
     // Track what we just added so duplicates in personal don't get re-pulled
-    localIndex.add(key);
+    localCoherencyIndex.set(key, coherency);
 
     report.pulled++;
     if (verbose) {
@@ -244,6 +301,13 @@ function syncFromGlobal(localStore, options = {}) {
     report.debug = _syncDebugFromPersonal(localStore, personalStore, { verbose, dryRun });
   } catch (err) {
     if (verbose) console.log(`  [WARN] debug pull failed: ${err.message}`);
+  }
+
+  // Pull archives from personal store
+  try {
+    report.archives = _syncArchivesFromPersonal(localStore, personalStore, { verbose, dryRun });
+  } catch (err) {
+    if (verbose) console.log(`  [WARN] archive pull failed: ${err.message}`);
   }
 
   return report;
@@ -355,7 +419,7 @@ function shareToCommunity(localStore, options = {}) {
  * Users can browse and selectively pull community patterns.
  */
 function pullFromCommunity(localStore, options = {}) {
-  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = Infinity, nameFilter } = options;
+  const { verbose = false, dryRun = false, language, minCoherency = 0.0, maxPull = 999999, nameFilter } = options;
   const communityStore = openCommunityStore();
   if (!communityStore) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
@@ -397,6 +461,25 @@ function pullFromCommunity(localStore, options = {}) {
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
+    }
+
+    // Re-validate community patterns against the Covenant before accepting
+    if (pattern.code) {
+      try {
+        const check = covenantCheck(pattern.code, { description: pattern.name, trusted: false });
+        if (!check.sealed) {
+          if (verbose) {
+            const reasons = (check.violations || []).map(v => v.reason).join('; ');
+            console.log(`  [REJECT] ${pattern.name}: Covenant violation — ${reasons}`);
+          }
+          report.skipped++;
+          continue;
+        }
+      } catch (err) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:pullFromCommunity] covenant check failed:', err?.message || err);
+        report.skipped++;
+        continue;
+      }
     }
 
     if (!dryRun) {
@@ -604,7 +687,8 @@ function shareDebugPatterns(localStore, options = {}) {
   let localDebug;
   try {
     localDebug = localStore.db.prepare(sql).all(...params);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:shareDebugPatterns] silent failure:', e?.message || e);
     return { shared: 0, skipped: 0, total: 0, error: 'No debug_patterns table in local store' };
   }
 
@@ -612,7 +696,8 @@ function shareDebugPatterns(localStore, options = {}) {
   let communityDebug;
   try {
     communityDebug = communityStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:shareDebugPatterns] falling back to empty array:', e?.message || e);
     communityDebug = [];
   }
   const communityIndex = new Set(communityDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
@@ -660,7 +745,7 @@ function shareDebugPatterns(localStore, options = {}) {
  * Pull debug patterns from community store into local.
  */
 function pullDebugPatterns(localStore, options = {}) {
-  const { verbose = false, dryRun = false, minConfidence = 0.3, category, language, limit = Infinity } = options;
+  const { verbose = false, dryRun = false, minConfidence = 0.3, category, language, limit = 999999 } = options;
   const communityStore = openCommunityStore();
   if (!communityStore) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
@@ -676,14 +761,16 @@ function pullDebugPatterns(localStore, options = {}) {
     if (language) { sql += ' AND language = ?'; params.push(language); }
     sql += ' ORDER BY confidence DESC';
     communityDebug = communityStore.db.prepare(sql).all(...params);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:pullDebugPatterns] silent failure:', e?.message || e);
     return { pulled: 0, skipped: 0, total: 0, error: 'No debug_patterns in community store' };
   }
 
   let localDebug;
   try {
     localDebug = localStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:pullDebugPatterns] falling back to empty array:', e?.message || e);
     localDebug = [];
   }
   const localIndex = new Set(localDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
@@ -739,14 +826,16 @@ function syncDebugToPersonal(localStore, options = {}) {
     localDebug = localStore.db.prepare(
       'SELECT * FROM debug_patterns WHERE confidence >= ? ORDER BY confidence DESC'
     ).all(minConfidence);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:syncDebugToPersonal] silent failure:', e?.message || e);
     return { synced: 0, skipped: 0, total: 0, error: 'No debug_patterns table' };
   }
 
   let personalDebug;
   try {
     personalDebug = personalStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:syncDebugToPersonal] falling back to empty array:', e?.message || e);
     personalDebug = [];
   }
   const personalIndex = new Set(personalDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
@@ -763,7 +852,8 @@ function syncDebugToPersonal(localStore, options = {}) {
     if (!dryRun) {
       try {
         _transferDebugPattern(dp, personalStore);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:syncDebugToPersonal] skipping item:', e?.message || e);
         report.skipped++;
         continue;
       }
@@ -807,7 +897,8 @@ function federatedDebugSearch(localStore, params = {}) {
         seen.add(key);
         results.push({ ...match, source });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[persistence:federatedDebugSearch] silent failure:', e?.message || e);
       // Store doesn't have debug_patterns table yet, skip
     }
   }
@@ -869,38 +960,64 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
 
   let localCandidates;
   try {
+    // Sync ALL candidates (including promoted) to prevent data loss if .remembrance/ is deleted
     localCandidates = localStore.db.prepare(
-      'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC'
+      'SELECT * FROM candidates ORDER BY coherency_total DESC'
     ).all();
-  } catch { return report; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] returning partial report on error:', e?.message || e);
+    return report;
+  }
 
   if (localCandidates.length === 0) return report;
 
   let personalCandidates;
   try {
     personalCandidates = personalStore.db.prepare(
-      'SELECT name, language FROM candidates'
+      'SELECT id, name, language, promoted_at FROM candidates'
     ).all();
-  } catch { personalCandidates = []; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] falling back to empty array:', e?.message || e);
+    personalCandidates = [];
+  }
 
-  const personalIndex = new Set(personalCandidates.map(
-    c => `${c.name.toLowerCase()}:${(c.language || 'unknown').toLowerCase()}`
+  // Use ID-based dedup (name:language has many duplicate candidates by design)
+  const personalIdIndex = new Set(personalCandidates.map(c => c.id));
+  // Also track promoted_at so we can update personal when local promotes a candidate
+  const personalPromotedIndex = new Map(personalCandidates.map(
+    c => [c.id, c.promoted_at]
   ));
 
   for (const candidate of localCandidates) {
-    const key = `${candidate.name.toLowerCase()}:${(candidate.language || 'unknown').toLowerCase()}`;
-    if (personalIndex.has(key)) {
-      report.duplicates++;
+    if (personalIdIndex.has(candidate.id)) {
+      // If local has promoted_at but personal doesn't, update personal
+      if (candidate.promoted_at && !personalPromotedIndex.get(candidate.id)) {
+        if (!dryRun) {
+          try {
+            personalStore.db.prepare(
+              'UPDATE candidates SET promoted_at = ? WHERE id = ?'
+            ).run(candidate.promoted_at, candidate.id);
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] promotion update failed:', e?.message || e);
+          }
+        }
+        report.synced++;
+      } else {
+        report.duplicates++;
+      }
       continue;
     }
 
     if (!dryRun) {
       try {
         _transferCandidate(candidate, personalStore);
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] skipping item:', e?.message || e);
+        continue;
+      }
     }
 
-    personalIndex.add(key);
+    personalIdIndex.add(candidate.id);
     report.synced++;
     if (verbose) console.log(`  [SYNC→ candidate] ${candidate.name} (${candidate.language})`);
   }
@@ -917,10 +1034,14 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
 
   let personalCandidates;
   try {
+    // Pull ALL candidates (including promoted) — mirrors push behavior
     personalCandidates = personalStore.db.prepare(
-      'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC'
+      'SELECT * FROM candidates ORDER BY coherency_total DESC'
     ).all();
-  } catch { return report; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] returning partial report on error:', e?.message || e);
+    return report;
+  }
 
   if (personalCandidates.length === 0) return report;
 
@@ -929,27 +1050,46 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
 
   let localCandidates;
   try {
-    localCandidates = localStore.db.prepare('SELECT name, language FROM candidates').all();
-  } catch { localCandidates = []; }
+    localCandidates = localStore.db.prepare('SELECT id, promoted_at FROM candidates').all();
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] falling back to empty array:', e?.message || e);
+    localCandidates = [];
+  }
 
-  const localIndex = new Set(localCandidates.map(
-    c => `${c.name.toLowerCase()}:${(c.language || 'unknown').toLowerCase()}`
-  ));
+  // Use ID-based dedup to match push behavior
+  const localIdIndex = new Set(localCandidates.map(c => c.id));
+  const localPromotedIndex = new Map(localCandidates.map(c => [c.id, c.promoted_at]));
 
   for (const candidate of personalCandidates) {
-    const key = `${candidate.name.toLowerCase()}:${(candidate.language || 'unknown').toLowerCase()}`;
-    if (localIndex.has(key)) {
-      report.duplicates++;
+    if (localIdIndex.has(candidate.id)) {
+      // If personal has promoted_at but local doesn't, update local
+      if (candidate.promoted_at && !localPromotedIndex.get(candidate.id)) {
+        if (!dryRun) {
+          try {
+            localStore.db.prepare(
+              'UPDATE candidates SET promoted_at = ? WHERE id = ?'
+            ).run(candidate.promoted_at, candidate.id);
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] promotion update failed:', e?.message || e);
+          }
+        }
+        report.pulled++;
+      } else {
+        report.duplicates++;
+      }
       continue;
     }
 
     if (!dryRun) {
       try {
         _transferCandidate(candidate, localStore);
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] skipping item:', e?.message || e);
+        continue;
+      }
     }
 
-    localIndex.add(key);
+    localIdIndex.add(candidate.id);
     report.pulled++;
     if (verbose) console.log(`  [←PULL candidate] ${candidate.name} (${candidate.language})`);
   }
@@ -981,7 +1121,9 @@ function _ensureCandidatesSchema(store) {
       CREATE INDEX IF NOT EXISTS idx_candidates_language ON candidates(language);
       CREATE INDEX IF NOT EXISTS idx_candidates_coherency ON candidates(coherency_total);
     `);
-  } catch { /* table already exists */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_ensureCandidatesSchema] table already exists:', e?.message || e);
+  }
 }
 
 function _transferCandidate(candidate, targetStore) {
@@ -1013,14 +1155,20 @@ function _syncDebugToPersonal(localStore, personalStore, options = {}) {
   let localDebug;
   try {
     localDebug = localStore.db.prepare('SELECT * FROM debug_patterns ORDER BY confidence DESC').all();
-  } catch { return report; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugToPersonal] returning partial report on error:', e?.message || e);
+    return report;
+  }
 
   if (localDebug.length === 0) return report;
 
   let personalDebug;
   try {
     personalDebug = personalStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch { personalDebug = []; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugToPersonal] falling back to empty array:', e?.message || e);
+    personalDebug = [];
+  }
 
   const personalIndex = new Set(personalDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
 
@@ -1034,7 +1182,10 @@ function _syncDebugToPersonal(localStore, personalStore, options = {}) {
     if (!dryRun) {
       try {
         _transferDebugPattern(dp, personalStore);
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugToPersonal] skipping item:', e?.message || e);
+        continue;
+      }
     }
 
     personalIndex.add(key);
@@ -1057,14 +1208,20 @@ function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
   let personalDebug;
   try {
     personalDebug = personalStore.db.prepare('SELECT * FROM debug_patterns ORDER BY confidence DESC').all();
-  } catch { return report; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugFromPersonal] returning partial report on error:', e?.message || e);
+    return report;
+  }
 
   if (personalDebug.length === 0) return report;
 
   let localDebug;
   try {
     localDebug = localStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
-  } catch { localDebug = []; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugFromPersonal] falling back to empty array:', e?.message || e);
+    localDebug = [];
+  }
 
   const localIndex = new Set(localDebug.map(d => `${d.fingerprint_hash}:${d.language}`));
 
@@ -1078,12 +1235,173 @@ function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
     if (!dryRun) {
       try {
         _transferDebugPattern(dp, localStore);
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugFromPersonal] skipping item:', e?.message || e);
+        continue;
+      }
     }
 
     localIndex.add(key);
     report.pulled++;
     if (verbose) console.log(`  [←PULL debug] ${dp.error_class}:${dp.error_category} (${dp.language})`);
+  }
+
+  return report;
+}
+
+// ─── Archive Sync Helpers ───
+
+function _ensureArchiveSchema(store) {
+  try {
+    store.db.exec(`
+      CREATE TABLE IF NOT EXISTS pattern_archive (
+        id TEXT NOT NULL,
+        name TEXT,
+        code TEXT,
+        language TEXT,
+        pattern_type TEXT,
+        coherency_total REAL,
+        coherency_json TEXT,
+        test_code TEXT,
+        tags TEXT,
+        deleted_reason TEXT,
+        deleted_at TEXT,
+        original_created_at TEXT,
+        full_row_json TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_archive_name ON pattern_archive(name);
+      CREATE INDEX IF NOT EXISTS idx_archive_deleted_at ON pattern_archive(deleted_at);
+    `);
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_ensureArchiveSchema] table may already exist:', e?.message || e);
+  }
+}
+
+/**
+ * Sync pattern archives from local to personal store.
+ * Archives are the safety net for deleted patterns — losing them means losing recovery ability.
+ */
+function _syncArchivesToPersonal(localStore, personalStore, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const report = { synced: 0, duplicates: 0 };
+
+  _ensureArchiveSchema(personalStore);
+
+  let localArchives;
+  try {
+    localArchives = localStore.db.prepare('SELECT * FROM pattern_archive ORDER BY deleted_at DESC').all();
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncArchivesToPersonal] no archive table:', e?.message || e);
+    return report;
+  }
+
+  if (localArchives.length === 0) return report;
+
+  let personalArchives;
+  try {
+    personalArchives = personalStore.db.prepare('SELECT id, deleted_at FROM pattern_archive').all();
+  } catch (e) {
+    personalArchives = [];
+  }
+
+  // Dedup by id + deleted_at (same pattern can be archived multiple times)
+  const personalIndex = new Set(personalArchives.map(a => `${a.id}:${a.deleted_at}`));
+
+  for (const archive of localArchives) {
+    const key = `${archive.id}:${archive.deleted_at}`;
+    if (personalIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        personalStore.db.prepare(`
+          INSERT OR IGNORE INTO pattern_archive (id, name, code, language, pattern_type,
+            coherency_total, coherency_json, test_code, tags,
+            deleted_reason, deleted_at, original_created_at, full_row_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          archive.id, archive.name, archive.code, archive.language,
+          archive.pattern_type, archive.coherency_total ?? 0,
+          archive.coherency_json || '{}', archive.test_code || null,
+          archive.tags || '[]', archive.deleted_reason || 'unknown',
+          archive.deleted_at, archive.original_created_at,
+          archive.full_row_json || null
+        );
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncArchivesToPersonal] skipping:', e?.message || e);
+        continue;
+      }
+    }
+
+    personalIndex.add(key);
+    report.synced++;
+    if (verbose) console.log(`  [SYNC→ archive] ${archive.name} (deleted: ${archive.deleted_at})`);
+  }
+
+  return report;
+}
+
+/**
+ * Pull pattern archives from personal to local store.
+ */
+function _syncArchivesFromPersonal(localStore, personalStore, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const report = { pulled: 0, duplicates: 0 };
+
+  _ensureArchiveSchema(localStore);
+
+  let personalArchives;
+  try {
+    personalArchives = personalStore.db.prepare('SELECT * FROM pattern_archive ORDER BY deleted_at DESC').all();
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncArchivesFromPersonal] no archive table:', e?.message || e);
+    return report;
+  }
+
+  if (personalArchives.length === 0) return report;
+
+  let localArchives;
+  try {
+    localArchives = localStore.db.prepare('SELECT id, deleted_at FROM pattern_archive').all();
+  } catch (e) {
+    localArchives = [];
+  }
+
+  const localIndex = new Set(localArchives.map(a => `${a.id}:${a.deleted_at}`));
+
+  for (const archive of personalArchives) {
+    const key = `${archive.id}:${archive.deleted_at}`;
+    if (localIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        localStore.db.prepare(`
+          INSERT OR IGNORE INTO pattern_archive (id, name, code, language, pattern_type,
+            coherency_total, coherency_json, test_code, tags,
+            deleted_reason, deleted_at, original_created_at, full_row_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          archive.id, archive.name, archive.code, archive.language,
+          archive.pattern_type, archive.coherency_total ?? 0,
+          archive.coherency_json || '{}', archive.test_code || null,
+          archive.tags || '[]', archive.deleted_reason || 'unknown',
+          archive.deleted_at, archive.original_created_at,
+          archive.full_row_json || null
+        );
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncArchivesFromPersonal] skipping:', e?.message || e);
+        continue;
+      }
+    }
+
+    localIndex.add(key);
+    report.pulled++;
+    if (verbose) console.log(`  [←PULL archive] ${archive.name} (deleted: ${archive.deleted_at})`);
   }
 
   return report;
@@ -1175,7 +1493,9 @@ function discoverRepoStores(options = {}) {
         }
       });
     }
-  } catch { /* config read error */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:discoverRepoStores] config read error:', e?.message || e);
+  }
 
   // Add explicit paths
   for (const p of additionalPaths) {
@@ -1199,7 +1519,9 @@ function discoverRepoStores(options = {}) {
           discovered.add(siblingPath);
         }
       }
-    } catch { /* permission or read error */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[persistence:discoverRepoStores] permission or read error:', e?.message || e);
+    }
   }
 
   return Array.from(discovered);
@@ -1215,7 +1537,9 @@ function registerRepo(repoPath) {
     if (fs.existsSync(REPOS_CONFIG_PATH)) {
       config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
     }
-  } catch { /* fresh config */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:registerRepo] fresh config:', e?.message || e);
+  }
 
   const resolved = path.resolve(repoPath);
   if (!config.repos.includes(resolved)) {
@@ -1237,7 +1561,9 @@ function listRepos() {
         return { path: r, name: path.basename(r), active: exists };
       });
     }
-  } catch { /* config error */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:listRepos] config error:', e?.message || e);
+  }
   return [];
 }
 
@@ -1287,7 +1613,9 @@ function crossRepoSearch(description, options = {}) {
       }
 
       repoInfo.push({ name: repoName, path: repoPath, patterns: patterns.length, matches: matchCount });
-    } catch { /* store open failed — skip */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[persistence:crossRepoSearch] store open failed — skip:', e?.message || e);
+    }
   }
 
   // Sort by match score

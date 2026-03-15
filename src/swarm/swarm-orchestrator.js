@@ -233,7 +233,8 @@ async function swarm(task, options = {}) {
   // Record to swarm history for the feedback loop
   try {
     recordRun(finalResult, { taskType: options.existingCode ? 'review' : 'code' }, options.rootDir);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-orchestrator:init] silent failure:', e?.message || e);
     // History recording is best-effort, never block the result
   }
 
@@ -288,7 +289,8 @@ function getDefaultCoherencyFn() {
   try {
     const { computeCoherencyScore } = require('../core/coherency');
     return computeCoherencyScore;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-orchestrator:getDefaultCoherencyFn] silent failure:', e?.message || e);
     // Fallback: simple heuristic scorer
     return (code) => ({
       total: code && code.length > 10 ? 0.6 : 0.2,

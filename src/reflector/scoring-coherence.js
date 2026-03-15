@@ -45,7 +45,7 @@ function scoreSyntaxValidity(code, language) {
   const covenant = covenantCheck(code, { language });
   if (!covenant.sealed) {
     score -= 0.2;
-    details.push(`Covenant violations: ${covenant.violations?.length || 'unknown'}`);
+    details.push(`Covenant violations: ${covenant.violations?.length ?? 'unknown'}`);
   }
 
   const nonBlank = code.split('\n').filter(l => l.trim()).length;
@@ -91,7 +91,7 @@ function scoreReadability(code, language) {
   details.push(`Naming quality: ${namingScore.toFixed(3)}`);
 
   const score = (commentScore * 0.30) + (nestingScore * 0.25) + (qualityScore * 0.25) + (namingScore * 0.20);
-  return { score: Math.round(score * 1000) / 1000, commentScore, nestingScore, qualityScore, namingScore, details };
+  return { score: Math.round(Math.max(0, Math.min(1, score)) * 1000) / 1000, commentScore, nestingScore, qualityScore, namingScore, details };
 }
 
 function scoreNamingQuality(code, language) {
@@ -155,7 +155,10 @@ function scoreTestProof(filePath, rootDir) {
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       testFile = candidate;
-      try { testCode = readFileSync(candidate, 'utf-8'); } catch { continue; }
+      try { testCode = readFileSync(candidate, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[scoring-coherence:scoreTestProof] skipping item:', e?.message || e);
+        continue;
+      }
       break;
     }
   }
@@ -302,7 +305,7 @@ function computeRepoCoherence(rootDir, config = {}) {
   const dimAvgs = {};
   for (const dim of dimNames) {
     dimAvgs[dim] = Math.round(
-      (fileScores.reduce((s, f) => s + (f.dimensions[dim]?.score || 0), 0) / fileScores.length) * 1000
+      (fileScores.reduce((s, f) => s + (f.dimensions[dim]?.score ?? 0), 0) / fileScores.length) * 1000
     ) / 1000;
   }
 

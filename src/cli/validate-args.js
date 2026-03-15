@@ -6,7 +6,7 @@ const { c } = require('./colors');
 
 function validatePositiveInt(value, name, defaultValue) {
   if (value === undefined || value === true) return defaultValue;
-  const n = parseInt(value);
+  const n = parseInt(value, 10);
   if (isNaN(n) || n < 1) {
     console.error(c.boldRed('Error:') + ` --${name} must be a positive integer (got "${value}")`);
     process.exit(1);
@@ -16,7 +16,7 @@ function validatePositiveInt(value, name, defaultValue) {
 
 function validatePort(value, defaultValue = 3333) {
   if (value === undefined || value === true) return defaultValue;
-  const n = parseInt(value);
+  const n = parseInt(value, 10);
   if (isNaN(n) || n < 1 || n > 65535) {
     console.error(c.boldRed('Error:') + ` --port must be 1-65535 (got "${value}")`);
     process.exit(1);

@@ -12,27 +12,30 @@ const HANDLERS = {
   // ─── 1. Search (unified) ───
   oracle_search(oracle, args) {
     const mode = args.mode || 'hybrid';
-    if (mode === 'smart') {
-      return oracle.smartSearch(args.query, {
-        language: args.language,
-        limit: args.limit || 10,
-        mode: 'hybrid',
-      });
-    } else if (args.description && !args.query) {
-      // Structured query mode (legacy oracle_query behavior)
+    // Structured query mode: description provided without query
+    if (args.description && !args.query) {
       return oracle.query({
         description: args.description || '',
         tags: args.tags || [],
         language: args.language,
         limit: args.limit || 5,
       });
-    } else {
-      return oracle.search(args.query || '', {
-        limit: args.limit || 5,
+    }
+    if (!args.query) {
+      throw new Error('Either "query" or "description" is required');
+    }
+    if (mode === 'smart') {
+      return oracle.smartSearch(args.query, {
         language: args.language,
-        mode: mode,
+        limit: args.limit || 10,
+        mode: 'hybrid',
       });
     }
+    return oracle.search(args.query, {
+      limit: args.limit || 5,
+      language: args.language,
+      mode: mode,
+    });
   },
 
   // ─── 2. Resolve ───

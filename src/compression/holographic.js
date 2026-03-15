@@ -19,9 +19,20 @@ const { builtinEmbed, cosineSimilarity } = require('../search/embedding-engine')
 let _serfEmbeddingDims;
 try {
   ({ serfEmbeddingDims: _serfEmbeddingDims } = require('./serf-integration'));
-} catch { _serfEmbeddingDims = null; }
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[holographic:init] silent failure:', e?.message || e);
+  _serfEmbeddingDims = null;
+}
 
 const HOLO_DIMS = 128;
+
+// Structured description integration (graceful)
+let _structuredDescriptionVector;
+try {
+  ({ structuredDescriptionVector: _structuredDescriptionVector } = require('./fractal-library-bridge'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[holographic:init] bridge not available:', e?.message || e);
+}
 
 // ─── Behavioral feature detectors ───
 
@@ -70,9 +81,18 @@ function holoEmbed(pattern, options = {}) {
   }
 
   // Dims 80-95: Behavioral signature (16D)
+  // When structured description is available, blend it in for richer behavioral encoding
   const behaviorVec = _behaviorSignature(code + ' ' + (pattern.testCode || ''));
-  for (let i = 0; i < 16; i++) {
-    vec[80 + i] = behaviorVec[i];
+  if (_structuredDescriptionVector && pattern.structuredDescription) {
+    const structVec = _structuredDescriptionVector(pattern.structuredDescription);
+    // Blend: 70% behavioral detectors + 30% structured description
+    for (let i = 0; i < 16; i++) {
+      vec[80 + i] = behaviorVec[i] * 0.7 + (structVec[i] || 0) * 0.3;
+    }
+  } else {
+    for (let i = 0; i < 16; i++) {
+      vec[80 + i] = behaviorVec[i];
+    }
   }
 
   // Dims 96-111: Dependency signature (16D)
@@ -304,7 +324,10 @@ function _usageSignature(pattern) {
 function _safeParseArray(val) {
   if (!val) return [];
   if (typeof val === 'string') {
-    try { return JSON.parse(val); } catch { return []; }
+    try { return JSON.parse(val); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[holographic:_safeParseArray] returning empty array on error:', e?.message || e);
+      return [];
+    }
   }
   return [];
 }

@@ -27,14 +27,15 @@ function _decryptKey(stored) {
   if (!stored || !stored.startsWith('enc:')) return stored;
   try {
     const parts = stored.slice(4).split(':');
-    if (parts.length !== 3) return stored;
+    if (parts.length !== 3) return null;
     const [ivHex, tagHex, dataHex] = parts;
     const key = _deriveKey();
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
     decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
     return decipher.update(Buffer.from(dataHex, 'hex'), null, 'utf8') + decipher.final('utf8');
-  } catch {
-    return stored;
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-config:_decryptKey] returning null on error:', e?.message || e);
+    return null;
   }
 }
 
@@ -94,7 +95,8 @@ function loadSwarmConfig(rootDir) {
     if (fs.existsSync(configPath)) {
       userConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-config:loadSwarmConfig] silent failure:', e?.message || e);
     // Ignore invalid config, fall back to defaults
   }
   return {
@@ -124,7 +126,14 @@ function saveSwarmConfig(rootDir, config) {
       }
     }
   }
-  fs.writeFileSync(configPath, JSON.stringify(safeCopy, null, 2));
+  // Atomic write: tmp → backup → rename
+  const json = JSON.stringify(safeCopy, null, 2);
+  const tmpPath = configPath + '.tmp';
+  fs.writeFileSync(tmpPath, json, 'utf-8');
+  if (fs.existsSync(configPath)) {
+    try { fs.copyFileSync(configPath, configPath + '.bak'); } catch (_) { /* best effort */ }
+  }
+  fs.renameSync(tmpPath, configPath);
 }
 
 /**
@@ -178,7 +187,8 @@ function resolveProviders(config) {
         env: { ...process.env, CLAUDECODE: '' },
       });
       available.push('claude-code');
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[swarm-config:resolveProviders] silent failure:', e?.message || e);
       // Claude CLI not installed or not reachable — skip silently
     }
   }
@@ -195,14 +205,15 @@ function resolveProviders(config) {
 function getProviderKey(provider, config) {
   // Prefer environment variables over config-file keys (env vars are more secure)
   const envMap = {
-    claude: 'ANTHROPIC_API_KEY',
-    openai: 'OPENAI_API_KEY',
-    gemini: 'GOOGLE_API_KEY',
-    grok: 'GROK_API_KEY',
-    deepseek: 'DEEPSEEK_API_KEY',
+    claude: ['ANTHROPIC_API_KEY', 'CLAUDE_API_KEY'],
+    openai: ['OPENAI_API_KEY'],
+    gemini: ['GOOGLE_API_KEY', 'GEMINI_API_KEY'],
+    grok: ['GROK_API_KEY', 'XAI_API_KEY'],
+    deepseek: ['DEEPSEEK_API_KEY'],
   };
-  if (process.env[envMap[provider]]) {
-    return process.env[envMap[provider]];
+  const envKeys = envMap[provider] || [];
+  for (const key of envKeys) {
+    if (process.env[key]) return process.env[key];
   }
   if (config.providers?.[provider]?.apiKey) {
     return _decryptKey(config.providers[provider].apiKey);

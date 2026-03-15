@@ -68,6 +68,7 @@ function _evaluateCandidate(candidate, provenPatterns, options) {
         return { status: 'vetoed', reason: 'test execution failed' };
       }
     } catch (_) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-patterns-candidates:_evaluateCandidate] silent failure:', _?.message || _);
       return { status: 'vetoed', reason: 'sandbox error' };
     }
   }
@@ -112,7 +113,7 @@ module.exports = {
       const oldTags = [...(pattern.tags || [])];
       const newTags = retagPattern(pattern);
       const diff = tagDiff(oldTags, newTags);
-      if (diff.added.length > minAdded) {
+      if (diff.added.length >= minAdded) {
         if (!dryRun) this.patterns.update(pattern.id, { tags: newTags });
         enriched++;
         totalTagsAdded += diff.added.length;
@@ -128,7 +129,7 @@ module.exports = {
   },
 
   deepClean(options = {}) {
-    const { minCodeLength = 35, minNameLength = 3, removeDuplicates = true, removeStubs = true, dryRun = false } = options;
+    const { minCodeLength = 35, minNameLength = 3, removeDuplicates = true, removeStubs = true, dryRun = false, maxRemovals = 50 } = options;
     const all = this.patterns.getAll();
     const toRemove = removeDuplicates ? _findDuplicates(all) : new Map();
 
@@ -144,6 +145,22 @@ module.exports = {
       if (tags.includes('harvested') && code.length < minCodeLength && name.length < minNameLength) {
         toRemove.set(p.id, 'too-short');
       }
+    }
+
+    // SAFETY: Never delete patterns with coherency >= 0.7 or test code
+    for (const [id] of toRemove) {
+      const p = all.find(x => x.id === id);
+      if (!p) continue;
+      const coherency = p.coherencyScore?.total ?? p.coherency_total ?? 0;
+      if (coherency >= 0.7) { toRemove.delete(id); continue; }
+      if (p.test_code && p.test_code.trim().length > 20) { toRemove.delete(id); continue; }
+    }
+
+    // SAFETY: Cap total removals per run to prevent mass deletion
+    if (toRemove.size > maxRemovals) {
+      const entries = [...toRemove.entries()];
+      toRemove.clear();
+      for (let i = 0; i < maxRemovals; i++) toRemove.set(entries[i][0], entries[i][1]);
     }
 
     let duplicates = 0, stubs = 0, tooShort = 0;
@@ -162,7 +179,7 @@ module.exports = {
             const row = db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
             if (row) {
               const now = new Date().toISOString();
-              db.prepare(`
+              const archiveResult = db.prepare(`
                 INSERT OR IGNORE INTO pattern_archive
                   (id, name, code, language, pattern_type, coherency_total, coherency_json,
                    test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
@@ -174,10 +191,20 @@ module.exports = {
                 row.tags || '[]', 'deep-clean:' + reason, now, row.created_at || null,
                 JSON.stringify(row)
               );
+              // Verify archive before allowing delete
+              if (archiveResult.changes === 0) {
+                const archived = db.prepare('SELECT 1 FROM pattern_archive WHERE id = ?').get(row.id);
+                if (!archived) {
+                  if (process.env.ORACLE_DEBUG) console.warn(`[oracle-patterns-candidates:deepClean] ABORT delete of ${id} — archive failed`);
+                  continue;
+                }
+              }
             }
             db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
           }
-        } catch { /* skip */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[oracle-patterns-candidates:code] skip:', e?.message || e);
+        }
       }
     }
 
@@ -216,7 +243,7 @@ module.exports = {
       }
 
       if (evaluation.status === 'would-promote') {
-        report.promoted++;
+        report.wouldPromote = (report.wouldPromote || 0) + 1;
         report.details.push({ name: candidate.name, status: 'would-promote', coherency: evaluation.coherency });
         continue;
       }

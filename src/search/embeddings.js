@@ -273,7 +273,8 @@ function semanticSimilarity(query, document) {
   try {
     const { vectorSimilarity } = require('./vectors');
     vectorScore = vectorSimilarity(queryLower, docLower);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[embeddings:semanticSimilarity] silent failure:', e?.message || e);
     // vectors module not available — skip
   }
 

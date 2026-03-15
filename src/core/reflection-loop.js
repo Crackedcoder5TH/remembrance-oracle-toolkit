@@ -73,7 +73,8 @@ function generateCandidates(code, language, options = {}) {
     try {
       const transformed = fn(code, lang);
       return { strategy, code: transformed, changed: transformed !== code };
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.error(`[reflection] ${strategy} transform failed:`, e.message);
       return { strategy, code, changed: false };
     }
   });
@@ -242,7 +243,9 @@ function reflectionLoop(code, options = {}) {
     if (typeof onLoop === 'function') {
       try {
         onLoop({ loop: loops, coherence: current.coherence, strategy: winner.strategy, reflectionScore: winner.reflectionScore, changed: winner.changed });
-      } catch (_) { /* listener errors don't break healing */ }
+      } catch (_) {
+        if (process.env.ORACLE_DEBUG) console.warn('[reflection-loop:init] listener errors don\'t break healing:', _?.message || _);
+      }
     }
   }
 

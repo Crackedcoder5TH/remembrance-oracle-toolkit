@@ -15,7 +15,7 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
     console.log(`${c.dim('Running self-improve → self-optimize → self-evolve...')}\n`);
 
     const report = oracle.fullOptimizationCycle({
-      maxHealsPerRun: parseInt(args.max) || 20,
+      maxHealsPerRun: parseInt(args.max, 10) || 20,
     });
     if (jsonOut()) { console.log(JSON.stringify(report)); return; }
 
@@ -119,7 +119,7 @@ ${c.bold('Commands:')}
       console.log(`\n${c.boldCyan('Consolidating Near-Duplicates')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
       const report = oracle.consolidateDuplicates({
-        similarityThreshold: parseFloat(args.threshold) || undefined,
+        similarityThreshold: args.threshold != null ? parseFloat(args.threshold) : undefined,
         dryRun,
       });
 
@@ -151,7 +151,7 @@ ${c.bold('Commands:')}
 
     if (sub === 'tags') {
       const dryRun = parseDryRun(args);
-      const minUsage = parseInt(args['min-usage']) || 2;
+      const minUsage = parseInt(args['min-usage'], 10) || 2;
       console.log(`\n${c.boldCyan('Consolidating Tags')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
       const report = oracle.consolidateTags({ minUsage, dryRun });
@@ -247,7 +247,7 @@ ${c.bold('Commands:')}
 
     if (sub === 'all') {
       const dryRun = parseDryRun(args);
-      const maxIterations = parseInt(args['max-iterations']) || undefined;
+      const maxIterations = args['max-iterations'] != null ? parseInt(args['max-iterations'], 10) : undefined;
       console.log(`\n${c.boldCyan('Iterative Polish')}${dryRun ? c.dim(' (dry run)') : ''}`);
       console.log(`${c.dim('Running self-reflection loop: polish → evaluate → repeat until convergence...')}\n`);
 
@@ -398,6 +398,30 @@ ${c.bold('Commands:')}
 
     console.error(c.boldRed('Error:') + ` Unknown lifecycle subcommand: ${sub}. Run ${c.cyan('oracle lifecycle help')} for usage.`);
     process.exit(1);
+  };
+
+  handlers['decay'] = (args) => {
+    const { decayPass } = require('../../core/confidence-decay');
+    const patterns = oracle.patterns.getAll();
+    const report = decayPass(patterns);
+
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(c.boldCyan(`Confidence Decay Report\n`));
+    console.log(`  Total patterns:   ${c.bold(String(report.total))}`);
+    console.log(`  Decayed:          ${report.decayed > 0 ? c.yellow(String(report.decayed)) : c.bold('0')}`);
+    console.log(`  Fresh:            ${c.green(String(report.fresh))}\n`);
+
+    const decayed = report.patterns.filter(r => r.decayed).sort((a, b) => a.factor - b.factor);
+    if (decayed.length > 0) {
+      console.log(c.bold('Most decayed patterns:'));
+      for (const d of decayed.slice(0, 15)) {
+        const arrow = d.original !== d.adjusted ? ` → ${colorScore(d.adjusted.toFixed(3))}` : '';
+        console.log(`  ${c.cyan(d.name || d.id)} — ${colorScore(d.original.toFixed(3))}${arrow} (${d.daysSinceUse}d idle, ×${d.factor})`);
+      }
+    } else {
+      console.log(c.dim('All patterns are fresh — no decay applied.'));
+    }
   };
 }
 

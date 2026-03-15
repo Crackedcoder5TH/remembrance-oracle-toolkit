@@ -1,6 +1,6 @@
 'use strict';
 
-const { execSync, exec } = require('child_process');
+const { execSync, execFileSync, exec } = require('child_process');
 
 /**
  * Voice Input / Whisper Output Module
@@ -25,11 +25,17 @@ function detectVoiceCapabilities() {
   let stt = null;
 
   if (platform === 'darwin') {
-    try { execSync('which say', { stdio: 'ignore' }); tts = 'say'; } catch {}
+    try { execSync('which say', { stdio: 'ignore' }); tts = 'say'; } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[voice-io:detectVoiceCapabilities] silent failure:', e?.message || e);
+    }
   } else if (platform === 'linux') {
-    try { execSync('which espeak', { stdio: 'ignore' }); tts = 'espeak'; } catch {}
+    try { execSync('which espeak', { stdio: 'ignore' }); tts = 'espeak'; } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[voice-io:detectVoiceCapabilities] silent failure:', e?.message || e);
+    }
     if (!tts) {
-      try { execSync('which festival', { stdio: 'ignore' }); tts = 'festival'; } catch {}
+      try { execSync('which festival', { stdio: 'ignore' }); tts = 'festival'; } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[voice-io:detectVoiceCapabilities] silent failure:', e?.message || e);
+      }
     }
   } else if (platform === 'win32') {
     // PowerShell SAPI always available on Windows
@@ -37,7 +43,9 @@ function detectVoiceCapabilities() {
   }
 
   // STT detection (optional, rarer)
-  try { execSync('which whisper', { stdio: 'ignore' }); stt = 'whisper'; } catch {}
+  try { execSync('which whisper', { stdio: 'ignore' }); stt = 'whisper'; } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[voice-io:detectVoiceCapabilities] silent failure:', e?.message || e);
+  }
 
   return { tts, stt, platform };
 }
@@ -65,33 +73,35 @@ function speak(text, options = {}) {
   const safe = sanitizeForShell(text).slice(0, 2000);
 
   try {
+    const execOpts = { stdio: 'ignore', timeout: 30000 };
     switch (engine) {
       case 'say': {
-        const rate = options.rate || 180;
-        const voice = options.voice || '';
-        const voiceFlag = voice ? `-v "${voice}"` : '';
-        execSync(`say ${voiceFlag} -r ${rate} "${safe}"`, { stdio: 'ignore', timeout: 30000 });
+        const rate = String(Math.max(1, Math.min(500, parseInt(options.rate, 10) || 180)));
+        const voice = options.voice ? sanitizeForShell(String(options.voice)).slice(0, 100) : '';
+        const args = voice ? ['-v', voice, '-r', rate, safe] : ['-r', rate, safe];
+        execFileSync('say', args, execOpts);
         break;
       }
       case 'espeak': {
-        const rate = options.rate || 160;
-        execSync(`espeak -s ${rate} "${safe}"`, { stdio: 'ignore', timeout: 30000 });
+        const rate = String(Math.max(1, Math.min(500, parseInt(options.rate, 10) || 160)));
+        execFileSync('espeak', ['-s', rate, safe], execOpts);
         break;
       }
       case 'festival': {
-        execSync(`echo "${safe}" | festival --tts`, { stdio: 'ignore', timeout: 30000 });
+        execFileSync('festival', ['--tts'], { ...execOpts, input: safe });
         break;
       }
       case 'powershell-sapi': {
         const psCmd = `Add-Type -AssemblyName System.speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Speak('${safe.replace(/'/g, "''")}')`;
-        execSync(`powershell -Command "${psCmd}"`, { stdio: 'ignore', timeout: 30000 });
+        execFileSync('powershell', ['-Command', psCmd], execOpts);
         break;
       }
       default:
         return { spoken: false, engine: null };
     }
     return { spoken: true, engine };
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[voice-io:speak] silent failure:', e?.message || e);
     return { spoken: false, engine };
   }
 }
@@ -175,7 +185,8 @@ function readVoiceInput(filePath) {
     if (!fs.existsSync(filePath)) return null;
     const content = fs.readFileSync(filePath, 'utf8').trim();
     return content.length > 0 ? content : null;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[voice-io:readVoiceInput] returning null on error:', e?.message || e);
     return null;
   }
 }
@@ -185,8 +196,8 @@ function readVoiceInput(filePath) {
  */
 function sanitizeForShell(text) {
   return text
-    .replace(/["`$\\]/g, '')   // Remove shell-dangerous chars
-    .replace(/\n/g, '. ')      // Convert newlines to periods
+    .replace(/\n/g, '. ')      // Convert newlines to periods first
+    .replace(/[^a-zA-Z0-9 .,!?:'\-()]/g, '')  // Allowlist: only safe characters (no ; for shell safety)
     .replace(/\s+/g, ' ')      // Collapse whitespace
     .trim();
 }

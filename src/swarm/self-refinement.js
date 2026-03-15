@@ -183,7 +183,6 @@ function suggestOptimalWeights(rootDir) {
   const sum = suggested.coherency + suggested.selfConfidence + suggested.peerScore;
   suggested.coherency = Math.round((suggested.coherency / sum) * 100) / 100;
   suggested.selfConfidence = Math.round((suggested.selfConfidence / sum) * 100) / 100;
-  suggested.peerScore = Math.round(1 - suggested.coherency - suggested.selfConfidence * 100) / 100 || suggested.peerScore;
   // Ensure they sum to 1.0
   suggested.peerScore = Math.round((1 - suggested.coherency - suggested.selfConfidence) * 100) / 100;
 
@@ -226,7 +225,11 @@ function selfRefine(rootDir, options = {}) {
   const analysis = analyzeSwarmPerformance(rootDir);
   const weightSuggestion = suggestOptimalWeights(rootDir);
 
-  if (options.autoApply && weightSuggestion.weights !== weightSuggestion.current) {
+  const weightsChanged = !weightSuggestion.current ||
+    weightSuggestion.weights.coherency !== weightSuggestion.current.coherency ||
+    weightSuggestion.weights.selfConfidence !== weightSuggestion.current.selfConfidence ||
+    weightSuggestion.weights.peerScore !== weightSuggestion.current.peerScore;
+  if (options.autoApply && weightsChanged) {
     applyWeightSuggestion(weightSuggestion, rootDir);
   }
 

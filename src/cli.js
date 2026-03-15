@@ -17,6 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('./core/safe-path');
 const { RemembranceOracle } = require('./api/oracle');
 const { c } = require('./cli/colors');
 const { generateHelp } = require('./cli/registry');
@@ -52,7 +53,9 @@ function speakCLI(text) {
     } else {
       execFile('espeak', ['-s', '150', safeText], { timeout: 10000 }, () => {});
     }
-  } catch { /* TTS not available — silent fallback */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[cli:speakCLI] TTS not available — silent fallback:', e?.message || e);
+  }
 }
 
 function parseArgs(args) {
@@ -81,7 +84,8 @@ function readStdin() {
   if (process.stdin.isTTY) return '';
   try {
     return fs.readFileSync(0, 'utf-8');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[cli:readStdin] returning empty string on error:', e?.message || e);
     return '';
   }
 }
@@ -92,7 +96,7 @@ function readStdin() {
  */
 function getCode(args) {
   if (args.file) {
-    const filePath = path.resolve(args.file);
+    const filePath = safePath(args.file, process.cwd());
     if (!fs.existsSync(filePath)) {
       console.error(`Error: File not found: ${args.file}`);
       process.exit(1);
@@ -105,7 +109,7 @@ function getCode(args) {
 }
 
 function readFile(filePath, label) {
-  const resolved = path.resolve(filePath);
+  const resolved = safePath(filePath, process.cwd());
   if (!fs.existsSync(resolved)) {
     console.error(`Error: ${label || 'File'} not found: ${filePath}`);
     process.exit(1);

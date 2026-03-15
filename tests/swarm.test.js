@@ -1576,6 +1576,9 @@ describe('Voice I/O', () => {
     assert.equal(sanitizeForShell('hello "world"'), 'hello world');
     assert.equal(sanitizeForShell('test$var`cmd`'), 'testvarcmd');
     assert.equal(sanitizeForShell('line1\nline2'), 'line1. line2');
+    // Allowlist-based: only safe chars survive
+    assert.equal(sanitizeForShell('hello; echo bad'), 'hello echo bad');
+    assert.equal(sanitizeForShell('safe text 123!'), 'safe text 123!');
   });
 
   it('speakWhisper returns text summary even without TTS', () => {

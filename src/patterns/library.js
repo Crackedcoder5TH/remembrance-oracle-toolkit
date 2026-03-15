@@ -438,7 +438,9 @@ class PatternLibrary {
       }
 
       const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
-      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus + structuralBoost + holoBoost - evolutionPenalty);
+      // Scale focusBonus by relevance — complexity bonus should only boost relevant patterns
+      const scaledFocusBonus = focusBonus * relevance.relevance;
+      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + scaledFocusBonus + structuralBoost + holoBoost - evolutionPenalty);
 
       return { pattern: p, relevance: relevance.relevance, coherency, decayedCoherency, reliability, structuralSimilarity: structSim, holoBoost, composite };
     }).sort((a, b) => b.composite - a.composite);

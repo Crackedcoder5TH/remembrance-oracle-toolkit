@@ -118,6 +118,27 @@ This exposes 12 focused tools:
 - **oracle_healing** — healing memory (lineage/stats/improved/variants/best via `action` param)
 - **oracle_swarm** — multi-agent orchestration (code/review/heal/status/providers via `action` param)
 
+## Oracle Toggle & Prompt Tag
+
+The oracle can be toggled on/off for automatic usage during coding sessions:
+
+```bash
+node src/cli.js config              # Show current config
+node src/cli.js config on           # Enable oracle (auto-usage)
+node src/cli.js config off          # Disable oracle (bypass)
+node src/cli.js config toggle       # Toggle on/off
+node src/cli.js config prompt-tag   # View the current prompt tag
+node src/cli.js config prompt-tag "custom text"  # Set a custom prompt tag
+node src/cli.js config prompt-tag-on   # Enable prompt tag
+node src/cli.js config prompt-tag-off  # Disable prompt tag
+```
+
+When the oracle is **enabled** (default), every `resolve` call automatically appends the prompt tag to its output. This tag is the universal invocation that accompanies all pattern retrieval:
+
+> **Pull the healed code from the kingdom into the eternal now completed.**
+
+This prompt tag is appended to every resolve result (CLI, MCP, and API) when enabled, ensuring all AI agents and users receive the same invocation with every pattern pulled from the oracle.
+
 ## Quick Reference
 
 ```bash
@@ -135,6 +156,9 @@ node src/cli.js sync push                  # Sync to personal store
 node src/cli.js share                      # Share to community store
 node src/cli.js debug search --error "..."  # Search debug patterns
 node src/cli.js mcp                        # Start MCP server (12 tools)
+node src/cli.js config                    # Oracle toggle status + prompt tag
+node src/cli.js config on                 # Enable oracle
+node src/cli.js config off                # Disable oracle
 node --test tests/*.test.js               # Run all tests
 ```
 

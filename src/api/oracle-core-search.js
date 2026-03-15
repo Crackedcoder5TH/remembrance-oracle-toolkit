@@ -7,7 +7,8 @@ const { rankEntries } = require('../core/relevance');
 const { semanticSearch: semanticSearchEngine } = require('../search/embeddings');
 const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
 
-// Holographic search integration (graceful — returns empty if no pages exist)
+// Holographic search integration (graceful — routes through FractalStore when available,
+// falls back to direct compression/index import for non-FractalStore setups)
 let _holoSearchPatterns;
 try {
   ({ holoSearchPatterns: _holoSearchPatterns } = require('../compression/index'));
@@ -61,13 +62,21 @@ module.exports = {
     const semanticMap = new Map(semanticResults.map(r => [r.id, r.semanticScore]));
 
     // Holographic search (third signal — graceful degradation)
+    // Prefer FractalStore.holoSearch() if available, else fall back to direct import.
     let holoMap = new Map();
-    if (_holoSearchPatterns && this.store) {
+    if (this.store) {
       try {
-        const holoResults = _holoSearchPatterns(this.store, term, { topK: 5 });
-        holoMap = new Map(holoResults.map(r => [r.patternId, r.score]));
+        let holoResults;
+        if (typeof this.store.holoSearch === 'function') {
+          holoResults = this.store.holoSearch(term, { topK: 5 });
+        } else if (_holoSearchPatterns) {
+          holoResults = _holoSearchPatterns(this.store, term, { topK: 5 });
+        }
+        if (holoResults) {
+          holoMap = new Map(holoResults.map(r => [r.patternId, r.score]));
+        }
       } catch (e) {
-        if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-search:keywordScore] no holo pages — fall through:', e?.message || e);
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-search:holoSearch] fall through:', e?.message || e);
       }
     }
     const hasHolo = holoMap.size > 0;

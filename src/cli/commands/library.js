@@ -72,6 +72,10 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     if (result.alternatives?.length > 0) {
       console.log(`\n${c.dim('Alternatives:')} ${result.alternatives.map(a => `${c.cyan(a.name)}(${colorScore(a.composite?.toFixed(3))})`).join(', ')}`);
     }
+    if (result.promptTag) {
+      console.log(`\n${c.boldCyan('── Oracle Prompt Tag ──')}`);
+      console.log(c.bold(result.promptTag));
+    }
     if (args.voice && result.whisper) {
       speakCLI(result.whisper);
     }

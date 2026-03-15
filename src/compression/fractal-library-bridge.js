@@ -336,6 +336,19 @@ function auditIntegration(store, patterns) {
     report.gaps.push(`Only ${(structuredCoverage * 100).toFixed(0)}% of patterns have structured descriptions — new patterns get them automatically`);
   }
 
+  // Fractal integrity check
+  const integrity = checkFractalIntegrity(store);
+  report.integrity = integrity;
+  if (integrity.orphanedDeltas > 0) {
+    report.gaps.push(`${integrity.orphanedDeltas} orphaned fractal delta(s) — patterns deleted but deltas remain`);
+  }
+  if (integrity.orphanedEmbeddings > 0) {
+    report.gaps.push(`${integrity.orphanedEmbeddings} orphaned holographic embedding(s) — patterns deleted but embeddings remain`);
+  }
+  if (integrity.staleTemplates > 0) {
+    report.gaps.push(`${integrity.staleTemplates} fractal template(s) with stale member counts`);
+  }
+
   // Generate recommendations
   if (embeddingCoverage < 1.0) {
     report.recommendations.push('Run `oracle compress` to generate holographic embeddings for all patterns');
@@ -346,8 +359,189 @@ function auditIntegration(store, patterns) {
   if (structuredCoverage < 0.5) {
     report.recommendations.push('Structured descriptions will be auto-generated for new patterns — existing patterns benefit from re-registration');
   }
+  if (integrity.orphanedDeltas > 0 || integrity.orphanedEmbeddings > 0 || integrity.staleTemplates > 0) {
+    report.recommendations.push('Run fractal integrity repair to clean up orphaned data and fix stale counts');
+  }
 
   return report;
+}
+
+// ─── 7. Incremental Fractal Integration on Registration ──────────────
+
+/**
+ * Incrementally integrate a newly registered pattern into the fractal
+ * compression and holographic systems. Called after a pattern is stored
+ * to ensure it is immediately searchable via holographic vectors and
+ * participates in fractal family detection.
+ *
+ * This closes the gap where new patterns were invisible to the fractal
+ * layer until a manual `oracle compress` was run.
+ *
+ * @param {object} pattern - The newly registered pattern { id, code, name, language, tags, ... }
+ * @param {object} store - SQLiteStore instance
+ * @returns {{ embedded: boolean, familyMatch: string|null }}
+ */
+function integratePatternIncremental(pattern, store) {
+  if (!store || !pattern || !pattern.id) {
+    return { embedded: false, familyMatch: null };
+  }
+
+  _loadCompression();
+  let embedded = false;
+  let familyMatch = null;
+
+  try {
+    // Step 1: Compute and store holographic embedding
+    if (_holoEmbed && store.storeHoloEmbedding) {
+      const embedding = _holoEmbed(pattern);
+      store.storeHoloEmbedding(pattern.id, embedding);
+      embedded = true;
+    }
+
+    // Step 2: Fingerprint and check for existing family membership
+    const { structuralFingerprint } = require('./fractal');
+    const fp = structuralFingerprint(pattern.code, pattern.language);
+
+    if (fp.hash && store.getTemplate && store.storeDelta) {
+      // Check if a template with this fingerprint hash already exists
+      const existingTemplate = store.getTemplate(fp.hash);
+      if (existingTemplate) {
+        // Join the existing family
+        store.storeDelta({
+          patternId: pattern.id,
+          templateId: fp.hash,
+          delta: fp.placeholders,
+          originalSize: (pattern.code || '').length,
+          deltaSize: JSON.stringify(fp.placeholders).length,
+        });
+        // Update template member count and avg coherency
+        const newCount = (existingTemplate.memberCount || 0) + 1;
+        const coherency = pattern.coherencyScore?.total ?? pattern.coherencyScore ?? 0;
+        const newAvg = existingTemplate.memberCount > 0
+          ? (existingTemplate.avgCoherency * existingTemplate.memberCount + coherency) / newCount
+          : coherency;
+        store.storeTemplate({
+          id: fp.hash,
+          skeleton: existingTemplate.skeleton,
+          language: existingTemplate.language,
+          memberCount: newCount,
+          avgCoherency: newAvg,
+        });
+        familyMatch = fp.hash;
+      }
+      // Note: if no template exists yet, the pattern stays a singleton until
+      // compressStore runs and detects the family. This avoids creating
+      // single-member templates that would just add overhead.
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[bridge:integratePatternIncremental]', e?.message);
+  }
+
+  return { embedded, familyMatch };
+}
+
+// ─── 8. Fractal Integrity Check ─────────────────────────────────────
+
+/**
+ * Check integrity of fractal data — find orphaned deltas, embeddings
+ * without patterns, and stale template member counts.
+ *
+ * @param {object} store - SQLiteStore instance
+ * @returns {{ orphanedDeltas: number, orphanedEmbeddings: number, staleTemplates: number, fixed: boolean }}
+ */
+function checkFractalIntegrity(store) {
+  if (!store || !store.db) {
+    return { orphanedDeltas: 0, orphanedEmbeddings: 0, staleTemplates: 0, fixed: false };
+  }
+
+  try {
+    // Find orphaned deltas (pattern no longer exists)
+    const orphanedDeltas = store.db.prepare(`
+      SELECT COUNT(*) as c FROM fractal_deltas
+      WHERE pattern_id NOT IN (SELECT id FROM patterns)
+    `).get().c;
+
+    // Find orphaned embeddings (pattern no longer exists)
+    const orphanedEmbeddings = store.db.prepare(`
+      SELECT COUNT(*) as c FROM holo_embeddings
+      WHERE pattern_id NOT IN (SELECT id FROM patterns)
+    `).get().c;
+
+    // Find templates with stale member counts
+    const staleTemplates = store.db.prepare(`
+      SELECT COUNT(*) as c FROM fractal_templates t
+      WHERE t.member_count != (
+        SELECT COUNT(*) FROM fractal_deltas d WHERE d.template_id = t.id
+      )
+    `).get().c;
+
+    return { orphanedDeltas, orphanedEmbeddings, staleTemplates, fixed: false };
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[bridge:checkFractalIntegrity]', e?.message);
+    return { orphanedDeltas: 0, orphanedEmbeddings: 0, staleTemplates: 0, fixed: false };
+  }
+}
+
+/**
+ * Repair fractal integrity issues — remove orphaned data and fix stale counts.
+ *
+ * @param {object} store - SQLiteStore instance
+ * @returns {{ orphanedDeltasRemoved: number, orphanedEmbeddingsRemoved: number, templatesFixed: number }}
+ */
+function repairFractalIntegrity(store) {
+  if (!store || !store.db) {
+    return { orphanedDeltasRemoved: 0, orphanedEmbeddingsRemoved: 0, templatesFixed: 0 };
+  }
+
+  try {
+    store.db.exec('BEGIN');
+
+    // Remove orphaned deltas
+    const deltasResult = store.db.prepare(`
+      DELETE FROM fractal_deltas
+      WHERE pattern_id NOT IN (SELECT id FROM patterns)
+    `).run();
+
+    // Remove orphaned embeddings
+    const embeddingsResult = store.db.prepare(`
+      DELETE FROM holo_embeddings
+      WHERE pattern_id NOT IN (SELECT id FROM patterns)
+    `).run();
+
+    // Fix stale template member counts
+    const staleTemplates = store.db.prepare(`
+      SELECT t.id, t.member_count,
+        (SELECT COUNT(*) FROM fractal_deltas d WHERE d.template_id = t.id) as actual_count
+      FROM fractal_templates t
+      WHERE t.member_count != (SELECT COUNT(*) FROM fractal_deltas d WHERE d.template_id = t.id)
+    `).all();
+
+    const now = new Date().toISOString();
+    let templatesFixed = 0;
+    for (const t of staleTemplates) {
+      if (t.actual_count === 0) {
+        // No members left — remove the template
+        store.db.prepare('DELETE FROM fractal_templates WHERE id = ?').run(t.id);
+      } else {
+        store.db.prepare(
+          'UPDATE fractal_templates SET member_count = ?, updated_at = ? WHERE id = ?'
+        ).run(t.actual_count, now, t.id);
+      }
+      templatesFixed++;
+    }
+
+    store.db.exec('COMMIT');
+
+    return {
+      orphanedDeltasRemoved: deltasResult.changes,
+      orphanedEmbeddingsRemoved: embeddingsResult.changes,
+      templatesFixed,
+    };
+  } catch (e) {
+    try { store.db.exec('ROLLBACK'); } catch (_) { /* ignore */ }
+    if (process.env.ORACLE_DEBUG) console.warn('[bridge:repairFractalIntegrity]', e?.message);
+    return { orphanedDeltasRemoved: 0, orphanedEmbeddingsRemoved: 0, templatesFixed: 0 };
+  }
 }
 
 function _safeParseJSON(str) {
@@ -361,4 +555,8 @@ module.exports = {
   familyAwareSimilarity,
   familyDecayModifier,
   auditIntegration,
+  // Unity additions
+  integratePatternIncremental,
+  checkFractalIntegrity,
+  repairFractalIntegrity,
 };

@@ -182,6 +182,65 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
     start();
   };
 
+  handlers['config'] = (args) => {
+    const { loadConfig, saveConfig, toggleOracle, togglePromptTag, setPromptTag, isOracleEnabled, getPromptTag } = require('../../core/oracle-config');
+    const sub = args._sub;
+
+    if (sub === 'on') {
+      toggleOracle(true);
+      console.log(`${c.green('\u2713')} Oracle ${c.boldGreen('enabled')} — automatic pattern usage is ON`);
+      return;
+    }
+    if (sub === 'off') {
+      toggleOracle(false);
+      console.log(`${c.yellow('\u25CB')} Oracle ${c.dim('disabled')} — automatic pattern usage is OFF`);
+      return;
+    }
+    if (sub === 'toggle') {
+      const newState = toggleOracle();
+      console.log(newState
+        ? `${c.green('\u2713')} Oracle ${c.boldGreen('enabled')}`
+        : `${c.yellow('\u25CB')} Oracle ${c.dim('disabled')}`);
+      return;
+    }
+    if (sub === 'prompt-tag') {
+      const customTag = args._positional.slice(1).join(' ') || args.tag;
+      if (customTag) {
+        setPromptTag(customTag);
+        console.log(`${c.green('\u2713')} Prompt tag set: ${c.cyan(customTag)}`);
+      } else {
+        const tag = getPromptTag();
+        console.log(tag
+          ? `${c.bold('Prompt tag:')} ${c.cyan(tag)}`
+          : c.dim('Prompt tag is disabled'));
+      }
+      return;
+    }
+    if (sub === 'prompt-tag-on') {
+      togglePromptTag(true);
+      console.log(`${c.green('\u2713')} Prompt tag ${c.boldGreen('enabled')}`);
+      return;
+    }
+    if (sub === 'prompt-tag-off') {
+      togglePromptTag(false);
+      console.log(`${c.yellow('\u25CB')} Prompt tag ${c.dim('disabled')}`);
+      return;
+    }
+
+    // Default: show status
+    const config = loadConfig();
+    if (jsonOut()) { console.log(JSON.stringify(config)); return; }
+    console.log(`\n${c.boldCyan('Oracle Configuration')}\n`);
+    console.log(`  Oracle:     ${config.enabled ? c.boldGreen('ON') : c.dim('OFF')}`);
+    console.log(`  Prompt Tag: ${config.promptTagEnabled ? c.boldGreen('ON') : c.dim('OFF')}`);
+    console.log(`  Tag Text:   ${c.cyan(config.promptTag || '(none)')}`);
+    console.log(`\n${c.dim('Commands:')}`);
+    console.log(`  ${c.cyan('oracle config on|off')}          — Toggle oracle on/off`);
+    console.log(`  ${c.cyan('oracle config prompt-tag')}      — View current prompt tag`);
+    console.log(`  ${c.cyan('oracle config prompt-tag <text>')} — Set custom prompt tag`);
+    console.log(`  ${c.cyan('oracle config prompt-tag-on|off')} — Enable/disable prompt tag`);
+  };
+
   handlers['analytics'] = (args) => {
     const { generateAnalytics, computeTagCloud } = require('../../analytics/analytics');
     const analytics = generateAnalytics(oracle);

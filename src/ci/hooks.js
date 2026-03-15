@@ -98,8 +98,12 @@ node -e "
     const oracle = new RemembranceOracle({ autoSeed: false });
     const result = autoSubmit(oracle, process.cwd(), { syncPersonal: true, silent: true });
     const total = (result.harvest.registered || 0) + (result.promoted || 0);
-    if (total > 0) {
-      console.log('Oracle: ' + (result.harvest.registered || 0) + ' harvested, ' + (result.promoted || 0) + ' promoted' + (result.synced ? ', synced' : ''));
+    var debugInfo = '';
+    if (result.debugSweep && (result.debugSweep.grown > 0 || result.debugSweep.synced > 0)) {
+      debugInfo = ', debug: ' + (result.debugSweep.grown || 0) + ' grown/' + (result.debugSweep.synced || 0) + ' synced';
+    }
+    if (total > 0 || debugInfo) {
+      console.log('Oracle: ' + (result.harvest.registered || 0) + ' harvested, ' + (result.promoted || 0) + ' promoted' + (result.synced ? ', synced' : '') + debugInfo);
     }
     if (result.errors && result.errors.length > 0) {
       // Log errors to persistent file so they are not silently lost

@@ -230,8 +230,12 @@ function _avgCoherency(members, patterns) {
   let count = 0;
   for (const m of members) {
     const p = patternMap.get(m.patternId);
-    if (p && p.coherencyTotal != null) {
-      sum += p.coherencyTotal;
+    if (!p) continue;
+    // coherencyScore can be an object with .total or a plain number
+    const score = p.coherencyScore;
+    const val = score && typeof score === 'object' ? score.total : (typeof score === 'number' ? score : null);
+    if (val != null) {
+      sum += val;
       count++;
     }
   }

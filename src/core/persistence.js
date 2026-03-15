@@ -198,6 +198,13 @@ function syncToGlobal(localStore, options = {}) {
     if (verbose) console.log(`  [WARN] debug sync failed: ${err.message}`);
   }
 
+  // Sync pattern archives to personal store (safety net for deleted patterns)
+  try {
+    report.archives = _syncArchivesToPersonal(localStore, personalStore, { verbose, dryRun });
+  } catch (err) {
+    if (verbose) console.log(`  [WARN] archive sync failed: ${err.message}`);
+  }
+
   return report;
 }
 
@@ -294,6 +301,13 @@ function syncFromGlobal(localStore, options = {}) {
     report.debug = _syncDebugFromPersonal(localStore, personalStore, { verbose, dryRun });
   } catch (err) {
     if (verbose) console.log(`  [WARN] debug pull failed: ${err.message}`);
+  }
+
+  // Pull archives from personal store
+  try {
+    report.archives = _syncArchivesFromPersonal(localStore, personalStore, { verbose, dryRun });
+  } catch (err) {
+    if (verbose) console.log(`  [WARN] archive pull failed: ${err.message}`);
   }
 
   return report;
@@ -946,8 +960,9 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
 
   let localCandidates;
   try {
+    // Sync ALL candidates (including promoted) to prevent data loss if .remembrance/ is deleted
     localCandidates = localStore.db.prepare(
-      'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC'
+      'SELECT * FROM candidates ORDER BY coherency_total DESC'
     ).all();
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] returning partial report on error:', e?.message || e);
@@ -959,21 +974,37 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
   let personalCandidates;
   try {
     personalCandidates = personalStore.db.prepare(
-      'SELECT name, language FROM candidates'
+      'SELECT id, name, language, promoted_at FROM candidates'
     ).all();
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] falling back to empty array:', e?.message || e);
     personalCandidates = [];
   }
 
-  const personalIndex = new Set(personalCandidates.map(
-    c => `${c.name.toLowerCase()}:${(c.language || 'unknown').toLowerCase()}`
+  // Use ID-based dedup (name:language has many duplicate candidates by design)
+  const personalIdIndex = new Set(personalCandidates.map(c => c.id));
+  // Also track promoted_at so we can update personal when local promotes a candidate
+  const personalPromotedIndex = new Map(personalCandidates.map(
+    c => [c.id, c.promoted_at]
   ));
 
   for (const candidate of localCandidates) {
-    const key = `${candidate.name.toLowerCase()}:${(candidate.language || 'unknown').toLowerCase()}`;
-    if (personalIndex.has(key)) {
-      report.duplicates++;
+    if (personalIdIndex.has(candidate.id)) {
+      // If local has promoted_at but personal doesn't, update personal
+      if (candidate.promoted_at && !personalPromotedIndex.get(candidate.id)) {
+        if (!dryRun) {
+          try {
+            personalStore.db.prepare(
+              'UPDATE candidates SET promoted_at = ? WHERE id = ?'
+            ).run(candidate.promoted_at, candidate.id);
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] promotion update failed:', e?.message || e);
+          }
+        }
+        report.synced++;
+      } else {
+        report.duplicates++;
+      }
       continue;
     }
 
@@ -986,7 +1017,7 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
       }
     }
 
-    personalIndex.add(key);
+    personalIdIndex.add(candidate.id);
     report.synced++;
     if (verbose) console.log(`  [SYNC→ candidate] ${candidate.name} (${candidate.language})`);
   }
@@ -1003,8 +1034,9 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
 
   let personalCandidates;
   try {
+    // Pull ALL candidates (including promoted) — mirrors push behavior
     personalCandidates = personalStore.db.prepare(
-      'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC'
+      'SELECT * FROM candidates ORDER BY coherency_total DESC'
     ).all();
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] returning partial report on error:', e?.message || e);
@@ -1018,20 +1050,33 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
 
   let localCandidates;
   try {
-    localCandidates = localStore.db.prepare('SELECT name, language FROM candidates').all();
+    localCandidates = localStore.db.prepare('SELECT id, promoted_at FROM candidates').all();
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] falling back to empty array:', e?.message || e);
     localCandidates = [];
   }
 
-  const localIndex = new Set(localCandidates.map(
-    c => `${c.name.toLowerCase()}:${(c.language || 'unknown').toLowerCase()}`
-  ));
+  // Use ID-based dedup to match push behavior
+  const localIdIndex = new Set(localCandidates.map(c => c.id));
+  const localPromotedIndex = new Map(localCandidates.map(c => [c.id, c.promoted_at]));
 
   for (const candidate of personalCandidates) {
-    const key = `${candidate.name.toLowerCase()}:${(candidate.language || 'unknown').toLowerCase()}`;
-    if (localIndex.has(key)) {
-      report.duplicates++;
+    if (localIdIndex.has(candidate.id)) {
+      // If personal has promoted_at but local doesn't, update local
+      if (candidate.promoted_at && !localPromotedIndex.get(candidate.id)) {
+        if (!dryRun) {
+          try {
+            localStore.db.prepare(
+              'UPDATE candidates SET promoted_at = ? WHERE id = ?'
+            ).run(candidate.promoted_at, candidate.id);
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] promotion update failed:', e?.message || e);
+          }
+        }
+        report.pulled++;
+      } else {
+        report.duplicates++;
+      }
       continue;
     }
 
@@ -1044,7 +1089,7 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
       }
     }
 
-    localIndex.add(key);
+    localIdIndex.add(candidate.id);
     report.pulled++;
     if (verbose) console.log(`  [←PULL candidate] ${candidate.name} (${candidate.language})`);
   }
@@ -1199,6 +1244,164 @@ function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
     localIndex.add(key);
     report.pulled++;
     if (verbose) console.log(`  [←PULL debug] ${dp.error_class}:${dp.error_category} (${dp.language})`);
+  }
+
+  return report;
+}
+
+// ─── Archive Sync Helpers ───
+
+function _ensureArchiveSchema(store) {
+  try {
+    store.db.exec(`
+      CREATE TABLE IF NOT EXISTS pattern_archive (
+        id TEXT NOT NULL,
+        name TEXT,
+        code TEXT,
+        language TEXT,
+        pattern_type TEXT,
+        coherency_total REAL,
+        coherency_json TEXT,
+        test_code TEXT,
+        tags TEXT,
+        deleted_reason TEXT,
+        deleted_at TEXT,
+        original_created_at TEXT,
+        full_row_json TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_archive_name ON pattern_archive(name);
+      CREATE INDEX IF NOT EXISTS idx_archive_deleted_at ON pattern_archive(deleted_at);
+    `);
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_ensureArchiveSchema] table may already exist:', e?.message || e);
+  }
+}
+
+/**
+ * Sync pattern archives from local to personal store.
+ * Archives are the safety net for deleted patterns — losing them means losing recovery ability.
+ */
+function _syncArchivesToPersonal(localStore, personalStore, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const report = { synced: 0, duplicates: 0 };
+
+  _ensureArchiveSchema(personalStore);
+
+  let localArchives;
+  try {
+    localArchives = localStore.db.prepare('SELECT * FROM pattern_archive ORDER BY deleted_at DESC').all();
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncArchivesToPersonal] no archive table:', e?.message || e);
+    return report;
+  }
+
+  if (localArchives.length === 0) return report;
+
+  let personalArchives;
+  try {
+    personalArchives = personalStore.db.prepare('SELECT id, deleted_at FROM pattern_archive').all();
+  } catch (e) {
+    personalArchives = [];
+  }
+
+  // Dedup by id + deleted_at (same pattern can be archived multiple times)
+  const personalIndex = new Set(personalArchives.map(a => `${a.id}:${a.deleted_at}`));
+
+  for (const archive of localArchives) {
+    const key = `${archive.id}:${archive.deleted_at}`;
+    if (personalIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        personalStore.db.prepare(`
+          INSERT OR IGNORE INTO pattern_archive (id, name, code, language, pattern_type,
+            coherency_total, coherency_json, test_code, tags,
+            deleted_reason, deleted_at, original_created_at, full_row_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          archive.id, archive.name, archive.code, archive.language,
+          archive.pattern_type, archive.coherency_total ?? 0,
+          archive.coherency_json || '{}', archive.test_code || null,
+          archive.tags || '[]', archive.deleted_reason || 'unknown',
+          archive.deleted_at, archive.original_created_at,
+          archive.full_row_json || null
+        );
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncArchivesToPersonal] skipping:', e?.message || e);
+        continue;
+      }
+    }
+
+    personalIndex.add(key);
+    report.synced++;
+    if (verbose) console.log(`  [SYNC→ archive] ${archive.name} (deleted: ${archive.deleted_at})`);
+  }
+
+  return report;
+}
+
+/**
+ * Pull pattern archives from personal to local store.
+ */
+function _syncArchivesFromPersonal(localStore, personalStore, options = {}) {
+  const { verbose = false, dryRun = false } = options;
+  const report = { pulled: 0, duplicates: 0 };
+
+  _ensureArchiveSchema(localStore);
+
+  let personalArchives;
+  try {
+    personalArchives = personalStore.db.prepare('SELECT * FROM pattern_archive ORDER BY deleted_at DESC').all();
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncArchivesFromPersonal] no archive table:', e?.message || e);
+    return report;
+  }
+
+  if (personalArchives.length === 0) return report;
+
+  let localArchives;
+  try {
+    localArchives = localStore.db.prepare('SELECT id, deleted_at FROM pattern_archive').all();
+  } catch (e) {
+    localArchives = [];
+  }
+
+  const localIndex = new Set(localArchives.map(a => `${a.id}:${a.deleted_at}`));
+
+  for (const archive of personalArchives) {
+    const key = `${archive.id}:${archive.deleted_at}`;
+    if (localIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    if (!dryRun) {
+      try {
+        localStore.db.prepare(`
+          INSERT OR IGNORE INTO pattern_archive (id, name, code, language, pattern_type,
+            coherency_total, coherency_json, test_code, tags,
+            deleted_reason, deleted_at, original_created_at, full_row_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          archive.id, archive.name, archive.code, archive.language,
+          archive.pattern_type, archive.coherency_total ?? 0,
+          archive.coherency_json || '{}', archive.test_code || null,
+          archive.tags || '[]', archive.deleted_reason || 'unknown',
+          archive.deleted_at, archive.original_created_at,
+          archive.full_row_json || null
+        );
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncArchivesFromPersonal] skipping:', e?.message || e);
+        continue;
+      }
+    }
+
+    localIndex.add(key);
+    report.pulled++;
+    if (verbose) console.log(`  [←PULL archive] ${archive.name} (deleted: ${archive.deleted_at})`);
   }
 
   return report;

@@ -10,6 +10,9 @@ const {
   familyAwareSimilarity,
   familyDecayModifier,
   auditIntegration,
+  integratePatternIncremental,
+  checkFractalIntegrity,
+  repairFractalIntegrity,
 } = require('../src/compression/fractal-library-bridge');
 
 const { createTestOracle, cleanTempDir } = require('./helpers');
@@ -263,6 +266,94 @@ describe('Fractal-Library Bridge', () => {
     });
   });
 
+  describe('integratePatternIncremental', () => {
+    it('returns neutral for null store', () => {
+      const result = integratePatternIncremental({ id: 'p1', code: 'x', name: 'x' }, null);
+      assert.strictEqual(result.embedded, false);
+      assert.strictEqual(result.familyMatch, null);
+    });
+
+    it('returns neutral for null pattern', () => {
+      const result = integratePatternIncremental(null, createMockStore());
+      assert.strictEqual(result.embedded, false);
+      assert.strictEqual(result.familyMatch, null);
+    });
+
+    it('computes embedding for a valid pattern', () => {
+      let storedEmbedding = null;
+      const store = {
+        ...createMockStore(),
+        storeHoloEmbedding: (id, vec) => { storedEmbedding = { id, vec }; },
+        storeDelta: () => {},
+        storeTemplate: () => {},
+      };
+      const result = integratePatternIncremental(
+        { id: 'p1', code: 'function add(a, b) { return a + b; }', name: 'add', language: 'javascript', tags: [] },
+        store
+      );
+      assert.strictEqual(result.embedded, true);
+      assert.ok(storedEmbedding, 'Should have stored an embedding');
+      assert.strictEqual(storedEmbedding.id, 'p1');
+    });
+
+    it('joins existing family when fingerprint matches a template', () => {
+      const { structuralFingerprint } = require('../src/compression/fractal');
+      const code = 'function add(a, b) { return a + b; }';
+      const fp = structuralFingerprint(code, 'javascript');
+
+      let savedDelta = null;
+      let savedTemplate = null;
+      const store = {
+        ...createMockStore({
+          templates: { [fp.hash]: { id: fp.hash, skeleton: fp.skeleton, language: 'javascript', memberCount: 2, avgCoherency: 0.9 } },
+        }),
+        storeHoloEmbedding: () => {},
+        storeDelta: (d) => { savedDelta = d; },
+        storeTemplate: (t) => { savedTemplate = t; },
+      };
+
+      const result = integratePatternIncremental(
+        { id: 'p-new', code, name: 'add-new', language: 'javascript', tags: [], coherencyScore: { total: 0.85 } },
+        store
+      );
+      assert.strictEqual(result.familyMatch, fp.hash);
+      assert.ok(savedDelta, 'Should have stored a delta');
+      assert.strictEqual(savedDelta.templateId, fp.hash);
+      assert.ok(savedTemplate, 'Should have updated the template');
+      assert.strictEqual(savedTemplate.memberCount, 3);
+    });
+  });
+
+  describe('checkFractalIntegrity', () => {
+    it('returns zeros for null store', () => {
+      const result = checkFractalIntegrity(null);
+      assert.strictEqual(result.orphanedDeltas, 0);
+      assert.strictEqual(result.orphanedEmbeddings, 0);
+      assert.strictEqual(result.staleTemplates, 0);
+    });
+  });
+
+  describe('repairFractalIntegrity', () => {
+    it('returns zeros for null store', () => {
+      const result = repairFractalIntegrity(null);
+      assert.strictEqual(result.orphanedDeltasRemoved, 0);
+      assert.strictEqual(result.orphanedEmbeddingsRemoved, 0);
+      assert.strictEqual(result.templatesFixed, 0);
+    });
+  });
+
+  describe('auditIntegration with integrity', () => {
+    it('includes integrity data in report', () => {
+      const store = createMockStore({
+        templates: { 't1': { memberCount: 3, avgCoherency: 0.8 } },
+      });
+      const mockPatterns = { getAll: () => [{ id: 'p1' }] };
+      const report = auditIntegration(store, mockPatterns);
+      assert.ok('integrity' in report, 'Report should include integrity check');
+      assert.strictEqual(typeof report.integrity.orphanedDeltas, 'number');
+    });
+  });
+
   describe('end-to-end with real oracle', () => {
     let oracle, tmpDir;
 
@@ -310,6 +401,77 @@ describe('Fractal-Library Bridge', () => {
       // structuredDescription may be stored in SQLite as JSON
       // Just verify the pattern exists and has description
       assert.ok(filterPattern.description.includes('filter') || filterPattern.name.includes('filter'));
+    });
+
+    it('incremental integration computes embedding on registration', () => {
+      oracle.registerPattern({
+        name: 'test-increment',
+        code: 'function increment(n) { return n + 1; }',
+        language: 'javascript',
+        testCode: 'const assert = require("assert"); assert.strictEqual(increment(1), 2);',
+        description: 'increment a number',
+        tags: ['math'],
+      });
+
+      // Check that an embedding was stored
+      const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : null;
+      if (store && store.getHoloEmbedding) {
+        const patterns = oracle.patterns.getAll();
+        const pat = patterns.find(p => p.name === 'test-increment');
+        if (pat) {
+          const emb = store.getHoloEmbedding(pat.id);
+          assert.ok(emb, 'Should have a holographic embedding after registration');
+          assert.ok(Array.isArray(emb.embeddingVec), 'Embedding should be an array');
+          assert.ok(emb.embeddingVec.length > 0, 'Embedding should have dimensions');
+        }
+      }
+    });
+
+    it('fractal cleanup on retire removes orphaned data', () => {
+      const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : null;
+      if (!store) return;
+
+      // Register a pattern and manually add fractal data for it
+      oracle.registerPattern({
+        name: 'test-cleanup',
+        code: 'function cleanup(x) { return x; }',
+        language: 'javascript',
+        testCode: 'const assert = require("assert"); assert.strictEqual(cleanup(1), 1);',
+        description: 'identity function',
+        tags: ['utility'],
+      });
+
+      const patterns = oracle.patterns.getAll();
+      const pat = patterns.find(p => p.name === 'test-cleanup');
+      if (!pat) return;
+
+      // Manually add fractal data to simulate compression having been run
+      store.storeTemplate({ id: 'test-tmpl', skeleton: 'test', language: 'javascript', memberCount: 1, avgCoherency: 0.9 });
+      store.storeDelta({ patternId: pat.id, templateId: 'test-tmpl', delta: { x: 'y' }, originalSize: 100, deltaSize: 10 });
+      store.storeHoloEmbedding(pat.id, [1, 2, 3]);
+
+      // Verify data exists
+      assert.ok(store.getDelta(pat.id), 'Delta should exist before cleanup');
+      assert.ok(store.getHoloEmbedding(pat.id), 'Embedding should exist before cleanup');
+
+      // Run integrity check — should show clean state
+      const before = checkFractalIntegrity(store);
+      assert.strictEqual(before.orphanedDeltas, 0, 'No orphans before deletion');
+
+      // Delete the pattern directly and check for orphans
+      store.db.prepare('DELETE FROM patterns WHERE id = ?').run(pat.id);
+
+      const after = checkFractalIntegrity(store);
+      assert.ok(after.orphanedDeltas > 0 || after.orphanedEmbeddings > 0, 'Should detect orphaned data after raw deletion');
+
+      // Repair
+      const repairResult = repairFractalIntegrity(store);
+      assert.ok(repairResult.orphanedDeltasRemoved > 0 || repairResult.orphanedEmbeddingsRemoved > 0, 'Should have cleaned up orphans');
+
+      // Verify clean
+      const final = checkFractalIntegrity(store);
+      assert.strictEqual(final.orphanedDeltas, 0, 'No orphaned deltas after repair');
+      assert.strictEqual(final.orphanedEmbeddings, 0, 'No orphaned embeddings after repair');
     });
   });
 });

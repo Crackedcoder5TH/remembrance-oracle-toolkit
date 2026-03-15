@@ -145,6 +145,7 @@ class SQLiteStore {
         try {
           for (const row of dupeRows) {
             this._archivePattern(row, 'schema-dedup');
+            this._cleanupFractalData(row.id);
           }
           this.db.exec(`
             DELETE FROM patterns WHERE id NOT IN (
@@ -798,6 +799,7 @@ class SQLiteStore {
         const deleteStmt = this.db.prepare('DELETE FROM patterns WHERE id = ?');
         for (const row of capped) {
           this._archivePattern(row, 'deduplicated');
+          this._cleanupFractalData(row.id);
           deleteStmt.run(row.id);
         }
         this.db.exec('COMMIT');
@@ -1470,6 +1472,7 @@ class SQLiteStore {
     try {
       for (const { row, coherency, reliability, composite } of toRetire) {
         this._archivePattern(row, 'retired');
+        this._cleanupFractalData(row.id);
         this.db.prepare('DELETE FROM patterns WHERE id = ?').run(row.id);
         this._audit('retire', 'patterns', row.id, {
           name: row.name, coherency, reliability, composite,
@@ -1971,9 +1974,16 @@ class SQLiteStore {
 
   storeTemplate(template) {
     const now = new Date().toISOString();
+    // Use INSERT ... ON CONFLICT to preserve original created_at timestamp
     this.db.prepare(`
-      INSERT OR REPLACE INTO fractal_templates (id, skeleton, language, member_count, avg_coherency, created_at, updated_at)
+      INSERT INTO fractal_templates (id, skeleton, language, member_count, avg_coherency, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        skeleton = excluded.skeleton,
+        language = excluded.language,
+        member_count = excluded.member_count,
+        avg_coherency = excluded.avg_coherency,
+        updated_at = excluded.updated_at
     `).run(template.id, template.skeleton, template.language || 'unknown',
       template.memberCount ?? 0, template.avgCoherency ?? 0, now, now);
   }
@@ -2110,6 +2120,32 @@ class SQLiteStore {
       embeddingCount: embeddings.c,
       savedBytes: savedBytes?.saved || 0,
     };
+  }
+
+  /**
+   * Clean up fractal deltas, holographic embeddings, and update template
+   * member counts when a pattern is removed. Must be called inside the
+   * same transaction that deletes the pattern.
+   */
+  _cleanupFractalData(patternId) {
+    // Remove the pattern's fractal delta and update the template member count
+    const delta = this.db.prepare('SELECT template_id FROM fractal_deltas WHERE pattern_id = ?').get(patternId);
+    if (delta) {
+      this.db.prepare('DELETE FROM fractal_deltas WHERE pattern_id = ?').run(patternId);
+      // Decrement template member count; remove template if no members remain
+      const remaining = this.db.prepare(
+        'SELECT COUNT(*) as c FROM fractal_deltas WHERE template_id = ?'
+      ).get(delta.template_id);
+      if (remaining.c === 0) {
+        this.db.prepare('DELETE FROM fractal_templates WHERE id = ?').run(delta.template_id);
+      } else {
+        this.db.prepare(
+          'UPDATE fractal_templates SET member_count = ?, updated_at = ? WHERE id = ?'
+        ).run(remaining.c, new Date().toISOString(), delta.template_id);
+      }
+    }
+    // Remove the pattern's holographic embedding
+    this.db.prepare('DELETE FROM holo_embeddings WHERE pattern_id = ?').run(patternId);
   }
 
   /**

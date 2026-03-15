@@ -24,9 +24,9 @@ const { parseStructuredDescription, structuralSimilarity } = require('../core/st
 const { applyDecayToScore, computeFreshnessBoost } = require('../core/confidence-decay');
 
 // Fractal-library bridge (graceful — returns neutral values if unavailable)
-let _holoDecisionBoost, _familyStabilitySignal, _familyDecayModifier;
+let _holoDecisionBoost, _familyStabilitySignal, _familyDecayModifier, _integratePatternIncremental;
 try {
-  ({ holoDecisionBoost: _holoDecisionBoost, familyStabilitySignal: _familyStabilitySignal, familyDecayModifier: _familyDecayModifier } = require('../compression/fractal-library-bridge'));
+  ({ holoDecisionBoost: _holoDecisionBoost, familyStabilitySignal: _familyStabilitySignal, familyDecayModifier: _familyDecayModifier, integratePatternIncremental: _integratePatternIncremental } = require('../compression/fractal-library-bridge'));
 } catch (e) {
   if (process.env.ORACLE_DEBUG) console.warn('[library:init] fractal-library bridge not available:', e?.message || e);
 }
@@ -337,6 +337,12 @@ class PatternLibrary {
         // Duplicate with equal/higher coherency — return the existing one
         const existing = this._sqlite.getPatternByName(pattern.name);
         return existing || null;
+      }
+      // Incrementally integrate into fractal compression + holographic embeddings
+      if (_integratePatternIncremental && record.id) {
+        try { _integratePatternIncremental(record, this._sqlite); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[library:register] incremental fractal integration:', e?.message);
+        }
       }
       return record;
     }

@@ -151,6 +151,7 @@ const CATEGORIES = [
       { name: 'dashboard', description: 'Start web dashboard (default port 3333) [auth]' },
       { name: 'deploy', description: 'Start production-ready server (configurable via env vars) [auth]' },
       { name: 'hooks', description: 'Install/uninstall git hooks' },
+      { name: 'config', description: 'Oracle toggle (on/off) and prompt tag configuration' },
       { name: 'plugin', description: 'Manage plugins (load, list, unload)' },
     ],
   },

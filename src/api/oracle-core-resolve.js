@@ -8,6 +8,7 @@ const { _generateResolveWhisper, _generateCandidateNotes } = require('./oracle-c
 const { parseIntent, ARCHITECTURAL_PATTERNS } = require('../core/search-intelligence');
 const { auditLog } = require('../core/audit-logger');
 const { captureResolveDebug } = require('../ci/auto-debug');
+const { applyPromptTag } = require('../core/oracle-config');
 
 module.exports = {
   /**
@@ -180,6 +181,9 @@ module.exports = {
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[resolve] auto-debug capture failed:', e?.message || e);
     }
+
+    // Append prompt tag when enabled
+    applyPromptTag(resolveResult);
 
     return resolveResult;
   },

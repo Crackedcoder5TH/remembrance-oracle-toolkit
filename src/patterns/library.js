@@ -20,6 +20,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { computeCoherencyScore } = require('../core/coherency');
 const { computeRelevance } = require('../core/relevance');
+const { parseStructuredDescription, structuralSimilarity } = require('../core/structured-description');
 const {
   DECISION_THRESHOLDS,
   HASH_TRUNCATION_LENGTH,
@@ -306,6 +307,7 @@ class PatternLibrary {
     });
 
     if (this._backend === 'sqlite') {
+      const structured = pattern.structuredDescription || parseStructuredDescription(pattern.description || '', { code: sanitizedCode, tags: pattern.tags || [] });
       const patternData = {
         name: pattern.name,
         code: sanitizedCode,
@@ -313,6 +315,7 @@ class PatternLibrary {
         patternType: pattern.patternType || classifyPattern(sanitizedCode, pattern.name),
         complexity: pattern.complexity || inferComplexity(sanitizedCode),
         description: pattern.description || '',
+        structuredDescription: structured,
         tags: pattern.tags || [],
         coherencyScore: coherency,
         variants: pattern.variants || [],
@@ -361,6 +364,9 @@ class PatternLibrary {
       };
     }
 
+    // Parse request description into structured form for structural matching
+    const requestStructured = parseStructuredDescription(description, { tags });
+
     const scored = patterns.map(p => {
       const relevance = computeRelevance(
         { description, tags, language },
@@ -379,6 +385,12 @@ class PatternLibrary {
       const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? DECISION_BONUSES.NAME_MATCH : 0;
       const focusBonus = p.complexity === 'atomic' ? DECISION_BONUSES.ATOMIC_FOCUS : p.complexity === 'composite' ? DECISION_BONUSES.COMPOSITE_FOCUS : 0;
       const coherency = p.coherencyScore?.total ?? 0;
+
+      // Structural similarity boost — compare structured descriptions
+      let structuralBoost = 0;
+      const patternStructured = p.structuredDescription || parseStructuredDescription(p.description || '', { code: p.code, tags: p.tags || [] });
+      const structSim = structuralSimilarity(requestStructured, patternStructured);
+      if (structSim > 0.5) structuralBoost = structSim * 0.10; // Up to 10% boost
 
       // Enhanced reliability: usage success + bug reports + healing success + community votes
       const usageReliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
@@ -402,9 +414,9 @@ class PatternLibrary {
       }
 
       const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
-      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus - evolutionPenalty);
+      const composite = Math.min(1.0, relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus + structuralBoost - evolutionPenalty);
 
-      return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
+      return { pattern: p, relevance: relevance.relevance, coherency, reliability, structuralSimilarity: structSim, composite };
     }).sort((a, b) => b.composite - a.composite);
 
     // Guard: if all patterns were filtered out during scoring, generate
@@ -894,6 +906,7 @@ class PatternLibrary {
     }
 
     const id = this._hash(pattern.code + pattern.name + Date.now());
+    const structured = pattern.structuredDescription || parseStructuredDescription(pattern.description || '', { code: pattern.code, tags: pattern.tags || [] });
     const record = {
       id,
       name: pattern.name,
@@ -902,6 +915,7 @@ class PatternLibrary {
       patternType: pattern.patternType || classifyPattern(pattern.code, pattern.name),
       complexity: pattern.complexity || inferComplexity(pattern.code),
       description: pattern.description || '',
+      structuredDescription: structured,
       tags: pattern.tags || [],
       coherencyScore: coherency,
       variants: pattern.variants || [],

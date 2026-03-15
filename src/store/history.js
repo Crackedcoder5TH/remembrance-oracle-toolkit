@@ -143,6 +143,13 @@ class VerifiedHistoryStore {
     return this._getJSON(id);
   }
 
+  update(id, changes) {
+    if (this._backend === 'sqlite') {
+      return this._updateSQLite(id, changes);
+    }
+    return this._updateJSON(id, changes);
+  }
+
   recordUsage(id, succeeded) {
     if (this._backend === 'sqlite') {
       return this._sqlite.recordEntryUsage(id, succeeded);
@@ -221,6 +228,38 @@ class VerifiedHistoryStore {
   _getJSON(id) {
     const data = this._readJSON();
     return data.entries.find(e => e.id === id) || null;
+  }
+
+  _updateJSON(id, changes) {
+    const data = this._readJSON();
+    const entry = data.entries.find(e => e.id === id);
+    if (!entry) return null;
+    Object.assign(entry, changes);
+    entry.updatedAt = changes.updatedAt || new Date().toISOString();
+    this._writeJSON(data);
+    return entry;
+  }
+
+  _updateSQLite(id, changes) {
+    try {
+      const entry = this._sqlite.getEntry(id);
+      if (!entry) return null;
+      // Update coherencyScore if provided
+      if (changes.coherencyScore) {
+        this._sqlite.db.prepare(
+          'UPDATE entries SET coherency_total = ?, coherency_json = ?, updated_at = ? WHERE id = ?'
+        ).run(
+          changes.coherencyScore.total,
+          JSON.stringify(changes.coherencyScore),
+          changes.updatedAt || new Date().toISOString(),
+          id
+        );
+      }
+      return this._sqlite.getEntry(id);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[history:_updateSQLite]', e?.message);
+      return null;
+    }
   }
 
   _recordUsageJSON(id, succeeded) {

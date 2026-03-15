@@ -18,6 +18,7 @@ const CATEGORIES = [
       { name: 'register', description: 'Register code as a named pattern in the library' },
       { name: 'feedback', description: 'Report if pulled code worked' },
       { name: 'inspect', description: 'Inspect a stored entry' },
+      { name: 'submit-noncode', description: 'Submit non-code pattern (no test file required)' },
       { name: 'init', description: 'Initialize oracle in current project', alias: 'setup' },
     ],
   },

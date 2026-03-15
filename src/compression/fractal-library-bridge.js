@@ -436,7 +436,7 @@ function integratePatternIncremental(pattern, store) {
         if (match) {
           // Create a new family template from the skeleton
           const newCoherency = pattern.coherencyScore?.total ?? pattern.coherencyScore ?? 0;
-          const matchCoherency = match.coherencyScore?.total ?? match.coherencyScore ?? 0;
+          const matchCoherency = match.coherencyScore?.total ?? match.coherencyTotal ?? 0;
           const avgCoherency = (newCoherency + matchCoherency) / 2;
 
           store.storeTemplate({
@@ -516,6 +516,7 @@ function _findSingletonMatch(targetHash, newPattern, store) {
           language: row.language,
           name: row.name,
           coherencyScore: _safeParseJSON(row.coherency_json),
+          coherencyTotal: row.coherency_total || 0,
         };
       }
     }

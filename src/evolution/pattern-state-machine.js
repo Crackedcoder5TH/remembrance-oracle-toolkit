@@ -348,8 +348,14 @@ function createPatternLifecycle(store, options = {}) {
       return { success: false, reason: 'Evolve requires updated code' };
     }
 
-    // Append to evolution history
-    const pattern = store.getPattern ? store.getPattern(patternId) : null;
+    // Append to evolution history — use direct SQLite access with fallback
+    let pattern = null;
+    if (typeof store.getPattern === 'function') {
+      pattern = store.getPattern(patternId);
+    } else if (store.db) {
+      const row = store.db.prepare('SELECT * FROM patterns WHERE id = ?').get(patternId);
+      if (row) pattern = row;
+    }
     const history = pattern?.evolutionHistory || [];
     history.push({
       type: 'evolve',

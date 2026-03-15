@@ -18,7 +18,8 @@ function loadJSON(filename) {
 // ─── Data loaders (lazy, cached) ───
 
 let _seeds, _extendedSeeds, _productionSeeds, _productionSeeds2,
-    _productionSeeds3, _productionSeeds4, _pythonSeeds, _goSeeds, _rustSeeds;
+    _productionSeeds3, _productionSeeds4, _pythonSeeds, _goSeeds, _rustSeeds,
+    _curatedSeeds;
 
 function getSeeds() {
   if (!_seeds) _seeds = loadJSON('seeds.json');
@@ -63,6 +64,11 @@ function getGoSeeds() {
 function getRustSeeds() {
   if (!_rustSeeds) _rustSeeds = loadJSON('seeds-rust.json');
   return _rustSeeds;
+}
+
+function getCuratedSeeds() {
+  if (!_curatedSeeds) _curatedSeeds = loadJSON('seeds-curated.json');
+  return _curatedSeeds;
 }
 
 // ─── Seeding functions ───
@@ -230,6 +236,36 @@ function seedProductionLibrary4(oracle, options) {
   return { registered: registered, skipped: skipped, failed: failed, total: seeds.length };
 }
 
+/**
+ * Seed the curated starter pack — the best cross-language patterns
+ * for immediate value. This is the recommended first seed for new users.
+ */
+function seedCuratedLibrary(oracle, options = {}) {
+  const seeds = getCuratedSeeds();
+  const existing = oracle.patterns.getAll();
+  const existingNames = new Set(existing.map(p => p.name));
+
+  let registered = 0, skipped = 0, failed = 0;
+
+  for (const seed of seeds) {
+    if (existingNames.has(seed.name)) {
+      skipped++;
+      continue;
+    }
+
+    const result = oracle.registerPattern(seed);
+    if (result.registered) {
+      registered++;
+      if (options.verbose) console.log(`  [OK] ${seed.name} (${seed.language})`);
+    } else {
+      failed++;
+      if (options.verbose) console.log(`  [FAIL] ${seed.name}: ${result.reason}`);
+    }
+  }
+
+  return { registered, skipped, failed, total: seeds.length };
+}
+
 module.exports = {
   // Data accessors
   getSeeds,
@@ -241,12 +277,14 @@ module.exports = {
   getPythonSeeds,
   getGoSeeds,
   getRustSeeds,
+  getCuratedSeeds,
   // Seeding functions
   seedLibrary,
   seedNativeLibrary,
   seedExtendedLibrary,
   seedProductionLibrary3,
   seedProductionLibrary4,
+  seedCuratedLibrary,
 };
 
 // ─── Backward-compatible named exports (must come AFTER module.exports assignment) ───
@@ -256,3 +294,4 @@ Object.defineProperty(module.exports, 'EXTENDED_SEEDS', { get: getExtendedSeeds,
 Object.defineProperty(module.exports, 'PYTHON_SEEDS', { get: getPythonSeeds, enumerable: true });
 Object.defineProperty(module.exports, 'GO_SEEDS', { get: getGoSeeds, enumerable: true });
 Object.defineProperty(module.exports, 'RUST_SEEDS', { get: getRustSeeds, enumerable: true });
+Object.defineProperty(module.exports, 'CURATED_SEEDS', { get: getCuratedSeeds, enumerable: true });

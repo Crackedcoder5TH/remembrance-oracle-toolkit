@@ -149,7 +149,25 @@ function autoSubmit(oracle, baseDir, options = {}) {
     }
   }
 
-  // Step 5: Debug sweep — grow debug variants + sync debug patterns
+  // Step 5: Implicit feedback — infer success/failure from git activity
+  try {
+    const { inferFeedback } = require('./implicit-feedback');
+    const fbResult = inferFeedback(oracle, baseDir, { lookback: 5, silent });
+    report.implicitFeedback = {
+      generated: fbResult.feedbackGenerated,
+      successes: fbResult.successes.length,
+      failures: fbResult.failures.length,
+      reverts: fbResult.reverts.length,
+    };
+    if (!silent && fbResult.feedbackGenerated > 0) {
+      log(`Implicit feedback: ${fbResult.successes.length} success(es), ${fbResult.failures.length} failure(s), ${fbResult.reverts.length} revert(s)`);
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:implicitFeedback] silent failure:', e?.message || e);
+    report.errors.push(`implicit-feedback: ${e.message}`);
+  }
+
+  // Step 6 (was 5): Debug sweep — grow debug variants + sync debug patterns
   try {
     const { debugSweep } = require('./auto-debug');
     const debugResult = debugSweep(oracle, { silent, dryRun });
@@ -168,7 +186,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
     report.errors.push(`debug-sweep: ${e.message}`);
   }
 
-  // Step 6: Retention sweep — purge old archives, rotate entries
+  // Step 7 (was 6): Retention sweep — purge old archives, rotate entries
   try {
     const sqliteStore = oracle.store?.getSQLiteStore?.();
     if (sqliteStore && typeof sqliteStore.retentionSweep === 'function') {

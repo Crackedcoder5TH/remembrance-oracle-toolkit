@@ -226,6 +226,32 @@ class EmbeddingEngine {
     this._ollamaAvailable = null; // null = not checked, true/false after check
     this._searchRegistry = options.searchRegistry || null;
     this._tier = 'builtin'; // Current active tier
+    this._idfWeights = null; // Lazily computed TF-IDF corpus weights
+    this._corpusSize = 0;    // Number of documents in last IDF build
+  }
+
+  /**
+   * Build TF-IDF inverse document frequency weights from a corpus of items.
+   * Call this when the pattern library changes to improve search quality.
+   * @param {Array} items — Array of { name, description, tags, code }
+   */
+  buildIDF(items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const df = {}; // document frequency per term
+    const N = items.length;
+    for (const item of items) {
+      const text = [item.name || '', item.description || '', (item.tags || []).join(' '), (item.code || '').slice(0, 500)].join(' ').toLowerCase();
+      const terms = new Set(text.split(/[^a-z0-9]+/).filter(w => w.length > 1));
+      for (const term of terms) {
+        df[term] = (df[term] || 0) + 1;
+      }
+    }
+    // IDF = log(N / df) — higher for rare terms, lower for common terms
+    this._idfWeights = {};
+    for (const [term, freq] of Object.entries(df)) {
+      this._idfWeights[term] = Math.log(N / freq);
+    }
+    this._corpusSize = N;
   }
 
   /**
@@ -360,14 +386,21 @@ class EmbeddingEngine {
       const docVec = this.embed(docText);
       const embeddingSim = cosineSimilarity(queryVec, docVec);
 
-      // Keyword boost: expanded terms that appear in the document
+      // TF-IDF weighted keyword boost: expanded terms that appear in the document
       const docLower = docText.toLowerCase();
       let keywordHits = 0;
+      let idfWeightedHits = 0;
+      let idfWeightTotal = 0;
       for (const term of expandedTerms) {
-        if (docLower.includes(term)) keywordHits++;
+        const idfW = (this._idfWeights && this._idfWeights[term]) || 1;
+        idfWeightTotal += idfW;
+        if (docLower.includes(term)) {
+          keywordHits++;
+          idfWeightedHits += idfW;
+        }
       }
       const keywordBoost = expandedTerms.length > 0
-        ? (keywordHits / expandedTerms.length) * 0.2
+        ? (idfWeightTotal > 0 ? idfWeightedHits / idfWeightTotal : keywordHits / expandedTerms.length) * 0.2
         : 0;
 
       // Name match bonus

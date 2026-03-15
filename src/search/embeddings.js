@@ -120,6 +120,31 @@ const CONCEPT_CLUSTERS = [
     triggers: ['state', 'store', 'global', 'context', 'redux', 'zustand', 'signal', 'reactive', 'observable'],
     concepts: ['state', 'store', 'dispatch', 'reducer', 'action', 'context', 'subscribe', 'observable', 'signal', 'reactive'],
   },
+  {
+    id: 'logging',
+    triggers: ['log', 'logger', 'logging', 'trace', 'debug', 'info', 'warn', 'audit', 'telemetry'],
+    concepts: ['log', 'logger', 'console', 'trace', 'debug', 'info', 'warn', 'error', 'format', 'level', 'transport'],
+  },
+  {
+    id: 'testing',
+    triggers: ['test', 'spec', 'assert', 'expect', 'mock', 'stub', 'fixture', 'coverage', 'unit test', 'integration test'],
+    concepts: ['test', 'describe', 'it', 'expect', 'assert', 'mock', 'stub', 'spy', 'fixture', 'beforeEach', 'afterEach'],
+  },
+  {
+    id: 'cli',
+    triggers: ['cli', 'command line', 'argument', 'flag', 'option', 'parse args', 'terminal', 'prompt'],
+    concepts: ['argv', 'args', 'flag', 'option', 'parse', 'command', 'subcommand', 'help', 'usage', 'prompt', 'readline'],
+  },
+  {
+    id: 'date-time',
+    triggers: ['date', 'time', 'timestamp', 'duration', 'format date', 'parse date', 'timezone', 'epoch'],
+    concepts: ['Date', 'timestamp', 'ISO', 'format', 'parse', 'duration', 'timezone', 'epoch', 'toISOString', 'locale'],
+  },
+  {
+    id: 'file-system',
+    triggers: ['file', 'directory', 'path', 'read file', 'write file', 'glob', 'walk', 'mkdir', 'rename'],
+    concepts: ['fs', 'readFile', 'writeFile', 'readdir', 'stat', 'path', 'join', 'resolve', 'mkdir', 'glob', 'walk'],
+  },
 ];
 
 // ─── N-gram Embedding ───

@@ -21,6 +21,7 @@ const { safePath } = require('./core/safe-path');
 const { RemembranceOracle } = require('./api/oracle');
 const { c } = require('./cli/colors');
 const { generateHelp } = require('./cli/registry');
+const { warnDeprecation, getDeprecation } = require('./cli/deprecations');
 
 // Command module registrations
 const { registerCoreCommands } = require('./cli/commands/core');
@@ -149,7 +150,16 @@ async function main() {
   registerSwarmCommands(handlers, context);
   registerReflectorCommands(handlers, context);
 
-  const handler = handlers[cmd];
+  // Check for deprecated commands and warn
+  let effectiveCmd = cmd;
+  const dep = getDeprecation(cmd);
+  if (dep) {
+    warnDeprecation(cmd);
+    // Use canonical command's base name for handler lookup
+    effectiveCmd = dep.canonical.split(' ')[0];
+  }
+
+  const handler = handlers[effectiveCmd] || handlers[cmd];
   if (handler) {
     try {
       await handler(args);

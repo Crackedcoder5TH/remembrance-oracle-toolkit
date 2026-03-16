@@ -173,9 +173,12 @@ const HANDLERS = {
     // Security: restrict local harvest paths to the project directory or home directory.
     // Remote URLs (git clone) are allowed since they clone to a temp directory.
     const source = args.path || '';
-    const isUrl = source.startsWith('http') || source.startsWith('git@') || source.includes('github.com');
+    const isUrl = source.includes('://') || source.startsWith('git@');
     if (!isUrl) {
-      const resolved = path.resolve(source);
+      const fs = require('fs');
+      let resolved = path.resolve(source);
+      // Resolve symlinks to prevent path traversal via symlinked directories
+      try { resolved = fs.realpathSync(resolved); } catch (_) { /* path may not exist yet */ }
       const cwd = process.cwd();
       const home = os.homedir();
       const tmp = os.tmpdir();
@@ -215,7 +218,7 @@ const HANDLERS = {
       case 'candidates': {
         const filters = {};
         if (args.language) filters.language = args.language;
-        if (args.minCoherency) filters.minCoherency = args.minCoherency;
+        if (args.minCoherency != null) filters.minCoherency = args.minCoherency;
         if (args.method) filters.generationMethod = args.method;
         const candidates = oracle.candidates(filters);
         const stats = oracle.candidateStats();
@@ -236,7 +239,7 @@ const HANDLERS = {
           maxLoops: args.maxLoops || 3,
           targetCoherence: args.targetCoherence || 0.9,
         });
-        result.history = result.history.map(h => ({
+        result.history = (result.history || []).map(h => ({
           loop: h.loop,
           coherence: h.coherence,
           strategy: h.strategy,
@@ -267,7 +270,7 @@ const HANDLERS = {
       case 'stats': {
         if (args.patternId) {
           // Per-pattern stats
-          const sqliteStore = oracle.patterns._sqlite;
+          const sqliteStore = oracle.patterns && oracle.patterns._sqlite;
           if (sqliteStore && typeof sqliteStore.getPatternHealingStats === 'function') {
             return sqliteStore.getPatternHealingStats(args.patternId);
           }
@@ -281,7 +284,7 @@ const HANDLERS = {
       }
       case 'variants': {
         if (!args.patternId) throw new Error('patternId is required for variants action');
-        const sqliteStore = oracle.patterns._sqlite;
+        const sqliteStore = oracle.patterns && oracle.patterns._sqlite;
         if (sqliteStore && typeof sqliteStore.getHealedVariants === 'function') {
           return sqliteStore.getHealedVariants(args.patternId);
         }
@@ -289,7 +292,7 @@ const HANDLERS = {
       }
       case 'best': {
         if (!args.patternId) throw new Error('patternId is required for best action');
-        const sqliteStore = oracle.patterns._sqlite;
+        const sqliteStore = oracle.patterns && oracle.patterns._sqlite;
         if (sqliteStore && typeof sqliteStore.getBestHealedVariant === 'function') {
           return sqliteStore.getBestHealedVariant(args.patternId);
         }
@@ -328,14 +331,14 @@ const HANDLERS = {
           oracle,
         });
       case 'status': {
-        const config = loadSwarmConfig(process.cwd());
+        const config = loadSwarmConfig(process.cwd()) || {};
         const providers = resolveProviders(config);
         return {
-          ready: providers.length >= config.minAgents,
+          ready: providers.length >= (config.minAgents || 1),
           providers: providers.length,
-          minRequired: config.minAgents,
-          crossScoring: config.crossScoring,
-          dimensions: config.dimensions.length,
+          minRequired: config.minAgents || 1,
+          crossScoring: config.crossScoring !== false,
+          dimensions: (config.dimensions || []).length,
         };
       }
       case 'providers': {

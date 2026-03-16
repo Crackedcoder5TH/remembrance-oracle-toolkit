@@ -272,7 +272,7 @@ function reflectionLoop(code, options = {}) {
 function formatReflectionResult(result) {
   const lines = [];
   lines.push(`SERF v2 Reflection — ${result.loops} loop(s)`);
-  lines.push(`  I_AM: ${result.reflection.I_AM.toFixed(3)} → Final: ${result.reflection.finalCoherence.toFixed(3)} (${result.reflection.improvement >= 0 ? '+' : ''}${result.reflection.improvement.toFixed(3)})`);
+  lines.push(`  I_AM: ${(result.reflection.I_AM ?? 0).toFixed(3)} → Final: ${(result.reflection.finalCoherence ?? 0).toFixed(3)} (${(result.reflection.improvement ?? 0) >= 0 ? '+' : ''}${(result.reflection.improvement ?? 0).toFixed(3)})`);
   lines.push(`  Hamiltonian: Ĥ₀ + Ĥ_RVA(${result.reflection.h_rva_weight}) + Ĥ_canvas(${result.reflection.h_canvas_weight})`);
   if (result.reflection.cascadeBoost > 1) {
     lines.push(`  Cascade: +${(result.reflection.cascadeBoost - 1).toFixed(3)} (additive) | Collective I_AM: ${result.reflection.collectiveIAM}`);
@@ -284,7 +284,7 @@ function formatReflectionResult(result) {
     const filled = Math.max(0, Math.min(20, Math.round(val * 20)));
     const bar = '\u2588'.repeat(filled);
     const faded = '\u2591'.repeat(20 - filled);
-    lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${val.toFixed(3)}`);
+    lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${(typeof val === 'number' ? val : 0).toFixed(3)}`);
   }
   lines.push('');
   if (result.healingPath.length > 0) {

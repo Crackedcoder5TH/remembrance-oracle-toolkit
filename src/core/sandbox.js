@@ -120,15 +120,16 @@ function sandboxPython(code, testCode, options = {}) {
   try {
     // Write code+test to file via concatenation (not template literal interpolation)
     const filePath = path.join(sandboxDir, 'test.py');
-    const prelude = "import sys\nimport os\n\n" +
+    const prelude = "import sys\n\n" +
       "# Block dangerous modules\n" +
       "_original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__\n" +
-      "blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko'}\n\n" +
+      "blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'os', 'importlib', 'ctypes', 'signal'}\n\n" +
       "def _safe_import(name, *args, **kwargs):\n" +
       "    if name.split('.')[0] in blocked:\n" +
       '        raise ImportError(f\'Module "{name}" is blocked in sandbox\')\n' +
       "    return _original_import(name, *args, **kwargs)\n\n" +
-      "try:\n    __builtins__.__import__ = _safe_import\nexcept:\n    pass\n\n";
+      "try:\n    __builtins__.__import__ = _safe_import\nexcept:\n    pass\n\n" +
+      "import builtins\nbuiltins.__import__ = _safe_import\n\n";
     const combined = prelude + code + "\n" + testCode + "\n";
     const fdPy = fs.openSync(filePath, 'w', 0o600);
     fs.writeSync(fdPy, combined);
@@ -265,14 +266,8 @@ Module._load = function(request, parent, isMain) {
     fs.closeSync(fdPre);
     fs.chmodSync(preloadPath, 0o400);
 
-    const wrapper = `
-'use strict';
-// Run user code
-${normalizedCode}
-;
-// Run tests
-${normalizedTest}
-`;
+    // Use string concatenation (not template literal interpolation) to prevent code injection
+    const wrapper = "'use strict';\n// Run user code\n" + normalizedCode + "\n;\n// Run tests\n" + normalizedTest + "\n";
 
     const memFlag = `--max-old-space-size=${maxMemory}`;
     const sandboxEnv = { PATH: process.env.PATH, NODE_PATH: '', HOME: sandboxDir, NODE_NO_WARNINGS: '1' };
@@ -280,7 +275,10 @@ ${normalizedTest}
 
     // Strategy 1: Native --experimental-strip-types (.ts file)
     const tsPath = path.join(sandboxDir, 'test.ts');
-    fs.writeFileSync(tsPath, wrapper, 'utf-8');
+    const fdTs = fs.openSync(tsPath, 'w', 0o600);
+    fs.writeSync(fdTs, wrapper);
+    fs.closeSync(fdTs);
+    fs.chmodSync(tsPath, 0o400);
 
     try {
       const result = execSync(
@@ -328,16 +326,13 @@ ${normalizedTest}
     }
 
     // Strategy 3: Manual type stripping, run as .js
-    const strippedWrapper = `
-'use strict';
-// Run user code (types manually stripped)
-${stripTypeAnnotations(normalizedCode)}
-;
-// Run tests
-${stripTypeAnnotations(normalizedTest)}
-`;
+    // Use string concatenation (not template literal interpolation) to prevent code injection
+    const strippedWrapper = "'use strict';\n// Run user code (types manually stripped)\n" + stripTypeAnnotations(normalizedCode) + "\n;\n// Run tests\n" + stripTypeAnnotations(normalizedTest) + "\n";
     const jsPath = path.join(sandboxDir, 'test.js');
-    fs.writeFileSync(jsPath, strippedWrapper, 'utf-8');
+    const fdJs = fs.openSync(jsPath, 'w', 0o600);
+    fs.writeSync(fdJs, strippedWrapper);
+    fs.closeSync(fdJs);
+    fs.chmodSync(jsPath, 0o400);
 
     const jsResult = execSync(
       `node ${memFlag} --require "${preloadPath}" "${jsPath}"`,
@@ -375,10 +370,16 @@ function sandboxGo(code, testCode, options = {}) {
     });
 
     const codePath = path.join(sandboxDir, 'code.go');
-    fs.writeFileSync(codePath, code, 'utf-8');
+    const fdGo = fs.openSync(codePath, 'w', 0o600);
+    fs.writeSync(fdGo, code);
+    fs.closeSync(fdGo);
+    fs.chmodSync(codePath, 0o400);
 
     const testPath = path.join(sandboxDir, 'code_test.go');
-    fs.writeFileSync(testPath, testCode, 'utf-8');
+    const fdGoTest = fs.openSync(testPath, 'w', 0o600);
+    fs.writeSync(fdGoTest, testCode);
+    fs.closeSync(fdGoTest);
+    fs.chmodSync(testPath, 0o400);
 
     const result = execSync('go test -v -count=1 ./...', {
       timeout,
@@ -424,8 +425,12 @@ function sandboxRust(code, testCode, options = {}) {
 
     fs.writeFileSync(path.join(sandboxDir, 'Cargo.toml'), `[package]\nname = "sandbox"\nversion = "0.1.0"\nedition = "2021"\n`, 'utf-8');
 
-    const libRs = `${code}\n\n#[cfg(test)]\nmod tests {\n${testCode}\n}\n`;
-    fs.writeFileSync(path.join(srcDir, 'lib.rs'), libRs, 'utf-8');
+    const libRs = code + "\n\n#[cfg(test)]\nmod tests {\n" + testCode + "\n}\n";
+    const rsPath = path.join(srcDir, 'lib.rs');
+    const fdRs = fs.openSync(rsPath, 'w', 0o600);
+    fs.writeSync(fdRs, libRs);
+    fs.closeSync(fdRs);
+    fs.chmodSync(rsPath, 0o400);
 
     const result = execSync('cargo test 2>&1', {
       timeout,

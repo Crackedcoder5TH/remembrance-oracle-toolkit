@@ -204,7 +204,7 @@ class IDEBridge {
 
         for (const fix of fixes) {
           actions.push({
-            title: `Fix: ${fix.fixDescription || fix.errorClass} (confidence: ${fix.confidence.toFixed(2)})`,
+            title: `Fix: ${fix.fixDescription || fix.errorClass} (confidence: ${(fix.confidence ?? 0).toFixed(2)})`,
             kind: 'quickfix',
             source: 'oracle-debug',
             debugPatternId: fix.id,

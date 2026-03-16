@@ -481,7 +481,7 @@ function scaffold(modulePattern, variables = {}, options = {}) {
     const renderedCode = TemplateEngine.render(file.code, variables);
 
     files.push({
-      path: prefix ? `${prefix}/${renderedPath}` : renderedPath,
+      path: prefix ? require('path').posix.join(prefix, renderedPath) : renderedPath,
       code: renderedCode,
       language: file.language,
       role: file.role,

@@ -206,8 +206,8 @@ module.exports = {
     const merged = [];
     for (const list of [results.local, results.repos, results.remote]) {
       for (const p of list) {
-        const key = `${p.name}:${p.language}`;
-        if (seen.has(key)) continue;
+        const key = `${p.id || p.name || ''}:${p.language}`;
+        if (key !== ':' && seen.has(key)) continue;
         seen.add(key);
         merged.push(p);
       }

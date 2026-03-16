@@ -27,6 +27,8 @@ function createRateLimiter(options = {}) {
     const forwarded = req.trustProxy ? req.headers?.['x-forwarded-for'] : null;
     const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket.remoteAddress || '127.0.0.1');
     const now = Date.now();
+    // Cap map size to prevent memory exhaustion under DDoS with many unique IPs
+    if (hits.size > 10000) hits.clear();
     const timestamps = (hits.get(ip) || []).filter(t => now - t < windowMs);
     timestamps.push(now);
     hits.set(ip, timestamps);

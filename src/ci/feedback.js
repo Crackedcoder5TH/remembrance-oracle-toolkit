@@ -96,7 +96,7 @@ class CIFeedbackReporter {
             id: tracked.id,
             name: tracked.name,
             succeeded,
-            newReliability: result.newReliability ?? result.successCount / result.usageCount,
+            newReliability: result.newReliability ?? (result.usageCount > 0 ? result.successCount / result.usageCount : 0),
           });
         } else {
           errors.push({ id: tracked.id, error: result.error || 'Unknown error' });

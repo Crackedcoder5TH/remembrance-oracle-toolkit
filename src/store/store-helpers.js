@@ -12,7 +12,7 @@
 function countBy(items, key) {
   const counts = {};
   for (const item of items) {
-    const val = item[key] || 'unknown';
+    const val = item[key] ?? 'unknown';
     counts[val] = (counts[val] || 0) + 1;
   }
   return counts;

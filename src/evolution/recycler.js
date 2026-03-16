@@ -25,6 +25,7 @@
  *   - Each approach alt → spawns language variants = exponential
  */
 
+const crypto = require('crypto');
 const { reflectionLoop } = require('../core/reflection');
 const { validateCode } = require('../core/validator');
 const { computeCoherencyScore, detectLanguage } = require('../core/coherency');
@@ -197,7 +198,8 @@ class PatternRecycler {
       ).all();
 
       for (const row of rows) {
-        const detail = JSON.parse(row.detail || '{}');
+        let detail;
+        try { detail = JSON.parse(row.detail || '{}'); } catch { detail = {}; }
         if (detail.pattern && detail.status === 'pending') {
           // Skip empty shells — captures must have non-empty code
           const code = (detail.pattern.code || '').trim();

@@ -159,7 +159,7 @@ class SwarmTaskQueue extends EventEmitter {
       this._active.delete(task.id);
       this._completed.push(task);
       if (this._completed.length > this._maxCompleted) {
-        this._completed = this._completed.slice(-this._maxCompleted);
+        this._completed.splice(0, this._completed.length - this._maxCompleted);
       }
       if (this._pending.length === 0 && this._active.size === 0) {
         this.emit('queue:empty');

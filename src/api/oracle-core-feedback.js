@@ -15,7 +15,7 @@ module.exports = {
     if (!updated) {
       return { success: false, error: `Entry ${id} not found` };
     }
-    this._emit({ type: 'feedback', id, succeeded, newReliability: updated.reliability.historicalScore });
+    this._emit({ type: 'feedback', id, succeeded, newReliability: updated?.reliability?.historicalScore ?? null });
 
     // Record in temporal memory for health tracking
     try {
@@ -23,7 +23,7 @@ module.exports = {
       if (tm) {
         tm.record(id, succeeded ? 'success' : 'failure', {
           context: 'feedback',
-          successRate: updated.reliability.historicalScore,
+          successRate: updated?.reliability?.historicalScore ?? null,
         });
       }
     } catch (e) {
@@ -67,8 +67,8 @@ module.exports = {
       }
     }
 
-    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated.reliability.historicalScore, healed: !!healResult?.healed } });
-    return { success: true, newReliability: updated.reliability.historicalScore, healResult };
+    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated?.reliability?.historicalScore ?? null, healed: !!healResult?.healed } });
+    return { success: true, newReliability: updated?.reliability?.historicalScore ?? null, healResult };
   },
 
   /**

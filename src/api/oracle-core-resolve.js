@@ -159,7 +159,7 @@ module.exports = {
     auditLog('resolve', { id: patternData?.id, name: patternData?.name, success: true, language: patternData?.language, meta: { decision: decision.decision, confidence: decision.confidence, healed: !!healing } });
 
     // Auto-capture debug patterns from healing results (healed code forwarding)
-    const resolveResult = {
+    let resolveResult = {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,
       pattern: patternData, healedCode, healedVariantId, whisper, candidateNotes,
       healing: healing ? {
@@ -178,7 +178,7 @@ module.exports = {
     }
 
     // Append prompt tag when enabled
-    applyPromptTag(resolveResult);
+    resolveResult = applyPromptTag(resolveResult);
 
     // Track resolve interaction for session summary
     try { trackResolve(resolveResult, request); } catch (_) { /* non-fatal */ }

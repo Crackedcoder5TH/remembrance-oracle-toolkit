@@ -45,7 +45,7 @@ function shouldEscalate(result, escalationConfig) {
   if (result.winner.score < config.coherenceFloor) {
     return {
       needed: true,
-      reason: `winner score ${result.winner.score.toFixed(3)} < floor ${config.coherenceFloor}`,
+      reason: `winner score ${(result.winner.score ?? 0).toFixed(3)} < floor ${config.coherenceFloor}`,
       mode: null, // Will be determined by attempt number
     };
   }
@@ -130,7 +130,22 @@ async function swarmWithEscalation(swarmFn, task, options = {}, escalationConfig
       ? options
       : applyEscalation(getEscalationMode(attempt - 1, config), options, config);
 
-    lastResult = await swarmFn(task, adjustedOptions);
+    try {
+      lastResult = await swarmFn(task, adjustedOptions);
+    } catch (err) {
+      attempts.push({
+        attempt,
+        mode: attempt === 0 ? 'initial' : getEscalationMode(attempt - 1, config),
+        winnerScore: 0,
+        agreement: 0,
+        agentCount: 0,
+        error: err.message,
+      });
+      if (attempt >= config.maxRetries) break;
+      const delay = 1000 * Math.pow(2, attempt);
+      await new Promise(r => setTimeout(r, delay));
+      continue;
+    }
 
     attempts.push({
       attempt,
@@ -150,6 +165,11 @@ async function swarmWithEscalation(swarmFn, task, options = {}, escalationConfig
     // Exponential backoff between retries (from oracle: retry-async)
     const delay = 1000 * Math.pow(2, attempt);
     await new Promise(r => setTimeout(r, delay));
+  }
+
+  // If all attempts failed, build a minimal result
+  if (!lastResult) {
+    lastResult = { winner: null, agreement: 0, agentCount: 0, totalDurationMs: 0 };
   }
 
   // Attach escalation metadata to the result

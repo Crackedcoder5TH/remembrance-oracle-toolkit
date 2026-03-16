@@ -413,7 +413,7 @@ function shareToCommunity(localStore, options = {}) {
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+    const coherency = Number(pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0) || 0;
     if (coherency < minCoherency) {
       report.skipped++;
       if (verbose) console.log(`  [LOW] ${pattern.name}: coherency ${coherency.toFixed(3)} < ${minCoherency}`);
@@ -453,6 +453,9 @@ function shareToCommunity(localStore, options = {}) {
     report.details.push({ name: pattern.name, language: pattern.language, direction: 'to-community' });
   }
 
+  if (typeof communityStore.close === 'function') {
+    try { communityStore.close(); } catch (_) {}
+  }
   return report;
 }
 
@@ -499,7 +502,7 @@ function pullFromCommunity(localStore, options = {}) {
       continue;
     }
 
-    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
+    const coherency = Number(pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0) || 0;
     if (coherency < minCoherency) {
       report.skipped++;
       continue;
@@ -544,6 +547,9 @@ function pullFromCommunity(localStore, options = {}) {
     report.details.push({ name: pattern.name, language: pattern.language, direction: 'from-community' });
   }
 
+  if (typeof communityStore.close === 'function') {
+    try { communityStore.close(); } catch (_) {}
+  }
   return report;
 }
 
@@ -609,7 +615,7 @@ function federatedQuery(localStore, query = {}) {
     return cb - ca;
   });
 
-  return {
+  const result = {
     localCount: localPatterns.length,
     personalCount: personalPatterns.length,
     communityCount: communityPatterns.length,
@@ -621,6 +627,15 @@ function federatedQuery(localStore, query = {}) {
     globalOnly: results.filter(r => r.source !== 'local').length,
     patterns: results,
   };
+
+  if (personalStore && typeof personalStore.close === 'function') {
+    try { personalStore.close(); } catch (_) {}
+  }
+  if (communityStore && typeof communityStore.close === 'function') {
+    try { communityStore.close(); } catch (_) {}
+  }
+
+  return result;
 }
 
 // ─── Stats ───
@@ -1591,8 +1606,14 @@ function registerRepo(repoPath) {
   try {
     if (fs.existsSync(REPOS_CONFIG_PATH)) {
       config = JSON.parse(fs.readFileSync(REPOS_CONFIG_PATH, 'utf-8'));
+      if (!Array.isArray(config.repos)) config.repos = [];
     }
   } catch (e) {
+    if (fs.existsSync(REPOS_CONFIG_PATH)) {
+      // Config file exists but is corrupted — don't silently overwrite
+      if (process.env.ORACLE_DEBUG) console.warn('[persistence:registerRepo] corrupted config, preserving:', e?.message || e);
+      return { registered: false, error: 'Repos config file is corrupted — fix or delete manually', path: REPOS_CONFIG_PATH };
+    }
     if (process.env.ORACLE_DEBUG) console.warn('[persistence:registerRepo] fresh config:', e?.message || e);
   }
 
@@ -1639,11 +1660,12 @@ function crossRepoSearch(description, options = {}) {
   const seen = new Set();
 
   for (const repoPath of repoPaths) {
+    let store;
     try {
-      const store = openStore(repoPath);
+      store = openStore(repoPath);
       if (!store) continue;
 
-      const patterns = store.getPatterns ? store.getPatterns() : [];
+      const patterns = store.getAllPatterns ? store.getAllPatterns() : [];
       const repoName = path.basename(repoPath);
       let matchCount = 0;
 
@@ -1670,6 +1692,10 @@ function crossRepoSearch(description, options = {}) {
       repoInfo.push({ name: repoName, path: repoPath, patterns: patterns.length, matches: matchCount });
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[persistence:crossRepoSearch] store open failed — skip:', e?.message || e);
+    } finally {
+      if (store && typeof store.close === 'function') {
+        try { store.close(); } catch (_) {}
+      }
     }
   }
 

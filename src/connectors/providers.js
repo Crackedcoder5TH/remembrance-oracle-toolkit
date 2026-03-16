@@ -72,9 +72,14 @@ const OPENAI_TOOLS = [
 
 function fromOpenAI(toolCall) {
   const name = toolCall.function?.name || toolCall.name;
-  const args = typeof toolCall.function?.arguments === 'string'
-    ? JSON.parse(toolCall.function.arguments)
-    : toolCall.function?.arguments || toolCall.arguments || {};
+  let args;
+  try {
+    args = typeof toolCall.function?.arguments === 'string'
+      ? JSON.parse(toolCall.function.arguments)
+      : toolCall.function?.arguments || toolCall.arguments || {};
+  } catch (_) {
+    args = toolCall.function?.arguments || toolCall.arguments || {};
+  }
 
   const actionMap = {
     oracle_submit: 'submit',

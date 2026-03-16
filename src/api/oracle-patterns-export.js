@@ -39,7 +39,7 @@ module.exports = {
     let patterns = this.patterns.getAll({ language, minCoherency });
     if (tags && tags.length > 0) {
       const filterTags = new Set(tags.map(t => t.toLowerCase()));
-      patterns = patterns.filter(p => p.tags.some(t => filterTags.has(t.toLowerCase())));
+      patterns = patterns.filter(p => (p.tags || []).some(t => filterTags.has(t.toLowerCase())));
     }
     patterns = patterns.sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0)).slice(0, limit);
     if (format === 'markdown' || format === 'md') return this._exportMarkdown(patterns);

@@ -247,7 +247,7 @@ function createPatternLifecycle(store, options = {}) {
     }
 
     // Perform the transition
-    store.db.exec('BEGIN');
+    store.db.exec('BEGIN IMMEDIATE');
     try {
       store._archivePattern(row, 'retirement');
       if (store._cleanupFractalData) store._cleanupFractalData(patternId);
@@ -255,7 +255,7 @@ function createPatternLifecycle(store, options = {}) {
       store._audit('retire', 'patterns', patternId, { name: row.name });
       store.db.exec('COMMIT');
     } catch (e) {
-      store.db.exec('ROLLBACK');
+      try { store.db.exec('ROLLBACK'); } catch (_) {}
       return { success: false, reason: `Retirement failed: ${e.message}` };
     }
 
@@ -356,7 +356,11 @@ function createPatternLifecycle(store, options = {}) {
       const row = store.db.prepare('SELECT * FROM patterns WHERE id = ?').get(patternId);
       if (row) pattern = row;
     }
-    const history = pattern?.evolutionHistory || [];
+    let history = pattern?.evolutionHistory || [];
+    if (typeof history === 'string') {
+      try { history = JSON.parse(history); } catch (_) { history = []; }
+    }
+    if (!Array.isArray(history)) history = [];
     history.push({
       type: 'evolve',
       timestamp: new Date().toISOString(),

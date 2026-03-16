@@ -78,7 +78,8 @@ function updateConfigFile(filePath, serverConfig) {
         if (!config.mcpServers) config.mcpServers = {};
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[mcp-install:updateConfigFile] silent failure:', e?.message || e);
-        // Corrupted config — start fresh but preserve other fields
+        // Corrupted config — back up original before overwriting
+        try { fs.writeFileSync(filePath + '.bak', content); } catch (_) {}
         config = { mcpServers: {} };
       }
     }

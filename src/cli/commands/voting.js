@@ -67,7 +67,7 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['github'] = (args) => {
+  handlers['github'] = async (args) => {
     const { GitHubIdentity } = require('../../auth/github-oauth');
     const sub = args._sub;
     const sqliteStore = oracle.store.getSQLiteStore();
@@ -79,47 +79,45 @@ function registerVotingCommands(handlers, { oracle, jsonOut }) {
         console.log(`${c.boldRed('Error:')} Provide --token <PAT> or set GITHUB_TOKEN env var`);
         process.exit(1);
       }
-      ghIdentity.verifyToken(token).then((result) => {
-        if (result.success) {
-          console.log(`${c.boldGreen('\u2713')} Verified GitHub identity: ${c.bold(result.username)}`);
-          console.log(`  Voter ID: ${c.cyan(result.voterId)}`);
-          console.log(`  GitHub ID: ${result.githubId}`);
-          console.log(`\n  ${c.dim('Your votes will now be linked to your GitHub identity.')}`);
-        } else {
-          console.log(`${c.boldRed('\u2717')} Verification failed: ${result.error}`);
-        }
-      });
+      const result = await ghIdentity.verifyToken(token);
+      if (result.success) {
+        console.log(`${c.boldGreen('\u2713')} Verified GitHub identity: ${c.bold(result.username)}`);
+        console.log(`  Voter ID: ${c.cyan(result.voterId)}`);
+        console.log(`  GitHub ID: ${result.githubId}`);
+        console.log(`\n  ${c.dim('Your votes will now be linked to your GitHub identity.')}`);
+      } else {
+        console.log(`${c.boldRed('\u2717')} Verification failed: ${result.error}`);
+      }
       return;
     }
 
     if (sub === 'login') {
-      ghIdentity.startDeviceFlow().then((result) => {
-        if (result.error) {
-          console.log(`${c.boldRed('Error:')} ${result.error}`);
-          return;
+      const result = await ghIdentity.startDeviceFlow();
+      if (result.error) {
+        console.log(`${c.boldRed('Error:')} ${result.error}`);
+        return;
+      }
+      console.log(`\n${c.boldCyan('GitHub Login')}\n`);
+      console.log(`  1. Go to: ${c.bold(result.verificationUrl)}`);
+      console.log(`  2. Enter code: ${c.boldGreen(result.userCode)}\n`);
+      console.log(`  ${c.dim('Waiting for authorization...')}`);
+
+      const poll = setInterval(async () => {
+        const pollResult = await ghIdentity.pollDeviceFlow(result.deviceCode);
+        if (pollResult.pending) return;
+        clearInterval(poll);
+        if (pollResult.success) {
+          console.log(`\n${c.boldGreen('\u2713')} Logged in as ${c.bold(pollResult.username)}`);
+          console.log(`  Voter ID: ${c.cyan(pollResult.voterId)}`);
+        } else {
+          console.log(`\n${c.boldRed('\u2717')} Login failed: ${pollResult.error}`);
         }
-        console.log(`\n${c.boldCyan('GitHub Login')}\n`);
-        console.log(`  1. Go to: ${c.bold(result.verificationUrl)}`);
-        console.log(`  2. Enter code: ${c.boldGreen(result.userCode)}\n`);
-        console.log(`  ${c.dim('Waiting for authorization...')}`);
+      }, (result.interval || 5) * 1000);
 
-        const poll = setInterval(async () => {
-          const pollResult = await ghIdentity.pollDeviceFlow(result.deviceCode);
-          if (pollResult.pending) return;
-          clearInterval(poll);
-          if (pollResult.success) {
-            console.log(`\n${c.boldGreen('\u2713')} Logged in as ${c.bold(pollResult.username)}`);
-            console.log(`  Voter ID: ${c.cyan(pollResult.voterId)}`);
-          } else {
-            console.log(`\n${c.boldRed('\u2717')} Login failed: ${pollResult.error}`);
-          }
-        }, (result.interval || 5) * 1000);
-
-        setTimeout(() => {
-          clearInterval(poll);
-          console.log(`\n${c.yellow('Login expired. Try again with:')} ${c.cyan('oracle github login')}`);
-        }, (result.expiresIn || 900) * 1000);
-      });
+      setTimeout(() => {
+        clearInterval(poll);
+        console.log(`\n${c.yellow('Login expired. Try again with:')} ${c.cyan('oracle github login')}`);
+      }, (result.expiresIn || 900) * 1000);
       return;
     }
 

@@ -142,7 +142,7 @@ function registerSwarmCommands(handlers, { oracle, getCode, jsonOut }) {
       crossScoring: args['no-cross-scoring'] ? false : undefined,
       oracle,
     });
-    if (jsonOut(args, result)) return;
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
     console.log(formatSwarmResult(result));
   };
 }

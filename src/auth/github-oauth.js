@@ -21,12 +21,16 @@ function _parseResponse(data) {
     return JSON.parse(data);
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:_parseResponse] silent failure:', e?.message || e);
-    const parsed = {};
-    data.split('&').forEach(pair => {
-      const [k, v] = pair.split('=');
-      if (k) parsed[decodeURIComponent(k)] = decodeURIComponent(v || '');
-    });
-    return parsed;
+    // Only attempt URL-encoded parsing if it looks like form data (no HTML tags, contains =)
+    if (data && !data.includes('<') && data.includes('=')) {
+      const parsed = {};
+      data.split('&').forEach(pair => {
+        const [k, v] = pair.split('=');
+        if (k) parsed[decodeURIComponent(k)] = decodeURIComponent(v || '');
+      });
+      return parsed;
+    }
+    return { error: 'Unexpected response format', raw: String(data).slice(0, 500) };
   }
 }
 
@@ -132,6 +136,9 @@ class GitHubIdentity {
       }
 
       const { login, id, avatar_url } = res.data;
+      if (!login || typeof login !== 'string') {
+        return { success: false, error: 'Invalid GitHub response: missing login field' };
+      }
       const voterId = `github:${login}`;
 
       this._saveIdentity({
@@ -327,11 +334,12 @@ class GitHubIdentity {
       _saveToDb(this.store, identity, now);
     }
 
+    const existing = this._identities.get(identity.voterId);
     this._identities.set(identity.voterId, {
       ...identity,
-      verifiedAt: now,
+      verifiedAt: existing?.verifiedAt || now,
       lastSeen: now,
-      contributions: 0,
+      contributions: existing?.contributions || 0,
     });
   }
 }

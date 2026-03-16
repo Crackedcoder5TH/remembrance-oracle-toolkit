@@ -113,7 +113,7 @@ module.exports = {
       const oldTags = [...(pattern.tags || [])];
       const newTags = retagPattern(pattern);
       const diff = tagDiff(oldTags, newTags);
-      if (diff.added.length >= minAdded) {
+      if (diff.added.length > 0 && diff.added.length >= minAdded) {
         if (!dryRun) this.patterns.update(pattern.id, { tags: newTags });
         enriched++;
         totalTagsAdded += diff.added.length;
@@ -208,9 +208,10 @@ module.exports = {
       }
     }
 
-    const remaining = all.length - toRemove.size;
+    const actualRemoved = dryRun ? 0 : toRemove.size;
+    const remaining = all.length - actualRemoved;
     this._emit({ type: 'deep_clean', removed: toRemove.size, duplicates, stubs, tooShort, remaining, dryRun });
-    return { removed: toRemove.size, duplicates, stubs, tooShort, remaining, details };
+    return { removed: toRemove.size, duplicates, stubs, tooShort, remaining, dryRun, details };
   },
 
   recycle(options = {}) { return this.recycler.recycleFailed(options); },

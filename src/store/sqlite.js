@@ -125,6 +125,17 @@ class SQLiteStore {
       CREATE INDEX IF NOT EXISTS idx_audit_target ON audit_log(target_table, target_id);
     `);
 
+    // Ensure pattern_archive exists before dedup migration (which archives duplicates)
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS pattern_archive (
+        id TEXT NOT NULL, name TEXT NOT NULL, code TEXT NOT NULL,
+        language TEXT DEFAULT 'unknown', pattern_type TEXT DEFAULT 'utility',
+        coherency_total REAL DEFAULT 0, coherency_json TEXT DEFAULT '{}',
+        test_code TEXT, tags TEXT DEFAULT '[]', deleted_reason TEXT DEFAULT 'unknown',
+        deleted_at TEXT NOT NULL, original_created_at TEXT, full_row_json TEXT
+      )
+    `);
+
     // Schema migration: enforce unique (name, language) — dedup first, then add index
     try {
       // Check if unique index already exists
@@ -1100,7 +1111,7 @@ class SQLiteStore {
     this.db.exec('BEGIN');
     try {
       for (const row of rows) {
-        const oldCoherency = row.coherency_json ? JSON.parse(row.coherency_json) : {};
+        const oldCoherency = this._safeJSON(row.coherency_json, {});
         const bd = oldCoherency.breakdown || {};
 
         // Bootstrap: patterns with test proof get simulated successful usage
@@ -1271,7 +1282,7 @@ class SQLiteStore {
     this.db.exec('BEGIN');
     try {
       for (const row of rows) {
-        const oldCoherency = row.coherency_json ? JSON.parse(row.coherency_json) : {};
+        const oldCoherency = this._safeJSON(row.coherency_json, {});
         if ((oldCoherency.breakdown?.completeness || 0) >= 1.0) continue;
 
         let code = row.code;
@@ -1604,67 +1615,76 @@ class SQLiteStore {
   // ─── Candidate methods — coherent-but-unproven patterns ───
 
   addCandidate(candidate) {
-    // Dedup gate: hash the code content to prevent duplicate candidates
-    const codeHash = this._hash(candidate.code || '');
-    const existing = this.db.prepare(
-      'SELECT id FROM candidates WHERE id = ?'
-    ).get(codeHash.slice(0, 16));
-    // Also check for identical code in existing candidates
-    const dupCheck = this.db.prepare(
-      'SELECT id FROM candidates WHERE code = ? LIMIT 1'
-    ).get(candidate.code || '');
-    if (dupCheck) return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(dupCheck.id));
-
-    // Dedup guard: check if a candidate with same (name, language) exists with equal or higher coherency
-    const candidateCoherency = candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0;
-    const nameLangDup = this.db.prepare(
-      'SELECT id, coherency_total FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL AND coherency_total >= ? LIMIT 1'
-    ).get(candidate.name, candidate.language || 'unknown', candidateCoherency);
-    if (nameLangDup) return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(nameLangDup.id));
-
-    // Candidate cap: enforce max 5 variants per (name, language) — skip if at cap
-    const MAX_CANDIDATES_PER_GROUP = 5;
-    const groupCount = this.db.prepare(
-      'SELECT COUNT(*) as c FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL'
-    ).get(candidate.name, candidate.language || 'unknown').c;
-    if (groupCount >= MAX_CANDIDATES_PER_GROUP) {
-      // Only allow insert if this candidate has higher coherency than the worst in the group
-      const worst = this.db.prepare(
-        'SELECT id, coherency_total FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL ORDER BY coherency_total ASC LIMIT 1'
-      ).get(candidate.name, candidate.language || 'unknown');
-      if (worst && candidateCoherency <= worst.coherency_total) {
-        return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL ORDER BY coherency_total DESC LIMIT 1').get(candidate.name, candidate.language || 'unknown'));
+    this.db.exec('BEGIN');
+    try {
+      // Dedup gate: check for identical code in existing candidates
+      const dupCheck = this.db.prepare(
+        'SELECT id FROM candidates WHERE code = ? LIMIT 1'
+      ).get(candidate.code || '');
+      if (dupCheck) {
+        this.db.exec('COMMIT');
+        return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(dupCheck.id));
       }
-      // Evict the worst to make room
-      this._archiveCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(worst.id), 'cap-evicted');
-      this.db.prepare('DELETE FROM candidates WHERE id = ?').run(worst.id);
+
+      // Dedup guard: check if a candidate with same (name, language) exists with equal or higher coherency
+      const candidateCoherency = candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0;
+      const nameLangDup = this.db.prepare(
+        'SELECT id, coherency_total FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL AND coherency_total >= ? LIMIT 1'
+      ).get(candidate.name, candidate.language || 'unknown', candidateCoherency);
+      if (nameLangDup) {
+        this.db.exec('COMMIT');
+        return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(nameLangDup.id));
+      }
+
+      // Candidate cap: enforce max 5 variants per (name, language) — skip if at cap
+      const MAX_CANDIDATES_PER_GROUP = 5;
+      const groupCount = this.db.prepare(
+        'SELECT COUNT(*) as c FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL'
+      ).get(candidate.name, candidate.language || 'unknown').c;
+      if (groupCount >= MAX_CANDIDATES_PER_GROUP) {
+        // Only allow insert if this candidate has higher coherency than the worst in the group
+        const worst = this.db.prepare(
+          'SELECT id, coherency_total FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL ORDER BY coherency_total ASC LIMIT 1'
+        ).get(candidate.name, candidate.language || 'unknown');
+        if (worst && candidateCoherency <= worst.coherency_total) {
+          this.db.exec('COMMIT');
+          return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL ORDER BY coherency_total DESC LIMIT 1').get(candidate.name, candidate.language || 'unknown'));
+        }
+        // Evict the worst to make room
+        this._archiveCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(worst.id), 'cap-evicted');
+        this.db.prepare('DELETE FROM candidates WHERE id = ?').run(worst.id);
+      }
+
+      const id = this._hash(candidate.code + candidate.name + Date.now());
+      const now = new Date().toISOString();
+
+      this.db.prepare(`
+        INSERT OR IGNORE INTO candidates (id, name, code, language, pattern_type, complexity,
+          description, tags, coherency_total, coherency_json, test_code,
+          parent_pattern, generation_method, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        id, candidate.name, candidate.code, candidate.language || 'unknown',
+        candidate.patternType || 'utility', candidate.complexity || 'composite',
+        candidate.description || '', JSON.stringify(candidate.tags || []),
+        candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0, JSON.stringify(candidate.coherencyScore || {}),
+        candidate.testCode || null,
+        candidate.parentPattern || null, candidate.generationMethod || 'variant',
+        now, now
+      );
+
+      this._audit('add', 'candidates', id, {
+        name: candidate.name, language: candidate.language,
+        coherency: candidate.coherencyTotal, parent: candidate.parentPattern,
+        method: candidate.generationMethod,
+      });
+
+      this.db.exec('COMMIT');
+      return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(id));
+    } catch (e) {
+      try { this.db.exec('ROLLBACK'); } catch (_) {}
+      throw e;
     }
-
-    const id = this._hash(candidate.code + candidate.name + Date.now());
-    const now = new Date().toISOString();
-
-    this.db.prepare(`
-      INSERT OR IGNORE INTO candidates (id, name, code, language, pattern_type, complexity,
-        description, tags, coherency_total, coherency_json, test_code,
-        parent_pattern, generation_method, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      id, candidate.name, candidate.code, candidate.language || 'unknown',
-      candidate.patternType || 'utility', candidate.complexity || 'composite',
-      candidate.description || '', JSON.stringify(candidate.tags || []),
-      candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0, JSON.stringify(candidate.coherencyScore || {}),
-      candidate.testCode || null,
-      candidate.parentPattern || null, candidate.generationMethod || 'variant',
-      now, now
-    );
-
-    this._audit('add', 'candidates', id, {
-      name: candidate.name, language: candidate.language,
-      coherency: candidate.coherencyTotal, parent: candidate.parentPattern,
-      method: candidate.generationMethod,
-    });
-
-    return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(id));
   }
 
   getAllCandidates(filters = {}) {
@@ -2401,7 +2421,8 @@ class SQLiteStore {
       const existing = this.db.prepare('SELECT id FROM patterns WHERE id = ?').get(row.id);
       if (existing) { skipped++; continue; }
       try {
-        const full = JSON.parse(row.full_row_json);
+        const full = this._safeJSON(row.full_row_json, null);
+        if (!full) { skipped++; continue; }
         this._insertPatternFromRow(full);
         // Verify the pattern was actually inserted before removing from archive
         const inserted = this.db.prepare('SELECT 1 FROM patterns WHERE id = ?').get(row.id);
@@ -2807,21 +2828,28 @@ class SQLiteStore {
     `).all();
 
     if (!dryRun && (stale.length > 0 || dupes.length > 0)) {
-      const delStmt = this.db.prepare('DELETE FROM entries WHERE id = ?');
-      const seen = new Set();
-      for (const row of stale) {
-        if (seen.has(row.id)) continue;
-        seen.add(row.id);
-        this._archiveEntry(row, 'stale-rotated');
-        delStmt.run(row.id);
+      this.db.exec('BEGIN');
+      try {
+        const delStmt = this.db.prepare('DELETE FROM entries WHERE id = ?');
+        const seen = new Set();
+        for (const row of stale) {
+          if (seen.has(row.id)) continue;
+          seen.add(row.id);
+          this._archiveEntry(row, 'stale-rotated');
+          delStmt.run(row.id);
+        }
+        for (const row of dupes) {
+          if (seen.has(row.id)) continue;
+          seen.add(row.id);
+          this._archiveEntry(row, 'duplicate-of-pattern');
+          delStmt.run(row.id);
+        }
+        this._audit('rotate', 'entries', 'bulk', { stale: stale.length, dupes: dupes.length });
+        this.db.exec('COMMIT');
+      } catch (e) {
+        try { this.db.exec('ROLLBACK'); } catch (_) {}
+        throw e;
       }
-      for (const row of dupes) {
-        if (seen.has(row.id)) continue;
-        seen.add(row.id);
-        this._archiveEntry(row, 'duplicate-of-pattern');
-        delStmt.run(row.id);
-      }
-      this._audit('rotate', 'entries', 'bulk', { stale: stale.length, dupes: dupes.length });
     }
 
     const remaining = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;

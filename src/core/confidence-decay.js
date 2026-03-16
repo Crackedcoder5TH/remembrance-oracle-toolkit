@@ -42,7 +42,8 @@ function computeDecayFactor(pattern, options = {}) {
     if (!created) return { factor: 1.0, daysSinceUse: 0, decayed: false };
     const daysSinceCreation = daysBetween(new Date(created), now);
     if (daysSinceCreation <= gracePeriodDays) return { factor: 1.0, daysSinceUse: daysSinceCreation, decayed: false };
-    return applyDecay(daysSinceCreation - gracePeriodDays, halfLifeDays, minScore);
+    const decay = applyDecay(daysSinceCreation - gracePeriodDays, halfLifeDays, minScore);
+    return { ...decay, daysSinceUse: daysSinceCreation };
   }
 
   const daysSinceUse = daysBetween(new Date(lastUsed), now);
@@ -50,7 +51,8 @@ function computeDecayFactor(pattern, options = {}) {
     return { factor: 1.0, daysSinceUse, decayed: false };
   }
 
-  return applyDecay(daysSinceUse - gracePeriodDays, halfLifeDays, minScore);
+  const decay = applyDecay(daysSinceUse - gracePeriodDays, halfLifeDays, minScore);
+  return { ...decay, daysSinceUse };
 }
 
 /**

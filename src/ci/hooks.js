@@ -14,7 +14,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const HOOK_MARKER = '# remembrance-oracle-hook';
 
@@ -23,7 +23,7 @@ const HOOK_MARKER = '# remembrance-oracle-hook';
  */
 function findGitHooksDir(cwd) {
   try {
-    const gitDir = execSync('git rev-parse --git-dir', { cwd, encoding: 'utf-8' }).trim();
+    const gitDir = execFileSync('git', ['rev-parse', '--git-dir'], { cwd, encoding: 'utf-8' }).trim();
     return path.resolve(cwd, gitDir, 'hooks');
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[hooks:findGitHooksDir] returning null on error:', e?.message || e);
@@ -129,7 +129,7 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       const logDir = path.join(process.cwd(), '.remembrance');
       try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
       const logPath = path.join(logDir, 'hook-errors.log');
-      const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\\\n';
+      const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\n';
       try { fs.appendFileSync(logPath, entry); } catch(_) {}
     }
   } catch(e) {
@@ -139,7 +139,7 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       const logDir = path.join(process.cwd(), '.remembrance');
       try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
       const logPath = path.join(logDir, 'hook-errors.log');
-      const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\\\n';
+      const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\n';
       try { fs.appendFileSync(logPath, entry); } catch(_) {}
     } catch(_) {}
     if (process.env.ORACLE_DEBUG) console.warn('[hooks:postCommitScript] failure:', e?.message || e);

@@ -85,8 +85,8 @@ describe('OracleConfig', () => {
 
   it('applyPromptTag adds promptTag to result object', () => {
     const { applyPromptTag } = freshConfig();
-    const result = { decision: 'pull', confidence: 0.9 };
-    applyPromptTag(result);
+    const input = { decision: 'pull', confidence: 0.9 };
+    const result = applyPromptTag(input);
     assert.ok(result.promptTag);
     assert.ok(result.promptTag.includes('Pull the healed code'));
   });

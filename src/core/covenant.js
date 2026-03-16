@@ -90,6 +90,7 @@ function covenantCheck(code, metadata = {}) {
   if (!isPatternDefinition && !isInfrastructure) {
     for (const hp of HARM_PATTERNS) {
       const codeToCheck = hp.keywordOnly ? strippedCode : code;
+      if (hp.pattern.lastIndex) hp.pattern.lastIndex = 0;
       if (hp.pattern.test(codeToCheck)) {
         const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);
         violations.push({
@@ -199,6 +200,7 @@ function deepSecurityScan(code, options = {}) {
   const isInfrastructure = isTrusted && /@oracle-infrastructure\b/.test(code);
   if (!isPatternDefinition && !isInfrastructure) {
     for (const check of langPatterns) {
+      if (check.pattern.lastIndex) check.pattern.lastIndex = 0;
       if (check.pattern.test(code)) {
         deepFindings.push({ severity: check.severity, reason: check.reason, language });
       }
@@ -207,7 +209,7 @@ function deepSecurityScan(code, options = {}) {
 
   const externalTools = [];
   if (runExternalTools) {
-    const { execSync } = require('child' + '_process');
+    const { execFileSync } = require('child' + '_process');
     const fs = require('fs');
     const path = require('path');
     const os = require('os');
@@ -219,7 +221,7 @@ function deepSecurityScan(code, options = {}) {
       fs.writeFileSync(tmpFile, code);
 
       try {
-        const semgrepOut = execSync(`semgrep --config auto --json "${tmpFile}" 2>/dev/null`, { timeout: 15000 }).toString();
+        const semgrepOut = execFileSync('semgrep', ['--config', 'auto', '--json', tmpFile], { timeout: 15000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
         const semgrepResult = JSON.parse(semgrepOut);
         if (semgrepResult.results?.length > 0) {
           for (const r of semgrepResult.results.slice(0, 5)) {
@@ -230,7 +232,7 @@ function deepSecurityScan(code, options = {}) {
 
       if (language === 'python') {
         try {
-          const banditOut = execSync(`bandit -f json "${tmpFile}" 2>/dev/null`, { timeout: 10000 }).toString();
+          const banditOut = execFileSync('bandit', ['-f', 'json', tmpFile], { timeout: 10000, stdio: ['pipe', 'pipe', 'pipe'] }).toString();
           const banditResult = JSON.parse(banditOut);
           if (banditResult.results?.length > 0) {
             for (const r of banditResult.results.slice(0, 5)) {

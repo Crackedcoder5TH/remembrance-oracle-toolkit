@@ -95,9 +95,11 @@ function covenantFeedback(code, covenantResult) {
   const feedback = [];
   for (const violation of covenantResult.violations) {
     const parts = [];
-    const matchingPatterns = HARM_PATTERNS.filter(hp =>
-      hp.principle === violation.principle && hp.reason === violation.reason && hp.pattern.test(code)
-    );
+    const matchingPatterns = HARM_PATTERNS.filter(hp => {
+      if (hp.principle !== violation.principle || hp.reason !== violation.reason) return false;
+      if (hp.pattern.lastIndex) hp.pattern.lastIndex = 0;
+      return hp.pattern.test(code);
+    });
 
     let location = null;
     for (const hp of matchingPatterns) {

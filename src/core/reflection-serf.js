@@ -47,26 +47,31 @@ function innerProduct(codeA, codeB) {
 function reflectionScore(candidate, previous, context = {}) {
   const { cascadeBoost = 1, targetCoherence = TARGET_COHERENCE } = context;
 
-  const overlap = innerProduct(candidate.code, previous.code);
+  const candCode = candidate.code || '';
+  const prevCode = previous.code || '';
+  const overlap = innerProduct(candCode, prevCode);
   const overlapSq = overlap * overlap;
   const distance = 1 - overlapSq;
 
-  const H_0 = candidate.coherence;
-  const H_RVA = H_RVA_WEIGHT * distance * candidate.coherence;
+  const candCoherence = candidate.coherence ?? 0;
+  const prevCoherence = previous.coherence ?? 0;
+
+  const H_0 = candCoherence;
+  const H_RVA = H_RVA_WEIGHT * distance * candCoherence;
   const H_canvas = H_CANVAS_WEIGHT * (1 - overlap);
 
   const r_eff = R_EFF_BASE * (1 + R_EFF_ALPHA * Math.pow(distance, 4));
   const epsilon = EPSILON_BASE * (1 + 10 * distance);
 
-  const O_healed = candidate.coherence;
-  const O_current = previous.coherence;
+  const O_healed = candCoherence;
+  const O_current = prevCoherence;
   const projection = O_healed * overlap - O_current * overlapSq;
   const denominator = overlapSq + epsilon;
 
-  const voidTerm = DELTA_VOID_BASE * distance * candidate.coherence;
+  const voidTerm = DELTA_VOID_BASE * distance * candCoherence;
   const cascadeAdditive = cascadeBoost - 1;
   const exploration = 1 - overlap;
-  const canvasLight = LAMBDA_LIGHT * exploration * candidate.coherence;
+  const canvasLight = LAMBDA_LIGHT * exploration * candCoherence;
 
   const score = (H_0 + H_RVA + H_canvas)
     + r_eff * (projection / denominator)

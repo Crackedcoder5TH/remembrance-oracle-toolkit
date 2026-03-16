@@ -349,7 +349,8 @@ function _fetchJson(url, options = {}) {
     if (options.token) headers['Authorization'] = `Bearer ${options.token}`;
     if (body) headers['Content-Length'] = Buffer.byteLength(body);
 
-    const req = http.request({
+    const transport = urlObj.protocol === 'https:' ? require('https') : http;
+    const req = transport.request({
       hostname: urlObj.hostname,
       port: urlObj.port,
       path: urlObj.pathname,

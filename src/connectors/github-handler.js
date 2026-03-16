@@ -27,7 +27,13 @@ function setActionOutput(name, value) {
   const outputFile = process.env.GITHUB_OUTPUT;
   const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
   if (outputFile) {
-    fs.appendFileSync(outputFile, `${name}=${str}\n`);
+    if (str.includes('\n')) {
+      // Use heredoc format for multiline values (GitHub Actions requirement)
+      const delimiter = 'EOF_' + Date.now();
+      fs.appendFileSync(outputFile, `${name}<<${delimiter}\n${str}\n${delimiter}\n`);
+    } else {
+      fs.appendFileSync(outputFile, `${name}=${str}\n`);
+    }
   }
 }
 

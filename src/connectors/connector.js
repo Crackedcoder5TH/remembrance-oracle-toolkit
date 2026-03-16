@@ -29,6 +29,9 @@ class AIConnector {
    * Takes a universal command object and returns a universal result.
    */
   execute(command) {
+    if (!command || typeof command !== 'object') {
+      return { error: 'Invalid command: expected an object with an action property' };
+    }
     const { action, params = {} } = command;
 
     switch (action) {

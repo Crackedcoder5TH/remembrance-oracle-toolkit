@@ -83,10 +83,16 @@ function detectConstraints(query) {
 /**
  * Rewrite query tokens with typo corrections and abbreviation expansion.
  */
+// Cache of known-correct words — values from the CORRECTIONS map
+const _correctWords = new Set(Object.values(CORRECTIONS));
+
 function rewriteQuery(tokens) {
   const corrected = tokens.map(t => {
     const correction = CORRECTIONS[t];
     if (correction) return correction;
+
+    // Skip fuzzy correction if the token is already a known correct word
+    if (_correctWords.has(t)) return t;
 
     for (const [typo, fix] of Object.entries(CORRECTIONS)) {
       if (Math.abs(t.length - typo.length) <= 1 && editDistance(t, typo) <= 1 && t.length >= 3) return fix;

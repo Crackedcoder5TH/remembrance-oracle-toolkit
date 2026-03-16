@@ -8,6 +8,7 @@ const OPCODE_TEXT = 0x1;
 const OPCODE_CLOSE = 0x8;
 const OPCODE_PING = 0x9;
 const OPCODE_PONG = 0xA;
+const MAX_PAYLOAD_SIZE = 16 * 1024 * 1024; // 16 MB max payload to prevent DoS
 
 /**
  * Minimal RFC 6455 WebSocket server using only Node.js built-in modules.
@@ -126,6 +127,13 @@ class WebSocketServer {
         }
         payloadLength = low;
         offset = 10;
+      }
+
+      // Reject payloads exceeding the size limit to prevent DoS
+      if (payloadLength > MAX_PAYLOAD_SIZE) {
+        this._sendClose(socket, 1009);
+        socket.destroy();
+        return Buffer.alloc(0);
       }
 
       const maskSize = isMasked ? 4 : 0;

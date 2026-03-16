@@ -25,7 +25,11 @@ function _deriveKey() {
   // Derive a stable encryption key from the machine's user identity + a fixed salt.
   // This is NOT a substitute for a proper secret manager, but prevents plaintext
   // tokens from sitting in the config file readable by any process.
-  const identity = `${os.hostname()}:${os.userInfo().username}:remembrance-oracle`;
+  let username;
+  try { username = os.userInfo().username; } catch (_) {
+    username = process.env.USER || process.env.USERNAME || 'unknown';
+  }
+  const identity = `${os.hostname()}:${username}:remembrance-oracle`;
   return crypto.scryptSync(identity, 'remembrance-token-salt', 32);
 }
 
@@ -106,7 +110,9 @@ class RemoteOracleClient {
    */
   constructor(baseUrl, options = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
-    this.name = options.name || new URL(baseUrl).hostname;
+    let hostname;
+    try { hostname = new URL(baseUrl).hostname; } catch (_) { hostname = baseUrl; }
+    this.name = options.name || hostname;
     this.token = options.token || null;
     this.timeout = options.timeout || 10000;
     // Wrap request with retry for network resilience
@@ -280,7 +286,9 @@ function ensureDir(dir) {
 function registerRemote(url, options = {}) {
   ensureDir(REMOTES_CONFIG_DIR);
   let config = loadRemotesConfig();
-  const name = options.name || new URL(url).hostname;
+  let hostname;
+  try { hostname = new URL(url).hostname; } catch (_) { hostname = url; }
+  const name = options.name || hostname;
   const encryptedToken = options.token ? _encryptToken(options.token) : null;
   const existing = config.remotes.find(r => r.url === url);
   if (existing) {
@@ -375,8 +383,8 @@ async function federatedRemoteSearch(query, options = {}) {
     if (res.error) errors.push({ remote: res.remote, error: res.error });
 
     for (const p of res.results) {
-      const key = `${p.name}:${p.language}`;
-      if (seen.has(key)) continue;
+      const key = `${p.id || p.name || ''}:${p.language}`;
+      if (key !== ':' && seen.has(key)) continue;
       seen.add(key);
       allResults.push(p);
     }

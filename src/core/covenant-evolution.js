@@ -156,7 +156,7 @@ function promotePrinciple(proposal, rootDir = process.cwd()) {
   const data = loadEvolvedPrinciples(rootDir);
 
   const principle = {
-    id: 100 + data.principles.length + 1, // IDs start at 101 to not conflict with core 15
+    id: Math.max(100, ...data.principles.map(p => p.id || 0)) + 1, // IDs start at 101, always unique
     name: proposal.suggestedName,
     seal: proposal.suggestedSeal,
     category: proposal.category,

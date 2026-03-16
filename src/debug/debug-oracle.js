@@ -43,6 +43,10 @@
 
 const crypto = require('crypto');
 
+function safeParse(str, fallback) {
+  try { return JSON.parse(str || JSON.stringify(fallback)); } catch { return fallback; }
+}
+
 // ─── Quantum Constants ───
 
 const PLANCK_CONFIDENCE = 0.2;          // Minimum observable amplitude (initial state)
@@ -761,7 +765,7 @@ class DebugOracle {
     });
 
     // Propagate entanglement — shift linked patterns
-    const entangledIds = JSON.parse(row.entangled_with || '[]');
+    const entangledIds = safeParse(row.entangled_with, []);
     const delta = resolved ? ENTANGLEMENT_STRENGTH * 0.1 : -ENTANGLEMENT_STRENGTH * 0.05;
     this._propagateEntanglement(entangledIds, delta, id);
 
@@ -957,7 +961,7 @@ class DebugOracle {
       totalResolved += row.times_resolved;
       totalObservations += row.observation_count || 0;
 
-      const entangled = JSON.parse(row.entangled_with || '[]');
+      const entangled = safeParse(row.entangled_with, []);
       entangledPairs += entangled.length;
     }
 
@@ -1065,7 +1069,7 @@ class DebugOracle {
         quantumState: row.quantum_state,
       });
 
-      const entangled = JSON.parse(row.entangled_with || '[]');
+      const entangled = safeParse(row.entangled_with, []);
       for (const linkedId of entangled) {
         graph.edges.push({ from: currentId, to: linkedId });
         walk(linkedId, currentDepth + 1);
@@ -1351,9 +1355,9 @@ class DebugOracle {
       fixCode: row.fix_code,
       fixDescription: row.fix_description,
       language: row.language,
-      tags: JSON.parse(row.tags || '[]'),
+      tags: safeParse(row.tags, []),
       coherencyTotal: row.coherency_total,
-      coherencyScore: JSON.parse(row.coherency_json || '{}'),
+      coherencyScore: safeParse(row.coherency_json, {}),
       timesApplied: row.times_applied,
       timesResolved: row.times_resolved,
       confidence: row.confidence,
@@ -1366,7 +1370,7 @@ class DebugOracle {
       amplitude: row.amplitude || row.confidence || PLANCK_CONFIDENCE,
       phase: row.phase || 0,
       lastObservedAt: row.last_observed_at,
-      entangledWith: JSON.parse(row.entangled_with || '[]'),
+      entangledWith: safeParse(row.entangled_with, []),
       observationCount: row.observation_count || 0,
     };
   }

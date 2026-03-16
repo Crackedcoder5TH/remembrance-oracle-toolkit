@@ -385,7 +385,8 @@ function extractCodeBlock(response, language) {
   if (!response) return null;
 
   // Try language-specific code block
-  const langPattern = new RegExp('```(?:' + (language || '\\w+') + ')?\\s*\\n([\\s\\S]*?)```', 'i');
+  const escapedLang = language ? language.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '\\w+';
+  const langPattern = new RegExp('```(?:' + escapedLang + ')?\\s*\\n([\\s\\S]*?)```', 'i');
   const match = response.match(langPattern);
   if (match) return match[1].trim();
 

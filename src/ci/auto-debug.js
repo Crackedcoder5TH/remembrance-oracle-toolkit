@@ -133,7 +133,7 @@ function captureFeedbackDebug(oracle, id, entry, healResult) {
 
     // Forward the healed version if auto-heal produced one
     if (healResult?.healed && healResult.improvement > 0) {
-      const healedCode = entry?.code; // After heal, entry.code is the healed version
+      const healedCode = healResult.healedCode || healResult.code || entry?.code;
       if (healedCode) {
         const errorMessage = `Auto-heal fix for pattern "${name}" (id: ${id})`;
         const forwardResult = debug.capture({

@@ -35,7 +35,8 @@ module.exports = {
   },
 
   _emit(event) {
-    for (const listener of this._listeners) {
+    const snapshot = [...this._listeners];
+    for (const listener of snapshot) {
       try { listener(event); } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle:emit] listener error:', e.message);
       }

@@ -324,8 +324,8 @@ function formatSwarmResult(result) {
   // Winner
   if (result.winner) {
     lines.push('');
-    lines.push(`Winner: ${result.winner.agent} (score: ${result.winner.score.toFixed(3)})`);
-    lines.push(`Agreement: ${(result.agreement * 100).toFixed(0)}%`);
+    lines.push(`Winner: ${result.winner.agent} (score: ${(result.winner.score ?? 0).toFixed(3)})`);
+    lines.push(`Agreement: ${((result.agreement ?? 0) * 100).toFixed(0)}%`);
 
     if (result.winner.code) {
       lines.push('');

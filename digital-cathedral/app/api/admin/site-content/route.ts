@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "../../../lib/admin-auth";
 import { getSiteContent, setSiteContent } from "../../../lib/site-content";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const authError = verifyAdmin(req);
   if (authError) return authError;

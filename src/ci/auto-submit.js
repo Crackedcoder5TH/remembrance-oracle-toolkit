@@ -262,8 +262,8 @@ function autoSubmit(oracle, baseDir, options = {}) {
  */
 function shouldAutoSubmit(cwd) {
   try {
-    const { execSync } = require('child_process');
-    const changed = execSync('git diff --name-only HEAD~1 HEAD', {
+    const { execFileSync } = require('child_process');
+    const changed = execFileSync('git', ['diff', '--name-only', 'HEAD~1', 'HEAD'], {
       cwd,
       encoding: 'utf-8',
       timeout: 5000,

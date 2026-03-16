@@ -399,7 +399,7 @@ function detectLicenseFromClone(repoUrl) {
 
     // Check out only license files
     try {
-      execSync('git sparse-checkout set LICENSE LICENSE.md COPYING COPYING.md', {
+      execFileSync('git', ['sparse-checkout', 'set', 'LICENSE', 'LICENSE.md', 'COPYING', 'COPYING.md'], {
         cwd: tmpDir, timeout: 5000, stdio: 'pipe', encoding: 'utf-8',
       });
     } catch (e) {

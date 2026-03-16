@@ -172,7 +172,7 @@ function detectTestOutcome(cwd) {
         const stat = fs.statSync(dirPath);
         const ageMs = Date.now() - stat.mtimeMs;
         // If test artifacts are less than 5 minutes old, tests likely just ran
-        if (ageMs < 5 * 60 * 1000) return true; // Presence of coverage = tests passed
+        if (ageMs < 5 * 60 * 1000) return null; // Coverage presence doesn't confirm pass/fail
       }
     }
 

@@ -34,7 +34,7 @@ const CODE_EXTS = /\.(js|ts|py|go|rs|jsx|tsx)$/;
  */
 function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
   try {
-    if (!/^[\w.~^/]+(?:\.\.\.?[\w.~^/]+)?$/.test(range)) throw new Error('Invalid git range');
+    if (!/^[\w.\-~^/]+(?:\.\.\.?[\w.\-~^/]+)?$/.test(range)) throw new Error('Invalid git range');
     const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACM', range], {
       cwd,
       encoding: 'utf-8',
@@ -73,7 +73,7 @@ function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
  */
 function getAddedCode(cwd, file, range = 'HEAD~1..HEAD') {
   try {
-    if (!/^[\w.~^/]+(?:\.\.\.?[\w.~^/]+)?$/.test(range)) throw new Error('Invalid git range');
+    if (!/^[\w.\-~^/]+(?:\.\.\.?[\w.\-~^/]+)?$/.test(range)) throw new Error('Invalid git range');
     const diff = execFileSync('git', ['diff', '-U0', range, '--', file], {
       cwd,
       encoding: 'utf-8',

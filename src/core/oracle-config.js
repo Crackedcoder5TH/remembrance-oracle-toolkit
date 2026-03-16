@@ -123,7 +123,8 @@ function togglePromptTag(state) {
 function applyPromptTag(result) {
   const tag = getPromptTag();
   if (tag && result && typeof result === 'object') {
-    result.promptTag = tag;
+    // Return new object to avoid mutating caller's reference
+    return { ...result, promptTag: tag };
   }
   return result;
 }

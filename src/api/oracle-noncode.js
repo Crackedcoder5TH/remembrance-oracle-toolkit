@@ -88,7 +88,7 @@ function submitNonCode(submission, store, patterns) {
     .digest('hex')
     .slice(0, 16);
 
-  const entry = {
+  let entry = {
     id,
     code: content,                // Stored in 'code' field for compatibility
     language: 'non-code',
@@ -115,7 +115,8 @@ function submitNonCode(submission, store, patterns) {
       coherencyScore,
       testPassed: null,
     });
-    entry.id = stored.id || entry.id;
+    // Create new object with stored ID instead of mutating in place
+    entry = { ...entry, id: stored.id || entry.id };
   } catch (e) {
     return { success: false, error: `Storage failed: ${e.message}` };
   }

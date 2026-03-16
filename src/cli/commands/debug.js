@@ -72,7 +72,8 @@ ${c.bold('Options:')}
       if (!errorMessage) { console.error(c.boldRed('Error:') + ' --error required'); process.exit(1); }
       const fixFile = args.fix;
       if (!fixFile) { console.error(c.boldRed('Error:') + ' --fix required (path to fix code)'); process.exit(1); }
-      const fixCode = fs.readFileSync(path.resolve(fixFile), 'utf-8');
+      const { safePath } = require('../../core/safe-path');
+      const fixCode = fs.readFileSync(safePath(fixFile, process.cwd()), 'utf-8');
       const result = oracle.debugCapture({
         errorMessage,
         stackTrace: args.stack || '',
@@ -252,7 +253,7 @@ ${c.bold('Options:')}
       // Quantum field metrics
       if (stats.quantumField) {
         const qf = stats.quantumField;
-        console.log(`\n  ${c.boldMagenta || c.bold}${'Quantum Field:'}`);
+        console.log(`\n  ${(c.boldMagenta || c.bold)('Quantum Field:')}`);
         console.log(`    |superposition\u27E9  ${c.magenta(String(qf.superposition))}`);
         console.log(`    |collapsed\u27E9      ${c.green(String(qf.collapsed))}`);
         console.log(`    |decohered\u27E9      ${c.dim(String(qf.decohered))}`);

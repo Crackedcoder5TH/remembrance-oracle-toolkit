@@ -185,7 +185,7 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
     let finalContent = content;
     if (args.file) {
       try {
-        finalContent = fs.readFileSync(path.resolve(args.file), 'utf-8');
+        finalContent = fs.readFileSync(safePath(args.file, process.cwd()), 'utf-8');
       } catch (e) {
         console.error(c.boldRed('Error:') + ` Could not read file: ${e.message}`);
         process.exit(1);

@@ -294,7 +294,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['remote'] = (args) => {
+  handlers['remote'] = async (args) => {
     const sub = args._sub;
     if (sub === 'add') {
       const url = args._positional[1] || args.url;
@@ -316,36 +316,34 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     }
     if (sub === 'health') {
       const { checkRemoteHealth } = require('../../cloud/client');
-      checkRemoteHealth().then(results => {
-        if (results.length === 0) { console.log(c.dim('No remotes configured.')); return; }
-        console.log(c.boldCyan(`Remote Health Check (${results.length} remotes):\n`));
-        for (const r of results) {
-          const status = r.online ? c.boldGreen('ONLINE') : c.boldRed('OFFLINE');
-          console.log(`  ${r.online ? c.green('*') : c.red('x')} ${c.bold(r.name)} [${status}] ${c.dim(r.url)} (${r.latencyMs}ms)`);
-        }
-      });
+      const results = await checkRemoteHealth();
+      if (results.length === 0) { console.log(c.dim('No remotes configured.')); return; }
+      console.log(c.boldCyan(`Remote Health Check (${results.length} remotes):\n`));
+      for (const r of results) {
+        const status = r.online ? c.boldGreen('ONLINE') : c.boldRed('OFFLINE');
+        console.log(`  ${r.online ? c.green('*') : c.red('x')} ${c.bold(r.name)} [${status}] ${c.dim(r.url)} (${r.latencyMs}ms)`);
+      }
       return;
     }
     if (sub === 'search') {
       const desc = args.description || args._positional.slice(1).join(' ');
       if (!desc) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle remote search')} "<query>" [--language <lang>]`); process.exit(1); }
-      oracle.remoteSearch(desc, { language: args.language, limit: parseInt(args.limit, 10) || 20 }).then(result => {
-        console.log(c.boldCyan(`Remote federated search: "${desc}"\n`));
-        if (result.remotes.length > 0) {
-          for (const r of result.remotes) {
-            const status = r.error ? c.red(`error: ${r.error}`) : c.green(`${r.count} results`);
-            console.log(`  ${c.bold(r.name)} — ${status}`);
-          }
-          console.log('');
+      const result = await oracle.remoteSearch(desc, { language: args.language, limit: parseInt(args.limit, 10) || 20 });
+      console.log(c.boldCyan(`Remote federated search: "${desc}"\n`));
+      if (result.remotes.length > 0) {
+        for (const r of result.remotes) {
+          const status = r.error ? c.red(`error: ${r.error}`) : c.green(`${r.count} results`);
+          console.log(`  ${c.bold(r.name)} — ${status}`);
         }
-        if (result.results.length === 0) {
-          console.log(c.dim('  No remote matches found.'));
-        } else {
-          for (const p of result.results) {
-            console.log(`  [${c.blue(p._remote || 'remote')}] ${c.bold(p.name)} (${p.language}) — coherency: ${colorScore((p.coherency || 0).toFixed(3))}`);
-          }
+        console.log('');
+      }
+      if (result.results.length === 0) {
+        console.log(c.dim('  No remote matches found.'));
+      } else {
+        for (const p of result.results) {
+          console.log(`  [${c.blue(p._remote || 'remote')}] ${c.bold(p.name)} (${p.language}) — coherency: ${colorScore((p.coherency || 0).toFixed(3))}`);
         }
-      });
+      }
       return;
     }
     const { listRemotes } = require('../../cloud/client');
@@ -360,14 +358,15 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
-  handlers['cloud'] = (args) => {
+  handlers['cloud'] = async (args) => {
     const { CloudSyncServer } = require('../../cloud/server');
     const sub = args._sub;
     if (sub === 'start' || sub === 'serve') {
       const port = validatePort(args.port, 3579);
       const host = args.host || '0.0.0.0';
       const server = new CloudSyncServer({ oracle, port, secret: args.secret, rateLimit: parseInt(args.rateLimit, 10) || 120 });
-      server.start().then((p) => {
+      const p = await server.start();
+      {
         console.log(`\n${c.boldGreen('Oracle Cloud Server')} running on ${c.cyan('http://' + host + ':' + p)}\n`);
         console.log(`  ${c.bold('API Endpoints:')}`);
         console.log(`    ${c.cyan('GET  /api/health')}       — Server health + pattern count`);
@@ -389,26 +388,25 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
         console.log(`    ${c.cyan('GET  /api/analytics')}    — Analytics report`);
         console.log(`    ${c.cyan('WS   /ws')}               — Real-time sync channel`);
         console.log(`\n  ${c.dim('Other clients can connect with:')} ${c.cyan('oracle remote add http://<ip>:' + p)}`);
-      });
+      }
       return;
     }
     if (sub === 'status') {
       const { checkRemoteHealth } = require('../../cloud/client');
       console.log(`${c.bold('Cloud Server Status')}\n`);
-      checkRemoteHealth().then((results) => {
-        if (results.length === 0) {
-          console.log(`  ${c.dim('No remote servers configured.')}`);
-          console.log(`  ${c.dim('Add one with:')} ${c.cyan('oracle remote add <url>')}`);
-          return;
+      const results = await checkRemoteHealth();
+      if (results.length === 0) {
+        console.log(`  ${c.dim('No remote servers configured.')}`);
+        console.log(`  ${c.dim('Add one with:')} ${c.cyan('oracle remote add <url>')}`);
+        return;
+      }
+      for (const r of results) {
+        const status = r.online ? c.boldGreen('ONLINE') : c.red('OFFLINE');
+        console.log(`  ${status} ${c.bold(r.name)} (${c.dim(r.url)})`);
+        if (r.online) {
+          console.log(`    Patterns: ${r.patterns || '?'} | Latency: ${r.latencyMs}ms`);
         }
-        for (const r of results) {
-          const status = r.online ? c.boldGreen('ONLINE') : c.red('OFFLINE');
-          console.log(`  ${status} ${c.bold(r.name)} (${c.dim(r.url)})`);
-          if (r.online) {
-            console.log(`    Patterns: ${r.patterns || '?'} | Latency: ${r.latencyMs}ms`);
-          }
-        }
-      });
+      }
       return;
     }
     console.log(`${c.bold('Oracle Cloud Server')}\n`);

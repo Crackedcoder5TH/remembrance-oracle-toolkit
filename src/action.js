@@ -12,6 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('./core/safe-path');
 
 // Lightweight core-compatible action runner (no @actions/core dependency needed)
 function getInput(name) {
@@ -37,9 +38,9 @@ async function run() {
     if (command === 'submit') {
       const filePath = getInput('file');
       if (!filePath) throw new Error('Input "file" is required for submit');
-      const code = fs.readFileSync(path.resolve(filePath), 'utf-8');
+      const code = fs.readFileSync(safePath(filePath, process.cwd()), 'utf-8');
       const testFile = getInput('test-file');
-      const testCode = testFile ? fs.readFileSync(path.resolve(testFile), 'utf-8') : undefined;
+      const testCode = testFile ? fs.readFileSync(safePath(testFile, process.cwd()), 'utf-8') : undefined;
 
       const result = oracle.submit(code, {
         description: getInput('description'),
@@ -82,9 +83,9 @@ async function run() {
     else if (command === 'validate') {
       const filePath = getInput('file');
       if (!filePath) throw new Error('Input "file" is required for validate');
-      const code = fs.readFileSync(path.resolve(filePath), 'utf-8');
+      const code = fs.readFileSync(safePath(filePath, process.cwd()), 'utf-8');
       const testFile = getInput('test-file');
-      const testCode = testFile ? fs.readFileSync(path.resolve(testFile), 'utf-8') : undefined;
+      const testCode = testFile ? fs.readFileSync(safePath(testFile, process.cwd()), 'utf-8') : undefined;
 
       const { validateCode } = require('./core/validator');
       const result = validateCode(code, {
@@ -173,7 +174,7 @@ async function run() {
     else if (command === 'covenant') {
       const filePath = getInput('file');
       if (!filePath) throw new Error('Input "file" is required for covenant');
-      const code = fs.readFileSync(path.resolve(filePath), 'utf-8');
+      const code = fs.readFileSync(safePath(filePath, process.cwd()), 'utf-8');
       const { checkCovenant } = require('./core/covenant');
       const result = checkCovenant(code);
       setOutput('result', result);
@@ -190,7 +191,7 @@ async function run() {
     else if (command === 'security-scan') {
       const filePath = getInput('file');
       if (!filePath) throw new Error('Input "file" is required for security-scan');
-      const code = fs.readFileSync(path.resolve(filePath), 'utf-8');
+      const code = fs.readFileSync(safePath(filePath, process.cwd()), 'utf-8');
       const { checkCovenant } = require('./core/covenant');
       const result = checkCovenant(code);
       setOutput('result', result);

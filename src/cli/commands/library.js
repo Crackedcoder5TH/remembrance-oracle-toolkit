@@ -341,6 +341,60 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     }
   };
 
+  handlers['tournament'] = (args) => {
+    const maxPatterns = parseInt(args['max-patterns'], 10) || 999999;
+    const candidatesPerRound = parseInt(args['candidates-per-round'], 10) || 3;
+    const rounds = parseInt(args['rounds'], 10) || 3;
+    const minWinnerCoherency = parseFloat(args['min-coherency']) || 0.6;
+    const loserHarvestFloor = parseFloat(args['harvest-floor']) || 0.5;
+
+    console.log(c.boldCyan('Tournament Generation') + ` — ${candidatesPerRound} contenders × ${rounds} rounds, best advances\n`);
+    oracle.recycler.verbose = true;
+
+    const report = oracle.recycler.tournamentGenerate({
+      maxPatterns, candidatesPerRound, rounds, minWinnerCoherency, loserHarvestFloor,
+    });
+
+    console.log('\n' + c.boldCyan('─'.repeat(50)));
+    console.log(`Patterns processed: ${c.bold(String(report.patternsProcessed))}`);
+    console.log(`Total generated:    ${c.bold(String(report.totalGenerated))}`);
+    console.log(`Winners stored:     ${c.boldGreen(String(report.winners.length))}`);
+    console.log(`Losers harvested:   ${c.yellow(String(report.losersHarvested))}`);
+    console.log(`Losers discarded:   ${c.dim(String(report.losersDiscarded))}`);
+    console.log(`Cascade:            ${report.cascadeBoost}x  |  ξ_global: ${report.xiGlobal}`);
+
+    if (report.winners.length > 0) {
+      console.log('\n' + c.boldGreen('Winners:'));
+      for (const w of report.winners) {
+        console.log(`  ${c.green('★')} ${c.bold(w.name)} coherency: ${colorScore(w.coherency)} ← ${c.dim(w.source)}`);
+      }
+    }
+
+    for (const rd of report.roundDetails) {
+      if (rd.rounds.length > 0) {
+        console.log(`\n${c.cyan(rd.source)}:`);
+        for (const r of rd.rounds) {
+          const loserStr = r.losers.map(l => `${l.name}(${l.coherency.toFixed(3)})`).join(', ');
+          console.log(`  Round ${r.round}: winner=${c.bold(r.winner.name)}(${colorScore(r.winner.coherency)}) losers=[${c.dim(loserStr)}]`);
+        }
+      }
+    }
+
+    const cStats = oracle.candidateStats();
+    const pStats = oracle.patternStats();
+    console.log(`\nLibrary:      ${c.bold(String(pStats.totalPatterns))} proven + ${c.bold(String(cStats.totalCandidates))} candidates`);
+    console.log(c.boldCyan('─'.repeat(50)));
+
+    // Auto-promote any tournament winners/losers that have test code
+    const promo = oracle.autoPromote();
+    if (promo.promoted > 0) {
+      console.log(`\n${c.boldGreen('Auto-promoted:')} ${promo.promoted} candidate(s) → proven`);
+      for (const d of promo.details.filter(d => d.status === 'promoted')) {
+        console.log(`  ${c.green('+')} ${c.bold(d.name)} coherency: ${colorScore(d.coherency)}`);
+      }
+    }
+  };
+
   handlers['promote'] = (args) => {
     const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle promote')} <candidate-id> [--test <test-file>]`); process.exit(1); }

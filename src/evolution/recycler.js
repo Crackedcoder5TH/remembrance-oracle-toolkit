@@ -38,6 +38,7 @@ const {
   APPROACH_SWAP,
   ITERATIVE_REFINE,
   CANDIDATE_MIN_COHERENCY,
+  TOURNAMENT,
 } = require('../constants/thresholds');
 const {
   shouldSkipForGeneration: _shouldSkipForGeneration,
@@ -1248,6 +1249,277 @@ class PatternRecycler {
     }
 
     return report;
+  }
+
+  // ─── Tournament Generation ───
+
+  /**
+   * Tournament generation: competitive selection for the best candidates.
+   *
+   * For each source pattern:
+   *   1. Generate N candidates per round (default 3)
+   *   2. Score all candidates by coherency
+   *   3. Keep only the highest-scoring winner — advance to next round
+   *   4. Repeat for R rounds (default 3) — each round refines the previous winner
+   *   5. The final winner is stored as a candidate
+   *   6. All losers above LOSER_HARVEST_FLOOR are harvested into the candidate pool
+   *
+   * This produces higher-quality candidates through competitive pressure.
+   *
+   * @param {object} [options]
+   * @param {number} [options.maxPatterns] - Max source patterns to process
+   * @param {number} [options.candidatesPerRound] - Variants generated per round
+   * @param {number} [options.rounds] - Number of tournament rounds
+   * @param {number} [options.minWinnerCoherency] - Minimum coherency for winner to advance
+   * @param {number} [options.loserHarvestFloor] - Minimum coherency for losers to be harvested
+   * @returns {object} Tournament report
+   */
+  tournamentGenerate(options = {}) {
+    const {
+      maxPatterns = Infinity,
+      candidatesPerRound = TOURNAMENT.CANDIDATES_PER_ROUND,
+      rounds = TOURNAMENT.ROUNDS,
+      minWinnerCoherency = TOURNAMENT.MIN_WINNER_COHERENCY,
+      loserHarvestFloor = TOURNAMENT.LOSER_HARVEST_FLOOR,
+    } = options;
+
+    this._updateGlobalCoherence();
+
+    const report = {
+      patternsProcessed: 0,
+      totalGenerated: 0,
+      winners: [],
+      losersHarvested: 0,
+      losersDiscarded: 0,
+      roundDetails: [],
+      cascadeBoost: this._cascadeBoost,
+      xiGlobal: this._xiGlobal,
+    };
+
+    const proven = this.oracle.patterns.getAll();
+    const existingCandidates = this.oracle.patterns.getCandidates();
+    const knownNames = new Set([
+      ...proven.map(p => p.name),
+      ...existingCandidates.map(c => c.name),
+    ]);
+
+    const toProcess = proven.slice(0, maxPatterns);
+
+    for (const pattern of toProcess) {
+      if (_shouldSkipForGeneration(pattern.code)) continue;
+      if (pattern.language !== 'javascript') continue;
+
+      report.patternsProcessed++;
+      const patternRounds = [];
+      let currentSeed = pattern;
+
+      for (let round = 1; round <= rounds; round++) {
+        const contenders = this._generateTournamentContenders(currentSeed, candidatesPerRound, knownNames);
+        report.totalGenerated += contenders.length;
+
+        if (contenders.length === 0) break;
+
+        // Score all contenders
+        const scored = contenders.map(c => {
+          const coherency = computeCoherencyScore(c.code, {
+            language: c.language,
+            testPassed: null,
+            historicalReliability: 0.5,
+          });
+          return { ...c, coherencyTotal: coherency.total, coherencyScore: coherency };
+        });
+
+        // Sort by coherency descending — best first
+        scored.sort((a, b) => b.coherencyTotal - a.coherencyTotal);
+
+        const winner = scored[0];
+        const losers = scored.slice(1);
+
+        patternRounds.push({
+          round,
+          winner: { name: winner.name, coherency: winner.coherencyTotal },
+          losers: losers.map(l => ({ name: l.name, coherency: l.coherencyTotal })),
+        });
+
+        // Harvest losers above floor into candidate pool
+        for (const loser of losers) {
+          if (loser.coherencyTotal >= loserHarvestFloor && !knownNames.has(loser.name)) {
+            this._storeTournamentCandidate(loser, knownNames, ['tournament-loser', `round-${round}`]);
+            report.losersHarvested++;
+          } else {
+            report.losersDiscarded++;
+          }
+        }
+
+        // Winner must meet minimum coherency to advance
+        if (winner.coherencyTotal < minWinnerCoherency) break;
+
+        // Winner becomes the seed for the next round (refinement cascade)
+        currentSeed = {
+          ...pattern,
+          name: winner.name,
+          code: winner.code,
+          language: winner.language,
+          description: winner.description,
+        };
+      }
+
+      // Store final winner (the last round's best)
+      if (currentSeed !== pattern && !knownNames.has(currentSeed.name)) {
+        const finalCoherency = computeCoherencyScore(currentSeed.code, {
+          language: currentSeed.language,
+          testPassed: null,
+          historicalReliability: 0.5,
+        });
+
+        if (finalCoherency.total >= minWinnerCoherency) {
+          this._storeTournamentCandidate(
+            { ...currentSeed, coherencyTotal: finalCoherency.total, coherencyScore: finalCoherency },
+            knownNames,
+            ['tournament-winner'],
+          );
+          report.winners.push({ name: currentSeed.name, coherency: finalCoherency.total, source: pattern.name });
+        }
+      }
+
+      report.roundDetails.push({ source: pattern.name, rounds: patternRounds });
+    }
+
+    return report;
+  }
+
+  /**
+   * Generate N contender variants for a tournament round.
+   * Uses different generation methods to create diversity.
+   */
+  _generateTournamentContenders(seed, count, knownNames) {
+    const contenders = [];
+    const methods = ['iterative-refine', 'approach-swap', 'variant'];
+
+    for (let i = 0; i < count; i++) {
+      const method = methods[i % methods.length];
+      const suffix = `-t${Date.now().toString(36).slice(-4)}${i}`;
+      let candidate = null;
+
+      if (method === 'iterative-refine') {
+        const reflection = reflectionLoop(seed.code, {
+          language: seed.language,
+          maxLoops: ITERATIVE_REFINE.REFINE_LOOPS,
+          targetCoherence: ITERATIVE_REFINE.TARGET_COHERENCE,
+          description: seed.description,
+          tags: seed.tags,
+          cascadeBoost: this._cascadeBoost,
+        });
+        if (reflection.code.trim() !== seed.code.trim()) {
+          candidate = {
+            name: `${seed.name}-refined${suffix}`,
+            code: reflection.code,
+            language: seed.language,
+            patternType: seed.patternType,
+            description: `${seed.description} (tournament-refined)`,
+            tags: [...(seed.tags || []), 'tournament'],
+            testCode: seed.testCode,
+            parentPattern: seed.name,
+            method: 'tournament-refine',
+          };
+        }
+      } else if (method === 'approach-swap' && seed.language === 'javascript') {
+        const alts = this._generateApproachAlternatives(seed);
+        if (alts.length > 0) {
+          const alt = alts[0];
+          candidate = {
+            name: `${alt.name}${suffix}`,
+            code: alt.code,
+            language: alt.language,
+            patternType: alt.patternType,
+            description: alt.description,
+            tags: [...(alt.tags || []), 'tournament'],
+            testCode: alt.testCode,
+            parentPattern: seed.name,
+            method: 'tournament-approach',
+          };
+        }
+      } else if (method === 'variant' && seed.language === 'javascript') {
+        const langs = this.variantLanguages;
+        const lang = langs[i % langs.length];
+        const variant = this._transpileToLanguage(seed, lang);
+        if (variant) {
+          candidate = {
+            name: `${variant.name}${suffix}`,
+            code: variant.code,
+            language: variant.language,
+            patternType: variant.patternType,
+            description: variant.description,
+            tags: [...(variant.tags || []), 'tournament'],
+            testCode: variant.testCode,
+            parentPattern: seed.name,
+            method: 'tournament-variant',
+          };
+        }
+      }
+
+      // Fallback: if method didn't produce, try a basic refine with different seed
+      if (!candidate) {
+        const reflection = reflectionLoop(seed.code, {
+          language: seed.language,
+          maxLoops: 1,
+          targetCoherence: 0.85,
+          description: seed.description,
+          cascadeBoost: this._cascadeBoost,
+        });
+        if (reflection.code.trim() !== seed.code.trim()) {
+          candidate = {
+            name: `${seed.name}-alt${suffix}`,
+            code: reflection.code,
+            language: seed.language,
+            patternType: seed.patternType,
+            description: `${seed.description} (tournament-alt)`,
+            tags: [...(seed.tags || []), 'tournament'],
+            testCode: seed.testCode,
+            parentPattern: seed.name,
+            method: 'tournament-alt',
+          };
+        }
+      }
+
+      if (candidate && !knownNames.has(candidate.name)) {
+        // Basic viability check
+        const code = (candidate.code || '').trim();
+        if (code && code.length >= 20) {
+          const { covenantCheck } = require('../core/covenant');
+          const check = covenantCheck(candidate.code);
+          if (check.sealed) {
+            contenders.push(candidate);
+          }
+        }
+      }
+    }
+
+    return contenders;
+  }
+
+  /**
+   * Store a tournament candidate (winner or harvested loser) into the candidate pool.
+   */
+  _storeTournamentCandidate(candidate, knownNames, extraTags = []) {
+    if (knownNames.has(candidate.name)) return false;
+
+    this.oracle.patterns.addCandidate({
+      name: candidate.name,
+      code: candidate.code,
+      language: candidate.language,
+      patternType: candidate.patternType,
+      description: candidate.description,
+      tags: [...(candidate.tags || []), 'candidate', ...extraTags],
+      coherencyTotal: candidate.coherencyTotal,
+      coherencyScore: candidate.coherencyScore,
+      testCode: candidate.testCode,
+      parentPattern: candidate.parentPattern,
+      generationMethod: candidate.method,
+    });
+
+    knownNames.add(candidate.name);
+    return true;
   }
 
   /**

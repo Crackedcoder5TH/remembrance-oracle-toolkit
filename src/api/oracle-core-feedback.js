@@ -1,10 +1,61 @@
 /**
- * Oracle Core — Feedback and auto-heal.
- * Records usage feedback and triggers automatic healing for failing patterns.
+ * Oracle Core — Feedback, auto-heal, and compounding growth.
+ * Records usage feedback, triggers automatic healing for failing patterns,
+ * and spawns new candidates from successful patterns (compounding).
  */
 
 const { auditLog } = require('../core/audit-logger');
 const { captureFeedbackDebug } = require('../ci/auto-debug');
+
+/**
+ * Trigger compounding: spawn new candidates from a pattern that just succeeded.
+ * Only compounds when the pattern has enough successful uses to prove reliability.
+ * @param {object} oracle - The oracle instance (this)
+ * @param {string} id - Pattern ID
+ * @param {object} updated - Updated pattern/entry with usage stats
+ * @param {string} source - 'feedback' or 'pattern-feedback'
+ */
+function _tryCompound(oracle, id, updated, source) {
+  try {
+    const { COMPOUND } = require('../constants/thresholds');
+    const successCount = updated?.successCount ?? updated?.reliability?.successCount ?? 0;
+    const usageCount = updated?.usageCount ?? updated?.reliability?.usageCount ?? 0;
+    const reliability = updated?.reliability?.historicalScore ?? (usageCount > 0 ? successCount / usageCount : 0);
+
+    // Only compound if pattern has enough successful uses and high reliability
+    if (successCount < COMPOUND.MIN_SUCCESSES || reliability < COMPOUND.MIN_RELIABILITY) return null;
+
+    // Only compound on every Nth success to avoid flooding
+    if (successCount % COMPOUND.COMPOUND_EVERY !== 0) return null;
+
+    const { PatternRecycler } = require('../evolution/recycler');
+    const recycler = new PatternRecycler(oracle);
+
+    // Resolve the full pattern object
+    let pattern = null;
+    if (oracle.patterns._sqlite) {
+      pattern = oracle.patterns._sqlite.getPattern(id);
+    }
+    if (!pattern) {
+      pattern = oracle.patterns.getAll().find(p => p.id === id);
+    }
+    if (!pattern || !pattern.code) return null;
+
+    const report = recycler.generateFromPattern(pattern, {
+      methods: ['variant', 'iterative-refine'],
+    });
+
+    if (report.stored > 0) {
+      oracle._emit?.({ type: 'compound_growth', id, source, stored: report.stored, successCount });
+      auditLog('compound_growth', { id, source, stored: report.stored, successCount });
+    }
+
+    return report;
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn(`[oracle:feedback] compounding failed for ${id}:`, e?.message || e);
+    return null;
+  }
+}
 
 module.exports = {
   /**
@@ -67,8 +118,14 @@ module.exports = {
       }
     }
 
-    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated?.reliability?.historicalScore ?? null, healed: !!healResult?.healed } });
-    return { success: true, newReliability: updated?.reliability?.historicalScore ?? null, healResult };
+    // Compounding: spawn new candidates from patterns that keep succeeding
+    let compoundResult = null;
+    if (succeeded) {
+      compoundResult = _tryCompound(this, id, updated, 'feedback');
+    }
+
+    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated?.reliability?.historicalScore ?? null, healed: !!healResult?.healed, compounded: compoundResult?.stored ?? 0 } });
+    return { success: true, newReliability: updated?.reliability?.historicalScore ?? null, healResult, compoundResult };
   },
 
   /**
@@ -121,7 +178,13 @@ module.exports = {
       }
     }
 
-    auditLog('pattern_feedback', { id, success: succeeded, meta: { usageCount: updated.usageCount, healed: !!healResult?.healed } });
-    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount, healResult };
+    // Compounding: spawn new candidates from patterns that keep succeeding
+    let compoundResult = null;
+    if (succeeded) {
+      compoundResult = _tryCompound(this, id, updated, 'pattern-feedback');
+    }
+
+    auditLog('pattern_feedback', { id, success: succeeded, meta: { usageCount: updated.usageCount, healed: !!healResult?.healed, compounded: compoundResult?.stored ?? 0 } });
+    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount, healResult, compoundResult };
   },
 };

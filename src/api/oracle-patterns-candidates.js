@@ -217,6 +217,7 @@ module.exports = {
   recycle(options = {}) { return this.recycler.recycleFailed(options); },
   processSeeds(seeds, options = {}) { return this.recycler.processSeeds(seeds, options); },
   generateCandidates(options = {}) { return this.recycler.generateCandidates(options); },
+  tournamentGenerate(options = {}) { return this.recycler.tournamentGenerate(options); },
   candidates(filters = {}) { return this.patterns.getCandidates(filters); },
   candidateStats() { return this.patterns.candidateSummary(); },
   promote(candidateId, testCode) { return this.recycler.promoteWithProof(candidateId, testCode); },

@@ -159,7 +159,7 @@ const DEFAULT_VETERAN_STORY = [
   "Too many of us were left in the dark. That\u2019s why I created this platform.",
   "My mission is simple: to make sure every service member and their families finally get clear, honest information so they can make the best decisions for the people they love.",
   "When you request a review, we\u2019ll connect you with trusted, independent, licensed professionals who truly understand the unique needs of military families. No pressure. Just real guidance and options that actually fit your life.",
-  "Because the service we gave our country doesn\u2019t end when we take the uniform off \u2014 and neither should the protection we give our families. \uD83C\uDDFA\uD83C\uDDF8",
+  "Because the service we gave our country doesn\u2019t end when we take the uniform off, and neither should the protection we give our families.",
 ].join("\n");
 
 export default function HomePage() {
@@ -301,7 +301,7 @@ export default function HomePage() {
           }
         />
 
-        <div className="text-sm leading-relaxed max-w-xl mx-auto">
+        <div className="text-sm leading-relaxed max-w-xl mx-auto text-center">
           <div className="metallic-gold">
             {veteranStory.split("\n").filter(Boolean).map((para, i) => (
               <p key={i} className="mb-4 last:mb-0">{para}</p>

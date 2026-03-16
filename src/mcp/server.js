@@ -84,6 +84,16 @@ class MCPServer {
     if (this._cleanupTimer.unref) this._cleanupTimer.unref();
   }
 
+  /**
+   * Stop the cleanup timer to allow garbage collection.
+   */
+  stop() {
+    if (this._cleanupTimer) {
+      clearInterval(this._cleanupTimer);
+      this._cleanupTimer = null;
+    }
+  }
+
   _cleanupCallLog() {
     const now = Date.now();
     for (const [tool, timestamps] of this._callLog) {

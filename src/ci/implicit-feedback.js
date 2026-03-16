@@ -156,7 +156,8 @@ function detectTestOutcome(cwd) {
     const pkgPath = path.join(cwd, 'package.json');
     if (!fs.existsSync(pkgPath)) return null;
 
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+    let pkg;
+    try { pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')); } catch (e) { return null; }
     if (!pkg.scripts || !pkg.scripts.test) return null;
 
     // Don't actually run tests in the hook — too slow and risky.

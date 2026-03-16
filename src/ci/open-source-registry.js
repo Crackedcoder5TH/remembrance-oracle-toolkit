@@ -300,7 +300,8 @@ function discoverReposSync(query, options = {}) {
       apiUrl,
     ], { timeout: 20000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
 
-    const json = JSON.parse(response);
+    let json;
+    try { json = JSON.parse(response); } catch (e) { return []; }
     if (!json.items) return [];
 
     return json.items.slice(0, limit).map(item => ({

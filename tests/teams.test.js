@@ -199,10 +199,10 @@ describe('TeamManager', () => {
       );
     });
 
-    it('validates SSO token', () => {
+    it('rejects SSO token (validation not implemented)', () => {
       tm.registerSSOProvider(orgId, ownerId, { type: 'oidc', issuer: 'test' });
       const result = tm.validateSSOToken(orgId, 'fake-token');
-      assert.ok(result.valid);
+      assert.equal(result, null);
     });
 
     it('returns null for unconfigured org', () => {

@@ -286,8 +286,9 @@ class TeamManager {
   validateSSOToken(orgId, ssoToken) {
     const config = this._ssoProviders.get(orgId);
     if (!config) return null;
-    // Placeholder — in production, verify JWT against IdP's JWKS
-    return { valid: true, orgId, provider: config.type };
+    // SSO validation is not yet implemented — reject all tokens by default
+    if (process.env.ORACLE_DEBUG) console.warn('[teams:validateSSOToken] SSO validation not implemented — rejecting token');
+    return null;
   }
 
   // ─── Audit Log ───

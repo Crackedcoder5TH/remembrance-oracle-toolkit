@@ -79,10 +79,15 @@ function verifyPassword(password, salt, storedHash) {
   const candidateHash = derived.toString('hex');
   // Constant-time comparison to prevent timing attacks
   if (candidateHash.length !== storedHash.length) return false;
-  return crypto.timingSafeEqual(
-    Buffer.from(candidateHash, 'hex'),
-    Buffer.from(storedHash, 'hex')
-  );
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(candidateHash, 'hex'),
+      Buffer.from(storedHash, 'hex')
+    );
+  } catch (_) {
+    // Buffer length mismatch (e.g. corrupted storedHash with non-hex chars)
+    return false;
+  }
 }
 
 // ─── AuthManager ───
@@ -435,9 +440,10 @@ function authMiddleware(authManager) {
         const scheme = parts[0];
         const credential = parts[1];
 
-        if (scheme === 'Bearer') {
+        const schemeLower = scheme.toLowerCase();
+        if (schemeLower === 'bearer') {
           user = authManager.validateToken(credential);
-        } else if (scheme === 'ApiKey') {
+        } else if (schemeLower === 'apikey') {
           user = authManager.validateApiKey(credential);
         }
       }

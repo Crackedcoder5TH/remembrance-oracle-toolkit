@@ -21,7 +21,6 @@ import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
 import { TrustSignals } from "./protect/components/trust-signals";
 import { ImageUpload } from "./components/image-upload";
-import { useIsAdmin } from "./protect/hooks/use-is-admin";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
 
 const US_STATES = [
@@ -163,7 +162,6 @@ const DEFAULT_VETERAN_STORY = [
 ].join("\n");
 
 export default function HomePage() {
-  const isAdmin = useIsAdmin();
   const utm = useUtmTracking();
 
   // Fetch editable veteran story from API
@@ -285,11 +283,11 @@ export default function HomePage() {
           Dedicated to Serving Those Who Served.
         </h2>
 
-        {/* Veteran group photo — uploadable when admin */}
+        {/* Veteran group photo — display only (upload via admin portal) */}
         <ImageUpload
           slot="veteran-group"
           alt="Military service members group photo"
-          editable={isAdmin}
+          editable={false}
           className="w-full max-w-xl mx-auto mb-8 rounded-lg bg-[var(--bg-surface)] border border-teal-cathedral/20 flex items-center justify-center overflow-hidden"
           imgClassName="w-full h-auto object-cover rounded-lg"
           fallback={

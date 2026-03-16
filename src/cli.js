@@ -37,6 +37,7 @@ const { registerAdminCommands } = require('./cli/commands/admin');
 const { registerSelfManageCommands } = require('./cli/commands/self-manage');
 const { registerSwarmCommands } = require('./cli/commands/swarm');
 const { registerReflectorCommands } = require('./cli/commands/reflector');
+const { registerChromaDBCommands } = require('./cli/commands/chromadb');
 
 const oracle = new RemembranceOracle({ autoSync: true });
 
@@ -149,6 +150,7 @@ async function main() {
   registerSelfManageCommands(handlers, context);
   registerSwarmCommands(handlers, context);
   registerReflectorCommands(handlers, context);
+  registerChromaDBCommands(handlers, context);
 
   // Check for deprecated commands and warn
   let effectiveCmd = cmd;

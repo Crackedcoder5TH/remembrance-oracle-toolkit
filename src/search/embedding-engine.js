@@ -228,6 +228,18 @@ class EmbeddingEngine {
     this._tier = 'builtin'; // Current active tier
     this._idfWeights = null; // Lazily computed TF-IDF corpus weights
     this._corpusSize = 0;    // Number of documents in last IDF build
+
+    // ChromaDB bridge (Tier 0 — highest quality when available)
+    this._chromadb = null;
+    this._chromadbAvailable = null;
+    if (options.enableChromaDB !== false) {
+      try {
+        const { ChromaDBBridge } = require('./chromadb/bridge');
+        this._chromadb = new ChromaDBBridge(options.chromadb || {});
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine] ChromaDB bridge not available:', e?.message || e);
+      }
+    }
   }
 
   /**
@@ -256,9 +268,24 @@ class EmbeddingEngine {
 
   /**
    * Detect the best available embedding tier.
-   * @returns {Promise<string>} 'ollama' | 'plugin' | 'builtin'
+   * @returns {Promise<string>} 'chromadb' | 'ollama' | 'plugin' | 'builtin'
    */
   async detectTier() {
+    // Tier 0: ChromaDB (sentence-transformers — 384D dense embeddings)
+    if (this._chromadb) {
+      try {
+        const available = await this._chromadb.isAvailable();
+        if (available) {
+          this._chromadbAvailable = true;
+          this._tier = 'chromadb';
+          return 'chromadb';
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:detectTier] ChromaDB check failed:', e?.message || e);
+      }
+      this._chromadbAvailable = false;
+    }
+
     // Check for plugin-provided embedding providers
     if (this._searchRegistry) {
       const providers = this._searchRegistry.list().filter(p => p.type === 'embedding');
@@ -280,6 +307,14 @@ class EmbeddingEngine {
 
     this._tier = 'builtin';
     return 'builtin';
+  }
+
+  /**
+   * Get the ChromaDB bridge instance (if available).
+   * @returns {ChromaDBBridge|null}
+   */
+  get chromadb() {
+    return this._chromadb;
   }
 
   /**
@@ -432,6 +467,7 @@ class EmbeddingEngine {
       tier: this._tier,
       cacheSize: this._cache.size,
       maxCache: this._maxCache,
+      chromadbAvailable: this._chromadbAvailable,
       ollamaAvailable: this._ollamaAvailable,
       ollamaModel: this._ollamaModel,
       pluginProviders: this._searchRegistry ? this._searchRegistry.list().filter(p => p.type === 'embedding').length : 0,

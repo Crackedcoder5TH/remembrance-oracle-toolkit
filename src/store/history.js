@@ -182,7 +182,7 @@ class VerifiedHistoryStore {
 
   _addJSON(entry) {
     const data = this._readJSON();
-    const id = this._hash(entry.code + Date.now().toString());
+    const id = this._hash(entry.code + Date.now().toString() + Math.random().toString());
     const record = {
       id,
       code: entry.code,
@@ -234,8 +234,10 @@ class VerifiedHistoryStore {
     const data = this._readJSON();
     const entry = data.entries.find(e => e.id === id);
     if (!entry) return null;
-    Object.assign(entry, changes);
-    entry.updatedAt = changes.updatedAt || new Date().toISOString();
+    const safeChanges = { ...changes };
+    delete safeChanges.id; // Prevent ID corruption
+    Object.assign(entry, safeChanges);
+    entry.updatedAt = safeChanges.updatedAt || new Date().toISOString();
     this._writeJSON(data);
     return entry;
   }
@@ -245,12 +247,15 @@ class VerifiedHistoryStore {
       const entry = this._sqlite.getEntry(id);
       if (!entry) return null;
       // Update coherencyScore if provided
-      if (changes.coherencyScore) {
+      if (changes.coherencyScore != null) {
+        const scoreObj = typeof changes.coherencyScore === 'number'
+          ? { total: changes.coherencyScore }
+          : changes.coherencyScore;
         this._sqlite.db.prepare(
           'UPDATE entries SET coherency_total = ?, coherency_json = ?, updated_at = ? WHERE id = ?'
         ).run(
-          changes.coherencyScore.total,
-          JSON.stringify(changes.coherencyScore),
+          scoreObj.total,
+          JSON.stringify(scoreObj),
           changes.updatedAt || new Date().toISOString(),
           id
         );
@@ -266,6 +271,7 @@ class VerifiedHistoryStore {
     const data = this._readJSON();
     const entry = data.entries.find(e => e.id === id);
     if (!entry) return null;
+    if (!entry.reliability) entry.reliability = { timesUsed: 0, timesSucceeded: 0, historicalScore: 1.0 };
     entry.reliability.timesUsed += 1;
     if (succeeded) entry.reliability.timesSucceeded += 1;
     entry.reliability.historicalScore =

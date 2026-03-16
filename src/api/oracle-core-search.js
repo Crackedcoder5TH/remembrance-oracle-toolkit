@@ -108,7 +108,7 @@ module.exports = {
     const finalResults = scored
       .sort((a, b) => b.matchScore - a.matchScore || (b.coherency ?? 0) - (a.coherency ?? 0))
       .filter(r => {
-        const key = (r.code || '').slice(0, 100);
+        const key = r.id || (r.code || '').slice(0, 100);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -126,7 +126,7 @@ module.exports = {
     const seen = new Set();
     return results
       .filter(r => {
-        const key = (r.code || '').slice(0, 100);
+        const key = r.id || (r.code || '').slice(0, 100);
         if (seen.has(key)) return false;
         seen.add(key);
         return true;

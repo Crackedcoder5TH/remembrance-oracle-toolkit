@@ -4,6 +4,9 @@
 
 module.exports = {
   rollback(patternId, targetVersion) {
+    if (!this.patterns._sqlite) {
+      return { success: false, reason: 'Version history requires SQLite backend' };
+    }
     const { VersionManager } = require('../core/versioning');
     const vm = new VersionManager(this.patterns._sqlite);
 

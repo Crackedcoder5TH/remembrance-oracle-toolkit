@@ -139,15 +139,15 @@ class FractalStore {
     const row = this._sqlite.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
     if (!row) return false;
 
-    this._sqlite.db.exec('BEGIN');
+    this._sqlite.db.exec('SAVEPOINT remove_pattern');
     try {
       this._sqlite._archivePattern(row, reason);
       this._cleanupFractalData(id);
       this._sqlite.db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
-      this._sqlite.db.exec('COMMIT');
+      this._sqlite.db.exec('RELEASE remove_pattern');
       return true;
     } catch (e) {
-      this._sqlite.db.exec('ROLLBACK');
+      try { this._sqlite.db.exec('ROLLBACK TO remove_pattern'); } catch (_) {}
       throw e;
     }
   }

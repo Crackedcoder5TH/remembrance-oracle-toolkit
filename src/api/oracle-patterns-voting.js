@@ -27,6 +27,7 @@ module.exports = {
     const sqliteStore = this.patterns._sqlite;
     if (!sqliteStore) return null;
     const voter = sqliteStore.getVoter(voterId);
+    if (!voter) return null;
     const history = sqliteStore.getVoterHistory(voterId, 10);
     return { ...voter, weight: sqliteStore.getVoteWeight(voterId), recentVotes: history };
   },

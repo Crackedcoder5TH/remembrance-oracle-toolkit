@@ -39,7 +39,7 @@ function qualifiesForRegistration(result, config = {}) {
   if (result.winner.score < cfg.coherenceThreshold) {
     return {
       qualifies: false,
-      reason: `score ${result.winner.score.toFixed(3)} < threshold ${cfg.coherenceThreshold}`,
+      reason: `score ${(result.winner.score ?? 0).toFixed(3)} < threshold ${cfg.coherenceThreshold}`,
     };
   }
 
@@ -97,7 +97,7 @@ function autoRegisterResult(result, oracle, config = {}) {
         code: result.winner.code,
         language,
         tags,
-        description: `Swarm consensus winner (score: ${result.winner.score.toFixed(3)}, agreement: ${(result.agreement * 100).toFixed(0)}%)`,
+        description: `Swarm consensus winner (score: ${(result.winner.score ?? 0).toFixed(3)}, agreement: ${((result.agreement ?? 0) * 100).toFixed(0)}%)`,
       });
     } else if (typeof oracle.submit === 'function') {
       registerResult = oracle.submit(result.winner.code, {

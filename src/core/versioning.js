@@ -108,7 +108,7 @@ class VersionManager {
         patternId: r.pattern_id,
         code: r.code,
         timestamp: r.timestamp,
-        metadata: JSON.parse(r.metadata || '{}'),
+        metadata: (() => { try { return JSON.parse(r.metadata || '{}'); } catch { return {}; } })(),
       }));
     }
 

@@ -45,7 +45,7 @@ function shouldEscalate(result, escalationConfig) {
   if (result.winner.score < config.coherenceFloor) {
     return {
       needed: true,
-      reason: `winner score ${result.winner.score.toFixed(3)} < floor ${config.coherenceFloor}`,
+      reason: `winner score ${(result.winner.score ?? 0).toFixed(3)} < floor ${config.coherenceFloor}`,
       mode: null, // Will be determined by attempt number
     };
   }

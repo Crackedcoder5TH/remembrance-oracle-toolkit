@@ -108,6 +108,47 @@ class RemembranceOracle {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle] lifecycle auto-start failed:', e.message);
       }
     }
+
+    // Register process exit handler to flush critical in-memory state.
+    // This is the last-chance safety net before the process dies.
+    this._exitHandlerInstalled = false;
+    if (options.exitHandler !== false) {
+      this._installExitHandler();
+    }
+  }
+
+  /**
+   * Install a process exit handler that flushes in-memory session data
+   * and lifecycle state before the process terminates.
+   * Uses 'beforeExit' (allows async) and 'exit' (sync-only, last resort).
+   */
+  _installExitHandler() {
+    if (this._exitHandlerInstalled) return;
+    this._exitHandlerInstalled = true;
+
+    const flush = () => {
+      try {
+        // Flush session tracker if it has interactions
+        const { hasInteractions, saveSession } = require('../core/session-tracker');
+        if (hasInteractions()) {
+          const storeDir = this.store?.storeDir || require('path').join(process.cwd(), '.remembrance');
+          saveSession(storeDir);
+        }
+      } catch (_) { /* must never throw in exit handler */ }
+
+      try {
+        // Persist lifecycle counters and history
+        if (this._lifecycle) {
+          this._lifecycle._persistCounters();
+          this._lifecycle._persistHistory();
+        }
+      } catch (_) { /* must never throw in exit handler */ }
+    };
+
+    // 'beforeExit' fires when the event loop drains (not on SIGTERM/SIGINT)
+    process.once('beforeExit', flush);
+    // 'exit' fires on all exits but is sync-only — our flush is sync so it works
+    process.once('exit', flush);
   }
 }
 

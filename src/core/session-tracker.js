@@ -15,8 +15,11 @@ const fs = require('fs');
 const path = require('path');
 
 const SESSION_FILE = 'session-log.json';
+const AUTO_FLUSH_INTERVAL_MS = 60000; // Flush to disk every 60 seconds
 
 let _session = null;
+let _autoFlushTimer = null;
+let _lastFlushDir = null;
 
 /**
  * Create a fresh session state object.
@@ -47,8 +50,57 @@ function _newSession() {
 function getSession() {
   if (!_session) {
     _session = _newSession();
+    _startAutoFlush();
   }
   return _session;
+}
+
+/**
+ * Start periodic auto-flush to prevent session data loss on crash.
+ * Only flushes if there are interactions to save.
+ */
+function _startAutoFlush() {
+  if (_autoFlushTimer) return;
+  _autoFlushTimer = setInterval(() => {
+    if (_session && hasInteractions()) {
+      _flushToDisk();
+    }
+  }, AUTO_FLUSH_INTERVAL_MS);
+  // Unref so the timer doesn't prevent process exit
+  if (_autoFlushTimer.unref) _autoFlushTimer.unref();
+}
+
+/**
+ * Flush current session state to disk without ending the session.
+ * This is the crash-safety mechanism — partial session data is preserved.
+ */
+function _flushToDisk() {
+  const session = _session;
+  if (!session) return;
+
+  const dir = _lastFlushDir || path.join(process.cwd(), '.remembrance');
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const filePath = path.join(dir, 'session-active.json');
+
+    // Convert Set to array for JSON serialization
+    const toSave = {
+      ...session,
+      _partial: true, // Mark as incomplete — session still running
+      stats: {
+        ...session.stats,
+        patternsUsed: session.stats.patternsUsed instanceof Set
+          ? [...session.stats.patternsUsed]
+          : session.stats.patternsUsed,
+      },
+    };
+
+    const tmpPath = filePath + '.tmp';
+    fs.writeFileSync(tmpPath, JSON.stringify(toSave, null, 2), 'utf-8');
+    fs.renameSync(tmpPath, filePath);
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[session-tracker] auto-flush failed:', e.message);
+  }
 }
 
 /**
@@ -116,6 +168,9 @@ function trackResolve(result, request) {
       tag: result.promptTag,
     });
   }
+
+  // Flush to disk after each resolve to prevent data loss
+  _flushToDisk();
 }
 
 /**
@@ -224,6 +279,7 @@ function saveSession(baseDir) {
   };
 
   const dir = baseDir || path.join(process.cwd(), '.remembrance');
+  _lastFlushDir = dir;
   try {
     fs.mkdirSync(dir, { recursive: true });
     const filePath = path.join(dir, SESSION_FILE);
@@ -244,6 +300,11 @@ function saveSession(baseDir) {
     if (sessions.length > 20) sessions = sessions.slice(-20);
 
     fs.writeFileSync(filePath, JSON.stringify(sessions, null, 2), 'utf-8');
+
+    // Clean up the active-session crash-recovery file
+    const activePath = path.join(dir, 'session-active.json');
+    try { if (fs.existsSync(activePath)) fs.unlinkSync(activePath); } catch (_) { /* best effort */ }
+
     return filePath;
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[session-tracker] save failed:', e.message);
@@ -255,6 +316,10 @@ function saveSession(baseDir) {
  * Reset the session (start fresh).
  */
 function resetSession() {
+  if (_autoFlushTimer) {
+    clearInterval(_autoFlushTimer);
+    _autoFlushTimer = null;
+  }
   _session = _newSession();
 }
 

@@ -17,6 +17,33 @@
  */
 
 const path = require('path');
+const fs = require('fs');
+
+/**
+ * Append pipeline errors to a persistent log file so they're never lost silently.
+ * This ensures errors are discoverable even when ORACLE_DEBUG is off.
+ */
+function _persistErrors(baseDir, errors) {
+  if (!errors || errors.length === 0) return;
+  try {
+    const logDir = path.join(baseDir, '.remembrance');
+    fs.mkdirSync(logDir, { recursive: true });
+    const logPath = path.join(logDir, 'pipeline-errors.log');
+    const entry = `[${new Date().toISOString()}] auto-submit errors:\n` +
+      errors.map(e => `  - ${e}`).join('\n') + '\n';
+    fs.appendFileSync(logPath, entry, 'utf-8');
+
+    // Rotate: keep last 500KB to prevent unbounded growth
+    try {
+      const stat = fs.statSync(logPath);
+      if (stat.size > 512 * 1024) {
+        const content = fs.readFileSync(logPath, 'utf-8');
+        // Keep the last 256KB
+        fs.writeFileSync(logPath, content.slice(-256 * 1024), 'utf-8');
+      }
+    } catch (_) { /* rotation failure is non-fatal */ }
+  } catch (_) { /* logging failure must never break the pipeline */ }
+}
 
 /**
  * Run the full auto-submission pipeline:
@@ -219,6 +246,9 @@ function autoSubmit(oracle, baseDir, options = {}) {
     if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
     // Best-effort event emission
   }
+
+  // Persist errors to disk so pipeline failures are always discoverable
+  _persistErrors(baseDir, report.errors);
 
   return report;
 }

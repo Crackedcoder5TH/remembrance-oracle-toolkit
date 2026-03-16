@@ -1014,7 +1014,8 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
       'SELECT id, name, language, promoted_at FROM candidates'
     ).all();
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] falling back to empty array:', e?.message || e);
+    // Log error visibly — falling back to empty array risks skipping existing data
+    console.warn('[persistence:_syncCandidatesToPersonal] WARNING: personal DB read failed, falling back to empty array:', e?.message || e);
     personalCandidates = [];
   }
 
@@ -1089,7 +1090,7 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
   try {
     localCandidates = localStore.db.prepare('SELECT id, promoted_at FROM candidates').all();
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] falling back to empty array:', e?.message || e);
+    console.warn('[persistence:_syncCandidatesFromPersonal] WARNING: local DB read failed, falling back to empty array:', e?.message || e);
     localCandidates = [];
   }
 
@@ -1208,7 +1209,7 @@ function _syncDebugToPersonal(localStore, personalStore, options = {}) {
   try {
     personalDebug = personalStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugToPersonal] falling back to empty array:', e?.message || e);
+    console.warn('[persistence:_syncDebugToPersonal] WARNING: personal debug DB read failed, falling back to empty array:', e?.message || e);
     personalDebug = [];
   }
 
@@ -1261,7 +1262,7 @@ function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
   try {
     localDebug = localStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugFromPersonal] falling back to empty array:', e?.message || e);
+    console.warn('[persistence:_syncDebugFromPersonal] WARNING: local debug DB read failed, falling back to empty array:', e?.message || e);
     localDebug = [];
   }
 

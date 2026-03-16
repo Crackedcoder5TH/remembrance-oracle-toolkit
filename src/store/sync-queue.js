@@ -173,6 +173,11 @@ class SyncQueue {
             }
           }
         }
+
+        // Persist after EACH operation to prevent data loss on crash.
+        // Without this, a crash after completing 3 of 5 operations would
+        // revert all 3 completed ops to "pending" on next load.
+        this._save();
       }
     } finally {
       // Clean completed entries older than retention period (default 7 days)
@@ -225,11 +230,13 @@ function withOfflineQueue(syncFn, queue, operationType) {
   return async function wrappedSync(store, options = {}) {
     try {
       const result = await syncFn(store, options);
-      // If sync succeeded, try to drain the queue too
+      // If sync succeeded, drain the queue too — await to ensure persistence
       if (queue.pending().length > 0) {
-        queue.drain((op) => syncFn(store, op.options || {})).catch((drainErr) => {
+        try {
+          await queue.drain((op) => syncFn(store, op.options || {}));
+        } catch (drainErr) {
           if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:drain] queue drain failed:', drainErr?.message || drainErr);
-        });
+        }
       }
       return result;
     } catch (err) {

@@ -85,7 +85,7 @@ const HANDLERS = {
 
   // ─── 7. Debug (unified) ───
   oracle_debug(oracle, args) {
-    const action = args.action;
+    const action = args.action || 'stats';
     switch (action) {
       case 'capture':
         return oracle.debugCapture({

@@ -241,13 +241,15 @@ function startDaemon(oracle, options = {}) {
 
     } catch (err) {
       report.errors.push(`cycle: ${err.message}`);
+    } finally {
+      // ALWAYS release lock — even if catch throws (Meta-Pattern 7 fix)
+      report.durationMs = Date.now() - start;
+      oracle._maintenanceInProgress = false;
+      oracle._maintenanceSource = null;
+      oracle._maintenanceSince = null;
+      running = false;
     }
 
-    report.durationMs = Date.now() - start;
-    // Release maintenance lock
-    oracle._maintenanceInProgress = false;
-    oracle._maintenanceSource = null;
-    oracle._maintenanceSince = null;
     lastReport = report;
     history.push({
       cycle: report.cycle,
@@ -260,7 +262,6 @@ function startDaemon(oracle, options = {}) {
     while (history.length > maxHistory) history.shift();
 
     log(`Cycle ${cycleCount} complete in ${report.durationMs}ms (${report.errors.length} errors)`);
-    running = false;
     return report;
   }
 

@@ -573,14 +573,14 @@ class SQLiteStore {
     return this.db.prepare(sql).all(...params).map(r => ({
       seq: r.seq, timestamp: r.timestamp, action: r.action,
       table: r.target_table, id: r.target_id,
-      detail: JSON.parse(r.detail || '{}'), actor: r.actor,
+      detail: this._safeJSON(r.detail, {}), actor: r.actor,
     }));
   }
 
   // ─── Entry (history) methods — same interface as VerifiedHistoryStore ───
 
   addEntry(entry) {
-    const id = this._hash(entry.code + Date.now().toString());
+    const id = this._hash(entry.code + Date.now().toString() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
 
     this.db.prepare(`
@@ -741,7 +741,7 @@ class SQLiteStore {
    * @private
    */
   _insertPattern(pattern) {
-    const id = this._hash(pattern.code + pattern.name + Date.now());
+    const id = this._hash(pattern.code + pattern.name + Date.now() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
 
     this.db.prepare(`
@@ -930,9 +930,10 @@ class SQLiteStore {
     const now = new Date().toISOString();
 
     // Recompute coherency with actual historicalReliability from usage data
-    const historicalReliability = successCount / usageCount;
+    // Guard against NaN from 0/0 (Meta-Pattern 11 fix)
+    const historicalReliability = usageCount > 0 ? successCount / usageCount : 0.5;
     const hasTestCode = !!(row.test_code && row.test_code.trim());
-    const oldCoherency = row.coherency_json ? JSON.parse(row.coherency_json) : {};
+    const oldCoherency = this._safeJSON(row.coherency_json, {});
     const testPassed = oldCoherency.breakdown?.testProof === 1.0 ? true
       : oldCoherency.breakdown?.testProof === 0.0 ? false
       : hasTestCode ? true : undefined;
@@ -988,7 +989,7 @@ class SQLiteStore {
           ? row.success_count / row.usage_count
           : 0.5;
         const hasTestCode = !!(row.test_code && row.test_code.trim());
-        const oldCoherency = row.coherency_json ? JSON.parse(row.coherency_json) : {};
+        const oldCoherency = this._safeJSON(row.coherency_json, {});
         const testPassed = oldCoherency.breakdown?.testProof === 1.0 ? true
           : oldCoherency.breakdown?.testProof === 0.0 ? false
           : hasTestCode ? true : undefined;

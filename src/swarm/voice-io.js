@@ -123,7 +123,7 @@ function speakWhisper(whisper, options = {}) {
   const parts = [];
 
   if (whisper.winner) {
-    parts.push(`${whisper.winner.agent} wins with score ${whisper.winner.score.toFixed(2)}.`);
+    parts.push(`${whisper.winner.agent} wins with score ${(whisper.winner.score ?? 0).toFixed(2)}.`);
   }
 
   const pct = Math.round((whisper.agreement || 0) * 100);
@@ -156,8 +156,8 @@ function speakResult(result, options = {}) {
   const parts = [];
 
   if (result.winner) {
-    parts.push(`Swarm complete. Winner: ${result.winner.agent}, score ${result.winner.score.toFixed(2)}.`);
-    parts.push(`${Math.round(result.agreement * 100)} percent agreement across ${result.agentCount} agents.`);
+    parts.push(`Swarm complete. Winner: ${result.winner.agent}, score ${(result.winner.score ?? 0).toFixed(2)}.`);
+    parts.push(`${Math.round((result.agreement ?? 0) * 100)} percent agreement across ${result.agentCount} agents.`);
   } else {
     parts.push('Swarm could not reach consensus.');
   }

@@ -84,7 +84,10 @@ class LLMClient {
       },
     }, body);
 
-    const data = JSON.parse(response);
+    let data;
+    try { data = JSON.parse(response); } catch (e) {
+      throw new Error(`Anthropic API returned non-JSON: ${String(response).slice(0, 200)}`);
+    }
     if (data.error) throw new Error(data.error.message || 'API error');
     return data.content?.[0]?.text || '';
   }
@@ -114,7 +117,10 @@ class LLMClient {
       },
     }, body);
 
-    const data = JSON.parse(response);
+    let data;
+    try { data = JSON.parse(response); } catch (e) {
+      throw new Error(`OpenAI API returned non-JSON: ${String(response).slice(0, 200)}`);
+    }
     if (data.error) throw new Error(data.error.message || 'API error');
     return data.choices?.[0]?.message?.content || '';
   }

@@ -25,6 +25,7 @@
  *   - Each approach alt → spawns language variants = exponential
  */
 
+const crypto = require('crypto');
 const { reflectionLoop } = require('../core/reflection');
 const { validateCode } = require('../core/validator');
 const { computeCoherencyScore, detectLanguage } = require('../core/coherency');

@@ -669,7 +669,7 @@ function consolidateDuplicates(ctx, options = {}) {
         kept: { id: keeper.id, name: keeper.name, coherency: Math.max(existingCoherency, duplicateCoherency) },
         removed: { id: loser.id, name: loser.name, coherency: Math.min(existingCoherency, duplicateCoherency) },
         similarity: Math.round(similarity * 1000) / 1000,
-        deleted: similarity >= 0.98 && loserCoherency < 0.9,
+        deleted: similarity >= 0.98 && loserCoherency < 0.7,
       });
     }
   }

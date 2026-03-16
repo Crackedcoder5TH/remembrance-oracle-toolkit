@@ -80,10 +80,10 @@ class LifecycleEngine {
     // Resolve context methods (support both OracleContext and raw oracle)
     this._on = ctx.on || ((cb) => { if (typeof ctx.on === 'function') return ctx.on(cb); return () => {}; });
     this._emit = ctx.emit || ((event) => { if (typeof ctx._emit === 'function') ctx._emit(event); });
-    this._autoPromote = ctx.autoPromote || (() => { try { return ctx.autoPromote(); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:constructor] silent failure:', e?.message || e); return { promoted: 0 }; } });
-    this._retagAll = ctx.retagAll || ((opts) => { try { return ctx.retagAll(opts); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:constructor] silent failure:', e?.message || e); return { enriched: 0 }; } });
-    this._deepClean = ctx.deepClean || ((opts) => { try { return ctx.deepClean(opts); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:constructor] silent failure:', e?.message || e); return { removed: 0 }; } });
-    this._debugGrow = ctx.debugGrow || ((opts) => { try { return ctx.debugGrow(opts); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:constructor] silent failure:', e?.message || e); return { processed: 0, generated: 0 }; } });
+    this._autoPromote = ctx.autoPromote || (() => ({ promoted: 0 }));
+    this._retagAll = ctx.retagAll || (() => ({ enriched: 0 }));
+    this._deepClean = ctx.deepClean || (() => ({ removed: 0 }));
+    this._debugGrow = ctx.debugGrow || (() => ({ processed: 0, generated: 0 }));
     this._syncToGlobal = ctx.syncToGlobal || null;
     this._actOnInsights = ctx.actOnInsights || null;
 

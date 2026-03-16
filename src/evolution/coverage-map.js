@@ -41,12 +41,19 @@ const DOMAINS = [
  * @param {object} oracle — RemembranceOracle instance
  * @returns {object} coverageMap
  */
+const COVERAGE_CACHE_TTL_MS = 300000; // 5 minutes, configurable via oracle._coverageCacheTTL
+
 function generateCoverageMap(oracle) {
-  // Cache: reuse if <5 min old and pattern count unchanged
+  // Cache: reuse if <TTL old and pattern fingerprint unchanged
   const patterns = oracle.patterns ? oracle.patterns.getAll() : [];
+  const cacheTTL = oracle._coverageCacheTTL || COVERAGE_CACHE_TTL_MS;
+  // Use a simple fingerprint: count + hash of first/last/middle pattern IDs
+  // This detects replacements, not just count changes
+  const mid = Math.floor(patterns.length / 2);
+  const fingerprint = `${patterns.length}:${patterns[0]?.id || ''}:${patterns[mid]?.id || ''}:${patterns[patterns.length - 1]?.id || ''}`;
   if (oracle._coverageCache &&
-      oracle._coverageCache.patternCount === patterns.length &&
-      Date.now() - oracle._coverageCache.timestamp < 300000) {
+      oracle._coverageCache.fingerprint === fingerprint &&
+      Date.now() - oracle._coverageCache.timestamp < cacheTTL) {
     return oracle._coverageCache.data;
   }
 
@@ -173,7 +180,7 @@ function generateCoverageMap(oracle) {
 
   // Cache result on oracle instance
   if (oracle) {
-    oracle._coverageCache = { timestamp: Date.now(), patternCount: patterns.length, data: result };
+    oracle._coverageCache = { timestamp: Date.now(), fingerprint, data: result };
   }
 
   return result;

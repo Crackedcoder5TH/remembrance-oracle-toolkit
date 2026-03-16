@@ -183,7 +183,12 @@ class SyncQueue {
       // Clean completed entries older than retention period (default 7 days)
       const cutoff = Date.now() - this._retentionMs;
       this._queue = this._queue.filter(op => {
-        if (op.status === 'completed' && new Date(op.createdAt).getTime() < cutoff) return false;
+        if (op.status === 'completed') {
+          const opTime = new Date(op.createdAt).getTime();
+          // Guard against invalid dates — keep entries we can't parse
+          if (isNaN(opTime)) return true;
+          if (opTime < cutoff) return false;
+        }
         return true;
       });
 

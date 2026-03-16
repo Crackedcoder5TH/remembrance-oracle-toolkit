@@ -353,7 +353,9 @@ function semanticSearch(items, query, options = {}) {
       ngrams: charNgrams(queryLower, 2),
     };
     cachedQueryData.conceptIds = new Set(cachedQueryData.concepts.map(c => c.id));
-    if (_querySimilarityCache.size >= _QUERY_CACHE_MAX) {
+    // LRU eviction: evict multiple entries if cache grew beyond max (guards against
+    // concurrent insertions that may have pushed past the limit)
+    while (_querySimilarityCache.size >= _QUERY_CACHE_MAX) {
       const oldest = _querySimilarityCache.keys().next().value;
       _querySimilarityCache.delete(oldest);
     }

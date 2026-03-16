@@ -144,7 +144,11 @@ ${testCode}
 `;
 
     const filePath = path.join(sandboxDir, 'test.py');
-    fs.writeFileSync(filePath, wrapper, 'utf-8');
+    // Write with restrictive permissions then make read-only (match JS sandbox TOCTOU mitigation)
+    const fdPy = fs.openSync(filePath, 'w', 0o600);
+    fs.writeSync(fdPy, wrapper);
+    fs.closeSync(fdPy);
+    fs.chmodSync(filePath, 0o400);
 
     const result = execSync(
       `python3 "${filePath}"`,

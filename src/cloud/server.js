@@ -687,6 +687,7 @@ class CloudSyncServer {
         frame[offset++] = payload.length;
       }
       payload.copy(frame, offset);
+      if (ws.socket.destroyed) return;
       ws.socket.write(frame);
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[server:_wsSend] ignore write errors:', e?.message || e);

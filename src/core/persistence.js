@@ -1164,6 +1164,11 @@ function _ensureCandidatesSchema(store) {
 }
 
 function _transferCandidate(candidate, targetStore) {
+  // Sanitize description to strip file paths that could leak local directory structure
+  let description = candidate.description || '';
+  if (/^Auto-registered (from|function from) /.test(description)) {
+    description = description.replace(/from .+$/, 'from source');
+  }
   targetStore.db.prepare(`
     INSERT OR IGNORE INTO candidates (id, name, code, language, pattern_type, complexity,
       description, tags, coherency_total, coherency_json, test_code,
@@ -1172,7 +1177,7 @@ function _transferCandidate(candidate, targetStore) {
   `).run(
     candidate.id, candidate.name, candidate.code, candidate.language || 'unknown',
     candidate.pattern_type || 'utility', candidate.complexity || 'composite',
-    candidate.description || '', candidate.tags || '[]',
+    description, candidate.tags || '[]',
     candidate.coherency_total ?? 0, candidate.coherency_json || '{}',
     candidate.test_code || null,
     candidate.parent_pattern || null, candidate.generation_method || 'variant',
@@ -1487,6 +1492,13 @@ function _transferDebugPattern(dp, targetStore) {
     .digest('hex').slice(0, 16);
   const now = new Date().toISOString();
 
+  // Sanitize stack fingerprints and error signatures to strip absolute file paths
+  // that could leak local filesystem structure when shared across tiers
+  const pathPattern = /(?:\/[\w.-]+){2,}(?:\.(?:js|ts|py|go|rs|java|rb|c|cpp|h))?/g;
+  const sanitizedStackFp = (dp.stack_fingerprint || '').replace(pathPattern, '<path>');
+  const sanitizedErrSig = (dp.error_signature || '').replace(pathPattern, '<path>');
+  const sanitizedErrMsg = (dp.error_message || '').replace(pathPattern, '<path>');
+
   targetStore.db.prepare(`
     INSERT OR IGNORE INTO debug_patterns (
       id, error_signature, error_message, error_class, error_category,
@@ -1496,8 +1508,8 @@ function _transferDebugPattern(dp, targetStore) {
       parent_debug, generation_method, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id, dp.error_signature, dp.error_message, dp.error_class, dp.error_category,
-    dp.stack_fingerprint || '', dp.fingerprint_hash, dp.fix_code, dp.fix_description || '',
+    id, sanitizedErrSig, sanitizedErrMsg, dp.error_class, dp.error_category,
+    sanitizedStackFp, dp.fingerprint_hash, dp.fix_code, dp.fix_description || '',
     dp.language, dp.tags || '[]', dp.coherency_total || 0, dp.coherency_json || '{}',
     dp.times_applied || 0, dp.times_resolved || 0, dp.confidence || 0.2,
     dp.parent_debug, dp.generation_method || 'shared', now, now

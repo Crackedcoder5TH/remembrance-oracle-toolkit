@@ -50,8 +50,11 @@ function _decryptToken(stored) {
     decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
     return decipher.update(Buffer.from(dataHex, 'hex'), null, 'utf8') + decipher.final('utf8');
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[client:_decryptToken] silent failure:', e?.message || e);
-    return stored; // If decryption fails, return as-is (possibly plaintext from older version)
+    if (process.env.ORACLE_DEBUG) console.warn('[client:_decryptToken] decryption failed (token was encrypted on a different machine?):', e?.message || e);
+    // Return null instead of encrypted gibberish — callers should re-authenticate
+    // This happens when a repo is forked/cloned to a different machine where
+    // os.hostname() + os.userInfo().username produce a different encryption key
+    return null;
   }
 }
 

@@ -2288,6 +2288,18 @@ class SQLiteStore {
    */
   _archivePattern(row, reason = 'unknown') {
     const now = new Date().toISOString();
+    // Sanitize full_row_json to strip fields that could leak user identity or
+    // local filesystem structure when archives are synced across tiers
+    const sanitizedRow = { ...row };
+    delete sanitizedRow.source_file;
+    delete sanitizedRow.source_commit;
+    delete sanitizedRow.source_url;
+    delete sanitizedRow.source_repo;
+    delete sanitizedRow.source_license;
+    // Scrub auto-register descriptions that embed file paths
+    if (sanitizedRow.description && /^Auto-registered (from|function from) /.test(sanitizedRow.description)) {
+      sanitizedRow.description = sanitizedRow.description.replace(/from .+$/, 'from source');
+    }
     const result = this.db.prepare(`
       INSERT OR IGNORE INTO pattern_archive
         (id, name, code, language, pattern_type, coherency_total, coherency_json,
@@ -2298,7 +2310,7 @@ class SQLiteStore {
       row.pattern_type || 'utility', row.coherency_total || 0,
       row.coherency_json || '{}', row.test_code || null,
       row.tags || '[]', reason, now, row.created_at || null,
-      JSON.stringify(row)
+      JSON.stringify(sanitizedRow)
     );
     // Verify archive actually wrote — INSERT OR IGNORE silently skips on conflict
     if (result.changes === 0) {
@@ -2315,6 +2327,14 @@ class SQLiteStore {
    */
   _archiveCandidate(row, reason = 'unknown') {
     const now = new Date().toISOString();
+    // Sanitize full_row_json to strip fields that could leak local paths
+    const sanitizedRow = { ...row };
+    delete sanitizedRow.source_url;
+    delete sanitizedRow.source_repo;
+    delete sanitizedRow.source_license;
+    if (sanitizedRow.description && /^Auto-registered (from|function from) /.test(sanitizedRow.description)) {
+      sanitizedRow.description = sanitizedRow.description.replace(/from .+$/, 'from source');
+    }
     const result = this.db.prepare(`
       INSERT OR IGNORE INTO candidate_archive
         (id, name, code, language, coherency_total, parent_pattern,
@@ -2324,7 +2344,7 @@ class SQLiteStore {
       row.id, row.name, row.code, row.language || 'unknown',
       row.coherency_total || 0, row.parent_pattern || null,
       row.generation_method || 'variant', reason, now,
-      row.created_at || null, JSON.stringify(row)
+      row.created_at || null, JSON.stringify(sanitizedRow)
     );
     // Verify archive actually wrote — refuse deletion if archive failed
     if (result.changes === 0) {
@@ -2340,6 +2360,9 @@ class SQLiteStore {
    */
   _archiveEntry(row, reason = 'unknown') {
     const now = new Date().toISOString();
+    // Sanitize full_row_json — entries contain an author field (often the OS username)
+    const sanitizedRow = { ...row };
+    delete sanitizedRow.author;
     const result = this.db.prepare(`
       INSERT OR IGNORE INTO entry_archive
         (id, code, language, coherency_total, deleted_reason,
@@ -2348,7 +2371,7 @@ class SQLiteStore {
     `).run(
       row.id, row.code, row.language || 'unknown',
       row.coherency_total || 0, reason, now,
-      row.created_at || null, JSON.stringify(row)
+      row.created_at || null, JSON.stringify(sanitizedRow)
     );
     // Verify archive actually wrote — refuse deletion if archive failed
     if (result.changes === 0) {

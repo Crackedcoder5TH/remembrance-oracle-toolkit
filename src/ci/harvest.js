@@ -60,6 +60,7 @@ function harvestFunctions(baseDir, options = {}) {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
       if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
+      if (entry.isSymbolicLink()) continue; // Skip symlinks to prevent traversal/loops
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(fullPath);

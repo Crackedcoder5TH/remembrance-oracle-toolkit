@@ -38,7 +38,9 @@ class HookEmitter {
   }
 
   emit(event, ...args) {
-    if (this._hooks[event]) this._hooks[event].slice().forEach(h => h(...args));
+    if (this._hooks[event]) this._hooks[event].slice().forEach(h => {
+      if (!h._pluginDisabled) h(...args);
+    });
     return this;
   }
 
@@ -50,6 +52,7 @@ class HookEmitter {
     const handlers = this._hooks[event] || [];
     let result = value;
     for (const h of handlers) {
+      if (h._pluginDisabled) continue;
       const transformed = h(result);
       if (transformed !== undefined && transformed !== null) {
         result = transformed;
@@ -81,16 +84,21 @@ function createLogger(pluginName) {
 
 // ─── Plugin Hooks Interface ───
 
-function createHooksInterface(emitter) {
+function createHooksInterface(emitter, pluginName) {
+  const wrap = (event, handler) => {
+    handler._pluginName = pluginName;
+    handler._pluginDisabled = false;
+    emitter.on(event, handler);
+  };
   return {
-    onBeforeSubmit: (handler) => emitter.on('beforeSubmit', handler),
-    onAfterSubmit: (handler) => emitter.on('afterSubmit', handler),
-    onBeforeValidate: (handler) => emitter.on('beforeValidate', handler),
-    onAfterValidate: (handler) => emitter.on('afterValidate', handler),
-    onPatternRegistered: (handler) => emitter.on('patternRegistered', handler),
-    onCandidateGenerated: (handler) => emitter.on('candidateGenerated', handler),
-    onSearch: (handler) => emitter.on('search', handler),
-    onResolve: (handler) => emitter.on('resolve', handler),
+    onBeforeSubmit: (handler) => wrap('beforeSubmit', handler),
+    onAfterSubmit: (handler) => wrap('afterSubmit', handler),
+    onBeforeValidate: (handler) => wrap('beforeValidate', handler),
+    onAfterValidate: (handler) => wrap('afterValidate', handler),
+    onPatternRegistered: (handler) => wrap('patternRegistered', handler),
+    onCandidateGenerated: (handler) => wrap('candidateGenerated', handler),
+    onSearch: (handler) => wrap('search', handler),
+    onResolve: (handler) => wrap('resolve', handler),
   };
 }
 
@@ -166,7 +174,7 @@ class PluginManager {
 
     // Create context
     const logger = createLogger(plugin.name);
-    const hooks = createHooksInterface(this._emitter);
+    const hooks = createHooksInterface(this._emitter, plugin.name);
     const context = {
       oracle: this._oracle,
       patterns: this._oracle.patterns,
@@ -247,6 +255,7 @@ class PluginManager {
     const entry = this._plugins.get(name);
     if (!entry) throw new Error(`Plugin "${name}" is not loaded`);
     entry.manifest.enabled = true;
+    this._setPluginHandlersDisabled(name, false);
   }
 
   /**
@@ -256,6 +265,18 @@ class PluginManager {
     const entry = this._plugins.get(name);
     if (!entry) throw new Error(`Plugin "${name}" is not loaded`);
     entry.manifest.enabled = false;
+    this._setPluginHandlersDisabled(name, true);
+  }
+
+  /**
+   * Toggle the _pluginDisabled flag on all hooks registered by a plugin.
+   */
+  _setPluginHandlersDisabled(pluginName, disabled) {
+    for (const handlers of Object.values(this._emitter._hooks)) {
+      for (const h of handlers) {
+        if (h._pluginName === pluginName) h._pluginDisabled = disabled;
+      }
+    }
   }
 
   // ─── Hook Triggers (called by the oracle) ───

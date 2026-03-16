@@ -42,7 +42,9 @@ function verifyToken(token, secret) {
   const [header, body, sig] = parts;
   const expected = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
   // Constant-time comparison to prevent timing attacks on signature
-  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  const sigBuf = Buffer.from(sig);
+  const expectedBuf = Buffer.from(expected);
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
     // Require exp claim — tokens without expiry are rejected
@@ -505,9 +507,10 @@ class CloudSyncServer {
   }
 
   async _handleSyncPull(req, res, url, user) {
-    const since = url.searchParams.get('since');
-    const language = url.searchParams.get('language');
-    const limit = parseInt(url.searchParams.get('limit')) || 100;
+    const body = await this._readBody(req);
+    const since = body.since || url.searchParams.get('since');
+    const language = body.language || url.searchParams.get('language');
+    const limit = parseInt(body.limit || url.searchParams.get('limit')) || 100;
 
     const store = this.oracle.store;
     let entries = store.list ? store.list() : [];
@@ -664,10 +667,19 @@ class CloudSyncServer {
   _wsSend(ws, data) {
     try {
       const payload = Buffer.from(JSON.stringify(data));
-      const frame = Buffer.alloc(2 + (payload.length > 125 ? 2 : 0) + payload.length);
+      let headerSize = 2;
+      if (payload.length > 65535) headerSize = 10;
+      else if (payload.length > 125) headerSize = 4;
+      const frame = Buffer.alloc(headerSize + payload.length);
       frame[0] = 0x81; // Text frame, final
       let offset = 1;
-      if (payload.length > 125) {
+      if (payload.length > 65535) {
+        frame[offset++] = 127;
+        // Write 8-byte extended length (upper 4 bytes are 0 for lengths < 2^32)
+        frame.writeUInt32BE(0, offset);
+        frame.writeUInt32BE(payload.length, offset + 4);
+        offset += 8;
+      } else if (payload.length > 125) {
         frame[offset++] = 126;
         frame.writeUInt16BE(payload.length, offset);
         offset += 2;

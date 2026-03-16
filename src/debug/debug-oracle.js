@@ -765,7 +765,7 @@ class DebugOracle {
     });
 
     // Propagate entanglement — shift linked patterns
-    const entangledIds = JSON.parse(row.entangled_with || '[]');
+    const entangledIds = safeParse(row.entangled_with, []);
     const delta = resolved ? ENTANGLEMENT_STRENGTH * 0.1 : -ENTANGLEMENT_STRENGTH * 0.05;
     this._propagateEntanglement(entangledIds, delta, id);
 
@@ -961,7 +961,7 @@ class DebugOracle {
       totalResolved += row.times_resolved;
       totalObservations += row.observation_count || 0;
 
-      const entangled = JSON.parse(row.entangled_with || '[]');
+      const entangled = safeParse(row.entangled_with, []);
       entangledPairs += entangled.length;
     }
 
@@ -1069,7 +1069,7 @@ class DebugOracle {
         quantumState: row.quantum_state,
       });
 
-      const entangled = JSON.parse(row.entangled_with || '[]');
+      const entangled = safeParse(row.entangled_with, []);
       for (const linkedId of entangled) {
         graph.edges.push({ from: currentId, to: linkedId });
         walk(linkedId, currentDepth + 1);

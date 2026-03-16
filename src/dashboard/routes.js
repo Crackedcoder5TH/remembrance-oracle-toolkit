@@ -28,6 +28,7 @@ function readBody(req, callback) {
   }, 30000);
 
   req.on('data', chunk => {
+    if (aborted) return;
     body += chunk;
     if (body.length > MAX_BODY_SIZE) {
       aborted = true;

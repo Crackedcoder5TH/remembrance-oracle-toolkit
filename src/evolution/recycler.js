@@ -197,7 +197,8 @@ class PatternRecycler {
       ).all();
 
       for (const row of rows) {
-        const detail = JSON.parse(row.detail || '{}');
+        let detail;
+        try { detail = JSON.parse(row.detail || '{}'); } catch { detail = {}; }
         if (detail.pattern && detail.status === 'pending') {
           // Skip empty shells — captures must have non-empty code
           const code = (detail.pattern.code || '').trim();

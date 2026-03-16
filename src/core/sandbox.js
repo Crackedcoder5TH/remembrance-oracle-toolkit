@@ -265,14 +265,8 @@ Module._load = function(request, parent, isMain) {
     fs.closeSync(fdPre);
     fs.chmodSync(preloadPath, 0o400);
 
-    const wrapper = `
-'use strict';
-// Run user code
-${normalizedCode}
-;
-// Run tests
-${normalizedTest}
-`;
+    // Use string concatenation (not template literal interpolation) to prevent code injection
+    const wrapper = "'use strict';\n// Run user code\n" + normalizedCode + "\n;\n// Run tests\n" + normalizedTest + "\n";
 
     const memFlag = `--max-old-space-size=${maxMemory}`;
     const sandboxEnv = { PATH: process.env.PATH, NODE_PATH: '', HOME: sandboxDir, NODE_NO_WARNINGS: '1' };

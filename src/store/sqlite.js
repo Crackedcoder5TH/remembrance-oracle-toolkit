@@ -1100,7 +1100,7 @@ class SQLiteStore {
     this.db.exec('BEGIN');
     try {
       for (const row of rows) {
-        const oldCoherency = row.coherency_json ? JSON.parse(row.coherency_json) : {};
+        const oldCoherency = this._safeJSON(row.coherency_json, {});
         const bd = oldCoherency.breakdown || {};
 
         // Bootstrap: patterns with test proof get simulated successful usage
@@ -1271,7 +1271,7 @@ class SQLiteStore {
     this.db.exec('BEGIN');
     try {
       for (const row of rows) {
-        const oldCoherency = row.coherency_json ? JSON.parse(row.coherency_json) : {};
+        const oldCoherency = this._safeJSON(row.coherency_json, {});
         if ((oldCoherency.breakdown?.completeness || 0) >= 1.0) continue;
 
         let code = row.code;
@@ -2401,7 +2401,8 @@ class SQLiteStore {
       const existing = this.db.prepare('SELECT id FROM patterns WHERE id = ?').get(row.id);
       if (existing) { skipped++; continue; }
       try {
-        const full = JSON.parse(row.full_row_json);
+        const full = this._safeJSON(row.full_row_json, null);
+        if (!full) { skipped++; continue; }
         this._insertPatternFromRow(full);
         // Verify the pattern was actually inserted before removing from archive
         const inserted = this.db.prepare('SELECT 1 FROM patterns WHERE id = ?').get(row.id);

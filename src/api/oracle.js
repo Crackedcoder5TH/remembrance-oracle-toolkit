@@ -66,8 +66,7 @@ class RemembranceOracle {
 
     // Initialise audit logging
     try {
-      const storeDir = this.store.storeDir || require('path').join(options.baseDir || process.cwd(), '.remembrance');
-      initAuditLog(path.dirname(storeDir));
+      initAuditLog(require('path').dirname(storeDir));
     } catch (_) {
       // Audit init failures are non-fatal
     }

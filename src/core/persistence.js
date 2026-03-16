@@ -1643,7 +1643,7 @@ function crossRepoSearch(description, options = {}) {
       const store = openStore(repoPath);
       if (!store) continue;
 
-      const patterns = store.getPatterns ? store.getPatterns() : [];
+      const patterns = store.getAllPatterns ? store.getAllPatterns() : [];
       const repoName = path.basename(repoPath);
       let matchCount = 0;
 

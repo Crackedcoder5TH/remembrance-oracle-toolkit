@@ -127,7 +127,7 @@ function detectReverts(oracle, cwd, lookback) {
 
         // Search patterns that match these files
         for (const file of revertedFiles) {
-          const patterns = oracle.patterns.getAll();
+          const patterns = oracle.patterns?.getAll?.() || [];
           for (const p of patterns) {
             if (p.sourceFile === file || (p.name && file.includes(p.name))) {
               reverted.push({ patternId: p.id, commitHash: revertHash });
@@ -191,7 +191,7 @@ function detectTestOutcome(cwd) {
 function getRecentResolves(oracle) {
   try {
     // Check the audit log for recent resolve events
-    if (oracle.patterns._sqlite && typeof oracle.patterns._sqlite.getAuditLog === 'function') {
+    if (oracle.patterns?._sqlite && typeof oracle.patterns._sqlite.getAuditLog === 'function') {
       const logs = oracle.patterns._sqlite.getAuditLog({ action: 'resolve', limit: 10 });
       return logs
         .filter(l => l.targetId && l.detail)
@@ -221,7 +221,7 @@ function detectCommitSurvival(oracle, cwd) {
     // Read committed file contents and check against known patterns
     const fs = require('fs');
     const path = require('path');
-    const patterns = oracle.patterns.getAll();
+    const patterns = oracle.patterns?.getAll?.() || [];
 
     for (const file of files) {
       const filePath = path.join(cwd, file);

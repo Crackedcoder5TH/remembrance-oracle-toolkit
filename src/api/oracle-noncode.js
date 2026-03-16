@@ -143,8 +143,7 @@ function submitNonCode(submission, store, patterns) {
 function nonCodeFeedback(id, success, store, comment) {
   if (!id) return { success: false, error: 'Pattern ID is required' };
 
-  const entries = store.getAll();
-  const entry = entries.find(e => e.id === id);
+  const entry = (store.get ? store.get(id) : null) || (store.getAll().find(e => e.id === id));
   if (!entry) return { success: false, error: `Entry ${id} not found` };
 
   const currentCoherency = entry.coherencyScore?.total ?? NON_CODE_DEFAULTS.BASE_COHERENCY;

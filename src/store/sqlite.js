@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const log = require('../core/logger');
 const { safePath } = require('../core/safe-path');
 const { computeCoherencyScore } = require('../core/coherency');
 const { synthesizeTests } = require('../evolution/test-synth');
@@ -52,6 +53,7 @@ class SQLiteStore {
     this.db.exec(`PRAGMA journal_mode = WAL`);
     this.db.exec(`PRAGMA synchronous = NORMAL`);
     this.db.exec(`PRAGMA busy_timeout = 5000`);
+    this.db.exec(`PRAGMA foreign_keys = ON`);
 
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS entries (
@@ -393,6 +395,23 @@ class SQLiteStore {
       );
     `);
 
+    // FK enforcement is done in storeDelta() and storeHoloPage() methods
+    // via soft checks with structured logging (see _checkFractalFK helper)
+
+    // Validation results — persists reconstruction pass/fail results
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS validation_results (
+        pattern_id TEXT NOT NULL,
+        template_id TEXT NOT NULL,
+        valid INTEGER NOT NULL,
+        original_coherence REAL,
+        reconstructed_coherence REAL,
+        coherence_delta REAL,
+        validated_at TEXT NOT NULL,
+        PRIMARY KEY (pattern_id, template_id)
+      );
+    `);
+
     // Initialize meta if not present
     const row = this.db.prepare('SELECT value FROM meta WHERE key = ?').get('version');
     if (!row) {
@@ -510,6 +529,32 @@ class SQLiteStore {
       INSERT INTO audit_log (timestamp, action, target_table, target_id, detail, actor)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(new Date().toISOString(), action, table, id, JSON.stringify(detail), actor);
+
+    // Rotate: cap at 10K rows and 30-day TTL (run every ~100 inserts to avoid overhead)
+    if (!this._auditRotateCounter) this._auditRotateCounter = 0;
+    if (++this._auditRotateCounter >= 100) {
+      this._auditRotateCounter = 0;
+      this._rotateAuditLog();
+    }
+  }
+
+  _rotateAuditLog() {
+    const MAX_ROWS = 10000;
+    const TTL_DAYS = 30;
+    const cutoff = new Date(Date.now() - TTL_DAYS * 86400000).toISOString();
+
+    // Delete entries older than TTL
+    this.db.prepare('DELETE FROM audit_log WHERE timestamp < ?').run(cutoff);
+
+    // If still over cap, keep only the most recent MAX_ROWS
+    const count = this.db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    if (count > MAX_ROWS) {
+      this.db.prepare(`
+        DELETE FROM audit_log WHERE seq NOT IN (
+          SELECT seq FROM audit_log ORDER BY seq DESC LIMIT ?
+        )
+      `).run(MAX_ROWS);
+    }
   }
 
   /**
@@ -528,14 +573,14 @@ class SQLiteStore {
     return this.db.prepare(sql).all(...params).map(r => ({
       seq: r.seq, timestamp: r.timestamp, action: r.action,
       table: r.target_table, id: r.target_id,
-      detail: JSON.parse(r.detail || '{}'), actor: r.actor,
+      detail: this._safeJSON(r.detail, {}), actor: r.actor,
     }));
   }
 
   // ─── Entry (history) methods — same interface as VerifiedHistoryStore ───
 
   addEntry(entry) {
-    const id = this._hash(entry.code + Date.now().toString());
+    const id = this._hash(entry.code + Date.now().toString() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
 
     this.db.prepare(`
@@ -589,7 +634,7 @@ class SQLiteStore {
     return row ? this._rowToEntry(row) : null;
   }
 
-  recordEntryUsage(id, succeeded) {
+  recordEntryUsage(id, succeeded, _retryCount = 0) {
     const row = this.db.prepare('SELECT * FROM entries WHERE id = ?').get(id);
     if (!row) return null;
 
@@ -607,8 +652,12 @@ class SQLiteStore {
 
     // Optimistic lock failed — another process updated the row between our read and write
     if (result.changes === 0) {
-      if (process.env.ORACLE_DEBUG) console.warn(`[sqlite:recordEntryUsage] version conflict for ${id} — retrying`);
-      return this.recordEntryUsage(id, succeeded); // Retry with fresh read
+      if (_retryCount >= 3) {
+        log.warn('sqlite', `recordEntryUsage version conflict for ${id} — max retries exceeded`);
+        return null;
+      }
+      log.debug('sqlite', `recordEntryUsage version conflict for ${id} — retrying`, { attempt: _retryCount + 1 });
+      return this.recordEntryUsage(id, succeeded, _retryCount + 1);
     }
 
     this._audit('usage', 'entries', id, { succeeded, timesUsed, historicalScore });
@@ -692,7 +741,7 @@ class SQLiteStore {
    * @private
    */
   _insertPattern(pattern) {
-    const id = this._hash(pattern.code + pattern.name + Date.now());
+    const id = this._hash(pattern.code + pattern.name + Date.now() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
 
     this.db.prepare(`
@@ -871,7 +920,7 @@ class SQLiteStore {
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
   }
 
-  recordPatternUsage(id, succeeded) {
+  recordPatternUsage(id, succeeded, _retryCount = 0) {
     const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
     if (!row) return null;
 
@@ -881,9 +930,10 @@ class SQLiteStore {
     const now = new Date().toISOString();
 
     // Recompute coherency with actual historicalReliability from usage data
-    const historicalReliability = successCount / usageCount;
+    // Guard against NaN from 0/0 (Meta-Pattern 11 fix)
+    const historicalReliability = usageCount > 0 ? successCount / usageCount : 0.5;
     const hasTestCode = !!(row.test_code && row.test_code.trim());
-    const oldCoherency = row.coherency_json ? JSON.parse(row.coherency_json) : {};
+    const oldCoherency = this._safeJSON(row.coherency_json, {});
     const testPassed = oldCoherency.breakdown?.testProof === 1.0 ? true
       : oldCoherency.breakdown?.testProof === 0.0 ? false
       : hasTestCode ? true : undefined;
@@ -901,10 +951,14 @@ class SQLiteStore {
       newCoherency.total, JSON.stringify(newCoherency),
       id, row.version || 1);
 
-    // Optimistic lock failed — retry with fresh read
+    // Optimistic lock failed — retry with fresh read (capped at 3 attempts)
     if (result.changes === 0) {
-      if (process.env.ORACLE_DEBUG) console.warn(`[sqlite:recordPatternUsage] version conflict for ${id} — retrying`);
-      return this.recordPatternUsage(id, succeeded);
+      if (_retryCount >= 3) {
+        log.warn('sqlite', `recordPatternUsage version conflict for ${id} — max retries exceeded`);
+        return null;
+      }
+      log.debug('sqlite', `recordPatternUsage version conflict for ${id} — retrying`, { attempt: _retryCount + 1 });
+      return this.recordPatternUsage(id, succeeded, _retryCount + 1);
     }
 
     this._audit('usage', 'patterns', id, { succeeded, usageCount, successCount, coherency: newCoherency.total });
@@ -935,7 +989,7 @@ class SQLiteStore {
           ? row.success_count / row.usage_count
           : 0.5;
         const hasTestCode = !!(row.test_code && row.test_code.trim());
-        const oldCoherency = row.coherency_json ? JSON.parse(row.coherency_json) : {};
+        const oldCoherency = this._safeJSON(row.coherency_json, {});
         const testPassed = oldCoherency.breakdown?.testProof === 1.0 ? true
           : oldCoherency.breakdown?.testProof === 0.0 ? false
           : hasTestCode ? true : undefined;
@@ -1550,6 +1604,42 @@ class SQLiteStore {
   // ─── Candidate methods — coherent-but-unproven patterns ───
 
   addCandidate(candidate) {
+    // Dedup gate: hash the code content to prevent duplicate candidates
+    const codeHash = this._hash(candidate.code || '');
+    const existing = this.db.prepare(
+      'SELECT id FROM candidates WHERE id = ?'
+    ).get(codeHash.slice(0, 16));
+    // Also check for identical code in existing candidates
+    const dupCheck = this.db.prepare(
+      'SELECT id FROM candidates WHERE code = ? LIMIT 1'
+    ).get(candidate.code || '');
+    if (dupCheck) return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(dupCheck.id));
+
+    // Dedup guard: check if a candidate with same (name, language) exists with equal or higher coherency
+    const candidateCoherency = candidate.coherencyScore?.total ?? candidate.coherencyTotal ?? 0;
+    const nameLangDup = this.db.prepare(
+      'SELECT id, coherency_total FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL AND coherency_total >= ? LIMIT 1'
+    ).get(candidate.name, candidate.language || 'unknown', candidateCoherency);
+    if (nameLangDup) return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(nameLangDup.id));
+
+    // Candidate cap: enforce max 5 variants per (name, language) — skip if at cap
+    const MAX_CANDIDATES_PER_GROUP = 5;
+    const groupCount = this.db.prepare(
+      'SELECT COUNT(*) as c FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL'
+    ).get(candidate.name, candidate.language || 'unknown').c;
+    if (groupCount >= MAX_CANDIDATES_PER_GROUP) {
+      // Only allow insert if this candidate has higher coherency than the worst in the group
+      const worst = this.db.prepare(
+        'SELECT id, coherency_total FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL ORDER BY coherency_total ASC LIMIT 1'
+      ).get(candidate.name, candidate.language || 'unknown');
+      if (worst && candidateCoherency <= worst.coherency_total) {
+        return this._rowToCandidate(this.db.prepare('SELECT * FROM candidates WHERE LOWER(name) = LOWER(?) AND LOWER(language) = LOWER(?) AND promoted_at IS NULL ORDER BY coherency_total DESC LIMIT 1').get(candidate.name, candidate.language || 'unknown'));
+      }
+      // Evict the worst to make room
+      this._archiveCandidate(this.db.prepare('SELECT * FROM candidates WHERE id = ?').get(worst.id), 'cap-evicted');
+      this.db.prepare('DELETE FROM candidates WHERE id = ?').run(worst.id);
+    }
+
     const id = this._hash(candidate.code + candidate.name + Date.now());
     const now = new Date().toISOString();
 
@@ -2008,6 +2098,11 @@ class SQLiteStore {
   }
 
   storeDelta(delta) {
+    // Soft FK check: warn if template doesn't exist
+    if (delta.templateId) {
+      const tmpl = this.db.prepare('SELECT 1 FROM fractal_templates WHERE id = ?').get(delta.templateId);
+      if (!tmpl) log.warn('sqlite', `storeDelta: template ${delta.templateId} not found (orphan delta for ${delta.patternId})`);
+    }
     const now = new Date().toISOString();
     this.db.prepare(`
       INSERT OR REPLACE INTO fractal_deltas (pattern_id, template_id, delta_json, original_size, delta_size, created_at)
@@ -2038,6 +2133,11 @@ class SQLiteStore {
   // ─── Holographic Encoding CRUD ───
 
   storeHoloPage(page) {
+    // Soft FK check: warn if template doesn't exist
+    if (page.templateId) {
+      const tmpl = this.db.prepare('SELECT 1 FROM fractal_templates WHERE id = ?').get(page.templateId);
+      if (!tmpl) log.warn('sqlite', `storeHoloPage: template ${page.templateId} not found (orphan page ${page.id})`);
+    }
     const now = new Date().toISOString();
     this.db.prepare(`
       INSERT OR REPLACE INTO holo_pages (id, template_id, centroid_vec, interference_matrix, member_ids, member_count, created_at, updated_at)
@@ -2128,24 +2228,59 @@ class SQLiteStore {
    * same transaction that deletes the pattern.
    */
   _cleanupFractalData(patternId) {
-    // Remove the pattern's fractal delta and update the template member count
+    // Remove the pattern's fractal delta and update the template member count atomically
     const delta = this.db.prepare('SELECT template_id FROM fractal_deltas WHERE pattern_id = ?').get(patternId);
     if (delta) {
       this.db.prepare('DELETE FROM fractal_deltas WHERE pattern_id = ?').run(patternId);
-      // Decrement template member count; remove template if no members remain
-      const remaining = this.db.prepare(
-        'SELECT COUNT(*) as c FROM fractal_deltas WHERE template_id = ?'
-      ).get(delta.template_id);
-      if (remaining.c === 0) {
-        this.db.prepare('DELETE FROM fractal_templates WHERE id = ?').run(delta.template_id);
-      } else {
-        this.db.prepare(
-          'UPDATE fractal_templates SET member_count = ?, updated_at = ? WHERE id = ?'
-        ).run(remaining.c, new Date().toISOString(), delta.template_id);
-      }
+      // Atomic decrement; delete template if count drops to zero
+      this.db.prepare(
+        'UPDATE fractal_templates SET member_count = member_count - 1, updated_at = ? WHERE id = ?'
+      ).run(new Date().toISOString(), delta.template_id);
+      this.db.prepare(
+        'DELETE FROM fractal_templates WHERE id = ? AND member_count <= 0'
+      ).run(delta.template_id);
     }
     // Remove the pattern's holographic embedding
     this.db.prepare('DELETE FROM holo_embeddings WHERE pattern_id = ?').run(patternId);
+
+    // Update holo_pages.member_ids — remove this pattern from any page that references it
+    const pages = this.db.prepare('SELECT id, member_ids FROM holo_pages').all();
+    for (const page of pages) {
+      const memberIds = this._safeJSON(page.member_ids, []);
+      const idx = memberIds.indexOf(patternId);
+      if (idx !== -1) {
+        memberIds.splice(idx, 1);
+        if (memberIds.length === 0) {
+          this.db.prepare('DELETE FROM holo_pages WHERE id = ?').run(page.id);
+        } else {
+          this.db.prepare(
+            'UPDATE holo_pages SET member_ids = ?, member_count = ?, updated_at = ? WHERE id = ?'
+          ).run(JSON.stringify(memberIds), memberIds.length, new Date().toISOString(), page.id);
+        }
+      }
+    }
+  }
+
+  storeValidationResult(result) {
+    this.db.prepare(`
+      INSERT OR REPLACE INTO validation_results
+        (pattern_id, template_id, valid, original_coherence, reconstructed_coherence, coherence_delta, validated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      result.patternId, result.templateId || '', result.valid ? 1 : 0,
+      result.originalCoherence ?? 0, result.reconstructedCoherence ?? 0,
+      result.delta ?? 0, new Date().toISOString()
+    );
+  }
+
+  getValidationResults() {
+    return this.db.prepare('SELECT * FROM validation_results ORDER BY validated_at DESC').all()
+      .map(r => ({
+        patternId: r.pattern_id, templateId: r.template_id,
+        valid: r.valid === 1, originalCoherence: r.original_coherence,
+        reconstructedCoherence: r.reconstructed_coherence,
+        coherenceDelta: r.coherence_delta, validatedAt: r.validated_at,
+      }));
   }
 
   /**
@@ -2154,6 +2289,18 @@ class SQLiteStore {
    */
   _archivePattern(row, reason = 'unknown') {
     const now = new Date().toISOString();
+    // Sanitize full_row_json to strip fields that could leak user identity or
+    // local filesystem structure when archives are synced across tiers
+    const sanitizedRow = { ...row };
+    delete sanitizedRow.source_file;
+    delete sanitizedRow.source_commit;
+    delete sanitizedRow.source_url;
+    delete sanitizedRow.source_repo;
+    delete sanitizedRow.source_license;
+    // Scrub auto-register descriptions that embed file paths
+    if (sanitizedRow.description && /^Auto-registered (from|function from) /.test(sanitizedRow.description)) {
+      sanitizedRow.description = sanitizedRow.description.replace(/from .+$/, 'from source');
+    }
     const result = this.db.prepare(`
       INSERT OR IGNORE INTO pattern_archive
         (id, name, code, language, pattern_type, coherency_total, coherency_json,
@@ -2164,7 +2311,7 @@ class SQLiteStore {
       row.pattern_type || 'utility', row.coherency_total || 0,
       row.coherency_json || '{}', row.test_code || null,
       row.tags || '[]', reason, now, row.created_at || null,
-      JSON.stringify(row)
+      JSON.stringify(sanitizedRow)
     );
     // Verify archive actually wrote — INSERT OR IGNORE silently skips on conflict
     if (result.changes === 0) {
@@ -2181,6 +2328,14 @@ class SQLiteStore {
    */
   _archiveCandidate(row, reason = 'unknown') {
     const now = new Date().toISOString();
+    // Sanitize full_row_json to strip fields that could leak local paths
+    const sanitizedRow = { ...row };
+    delete sanitizedRow.source_url;
+    delete sanitizedRow.source_repo;
+    delete sanitizedRow.source_license;
+    if (sanitizedRow.description && /^Auto-registered (from|function from) /.test(sanitizedRow.description)) {
+      sanitizedRow.description = sanitizedRow.description.replace(/from .+$/, 'from source');
+    }
     const result = this.db.prepare(`
       INSERT OR IGNORE INTO candidate_archive
         (id, name, code, language, coherency_total, parent_pattern,
@@ -2190,7 +2345,7 @@ class SQLiteStore {
       row.id, row.name, row.code, row.language || 'unknown',
       row.coherency_total || 0, row.parent_pattern || null,
       row.generation_method || 'variant', reason, now,
-      row.created_at || null, JSON.stringify(row)
+      row.created_at || null, JSON.stringify(sanitizedRow)
     );
     // Verify archive actually wrote — refuse deletion if archive failed
     if (result.changes === 0) {
@@ -2206,6 +2361,9 @@ class SQLiteStore {
    */
   _archiveEntry(row, reason = 'unknown') {
     const now = new Date().toISOString();
+    // Sanitize full_row_json — entries contain an author field (often the OS username)
+    const sanitizedRow = { ...row };
+    delete sanitizedRow.author;
     const result = this.db.prepare(`
       INSERT OR IGNORE INTO entry_archive
         (id, code, language, coherency_total, deleted_reason,
@@ -2214,7 +2372,7 @@ class SQLiteStore {
     `).run(
       row.id, row.code, row.language || 'unknown',
       row.coherency_total || 0, reason, now,
-      row.created_at || null, JSON.stringify(row)
+      row.created_at || null, JSON.stringify(sanitizedRow)
     );
     // Verify archive actually wrote — refuse deletion if archive failed
     if (result.changes === 0) {
@@ -2320,6 +2478,369 @@ class SQLiteStore {
       throw e;
     }
     return { deletedDeltas, deletedEmbeddings, deletedHealedVariants, deletedHealingStats };
+  }
+
+  // ─── Candidate Deduplication — keep only best per (name, language) ───
+
+  /**
+   * Deduplicate candidates: keep only the highest-coherency variant per (name, language) pair.
+   * Archives removed candidates before deletion.
+   * @param {object} options - { dryRun, maxPerGroup }
+   * @returns {{ removed, kept, groups }}
+   */
+  deduplicateCandidates(options = {}) {
+    const { dryRun = false, maxPerGroup = 1 } = options;
+    const all = this.db.prepare(
+      'SELECT * FROM candidates WHERE promoted_at IS NULL ORDER BY coherency_total DESC, created_at ASC'
+    ).all();
+
+    // Group by (name, language)
+    const groups = new Map();
+    for (const row of all) {
+      const key = `${(row.name || '').toLowerCase()}:${(row.language || 'unknown').toLowerCase()}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row);
+    }
+
+    const toDelete = [];
+    for (const [, rows] of groups) {
+      // Already sorted by coherency DESC — keep first maxPerGroup, delete rest
+      for (let i = maxPerGroup; i < rows.length; i++) {
+        toDelete.push(rows[i]);
+      }
+    }
+
+    if (!dryRun && toDelete.length > 0) {
+      this.db.exec('BEGIN');
+      try {
+        const deleteStmt = this.db.prepare('DELETE FROM candidates WHERE id = ?');
+        for (const row of toDelete) {
+          this._archiveCandidate(row, 'deduplicated');
+          deleteStmt.run(row.id);
+        }
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
+      }
+    }
+
+    return { removed: toDelete.length, kept: all.length - toDelete.length, groups: groups.size };
+  }
+
+  // ─── Orphan Candidate Cleanup ───
+
+  /**
+   * Remove candidates whose parent_pattern no longer exists in the patterns table.
+   * @param {object} options - { dryRun }
+   * @returns {{ removed }}
+   */
+  cleanOrphanCandidates(options = {}) {
+    const { dryRun = false } = options;
+    const orphans = this.db.prepare(`
+      SELECT * FROM candidates
+      WHERE parent_pattern IS NOT NULL
+        AND parent_pattern NOT IN (SELECT name FROM patterns)
+        AND promoted_at IS NULL
+    `).all();
+
+    if (!dryRun && orphans.length > 0) {
+      this.db.exec('BEGIN');
+      try {
+        const deleteStmt = this.db.prepare('DELETE FROM candidates WHERE id = ?');
+        for (const row of orphans) {
+          this._archiveCandidate(row, 'orphan');
+          deleteStmt.run(row.id);
+        }
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
+      }
+    }
+
+    return { removed: orphans.length };
+  }
+
+  // ─── Entry Pruning — lifecycle for unused entries ───
+
+  /**
+   * Prune entries that have never been validated (test_passed IS NULL)
+   * and are older than the specified number of days.
+   * @param {object} options - { dryRun, maxAgeDays }
+   * @returns {{ removed, remaining }}
+   */
+  pruneStaleEntries(options = {}) {
+    const { dryRun = false, maxAgeDays = 90 } = options;
+    const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+
+    const stale = this.db.prepare(`
+      SELECT * FROM entries
+      WHERE test_passed IS NULL
+        AND times_used = 0
+        AND created_at < ?
+    `).all(cutoff);
+
+    if (!dryRun && stale.length > 0) {
+      this.db.exec('BEGIN');
+      try {
+        const deleteStmt = this.db.prepare('DELETE FROM entries WHERE id = ?');
+        for (const row of stale) {
+          this._archiveEntry(row, 'stale-pruned');
+          this._audit('prune', 'entries', row.id, { maxAgeDays, reason: 'stale' });
+          deleteStmt.run(row.id);
+        }
+        this.db.exec('COMMIT');
+      } catch (e) {
+        this.db.exec('ROLLBACK');
+        throw e;
+      }
+    }
+
+    const remaining = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    return { removed: stale.length, remaining };
+  }
+
+  // ─── Audit Log Retention — force rotation now ───
+
+  /**
+   * Force audit log rotation: apply TTL and row cap immediately.
+   * @returns {{ before, after }}
+   */
+  rotateAuditLogNow() {
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    this._rotateAuditLog();
+    const after = this.db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    return { before, after, removed: before - after };
+  }
+
+  // ─── Candidate Cap — enforce max variants per (name, language) ───
+
+  /**
+   * Enforce a cap on candidates per (name, language) pair.
+   * Keeps the top N by coherency, archives and deletes the rest.
+   * @param {object} options - { maxPerGroup, dryRun }
+   * @returns {{ removed, kept, groups }}
+   */
+  capCandidates(options = {}) {
+    const { maxPerGroup = 5, dryRun = false } = options;
+    return this.deduplicateCandidates({ dryRun, maxPerGroup });
+  }
+
+  // ─── Oracle Health Check ───
+
+  /**
+   * Run comprehensive health checks on the oracle database.
+   * @returns {object} Health report with warnings and stats.
+   */
+  healthCheck() {
+    const stats = {};
+    const warnings = [];
+
+    // Database size
+    const fs = require('fs');
+    try {
+      const dbStat = fs.statSync(this.dbPath);
+      stats.dbSizeMB = Math.round(dbStat.size / 1024 / 1024 * 100) / 100;
+      if (stats.dbSizeMB > 100) {
+        warnings.push({ level: 'high', message: `Database size is ${stats.dbSizeMB} MB — consider VACUUM and deduplication` });
+      }
+    } catch (e) {
+      stats.dbSizeMB = null;
+    }
+
+    // Pattern count
+    stats.patterns = this.db.prepare('SELECT COUNT(*) as c FROM patterns').get().c;
+
+    // Candidate stats
+    stats.candidates = this.db.prepare('SELECT COUNT(*) as c FROM candidates WHERE promoted_at IS NULL').get().c;
+    stats.candidateGroups = this.db.prepare('SELECT COUNT(DISTINCT LOWER(name) || \':\' || LOWER(language)) as c FROM candidates WHERE promoted_at IS NULL').get().c;
+    stats.candidateDuplicationRatio = stats.candidateGroups > 0
+      ? Math.round(stats.candidates / stats.candidateGroups * 100) / 100
+      : 0;
+    if (stats.candidateDuplicationRatio > 5) {
+      warnings.push({ level: 'high', message: `Candidate duplication ratio is ${stats.candidateDuplicationRatio}x — run dedup-candidates` });
+    }
+
+    // Orphan candidates
+    stats.orphanCandidates = this.db.prepare(`
+      SELECT COUNT(*) as c FROM candidates
+      WHERE parent_pattern IS NOT NULL
+        AND parent_pattern NOT IN (SELECT name FROM patterns)
+        AND promoted_at IS NULL
+    `).get().c;
+    if (stats.orphanCandidates > 0) {
+      warnings.push({ level: 'medium', message: `${stats.orphanCandidates} orphan candidate(s) pointing to non-existent parents` });
+    }
+
+    // Entry stats
+    stats.entries = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    stats.untestedEntries = this.db.prepare('SELECT COUNT(*) as c FROM entries WHERE test_passed IS NULL AND times_used = 0').get().c;
+    if (stats.untestedEntries > stats.entries * 0.5 && stats.untestedEntries > 100) {
+      warnings.push({ level: 'medium', message: `${stats.untestedEntries} entries never validated — consider pruning stale entries` });
+    }
+
+    // Audit log
+    stats.auditLogSize = this.db.prepare('SELECT COUNT(*) as c FROM audit_log').get().c;
+    if (stats.auditLogSize > 10000) {
+      warnings.push({ level: 'medium', message: `Audit log has ${stats.auditLogSize} entries — rotation may be needed` });
+    }
+
+    // Sync status
+    const persistence = require('../core/persistence');
+    stats.personalStoreExists = persistence.hasGlobalStore();
+    if (!stats.personalStoreExists) {
+      warnings.push({ level: 'high', message: 'Personal store does not exist — sync push has never succeeded' });
+    }
+
+    // Average coherency
+    const avgRow = this.db.prepare('SELECT AVG(coherency_total) as avg FROM patterns').get();
+    stats.avgCoherency = avgRow.avg != null ? Math.round(avgRow.avg * 1000) / 1000 : 0;
+
+    // Fragmentation estimate (page_count * page_size vs freelist_count * page_size)
+    try {
+      const pageCount = this.db.prepare('PRAGMA page_count').get().page_count;
+      const freePages = this.db.prepare('PRAGMA freelist_count').get().freelist_count;
+      const pageSize = this.db.prepare('PRAGMA page_size').get().page_size;
+      stats.fragmentationPct = pageCount > 0 ? Math.round(freePages / pageCount * 100 * 10) / 10 : 0;
+      if (stats.fragmentationPct > 20) {
+        warnings.push({ level: 'medium', message: `Database fragmentation is ${stats.fragmentationPct}% — run VACUUM` });
+      }
+    } catch (e) {
+      stats.fragmentationPct = null;
+    }
+
+    return { stats, warnings, healthy: warnings.filter(w => w.level === 'high').length === 0 };
+  }
+
+  // ─── VACUUM ───
+
+  /**
+   * Run VACUUM to reclaim space and defragment the database.
+   * @returns {{ beforeMB, afterMB }}
+   */
+  vacuum() {
+    const fs = require('fs');
+    let beforeMB = null;
+    try { beforeMB = Math.round(fs.statSync(this.dbPath).size / 1024 / 1024 * 100) / 100; } catch (e) {}
+    this.db.exec('VACUUM');
+    let afterMB = null;
+    try { afterMB = Math.round(fs.statSync(this.dbPath).size / 1024 / 1024 * 100) / 100; } catch (e) {}
+    return { beforeMB, afterMB, savedMB: beforeMB != null && afterMB != null ? Math.round((beforeMB - afterMB) * 100) / 100 : null };
+  }
+
+  // ─── Archive Retention — prevent unbounded archive growth ───
+
+  /**
+   * Purge candidate_archive, keeping only the most recent `keepRecent` rows.
+   * @param {object} options - { keepRecent, dryRun }
+   * @returns {{ before, after, removed }}
+   */
+  purgeCandidateArchive(options = {}) {
+    const { keepRecent = 1000, dryRun = false } = options;
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM candidate_archive').get().c;
+    if (before <= keepRecent) return { before, after: before, removed: 0 };
+
+    if (!dryRun) {
+      this.db.prepare(`
+        DELETE FROM candidate_archive WHERE rowid NOT IN (
+          SELECT rowid FROM candidate_archive ORDER BY deleted_at DESC LIMIT ?
+        )
+      `).run(keepRecent);
+      this._audit('purge', 'candidate_archive', 'bulk', { keepRecent, removed: before - keepRecent });
+    }
+    const after = dryRun ? keepRecent : this.db.prepare('SELECT COUNT(*) as c FROM candidate_archive').get().c;
+    return { before, after, removed: before - after };
+  }
+
+  /**
+   * Trim pattern_archive to at most `maxVersions` per pattern (by name).
+   * Keeps the most recent versions (by deleted_at) for each pattern name.
+   * @param {object} options - { maxVersions, dryRun }
+   * @returns {{ before, after, removed }}
+   */
+  purgePatternArchive(options = {}) {
+    const { maxVersions = 3, dryRun = false } = options;
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM pattern_archive').get().c;
+
+    // Find rows to delete: for each name, keep only the most recent maxVersions
+    const excess = this.db.prepare(`
+      SELECT rowid FROM pattern_archive WHERE rowid NOT IN (
+        SELECT rowid FROM (
+          SELECT rowid, ROW_NUMBER() OVER (PARTITION BY name ORDER BY deleted_at DESC) as rn
+          FROM pattern_archive
+        ) WHERE rn <= ?
+      )
+    `).all(maxVersions);
+
+    if (!dryRun && excess.length > 0) {
+      const delStmt = this.db.prepare('DELETE FROM pattern_archive WHERE rowid = ?');
+      for (const row of excess) delStmt.run(row.rowid);
+      this._audit('purge', 'pattern_archive', 'bulk', { maxVersions, removed: excess.length });
+    }
+    const after = dryRun ? before - excess.length : this.db.prepare('SELECT COUNT(*) as c FROM pattern_archive').get().c;
+    return { before, after, removed: excess.length };
+  }
+
+  /**
+   * Rotate the entries table: archive untested, zero-usage entries older than maxAgeDays,
+   * and entries that duplicate patterns already in the library.
+   * @param {object} options - { maxAgeDays, dryRun }
+   * @returns {{ staleRemoved, duplicateRemoved, remaining }}
+   */
+  rotateEntries(options = {}) {
+    const { maxAgeDays = 60, dryRun = false } = options;
+    const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+
+    // Stale: untested, unused, old
+    const stale = this.db.prepare(`
+      SELECT * FROM entries
+      WHERE (test_passed IS NULL OR test_passed = 0)
+        AND times_used = 0
+        AND created_at < ?
+    `).all(cutoff);
+
+    // Duplicates: entries whose code already exists in patterns
+    const dupes = this.db.prepare(`
+      SELECT e.* FROM entries e
+      INNER JOIN patterns p ON e.code = p.code AND e.language = p.language
+    `).all();
+
+    if (!dryRun && (stale.length > 0 || dupes.length > 0)) {
+      const delStmt = this.db.prepare('DELETE FROM entries WHERE id = ?');
+      const seen = new Set();
+      for (const row of stale) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        this._archiveEntry(row, 'stale-rotated');
+        delStmt.run(row.id);
+      }
+      for (const row of dupes) {
+        if (seen.has(row.id)) continue;
+        seen.add(row.id);
+        this._archiveEntry(row, 'duplicate-of-pattern');
+        delStmt.run(row.id);
+      }
+      this._audit('rotate', 'entries', 'bulk', { stale: stale.length, dupes: dupes.length });
+    }
+
+    const remaining = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    return { staleRemoved: stale.length, duplicateRemoved: dupes.length, remaining };
+  }
+
+  /**
+   * Run a full retention sweep: purge all archive tables and rotate entries.
+   * Intended to be called periodically (e.g., on auto-submit or maintenance).
+   * @param {object} options - { dryRun }
+   * @returns {object} Combined report
+   */
+  retentionSweep(options = {}) {
+    const { dryRun = false } = options;
+    const candidateArchive = this.purgeCandidateArchive({ keepRecent: 1000, dryRun });
+    const patternArchive = this.purgePatternArchive({ maxVersions: 3, dryRun });
+    const entries = this.rotateEntries({ maxAgeDays: 60, dryRun });
+    const auditLog = this.rotateAuditLogNow();
+    return { candidateArchive, patternArchive, entries, auditLog };
   }
 
   /**

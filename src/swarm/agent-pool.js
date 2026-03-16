@@ -341,9 +341,9 @@ function createAgentPool(config, providerNames) {
           const start = Date.now();
           try {
             const result = await agent.send(prompt, options);
-            return { agent: agent.name, model: agent.model, ...result, durationMs: Date.now() - start };
+            return { agent: agent.name, model: agent.model, ...result, durationMs: Math.max(0, Date.now() - start) };
           } catch (err) {
-            return { agent: agent.name, model: agent.model, error: err.message, durationMs: Date.now() - start };
+            return { agent: agent.name, model: agent.model, error: err?.message || 'Unknown error', durationMs: Math.max(0, Date.now() - start) };
           }
         })
       );

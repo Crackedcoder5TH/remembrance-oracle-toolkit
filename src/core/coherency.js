@@ -34,16 +34,52 @@ const WEIGHTS = {
  * @returns {number} Syntax score from 0 (invalid) to 1 (perfect)
  */
 function scoreSyntax(code, language) {
-  if (language === 'javascript' || language === 'js') {
-    // Use balanced braces + structural checks instead of new Function()
-    // which compiles code and can execute side effects at parse time.
+  const lang = (language || '').toLowerCase();
+
+  if (lang === 'javascript' || lang === 'js' || lang === 'typescript' || lang === 'ts') {
     const balanced = checkBalancedBraces(code);
-    const hasStructure = /\b(function|const|let|var|class|module|export|import|require)\b/.test(code);
+    const hasStructure = /\b(function|const|let|var|class|module|export|import|require|interface|type)\b/.test(code);
     if (balanced && hasStructure) return SYNTAX_SCORES.PERFECT;
     if (balanced) return SYNTAX_SCORES.BALANCED_BRACES;
     return SYNTAX_SCORES.INVALID;
   }
-  // For other languages, do structural checks
+
+  if (lang === 'python' || lang === 'py') {
+    const hasStructure = /^\s*(def|class|import|from|if|for|while|with|try|async\s+def)\b/m.test(code);
+    const hasIndent = /^\s{2,}\S/m.test(code);
+    const noSyntaxErrors = !/\{[^}]*\}/.test(code) || /\bdict\b|\bset\b/.test(code); // Braces in Python are dict/set only
+    let score = SYNTAX_SCORES.UNKNOWN_BASE;
+    if (hasStructure) score += SYNTAX_SCORES.STRUCTURE_BONUS;
+    if (hasIndent) score += SYNTAX_SCORES.BALANCED_BONUS;
+    if (hasStructure && hasIndent) score = SYNTAX_SCORES.PERFECT;
+    return Math.min(score, 1.0);
+  }
+
+  if (lang === 'rust' || lang === 'rs') {
+    const balanced = checkBalancedBraces(code);
+    const hasStructure = /\b(fn|struct|impl|enum|trait|mod|use|pub|let|mut|match)\b/.test(code);
+    if (balanced && hasStructure) return SYNTAX_SCORES.PERFECT;
+    if (balanced) return SYNTAX_SCORES.BALANCED_BRACES;
+    return SYNTAX_SCORES.INVALID;
+  }
+
+  if (lang === 'go' || lang === 'golang') {
+    const balanced = checkBalancedBraces(code);
+    const hasStructure = /\b(func|package|import|type|struct|interface|var|const|defer|go\s)\b/.test(code);
+    if (balanced && hasStructure) return SYNTAX_SCORES.PERFECT;
+    if (balanced) return SYNTAX_SCORES.BALANCED_BRACES;
+    return SYNTAX_SCORES.INVALID;
+  }
+
+  if (lang === 'java') {
+    const balanced = checkBalancedBraces(code);
+    const hasStructure = /\b(class|interface|public|private|protected|void|static|import|package)\b/.test(code);
+    if (balanced && hasStructure) return SYNTAX_SCORES.PERFECT;
+    if (balanced) return SYNTAX_SCORES.BALANCED_BRACES;
+    return SYNTAX_SCORES.INVALID;
+  }
+
+  // Generic fallback for unknown languages
   const balanced = checkBalancedBraces(code);
   const hasStructure = /\b(function|def|class|fn|pub|func|void|int|string)\b/i.test(code);
   let score = SYNTAX_SCORES.UNKNOWN_BASE;
@@ -228,10 +264,11 @@ function scoreCompleteness(code) {
  * @param {string} code - The code to analyze
  * @returns {number} Consistency score from 0 (inconsistent) to 1 (fully consistent)
  */
-function scoreConsistency(code) {
+function scoreConsistency(code, language) {
   let score = 1.0;
   const lines = code.split('\n').filter(l => l.trim());
   if (lines.length < 2) return score;
+  const lang = (language || '').toLowerCase();
 
   // Check indentation consistency
   const indents = lines.map(l => {
@@ -243,14 +280,39 @@ function scoreConsistency(code) {
     const usesTabs = indents.some(i => i.includes('\t'));
     const usesSpaces = indents.some(i => i.includes(' '));
     if (usesTabs && usesSpaces) score -= CONSISTENCY_PENALTIES.MIXED_INDENT_PENALTY;
+
+    // Python: enforce spaces-only (PEP 8)
+    if ((lang === 'python' || lang === 'py') && usesTabs) {
+      score -= CONSISTENCY_PENALTIES.MIXED_INDENT_PENALTY;
+    }
+
+    // Go: enforce tabs (gofmt convention)
+    if ((lang === 'go' || lang === 'golang') && usesSpaces && !usesTabs) {
+      score -= 0.1; // Lighter penalty — spaces work but tabs are canonical
+    }
   }
 
   // Check naming convention consistency
   const camelCase = (code.match(/[a-z][a-zA-Z]+\(/g) || []).length;
   const snakeCase = (code.match(/[a-z]+_[a-z]+\(/g) || []).length;
-  if (camelCase > 0 && snakeCase > 0) {
-    const ratio = Math.min(camelCase, snakeCase) / Math.max(camelCase, snakeCase);
-    if (ratio > CONSISTENCY_PENALTIES.NAMING_RATIO_THRESHOLD) score -= CONSISTENCY_PENALTIES.MIXED_NAMING_PENALTY;
+
+  // Language-appropriate naming: Python uses snake_case, JS/Java use camelCase
+  if (lang === 'python' || lang === 'py') {
+    // In Python, camelCase in function calls is a consistency issue
+    if (camelCase > 0 && snakeCase > 0) {
+      const ratio = camelCase / (camelCase + snakeCase);
+      if (ratio > 0.3) score -= CONSISTENCY_PENALTIES.MIXED_NAMING_PENALTY;
+    }
+  } else if (lang === 'rust' || lang === 'rs') {
+    // Rust uses snake_case for functions, PascalCase for types — both are expected
+    // Only penalize truly mixed (camelCase functions + snake_case functions)
+    // No penalty for Rust since mixed is normal
+  } else {
+    // JS/TS/Java/Go — camelCase is canonical
+    if (camelCase > 0 && snakeCase > 0) {
+      const ratio = Math.min(camelCase, snakeCase) / Math.max(camelCase, snakeCase);
+      if (ratio > CONSISTENCY_PENALTIES.NAMING_RATIO_THRESHOLD) score -= CONSISTENCY_PENALTIES.MIXED_NAMING_PENALTY;
+    }
   }
 
   return Math.max(score, 0);
@@ -273,7 +335,7 @@ function computeCoherencyScore(code, metadata = {}) {
   const scores = {
     syntaxValid: scoreSyntax(code, language),
     completeness: scoreCompleteness(code),
-    consistency: scoreConsistency(code),
+    consistency: scoreConsistency(code, language),
     testProof,
     historicalReliability,
   };
@@ -314,9 +376,13 @@ function detectLanguage(code) {
   const goRe = new RegExp('\\b' + 'func' + '\\b.*\\{|' + 'package' + '\\b|fmt\\.');
   if (goRe.test(code)) return 'go';
   if (/\bpublic\b.*\bclass\b|\bSystem\.out/.test(code)) return 'java';
-  // Check JS before Python to avoid misclassifying JS files that contain
-  // Python keywords in string literals (e.g. template literals with "import os")
-  if (/\bfunction\b.*\{|const |let |=>\s*\{|require\(|import .* from/.test(code)) return 'javascript';
+  // TypeScript — check before JS since TS is a superset
+  if (/:\s*(string|number|boolean|void|any|never)\b/.test(code) && /\b(interface|type|enum)\b/.test(code)) return 'typescript';
+  if (/\bfunction\b.*\{|const |let |=>\s*\{|require\(|import .* from/.test(code)) {
+    // Distinguish TS from JS by type annotations
+    if (/:\s*(string|number|boolean|void|any|never)\b/.test(code) || /<\w+>/.test(code)) return 'typescript';
+    return 'javascript';
+  }
   // Anchor Python patterns to start of line to avoid matching keywords inside strings
   if (/^\s*def\b.*:/m.test(code) || /^\s*import\s+\w/m.test(code) || /^\s*print\s*\(/m.test(code)) return 'python';
   if (/<\/?[a-z][\s\S]*>/i.test(code) && /className|onClick|useState/.test(code)) return 'jsx';

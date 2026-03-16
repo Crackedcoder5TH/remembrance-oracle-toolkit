@@ -347,7 +347,7 @@ class PatternRecycler {
 
     this.stats.voidReplenishments++;
     if (this.verbose) {
-      console.log(`  [VOID] Scaffolding from ${bestMatch.name} (coherency ${bestMatch.coherencyScore?.total.toFixed(3)})`);
+      console.log(`  [VOID] Scaffolding from ${bestMatch.name} (coherency ${(bestMatch.coherencyScore?.total ?? 0).toFixed(3)})`);
     }
 
     return bestMatch;
@@ -1034,6 +1034,14 @@ class PatternRecycler {
       }
     }
 
+    // Covenant pre-check: reject candidates that violate security/ethics principles
+    const { covenantCheck } = require('../core/covenant');
+    const covenantResult = covenantCheck(candidate.code);
+    if (!covenantResult.sealed) {
+      report.skipped++;
+      return false;
+    }
+
     const coherency = computeCoherencyScore(candidate.code, {
       language: candidate.language,
       testPassed: null,
@@ -1079,6 +1087,12 @@ class PatternRecycler {
    */
   _generateVariants(pattern, languages, report, knownNames, minCoherency, extraTags) {
     if (pattern.language !== 'javascript') return;
+
+    // Cap: max 10 variants per parent pattern
+    const MAX_VARIANTS_PER_PARENT = 10;
+    const existingVariants = this.oracle.patterns.getCandidates()
+      .filter(c => c.parentPattern === pattern.name).length;
+    if (existingVariants >= MAX_VARIANTS_PER_PARENT) return;
 
     for (const lang of languages) {
       const variant = this._transpileToLanguage(pattern, lang);
@@ -1298,10 +1312,14 @@ class PatternRecycler {
       details: [],
     };
 
+    // Pre-load all patterns into a Map to avoid N+1 queries
+    const allPatterns = this.oracle.patterns.getAll();
+    const patternsByName = new Map(allPatterns.map(p => [p.name, p]));
+
     for (const candidate of withTests) {
       // Skip if already exists as a proven pattern — mark promoted only if
       // the existing pattern has equal or higher coherency (proves candidate is redundant)
-      const existing = this.oracle.patterns.getAll().find(p => p.name === candidate.name);
+      const existing = patternsByName.get(candidate.name);
       if (existing) {
         const existingCoherency = existing.coherencyScore?.total ?? 0;
         const candidateCoherency = candidate.coherencyTotal ?? 0;

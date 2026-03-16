@@ -383,12 +383,13 @@ function auditIntegration(store, patterns) {
  */
 function integratePatternIncremental(pattern, store) {
   if (!store || !pattern || !pattern.id) {
-    return { embedded: false, familyMatch: null };
+    return { embedded: false, familyMatch: null, familyCreated: false };
   }
 
   _loadCompression();
   let embedded = false;
   let familyMatch = null;
+  let familyCreated = false;
 
   try {
     // Step 1: Compute and store holographic embedding
@@ -428,16 +429,102 @@ function integratePatternIncremental(pattern, store) {
           avgCoherency: newAvg,
         });
         familyMatch = fp.hash;
+      } else {
+        // Lazy Family Detection: no template exists yet — scan singletons
+        // for a matching fingerprint to form a new family on-the-spot.
+        const match = _findSingletonMatch(fp.hash, pattern, store);
+        if (match) {
+          // Create a new family template from the skeleton
+          const newCoherency = pattern.coherencyScore?.total ?? pattern.coherencyScore ?? 0;
+          const matchCoherency = match.coherencyScore?.total ?? match.coherencyTotal ?? 0;
+          const avgCoherency = (newCoherency + matchCoherency) / 2;
+
+          store.storeTemplate({
+            id: fp.hash,
+            skeleton: fp.skeleton,
+            language: pattern.language || 'javascript',
+            memberCount: 2,
+            avgCoherency,
+          });
+
+          // Store delta for the new pattern
+          store.storeDelta({
+            patternId: pattern.id,
+            templateId: fp.hash,
+            delta: fp.placeholders,
+            originalSize: (pattern.code || '').length,
+            deltaSize: JSON.stringify(fp.placeholders).length,
+          });
+
+          // Store delta for the existing singleton match
+          const matchFp = structuralFingerprint(match.code, match.language);
+          store.storeDelta({
+            patternId: match.id,
+            templateId: fp.hash,
+            delta: matchFp.placeholders,
+            originalSize: (match.code || '').length,
+            deltaSize: JSON.stringify(matchFp.placeholders).length,
+          });
+
+          familyMatch = fp.hash;
+          familyCreated = true;
+        }
+        // If no singleton match found, the pattern stays a singleton.
       }
-      // Note: if no template exists yet, the pattern stays a singleton until
-      // compressStore runs and detects the family. This avoids creating
-      // single-member templates that would just add overhead.
     }
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[bridge:integratePatternIncremental]', e?.message);
   }
 
-  return { embedded, familyMatch };
+  return { embedded, familyMatch, familyCreated };
+}
+
+/**
+ * Lazy family detection: scan singleton patterns (those without a fractal delta)
+ * for a matching structural fingerprint. Returns the first match found.
+ *
+ * To avoid scanning the entire library on every registration, we limit the
+ * scan to patterns in the same language and cap the search at 200 patterns.
+ *
+ * @param {string} targetHash - Fingerprint hash to match
+ * @param {object} newPattern - The new pattern (excluded from results)
+ * @param {object} store - SQLiteStore instance
+ * @returns {object|null} Matching singleton pattern or null
+ */
+function _findSingletonMatch(targetHash, newPattern, store) {
+  if (!store.db) return null;
+
+  try {
+    const { structuralFingerprint } = require('./fractal');
+
+    // Find patterns in the same language that don't have a fractal delta (singletons)
+    const singletons = store.db.prepare(`
+      SELECT p.id, p.code, p.language, p.name, p.coherency_total, p.coherency_json
+      FROM patterns p
+      WHERE p.language = ?
+        AND p.id != ?
+        AND p.id NOT IN (SELECT pattern_id FROM fractal_deltas)
+      LIMIT 200
+    `).all(newPattern.language || 'javascript', newPattern.id);
+
+    for (const row of singletons) {
+      const fp = structuralFingerprint(row.code, row.language);
+      if (fp.hash === targetHash) {
+        return {
+          id: row.id,
+          code: row.code,
+          language: row.language,
+          name: row.name,
+          coherencyScore: _safeParseJSON(row.coherency_json),
+          coherencyTotal: row.coherency_total || 0,
+        };
+      }
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[bridge:_findSingletonMatch]', e?.message);
+  }
+
+  return null;
 }
 
 // ─── 8. Fractal Integrity Check ─────────────────────────────────────

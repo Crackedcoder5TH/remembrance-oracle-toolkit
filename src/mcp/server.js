@@ -16,6 +16,26 @@ const { safeJsonParse } = require('../core/covenant');
 const { TOOLS } = require('./tools');
 const { HANDLERS } = require('./handlers');
 
+// ─── MCP Response Sanitizer ───
+// Strips fields that could leak user identity or local file paths to MCP clients.
+// Applied to all outgoing results before serialization.
+const SENSITIVE_FIELDS = new Set([
+  'sourceFile', 'sourceCommit', 'sourceUrl', 'sourceRepo',
+  'source_file', 'source_commit', 'source_url', 'source_repo',
+  'author', 'voter',
+]);
+
+function sanitizeMcpResult(obj) {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeMcpResult);
+  const cleaned = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (SENSITIVE_FIELDS.has(key)) continue;
+    cleaned[key] = sanitizeMcpResult(value);
+  }
+  return cleaned;
+}
+
 const PROTOCOL_VERSION = '2024-11-05';
 const SERVER_INFO = { name: 'remembrance-oracle', version: '3.0.0' };
 
@@ -62,6 +82,16 @@ class MCPServer {
     // Cleanup stale entries every 2 minutes
     this._cleanupTimer = setInterval(() => this._cleanupCallLog(), 120000);
     if (this._cleanupTimer.unref) this._cleanupTimer.unref();
+  }
+
+  /**
+   * Stop the cleanup timer to allow garbage collection.
+   */
+  stop() {
+    if (this._cleanupTimer) {
+      clearInterval(this._cleanupTimer);
+      this._cleanupTimer = null;
+    }
   }
 
   _cleanupCallLog() {
@@ -199,11 +229,14 @@ class MCPServer {
 
     try {
       const result = await handler(this.oracle, clampedArgs);
+      // Sanitize result before sending to MCP clients — strip fields that could
+      // leak user identity, local file paths, or repo structure
+      const sanitized = sanitizeMcpResult(result);
       return {
         jsonrpc: '2.0',
         id,
         result: {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          content: [{ type: 'text', text: JSON.stringify(sanitized, null, 2) }],
         },
       };
     } catch (err) {

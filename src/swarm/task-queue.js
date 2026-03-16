@@ -39,9 +39,10 @@ class SwarmTaskQueue extends EventEmitter {
     super();
     this._concurrency = options.concurrency || 1;
     this._maxQueueSize = options.maxQueueSize || 50;
+    this._maxCompleted = options.maxCompleted || 100;
     this._pending = [];      // Sorted by priority
     this._active = new Map(); // id → { task, promise }
-    this._completed = [];     // Finished tasks (last 100)
+    this._completed = [];     // Finished tasks (last _maxCompleted)
     this._processing = false;
   }
 
@@ -58,7 +59,16 @@ class SwarmTaskQueue extends EventEmitter {
    */
   enqueue(description, options = {}) {
     if (this._pending.length >= this._maxQueueSize) {
-      throw new Error(`Queue full (max ${this._maxQueueSize})`);
+      // Evict lowest-priority task instead of hard-failing (abundance over scarcity)
+      const lowestPri = this._pending[this._pending.length - 1];
+      const incomingPri = options.priority || PRIORITY.NORMAL;
+      if (incomingPri < lowestPri.priority) {
+        // New task is higher priority — evict lowest
+        const evicted = this._pending.pop();
+        this.emit('task:evicted', { id: evicted.id, description: evicted.description, reason: 'queue_full_priority_eviction' });
+      } else {
+        throw new Error(`Queue full (max ${this._maxQueueSize}) — incoming task priority too low to evict`);
+      }
     }
 
     const task = {
@@ -148,8 +158,8 @@ class SwarmTaskQueue extends EventEmitter {
     } finally {
       this._active.delete(task.id);
       this._completed.push(task);
-      if (this._completed.length > 100) {
-        this._completed = this._completed.slice(-100);
+      if (this._completed.length > this._maxCompleted) {
+        this._completed = this._completed.slice(-this._maxCompleted);
       }
       if (this._pending.length === 0 && this._active.size === 0) {
         this.emit('queue:empty');

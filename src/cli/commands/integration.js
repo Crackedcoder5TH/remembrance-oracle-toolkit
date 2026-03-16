@@ -241,6 +241,72 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
     console.log(`  ${c.cyan('oracle config prompt-tag-on|off')} — Enable/disable prompt tag`);
   };
 
+  handlers['session-summary'] = (args) => {
+    const { buildSummary, saveSession, hasInteractions } = require('../../core/session-tracker');
+
+    if (!hasInteractions()) {
+      console.log(c.dim('No oracle interactions recorded in this session.'));
+      console.log(c.dim('Use ') + c.cyan('oracle resolve') + c.dim(' or ') + c.cyan('oracle search') + c.dim(' first.'));
+      return;
+    }
+
+    const summary = buildSummary();
+
+    if (jsonOut()) { console.log(JSON.stringify(summary)); return; }
+
+    console.log(`\n${c.boldCyan('═══ Oracle Session Summary ═══')}\n`);
+    console.log(`  Duration: ${c.bold(summary.duration)}`);
+    console.log(`  Resolves: ${c.bold(String(summary.stats.totalResolves))}  |  Searches: ${c.bold(String(summary.stats.totalSearches))}`);
+    console.log(`  Decisions: ${c.boldGreen(String(summary.stats.pulls) + ' PULL')}  ${c.boldYellow(String(summary.stats.evolves) + ' EVOLVE')}  ${c.boldMagenta(String(summary.stats.generates) + ' GENERATE')}`);
+    if (summary.stats.healingLoops > 0) {
+      console.log(`  Healing loops: ${c.bold(String(summary.stats.healingLoops))}`);
+    }
+    console.log(`  Unique patterns used: ${c.bold(String(summary.stats.uniquePatternsUsed))}`);
+
+    // What the oracle said
+    if (summary.said.length > 0) {
+      console.log(`\n${c.boldCyan('── What the Oracle Said ──')}\n`);
+      for (const s of summary.said) {
+        const icon = s.decision === 'pull' ? c.green('▸')
+          : s.decision === 'evolve' ? c.yellow('▸')
+          : c.magenta('▸');
+        const desc = s.description ? c.dim(` "${s.description}"`) : '';
+        console.log(`  ${icon} ${s.text}${desc}`);
+      }
+    }
+
+    // What the oracle whispered
+    if (summary.whispered.length > 0) {
+      console.log(`\n${c.boldMagenta('── What the Oracle Whispered ──')}\n`);
+      for (const w of summary.whispered) {
+        if (w.type === 'resolve') {
+          const label = w.patternName ? c.dim(`[${w.patternName}] `) : '';
+          console.log(`  ${c.magenta('~')} ${label}${c.italic(w.message)}`);
+        } else if (w.type === 'candidate-notes') {
+          console.log(`  ${c.cyan('~')} ${c.dim(w.message)}`);
+        }
+        console.log('');
+      }
+    }
+
+    // Prompt tags
+    if (summary.promptTags && summary.promptTags.length > 0) {
+      console.log(`${c.boldCyan('── Oracle Invocations ──')}\n`);
+      for (const tag of summary.promptTags) {
+        console.log(`  ${c.bold(tag)}`);
+      }
+      console.log('');
+    }
+
+    // Save the session
+    const savePath = saveSession();
+    if (savePath && !args.quiet) {
+      console.log(c.dim(`Session saved to ${savePath}`));
+    }
+
+    console.log(`${c.boldCyan('═'.repeat(30))}\n`);
+  };
+
   handlers['analytics'] = (args) => {
     const { generateAnalytics, computeTagCloud } = require('../../analytics/analytics');
     const analytics = generateAnalytics(oracle);

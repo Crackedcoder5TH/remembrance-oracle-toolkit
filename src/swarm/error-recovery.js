@@ -149,8 +149,8 @@ async function sendWithRecovery(agent, prompt, options = {}, recoveryOpts = {}) 
         return { response: '', meta: {}, recovered: false, errors };
       }
 
-      // Exponential backoff based on strategy delay
-      const delay = strategy.delayMs * Math.pow(2, attempt);
+      // Exponential backoff based on strategy delay, capped at 60s
+      const delay = Math.min(60000, strategy.delayMs * Math.pow(2, attempt));
       await new Promise(r => setTimeout(r, delay));
     }
   }

@@ -9,6 +9,7 @@ const { parseIntent, ARCHITECTURAL_PATTERNS } = require('../core/search-intellig
 const { auditLog } = require('../core/audit-logger');
 const { captureResolveDebug } = require('../ci/auto-debug');
 const { applyPromptTag } = require('../core/oracle-config');
+const { trackResolve } = require('../core/session-tracker');
 
 module.exports = {
   /**
@@ -150,15 +151,9 @@ module.exports = {
     const whisper = _generateResolveWhisper(decision, patternData, healing);
     const candidateNotes = _generateCandidateNotes(decision);
 
-    // Auto-record usage feedback when a pattern is pulled or evolved
-    // This closes the feedback loop that was previously manual-only
+    // Track that the pattern was served (not that it succeeded — that comes from explicit feedback)
     if (patternData?.id && (decision.decision === 'pull' || decision.decision === 'evolve')) {
-      try {
-        this.patterns.recordUsage(patternData.id, true);
-        this._emit({ type: 'feedback', id: patternData.id, succeeded: true, source: 'auto-resolve' });
-      } catch (e) {
-        if (process.env.ORACLE_DEBUG) console.error('[resolve] Usage feedback recording failed:', e.message);
-      }
+      this._emit({ type: 'resolve_served', id: patternData.id, decision: decision.decision });
     }
 
     auditLog('resolve', { id: patternData?.id, name: patternData?.name, success: true, language: patternData?.language, meta: { decision: decision.decision, confidence: decision.confidence, healed: !!healing } });
@@ -184,6 +179,9 @@ module.exports = {
 
     // Append prompt tag when enabled
     applyPromptTag(resolveResult);
+
+    // Track resolve interaction for session summary
+    try { trackResolve(resolveResult, request); } catch (_) { /* non-fatal */ }
 
     return resolveResult;
   },

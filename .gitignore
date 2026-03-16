@@ -2,6 +2,8 @@ node_modules/
 .remembrance/
 oracle.db
 store.db
+*.db-wal
+*.db-shm
 *.log
 .DS_Store
 .env
@@ -14,3 +16,8 @@ store.db
 .oracle-vim.vim
 .oracle-coc-settings.json
 .oracle-emacs.el
+# Sync queue backups
+sync-queue.json.bak
+sync-queue.json.tmp
+# Cathedral subproject data
+.cathedral/

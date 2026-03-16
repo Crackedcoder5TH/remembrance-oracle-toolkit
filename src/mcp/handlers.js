@@ -85,7 +85,7 @@ const HANDLERS = {
 
   // ─── 7. Debug (unified) ───
   oracle_debug(oracle, args) {
-    const action = args.action;
+    const action = args.action || 'stats';
     switch (action) {
       case 'capture':
         return oracle.debugCapture({
@@ -115,8 +115,22 @@ const HANDLERS = {
           language: args.language,
           errorClass: args.errorClass,
         });
+      case 'decohere':
+        return oracle.debugDecohereSweep({
+          maxDays: args.maxDays || 180,
+        });
+      case 'reexcite':
+        if (!args.id) throw new Error('id is required for reexcite action');
+        return oracle.debugReexcite(args.id);
+      case 'entanglement':
+        if (!args.id) throw new Error('id is required for entanglement action');
+        return oracle.debugEntanglementGraph(args.id, args.depth || 2);
+      case 'field': {
+        const fieldStats = oracle.debugStats();
+        return { ...fieldStats, view: 'quantum-field' };
+      }
       default:
-        throw new Error(`Unknown debug action: ${action}. Use: capture, search, feedback, stats, grow, patterns`);
+        throw new Error(`Unknown debug action: ${action}. Use: capture, search, feedback, stats, grow, patterns, decohere, reexcite, entanglement, field`);
     }
   },
 

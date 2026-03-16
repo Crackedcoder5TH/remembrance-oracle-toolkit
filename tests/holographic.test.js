@@ -126,6 +126,62 @@ describe('Holographic Encoding', () => {
       assert.equal(results.length, 0, 'Should filter out low-scoring results');
     });
 
+    it('should use interference matrix to boost similar patterns within a family', () => {
+      // Query matches p1 well. p2 is moderately similar to query but very similar
+      // to p1 (high interference). p3 is moderately similar to query but dissimilar
+      // to p1 (low interference). p2 should get a boost over p3.
+      const queryEmb = [1, 0, 0, 0];
+
+      // Without interference matrix, p2 and p3 have equal direct similarity to query
+      const p2Emb = [0.5, 0.5, 0, 0]; // cos(queryEmb, p2Emb) ≈ 0.707
+      const p3Emb = [0.5, 0, 0.5, 0]; // cos(queryEmb, p3Emb) ≈ 0.707
+
+      // Build a page WITH an interference matrix where p1-p2 are highly similar
+      // but p1-p3 are not
+      const page = {
+        id: 'page-interference',
+        centroidVec: [0.8, 0.2, 0.2, 0],
+        memberIds: ['p1', 'p2', 'p3'],
+        memberCount: 3,
+        interferenceMatrix: [
+          [1.0, 0.9, 0.1],  // p1 very similar to p2, dissimilar to p3
+          [0.9, 1.0, 0.2],
+          [0.1, 0.2, 1.0],
+        ],
+      };
+
+      const embeddingMap = new Map([
+        ['p1', [1, 0, 0, 0]],
+        ['p2', p2Emb],
+        ['p3', p3Emb],
+      ]);
+
+      const results = holoSearch(queryEmb, [page], embeddingMap, { topK: 5, minScore: 0 });
+
+      // p1 should be first (exact match)
+      assert.equal(results[0].patternId, 'p1');
+      // p2 should rank above p3 because its high interference with p1 gives it a boost
+      const p2Result = results.find(r => r.patternId === 'p2');
+      const p3Result = results.find(r => r.patternId === 'p3');
+      assert.ok(p2Result.score > p3Result.score,
+        `p2 (${p2Result.score}) should score higher than p3 (${p3Result.score}) due to interference boost`);
+    });
+
+    it('should work without interference matrix (backward compatible)', () => {
+      const queryEmb = [1, 0, 0, 0];
+      const pages = [
+        { id: 'page-no-matrix', centroidVec: [0.9, 0.1, 0, 0], memberIds: ['p1', 'p2'], memberCount: 2 },
+      ];
+      const embeddingMap = new Map([
+        ['p1', [1, 0, 0, 0]],
+        ['p2', [0.5, 0.5, 0, 0]],
+      ]);
+
+      const results = holoSearch(queryEmb, pages, embeddingMap, { topK: 5 });
+      assert.ok(results.length >= 1, 'Should still work without interference matrix');
+      assert.equal(results[0].patternId, 'p1');
+    });
+
     it('should deduplicate across pages', () => {
       const queryEmb = [1, 0, 0, 0];
       const pages = [

@@ -133,6 +133,16 @@ function createPage(pageId, members, templateId = null) {
   }
 
   const dims = members[0].embedding.length;
+
+  // Validate all members have the same embedding dimensions
+  for (let i = 1; i < members.length; i++) {
+    if (!members[i].embedding || members[i].embedding.length !== dims) {
+      throw new Error(
+        `createPage: dimension mismatch — member ${i} has ${members[i].embedding?.length ?? 0} dims, expected ${dims}`
+      );
+    }
+  }
+
   const centroid = new Float64Array(dims);
 
   // Compute centroid (element-wise mean)
@@ -199,22 +209,54 @@ function holoSearch(queryEmbedding, pages, embeddingMap, options = {}) {
   .slice(0, topK);
 
   // Pass 2: Within selected pages, rank individual patterns
+  // Uses the interference matrix (when available) to boost patterns
+  // that are similar to the best match within the same family.
   const results = [];
   const seen = new Set();
+  const INTERFERENCE_BOOST = 0.1;
 
   for (const { page, score: pageScore } of pageScores) {
     if (pageScore < minScore) continue;
 
-    for (const patternId of page.memberIds) {
+    // Score all unseen patterns in this page against the query
+    const pageResults = [];
+    for (let idx = 0; idx < page.memberIds.length; idx++) {
+      const patternId = page.memberIds[idx];
       if (seen.has(patternId)) continue;
-      seen.add(patternId);
 
       const embedding = embeddingMap.get(patternId);
       if (!embedding) continue;
 
       const patternScore = cosineSimilarity(queryEmbedding, embedding);
-      if (patternScore >= minScore) {
-        results.push({ patternId, score: patternScore, pageId: page.id });
+      pageResults.push({ patternId, score: patternScore, idx });
+    }
+
+    // Apply interference matrix re-ranking if the matrix is present
+    const matrix = page.interferenceMatrix;
+    if (matrix && pageResults.length > 1) {
+      // Find the best-scoring pattern in this page
+      let bestIdx = 0;
+      for (let i = 1; i < pageResults.length; i++) {
+        if (pageResults[i].score > pageResults[bestIdx].score) bestIdx = i;
+      }
+      const bestResult = pageResults[bestIdx];
+
+      // Boost other patterns proportional to their intra-family similarity
+      // to the best match (via the interference matrix)
+      for (const pr of pageResults) {
+        if (pr === bestResult) continue;
+        const similarity = matrix[pr.idx]?.[bestResult.idx];
+        if (typeof similarity === 'number' && similarity > 0) {
+          pr.score += INTERFERENCE_BOOST * similarity * bestResult.score;
+        }
+      }
+    }
+
+    // Add qualifying results
+    for (const pr of pageResults) {
+      if (pr.score >= minScore) {
+        seen.add(pr.patternId);
+        results.push({ patternId: pr.patternId, score: pr.score, pageId: page.id });
       }
     }
   }

@@ -77,7 +77,7 @@ function healFamily(familyPatterns, options = {}) {
     return { healed: [], bestStrategy: null, avgImprovement: 0 };
   }
 
-  const { maxLoops = 2, targetCoherence = 0.9 } = options;
+  const { maxLoops = 2, targetCoherence = 0.9, store = null } = options;
 
   // Step 1: Heal the first member to discover the best strategy
   const scout = familyPatterns[0];
@@ -132,6 +132,24 @@ function healFamily(familyPatterns, options = {}) {
   const avgImprovement = healed.length > 0
     ? healed.reduce((sum, h) => sum + h.improvement, 0) / healed.length
     : 0;
+
+  // Persist healed results transactionally if a store is provided
+  if (store && store.db) {
+    store.db.exec('BEGIN');
+    try {
+      for (const h of healed) {
+        if (h.healedCode && h.id) {
+          store.db.prepare(
+            'UPDATE patterns SET code = ?, coherency_total = ?, updated_at = ? WHERE id = ?'
+          ).run(h.healedCode, h.healedCoherence, new Date().toISOString(), h.id);
+        }
+      }
+      store.db.exec('COMMIT');
+    } catch (err) {
+      store.db.exec('ROLLBACK');
+      if (process.env.ORACLE_DEBUG) console.warn('[healFamily] transaction rolled back:', err.message);
+    }
+  }
 
   return { healed, bestStrategy, avgImprovement };
 }
@@ -231,7 +249,7 @@ function validateReconstruction(originalCode, skeleton, delta, language) {
   for (const [dim, originalVal] of Object.entries(originalObs.dimensions)) {
     const reconstructedVal = reconstructedObs.dimensions[dim] || 0;
     dimensionDeltas[dim] = reconstructedVal - originalVal;
-    if (originalVal - reconstructedVal > 0.1) {
+    if (Math.abs(originalVal - reconstructedVal) > 0.1) {
       dimensionValid = false;
     }
   }
@@ -274,6 +292,12 @@ function validateAllReconstructions(store) {
       );
       result.patternId = d.patternId;
       result.patternName = pattern.name;
+      result.templateId = template.id;
+
+      // Persist validation result if store supports it
+      if (typeof store.storeValidationResult === 'function') {
+        try { store.storeValidationResult(result); } catch (_) { /* non-fatal */ }
+      }
 
       if (result.valid) {
         passed.push(result);

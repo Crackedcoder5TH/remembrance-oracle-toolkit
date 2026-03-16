@@ -39,6 +39,7 @@ function preCommitScript() {
 ${HOOK_MARKER}
 # Remembrance Oracle — Covenant pre-commit check
 # Checks staged files against the Kingdom's Weave
+# Uses portable path resolution — survives forks and clones
 
 STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(js|ts|py|go|rs)$')
 
@@ -46,12 +47,20 @@ if [ -z "$STAGED" ]; then
   exit 0
 fi
 
+# Resolve repo root portably (works after fork/clone)
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$REPO_ROOT" ]; then
+  exit 0
+fi
+
 FAILED=0
 for file in $STAGED; do
   if [ -f "$file" ]; then
-    result=$(ORACLE_CHECK_FILE="$file" node -e '
+    result=$(ORACLE_CHECK_FILE="$file" ORACLE_REPO_ROOT="$REPO_ROOT" node -e '
       try {
-        const { covenantCheck } = require(${JSON.stringify(path.resolve(__dirname, '../core/covenant'))});
+        const path = require("path");
+        const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+        const { covenantCheck } = require(path.join(root, "src/core/covenant"));
         const fs = require("fs");
         const f = process.env.ORACLE_CHECK_FILE;
         const code = fs.readFileSync(f, "utf-8");
@@ -89,12 +98,21 @@ function postCommitScript() {
 ${HOOK_MARKER}
 # Remembrance Oracle — Post-commit auto-submit
 # Harvests patterns, promotes candidates, and syncs to personal store
+# Uses portable path resolution — survives forks and clones
 
-node -e "
+# Resolve repo root portably (works after fork/clone)
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$REPO_ROOT" ]; then
+  exit 0
+fi
+
+ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
   try {
-    const { shouldAutoSubmit, autoSubmit } = require(${JSON.stringify(path.resolve(__dirname, './auto-submit'))});
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { shouldAutoSubmit, autoSubmit } = require(path.join(root, 'src/ci/auto-submit'));
     if (!shouldAutoSubmit(process.cwd())) process.exit(0);
-    const { RemembranceOracle } = require(${JSON.stringify(path.resolve(__dirname, '../api/oracle'))});
+    const { RemembranceOracle } = require(path.join(root, 'src/api/oracle'));
     const oracle = new RemembranceOracle({ autoSeed: false });
     const result = autoSubmit(oracle, process.cwd(), { syncPersonal: true, silent: true });
     const total = (result.harvest.registered || 0) + (result.promoted || 0);
@@ -106,24 +124,22 @@ node -e "
       console.log('Oracle: ' + (result.harvest.registered || 0) + ' harvested, ' + (result.promoted || 0) + ' promoted' + (result.synced ? ', synced' : '') + debugInfo);
     }
     if (result.errors && result.errors.length > 0) {
-      // Log errors to persistent file so they are not silently lost
       const fs = require('fs');
       const path = require('path');
       const logDir = path.join(process.cwd(), '.remembrance');
       try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
       const logPath = path.join(logDir, 'hook-errors.log');
-      const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\n';
+      const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\\\n';
       try { fs.appendFileSync(logPath, entry); } catch(_) {}
     }
   } catch(e) {
-    // Log to persistent file — never swallow errors silently
     try {
       const fs = require('fs');
       const path = require('path');
       const logDir = path.join(process.cwd(), '.remembrance');
       try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
       const logPath = path.join(logDir, 'hook-errors.log');
-      const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\n';
+      const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\\\n';
       try { fs.appendFileSync(logPath, entry); } catch(_) {}
     } catch(_) {}
     if (process.env.ORACLE_DEBUG) console.warn('[hooks:postCommitScript] failure:', e?.message || e);

@@ -414,4 +414,33 @@ module.exports = {
     const { debugGlobalStats } = require('../core/persistence');
     return debugGlobalStats();
   },
+
+  /**
+   * Run a decoherence sweep — decay unobserved patterns over time.
+   * Patterns that haven't been observed lose amplitude exponentially.
+   */
+  debugDecohereSweep(options = {}) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { swept: 0, decohered: 0, error: 'No SQLite store available' };
+    return debug.decoherenceSweep(options);
+  },
+
+  /**
+   * Re-excite a decohered pattern — restore it to |superposition⟩.
+   * Injects energy back into the pattern to restore coherence.
+   */
+  debugReexcite(id) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { success: false, error: 'No SQLite store available' };
+    return debug.reexcite(id);
+  },
+
+  /**
+   * Get the entanglement graph for a pattern — all linked patterns.
+   */
+  debugEntanglementGraph(id, depth = 2) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { nodes: [], edges: [] };
+    return debug.getEntanglementGraph(id, depth);
+  },
 };

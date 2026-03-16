@@ -126,8 +126,8 @@ function runReflector(rootDir, options = {}) {
   const startTime = Date.now();
 
   const runRecord = {
-    id: `run-${Date.now()}`,
-    startedAt: new Date().toISOString(),
+    id: `run-${startTime}`,
+    startedAt: new Date(startTime).toISOString(),
     config: {
       minCoherence: config.minCoherence,
       push: config.push,

@@ -92,19 +92,12 @@ class LifecycleEngine {
     this._minCycleSeparation = 30000; // 30 seconds minimum between cycles
 
     // Event counters — track events between cycles
-    this._counters = {
-      feedbacks: 0,
-      submissions: 0,
-      registrations: 0,
-      heals: 0,
-      rejections: 0,
-      debugCaptures: 0,
-      debugFeedbacks: 0,
-      cycles: 0,
-    };
+    // Restore from persistent storage if available, otherwise start fresh
+    this._counters = this._loadCounters();
 
     // Cycle history — last N cycle reports
-    this._history = [];
+    // Restore from persistent storage if available
+    this._history = this._loadHistory();
     this._maxHistory = 20;
   }
 
@@ -360,6 +353,13 @@ class LifecycleEngine {
         this._tryAutoPromote();
         break;
     }
+
+    // Persist counters periodically (every 5 events) to avoid excessive I/O
+    const totalEvents = this._counters.feedbacks + this._counters.submissions +
+      this._counters.registrations + this._counters.debugCaptures;
+    if (totalEvents > 0 && totalEvents % 5 === 0) {
+      this._persistCounters();
+    }
   }
 
   _triggerCycle(reason) {
@@ -432,6 +432,10 @@ class LifecycleEngine {
     if (this._history.length > this._maxHistory) {
       this._history.shift();
     }
+
+    // Persist both counters and history after each cycle
+    this._persistCounters();
+    this._persistHistory();
   }
 
   getHistory() {
@@ -449,6 +453,105 @@ class LifecycleEngine {
       debugFeedbacks: 0,
       cycles: this._counters.cycles,
     };
+    this._persistCounters();
+  }
+
+  // ─── Persistent State (survives process restarts) ───
+
+  /**
+   * Get the store directory for lifecycle state files.
+   */
+  _getStoreDir() {
+    try {
+      const store = this.oracle?.store;
+      if (store?.storeDir) return store.storeDir;
+      const sqliteStore = store?.getSQLiteStore?.();
+      if (sqliteStore?.storeDir) return sqliteStore.storeDir;
+    } catch (_) { /* fall through */ }
+    return null;
+  }
+
+  /**
+   * Load persisted counters from disk. Returns default counters if none found.
+   */
+  _loadCounters() {
+    const defaults = {
+      feedbacks: 0, submissions: 0, registrations: 0,
+      heals: 0, rejections: 0, debugCaptures: 0,
+      debugFeedbacks: 0, cycles: 0,
+    };
+    try {
+      const dir = this._getStoreDir();
+      if (!dir) return defaults;
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(dir, 'lifecycle-counters.json');
+      if (fs.existsSync(filePath)) {
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        return { ...defaults, ...data };
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle] failed to load counters:', e?.message);
+    }
+    return defaults;
+  }
+
+  /**
+   * Persist counters to disk so they survive process restarts.
+   */
+  _persistCounters() {
+    try {
+      const dir = this._getStoreDir();
+      if (!dir) return;
+      const fs = require('fs');
+      const path = require('path');
+      fs.mkdirSync(dir, { recursive: true });
+      const filePath = path.join(dir, 'lifecycle-counters.json');
+      const tmpPath = filePath + '.tmp';
+      fs.writeFileSync(tmpPath, JSON.stringify(this._counters), 'utf-8');
+      fs.renameSync(tmpPath, filePath);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle] failed to persist counters:', e?.message);
+    }
+  }
+
+  /**
+   * Load persisted cycle history from disk.
+   */
+  _loadHistory() {
+    try {
+      const dir = this._getStoreDir();
+      if (!dir) return [];
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(dir, 'lifecycle-history.json');
+      if (fs.existsSync(filePath)) {
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        return Array.isArray(data) ? data : [];
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle] failed to load history:', e?.message);
+    }
+    return [];
+  }
+
+  /**
+   * Persist cycle history to disk.
+   */
+  _persistHistory() {
+    try {
+      const dir = this._getStoreDir();
+      if (!dir) return;
+      const fs = require('fs');
+      const path = require('path');
+      fs.mkdirSync(dir, { recursive: true });
+      const filePath = path.join(dir, 'lifecycle-history.json');
+      const tmpPath = filePath + '.tmp';
+      fs.writeFileSync(tmpPath, JSON.stringify(this._history), 'utf-8');
+      fs.renameSync(tmpPath, filePath);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle] failed to persist history:', e?.message);
+    }
   }
 }
 

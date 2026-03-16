@@ -167,7 +167,8 @@ node --test tests/*.test.js               # Run all tests
 - ALL code must pass the Covenant (15 principles) before storage
 - ALL proven patterns have test proof — no exceptions
 - Coherency is scored 0-1 across 5 dimensions
-- The oracle threshold is 0.6 — code below this is rejected
+- The minimum coherency gate is 0.6 — code below this is rejected on submission
+- The PULL decision threshold is 0.68 — patterns must score ≥0.68 to be used as-is
 - Iterative healing can recover failed patterns via automated refinement
 - Registering proven code automatically spawns candidates (the loop runs itself)
 - **NEVER skip the session start checkpoint** — hooks + sync pull

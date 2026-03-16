@@ -498,8 +498,9 @@ function extractSubTemplates(skeleton, options = {}) {
     // Process matches in reverse order to preserve indices
     for (let i = matches.length - 1; i >= 0; i--) {
       const match = matches[i];
-      const subId = `$SUB_${subCounter++}`;
       const subHash = _hash(match.text);
+      const subId = `$SUB_${subHash.slice(0, 8)}`;
+      subCounter++;
 
       subTemplates.push({
         id: subId,

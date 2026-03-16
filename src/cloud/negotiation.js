@@ -335,11 +335,10 @@ function addNegotiationEndpoints(server) {
 // ─── Helpers ───
 
 function _quickHash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-  }
-  return h.toString(36);
+  if (!str) return '0';
+  // Use crypto hash for collision resistance (Meta-Pattern 14 fix)
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(str).digest('hex').slice(0, 12);
 }
 
 function _fetchJson(url, options = {}) {
@@ -399,22 +398,23 @@ function resolveConflict(candidates, strategy = CONFLICT_STRATEGIES.HIGHEST_COHE
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return { ...candidates[0], reason: 'only-candidate' };
 
-  let sorted;
+  // Copy before sorting — never mutate the caller's array (Meta-Pattern 6 fix)
+  const sorted = [...candidates];
   switch (strategy) {
     case CONFLICT_STRATEGIES.MOST_TESTED:
-      sorted = candidates.sort((a, b) => (b.pattern.hasTests ? 1 : 0) - (a.pattern.hasTests ? 1 : 0)
+      sorted.sort((a, b) => (b.pattern.hasTests ? 1 : 0) - (a.pattern.hasTests ? 1 : 0)
         || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
       break;
     case CONFLICT_STRATEGIES.MOST_USED:
-      sorted = candidates.sort((a, b) => (b.pattern.usageCount || 0) - (a.pattern.usageCount || 0)
+      sorted.sort((a, b) => (b.pattern.usageCount || 0) - (a.pattern.usageCount || 0)
         || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
       break;
     case CONFLICT_STRATEGIES.NEWEST:
-      sorted = candidates.sort((a, b) => (b.pattern.codeHash || '').localeCompare(a.pattern.codeHash || '')
+      sorted.sort((a, b) => (b.pattern.codeHash || '').localeCompare(a.pattern.codeHash || '')
         || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
       break;
     default: // HIGHEST_COHERENCY
-      sorted = candidates.sort((a, b) => (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
+      sorted.sort((a, b) => (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
   }
 
   return { remote: sorted[0].remote, pattern: sorted[0].pattern, reason: strategy };

@@ -41,7 +41,8 @@ function verifyToken(token, secret) {
   if (parts.length !== 3) return null;
   const [header, body, sig] = parts;
   const expected = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
-  if (sig !== expected) return null;
+  // Constant-time comparison to prevent timing attacks on signature
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
     // Require exp claim — tokens without expiry are rejected

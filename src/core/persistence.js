@@ -76,7 +76,17 @@ function hasGlobalStore() {
 
 // ─── Pattern Transfer Helper ───
 
-function transferPattern(pattern, targetStore) {
+/**
+ * Extract safe, portable pattern data from a raw row/pattern object.
+ * Strips user-identifiable fields (author, voter, source paths) by default.
+ * @param {object} pattern - Raw pattern object from DB
+ * @param {object} options
+ *   - stripIdentity: remove author/voter references (default: false)
+ *   - stripSourcePaths: remove sourceFile/sourceCommit/sourceUrl/sourceRepo (default: false)
+ */
+function sanitizePatternForTransfer(pattern, options = {}) {
+  const { stripIdentity = false, stripSourcePaths = false } = options;
+
   const patternData = {
     name: pattern.name,
     code: pattern.code,
@@ -93,6 +103,27 @@ function transferPattern(pattern, targetStore) {
       ? safeJsonParse(pattern.evolution_history, [])
       : (pattern.evolutionHistory || []),
   };
+
+  // Strip identity-revealing fields for community/public sharing
+  if (stripIdentity) {
+    patternData.author = 'anonymous';
+    // Scrub auto-register descriptions that embed file paths
+    if (patternData.description && /^Auto-registered (from|function from) /.test(patternData.description)) {
+      patternData.description = patternData.description.replace(/from .+$/, 'from source');
+    }
+  }
+
+  // Strip source metadata that could leak repo structure or commit history
+  if (stripSourcePaths) {
+    // Explicitly do NOT copy these fields — they stay null/undefined
+    // sourceFile, sourceUrl, sourceRepo, sourceCommit, sourceLicense
+  }
+
+  return patternData;
+}
+
+function transferPattern(pattern, targetStore, options = {}) {
+  const patternData = sanitizePatternForTransfer(pattern, options);
 
   // Use dedup-safe insert: skip if same (name, language) exists with equal/higher coherency
   if (typeof targetStore.addPatternIfNotExists === 'function') {
@@ -125,14 +156,14 @@ function syncToGlobal(localStore, options = {}) {
   // Build coherency index so we can detect when local has improved over personal
   const personalCoherencyIndex = new Map();
   for (const p of personalPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     personalCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
   }
 
   const report = { synced: 0, upgraded: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
 
     if (personalCoherencyIndex.has(key)) {
@@ -223,7 +254,7 @@ function syncFromGlobal(localStore, options = {}) {
   // Build coherency index so we can detect when personal has improved over local
   const localCoherencyIndex = new Map();
   for (const p of localPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     localCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
   }
 
@@ -232,7 +263,8 @@ function syncFromGlobal(localStore, options = {}) {
   for (const pattern of personalPatterns) {
     if ((report.pulled + report.upgraded) >= maxPull) break;
 
-    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    if (!pattern.name) { report.skipped++; continue; }
+    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
 
     if (localCoherencyIndex.has(key)) {
@@ -342,13 +374,13 @@ function shareToCommunity(localStore, options = {}) {
 
   let localPatterns = localStore.getAllPatterns();
   const communityPatterns = communityStore.getAllPatterns();
-  const communityIndex = new Set(communityPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
+  const communityIndex = new Set(communityPatterns.map(p => `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   // Filter by name if specified
   if (nameFilter && nameFilter.length > 0) {
     const nameSet = new Set(nameFilter.map(n => n.toLowerCase()));
     localPatterns = localPatterns.filter(p =>
-      nameSet.has(p.name.toLowerCase()) || nameSet.has(p.id)
+      nameSet.has((p.name || '').toLowerCase()) || nameSet.has(p.id)
     );
   }
 
@@ -356,7 +388,12 @@ function shareToCommunity(localStore, options = {}) {
   if (tagFilter && tagFilter.length > 0) {
     const tagSet = new Set(tagFilter.map(t => t.toLowerCase()));
     localPatterns = localPatterns.filter(p => {
-      const pTags = (typeof p.tags === 'string' ? JSON.parse(p.tags) : (p.tags || []));
+      let pTags;
+      try {
+        pTags = (typeof p.tags === 'string' ? JSON.parse(p.tags) : (p.tags || []));
+      } catch {
+        pTags = [];
+      }
       return pTags.some(t => tagSet.has(t.toLowerCase()));
     });
   }
@@ -369,7 +406,7 @@ function shareToCommunity(localStore, options = {}) {
   const report = { shared: 0, skipped: 0, duplicates: 0, total: localPatterns.length, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
 
     if (communityIndex.has(key)) {
       report.duplicates++;
@@ -393,7 +430,12 @@ function shareToCommunity(localStore, options = {}) {
 
     if (!dryRun) {
       try {
-        transferPattern(pattern, communityStore);
+        // Strip identity and source paths when sharing to community store
+        // This prevents leaking author names, file paths, and repo structure
+        transferPattern(pattern, communityStore, {
+          stripIdentity: true,
+          stripSourcePaths: true,
+        });
       } catch (err) {
         if (verbose) console.log(`  [SKIP] ${pattern.name}: ${err.message}`);
         report.skipped++;
@@ -427,12 +469,12 @@ function pullFromCommunity(localStore, options = {}) {
 
   let communityPatterns = communityStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
-  const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
+  const localIndex = new Set(localPatterns.map(p => `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   if (nameFilter && nameFilter.length > 0) {
     const nameSet = new Set(nameFilter.map(n => n.toLowerCase()));
     communityPatterns = communityPatterns.filter(p =>
-      nameSet.has(p.name.toLowerCase()) || nameSet.has(p.id)
+      nameSet.has((p.name || '').toLowerCase()) || nameSet.has(p.id)
     );
   }
 
@@ -446,7 +488,7 @@ function pullFromCommunity(localStore, options = {}) {
   for (const pattern of communityPatterns) {
     if (report.pulled >= maxPull) break;
 
-    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     if (localIndex.has(key)) {
       report.duplicates++;
       continue;
@@ -524,7 +566,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Local first (highest priority) — case-insensitive dedup keys
   for (const p of localPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'local' });
@@ -533,7 +575,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Personal second
   for (const p of personalPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'personal' });
@@ -542,7 +584,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Community last
   for (const p of communityPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'community' });
@@ -977,7 +1019,8 @@ function _syncCandidatesToPersonal(localStore, personalStore, options = {}) {
       'SELECT id, name, language, promoted_at FROM candidates'
     ).all();
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesToPersonal] falling back to empty array:', e?.message || e);
+    // Log error visibly — falling back to empty array risks skipping existing data
+    console.warn('[persistence:_syncCandidatesToPersonal] WARNING: personal DB read failed, falling back to empty array:', e?.message || e);
     personalCandidates = [];
   }
 
@@ -1052,7 +1095,7 @@ function _syncCandidatesFromPersonal(localStore, personalStore, options = {}) {
   try {
     localCandidates = localStore.db.prepare('SELECT id, promoted_at FROM candidates').all();
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncCandidatesFromPersonal] falling back to empty array:', e?.message || e);
+    console.warn('[persistence:_syncCandidatesFromPersonal] WARNING: local DB read failed, falling back to empty array:', e?.message || e);
     localCandidates = [];
   }
 
@@ -1127,6 +1170,11 @@ function _ensureCandidatesSchema(store) {
 }
 
 function _transferCandidate(candidate, targetStore) {
+  // Sanitize description to strip file paths that could leak local directory structure
+  let description = candidate.description || '';
+  if (/^Auto-registered (from|function from) /.test(description)) {
+    description = description.replace(/from .+$/, 'from source');
+  }
   targetStore.db.prepare(`
     INSERT OR IGNORE INTO candidates (id, name, code, language, pattern_type, complexity,
       description, tags, coherency_total, coherency_json, test_code,
@@ -1135,7 +1183,7 @@ function _transferCandidate(candidate, targetStore) {
   `).run(
     candidate.id, candidate.name, candidate.code, candidate.language || 'unknown',
     candidate.pattern_type || 'utility', candidate.complexity || 'composite',
-    candidate.description || '', candidate.tags || '[]',
+    description, candidate.tags || '[]',
     candidate.coherency_total ?? 0, candidate.coherency_json || '{}',
     candidate.test_code || null,
     candidate.parent_pattern || null, candidate.generation_method || 'variant',
@@ -1166,7 +1214,7 @@ function _syncDebugToPersonal(localStore, personalStore, options = {}) {
   try {
     personalDebug = personalStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugToPersonal] falling back to empty array:', e?.message || e);
+    console.warn('[persistence:_syncDebugToPersonal] WARNING: personal debug DB read failed, falling back to empty array:', e?.message || e);
     personalDebug = [];
   }
 
@@ -1219,7 +1267,7 @@ function _syncDebugFromPersonal(localStore, personalStore, options = {}) {
   try {
     localDebug = localStore.db.prepare('SELECT fingerprint_hash, language FROM debug_patterns').all();
   } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[persistence:_syncDebugFromPersonal] falling back to empty array:', e?.message || e);
+    console.warn('[persistence:_syncDebugFromPersonal] WARNING: local debug DB read failed, falling back to empty array:', e?.message || e);
     localDebug = [];
   }
 
@@ -1450,6 +1498,13 @@ function _transferDebugPattern(dp, targetStore) {
     .digest('hex').slice(0, 16);
   const now = new Date().toISOString();
 
+  // Sanitize stack fingerprints and error signatures to strip absolute file paths
+  // that could leak local filesystem structure when shared across tiers
+  const pathPattern = /(?:\/[\w.-]+){2,}(?:\.(?:js|ts|py|go|rs|java|rb|c|cpp|h))?/g;
+  const sanitizedStackFp = (dp.stack_fingerprint || '').replace(pathPattern, '<path>');
+  const sanitizedErrSig = (dp.error_signature || '').replace(pathPattern, '<path>');
+  const sanitizedErrMsg = (dp.error_message || '').replace(pathPattern, '<path>');
+
   targetStore.db.prepare(`
     INSERT OR IGNORE INTO debug_patterns (
       id, error_signature, error_message, error_class, error_category,
@@ -1459,8 +1514,8 @@ function _transferDebugPattern(dp, targetStore) {
       parent_debug, generation_method, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
-    id, dp.error_signature, dp.error_message, dp.error_class, dp.error_category,
-    dp.stack_fingerprint || '', dp.fingerprint_hash, dp.fix_code, dp.fix_description || '',
+    id, sanitizedErrSig, sanitizedErrMsg, dp.error_class, dp.error_category,
+    sanitizedStackFp, dp.fingerprint_hash, dp.fix_code, dp.fix_description || '',
     dp.language, dp.tags || '[]', dp.coherency_total || 0, dp.coherency_json || '{}',
     dp.times_applied || 0, dp.times_resolved || 0, dp.confidence || 0.2,
     dp.parent_debug, dp.generation_method || 'shared', now, now
@@ -1593,7 +1648,7 @@ function crossRepoSearch(description, options = {}) {
       let matchCount = 0;
 
       for (const p of patterns) {
-        const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+        const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
         if (seen.has(key)) continue;
         // Simple relevance scoring: check if description words match name/tags/description
         const text = `${p.name} ${(p.tags || []).join(' ')} ${p.description || ''}`.toLowerCase();
@@ -1652,6 +1707,7 @@ module.exports = {
   registerRepo,
   listRepos,
   crossRepoSearch,
+  sanitizePatternForTransfer,
   GLOBAL_DIR,
   PERSONAL_DIR,
   COMMUNITY_DIR,

@@ -54,7 +54,12 @@ const ROUNDING_FACTOR = 1000; // Math.round(x * 1000) / 1000 = 3 decimals
 
 // ─── Validation (validator.js) ───
 
-/** Minimum coherency to accept code into the store. Changing this affects ALL submissions. */
+/**
+ * Minimum coherency to accept code into the store. Changing this affects ALL submissions.
+ * NOTE: This is distinct from DECISION_THRESHOLDS.PULL (0.68), which controls whether
+ * a pattern is strong enough to use as-is. Code can be stored at 0.6 but won't be
+ * recommended for PULL until it reaches 0.68.
+ */
 const MIN_COHERENCY_THRESHOLD = 0.6;
 
 /** Default timeout for sandbox test execution (ms) */

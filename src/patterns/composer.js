@@ -285,7 +285,7 @@ class PatternComposer {
 
       // Use top search results as the pattern set
       const patternNames = searchResults
-        .filter(r => r.matchScore >= 0.2)
+        .filter(r => (r.matchScore ?? r.score ?? r._relevance?.relevance ?? 0) >= 0.2)
         .slice(0, 4)
         .map(r => r.name || r.id);
 

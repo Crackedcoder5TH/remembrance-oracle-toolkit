@@ -112,7 +112,8 @@ class TemporalMemory {
         AND event_type IN ('failure', 'regression')
       ORDER BY timestamp DESC
     `);
-    const events = stmt.all(`-${lookbackDays} days`);
+    const safeDays = Math.max(1, Math.floor(Number(lookbackDays) || 30));
+    const events = stmt.all(`-${safeDays} days`);
 
     // Group by pattern
     const regressions = new Map();

@@ -281,7 +281,7 @@ function spawnClaude(cliPath, args, timeoutMs) {
     const child = execFile(cliPath, args, {
       timeout: timeoutMs,
       maxBuffer: 10 * 1024 * 1024, // 10 MB
-      env: { ...process.env, CLAUDECODE: '' }, // Unset to avoid nested-session block
+      env: (() => { const e = { ...process.env }; delete e.CLAUDECODE; return e; })(), // Delete to avoid nested-session block
     }, (error, stdout, stderr) => {
       if (error) {
         if (error.killed) {

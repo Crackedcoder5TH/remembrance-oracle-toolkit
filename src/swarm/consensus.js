@@ -63,12 +63,13 @@ function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
 
   const winner = rankings[0];
 
-  // Agreement: how many agents are within threshold of the winner
-  const agreeing = rankings.filter(
+  // Agreement: how many non-winner agents are within threshold of the winner
+  const others = rankings.filter(r => r.agent !== winner.agent);
+  const agreeing = others.filter(
     r => winner.totalScore - r.totalScore < (1 - threshold) * winner.totalScore
   );
-  const agreement = rankings.length > 1
-    ? Math.round((agreeing.length / rankings.length) * 1000) / 1000
+  const agreement = others.length > 0
+    ? Math.round((agreeing.length / others.length) * 1000) / 1000
     : 1.0;
 
   // Dissent: agents significantly below the winner

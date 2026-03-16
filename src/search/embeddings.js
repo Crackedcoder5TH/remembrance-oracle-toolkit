@@ -343,7 +343,7 @@ function semanticSearch(items, query, options = {}) {
 
   // Pre-compute query concepts and n-grams once for reuse across all items
   const queryLower = query.toLowerCase();
-  const queryCacheKey = queryLower.slice(0, 80);
+  const queryCacheKey = queryLower.length <= 80 ? queryLower : require('crypto').createHash('md5').update(queryLower).digest('hex');
   let cachedQueryData = _querySimilarityCache.get(queryCacheKey);
   if (!cachedQueryData) {
     cachedQueryData = {

@@ -425,6 +425,10 @@ function extractRustFunctions(code) {
  */
 function buildLCS(a, b) {
   const m = a.length, n = b.length;
+  // Guard against OOM: if the DP matrix would exceed ~10M cells, return empty
+  if (m * n > 10_000_000) {
+    return [];
+  }
   const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {

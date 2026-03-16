@@ -30,7 +30,14 @@ function stripNonExecutableContent(code) {
   let stripped = code;
   stripped = stripped.replace(/\/\/.*$/gm, '');
   stripped = stripped.replace(/\/\*[\s\S]*?\*\//g, '');
-  stripped = stripped.replace(/`(?:[^`\\]|\\.)*`/g, '``');
+  // Preserve ${...} interpolation content (executable) while stripping static template parts
+  stripped = stripped.replace(/`(?:[^`\\$]|\\.|\$(?!\{))*`/g, '``');
+  stripped = stripped.replace(/`(?:[^`\\]|\\.)*`/g, (match) => {
+    // Extract and keep ${...} expressions, replace static parts
+    const expressions = [];
+    match.replace(/\$\{([^}]*)\}/g, (_, expr) => { expressions.push(expr); });
+    return '``' + (expressions.length > 0 ? ' ' + expressions.join(' ') : '');
+  });
   stripped = stripped.replace(/'(?:[^'\\]|\\.)*'/g, "''");
   stripped = stripped.replace(/"(?:[^"\\]|\\.)*"/g, '""');
   return stripped;

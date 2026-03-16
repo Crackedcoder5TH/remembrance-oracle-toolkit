@@ -60,12 +60,13 @@ function scoreReadability(code) {
 }
 
 function scoreSecurity(code, metadata) {
-  // Internal scoring trusts annotation markers — external submissions do not
-  // pass trusted:true, so the markers are ignored by covenantCheck.
-  const isPatternDefinition = /@oracle-pattern-definitions\b/.test(code);
-  const isInfrastructure = /@oracle-infrastructure\b/.test(code);
+  // Only trust annotation markers when the caller explicitly passes trusted:true.
+  // External submissions never pass trusted:true, so markers are ignored.
+  const isTrusted = metadata && metadata.trusted === true;
+  const isPatternDefinition = isTrusted && /@oracle-pattern-definitions\b/.test(code);
+  const isInfrastructure = isTrusted && /@oracle-infrastructure\b/.test(code);
 
-  const covenant = covenantCheck(code, { ...metadata, trusted: true });
+  const covenant = covenantCheck(code, { ...metadata });
 
   if (isPatternDefinition) return 0.95;
 

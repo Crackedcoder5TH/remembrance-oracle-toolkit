@@ -21,6 +21,27 @@ import { CSP_HEADER } from "./csp-directives.mjs";
 
 const ADMIN_SESSION_COOKIE = "__admin_session";
 
+// ─── Multi-Domain Configuration ───
+// Leads domains serve only public/marketing pages — no admin or portal access.
+// Portal domain serves admin + client portal.
+const LEADS_DOMAINS: string[] = (process.env.LEADS_DOMAINS ?? "")
+  .split(",")
+  .map((d) => d.trim().toLowerCase())
+  .filter(Boolean);
+const PORTAL_DOMAIN: string = (process.env.PORTAL_DOMAIN ?? "").trim().toLowerCase();
+
+type DomainType = "leads" | "portal" | "unknown";
+
+function getDomainType(hostname: string): DomainType {
+  const host = hostname.toLowerCase().split(":")[0];
+  if (PORTAL_DOMAIN && host === PORTAL_DOMAIN) return "portal";
+  if (LEADS_DOMAINS.length > 0 && LEADS_DOMAINS.includes(host)) return "leads";
+  return "unknown";
+}
+
+/** Routes that must only be served on the portal domain. */
+const PORTAL_ONLY_PREFIXES = ["/admin", "/portal", "/api/admin", "/api/client", "/api/portal"];
+
 // ─── AI Crawler Detection ───
 // Known AI crawler user-agent patterns for telemetry
 const AI_CRAWLERS: Record<string, string> = {
@@ -86,6 +107,27 @@ export async function middleware(request: NextRequest) {
   // ─── Allow NextAuth routes through (OAuth flow) ───
   if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
+  }
+
+  // ─── Multi-Domain Route Enforcement ───
+  // Block portal routes on leads domains; redirect to portal domain instead.
+  const hostname = request.headers.get("host") || request.nextUrl.host;
+  const domainType = getDomainType(hostname);
+
+  if (domainType === "leads") {
+    const isPortalRoute = PORTAL_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
+    if (isPortalRoute) {
+      // If the portal domain is configured, redirect there; otherwise return 404
+      if (PORTAL_DOMAIN) {
+        const portalUrl = new URL(pathname, `https://${PORTAL_DOMAIN}`);
+        portalUrl.search = request.nextUrl.search;
+        return NextResponse.redirect(portalUrl.toString(), 301);
+      }
+      return NextResponse.json(
+        { error: "This route is not available on this domain." },
+        { status: 404 },
+      );
+    }
   }
 
   // ─── Content-Type enforcement for JSON API routes ───

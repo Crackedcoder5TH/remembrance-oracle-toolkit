@@ -10,7 +10,7 @@ import { getSiteContent } from "../../lib/site-content";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const content = getSiteContent();
+  const content = await getSiteContent();
   return NextResponse.json({ content }, {
     headers: { "Cache-Control": "no-store, max-age=0" },
   });

@@ -85,6 +85,8 @@ interface DbAdapter {
   getLeadStats(): Promise<Result<LeadStats, string>>;
   deleteLeadByEmail(email: string): Promise<Result<{ deleted: number }, string>>;
   deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>>;
+  getSiteContent(key: string): Promise<Result<string | null, string>>;
+  setSiteContent(key: string, value: string): Promise<Result<void, string>>;
 }
 
 // =============================================================================
@@ -209,6 +211,15 @@ class PostgresAdapter implements DbAdapter {
     if (!columnNames.has("military_branch")) {
       await pool.query("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
     }
+
+    // Site content key-value table (persists admin-editable content)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS site_content (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
 
     this.initialized = true;
   }
@@ -440,6 +451,38 @@ class PostgresAdapter implements DbAdapter {
       return Err(message);
     }
   }
+
+  async getSiteContent(key: string): Promise<Result<string | null, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "SELECT value FROM site_content WHERE key = $1",
+        [key],
+      );
+      return Ok(result.rows.length > 0 ? result.rows[0].value : null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to read site content";
+      return Err(message);
+    }
+  }
+
+  async setSiteContent(key: string, value: string): Promise<Result<void, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      await pool.query(
+        `INSERT INTO site_content (key, value, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+        [key, value],
+      );
+      return Ok(undefined);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save site content";
+      return Err(message);
+    }
+  }
 }
 
 // =============================================================================
@@ -529,6 +572,15 @@ class SqliteAdapter implements DbAdapter {
     if (!columnNames.has("military_branch")) {
       db.exec("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
     }
+
+    // Site content key-value table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS site_content (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
   }
 
   async insertLead(lead: LeadRecord): Promise<Result<{ id: number; leadId: string }, string>> {
@@ -727,6 +779,34 @@ class SqliteAdapter implements DbAdapter {
       return Err(message);
     }
   }
+
+  async getSiteContent(key: string): Promise<Result<string | null, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const row = db.prepare("SELECT value FROM site_content WHERE key = ?").get(key) as { value: string } | undefined;
+      return Ok(row ? row.value : null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to read site content";
+      return Err(message);
+    }
+  }
+
+  async setSiteContent(key: string, value: string): Promise<Result<void, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      db.prepare(
+        `INSERT INTO site_content (key, value, updated_at)
+         VALUES (?, ?, datetime('now'))
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+      ).run(key, value);
+      return Ok(undefined);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save site content";
+      return Err(message);
+    }
+  }
 }
 
 // =============================================================================
@@ -798,6 +878,14 @@ class NoopAdapter implements DbAdapter {
   deleteLeadById(): Promise<Result<{ deleted: number }, string>> {
     return Promise.resolve(Ok({ deleted: 0 }));
   }
+
+  async getSiteContent(): Promise<Result<string | null, string>> {
+    return Ok(null);
+  }
+
+  async setSiteContent(): Promise<Result<void, string>> {
+    return Ok(undefined);
+  }
 }
 
 // =============================================================================
@@ -863,6 +951,14 @@ export async function deleteLeadByEmail(email: string): Promise<Result<{ deleted
 
 export async function deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>> {
   return getAdapter().deleteLeadById(leadId);
+}
+
+export async function getDbSiteContent(key: string): Promise<Result<string | null, string>> {
+  return getAdapter().getSiteContent(key);
+}
+
+export async function setDbSiteContent(key: string, value: string): Promise<Result<void, string>> {
+  return getAdapter().setSiteContent(key, value);
 }
 
 // =============================================================================

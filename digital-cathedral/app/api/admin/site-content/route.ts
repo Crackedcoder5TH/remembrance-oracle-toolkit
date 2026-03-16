@@ -2,7 +2,7 @@
  * Admin Site Content API — GET / PUT
  *
  * Allows admins to read and update editable site content (e.g., the veteran story
- * displayed on the homepage). Content is stored in a JSON file.
+ * displayed on the homepage). Content is stored in the database.
  *
  * Protected by admin auth (same as all /api/admin/* routes).
  */
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const authError = verifyAdmin(req);
   if (authError) return authError;
 
-  const content = getSiteContent();
+  const content = await getSiteContent();
   return NextResponse.json({ content });
 }
 
@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    setSiteContent({ veteranStory: body.veteranStory });
+    await setSiteContent({ veteranStory: body.veteranStory });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });

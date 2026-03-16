@@ -76,7 +76,17 @@ function hasGlobalStore() {
 
 // ─── Pattern Transfer Helper ───
 
-function transferPattern(pattern, targetStore) {
+/**
+ * Extract safe, portable pattern data from a raw row/pattern object.
+ * Strips user-identifiable fields (author, voter, source paths) by default.
+ * @param {object} pattern - Raw pattern object from DB
+ * @param {object} options
+ *   - stripIdentity: remove author/voter references (default: false)
+ *   - stripSourcePaths: remove sourceFile/sourceCommit/sourceUrl/sourceRepo (default: false)
+ */
+function sanitizePatternForTransfer(pattern, options = {}) {
+  const { stripIdentity = false, stripSourcePaths = false } = options;
+
   const patternData = {
     name: pattern.name,
     code: pattern.code,
@@ -93,6 +103,27 @@ function transferPattern(pattern, targetStore) {
       ? safeJsonParse(pattern.evolution_history, [])
       : (pattern.evolutionHistory || []),
   };
+
+  // Strip identity-revealing fields for community/public sharing
+  if (stripIdentity) {
+    patternData.author = 'anonymous';
+    // Scrub auto-register descriptions that embed file paths
+    if (patternData.description && /^Auto-registered (from|function from) /.test(patternData.description)) {
+      patternData.description = patternData.description.replace(/from .+$/, 'from source');
+    }
+  }
+
+  // Strip source metadata that could leak repo structure or commit history
+  if (stripSourcePaths) {
+    // Explicitly do NOT copy these fields — they stay null/undefined
+    // sourceFile, sourceUrl, sourceRepo, sourceCommit, sourceLicense
+  }
+
+  return patternData;
+}
+
+function transferPattern(pattern, targetStore, options = {}) {
+  const patternData = sanitizePatternForTransfer(pattern, options);
 
   // Use dedup-safe insert: skip if same (name, language) exists with equal/higher coherency
   if (typeof targetStore.addPatternIfNotExists === 'function') {
@@ -394,7 +425,12 @@ function shareToCommunity(localStore, options = {}) {
 
     if (!dryRun) {
       try {
-        transferPattern(pattern, communityStore);
+        // Strip identity and source paths when sharing to community store
+        // This prevents leaking author names, file paths, and repo structure
+        transferPattern(pattern, communityStore, {
+          stripIdentity: true,
+          stripSourcePaths: true,
+        });
       } catch (err) {
         if (verbose) console.log(`  [SKIP] ${pattern.name}: ${err.message}`);
         report.skipped++;
@@ -1653,6 +1689,7 @@ module.exports = {
   registerRepo,
   listRepos,
   crossRepoSearch,
+  sanitizePatternForTransfer,
   GLOBAL_DIR,
   PERSONAL_DIR,
   COMMUNITY_DIR,

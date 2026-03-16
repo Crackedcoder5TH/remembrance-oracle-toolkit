@@ -27,6 +27,13 @@ function createSandboxDir() {
 
 function cleanupSandboxDir(dir) {
   try {
+    // Verify the directory is under os.tmpdir() to prevent symlink-escape attacks
+    const realDir = fs.realpathSync(dir);
+    const tmpRoot = fs.realpathSync(os.tmpdir());
+    if (!realDir.startsWith(tmpRoot + path.sep) && realDir !== tmpRoot) {
+      if (process.env.ORACLE_DEBUG) console.warn(`[sandbox:cleanupSandboxDir] refusing to delete outside tmpdir: ${realDir}`);
+      return;
+    }
     fs.rmSync(dir, { recursive: true, force: true });
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[sandbox:cleanupSandboxDir] silent failure:', e?.message || e);
@@ -60,19 +67,12 @@ Module._load = function(request, parent, isMain) {
     fs.closeSync(fd);
     fs.chmodSync(preloadPath, 0o400);
 
-    // Write the actual code + test
-    const wrapper = `
-'use strict';
-// Run user code
-${code}
-;
-// Run tests
-${testCode}
-`;
-
+    // Write code+test to file via concatenation (not template literal interpolation)
+    // This avoids template literal injection (Pattern #8: backtick/${ escape)
     const filePath = path.join(sandboxDir, 'test.js');
+    const combined = "'use strict';\n" + code + ";\n" + testCode + "\n";
     const fdTest = fs.openSync(filePath, 'w', 0o600);
-    fs.writeSync(fdTest, wrapper);
+    fs.writeSync(fdTest, combined);
     fs.closeSync(fdTest);
     fs.chmodSync(filePath, 0o400);
 
@@ -118,35 +118,20 @@ function sandboxPython(code, testCode, options = {}) {
   const sandboxDir = createSandboxDir();
 
   try {
-    const wrapper = `
-import sys
-import os
-
-# Block dangerous modules
-_original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
-blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko'}
-
-def _safe_import(name, *args, **kwargs):
-    if name.split('.')[0] in blocked:
-        raise ImportError(f'Module "{name}" is blocked in sandbox')
-    return _original_import(name, *args, **kwargs)
-
-try:
-    __builtins__.__import__ = _safe_import
-except:
-    pass
-
-# Run user code
-${code}
-
-# Run tests
-${testCode}
-`;
-
+    // Write code+test to file via concatenation (not template literal interpolation)
     const filePath = path.join(sandboxDir, 'test.py');
-    // Write with restrictive permissions then make read-only (match JS sandbox TOCTOU mitigation)
+    const prelude = "import sys\nimport os\n\n" +
+      "# Block dangerous modules\n" +
+      "_original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__\n" +
+      "blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko'}\n\n" +
+      "def _safe_import(name, *args, **kwargs):\n" +
+      "    if name.split('.')[0] in blocked:\n" +
+      '        raise ImportError(f\'Module "{name}" is blocked in sandbox\')\n' +
+      "    return _original_import(name, *args, **kwargs)\n\n" +
+      "try:\n    __builtins__.__import__ = _safe_import\nexcept:\n    pass\n\n";
+    const combined = prelude + code + "\n" + testCode + "\n";
     const fdPy = fs.openSync(filePath, 'w', 0o600);
-    fs.writeSync(fdPy, wrapper);
+    fs.writeSync(fdPy, combined);
     fs.closeSync(fdPy);
     fs.chmodSync(filePath, 0o400);
 

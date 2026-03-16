@@ -156,14 +156,14 @@ function syncToGlobal(localStore, options = {}) {
   // Build coherency index so we can detect when local has improved over personal
   const personalCoherencyIndex = new Map();
   for (const p of personalPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     personalCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
   }
 
   const report = { synced: 0, upgraded: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
 
     if (personalCoherencyIndex.has(key)) {
@@ -254,7 +254,7 @@ function syncFromGlobal(localStore, options = {}) {
   // Build coherency index so we can detect when personal has improved over local
   const localCoherencyIndex = new Map();
   for (const p of localPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     localCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
   }
 
@@ -264,7 +264,7 @@ function syncFromGlobal(localStore, options = {}) {
     if ((report.pulled + report.upgraded) >= maxPull) break;
 
     if (!pattern.name) { report.skipped++; continue; }
-    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
 
     if (localCoherencyIndex.has(key)) {
@@ -374,13 +374,13 @@ function shareToCommunity(localStore, options = {}) {
 
   let localPatterns = localStore.getAllPatterns();
   const communityPatterns = communityStore.getAllPatterns();
-  const communityIndex = new Set(communityPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
+  const communityIndex = new Set(communityPatterns.map(p => `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   // Filter by name if specified
   if (nameFilter && nameFilter.length > 0) {
     const nameSet = new Set(nameFilter.map(n => n.toLowerCase()));
     localPatterns = localPatterns.filter(p =>
-      nameSet.has(p.name.toLowerCase()) || nameSet.has(p.id)
+      nameSet.has((p.name || '').toLowerCase()) || nameSet.has(p.id)
     );
   }
 
@@ -388,7 +388,12 @@ function shareToCommunity(localStore, options = {}) {
   if (tagFilter && tagFilter.length > 0) {
     const tagSet = new Set(tagFilter.map(t => t.toLowerCase()));
     localPatterns = localPatterns.filter(p => {
-      const pTags = (typeof p.tags === 'string' ? JSON.parse(p.tags) : (p.tags || []));
+      let pTags;
+      try {
+        pTags = (typeof p.tags === 'string' ? JSON.parse(p.tags) : (p.tags || []));
+      } catch {
+        pTags = [];
+      }
       return pTags.some(t => tagSet.has(t.toLowerCase()));
     });
   }
@@ -401,7 +406,7 @@ function shareToCommunity(localStore, options = {}) {
   const report = { shared: 0, skipped: 0, duplicates: 0, total: localPatterns.length, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
 
     if (communityIndex.has(key)) {
       report.duplicates++;
@@ -464,12 +469,12 @@ function pullFromCommunity(localStore, options = {}) {
 
   let communityPatterns = communityStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
-  const localIndex = new Set(localPatterns.map(p => `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
+  const localIndex = new Set(localPatterns.map(p => `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`));
 
   if (nameFilter && nameFilter.length > 0) {
     const nameSet = new Set(nameFilter.map(n => n.toLowerCase()));
     communityPatterns = communityPatterns.filter(p =>
-      nameSet.has(p.name.toLowerCase()) || nameSet.has(p.id)
+      nameSet.has((p.name || '').toLowerCase()) || nameSet.has(p.id)
     );
   }
 
@@ -483,7 +488,7 @@ function pullFromCommunity(localStore, options = {}) {
   for (const pattern of communityPatterns) {
     if (report.pulled >= maxPull) break;
 
-    const key = `${pattern.name.toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
     if (localIndex.has(key)) {
       report.duplicates++;
       continue;
@@ -561,7 +566,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Local first (highest priority) — case-insensitive dedup keys
   for (const p of localPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'local' });
@@ -570,7 +575,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Personal second
   for (const p of personalPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'personal' });
@@ -579,7 +584,7 @@ function federatedQuery(localStore, query = {}) {
 
   // Community last
   for (const p of communityPatterns) {
-    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       merged.push({ ...p, source: 'community' });
@@ -1643,7 +1648,7 @@ function crossRepoSearch(description, options = {}) {
       let matchCount = 0;
 
       for (const p of patterns) {
-        const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+        const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
         if (seen.has(key)) continue;
         // Simple relevance scoring: check if description words match name/tags/description
         const text = `${p.name} ${(p.tags || []).join(' ')} ${p.description || ''}`.toLowerCase();

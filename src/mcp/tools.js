@@ -96,25 +96,27 @@ const TOOLS = [
     inputSchema: { type: 'object', properties: {} },
   },
 
-  // ─── 7. Debug (unified: capture + search + feedback + stats + grow + patterns) ───
+  // ─── 7. Debug (quantum field: capture + observe + feedback + stats + grow + patterns + decohere + reexcite + entanglement + field) ───
   {
     name: 'oracle_debug',
-    description: 'Debug oracle — manage error→fix patterns. Actions: capture (save error→fix), search (find fixes), feedback (report fix result), stats (debug statistics), grow (generate variants), patterns (list all).',
+    description: 'Quantum debug oracle — error→fix patterns as a quantum field. Actions: capture (inject pattern in |superposition⟩), search (observe/collapse states with tunneling + interference), feedback (post-measurement update, propagates entanglement), stats (quantum field statistics), grow (expand field with entangled variants), patterns (list with quantum state), decohere (sweep stale patterns), reexcite (restore decohered pattern), entanglement (show entanglement graph), field (quantum field overview).',
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['capture', 'search', 'feedback', 'stats', 'grow', 'patterns'], description: 'Debug action to perform' },
+        action: { type: 'string', enum: ['capture', 'search', 'feedback', 'stats', 'grow', 'patterns', 'decohere', 'reexcite', 'entanglement', 'field'], description: 'Quantum debug action to perform' },
         errorMessage: { type: 'string', description: 'Error message (for capture/search)' },
         stackTrace: { type: 'string', description: 'Stack trace (for capture/search)' },
         fixCode: { type: 'string', description: 'Fix code (for capture)' },
         fixDescription: { type: 'string', description: 'Fix description (for capture)' },
         language: { type: 'string', description: 'Programming language' },
         tags: { type: 'array', items: { type: 'string' }, description: 'Tags (for capture)' },
-        id: { type: 'string', description: 'Debug pattern ID (for feedback)' },
+        id: { type: 'string', description: 'Debug pattern ID (for feedback/reexcite/entanglement)' },
         resolved: { type: 'boolean', description: 'Whether the fix resolved the error (for feedback)' },
         limit: { type: 'number', description: 'Max results (for search/grow/patterns)' },
         errorClass: { type: 'string', description: 'Error class filter (for patterns)' },
         federated: { type: 'boolean', description: 'Search all tiers (for search, default: true)' },
+        maxDays: { type: 'number', description: 'Max days without observation before decoherence (for decohere, default: 180)' },
+        depth: { type: 'number', description: 'Entanglement graph traversal depth (for entanglement, default: 2)' },
       },
       required: ['action'],
     },

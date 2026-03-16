@@ -194,7 +194,8 @@ class MCPServer {
   }
 
   async _handleToolCall(id, params) {
-    const { name, arguments: args = {} } = params || {};
+    const { name, arguments: rawArgs } = params || {};
+    const args = rawArgs || {};
 
     const validationError = this._validateParams(name, args);
     if (validationError) {
@@ -257,19 +258,22 @@ function startMCPServer(oracle) {
   const rl = readline.createInterface({ input: process.stdin, terminal: false });
 
   rl.on('line', async (line) => {
+    let msgId = null;
     try {
       const msg = safeJsonParse(line.trim(), null);
       if (!msg) throw new Error('Invalid JSON');
+      msgId = msg.id ?? null;
       const response = await server.handleRequest(msg);
       if (response) {
         process.stdout.write(JSON.stringify(response) + '\n');
       }
     } catch (err) {
       if (process.env.ORACLE_DEBUG) console.warn('[server:startMCPServer] silent failure:', err?.message || err);
+      const isParse = err.message === 'Invalid JSON';
       const errorResponse = {
         jsonrpc: '2.0',
-        id: null,
-        error: { code: -32700, message: 'Parse error' },
+        id: msgId,
+        error: { code: isParse ? -32700 : -32603, message: isParse ? 'Parse error' : `Internal error: ${err.message}` },
       };
       process.stdout.write(JSON.stringify(errorResponse) + '\n');
     }

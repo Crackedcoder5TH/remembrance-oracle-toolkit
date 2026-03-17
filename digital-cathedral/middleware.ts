@@ -156,6 +156,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/") &&
     !pathname.startsWith("/api/auth") &&
     !pathname.startsWith("/api/webhooks/") &&
+    !pathname.endsWith("/logout") &&
+    !pathname.endsWith("/upload") &&
     (method === "POST" || method === "PUT" || method === "PATCH")
   ) {
     const contentType = request.headers.get("content-type") || "";

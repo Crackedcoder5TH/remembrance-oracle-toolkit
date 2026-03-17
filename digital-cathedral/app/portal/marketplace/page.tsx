@@ -14,7 +14,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { US_STATES } from "../../packages/shared/src/validate-state";
+import { US_STATES } from "../../../packages/shared/src/validate-state";
 
 const COVERAGE_LABELS: Record<string, string> = {
   "mortgage-protection": "Term Life",

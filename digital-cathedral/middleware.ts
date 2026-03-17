@@ -111,6 +111,7 @@ export async function middleware(request: NextRequest) {
 
   // ─── Multi-Domain Route Enforcement ───
   // Block portal routes on leads domains; redirect to portal domain instead.
+  // On portal domain, redirect marketing pages to the client portal.
   const hostname = request.headers.get("host") || request.nextUrl.host;
   const domainType = getDomainType(hostname);
 
@@ -127,6 +128,23 @@ export async function middleware(request: NextRequest) {
         { error: "This route is not available on this domain." },
         { status: 404 },
       );
+    }
+  }
+
+  if (domainType === "portal") {
+    // On the portal domain, only serve portal/admin routes and their APIs.
+    // Redirect everything else (homepage, blog, about, etc.) to /portal.
+    const isPortalRoute =
+      pathname === "/portal" ||
+      pathname.startsWith("/portal/") ||
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/.well-known") ||
+      pathname.includes(".");
+    if (!isPortalRoute) {
+      const portalUrl = new URL("/portal", request.url);
+      return NextResponse.redirect(portalUrl, 301);
     }
   }
 

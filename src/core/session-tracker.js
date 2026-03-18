@@ -206,7 +206,7 @@ function trackSearch(term, results, options) {
  */
 function buildSummary() {
   const session = getSession();
-  session.endedAt = new Date().toISOString();
+  const endedAt = session.endedAt || new Date().toISOString();
 
   const stats = session.stats;
   const uniquePatterns = stats.patternsUsed instanceof Set
@@ -214,7 +214,7 @@ function buildSummary() {
     : (stats.patternsUsed || []).length;
 
   const summary = {
-    duration: _duration(session.startedAt, session.endedAt),
+    duration: _duration(session.startedAt, endedAt),
     stats: {
       totalResolves: stats.totalResolves,
       totalSearches: stats.totalSearches,
@@ -325,6 +325,7 @@ function resetSession() {
     _autoFlushTimer = null;
   }
   _session = _newSession();
+  _startAutoFlush();
 }
 
 /**

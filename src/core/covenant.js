@@ -159,7 +159,7 @@ function covenantCheck(code, metadata = {}) {
       const oldest = _covenantCache.keys().next().value;
       _covenantCache.delete(oldest);
     }
-    _covenantCache.set(key, result);
+    _covenantCache.set(key, { ...result, violations: [...result.violations] });
   }
 
   return result;
@@ -190,7 +190,9 @@ function formatCovenantResult(result) {
 function deepSecurityScan(code, options = {}) {
   const { language = 'javascript', runExternalTools = false } = options;
 
-  const covenant = covenantCheck(code, options);
+  // Don't forward 'trusted' to covenantCheck — deepSecurityScan should always run the covenant
+  const { trusted: _omitTrusted, ...covenantMeta } = options;
+  const covenant = covenantCheck(code, covenantMeta);
 
   const langPatterns = DEEP_SECURITY_PATTERNS[language] || DEEP_SECURITY_PATTERNS.javascript;
   const deepFindings = [];

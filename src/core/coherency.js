@@ -346,7 +346,15 @@ function computeCoherencyScore(code, metadata = {}) {
   }, 0);
 
   // AST-based boost/penalty
-  const ast = astCoherencyBoost(code, language);
+  let ast;
+  try {
+    ast = astCoherencyBoost(code, language);
+  } catch (_) {
+    ast = { boost: 0, parsed: { valid: false, functions: [], classes: [], complexity: 0 } };
+  }
+  if (!ast || !ast.parsed) {
+    ast = { boost: 0, parsed: { valid: false, functions: [], classes: [], complexity: 0 } };
+  }
   const total = Math.max(0, Math.min(1, weighted + ast.boost));
 
   return {
@@ -355,9 +363,9 @@ function computeCoherencyScore(code, metadata = {}) {
     astAnalysis: {
       boost: ast.boost,
       valid: ast.parsed.valid,
-      functions: ast.parsed.functions.length,
-      classes: ast.parsed.classes.length,
-      complexity: ast.parsed.complexity,
+      functions: (ast.parsed.functions || []).length,
+      classes: (ast.parsed.classes || []).length,
+      complexity: ast.parsed.complexity || 0,
     },
     language,
   };

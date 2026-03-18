@@ -8,6 +8,7 @@
  */
 
 const { execSync, execFileSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -123,7 +124,8 @@ function validateCode(code, options = {}) {
  */
 function executeTest(code, testCode, language, timeout) {
   const lang = language || 'javascript';
-  const tmpFile = path.join(os.tmpdir(), `oracle-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-test-'));
+  const tmpFile = path.join(tmpDir, `test-${crypto.randomBytes(8).toString('hex')}`);
 
   try {
     if (lang === 'javascript' || lang === 'js') {

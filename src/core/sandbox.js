@@ -59,6 +59,8 @@ Module._load = function(request, parent, isMain) {
   if (blocked.has(request)) throw new Error('Module "' + request + '" is blocked in sandbox');
   return _origLoad(request, parent, isMain);
 };
+if (process.binding) { const _origBinding = process.binding; process.binding = function(name) { throw new Error('process.binding("' + name + '") is blocked in sandbox'); }; }
+if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlopen is blocked in sandbox'); }; }
 `;
     // Write with restrictive permissions (owner-only) then make read-only
     // to close TOCTOU race between write and exec
@@ -76,7 +78,8 @@ Module._load = function(request, parent, isMain) {
     fs.closeSync(fdTest);
     fs.chmodSync(filePath, 0o400);
 
-    const memFlag = `--max-old-space-size=${Number(maxMemory) || DEFAULT_MAX_MEMORY}`;
+    const safeMem = Math.max(1, Math.min(parseInt(maxMemory, 10) || DEFAULT_MAX_MEMORY, 8192));
+    const memFlag = `--max-old-space-size=${safeMem}`;
     const result = execFileSync('node', [memFlag, '--require', preloadPath, filePath],
       {
         timeout,
@@ -122,7 +125,7 @@ function sandboxPython(code, testCode, options = {}) {
     const prelude = "import sys\nimport builtins\n\n" +
       "# Block dangerous modules — handles both module and dict forms of __builtins__\n" +
       "_original_import = __import__\n" +
-      "blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'os', 'importlib', 'ctypes', 'signal', 'multiprocessing', 'pty', 'fcntl', 'resource'}\n\n" +
+      "blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'os', 'importlib', 'ctypes', '_ctypes', 'signal', 'multiprocessing', 'pty', 'fcntl', 'resource', 'sys', 'code', 'codeop', 'compileall', 'runpy'}\n\n" +
       "def _safe_import(name, *args, **kwargs):\n" +
       "    if name.split('.')[0] in blocked:\n" +
       '        raise ImportError(f\'Module "{name}" is blocked in sandbox\')\n' +
@@ -259,6 +262,8 @@ Module._load = function(request, parent, isMain) {
   if (blocked.has(request)) throw new Error('Module "' + request + '" is blocked in sandbox');
   return _origLoad(request, parent, isMain);
 };
+if (process.binding) { const _origBinding = process.binding; process.binding = function(name) { throw new Error('process.binding("' + name + '") is blocked in sandbox'); }; }
+if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlopen is blocked in sandbox'); }; }
 `;
     // Write with restrictive permissions then make read-only (TOCTOU mitigation)
     const fdPre = fs.openSync(preloadPath, 'w', 0o600);

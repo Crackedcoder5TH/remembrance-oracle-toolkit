@@ -151,6 +151,7 @@ function syncToGlobal(localStore, options = {}) {
     return { synced: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
+  try {
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore.getAllPatterns();
   // Build coherency index so we can detect when local has improved over personal
@@ -237,6 +238,11 @@ function syncToGlobal(localStore, options = {}) {
   }
 
   return report;
+  } finally {
+    if (personalStore && typeof personalStore.close === 'function') {
+      try { personalStore.close(); } catch (_) {}
+    }
+  }
 }
 
 /**
@@ -249,6 +255,7 @@ function syncFromGlobal(localStore, options = {}) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
+  try {
   const personalPatterns = personalStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
   // Build coherency index so we can detect when personal has improved over local
@@ -343,6 +350,11 @@ function syncFromGlobal(localStore, options = {}) {
   }
 
   return report;
+  } finally {
+    if (personalStore && typeof personalStore.close === 'function') {
+      try { personalStore.close(); } catch (_) {}
+    }
+  }
 }
 
 /**
@@ -563,6 +575,7 @@ function federatedQuery(localStore, query = {}) {
   const personalStore = openPersonalStore();
   const communityStore = openCommunityStore();
 
+  try {
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore ? personalStore.getAllPatterns() : [];
   const communityPatterns = communityStore ? communityStore.getAllPatterns() : [];
@@ -628,14 +641,15 @@ function federatedQuery(localStore, query = {}) {
     patterns: results,
   };
 
-  if (personalStore && typeof personalStore.close === 'function') {
-    try { personalStore.close(); } catch (_) {}
-  }
-  if (communityStore && typeof communityStore.close === 'function') {
-    try { communityStore.close(); } catch (_) {}
-  }
-
   return result;
+  } finally {
+    if (personalStore && typeof personalStore.close === 'function') {
+      try { personalStore.close(); } catch (_) {}
+    }
+    if (communityStore && typeof communityStore.close === 'function') {
+      try { communityStore.close(); } catch (_) {}
+    }
+  }
 }
 
 // ─── Stats ───
@@ -646,7 +660,11 @@ function federatedQuery(localStore, query = {}) {
 function personalStats() {
   const store = openPersonalStore();
   if (!store) return { available: false, error: 'No SQLite available' };
-  return _storeStats(store, PERSONAL_DIR, 'personal');
+  try {
+    return _storeStats(store, PERSONAL_DIR, 'personal');
+  } finally {
+    if (typeof store.close === 'function') try { store.close(); } catch (_) {}
+  }
 }
 
 /**
@@ -655,7 +673,11 @@ function personalStats() {
 function communityStats() {
   const store = openCommunityStore();
   if (!store) return { available: false, error: 'No SQLite available' };
-  return _storeStats(store, COMMUNITY_DIR, 'community');
+  try {
+    return _storeStats(store, COMMUNITY_DIR, 'community');
+  } finally {
+    if (typeof store.close === 'function') try { store.close(); } catch (_) {}
+  }
 }
 
 /**
@@ -974,16 +996,24 @@ function debugGlobalStats() {
   try {
     const personalStore = openPersonalStore();
     if (personalStore) {
-      const { DebugOracle } = require('../debug/debug-oracle');
-      stats.personal = new DebugOracle(personalStore).stats();
+      try {
+        const { DebugOracle } = require('../debug/debug-oracle');
+        stats.personal = new DebugOracle(personalStore).stats();
+      } finally {
+        if (typeof personalStore.close === 'function') try { personalStore.close(); } catch (_) {}
+      }
     }
   } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
 
   try {
     const communityStore = openCommunityStore();
     if (communityStore) {
-      const { DebugOracle } = require('../debug/debug-oracle');
-      stats.community = new DebugOracle(communityStore).stats();
+      try {
+        const { DebugOracle } = require('../debug/debug-oracle');
+        stats.community = new DebugOracle(communityStore).stats();
+      } finally {
+        if (typeof communityStore.close === 'function') try { communityStore.close(); } catch (_) {}
+      }
     }
   } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
 

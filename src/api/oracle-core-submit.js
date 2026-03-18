@@ -79,6 +79,9 @@ module.exports = {
    * Registers a new pattern in the pattern library after validation.
    */
   registerPattern(pattern) {
+    if (!pattern?.code || typeof pattern.code !== 'string') {
+      return { success: false, registered: false, error: 'pattern.code is required and must be a string' };
+    }
     const validation = validateCode(pattern.code, {
       language: pattern.language, testCode: pattern.testCode, threshold: this.threshold,
       description: pattern.description || pattern.name, tags: pattern.tags,

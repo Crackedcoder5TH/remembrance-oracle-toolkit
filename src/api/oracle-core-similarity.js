@@ -31,7 +31,7 @@ const SIMILARITY_CANDIDATE_THRESHOLD = 0.85; // 85-94% similar → route to cand
 function _codeSimilarity(codeA, codeB) {
   const tokensA = new Set((codeA.match(/\b\w+\b/g) || []).map(t => t.toLowerCase()));
   const tokensB = new Set((codeB.match(/\b\w+\b/g) || []).map(t => t.toLowerCase()));
-  if (tokensA.size === 0 && tokensB.size === 0) return 0;
+  if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
   const intersection = [...tokensA].filter(t => tokensB.has(t)).length;
   const union = new Set([...tokensA, ...tokensB]).size;
   return union > 0 ? intersection / union : 0;

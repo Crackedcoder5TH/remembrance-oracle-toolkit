@@ -67,6 +67,10 @@ function _decryptToken(stored) {
 function request(url, options = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
+    // Only allow HTTP/HTTPS protocols to prevent SSRF via file://, ftp://, etc.
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return reject(new Error(`Unsupported protocol: ${parsed.protocol} — only http: and https: are allowed`));
+    }
     const mod = parsed.protocol === 'https:' ? https : http;
     const timeout = options.timeout || 10000;
 

@@ -20,7 +20,7 @@ module.exports = {
     if (request == null || typeof request !== 'object') request = {};
     const { description = '', tags = [], language, minCoherency, heal = true } = request;
 
-    let decision = this.patterns.decide({ description, tags, language, minCoherency });
+    let decision = this.patterns.decide({ description, tags, language, minCoherency }) || { decision: 'generate', confidence: 0, alternatives: [] };
     const historyResults = this.query({ description, tags, language, limit: 3, minCoherency: 0.5 });
 
     // For structural queries with no strong match, check built-in architectural patterns.
@@ -127,11 +127,13 @@ module.exports = {
         }
 
         // Record healing stats to persistent storage
-        this._trackHealingSuccess(patternData.id, true, {
-          coherencyBefore: originalCoherency,
-          coherencyAfter: healedCoherency,
-          healingLoops: healing.loops,
-        });
+        if (typeof this._trackHealingSuccess === 'function') {
+          this._trackHealingSuccess(patternData.id, true, {
+            coherencyBefore: originalCoherency,
+            coherencyAfter: healedCoherency,
+            healingLoops: healing.loops,
+          });
+        }
       } catch (_) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-resolve:onLoop] silent failure:', _?.message || _);
         healedCode = patternData.code;
@@ -141,7 +143,7 @@ module.exports = {
         });
 
         // Record failed healing attempt to persistent storage
-        this._trackHealingSuccess(patternData.id, false, {
+        if (typeof this._trackHealingSuccess === 'function') this._trackHealingSuccess(patternData.id, false, {
           coherencyBefore: patternData.coherencyScore || 0,
           healingLoops: 0,
         });

@@ -88,7 +88,7 @@ module.exports = {
       const descKw = keywordScore(item.description || '');
       const tagKw = keywordScore((item.tags || []).join(' '));
       const codeKw = keywordScore(item.code || '') * 0.3;
-      const kwScore = Math.max(nameKw, descKw, tagKw, codeKw);
+      const kwScore = Math.min(1.0, Math.max(nameKw, descKw, tagKw, codeKw));
       const semScore = semanticMap.get(item.id) || 0;
       const holoScore = holoMap.get(item.id) || 0;
 

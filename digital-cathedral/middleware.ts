@@ -109,14 +109,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ─── Redirect www. to bare domain for consistent cookies ───
   const hostname = request.headers.get("host") || request.nextUrl.host;
-  const rawHost = hostname.toLowerCase().split(":")[0];
-  if (rawHost.startsWith("www.")) {
-    const bareUrl = new URL(request.url);
-    bareUrl.host = bareUrl.host.replace(/^www\./, "");
-    return NextResponse.redirect(bareUrl.toString(), 301);
-  }
 
   // ─── Multi-Domain Route Enforcement ───
   // Block portal routes on leads domains; redirect to portal domain instead.

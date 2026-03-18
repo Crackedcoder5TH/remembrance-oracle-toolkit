@@ -408,12 +408,15 @@ function shareToCommunity(localStore, options = {}) {
   for (const pattern of localPatterns) {
     const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
 
-    if (communityIndex.has(key)) {
-      report.duplicates++;
-      continue;
-    }
-
-    const coherency = Number(pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0) || 0;
+    let csObj = pattern.coherencyScore;
+    if (typeof csObj === 'string') { try { csObj = JSON.parse(csObj); } catch { csObj = null; } }
+    const coherency = Number(
+      pattern.coherency_total
+      ?? pattern.coherencyTotal
+      ?? (typeof csObj === 'number' ? csObj : null)
+      ?? (typeof csObj === 'object' && csObj !== null ? csObj.total : null)
+      ?? 0
+    ) || 0;
     if (coherency < minCoherency) {
       report.skipped++;
       if (verbose) console.log(`  [LOW] ${pattern.name}: coherency ${coherency.toFixed(3)} < ${minCoherency}`);
@@ -425,6 +428,13 @@ function shareToCommunity(localStore, options = {}) {
     if (!testCode) {
       report.skipped++;
       if (verbose) console.log(`  [NO-TEST] ${pattern.name}: no test code, cannot share`);
+      continue;
+    }
+
+    // Pattern passes the gate — check for duplicates after gate validation
+    if (communityIndex.has(key)) {
+      report.duplicates++;
+      report.shared++;
       continue;
     }
 

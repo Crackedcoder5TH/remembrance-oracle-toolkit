@@ -647,7 +647,11 @@ function consolidateDuplicates(ctx, options = {}) {
         }
       }
 
-      // Do NOT delete — just link
+      // Link and record the lower-coherency variant as removed
+      if (!dryRun) {
+        deletePattern(loser.id);
+      }
+      report.removed.push({ id: loser.id, name: loser.name, reason: 'language-variant-duplicate' });
       report.linked.push({
         kept: { id: keeper.id, name: keeper.name, language: keeper.language, coherency: existingCoherency >= duplicateCoherency ? existingCoherency : duplicateCoherency },
         linked: { id: loser.id, name: loser.name, language: loser.language, coherency: existingCoherency >= duplicateCoherency ? duplicateCoherency : existingCoherency },
@@ -658,7 +662,7 @@ function consolidateDuplicates(ctx, options = {}) {
       // Same-language exact duplicates: only delete if similarity is extremely high (>= 0.98)
       // and the loser has low coherency. Never delete patterns with coherency >= 0.7.
       const loserCoherency = loser.coherencyScore?.total ?? 0;
-      if (similarity >= 0.98 && loserCoherency < 0.7) {
+      if (similarity >= 0.98 && loserCoherency <= 0.7) {
         if (!dryRun) {
           deletePattern(loser.id);
         }
@@ -669,7 +673,7 @@ function consolidateDuplicates(ctx, options = {}) {
         kept: { id: keeper.id, name: keeper.name, coherency: Math.max(existingCoherency, duplicateCoherency) },
         removed: { id: loser.id, name: loser.name, coherency: Math.min(existingCoherency, duplicateCoherency) },
         similarity: Math.round(similarity * 1000) / 1000,
-        deleted: similarity >= 0.98 && loserCoherency < 0.7,
+        deleted: similarity >= 0.98 && loserCoherency <= 0.7,
       });
     }
   }

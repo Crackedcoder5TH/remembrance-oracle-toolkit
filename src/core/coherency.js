@@ -380,8 +380,8 @@ function detectLanguage(code) {
   // TypeScript — check before JS since TS is a superset
   if (/:\s*(string|number|boolean|void|any|never)\b/.test(code) && /\b(interface|type|enum)\b/.test(code)) return 'typescript';
   if (/\bfunction\b.*\{|const |let |=>\s*\{|require\(|import .* from/.test(code)) {
-    // Distinguish TS from JS by type annotations
-    if (/:\s*(string|number|boolean|void|any|never)\b/.test(code) || /<\w+>/.test(code)) return 'typescript';
+    // Distinguish TS from JS by type annotations (not HTML angle brackets)
+    if (/:\s*(string|number|boolean|void|any|never)\b/.test(code) || /\w+<\w+(?:,\s*\w+)*>/.test(code)) return 'typescript';
     return 'javascript';
   }
   // Anchor Python patterns to start of line to avoid matching keywords inside strings

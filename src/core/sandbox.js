@@ -9,7 +9,7 @@
  * - Separate process (crash-safe)
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -76,9 +76,8 @@ Module._load = function(request, parent, isMain) {
     fs.closeSync(fdTest);
     fs.chmodSync(filePath, 0o400);
 
-    const memFlag = `--max-old-space-size=${maxMemory}`;
-    const result = execSync(
-      `node ${memFlag} --require "${preloadPath}" "${filePath}"`,
+    const memFlag = `--max-old-space-size=${Number(maxMemory) || DEFAULT_MAX_MEMORY}`;
+    const result = execFileSync('node', [memFlag, '--require', preloadPath, filePath],
       {
         timeout,
         encoding: 'utf-8',
@@ -120,24 +119,25 @@ function sandboxPython(code, testCode, options = {}) {
   try {
     // Write code+test to file via concatenation (not template literal interpolation)
     const filePath = path.join(sandboxDir, 'test.py');
-    const prelude = "import sys\n\n" +
-      "# Block dangerous modules\n" +
-      "_original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__\n" +
-      "blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'os', 'importlib', 'ctypes', 'signal'}\n\n" +
+    const prelude = "import sys\nimport builtins\n\n" +
+      "# Block dangerous modules — handles both module and dict forms of __builtins__\n" +
+      "_original_import = __import__\n" +
+      "blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'os', 'importlib', 'ctypes', 'signal', 'multiprocessing', 'pty', 'fcntl', 'resource'}\n\n" +
       "def _safe_import(name, *args, **kwargs):\n" +
       "    if name.split('.')[0] in blocked:\n" +
       '        raise ImportError(f\'Module "{name}" is blocked in sandbox\')\n' +
       "    return _original_import(name, *args, **kwargs)\n\n" +
-      "try:\n    __builtins__.__import__ = _safe_import\nexcept:\n    pass\n\n" +
-      "import builtins\nbuiltins.__import__ = _safe_import\n\n";
+      "builtins.__import__ = _safe_import\n" +
+      "# Also patch __builtins__ if it's a module (not a dict)\n" +
+      "if hasattr(__builtins__, '__import__'):\n" +
+      "    __builtins__.__import__ = _safe_import\n\n";
     const combined = prelude + code + "\n" + testCode + "\n";
     const fdPy = fs.openSync(filePath, 'w', 0o600);
     fs.writeSync(fdPy, combined);
     fs.closeSync(fdPy);
     fs.chmodSync(filePath, 0o400);
 
-    const result = execSync(
-      `python3 "${filePath}"`,
+    const result = execFileSync('python3', [filePath],
       {
         timeout,
         encoding: 'utf-8',
@@ -432,7 +432,7 @@ function sandboxRust(code, testCode, options = {}) {
     fs.closeSync(fdRs);
     fs.chmodSync(rsPath, 0o400);
 
-    const result = execSync('cargo test 2>&1', {
+    const result = execFileSync('cargo', ['test'], {
       timeout,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],

@@ -126,6 +126,10 @@ function trackResolve(result, request) {
     } : null,
   };
 
+  // Cap resolves array to prevent unbounded growth in long sessions
+  if (session.resolves.length >= 5000) {
+    session.resolves = session.resolves.slice(-2500);
+  }
   session.resolves.push(entry);
   session.stats.totalResolves++;
 

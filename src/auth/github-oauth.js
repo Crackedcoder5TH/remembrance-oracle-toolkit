@@ -23,14 +23,18 @@ function _parseResponse(data) {
     if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:_parseResponse] silent failure:', e?.message || e);
     // Only attempt URL-encoded parsing if it looks like form data (no HTML tags, contains =)
     if (data && !data.includes('<') && data.includes('=')) {
-      const parsed = {};
+      const parsed = Object.create(null); // prevent prototype pollution
+      const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
       const pairs = data.split('&');
       if (pairs.length > 50) return { error: 'Too many form parameters', raw: String(data).slice(0, 500) };
       for (const pair of pairs) {
         const [k, v] = pair.split('=');
         if (k) {
           try {
-            parsed[decodeURIComponent(k)] = decodeURIComponent(v || '');
+            const decoded = decodeURIComponent(k);
+            if (!FORBIDDEN_KEYS.has(decoded)) {
+              parsed[decoded] = decodeURIComponent(v || '');
+            }
           } catch (decodeErr) {
             // Skip malformed percent-encoded values (null bytes, invalid sequences)
             continue;

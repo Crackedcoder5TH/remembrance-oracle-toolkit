@@ -54,7 +54,7 @@ module.exports = {
 
     if (simCheck.action === 'candidate') {
       const candidate = this.patterns.addCandidate({
-        name: description ? description.slice(0, 60).replace(/[^a-zA-Z0-9-_ ]/g, '') : `candidate-${Date.now()}`,
+        name: (description ? description.slice(0, 60).replace(/[^a-zA-Z0-9-_ ]/g, '').trim() : '') || `candidate-${Date.now()}`,
         code, language: validation.coherencyScore.language, description, tags: enrichedTags,
         coherencyScore: validation.coherencyScore, testCode: testCode || null, source: 'similarity-candidate',
       });

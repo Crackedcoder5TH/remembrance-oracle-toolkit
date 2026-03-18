@@ -131,7 +131,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       if (pathname === '/api/search') {
         const query = parsed.query.q || '';
         const mode = parsed.query.mode || 'hybrid';
-        const limit = parseInt(parsed.query.limit) || 10;
+        const limit = Math.min(Math.max(parseInt(parsed.query.limit, 10) || 10, 1), 200);
         if (!query) { sendJSON(res, []); return; }
         sendJSON(res, oracleInstance.search(query, { mode, limit }));
         return;

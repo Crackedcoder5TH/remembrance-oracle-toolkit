@@ -66,11 +66,17 @@ function hashPassword(password) {
 }
 
 function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return false;
   const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
   const check = crypto.scryptSync(password, salt, 64).toString('hex');
   // Constant-time comparison to prevent timing attacks
-  if (check.length !== hash.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(check, 'hex'), Buffer.from(hash, 'hex'));
+  try {
+    return crypto.timingSafeEqual(Buffer.from(check, 'hex'), Buffer.from(hash, 'hex'));
+  } catch (_) {
+    // Buffer length mismatch (corrupted stored hash)
+    return false;
+  }
 }
 
 // ─── Cloud Sync Server ───
@@ -343,6 +349,16 @@ class CloudSyncServer {
     const { username, password, email } = body;
     if (!username || !password) {
       return this._json(res, 400, { error: 'Username and password required' });
+    }
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return this._json(res, 400, { error: 'Username and password must be strings' });
+    }
+    if (username.length > 128 || password.length > 1024) {
+      return this._json(res, 400, { error: 'Username or password too long' });
+    }
+    // Cap total users to prevent resource exhaustion via open registration
+    if (this._users.size >= 10000) {
+      return this._json(res, 503, { error: 'User registration limit reached' });
     }
     if (this._users.has(username)) {
       return this._json(res, 409, { error: 'Username already exists' });
@@ -717,6 +733,14 @@ class CloudSyncServer {
       this._rateLimits.set(ip, entry);
     }
     entry.count++;
+
+    // Evict stale entries to prevent unbounded map growth
+    if (this._rateLimits.size > 10000) {
+      for (const [key, val] of this._rateLimits) {
+        if (now - val.start > window) this._rateLimits.delete(key);
+      }
+    }
+
     return entry.count <= this.rateLimit;
   }
 

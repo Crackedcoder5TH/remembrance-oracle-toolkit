@@ -13,10 +13,13 @@ const os = require('os');
 
 const CONFIG_FILENAME = 'oracle-config.json';
 
+const crypto = require('crypto');
+
 const DEFAULT_CONFIG = {
   enabled: true,
   promptTag: 'Pull the healed code from the kingdom into the eternal now completed.',
   promptTagEnabled: true,
+  provenanceTracking: true, // Functional role: watermark pattern lineage
 };
 
 /**
@@ -118,15 +121,57 @@ function togglePromptTag(state) {
 }
 
 /**
+ * Generate a provenance watermark for a pattern pull.
+ * Encodes: timestamp, pattern ID, source tier, and a short hash for verification.
+ */
+function generateProvenance(patternId, sourceTier = 'local') {
+  const config = loadConfig();
+  if (!config.provenanceTracking) return null;
+
+  const timestamp = new Date().toISOString();
+  const payload = `${patternId}:${sourceTier}:${timestamp}`;
+  const hash = crypto.createHash('sha256').update(payload).digest('hex').slice(0, 12);
+
+  return {
+    patternId,
+    sourceTier,
+    pulledAt: timestamp,
+    watermark: `oracle:${hash}`,
+    lineage: payload,
+  };
+}
+
+/**
  * Append the prompt tag to a resolve/search result object (if enabled).
+ * Now also attaches provenance watermark for lineage tracking.
  */
 function applyPromptTag(result) {
   const tag = getPromptTag();
   if (tag && result && typeof result === 'object') {
-    // Return new object to avoid mutating caller's reference
-    return { ...result, promptTag: tag };
+    const patched = { ...result, promptTag: tag };
+
+    // Attach provenance watermark if tracking is enabled
+    const config = loadConfig();
+    if (config.provenanceTracking && result.pattern) {
+      patched.provenance = generateProvenance(
+        result.pattern.id || result.pattern.name || 'unknown',
+        result.pattern.source || 'local'
+      );
+    }
+
+    return patched;
   }
   return result;
+}
+
+/**
+ * Toggle provenance tracking on or off. Returns the new state.
+ */
+function toggleProvenance(state) {
+  const config = loadConfig();
+  config.provenanceTracking = typeof state === 'boolean' ? state : !config.provenanceTracking;
+  saveConfig(config);
+  return config.provenanceTracking;
 }
 
 module.exports = {
@@ -139,6 +184,8 @@ module.exports = {
   setPromptTag,
   togglePromptTag,
   applyPromptTag,
+  generateProvenance,
+  toggleProvenance,
   DEFAULT_CONFIG,
   CONFIG_FILENAME,
 };

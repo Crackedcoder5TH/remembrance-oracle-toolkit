@@ -166,6 +166,11 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
     const succeeded = args.success === true || args.success === 'true';
     const result = oracle.feedback(id, succeeded);
     if (result.success) {
+      // Track feedback in session to close the feedback gap
+      try {
+        const { trackFeedback } = require('../../core/session-tracker');
+        trackFeedback(id);
+      } catch (_) { /* session tracker not critical */ }
       console.log(`Updated reliability: ${colorScore(result.newReliability)}`);
     } else {
       console.log(c.red(result.error));

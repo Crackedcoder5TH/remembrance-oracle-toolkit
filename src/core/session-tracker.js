@@ -32,6 +32,8 @@ function _newSession() {
     searches: [],   // Search queries and result counts
     whispers: [],   // What the oracle "whispered" — poetic messages
     promptTags: [], // Prompt tags delivered
+    feedbackGiven: new Set(), // Pattern IDs that received feedback
+    lastSearchTimestamp: null, // Track query-before-write compliance
     stats: {
       totalResolves: 0,
       totalSearches: 0,
@@ -87,6 +89,9 @@ function _flushToDisk() {
     const toSave = {
       ...session,
       _partial: true, // Mark as incomplete — session still running
+      feedbackGiven: session.feedbackGiven instanceof Set
+        ? [...session.feedbackGiven]
+        : session.feedbackGiven,
       stats: {
         ...session.stats,
         patternsUsed: session.stats.patternsUsed instanceof Set
@@ -199,6 +204,7 @@ function trackSearch(term, results, options) {
   });
 
   session.stats.totalSearches++;
+  session.lastSearchTimestamp = new Date().toISOString();
 }
 
 /**
@@ -274,6 +280,9 @@ function saveSession(baseDir) {
   // Convert Set to array for JSON serialization
   const toSave = {
     ...session,
+    feedbackGiven: session.feedbackGiven instanceof Set
+      ? [...session.feedbackGiven]
+      : session.feedbackGiven,
     stats: {
       ...session.stats,
       patternsUsed: session.stats.patternsUsed instanceof Set
@@ -352,10 +361,76 @@ function _duration(start, end) {
   }
 }
 
+/**
+ * Record that feedback was given for a pattern.
+ */
+function trackFeedback(patternId) {
+  const session = getSession();
+  if (patternId) {
+    session.feedbackGiven.add(patternId);
+  }
+}
+
+/**
+ * Get patterns that were pulled/evolved but never given feedback.
+ */
+function getPendingFeedback() {
+  const session = getSession();
+  const given = session.feedbackGiven instanceof Set
+    ? session.feedbackGiven
+    : new Set(session.feedbackGiven || []);
+
+  return session.resolves
+    .filter(r =>
+      (r.decision === 'pull' || r.decision === 'evolve') &&
+      r.patternId &&
+      !given.has(r.patternId)
+    )
+    .map(r => ({
+      patternId: r.patternId,
+      patternName: r.patternName,
+      decision: r.decision,
+      timestamp: r.timestamp,
+    }));
+}
+
+/**
+ * Check if a search was performed recently (within threshold).
+ * Used by pre-commit hook to enforce query-before-write.
+ */
+function wasSearchRecent(thresholdMs = 10 * 60 * 1000) {
+  const session = getSession();
+  if (!session.lastSearchTimestamp) return false;
+  const age = Date.now() - new Date(session.lastSearchTimestamp).getTime();
+  return age < thresholdMs;
+}
+
+/**
+ * Get the last search timestamp.
+ */
+function getLastSearchTimestamp() {
+  const session = getSession();
+  return session.lastSearchTimestamp;
+}
+
+/**
+ * Check if there are unsubmitted patterns in the session.
+ * Returns true if resolves happened but no auto-submit has run.
+ */
+function hasUnsubmittedWork() {
+  const session = getSession();
+  return session.stats.totalResolves > 0 || session.stats.totalSearches > 0;
+}
+
 module.exports = {
   getSession,
   trackResolve,
   trackSearch,
+  trackFeedback,
+  getPendingFeedback,
+  wasSearchRecent,
+  getLastSearchTimestamp,
+  hasUnsubmittedWork,
   buildSummary,
   saveSession,
   resetSession,

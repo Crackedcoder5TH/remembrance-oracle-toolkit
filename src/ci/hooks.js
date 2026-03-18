@@ -86,6 +86,24 @@ if [ $FAILED -ne 0 ]; then
   echo "Fix the violations above or use --no-verify to skip."
   exit 1
 fi
+
+# Query-before-write check (warning only, non-blocking)
+ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { wasSearchRecent, getPendingFeedback } = require(path.join(root, 'src/core/session-tracker'));
+    if (!wasSearchRecent(600000)) {
+      console.error('\\x1b[33m[oracle] Warning: No oracle search in the last 10 minutes.\\x1b[0m');
+      console.error('\\x1b[33m  Consider: oracle search \"<what you need>\" before writing new code.\\x1b[0m');
+    }
+    const pending = getPendingFeedback();
+    if (pending.length > 0) {
+      console.error('\\x1b[33m[oracle] Warning: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
+      console.error('\\x1b[33m  Run: oracle pending-feedback\\x1b[0m');
+    }
+  } catch(e) {}
+" 2>&1 || true
 `;
 }
 

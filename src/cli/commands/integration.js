@@ -183,7 +183,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['config'] = (args) => {
-    const { loadConfig, saveConfig, toggleOracle, togglePromptTag, setPromptTag, isOracleEnabled, getPromptTag } = require('../../core/oracle-config');
+    const { loadConfig, saveConfig, toggleOracle, togglePromptTag, setPromptTag, isOracleEnabled, getPromptTag, toggleProvenance } = require('../../core/oracle-config');
     const sub = args._sub;
 
     if (sub === 'on') {
@@ -226,6 +226,16 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
       console.log(`${c.yellow('\u25CB')} Prompt tag ${c.dim('disabled')}`);
       return;
     }
+    if (sub === 'provenance-on') {
+      toggleProvenance(true);
+      console.log(`${c.green('\u2713')} Provenance tracking ${c.boldGreen('enabled')} — pattern pulls are watermarked`);
+      return;
+    }
+    if (sub === 'provenance-off') {
+      toggleProvenance(false);
+      console.log(`${c.yellow('\u25CB')} Provenance tracking ${c.dim('disabled')}`);
+      return;
+    }
 
     // Default: show status
     const config = loadConfig();
@@ -234,15 +244,53 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
     console.log(`  Oracle:     ${config.enabled ? c.boldGreen('ON') : c.dim('OFF')}`);
     console.log(`  Prompt Tag: ${config.promptTagEnabled ? c.boldGreen('ON') : c.dim('OFF')}`);
     console.log(`  Tag Text:   ${c.cyan(config.promptTag || '(none)')}`);
+    console.log(`  Provenance: ${config.provenanceTracking !== false ? c.boldGreen('ON') : c.dim('OFF')} — pattern pull watermarking`);
     console.log(`\n${c.dim('Commands:')}`);
-    console.log(`  ${c.cyan('oracle config on|off')}          — Toggle oracle on/off`);
-    console.log(`  ${c.cyan('oracle config prompt-tag')}      — View current prompt tag`);
+    console.log(`  ${c.cyan('oracle config on|off')}            — Toggle oracle on/off`);
+    console.log(`  ${c.cyan('oracle config prompt-tag')}        — View current prompt tag`);
     console.log(`  ${c.cyan('oracle config prompt-tag <text>')} — Set custom prompt tag`);
     console.log(`  ${c.cyan('oracle config prompt-tag-on|off')} — Enable/disable prompt tag`);
+    console.log(`  ${c.cyan('oracle config provenance-on|off')} — Enable/disable provenance watermarking`);
+  };
+
+  handlers['preflight'] = (args) => {
+    const { runPreflight } = require('../../core/preflight');
+    const result = runPreflight(process.cwd());
+
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+
+    if (result.ok) {
+      console.log(`${c.boldGreen('\u2713')} All preflight checks passed`);
+    } else {
+      console.log(`${c.boldYellow('Preflight issues:')}\n`);
+      for (const w of result.warnings) {
+        console.log(`  ${c.yellow('!')} ${w.message}`);
+        console.log(`    Fix: ${c.cyan(w.fix)}`);
+      }
+    }
+  };
+
+  handlers['pending-feedback'] = (args) => {
+    const { getPendingFeedback } = require('../../core/session-tracker');
+    const pending = getPendingFeedback();
+
+    if (jsonOut()) { console.log(JSON.stringify(pending)); return; }
+
+    if (pending.length === 0) {
+      console.log(`${c.boldGreen('\u2713')} No pending feedback — all resolved patterns have been reported.`);
+    } else {
+      console.log(`\n${c.boldYellow('Pending Feedback')} — ${pending.length} pattern(s) pulled but never given feedback:\n`);
+      for (const p of pending) {
+        console.log(`  ${c.yellow('\u25CB')} ${c.bold(p.patternName || 'unnamed')} [${c.dim(p.patternId || 'no-id')}]`);
+        console.log(`    Pulled at: ${c.dim(p.timestamp)}  Decision: ${c.cyan(p.decision)}`);
+        console.log(`    Fix: ${c.cyan(`oracle feedback --id ${p.patternId} --success`)}`);
+      }
+      console.log('');
+    }
   };
 
   handlers['session-summary'] = (args) => {
-    const { buildSummary, saveSession, hasInteractions } = require('../../core/session-tracker');
+    const { buildSummary, saveSession, hasInteractions, getPendingFeedback, hasUnsubmittedWork } = require('../../core/session-tracker');
 
     if (!hasInteractions()) {
       console.log(c.dim('No oracle interactions recorded in this session.'));
@@ -295,6 +343,27 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
       for (const tag of summary.promptTags) {
         console.log(`  ${c.bold(tag)}`);
       }
+      console.log('');
+    }
+
+    // Feedback gap warning
+    const pending = getPendingFeedback();
+    if (pending.length > 0) {
+      console.log(`${c.boldYellow('── Pending Feedback ──')}\n`);
+      console.log(`  ${c.yellow(String(pending.length))} pattern(s) pulled but never given feedback:\n`);
+      for (const p of pending.slice(0, 10)) {
+        console.log(`  ${c.yellow('\u25CB')} ${c.bold(p.patternName || 'unnamed')} [${c.dim(p.patternId || 'no-id')}]`);
+        console.log(`    Fix: ${c.cyan(`oracle feedback --id ${p.patternId} --success`)}`);
+      }
+      if (pending.length > 10) console.log(c.dim(`  ... and ${pending.length - 10} more`));
+      console.log('');
+    }
+
+    // End sweep warning
+    if (hasUnsubmittedWork()) {
+      console.log(`${c.boldYellow('── End Sweep Reminder ──')}\n`);
+      console.log(`  ${c.yellow('!')} Session has unsubmitted work. Run before ending:`);
+      console.log(`    ${c.cyan('oracle auto-submit')}`);
       console.log('');
     }
 

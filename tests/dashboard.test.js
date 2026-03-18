@@ -1,7 +1,11 @@
-const { describe, it, after } = require('node:test');
+const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { createDashboardServer, getDashboardHTML } = require('../src/dashboard/server');
+const { RemembranceOracle } = require('../src/api/oracle');
 
 function fetch(url) {
   return new Promise((resolve, reject) => {
@@ -16,9 +20,23 @@ function fetch(url) {
 describe('Dashboard', () => {
   let server;
   let port;
+  let tmpDir;
+
+  before(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-test-'));
+  });
+
+  after(() => {
+    if (server) {
+      if (server.wsServer) server.wsServer.close?.();
+      server.close();
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
 
   it('starts server and serves HTML', async () => {
-    server = createDashboardServer(undefined, { auth: false });
+    const oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false });
+    server = createDashboardServer(oracle, { auth: false });
     await new Promise(resolve => server.listen(0, resolve));
     port = server.address().port;
 
@@ -79,9 +97,6 @@ describe('Dashboard', () => {
     assert.ok(Array.isArray(data));
   });
 
-  after(() => {
-    if (server) server.close();
-  });
 });
 
 describe('getDashboardHTML', () => {
@@ -109,9 +124,23 @@ describe('getDashboardHTML', () => {
 describe('Dashboard server features', () => {
   let server;
   let port;
+  let tmpDir2;
+
+  before(() => {
+    tmpDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-test2-'));
+  });
+
+  after(() => {
+    if (server) {
+      if (server.wsServer) server.wsServer.close?.();
+      server.close();
+    }
+    fs.rmSync(tmpDir2, { recursive: true, force: true });
+  });
 
   it('has broadcast method', () => {
-    server = createDashboardServer(undefined, { auth: false });
+    const oracle = new RemembranceOracle({ baseDir: tmpDir2, autoSeed: false });
+    server = createDashboardServer(oracle, { auth: false });
     assert.ok(typeof server.broadcast === 'function');
   });
 
@@ -136,7 +165,4 @@ describe('Dashboard server features', () => {
     assert.ok(Array.isArray(data));
   });
 
-  after(() => {
-    if (server) server.close();
-  });
 });

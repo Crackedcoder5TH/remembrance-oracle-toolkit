@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
     // The admin can always log into the client portal using their ADMIN_API_KEY
     // as the password. This bypasses the database entirely — guaranteed to work
     // even if the DB is unreachable, tables are missing, or seed never ran.
-    const adminApiKey = process.env.ADMIN_API_KEY;
-    if (adminApiKey && normalizedEmail === ADMIN_CLIENT_EMAIL && password === adminApiKey) {
+    const adminApiKey = (process.env.ADMIN_API_KEY ?? "").trim();
+    if (adminApiKey && normalizedEmail === ADMIN_CLIENT_EMAIL && password.trim() === adminApiKey) {
       // Ensure the admin client exists in the database for dashboard queries
       try {
         const existing = await getClientByEmail(ADMIN_CLIENT_EMAIL);
@@ -148,6 +148,13 @@ export async function POST(req: NextRequest) {
     // Distinguish database errors from "not found"
     if (!clientResult.ok) {
       console.error("[client-login] Database error looking up client:", clientResult.error);
+      // If admin email was used but master-key didn't match, hint at the real issue
+      if (normalizedEmail === ADMIN_CLIENT_EMAIL) {
+        return NextResponse.json(
+          { success: false, message: "Database unreachable. For admin access, use your ADMIN_API_KEY as the password." },
+          { status: 503 },
+        );
+      }
       return NextResponse.json(
         { success: false, message: "Login service temporarily unavailable. Please try again." },
         { status: 503 },

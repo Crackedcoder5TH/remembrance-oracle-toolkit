@@ -90,14 +90,15 @@ module.exports = {
     const newTags = retagPattern(pattern);
     const diff = tagDiff(oldTags, newTags);
 
-    if (!options.dryRun && (diff.added.length > 0 || diff.removed.length > 0)) {
+    const hasRemovals = oldTags.some(t => !newTags.map(n => n.toLowerCase()).includes(t.toLowerCase()));
+    if (!options.dryRun && (diff.added.length > 0 || hasRemovals)) {
       this.patterns.update(id, { tags: newTags });
     }
 
     const result = {
       success: true, id: pattern.id, name: pattern.name,
       oldTags, newTags, added: diff.added,
-      updated: !options.dryRun && (diff.added.length > 0 || diff.removed.length > 0)
+      updated: !options.dryRun && (diff.added.length > 0 || hasRemovals)
     };
     return result;
   },

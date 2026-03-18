@@ -22,12 +22,12 @@ describe('@oracle-pattern-definitions marker', () => {
   });
 
   it('returns 0.95 security score for pattern definition files', () => {
-    const score = scoreSecurity(patternDefCode, { language: 'javascript' });
+    const score = scoreSecurity(patternDefCode, { language: 'javascript', trusted: true });
     assert.equal(score, 0.95);
   });
 
   it('skips deep security scan for pattern definition files', () => {
-    const result = deepSecurityScan(patternDefCode, { language: 'javascript' });
+    const result = deepSecurityScan(patternDefCode, { language: 'javascript', trusted: true });
     assert.equal(result.deepFindings.length, 0, 'no deep findings for pattern defs');
   });
 
@@ -62,7 +62,7 @@ describe('@oracle-infrastructure marker', () => {
         element.innerHTML = data;
       }
     `;
-    const score = scoreSecurity(infraCode, { language: 'javascript' });
+    const score = scoreSecurity(infraCode, { language: 'javascript', trusted: true });
     assert.ok(score >= 0.9, `infrastructure files should pass security, got ${score}`);
   });
 

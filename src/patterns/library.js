@@ -93,8 +93,14 @@ function acquireLock(storeDir, label = 'pattern-library') {
       try {
         const stat = fs.statSync(lockPath);
         if (Date.now() - stat.mtimeMs > STALE_LOCK_MS) {
-          try { fs.unlinkSync(lockPath); } catch (e) {
-            if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e);
+          // Atomically claim the stale lock via rename to prevent TOCTOU race
+          const stalePath = lockPath + '.stale.' + process.pid;
+          try {
+            fs.renameSync(lockPath, stalePath);
+            fs.unlinkSync(stalePath);
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] stale cleanup:', e?.message || e);
+            // Another process may have already claimed it — that's fine
           }
           continue;
         }
@@ -1041,13 +1047,21 @@ class PatternLibrary {
   _retireJSON(minScore = THRESHOLDS.retire) {
     const data = this._readJSON();
     const before = data.patterns.length;
+    const retired = [];
     data.patterns = data.patterns.filter(p => {
       const coherency = p.coherencyScore?.total ?? 0;
       const reliability = (p.usageCount ?? 0) > 0 ? (p.successCount ?? 0) / p.usageCount : 0.5;
-      return (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
+      const keep = (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
+      if (!keep) retired.push(p);
+      return keep;
     });
+    // Archive retired patterns for potential recovery
+    if (!data.archive) data.archive = [];
+    for (const p of retired) {
+      data.archive.push({ ...p, retiredAt: new Date().toISOString() });
+    }
     this._writeJSON(data);
-    return { retired: before - data.patterns.length, remaining: data.patterns.length };
+    return { retired: retired.length, remaining: data.patterns.length };
   }
 
   _getAllJSON(filters = {}) {

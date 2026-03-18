@@ -70,7 +70,7 @@ function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
   );
   const agreement = others.length > 0
     ? Math.round((agreeing.length / others.length) * 1000) / 1000
-    : 0;
+    : 1.0; // Single agent = trivial consensus (no disagreement possible)
 
   // Dissent: agents significantly below the winner
   const dissent = rankings

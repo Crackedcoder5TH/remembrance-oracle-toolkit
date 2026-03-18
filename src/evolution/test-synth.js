@@ -316,7 +316,9 @@ function jsToPyExpr(expr) {
  * Generate tests from function signature analysis.
  */
 function generateFromSignature(sig, code, language, maxTests) {
-  const { name, params, isConstructor } = sig;
+  const { name: rawName, params, isConstructor } = sig;
+  // Sanitize function name to prevent code injection in generated tests
+  const name = rawName.replace(/[^a-zA-Z0-9_$]/g, '_');
   const py = language === 'python';
   const tests = [];
 

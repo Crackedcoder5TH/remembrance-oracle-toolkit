@@ -111,7 +111,7 @@ function createGeminiAdapter(apiKey, model, timeoutMs) {
     name: 'gemini',
     model,
     async send(prompt, options = {}) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${options.model || model}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${options.model || model}:generateContent`;
       const body = {
         contents: [{ parts: [{ text: prompt }] }],
       };
@@ -121,7 +121,7 @@ function createGeminiAdapter(apiKey, model, timeoutMs) {
 
       const res = await fetchWithTimeout(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify(body),
       }, timeoutMs);
 

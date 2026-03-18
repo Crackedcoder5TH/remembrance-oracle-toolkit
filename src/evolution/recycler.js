@@ -159,8 +159,9 @@ class PatternRecycler {
     this.variantLanguages = options.variantLanguages || ['python', 'typescript'];
     this.verbose = options.verbose || false;
 
-    // Failed pattern buffer — patterns waiting to be recycled
+    // Failed pattern buffer — patterns waiting to be recycled (capped to prevent memory growth)
     this._failed = [];
+    this._maxFailed = options.maxFailed || 200;
 
     // Global coherence state — updated each cycle
     this._xiGlobal = 0;
@@ -399,6 +400,9 @@ class PatternRecycler {
       healHistory: [],
     };
 
+    if (this._failed.length >= this._maxFailed) {
+      this._failed.shift(); // Evict oldest entry
+    }
     this._failed.push(entry);
     this.stats.captured++;
 

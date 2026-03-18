@@ -57,6 +57,7 @@ async function swarm(task, options = {}) {
     steps.push({ name: 'configure', status: 'ok', durationMs: Date.now() - stepStart1, providers });
   } catch (err) {
     steps.push({ name: 'configure', status: 'error', durationMs: Date.now() - stepStart1, error: err.message });
+    if (pool) pool.shutdown();
     return buildResult(id, task, steps, null, null, Date.now() - startTime);
   }
 
@@ -81,6 +82,7 @@ async function swarm(task, options = {}) {
     });
   } catch (err) {
     steps.push({ name: 'assemble', status: 'error', durationMs: Date.now() - stepStart2, error: err.message });
+    if (pool) pool.shutdown();
     return buildResult(id, task, steps, null, null, Date.now() - startTime);
   }
 
@@ -153,6 +155,7 @@ async function swarm(task, options = {}) {
     });
   } catch (err) {
     steps.push({ name: 'dispatch', status: 'error', durationMs: Date.now() - stepStart3, error: err.message });
+    if (pool) pool.shutdown();
     return buildResult(id, task, steps, null, null, Date.now() - startTime);
   }
 
@@ -202,6 +205,7 @@ async function swarm(task, options = {}) {
     });
   } catch (err) {
     steps.push({ name: 'consensus', status: 'error', durationMs: Date.now() - stepStart6, error: err.message });
+    if (pool) pool.shutdown();
     return buildResult(id, task, steps, null, null, Date.now() - startTime);
   }
 

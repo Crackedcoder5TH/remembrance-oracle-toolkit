@@ -1576,6 +1576,7 @@ class SQLiteStore {
       description: row.description,
       tags: this._safeJSON(row.tags, []),
       coherencyScore: this._safeJSON(row.coherency_json, {}),
+      coherencyTotal: row.coherency_total ?? 0,
       variants: this._safeJSON(row.variants, []),
       testCode: row.test_code,
       usageCount: row.usage_count,

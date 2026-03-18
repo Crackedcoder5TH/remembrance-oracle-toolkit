@@ -17,7 +17,7 @@ export default function ClientLoginPage() {
   // Auto-redirect if already authenticated (demo mode always succeeds)
   useEffect(() => {
     fetch("/api/client/profile").then((res) => {
-      if (res.ok) router.push("/portal");
+      if (res.ok) router.push("/portal/dashboard");
     }).catch(() => {});
   }, [router]);
 
@@ -36,7 +36,7 @@ export default function ClientLoginPage() {
       const data = await res.json();
 
       if (data.success) {
-        router.push("/portal");
+        router.push("/portal/dashboard");
       } else {
         setError(data.message || "Login failed.");
       }

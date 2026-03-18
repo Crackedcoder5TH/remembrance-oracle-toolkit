@@ -217,7 +217,7 @@ export default function AdminClientsPage() {
   };
 
   const handleSeedTestClient = async () => {
-    const res = await fetch("/api/admin/seed-client", { method: "POST" });
+    const res = await fetch("/api/admin/seed-client", { method: "POST", headers: { "Content-Type": "application/json" } });
     const data = await res.json();
     if (data.success) {
       setMessage(`Test client ready! Email: ${data.credentials.email} | Password: ${data.credentials.password}`);

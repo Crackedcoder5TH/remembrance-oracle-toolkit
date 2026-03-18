@@ -174,8 +174,8 @@ export function SacredGeometryBg() {
               {/* Radial fade — geometry strongest at center, fades to edges */}
               <radialGradient id="geo-fade" cx="50%" cy="50%" r="50%">
                 <stop offset="0%" stopColor="white" stopOpacity="1" />
-                <stop offset="70%" stopColor="white" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="white" stopOpacity="0" />
+                <stop offset="80%" stopColor="white" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="white" stopOpacity="0.15" />
               </radialGradient>
               <mask id="geo-mask">
                 <rect width={viewW} height={viewH} fill="url(#geo-fade)" />
@@ -200,8 +200,8 @@ export function SacredGeometryBg() {
                   cy={c.cy}
                   r={c.r}
                   fill="none"
-                  stroke="rgba(0, 168, 168, 0.07)"
-                  strokeWidth="0.5"
+                  stroke="rgba(0, 168, 168, 0.18)"
+                  strokeWidth="0.7"
                 />
               ))}
 
@@ -213,8 +213,8 @@ export function SacredGeometryBg() {
                   y1={l.y1}
                   x2={l.x2}
                   y2={l.y2}
-                  stroke="rgba(0, 168, 168, 0.03)"
-                  strokeWidth="0.3"
+                  stroke="rgba(0, 168, 168, 0.08)"
+                  strokeWidth="0.4"
                 />
               ))}
 
@@ -226,22 +226,22 @@ export function SacredGeometryBg() {
                   cy={c.cy}
                   r={c.r}
                   fill="none"
-                  stroke="rgba(0, 168, 168, 0.12)"
-                  strokeWidth="0.8"
+                  stroke="rgba(0, 168, 168, 0.28)"
+                  strokeWidth="1"
                   filter="url(#geo-glow)"
                 />
               ))}
 
               {/* Center point — Crimson dot at the heart */}
-              <circle cx={centerX} cy={centerY} r="3" fill="rgba(230, 57, 70, 0.25)" />
-              <circle cx={centerX} cy={centerY} r="1" fill="rgba(230, 57, 70, 0.5)" />
+              <circle cx={centerX} cy={centerY} r="3" fill="rgba(230, 57, 70, 0.4)" />
+              <circle cx={centerX} cy={centerY} r="1" fill="rgba(230, 57, 70, 0.65)" />
 
               {/* Golden Spiral accent */}
               <path
                 d={spiralPath}
                 fill="none"
-                stroke="rgba(0, 168, 168, 0.05)"
-                strokeWidth="0.8"
+                stroke="rgba(0, 168, 168, 0.12)"
+                strokeWidth="1"
               />
 
               {/* Outer containing circle — Fibonacci radius 233 */}
@@ -250,8 +250,8 @@ export function SacredGeometryBg() {
                 cy={centerY}
                 r={233}
                 fill="none"
-                stroke="rgba(0, 168, 168, 0.04)"
-                strokeWidth="0.3"
+                stroke="rgba(0, 168, 168, 0.1)"
+                strokeWidth="0.5"
               />
 
               {/* Vesica Piscis — two overlapping circles */}
@@ -260,16 +260,16 @@ export function SacredGeometryBg() {
                 cy={centerY}
                 r={R}
                 fill="none"
-                stroke="rgba(230, 57, 70, 0.04)"
-                strokeWidth="0.4"
+                stroke="rgba(230, 57, 70, 0.1)"
+                strokeWidth="0.5"
               />
               <circle
                 cx={centerX + R / 2}
                 cy={centerY}
                 r={R}
                 fill="none"
-                stroke="rgba(230, 57, 70, 0.04)"
-                strokeWidth="0.4"
+                stroke="rgba(230, 57, 70, 0.1)"
+                strokeWidth="0.5"
               />
             </g>
 

@@ -117,10 +117,10 @@ function createBackup(rootDir, options = {}) {
     const backupBranch = `remembrance/backup-${Date.now()}`;
 
     try {
-      git(`branch ${backupBranch}`, rootDir);
+      git(['branch', backupBranch], rootDir);
       manifest.branch = backupBranch;
       manifest.baseBranch = currentBranch;
-      manifest.headCommit = git('rev-parse HEAD', rootDir);
+      manifest.headCommit = git(['rev-parse', 'HEAD'], rootDir);
     } catch (err) {
       manifest.strategy = 'file-copy';
       manifest.branchError = err.message;
@@ -336,9 +336,9 @@ function rollback(rootDir, options = {}) {
 
       const currentBranch = getCurrentBranch(rootDir);
       if (backup.headCommit) {
-        git(`reset --hard ${backup.headCommit}`, rootDir);
+        git(['reset', '--hard', backup.headCommit], rootDir);
       } else {
-        git(`merge ${backup.branch} --no-commit`, rootDir);
+        git(['merge', backup.branch, '--no-commit'], rootDir);
       }
 
       result.success = true;

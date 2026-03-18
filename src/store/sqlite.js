@@ -1362,7 +1362,8 @@ class SQLiteStore {
     const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(patternId);
     if (!row) return { success: false, error: 'Pattern not found' };
 
-    const voteVal = vote > 0 ? 1 : -1;
+    const voteVal = vote >= 1 ? 1 : vote <= -1 ? -1 : null;
+    if (voteVal === null) return { success: false, error: 'Vote must be 1 (upvote) or -1 (downvote), got: ' + vote };
     const now = new Date().toISOString();
     const weight = this.getVoteWeight(voter);
 
@@ -1408,8 +1409,9 @@ class SQLiteStore {
     }
 
     const updated = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
-    const upvotes = updated.upvotes || 0;
-    const downvotes = updated.downvotes || 0;
+    if (!updated) return { success: false, error: 'Pattern disappeared after vote' };
+    const upvotes = updated.upvotes ?? 0;
+    const downvotes = updated.downvotes ?? 0;
     return {
       success: true,
       patternId,
@@ -1427,14 +1429,14 @@ class SQLiteStore {
   getVotes(patternId) {
     const row = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
     if (!row) return null;
-    const upvotes = row.upvotes || 0;
-    const downvotes = row.downvotes || 0;
+    const upvotes = row.upvotes ?? 0;
+    const downvotes = row.downvotes ?? 0;
 
     // Calculate weighted score from individual votes
     const votes = this.db.prepare('SELECT vote, weight FROM votes WHERE pattern_id = ?').all(patternId);
     let weightedScore = 0;
     for (const v of votes) {
-      weightedScore += v.vote * (v.weight || 1.0);
+      weightedScore += v.vote * (v.weight ?? 1.0);
     }
 
     return { upvotes, downvotes, voteScore: upvotes - downvotes, weightedScore: Math.round(weightedScore * 100) / 100 };
@@ -1480,32 +1482,23 @@ class SQLiteStore {
    * Called when a pattern receives usage feedback.
    */
   updateVoterReputation(patternId, succeeded) {
+    const GOOD_JUDGMENT_DELTA = 0.05;
+    const POOR_JUDGMENT_DELTA = -0.03;
+    const REP_MAX = 3.0;
+    const REP_MIN = 0.1;
+
     const votes = this.db.prepare('SELECT voter, vote FROM votes WHERE pattern_id = ?').all(patternId);
     const now = new Date().toISOString();
 
     for (const v of votes) {
       const voter = this.getVoter(v.voter);
-      let delta = 0;
-      if (succeeded && v.vote === 1) {
-        // Upvoted a pattern that succeeded — good judgment
-        delta = 0.05;
-      } else if (!succeeded && v.vote === -1) {
-        // Downvoted a pattern that failed — good judgment
-        delta = 0.05;
-      } else if (succeeded && v.vote === -1) {
-        // Downvoted a pattern that succeeded — poor judgment
-        delta = -0.03;
-      } else if (!succeeded && v.vote === 1) {
-        // Upvoted a pattern that failed — poor judgment
-        delta = -0.03;
-      }
+      const voteAlignedWithOutcome = (succeeded && v.vote === 1) || (!succeeded && v.vote === -1);
+      const delta = voteAlignedWithOutcome ? GOOD_JUDGMENT_DELTA : POOR_JUDGMENT_DELTA;
 
-      if (delta !== 0) {
-        const newRep = Math.min(3.0, Math.max(0.1, voter.reputation + delta));
-        const accurate = delta > 0 ? voter.accurate_votes + 1 : voter.accurate_votes;
-        this.db.prepare('UPDATE voters SET reputation = ?, accurate_votes = ?, updated_at = ? WHERE id = ?')
-          .run(Math.round(newRep * 1000) / 1000, accurate, now, v.voter);
-      }
+      const newRep = Math.min(REP_MAX, Math.max(REP_MIN, voter.reputation + delta));
+      const accurate = delta > 0 ? voter.accurate_votes + 1 : voter.accurate_votes;
+      this.db.prepare('UPDATE voters SET reputation = ?, accurate_votes = ?, updated_at = ? WHERE id = ?')
+        .run(Math.round(newRep * 1000) / 1000, accurate, now, v.voter);
     }
   }
 
@@ -1526,7 +1519,8 @@ class SQLiteStore {
   }
 
   retirePatterns(minScore = 0.30) {
-    const rows = this.db.prepare('SELECT * FROM patterns').all();
+    // Only load patterns likely to be retired (low coherency), not the entire table
+    const rows = this.db.prepare('SELECT * FROM patterns WHERE coherency_total < ? ORDER BY coherency_total ASC LIMIT 1000').all(minScore + 0.2);
     const toRetire = [];
     for (const row of rows) {
       const coherency = row.coherency_total;
@@ -2588,6 +2582,68 @@ class SQLiteStore {
     return { removed: orphans.length };
   }
 
+  // ─── Healed Variants Pruning — prevent unbounded table growth ───
+
+  /**
+   * Prune old healed variants, keeping only the top N per parent pattern.
+   * @param {object} options - { dryRun, maxPerPattern, maxAgeDays }
+   * @returns {{ removed }}
+   */
+  pruneHealedVariants(options = {}) {
+    const { dryRun = false, maxPerPattern = 5, maxAgeDays = 90 } = options;
+    const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+    let removed = 0;
+
+    // Remove old variants beyond TTL
+    if (!dryRun) {
+      removed += this.db.prepare('DELETE FROM healed_variants WHERE created_at < ?').run(cutoff).changes;
+    }
+
+    // Per-parent cap: keep only top N by healed_coherency
+    const excess = this.db.prepare(`
+      SELECT id FROM healed_variants WHERE id NOT IN (
+        SELECT id FROM (
+          SELECT id, ROW_NUMBER() OVER (
+            PARTITION BY parent_pattern_id ORDER BY healed_coherency DESC
+          ) AS rn FROM healed_variants
+        ) WHERE rn <= ?
+      )
+    `).all(maxPerPattern);
+
+    if (!dryRun && excess.length > 0) {
+      const deleteStmt = this.db.prepare('DELETE FROM healed_variants WHERE id = ?');
+      for (const row of excess) {
+        deleteStmt.run(row.id);
+        removed++;
+      }
+    }
+
+    return { removed };
+  }
+
+  // ─── Archive Pruning — prevent unbounded archive growth ───
+
+  /**
+   * Prune old archive entries to prevent disk bloat.
+   * @param {object} options - { dryRun, maxAgeDays, maxVersionsPerName }
+   * @returns {{ patternArchiveRemoved, candidateArchiveRemoved, entryArchiveRemoved }}
+   */
+  pruneArchives(options = {}) {
+    const { dryRun = false, maxAgeDays = 60, maxVersionsPerName = 3 } = options;
+    const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+    let patternArchiveRemoved = 0;
+    let candidateArchiveRemoved = 0;
+    let entryArchiveRemoved = 0;
+
+    if (!dryRun) {
+      patternArchiveRemoved += this.db.prepare('DELETE FROM pattern_archive WHERE deleted_at < ?').run(cutoff).changes;
+      candidateArchiveRemoved += this.db.prepare('DELETE FROM candidate_archive WHERE deleted_at < ?').run(cutoff).changes;
+      entryArchiveRemoved += this.db.prepare('DELETE FROM entry_archive WHERE deleted_at < ?').run(cutoff).changes;
+    }
+
+    return { patternArchiveRemoved, candidateArchiveRemoved, entryArchiveRemoved };
+  }
+
   // ─── Entry Pruning — lifecycle for unused entries ───
 
   /**
@@ -2704,6 +2760,19 @@ class SQLiteStore {
     stats.untestedEntries = this.db.prepare('SELECT COUNT(*) as c FROM entries WHERE test_passed IS NULL AND times_used = 0').get().c;
     if (stats.untestedEntries > stats.entries * 0.5 && stats.untestedEntries > 100) {
       warnings.push({ level: 'medium', message: `${stats.untestedEntries} entries never validated — consider pruning stale entries` });
+    }
+
+    // Healed variants
+    stats.healedVariants = this.db.prepare('SELECT COUNT(*) as c FROM healed_variants').get().c;
+    if (stats.healedVariants > 5000) {
+      warnings.push({ level: 'medium', message: `${stats.healedVariants} healed variants — consider pruning with pruneHealedVariants()` });
+    }
+
+    // Archive sizes
+    stats.patternArchive = this.db.prepare('SELECT COUNT(*) as c FROM pattern_archive').get().c;
+    stats.candidateArchive = this.db.prepare('SELECT COUNT(*) as c FROM candidate_archive').get().c;
+    if (stats.patternArchive + stats.candidateArchive > 10000) {
+      warnings.push({ level: 'medium', message: `Archives contain ${stats.patternArchive + stats.candidateArchive} records — consider pruning with pruneArchives()` });
     }
 
     // Audit log

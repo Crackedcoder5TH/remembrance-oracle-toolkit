@@ -51,7 +51,7 @@ function cloneRepo(repoUrl, options = {}) {
  * source file with extractable functions.
  */
 function harvestFunctions(baseDir, options = {}) {
-  const { language: langFilter, maxFileSize = 50000, minFunctions = 1 } = options;
+  const { language: langFilter, maxFileSize = 50000, minFunctions = 1, maxFiles = 2000 } = options;
   const results = [];
   const seen = new Set();
 
@@ -59,6 +59,7 @@ function harvestFunctions(baseDir, options = {}) {
     if (!fs.existsSync(dir)) return;
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
+      if (results.length >= maxFiles) return; // Cap total files to prevent unbounded growth
       if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
       if (entry.isSymbolicLink()) continue; // Skip symlinks to prevent traversal/loops
       const fullPath = path.join(dir, entry.name);

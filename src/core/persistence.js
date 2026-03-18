@@ -25,6 +25,25 @@ const GLOBAL_DIR = path.join(os.homedir(), '.remembrance');
 const PERSONAL_DIR = path.join(GLOBAL_DIR, 'personal');
 const COMMUNITY_DIR = path.join(GLOBAL_DIR, 'community');
 
+/**
+ * Unified coherency accessor — eliminates repeated triple-check fallback chains.
+ * Handles all three field name conventions: coherency_total, coherencyTotal, coherencyScore.total
+ * @param {object} pattern - Pattern record from any store/format
+ * @returns {number} Coherency score 0-1
+ */
+function getCoherency(pattern) {
+  return pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+}
+
+/**
+ * Build a dedup key from pattern name and language.
+ * @param {object} pattern - Pattern record
+ * @returns {string} Lowercase dedup key
+ */
+function dedupKey(pattern) {
+  return `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+}
+
 // ─── Store Openers ───
 
 function ensureDir(dir) {
@@ -157,15 +176,14 @@ function syncToGlobal(localStore, options = {}) {
   // Build coherency index so we can detect when local has improved over personal
   const personalCoherencyIndex = new Map();
   for (const p of personalPatterns) {
-    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
-    personalCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
+    personalCoherencyIndex.set(dedupKey(p), getCoherency(p));
   }
 
   const report = { synced: 0, upgraded: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
-    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+    const key = dedupKey(pattern);
+    const coherency = getCoherency(pattern);
 
     if (personalCoherencyIndex.has(key)) {
       const personalCoherency = personalCoherencyIndex.get(key);
@@ -261,8 +279,7 @@ function syncFromGlobal(localStore, options = {}) {
   // Build coherency index so we can detect when personal has improved over local
   const localCoherencyIndex = new Map();
   for (const p of localPatterns) {
-    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
-    localCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
+    localCoherencyIndex.set(dedupKey(p), getCoherency(p));
   }
 
   const report = { pulled: 0, upgraded: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, candidates: { pulled: 0, duplicates: 0 }, debug: { pulled: 0, duplicates: 0 }, details: [] };
@@ -425,7 +442,7 @@ function shareToCommunity(localStore, options = {}) {
       continue;
     }
 
-    const coherency = Number(pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0) || 0;
+    const coherency = Number(getCoherency(pattern)) || 0;
     if (coherency < minCoherency) {
       report.skipped++;
       if (verbose) console.log(`  [LOW] ${pattern.name}: coherency ${coherency.toFixed(3)} < ${minCoherency}`);
@@ -616,15 +633,15 @@ function federatedQuery(localStore, query = {}) {
     results = results.filter(p => p.language === query.language);
   }
   if (query.minCoherency) {
-    results = results.filter(p => (p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0) >= query.minCoherency);
+    results = results.filter(p => getCoherency(p) >= query.minCoherency);
   }
   if (query.source) {
     results = results.filter(p => p.source === query.source);
   }
 
   results.sort((a, b) => {
-    const ca = a.coherency_total ?? a.coherencyTotal ?? a.coherencyScore?.total ?? 0;
-    const cb = b.coherency_total ?? b.coherencyTotal ?? b.coherencyScore?.total ?? 0;
+    const ca = getCoherency(a);
+    const cb = getCoherency(b);
     return cb - ca;
   });
 
@@ -1764,6 +1781,8 @@ module.exports = {
   listRepos,
   crossRepoSearch,
   sanitizePatternForTransfer,
+  getCoherency,
+  dedupKey,
   GLOBAL_DIR,
   PERSONAL_DIR,
   COMMUNITY_DIR,

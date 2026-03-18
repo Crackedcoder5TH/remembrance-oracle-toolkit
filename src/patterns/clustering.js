@@ -67,14 +67,17 @@ function patternSimilarity(a, b) {
 
 /**
  * Cluster patterns by similarity using single-linkage agglomerative clustering.
+ * Uses memoized similarity cache to avoid redundant O(n²) recomputation.
+ * Caps input to maxPatterns to prevent unbounded computation.
  * @param {Array} patterns - Array of pattern objects
  * @param {object} [options] - Clustering options
  * @param {number} [options.threshold=0.45] - Minimum similarity to join a cluster
  * @param {number} [options.maxClusters=50] - Maximum clusters to return
+ * @param {number} [options.maxPatterns=500] - Maximum patterns to process (prevents O(n²) blowup)
  * @returns {Array<{ id: string, centroid: object, members: Array, crossDomain: boolean, avgSimilarity: number }>}
  */
 function clusterPatterns(patterns, options = {}) {
-  const { threshold = 0.45, maxClusters = 50 } = options;
+  const { threshold = 0.45, maxClusters = 50, maxPatterns = 500 } = options;
 
   if (!patterns || patterns.length === 0) return [];
   if (patterns.length === 1) {
@@ -87,39 +90,52 @@ function clusterPatterns(patterns, options = {}) {
     }];
   }
 
+  // Cap input size to prevent O(n²) blowup on large libraries
+  const capped = patterns.length > maxPatterns ? patterns.slice(0, maxPatterns) : patterns;
+
+  // Memoize similarity computations — key by index pair
+  const simCache = new Map();
+  function cachedSimilarity(i, j) {
+    const key = i < j ? `${i}:${j}` : `${j}:${i}`;
+    if (simCache.has(key)) return simCache.get(key);
+    const sim = patternSimilarity(capped[i], capped[j]);
+    simCache.set(key, sim);
+    return sim;
+  }
+
   // Assign each pattern to a cluster
   const clusters = [];
   const assigned = new Set();
 
-  for (let i = 0; i < patterns.length; i++) {
+  for (let i = 0; i < capped.length; i++) {
     if (assigned.has(i)) continue;
 
     const cluster = [i];
     assigned.add(i);
 
-    for (let j = i + 1; j < patterns.length; j++) {
+    for (let j = i + 1; j < capped.length; j++) {
       if (assigned.has(j)) continue;
 
-      const sim = patternSimilarity(patterns[i], patterns[j]);
+      const sim = cachedSimilarity(i, j);
       if (sim.total >= threshold) {
         cluster.push(j);
         assigned.add(j);
       }
     }
 
-    const members = cluster.map(idx => patterns[idx]);
+    const members = cluster.map(idx => capped[idx]);
     const domains = new Set(members.map(m =>
       (m.structuredDescription?.domain) ||
       inferDomainFromTags(m.tags || []) ||
       'general'
     ));
 
-    // Compute average pairwise similarity
+    // Compute average pairwise similarity using cached values
     let simSum = 0;
     let simCount = 0;
-    for (let a = 0; a < members.length; a++) {
-      for (let b = a + 1; b < members.length; b++) {
-        simSum += patternSimilarity(members[a], members[b]).total;
+    for (let a = 0; a < cluster.length; a++) {
+      for (let b = a + 1; b < cluster.length; b++) {
+        simSum += cachedSimilarity(cluster[a], cluster[b]).total;
         simCount++;
       }
     }
@@ -148,13 +164,16 @@ function clusterPatterns(patterns, options = {}) {
  * @returns {Array<{ patternA: object, patternB: object, similarity: object }>}
  */
 function findIsomorphisms(patterns, options = {}) {
-  const { threshold = 0.5 } = options;
+  const { threshold = 0.5, maxPatterns = 500, maxResults = 200 } = options;
   const results = [];
 
-  for (let i = 0; i < patterns.length; i++) {
-    for (let j = i + 1; j < patterns.length; j++) {
-      const a = patterns[i];
-      const b = patterns[j];
+  // Cap input size to prevent O(n²) blowup
+  const capped = patterns.length > maxPatterns ? patterns.slice(0, maxPatterns) : patterns;
+
+  for (let i = 0; i < capped.length; i++) {
+    for (let j = i + 1; j < capped.length; j++) {
+      const a = capped[i];
+      const b = capped[j];
 
       // Only interested in cross-domain matches
       const domainA = a.structuredDescription?.domain ||
@@ -171,8 +190,10 @@ function findIsomorphisms(patterns, options = {}) {
           patternB: { id: b.id, name: b.name, domain: domainB },
           similarity: sim,
         });
+        if (results.length >= maxResults) break;
       }
     }
+    if (results.length >= maxResults) break;
   }
 
   return results.sort((a, b) => b.similarity.structural - a.similarity.structural);

@@ -771,6 +771,21 @@ class SqliteClientAdapter implements ClientDbAdapter {
       CREATE INDEX IF NOT EXISTS idx_purchases_status ON lead_purchases(status);
       CREATE INDEX IF NOT EXISTS idx_billing_client ON client_billing(client_id);
     `);
+
+    // Seed demo client if table is empty (local dev without DATABASE_URL)
+    const count = db.prepare("SELECT COUNT(*) as n FROM clients").get() as { n: number };
+    if (count.n === 0) {
+      try {
+        const { DEMO_CLIENT } = await import("./demo-client");
+        db.prepare(
+          `INSERT INTO clients (client_id, company_name, contact_name, email, phone, password_hash, status, pricing_tier, price_per_lead, exclusive_price, state_licenses, coverage_types, daily_cap, monthly_cap, min_score, balance, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        ).run(DEMO_CLIENT.clientId, DEMO_CLIENT.companyName, DEMO_CLIENT.contactName, DEMO_CLIENT.email, DEMO_CLIENT.phone, DEMO_CLIENT.passwordHash, DEMO_CLIENT.status, DEMO_CLIENT.pricingTier, DEMO_CLIENT.pricePerLead, DEMO_CLIENT.exclusivePrice, DEMO_CLIENT.stateLicenses, DEMO_CLIENT.coverageTypes, DEMO_CLIENT.dailyCap, DEMO_CLIENT.monthlyCap, DEMO_CLIENT.minScore, DEMO_CLIENT.balance, DEMO_CLIENT.createdAt, DEMO_CLIENT.updatedAt);
+        console.log("[client-database] Seeded demo client: testclient@valorlegacies.com");
+      } catch {
+        // Demo client seeding is best-effort
+      }
+    }
   }
 
   async insertClient(client: ClientRecord): Promise<Result<{ clientId: string }, string>> {

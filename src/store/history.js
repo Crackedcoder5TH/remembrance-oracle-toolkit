@@ -164,6 +164,17 @@ class VerifiedHistoryStore {
     return this._pruneJSON(minCoherency);
   }
 
+  pruneUntested() {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.pruneUntested();
+    }
+    const data = this._readJSON();
+    const before = data.entries.length;
+    data.entries = data.entries.filter(e => e.test_passed);
+    this._writeJSON(data);
+    return { removed: before - data.entries.length, remaining: data.entries.length };
+  }
+
   summary() {
     if (this._backend === 'sqlite') {
       return this._sqlite.entrySummary();

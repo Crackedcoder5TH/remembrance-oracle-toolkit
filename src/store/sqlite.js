@@ -694,6 +694,25 @@ class SQLiteStore {
     return { removed: before - after, remaining: after };
   }
 
+  pruneUntested() {
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    this.db.exec('BEGIN');
+    try {
+      const pruned = this.db.prepare('SELECT * FROM entries WHERE test_passed IS NULL OR test_passed = 0').all();
+      for (const row of pruned) {
+        this._archiveEntry(row, 'pruned-untested');
+        this._audit('prune-untested', 'entries', row.id, {});
+      }
+      this.db.prepare('DELETE FROM entries WHERE test_passed IS NULL OR test_passed = 0').run();
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+    const after = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    return { removed: before - after, remaining: after };
+  }
+
   entrySummary() {
     const agg = this.db.prepare('SELECT COUNT(*) as cnt, ROUND(AVG(coherency_total), 3) as avg_c FROM entries').get();
     const langs = this.db.prepare('SELECT DISTINCT language FROM entries').all().map(r => r.language);

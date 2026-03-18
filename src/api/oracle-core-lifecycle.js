@@ -26,6 +26,10 @@ module.exports = {
     return this.store.prune(minCoherency);
   },
 
+  pruneUntested() {
+    return this.store.pruneUntested();
+  },
+
   /**
    * Registers an event listener. Returns an unsubscribe function.
    */

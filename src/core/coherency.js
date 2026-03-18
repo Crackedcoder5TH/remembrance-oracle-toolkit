@@ -9,7 +9,7 @@
  * - Historical reliability (how often has it worked?)
  */
 
-const { astCoherencyBoost } = require('./parsers/ast');
+const { astCoherencyBoost, parseCode } = require('./parsers/ast');
 const {
   COHERENCY_WEIGHTS,
   SYNTAX_SCORES,
@@ -36,36 +36,25 @@ const WEIGHTS = {
 function scoreSyntax(code, language) {
   const lang = (language || '').toLowerCase();
 
+  // For languages with real parsers (Python, Rust, Go), use AST-level validation
+  if (['python', 'py', 'rust', 'rs', 'go', 'golang'].includes(lang)) {
+    try {
+      const parsed = parseCode(code, lang);
+      if (parsed.valid) {
+        const hasStructure = parsed.functions.length > 0 || parsed.classes.length > 0;
+        if (hasStructure) return SYNTAX_SCORES.PERFECT;
+        return SYNTAX_SCORES.BALANCED_BRACES; // Valid syntax but no structure
+      }
+      // Parser found real errors — score as invalid
+      return SYNTAX_SCORES.INVALID;
+    } catch (_) {
+      // Fall through to heuristic
+    }
+  }
+
   if (lang === 'javascript' || lang === 'js' || lang === 'typescript' || lang === 'ts') {
     const balanced = checkBalancedBraces(code);
     const hasStructure = /\b(function|const|let|var|class|module|export|import|require|interface|type)\b/.test(code);
-    if (balanced && hasStructure) return SYNTAX_SCORES.PERFECT;
-    if (balanced) return SYNTAX_SCORES.BALANCED_BRACES;
-    return SYNTAX_SCORES.INVALID;
-  }
-
-  if (lang === 'python' || lang === 'py') {
-    const hasStructure = /^\s*(def|class|import|from|if|for|while|with|try|async\s+def)\b/m.test(code);
-    const hasIndent = /^\s{2,}\S/m.test(code);
-    const noSyntaxErrors = !/\{[^}]*\}/.test(code) || /\bdict\b|\bset\b/.test(code); // Braces in Python are dict/set only
-    let score = SYNTAX_SCORES.UNKNOWN_BASE;
-    if (hasStructure) score += SYNTAX_SCORES.STRUCTURE_BONUS;
-    if (hasIndent) score += SYNTAX_SCORES.BALANCED_BONUS;
-    if (hasStructure && hasIndent) score = SYNTAX_SCORES.PERFECT;
-    return Math.min(score, 1.0);
-  }
-
-  if (lang === 'rust' || lang === 'rs') {
-    const balanced = checkBalancedBraces(code);
-    const hasStructure = /\b(fn|struct|impl|enum|trait|mod|use|pub|let|mut|match)\b/.test(code);
-    if (balanced && hasStructure) return SYNTAX_SCORES.PERFECT;
-    if (balanced) return SYNTAX_SCORES.BALANCED_BRACES;
-    return SYNTAX_SCORES.INVALID;
-  }
-
-  if (lang === 'go' || lang === 'golang') {
-    const balanced = checkBalancedBraces(code);
-    const hasStructure = /\b(func|package|import|type|struct|interface|var|const|defer|go\s)\b/.test(code);
     if (balanced && hasStructure) return SYNTAX_SCORES.PERFECT;
     if (balanced) return SYNTAX_SCORES.BALANCED_BRACES;
     return SYNTAX_SCORES.INVALID;
@@ -325,12 +314,82 @@ function scoreConsistency(code, language) {
  * @param {Object} metadata - Optional metadata (language, testPassed, historicalReliability)
  * @returns {Object} Coherency result with total score, breakdown, AST analysis, and detected language
  */
+/**
+ * Compute test coverage quality — checks that test code actually exercises
+ * functions/identifiers from the source code, not just assertion count.
+ * Returns a coverage factor (0-1) that modulates the testProof dimension.
+ */
+function computeCoverageGate(code, testCode, language) {
+  if (!testCode || !code) return { factor: 1.0, reason: 'no test code to evaluate' };
+
+  // Extract function/class names from source code
+  const lang = (language || '').toLowerCase();
+  let identifiers = [];
+
+  if (['javascript', 'js', 'typescript', 'ts'].includes(lang)) {
+    // Function declarations, arrow functions, class names
+    const funcMatches = code.match(/(?:function\s+(\w+)|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[\w$]+)\s*=>|class\s+(\w+))/g) || [];
+    for (const m of funcMatches) {
+      const name = m.match(/(?:function|const|let|var|class)\s+(\w+)/);
+      if (name) identifiers.push(name[1]);
+    }
+    // module.exports assignments
+    const exportMatches = code.match(/exports\.(\w+)\s*=/g) || [];
+    for (const m of exportMatches) {
+      const name = m.match(/exports\.(\w+)/);
+      if (name) identifiers.push(name[1]);
+    }
+  } else if (['python', 'py'].includes(lang)) {
+    const defMatches = code.match(/(?:def|class)\s+(\w+)/g) || [];
+    for (const m of defMatches) {
+      const name = m.match(/(?:def|class)\s+(\w+)/);
+      if (name) identifiers.push(name[1]);
+    }
+  } else if (['rust', 'rs'].includes(lang)) {
+    const fnMatches = code.match(/(?:pub\s+)?(?:fn|struct|enum|trait)\s+(\w+)/g) || [];
+    for (const m of fnMatches) {
+      const name = m.match(/(?:fn|struct|enum|trait)\s+(\w+)/);
+      if (name) identifiers.push(name[1]);
+    }
+  } else if (['go', 'golang'].includes(lang)) {
+    const fnMatches = code.match(/func\s+(?:\([^)]*\)\s+)?(\w+)/g) || [];
+    for (const m of fnMatches) {
+      const name = m.match(/func\s+(?:\([^)]*\)\s+)?(\w+)/);
+      if (name) identifiers.push(name[1]);
+    }
+  }
+
+  // Filter out common non-meaningful names
+  identifiers = identifiers.filter(id => id.length > 1 && !['if', 'for', 'new', 'let', 'var', 'do'].includes(id));
+
+  if (identifiers.length === 0) {
+    return { factor: 0.8, reason: 'no identifiers extracted from source' };
+  }
+
+  // Check how many source identifiers appear in test code
+  const covered = identifiers.filter(id => testCode.includes(id));
+  const coverageRatio = covered.length / identifiers.length;
+
+  if (coverageRatio >= 0.5) return { factor: 1.0, covered: covered.length, total: identifiers.length, reason: 'good coverage' };
+  if (coverageRatio >= 0.25) return { factor: 0.7, covered: covered.length, total: identifiers.length, reason: 'partial coverage' };
+  if (coverageRatio > 0) return { factor: 0.4, covered: covered.length, total: identifiers.length, reason: 'minimal coverage' };
+  return { factor: 0.2, covered: 0, total: identifiers.length, reason: 'test code does not reference any source identifiers' };
+}
+
 function computeCoherencyScore(code, metadata = {}) {
   if (code == null || typeof code !== 'string') {
     return { total: 0, breakdown: { syntaxValid: 0, completeness: 0, consistency: 0, testProof: 0, historicalReliability: 0 } };
   }
   const language = metadata.language || detectLanguage(code);
-  const testProof = metadata.testPassed === true ? 1.0 : metadata.testPassed === false ? 0.0 : COHERENCY_DEFAULTS.TEST_PROOF_FALLBACK;
+  let testProof = metadata.testPassed === true ? 1.0 : metadata.testPassed === false ? 0.0 : COHERENCY_DEFAULTS.TEST_PROOF_FALLBACK;
+
+  // Coverage gate: modulate testProof by how well tests cover source identifiers
+  let coverageGate = null;
+  if (metadata.testCode) {
+    coverageGate = computeCoverageGate(code, metadata.testCode, language);
+    testProof *= coverageGate.factor;
+  }
+
   const historicalReliability = metadata.historicalReliability ?? COHERENCY_DEFAULTS.HISTORICAL_RELIABILITY_FALLBACK;
 
   const scores = {
@@ -367,6 +426,7 @@ function computeCoherencyScore(code, metadata = {}) {
       classes: (ast.parsed.classes || []).length,
       complexity: ast.parsed.complexity || 0,
     },
+    coverageGate: coverageGate || null,
     language,
   };
 }
@@ -401,6 +461,7 @@ function detectLanguage(code) {
 
 module.exports = {
   computeCoherencyScore,
+  computeCoverageGate,
   scoreSyntax,
   scoreCompleteness,
   scoreConsistency,

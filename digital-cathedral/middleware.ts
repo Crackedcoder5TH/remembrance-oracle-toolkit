@@ -29,6 +29,8 @@ const LEADS_DOMAINS: string[] = (process.env.LEADS_DOMAINS ?? "")
   .map((d) => d.trim().toLowerCase())
   .filter(Boolean);
 const PORTAL_DOMAIN: string = (process.env.PORTAL_DOMAIN ?? "").trim().toLowerCase();
+/** Canonical portal URL with protocol + www, used for redirects from leads domains. */
+const PORTAL_BASE_URL: string = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").trim().replace(/\/$/, "");
 
 type DomainType = "leads" | "portal" | "unknown";
 
@@ -120,8 +122,9 @@ export async function middleware(request: NextRequest) {
     const isPortalRoute = PORTAL_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
     if (isPortalRoute) {
       // If the portal domain is configured, redirect there; otherwise return 404
-      if (PORTAL_DOMAIN) {
-        const portalUrl = new URL(pathname, `https://${PORTAL_DOMAIN}`);
+      if (PORTAL_BASE_URL || PORTAL_DOMAIN) {
+        const base = PORTAL_BASE_URL || `https://${PORTAL_DOMAIN}`;
+        const portalUrl = new URL(pathname, base);
         portalUrl.search = request.nextUrl.search;
         return NextResponse.redirect(portalUrl.toString(), 301);
       }

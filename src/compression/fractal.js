@@ -430,10 +430,10 @@ function compressionStats(patterns) {
     originalBytes,
     compressedBytes,
     savedBytes: originalBytes - compressedBytes,
-    compressionRatio: compressedBytes > 0 ? (originalBytes / compressedBytes).toFixed(2) : '1.00',
+    compressionRatio: compressedBytes > 0 ? parseFloat((originalBytes / compressedBytes).toFixed(2)) : 1.0,
     avgFamilySize: families.length > 0
-      ? (compressedCount / families.length).toFixed(1)
-      : '0',
+      ? parseFloat((compressedCount / families.length).toFixed(1))
+      : 0,
   };
 }
 

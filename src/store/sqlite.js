@@ -920,6 +920,11 @@ class SQLiteStore {
         params.push(typeof value === 'object' ? JSON.stringify(value) : value);
       }
     }
+    // Keep coherency_total in sync when coherencyScore is updated
+    if (updates.coherencyScore && typeof updates.coherencyScore === 'object' && updates.coherencyScore.total != null) {
+      sets.push('coherency_total = ?');
+      params.push(updates.coherencyScore.total);
+    }
     sets.push('updated_at = ?');
     params.push(new Date().toISOString());
     params.push(id);
@@ -1375,9 +1380,6 @@ class SQLiteStore {
         return { success: false, error: 'Already voted' };
       }
 
-      // Update voter stats
-      this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
-
       if (existing) {
         // Change vote direction
         this.db.prepare('UPDATE votes SET vote = ?, weight = ?, created_at = ? WHERE id = ?').run(voteVal, weight, now, existing.id);
@@ -1387,6 +1389,8 @@ class SQLiteStore {
           this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1, upvotes = MAX(0, upvotes - 1) WHERE id = ?').run(patternId);
         }
       } else {
+        // Only increment total_votes on new votes (not vote changes)
+        this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
         const id = require('crypto').randomUUID();
         this.db.prepare('INSERT INTO votes (id, pattern_id, voter, vote, weight, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, patternId, voter, voteVal, weight, now);
         if (voteVal === 1) {
@@ -1599,6 +1603,7 @@ class SQLiteStore {
 
   _patternFieldToCol(field) {
     const map = {
+      name: 'name', language: 'language',
       usageCount: 'usage_count', successCount: 'success_count',
       evolutionHistory: 'evolution_history', patternType: 'pattern_type',
       coherencyScore: 'coherency_json', coherencyTotal: 'coherency_total',
@@ -1655,7 +1660,7 @@ class SQLiteStore {
         this.db.prepare('DELETE FROM candidates WHERE id = ?').run(worst.id);
       }
 
-      const id = this._hash(candidate.code + candidate.name + Date.now());
+      const id = this._hash(candidate.code + candidate.name + Date.now() + crypto.randomBytes(4).toString('hex'));
       const now = new Date().toISOString();
 
       this.db.prepare(`
@@ -1802,7 +1807,7 @@ class SQLiteStore {
    * The original stays intact; the healed version sits alongside with lineage.
    */
   addHealedVariant(variant) {
-    const id = this._hash(variant.healedCode + variant.parentPatternId + Date.now());
+    const id = this._hash(variant.healedCode + variant.parentPatternId + Date.now() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
     const delta = (variant.healedCoherency ?? 0) - (variant.originalCoherency ?? 0);
 

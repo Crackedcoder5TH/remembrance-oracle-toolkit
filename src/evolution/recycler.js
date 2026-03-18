@@ -29,7 +29,7 @@ const crypto = require('crypto');
 const { reflectionLoop } = require('../core/reflection');
 const { validateCode } = require('../core/validator');
 const { computeCoherencyScore, detectLanguage } = require('../core/coherency');
-const { isTestFile, isDataFile, requiresExternalModules } = require('./test-synth');
+const { isTestFile, isDataFile, requiresExternalModules, synthesizeTests, hasBrokenTestSyntax, cleanupTestCode, extractSignature } = require('./test-synth');
 const {
   CASCADE,
   HEALING,
@@ -1575,10 +1575,112 @@ class PatternRecycler {
       };
     }
 
+    // ─── Auto-heal on promotion failure ───
+    // When test execution fails, attempt to heal before giving up:
+    //   1. Re-synthesize the test (test code might be broken)
+    //   2. If still failing, heal the code via reflection and re-test
+    if (!options.skipHeal) {
+      const healResult = this._healPromotionFailure(candidate, patternData, result);
+      if (healResult.promoted) return healResult;
+    }
+
     return {
       promoted: false,
       reason: result.reason,
+      healAttempted: !options.skipHeal,
     };
+  }
+
+  /**
+   * Attempt to heal a candidate that failed promotion.
+   *
+   * Strategy:
+   *   1. Re-synthesize test code (the test might be broken, not the code)
+   *   2. If still failing, heal the code via reflection loop
+   *   3. Re-synthesize tests for the healed code and retry
+   *
+   * @private
+   */
+  _healPromotionFailure(candidate, patternData, originalResult) {
+    const failReason = originalResult.reason || originalResult.error || '';
+
+    // Step 1: Re-synthesize test code — the test might be the broken part
+    const parent = candidate.parentPattern
+      ? this.oracle.patterns.getAll().find(p => p.name === candidate.parentPattern)
+      : null;
+
+    const freshTest = synthesizeTests(candidate.code, candidate.language, {
+      parentTestCode: parent?.testCode,
+      parentFuncName: parent ? extractSignature(parent.code, parent.language)?.name : null,
+    });
+
+    if (freshTest && freshTest !== patternData.testCode) {
+      const cleaned = cleanupTestCode(freshTest, candidate.language);
+      const retryData = { ...patternData, testCode: cleaned };
+      const retryResult = this.oracle.registerPattern(retryData);
+
+      if (retryResult.registered) {
+        this.oracle.patterns.promoteCandidate(candidate.id);
+        if (this.verbose) {
+          console.log(`  [HEALED-TEST] ${candidate.name} → promoted after test re-synthesis (coherency ${retryResult.validation.coherencyScore.total.toFixed(3)})`);
+        }
+        return {
+          promoted: true,
+          pattern: retryResult.pattern,
+          coherency: retryResult.validation.coherencyScore.total,
+          healMethod: 'test-resynthesis',
+        };
+      }
+    }
+
+    // Step 2: Heal the code via reflection loop
+    try {
+      const reflection = reflectionLoop(candidate.code, {
+        language: candidate.language,
+        maxLoops: this.maxRefineLoops,
+        targetCoherence: this.targetCoherence,
+        description: candidate.description,
+        tags: candidate.tags,
+        cascadeBoost: this._cascadeBoost,
+      });
+
+      const healedCode = reflection.code;
+      if (healedCode && healedCode.trim() !== candidate.code.trim()) {
+        // Re-synthesize tests for the healed code
+        const healedTest = synthesizeTests(healedCode, candidate.language, {
+          parentTestCode: parent?.testCode,
+          parentFuncName: parent ? extractSignature(parent.code, parent.language)?.name : null,
+        });
+        const effectiveTest = healedTest
+          ? cleanupTestCode(healedTest, candidate.language)
+          : patternData.testCode;
+
+        const healData = {
+          ...patternData,
+          code: healedCode,
+          testCode: effectiveTest,
+        };
+        const healResult = this.oracle.registerPattern(healData);
+
+        if (healResult.registered) {
+          this.oracle.patterns.promoteCandidate(candidate.id);
+          this.stats.healedViaReflection++;
+          if (this.verbose) {
+            console.log(`  [HEALED-CODE] ${candidate.name} → promoted after code healing (coherency ${healResult.validation.coherencyScore.total.toFixed(3)})`);
+          }
+          return {
+            promoted: true,
+            pattern: healResult.pattern,
+            coherency: healResult.validation.coherencyScore.total,
+            healMethod: 'code-reflection',
+          };
+        }
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn(`[recycler:heal] reflection failed for ${candidate.name}:`, e?.message || e);
+    }
+
+    return { promoted: false, reason: failReason, healMethod: 'exhausted' };
   }
 
   /**
@@ -1594,6 +1696,7 @@ class PatternRecycler {
     const report = {
       attempted: 0,
       promoted: 0,
+      healed: 0,
       failed: 0,
       details: [],
     };
@@ -1620,7 +1723,8 @@ class PatternRecycler {
           const result = this.promoteWithProof(candidate.id, candidate.testCode);
           if (result.promoted) {
             report.promoted++;
-            report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency });
+            if (result.healMethod) report.healed++;
+            report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency, healMethod: result.healMethod });
           } else {
             report.failed++;
             report.details.push({ name: candidate.name, status: 'failed', reason: result.reason });
@@ -1634,7 +1738,8 @@ class PatternRecycler {
 
       if (result.promoted) {
         report.promoted++;
-        report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency });
+        if (result.healMethod) report.healed++;
+        report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency, healMethod: result.healMethod });
       } else {
         report.failed++;
         report.details.push({ name: candidate.name, status: 'failed', reason: result.reason });

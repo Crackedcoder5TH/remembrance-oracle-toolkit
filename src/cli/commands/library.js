@@ -403,11 +403,12 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       const result = oracle.autoPromote();
       console.log(c.boldCyan('Auto-Promote Results:\n'));
       console.log(`  Attempted: ${c.bold(String(result.attempted))}`);
-      console.log(`  Promoted:  ${c.boldGreen(String(result.promoted))}`);
+      console.log(`  Promoted:  ${c.boldGreen(String(result.promoted))}${result.healed ? ` (${result.healed} via auto-heal)` : ''}`);
       console.log(`  Failed:    ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
       for (const d of result.details) {
         const icon = d.status === 'promoted' ? c.green('+') : c.red('x');
-        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status}${d.reason ? ' (' + d.reason.slice(0, 60) + ')' : ''}`);
+        const healTag = d.healMethod ? ` [${d.healMethod}]` : '';
+        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status}${healTag}${d.reason ? ' (' + d.reason.slice(0, 60) + ')' : ''}`);
       }
       return;
     }

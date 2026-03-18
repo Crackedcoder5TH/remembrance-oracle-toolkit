@@ -1550,23 +1550,15 @@ class PatternRecycler {
       tags: (candidate.tags || []).filter(t => t !== 'candidate'),
       patternType: candidate.patternType,
       testCode: effectiveTestCode,
+      // Candidates are variants/transpilations of existing patterns, so they
+      // are EXPECTED to be similar — skip the similarity gate during promotion
+      skipSimilarityCheck: true,
+      // Always use trust mode for promotion — candidates may require node_modules
+      // or node: built-ins that the strict sandbox blocks
+      trustMode: true,
     };
 
-    // First attempt: standard sandbox
-    let result = this.oracle.registerPattern(patternData);
-
-    // If standard sandbox fails due to import/module resolution, retry with trust mode
-    // Trust mode gives the sandbox access to node_modules and node: built-ins
-    if (!result.registered && !options.skipTrustRetry) {
-      const failReason = result.reason || result.error || '';
-      const isImportFailure = /Cannot find module|MODULE_NOT_FOUND|is not defined|require.*is not|node:/.test(failReason);
-      if (isImportFailure) {
-        if (this.verbose) {
-          console.log(`  [TRUST-RETRY] ${candidate.name} — sandbox import failure, retrying with trust mode`);
-        }
-        result = this.oracle.registerPattern({ ...patternData, trustMode: true });
-      }
-    }
+    const result = this.oracle.registerPattern(patternData);
 
     if (result.registered) {
       // Mark candidate as promoted

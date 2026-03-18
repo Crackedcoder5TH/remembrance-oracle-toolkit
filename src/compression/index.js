@@ -72,9 +72,12 @@ function compressStore(store, options = {}) {
     let familyValid = true;
     for (const member of family.members) {
       const reconstructed = reconstruct(family.skeleton, member.delta);
-      // Validate that re-fingerprinting the reconstruction produces the same skeleton hash
-      // (exact character match isn't possible since the skeleton is space-joined tokens)
-      const refp = structuralFingerprint(reconstructed, family.language || 'javascript');
+      // Validate that re-fingerprinting the reconstruction produces the same skeleton hash.
+      // Must use the same fingerprint mode (fuzzy/canonical) used when the family was created.
+      const fpOptions = family.matchMode === 'fuzzy' ? { fuzzy: true }
+                       : family.matchMode === 'canonical' ? { canonical: true }
+                       : {};
+      const refp = structuralFingerprint(reconstructed, family.language || 'javascript', fpOptions);
       if (refp.hash !== family.templateId) {
         familyValid = false;
         validationResults.failed++;

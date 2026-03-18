@@ -97,31 +97,34 @@ module.exports = {
       tags: pattern.tags, name: pattern.name,
     });
 
-    // Similarity gate
-    const existingPatterns = this.patterns.getAll();
-    const simCheck = _checkSimilarity(pattern.code, existingPatterns, validation.coherencyScore.language);
+    // Similarity gate — skip when promoting candidates (they ARE expected to be
+    // similar to existing patterns since they're variants/transpilations)
+    if (!pattern.skipSimilarityCheck) {
+      const existingPatterns = this.patterns.getAll();
+      const simCheck = _checkSimilarity(pattern.code, existingPatterns, validation.coherencyScore.language);
 
-    if (simCheck.action === 'reject') {
-      return {
-        success: false, registered: false,
-        error: `Near-duplicate rejected (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
-        reason: 'similarity_reject', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name,
-      };
-    }
+      if (simCheck.action === 'reject') {
+        return {
+          success: false, registered: false,
+          error: `Near-duplicate rejected (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
+          reason: 'similarity_reject', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name,
+        };
+      }
 
-    if (simCheck.action === 'candidate') {
-      const candidate = this.patterns.addCandidate({
-        name: pattern.name || `candidate-${Date.now()}`, code: pattern.code,
-        language: validation.coherencyScore.language, description: pattern.description || pattern.name,
-        tags: enrichedTags, coherencyScore: validation.coherencyScore, testCode: pattern.testCode || null,
-        source: 'similarity-candidate',
-      });
-      this._emit({ type: 'similarity_candidate', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name, name: pattern.name });
-      return {
-        success: true, registered: false, candidateStored: true, candidate, validation,
-        reason: `Routed to candidates (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
-        similarity: simCheck.similarity,
-      };
+      if (simCheck.action === 'candidate') {
+        const candidate = this.patterns.addCandidate({
+          name: pattern.name || `candidate-${Date.now()}`, code: pattern.code,
+          language: validation.coherencyScore.language, description: pattern.description || pattern.name,
+          tags: enrichedTags, coherencyScore: validation.coherencyScore, testCode: pattern.testCode || null,
+          source: 'similarity-candidate',
+        });
+        this._emit({ type: 'similarity_candidate', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name, name: pattern.name });
+        return {
+          success: true, registered: false, candidateStored: true, candidate, validation,
+          reason: `Routed to candidates (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
+          similarity: simCheck.similarity,
+        };
+      }
     }
 
     const registered = this.patterns.register({

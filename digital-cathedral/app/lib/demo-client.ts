@@ -1,8 +1,12 @@
 /**
  * Demo Client Data
  *
- * Hardcoded test client for the client portal when no DATABASE_URL is configured.
- * Password is pre-hashed so verifyPassword("ClientPortal2026!", hash) returns true.
+ * Hardcoded admin owner client for the client portal when no DATABASE_URL is configured.
+ * Password is pre-hashed so verifyPassword("ValorOwner2026!", hash) returns true.
+ *
+ * Credentials (local dev):
+ *   Email:    admin@valorlegacies.xyz
+ *   Password: ValorOwner2026!
  */
 
 import { createHmac } from "crypto";
@@ -10,25 +14,25 @@ import type { ClientRecord, ClientFilters, LeadPurchase, ClientBilling, ClientSt
 
 // Pre-compute a deterministic hash so we don't need randomBytes at import time
 const DEMO_SALT = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
-const DEMO_HASH = createHmac("sha256", DEMO_SALT).update("ClientPortal2026!").digest("hex");
+const DEMO_HASH = createHmac("sha256", DEMO_SALT).update("ValorOwner2026!").digest("hex");
 
 const now = new Date().toISOString();
 
 export const DEMO_CLIENT: ClientRecord = {
-  clientId: "client_demo_001",
-  companyName: "Valor Test Agency",
-  contactName: "Test Buyer",
-  email: "testclient@valorlegacies.com",
-  phone: "5551234567",
+  clientId: "client_demo_admin",
+  companyName: "Valor Legacies (Owner)",
+  contactName: "Admin Owner",
+  email: "admin@valorlegacies.xyz",
+  phone: "5550000001",
   passwordHash: `${DEMO_SALT}:${DEMO_HASH}`,
   status: "active",
-  pricingTier: "standard",
-  pricePerLead: 2500,       // $25.00
-  exclusivePrice: 5000,     // $50.00
-  stateLicenses: JSON.stringify(["TX", "FL", "CA", "NY", "PA", "GA", "NC", "VA", "OH", "IL"]),
+  pricingTier: "enterprise",
+  pricePerLead: 0,
+  exclusivePrice: 0,
+  stateLicenses: JSON.stringify(["TX", "FL", "CA", "NY", "PA", "GA", "NC", "VA", "OH", "IL", "AZ", "CO", "WA", "OR", "NV"]),
   coverageTypes: JSON.stringify(["mortgage-protection", "income-replacement", "final-expense", "legacy", "retirement-savings", "guaranteed-income"]),
-  dailyCap: 50,
-  monthlyCap: 1000,
+  dailyCap: 9999,
+  monthlyCap: 99999,
   minScore: 0,
   balance: 0,
   createdAt: now,

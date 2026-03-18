@@ -74,6 +74,15 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
       }
     }
 
+    // Coherency refresh (fixes disconnect between reflect evaluator and DB)
+    if (report.coherencyRefresh) {
+      const cr = report.coherencyRefresh;
+      if (cr.updated > 0) {
+        console.log(`\n${c.boldCyan('Coherency Refresh:')} ${cr.updated} pattern(s) updated`);
+        console.log(`  Avg before: ${colorScore(cr.avgBefore)} → Avg after: ${colorScore(cr.avgAfter)}`);
+      }
+    }
+
     // Whisper
     if (report.whisper) {
       console.log(`\n${report.whisper}`);

@@ -43,6 +43,7 @@ ${c.bold('Quantum Field Operations:')}
 ${c.bold('Quantum State Management:')}
   ${c.cyan('debug decohere')}      Sweep the field \u2014 decay unobserved patterns (temporal decoherence)
   ${c.cyan('debug reexcite')}      Re-excite a decohered pattern back to |superposition\u27E9
+  ${c.cyan('debug reexcite-all')}  Bulk re-excite ALL decohered patterns back to |superposition\u27E9
   ${c.cyan('debug entanglement')}  Show the entanglement graph for a pattern
   ${c.cyan('debug field')}         Quantum field overview (state distribution + energy)
 
@@ -296,6 +297,24 @@ ${c.bold('Options:')}
         console.log(`  Amplitude: ${colorScore(result.amplitude)}`);
       } else {
         console.log(c.red(result.error));
+      }
+      return;
+    }
+
+    if (sub === 'reexcite-all') {
+      console.log(c.boldCyan('Bulk Re-excitation') + ' \u2014 restoring all decohered patterns to |superposition\u27E9\n');
+      const result = oracle.debugReexciteAll({
+        boostAmount: parseFloat(args.boost) || 0.15,
+      });
+      if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+      console.log(`  Decohered found: ${c.bold(String(result.total))}`);
+      console.log(`  Re-excited:      ${c.boldGreen(String(result.reexcited))} \u2192 |superposition\u27E9`);
+      // Show updated field stats
+      const stats = oracle.debugStats();
+      if (stats.quantumField) {
+        const qf = stats.quantumField;
+        console.log(`\n  Field state:     ${c.magenta('superposition(' + qf.superposition + ')')} ${c.green('collapsed(' + qf.collapsed + ')')} ${c.dim('decohered(' + qf.decohered + ')')}`);
+        console.log(`  Field energy:    ${c.bold(String(qf.fieldEnergy))}`);
       }
       return;
     }

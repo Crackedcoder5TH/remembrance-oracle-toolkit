@@ -550,6 +550,17 @@ module.exports = {
     if (report.evolution) whisper.recordEvolutionReport(report.evolution);
     if (report.improvement?.promoted > 0) whisper.recordPromotionReport({ promoted: report.improvement.promoted });
 
+    // Refresh coherency scores after healing to fix disconnect between
+    // reflect evaluator (which uses testPassed=true) and DB-stored scores
+    try {
+      const sqlStore = this.store?.getSQLiteStore?.();
+      if (sqlStore && typeof sqlStore.refreshAllCoherency === 'function') {
+        report.coherencyRefresh = sqlStore.refreshAllCoherency();
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:fullOptimizationCycle] coherency refresh:', e?.message || e);
+    }
+
     const whisperSummary = whisper.stop();
     return { ...report, whisperSummary };
   },

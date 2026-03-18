@@ -77,9 +77,13 @@ function validateCode(code, options = {}) {
   }
 
   // Step 1: Run test if provided (sandboxed by default)
+  // Trust mode: allows sandbox to access node_modules and node: built-ins
+  // Used during candidate promotion where patterns may require project dependencies
   if (testCode) {
+    const sandboxOpts = { timeout };
+    if (options.trustMode) sandboxOpts.trustMode = true;
     const testResult = options.sandbox !== false
-      ? sandboxExecute(code, testCode, language, { timeout })
+      ? sandboxExecute(code, testCode, language, sandboxOpts)
       : executeTest(code, testCode, language, timeout);
     result.testPassed = testResult.passed;
     result.testOutput = testResult.output;

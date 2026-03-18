@@ -436,6 +436,15 @@ module.exports = {
   },
 
   /**
+   * Bulk re-excite all decohered patterns — restore the quantum field.
+   */
+  debugReexciteAll(options = {}) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { reexcited: 0, total: 0, error: 'No SQLite store available' };
+    return debug.reexciteAll(options);
+  },
+
+  /**
    * Get the entanglement graph for a pattern — all linked patterns.
    */
   debugEntanglementGraph(id, depth = 2) {

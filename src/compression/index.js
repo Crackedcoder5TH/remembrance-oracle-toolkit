@@ -40,12 +40,28 @@ function compressStore(store, options = {}) {
   const patterns = prioritizeForCompression(rawPatterns);
   const { ready, healing } = partitionByReadiness(rawPatterns);
 
-  // Step 1: Extract templates and detect families (from SERF-ready patterns first)
-  const { families, singletons } = extractTemplates(patterns);
+  // Step 1: Extract templates and detect families using tiered matching
+  // Tier 1: Exact structural matching (most precise, smallest families)
+  const exactResult = extractTemplates(patterns);
+
+  // Tier 2: Fuzzy matching on singletons (abstracts operators — broader families)
+  const fuzzyResult = extractTemplates(exactResult.singletons, { fuzzy: true });
+
+  // Tier 3: Canonical matching on remaining singletons (cross-language families)
+  const canonicalResult = extractTemplates(fuzzyResult.singletons, { canonical: true });
+
+  // Merge all family tiers
+  const families = [
+    ...exactResult.families,
+    ...fuzzyResult.families,
+    ...canonicalResult.families,
+  ];
+  const singletons = canonicalResult.singletons;
 
   if (verbose) {
     console.log(`  SERF ready: ${ready.length} patterns, healing: ${healing.length} patterns`);
-    console.log(`  Detected ${families.length} fractal families, ${singletons.length} singletons`);
+    console.log(`  Exact families: ${exactResult.families.length}, Fuzzy: ${fuzzyResult.families.length}, Canonical: ${canonicalResult.families.length}`);
+    console.log(`  Total families: ${families.length}, singletons: ${singletons.length}`);
   }
 
   // Step 2: Validate reconstructions BEFORE storing, exclude broken families

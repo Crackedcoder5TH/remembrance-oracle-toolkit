@@ -1047,6 +1047,42 @@ class DebugOracle {
   }
 
   /**
+   * Bulk re-excite all decohered patterns — restore the quantum field.
+   * Brings decohered patterns back to superposition with a minimum amplitude.
+   *
+   * @param {Object} [options] — { minAmplitude: number, boostAmount: number }
+   * @returns {{ reexcited: number, total: number }}
+   */
+  reexciteAll(options = {}) {
+    const { minAmplitude = PLANCK_CONFIDENCE, boostAmount = 0.15 } = options;
+    const now = new Date().toISOString();
+
+    const decohered = this.store.db.prepare(
+      "SELECT id, amplitude FROM debug_patterns WHERE quantum_state = ?"
+    ).all(QUANTUM_STATES.DECOHERED);
+
+    let reexcited = 0;
+    const update = this.store.db.prepare(
+      "UPDATE debug_patterns SET amplitude = ?, confidence = ?, quantum_state = ?, last_observed_at = ?, updated_at = ? WHERE id = ?"
+    );
+
+    this.store.db.exec('BEGIN');
+    try {
+      for (const row of decohered) {
+        const newAmplitude = Math.max(minAmplitude, (row.amplitude || 0) + boostAmount);
+        update.run(newAmplitude, newAmplitude, QUANTUM_STATES.SUPERPOSITION, now, now, row.id);
+        reexcited++;
+      }
+      this.store.db.exec('COMMIT');
+    } catch (err) {
+      this.store.db.exec('ROLLBACK');
+      throw err;
+    }
+
+    return { reexcited, total: decohered.length };
+  }
+
+  /**
    * Get the entanglement graph for a pattern — all patterns it's linked to.
    */
   getEntanglementGraph(id, depth = 2) {

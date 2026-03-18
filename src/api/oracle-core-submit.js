@@ -85,6 +85,7 @@ module.exports = {
     const validation = validateCode(pattern.code, {
       language: pattern.language, testCode: pattern.testCode, threshold: this.threshold,
       description: pattern.description || pattern.name, tags: pattern.tags,
+      trustMode: pattern.trustMode || false,
     });
 
     if (!validation.valid) {

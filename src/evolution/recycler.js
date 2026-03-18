@@ -1535,22 +1535,38 @@ class PatternRecycler {
    * @param {string} testCode - Test code to prove the candidate works
    * @returns {{ promoted, pattern?, reason? }}
    */
-  promoteWithProof(candidateId, testCode) {
+  promoteWithProof(candidateId, testCode, options = {}) {
     const candidate = this.oracle.patterns.getCandidates().find(c => c.id === candidateId);
     if (!candidate) {
       return { promoted: false, reason: 'Candidate not found' };
     }
 
-    // Run through full oracle validation with test proof
-    const result = this.oracle.registerPattern({
+    const effectiveTestCode = testCode || candidate.testCode;
+    const patternData = {
       name: candidate.name,
       code: candidate.code,
       language: candidate.language,
       description: candidate.description,
       tags: (candidate.tags || []).filter(t => t !== 'candidate'),
       patternType: candidate.patternType,
-      testCode: testCode || candidate.testCode,
-    });
+      testCode: effectiveTestCode,
+    };
+
+    // First attempt: standard sandbox
+    let result = this.oracle.registerPattern(patternData);
+
+    // If standard sandbox fails due to import/module resolution, retry with trust mode
+    // Trust mode gives the sandbox access to node_modules and node: built-ins
+    if (!result.registered && !options.skipTrustRetry) {
+      const failReason = result.reason || result.error || '';
+      const isImportFailure = /Cannot find module|MODULE_NOT_FOUND|is not defined|require.*is not|node:/.test(failReason);
+      if (isImportFailure) {
+        if (this.verbose) {
+          console.log(`  [TRUST-RETRY] ${candidate.name} — sandbox import failure, retrying with trust mode`);
+        }
+        result = this.oracle.registerPattern({ ...patternData, trustMode: true });
+      }
+    }
 
     if (result.registered) {
       // Mark candidate as promoted

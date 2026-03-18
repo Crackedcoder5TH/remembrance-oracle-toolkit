@@ -143,12 +143,13 @@ class TeamManager {
       throw new Error(`Maximum members (${org.maxMembers}) reached`);
     }
 
-    if (!Object.values(TEAM_ROLES).includes(role)) {
+    const normalizedRole = typeof role === 'string' ? role.toLowerCase().trim() : role;
+    if (!Object.values(TEAM_ROLES).includes(normalizedRole)) {
       throw new Error(`Invalid role: ${role}`);
     }
 
-    members.set(targetUserId, role);
-    this._audit(userId, orgId, 'member_added', { targetUserId, role });
+    members.set(targetUserId, normalizedRole);
+    this._audit(userId, orgId, 'member_added', { targetUserId, role: normalizedRole });
     return { added: true, role };
   }
 

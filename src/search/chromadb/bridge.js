@@ -24,7 +24,14 @@ const DEFAULT_DB_PATH = '.remembrance/chromadb';
 class ChromaDBBridge {
   constructor(options = {}) {
     this._dbPath = options.dbPath || DEFAULT_DB_PATH;
-    this._pythonBin = options.pythonBin || 'python3';
+    // Validate pythonBin: must be a simple command name or absolute path to a real file
+    const pythonBin = options.pythonBin || 'python3';
+    if (path.isAbsolute(pythonBin)) {
+      if (!fs.existsSync(pythonBin)) throw new Error(`pythonBin not found: ${pythonBin}`);
+    } else if (/[/\\]/.test(pythonBin) || /[;&|`$]/.test(pythonBin)) {
+      throw new Error(`Invalid pythonBin: must be a simple command name or absolute path`);
+    }
+    this._pythonBin = pythonBin;
     this._timeout = options.timeout || 60000; // 60s for model loading on first call
     this._available = null; // null = unchecked
   }
@@ -182,18 +189,26 @@ class ChromaDBBridge {
 }
 
 /**
+ * Sanitize a tag string: strip path traversal sequences and control characters.
+ */
+function _sanitizeTag(tag) {
+  if (typeof tag !== 'string') return String(tag || '');
+  return tag.replace(/\.\.\//g, '').replace(/[/\\]/g, '-').replace(/[\x00-\x1f]/g, '').trim();
+}
+
+/**
  * Parse tags from various formats (string, JSON string, array).
  */
 function _parseTags(tags) {
-  if (Array.isArray(tags)) return tags;
+  if (Array.isArray(tags)) return tags.map(t => _sanitizeTag(t));
   if (typeof tags === 'string') {
     try {
       const parsed = JSON.parse(tags);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return parsed.map(t => _sanitizeTag(t));
     } catch {
       // comma-separated fallback
     }
-    return tags.split(',').map(t => t.trim()).filter(Boolean);
+    return tags.split(',').map(t => _sanitizeTag(t.trim())).filter(Boolean);
   }
   return [];
 }

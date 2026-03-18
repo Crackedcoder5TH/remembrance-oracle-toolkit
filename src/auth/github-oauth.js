@@ -24,10 +24,19 @@ function _parseResponse(data) {
     // Only attempt URL-encoded parsing if it looks like form data (no HTML tags, contains =)
     if (data && !data.includes('<') && data.includes('=')) {
       const parsed = {};
-      data.split('&').forEach(pair => {
+      const pairs = data.split('&');
+      if (pairs.length > 50) return { error: 'Too many form parameters', raw: String(data).slice(0, 500) };
+      for (const pair of pairs) {
         const [k, v] = pair.split('=');
-        if (k) parsed[decodeURIComponent(k)] = decodeURIComponent(v || '');
-      });
+        if (k) {
+          try {
+            parsed[decodeURIComponent(k)] = decodeURIComponent(v || '');
+          } catch (decodeErr) {
+            // Skip malformed percent-encoded values (null bytes, invalid sequences)
+            continue;
+          }
+        }
+      }
       return parsed;
     }
     return { error: 'Unexpected response format', raw: String(data).slice(0, 500) };
@@ -139,13 +148,18 @@ class GitHubIdentity {
       if (!login || typeof login !== 'string') {
         return { success: false, error: 'Invalid GitHub response: missing login field' };
       }
+      if (id == null) {
+        return { success: false, error: 'Invalid GitHub response: missing id field' };
+      }
       const voterId = `github:${login}`;
+      // Sanitize avatar_url — must be a valid GitHub URL or empty
+      const safeAvatar = (typeof avatar_url === 'string' && /^https:\/\//.test(avatar_url)) ? avatar_url : '';
 
       this._saveIdentity({
         voterId,
         githubUsername: login,
         githubId: id,
-        avatarUrl: avatar_url || '',
+        avatarUrl: safeAvatar,
       });
 
       return {
@@ -153,7 +167,7 @@ class GitHubIdentity {
         voterId,
         username: login,
         githubId: id,
-        avatarUrl: avatar_url || '',
+        avatarUrl: safeAvatar,
       };
     } catch (err) {
       return { success: false, error: err.message };

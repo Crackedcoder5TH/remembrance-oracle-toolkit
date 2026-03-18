@@ -216,9 +216,10 @@ function _skipTemplateExpression(code, i) {
     if (c === '/') {
       let isRegex = false;
       const before = code.slice(Math.max(0, i - 20), i).trimEnd();
+      if (before.length === 0) { i++; continue; }
       const lastCh = before[before.length - 1];
       if (lastCh && '=(!&|,;:?[{+-%~^<>'.includes(lastCh)) isRegex = true;
-      else { const wm = before.match(/\b(\w+)$/); if (wm && REGEX_KW.has(wm[1])) isRegex = true; }
+      else { const wm = before.match(/\b(\w+)$/); if (wm && wm[1] && REGEX_KW.has(wm[1])) isRegex = true; }
       if (isRegex) { i++; i = _skipRegexBody(code, i); continue; }
     }
     if (c === '{') depth++;

@@ -435,10 +435,11 @@ function authMiddleware(authManager) {
     // Check Authorization header only (no query-parameter fallback)
     const authHeader = req.headers && req.headers['authorization'];
     if (authHeader) {
-      const parts = authHeader.split(' ');
-      if (parts.length === 2) {
-        const scheme = parts[0];
-        const credential = parts[1];
+      const trimmed = authHeader.trim();
+      const spaceIdx = trimmed.indexOf(' ');
+      if (spaceIdx > 0) {
+        const scheme = trimmed.slice(0, spaceIdx);
+        const credential = trimmed.slice(spaceIdx + 1).trim();
 
         const schemeLower = scheme.toLowerCase();
         if (schemeLower === 'bearer') {

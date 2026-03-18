@@ -93,6 +93,7 @@ function covenantCheck(code, metadata = {}) {
       if (hp.pattern.lastIndex) hp.pattern.lastIndex = 0;
       if (hp.pattern.test(codeToCheck)) {
         const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);
+        if (!principle) continue; // Skip if principle ID not found in registry
         violations.push({
           principle: hp.principle,
           name: principle.name,

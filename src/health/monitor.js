@@ -146,7 +146,9 @@ function coherencyDistribution(patterns) {
   };
 
   for (const p of patterns) {
-    const score = p.coherencyScore?.total ?? p.coherency_total ?? 0;
+    // Clamp score to [0, 1] — values > 1.0 are scoring errors
+    const raw = p.coherencyScore?.total ?? p.coherency_total ?? 0;
+    const score = Math.max(0, Math.min(1, raw));
     if (score < 0.2) buckets['0.0-0.2']++;
     else if (score < 0.4) buckets['0.2-0.4']++;
     else if (score < 0.6) buckets['0.4-0.6']++;

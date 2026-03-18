@@ -152,9 +152,9 @@ class TemporalMemory {
     const totalEvents = successes.length + failures.length;
     const successRate = totalEvents > 0 ? successes.length / totalEvents : 0;
 
-    // Find last regression
-    const lastRegression = failures[0];
-    const lastSuccess = successes[0];
+    // Find last regression (arrays may be empty)
+    const lastRegression = failures.length > 0 ? failures[0] : null;
+    const lastSuccess = successes.length > 0 ? successes[0] : null;
 
     let status, narrative;
     if (failures.length === 0) {
@@ -181,8 +181,8 @@ class TemporalMemory {
       successes: successes.length,
       failures: failures.length,
       heals: heals.length,
-      lastEvent: events[0],
-      firstEvent: events[events.length - 1],
+      lastEvent: events.length > 0 ? events[0] : null,
+      firstEvent: events.length > 0 ? events[events.length - 1] : null,
     };
   }
 

@@ -441,7 +441,7 @@ function getDashboardScript(resilientFetchSource) {
           var matchScore = result.matchScore || result.semanticScore || 0;
           var concepts = (result.matchedConcepts && result.matchedConcepts.length)
             ? '<div style="font-size:0.75em;color:var(--fg3);margin-top:4px">Concepts: ' +
-              result.matchedConcepts.join(', ') + '</div>' : '';
+              result.matchedConcepts.map(function(c) { return escapeHtml(c); }).join(', ') + '</div>' : '';
           return '<div class="code-card">' +
             '<div class="code-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
             '<span class="code-card-expand">&#9654;</span>' +

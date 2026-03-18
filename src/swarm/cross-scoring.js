@@ -111,14 +111,20 @@ async function crossScore(agentOutputs, pool, dimensions) {
     })
   );
 
-  // Build the matrix
+  // Build the matrix — include rejected promises with fallback scores
+  // so the peer score matrix remains complete
   for (const result of results) {
-    const { reviewer, reviewee, score, reasoning } = result.status === 'fulfilled'
-      ? result.value
-      : { reviewer: '', reviewee: '', score: 0.5, reasoning: 'Error' };
-    if (!reviewer) continue;
-    if (!matrix[reviewer]) matrix[reviewer] = {};
-    matrix[reviewer][reviewee] = { score, reasoning };
+    if (result.status === 'fulfilled') {
+      const { reviewer, reviewee, score, reasoning } = result.value;
+      if (!reviewer) continue;
+      if (!matrix[reviewer]) matrix[reviewer] = {};
+      matrix[reviewer][reviewee] = { score, reasoning };
+    } else {
+      // Rejected promise — log but don't skip (prevents biased consensus)
+      if (process.env.ORACLE_DEBUG) {
+        console.warn('[cross-scoring] peer review rejected:', result.reason?.message || result.reason);
+      }
+    }
   }
 
   return matrix;
@@ -133,6 +139,7 @@ async function crossScore(agentOutputs, pool, dimensions) {
  */
 function computePeerScores(matrix, agentNames) {
   const peerScores = new Map();
+  if (!agentNames || agentNames.length === 0) return peerScores;
 
   for (const agent of agentNames) {
     const scores = [];

@@ -297,7 +297,7 @@ function registerRemote(url, options = {}) {
   } else {
     config.remotes.push({ url, name, token: encryptedToken, addedAt: new Date().toISOString() });
   }
-  fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2));
+  fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
   return { registered: true, name, url, totalRemotes: config.remotes.length };
 }
 
@@ -309,7 +309,7 @@ function removeRemote(urlOrName) {
   const before = config.remotes.length;
   config.remotes = config.remotes.filter(r => r.url !== urlOrName && r.name !== urlOrName);
   if (config.remotes.length < before) {
-    fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2));
+    fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
     return { removed: true };
   }
   return { removed: false, error: 'Remote not found' };

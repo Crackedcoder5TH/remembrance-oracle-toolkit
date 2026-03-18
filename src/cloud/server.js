@@ -748,6 +748,7 @@ class CloudSyncServer {
     const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
     return new Promise((resolve, reject) => {
       let body = '';
+      let byteCount = 0;
       let aborted = false;
 
       const timeout = setTimeout(() => {
@@ -759,8 +760,9 @@ class CloudSyncServer {
       }, 30000);
 
       req.on('data', chunk => {
+        byteCount += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
         body += chunk;
-        if (body.length > MAX_BODY_SIZE) {
+        if (byteCount > MAX_BODY_SIZE) {
           aborted = true;
           clearTimeout(timeout);
           req.destroy();

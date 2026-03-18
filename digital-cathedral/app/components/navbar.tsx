@@ -9,24 +9,28 @@ import { useIsAdmin } from "../protect/hooks/use-is-admin";
 /**
  * Detect if current browser hostname is the portal domain.
  * When NEXT_PUBLIC_PORTAL_URL is set, we compare against it.
- * On leads domains, admin/portal login links are hidden.
+ * Returns { isPortal, portalBaseUrl } so links can target the portal domain.
  */
-function useIsPortalDomain(): boolean {
-  const [isPortal, setIsPortal] = useState(true); // default true to avoid flash
+function usePortalDomain(): { isPortal: boolean; portalBaseUrl: string } {
+  const [state, setState] = useState<{ isPortal: boolean; portalBaseUrl: string }>({
+    isPortal: true, // default true to avoid flash
+    portalBaseUrl: "",
+  });
   useEffect(() => {
     const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL;
     if (!portalUrl) {
-      setIsPortal(true); // no multi-domain config — show everything
+      setState({ isPortal: true, portalBaseUrl: "" });
       return;
     }
     try {
       const portalHost = new URL(portalUrl).hostname.toLowerCase();
-      setIsPortal(window.location.hostname.toLowerCase() === portalHost);
+      const isPortal = window.location.hostname.toLowerCase() === portalHost;
+      setState({ isPortal, portalBaseUrl: isPortal ? "" : portalUrl.replace(/\/$/, "") });
     } catch {
-      setIsPortal(true);
+      setState({ isPortal: true, portalBaseUrl: "" });
     }
   }, []);
-  return isPortal;
+  return state;
 }
 
 const NAV_LINKS = [
@@ -49,7 +53,7 @@ const PORTAL_NAV_LINKS = [
 
 export function Navbar() {
   const isAdmin = useIsAdmin();
-  const isPortalDomain = useIsPortalDomain();
+  const { isPortal: isPortalDomain, portalBaseUrl } = usePortalDomain();
   const { data: session } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -187,12 +191,12 @@ export function Navbar() {
               {session.user.name?.split(" ")[0]}
             </span>
             {(Boolean((session.user as Record<string, unknown>).isAdmin) || isPortalDomain) && (
-              <Link
-                href="/admin"
+              <a
+                href={`${portalBaseUrl}/admin`}
                 className="flex items-center gap-fib-5 px-fib-13 py-fib-5 text-xs font-medium rounded-fib border border-[var(--teal)]/30 text-[var(--teal)] hover:border-[var(--teal)] transition-all"
               >
                 Admin
-              </Link>
+              </a>
             )}
             <button
               onClick={() => signOut({ callbackUrl: isPortalDomain ? "/portal" : "/" })}
@@ -203,8 +207,8 @@ export function Navbar() {
           </div>
         ) : (
           <div className="flex items-center gap-fib-8">
-            <Link
-              href="/admin/login"
+            <a
+              href={`${portalBaseUrl}/admin/login`}
               className="flex items-center gap-fib-5 px-fib-13 py-fib-5 text-xs font-medium rounded-fib border border-[var(--teal)]/30 text-[var(--teal)] hover:border-[var(--teal)] transition-all"
             >
               <svg
@@ -220,7 +224,7 @@ export function Navbar() {
                 <path d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
               </svg>
               Admin
-            </Link>
+            </a>
             {isPortalDomain && (
               <Link
                 href="/portal/login"

@@ -33,7 +33,7 @@ const PORTAL_DOMAIN: string = (process.env.PORTAL_DOMAIN ?? "").trim().toLowerCa
 type DomainType = "leads" | "portal" | "unknown";
 
 function getDomainType(hostname: string): DomainType {
-  const host = hostname.toLowerCase().split(":")[0];
+  const host = hostname.toLowerCase().split(":")[0].replace(/^www\./, "");
   if (PORTAL_DOMAIN && host === PORTAL_DOMAIN) return "portal";
   if (LEADS_DOMAINS.length > 0 && LEADS_DOMAINS.includes(host)) return "leads";
   return "unknown";
@@ -109,10 +109,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // ─── Redirect www. to bare domain for consistent cookies ───
+  const hostname = request.headers.get("host") || request.nextUrl.host;
+  const rawHost = hostname.toLowerCase().split(":")[0];
+  if (rawHost.startsWith("www.")) {
+    const bareUrl = new URL(request.url);
+    bareUrl.host = bareUrl.host.replace(/^www\./, "");
+    return NextResponse.redirect(bareUrl.toString(), 301);
+  }
+
   // ─── Multi-Domain Route Enforcement ───
   // Block portal routes on leads domains; redirect to portal domain instead.
   // On portal domain, redirect marketing pages to the client portal.
-  const hostname = request.headers.get("host") || request.nextUrl.host;
   const domainType = getDomainType(hostname);
 
   if (domainType === "leads") {

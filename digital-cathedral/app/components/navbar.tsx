@@ -201,7 +201,7 @@ export function Navbar() {
               Sign Out
             </button>
           </div>
-        ) : isPortalDomain ? (
+        ) : (
           <div className="flex items-center gap-fib-8">
             <Link
               href="/admin/login"
@@ -221,26 +221,28 @@ export function Navbar() {
               </svg>
               Admin
             </Link>
-            <Link
-              href="/portal/login"
-              className="flex items-center gap-fib-5 px-fib-13 py-fib-5 text-xs font-medium rounded-fib bg-teal-cathedral text-white hover:bg-teal-cathedral/90 transition-all"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="shrink-0"
-                aria-hidden="true"
+            {isPortalDomain && (
+              <Link
+                href="/portal/login"
+                className="flex items-center gap-fib-5 px-fib-13 py-fib-5 text-xs font-medium rounded-fib bg-teal-cathedral text-white hover:bg-teal-cathedral/90 transition-all"
               >
-                <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
-              </svg>
-              Client Login
-            </Link>
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="shrink-0"
+                  aria-hidden="true"
+                >
+                  <path d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                </svg>
+                Client Login
+              </Link>
+            )}
           </div>
-        ) : null}
+        )}
       </div>
     </nav>
   );

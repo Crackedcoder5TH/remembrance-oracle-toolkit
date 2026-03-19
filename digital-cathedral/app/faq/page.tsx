@@ -10,11 +10,11 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: "What is the best life insurance for veterans?",
-    a: "The best life insurance for veterans depends on your needs. Term life is ideal for mortgage protection and income replacement. Whole life works well for final expense and legacy planning. Indexed Universal Life (IUL) offers retirement savings with life insurance protection. A licensed professional can help you compare options based on your service history, age, and family situation — at no cost.",
+    a: "The best life insurance for veterans depends on your needs. Term life is ideal for mortgage protection and income replacement. Whole life works well for final expense and legacy planning. Indexed Universal Life (IUL) offers retirement savings with life insurance protection. A licensed professional can help you compare options based on your service history, age, and family situation.",
   },
   {
     q: "Is this the same as SGLI?",
-    a: "No. This is a review of additional or alternative life insurance options available outside standard military coverage. SGLI (Servicemembers' Group Life Insurance) is a separate program administered by the VA.",
+    a: "No. This is additional or alternative life insurance options available outside standard military coverage. SGLI (Servicemembers' Group Life Insurance) is a separate program supervised by the U.S. Department of Veterans Affairs (VA) and administered by the Prudential Insurance Company of America.",
   },
   {
     q: "Is this affiliated with the military or government?",

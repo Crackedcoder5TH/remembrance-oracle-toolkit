@@ -62,6 +62,7 @@ ${c.bold('Options:')}
   ${c.yellow('--id')} <id>             Debug pattern ID (for feedback/reexcite/entanglement)
   ${c.yellow('--success')}             Mark feedback as resolved
   ${c.yellow('--category')} <cat>      Filter by error category (field sector)
+  ${c.yellow('--sector')} <sector>     Search by bug class sector (logic, type, async, etc.)
   ${c.yellow('--min-confidence')} <n>  Minimum amplitude threshold
   ${c.yellow('--json')}                JSON output
       `);
@@ -107,8 +108,32 @@ ${c.bold('Options:')}
     }
 
     if (sub === 'search') {
+      const sector = args.sector || args.category;
       const errorMessage = args.error || args._positional.slice(1).join(' ');
-      if (!errorMessage) { console.error(c.boldRed('Error:') + ` provide an error message. Usage: ${c.cyan('oracle debug search --error "TypeError: x is not a function"')}`); process.exit(1); }
+
+      // Sector search: search by bug class/category instead of error message
+      if (sector && !errorMessage) {
+        const filters = { category: sector, limit: parseInt(args.limit, 10) || 20 };
+        if (args.language) filters.language = args.language;
+        if (args['min-confidence']) filters.minConfidence = parseFloat(args['min-confidence']);
+        const patterns = oracle.debugPatterns(filters);
+        if (jsonOut()) { console.log(JSON.stringify(patterns)); return; }
+        if (patterns.length === 0) {
+          console.log(c.yellow(`No patterns in sector: ${sector}`));
+        } else {
+          console.log(`${c.boldCyan('Sector Search')} \u2014 ${c.magenta(sector)} (${patterns.length} pattern(s)):\n`);
+          for (const p of patterns) {
+            const qState = colorQuantumState(p.quantumState);
+            console.log(`  ${c.dim(p.id.slice(0, 8))} ${c.bold(p.errorClass)} ${qState} amplitude: ${colorScore(p.amplitude || p.confidence)}`);
+            console.log(`    ${c.dim(p.errorMessage.slice(0, 80))}`);
+            console.log(`    ${c.dim('Fix:')} ${(p.fixDescription || p.fixCode.split('\n')[0]).slice(0, 80)}`);
+            console.log('');
+          }
+        }
+        return;
+      }
+
+      if (!errorMessage) { console.error(c.boldRed('Error:') + ` provide an error message or --sector. Usage: ${c.cyan('oracle debug search --error "TypeError: x" or --sector logic')}`); process.exit(1); }
       const results = oracle.debugSearch({
         errorMessage,
         stackTrace: args.stack || '',

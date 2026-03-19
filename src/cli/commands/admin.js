@@ -43,26 +43,212 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['audit'] = (args) => {
+    const sub = args._sub;
+
+    // Subcommand: audit check — run static checkers on files
+    if (sub === 'check') {
+      const { auditFiles, auditFile, BUG_CLASSES } = require('../../audit/static-checkers');
+      const targetFile = args.file || args._positional[1];
+
+      let files = [];
+      if (targetFile) {
+        files = [targetFile];
+      } else {
+        // Default: scan staged or recently changed files
+        try {
+          const staged = execSync('git diff --cached --name-only --diff-filter=ACM 2>/dev/null || git diff HEAD~1 --name-only --diff-filter=ACM 2>/dev/null', { encoding: 'utf-8' })
+            .trim().split('\n').filter(f => /\.(js|ts)$/.test(f) && f.trim());
+          files = staged;
+        } catch (_) {
+          // Fall back to all JS files in src/
+          try {
+            const allSrc = execSync('find src -name "*.js" -not -path "*/node_modules/*" 2>/dev/null | head -100', { encoding: 'utf-8' })
+              .trim().split('\n').filter(f => f.trim());
+            files = allSrc;
+          } catch (__) { /* empty */ }
+        }
+      }
+
+      if (files.length === 0) {
+        console.log(c.yellow('No files to audit. Specify --file or have staged changes.'));
+        return;
+      }
+
+      const bugClasses = args['bug-class'] ? args['bug-class'].split(',').map(s => s.trim()) : undefined;
+      const minSeverity = args['min-severity'] || undefined;
+      const result = auditFiles(files, { bugClasses, minSeverity });
+
+      if (args.json === true) { console.log(JSON.stringify(result)); return; }
+
+      console.log(c.boldCyan(`Audit Check \u2014 ${result.summary.filesScanned} files scanned\n`));
+
+      if (result.totalFindings === 0) {
+        console.log(c.boldGreen('  \u2713 No assumption mismatches found!\n'));
+        return;
+      }
+
+      console.log(c.boldRed(`  ${result.totalFindings} assumption mismatch(es) found:\n`));
+
+      for (const fileResult of result.files) {
+        console.log(`  ${c.bold(fileResult.file)}:`);
+        for (const f of fileResult.findings) {
+          const sevColor = f.severity === 'high' ? c.red : f.severity === 'medium' ? c.yellow : c.dim;
+          console.log(`    ${sevColor(f.severity.toUpperCase().padEnd(6))} L${String(f.line).padStart(4)} [${c.cyan(f.bugClass)}]`);
+          console.log(`      ${c.dim('Assumes:')} ${f.assumption}`);
+          console.log(`      ${c.dim('Reality:')} ${f.reality}`);
+          console.log(`      ${c.dim('Fix:')}     ${f.suggestion}`);
+        }
+        console.log('');
+      }
+
+      console.log(c.bold('  Summary:'));
+      for (const [cls, count] of Object.entries(result.summary.byClass)) {
+        console.log(`    ${c.cyan(cls.padEnd(16))} ${c.bold(String(count))}`);
+      }
+      return;
+    }
+
+    // Subcommand: audit cascade — detect cascading assumption mismatches
+    if (sub === 'cascade') {
+      const { detectCascade } = require('../../audit/cascade-detector');
+      const commitRange = args.from || 'HEAD~1..HEAD';
+      const result = detectCascade(commitRange, process.cwd());
+
+      if (args.json === true) { console.log(JSON.stringify(result)); return; }
+
+      console.log(c.boldCyan(`Cascade Detection \u2014 from ${c.bold(commitRange)}\n`));
+
+      if (result.changedFunctions.length > 0) {
+        console.log(c.bold('  Changed functions:'));
+        for (const cf of result.changedFunctions) {
+          console.log(`    ${c.dim(cf.file)}: ${cf.functions.map(f => c.cyan(f)).join(', ')}`);
+        }
+        console.log('');
+      }
+
+      if (result.cascades.length === 0) {
+        console.log(c.boldGreen('  \u2713 No cascading assumption mismatches found!\n'));
+        return;
+      }
+
+      console.log(c.boldRed(`  ${result.summary.cascadesFound} cascading mismatch(es):\n`));
+
+      for (const cascade of result.cascades) {
+        console.log(`    ${c.red('\u26A0')} ${c.bold(cascade.sourceFunction)} (${c.dim(cascade.sourceFile)})`);
+        console.log(`      \u2192 ${c.cyan(cascade.targetFile)}:${cascade.targetLine}`);
+        console.log(`      ${c.dim('Type:')} ${cascade.assumptionType}`);
+        console.log(`      ${c.dim('Risk:')} ${cascade.assumptionBroken}`);
+        console.log(`      ${c.dim('Code:')} ${cascade.targetCode}`);
+        console.log('');
+      }
+
+      if (Object.keys(result.summary.byType).length > 0) {
+        console.log(c.bold('  By type:'));
+        for (const [type, count] of Object.entries(result.summary.byType)) {
+          console.log(`    ${c.cyan(type.padEnd(16))} ${c.bold(String(count))}`);
+        }
+      }
+      return;
+    }
+
+    // Subcommand: audit summary — combined audit report
+    if (sub === 'summary') {
+      const { auditFiles } = require('../../audit/static-checkers');
+      const { detectCascade } = require('../../audit/cascade-detector');
+
+      // Get recently changed files
+      let files = [];
+      try {
+        const changed = execSync('git diff HEAD~1 --name-only --diff-filter=ACM 2>/dev/null', { encoding: 'utf-8' })
+          .trim().split('\n').filter(f => /\.(js|ts)$/.test(f) && f.trim());
+        files = changed;
+      } catch (_) { /* empty */ }
+
+      console.log(c.boldCyan('Audit Summary\n'));
+
+      // Static checks
+      if (files.length > 0) {
+        const staticResult = auditFiles(files);
+        console.log(c.bold('  Static Checks:'));
+        console.log(`    Files:     ${c.bold(String(staticResult.summary.filesScanned))}`);
+        console.log(`    Findings:  ${staticResult.totalFindings > 0 ? c.boldRed(String(staticResult.totalFindings)) : c.boldGreen('0')}`);
+        if (staticResult.totalFindings > 0) {
+          for (const [cls, count] of Object.entries(staticResult.summary.byClass)) {
+            console.log(`      ${c.cyan(cls.padEnd(16))} ${c.bold(String(count))}`);
+          }
+        }
+      } else {
+        console.log(c.dim('  Static Checks: no changed files'));
+      }
+
+      // Cascade detection
+      try {
+        const cascadeResult = detectCascade('HEAD~1..HEAD', process.cwd());
+        console.log(`\n${c.bold('  Cascade Detection:')}`);
+        console.log(`    Functions changed: ${c.bold(String(cascadeResult.summary.functionsChanged))}`);
+        console.log(`    Cascades found:    ${cascadeResult.summary.cascadesFound > 0 ? c.boldRed(String(cascadeResult.summary.cascadesFound)) : c.boldGreen('0')}`);
+        if (cascadeResult.summary.cascadesFound > 0) {
+          for (const [type, count] of Object.entries(cascadeResult.summary.byType)) {
+            console.log(`      ${c.cyan(type.padEnd(16))} ${c.bold(String(count))}`);
+          }
+        }
+      } catch (_) {
+        console.log(c.dim('\n  Cascade Detection: unable to analyze'));
+      }
+
+      console.log('');
+      return;
+    }
+
+    // Default: show audit log (existing behavior)
     const sqliteStore = oracle.store.getSQLiteStore();
     if (!sqliteStore) {
       console.log(c.yellow('Audit log requires SQLite backend.'));
       return;
     }
-    const entries = sqliteStore.getAuditLog({
-      limit: parseInt(args.limit, 10) || 20,
-      table: args.table,
-      id: args.id,
-      action: args.action,
-    });
-    if (entries.length === 0) {
-      console.log(c.yellow('No audit log entries found.'));
-    } else {
-      console.log(c.boldCyan(`Audit Log (${entries.length} entries):\n`));
-      for (const e of entries) {
-        const actionColor = e.action === 'add' ? c.green : e.action === 'prune' || e.action === 'retire' ? c.red : c.yellow;
-        console.log(`  ${c.dim(e.timestamp)} ${actionColor(e.action.padEnd(7))} ${c.cyan(e.table.padEnd(8))} ${c.dim(e.id)} ${c.dim(JSON.stringify(e.detail))}`);
-      }
+
+    // If no subcommand, show help for new audit commands
+    if (!sub) {
+      console.log(`
+${c.boldCyan('Audit Commands')} \u2014 assumption mismatch detection
+
+${c.bold('Subcommands:')}
+  ${c.cyan('audit check')}       Run static checkers on files (6 bug classes)
+  ${c.cyan('audit cascade')}     Detect cascading mismatches from a commit
+  ${c.cyan('audit summary')}     Combined audit report (static + cascade)
+  ${c.cyan('audit log')}         Show audit log entries (default)
+
+${c.bold('Options:')}
+  ${c.yellow('--file')} <path>        Specific file to check
+  ${c.yellow('--from')} <commit>      Commit range for cascade detection
+  ${c.yellow('--bug-class')} <class>  Filter by bug class (state-mutation,security,concurrency,type,integration,edge-case)
+  ${c.yellow('--min-severity')} <s>   Minimum severity (high,medium,low)
+  ${c.yellow('--json')}               JSON output
+      `);
+      return;
     }
+
+    if (sub === 'log') {
+      // Original audit log behavior
+      const entries = sqliteStore.getAuditLog({
+        limit: parseInt(args.limit, 10) || 20,
+        table: args.table,
+        id: args.id,
+        action: args.action,
+      });
+      if (entries.length === 0) {
+        console.log(c.yellow('No audit log entries found.'));
+      } else {
+        console.log(c.boldCyan(`Audit Log (${entries.length} entries):\n`));
+        for (const e of entries) {
+          const actionColor = e.action === 'add' ? c.green : e.action === 'prune' || e.action === 'retire' ? c.red : c.yellow;
+          console.log(`  ${c.dim(e.timestamp)} ${actionColor(e.action.padEnd(7))} ${c.cyan(e.table.padEnd(8))} ${c.dim(e.id)} ${c.dim(JSON.stringify(e.detail))}`);
+        }
+      }
+      return;
+    }
+
+    console.error(c.boldRed('Error:') + ` Unknown audit subcommand: ${sub}. Run ${c.cyan('oracle audit')} for help.`);
   };
 
   handlers['auto-submit'] = (args) => {

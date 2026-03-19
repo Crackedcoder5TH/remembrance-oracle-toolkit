@@ -10,6 +10,7 @@ const { auditLog } = require('../core/audit-logger');
 const { captureResolveDebug } = require('../ci/auto-debug');
 const { applyPromptTag } = require('../core/oracle-config');
 const { trackResolve } = require('../core/session-tracker');
+const { enhanceResolveWithBugClasses } = require('../audit/resolve-hook');
 
 module.exports = {
   /**
@@ -177,6 +178,13 @@ module.exports = {
       captureResolveDebug(this, resolveResult, request);
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[resolve] auto-debug capture failed:', e?.message || e);
+    }
+
+    // Bug class check — warn if resolved code matches known risky patterns
+    try {
+      resolveResult = enhanceResolveWithBugClasses(resolveResult, this);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[resolve] bug class check failed:', e?.message || e);
     }
 
     // Append prompt tag when enabled

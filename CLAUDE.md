@@ -7,6 +7,7 @@ At the **start of every coding session**, before any code is written, run:
 ```bash
 node src/cli.js hooks install   # Ensure git hooks are active (idempotent, safe to re-run)
 node src/cli.js sync pull       # Pull latest patterns from personal store
+node src/cli.js debug seed      # Seed the quantum field for bug-class detection
 ```
 
 This is NON-NEGOTIABLE. If hooks are not installed, patterns will not be captured.
@@ -45,6 +46,7 @@ Before ending a session or when the user says they are done, ALWAYS run:
 
 ```bash
 node src/cli.js auto-submit    # Full pipeline: register + harvest + promote + sync
+node src/cli.js audit summary  # Final audit report — static checks + cascade detection
 ```
 
 This is the safety net — it catches anything missed during the session. Never end a session without it.
@@ -159,6 +161,11 @@ node src/cli.js mcp                        # Start MCP server (12 tools)
 node src/cli.js config                    # Oracle toggle status + prompt tag
 node src/cli.js config on                 # Enable oracle
 node src/cli.js config off                # Disable oracle
+node src/cli.js audit check               # Run static checkers (6 bug classes)
+node src/cli.js audit check --file f.js  # Check a specific file
+node src/cli.js audit cascade --from HEAD # Detect cascading assumption mismatches
+node src/cli.js audit summary            # Combined audit report
+node src/cli.js debug search --sector logic # Search by bug class sector
 node --test tests/*.test.js               # Run all tests
 ```
 

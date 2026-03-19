@@ -106,6 +106,28 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
     console.error('[oracle:pre-commit] ' + (e.message || e));
   }
 " 2>&1 || true
+
+# Audit cascade check (warning only, non-blocking)
+ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { auditFiles } = require(path.join(root, 'src/audit/static-checkers'));
+    const staged = process.env.STAGED_FILES;
+    if (staged) {
+      const files = staged.split(' ').filter(f => f.trim());
+      if (files.length > 0) {
+        const result = auditFiles(files, { minSeverity: 'high' });
+        if (result.totalFindings > 0) {
+          console.error('\\x1b[33m[oracle] Audit: ' + result.totalFindings + ' high-severity assumption mismatch(es) in staged files.\\x1b[0m');
+          console.error('\\x1b[33m  Run: oracle audit check for details.\\x1b[0m');
+        }
+      }
+    }
+  } catch(e) {
+    // Audit module not available — skip
+  }
+" 2>&1 || true
 `;
 }
 

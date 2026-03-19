@@ -132,7 +132,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     const result = reflectionLoop(code, {
       language: args.language,
       maxLoops: parseInt(args.loops, 10) || 3,
-      targetCoherence: parseFloat(args.target) || 0.9,
+      targetCoherence: args.target != null ? parseFloat(args.target) : 0.9,
       description: args.description || '',
       tags: parseTags(args),
     });

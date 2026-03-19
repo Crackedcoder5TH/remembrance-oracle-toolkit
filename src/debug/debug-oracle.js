@@ -317,7 +317,7 @@ class DebugOracle {
     this.store = store;
     this.verbose = options.verbose || false;
     this.variantLanguages = options.variantLanguages || ['python', 'typescript', 'go'];
-    this.cascadeThreshold = options.cascadeThreshold || 0.7;
+    this.cascadeThreshold = options.cascadeThreshold ?? 0.7;
 
     this._ensureSchema();
   }
@@ -444,7 +444,7 @@ class DebugOracle {
     ).get(fp.hash, language);
 
     if (existing) {
-      if ((existing.confidence || existing.amplitude || 0) < 0.5) {
+      if ((existing.confidence ?? existing.amplitude ?? 0) < 0.5) {
         const now = new Date().toISOString();
         this.store.db.prepare(
           'UPDATE debug_patterns SET fix_code = ?, fix_description = ?, updated_at = ?, quantum_state = ? WHERE id = ?'
@@ -460,7 +460,7 @@ class DebugOracle {
         captured: false,
         duplicate: true,
         existingId: existing.id,
-        confidence: existing.confidence || existing.amplitude || 0,
+        confidence: existing.confidence ?? existing.amplitude ?? 0,
       };
     }
 

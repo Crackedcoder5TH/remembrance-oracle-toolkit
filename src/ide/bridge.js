@@ -37,7 +37,7 @@ class IDEBridge {
    */
   constructor(options = {}) {
     this.oracle = options.oracle || new RemembranceOracle({ autoSeed: false });
-    this.minCoherency = options.minCoherency || 0.7;
+    this.minCoherency = options.minCoherency ?? 0.7;
     this.maxDiagnostics = options.maxDiagnostics || 20;
     this.enableDebug = options.enableDebug !== false;
   }

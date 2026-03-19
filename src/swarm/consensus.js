@@ -22,13 +22,13 @@
  */
 function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
   const weights = config.weights || { coherency: 0.4, selfConfidence: 0.2, peerScore: 0.4 };
-  const threshold = config.consensusThreshold || 0.7;
+  const threshold = config.consensusThreshold ?? 0.7;
 
   // Build rankings
   const rankings = agentOutputs
     .filter(o => o.code) // Only rank agents that produced code
     .map(output => {
-      const coherency = coherencyScores.get(output.agent)?.total || 0;
+      const coherency = coherencyScores.get(output.agent)?.total ?? 0;
       const self = output.confidence || 0.5;
       const peer = peerScores.get(output.agent) || 0.5;
 

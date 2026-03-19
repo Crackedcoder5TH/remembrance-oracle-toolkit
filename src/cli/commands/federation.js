@@ -61,7 +61,7 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
         console.log(`  Duplicates:         ${c.dim(String(report.duplicates))}`);
         console.log(`  Skipped:            ${c.dim(String(report.skipped))}`);
         // Record sync pull timestamp for preflight check
-        try { require('../../core/preflight').recordSyncPull(process.cwd()); } catch (_) {}
+        try { require('../../core/preflight').recordSyncPull(process.cwd()); } catch (_) { console.error('[federation] preflight record failed:', _.message); }
       } else {
         const report = oracle.sync({ verbose, dryRun });
         console.log(`${c.bold('Push')} (local → personal): ${c.boldGreen(String(report.push.synced))} synced, ${c.dim(String(report.push.duplicates))} duplicates`);

@@ -42,7 +42,7 @@ function _persistErrors(baseDir, errors) {
         fs.writeFileSync(logPath, content.slice(-256 * 1024), 'utf-8');
       }
     } catch (_) { /* rotation failure is non-fatal */ }
-  } catch (_) { /* logging failure must never break the pipeline */ }
+  } catch (_) { console.error('[auto-submit] error logging failed:', _.message, 'original errors:', errors); }
 }
 
 /**

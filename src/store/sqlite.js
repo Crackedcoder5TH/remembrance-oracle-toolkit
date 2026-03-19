@@ -1154,7 +1154,7 @@ class SQLiteStore {
 
         // Bootstrap: patterns with test proof get simulated successful usage
         // Scale: syntax + completeness + consistency determine confidence
-        const qualitySignal = ((bd.syntaxValid || 0) + (bd.completeness || 0) + (bd.consistency || 0)) / 3;
+        const qualitySignal = ((bd.syntaxValid ?? 0) + (bd.completeness ?? 0) + (bd.consistency ?? 0)) / 3;
         const hasTestProof = bd.testProof === 1.0;
 
         if (hasTestProof && qualitySignal >= 0.7) {
@@ -1892,7 +1892,7 @@ class SQLiteStore {
     return {
       patternId: parentPatternId,
       patternName: pattern?.name || 'unknown',
-      originalCoherency: pattern?.coherencyScore?.total || 0,
+      originalCoherency: pattern?.coherencyScore?.total ?? 0,
       healingCount: variants.length,
       variants: variants.map(v => ({
         id: v.id,
@@ -1905,7 +1905,7 @@ class SQLiteStore {
       })),
       bestCoherency: variants.length > 0 ? variants[0].healedCoherency : null,
       totalImprovement: variants.length > 0
-        ? variants[0].healedCoherency - (pattern?.coherencyScore?.total || 0)
+        ? variants[0].healedCoherency - (pattern?.coherencyScore?.total ?? 0)
         : 0,
     };
   }

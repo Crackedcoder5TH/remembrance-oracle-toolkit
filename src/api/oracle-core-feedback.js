@@ -101,6 +101,12 @@ module.exports = {
             } else if (process.env.ORACLE_DEBUG) {
               console.warn(`[oracle:feedback] auto-heal rejected by covenant for ${id}`);
             }
+          } else if (healed?.skipped) {
+            // Sentinel return from heal(): cooldown, no-improvement, or error
+            healResult = { healed: false, skipped: healed.skipped };
+            if (healed.skipped === 'error') {
+              this._emit({ type: 'auto_heal_failed', id, reason: 'error' });
+            }
           }
         }
       } catch (e) {
@@ -161,6 +167,11 @@ module.exports = {
               this._emit({ type: 'auto_heal', id, improvement: healed.improvement });
             } else if (process.env.ORACLE_DEBUG) {
               console.warn(`[oracle:patternFeedback] auto-heal rejected by covenant for ${id}`);
+            }
+          } else if (healed?.skipped) {
+            healResult = { healed: false, skipped: healed.skipped };
+            if (healed.skipped === 'error') {
+              this._emit({ type: 'auto_heal_failed', id, reason: 'error' });
             }
           }
         }

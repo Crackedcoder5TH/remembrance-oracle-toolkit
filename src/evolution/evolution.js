@@ -65,7 +65,7 @@ function stalenessPenalty(pattern, config = EVOLUTION_DEFAULTS) {
     maxPenalty: config.stalenessMaxPenalty,
     gracePeriodDays: 0,
   });
-  return result.penalty || 0;
+  return result.penalty ?? 0;
 }
 
 // ─── Evolve Frequency Penalty ───
@@ -310,11 +310,12 @@ function evolve(ctx, options = {}) {
         if (process.env.ORACLE_DEBUG) console.warn('[evolution:evolve] silent failure:', e?.message || e);
         report.healFailed.push({ id: pattern.id, name: pattern.name, reason: 'update failed' });
       }
+    } else if (healResult?.skipped === 'cooldown') {
+      // Cooldowns are not failures — track separately so healFailed.length is accurate
+      if (!report.healSkipped) report.healSkipped = [];
+      report.healSkipped.push({ id: pattern.id, name: pattern.name, reason: 'cooldown' });
     } else {
-      // Distinguish cooldown skips from real failures — heal() returns typed sentinels
-      const reason = healResult?.skipped === 'cooldown' ? 'cooldown'
-        : healResult?.skipped === 'error' ? 'healing failed'
-        : 'no improvement';
+      const reason = healResult?.skipped === 'error' ? 'healing failed' : 'no improvement';
       report.healFailed.push({
         id: pattern.id,
         name: pattern.name,

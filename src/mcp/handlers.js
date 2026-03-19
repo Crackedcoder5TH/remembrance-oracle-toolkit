@@ -156,7 +156,7 @@ const HANDLERS = {
       const shareResult = oracle.share({
         patterns: args.patterns,
         tags: args.tags,
-        minCoherency: args.minCoherency || 0.7,
+        minCoherency: args.minCoherency ?? 0.7,
         dryRun: args.dryRun || false,
       });
       if (scope === 'community') {
@@ -252,7 +252,7 @@ const HANDLERS = {
         const result = reflectionLoop(args.code || '', {
           language: args.language,
           maxLoops: args.maxLoops || 3,
-          targetCoherence: args.targetCoherence || 0.9,
+          targetCoherence: args.targetCoherence ?? 0.9,
         });
         result.history = (result.history || []).map(h => ({
           loop: h.loop,
@@ -295,7 +295,7 @@ const HANDLERS = {
         return oracle.healingStats();
       }
       case 'improved': {
-        return oracle.queryHealingImprovement(args.minDelta || 0.2);
+        return oracle.queryHealingImprovement(args.minDelta ?? 0.2);
       }
       case 'variants': {
         if (!args.patternId) throw new Error('patternId is required for variants action');

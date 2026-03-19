@@ -331,7 +331,7 @@ function _usageSignature(pattern) {
 
   const usageCount = pattern.usageCount || 0;
   const successCount = pattern.successCount || 0;
-  const coherency = pattern.coherencyTotal || pattern.coherencyScore?.total || 0;
+  const coherency = pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
   const bugReports = pattern.bugReports || 0;
   const upvotes = pattern.upvotes || 0;
   const downvotes = pattern.downvotes || 0;

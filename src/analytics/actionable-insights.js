@@ -84,13 +84,15 @@ function healStalePatterns(oracle, options = {}) {
           newCoherency: result.newCoherency,
           improvement: result.improvement,
         });
+      } else if (result?.skipped === 'cooldown') {
+        report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'cooldown' });
+      } else if (result?.skipped === 'error') {
+        report.failed++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'healing-error' });
       } else {
         report.skipped++;
-        report.details.push({
-          id: pattern.id,
-          name: pattern.name,
-          action: 'no-improvement',
-        });
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'no-improvement' });
       }
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healStalePatterns] operation failed:', e?.message || e);
@@ -152,8 +154,15 @@ function healLowFeedback(oracle, options = {}) {
           successRate: wp.successRate,
           newCoherency: result.newCoherency,
         });
+      } else if (result?.skipped === 'cooldown') {
+        report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'cooldown' });
+      } else if (result?.skipped === 'error') {
+        report.failed++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'healing-error' });
       } else {
         report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'no-improvement' });
       }
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healLowFeedback] operation failed:', e?.message || e);
@@ -205,8 +214,15 @@ function healOverEvolved(oracle, options = {}) {
           evolveCount: oe.evolveCount,
           newCoherency: result.newCoherency,
         });
+      } else if (result?.skipped === 'cooldown') {
+        report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'cooldown' });
+      } else if (result?.skipped === 'error') {
+        report.failed++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'healing-error' });
       } else {
         report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'no-improvement' });
       }
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healOverEvolved] operation failed:', e?.message || e);

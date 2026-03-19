@@ -717,9 +717,9 @@ function globalStats() {
     byType[k] = (byType[k] || 0) + v;
   }
 
-  const totalPatterns = (personal.totalPatterns || 0) + (community.totalPatterns || 0);
-  const weightedCoherency = (personal.avgCoherency || 0) * (personal.totalPatterns || 0)
-    + (community.avgCoherency || 0) * (community.totalPatterns || 0);
+  const totalPatterns = (personal.totalPatterns ?? 0) + (community.totalPatterns ?? 0);
+  const weightedCoherency = (personal.avgCoherency ?? 0) * (personal.totalPatterns ?? 0)
+    + (community.avgCoherency ?? 0) * (community.totalPatterns ?? 0);
 
   return {
     available: true,

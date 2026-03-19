@@ -304,7 +304,7 @@ ${c.bold('Options:')}
     if (sub === 'reexcite-all') {
       console.log(c.boldCyan('Bulk Re-excitation') + ' \u2014 restoring all decohered patterns to |superposition\u27E9\n');
       const result = oracle.debugReexciteAll({
-        boostAmount: parseFloat(args.boost) || 0.15,
+        boostAmount: args.boost != null ? parseFloat(args.boost) : 0.15,
       });
       if (jsonOut()) { console.log(JSON.stringify(result)); return; }
       console.log(`  Decohered found: ${c.bold(String(result.total))}`);

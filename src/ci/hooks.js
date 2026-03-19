@@ -144,27 +144,26 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       console.log('Oracle: ' + (result.harvest.registered || 0) + ' harvested, ' + (result.promoted || 0) + ' promoted' + (result.synced ? ', synced' : '') + debugInfo);
     }
     if (result.errors && result.errors.length > 0) {
+      console.error('[oracle:post-commit] pipeline errors: ' + result.errors.join('; '));
       const fs = require('fs');
       const path = require('path');
       const logDir = path.join(process.cwd(), '.remembrance');
-      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
+      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_m) { console.error('[oracle:post-commit] log dir failed: ' + _m.message); }
       const logPath = path.join(logDir, 'hook-errors.log');
       const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\n';
-      try { fs.appendFileSync(logPath, entry); } catch(_) {}
+      try { fs.appendFileSync(logPath, entry); } catch(_w) { console.error('[oracle:post-commit] log write failed: ' + _w.message); }
     }
   } catch(e) {
     // Always emit to stderr so errors are never fully silent.
-    // Previously, triple-nested catch blocks swallowed all errors —
-    // if both auto-submit AND log writing failed, the error vanished completely.
     console.error('[oracle:post-commit] ' + (e.message || e));
     try {
       const fs = require('fs');
       const path = require('path');
       const logDir = path.join(process.cwd(), '.remembrance');
-      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
+      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_m) { console.error('[oracle:post-commit] log dir failed: ' + _m.message); }
       const logPath = path.join(logDir, 'hook-errors.log');
       const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\n';
-      try { fs.appendFileSync(logPath, entry); } catch(_) {}
+      try { fs.appendFileSync(logPath, entry); } catch(_w) { console.error('[oracle:post-commit] log write failed: ' + _w.message); }
     } catch(_) {}
   }
 " 2>/dev/null || true

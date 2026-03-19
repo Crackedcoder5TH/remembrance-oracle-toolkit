@@ -107,7 +107,7 @@ module.exports = {
 
         // Store healed variant as linked lineage when coherency improved
         const originalCoherency = patternData.coherencyScore || 0;
-        const healedCoherency = healing.fullCoherency || healing.coherence || 0;
+        const healedCoherency = healing.fullCoherency ?? healing.coherence ?? 0;
         if (healedCoherency > originalCoherency && this.patterns._sqlite) {
           try {
             const variant = this.patterns._sqlite.addHealedVariant({
@@ -144,7 +144,7 @@ module.exports = {
 
         // Record failed healing attempt to persistent storage
         if (typeof this._trackHealingSuccess === 'function') this._trackHealingSuccess(patternData.id, false, {
-          coherencyBefore: patternData.coherencyScore || 0,
+          coherencyBefore: patternData.coherencyScore ?? 0,
           healingLoops: 0,
         });
       }

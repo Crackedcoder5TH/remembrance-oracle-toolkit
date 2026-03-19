@@ -61,7 +61,7 @@ class ChromaDBBridge {
     if (pattern.coherencyScore && typeof pattern.coherencyScore === 'object') {
       coherence = pattern.coherencyScore.total || 0;
     } else {
-      coherence = pattern.coherency_total || pattern.coherence || 0;
+      coherence = pattern.coherency_total ?? pattern.coherence ?? 0;
     }
 
     return this._call({

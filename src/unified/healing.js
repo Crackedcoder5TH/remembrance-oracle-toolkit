@@ -190,7 +190,7 @@ function healSweep(patterns, options = {}) {
         id: pattern.id,
         name: pattern.name,
         coherency: pattern.coherencyScore?.total ?? 0,
-        reason: result?.skipped || 'no-improvement',
+        reason: result?.skipped || (result && result.improvement < 0 ? 'regression' : 'no-improvement'),
       });
     }
   }

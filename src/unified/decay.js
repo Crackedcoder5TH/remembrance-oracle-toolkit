@@ -87,7 +87,7 @@ function computeDecay(item, options = {}) {
   switch (config.decayModel) {
     case 'exponential':
       // e^(-λt) — used by debug decoherence
-      factor = Math.exp(-(config.lambda || 0.005) * daysAfterGrace);
+      factor = Math.exp(-(config.lambda ?? 0.005) * daysAfterGrace);
       break;
     case 'linear': {
       // Linear ramp from 0 to maxPenalty over a window
@@ -96,7 +96,7 @@ function computeDecay(item, options = {}) {
       const range = end - start;
       if (range <= 0) { factor = 1.0; break; }
       const progress = Math.min(1, Math.max(0, (daysAfterGrace - start) / range));
-      const penalty = progress * (config.maxPenalty || 0.15);
+      const penalty = progress * (config.maxPenalty ?? 0.15);
       return { factor: 1.0 - penalty, daysSinceUse, decayed: penalty > 0, penalty };
     }
     default:

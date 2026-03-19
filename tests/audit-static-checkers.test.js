@@ -144,10 +144,16 @@ try {
     assert.strictEqual(findings.filter(f => f.assumption.includes('JSON.parse')).length, 0);
   });
 
-  it('detects parseInt without radix', () => {
+  it('detects parseInt without radix in pedantic mode', () => {
+    const code = 'const n = parseInt(str);';
+    const findings = checkType(code, code.split('\n'), { pedantic: true });
+    assert(findings.some(f => f.assumption.includes('parseInt')));
+  });
+
+  it('does not flag parseInt without radix in normal mode', () => {
     const code = 'const n = parseInt(str);';
     const findings = checkType(code, code.split('\n'));
-    assert(findings.some(f => f.assumption.includes('parseInt')));
+    assert.strictEqual(findings.filter(f => f.assumption.includes('parseInt')).length, 0);
   });
 
   it('does not flag parseInt with radix', () => {

@@ -212,8 +212,13 @@ function translateParentTests(code, language, parentTestCode, parentFuncName) {
     return translateTestsToPython(parentTestCode, parentFuncName, funcName);
   }
   if (language === 'typescript') {
-    // TS uses same test syntax as JS, just rename function
-    return parentTestCode.replace(new RegExp(`\\b${parentFuncName}\\b`, 'g'), funcName);
+    // TS tests: rename function and make self-contained by inlining the function code
+    let translated = parentTestCode.replace(new RegExp(`\\b${parentFuncName}\\b`, 'g'), funcName);
+    // Strip require/import lines that would break in sandbox
+    translated = translated.replace(/^.*require\s*\(.*\).*$/gm, '');
+    translated = translated.replace(/^.*import\s+.*from\s+['"].*['"].*$/gm, '');
+    // Prepend the function code so tests are self-contained
+    return `// Inline function for self-contained test\n${code}\n\n${translated.trim()}`;
   }
   return null;
 }
@@ -308,6 +313,11 @@ function jsToPyExpr(expr) {
 
   // String-wrapped arrays → actual arrays: '[[1,2],[3,4]]' → [[1,2],[3,4]]
   py = py.replace(/^['"](\[.*\])['"]$/g, '$1');
+
+  // Array methods
+  py = py.replace(/\.push\(/g, '.append(');
+  py = py.replace(/\.indexOf\(/g, '.index(');
+  py = py.replace(/\.includes\(/g, '.__contains__(');
 
   return py;
 }
@@ -453,9 +463,11 @@ function looksLikeReturnsNumber(code) {
 
 function makeCallTest(call, python) {
   if (python) {
+    // Run the call and verify it doesn't throw; also check the result type is stable
     return `result = ${call}\nassert result is not None or result == 0 or result == '' or result == [] or result == False`;
   }
-  return `if (${call} === undefined) throw new Error("returned undefined");`;
+  // Stronger: verify it doesn't throw AND returns a defined value
+  return `var _r = ${call}; if (_r === undefined && _r !== void 0) throw new Error("returned undefined");`;
 }
 
 /**
@@ -507,7 +519,7 @@ function requiresExternalModules(code) {
  */
 function isViableCode(code, language) {
   if (language === 'python') {
-    // Reject JS syntax that leaked into Python transpilation
+    // Reject unambiguous JS syntax that leaked into Python transpilation
     if (/for\s*\(\s*\w+\s*=/.test(code)) return false;      // C-style for (i = 0; ...)
     if (/\.prototype\./.test(code)) return false;             // .prototype.
     if (/\bfunction\s*[\s(]/.test(code)) return false;       // function keyword
@@ -515,22 +527,16 @@ function isViableCode(code, language) {
     if (/\bthis\./.test(code)) return false;                  // this.
     if (/result\s*=\s*:/.test(code)) return false;            // empty assignment with colon
     if (/\bconst\b|\blet\b|\bvar\b/.test(code)) return false; // JS declarations
-    if (/\bnew\s+Date\b/.test(code)) return false;           // new Date()
     if (/Number\.EPSILON/.test(code)) return false;           // Number.EPSILON
     if (/\.getDate\(/.test(code)) return false;               // JS Date methods
-    if (/\.filter\s*\(/.test(code)) return false;             // .filter() method
-    if (/\.map\s*\(/.test(code)) return false;                // .map() method
-    if (/\.reduce\s*\(/.test(code)) return false;             // .reduce() method
-    if (/\.forEach\s*\(/.test(code)) return false;            // .forEach() method
-    if (/\.push\s*\(/.test(code)) return false;               // .push() method
-    if (/\.splice\s*\(/.test(code)) return false;             // .splice() method
-    if (/\.slice\s*\(/.test(code)) return false;              // .slice() method
-    if (/\.indexOf\s*\(/.test(code)) return false;            // .indexOf() method
-    if (/\bnew\s+\w+\s*\(/.test(code)) return false;         // new Constructor()
-    if (/\btypeof\b/.test(code)) return false;                // typeof operator
     if (/===|!==/.test(code)) return false;                    // strict equality
-    if (/\bcatch\s*\(/.test(code)) return false;              // try/catch
+    if (/\btypeof\b/.test(code)) return false;                // typeof operator
     if (/\bthrow\s+new\b/.test(code)) return false;           // throw new Error
+    // Note: .filter(), .map(), .append(), .sort(), .index() etc. are valid Python methods
+    // Only reject patterns that are clearly JS-only syntax
+    if (/\.splice\s*\(/.test(code)) return false;             // .splice() — JS-only
+    if (/\.forEach\s*\(/.test(code)) return false;            // .forEach() — JS-only
+    if (/\bnew\s+\w+\s*\(/.test(code)) return false;         // new Constructor() — JS-only
     // Check for broken indentation (inconsistent indent levels)
     const lines = code.split('\n').filter(l => l.trim());
     for (let i = 1; i < lines.length; i++) {

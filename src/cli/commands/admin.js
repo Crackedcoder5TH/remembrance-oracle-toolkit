@@ -101,6 +101,24 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
         console.log('');
       }
 
+      // Cross-reference with debug patterns if oracle available
+      try {
+        const { crossReference, crossReferenceSummary } = require('../../audit/cross-reference');
+        const allFindings = result.files.flatMap(f => f.findings);
+        const enriched = crossReference(allFindings, oracle);
+        const xrefSummary = crossReferenceSummary(enriched);
+        if (xrefSummary.withFixes > 0) {
+          console.log(c.bold('  Known Fixes:'));
+          for (const item of xrefSummary.actionable) {
+            console.log(`    L${String(item.line).padStart(4)} [${c.cyan(item.bugClass)}] ${c.dim('\u2192')} ${c.green(item.topFix.fixDescription || 'fix available')}`);
+            if (item.alternativeFixes > 0) console.log(`          ${c.dim(`+${item.alternativeFixes} alternative fix(es)`)}`);
+          }
+          console.log('');
+        }
+      } catch (_) {
+        // Cross-reference not available — non-critical
+      }
+
       console.log(c.bold('  Summary:'));
       for (const [cls, count] of Object.entries(result.summary.byClass)) {
         console.log(`    ${c.cyan(cls.padEnd(16))} ${c.bold(String(count))}`);
@@ -200,6 +218,62 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       return;
     }
 
+    // Subcommand: audit xref — cross-reference findings with debug patterns
+    if (sub === 'xref') {
+      const { auditFiles } = require('../../audit/static-checkers');
+      const { crossReference, crossReferenceSummary } = require('../../audit/cross-reference');
+
+      let files = [];
+      const targetFile = args.file || args._positional[1];
+      if (targetFile) {
+        files = [targetFile];
+      } else {
+        try {
+          const changed = execSync('git diff HEAD~1 --name-only --diff-filter=ACM 2>/dev/null', { encoding: 'utf-8' })
+            .trim().split('\n').filter(f => /\.(js|ts)$/.test(f) && f.trim());
+          files = changed;
+        } catch (_) { /* empty */ }
+      }
+
+      if (files.length === 0) {
+        console.log(c.yellow('No files to cross-reference.'));
+        return;
+      }
+
+      const result = auditFiles(files);
+      const allFindings = result.files.flatMap(f => f.findings);
+      const enriched = crossReference(allFindings, oracle);
+      const summary = crossReferenceSummary(enriched);
+
+      if (args.json === true) { console.log(JSON.stringify({ findings: enriched, summary })); return; }
+
+      console.log(c.boldCyan(`Cross-Reference Report \u2014 ${files.length} file(s)\n`));
+      console.log(`  Findings:    ${c.bold(String(summary.totalFindings))}`);
+      console.log(`  With fixes:  ${summary.withFixes > 0 ? c.boldGreen(String(summary.withFixes)) : c.dim('0')}`);
+      console.log(`  Fix rate:    ${c.bold(summary.fixRate)}\n`);
+
+      if (summary.actionable.length > 0) {
+        console.log(c.bold('  Actionable items:'));
+        for (const item of summary.actionable) {
+          console.log(`    L${String(item.line).padStart(4)} [${c.cyan(item.bugClass)}]`);
+          console.log(`      ${c.dim('Issue:')}  ${item.assumption}`);
+          console.log(`      ${c.dim('Fix:')}    ${c.green(item.topFix.fixDescription || item.topFix.fixCode?.slice(0, 80) || 'available')}`);
+          console.log(`      ${c.dim('Source:')} ${item.topFix.errorMessage || 'debug pattern'} (amplitude: ${c.bold(String((item.topFix.amplitude || 0).toFixed(2)))})`);
+          if (item.alternativeFixes > 0) console.log(`      ${c.dim(`+${item.alternativeFixes} alternative(s)`)}`);
+        }
+        console.log('');
+      }
+
+      if (Object.keys(summary.coverage).length > 0) {
+        console.log(c.bold('  Coverage by bug class:'));
+        for (const [cls, cov] of Object.entries(summary.coverage)) {
+          const rate = cov.total > 0 ? (cov.withFix / cov.total * 100).toFixed(0) : '0';
+          console.log(`    ${c.cyan(cls.padEnd(16))} ${cov.withFix}/${cov.total} (${rate}%)`);
+        }
+      }
+      return;
+    }
+
     // Default: show audit log (existing behavior)
     const sqliteStore = oracle.store.getSQLiteStore();
     if (!sqliteStore) {
@@ -215,7 +289,8 @@ ${c.boldCyan('Audit Commands')} \u2014 assumption mismatch detection
 ${c.bold('Subcommands:')}
   ${c.cyan('audit check')}       Run static checkers on files (6 bug classes)
   ${c.cyan('audit cascade')}     Detect cascading mismatches from a commit
-  ${c.cyan('audit summary')}     Combined audit report (static + cascade)
+  ${c.cyan('audit xref')}        Cross-reference findings with debug pattern fixes
+  ${c.cyan('audit summary')}     Combined audit report (static + cascade + xref)
   ${c.cyan('audit log')}         Show audit log entries (default)
 
 ${c.bold('Options:')}

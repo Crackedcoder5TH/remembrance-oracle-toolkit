@@ -231,11 +231,21 @@ function inferBrokenAssumptions(changes) {
 }
 
 /**
+ * Check if a file is a test file (should be excluded from cascade warnings by default).
+ */
+function isTestFile(filePath) {
+  return /\.(test|spec|_test)\.(js|ts|py|go|rs)$/.test(filePath) ||
+    /\/tests?\//.test(filePath) ||
+    /\/__tests__\//.test(filePath) ||
+    /\/test\//.test(filePath);
+}
+
+/**
  * Run cascade detection from a commit.
  *
  * @param {string} commitRange - Git commit range (e.g., 'HEAD~1..HEAD', 'abc123')
  * @param {string} cwd - Repository root
- * @param {object} [options] - { dryRun, maxDepth }
+ * @param {object} [options] - { dryRun, maxDepth, includeTests }
  * @returns {{ changedFunctions: Array, cascades: Array, summary: object }}
  */
 function detectCascade(commitRange, cwd, options = {}) {
@@ -285,8 +295,14 @@ function detectCascade(commitRange, cwd, options = {}) {
       const dependents = findDependents(change.file, cwd);
 
       // Check each function in each dependent file
+      const includeTests = options.includeTests || false;
       for (const fn of change.functions) {
         for (const depFile of dependents) {
+          // Skip test files by default (they're expected to call without guards)
+          if (!includeTests && isTestFile(depFile)) continue;
+          // Skip the source file itself (internal callers are usually safe)
+          if (path.resolve(depFile) === path.resolve(cwd, change.file)) continue;
+
           const callers = findCallers(fn, depFile);
 
           for (const caller of callers) {
@@ -323,4 +339,5 @@ module.exports = {
   findDependents,
   findCallers,
   inferBrokenAssumptions,
+  isTestFile,
 };

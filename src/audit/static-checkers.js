@@ -256,24 +256,36 @@ function checkConcurrency(code, lines) {
 
 // ─── Checker: Type ───
 
-function checkType(code, lines) {
+function checkType(code, lines, options = {}) {
   const findings = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNum = i + 1;
 
-    // Division without zero-guard
+    // Division without zero-guard (conservative: only flag obvious risky divisions)
     const divMatch = line.match(/(\w+(?:\.\w+)*)\s*\/\s*(\w+(?:\.\w+)*)/);
     if (divMatch && !/\/\/|\/\*|\*\//.test(line.slice(0, line.indexOf(divMatch[0])))) {
       const divisor = divMatch[2];
-      // Check if there's a zero-guard nearby
-      const context = lines.slice(Math.max(0, i - 3), i + 1).join('\n');
-      if (!/\b0\b/.test(context) && !context.includes(`${divisor} !== 0`) &&
-          !context.includes(`${divisor} > 0`) && !context.includes(`${divisor} != 0`) &&
-          !context.includes(`${divisor} === 0`) && !/Math\.(max|min|abs)/.test(line)) {
-        // Only flag if divisor is a variable (not a literal number)
-        if (!/^\d+(\.\d+)?$/.test(divisor)) {
+      // Skip known-safe divisors: literal numbers, .length (always >= 0), common safe patterns
+      const isSafeDivisor = /^\d+(\.\d+)?$/.test(divisor) ||
+        /\.length$/.test(divisor) ||
+        /\.size$/.test(divisor) ||
+        /\.count$/.test(divisor) ||
+        /total|count|sum|max|min/i.test(divisor);
+      if (!isSafeDivisor) {
+        // Check if there's a zero-guard nearby (wider context)
+        const context = lines.slice(Math.max(0, i - 5), i + 2).join('\n');
+        const hasGuard = context.includes(`${divisor} !== 0`) ||
+          context.includes(`${divisor} > 0`) ||
+          context.includes(`${divisor} != 0`) ||
+          context.includes(`${divisor} === 0`) ||
+          context.includes(`${divisor} > 1`) ||
+          /if\s*\(.*\b0\b/.test(context) ||
+          /Math\.(max|min|abs)/.test(line) ||
+          /\?\s*.*\//.test(line) || // ternary guard: x ? a / x : 0
+          /\|\|\s*1/.test(line);     // fallback: x || 1
+        if (!hasGuard) {
           findings.push({
             line: lineNum,
             bugClass: BUG_CLASSES.TYPE,
@@ -303,17 +315,19 @@ function checkType(code, lines) {
       }
     }
 
-    // parseInt without radix (can produce unexpected results)
-    if (/parseInt\s*\(\s*\w/.test(line) && !/parseInt\s*\([^,]+,\s*\d+/.test(line)) {
-      findings.push({
-        line: lineNum,
-        bugClass: BUG_CLASSES.TYPE,
-        assumption: `parseInt defaults to base 10`,
-        reality: `Without explicit radix, parseInt can misparse strings starting with "0"`,
-        severity: SEVERITY.LOW,
-        suggestion: `Use parseInt(value, 10) to be explicit`,
-        code: line.trim(),
-      });
+    // parseInt without radix — only flag in pedantic mode (very common, low risk in modern JS)
+    if (options.pedantic) {
+      if (/parseInt\s*\(\s*\w/.test(line) && !/parseInt\s*\([^,]+,\s*\d+/.test(line)) {
+        findings.push({
+          line: lineNum,
+          bugClass: BUG_CLASSES.TYPE,
+          assumption: `parseInt defaults to base 10`,
+          reality: `Without explicit radix, parseInt can misparse strings starting with "0"`,
+          severity: SEVERITY.LOW,
+          suggestion: `Use parseInt(value, 10) to be explicit`,
+          code: line.trim(),
+        });
+      }
     }
   }
 
@@ -528,13 +542,14 @@ function auditCode(code, options = {}) {
     ? new Set(Array.isArray(options.bugClasses) ? options.bugClasses : [options.bugClasses])
     : null;
 
+  const checkerOptions = { pedantic: options.pedantic || false };
   const checkers = [
-    { bugClass: BUG_CLASSES.STATE_MUTATION, fn: checkStateMutation },
-    { bugClass: BUG_CLASSES.SECURITY, fn: checkSecurity },
-    { bugClass: BUG_CLASSES.CONCURRENCY, fn: checkConcurrency },
-    { bugClass: BUG_CLASSES.TYPE, fn: checkType },
-    { bugClass: BUG_CLASSES.INTEGRATION, fn: checkIntegration },
-    { bugClass: BUG_CLASSES.EDGE_CASE, fn: checkEdgeCase },
+    { bugClass: BUG_CLASSES.STATE_MUTATION, fn: (c, l) => checkStateMutation(c, l) },
+    { bugClass: BUG_CLASSES.SECURITY, fn: (c, l) => checkSecurity(c, l) },
+    { bugClass: BUG_CLASSES.CONCURRENCY, fn: (c, l) => checkConcurrency(c, l) },
+    { bugClass: BUG_CLASSES.TYPE, fn: (c, l) => checkType(c, l, checkerOptions) },
+    { bugClass: BUG_CLASSES.INTEGRATION, fn: (c, l) => checkIntegration(c, l) },
+    { bugClass: BUG_CLASSES.EDGE_CASE, fn: (c, l) => checkEdgeCase(c, l) },
   ];
 
   let findings = [];

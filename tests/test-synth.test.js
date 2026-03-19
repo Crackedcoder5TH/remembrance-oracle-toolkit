@@ -13,6 +13,7 @@ const {
   jsToPyExpr,
   generateFromSignature,
   synthesizeForCandidates,
+  isViableCode,
 } = require('../src/evolution/test-synth');
 const { RemembranceOracle } = require('../src/api/oracle');
 
@@ -258,6 +259,74 @@ describe('Test Synthesizer', () => {
       // Verify candidate still has no test code
       const cand = oracle.candidates()[0];
       assert.equal(cand.testCode, null);
+    });
+  });
+
+  describe('isViableCode', () => {
+    it('rejects Python code with JS const/let/var', () => {
+      assert.equal(isViableCode('const x = 5', 'python'), false);
+      assert.equal(isViableCode('let y = 10', 'python'), false);
+    });
+
+    it('rejects Python code with arrow functions', () => {
+      assert.equal(isViableCode('const fn = (x) => { return x; }', 'python'), false);
+    });
+
+    it('rejects Python code with function keyword', () => {
+      assert.equal(isViableCode('function add(a, b) { return a + b; }', 'python'), false);
+    });
+
+    it('rejects Python code with strict equality', () => {
+      assert.equal(isViableCode('if x === y:', 'python'), false);
+    });
+
+    it('accepts valid Python with .filter()', () => {
+      assert.equal(isViableCode('def f(items):\n    return list(filter(lambda x: x > 0, items))', 'python'), true);
+    });
+
+    it('accepts valid Python with .append()', () => {
+      assert.equal(isViableCode('def f(items):\n    items.append(1)\n    return items', 'python'), true);
+    });
+
+    it('accepts valid Python with .sort()', () => {
+      assert.equal(isViableCode('def f(items):\n    items.sort()\n    return items', 'python'), true);
+    });
+
+    it('accepts valid Python with .index()', () => {
+      assert.equal(isViableCode('def f(items, x):\n    return items.index(x)', 'python'), true);
+    });
+
+    it('accepts valid Python with list slicing', () => {
+      assert.equal(isViableCode('def f(items):\n    return items[1:3]', 'python'), true);
+    });
+
+    it('accepts valid Python with try/except', () => {
+      assert.equal(isViableCode('def f(x):\n    try:\n        return int(x)\n    except ValueError:\n        return 0', 'python'), true);
+    });
+
+    it('rejects Python with .splice() (JS-only)', () => {
+      assert.equal(isViableCode('def f(items):\n    items.splice(0, 1)', 'python'), false);
+    });
+
+    it('rejects Python with .forEach() (JS-only)', () => {
+      assert.equal(isViableCode('def f(items):\n    items.forEach(print)', 'python'), false);
+    });
+
+    it('rejects Python with new Constructor()', () => {
+      assert.equal(isViableCode('def f():\n    x = new Date()', 'python'), false);
+    });
+
+    it('rejects Python that shadows builtins', () => {
+      assert.equal(isViableCode('def f(val, min, max):\n    return val', 'python'), false);
+    });
+
+    it('accepts valid JavaScript', () => {
+      assert.equal(isViableCode('function add(a, b) { return a + b; }', 'javascript'), true);
+    });
+
+    it('rejects JS test files', () => {
+      const testCode = "const { describe, it } = require('node:test');\ndescribe('test', () => { it('works', () => {}); });";
+      assert.equal(isViableCode(testCode, 'javascript'), false);
     });
   });
 });

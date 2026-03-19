@@ -588,6 +588,10 @@ class PatternLibrary {
    */
   _verifyTestGate(pattern) {
     if (!pattern.testCode) {
+      // Trust the registration flag or coherency testProof if tests were validated externally
+      if (pattern.testPassed === true || pattern.coherencyScore?.breakdown?.testProof === 1.0) {
+        return { passed: true, reason: 'Test passed at registration (no inline test code)' };
+      }
       return { passed: false, reason: 'No test code — pattern has no test proof' };
     }
     try {

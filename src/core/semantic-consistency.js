@@ -12,7 +12,7 @@
 const BEHAVIOR_SIGNATURES = {
   sort: {
     keywords: ['sort', 'order', 'rank', 'arrange'],
-    codePatterns: [/\.sort\s*\(/i, /compareTo|localeCompare|<=>/, /swap|partition|pivot|merge/i, /\b(a|b)\s*[<>-]\s*\b(a|b)\b/, /sorted|sort_by|order_by/i],
+    codePatterns: [/\.sort\s*\(/i, /compareTo|localeCompare|<=>/, /swap|partition|pivot|merge/i, /\b(a|b)\s*[<>-]\s*\b(a|b)\b/, /sorted|sort_by|order_by/i, /[<>]=?\s*pivot|pivot\s*[<>]=?|filter.*[<>]/i],
   },
   search: {
     keywords: ['search', 'find', 'lookup', 'locate', 'query'],
@@ -48,7 +48,7 @@ const BEHAVIOR_SIGNATURES = {
   },
   queue: {
     keywords: ['queue', 'stack', 'deque', 'fifo', 'lifo', 'enqueue', 'dequeue', 'push', 'pop'],
-    codePatterns: [/enqueue|dequeue|push|pop|shift|unshift/i, /front|rear|head|tail|peek/i, /\blength\b|\bsize\b|\bempty\b|\bfull\b/i],
+    codePatterns: [/enqueue|dequeue|push|pop|shift|unshift/i, /front|rear|head|tail|peek/i, /\b(queue|stack|deque)\b/i],
   },
 };
 

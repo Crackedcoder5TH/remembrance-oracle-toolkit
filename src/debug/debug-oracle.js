@@ -42,6 +42,8 @@
  */
 
 const crypto = require('crypto');
+const unifiedVariants = require('../unified/variants');
+const unifiedDecay = require('../unified/decay');
 
 function safeParse(str, fallback) {
   try { return JSON.parse(str || JSON.stringify(fallback)); } catch { return fallback; }
@@ -179,18 +181,21 @@ const computeConfidence = computeAmplitude;
 
 /**
  * Apply decoherence — amplitude decays exponentially with time since last observation.
- * Models the physical reality that unobserved patterns lose reliability.
+ * NOW DELEGATES to unified decay engine with 'debug' preset.
  *
  * decoheredAmplitude = amplitude × e^(-λt)
  * where t = days since last observation, λ = DECOHERENCE_LAMBDA
  */
 function applyDecoherence(amplitude, lastObservedAt, now) {
   if (!lastObservedAt) return amplitude;
-  const lastTime = new Date(lastObservedAt).getTime();
-  const nowTime = (now ? new Date(now) : new Date()).getTime();
-  const daysSinceObservation = Math.max(0, (nowTime - lastTime) / (1000 * 60 * 60 * 24));
-  const decoherenceFactor = Math.exp(-DECOHERENCE_LAMBDA * daysSinceObservation);
-  return Math.round(amplitude * decoherenceFactor * 1000) / 1000;
+  const result = unifiedDecay.applyDecayToScore(amplitude, {
+    last_observed_at: lastObservedAt,
+  }, {
+    preset: 'debug',
+    lambda: DECOHERENCE_LAMBDA,
+    now: now ? new Date(now) : new Date(),
+  });
+  return result.adjusted;
 }
 
 /**
@@ -241,19 +246,12 @@ function computeInterference(patternA, patternB) {
 }
 
 /**
- * Simple fix code similarity metric — Jaccard similarity on token sets.
+ * Simple fix code similarity metric — NOW DELEGATES to unified similarity.
  */
 function computeFixSimilarity(codeA, codeB) {
   if (!codeA || !codeB) return 0;
-  const tokensA = new Set(codeA.split(/\W+/).filter(Boolean));
-  const tokensB = new Set(codeB.split(/\W+/).filter(Boolean));
-  if (tokensA.size === 0 && tokensB.size === 0) return 1;
-  let intersection = 0;
-  for (const t of tokensA) {
-    if (tokensB.has(t)) intersection++;
-  }
-  const union = tokensA.size + tokensB.size - intersection;
-  return union > 0 ? intersection / union : 0;
+  const { jaccardSimilarity } = require('../unified/similarity');
+  return jaccardSimilarity(codeA, codeB);
 }
 
 // ─── Variant Generation (Entangled State Creation) ───
@@ -297,89 +295,16 @@ function generateErrorVariants(errorMessage, category) {
 
 /**
  * Generate fix code variants — entangled fix states across languages.
+ * NOW DELEGATES to src/unified/variants.js.
  */
 function generateFixVariants(fixCode, fixLanguage, targetLanguages) {
-  const variants = [];
-
-  for (const lang of targetLanguages) {
-    if (lang === fixLanguage) continue;
-
-    let variantCode = fixCode;
-
-    if (fixLanguage === 'javascript' || fixLanguage === 'typescript') {
-      if (lang === 'python') {
-        variantCode = jsToPythonFix(fixCode);
-      } else if (lang === 'go') {
-        variantCode = jsToGoFix(fixCode);
-      } else if (lang === 'typescript' && fixLanguage === 'javascript') {
-        variantCode = jsToTsFix(fixCode);
-      }
-    }
-
-    if (variantCode !== fixCode) {
-      variants.push({ code: variantCode, language: lang });
-    }
-  }
-
-  return variants;
+  return unifiedVariants.generateLanguageVariants(fixCode, fixLanguage, targetLanguages);
 }
 
-// Transpilation helpers
-function jsToPythonFix(code) {
-  return code
-    .replace(/\b(?:const|let|var)\s+/g, '')
-    .replace(/;$/gm, '')
-    .replace(/===/g, '==').replace(/!==/g, '!=')
-    .replace(/\{$/gm, ':')
-    .replace(/^\s*\}/gm, '')
-    .replace(/\/\/.*/g, m => '#' + m.slice(2))
-    .replace(/\bnull\b/g, 'None')
-    .replace(/\bundefined\b/g, 'None')
-    .replace(/\btrue\b/g, 'True')
-    .replace(/\bfalse\b/g, 'False')
-    .replace(/console\.log\(/g, 'print(')
-    .replace(/\s*\|\|\s*/g, ' or ')
-    .replace(/\s*&&\s*/g, ' and ')
-    .replace(/!(\w)/g, 'not $1')
-    .replace(/Math\.max\(/g, 'max(')
-    .replace(/Math\.min\(/g, 'min(')
-    .replace(/Math\.floor\(/g, 'int(')
-    .replace(/Math\.abs\(/g, 'abs(')
-    .replace(/(\w+)\.length/g, 'len($1)')
-    .replace(/\.push\(/g, '.append(')
-    .replace(/\.toUpperCase\(\)/g, '.upper()')
-    .replace(/\.toLowerCase\(\)/g, '.lower()');
-}
-
-function jsToGoFix(code) {
-  let result = code
-    .replace(/\bconst\s+(\w+)\s*=\s*/g, '$1 := ')
-    .replace(/\blet\s+(\w+)\s*=\s*/g, '$1 := ')
-    .replace(/\bvar\s+(\w+)\s*=\s*/g, '$1 := ')
-    .replace(/;$/gm, '')
-    .replace(/console\.log\(/g, 'fmt.Println(')
-    .replace(/\bnull\b/g, 'nil')
-    .replace(/\bundefined\b/g, 'nil')
-    .replace(/===/g, '==').replace(/!==/g, '!=')
-    .replace(/(\w+)\.length/g, 'len($1)');
-  if (result.includes('fmt.')) {
-    result = 'import "fmt"\n\n' + result;
-  }
-  return result;
-}
-
-function jsToTsFix(code) {
-  return code
-    .replace(/function\s+(\w+)\s*\(([^)]*)\)/g, (_, name, params) => {
-      const typed = params.split(',').map(p => {
-        const pname = p.trim();
-        if (!pname) return '';
-        return `${pname}: unknown`;
-      }).filter(Boolean).join(', ');
-      return `function ${name}(${typed})`;
-    })
-    .replace(/\bvar\s+/g, 'let ');
-}
+// Transpilation helpers — delegated to unified variants module
+const jsToPythonFix = unifiedVariants.jsToPython;
+const jsToGoFix = unifiedVariants.jsToGo;
+const jsToTsFix = unifiedVariants.jsToTypeScript;
 
 // ─── Debug Oracle Class (Quantum Field) ───
 

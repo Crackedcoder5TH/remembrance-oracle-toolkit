@@ -213,7 +213,23 @@ function autoSubmit(oracle, baseDir, options = {}) {
     report.errors.push(`debug-sweep: ${e.message}`);
   }
 
-  // Step 7 (was 6): Retention sweep — purge old archives, rotate entries
+  // Step 7: Debug bridge — promote debug fixes to patterns + capture failing patterns
+  try {
+    const { bridgeSync } = require('../unified/debug-bridge');
+    const bridgeResult = bridgeSync(oracle, { silent });
+    report.bridge = {
+      promoted: bridgeResult.promoted?.promoted || 0,
+      captured: bridgeResult.captured?.captured || 0,
+    };
+    if (!silent && (report.bridge.promoted > 0 || report.bridge.captured > 0)) {
+      log(`Debug bridge: ${report.bridge.promoted} promoted, ${report.bridge.captured} captured`);
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:bridge] silent failure:', e?.message || e);
+    report.errors.push(`bridge: ${e.message}`);
+  }
+
+  // Step 8 (was 7): Retention sweep — purge old archives, rotate entries
   try {
     const sqliteStore = oracle.store?.getSQLiteStore?.();
     if (sqliteStore && typeof sqliteStore.retentionSweep === 'function') {

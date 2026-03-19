@@ -102,7 +102,9 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       console.error('\\x1b[33m[oracle] Warning: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
       console.error('\\x1b[33m  Run: oracle pending-feedback\\x1b[0m');
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error('[oracle:pre-commit] ' + (e.message || e));
+  }
 " 2>&1 || true
 `;
 }
@@ -151,6 +153,10 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       try { fs.appendFileSync(logPath, entry); } catch(_) {}
     }
   } catch(e) {
+    // Always emit to stderr so errors are never fully silent.
+    // Previously, triple-nested catch blocks swallowed all errors —
+    // if both auto-submit AND log writing failed, the error vanished completely.
+    console.error('[oracle:post-commit] ' + (e.message || e));
     try {
       const fs = require('fs');
       const path = require('path');
@@ -160,7 +166,6 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\n';
       try { fs.appendFileSync(logPath, entry); } catch(_) {}
     } catch(_) {}
-    if (process.env.ORACLE_DEBUG) console.warn('[hooks:postCommitScript] failure:', e?.message || e);
   }
 " 2>/dev/null || true
 `;

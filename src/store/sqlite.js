@@ -725,17 +725,26 @@ class SQLiteStore {
     return {
       totalEntries: agg.cnt,
       languages: langs,
-      avgCoherency: agg.avg_c || 0,
+      avgCoherency: agg.avg_c ?? 0,
       topTags: getTopTags(entries, 10),
     };
   }
 
   /**
    * Safe JSON parse — returns fallback on malformed data instead of throwing.
+   * Logs a warning on parse failure so data corruption is visible, not silent.
    */
   _safeJSON(str, fallback) {
     if (!str) return fallback;
-    try { return JSON.parse(str); } catch { return fallback; }
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      // Previously returned fallback silently — corruption went undetected.
+      // Now we log so corruption is visible while still being non-fatal.
+      const preview = typeof str === 'string' ? str.slice(0, 80) : String(str);
+      console.warn(`[store:_safeJSON] corrupted JSON detected (using fallback): ${e.message} — data: "${preview}"`);
+      return fallback;
+    }
   }
 
   _rowToEntry(row) {

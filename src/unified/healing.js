@@ -37,6 +37,17 @@ const HEALING_DEFAULTS = {
 const _recentlyHealed = new Map();
 const MAX_TRACKED = 500;
 
+// ─── Healing Result Sentinels ───
+// heal() previously returned null for 3 different meanings:
+//   1. Cooldown active (not an error, just throttled)
+//   2. No improvement found (reflection ran but code didn't improve)
+//   3. Exception during healing (real failure)
+// This conflation caused healSweep to miscount skipped vs failed,
+// and evolution.js to report "healing failed" for harmless cooldowns.
+const HEAL_SKIPPED_COOLDOWN = Object.freeze({ skipped: 'cooldown' });
+const HEAL_NO_IMPROVEMENT = Object.freeze({ skipped: 'no-improvement' });
+const HEAL_ERROR = Object.freeze({ skipped: 'error' });
+
 // ─── Core Healing Function ───
 
 /**
@@ -59,7 +70,7 @@ function heal(pattern, options = {}) {
   if (!config.force) {
     const lastHealed = _recentlyHealed.get(patternId);
     if (lastHealed && (Date.now() - lastHealed) < config.cooldownMs) {
-      return null;
+      return HEAL_SKIPPED_COOLDOWN;
     }
   }
 
@@ -88,7 +99,7 @@ function heal(pattern, options = {}) {
     });
 
     if (reflection.reflection?.improvement <= 0 && reflection.code.trim() === (pattern.code || '').trim()) {
-      return null;
+      return HEAL_NO_IMPROVEMENT;
     }
 
     const newCoherency = computeCoherencyScore(reflection.code, {
@@ -112,7 +123,7 @@ function heal(pattern, options = {}) {
     };
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn(`[unified-healing:heal] ${strategy} failed:`, e?.message || e);
-    return null;
+    return HEAL_ERROR;
   }
 }
 
@@ -172,13 +183,14 @@ function healSweep(patterns, options = {}) {
         improvement: result.improvement,
       });
       report.totalImprovement += result.improvement;
-    } else if (result === null && !options.force) {
+    } else if (result?.skipped === 'cooldown') {
       report.skipped++;
     } else {
       report.failed.push({
         id: pattern.id,
         name: pattern.name,
         coherency: pattern.coherencyScore?.total ?? 0,
+        reason: result?.skipped || 'no-improvement',
       });
     }
   }
@@ -230,6 +242,10 @@ module.exports = {
   needsHealing,
   resetTracking,
   HEALING_DEFAULTS,
+  // Sentinel result types — callers use these to distinguish skip/fail reasons
+  HEAL_SKIPPED_COOLDOWN,
+  HEAL_NO_IMPROVEMENT,
+  HEAL_ERROR,
   // Backwards-compatible aliases
   autoHeal: heal,
   needsAutoHeal: needsHealing,

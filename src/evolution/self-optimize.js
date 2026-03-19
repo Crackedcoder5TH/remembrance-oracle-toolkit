@@ -123,10 +123,13 @@ function selfImprove(ctx, options = {}) {
 
         report.totalCoherencyGained += result.improvement;
       } else {
+        const reason = result?.skipped === 'cooldown' ? 'cooldown'
+          : result?.skipped === 'error' ? 'healing failed'
+          : 'no improvement';
         report.healFailed.push({
           id: pattern.id,
           name: pattern.name,
-          reason: result ? 'no improvement' : 'healing failed',
+          reason,
         });
       }
     } catch (e) {

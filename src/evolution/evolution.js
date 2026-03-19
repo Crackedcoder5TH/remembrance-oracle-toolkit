@@ -311,10 +311,14 @@ function evolve(ctx, options = {}) {
         report.healFailed.push({ id: pattern.id, name: pattern.name, reason: 'update failed' });
       }
     } else {
+      // Distinguish cooldown skips from real failures — heal() returns typed sentinels
+      const reason = healResult?.skipped === 'cooldown' ? 'cooldown'
+        : healResult?.skipped === 'error' ? 'healing failed'
+        : 'no improvement';
       report.healFailed.push({
         id: pattern.id,
         name: pattern.name,
-        reason: healResult ? 'no improvement' : 'healing failed',
+        reason,
       });
     }
   }

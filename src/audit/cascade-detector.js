@@ -260,6 +260,11 @@ function detectCascade(commitRange, cwd, options = {}) {
     },
   };
 
+  if (!commitRange || typeof commitRange !== 'string') {
+    report.error = 'commitRange must be a non-empty string';
+    return report;
+  }
+
   try {
     // Get diff from commit
     let diffOutput;

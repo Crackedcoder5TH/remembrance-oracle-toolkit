@@ -128,19 +128,33 @@ function enhanceResolveWithBugClasses(resolveResult, oracle) {
 
   if (warnings.length === 0) return resolveResult;
 
+  // Create a shallow copy to avoid mutating the input object
+  const enhanced = { ...resolveResult };
+
   // Attach warnings to result
-  resolveResult.bugClassWarnings = warnings;
+  enhanced.bugClassWarnings = warnings;
 
   // Look up related debug fixes for each warning
-  if (oracle && typeof oracle.debugSearch === 'function') {
+  // Use the same debug API as cross-reference.js: debugPatterns or debug.search
+  const hasDebugSearch = oracle && (
+    typeof oracle.debugPatterns === 'function' ||
+    (oracle.debug && typeof oracle.debug.search === 'function')
+  );
+
+  if (hasDebugSearch) {
     for (const warning of warnings) {
       try {
-        const debugMatches = oracle.debugSearch({
-          errorMessage: warning.warning,
-          language: resolveResult.pattern?.language,
-          limit: 1,
-        });
-        if (debugMatches.length > 0) {
+        let debugMatches;
+        if (typeof oracle.debugPatterns === 'function') {
+          debugMatches = oracle.debugPatterns({
+            error: warning.warning,
+            language: enhanced.pattern?.language,
+            limit: 1,
+          });
+        } else {
+          debugMatches = oracle.debug.search(warning.warning);
+        }
+        if (Array.isArray(debugMatches) && debugMatches.length > 0) {
           warning.relatedFix = {
             id: debugMatches[0].id,
             fixDescription: debugMatches[0].fixDescription,
@@ -158,15 +172,15 @@ function enhanceResolveWithBugClasses(resolveResult, oracle) {
     w.bugClass === BUG_CLASSES.SECURITY || w.bugClass === BUG_CLASSES.CONCURRENCY
   );
 
-  if (hasHighSeverity && resolveResult.decision === 'pull') {
-    resolveResult.bugClassOverride = {
+  if (hasHighSeverity && enhanced.decision === 'pull') {
+    enhanced.bugClassOverride = {
       originalDecision: 'pull',
       newDecision: 'evolve',
       reason: `Bug class warnings detected: ${warnings.map(w => w.name).join(', ')}`,
     };
   }
 
-  return resolveResult;
+  return enhanced;
 }
 
 /**

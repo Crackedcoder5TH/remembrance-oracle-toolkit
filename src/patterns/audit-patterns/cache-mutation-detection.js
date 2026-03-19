@@ -32,8 +32,8 @@ function detectCacheMutation(code) {
 
   const patterns = [
     {
-      // cache.get(key) returned directly without clone
-      pattern: /(?:cache|_cache|Cache)\w*\.get\s*\([^)]+\)\s*;\s*$/,
+      // cache.get(key) returned directly without clone (with or without semicolons)
+      pattern: /(?:cache|_cache|Cache)\w*\.get\s*\([^)]+\)\s*;?\s*$/,
       check: (match, line, idx, allLines) => {
         // Look ahead for direct return of cached value
         for (let j = idx + 1; j < Math.min(idx + 3, allLines.length); j++) {

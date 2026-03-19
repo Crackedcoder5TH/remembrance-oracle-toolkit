@@ -63,7 +63,7 @@ const BUG_CLASS_TO_DEBUG_CATEGORIES = {
  * @returns {Array} Enriched findings with relatedFixes
  */
 function crossReference(findings, oracle, options = {}) {
-  if (!findings || !Array.isArray(findings) || findings.length === 0) return findings || [];
+  if (!findings || !Array.isArray(findings) || findings.length === 0) return [];
   if (!oracle) return findings;
 
   const { maxFixesPerFinding = 3, minAmplitude = 0.5 } = options;
@@ -257,7 +257,7 @@ function crossReferenceSummary(enrichedFindings) {
   return {
     totalFindings: enrichedFindings.length,
     withFixes: withFixes.length,
-    fixRate: enrichedFindings.length > 0 ? (withFixes.length / enrichedFindings.length).toFixed(2) : '0',
+    fixRate: enrichedFindings.length > 0 ? Math.round((withFixes.length / enrichedFindings.length) * 100) / 100 : 0,
     actionable,
     coverage,
   };

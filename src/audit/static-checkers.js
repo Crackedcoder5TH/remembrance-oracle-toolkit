@@ -267,12 +267,10 @@ function checkType(code, lines, options = {}) {
     const divMatch = line.match(/(\w+(?:\.\w+)*)\s*\/\s*(\w+(?:\.\w+)*)/);
     if (divMatch && !/\/\/|\/\*|\*\//.test(line.slice(0, line.indexOf(divMatch[0])))) {
       const divisor = divMatch[2];
-      // Skip known-safe divisors: literal numbers, .length (always >= 0), common safe patterns
-      const isSafeDivisor = /^\d+(\.\d+)?$/.test(divisor) ||
-        /\.length$/.test(divisor) ||
-        /\.size$/.test(divisor) ||
-        /\.count$/.test(divisor) ||
-        /total|count|sum|max|min/i.test(divisor);
+      // Skip known-safe divisors: literal numbers > 0, common safe patterns
+      // Note: .length/.size/.count can be 0, so they are NOT safe divisors
+      const isSafeDivisor = /^\d+(\.\d+)?$/.test(divisor) && divisor !== '0' ||
+        /total|sum|max|min/i.test(divisor);
       if (!isSafeDivisor) {
         // Check if there's a zero-guard nearby (wider context)
         const context = lines.slice(Math.max(0, i - 5), i + 2).join('\n');
@@ -426,53 +424,45 @@ function checkIntegration(code, lines) {
 function checkEdgeCase(code, lines) {
   const findings = [];
 
-  // Track switch statements and check for default
-  let inSwitch = false;
-  let switchLine = 0;
-  let switchDepth = 0;
-  let hasDefault = false;
-  let braceCount = 0;
+  // Track switch statements and check for default using a stack for nesting
+  const switchStack = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNum = i + 1;
 
-    // Detect switch statement start
+    // Detect switch statement start — push state onto stack
     if (/switch\s*\(/.test(line)) {
-      inSwitch = true;
-      switchLine = lineNum;
-      switchDepth++;
-      hasDefault = false;
-      braceCount = 0;
+      switchStack.push({ switchLine: lineNum, hasDefault: false, braceCount: 0 });
     }
 
-    if (inSwitch) {
-      braceCount += (line.match(/\{/g) || []).length;
-      braceCount -= (line.match(/\}/g) || []).length;
+    if (switchStack.length > 0) {
+      const current = switchStack[switchStack.length - 1];
+      current.braceCount += (line.match(/\{/g) || []).length;
+      current.braceCount -= (line.match(/\}/g) || []).length;
 
       if (/\bdefault\s*:/.test(line)) {
-        hasDefault = true;
+        current.hasDefault = true;
       }
 
-      if (braceCount <= 0 && i > switchLine - 1) {
-        if (!hasDefault) {
+      if (current.braceCount <= 0 && i > current.switchLine - 1) {
+        if (!current.hasDefault) {
           findings.push({
-            line: switchLine,
+            line: current.switchLine,
             bugClass: BUG_CLASSES.EDGE_CASE,
             assumption: `Switch statement covers all cases`,
             reality: `Missing default case — unmatched values silently fall through`,
             severity: SEVERITY.MEDIUM,
             suggestion: `Add a default: case with error handling or explicit no-op`,
-            code: lines[switchLine - 1].trim(),
+            code: lines[current.switchLine - 1].trim(),
           });
         }
-        inSwitch = false;
-        switchDepth--;
+        switchStack.pop();
       }
     }
 
     // Function without parameter validation
-    const fnMatch = line.match(/(?:function\s+(\w+)|(\w+)\s*=\s*(?:async\s+)?(?:function\s*)?\()\s*([^)]*)\)/);
+    const fnMatch = line.match(/(?:function\s+(\w+)|(\w+)\s*=\s*(?:async\s+)?(?:function\s*)?\()\s*((?:[^()]*|\([^)]*\))*)\)/);
     if (fnMatch) {
       const fnName = fnMatch[1] || fnMatch[2];
       const params = fnMatch[3];
@@ -623,6 +613,10 @@ function auditFile(filePath, options = {}) {
  * @returns {{ files: Array, totalFindings: number, summary: object }}
  */
 function auditFiles(files, options = {}) {
+  if (!files || !Array.isArray(files)) {
+    return { files: [], totalFindings: 0, summary: { filesScanned: 0, filesWithFindings: 0, byClass: {}, bySeverity: {} } };
+  }
+
   const results = [];
   let totalFindings = 0;
   const globalByClass = {};

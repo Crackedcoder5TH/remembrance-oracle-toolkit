@@ -28,18 +28,22 @@ export default function AboutPage() {
             Our Mission
           </h2>
           <p>
-            Valor Legacies was founded by a veteran with a simple mission:
+            Valor Legacies was founded by a veteran with a simple mission: to
             help military families understand their life insurance options beyond
-            standard military coverage. We connect service members, veterans, and
-            their families with licensed insurance professionals who specialize
-            in military-family needs.
+            standard military coverage. We connect service members, veterans,
+            and their families with licensed professionals who specialize in
+            protecting military households.
           </p>
           <p>
-            We are <strong className="text-[var(--text-primary)]">not</strong> an
-            insurance company, agent, or broker. We do not sell insurance, provide
-            quotes, or bind coverage. We are an independent lead generation service
-            that bridges the gap between military families and qualified
-            professionals who can help.
+            &ldquo;Valor&rdquo; represents courage, bravery, and selfless
+            service, the very qualities that define those who have worn the
+            uniform. &ldquo;Legacies&rdquo; reflect what you leave behind, your
+            impact, your values, and the protection you provide for the people
+            you love.
+          </p>
+          <p>
+            Together, Valor Legacies stands for honoring a life of courage by
+            protecting the future of those you love.
           </p>
         </section>
 
@@ -70,6 +74,13 @@ export default function AboutPage() {
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
             Important Disclosures
           </h2>
+          <p>
+            We are <strong className="text-[var(--text-primary)]">not</strong> an
+            insurance company, agent, or broker. We do not sell insurance, provide
+            quotes, or bind coverage. We are an independent lead generation
+            service that bridges the gap between military families and qualified
+            professionals who can help.
+          </p>
           <ul className="list-disc list-inside space-y-2">
             <li>
               Valor Legacies is independently operated and{" "}

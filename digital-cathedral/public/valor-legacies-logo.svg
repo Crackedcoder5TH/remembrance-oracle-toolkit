@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" fill="none">
+  <!-- Background -->
+  <rect width="600" height="200" rx="16" fill="#0F1029"/>
+
+  <!-- Shield icon -->
+  <g transform="translate(32, 24)">
+    <!-- Shield outline -->
+    <path d="M76 8L140 32V88C140 124 112 148 76 160C40 148 12 124 12 88V32L76 8Z"
+          fill="#1A1B3A" stroke="#00A8A8" stroke-width="3"/>
+    <!-- Inner V for Valor -->
+    <path d="M52 52L76 112L100 52"
+          stroke="#C9A84C" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Star accent at top of V -->
+    <circle cx="76" cy="40" r="4" fill="#C9A84C"/>
+    <!-- Shield glow -->
+    <path d="M76 8L140 32V88C140 124 112 148 76 160C40 148 12 124 12 88V32L76 8Z"
+          fill="url(#shieldGlow)" opacity="0.15"/>
+  </g>
+
+  <!-- Text: VALOR -->
+  <text x="196" y="96" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="700"
+        letter-spacing="6" fill="#EDEDF0">VALOR</text>
+
+  <!-- Text: LEGACIES -->
+  <text x="196" y="140" font-family="Georgia, 'Times New Roman', serif" font-size="36" font-weight="400"
+        letter-spacing="12" fill="#C9A84C">LEGACIES</text>
+
+  <!-- Decorative line -->
+  <line x1="196" y1="104" x2="540" y2="104" stroke="#00A8A8" stroke-width="1" opacity="0.5"/>
+
+  <!-- Tagline -->
+  <text x="196" y="168" font-family="Arial, Helvetica, sans-serif" font-size="11"
+        letter-spacing="3" fill="#7A7B9E">PROTECTING WHAT MATTERS MOST</text>
+
+  <!-- Gradient definitions -->
+  <defs>
+    <radialGradient id="shieldGlow" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#00A8A8"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+  </defs>
+</svg>

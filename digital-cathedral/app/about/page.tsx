@@ -28,48 +28,23 @@ export default function AboutPage() {
             Our Mission
           </h2>
           <p>
-            Valor Legacies was founded by a veteran with a simple mission:
+            Valor Legacies was founded by a veteran with a simple mission: to
             help military families understand their life insurance options beyond
-            standard military coverage. We connect service members, veterans, and
-            their families with licensed insurance professionals who specialize
-            in military-family needs.
+            standard military coverage. We connect service members, veterans,
+            and their families with licensed professionals who specialize in
+            protecting military households.
           </p>
           <p>
-            We are <strong className="text-[var(--text-primary)]">not</strong> an
-            insurance company, agent, or broker. We do not sell insurance, provide
-            quotes, or bind coverage. We are an independent lead generation service
-            that bridges the gap between military families and qualified
-            professionals who can help.
+            &ldquo;Valor&rdquo; represents courage, bravery, and selfless
+            service, the very qualities that define those who have worn the
+            uniform. &ldquo;Legacies&rdquo; reflect what you leave behind, your
+            impact, your values, and the protection you provide for the people
+            you love.
           </p>
-        </section>
-
-        <section id="how-it-works" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed scroll-mt-8">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
-            How It Works
-          </h2>
-          <ul className="list-disc list-inside space-y-2">
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                Submit a request:
-              </strong>{" "}
-              Fill out our short, secure form with your basic information and
-              coverage interest.
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                We match you:
-              </strong>{" "}
-              Your information is shared with a licensed insurance professional
-              experienced in military-family coverage.
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                Free consultation:
-              </strong>{" "}
-              A professional reviews your needs and contacts you within 1-3
-              business days — no obligation, no pressure.
-            </li>
-          </ul>
+          <p>
+            Together, Valor Legacies stands for honoring a life of courage by
+            protecting the future of those you love.
+          </p>
         </section>
 
         <section id="who-we-serve" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed scroll-mt-8">
@@ -99,6 +74,13 @@ export default function AboutPage() {
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
             Important Disclosures
           </h2>
+          <p>
+            We are <strong className="text-[var(--text-primary)]">not</strong> an
+            insurance company, agent, or broker. We do not sell insurance, provide
+            quotes, or bind coverage. We are an independent lead generation
+            service that bridges the gap between military families and qualified
+            professionals who can help.
+          </p>
           <ul className="list-disc list-inside space-y-2">
             <li>
               Valor Legacies is independently operated and{" "}

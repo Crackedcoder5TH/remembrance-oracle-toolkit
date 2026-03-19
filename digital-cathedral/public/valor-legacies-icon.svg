@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="#0F1029"/>
+
+  <!-- Shield -->
+  <g transform="translate(96, 56)">
+    <!-- Shield shape -->
+    <path d="M160 16L304 64V192C304 272 240 320 160 352C80 320 16 272 16 192V64L160 16Z"
+          fill="#1A1B3A" stroke="#00A8A8" stroke-width="5"/>
+
+    <!-- Inner V for Valor -->
+    <path d="M108 104L160 232L212 104"
+          stroke="#C9A84C" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    <!-- Star accent -->
+    <circle cx="160" cy="80" r="8" fill="#C9A84C"/>
+
+    <!-- Shield glow -->
+    <path d="M160 16L304 64V192C304 272 240 320 160 352C80 320 16 272 16 192V64L160 16Z"
+          fill="url(#iconGlow)" opacity="0.15"/>
+  </g>
+
+  <!-- VL text at bottom -->
+  <text x="256" y="440" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="700"
+        letter-spacing="8" fill="#C9A84C" text-anchor="middle">VL</text>
+
+  <defs>
+    <radialGradient id="iconGlow" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="#00A8A8"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </radialGradient>
+  </defs>
+</svg>

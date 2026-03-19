@@ -30,7 +30,7 @@ const FAQS = [
   },
   {
     q: "How long does the process take?",
-    a: "The form takes less than 60 seconds. After you submit, a licensed insurance professional will typically reach out within 1 business day.",
+    a: "The form takes less than 60 seconds. After you submit, a licensed insurance professional will typically reach out within 3 business days.",
   },
   {
     q: "What happens to my information?",
@@ -62,7 +62,7 @@ const FAQS = [
   },
   {
     q: "What happens to my SGLI when I leave the military?",
-    a: "SGLI coverage continues for 120 days after separation at no cost. You then have 240 days to convert to VGLI (Veterans' Group Life Insurance) without health evidence. However, VGLI rates increase every 5 years. Many veterans find that private coverage with locked-in rates is more cost-effective long-term. We can help you compare both options.",
+    a: "SGLI coverage continues for 120 days after separation. You then have 240 days to convert to VGLI (Veterans' Group Life Insurance) without health evidence. However, VGLI rates increase every 5 years and is only temporary coverage, not permanent coverage. Many veterans find that private coverage with locked-in rates is more cost-effective long-term. We can help you compare both options.",
   },
   {
     q: "Can I get life insurance with a VA disability rating?",

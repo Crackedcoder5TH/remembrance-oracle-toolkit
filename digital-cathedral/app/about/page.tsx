@@ -43,35 +43,6 @@ export default function AboutPage() {
           </p>
         </section>
 
-        <section id="how-it-works" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed scroll-mt-8">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
-            How It Works
-          </h2>
-          <ul className="list-disc list-inside space-y-2">
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                Submit a request:
-              </strong>{" "}
-              Fill out our short, secure form with your basic information and
-              coverage interest.
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                We match you:
-              </strong>{" "}
-              Your information is shared with a licensed insurance professional
-              experienced in military-family coverage.
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                Free consultation:
-              </strong>{" "}
-              A professional reviews your needs and contacts you within 1-3
-              business days — no obligation, no pressure.
-            </li>
-          </ul>
-        </section>
-
         <section id="who-we-serve" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed scroll-mt-8">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
             Who We Serve

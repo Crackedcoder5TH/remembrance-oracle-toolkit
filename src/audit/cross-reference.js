@@ -149,7 +149,7 @@ function findRelatedFixes(finding, oracle, maxFixes, minAmplitude) {
   }
 
   // Sort by relevance * amplitude, take top N
-  fixes.sort((a, b) => (b.relevance * b.amplitude) - (a.relevance * a.amplitude));
+  fixes.sort((a, b) => ((b.relevance || 0) * (b.amplitude || 0)) - ((a.relevance || 0) * (a.amplitude || 0)));
   return fixes.slice(0, maxFixes);
 }
 
@@ -157,21 +157,23 @@ function findRelatedFixes(finding, oracle, maxFixes, minAmplitude) {
  * Search debug patterns through whatever API the oracle exposes.
  */
 function searchDebugPatterns(oracle, query) {
+  let result;
   // Try the unified debug search
   if (typeof oracle.debugPatterns === 'function') {
     if (query.category) {
-      return oracle.debugPatterns({ category: query.category }) || [];
+      result = oracle.debugPatterns({ category: query.category });
+    } else {
+      result = oracle.debugPatterns({ error: query.query });
     }
-    return oracle.debugPatterns({ error: query.query }) || [];
-  }
-  // Try the debug sub-object
-  if (oracle.debug && typeof oracle.debug.search === 'function') {
+  } else if (oracle.debug && typeof oracle.debug.search === 'function') {
+    // Try the debug sub-object
     if (query.category) {
-      return oracle.debug.search({ category: query.category }) || [];
+      result = oracle.debug.search({ category: query.category });
+    } else {
+      result = oracle.debug.search(query.query);
     }
-    return oracle.debug.search(query.query) || [];
   }
-  return [];
+  return Array.isArray(result) ? result : [];
 }
 
 /**

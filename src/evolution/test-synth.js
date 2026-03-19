@@ -141,7 +141,7 @@ function testValuesForType(type, language) {
     case 'number':
       return {
         typical: [0, 1, 5, 10, 42, -1, 100],
-        edge: [0, -1, Number.MAX_SAFE_INTEGER ? 'Number.MAX_SAFE_INTEGER' : '2**53-1'],
+        edge: [0, -1, typeof Number.MAX_SAFE_INTEGER !== 'undefined' ? 'Number.MAX_SAFE_INTEGER' : '2**53-1'],
       };
     case 'string':
       return {
@@ -170,6 +170,7 @@ function testValuesForType(type, language) {
 }
 
 function q(s, python) {
+  if (python) return `'${s}'`;
   return `"${s}"`;
 }
 
@@ -463,11 +464,11 @@ function looksLikeReturnsNumber(code) {
 
 function makeCallTest(call, python) {
   if (python) {
-    // Run the call and verify it doesn't throw; also check the result type is stable
-    return `result = ${call}\nassert result is not None or result == 0 or result == '' or result == [] or result == False`;
+    // Run the call and verify it returns a value (allow falsy values like 0, '', [], False)
+    return `result = ${call}\nassert result is not None or result == 0 or result == '' or result == [] or result is False`;
   }
-  // Stronger: verify it doesn't throw AND returns a defined value
-  return `var _r = ${call}; if (_r === undefined && _r !== void 0) throw new Error("returned undefined");`;
+  // Verify it doesn't throw AND returns a defined value
+  return `var _r = ${call}; if (_r === undefined) throw new Error("returned undefined");`;
 }
 
 /**

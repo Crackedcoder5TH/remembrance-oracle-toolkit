@@ -74,33 +74,36 @@ export default function AboutPage() {
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
             Important Disclosures
           </h2>
-          <p>
-            We are <strong className="text-[var(--text-primary)]">not</strong> an
-            insurance company, agent, or broker. We do not sell insurance, provide
-            quotes, or bind coverage. We are an independent lead generation
-            service that bridges the gap between military families and qualified
-            professionals who can help.
-          </p>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              Valor Legacies is independently operated and{" "}
-              <strong className="text-[var(--text-primary)]">
-                not affiliated
-              </strong>{" "}
-              with the U.S. Government, Department of Defense, or any branch of
-              military service.
+              We are not an insurance company, agent, or broker, and we do not
+              sell, quote, or bind insurance coverage.
             </li>
             <li>
-              We do not provide insurance advice, quotes, or coverage of any
-              kind.
+              We operate as an independent lead generation service, connecting
+              military families with licensed insurance professionals.
+            </li>
+            <li>
+              We do not provide insurance advice, recommendations, or coverage
+              of any kind.
+            </li>
+            <li>
+              Valor Legacies is independently operated and is not affiliated
+              with the U.S. Government, Department of Defense, or any branch of
+              the military.
             </li>
             <li>
               Coverage availability, rates, and terms vary by state and are
-              subject to underwriting approval.
+              subject to individual carrier underwriting guidelines and approval.
             </li>
             <li>
-              Your information may be shared with licensed insurance
-              professionals who may contact you.
+              By submitting your information, you agree that it may be shared
+              with licensed insurance professionals who may contact you to
+              discuss coverage options.
+            </li>
+            <li>
+              Submission of your information does not guarantee eligibility or
+              coverage.
             </li>
           </ul>
         </section>

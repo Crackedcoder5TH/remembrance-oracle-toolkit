@@ -65,10 +65,6 @@ const FAQS = [
     a: "SGLI coverage continues for 120 days after separation. You then have 240 days to convert to VGLI (Veterans' Group Life Insurance) without health evidence. However, VGLI rates increase every 5 years and is only temporary coverage, not permanent coverage. Many veterans find that private coverage with locked-in rates is more cost-effective long-term. We can help you compare both options.",
   },
   {
-    q: "Can I get life insurance with a VA disability rating?",
-    a: "Yes. Veterans with service-connected disabilities have several options. Guaranteed issue policies require no medical exam or health questions. You may also be eligible for S-DVI (Service-Disabled Veterans' Insurance) through the VA. A licensed professional can help you find the most affordable coverage for your situation.",
-  },
-  {
     q: "How much life insurance does a military family need?",
     a: "Financial advisors typically recommend 10-12 times your annual income in life insurance coverage. For military families, consider your BAH, base pay, special pay, and benefits that would stop if something happened. SGLI covers up to $400,000, but many families need additional coverage — especially those with mortgages, children, or a non-working spouse.",
   },

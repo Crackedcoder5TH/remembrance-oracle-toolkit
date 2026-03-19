@@ -45,7 +45,7 @@ class TemporalMemory {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         pattern_id TEXT NOT NULL,
         event_type TEXT NOT NULL,
-        timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+        timestamp TEXT NOT NULL DEFAULT (strftime('%Y-%m-%d %H:%M:%f', 'now')),
         context TEXT,
         environment TEXT,
         node_version TEXT,
@@ -68,7 +68,7 @@ class TemporalMemory {
   record(patternId, eventType, data = {}) {
     const stmt = this._db.prepare(`
       INSERT INTO temporal_events (pattern_id, event_type, timestamp, context, environment, node_version, cause, detail, success_rate_at_time)
-      VALUES (?, ?, datetime('now'), ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, strftime('%Y-%m-%d %H:%M:%f', 'now'), ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       patternId,
@@ -160,7 +160,7 @@ class TemporalMemory {
     if (failures.length === 0) {
       status = 'healthy';
       narrative = `Pattern has ${successes.length} recorded successes with no failures. Stable since first use.`;
-    } else if (lastRegression && lastSuccess && lastRegression.timestamp > lastSuccess.timestamp) {
+    } else if (lastRegression && lastSuccess && (lastRegression.timestamp > lastSuccess.timestamp || (lastRegression.timestamp === lastSuccess.timestamp && lastRegression.id > lastSuccess.id))) {
       status = 'regressed';
       const cause = lastRegression.cause ? ` Possible cause: ${lastRegression.cause}.` : '';
       const env = lastRegression.environment ? ` Environment: ${lastRegression.environment}.` : '';
@@ -192,7 +192,7 @@ class TemporalMemory {
   recordEnvironmentChange(description) {
     const stmt = this._db.prepare(`
       INSERT INTO temporal_events (pattern_id, event_type, timestamp, cause, environment, node_version)
-      VALUES ('__global__', ?, datetime('now'), ?, ?, ?)
+      VALUES ('__global__', ?, strftime('%Y-%m-%d %H:%M:%f', 'now'), ?, ?, ?)
     `);
     stmt.run(EVENT_TYPES.ENVIRONMENT_CHANGE, description, _detectEnvironment(), process.version);
   }

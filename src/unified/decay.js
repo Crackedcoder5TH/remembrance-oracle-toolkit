@@ -211,7 +211,11 @@ function resolveConfig(options) {
 }
 
 function getLastUsedDate(item) {
-  return item.lastUsed || item.last_used || item.last_observed_at || item.updatedAt || item.updated_at || null;
+  // Prioritize explicit usage timestamps over generic update timestamps.
+  // updated_at/updatedAt gets set by metadata operations (coherency recompute,
+  // migrations, etc.) that have nothing to do with actual usage — using it as
+  // a proxy for "last used" artificially inflates freshness.
+  return item.lastUsed || item.last_used || item.last_used_at || item.last_observed_at || item.updatedAt || item.updated_at || null;
 }
 
 function getCreatedDate(item) {

@@ -149,7 +149,7 @@ class SQLiteStore {
             SELECT id FROM (
               SELECT id, ROW_NUMBER() OVER (
                 PARTITION BY LOWER(name), LOWER(language)
-                ORDER BY coherency_total DESC, created_at ASC
+                ORDER BY coherency_total DESC, created_at DESC
               ) AS rn FROM patterns
             ) WHERE rn = 1
           )
@@ -165,7 +165,7 @@ class SQLiteStore {
               SELECT id FROM (
                 SELECT id, ROW_NUMBER() OVER (
                   PARTITION BY LOWER(name), LOWER(language)
-                  ORDER BY coherency_total DESC, created_at ASC
+                  ORDER BY coherency_total DESC, created_at DESC
                 ) AS rn FROM patterns
               ) WHERE rn = 1
             )
@@ -182,6 +182,10 @@ class SQLiteStore {
     // Schema migration: add composition columns
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] requires column:', e.message); }
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] composed_of column:', e.message); }
+
+    // Schema migration: add last_used_at column — separates actual usage time from metadata updates
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN last_used_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] last_used_at column:', e.message); }
+    try { this.db.exec(`ALTER TABLE entries ADD COLUMN last_used_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] entries.last_used_at column:', e.message); }
 
     // Schema migration: add bug reports column for reliability tracking
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN bug_reports INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] bug_reports column:', e.message); }
@@ -657,9 +661,9 @@ class SQLiteStore {
 
     const result = this.db.prepare(`
       UPDATE entries SET times_used = ?, times_succeeded = ?, historical_score = ?,
-        version = ?, updated_at = ?
+        version = ?, updated_at = ?, last_used_at = ?
       WHERE id = ? AND version = ?
-    `).run(timesUsed, timesSucceeded, historicalScore, version, now, id, row.version || 1);
+    `).run(timesUsed, timesSucceeded, historicalScore, version, now, now, id, row.version || 1);
 
     // Optimistic lock failed — another process updated the row between our read and write
     if (result.changes === 0) {
@@ -753,6 +757,7 @@ class SQLiteStore {
         timesSucceeded: row.times_succeeded,
         historicalScore: row.historical_score,
       },
+      lastUsed: row.last_used_at || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -980,10 +985,10 @@ class SQLiteStore {
 
     const result = this.db.prepare(`
       UPDATE patterns SET usage_count = ?, success_count = ?, version = ?, updated_at = ?,
-        coherency_total = ?, coherency_json = ?
+        last_used_at = ?, coherency_total = ?, coherency_json = ?
       WHERE id = ? AND version = ?
     `).run(usageCount, successCount, version, now,
-      newCoherency.total, JSON.stringify(newCoherency),
+      now, newCoherency.total, JSON.stringify(newCoherency),
       id, row.version || 1);
 
     // Optimistic lock failed — retry with fresh read (capped at 3 attempts)
@@ -1609,6 +1614,7 @@ class SQLiteStore {
       sourceLicense: row.source_license || null,
       sourceCommit: row.source_commit || null,
       sourceFile: row.source_file || null,
+      lastUsed: row.last_used_at || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };

@@ -7,7 +7,7 @@
 let _computeCoherencyScore, _detectLanguage;
 function _getCoherency() {
   if (!_computeCoherencyScore) {
-    ({ computeCoherencyScore: _computeCoherencyScore, detectLanguage: _detectLanguage } = require('./coherency'));
+    ({ computeCoherencyScore: _computeCoherencyScore, detectLanguage: _detectLanguage } = require('../unified/coherency'));
   }
   return { computeCoherencyScore: _computeCoherencyScore, detectLanguage: _detectLanguage };
 }

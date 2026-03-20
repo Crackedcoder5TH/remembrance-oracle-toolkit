@@ -22,7 +22,7 @@
  *   - 'balanced'  — equal weight across all dimensions
  */
 
-const { astCoherencyBoost, parseCode } = require('../core/parsers/ast');
+const { astCoherencyBoost, parseCode } = require('../core/parsers/code-validator');
 const {
   SYNTAX_SCORES,
   COMPLETENESS_PENALTIES,

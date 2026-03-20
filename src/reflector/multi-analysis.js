@@ -12,7 +12,7 @@
 
 const { readFileSync } = require('fs');
 const { join, basename, relative } = require('path');
-const { detectLanguage } = require('../core/coherency');
+const { detectLanguage } = require('../unified/coherency');
 
 // ─── Cross-Repo Snapshot ───
 

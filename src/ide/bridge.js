@@ -80,7 +80,7 @@ class IDEBridge {
 
     // 2. Coherency check
     try {
-      const { computeCoherencyScore } = require('../core/coherency');
+      const { computeCoherencyScore } = require('../unified/coherency');
       const score = computeCoherencyScore(code, { language });
       if (score.total < 0.5) {
         diagnostics.push({
@@ -238,7 +238,7 @@ class IDEBridge {
     // 3. Refinement: offer to heal low-coherency code
     if (code) {
       try {
-        const { computeCoherencyScore } = require('../core/coherency');
+        const { computeCoherencyScore } = require('../unified/coherency');
         const score = computeCoherencyScore(code, { language });
         if (score.total < 0.7 && score.total > 0.3) {
           actions.push({
@@ -389,7 +389,7 @@ class IDEBridge {
     // Coherency score
     let coherency = null;
     try {
-      const { computeCoherencyScore } = require('../core/coherency');
+      const { computeCoherencyScore } = require('../unified/coherency');
       coherency = computeCoherencyScore(code, { language });
     } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
 

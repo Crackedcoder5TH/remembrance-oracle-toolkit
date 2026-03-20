@@ -456,7 +456,7 @@ class DebugOracle {
     let coherencyTotal = 0;
     let coherencyJson = {};
     try {
-      const { computeCoherencyScore } = require('../core/coherency');
+      const { computeCoherencyScore } = require('../unified/coherency');
       const score = computeCoherencyScore(fixCode, { language, description: fixDescription, tags });
       coherencyTotal = score.total;
       coherencyJson = score;
@@ -1200,7 +1200,7 @@ class DebugOracle {
     // Compute coherency for variant
     let coherencyTotal = parent.coherencyTotal * 0.8;
     try {
-      const { computeCoherencyScore } = require('../core/coherency');
+      const { computeCoherencyScore } = require('../unified/coherency');
       const score = computeCoherencyScore(variantCode, { language });
       coherencyTotal = score.total;
     } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[debug-oracle]', err.message); }

@@ -15,7 +15,7 @@ const path = require('path');
 const crypto = require('crypto');
 const log = require('../core/logger');
 const { safePath } = require('../core/safe-path');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { synthesizeTests } = require('../evolution/test-synth');
 
 const DEFAULT_STORE_DIR = '.remembrance';
@@ -1228,7 +1228,7 @@ class SQLiteStore {
         const lang = row.language || 'javascript';
 
         // Wrap incomplete code snippets into a complete function
-        const { checkBalancedBraces } = require('../core/coherency');
+        const { checkBalancedBraces } = require('../unified/coherency');
         if (!checkBalancedBraces(code)) {
           // Count unbalanced braces and close them
           let opens = 0;

@@ -28,7 +28,7 @@
 const crypto = require('crypto');
 const { reflectionLoop } = require('../core/reflection');
 const { validateCode } = require('../core/validator');
-const { computeCoherencyScore, detectLanguage } = require('../core/coherency');
+const { computeCoherencyScore, detectLanguage } = require('../unified/coherency');
 const { isTestFile, isDataFile, requiresExternalModules, synthesizeTests, hasBrokenTestSyntax, cleanupTestCode, extractSignature } = require('./test-synth');
 const {
   CASCADE,

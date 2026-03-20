@@ -27,7 +27,7 @@
  */
 
 const { evolve, autoHeal, needsAutoHeal } = require('./evolution');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 
 // ─── Configuration ───
 

@@ -11,7 +11,7 @@
  * Supports: JavaScript, TypeScript, Python
  */
 
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 
 // ─── Function Signature Analysis ───
 

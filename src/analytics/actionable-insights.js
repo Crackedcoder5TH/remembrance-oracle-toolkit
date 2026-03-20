@@ -15,7 +15,7 @@
 
 const { stalePatterns, feedbackRates, evolveFrequency } = require('./insights');
 const { autoHeal, needsAutoHeal, detectRegressions } = require('../evolution/evolution');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 
 // ─── Configuration ───
 

@@ -291,7 +291,7 @@ function buildResult(id, task, steps, consensus, whisper, totalDurationMs) {
  */
 function getDefaultCoherencyFn() {
   try {
-    const { computeCoherencyScore } = require('../core/coherency');
+    const { computeCoherencyScore } = require('../unified/coherency');
     return computeCoherencyScore;
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[swarm-orchestrator:getDefaultCoherencyFn] silent failure:', e?.message || e);

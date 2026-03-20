@@ -7,7 +7,7 @@ const { relative, resolve } = require('path');
 // Lazy-load to break circular dependency (coherency → unified/coherency → reflector → coherency)
 let _detectLanguage;
 function detectLanguage(code) {
-  if (!_detectLanguage) _detectLanguage = require('../core/coherency').detectLanguage;
+  if (!_detectLanguage) _detectLanguage = require('../unified/coherency').detectLanguage;
   return _detectLanguage(code);
 }
 const { observeCoherence } = require('../core/reflection');

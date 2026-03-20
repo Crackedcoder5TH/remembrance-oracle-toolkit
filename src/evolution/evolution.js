@@ -15,7 +15,7 @@
  * Pure functions that don't need oracle (stalenessPenalty, etc.) work standalone.
  */
 
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { reflectionLoop } = require('../core/reflection');
 const unifiedHealing = require('../unified/healing');
 const unifiedDecay = require('../unified/decay');

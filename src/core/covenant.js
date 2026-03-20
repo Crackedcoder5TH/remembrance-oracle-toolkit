@@ -26,12 +26,9 @@
  *     not tear down.
  */
 
-const {
-  COVENANT_PRINCIPLES,
-  HARM_PATTERNS,
-  DEEP_SECURITY_PATTERNS,
-  stripNonExecutableContent,
-} = require('./covenant-patterns');
+const { COVENANT_PRINCIPLES, stripNonExecutableContent } = require('./covenant-principles');
+const { HARM_PATTERNS } = require('./covenant-harm');
+const { DEEP_SECURITY_PATTERNS } = require('./covenant-deep-security');
 
 // ─── Custom principle registry reference (set by PluginManager integration) ───
 let _customPrincipleRegistry = null;

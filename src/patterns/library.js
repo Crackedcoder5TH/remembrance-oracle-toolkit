@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { computeRelevance } = require('../core/relevance');
 const { parseStructuredDescription, structuralSimilarity } = require('../core/structured-description');
 const { applyDecayToScore, computeFreshnessBoost } = require('../unified/decay');

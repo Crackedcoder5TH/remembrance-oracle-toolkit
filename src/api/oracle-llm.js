@@ -3,7 +3,7 @@
  * AI-enhanced operations and self-evolution capabilities.
  */
 
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { ClaudeBridge } = require('../core/claude-bridge');
 
 // ─── Shared Helpers (eliminates 6× pattern lookup + candidate storage duplication) ───

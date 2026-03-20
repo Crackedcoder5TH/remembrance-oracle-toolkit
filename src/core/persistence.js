@@ -288,8 +288,8 @@ function syncFromGlobal(localStore, options = {}) {
     if ((report.pulled + report.upgraded) >= maxPull) break;
 
     if (!pattern.name) { report.skipped++; continue; }
-    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
-    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
+    const key = dedupKey(pattern);
+    const coherency = getCoherency(pattern);
 
     if (localCoherencyIndex.has(key)) {
       const localCoherency = localCoherencyIndex.get(key);

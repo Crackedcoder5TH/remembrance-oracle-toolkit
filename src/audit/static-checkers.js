@@ -272,9 +272,30 @@ function checkType(code, lines, options = {}) {
     const lineNum = i + 1;
 
     // Division without zero-guard (conservative: only flag obvious risky divisions)
-    // Skip lines that are string literals, paths, shebangs, or imports
-    const isInString = /['"`].*\/.*['"`]/.test(line) || /require\s*\(/.test(line) || /import\s+/.test(line) || /^#!/.test(line.trim());
-    const divMatch = !isInString && line.match(/(\w+(?:\.\w+)*)\s*\/\s*(\w+(?:\.\w+)*)/);
+    // Skip lines that are string literals, paths, shebangs, imports, or shell script fragments
+    const trimmedLine = line.trim();
+    const isInString = /['"`].*\/.*['"`]/.test(line) || /require\s*\(/.test(line) || /import\s+/.test(line) || /^#!/.test(trimmedLine) || /`.*#!/.test(line) || />\s*\/dev\/null/.test(line);
+    // Skip comment lines (JSDoc, block comments, single-line comments)
+    const isInComment = /^\s*\*/.test(line) || /^\s*\/\//.test(line) || /^\s*\/\*/.test(line);
+    // Detect shell script context: $((x / y)), $((...)), or common shell patterns
+    const isShellScript = /\$\(\(.*\//.test(line) || /\becho\b/.test(line) || /\bexit\b\s+\d/.test(line) || /\bfi\b\s*$/.test(trimmedLine) || /\bdone\b\s*$/.test(trimmedLine) || /^\s*#\s/.test(line);
+    // Detect template literal block context: if surrounding lines look like a template literal
+    // containing shell script (return `#!/bin/sh ... `)
+    const isInTemplateLiteralShell = (() => {
+      // Look backward for opening backtick with shell indicators
+      for (let j = Math.max(0, i - 50); j < i; j++) {
+        const prev = lines[j];
+        if (/return\s*`/.test(prev) || /=\s*`/.test(prev)) {
+          // Found template literal start — check if it contains shell markers
+          const block = lines.slice(j, i + 1).join('\n');
+          if (/#!/.test(block) || /\bfi\b/.test(block) || /\bdone\b/.test(block) || /\bexit\b/.test(block)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    })();
+    const divMatch = !isInString && !isInComment && !isShellScript && !isInTemplateLiteralShell && line.match(/(\w+(?:\.\w+)*)\s*\/\s*(\w+(?:\.\w+)*)/);
     if (divMatch && !/\/\/|\/\*|\*\//.test(line.slice(0, line.indexOf(divMatch[0])))) {
       const divisor = divMatch[2];
       // Skip known-safe divisors: literal numbers > 0, common safe patterns

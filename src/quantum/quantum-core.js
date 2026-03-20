@@ -265,13 +265,16 @@ function computeInterference(patternA, patternB, similarityFn) {
   const phaseDiff = phaseA - phaseB;
 
   // Code similarity determines constructive vs destructive interference
+  // Support both .code (main patterns) and .fixCode (debug patterns)
+  const codeA = patternA.code || patternA.fixCode;
+  const codeB = patternB.code || patternB.fixCode;
   let similarity = 0;
-  if (similarityFn && patternA.code && patternB.code) {
-    similarity = similarityFn(patternA.code, patternB.code);
-  } else if (patternA.code && patternB.code) {
+  if (similarityFn && codeA && codeB) {
+    similarity = similarityFn(codeA, codeB);
+  } else if (codeA && codeB) {
     // Inline simple Jaccard as fallback
-    const setA = new Set(patternA.code.split(/\s+/));
-    const setB = new Set(patternB.code.split(/\s+/));
+    const setA = new Set(codeA.split(/\s+/));
+    const setB = new Set(codeB.split(/\s+/));
     const intersection = [...setA].filter(x => setB.has(x)).length;
     const union = new Set([...setA, ...setB]).size;
     similarity = union > 0 ? intersection / union : 0;
@@ -289,7 +292,7 @@ function computeInterference(patternA, patternB, similarityFn) {
  * Apply interference from all other matches to a scored pattern.
  * Modifies the pattern's matchScore in-place.
  *
- * @param {Array} scored - Array of scored patterns with { matchScore, phase, code }
+ * @param {Array} scored - Array of scored patterns with { matchScore, phase, code|fixCode }
  * @param {function} [similarityFn] - Optional similarity function
  */
 function applyFieldInterference(scored, similarityFn) {

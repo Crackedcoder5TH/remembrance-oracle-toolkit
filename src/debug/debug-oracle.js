@@ -559,6 +559,7 @@ class DebugOracle {
     const seen = new Set();
 
     const addScored = (row, baseScore) => {
+      if (!row || !row.id) return;
       if (seen.has(row.id)) return;
       seen.add(row.id);
 

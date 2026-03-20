@@ -264,7 +264,9 @@ function checkType(code, lines, options = {}) {
     const lineNum = i + 1;
 
     // Division without zero-guard (conservative: only flag obvious risky divisions)
-    const divMatch = line.match(/(\w+(?:\.\w+)*)\s*\/\s*(\w+(?:\.\w+)*)/);
+    // Skip lines that are string literals, paths, shebangs, or imports
+    const isInString = /['"`].*\/.*['"`]/.test(line) || /require\s*\(/.test(line) || /import\s+/.test(line) || /^#!/.test(line.trim());
+    const divMatch = !isInString && line.match(/(\w+(?:\.\w+)*)\s*\/\s*(\w+(?:\.\w+)*)/);
     if (divMatch && !/\/\/|\/\*|\*\//.test(line.slice(0, line.indexOf(divMatch[0])))) {
       const divisor = divMatch[2];
       // Skip known-safe divisors: literal numbers > 0, common safe patterns

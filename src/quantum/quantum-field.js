@@ -75,6 +75,9 @@ class QuantumField {
   }
 
   _migrateTable(table) {
+    // Validate table name against allowlist to prevent SQL injection
+    if (!QUANTUM_TABLES.includes(table)) return;
+
     // Check if table exists
     const tableExists = this.db.prepare(
       "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?"

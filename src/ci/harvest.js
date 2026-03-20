@@ -294,8 +294,21 @@ function harvest(oracle, source, options = {}) {
       return result;
     }
 
+    // Pre-fetch existing pattern names once to avoid N×M similarity checks
+    const existingNames = new Set();
+    try {
+      const allPatterns = oracle.patterns?.getAll?.() || [];
+      for (const p of allPatterns) existingNames.add(p.name);
+    } catch (_) { /* patterns API may not exist */ }
+
     // Register test-backed patterns first (higher value)
     for (const d of discovered) {
+      // Skip already-registered patterns by name to avoid expensive similarity checks
+      if (existingNames.has(d.name)) {
+        result.skipped++;
+        result.patterns.push({ name: d.name, status: 'skipped', reason: 'already registered' });
+        continue;
+      }
       try {
         const reg = oracle.registerPattern({
           name: d.name,
@@ -307,6 +320,7 @@ function harvest(oracle, source, options = {}) {
         });
         if (reg.registered) {
           result.registered++;
+          existingNames.add(d.name);
           result.patterns.push({ name: d.name, status: 'registered', hasTests: true });
         } else {
           result.skipped++;
@@ -323,6 +337,7 @@ function harvest(oracle, source, options = {}) {
       if (splitMode === 'function') {
         const fns = splitFunctions(s.code, s.language);
         for (const fn of fns) {
+          if (existingNames.has(fn.name)) { result.skipped++; continue; }
           try {
             const reg = oracle.registerPattern({
               name: fn.name,
@@ -333,6 +348,7 @@ function harvest(oracle, source, options = {}) {
             });
             if (reg.registered) {
               result.registered++;
+              existingNames.add(fn.name);
               result.patterns.push({ name: fn.name, status: 'registered', hasTests: false });
             } else {
               result.skipped++;
@@ -344,6 +360,11 @@ function harvest(oracle, source, options = {}) {
         }
       } else {
         const name = path.basename(s.file, path.extname(s.file));
+        if (existingNames.has(name)) {
+          result.skipped++;
+          result.patterns.push({ name, status: 'skipped', reason: 'already registered' });
+          continue;
+        }
         try {
           const reg = oracle.registerPattern({
             name,
@@ -354,6 +375,7 @@ function harvest(oracle, source, options = {}) {
           });
           if (reg.registered) {
             result.registered++;
+            existingNames.add(name);
             result.patterns.push({ name, status: 'registered', hasTests: false });
           } else {
             result.skipped++;

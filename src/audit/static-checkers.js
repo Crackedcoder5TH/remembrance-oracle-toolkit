@@ -149,8 +149,15 @@ function checkSecurity(code, lines) {
     }
 
     // SQL template literal interpolation (not parameterized)
+    // Skip DDL/migration statements and internal table/column name interpolation
     const sqlInterp = line.match(/(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b.*\$\{/i);
-    if (sqlInterp) {
+    const isDDLOrInternalNames = /ALTER\s+TABLE|CREATE\s+(INDEX|TABLE)\b|PRAGMA\s+table_info|ADD\s+COLUMN/i.test(line) ||
+      // Skip lines where all ${...} interpolations are simple identifiers matching
+      // internal schema patterns: table/column names, loop variables, or constants
+      (sqlInterp && [...line.matchAll(/\$\{(\w+)\}/g)].every(m =>
+        /^(table|t|.*[Cc]ol|.*[Tt]able|.*[Cc]olumn|[A-Z_]+)$/.test(m[1])
+      ));
+    if (sqlInterp && !isDDLOrInternalNames) {
       findings.push({
         line: lineNum,
         bugClass: BUG_CLASSES.SECURITY,
@@ -162,8 +169,9 @@ function checkSecurity(code, lines) {
       });
     }
 
-    // exec/execSync with string interpolation
-    if (/exec(?:Sync|File|FileSync)?\s*\(\s*`/.test(line) || /exec(?:Sync)?\s*\(\s*['"].*\$\{/.test(line)) {
+    // exec/execSync with string interpolation — skip CREATE INDEX statements (DDL, not shell)
+    if ((/exec(?:Sync|File|FileSync)?\s*\(\s*`/.test(line) || /exec(?:Sync)?\s*\(\s*['"].*\$\{/.test(line)) &&
+        !/CREATE\s+(INDEX|TABLE)/i.test(line)) {
       findings.push({
         line: lineNum,
         bugClass: BUG_CLASSES.SECURITY,

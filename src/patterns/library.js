@@ -21,7 +21,7 @@ const crypto = require('crypto');
 const { computeCoherencyScore } = require('../core/coherency');
 const { computeRelevance } = require('../core/relevance');
 const { parseStructuredDescription, structuralSimilarity } = require('../core/structured-description');
-const { applyDecayToScore, computeFreshnessBoost } = require('../core/confidence-decay');
+const { applyDecayToScore, computeFreshnessBoost } = require('../unified/decay');
 const { validateCode } = require('../core/validator');
 const { checkSemanticConsistency } = require('../core/semantic-consistency');
 

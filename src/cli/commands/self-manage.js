@@ -419,7 +419,7 @@ ${c.bold('Commands:')}
   };
 
   handlers['decay'] = (args) => {
-    const { decayPass } = require('../../core/confidence-decay');
+    const { decayPass } = require('../../unified/decay');
     const patterns = oracle.patterns.getAll();
     const report = decayPass(patterns);
 

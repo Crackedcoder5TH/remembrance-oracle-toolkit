@@ -339,6 +339,9 @@ ${c.bold('Options:')}
         language: args.language,
       });
       console.log(c.boldCyan('Auto-Submit Report:'));
+      if (result.autoRegistered > 0) {
+        console.log(`  Registered: ${c.boldGreen(String(result.autoRegistered))} new function(s) from diff`);
+      }
       console.log(`  Harvested:  ${c.boldGreen(String(result.harvest.registered))} registered, ${c.dim(String(result.harvest.skipped))} skipped, ${c.dim(String(result.harvest.failed))} failed`);
       console.log(`  Promoted:   ${c.boldGreen(String(result.promoted))} candidate(s)`);
       console.log(`  Synced:     ${result.synced ? c.boldGreen('yes') : c.dim('no')}`);
@@ -346,8 +349,21 @@ ${c.bold('Options:')}
       if (result.debugSweep) {
         console.log(`  Debug:      ${c.boldGreen(String(result.debugSweep.grown || 0))} grown, ${c.boldGreen(String(result.debugSweep.synced || 0))} synced`);
       }
+      if (result.retention) {
+        const totalRemoved = (result.retention.candidateArchive?.removed || 0) +
+          (result.retention.patternArchive?.removed || 0) +
+          (result.retention.entries?.staleRemoved || 0) +
+          (result.retention.entries?.duplicateRemoved || 0);
+        if (totalRemoved > 0) {
+          console.log(`  Retention:  ${c.dim(String(totalRemoved))} stale row(s) purged`);
+        }
+      }
       if (result.errors.length > 0) {
         console.log(`  Errors:     ${c.boldRed(result.errors.join(', '))}`);
+      }
+      const totalActivity = (result.autoRegistered || 0) + result.harvest.registered + result.promoted;
+      if (totalActivity === 0 && result.errors.length === 0) {
+        console.log(c.dim('  Nothing new to submit — library is up to date.'));
       }
     } catch (err) {
       console.error(c.boldRed('Error:') + ' Auto-submit error: ' + err.message);

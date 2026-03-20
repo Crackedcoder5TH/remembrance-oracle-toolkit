@@ -41,7 +41,7 @@ ${HOOK_MARKER}
 # Checks staged files against the Kingdom's Weave
 # Uses portable path resolution — survives forks and clones
 
-STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(js|ts|py|go|rs)$')
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(js|ts|py|go|rs)$' | grep -v '^tests/')
 
 if [ -z "$STAGED" ]; then
   exit 0

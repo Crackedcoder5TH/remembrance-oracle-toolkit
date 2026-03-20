@@ -1,7 +1,12 @@
 /**
- * Oracle Core — Feedback, auto-heal, and compounding growth.
- * Records usage feedback, triggers automatic healing for failing patterns,
- * and spawns new candidates from successful patterns (compounding).
+ * Oracle Core — Feedback (Quantum Entanglement Propagation).
+ *
+ * Feedback is the post-measurement state update. After observing and using
+ * a pattern, the outcome updates the quantum field:
+ *   - SUCCESS: amplitude increases, entangled patterns shift positively
+ *   - FAILURE: amplitude decreases, entangled patterns shift negatively,
+ *              auto-healing attempts to repair the pattern
+ *   - CASCADE: high-amplitude successes trigger growth of new entangled variants
  */
 
 const { auditLog } = require('../core/audit-logger');
@@ -130,8 +135,18 @@ module.exports = {
       compoundResult = _tryCompound(this, id, updated, 'feedback');
     }
 
-    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated?.reliability?.historicalScore ?? null, healed: !!healResult?.healed, compounded: compoundResult?.stored ?? 0 } });
-    return { success: true, newReliability: updated?.reliability?.historicalScore ?? null, healResult, compoundResult };
+    // ─── Quantum Entanglement Propagation ───
+    let quantumFeedback = null;
+    if (this._quantumField) {
+      try {
+        quantumFeedback = this._quantumField.feedback('entries', id, succeeded);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[feedback] quantum propagation failed:', e?.message || e);
+      }
+    }
+
+    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated?.reliability?.historicalScore ?? null, healed: !!healResult?.healed, compounded: compoundResult?.stored ?? 0, quantum: quantumFeedback } });
+    return { success: true, newReliability: updated?.reliability?.historicalScore ?? null, healResult, compoundResult, quantum: quantumFeedback };
   },
 
   /**
@@ -195,7 +210,17 @@ module.exports = {
       compoundResult = _tryCompound(this, id, updated, 'pattern-feedback');
     }
 
-    auditLog('pattern_feedback', { id, success: succeeded, meta: { usageCount: updated.usageCount, healed: !!healResult?.healed, compounded: compoundResult?.stored ?? 0 } });
-    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount, healResult, compoundResult };
+    // ─── Quantum Entanglement Propagation ───
+    let quantumFeedback = null;
+    if (this._quantumField) {
+      try {
+        quantumFeedback = this._quantumField.feedback('patterns', id, succeeded);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[patternFeedback] quantum propagation failed:', e?.message || e);
+      }
+    }
+
+    auditLog('pattern_feedback', { id, success: succeeded, meta: { usageCount: updated.usageCount, healed: !!healResult?.healed, compounded: compoundResult?.stored ?? 0, quantum: quantumFeedback } });
+    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount, healResult, compoundResult, quantum: quantumFeedback };
   },
 };

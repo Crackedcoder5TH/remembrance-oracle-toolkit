@@ -45,19 +45,24 @@ const crypto = require('crypto');
 const unifiedVariants = require('../unified/variants');
 const unifiedDecay = require('../unified/decay');
 
+// ─── Shared Quantum Engine ───
+// Debug oracle now delegates to the unified quantum-core for all quantum operations.
+// This ensures debug patterns and main patterns use the same quantum mechanics.
+const quantumCore = require('../quantum/quantum-core');
+
 function safeParse(str, fallback) {
   try { return JSON.parse(str || JSON.stringify(fallback)); } catch { return fallback; }
 }
 
-// ─── Quantum Constants ───
+// ─── Quantum Constants (delegated to quantum-core) ───
 
-const PLANCK_CONFIDENCE = 0.2;          // Minimum observable amplitude (initial state)
-const DECOHERENCE_LAMBDA = 0.005;       // Decay rate per day (half-life ≈ 139 days)
-const TUNNELING_PROBABILITY = 0.08;     // Probability of tunneling through barrier
-const ENTANGLEMENT_STRENGTH = 0.3;      // How strongly entangled states couple
-const INTERFERENCE_RADIUS = 0.15;       // Amplitude shift from constructive/destructive interference
-const COLLAPSE_BOOST = 0.05;            // Amplitude boost from being observed (measured)
-const PHASE_DRIFT_RATE = 0.01;          // Phase drift per day (affects interference)
+const PLANCK_CONFIDENCE = quantumCore.PLANCK_AMPLITUDE;
+const DECOHERENCE_LAMBDA = quantumCore.DECOHERENCE_LAMBDA;
+const TUNNELING_PROBABILITY = quantumCore.TUNNELING_PROBABILITY;
+const ENTANGLEMENT_STRENGTH = quantumCore.ENTANGLEMENT_STRENGTH;
+const INTERFERENCE_RADIUS = quantumCore.INTERFERENCE_RADIUS;
+const COLLAPSE_BOOST = quantumCore.COLLAPSE_BOOST;
+const PHASE_DRIFT_RATE = quantumCore.PHASE_DRIFT_RATE;
 
 // ─── Error Categories (Quantum Field Sectors) ───
 
@@ -74,13 +79,9 @@ const ERROR_CATEGORIES = {
   data:      { weight: 0.7, keywords: ['JSON.parse', 'invalid JSON', 'malformed', 'encoding', 'codec', 'corrupt', 'schema'] },
 };
 
-// ─── Quantum State Constants ───
+// ─── Quantum State Constants (delegated to quantum-core) ───
 
-const QUANTUM_STATES = {
-  SUPERPOSITION: 'superposition',  // Not yet observed — exists in all possible states
-  COLLAPSED: 'collapsed',          // Observed — definite state from measurement
-  DECOHERED: 'decohered',          // Lost coherence — amplitude below threshold
-};
+const QUANTUM_STATES = quantumCore.QUANTUM_STATES;
 
 // ─── Error Fingerprinting (State Vector Preparation) ───
 
@@ -199,28 +200,15 @@ function applyDecoherence(amplitude, lastObservedAt, now) {
 }
 
 /**
- * Compute the initial phase for a pattern — used in interference calculations.
+ * Compute the initial phase for a pattern — DELEGATES to quantum-core.
  * Phase is derived from the fingerprint hash to ensure deterministic but varied phases.
  */
-function computePhase(fingerprintHash) {
-  if (!fingerprintHash) return 0;
-  // Hash the input to ensure we always have valid hex characters
-  const hex = crypto.createHash('md5').update(fingerprintHash).digest('hex').slice(0, 8);
-  const hashNum = parseInt(hex, 16);
-  return (hashNum / 0xFFFFFFFF) * 2 * Math.PI;
-}
+const computePhase = quantumCore.computePhase;
 
 /**
- * Quantum tunneling probability — can a low-amplitude pattern surface?
- * Uses the WKB approximation: P(tunnel) ∝ e^(-2κa)
- * where κ = barrier height, a = barrier width (gap between amplitude and threshold)
+ * Quantum tunneling — DELEGATES to quantum-core.
  */
-function canTunnel(amplitude, threshold) {
-  if (amplitude >= threshold) return true; // No barrier
-  const barrierHeight = threshold - amplitude;
-  const tunnelingProb = TUNNELING_PROBABILITY * Math.exp(-2 * barrierHeight / 0.3);
-  return Math.random() < tunnelingProb;
-}
+const canTunnel = quantumCore.canTunnel;
 
 /**
  * Compute interference between two patterns.

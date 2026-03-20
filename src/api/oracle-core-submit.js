@@ -1,12 +1,23 @@
 /**
- * Oracle Core — Submit, register, evolve.
- * Write operations that validate and store code in the pattern library.
+ * Oracle Core — Submit, Register, Evolve (Quantum Capture).
+ *
+ * Submission is CAPTURE — a new pattern enters the quantum field in
+ * |superposition⟩ with an initial amplitude derived from its coherency score.
+ * Registration establishes entanglement links with related patterns.
+ * Evolution creates entangled variants linked to the parent state.
  */
 
 const { validateCode } = require('../core/validator');
 const { autoTag } = require('../core/auto-tagger');
 const { _checkSimilarity } = require('./oracle-core-similarity');
 const { auditLog } = require('../core/audit-logger');
+
+// Quantum capture engine
+const {
+  coherencyToAmplitude,
+  computePhase,
+  QUANTUM_STATES,
+} = require('../quantum/quantum-core');
 
 module.exports = {
   /**
@@ -153,9 +164,49 @@ module.exports = {
       if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-submit:init] temporal memory not available:', e?.message || e);
     }
 
+    // ─── Quantum Capture ───
+    // Initialize quantum state for the new pattern and establish entanglement
+    let quantumCapture = null;
+    if (this._quantumField) {
+      try {
+        const amplitude = coherencyToAmplitude(validation.coherencyScore?.total || 0, {
+          usageCount: 0, successCount: 0,
+        });
+        // Set quantum state on the newly registered pattern
+        this._quantumField.db.prepare(
+          'UPDATE patterns SET amplitude = ?, phase = ?, quantum_state = ? WHERE id = ?'
+        ).run(amplitude, computePhase(registered.id), QUANTUM_STATES.SUPERPOSITION, registered.id);
+
+        quantumCapture = {
+          amplitude,
+          quantumState: QUANTUM_STATES.SUPERPOSITION,
+          entangled: false,
+        };
+
+        // Auto-entangle with similar existing patterns (same language + overlapping tags)
+        try {
+          const existingPatterns = this.patterns.getAll({ language: registered.language });
+          const regTags = new Set(registered.tags || []);
+          for (const ep of existingPatterns) {
+            if (ep.id === registered.id) continue;
+            const epTags = new Set(ep.tags || []);
+            const overlap = [...regTags].filter(t => epTags.has(t)).length;
+            if (overlap >= 2) {
+              this._quantumField.entangle('patterns', registered.id, ep.id);
+              quantumCapture.entangled = true;
+            }
+          }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[register] auto-entangle failed:', e?.message || e);
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[register] quantum capture failed:', e?.message || e);
+      }
+    }
+
     const growthReport = this._autoGrowFrom(registered);
     auditLog('register', { id: registered.id, name: pattern.name, actor: pattern.author || 'oracle-pattern-library', language: registered.language, success: true });
-    return { success: true, registered: true, pattern: registered, validation, growth: growthReport };
+    return { success: true, registered: true, pattern: registered, validation, growth: growthReport, quantum: quantumCapture };
   },
 
   /**

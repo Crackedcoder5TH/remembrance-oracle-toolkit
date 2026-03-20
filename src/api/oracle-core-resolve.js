@@ -1,6 +1,13 @@
 /**
- * Oracle Core — Resolve.
- * Smart retrieval: PULL / EVOLVE / GENERATE decision with reflection healing.
+ * Oracle Core — Resolve (Quantum Measurement).
+ *
+ * Resolve is the fundamental MEASUREMENT of the quantum field.
+ * It collapses the superposition of all matching patterns into a
+ * definite decision (PULL / EVOLVE / GENERATE) via:
+ *   1. Quantum observation — decoherence + Born rule scoring
+ *   2. Interference — competing patterns interfere constructively/destructively
+ *   3. Entanglement — healing results propagate to linked patterns
+ *   4. State collapse — measured patterns transition to collapsed state
  */
 
 const { reflectionLoop } = require('../core/reflection');
@@ -11,6 +18,13 @@ const { captureResolveDebug } = require('../ci/auto-debug');
 const { applyPromptTag } = require('../core/oracle-config');
 const { trackResolve } = require('../core/session-tracker');
 const { enhanceResolveWithBugClasses } = require('../audit/resolve-hook');
+
+// Quantum measurement engine
+const {
+  applyDecoherence,
+  PLANCK_AMPLITUDE,
+  QUANTUM_STATES,
+} = require('../quantum/quantum-core');
 
 module.exports = {
   /**
@@ -161,6 +175,22 @@ module.exports = {
 
     auditLog('resolve', { id: patternData?.id, name: patternData?.name, success: true, language: patternData?.language, meta: { decision: decision.decision, confidence: decision.confidence, healed: !!healing } });
 
+    // ─── Quantum State Tracking ───
+    // Collapse the resolved pattern's quantum state and propagate entanglement
+    let quantumMeasurement = null;
+    if (patternData?.id && this._quantumField && (decision.decision === 'pull' || decision.decision === 'evolve')) {
+      try {
+        this._quantumField.observe('patterns', [patternData.id]);
+        quantumMeasurement = {
+          observed: true,
+          stateCollapsed: QUANTUM_STATES.COLLAPSED,
+          amplitude: patternData.amplitude || decision.confidence,
+        };
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[resolve] quantum observation failed:', e?.message || e);
+      }
+    }
+
     // Auto-capture debug patterns from healing results (healed code forwarding)
     let resolveResult = {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,
@@ -171,6 +201,8 @@ module.exports = {
         healingPath: healing.healingPath,
       } : null,
       alternatives: decision.alternatives, historyMatches: historyResults,
+      // Quantum measurement results
+      quantum: quantumMeasurement,
     };
 
     // Auto-capture debug patterns and forward healed code

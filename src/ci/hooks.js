@@ -41,7 +41,7 @@ ${HOOK_MARKER}
 # Checks staged files against the Kingdom's Weave
 # Uses portable path resolution — survives forks and clones
 
-STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(js|ts|py|go|rs)$')
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\\.(js|ts|py|go|rs)$' | grep -v '^tests/')
 
 if [ -z "$STAGED" ]; then
   exit 0
@@ -50,6 +50,20 @@ fi
 # Resolve repo root portably (works after fork/clone)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 if [ -z "$REPO_ROOT" ]; then
+  exit 0
+fi
+
+# Check if oracle is enabled — skip ceremony when toggled off
+ORACLE_ENABLED=$(ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { isOracleEnabled } = require(path.join(root, 'src/core/oracle-config'));
+    process.stdout.write(isOracleEnabled() ? 'true' : 'false');
+  } catch(e) { process.stdout.write('true'); }
+" 2>/dev/null || echo "true")
+
+if [ "$ORACLE_ENABLED" = "false" ]; then
   exit 0
 fi
 
@@ -86,6 +100,48 @@ if [ $FAILED -ne 0 ]; then
   echo "Fix the violations above or use --no-verify to skip."
   exit 1
 fi
+
+# Query-before-write check (warning only, non-blocking)
+ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { wasSearchRecent, getPendingFeedback } = require(path.join(root, 'src/core/session-tracker'));
+    if (!wasSearchRecent(600000)) {
+      console.error('\\x1b[33m[oracle] Warning: No oracle search in the last 10 minutes.\\x1b[0m');
+      console.error('\\x1b[33m  Consider: oracle search \"<what you need>\" before writing new code.\\x1b[0m');
+    }
+    const pending = getPendingFeedback();
+    if (pending.length > 0) {
+      console.error('\\x1b[33m[oracle] Warning: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
+      console.error('\\x1b[33m  Run: oracle pending-feedback\\x1b[0m');
+    }
+  } catch(e) {
+    console.error('[oracle:pre-commit] ' + (e.message || e));
+  }
+" 2>&1 || true
+
+# Audit cascade check (warning only, non-blocking)
+ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { auditFiles } = require(path.join(root, 'src/audit/static-checkers'));
+    const staged = process.env.STAGED_FILES;
+    if (staged) {
+      const files = staged.split(' ').filter(f => f.trim());
+      if (files.length > 0) {
+        const result = auditFiles(files, { minSeverity: 'high' });
+        if (result.totalFindings > 0) {
+          console.error('\\x1b[33m[oracle] Audit: ' + result.totalFindings + ' high-severity assumption mismatch(es) in staged files.\\x1b[0m');
+          console.error('\\x1b[33m  Run: oracle audit check for details.\\x1b[0m');
+        }
+      }
+    }
+  } catch(e) {
+    // Audit module not available — skip
+  }
+" 2>&1 || true
 `;
 }
 
@@ -103,6 +159,20 @@ ${HOOK_MARKER}
 # Resolve repo root portably (works after fork/clone)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 if [ -z "$REPO_ROOT" ]; then
+  exit 0
+fi
+
+# Check if oracle is enabled — skip auto-submit when toggled off
+ORACLE_ENABLED=$(ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { isOracleEnabled } = require(path.join(root, 'src/core/oracle-config'));
+    process.stdout.write(isOracleEnabled() ? 'true' : 'false');
+  } catch(e) { process.stdout.write('true'); }
+" 2>/dev/null || echo "true")
+
+if [ "$ORACLE_ENABLED" = "false" ]; then
   exit 0
 fi
 
@@ -124,25 +194,27 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       console.log('Oracle: ' + (result.harvest.registered || 0) + ' harvested, ' + (result.promoted || 0) + ' promoted' + (result.synced ? ', synced' : '') + debugInfo);
     }
     if (result.errors && result.errors.length > 0) {
+      console.error('[oracle:post-commit] pipeline errors: ' + result.errors.join('; '));
       const fs = require('fs');
       const path = require('path');
       const logDir = path.join(process.cwd(), '.remembrance');
-      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
+      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_m) { console.error('[oracle:post-commit] log dir failed: ' + _m.message); }
       const logPath = path.join(logDir, 'hook-errors.log');
       const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\n';
-      try { fs.appendFileSync(logPath, entry); } catch(_) {}
+      try { fs.appendFileSync(logPath, entry); } catch(_w) { console.error('[oracle:post-commit] log write failed: ' + _w.message); }
     }
   } catch(e) {
+    // Always emit to stderr so errors are never fully silent.
+    console.error('[oracle:post-commit] ' + (e.message || e));
     try {
       const fs = require('fs');
       const path = require('path');
       const logDir = path.join(process.cwd(), '.remembrance');
-      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_) {}
+      try { fs.mkdirSync(logDir, { recursive: true }); } catch(_m) { console.error('[oracle:post-commit] log dir failed: ' + _m.message); }
       const logPath = path.join(logDir, 'hook-errors.log');
       const entry = new Date().toISOString() + ' [post-commit] FATAL: ' + (e.message || e) + '\\n';
-      try { fs.appendFileSync(logPath, entry); } catch(_) {}
+      try { fs.appendFileSync(logPath, entry); } catch(_w) { console.error('[oracle:post-commit] log write failed: ' + _w.message); }
     } catch(_) {}
-    if (process.env.ORACLE_DEBUG) console.warn('[hooks:postCommitScript] failure:', e?.message || e);
   }
 " 2>/dev/null || true
 `;

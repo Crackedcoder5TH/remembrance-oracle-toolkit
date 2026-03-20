@@ -18,10 +18,12 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { computeRelevance } = require('../core/relevance');
 const { parseStructuredDescription, structuralSimilarity } = require('../core/structured-description');
-const { applyDecayToScore, computeFreshnessBoost } = require('../core/confidence-decay');
+const { applyDecayToScore, computeFreshnessBoost } = require('../unified/decay');
+const { validateCode } = require('../core/validator');
+const { checkSemanticConsistency } = require('../core/semantic-consistency');
 
 // Fractal-library bridge (graceful — returns neutral values if unavailable)
 // Decision-engine helpers still needed directly; mutation integration moved to FractalStore.
@@ -93,8 +95,14 @@ function acquireLock(storeDir, label = 'pattern-library') {
       try {
         const stat = fs.statSync(lockPath);
         if (Date.now() - stat.mtimeMs > STALE_LOCK_MS) {
-          try { fs.unlinkSync(lockPath); } catch (e) {
-            if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e);
+          // Atomically claim the stale lock via rename to prevent TOCTOU race
+          const stalePath = lockPath + '.stale.' + process.pid;
+          try {
+            fs.renameSync(lockPath, stalePath);
+            fs.unlinkSync(stalePath);
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] stale cleanup:', e?.message || e);
+            // Another process may have already claimed it — that's fine
           }
           continue;
         }
@@ -488,19 +496,71 @@ class PatternLibrary {
 
     const best = scored[0];
     const threshold = minCoherency ?? THRESHOLDS.pull;
+    const evolveThreshold = Math.min(threshold, THRESHOLDS.evolve);
     const altMapper = s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite });
 
     if (best.composite >= threshold && best.relevanceScore >= RELEVANCE_GATES.FOR_PULL) {
+      // Hard gate 1: pattern must have test code and tests must pass to PULL
+      const testGateResult = this._verifyTestGate(best.pattern);
+      if (!testGateResult.passed) {
+        // Downgrade to EVOLVE — pattern looks good but tests don't prove it
+        if (best.composite >= evolveThreshold && best.relevanceScore >= RELEVANCE_GATES.FOR_EVOLVE) {
+          return {
+            decision: 'evolve',
+            pattern: best.pattern,
+            confidence: best.composite,
+            reasoning: `Pattern "${best.pattern.name}" scored ${best.composite.toFixed(3)} but failed test gate (${testGateResult.reason}) — downgraded to EVOLVE`,
+            alternatives: scored.slice(1, 4).map(altMapper),
+            testGate: testGateResult,
+          };
+        }
+        return {
+          decision: 'generate',
+          pattern: best.pattern,
+          confidence: 1.0 - (best.composite || 0),
+          reasoning: `Pattern "${best.pattern.name}" scored ${best.composite.toFixed(3)} but failed test gate (${testGateResult.reason}) — generation required`,
+          alternatives: scored.slice(1, 4).map(altMapper),
+          testGate: testGateResult,
+        };
+      }
+
+      // Hard gate 2: semantic consistency — name/description must match code behavior
+      const semanticResult = checkSemanticConsistency(best.pattern.name, description, best.pattern.code);
+      if (semanticResult.score < 0.4) {
+        // Severe mismatch — code does something different than what name claims
+        if (best.composite >= evolveThreshold && best.relevanceScore >= RELEVANCE_GATES.FOR_EVOLVE) {
+          return {
+            decision: 'evolve',
+            pattern: best.pattern,
+            confidence: best.composite * semanticResult.score,
+            reasoning: `Pattern "${best.pattern.name}" failed semantic check: ${semanticResult.flags.join('; ')} — downgraded to EVOLVE`,
+            alternatives: scored.slice(1, 4).map(altMapper),
+            testGate: testGateResult,
+            semanticCheck: semanticResult,
+          };
+        }
+        return {
+          decision: 'generate',
+          pattern: best.pattern,
+          confidence: 1.0 - (best.composite || 0),
+          reasoning: `Pattern "${best.pattern.name}" failed semantic check: ${semanticResult.flags.join('; ')} — generation required`,
+          alternatives: scored.slice(1, 4).map(altMapper),
+          testGate: testGateResult,
+          semanticCheck: semanticResult,
+        };
+      }
+
       return {
         decision: 'pull',
         pattern: best.pattern,
         confidence: best.composite,
-        reasoning: `Pattern "${best.pattern.name}" matches with composite score ${best.composite.toFixed(3)} (relevance=${best.relevanceScore.toFixed(3)}, quality=${(best.qualityScore || 0).toFixed(3)}, coherency=${best.coherency.toFixed(3)}, reliability=${best.reliability.toFixed(3)})`,
+        reasoning: `Pattern "${best.pattern.name}" matches with composite score ${best.composite.toFixed(3)} (relevance=${best.relevanceScore.toFixed(3)}, quality=${(best.qualityScore || 0).toFixed(3)}, coherency=${best.coherency.toFixed(3)}, reliability=${best.reliability.toFixed(3)}) — tests verified, semantics consistent`,
         alternatives: scored.slice(1, 4).map(altMapper),
+        testGate: testGateResult,
+        semanticCheck: semanticResult,
       };
     }
 
-    const evolveThreshold = Math.min(threshold, THRESHOLDS.evolve);
     if (best.composite >= evolveThreshold && best.relevanceScore >= RELEVANCE_GATES.FOR_EVOLVE) {
       return {
         decision: 'evolve',
@@ -518,6 +578,37 @@ class PatternLibrary {
       reasoning: `Best match "${best.pattern.name}" scored too low (${best.composite.toFixed(3)}) — new pattern needed`,
       alternatives: scored.slice(1, 4).map(altMapper),
     };
+  }
+
+  /**
+   * Verify test gate for PULL decisions.
+   * Pattern must have test code and tests must pass in sandbox.
+   * @param {object} pattern - The pattern to verify
+   * @returns {{ passed: boolean, reason: string, testOutput?: string }}
+   */
+  _verifyTestGate(pattern) {
+    if (!pattern.testCode) {
+      // Trust the registration flag or coherency testProof if tests were validated externally
+      if (pattern.testPassed === true || pattern.coherencyScore?.breakdown?.testProof === 1.0) {
+        return { passed: true, reason: 'Test passed at registration (no inline test code)' };
+      }
+      return { passed: false, reason: 'No test code — pattern has no test proof' };
+    }
+    try {
+      const result = validateCode(pattern.code, {
+        language: pattern.language,
+        testCode: pattern.testCode,
+        threshold: 0, // We only care about test execution, not coherency here
+        skipCovenant: true, // Already passed covenant at registration time
+        sandbox: true,
+      });
+      if (result.testPassed === true) {
+        return { passed: true, reason: 'Tests passed in sandbox', testOutput: result.testOutput };
+      }
+      return { passed: false, reason: `Tests failed: ${result.testOutput || 'unknown error'}`, testOutput: result.testOutput };
+    } catch (err) {
+      return { passed: false, reason: `Test execution error: ${err.message}` };
+    }
   }
 
   /**
@@ -1041,13 +1132,21 @@ class PatternLibrary {
   _retireJSON(minScore = THRESHOLDS.retire) {
     const data = this._readJSON();
     const before = data.patterns.length;
+    const retired = [];
     data.patterns = data.patterns.filter(p => {
       const coherency = p.coherencyScore?.total ?? 0;
       const reliability = (p.usageCount ?? 0) > 0 ? (p.successCount ?? 0) / p.usageCount : 0.5;
-      return (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
+      const keep = (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
+      if (!keep) retired.push(p);
+      return keep;
     });
+    // Archive retired patterns for potential recovery
+    if (!data.archive) data.archive = [];
+    for (const p of retired) {
+      data.archive.push({ ...p, retiredAt: new Date().toISOString() });
+    }
     this._writeJSON(data);
-    return { retired: before - data.patterns.length, remaining: data.patterns.length };
+    return { retired: retired.length, remaining: data.patterns.length };
   }
 
   _getAllJSON(filters = {}) {

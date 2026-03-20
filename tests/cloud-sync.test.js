@@ -1,6 +1,9 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { CloudSyncServer, createToken, verifyToken, hashPassword, verifyPassword } = require('../src/cloud/server');
 const { RemembranceOracle } = require('../src/api/oracle');
 
@@ -92,15 +95,19 @@ describe('CloudSyncServer', () => {
   let server;
   let port;
   let token;
-  const oracle = new RemembranceOracle({ autoSeed: false });
+  let tmpDir;
+  let oracle;
 
   before(async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cloud-sync-test-'));
+    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false });
     server = new CloudSyncServer({ oracle, port: 0, secret: 'test-secret' });
     port = await server.start();
   });
 
   after(async () => {
     await server.stop();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it('health check', async () => {

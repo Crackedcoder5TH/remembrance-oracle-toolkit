@@ -15,7 +15,7 @@ const path = require('path');
 const crypto = require('crypto');
 const log = require('../core/logger');
 const { safePath } = require('../core/safe-path');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { synthesizeTests } = require('../evolution/test-synth');
 
 const DEFAULT_STORE_DIR = '.remembrance';
@@ -149,7 +149,7 @@ class SQLiteStore {
             SELECT id FROM (
               SELECT id, ROW_NUMBER() OVER (
                 PARTITION BY LOWER(name), LOWER(language)
-                ORDER BY coherency_total DESC, created_at ASC
+                ORDER BY coherency_total DESC, created_at DESC
               ) AS rn FROM patterns
             ) WHERE rn = 1
           )
@@ -165,7 +165,7 @@ class SQLiteStore {
               SELECT id FROM (
                 SELECT id, ROW_NUMBER() OVER (
                   PARTITION BY LOWER(name), LOWER(language)
-                  ORDER BY coherency_total DESC, created_at ASC
+                  ORDER BY coherency_total DESC, created_at DESC
                 ) AS rn FROM patterns
               ) WHERE rn = 1
             )
@@ -182,6 +182,10 @@ class SQLiteStore {
     // Schema migration: add composition columns
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN requires TEXT DEFAULT '[]'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] requires column:', e.message); }
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN composed_of TEXT DEFAULT '[]'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] composed_of column:', e.message); }
+
+    // Schema migration: add last_used_at column — separates actual usage time from metadata updates
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN last_used_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] last_used_at column:', e.message); }
+    try { this.db.exec(`ALTER TABLE entries ADD COLUMN last_used_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] entries.last_used_at column:', e.message); }
 
     // Schema migration: add bug reports column for reliability tracking
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN bug_reports INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] bug_reports column:', e.message); }
@@ -657,9 +661,9 @@ class SQLiteStore {
 
     const result = this.db.prepare(`
       UPDATE entries SET times_used = ?, times_succeeded = ?, historical_score = ?,
-        version = ?, updated_at = ?
+        version = ?, updated_at = ?, last_used_at = ?
       WHERE id = ? AND version = ?
-    `).run(timesUsed, timesSucceeded, historicalScore, version, now, id, row.version || 1);
+    `).run(timesUsed, timesSucceeded, historicalScore, version, now, now, id, row.version || 1);
 
     // Optimistic lock failed — another process updated the row between our read and write
     if (result.changes === 0) {
@@ -694,6 +698,25 @@ class SQLiteStore {
     return { removed: before - after, remaining: after };
   }
 
+  pruneUntested() {
+    const before = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    this.db.exec('BEGIN');
+    try {
+      const pruned = this.db.prepare('SELECT * FROM entries WHERE test_passed IS NULL OR test_passed = 0').all();
+      for (const row of pruned) {
+        this._archiveEntry(row, 'pruned-untested');
+        this._audit('prune-untested', 'entries', row.id, {});
+      }
+      this.db.prepare('DELETE FROM entries WHERE test_passed IS NULL OR test_passed = 0').run();
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+    const after = this.db.prepare('SELECT COUNT(*) as c FROM entries').get().c;
+    return { removed: before - after, remaining: after };
+  }
+
   entrySummary() {
     const agg = this.db.prepare('SELECT COUNT(*) as cnt, ROUND(AVG(coherency_total), 3) as avg_c FROM entries').get();
     const langs = this.db.prepare('SELECT DISTINCT language FROM entries').all().map(r => r.language);
@@ -702,17 +725,26 @@ class SQLiteStore {
     return {
       totalEntries: agg.cnt,
       languages: langs,
-      avgCoherency: agg.avg_c || 0,
+      avgCoherency: agg.avg_c ?? 0,
       topTags: getTopTags(entries, 10),
     };
   }
 
   /**
    * Safe JSON parse — returns fallback on malformed data instead of throwing.
+   * Logs a warning on parse failure so data corruption is visible, not silent.
    */
   _safeJSON(str, fallback) {
     if (!str) return fallback;
-    try { return JSON.parse(str); } catch { return fallback; }
+    try {
+      return JSON.parse(str);
+    } catch (e) {
+      // Previously returned fallback silently — corruption went undetected.
+      // Now we log so corruption is visible while still being non-fatal.
+      const preview = typeof str === 'string' ? str.slice(0, 80) : String(str);
+      console.warn(`[store:_safeJSON] corrupted JSON detected (using fallback): ${e.message} — data: "${preview}"`);
+      return fallback;
+    }
   }
 
   _rowToEntry(row) {
@@ -734,6 +766,7 @@ class SQLiteStore {
         timesSucceeded: row.times_succeeded,
         historicalScore: row.historical_score,
       },
+      lastUsed: row.last_used_at || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -920,6 +953,11 @@ class SQLiteStore {
         params.push(typeof value === 'object' ? JSON.stringify(value) : value);
       }
     }
+    // Keep coherency_total in sync when coherencyScore is updated
+    if (updates.coherencyScore && typeof updates.coherencyScore === 'object' && updates.coherencyScore.total != null) {
+      sets.push('coherency_total = ?');
+      params.push(updates.coherencyScore.total);
+    }
     sets.push('updated_at = ?');
     params.push(new Date().toISOString());
     params.push(id);
@@ -956,10 +994,10 @@ class SQLiteStore {
 
     const result = this.db.prepare(`
       UPDATE patterns SET usage_count = ?, success_count = ?, version = ?, updated_at = ?,
-        coherency_total = ?, coherency_json = ?
+        last_used_at = ?, coherency_total = ?, coherency_json = ?
       WHERE id = ? AND version = ?
     `).run(usageCount, successCount, version, now,
-      newCoherency.total, JSON.stringify(newCoherency),
+      now, newCoherency.total, JSON.stringify(newCoherency),
       id, row.version || 1);
 
     // Optimistic lock failed — retry with fresh read (capped at 3 attempts)
@@ -1116,7 +1154,7 @@ class SQLiteStore {
 
         // Bootstrap: patterns with test proof get simulated successful usage
         // Scale: syntax + completeness + consistency determine confidence
-        const qualitySignal = ((bd.syntaxValid || 0) + (bd.completeness || 0) + (bd.consistency || 0)) / 3;
+        const qualitySignal = ((bd.syntaxValid ?? 0) + (bd.completeness ?? 0) + (bd.consistency ?? 0)) / 3;
         const hasTestProof = bd.testProof === 1.0;
 
         if (hasTestProof && qualitySignal >= 0.7) {
@@ -1190,7 +1228,7 @@ class SQLiteStore {
         const lang = row.language || 'javascript';
 
         // Wrap incomplete code snippets into a complete function
-        const { checkBalancedBraces } = require('../core/coherency');
+        const { checkBalancedBraces } = require('../unified/coherency');
         if (!checkBalancedBraces(code)) {
           // Count unbalanced braces and close them
           let opens = 0;
@@ -1357,7 +1395,8 @@ class SQLiteStore {
     const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(patternId);
     if (!row) return { success: false, error: 'Pattern not found' };
 
-    const voteVal = vote > 0 ? 1 : -1;
+    const voteVal = vote >= 1 ? 1 : vote <= -1 ? -1 : null;
+    if (voteVal === null) return { success: false, error: 'Vote must be 1 (upvote) or -1 (downvote), got: ' + vote };
     const now = new Date().toISOString();
     const weight = this.getVoteWeight(voter);
 
@@ -1375,9 +1414,6 @@ class SQLiteStore {
         return { success: false, error: 'Already voted' };
       }
 
-      // Update voter stats
-      this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
-
       if (existing) {
         // Change vote direction
         this.db.prepare('UPDATE votes SET vote = ?, weight = ?, created_at = ? WHERE id = ?').run(voteVal, weight, now, existing.id);
@@ -1387,6 +1423,8 @@ class SQLiteStore {
           this.db.prepare('UPDATE patterns SET downvotes = downvotes + 1, upvotes = MAX(0, upvotes - 1) WHERE id = ?').run(patternId);
         }
       } else {
+        // Only increment total_votes on new votes (not vote changes)
+        this.db.prepare('UPDATE voters SET total_votes = total_votes + 1, updated_at = ? WHERE id = ?').run(now, voter);
         const id = require('crypto').randomUUID();
         this.db.prepare('INSERT INTO votes (id, pattern_id, voter, vote, weight, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(id, patternId, voter, voteVal, weight, now);
         if (voteVal === 1) {
@@ -1404,8 +1442,9 @@ class SQLiteStore {
     }
 
     const updated = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
-    const upvotes = updated.upvotes || 0;
-    const downvotes = updated.downvotes || 0;
+    if (!updated) return { success: false, error: 'Pattern disappeared after vote' };
+    const upvotes = updated.upvotes ?? 0;
+    const downvotes = updated.downvotes ?? 0;
     return {
       success: true,
       patternId,
@@ -1423,14 +1462,14 @@ class SQLiteStore {
   getVotes(patternId) {
     const row = this.db.prepare('SELECT upvotes, downvotes FROM patterns WHERE id = ?').get(patternId);
     if (!row) return null;
-    const upvotes = row.upvotes || 0;
-    const downvotes = row.downvotes || 0;
+    const upvotes = row.upvotes ?? 0;
+    const downvotes = row.downvotes ?? 0;
 
     // Calculate weighted score from individual votes
     const votes = this.db.prepare('SELECT vote, weight FROM votes WHERE pattern_id = ?').all(patternId);
     let weightedScore = 0;
     for (const v of votes) {
-      weightedScore += v.vote * (v.weight || 1.0);
+      weightedScore += v.vote * (v.weight ?? 1.0);
     }
 
     return { upvotes, downvotes, voteScore: upvotes - downvotes, weightedScore: Math.round(weightedScore * 100) / 100 };
@@ -1476,32 +1515,23 @@ class SQLiteStore {
    * Called when a pattern receives usage feedback.
    */
   updateVoterReputation(patternId, succeeded) {
+    const GOOD_JUDGMENT_DELTA = 0.05;
+    const POOR_JUDGMENT_DELTA = -0.03;
+    const REP_MAX = 3.0;
+    const REP_MIN = 0.1;
+
     const votes = this.db.prepare('SELECT voter, vote FROM votes WHERE pattern_id = ?').all(patternId);
     const now = new Date().toISOString();
 
     for (const v of votes) {
       const voter = this.getVoter(v.voter);
-      let delta = 0;
-      if (succeeded && v.vote === 1) {
-        // Upvoted a pattern that succeeded — good judgment
-        delta = 0.05;
-      } else if (!succeeded && v.vote === -1) {
-        // Downvoted a pattern that failed — good judgment
-        delta = 0.05;
-      } else if (succeeded && v.vote === -1) {
-        // Downvoted a pattern that succeeded — poor judgment
-        delta = -0.03;
-      } else if (!succeeded && v.vote === 1) {
-        // Upvoted a pattern that failed — poor judgment
-        delta = -0.03;
-      }
+      const voteAlignedWithOutcome = (succeeded && v.vote === 1) || (!succeeded && v.vote === -1);
+      const delta = voteAlignedWithOutcome ? GOOD_JUDGMENT_DELTA : POOR_JUDGMENT_DELTA;
 
-      if (delta !== 0) {
-        const newRep = Math.min(3.0, Math.max(0.1, voter.reputation + delta));
-        const accurate = delta > 0 ? voter.accurate_votes + 1 : voter.accurate_votes;
-        this.db.prepare('UPDATE voters SET reputation = ?, accurate_votes = ?, updated_at = ? WHERE id = ?')
-          .run(Math.round(newRep * 1000) / 1000, accurate, now, v.voter);
-      }
+      const newRep = Math.min(REP_MAX, Math.max(REP_MIN, voter.reputation + delta));
+      const accurate = delta > 0 ? voter.accurate_votes + 1 : voter.accurate_votes;
+      this.db.prepare('UPDATE voters SET reputation = ?, accurate_votes = ?, updated_at = ? WHERE id = ?')
+        .run(Math.round(newRep * 1000) / 1000, accurate, now, v.voter);
     }
   }
 
@@ -1522,7 +1552,8 @@ class SQLiteStore {
   }
 
   retirePatterns(minScore = 0.30) {
-    const rows = this.db.prepare('SELECT * FROM patterns').all();
+    // Only load patterns likely to be retired (low coherency), not the entire table
+    const rows = this.db.prepare('SELECT * FROM patterns WHERE coherency_total < ? ORDER BY coherency_total ASC LIMIT 1000').all(minScore + 0.2);
     const toRetire = [];
     for (const row of rows) {
       const coherency = row.coherency_total;
@@ -1593,6 +1624,7 @@ class SQLiteStore {
       sourceLicense: row.source_license || null,
       sourceCommit: row.source_commit || null,
       sourceFile: row.source_file || null,
+      lastUsed: row.last_used_at || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
@@ -1600,6 +1632,7 @@ class SQLiteStore {
 
   _patternFieldToCol(field) {
     const map = {
+      name: 'name', language: 'language',
       usageCount: 'usage_count', successCount: 'success_count',
       evolutionHistory: 'evolution_history', patternType: 'pattern_type',
       coherencyScore: 'coherency_json', coherencyTotal: 'coherency_total',
@@ -1656,7 +1689,7 @@ class SQLiteStore {
         this.db.prepare('DELETE FROM candidates WHERE id = ?').run(worst.id);
       }
 
-      const id = this._hash(candidate.code + candidate.name + Date.now());
+      const id = this._hash(candidate.code + candidate.name + Date.now() + crypto.randomBytes(4).toString('hex'));
       const now = new Date().toISOString();
 
       this.db.prepare(`
@@ -1803,7 +1836,7 @@ class SQLiteStore {
    * The original stays intact; the healed version sits alongside with lineage.
    */
   addHealedVariant(variant) {
-    const id = this._hash(variant.healedCode + variant.parentPatternId + Date.now());
+    const id = this._hash(variant.healedCode + variant.parentPatternId + Date.now() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
     const delta = (variant.healedCoherency ?? 0) - (variant.originalCoherency ?? 0);
 
@@ -1860,7 +1893,7 @@ class SQLiteStore {
     return {
       patternId: parentPatternId,
       patternName: pattern?.name || 'unknown',
-      originalCoherency: pattern?.coherencyScore?.total || 0,
+      originalCoherency: pattern?.coherencyScore?.total ?? 0,
       healingCount: variants.length,
       variants: variants.map(v => ({
         id: v.id,
@@ -1873,7 +1906,7 @@ class SQLiteStore {
       })),
       bestCoherency: variants.length > 0 ? variants[0].healedCoherency : null,
       totalImprovement: variants.length > 0
-        ? variants[0].healedCoherency - (pattern?.coherencyScore?.total || 0)
+        ? variants[0].healedCoherency - (pattern?.coherencyScore?.total ?? 0)
         : 0,
     };
   }
@@ -2584,6 +2617,68 @@ class SQLiteStore {
     return { removed: orphans.length };
   }
 
+  // ─── Healed Variants Pruning — prevent unbounded table growth ───
+
+  /**
+   * Prune old healed variants, keeping only the top N per parent pattern.
+   * @param {object} options - { dryRun, maxPerPattern, maxAgeDays }
+   * @returns {{ removed }}
+   */
+  pruneHealedVariants(options = {}) {
+    const { dryRun = false, maxPerPattern = 5, maxAgeDays = 90 } = options;
+    const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+    let removed = 0;
+
+    // Remove old variants beyond TTL
+    if (!dryRun) {
+      removed += this.db.prepare('DELETE FROM healed_variants WHERE created_at < ?').run(cutoff).changes;
+    }
+
+    // Per-parent cap: keep only top N by healed_coherency
+    const excess = this.db.prepare(`
+      SELECT id FROM healed_variants WHERE id NOT IN (
+        SELECT id FROM (
+          SELECT id, ROW_NUMBER() OVER (
+            PARTITION BY parent_pattern_id ORDER BY healed_coherency DESC
+          ) AS rn FROM healed_variants
+        ) WHERE rn <= ?
+      )
+    `).all(maxPerPattern);
+
+    if (!dryRun && excess.length > 0) {
+      const deleteStmt = this.db.prepare('DELETE FROM healed_variants WHERE id = ?');
+      for (const row of excess) {
+        deleteStmt.run(row.id);
+        removed++;
+      }
+    }
+
+    return { removed };
+  }
+
+  // ─── Archive Pruning — prevent unbounded archive growth ───
+
+  /**
+   * Prune old archive entries to prevent disk bloat.
+   * @param {object} options - { dryRun, maxAgeDays, maxVersionsPerName }
+   * @returns {{ patternArchiveRemoved, candidateArchiveRemoved, entryArchiveRemoved }}
+   */
+  pruneArchives(options = {}) {
+    const { dryRun = false, maxAgeDays = 60, maxVersionsPerName = 3 } = options;
+    const cutoff = new Date(Date.now() - maxAgeDays * 86400000).toISOString();
+    let patternArchiveRemoved = 0;
+    let candidateArchiveRemoved = 0;
+    let entryArchiveRemoved = 0;
+
+    if (!dryRun) {
+      patternArchiveRemoved += this.db.prepare('DELETE FROM pattern_archive WHERE deleted_at < ?').run(cutoff).changes;
+      candidateArchiveRemoved += this.db.prepare('DELETE FROM candidate_archive WHERE deleted_at < ?').run(cutoff).changes;
+      entryArchiveRemoved += this.db.prepare('DELETE FROM entry_archive WHERE deleted_at < ?').run(cutoff).changes;
+    }
+
+    return { patternArchiveRemoved, candidateArchiveRemoved, entryArchiveRemoved };
+  }
+
   // ─── Entry Pruning — lifecycle for unused entries ───
 
   /**
@@ -2700,6 +2795,19 @@ class SQLiteStore {
     stats.untestedEntries = this.db.prepare('SELECT COUNT(*) as c FROM entries WHERE test_passed IS NULL AND times_used = 0').get().c;
     if (stats.untestedEntries > stats.entries * 0.5 && stats.untestedEntries > 100) {
       warnings.push({ level: 'medium', message: `${stats.untestedEntries} entries never validated — consider pruning stale entries` });
+    }
+
+    // Healed variants
+    stats.healedVariants = this.db.prepare('SELECT COUNT(*) as c FROM healed_variants').get().c;
+    if (stats.healedVariants > 5000) {
+      warnings.push({ level: 'medium', message: `${stats.healedVariants} healed variants — consider pruning with pruneHealedVariants()` });
+    }
+
+    // Archive sizes
+    stats.patternArchive = this.db.prepare('SELECT COUNT(*) as c FROM pattern_archive').get().c;
+    stats.candidateArchive = this.db.prepare('SELECT COUNT(*) as c FROM candidate_archive').get().c;
+    if (stats.patternArchive + stats.candidateArchive > 10000) {
+      warnings.push({ level: 'medium', message: `Archives contain ${stats.patternArchive + stats.candidateArchive} records — consider pruning with pruneArchives()` });
     }
 
     // Audit log

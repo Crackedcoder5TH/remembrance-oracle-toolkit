@@ -15,8 +15,10 @@
  * Pure functions that don't need oracle (stalenessPenalty, etc.) work standalone.
  */
 
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { reflectionLoop } = require('../core/reflection');
+const unifiedHealing = require('../unified/healing');
+const unifiedDecay = require('../unified/decay');
 
 // ─── Configuration ───
 
@@ -49,25 +51,21 @@ const EVOLUTION_DEFAULTS = {
 
 /**
  * Compute a staleness penalty for a pattern (0 to stalenessMaxPenalty).
- * Patterns unused for a long time get deprioritized.
+ * NOW DELEGATES to unified decay engine with 'evolution' preset.
  *
  * @param {object} pattern - Pattern with createdAt/lastUsed/usageCount
  * @param {object} config - Evolution config
  * @returns {number} Penalty to subtract from composite score (0 = no penalty)
  */
 function stalenessPenalty(pattern, config = EVOLUTION_DEFAULTS) {
-  const now = Date.now();
-  const created = new Date(pattern.timestamp || pattern.createdAt || 0).getTime();
-  const lastUsed = pattern.lastUsed ? new Date(pattern.lastUsed).getTime() : created;
-  const daysSinceUse = (now - lastUsed) / 86400000;
-
-  if (daysSinceUse < config.stalenessStartDays) return 0;
-
-  // Linear ramp from 0 to max penalty
-  const range = config.stalenessMaxDays - config.stalenessStartDays;
-  if (range <= 0) return 0;
-  const progress = Math.min(1, (daysSinceUse - config.stalenessStartDays) / range);
-  return progress * config.stalenessMaxPenalty;
+  const result = unifiedDecay.computeDecay(pattern, {
+    preset: 'evolution',
+    linearStartDays: config.stalenessStartDays,
+    linearEndDays: config.stalenessMaxDays,
+    maxPenalty: config.stalenessMaxPenalty,
+    gracePeriodDays: 0,
+  });
+  return result.penalty ?? 0;
 }
 
 // ─── Evolve Frequency Penalty ───
@@ -113,61 +111,32 @@ function evolutionAdjustment(pattern, config = EVOLUTION_DEFAULTS) {
 
 /**
  * Check if a pattern needs auto-healing based on feedback.
- * Returns true if the pattern has enough usage data and a low success rate.
+ * NOW DELEGATES to unified healing orchestrator.
  *
  * @param {object} pattern - Pattern with usageCount, successCount
  * @param {object} config - Evolution config
  * @returns {boolean}
  */
 function needsAutoHeal(pattern, config = EVOLUTION_DEFAULTS) {
-  const usage = pattern.usageCount ?? 0;
-  const success = pattern.successCount ?? 0;
-  if (usage < config.autoHealMinUses) return false;
-  return (success / usage) < config.autoHealThreshold;
+  return unifiedHealing.needsHealing(pattern, {
+    autoHealThreshold: config.autoHealThreshold,
+    autoHealMinUses: config.autoHealMinUses,
+  });
 }
 
 /**
  * Auto-heal a pattern via reflection.
- * Returns the healed code and improvement metrics, or null if healing failed.
+ * NOW DELEGATES to unified healing orchestrator.
  *
  * @param {object} pattern - Pattern to heal
  * @param {object} options - { maxLoops, verbose }
  * @returns {object|null} { code, improvement, loops, originalCoherency, newCoherency }
  */
 function autoHeal(pattern, options = {}) {
-  const maxLoops = options.maxLoops || EVOLUTION_DEFAULTS.maxRefineLoops;
-
-  try {
-    const reflection = reflectionLoop(pattern.code, {
-      language: pattern.language,
-      maxLoops,
-      targetCoherence: 0.9,
-      description: pattern.description,
-      tags: pattern.tags,
-    });
-
-    if (reflection.reflection?.improvement <= 0 && reflection.code.trim() === (pattern.code || '').trim()) {
-      return null;
-    }
-
-    const newCoherency = computeCoherencyScore(reflection.code, {
-      language: pattern.language,
-    });
-
-    const originalCoherency = pattern.coherencyScore?.total ?? 0;
-
-    return {
-      code: reflection.code,
-      improvement: newCoherency.total - originalCoherency,
-      loops: reflection.loops,
-      originalCoherency,
-      newCoherency: newCoherency.total,
-      coherencyScore: newCoherency,
-    };
-  } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[evolution:autoHeal] returning null on error:', e?.message || e);
-    return null;
-  }
+  return unifiedHealing.heal(pattern, {
+    strategy: 'full',
+    maxLoops: options.maxLoops || EVOLUTION_DEFAULTS.maxRefineLoops,
+  });
 }
 
 // ─── Rejection Capture ───
@@ -341,11 +310,16 @@ function evolve(ctx, options = {}) {
         if (process.env.ORACLE_DEBUG) console.warn('[evolution:evolve] silent failure:', e?.message || e);
         report.healFailed.push({ id: pattern.id, name: pattern.name, reason: 'update failed' });
       }
+    } else if (healResult?.skipped === 'cooldown') {
+      // Cooldowns are not failures — track separately so healFailed.length is accurate
+      if (!report.healSkipped) report.healSkipped = [];
+      report.healSkipped.push({ id: pattern.id, name: pattern.name, reason: 'cooldown' });
     } else {
+      const reason = healResult?.skipped === 'error' ? 'healing failed' : 'no improvement';
       report.healFailed.push({
         id: pattern.id,
         name: pattern.name,
-        reason: healResult ? 'no improvement' : 'healing failed',
+        reason,
       });
     }
   }

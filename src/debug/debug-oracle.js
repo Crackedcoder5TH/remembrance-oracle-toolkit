@@ -42,20 +42,27 @@
  */
 
 const crypto = require('crypto');
+const unifiedVariants = require('../unified/variants');
+const unifiedDecay = require('../unified/decay');
+
+// ─── Shared Quantum Engine ───
+// Debug oracle now delegates to the unified quantum-core for all quantum operations.
+// This ensures debug patterns and main patterns use the same quantum mechanics.
+const quantumCore = require('../quantum/quantum-core');
 
 function safeParse(str, fallback) {
   try { return JSON.parse(str || JSON.stringify(fallback)); } catch { return fallback; }
 }
 
-// ─── Quantum Constants ───
+// ─── Quantum Constants (delegated to quantum-core) ───
 
-const PLANCK_CONFIDENCE = 0.2;          // Minimum observable amplitude (initial state)
-const DECOHERENCE_LAMBDA = 0.005;       // Decay rate per day (half-life ≈ 139 days)
-const TUNNELING_PROBABILITY = 0.08;     // Probability of tunneling through barrier
-const ENTANGLEMENT_STRENGTH = 0.3;      // How strongly entangled states couple
-const INTERFERENCE_RADIUS = 0.15;       // Amplitude shift from constructive/destructive interference
-const COLLAPSE_BOOST = 0.05;            // Amplitude boost from being observed (measured)
-const PHASE_DRIFT_RATE = 0.01;          // Phase drift per day (affects interference)
+const PLANCK_CONFIDENCE = quantumCore.PLANCK_AMPLITUDE;
+const DECOHERENCE_LAMBDA = quantumCore.DECOHERENCE_LAMBDA;
+const TUNNELING_PROBABILITY = quantumCore.TUNNELING_PROBABILITY;
+const ENTANGLEMENT_STRENGTH = quantumCore.ENTANGLEMENT_STRENGTH;
+const INTERFERENCE_RADIUS = quantumCore.INTERFERENCE_RADIUS;
+const COLLAPSE_BOOST = quantumCore.COLLAPSE_BOOST;
+const PHASE_DRIFT_RATE = quantumCore.PHASE_DRIFT_RATE;
 
 // ─── Error Categories (Quantum Field Sectors) ───
 
@@ -72,13 +79,9 @@ const ERROR_CATEGORIES = {
   data:      { weight: 0.7, keywords: ['JSON.parse', 'invalid JSON', 'malformed', 'encoding', 'codec', 'corrupt', 'schema'] },
 };
 
-// ─── Quantum State Constants ───
+// ─── Quantum State Constants (delegated to quantum-core) ───
 
-const QUANTUM_STATES = {
-  SUPERPOSITION: 'superposition',  // Not yet observed — exists in all possible states
-  COLLAPSED: 'collapsed',          // Observed — definite state from measurement
-  DECOHERED: 'decohered',          // Lost coherence — amplitude below threshold
-};
+const QUANTUM_STATES = quantumCore.QUANTUM_STATES;
 
 // ─── Error Fingerprinting (State Vector Preparation) ───
 
@@ -179,43 +182,33 @@ const computeConfidence = computeAmplitude;
 
 /**
  * Apply decoherence — amplitude decays exponentially with time since last observation.
- * Models the physical reality that unobserved patterns lose reliability.
+ * NOW DELEGATES to unified decay engine with 'debug' preset.
  *
  * decoheredAmplitude = amplitude × e^(-λt)
  * where t = days since last observation, λ = DECOHERENCE_LAMBDA
  */
 function applyDecoherence(amplitude, lastObservedAt, now) {
   if (!lastObservedAt) return amplitude;
-  const lastTime = new Date(lastObservedAt).getTime();
-  const nowTime = (now ? new Date(now) : new Date()).getTime();
-  const daysSinceObservation = Math.max(0, (nowTime - lastTime) / (1000 * 60 * 60 * 24));
-  const decoherenceFactor = Math.exp(-DECOHERENCE_LAMBDA * daysSinceObservation);
-  return Math.round(amplitude * decoherenceFactor * 1000) / 1000;
+  const result = unifiedDecay.applyDecayToScore(amplitude, {
+    last_observed_at: lastObservedAt,
+  }, {
+    preset: 'debug',
+    lambda: DECOHERENCE_LAMBDA,
+    now: now ? new Date(now) : new Date(),
+  });
+  return result.adjusted;
 }
 
 /**
- * Compute the initial phase for a pattern — used in interference calculations.
+ * Compute the initial phase for a pattern — DELEGATES to quantum-core.
  * Phase is derived from the fingerprint hash to ensure deterministic but varied phases.
  */
-function computePhase(fingerprintHash) {
-  if (!fingerprintHash) return 0;
-  // Hash the input to ensure we always have valid hex characters
-  const hex = crypto.createHash('md5').update(fingerprintHash).digest('hex').slice(0, 8);
-  const hashNum = parseInt(hex, 16);
-  return (hashNum / 0xFFFFFFFF) * 2 * Math.PI;
-}
+const computePhase = quantumCore.computePhase;
 
 /**
- * Quantum tunneling probability — can a low-amplitude pattern surface?
- * Uses the WKB approximation: P(tunnel) ∝ e^(-2κa)
- * where κ = barrier height, a = barrier width (gap between amplitude and threshold)
+ * Quantum tunneling — DELEGATES to quantum-core.
  */
-function canTunnel(amplitude, threshold) {
-  if (amplitude >= threshold) return true; // No barrier
-  const barrierHeight = threshold - amplitude;
-  const tunnelingProb = TUNNELING_PROBABILITY * Math.exp(-2 * barrierHeight / 0.3);
-  return Math.random() < tunnelingProb;
-}
+const canTunnel = quantumCore.canTunnel;
 
 /**
  * Compute interference between two patterns.
@@ -241,19 +234,12 @@ function computeInterference(patternA, patternB) {
 }
 
 /**
- * Simple fix code similarity metric — Jaccard similarity on token sets.
+ * Simple fix code similarity metric — NOW DELEGATES to unified similarity.
  */
 function computeFixSimilarity(codeA, codeB) {
   if (!codeA || !codeB) return 0;
-  const tokensA = new Set(codeA.split(/\W+/).filter(Boolean));
-  const tokensB = new Set(codeB.split(/\W+/).filter(Boolean));
-  if (tokensA.size === 0 && tokensB.size === 0) return 1;
-  let intersection = 0;
-  for (const t of tokensA) {
-    if (tokensB.has(t)) intersection++;
-  }
-  const union = tokensA.size + tokensB.size - intersection;
-  return union > 0 ? intersection / union : 0;
+  const { jaccardSimilarity } = require('../unified/similarity');
+  return jaccardSimilarity(codeA, codeB);
 }
 
 // ─── Variant Generation (Entangled State Creation) ───
@@ -297,89 +283,16 @@ function generateErrorVariants(errorMessage, category) {
 
 /**
  * Generate fix code variants — entangled fix states across languages.
+ * NOW DELEGATES to src/unified/variants.js.
  */
 function generateFixVariants(fixCode, fixLanguage, targetLanguages) {
-  const variants = [];
-
-  for (const lang of targetLanguages) {
-    if (lang === fixLanguage) continue;
-
-    let variantCode = fixCode;
-
-    if (fixLanguage === 'javascript' || fixLanguage === 'typescript') {
-      if (lang === 'python') {
-        variantCode = jsToPythonFix(fixCode);
-      } else if (lang === 'go') {
-        variantCode = jsToGoFix(fixCode);
-      } else if (lang === 'typescript' && fixLanguage === 'javascript') {
-        variantCode = jsToTsFix(fixCode);
-      }
-    }
-
-    if (variantCode !== fixCode) {
-      variants.push({ code: variantCode, language: lang });
-    }
-  }
-
-  return variants;
+  return unifiedVariants.generateLanguageVariants(fixCode, fixLanguage, targetLanguages);
 }
 
-// Transpilation helpers
-function jsToPythonFix(code) {
-  return code
-    .replace(/\b(?:const|let|var)\s+/g, '')
-    .replace(/;$/gm, '')
-    .replace(/===/g, '==').replace(/!==/g, '!=')
-    .replace(/\{$/gm, ':')
-    .replace(/^\s*\}/gm, '')
-    .replace(/\/\/.*/g, m => '#' + m.slice(2))
-    .replace(/\bnull\b/g, 'None')
-    .replace(/\bundefined\b/g, 'None')
-    .replace(/\btrue\b/g, 'True')
-    .replace(/\bfalse\b/g, 'False')
-    .replace(/console\.log\(/g, 'print(')
-    .replace(/\s*\|\|\s*/g, ' or ')
-    .replace(/\s*&&\s*/g, ' and ')
-    .replace(/!(\w)/g, 'not $1')
-    .replace(/Math\.max\(/g, 'max(')
-    .replace(/Math\.min\(/g, 'min(')
-    .replace(/Math\.floor\(/g, 'int(')
-    .replace(/Math\.abs\(/g, 'abs(')
-    .replace(/(\w+)\.length/g, 'len($1)')
-    .replace(/\.push\(/g, '.append(')
-    .replace(/\.toUpperCase\(\)/g, '.upper()')
-    .replace(/\.toLowerCase\(\)/g, '.lower()');
-}
-
-function jsToGoFix(code) {
-  let result = code
-    .replace(/\bconst\s+(\w+)\s*=\s*/g, '$1 := ')
-    .replace(/\blet\s+(\w+)\s*=\s*/g, '$1 := ')
-    .replace(/\bvar\s+(\w+)\s*=\s*/g, '$1 := ')
-    .replace(/;$/gm, '')
-    .replace(/console\.log\(/g, 'fmt.Println(')
-    .replace(/\bnull\b/g, 'nil')
-    .replace(/\bundefined\b/g, 'nil')
-    .replace(/===/g, '==').replace(/!==/g, '!=')
-    .replace(/(\w+)\.length/g, 'len($1)');
-  if (result.includes('fmt.')) {
-    result = 'import "fmt"\n\n' + result;
-  }
-  return result;
-}
-
-function jsToTsFix(code) {
-  return code
-    .replace(/function\s+(\w+)\s*\(([^)]*)\)/g, (_, name, params) => {
-      const typed = params.split(',').map(p => {
-        const pname = p.trim();
-        if (!pname) return '';
-        return `${pname}: unknown`;
-      }).filter(Boolean).join(', ');
-      return `function ${name}(${typed})`;
-    })
-    .replace(/\bvar\s+/g, 'let ');
-}
+// Transpilation helpers — delegated to unified variants module
+const jsToPythonFix = unifiedVariants.jsToPython;
+const jsToGoFix = unifiedVariants.jsToGo;
+const jsToTsFix = unifiedVariants.jsToTypeScript;
 
 // ─── Debug Oracle Class (Quantum Field) ───
 
@@ -392,7 +305,7 @@ class DebugOracle {
     this.store = store;
     this.verbose = options.verbose || false;
     this.variantLanguages = options.variantLanguages || ['python', 'typescript', 'go'];
-    this.cascadeThreshold = options.cascadeThreshold || 0.7;
+    this.cascadeThreshold = options.cascadeThreshold ?? 0.7;
 
     this._ensureSchema();
   }
@@ -519,7 +432,7 @@ class DebugOracle {
     ).get(fp.hash, language);
 
     if (existing) {
-      if ((existing.confidence || existing.amplitude || 0) < 0.5) {
+      if ((existing.confidence ?? existing.amplitude ?? 0) < 0.5) {
         const now = new Date().toISOString();
         this.store.db.prepare(
           'UPDATE debug_patterns SET fix_code = ?, fix_description = ?, updated_at = ?, quantum_state = ? WHERE id = ?'
@@ -535,7 +448,7 @@ class DebugOracle {
         captured: false,
         duplicate: true,
         existingId: existing.id,
-        confidence: existing.confidence || existing.amplitude || 0,
+        confidence: existing.confidence ?? existing.amplitude ?? 0,
       };
     }
 
@@ -543,7 +456,7 @@ class DebugOracle {
     let coherencyTotal = 0;
     let coherencyJson = {};
     try {
-      const { computeCoherencyScore } = require('../core/coherency');
+      const { computeCoherencyScore } = require('../unified/coherency');
       const score = computeCoherencyScore(fixCode, { language, description: fixDescription, tags });
       coherencyTotal = score.total;
       coherencyJson = score;
@@ -646,6 +559,7 @@ class DebugOracle {
     const seen = new Set();
 
     const addScored = (row, baseScore) => {
+      if (!row || !row.id) return;
       if (seen.has(row.id)) return;
       seen.add(row.id);
 
@@ -1047,6 +961,42 @@ class DebugOracle {
   }
 
   /**
+   * Bulk re-excite all decohered patterns — restore the quantum field.
+   * Brings decohered patterns back to superposition with a minimum amplitude.
+   *
+   * @param {Object} [options] — { minAmplitude: number, boostAmount: number }
+   * @returns {{ reexcited: number, total: number }}
+   */
+  reexciteAll(options = {}) {
+    const { minAmplitude = PLANCK_CONFIDENCE, boostAmount = 0.15 } = options;
+    const now = new Date().toISOString();
+
+    const decohered = this.store.db.prepare(
+      "SELECT id, amplitude FROM debug_patterns WHERE quantum_state = ?"
+    ).all(QUANTUM_STATES.DECOHERED);
+
+    let reexcited = 0;
+    const update = this.store.db.prepare(
+      "UPDATE debug_patterns SET amplitude = ?, confidence = ?, quantum_state = ?, last_observed_at = ?, updated_at = ? WHERE id = ?"
+    );
+
+    this.store.db.exec('BEGIN');
+    try {
+      for (const row of decohered) {
+        const newAmplitude = Math.max(minAmplitude, (row.amplitude || 0) + boostAmount);
+        update.run(newAmplitude, newAmplitude, QUANTUM_STATES.SUPERPOSITION, now, now, row.id);
+        reexcited++;
+      }
+      this.store.db.exec('COMMIT');
+    } catch (err) {
+      this.store.db.exec('ROLLBACK');
+      throw err;
+    }
+
+    return { reexcited, total: decohered.length };
+  }
+
+  /**
    * Get the entanglement graph for a pattern — all patterns it's linked to.
    */
   getEntanglementGraph(id, depth = 2) {
@@ -1250,7 +1200,7 @@ class DebugOracle {
     // Compute coherency for variant
     let coherencyTotal = parent.coherencyTotal * 0.8;
     try {
-      const { computeCoherencyScore } = require('../core/coherency');
+      const { computeCoherencyScore } = require('../unified/coherency');
       const score = computeCoherencyScore(variantCode, { language });
       coherencyTotal = score.total;
     } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[debug-oracle]', err.message); }

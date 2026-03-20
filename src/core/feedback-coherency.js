@@ -2,7 +2,7 @@
  * Coherency Feedback — dimension-specific advice for improving code scores.
  */
 
-const { WEIGHTS } = require('./coherency');
+const { WEIGHTS } = require('../unified/coherency');
 
 // Build marker regex dynamically to avoid self-detection
 function _markerRe() {

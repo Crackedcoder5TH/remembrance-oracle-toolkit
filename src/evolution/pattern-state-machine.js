@@ -294,7 +294,7 @@ function createPatternLifecycle(store, options = {}) {
     }
 
     const events = [];
-    store.db.exec('BEGIN');
+    store.db.exec('BEGIN IMMEDIATE');
     try {
       for (const row of toRetire) {
         store._archivePattern(row, 'retirement');
@@ -312,7 +312,7 @@ function createPatternLifecycle(store, options = {}) {
       }
       store.db.exec('COMMIT');
     } catch (e) {
-      store.db.exec('ROLLBACK');
+      try { store.db.exec('ROLLBACK'); } catch (_) {}
       return { retired: 0, remaining: rows.length, events: [], error: e.message };
     }
 
@@ -437,7 +437,7 @@ function createPatternLifecycle(store, options = {}) {
     const candidateId = archived.id;
 
     // Insert into candidates table as a re-entry
-    store.db.exec('BEGIN');
+    store.db.exec('BEGIN IMMEDIATE');
     try {
       store.db.prepare(`
         INSERT OR REPLACE INTO candidates
@@ -471,7 +471,7 @@ function createPatternLifecycle(store, options = {}) {
 
       store.db.exec('COMMIT');
     } catch (e) {
-      store.db.exec('ROLLBACK');
+      try { store.db.exec('ROLLBACK'); } catch (_) {}
       return { success: false, reason: `Resurrection failed: ${e.message}` };
     }
 

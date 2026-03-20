@@ -10,7 +10,7 @@ const {
   decayPass,
   DECAY_DEFAULTS,
   daysBetween,
-} = require('../src/core/confidence-decay');
+} = require('../src/unified/decay');
 
 const NOW = new Date('2026-03-15T00:00:00Z');
 
@@ -61,7 +61,7 @@ describe('Confidence Decay', () => {
     });
 
     it('half-life: factor ≈ 0.5 at halfLifeDays past grace period', () => {
-      const daysIdle = DECAY_DEFAULTS.GRACE_PERIOD_DAYS + DECAY_DEFAULTS.HALF_LIFE_DAYS;
+      const daysIdle = DECAY_DEFAULTS.gracePeriodDays + DECAY_DEFAULTS.halfLifeDays;
       const pattern = { lastUsed: daysAgo(daysIdle) };
       const result = computeDecayFactor(pattern, { now: NOW });
       assert.ok(Math.abs(result.factor - 0.5) < 0.01,
@@ -71,8 +71,8 @@ describe('Confidence Decay', () => {
     it('never decays below minScore', () => {
       const pattern = { lastUsed: daysAgo(9999) };
       const result = computeDecayFactor(pattern, { now: NOW });
-      assert.ok(result.factor >= DECAY_DEFAULTS.MIN_SCORE,
-        `Factor ${result.factor} below min ${DECAY_DEFAULTS.MIN_SCORE}`);
+      assert.ok(result.factor >= DECAY_DEFAULTS.minScore,
+        `Factor ${result.factor} below min ${DECAY_DEFAULTS.minScore}`);
     });
 
     it('returns 1.0 for pattern with no timestamps', () => {
@@ -106,7 +106,7 @@ describe('Confidence Decay', () => {
     it('never reduces below minScore', () => {
       const pattern = { lastUsed: daysAgo(9999) };
       const result = applyDecayToScore(0.9, pattern, { now: NOW });
-      assert.ok(result.adjusted >= DECAY_DEFAULTS.MIN_SCORE);
+      assert.ok(result.adjusted >= DECAY_DEFAULTS.minScore);
     });
   });
 
@@ -123,7 +123,7 @@ describe('Confidence Decay', () => {
       };
       const boost = computeFreshnessBoost(pattern, { now: NOW });
       assert.ok(boost > 0, `Expected positive boost, got ${boost}`);
-      assert.ok(boost <= DECAY_DEFAULTS.MAX_BOOST, `Boost ${boost} exceeds max`);
+      assert.ok(boost <= DECAY_DEFAULTS.maxBoost, `Boost ${boost} exceeds max`);
     });
 
     it('returns 0 for patterns used long ago', () => {

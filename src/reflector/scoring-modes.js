@@ -120,16 +120,16 @@ function shouldAutoCreatePR(report, config) {
   if (!report) return { shouldOpenPR: false, reason: 'No report provided.', coherence: 0, threshold: 0.7 };
   config = config || {};
   const threshold = config.thresholds?.minCoherenceForAutoPR
-    || config.thresholds?.minCoherence
-    || 0.7;
+    ?? config.thresholds?.minCoherence
+    ?? 0.7;
   const coherence = report.coherence?.after
-    || report.safety?.coherenceGuard?.postCoherence
-    || report.report?.avgImprovement
-    || 0;
+    ?? report.safety?.coherenceGuard?.postCoherence
+    ?? report.report?.avgImprovement
+    ?? 0;
   const filesHealed = report.report?.filesHealed
-    || report.healing?.filesHealed
-    || report.changes?.length
-    || 0;
+    ?? report.healing?.filesHealed
+    ?? report.changes?.length
+    ?? 0;
 
   if (filesHealed === 0) {
     return { shouldOpenPR: false, reason: 'No files were healed — nothing to PR.', coherence, threshold };

@@ -90,14 +90,15 @@ module.exports = {
     const newTags = retagPattern(pattern);
     const diff = tagDiff(oldTags, newTags);
 
-    if (!options.dryRun && diff.added.length > 0) {
+    const hasRemovals = oldTags.some(t => !newTags.map(n => n.toLowerCase()).includes(t.toLowerCase()));
+    if (!options.dryRun && (diff.added.length > 0 || hasRemovals)) {
       this.patterns.update(id, { tags: newTags });
     }
 
     const result = {
       success: true, id: pattern.id, name: pattern.name,
       oldTags, newTags, added: diff.added,
-      updated: !options.dryRun && diff.added.length > 0
+      updated: !options.dryRun && (diff.added.length > 0 || hasRemovals)
     };
     return result;
   },
@@ -208,15 +209,23 @@ module.exports = {
       }
     }
 
-    const actualRemoved = dryRun ? 0 : toRemove.size;
+    // Count actual deletions — patterns where archive failed were skipped via continue
+    let actualRemoved = 0;
+    if (!dryRun) {
+      for (const id of toRemove) {
+        const still = db.prepare('SELECT 1 FROM patterns WHERE id = ?').get(id);
+        if (!still) actualRemoved++;
+      }
+    }
     const remaining = all.length - actualRemoved;
-    this._emit({ type: 'deep_clean', removed: toRemove.size, duplicates, stubs, tooShort, remaining, dryRun });
-    return { removed: toRemove.size, duplicates, stubs, tooShort, remaining, dryRun, details };
+    this._emit({ type: 'deep_clean', removed: actualRemoved, duplicates, stubs, tooShort, remaining, dryRun });
+    return { removed: actualRemoved, duplicates, stubs, tooShort, remaining, dryRun, details };
   },
 
   recycle(options = {}) { return this.recycler.recycleFailed(options); },
   processSeeds(seeds, options = {}) { return this.recycler.processSeeds(seeds, options); },
   generateCandidates(options = {}) { return this.recycler.generateCandidates(options); },
+  tournamentGenerate(options = {}) { return this.recycler.tournamentGenerate(options); },
   candidates(filters = {}) { return this.patterns.getCandidates(filters); },
   candidateStats() { return this.patterns.candidateSummary(); },
   promote(candidateId, testCode) { return this.recycler.promoteWithProof(candidateId, testCode); },

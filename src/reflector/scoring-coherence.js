@@ -3,11 +3,16 @@
  *
  * Weighted coherence formula (syntax, readability, security, test proof, reliability).
  * computeCoherence, computeRepoCoherence.
+ *
+ * Individual dimension scorers (readability, security, naming) NOW DELEGATE to
+ * src/unified/coherency.js where possible. File-path-based scoring functions
+ * (computeCoherence, scoreTestProof, scoreHistoricalReliability) remain here
+ * because they need filesystem access.
  */
 
 const { readFileSync, existsSync } = require('fs');
 const { join, extname, relative, dirname, basename } = require('path');
-const { detectLanguage } = require('../core/coherency');
+const { detectLanguage, scoreReadability: unifiedScoreReadability, scoreSecurity: unifiedScoreSecurity, scoreNamingQuality: unifiedScoreNamingQuality } = require('../unified/coherency');
 const { covenantCheck } = require('../core/covenant');
 const {
   analyzeCommentDensity,

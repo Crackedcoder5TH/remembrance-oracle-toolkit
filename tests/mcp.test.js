@@ -1,12 +1,28 @@
-const { describe, it } = require('node:test');
+const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { MCPServer, TOOLS } = require('../src/mcp/server');
+const { RemembranceOracle } = require('../src/api/oracle');
 
 describe('MCPServer', () => {
   let server;
+  let tmpDir;
+  let oracle;
+
+  before(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-test-'));
+    oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false });
+  });
+
+  after(() => {
+    if (server) server.stop();
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+  });
 
   it('initializes', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({ id: 1, method: 'initialize' });
     assert.equal(res.jsonrpc, '2.0');
     assert.equal(res.id, 1);
@@ -15,14 +31,14 @@ describe('MCPServer', () => {
   });
 
   it('responds to ping', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({ id: 2, method: 'ping' });
     assert.equal(res.id, 2);
     assert.ok(res.result);
   });
 
   it('lists tools', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({ id: 3, method: 'tools/list' });
     assert.ok(res.result.tools.length > 0);
     const names = res.result.tools.map(t => t.name);
@@ -40,7 +56,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_stats', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 4,
       method: 'tools/call',
@@ -55,7 +71,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_search', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 5,
       method: 'tools/call',
@@ -67,7 +83,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_search with smart mode', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 50,
       method: 'tools/call',
@@ -77,7 +93,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_submit', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 6,
       method: 'tools/call',
@@ -95,7 +111,7 @@ describe('MCPServer', () => {
   });
 
   it('handles unknown tool', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 8,
       method: 'tools/call',
@@ -106,20 +122,20 @@ describe('MCPServer', () => {
   });
 
   it('handles unknown method', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({ id: 9, method: 'unknown/method' });
     assert.ok(res.error);
     assert.equal(res.error.code, -32601);
   });
 
   it('handles notifications silently', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({ method: 'notifications/initialized' });
     assert.equal(res, null);
   });
 
   it('handles oracle_resolve', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 10,
       method: 'tools/call',
@@ -134,7 +150,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_maintain with candidates action', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 11,
       method: 'tools/call',
@@ -148,7 +164,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_maintain with promote action', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 13,
       method: 'tools/call',
@@ -161,7 +177,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_maintain with full-cycle (default)', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 20,
       method: 'tools/call',
@@ -173,7 +189,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_debug with stats action', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 30,
       method: 'tools/call',
@@ -183,7 +199,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_debug with patterns action', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 31,
       method: 'tools/call',
@@ -193,7 +209,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_sync (personal default)', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 40,
       method: 'tools/call',
@@ -203,7 +219,7 @@ describe('MCPServer', () => {
   });
 
   it('handles oracle_register', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 41,
       method: 'tools/call',
@@ -220,7 +236,7 @@ describe('MCPServer', () => {
   });
 
   it('has exactly 12 consolidated tools', async () => {
-    server = new MCPServer();
+    server = new MCPServer(oracle);
     const res = await server.handleRequest({ id: 15, method: 'tools/list' });
     const names = res.result.tools.map(t => t.name);
 

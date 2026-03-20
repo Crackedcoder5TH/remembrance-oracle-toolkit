@@ -1,7 +1,11 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('http');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { createDashboardServer, getDashboardHTML } = require('../src/dashboard/server');
+const { RemembranceOracle } = require('../src/api/oracle');
 
 // ─── HTTP helpers ───
 
@@ -137,14 +141,23 @@ describe('getDashboardHTML — structure', () => {
 describe('Dashboard server — existing endpoints', () => {
   let server;
   let port;
+  let tmpDir;
 
   before(async () => {
-    server = createDashboardServer(undefined, { auth: false });
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashui-test1-'));
+    const oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false });
+    server = createDashboardServer(oracle, { auth: false });
     await new Promise(resolve => server.listen(0, resolve));
     port = server.address().port;
   });
 
-  after(() => { if (server) server.close(); });
+  after(() => {
+    if (server) {
+      if (server.wsServer) server.wsServer.close?.();
+      server.close();
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
 
   it('serves HTML dashboard at /', async () => {
     const res = await httpGet(`http://localhost:${port}/`);
@@ -203,14 +216,23 @@ describe('Dashboard server — existing endpoints', () => {
 describe('Dashboard server — debug endpoints', () => {
   let server;
   let port;
+  let tmpDir;
 
   before(async () => {
-    server = createDashboardServer(undefined, { auth: false });
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashui-test2-'));
+    const oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false });
+    server = createDashboardServer(oracle, { auth: false });
     await new Promise(resolve => server.listen(0, resolve));
     port = server.address().port;
   });
 
-  after(() => { if (server) server.close(); });
+  after(() => {
+    if (server) {
+      if (server.wsServer) server.wsServer.close?.();
+      server.close();
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
 
   it('GET /api/debug/stats returns debug statistics', async () => {
     const res = await httpGet(`http://localhost:${port}/api/debug/stats`);
@@ -237,14 +259,23 @@ describe('Dashboard server — debug endpoints', () => {
 describe('Dashboard server — teams endpoints', () => {
   let server;
   let port;
+  let tmpDir;
 
   before(async () => {
-    server = createDashboardServer(undefined, { auth: false });
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashui-test3-'));
+    const oracle = new RemembranceOracle({ baseDir: tmpDir, autoSeed: false });
+    server = createDashboardServer(oracle, { auth: false });
     await new Promise(resolve => server.listen(0, resolve));
     port = server.address().port;
   });
 
-  after(() => { if (server) server.close(); });
+  after(() => {
+    if (server) {
+      if (server.wsServer) server.wsServer.close?.();
+      server.close();
+    }
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
 
   it('GET /api/teams returns array', async () => {
     const res = await httpGet(`http://localhost:${port}/api/teams`);

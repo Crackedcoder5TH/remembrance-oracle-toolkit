@@ -7,19 +7,29 @@
 
 const CATEGORIES = [
   {
+    name: 'Essential',
+    commands: [
+      { name: 'init', description: 'Set up everything: patterns, hooks, sync, debug oracle', alias: 'setup' },
+      { name: 'search', description: 'Find proven patterns by keyword or intent' },
+      { name: 'resolve', description: 'Smart retrieval \u2014 PULL, EVOLVE, or GENERATE decision' },
+      { name: 'feedback', description: 'Report if pulled code worked (improves rankings)' },
+      { name: 'register', description: 'Register code as a named pattern in the library' },
+      { name: 'auto-submit', description: 'Full pipeline: harvest, promote, sync (end-of-session)' },
+      { name: 'audit', description: 'Static analysis + cascade detection' },
+      { name: 'config', description: 'Oracle toggle (on/off) and settings' },
+      { name: 'mcp', description: 'Start MCP server for AI agents (12 tools, JSON-RPC)' },
+      { name: 'mcp-install', description: 'Auto-configure AI tools (Claude, Cursor, VS Code)' },
+    ],
+  },
+  {
     name: 'Core',
     commands: [
       { name: 'submit', description: 'Submit code for validation and storage' },
       { name: 'query', description: 'Query for relevant, proven code' },
-      { name: 'search', description: 'Fuzzy search across patterns and history' },
       { name: 'smart-search', description: 'Intent-aware search with typo correction + ranking' },
-      { name: 'resolve', description: 'Smart retrieval \u2014 pull, evolve, or generate decision' },
       { name: 'validate', description: 'Validate code without storing' },
-      { name: 'register', description: 'Register code as a named pattern in the library' },
-      { name: 'feedback', description: 'Report if pulled code worked' },
       { name: 'inspect', description: 'Inspect a stored entry' },
       { name: 'submit-noncode', description: 'Submit non-code pattern (no test file required)' },
-      { name: 'init', description: 'Initialize oracle in current project', alias: 'setup' },
     ],
   },
   {

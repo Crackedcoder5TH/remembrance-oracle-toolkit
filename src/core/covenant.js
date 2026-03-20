@@ -26,12 +26,9 @@
  *     not tear down.
  */
 
-const {
-  COVENANT_PRINCIPLES,
-  HARM_PATTERNS,
-  DEEP_SECURITY_PATTERNS,
-  stripNonExecutableContent,
-} = require('./covenant-patterns');
+const { COVENANT_PRINCIPLES, stripNonExecutableContent } = require('./covenant-principles');
+const { HARM_PATTERNS } = require('./covenant-harm');
+const { DEEP_SECURITY_PATTERNS } = require('./covenant-deep-security');
 
 // ─── Custom principle registry reference (set by PluginManager integration) ───
 let _customPrincipleRegistry = null;
@@ -93,6 +90,7 @@ function covenantCheck(code, metadata = {}) {
       if (hp.pattern.lastIndex) hp.pattern.lastIndex = 0;
       if (hp.pattern.test(codeToCheck)) {
         const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);
+        if (!principle) continue; // Skip if principle ID not found in registry
         violations.push({
           principle: hp.principle,
           name: principle.name,
@@ -158,7 +156,7 @@ function covenantCheck(code, metadata = {}) {
       const oldest = _covenantCache.keys().next().value;
       _covenantCache.delete(oldest);
     }
-    _covenantCache.set(key, result);
+    _covenantCache.set(key, { ...result, violations: [...result.violations] });
   }
 
   return result;
@@ -189,7 +187,9 @@ function formatCovenantResult(result) {
 function deepSecurityScan(code, options = {}) {
   const { language = 'javascript', runExternalTools = false } = options;
 
-  const covenant = covenantCheck(code, options);
+  // Don't forward 'trusted' to covenantCheck — deepSecurityScan should always run the covenant
+  const { trusted: _omitTrusted, ...covenantMeta } = options;
+  const covenant = covenantCheck(code, covenantMeta);
 
   const langPatterns = DEEP_SECURITY_PATTERNS[language] || DEEP_SECURITY_PATTERNS.javascript;
   const deepFindings = [];

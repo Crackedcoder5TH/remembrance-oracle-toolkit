@@ -67,6 +67,10 @@ function _decryptToken(stored) {
 function request(url, options = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
+    // Only allow HTTP/HTTPS protocols to prevent SSRF via file://, ftp://, etc.
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return reject(new Error(`Unsupported protocol: ${parsed.protocol} — only http: and https: are allowed`));
+    }
     const mod = parsed.protocol === 'https:' ? https : http;
     const timeout = options.timeout || 10000;
 
@@ -297,7 +301,7 @@ function registerRemote(url, options = {}) {
   } else {
     config.remotes.push({ url, name, token: encryptedToken, addedAt: new Date().toISOString() });
   }
-  fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2));
+  fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
   return { registered: true, name, url, totalRemotes: config.remotes.length };
 }
 
@@ -309,7 +313,7 @@ function removeRemote(urlOrName) {
   const before = config.remotes.length;
   config.remotes = config.remotes.filter(r => r.url !== urlOrName && r.name !== urlOrName);
   if (config.remotes.length < before) {
-    fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2));
+    fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
     return { removed: true };
   }
   return { removed: false, error: 'Remote not found' };

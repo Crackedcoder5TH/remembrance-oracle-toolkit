@@ -12,7 +12,7 @@
 const { readFileSync, readdirSync, statSync } = require('fs');
 const { join, extname, relative } = require('path');
 const { observeCoherence, reflectionLoop } = require('../core/reflection');
-const { detectLanguage } = require('../core/coherency');
+const { detectLanguage } = require('../unified/coherency');
 const { covenantCheck } = require('../core/covenant');
 
 // ─── Configuration Defaults ───

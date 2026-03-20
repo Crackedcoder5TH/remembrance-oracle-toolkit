@@ -60,6 +60,8 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
         console.log(`Pulled from personal: ${c.boldGreen(String(report.pulled))} patterns`);
         console.log(`  Duplicates:         ${c.dim(String(report.duplicates))}`);
         console.log(`  Skipped:            ${c.dim(String(report.skipped))}`);
+        // Record sync pull timestamp for preflight check
+        try { require('../../core/preflight').recordSyncPull(process.cwd()); } catch (_) { console.error('[federation] preflight record failed:', _.message); }
       } else {
         const report = oracle.sync({ verbose, dryRun });
         console.log(`${c.bold('Push')} (local → personal): ${c.boldGreen(String(report.push.synced))} synced, ${c.dim(String(report.push.duplicates))} duplicates`);
@@ -124,14 +126,20 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
       tags: tagFilter,
     });
 
-    console.log(`Shared to community: ${c.boldGreen(String(report.shared))} patterns`);
-    console.log(`  Duplicates:        ${c.dim(String(report.duplicates))}`);
-    console.log(`  Skipped:           ${c.dim(String(report.skipped))}`);
-
-    if (dryRun) console.log(c.yellow('\n(dry run — no changes made)'));
+    if (dryRun) {
+      console.log(`Would share: ${c.bold(String(report.shared))} patterns`);
+      console.log(`  Duplicates: ${c.dim(String(report.duplicates))} | Skipped: ${c.dim(String(report.skipped))}`);
+      console.log(c.yellow('\n(dry run — no changes made)'));
+    } else if (report.shared > 0) {
+      console.log(`${c.boldGreen('\u2713')} Shared ${c.bold(String(report.shared))} pattern${report.shared === 1 ? '' : 's'} to the community store.`);
+      console.log(c.dim(`  These patterns are now available to everyone who connects.`));
+      console.log(c.dim(`  Other developers and AI agents can pull them with: oracle community pull\n`));
+    } else {
+      console.log(c.dim(`No new patterns to share (${report.duplicates} already shared, ${report.skipped} below threshold).`));
+    }
 
     const comStats = oracle.communityStats();
-    console.log(`\nCommunity: ${c.bold(String(comStats.totalPatterns || 0))} patterns ${c.dim('(shared)')}`);
+    console.log(`Community store: ${c.bold(String(comStats.totalPatterns || 0))} proven patterns shared`);
   };
 
   handlers['community'] = (args) => {
@@ -158,7 +166,13 @@ function registerFederationCommands(handlers, { oracle, jsonOut }) {
     if (jsonOut()) { console.log(JSON.stringify(comStats)); return; }
 
     if (!comStats.available || comStats.totalPatterns === 0) {
-      console.log(c.yellow('No community patterns yet. Use ') + c.cyan('oracle share') + c.yellow(' to contribute.'));
+      console.log(`\n${c.boldCyan('Community Store')}\n`);
+      console.log(`  No community patterns yet. Be the first to share!\n`);
+      console.log(`  ${c.bold('Why share?')} Your proven debounce function becomes everyone's.`);
+      console.log(`  Every pattern shared is one fewer pattern every AI has to generate from scratch.\n`);
+      console.log(`  ${c.cyan('oracle share')}              Share all proven patterns (coherency >= 0.7)`);
+      console.log(`  ${c.cyan('oracle share debounce')}     Share a specific pattern by name`);
+      console.log(`  ${c.cyan('oracle share --dry-run')}    Preview what would be shared\n`);
       return;
     }
 

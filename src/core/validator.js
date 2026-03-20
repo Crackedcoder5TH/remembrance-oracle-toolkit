@@ -8,10 +8,11 @@
  */
 
 const { execSync, execFileSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { computeCoherencyScore } = require('./coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { sandboxExecute } = require('./sandbox');
 const { covenantCheck } = require('./covenant');
 const { actionableFeedback, formatFeedback } = require('./feedback');
@@ -76,9 +77,13 @@ function validateCode(code, options = {}) {
   }
 
   // Step 1: Run test if provided (sandboxed by default)
+  // Trust mode: allows sandbox to access node_modules and node: built-ins
+  // Used during candidate promotion where patterns may require project dependencies
   if (testCode) {
+    const sandboxOpts = { timeout };
+    if (options.trustMode) sandboxOpts.trustMode = true;
     const testResult = options.sandbox !== false
-      ? sandboxExecute(code, testCode, language, { timeout })
+      ? sandboxExecute(code, testCode, language, sandboxOpts)
       : executeTest(code, testCode, language, timeout);
     result.testPassed = testResult.passed;
     result.testOutput = testResult.output;
@@ -123,7 +128,8 @@ function validateCode(code, options = {}) {
  */
 function executeTest(code, testCode, language, timeout) {
   const lang = language || 'javascript';
-  const tmpFile = path.join(os.tmpdir(), `oracle-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-test-'));
+  const tmpFile = path.join(tmpDir, `test-${crypto.randomBytes(8).toString('hex')}`);
 
   try {
     if (lang === 'javascript' || lang === 'js') {

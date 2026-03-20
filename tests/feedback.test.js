@@ -10,7 +10,7 @@ const {
   COHERENCY_ADVICE,
 } = require('../src/core/feedback');
 const { covenantCheck } = require('../src/core/covenant');
-const { computeCoherencyScore } = require('../src/core/coherency');
+const { computeCoherencyScore } = require('../src/unified/coherency');
 const { validateCode } = require('../src/core/validator');
 
 describe('findPatternLocation()', () => {

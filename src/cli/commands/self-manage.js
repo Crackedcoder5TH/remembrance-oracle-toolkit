@@ -74,6 +74,15 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
       }
     }
 
+    // Coherency refresh (fixes disconnect between reflect evaluator and DB)
+    if (report.coherencyRefresh) {
+      const cr = report.coherencyRefresh;
+      if (cr.updated > 0) {
+        console.log(`\n${c.boldCyan('Coherency Refresh:')} ${cr.updated} pattern(s) updated`);
+        console.log(`  Avg before: ${colorScore(cr.avgBefore)} → Avg after: ${colorScore(cr.avgAfter)}`);
+      }
+    }
+
     // Whisper
     if (report.whisper) {
       console.log(`\n${report.whisper}`);
@@ -128,7 +137,7 @@ ${c.bold('Commands:')}
       if (report.linked.length > 0) {
         console.log(`${c.boldGreen('Language variants linked:')} ${report.linked.length}`);
         for (const l of report.linked.slice(0, 10)) {
-          console.log(`  ${c.green('+')} ${c.cyan(l.kept.name)} (${l.kept.language}) ${c.dim('kept')} — ${c.yellow(l.removed.name)} (${l.removed.language}) ${c.dim('removed')} (${(l.similarity * 100).toFixed(0)}% similar)`);
+          console.log(`  ${c.green('+')} ${c.cyan(l.kept.name)} (${l.kept.language}) ${c.dim('kept')} — ${c.yellow(l.linked.name)} (${l.linked.language}) ${c.dim('linked')} (${(l.similarity * 100).toFixed(0)}% similar)`);
         }
         if (report.linked.length > 10) console.log(`  ${c.dim('... and ' + (report.linked.length - 10) + ' more')}`);
       }
@@ -169,6 +178,15 @@ ${c.bold('Commands:')}
 
       if (report.noiseTagsStripped > 0) {
         console.log(`${c.bold('Noise tags stripped:')} ${report.noiseTagsStripped}`);
+      }
+
+      if (report.synonymsNormalized > 0) {
+        console.log(`${c.bold('Synonyms normalized:')} ${report.synonymsNormalized}`);
+        const merges = (report.synonymsMerged || []).slice(0, 20);
+        for (const m of merges) {
+          console.log(`  ${c.green('→')} ${c.yellow(m.from)} → ${c.cyan(m.to)}`);
+        }
+        if (report.synonymsNormalized > 20) console.log(`  ${c.dim('... and ' + (report.synonymsNormalized - 20) + ' more')}`);
       }
 
       console.log(`\n${c.dim('Tags:')} ${report.totalTagsBefore} → ${report.totalTagsAfter} ${c.dim('|')} ${c.dim('Patterns updated:')} ${report.patternsUpdated} ${c.dim('|')} ${c.dim('Duration:')} ${report.durationMs}ms`);
@@ -401,7 +419,7 @@ ${c.bold('Commands:')}
   };
 
   handlers['decay'] = (args) => {
-    const { decayPass } = require('../../core/confidence-decay');
+    const { decayPass } = require('../../unified/decay');
     const patterns = oracle.patterns.getAll();
     const report = decayPass(patterns);
 

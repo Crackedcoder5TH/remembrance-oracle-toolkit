@@ -8,7 +8,7 @@
 const { readFileSync, existsSync } = require('fs');
 const { join, extname, basename, relative } = require('path');
 const { PatternLibrary } = require('../patterns/library');
-const { detectLanguage } = require('../core/coherency');
+const { detectLanguage } = require('../unified/coherency');
 
 // ─── Lazy Require Helper (avoid circular deps with scoring) ───
 const { scoring: _scoring } = require('./report-lazy');

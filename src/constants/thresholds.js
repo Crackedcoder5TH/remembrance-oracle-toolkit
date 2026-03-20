@@ -219,6 +219,38 @@ const CANDIDATE_MIN_COHERENCY = 0.5;
 /** Max ternary nesting for Python transpilation viability */
 const MAX_TERNARY_NESTING = 2;
 
+/** Compounding — spawn candidates when patterns succeed repeatedly */
+const COMPOUND = {
+  MIN_SUCCESSES: 2,        // Pattern must succeed at least twice before compounding
+  MIN_RELIABILITY: 0.75,   // Pattern must have ≥75% success rate
+  COMPOUND_EVERY: 2,       // Compound on every 2nd success (2nd, 4th, 6th...)
+};
+
+/** Tournament generation — competitive selection for best candidates */
+const TOURNAMENT = {
+  CANDIDATES_PER_ROUND: 3, // Generate 3 variants per round
+  ROUNDS: 3,               // Run 3 rounds of competitive selection
+  MIN_WINNER_COHERENCY: 0.6, // Winner must score ≥0.6 to advance
+  LOSER_HARVEST_FLOOR: 0.5,  // Losers above this go to candidate pool
+};
+
+// ─── Quantum Field (quantum-core.js, quantum-field.js) ───
+
+/** Quantum mechanical constants for the unified field model */
+const QUANTUM = {
+  PLANCK_AMPLITUDE: 0.2,       // Minimum observable amplitude (initial state)
+  DECOHERENCE_LAMBDA: 0.005,   // Decay rate per day (half-life ≈ 139 days)
+  TUNNELING_PROBABILITY: 0.08, // Probability of tunneling through barrier
+  ENTANGLEMENT_STRENGTH: 0.3,  // How strongly entangled states couple
+  INTERFERENCE_RADIUS: 0.15,   // Max amplitude shift from interference
+  COLLAPSE_BOOST: 0.05,        // Amplitude boost from being observed
+  PHASE_DRIFT_RATE: 0.01,      // Phase drift per day
+  PULL_THRESHOLD: 0.68,        // Amplitude threshold for PULL decision
+  EVOLVE_THRESHOLD: 0.50,      // Amplitude threshold for EVOLVE decision
+  DECOHERENCE_FLOOR: 0.05,     // Below this, pattern is decohered
+  CASCADE_THRESHOLD: 0.70,     // Above this, cascade growth triggers
+};
+
 module.exports = {
   // Coherency
   COHERENCY_WEIGHTS,
@@ -256,4 +288,8 @@ module.exports = {
   ITERATIVE_REFINE,
   CANDIDATE_MIN_COHERENCY,
   MAX_TERNARY_NESTING,
+  COMPOUND,
+  TOURNAMENT,
+  // Quantum
+  QUANTUM,
 };

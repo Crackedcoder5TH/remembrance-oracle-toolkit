@@ -25,6 +25,25 @@ const GLOBAL_DIR = path.join(os.homedir(), '.remembrance');
 const PERSONAL_DIR = path.join(GLOBAL_DIR, 'personal');
 const COMMUNITY_DIR = path.join(GLOBAL_DIR, 'community');
 
+/**
+ * Unified coherency accessor — eliminates repeated triple-check fallback chains.
+ * Handles all three field name conventions: coherency_total, coherencyTotal, coherencyScore.total
+ * @param {object} pattern - Pattern record from any store/format
+ * @returns {number} Coherency score 0-1
+ */
+function getCoherency(pattern) {
+  return pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+}
+
+/**
+ * Build a dedup key from pattern name and language.
+ * @param {object} pattern - Pattern record
+ * @returns {string} Lowercase dedup key
+ */
+function dedupKey(pattern) {
+  return `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
+}
+
 // ─── Store Openers ───
 
 function ensureDir(dir) {
@@ -151,20 +170,20 @@ function syncToGlobal(localStore, options = {}) {
     return { synced: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
+  try {
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore.getAllPatterns();
   // Build coherency index so we can detect when local has improved over personal
   const personalCoherencyIndex = new Map();
   for (const p of personalPatterns) {
-    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
-    personalCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
+    personalCoherencyIndex.set(dedupKey(p), getCoherency(p));
   }
 
   const report = { synced: 0, upgraded: 0, skipped: 0, duplicates: 0, total: localPatterns.length, candidates: { synced: 0, duplicates: 0 }, debug: { synced: 0, duplicates: 0 }, details: [] };
 
   for (const pattern of localPatterns) {
-    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
-    const coherency = pattern.coherency_total ?? pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+    const key = dedupKey(pattern);
+    const coherency = getCoherency(pattern);
 
     if (personalCoherencyIndex.has(key)) {
       const personalCoherency = personalCoherencyIndex.get(key);
@@ -237,6 +256,11 @@ function syncToGlobal(localStore, options = {}) {
   }
 
   return report;
+  } finally {
+    if (personalStore && typeof personalStore.close === 'function') {
+      try { personalStore.close(); } catch (_) {}
+    }
+  }
 }
 
 /**
@@ -249,13 +273,13 @@ function syncFromGlobal(localStore, options = {}) {
     return { pulled: 0, skipped: 0, total: 0, error: 'No SQLite available' };
   }
 
+  try {
   const personalPatterns = personalStore.getAllPatterns();
   const localPatterns = localStore.getAllPatterns();
   // Build coherency index so we can detect when personal has improved over local
   const localCoherencyIndex = new Map();
   for (const p of localPatterns) {
-    const key = `${(p.name || '').toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
-    localCoherencyIndex.set(key, p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0);
+    localCoherencyIndex.set(dedupKey(p), getCoherency(p));
   }
 
   const report = { pulled: 0, upgraded: 0, skipped: 0, duplicates: 0, total: personalPatterns.length, candidates: { pulled: 0, duplicates: 0 }, debug: { pulled: 0, duplicates: 0 }, details: [] };
@@ -264,8 +288,8 @@ function syncFromGlobal(localStore, options = {}) {
     if ((report.pulled + report.upgraded) >= maxPull) break;
 
     if (!pattern.name) { report.skipped++; continue; }
-    const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
-    const coherency = pattern.coherency_total ?? pattern.coherencyScore?.total ?? 0;
+    const key = dedupKey(pattern);
+    const coherency = getCoherency(pattern);
 
     if (localCoherencyIndex.has(key)) {
       const localCoherency = localCoherencyIndex.get(key);
@@ -343,6 +367,11 @@ function syncFromGlobal(localStore, options = {}) {
   }
 
   return report;
+  } finally {
+    if (personalStore && typeof personalStore.close === 'function') {
+      try { personalStore.close(); } catch (_) {}
+    }
+  }
 }
 
 /**
@@ -408,15 +437,12 @@ function shareToCommunity(localStore, options = {}) {
   for (const pattern of localPatterns) {
     const key = `${(pattern.name || '').toLowerCase()}:${(pattern.language || 'unknown').toLowerCase()}`;
 
-    let csObj = pattern.coherencyScore;
-    if (typeof csObj === 'string') { try { csObj = JSON.parse(csObj); } catch { csObj = null; } }
-    const coherency = Number(
-      pattern.coherency_total
-      ?? pattern.coherencyTotal
-      ?? (typeof csObj === 'number' ? csObj : null)
-      ?? (typeof csObj === 'object' && csObj !== null ? csObj.total : null)
-      ?? 0
-    ) || 0;
+    if (communityIndex.has(key)) {
+      report.duplicates++;
+      continue;
+    }
+
+    const coherency = Number(getCoherency(pattern)) || 0;
     if (coherency < minCoherency) {
       report.skipped++;
       if (verbose) console.log(`  [LOW] ${pattern.name}: coherency ${coherency.toFixed(3)} < ${minCoherency}`);
@@ -573,6 +599,7 @@ function federatedQuery(localStore, query = {}) {
   const personalStore = openPersonalStore();
   const communityStore = openCommunityStore();
 
+  try {
   const localPatterns = localStore.getAllPatterns();
   const personalPatterns = personalStore ? personalStore.getAllPatterns() : [];
   const communityPatterns = communityStore ? communityStore.getAllPatterns() : [];
@@ -613,15 +640,15 @@ function federatedQuery(localStore, query = {}) {
     results = results.filter(p => p.language === query.language);
   }
   if (query.minCoherency) {
-    results = results.filter(p => (p.coherency_total ?? p.coherencyTotal ?? p.coherencyScore?.total ?? 0) >= query.minCoherency);
+    results = results.filter(p => getCoherency(p) >= query.minCoherency);
   }
   if (query.source) {
     results = results.filter(p => p.source === query.source);
   }
 
   results.sort((a, b) => {
-    const ca = a.coherency_total ?? a.coherencyTotal ?? a.coherencyScore?.total ?? 0;
-    const cb = b.coherency_total ?? b.coherencyTotal ?? b.coherencyScore?.total ?? 0;
+    const ca = getCoherency(a);
+    const cb = getCoherency(b);
     return cb - ca;
   });
 
@@ -638,14 +665,15 @@ function federatedQuery(localStore, query = {}) {
     patterns: results,
   };
 
-  if (personalStore && typeof personalStore.close === 'function') {
-    try { personalStore.close(); } catch (_) {}
-  }
-  if (communityStore && typeof communityStore.close === 'function') {
-    try { communityStore.close(); } catch (_) {}
-  }
-
   return result;
+  } finally {
+    if (personalStore && typeof personalStore.close === 'function') {
+      try { personalStore.close(); } catch (_) {}
+    }
+    if (communityStore && typeof communityStore.close === 'function') {
+      try { communityStore.close(); } catch (_) {}
+    }
+  }
 }
 
 // ─── Stats ───
@@ -656,7 +684,11 @@ function federatedQuery(localStore, query = {}) {
 function personalStats() {
   const store = openPersonalStore();
   if (!store) return { available: false, error: 'No SQLite available' };
-  return _storeStats(store, PERSONAL_DIR, 'personal');
+  try {
+    return _storeStats(store, PERSONAL_DIR, 'personal');
+  } finally {
+    if (typeof store.close === 'function') try { store.close(); } catch (_) {}
+  }
 }
 
 /**
@@ -665,7 +697,11 @@ function personalStats() {
 function communityStats() {
   const store = openCommunityStore();
   if (!store) return { available: false, error: 'No SQLite available' };
-  return _storeStats(store, COMMUNITY_DIR, 'community');
+  try {
+    return _storeStats(store, COMMUNITY_DIR, 'community');
+  } finally {
+    if (typeof store.close === 'function') try { store.close(); } catch (_) {}
+  }
 }
 
 /**
@@ -688,9 +724,9 @@ function globalStats() {
     byType[k] = (byType[k] || 0) + v;
   }
 
-  const totalPatterns = (personal.totalPatterns || 0) + (community.totalPatterns || 0);
-  const weightedCoherency = (personal.avgCoherency || 0) * (personal.totalPatterns || 0)
-    + (community.avgCoherency || 0) * (community.totalPatterns || 0);
+  const totalPatterns = (personal.totalPatterns ?? 0) + (community.totalPatterns ?? 0);
+  const weightedCoherency = (personal.avgCoherency ?? 0) * (personal.totalPatterns ?? 0)
+    + (community.avgCoherency ?? 0) * (community.totalPatterns ?? 0);
 
   return {
     available: true,
@@ -984,16 +1020,24 @@ function debugGlobalStats() {
   try {
     const personalStore = openPersonalStore();
     if (personalStore) {
-      const { DebugOracle } = require('../debug/debug-oracle');
-      stats.personal = new DebugOracle(personalStore).stats();
+      try {
+        const { DebugOracle } = require('../debug/debug-oracle');
+        stats.personal = new DebugOracle(personalStore).stats();
+      } finally {
+        if (typeof personalStore.close === 'function') try { personalStore.close(); } catch (_) {}
+      }
     }
   } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
 
   try {
     const communityStore = openCommunityStore();
     if (communityStore) {
-      const { DebugOracle } = require('../debug/debug-oracle');
-      stats.community = new DebugOracle(communityStore).stats();
+      try {
+        const { DebugOracle } = require('../debug/debug-oracle');
+        stats.community = new DebugOracle(communityStore).stats();
+      } finally {
+        if (typeof communityStore.close === 'function') try { communityStore.close(); } catch (_) {}
+      }
     }
   } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[persistence]', err.message); }
 
@@ -1744,6 +1788,8 @@ module.exports = {
   listRepos,
   crossRepoSearch,
   sanitizePatternForTransfer,
+  getCoherency,
+  dedupKey,
   GLOBAL_DIR,
   PERSONAL_DIR,
   COMMUNITY_DIR,

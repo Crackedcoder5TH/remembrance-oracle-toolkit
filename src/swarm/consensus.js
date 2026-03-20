@@ -22,13 +22,13 @@
  */
 function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
   const weights = config.weights || { coherency: 0.4, selfConfidence: 0.2, peerScore: 0.4 };
-  const threshold = config.consensusThreshold || 0.7;
+  const threshold = config.consensusThreshold ?? 0.7;
 
   // Build rankings
   const rankings = agentOutputs
     .filter(o => o.code) // Only rank agents that produced code
     .map(output => {
-      const coherency = coherencyScores.get(output.agent)?.total || 0;
+      const coherency = coherencyScores.get(output.agent)?.total ?? 0;
       const self = output.confidence || 0.5;
       const peer = peerScores.get(output.agent) || 0.5;
 
@@ -66,11 +66,11 @@ function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
   // Agreement: how many non-winner agents are within threshold of the winner
   const others = rankings.filter(r => r.agent !== winner.agent);
   const agreeing = others.filter(
-    r => winner.totalScore - r.totalScore < (1 - threshold) * winner.totalScore
+    r => r.totalScore >= winner.totalScore * threshold
   );
   const agreement = others.length > 0
     ? Math.round((agreeing.length / others.length) * 1000) / 1000
-    : 1.0;
+    : 1.0; // Single agent = trivial consensus (no disagreement possible)
 
   // Dissent: agents significantly below the winner
   const dissent = rankings

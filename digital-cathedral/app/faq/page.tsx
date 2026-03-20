@@ -10,11 +10,11 @@ export const metadata: Metadata = {
 const FAQS = [
   {
     q: "What is the best life insurance for veterans?",
-    a: "The best life insurance for veterans depends on your needs. Term life is ideal for mortgage protection and income replacement. Whole life works well for final expense and legacy planning. Indexed Universal Life (IUL) offers retirement savings with life insurance protection. A licensed professional can help you compare options based on your service history, age, and family situation — at no cost.",
+    a: "The best life insurance for veterans depends on your needs. Term life is ideal for mortgage protection and income replacement. Whole life works well for final expense and legacy planning. Indexed Universal Life (IUL) offers retirement savings with life insurance protection. A licensed professional can help you compare options based on your service history, age, and family situation.",
   },
   {
     q: "Is this the same as SGLI?",
-    a: "No. This is a review of additional or alternative life insurance options available outside standard military coverage. SGLI (Servicemembers' Group Life Insurance) is a separate program administered by the VA.",
+    a: "No. This is additional or alternative life insurance options available outside standard military coverage. SGLI (Servicemembers' Group Life Insurance) is a separate program supervised by the U.S. Department of Veterans Affairs (VA) and administered by the Prudential Insurance Company of America.",
   },
   {
     q: "Is this affiliated with the military or government?",
@@ -30,7 +30,7 @@ const FAQS = [
   },
   {
     q: "How long does the process take?",
-    a: "The form takes less than 60 seconds. After you submit, a licensed insurance professional will typically reach out within 1 business day.",
+    a: "The form takes less than 60 seconds. After you submit, a licensed insurance professional will typically reach out within 3 business days.",
   },
   {
     q: "What happens to my information?",
@@ -62,11 +62,7 @@ const FAQS = [
   },
   {
     q: "What happens to my SGLI when I leave the military?",
-    a: "SGLI coverage continues for 120 days after separation at no cost. You then have 240 days to convert to VGLI (Veterans' Group Life Insurance) without health evidence. However, VGLI rates increase every 5 years. Many veterans find that private coverage with locked-in rates is more cost-effective long-term. We can help you compare both options.",
-  },
-  {
-    q: "Can I get life insurance with a VA disability rating?",
-    a: "Yes. Veterans with service-connected disabilities have several options. Guaranteed issue policies require no medical exam or health questions. You may also be eligible for S-DVI (Service-Disabled Veterans' Insurance) through the VA. A licensed professional can help you find the most affordable coverage for your situation.",
+    a: "SGLI coverage continues for 120 days after separation. You then have 240 days to convert to VGLI (Veterans' Group Life Insurance) without health evidence. However, VGLI rates increase every 5 years and is only temporary coverage, not permanent coverage. Many veterans find that private coverage with locked-in rates is more cost-effective long-term. We can help you compare both options.",
   },
   {
     q: "How much life insurance does a military family need?",

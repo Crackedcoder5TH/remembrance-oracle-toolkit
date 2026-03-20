@@ -14,9 +14,15 @@ const COOKIE_NAME = "__portal_session";
 const SESSION_DURATION_S = 7 * 24 * 60 * 60; // 7 days
 
 function getSecret(): string {
-  // Use a dedicated secret or fall back to NEXTAUTH_SECRET
-  const key = process.env.PORTAL_SESSION_SECRET || process.env.NEXTAUTH_SECRET;
-  if (!key) throw new Error("PORTAL_SESSION_SECRET or NEXTAUTH_SECRET must be set");
+  // Use a dedicated secret or fall back to NEXTAUTH_SECRET / ADMIN_API_KEY
+  const key = process.env.PORTAL_SESSION_SECRET || process.env.NEXTAUTH_SECRET || process.env.ADMIN_API_KEY;
+  if (!key) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("PORTAL_SESSION_SECRET or NEXTAUTH_SECRET must be set");
+    }
+    // Local dev fallback — deterministic key so sessions survive restarts
+    return "dev-portal-session-secret-not-for-production";
+  }
   if (!process.env.PORTAL_SESSION_SECRET && process.env.NODE_ENV === "production") {
     console.warn("[AUTH] PORTAL_SESSION_SECRET not set — using NEXTAUTH_SECRET. Set a dedicated secret for production.");
   }

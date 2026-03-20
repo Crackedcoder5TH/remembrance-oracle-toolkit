@@ -60,7 +60,7 @@ export default function AdminLeadManagement() {
     setSeedMessage("");
     setSeedDemoMode(false);
     try {
-      const res = await fetch("/api/admin/seed-lead", { method: "POST" });
+      const res = await fetch("/api/admin/seed-lead", { method: "POST", headers: { "Content-Type": "application/json" } });
       const data = await res.json();
       if (data.success) {
         setSeedResults(data.leads);
@@ -80,7 +80,7 @@ export default function AdminLeadManagement() {
     setClientError("");
     setClientResult(null);
     try {
-      const res = await fetch("/api/admin/seed-client", { method: "POST" });
+      const res = await fetch("/api/admin/seed-client", { method: "POST", headers: { "Content-Type": "application/json" } });
       const data = await res.json();
       if (data.success) {
         setClientResult(data);

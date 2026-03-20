@@ -235,7 +235,7 @@ function normalizeType(raw) {
 }
 
 function setOverlap(a, b) {
-  if (a.length === 0 && b.length === 0) return 1.0; // Two identical empty sets are a perfect match
+  if (a.length === 0 && b.length === 0) return 1.0; // Both empty — perfect match
   if (a.length === 0 || b.length === 0) return 0.0;
   const setA = new Set(a.map(x => String(x).toLowerCase()));
   const setB = new Set(b.map(x => String(x).toLowerCase()));

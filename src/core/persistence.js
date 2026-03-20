@@ -457,6 +457,13 @@ function shareToCommunity(localStore, options = {}) {
       continue;
     }
 
+    // Pattern passes the gate — check for duplicates after gate validation
+    if (communityIndex.has(key)) {
+      report.duplicates++;
+      report.shared++;
+      continue;
+    }
+
     if (!dryRun) {
       try {
         // Strip identity and source paths when sharing to community store

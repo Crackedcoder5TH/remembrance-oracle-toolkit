@@ -5,6 +5,14 @@ if (process.env.NEXTAUTH_URL?.includes(",")) {
   process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.split(",")[0].trim();
 }
 
+// ─── Multi-Domain: collect all allowed domains for CORS / image optimization ───
+const leadsDomains = (process.env.LEADS_DOMAINS || "")
+  .split(",")
+  .map((d) => d.trim())
+  .filter(Boolean);
+const portalDomain = (process.env.PORTAL_DOMAIN || "").trim();
+const allDomains = [...leadsDomains, portalDomain].filter(Boolean);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -12,6 +20,11 @@ const nextConfig = {
   // Exclude native addons from serverless bundles (better-sqlite3 is optional/dev-only)
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
+  },
+
+  // ─── Multi-Domain: Allow CORS for cross-domain API calls between leads and portal ───
+  async rewrites() {
+    return [];
   },
 
   // ─── Security Headers (HTTPS everywhere) ───

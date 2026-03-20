@@ -21,6 +21,29 @@ import { CSP_HEADER } from "./csp-directives.mjs";
 
 const ADMIN_SESSION_COOKIE = "__admin_session";
 
+// ─── Multi-Domain Configuration ───
+// Leads domains serve only public/marketing pages — no admin or portal access.
+// Portal domain serves admin + client portal.
+const LEADS_DOMAINS: string[] = (process.env.LEADS_DOMAINS ?? "")
+  .split(",")
+  .map((d) => d.trim().toLowerCase())
+  .filter(Boolean);
+const PORTAL_DOMAIN: string = (process.env.PORTAL_DOMAIN ?? "").trim().toLowerCase();
+/** Canonical portal URL with protocol + www, used for redirects from leads domains. */
+const PORTAL_BASE_URL: string = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").trim().replace(/\/$/, "");
+
+type DomainType = "leads" | "portal" | "unknown";
+
+function getDomainType(hostname: string): DomainType {
+  const host = hostname.toLowerCase().split(":")[0].replace(/^www\./, "");
+  if (PORTAL_DOMAIN && host === PORTAL_DOMAIN) return "portal";
+  if (LEADS_DOMAINS.length > 0 && LEADS_DOMAINS.includes(host)) return "leads";
+  return "unknown";
+}
+
+/** Routes that must only be served on the portal domain. */
+const PORTAL_ONLY_PREFIXES = ["/admin", "/portal", "/api/admin", "/api/client", "/api/portal"];
+
 // ─── AI Crawler Detection ───
 // Known AI crawler user-agent patterns for telemetry
 const AI_CRAWLERS: Record<string, string> = {
@@ -88,6 +111,47 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const hostname = request.headers.get("host") || request.nextUrl.host;
+
+  // ─── Multi-Domain Route Enforcement ───
+  // Block portal routes on leads domains; redirect to portal domain instead.
+  // On portal domain, redirect marketing pages to the client portal.
+  const domainType = getDomainType(hostname);
+
+  if (domainType === "leads") {
+    const isPortalRoute = PORTAL_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
+    if (isPortalRoute) {
+      // If the portal domain is configured, redirect there; otherwise return 404
+      if (PORTAL_BASE_URL || PORTAL_DOMAIN) {
+        const base = PORTAL_BASE_URL || `https://${PORTAL_DOMAIN}`;
+        const portalUrl = new URL(pathname, base);
+        portalUrl.search = request.nextUrl.search;
+        return NextResponse.redirect(portalUrl.toString(), 301);
+      }
+      return NextResponse.json(
+        { error: "This route is not available on this domain." },
+        { status: 404 },
+      );
+    }
+  }
+
+  if (domainType === "portal") {
+    // On the portal domain, only serve portal/admin routes and their APIs.
+    // Redirect everything else (homepage, blog, about, etc.) to /portal.
+    const isPortalRoute =
+      pathname === "/portal" ||
+      pathname.startsWith("/portal/") ||
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/.well-known") ||
+      pathname.includes(".");
+    if (!isPortalRoute) {
+      const portalUrl = new URL("/portal", request.url);
+      return NextResponse.redirect(portalUrl, 301);
+    }
+  }
+
   // ─── Content-Type enforcement for JSON API routes ───
   // Reject POST/PUT/PATCH requests to /api/ without application/json content type
   // (except webhook endpoints that receive non-JSON payloads)
@@ -96,6 +160,8 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/") &&
     !pathname.startsWith("/api/auth") &&
     !pathname.startsWith("/api/webhooks/") &&
+    !pathname.endsWith("/logout") &&
+    !pathname.endsWith("/upload") &&
     (method === "POST" || method === "PUT" || method === "PATCH")
   ) {
     const contentType = request.headers.get("content-type") || "";

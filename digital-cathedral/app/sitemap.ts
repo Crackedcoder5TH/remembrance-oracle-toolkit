@@ -1,9 +1,23 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { getAllPosts } from "./lib/blog-posts";
 import { getAllLandingPages } from "./lib/landing-pages";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
+  const leadsBaseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
+  const portalDomain = (process.env.PORTAL_DOMAIN || "").trim().toLowerCase();
+
+  // Detect current domain to serve the right sitemap
+  let isPortal = false;
+  try {
+    const headersList = headers();
+    const host = (headersList.get("host") || "").toLowerCase().split(":")[0];
+    isPortal = !!(portalDomain && host === portalDomain);
+  } catch {
+    // headers() unavailable during build — use leads default
+  }
+
+  const baseUrl = isPortal ? `https://${portalDomain}` : leadsBaseUrl;
   const posts = getAllPosts();
   const resources = getAllLandingPages();
 

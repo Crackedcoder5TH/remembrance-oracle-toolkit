@@ -53,6 +53,20 @@ if [ -z "$REPO_ROOT" ]; then
   exit 0
 fi
 
+# Check if oracle is enabled — skip ceremony when toggled off
+ORACLE_ENABLED=$(ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { isOracleEnabled } = require(path.join(root, 'src/core/oracle-config'));
+    process.stdout.write(isOracleEnabled() ? 'true' : 'false');
+  } catch(e) { process.stdout.write('true'); }
+" 2>/dev/null || echo "true")
+
+if [ "$ORACLE_ENABLED" = "false" ]; then
+  exit 0
+fi
+
 FAILED=0
 for file in $STAGED; do
   if [ -f "$file" ]; then
@@ -145,6 +159,20 @@ ${HOOK_MARKER}
 # Resolve repo root portably (works after fork/clone)
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
 if [ -z "$REPO_ROOT" ]; then
+  exit 0
+fi
+
+# Check if oracle is enabled — skip auto-submit when toggled off
+ORACLE_ENABLED=$(ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { isOracleEnabled } = require(path.join(root, 'src/core/oracle-config'));
+    process.stdout.write(isOracleEnabled() ? 'true' : 'false');
+  } catch(e) { process.stdout.write('true'); }
+" 2>/dev/null || echo "true")
+
+if [ "$ORACLE_ENABLED" = "false" ]; then
   exit 0
 fi
 

@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const { findGitHooksDir, HOOK_MARKER } = require('../ci/hooks');
+const { isOracleEnabled } = require('./oracle-config');
 
 const SYNC_STALENESS_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -103,8 +104,14 @@ function recordSyncPull(cwd = process.cwd()) {
 
 /**
  * Run preflight checks and return warnings.
+ * When oracle is disabled (config off), preflight is skipped entirely.
  */
 function runPreflight(cwd = process.cwd()) {
+  // When oracle is toggled off, skip all ceremony checks
+  if (!isOracleEnabled()) {
+    return { ok: true, warnings: [], oracleDisabled: true };
+  }
+
   const warnings = [];
 
   const hooks = checkHooksInstalled(cwd);

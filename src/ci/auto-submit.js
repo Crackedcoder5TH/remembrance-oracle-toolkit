@@ -18,6 +18,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { isOracleEnabled } = require('../core/oracle-config');
 
 /**
  * Append pipeline errors to a persistent log file so they're never lost silently.
@@ -81,6 +82,13 @@ function autoSubmit(oracle, baseDir, options = {}) {
   };
 
   const log = silent ? () => {} : (msg) => console.log(`[auto-submit] ${msg}`);
+
+  // When oracle is toggled off, skip the entire pipeline
+  if (!isOracleEnabled()) {
+    log('Oracle is disabled — skipping auto-submit pipeline');
+    report.oracleDisabled = true;
+    return report;
+  }
 
   // Step 0: Auto-register new functions from git diff (targeted)
   try {

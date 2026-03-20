@@ -15,7 +15,7 @@ const { _generateResolveWhisper, _generateCandidateNotes } = require('./oracle-c
 const { parseIntent, ARCHITECTURAL_PATTERNS } = require('../core/search-intelligence');
 const { auditLog } = require('../core/audit-logger');
 const { captureResolveDebug } = require('../ci/auto-debug');
-const { applyPromptTag } = require('../core/oracle-config');
+const { applyPromptTag, isOracleEnabled } = require('../core/oracle-config');
 const { trackResolve } = require('../core/session-tracker');
 const { enhanceResolveWithBugClasses } = require('../audit/resolve-hook');
 
@@ -34,6 +34,16 @@ module.exports = {
   resolve(request = {}) {
     if (request == null || typeof request !== 'object') request = {};
     const { description = '', tags = [], language, minCoherency, heal = true } = request;
+
+    // When oracle is toggled off, skip all pattern matching and return GENERATE
+    if (!isOracleEnabled()) {
+      return {
+        decision: 'generate', confidence: 0, reasoning: 'Oracle is disabled (config off). Write new code.',
+        pattern: null, healedCode: null, healedVariantId: null, whisper: null,
+        candidateNotes: null, healing: null, alternatives: [], historyMatches: [],
+        quantum: null, oracleDisabled: true,
+      };
+    }
 
     let decision = this.patterns.decide({ description, tags, language, minCoherency }) || { decision: 'generate', confidence: 0, alternatives: [] };
     const historyResults = this.query({ description, tags, language, limit: 3, minCoherency: 0.5 });

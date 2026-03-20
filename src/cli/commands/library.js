@@ -35,6 +35,14 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['resolve'] = (args) => {
+    const { isOracleEnabled } = require('../../core/oracle-config');
+    if (!isOracleEnabled()) {
+      console.log(`Decision: ${colorDecision('generate')}`);
+      console.log(`Confidence: ${colorScore(0)}`);
+      console.log(`Reasoning: ${c.dim('Oracle is disabled (config off). Write new code.')}`);
+      console.log(c.dim('\nTip: Run `oracle config on` to enable pattern matching.'));
+      return;
+    }
     const tags = parseTags(args);
     const noHeal = args['no-heal'] || args.raw;
     const result = oracle.resolve({

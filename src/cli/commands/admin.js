@@ -338,33 +338,74 @@ ${c.bold('Options:')}
         dryRun,
         language: args.language,
       });
-      console.log(c.boldCyan('Auto-Submit Report:'));
-      if (result.autoRegistered > 0) {
-        console.log(`  Registered: ${c.boldGreen(String(result.autoRegistered))} new function(s) from diff`);
-      }
-      console.log(`  Harvested:  ${c.boldGreen(String(result.harvest.registered))} registered, ${c.dim(String(result.harvest.skipped))} skipped, ${c.dim(String(result.harvest.failed))} failed`);
-      console.log(`  Promoted:   ${c.boldGreen(String(result.promoted))} candidate(s)`);
-      console.log(`  Synced:     ${result.synced ? c.boldGreen('yes') : c.dim('no')}`);
-      console.log(`  Shared:     ${result.shared ? c.boldGreen('yes') : c.dim('no')}`);
-      if (result.debugSweep) {
-        console.log(`  Debug:      ${c.boldGreen(String(result.debugSweep.grown || 0))} grown, ${c.boldGreen(String(result.debugSweep.synced || 0))} synced`);
-      }
-      if (result.retention) {
-        const totalRemoved = (result.retention.candidateArchive?.removed || 0) +
-          (result.retention.patternArchive?.removed || 0) +
-          (result.retention.entries?.staleRemoved || 0) +
-          (result.retention.entries?.duplicateRemoved || 0);
-        if (totalRemoved > 0) {
-          console.log(`  Retention:  ${c.dim(String(totalRemoved))} stale row(s) purged`);
+
+      // Technical report (shown with --verbose or ORACLE_DEBUG)
+      const verbose = args.verbose === true || process.env.ORACLE_DEBUG;
+      if (verbose) {
+        console.log(c.boldCyan('Auto-Submit Report:'));
+        if (result.autoRegistered > 0) {
+          console.log(`  Registered: ${c.boldGreen(String(result.autoRegistered))} new function(s) from diff`);
         }
+        console.log(`  Harvested:  ${c.boldGreen(String(result.harvest.registered))} registered, ${c.dim(String(result.harvest.skipped))} skipped, ${c.dim(String(result.harvest.failed))} failed`);
+        console.log(`  Promoted:   ${c.boldGreen(String(result.promoted))} candidate(s)`);
+        console.log(`  Synced:     ${result.synced ? c.boldGreen('yes') : c.dim('no')}`);
+        console.log(`  Shared:     ${result.shared ? c.boldGreen('yes') : c.dim('no')}`);
+        if (result.debugSweep) {
+          console.log(`  Debug:      ${c.boldGreen(String(result.debugSweep.grown || 0))} grown, ${c.boldGreen(String(result.debugSweep.synced || 0))} synced`);
+        }
+        if (result.retention) {
+          const totalRemoved = (result.retention.candidateArchive?.removed || 0) +
+            (result.retention.patternArchive?.removed || 0) +
+            (result.retention.entries?.staleRemoved || 0) +
+            (result.retention.entries?.duplicateRemoved || 0);
+          if (totalRemoved > 0) {
+            console.log(`  Retention:  ${c.dim(String(totalRemoved))} stale row(s) purged`);
+          }
+        }
+        if (result.errors.length > 0) {
+          console.log(`  Errors:     ${c.boldRed(result.errors.join(', '))}`);
+        }
+        console.log('');
       }
-      if (result.errors.length > 0) {
-        console.log(`  Errors:     ${c.boldRed(result.errors.join(', '))}`);
+
+      // Plain-language summary (always shown)
+      const newPatterns = (result.autoRegistered || 0) + result.harvest.registered;
+      const promoted = result.promoted || 0;
+      const syncedCount = result.syncDetails?.synced || 0;
+      const sharedCount = result.shared ? 1 : 0;
+
+      // Get total library size for context
+      let librarySize = '?';
+      try {
+        const patternStats = oracle.patternStats();
+        librarySize = String(patternStats.totalPatterns || patternStats.total || 0);
+      } catch (_) { /* stats not critical */ }
+
+      console.log(`${c.boldCyan('This session:')}`);
+
+      const parts = [];
+      if (newPatterns > 0) parts.push(`${c.bold(String(newPatterns))} new pattern${newPatterns === 1 ? '' : 's'} captured`);
+      if (promoted > 0) parts.push(`${c.bold(String(promoted))} candidate${promoted === 1 ? '' : 's'} promoted to proven`);
+      if (result.implicitFeedback?.successes > 0) parts.push(`${c.bold(String(result.implicitFeedback.successes))} existing pattern${result.implicitFeedback.successes === 1 ? '' : 's'} confirmed working`);
+      if (syncedCount > 0) parts.push(`${c.bold(String(syncedCount))} pattern${syncedCount === 1 ? '' : 's'} synced to your personal store`);
+      if (result.synced && syncedCount === 0) parts.push('personal store synced');
+      if (sharedCount > 0) parts.push('shared to community');
+
+      if (parts.length > 0) {
+        for (const part of parts) {
+          console.log(`  ${c.green('\u2713')} ${part}`);
+        }
+      } else if (result.errors.length === 0) {
+        console.log(`  ${c.dim('Nothing new — library is up to date.')}`);
       }
-      const totalActivity = (result.autoRegistered || 0) + result.harvest.registered + result.promoted;
-      if (totalActivity === 0 && result.errors.length === 0) {
-        console.log(c.dim('  Nothing new to submit — library is up to date.'));
+
+      console.log(`  ${c.dim('Library now has')} ${c.bold(librarySize)} ${c.dim('proven patterns.')}`);
+
+      if (result.errors.length > 0 && !verbose) {
+        console.log(`  ${c.yellow('!')} ${result.errors.length} pipeline warning${result.errors.length === 1 ? '' : 's'} (use --verbose for details)`);
       }
+
+      console.log('');
     } catch (err) {
       console.error(c.boldRed('Error:') + ' Auto-submit error: ' + err.message);
     }

@@ -1,7 +1,7 @@
 {
   "name": "remembrance-oracle-toolkit",
   "version": "3.1.0",
-  "description": "Code memory system — stores only proven code (passes validation + coherency), scores everything 0-1, and serves the most relevant patterns to any AI or developer.",
+  "description": "Attach this to your AI coding tool. It gives the AI a library of proven, tested patterns instead of generating from scratch. Your code gets better over time.",
   "main": "src/index.js",
   "types": "types/index.d.ts",
   "exports": {
@@ -47,7 +47,8 @@
   "scripts": {
     "test": "node --test --test-timeout=300000 tests/*.test.js",
     "start": "node src/deploy.js",
-    "setup": "node src/cli.js seed",
+    "setup": "node src/cli.js init",
+    "init": "node src/cli.js init",
     "dashboard": "node src/cli.js dashboard",
     "cloud": "node src/cli.js cloud start",
     "mcp": "node src/cli.js mcp",

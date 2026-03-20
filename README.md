@@ -1,63 +1,273 @@
 # Remembrance Oracle Toolkit
 
-**Code memory that only stores proven code.** Every pattern passes validation, coherency scoring, and the Covenant filter before it earns a place in the library. Query it from any AI, CLI, or API — get back the most relevant, highest-quality code ranked on a 0-1 scale.
+**Attach this to your AI coding tool. It gives the AI a library of proven patterns instead of generating from scratch. Your code gets better over time without you doing anything.**
 
 ```bash
-npx remembrance-oracle-toolkit search "binary search"
+npx remembrance-oracle-toolkit init
 ```
 
-> **New to the oracle?** Read the [30-Second Quickstart](QUICKSTART.md) to be running in under a minute.
+That single command sets up everything: loads 600+ proven patterns, installs git hooks, syncs your personal library, and connects to the debug oracle. No configuration needed.
 
-## Quick Start
+## Why This Exists
+
+Every time an AI generates code, it starts from zero. The same sorting function, the same debounce, the same rate limiter — written fresh each time, with fresh bugs each time.
+
+The oracle remembers. It stores only code that has **passed tests, passed security checks, and scored above a quality threshold**. When your AI needs a pattern, it pulls proven code instead of guessing.
+
+The library grows automatically. Every commit is analyzed. Code that passes validation earns a place. Over time, your AI gets access to a growing library of code that has actually worked.
+
+## For AI Agents (MCP)
+
+The primary interface is MCP (Model Context Protocol). One line connects your AI tool:
 
 ```bash
+oracle mcp
+```
+
+### Auto-configure your AI tool
+
+```bash
+oracle mcp-install          # Detects and configures all installed AI tools
+oracle mcp-install claude   # Claude Desktop only
+oracle mcp-install cursor   # Cursor only
+oracle mcp-install vscode   # VS Code only
+```
+
+### Config snippets for manual setup
+
+<details>
+<summary><strong>Claude Desktop</strong></summary>
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
+or `~/.config/Claude/claude_desktop_config.json` (Linux):
+
+```json
+{
+  "mcpServers": {
+    "remembrance-oracle": {
+      "command": "npx",
+      "args": ["-y", "remembrance-oracle-toolkit", "mcp"]
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>Cursor</strong></summary>
+
+Add to `~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "remembrance-oracle": {
+      "command": "npx",
+      "args": ["-y", "remembrance-oracle-toolkit", "mcp"]
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>VS Code (Copilot / Continue / Cline)</strong></summary>
+
+Add to `.vscode/mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "remembrance-oracle": {
+      "command": "npx",
+      "args": ["-y", "remembrance-oracle-toolkit", "mcp"]
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>Windsurf</strong></summary>
+
+Add to `~/.windsurf/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "remembrance-oracle": {
+      "command": "npx",
+      "args": ["-y", "remembrance-oracle-toolkit", "mcp"]
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><strong>Claude Code</strong></summary>
+
+Add to `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "remembrance-oracle": {
+      "command": "npx",
+      "args": ["-y", "remembrance-oracle-toolkit", "mcp"]
+    }
+  }
+}
+```
+</details>
+
+### MCP Tools (12)
+
+| Tool | What it does |
+|------|-------------|
+| `oracle_search` | Find proven patterns (basic, semantic, or structured query) |
+| `oracle_resolve` | Smart retrieval — tells the AI to PULL, EVOLVE, or GENERATE |
+| `oracle_submit` | Submit code for validation and storage |
+| `oracle_register` | Register a named pattern in the library |
+| `oracle_feedback` | Report whether pulled code worked (improves rankings) |
+| `oracle_stats` | Library and store statistics |
+| `oracle_debug` | Search error-fix patterns, capture new fixes |
+| `oracle_sync` | Sync across storage tiers |
+| `oracle_harvest` | Bulk harvest patterns from repos/directories |
+| `oracle_maintain` | Run maintenance cycles (promote, synthesize, heal) |
+| `oracle_healing` | Pattern lineage and healing history |
+| `oracle_swarm` | Multi-agent orchestration for code review |
+
+## How It Works
+
+```
+Code In → Covenant Filter → Validation → Coherency Scoring → Storage
+              ↓ reject           ↓ reject         ↓ score < threshold
+          harmful code      broken code        low-quality code
+```
+
+Every piece of code is scored 0-1 across 5 dimensions:
+
+| Dimension | Weight | What it measures |
+|-----------|--------|-----------------|
+| Syntax validity | 25% | Does it parse correctly? |
+| Completeness | 20% | No TODOs, stubs, or placeholders? |
+| Consistency | 15% | Clean indentation, naming conventions? |
+| Test proof | 30% | Did it pass actual tests? |
+| Historical reliability | 10% | How often has it worked when used? |
+
+The minimum score to be stored is 0.6. The minimum to be recommended as-is is 0.68.
+
+## Quick Start (CLI)
+
+```bash
+# Install globally
 npm install -g remembrance-oracle-toolkit
-oracle seed                    # Load 600+ proven patterns
-oracle search "rate limiting"  # Find code
-oracle submit --file mycode.js --test mytest.js  # Store proven code
+
+# Initialize everything in one command
+oracle init
+
+# Or use without installing
+npx remembrance-oracle-toolkit init
 ```
 
-Or without installing:
+### Essential Commands
 
-```bash
-npx remembrance-oracle-toolkit search "binary search"
+These are the commands most users and AI agents need:
+
+| Command | What it does |
+|---------|-------------|
+| `oracle init` | Set up everything (patterns, hooks, sync, debug oracle) |
+| `oracle search "..."` | Find proven patterns by keyword or intent |
+| `oracle resolve --description "..."` | Smart retrieval — PULL, EVOLVE, or GENERATE |
+| `oracle feedback --id <id> --success` | Report that pulled code worked |
+| `oracle register --file <f> --test <t> --name <n>` | Register a new proven pattern |
+| `oracle auto-submit` | Run the full pipeline: harvest, promote, sync |
+| `oracle audit summary` | Run static analysis + cascade detection |
+| `oracle config` | Toggle oracle on/off, manage settings |
+| `oracle mcp` | Start MCP server for AI agents |
+| `oracle mcp-install` | Auto-configure AI tools |
+
+### Advanced Commands
+
+<details>
+<summary>Show advanced commands (20+)</summary>
+
 ```
+Library:
+  patterns         Show pattern library statistics
+  stats            Show store statistics
+  seed             Seed the library with built-in patterns
+  analytics        Pattern analytics and health report
+  candidates       List candidate patterns (coherent but unproven)
+  generate         Generate candidates from proven patterns
+  promote          Promote a candidate to proven with test proof
+  synthesize       Synthesize tests for candidates and auto-promote
 
-### TypeScript Support
+Quality:
+  covenant         Check code against the Covenant seal (15 safety principles)
+  reflect          Reflection loop — heal and refine code
+  harvest          Bulk harvest patterns from a repo or directory
+  compose          Create composed pattern from components
+  recycle          Recycle failures and generate variants
+  security-scan    Scan code for security vulnerabilities
 
-Full type definitions ship with the package:
-
-```typescript
-import { RemembranceOracle, Pattern, ValidationResult } from 'remembrance-oracle-toolkit';
-const oracle = new RemembranceOracle({ threshold: 0.7 });
+Sync & Federation:
+  sync push        Sync local patterns to personal store
+  sync pull        Pull from personal store to local
+  share            Share to community store
+  community pull   Pull from community store
+  cloud            Start cloud server for federation
+  remote           Manage remote oracle connections
+  cross-search     Search across all remotes
 ```
+</details>
 
-### 30-Second Tour
+### Expert Commands
 
-```bash
-# Seed the library with 600+ proven patterns
-oracle seed
+<details>
+<summary>Show expert/admin commands (30+)</summary>
 
-# Search for code
-oracle search "rate limiting" --mode semantic
-
-# Submit your own code (must prove itself)
-oracle submit --file mycode.js --test mytest.js --tags "sort,algorithm"
-
-# Pipe code through the Covenant filter
-cat mycode.js | oracle covenant --json
-
-# Heal code with reflection
-cat mycode.js | oracle reflect --output healed.js
-
-# Start the web dashboard
-oracle dashboard
-
-# Start the production server
-PORT=8080 oracle deploy
 ```
+Admin:
+  users            Manage users (list, add, delete)
+  audit            View append-only audit log / run static analysis
+  prune            Remove low-coherency entries
+  deep-clean       Remove duplicates, stubs, and trivial patterns
+  rollback         Rollback a pattern to a previous version
+  import/export    Import or export patterns as JSON
+  diff / sdiff     Compare entries side by side / semantic diff
+  versions         Show version history for a pattern
+  verify           Verify pattern integrity
 
-### As a Node.js Library
+Self-Management:
+  maintain         Full maintenance cycle (heal, promote, optimize, evolve)
+  consolidate      Consolidate duplicates, tags, and candidates
+  lifecycle        Always-on lifecycle engine
+  decay            Confidence decay report for stale patterns
+
+Swarm:
+  swarm            Multi-agent orchestration for consensus
+  swarm review     Code review via multi-agent swarm
+  swarm heal       Heal code via swarm
+
+Debug:
+  debug capture    Capture an error-fix pattern
+  debug search     Search for known fixes
+  debug grow       Generate variants of debug fixes
+  reliability      Pattern reliability statistics
+
+Transpiler:
+  transpile        Transpile pattern to another language
+  llm              Claude LLM engine (transpile/test/refine/analyze)
+
+Reflector:
+  reflector run    Self-reflector coherence scan + healing
+  reflector multi  Multi-repo snapshot + compare
+```
+</details>
+
+## As a Node.js Library
 
 ```javascript
 const { RemembranceOracle } = require('remembrance-oracle-toolkit');
@@ -83,29 +293,69 @@ const decision = oracle.resolve({
 // → { decision: 'PULL', pattern: { name: 'merge-sort', code: '...', coherency: 0.925 } }
 ```
 
-### As an MCP Server (for AI Agents)
+### TypeScript Support
 
-```bash
-# Start the MCP server (JSON-RPC 2.0 over stdio)
-oracle mcp
+Full type definitions ship with the package:
+
+```typescript
+import { RemembranceOracle, Pattern, ValidationResult } from 'remembrance-oracle-toolkit';
+const oracle = new RemembranceOracle({ threshold: 0.7 });
 ```
 
-Connect from any MCP-compatible AI client. 10 focused tools:
+## The Covenant (15 Safety Principles)
 
-| Tool | Description |
-|------|-------------|
-| `oracle_search` | Unified search (basic, smart/intent-aware, structured query via `mode` param) |
-| `oracle_resolve` | Smart retrieval — PULL, EVOLVE, or GENERATE decision |
-| `oracle_submit` | Submit code for validation and storage |
-| `oracle_register` | Register named patterns in the library |
-| `oracle_feedback` | Report whether pulled code worked |
-| `oracle_stats` | Store, pattern, and candidate statistics |
-| `oracle_debug` | Debug oracle — capture/search/feedback/stats/grow/patterns via `action` param |
-| `oracle_sync` | Sync across tiers — personal/community/both via `scope` param |
-| `oracle_harvest` | Bulk harvest patterns from repos/directories |
-| `oracle_maintain` | Maintenance — full-cycle/candidates/promote/synthesize/reflect/covenant via `action` param |
+Before scoring, all code passes through the Covenant filter — 15 principles that reject harmful patterns. Each principle has both a spiritual name and a plain-language meaning:
 
-### As a GitHub Action
+| # | Name | Plain Language | What it catches |
+|---|------|---------------|-----------------|
+| 1 | I AM | Code must declare its purpose clearly | Hidden or obfuscated intent |
+| 2 | The Eternal Spiral | Code can't loop forever — recursion must have a way to stop | Infinite loops, unbounded recursion |
+| 3 | Ultimate Good | The code does not harm. Period. | Malware, exploits, destructive code |
+| 4 | Memory of the Deep | Stored data must remain whole and uncorrupted | Data corruption, integrity violations |
+| 5 | The Loom | Parallel code must strengthen, not exploit | Race conditions used for harm |
+| 6 | The Flame | Resources must serve, not be exhausted | Resource exhaustion, memory bombs |
+| 7 | Voice of the Still Small | No social engineering or phishing | Phishing pages, deceptive UIs |
+| 8 | The Watchman's Wall | Security boundaries must be respected | Privilege escalation, auth bypass |
+| 9 | Seed and Harvest | No amplification attacks | DDoS amplification, fork bombs |
+| 10 | The Table of Nations | No unauthorized external access | Data exfiltration, unauthorized API calls |
+| 11 | The Living Water | Data must flow clean — no injection | SQL injection, XSS, command injection |
+| 12 | The Cornerstone | No supply chain attacks | Dependency confusion, typosquatting |
+| 13 | The Sabbath Rest | No denial of service | DoS patterns, intentional resource starvation |
+| 14 | The Mantle of Elijah | Code must be trustworthy — no hidden payloads | Trojans, backdoors, hidden telemetry |
+| 15 | The New Song | Creation, not destruction — code must build up | Destructive operations, data wiping |
+
+## Three-Tier Storage
+
+```
+Local (.remembrance/)       → Project-specific, always present
+Personal (~/.remembrance/)  → Private, syncs across all your projects
+Community                   → Shared — one person's proven debounce becomes everyone's
+```
+
+```bash
+oracle sync push         # Local → Personal
+oracle sync pull         # Personal → Local
+oracle share             # Local → Community (requires tests + coherency ≥ 0.7)
+oracle community pull    # Community → Local
+```
+
+The community tier is where network effects live. Your proven rate limiter becomes available to every project and every AI agent that connects. The library grows for everyone.
+
+## Pattern Library
+
+Ships with 600+ proven, tested patterns:
+
+| Language | Patterns | Categories |
+|----------|----------|------------|
+| JavaScript | 390+ | Algorithms, data structures, utilities, async, web |
+| TypeScript | 150+ | Type guards, generics, branded types, patterns |
+| Python | 20+ | Decorators, generators, comprehensions, stdlib |
+| Rust | 12+ | Iterators, traits, error handling, smart pointers |
+| Go | 10+ | Channels, sync, error handling, generics |
+
+Grows automatically on every commit via git hooks.
+
+## As a GitHub Action
 
 ```yaml
 - uses: Crackedcoder5TH/remembrance-oracle-toolkit@main
@@ -117,178 +367,17 @@ Connect from any MCP-compatible AI client. 10 focused tools:
     tags: "sort,algorithm"
 ```
 
-### VS Code Extension
+## VS Code Extension
 
-A full VS Code extension lives in `vscode-extension/` with editor-integrated Oracle features:
+A full VS Code extension lives in `vscode-extension/` with:
 
-**Commands** (9): Search Patterns, Smart Search, Submit Selection, Capture Error Fix, Find Fix for Error, Resolve (Pull/Evolve/Generate), Show Statistics, Refresh Diagnostics, Insert Pattern
-
-**Editor Features:**
-- **Diagnostics** — covenant violations and coherency warnings on save
-- **Hover** — pattern info, coherency scores, and alternatives on function names
-- **Code Actions** — quick-fix suggestions from the debug oracle
-- **Completions** — context-aware proven pattern suggestions as you type
-- **Status Bar** — Oracle indicator with one-click smart search
-
-**Sidebar Views** (3): Pattern browser by language, Debug fixes by error category, Statistics overview
-
-**Supported Languages:** JavaScript, TypeScript, Python, Go, Rust
-
-**Configuration:**
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `oracle.autoAnalyze` | `true` | Analyze files on save |
-| `oracle.minCoherency` | `0.7` | Minimum coherency for suggestions |
-| `oracle.maxDiagnostics` | `20` | Max diagnostics per file |
-| `oracle.enableDebugOracle` | `true` | Automatic error fix suggestions |
-
-## How It Works
-
-```
-Code In → Covenant Filter → Validation → Coherency Scoring → Storage
-              ↓ reject           ↓ reject         ↓ score < threshold
-          harmful code      broken code        low-quality code
-```
-
-### Coherency Scoring (0-1)
-
-Every piece of code is scored across 5 dimensions:
-
-| Dimension | Weight | What it measures |
-|-----------|--------|-----------------|
-| Syntax validity | 25% | Does it parse correctly? |
-| Completeness | 20% | No TODOs, stubs, or placeholders? |
-| Consistency | 15% | Clean indentation, naming conventions? |
-| Test proof | 30% | Did it pass actual tests? |
-| Historical reliability | 10% | How often has it worked when used? |
-
-### The Covenant (15 Principles)
-
-Before coherency scoring, all code passes through the Covenant filter — 15 principles that reject harmful patterns:
-
-```bash
-oracle covenant list
-```
-
-Includes protection against: SQL injection, command injection, XSS, credential exposure, infinite loops, resource exhaustion, and more.
-
-### Reflection Loop
-
-Iteratively refines code through 6 transforms (simplify, secure, readable, unify, correct, heal), scoring each on 5 dimensions until coherence exceeds 0.9:
-
-```bash
-oracle reflect --file code.js --loops 3 --target 0.9
-```
-
-## CLI Reference
-
-```
-Core:
-  submit        Submit code for validation and storage
-  query         Query for relevant, proven code
-  search        Fuzzy search across patterns and history
-  smart-search  Intent-aware search with typo correction + ranking
-  resolve       Smart retrieval — pull, evolve, or generate
-  validate      Validate code without storing
-  register      Register code as a named pattern
-  feedback      Report if pulled code worked
-  inspect       Inspect a stored entry
-
-Library:
-  patterns      Show pattern library statistics
-  stats         Show store statistics
-  seed          Seed the library with built-in + native patterns
-  analytics     Pattern analytics and health report
-  candidates    List candidate patterns (coherent but unproven)
-  generate      Generate candidates from proven patterns
-  promote       Promote a candidate to proven with test proof
-  synthesize    Synthesize tests for candidates and auto-promote
-
-Quality:
-  covenant      Check code against the Covenant seal
-  reflect       Reflection loop — heal and refine code
-  harvest       Bulk harvest patterns from a repo or directory
-  compose       Create composed pattern from components
-  deps          Show dependency tree for a pattern
-  recycle       Recycle failures and generate variants
-
-Federation:
-  cloud         Start cloud server for remote federation
-  remote        Manage remote oracle connections
-  cross-search  Search across all remotes
-  sync          Sync patterns with personal store
-  share         Share patterns to community store
-  community     Browse/pull community patterns
-  global        Show combined global store statistics
-
-Voting & Identity:
-  vote          Vote on a pattern (--id <id> --score 1-5)
-  top-voted     Show top-voted patterns
-  reputation    View/manage contributor reputation
-  github        Link GitHub identity for verified voting
-
-Transpiler & AI:
-  transpile     Transpile pattern to another language
-  context       Export AI context for a pattern
-  llm           Claude LLM engine (transpile/test/refine/analyze/explain)
-
-Debug:
-  debug         Debug oracle — capture/search/grow error→fix patterns
-  reliability   Pattern reliability statistics
-
-Integration:
-  mcp           Start MCP server (10 tools, JSON-RPC over stdio)
-  mcp-install   Auto-register MCP in AI editors (Claude, Cursor, VS Code)
-  setup         Initialize oracle in current project
-  dashboard     Start web dashboard (default port 3333)
-  deploy        Start production server (env-configurable)
-  hooks         Install git hooks (pre-commit covenant, post-commit seed)
-
-Admin:
-  users         Manage users (list, add, delete)
-  audit         View append-only audit log
-  prune         Remove low-coherency entries
-  deep-clean    Remove duplicates, stubs, and trivial patterns
-  rollback      Rollback a pattern to a previous version
-  import        Import patterns from exported JSON
-  export        Export top patterns as JSON or markdown
-  diff          Compare two entries side by side
-  sdiff         Semantic diff between two patterns
-  versions      Show version history for a pattern
-  nearest       Find nearest semantic vocabulary terms
-
-Pipe support:
-  cat code.js | oracle submit --language javascript
-  cat code.js | oracle validate --json
-  cat code.js | oracle reflect | oracle submit
-  cat code.js | oracle covenant --json
-```
-
-## Pattern Library
-
-The library ships with 600+ proven, tested patterns across 5 languages:
-
-| Language | Patterns | Categories |
-|----------|----------|------------|
-| JavaScript | 390+ | Algorithms, data structures, utilities, async, web |
-| TypeScript | 150+ | Type guards, generics, branded types, patterns |
-| Python | 20+ | Decorators, generators, comprehensions, stdlib, native |
-| Rust | 12+ | Iterators, traits, error handling, smart pointers, native |
-| Go | 10+ | Channels, sync, error handling, generics, native |
-
-Grow it further:
-
-```bash
-# Harvest from any local project
-oracle harvest /path/to/project --split function
-
-# Auto-discover patterns from test suites
-oracle auto-seed --dir /path/to/project
-
-# Import from exported JSON
-oracle import --file patterns.json
-```
+- **9 Commands**: Search, Submit, Resolve, Capture Error Fix, Find Fix, and more
+- **Diagnostics**: Covenant violations and coherency warnings on save
+- **Hover**: Pattern info and coherency scores on function names
+- **Code Actions**: Quick-fix suggestions from the debug oracle
+- **Completions**: Context-aware proven pattern suggestions as you type
+- **Status Bar**: Oracle indicator with one-click smart search
+- **3 Sidebar Views**: Patterns, Debug fixes, Statistics
 
 ## Web Dashboard
 
@@ -296,189 +385,25 @@ oracle import --file patterns.json
 oracle dashboard --port 3333
 ```
 
-Tabs: **Patterns** | **Search** | **History** | **Vectors** | **Analytics** | **Audit Log**
-
-Features:
-- Real-time WebSocket updates
-- Semantic vector visualization
-- Coherency distribution charts
-- Tag cloud and language breakdown
-- Pattern health monitoring
-
-## Production Deployment
-
-```bash
-# Configure via environment variables
-PORT=8080 \
-HOST=0.0.0.0 \
-AUTH=true \
-LOG=true \
-RATE_LIMIT=true \
-RATE_MAX=100 \
-oracle deploy
-```
-
-Or use the deploy script directly:
-
-```bash
-PORT=8080 node src/deploy.js
-```
-
-Features: graceful shutdown, rate limiting, auth (token + API key), CORS, request logging.
-
-## Git Hooks
-
-```bash
-# Install pre-commit (covenant check) + post-commit (auto-seed)
-oracle hooks install
-
-# Run manually
-oracle hooks run pre-commit
-```
-
-The pre-commit hook blocks any staged file that violates the Covenant. The post-commit hook auto-discovers and seeds patterns from your committed code.
-
-## Architecture
-
-```
-src/
-  api/oracle.js          — Main Oracle API (submit, query, resolve, feedback, import, export)
-  core/
-    coherency.js         — Coherency scoring engine (5 dimensions)
-    validator.js         — Code validation (Covenant → tests → coherency)
-    relevance.js         — TF-IDF relevance matching + ranking
-    covenant.js          — 15-principle harm filter (Step 0)
-    reflection.js        — Infinite reflection loop (6 transforms)
-    analytics.js         — Pattern analytics and health reports
-    vectors.js           — Word vector embeddings (186 terms, 32 dims)
-    embeddings.js        — Concept clusters for semantic search
-    websocket.js         — RFC 6455 WebSocket server
-    versioning.js        — Snapshot history + semantic diffing
-    sandbox.js           — Sandboxed code execution
-  patterns/
-    library.js           — Pattern library (decision engine + composition)
-    seeds.js             — 100+ built-in JS/TS patterns + native seeds loader
-    seeds-python.js      — 10 idiomatic Python patterns
-    seeds-go.js          — 8 idiomatic Go patterns
-    seeds-rust.js        — 8 idiomatic Rust patterns
-  store/
-    sqlite.js            — SQLite storage (WAL mode, schema v3)
-    history.js           — Verified history store
-  mcp/server.js          — MCP server (10 tools, JSON-RPC 2.0)
-  dashboard/server.js    — Web dashboard + API + WebSocket
-  auth/auth.js           — Token + API key auth (3 roles)
-  ci/
-    feedback.js          — CI feedback tracking
-    auto-seed.js         — Auto-discover patterns from test suites
-    harvest.js           — Bulk GitHub/directory harvester
-    hooks.js             — Git hook integration
-  deploy.js              — Production server entry point
-  cloud/server.js        — Cloud federation server (HTTP + WebSocket + JWT)
-  cloud/client.js        — Remote oracle client
-  ide/mcp-install.js     — Auto-register MCP in AI editors
-  auth/github-oauth.js   — GitHub OAuth identity verification
-  core/debug-oracle.js   — Debug pattern database (capture→search→grow)
-  core/persistence.js    — Three-tier storage (local/personal/community)
-  core/recycler.js       — Exponential variant generation
-  core/test-synth.js     — Test synthesis for candidate promotion
-  connectors/
-    github-bridge.js     — GitHub issue/PR integration
-  plugins/manager.js     — Plugin system (hooks, lifecycle, isolation)
-  health/monitor.js      — Health checks + metrics collection
-  cli.js                 — CLI interface (66+ commands)
-vscode-extension/          — VS Code editor integration (9 commands, 3 sidebar views)
-tests/                   — 1735+ tests across 54 files
-types/index.d.ts         — Full TypeScript type definitions
-```
+Real-time dashboard with pattern browsing, search, semantic vector visualization, coherency charts, and audit logs.
 
 ## Plugin System
 
 Extend the oracle with custom plugins:
 
 ```javascript
-// my-plugin.js
 module.exports = {
   name: 'my-plugin',
   version: '1.0.0',
   activate(context) {
-    // Hook into the submit pipeline
     context.hooks.onBeforeSubmit((code, metadata) => {
       context.logger.info(`Submitting: ${metadata.description}`);
-    });
-
-    // Hook into validation
-    context.hooks.onAfterValidate((result) => {
-      if (!result.valid) {
-        context.logger.warn(`Validation failed: ${result.errors.join(', ')}`);
-      }
-    });
-
-    // Modify search results
-    context.hooks.onSearch((query, results) => {
-      return results.filter(r => r.coherencyScore?.total > 0.8);
     });
   }
 };
 ```
 
-```bash
-# Load a plugin
-oracle plugin load ./my-plugin.js
-
-# List plugins
-oracle plugin list
-
-# Unload a plugin
-oracle plugin unload my-plugin
-```
-
-From code:
-
-```javascript
-const { RemembranceOracle, PluginManager } = require('remembrance-oracle-toolkit');
-const oracle = new RemembranceOracle();
-const plugins = new PluginManager(oracle);
-plugins.load('./my-plugin.js');
-```
-
 Available hooks: `onBeforeSubmit`, `onAfterSubmit`, `onBeforeValidate`, `onAfterValidate`, `onPatternRegistered`, `onCandidateGenerated`, `onSearch`, `onResolve`.
-
-## Health & Metrics
-
-The dashboard exposes health and metrics endpoints:
-
-```bash
-# Health check
-curl http://localhost:3333/api/health
-
-# Metrics snapshot
-curl http://localhost:3333/api/metrics
-```
-
-```json
-{
-  "status": "healthy",
-  "version": "3.1.0",
-  "uptime": 3600,
-  "checks": {
-    "database": { "status": "ok", "latencyMs": 2 },
-    "patterns": { "status": "ok", "count": 892 },
-    "coherency": { "status": "ok", "avgScore": 0.82 }
-  }
-}
-```
-
-Metrics include: pattern counts by language/type, coherency distribution, usage tracking, candidate promotion rates, and uptime.
-
-## Storage
-
-All data lives in `.remembrance/` (SQLite with WAL mode, JSON fallback):
-
-```
-.remembrance/
-  oracle.db              — SQLite database (patterns, entries, audit log)
-  verified-history.json  — JSON fallback store
-```
 
 ## Requirements
 

@@ -171,14 +171,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    notifyLeadCreated(leadRecord).catch(() => {});
-    sendLeadConfirmationEmail(leadRecord).catch(() => {});
-    sendAdminNotificationEmail(leadRecord, leadScore).catch(() => {});
-    sendLeadSms(leadRecord).catch(() => {});
+    notifyLeadCreated(leadRecord).catch((err) => console.error("[agent-leads] notifyLeadCreated failed:", err));
+    sendLeadConfirmationEmail(leadRecord).catch((err) => console.error("[agent-leads] sendLeadConfirmationEmail failed:", err));
+    sendAdminNotificationEmail(leadRecord, leadScore).catch((err) => console.error("[agent-leads] sendAdminNotificationEmail failed:", err));
+    sendLeadSms(leadRecord).catch((err) => console.error("[agent-leads] sendLeadSms failed:", err));
     const adminPhone = process.env.ADMIN_PHONE;
-    if (adminPhone) sendAdminSms(leadRecord, adminPhone).catch(() => {});
-    pushLeadToCrm(leadRecord).catch(() => {});
-    distributeLead(leadRecord, leadScore).catch(() => {});
+    if (adminPhone) sendAdminSms(leadRecord, adminPhone).catch((err) => console.error("[agent-leads] sendAdminSms failed:", err));
+    pushLeadToCrm(leadRecord).catch((err) => console.error("[agent-leads] pushLeadToCrm failed:", err));
+    distributeLead(leadRecord, leadScore).catch((err) => console.error("[agent-leads] distributeLead failed:", err));
 
     return NextResponse.json({
       success: true,

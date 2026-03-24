@@ -35,8 +35,8 @@ export function checkRateLimit(
   entry.timestamps = entry.timestamps.filter((t) => now - t < windowMs);
 
   if (entry.timestamps.length >= maxRequests) {
-    const oldest = entry.timestamps[0];
-    const retryAfterMs = windowMs - (now - oldest);
+    const oldest = entry.timestamps[0] ?? now;
+    const retryAfterMs = Math.max(0, windowMs - (now - oldest));
     return { allowed: false, retryAfterMs };
   }
 

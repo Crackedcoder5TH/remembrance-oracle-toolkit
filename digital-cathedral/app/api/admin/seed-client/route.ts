@@ -118,7 +118,7 @@ async function seedAccount(spec: SeedSpec): Promise<{ created: boolean; clientId
 }
 
 export async function POST(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const results = await Promise.all(SEED_ACCOUNTS.map(seedAccount));

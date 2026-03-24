@@ -17,7 +17,7 @@ import { scoreLead } from "@/app/lib/lead-scoring";
  * - Local dev: inserts into SQLite
  */
 export async function POST(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const results: Array<{ name: string; status: string; leadId: string; tier: string; score: number }> = [];

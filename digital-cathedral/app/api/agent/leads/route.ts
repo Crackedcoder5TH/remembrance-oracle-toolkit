@@ -79,7 +79,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (consent.scope !== "lead-submission" && consent.scope !== "both") {
+    const consentScope = (consent.scope || "").toLowerCase();
+    if (consentScope !== "lead-submission" && consentScope !== "both") {
       return NextResponse.json(
         { success: false, error: "Consent token scope does not include lead-submission." },
         { status: 403 },

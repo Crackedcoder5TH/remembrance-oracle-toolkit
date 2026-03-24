@@ -13,7 +13,7 @@ import { VALID_STATES, VALID_COVERAGE, VALID_VETERAN_STATUS } from "@/app/lib/va
  * Protected by bearer token (ADMIN_API_KEY).
  */
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const params = req.nextUrl.searchParams;

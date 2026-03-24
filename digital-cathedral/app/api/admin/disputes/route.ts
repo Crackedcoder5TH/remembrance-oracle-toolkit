@@ -9,7 +9,7 @@ import { getAllPurchases, updatePurchaseStatus, updateClientBalance } from "@/ap
  * PUT  /api/admin/disputes — Resolve a dispute (approve return or deny)
  */
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const params = req.nextUrl.searchParams;
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   try {

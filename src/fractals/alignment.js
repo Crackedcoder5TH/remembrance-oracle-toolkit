@@ -278,12 +278,16 @@ function computeFractalAlignment(code, metadata = {}) {
     };
   }
 
+  // Guard: for very large files, score a representative sample to avoid slow regex passes
+  const MAX_FRACTAL_CHARS = 30000;
+  const sample = code.length > MAX_FRACTAL_CHARS ? code.slice(0, MAX_FRACTAL_CHARS) : code;
+
   const dimensions = {
-    selfSimilarity: scoreSelfSimilarity(code),
-    boundaryDepth: scoreBoundaryDepth(code),
-    growthCascade: scoreGrowthCascade(code),
-    stabilityTuning: scoreStabilityTuning(code),
-    orderNavigation: scoreOrderNavigation(code),
+    selfSimilarity: scoreSelfSimilarity(sample),
+    boundaryDepth: scoreBoundaryDepth(sample),
+    growthCascade: scoreGrowthCascade(sample),
+    stabilityTuning: scoreStabilityTuning(sample),
+    orderNavigation: scoreOrderNavigation(sample),
   };
 
   const composite = Object.entries(FRACTAL_WEIGHTS).reduce(

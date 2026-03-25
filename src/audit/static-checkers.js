@@ -558,7 +558,12 @@ function auditCode(code, options = {}) {
     return { findings: [], summary: { total: 0, byClass: {}, bySeverity: {} } };
   }
 
-  const lines = code.split('\n');
+  // Guard: truncate very large inputs to prevent slow regex scanning
+  const MAX_AUDIT_CHARS = 50000;
+  const MAX_AUDIT_LINES = 2000;
+  const truncated = code.length > MAX_AUDIT_CHARS ? code.slice(0, MAX_AUDIT_CHARS) : code;
+  const lines = truncated.split('\n');
+  const auditLines = lines.length > MAX_AUDIT_LINES ? lines.slice(0, MAX_AUDIT_LINES) : lines;
   const enabledClasses = options.bugClasses
     ? new Set(Array.isArray(options.bugClasses) ? options.bugClasses : [options.bugClasses])
     : null;
@@ -574,11 +579,17 @@ function auditCode(code, options = {}) {
   ];
 
   let findings = [];
+  const CHECKER_DEADLINE_MS = options.checkerDeadlineMs || 5000;
 
   for (const { bugClass, fn } of checkers) {
     if (enabledClasses && !enabledClasses.has(bugClass)) continue;
     try {
-      const results = fn(code, lines);
+      const start = Date.now();
+      const results = fn(truncated, auditLines);
+      const elapsed = Date.now() - start;
+      if (elapsed > CHECKER_DEADLINE_MS) {
+        if (process.env.ORACLE_DEBUG) console.warn(`[audit:${bugClass}] checker took ${elapsed}ms — results truncated`);
+      }
       findings.push(...results);
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn(`[audit:${bugClass}]`, e?.message || e);

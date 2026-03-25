@@ -294,7 +294,11 @@ function computeCoherencyScore(code, metadata = {}) {
     };
   }
 
-  const language = metadata.language || detectLanguage(code);
+  // Guard: cap code length for expensive regex-based scorers
+  const MAX_COHERENCY_CHARS = 50000;
+  const scoringCode = code.length > MAX_COHERENCY_CHARS ? code.slice(0, MAX_COHERENCY_CHARS) : code;
+
+  const language = metadata.language || detectLanguage(scoringCode);
   const preset = metadata.preset || 'oracle';
   const weights = metadata.weights || WEIGHT_PRESETS[preset] || WEIGHT_PRESETS.oracle;
 
@@ -308,16 +312,16 @@ function computeCoherencyScore(code, metadata = {}) {
 
   const historicalReliability = metadata.historicalReliability ?? COHERENCY_DEFAULTS.HISTORICAL_RELIABILITY_FALLBACK;
 
-  // Score all dimensions
+  // Score all dimensions (use size-capped scoringCode for regex-heavy scorers)
   const scores = {
-    syntaxValid: scoreSyntax(code, language),
-    completeness: scoreCompleteness(code),
-    consistency: scoreConsistency(code, language),
-    readability: weights.readability > 0 ? scoreReadability(code, language) : 0,
-    security: weights.security > 0 ? scoreSecurity(code, language) : 0,
+    syntaxValid: scoreSyntax(scoringCode, language),
+    completeness: scoreCompleteness(scoringCode),
+    consistency: scoreConsistency(scoringCode, language),
+    readability: weights.readability > 0 ? scoreReadability(scoringCode, language) : 0,
+    security: weights.security > 0 ? scoreSecurity(scoringCode, language) : 0,
     testProof,
     historicalReliability,
-    fractalAlignment: weights.fractalAlignment > 0 ? scoreFractalAlignment(code, language) : COHERENCY_DEFAULTS.FRACTAL_ALIGNMENT_FALLBACK,
+    fractalAlignment: weights.fractalAlignment > 0 ? scoreFractalAlignment(scoringCode, language) : COHERENCY_DEFAULTS.FRACTAL_ALIGNMENT_FALLBACK,
   };
 
   // Weighted sum (only active dimensions)
@@ -334,7 +338,7 @@ function computeCoherencyScore(code, metadata = {}) {
   // AST-based boost/penalty
   let ast;
   try {
-    ast = astCoherencyBoost(code, language);
+    ast = astCoherencyBoost(scoringCode, language);
   } catch (_) {
     ast = { boost: 0, parsed: { valid: false, functions: [], classes: [], complexity: 0 } };
   }

@@ -72,6 +72,7 @@ const THRESHOLDS = {
  * @returns {number} Similarity score 0-1
  */
 function jaccardSimilarity(codeA, codeB) {
+  if (!codeA || !codeB) return 0;
   const tokensA = new Set((codeA.match(/\b\w+\b/g) || []).map(t => t.toLowerCase()));
   const tokensB = new Set((codeB.match(/\b\w+\b/g) || []).map(t => t.toLowerCase()));
   if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
@@ -112,6 +113,7 @@ function structuralSimilarity(codeA, codeB, language) {
  * @returns {number} Blended similarity 0-1
  */
 function codeSimilarity(codeA, codeB, language, options = {}) {
+  if (!codeA || !codeB) return 0;
   const config = resolveThresholds(options);
   const jaccard = jaccardSimilarity(codeA, codeB);
   const structural = structuralSimilarity(codeA, codeB, language);

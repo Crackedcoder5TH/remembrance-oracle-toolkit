@@ -493,7 +493,7 @@ function checkEdgeCase(code, lines) {
     }
 
     // Function without parameter validation
-    const fnMatch = line.match(/(?:function\s+(\w+)|(\w+)\s*=\s*(?:async\s+)?(?:function\s*)?\()\s*((?:[^()]*|\([^)]*\))*)\)/);
+    const fnMatch = line.match(/(?:function\s+(\w+)|(\w+)\s*=\s*(?:async\s+)?(?:function\s*)?\()\s*([^)]*)\)/);
     if (fnMatch) {
       const fnName = fnMatch[1] || fnMatch[2];
       const params = fnMatch[3];

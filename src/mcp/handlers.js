@@ -350,6 +350,54 @@ const HANDLERS = {
         throw new Error(`Unknown swarm action: ${action}. Use: code, review, heal, status, providers`);
     }
   },
+  // ─── 13. Fractal (math engines + code alignment) ───
+  oracle_fractal(oracle, args) {
+    const { computeFractalAlignment, selectResonantFractal, FRACTAL_TEMPLATES,
+            sierpinski, mandelbrot, mandelbrotResonance, juliaStabilityMap,
+            lyapunov, lyapunovSequence } = require('../fractals');
+
+    const action = args.action || 'analyze';
+    switch (action) {
+      case 'analyze': {
+        if (!args.code) throw new Error('code is required for analyze action');
+        return computeFractalAlignment(args.code);
+      }
+      case 'engines': {
+        const engines = {};
+        for (const [key, tmpl] of Object.entries(FRACTAL_TEMPLATES)) {
+          engines[key] = { name: tmpl.name, role: tmpl.role, codeSignals: tmpl.codeSignals };
+        }
+        return { engines, count: Object.keys(engines).length };
+      }
+      case 'resonance': {
+        if (!args.code) throw new Error('code is required for resonance action');
+        const result = selectResonantFractal(args.code, args.description || '');
+        return {
+          fractal: result.fractal, resonance: result.resonance,
+          reason: result.reason, template: { name: result.template.name, role: result.template.role },
+        };
+      }
+      case 'sierpinski': {
+        return sierpinski(args.level || 5);
+      }
+      case 'mandelbrot': {
+        const result = mandelbrot(args.cr ?? -0.75, args.ci ?? 0.1, args.maxIter || 100);
+        result.resonance = mandelbrotResonance(args.cr ?? -0.75, args.ci ?? 0.1, args.maxIter || 100);
+        return result;
+      }
+      case 'julia': {
+        return juliaStabilityMap(args.cr ?? -0.7, args.ci ?? 0.27015);
+      }
+      case 'lyapunov': {
+        if (args.sequence) {
+          return lyapunovSequence(args.sequence, args.r ?? 3.5, args.ci ?? 3.8);
+        }
+        return lyapunov(args.r ?? 3.57);
+      }
+      default:
+        throw new Error(`Unknown fractal action: ${action}. Use: analyze, engines, resonance, sierpinski, mandelbrot, julia, lyapunov`);
+    }
+  },
 };
 
 module.exports = { HANDLERS };

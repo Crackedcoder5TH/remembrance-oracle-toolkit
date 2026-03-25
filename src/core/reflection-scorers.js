@@ -4,6 +4,15 @@
 
 const { covenantCheck } = require('./covenant');
 
+// Fractal alignment integration (graceful)
+let _computeFractalAlignment;
+try {
+  ({ computeFractalAlignment: _computeFractalAlignment } = require('../fractals/alignment'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[reflection-scorers:init] Fractal alignment not available:', e?.message || e);
+  _computeFractalAlignment = null;
+}
+
 function scoreSimplicity(code) {
   const lines = code.split('\n').filter(l => l.trim());
   const totalChars = code.length;
@@ -188,12 +197,24 @@ function _stripNonCode(code) {
   return out;
 }
 
+function scoreFractalAlignment(code, metadata = {}) {
+  if (!_computeFractalAlignment) return 0.5;
+  try {
+    const result = _computeFractalAlignment(code, metadata);
+    return result.composite;
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[reflection-scorers] Fractal alignment failed:', e?.message || e);
+    return 0.5;
+  }
+}
+
 const DIMENSION_WEIGHTS = {
-  simplicity: 0.15,
-  readability: 0.20,
-  security: 0.25,
-  unity: 0.15,
-  correctness: 0.25,
+  simplicity: 0.13,
+  readability: 0.18,
+  security: 0.22,
+  unity: 0.13,
+  correctness: 0.22,
+  fractalAlignment: 0.12,
 };
 
 function observeCoherence(code, metadata = {}) {
@@ -203,6 +224,7 @@ function observeCoherence(code, metadata = {}) {
     security: scoreSecurity(code, metadata),
     unity: scoreUnity(code),
     correctness: scoreCorrectness(code, metadata.language),
+    fractalAlignment: scoreFractalAlignment(code, metadata),
   };
   const composite = Object.entries(DIMENSION_WEIGHTS).reduce(
     (sum, [key, weight]) => sum + dimensions[key] * weight, 0
@@ -216,6 +238,7 @@ module.exports = {
   scoreSecurity,
   scoreUnity,
   scoreCorrectness,
+  scoreFractalAlignment,
   DIMENSION_WEIGHTS,
   observeCoherence,
 };

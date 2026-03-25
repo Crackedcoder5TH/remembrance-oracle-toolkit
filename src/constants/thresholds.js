@@ -12,11 +12,12 @@
 
 /** Dimension weights must sum to 1.0. testProof is highest because passing tests is concrete proof. */
 const COHERENCY_WEIGHTS = {
-  SYNTAX_VALID: 0.25,
-  COMPLETENESS: 0.20,
-  CONSISTENCY: 0.15,
-  TEST_PROOF: 0.30,            // Highest — proven > everything
+  SYNTAX_VALID: 0.22,
+  COMPLETENESS: 0.18,
+  CONSISTENCY: 0.12,
+  TEST_PROOF: 0.28,            // Highest — proven > everything
   HISTORICAL_RELIABILITY: 0.10,
+  FRACTAL_ALIGNMENT: 0.10,     // Fractal self-similarity, boundary depth, growth cascade, stability, order
 };
 
 /** Syntax scoring — graduated scale for parsability */
@@ -47,6 +48,7 @@ const CONSISTENCY_PENALTIES = {
 const COHERENCY_DEFAULTS = {
   TEST_PROOF_FALLBACK: 0.5,            // When test status unknown
   HISTORICAL_RELIABILITY_FALLBACK: 0.5, // When no usage history
+  FRACTAL_ALIGNMENT_FALLBACK: 0.5,     // When fractal engine not available
 };
 
 /** Rounding precision for coherency scores */

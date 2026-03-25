@@ -57,6 +57,8 @@ const RATE_LIMITS = {
   oracle_harvest:  { windowMs: 60000, maxCalls: 5 },
   oracle_maintain: { windowMs: 60000, maxCalls: 5 },
   oracle_swarm:    { windowMs: 60000, maxCalls: 5 },
+  // Fractal: read-heavy with some compute
+  oracle_fractal:  { windowMs: 60000, maxCalls: 30 },
 };
 
 // ─── Numeric parameter bounds ───

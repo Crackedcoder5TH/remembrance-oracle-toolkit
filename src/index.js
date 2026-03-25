@@ -52,6 +52,9 @@ const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } =
 const { createOracleContext, evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS, LifecycleEngine, LIFECYCLE_DEFAULTS, HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS, selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, iterativePolish, OPTIMIZE_DEFAULTS } = require('./evolution');
 const { retryWithBackoff, isRetryableError, withRetry, resilientFetchSource } = require('./core/resilience');
 
+// Fractal system
+const fractals = require('./fractals');
+
 // Plugin system for opt-in subsystems
 const { loadBuiltinPlugin, loadAllBuiltins, listBuiltins } = require('./plugins/builtins');
 
@@ -418,4 +421,6 @@ module.exports = {
   withRetry,
   resilientFetchSource,
 
+  // Fractal System
+  ...fractals,
 };

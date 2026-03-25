@@ -11,6 +11,14 @@ const { captureResolveDebug } = require('../ci/auto-debug');
 const { applyPromptTag } = require('../core/oracle-config');
 const { trackResolve } = require('../core/session-tracker');
 
+// Fractal alignment integration (graceful)
+let _computeFractalAlignment, _selectResonantFractal;
+try {
+  ({ computeFractalAlignment: _computeFractalAlignment, selectResonantFractal: _selectResonantFractal } = require('../fractals'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[resolve:init] Fractal system not available:', e?.message || e);
+}
+
 module.exports = {
   /**
    * Resolves a code request by deciding whether to PULL, EVOLVE, or GENERATE.
@@ -158,6 +166,23 @@ module.exports = {
 
     auditLog('resolve', { id: patternData?.id, name: patternData?.name, success: true, language: patternData?.language, meta: { decision: decision.decision, confidence: decision.confidence, healed: !!healing } });
 
+    // Fractal resonance analysis — identify which fractal pattern best fits this code
+    let fractalResonance = null;
+    if (_computeFractalAlignment && healedCode) {
+      try {
+        const alignment = _computeFractalAlignment(healedCode);
+        const resonant = _selectResonantFractal ? _selectResonantFractal(healedCode, description) : null;
+        fractalResonance = {
+          alignment: alignment.composite,
+          dimensions: alignment.dimensions,
+          dominantFractal: alignment.dominantFractal,
+          resonantTemplate: resonant ? { fractal: resonant.fractal, resonance: resonant.resonance, reason: resonant.reason } : null,
+        };
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[resolve] Fractal alignment failed:', e?.message || e);
+      }
+    }
+
     // Auto-capture debug patterns from healing results (healed code forwarding)
     let resolveResult = {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,
@@ -167,6 +192,7 @@ module.exports = {
         finalCoherence: healing.reflection?.finalCoherence, improvement: healing.reflection?.improvement,
         healingPath: healing.healingPath,
       } : null,
+      fractalResonance,
       alternatives: decision.alternatives, historyMatches: historyResults,
     };
 

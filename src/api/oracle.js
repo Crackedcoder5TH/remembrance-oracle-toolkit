@@ -21,6 +21,15 @@ const { PatternLibrary } = require('../patterns/library');
 const { PatternRecycler } = require('../evolution/recycler');
 const { initAuditLog } = require('../core/audit-logger');
 
+// Quantum field — unifies all pattern types under quantum mechanics
+let QuantumField;
+try {
+  ({ QuantumField } = require('../quantum/quantum-field'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[oracle] QuantumField not available:', e?.message || e);
+  QuantumField = null;
+}
+
 // Mixin modules — each exports an object of methods for the prototype
 const coreMethods = require('./oracle-core');
 const patternMethods = require('./oracle-patterns');
@@ -55,6 +64,25 @@ class RemembranceOracle {
 
     // Debug Oracle — exponential debugging intelligence
     this._debugOracle = null; // Lazy-initialized on first debug call
+
+    // ─── Quantum Field ───
+    // Unifies all pattern types (patterns, entries, candidates, debug_patterns)
+    // under a single quantum mechanical model with amplitude, decoherence,
+    // entanglement, tunneling, and interference.
+    this._quantumField = null;
+    if (QuantumField && options.quantum !== false) {
+      try {
+        const sqliteStore = this.store.getSQLiteStore ? this.store.getSQLiteStore() : null;
+        if (sqliteStore) {
+          this._quantumField = new QuantumField(sqliteStore, {
+            verbose: options.verbose || false,
+          });
+          if (process.env.ORACLE_DEBUG) console.log('[oracle] Quantum field initialized');
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle] Quantum field init failed:', e?.message || e);
+      }
+    }
 
     // Claude Bridge — native LLM engine (lazy-initialized)
     this._claude = options.claude || null;

@@ -1,17 +1,45 @@
 # Remembrance Oracle Toolkit — AI Instructions
 
-## MANDATORY: Session Start Checkpoint
+## Oracle Toggle — On/Off Control
+
+The oracle can be toggled on or off. When **off**, all ceremony (preflight checks, query-before-write, feedback loops, auto-submit hooks) is skipped. When **on**, all quality enforcement is active.
+
+```bash
+node src/cli.js config          # Show current status
+node src/cli.js config on       # Enable oracle — full ceremony active
+node src/cli.js config off      # Disable oracle — just code, no ceremony
+node src/cli.js config toggle   # Toggle between on/off
+```
+
+**When oracle is OFF:**
+- Preflight checks are skipped (no warnings about hooks or sync)
+- `resolve` immediately returns GENERATE (write new code, no pattern lookup)
+- Git hooks skip covenant checks and auto-submit pipeline
+- `auto-submit` skips the entire harvest/promote/sync pipeline
+- Search still works (you can always search the library manually)
+- You can still register patterns manually — the library keeps growing
+
+**When oracle is ON (default):**
+- All ceremony below is enforced
+- Quality gates, pattern matching, and auto-registration are active
+
+Check status anytime: `node src/cli.js config`
+
+---
+
+## MANDATORY (when oracle is ON): Session Start Checkpoint
 
 At the **start of every coding session**, before any code is written, run:
 
 ```bash
 node src/cli.js hooks install   # Ensure git hooks are active (idempotent, safe to re-run)
 node src/cli.js sync pull       # Pull latest patterns from personal store
+node src/cli.js debug seed      # Seed the quantum field for bug-class detection
 ```
 
-This is NON-NEGOTIABLE. If hooks are not installed, patterns will not be captured.
+If hooks are not installed, patterns will not be captured.
 
-## MANDATORY: The Reflex — Query Before Write
+## MANDATORY (when oracle is ON): The Reflex — Query Before Write
 
 Before writing any new function, utility, or pattern, you MUST:
 
@@ -21,9 +49,9 @@ Before writing any new function, utility, or pattern, you MUST:
 4. **Adapt the code** if the oracle returns EVOLVE
 5. **Write new code** only if the oracle returns GENERATE or no match exists
 
-Do NOT skip this step. The oracle exists so you don't reinvent proven patterns.
+The oracle exists so you don't reinvent proven patterns.
 
-## MANDATORY: The Feedback Loop — Report After Use
+## MANDATORY (when oracle is ON): The Feedback Loop — Report After Use
 
 After using a pulled pattern or writing new code that passes tests, you MUST:
 
@@ -37,14 +65,15 @@ After using a pulled pattern or writing new code that passes tests, you MUST:
    node src/cli.js submit --file <code.js> --test <test.js> --language javascript
    ```
 
-Do NOT batch these up. Report feedback immediately after each pattern is used or written.
+Report feedback immediately after each pattern is used or written.
 
-## MANDATORY: Session End Sweep
+## MANDATORY (when oracle is ON): Session End Sweep
 
 Before ending a session or when the user says they are done, ALWAYS run:
 
 ```bash
 node src/cli.js auto-submit    # Full pipeline: register + harvest + promote + sync
+node src/cli.js audit summary  # Final audit report — static checks + cascade detection
 ```
 
 This is the safety net — it catches anything missed during the session. Never end a session without it.
@@ -159,6 +188,11 @@ node src/cli.js mcp                        # Start MCP server (12 tools)
 node src/cli.js config                    # Oracle toggle status + prompt tag
 node src/cli.js config on                 # Enable oracle
 node src/cli.js config off                # Disable oracle
+node src/cli.js audit check               # Run static checkers (6 bug classes)
+node src/cli.js audit check --file f.js  # Check a specific file
+node src/cli.js audit cascade --from HEAD # Detect cascading assumption mismatches
+node src/cli.js audit summary            # Combined audit report
+node src/cli.js debug search --sector logic # Search by bug class sector
 node --test tests/*.test.js               # Run all tests
 ```
 

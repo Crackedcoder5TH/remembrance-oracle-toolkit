@@ -18,6 +18,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { isOracleEnabled } = require('../core/oracle-config');
 
 /**
  * Append pipeline errors to a persistent log file so they're never lost silently.
@@ -42,7 +43,7 @@ function _persistErrors(baseDir, errors) {
         fs.writeFileSync(logPath, content.slice(-256 * 1024), 'utf-8');
       }
     } catch (_) { /* rotation failure is non-fatal */ }
-  } catch (_) { /* logging failure must never break the pipeline */ }
+  } catch (_) { console.error('[auto-submit] error logging failed:', _.message, 'original errors:', errors); }
 }
 
 /**
@@ -81,6 +82,13 @@ function autoSubmit(oracle, baseDir, options = {}) {
   };
 
   const log = silent ? () => {} : (msg) => console.log(`[auto-submit] ${msg}`);
+
+  // When oracle is toggled off, skip the entire pipeline
+  if (!isOracleEnabled()) {
+    log('Oracle is disabled — skipping auto-submit pipeline');
+    report.oracleDisabled = true;
+    return report;
+  }
 
   // Step 0: Auto-register new functions from git diff (targeted)
   try {
@@ -213,7 +221,23 @@ function autoSubmit(oracle, baseDir, options = {}) {
     report.errors.push(`debug-sweep: ${e.message}`);
   }
 
-  // Step 7 (was 6): Retention sweep — purge old archives, rotate entries
+  // Step 7: Debug bridge — promote debug fixes to patterns + capture failing patterns
+  try {
+    const { bridgeSync } = require('../unified/debug-bridge');
+    const bridgeResult = bridgeSync(oracle, { silent });
+    report.bridge = {
+      promoted: bridgeResult.promoted?.promoted || 0,
+      captured: bridgeResult.captured?.captured || 0,
+    };
+    if (!silent && (report.bridge.promoted > 0 || report.bridge.captured > 0)) {
+      log(`Debug bridge: ${report.bridge.promoted} promoted, ${report.bridge.captured} captured`);
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:bridge] silent failure:', e?.message || e);
+    report.errors.push(`bridge: ${e.message}`);
+  }
+
+  // Step 8 (was 7): Retention sweep — purge old archives, rotate entries
   try {
     const sqliteStore = oracle.store?.getSQLiteStore?.();
     if (sqliteStore && typeof sqliteStore.retentionSweep === 'function') {

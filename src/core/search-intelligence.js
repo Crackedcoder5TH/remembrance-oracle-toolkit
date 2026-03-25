@@ -293,7 +293,7 @@ function injectArchitecturalResults(results, intent, limit) {
     .filter(p => p.matchScore > 0.2)
     .sort((a, b) => b.matchScore - a.matchScore);
 
-  return [...archMatches, ...results].slice(0, limit);
+  return [...archMatches, ...results].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)).slice(0, limit);
 }
 
 // ─── Suggestion Generation ───

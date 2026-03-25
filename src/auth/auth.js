@@ -99,8 +99,10 @@ class AuthManager {
    *   in an in-memory Map and tokens in a Map — suitable for tests.
    */
   constructor(sqliteStore) {
-    /** token -> userId */
+    /** token -> { userId, createdAt } */
     this._tokens = new Map();
+    this._TOKEN_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
+    this._TOKEN_MAX_COUNT = 10000; // hard cap to prevent unbounded growth
     this._backend = 'memory';
 
     if (sqliteStore && sqliteStore.db) {
@@ -222,7 +224,10 @@ class AuthManager {
     }
 
     const token = generateToken();
-    this._tokens.set(token, row.id);
+    this._tokens.set(token, { userId: row.id, createdAt: Date.now() });
+
+    // Evict expired tokens to prevent unbounded growth
+    this._evictExpiredTokens();
 
     return {
       token,
@@ -241,8 +246,16 @@ class AuthManager {
    */
   validateToken(token) {
     if (!token) return null;
-    const userId = this._tokens.get(token);
-    if (!userId) return null;
+    const entry = this._tokens.get(token);
+    if (!entry) return null;
+    // Handle both old format (string userId) and new format ({ userId, createdAt })
+    const userId = typeof entry === 'string' ? entry : entry.userId;
+    const createdAt = typeof entry === 'object' ? entry.createdAt : 0;
+    // Expire tokens older than max age
+    if (createdAt && Date.now() - createdAt > this._TOKEN_MAX_AGE_MS) {
+      this._tokens.delete(token);
+      return null;
+    }
     return this.getUser(userId);
   }
 
@@ -369,8 +382,36 @@ class AuthManager {
    * Remove all active tokens for a given user id.
    */
   _purgeTokensForUser(userId) {
-    for (const [token, uid] of this._tokens.entries()) {
+    for (const [token, entry] of this._tokens.entries()) {
+      const uid = typeof entry === 'string' ? entry : entry.userId;
       if (uid === userId) {
+        this._tokens.delete(token);
+      }
+    }
+  }
+
+  /**
+   * Evict expired tokens and enforce hard cap on token count.
+   * Prevents unbounded memory growth from accumulated tokens.
+   */
+  _evictExpiredTokens() {
+    const now = Date.now();
+    for (const [token, entry] of this._tokens.entries()) {
+      const createdAt = typeof entry === 'object' ? entry.createdAt : 0;
+      if (createdAt && now - createdAt > this._TOKEN_MAX_AGE_MS) {
+        this._tokens.delete(token);
+      }
+    }
+    // Hard cap: if still over limit, remove oldest tokens
+    if (this._tokens.size > this._TOKEN_MAX_COUNT) {
+      const sorted = [...this._tokens.entries()]
+        .sort((a, b) => {
+          const aTime = typeof a[1] === 'object' ? a[1].createdAt : 0;
+          const bTime = typeof b[1] === 'object' ? b[1].createdAt : 0;
+          return aTime - bTime;
+        });
+      const toRemove = sorted.slice(0, this._tokens.size - this._TOKEN_MAX_COUNT);
+      for (const [token] of toRemove) {
         this._tokens.delete(token);
       }
     }
@@ -435,10 +476,11 @@ function authMiddleware(authManager) {
     // Check Authorization header only (no query-parameter fallback)
     const authHeader = req.headers && req.headers['authorization'];
     if (authHeader) {
-      const parts = authHeader.split(' ');
-      if (parts.length === 2) {
-        const scheme = parts[0];
-        const credential = parts[1];
+      const trimmed = authHeader.trim();
+      const spaceIdx = trimmed.indexOf(' ');
+      if (spaceIdx > 0) {
+        const scheme = trimmed.slice(0, spaceIdx);
+        const credential = trimmed.slice(spaceIdx + 1).trim();
 
         const schemeLower = scheme.toLowerCase();
         if (schemeLower === 'bearer') {
@@ -470,13 +512,20 @@ function parseQuery(url) {
   const idx = url.indexOf('?');
   if (idx === -1) return {};
   const qs = url.slice(idx + 1);
-  const params = {};
+  const params = Object.create(null); // prevent prototype pollution
+  const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
   for (const pair of qs.split('&')) {
     const eqIdx = pair.indexOf('=');
+    let key, value;
     if (eqIdx === -1) {
-      params[decodeURIComponent(pair)] = '';
+      key = decodeURIComponent(pair);
+      value = '';
     } else {
-      params[decodeURIComponent(pair.slice(0, eqIdx))] = decodeURIComponent(pair.slice(eqIdx + 1));
+      key = decodeURIComponent(pair.slice(0, eqIdx));
+      value = decodeURIComponent(pair.slice(eqIdx + 1));
+    }
+    if (!FORBIDDEN_KEYS.has(key)) {
+      params[key] = value;
     }
   }
   return params;

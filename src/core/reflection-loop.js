@@ -3,7 +3,14 @@
  * Generates candidates, scores them, selects winners, and repeats.
  */
 
-const { computeCoherencyScore, detectLanguage } = require('./coherency');
+// Lazy-load to break circular dependency (coherency → unified/coherency → reflector → coherency)
+let _computeCoherencyScore, _detectLanguage;
+function _getCoherency() {
+  if (!_computeCoherencyScore) {
+    ({ computeCoherencyScore: _computeCoherencyScore, detectLanguage: _detectLanguage } = require('../unified/coherency'));
+  }
+  return { computeCoherencyScore: _computeCoherencyScore, detectLanguage: _detectLanguage };
+}
 const { observeCoherence } = require('./reflection-scorers');
 const { reflectionScore, MAX_LOOPS, TARGET_COHERENCE, R_EFF_BASE, R_EFF_ALPHA, EPSILON_BASE, H_RVA_WEIGHT, H_CANVAS_WEIGHT, DELTA_VOID_BASE, LAMBDA_LIGHT } = require('./reflection-serf');
 const { applySimplify, applySecure, applyReadable, applyUnify, applyCorrect, applyHeal, applyPatternGuidance } = require('./reflection-transforms');
@@ -60,7 +67,7 @@ function checkDimensionMonotonicity(candidateDims, currentDims, threshold = DIME
 }
 
 function generateCandidates(code, language, options = {}) {
-  const lang = language || detectLanguage(code);
+  const lang = language || _getCoherency().detectLanguage(code);
   const transforms = [
     { strategy: 'simplify', fn: applySimplify },
     { strategy: 'secure', fn: applySecure },
@@ -140,6 +147,7 @@ function reflectionLoop(code, options = {}) {
     dimensionDropThreshold = DIMENSION_DROP_THRESHOLD,
   } = options;
 
+  const { computeCoherencyScore, detectLanguage } = _getCoherency();
   const lang = language || detectLanguage(code);
   const metadata = { description, tags, language: lang };
 

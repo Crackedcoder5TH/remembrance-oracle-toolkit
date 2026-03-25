@@ -10,6 +10,11 @@ const { parseDryRun, parseTags, parseMinCoherency } = require('../validate-args'
 function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['prune'] = (args) => {
+    if (args.untested) {
+      const result = oracle.pruneUntested();
+      console.log(`Pruned ${c.boldRed(String(result.removed))} untested entries. ${c.boldGreen(String(result.remaining))} remaining.`);
+      return;
+    }
     const min = parseMinCoherency(args, 0.4);
     const result = oracle.prune(min);
     console.log(`Pruned ${c.boldRed(String(result.removed))} entries. ${c.boldGreen(String(result.remaining))} remaining.`);
@@ -127,7 +132,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     const result = reflectionLoop(code, {
       language: args.language,
       maxLoops: parseInt(args.loops, 10) || 3,
-      targetCoherence: parseFloat(args.target) || 0.9,
+      targetCoherence: args.target != null ? parseFloat(args.target) : 0.9,
       description: args.description || '',
       tags: parseTags(args),
     });

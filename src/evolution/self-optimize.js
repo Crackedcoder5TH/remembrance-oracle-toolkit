@@ -27,7 +27,7 @@
  */
 
 const { evolve, autoHeal, needsAutoHeal } = require('./evolution');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 
 // ─── Configuration ───
 
@@ -123,10 +123,13 @@ function selfImprove(ctx, options = {}) {
 
         report.totalCoherencyGained += result.improvement;
       } else {
+        const reason = result?.skipped === 'cooldown' ? 'cooldown'
+          : result?.skipped === 'error' ? 'healing failed'
+          : 'no improvement';
         report.healFailed.push({
           id: pattern.id,
           name: pattern.name,
-          reason: result ? 'no improvement' : 'healing failed',
+          reason,
         });
       }
     } catch (e) {
@@ -647,11 +650,7 @@ function consolidateDuplicates(ctx, options = {}) {
         }
       }
 
-      // Link and record the lower-coherency variant as removed
-      if (!dryRun) {
-        deletePattern(loser.id);
-      }
-      report.removed.push({ id: loser.id, name: loser.name, reason: 'language-variant-duplicate' });
+      // SAFETY: Do NOT delete — language variants are cross-linked, not removed.
       report.linked.push({
         kept: { id: keeper.id, name: keeper.name, language: keeper.language, coherency: existingCoherency >= duplicateCoherency ? existingCoherency : duplicateCoherency },
         linked: { id: loser.id, name: loser.name, language: loser.language, coherency: existingCoherency >= duplicateCoherency ? duplicateCoherency : existingCoherency },
@@ -730,6 +729,66 @@ function consolidateTags(ctx, options = {}) {
     'needs-test', 'needs-review',
   ]);
 
+  // Synonym groups — first entry is the canonical form
+  const SYNONYM_GROUPS = [
+    ['array', 'arrays', 'list', 'lists'],
+    ['string', 'strings', 'text', 'str'],
+    ['object', 'objects', 'obj', 'dict', 'dictionary'],
+    ['function', 'functions', 'func', 'fn'],
+    ['number', 'numbers', 'numeric', 'num', 'integer', 'int'],
+    ['boolean', 'booleans', 'bool'],
+    ['error-handling', 'error', 'errors', 'error-handler'],
+    ['validation', 'validate', 'validator', 'validators'],
+    ['async', 'asynchronous', 'async-await', 'promise', 'promises'],
+    ['utility', 'util', 'utils', 'utilities', 'helper', 'helpers'],
+    ['testing', 'test', 'tests', 'test-utils'],
+    ['security', 'secure', 'sanitize', 'sanitization'],
+    ['crypto', 'cryptography', 'encryption', 'hash', 'hashing'],
+    ['math', 'maths', 'mathematics', 'arithmetic'],
+    ['sorting', 'sort', 'sorted'],
+    ['searching', 'search', 'find', 'lookup'],
+    ['formatting', 'format', 'formatter'],
+    ['parsing', 'parse', 'parser'],
+    ['logging', 'log', 'logger'],
+    ['caching', 'cache', 'memoize', 'memoization'],
+    ['concurrency', 'concurrent', 'parallel', 'threading'],
+    ['iteration', 'iterate', 'iterator', 'loop', 'loops'],
+    ['mapping', 'map', 'transform', 'transformation'],
+    ['filtering', 'filter', 'predicate'],
+    ['reducer', 'reduce', 'fold', 'accumulate'],
+    ['debounce', 'debouncing', 'throttle', 'throttling', 'rate-limit', 'rate-limiting'],
+    ['date', 'dates', 'time', 'datetime', 'timestamp'],
+    ['http', 'request', 'fetch', 'api-call'],
+    ['dom', 'html', 'browser', 'web'],
+    ['file-io', 'file', 'files', 'filesystem', 'fs'],
+    ['database', 'db', 'sql', 'sqlite', 'storage'],
+    ['config', 'configuration', 'settings', 'options'],
+    ['middleware', 'interceptor'],
+    ['encoding', 'encode', 'decode', 'decoding'],
+    ['compression', 'compress', 'decompress'],
+    ['serialization', 'serialize', 'deserialize', 'json'],
+    ['cloning', 'clone', 'copy', 'deep-copy', 'deep-clone'],
+    ['comparison', 'compare', 'diff', 'equal', 'equality'],
+    ['conversion', 'convert', 'converter', 'cast', 'coerce'],
+    ['truncation', 'truncate', 'trim', 'trimming'],
+    ['splitting', 'split', 'chunk', 'chunking', 'partition'],
+    ['merging', 'merge', 'combine', 'concat', 'concatenate'],
+    ['flattening', 'flatten', 'flat'],
+    ['deduplication', 'deduplicate', 'dedupe', 'dedup', 'unique', 'distinct'],
+    ['grouping', 'group', 'group-by', 'groupby', 'categorize'],
+    ['pattern', 'patterns', 'design-pattern'],
+    ['type-check', 'type-checking', 'type-guard', 'typeguard'],
+    ['null-check', 'null-safe', 'nullable', 'optional'],
+  ];
+
+  const synonymMap = new Map();
+  for (const group of SYNONYM_GROUPS) {
+    const canonical = group[0];
+    for (const synonym of group) {
+      synonymMap.set(synonym.toLowerCase(), canonical);
+    }
+  }
+
   const tagCounts = new Map();
   for (const p of patterns) {
     for (const tag of (p.tags || [])) {
@@ -752,23 +811,51 @@ function consolidateTags(ctx, options = {}) {
     patternsAnalyzed: patterns.length,
     totalTagsBefore: tagCounts.size,
     tagsRemoved: [],
+    synonymsMerged: [],
     patternsUpdated: 0,
     noiseTagsStripped: 0,
     orphanTagsRemoved: 0,
+    synonymsNormalized: 0,
     dryRun,
     durationMs: 0,
   };
 
+  // Track synonym merges for reporting
+  const synonymMerges = new Map(); // old tag → canonical
+
   for (const p of patterns) {
     const oldTags = p.tags || [];
-    const newTags = oldTags.filter(t => !tagsToRemove.has(t));
 
-    if (newTags.length < oldTags.length) {
+    // Step 1: normalize synonyms
+    const normalizedTags = oldTags.map(t => {
+      const canonical = synonymMap.get(t.toLowerCase());
+      if (canonical && canonical !== t) {
+        if (!synonymMerges.has(t)) synonymMerges.set(t, canonical);
+        return canonical;
+      }
+      return t;
+    });
+
+    // Step 2: deduplicate (synonym normalization may create dupes)
+    const uniqueTags = [...new Set(normalizedTags)];
+
+    // Step 3: remove noise/orphan tags
+    const newTags = uniqueTags.filter(t => !tagsToRemove.has(t));
+
+    const changed = newTags.length !== oldTags.length ||
+      newTags.some((t, i) => t !== oldTags[i]);
+
+    if (changed) {
       if (!dryRun) {
         updatePattern(p.id, { tags: newTags });
       }
       report.patternsUpdated++;
     }
+  }
+
+  report.synonymsNormalized = synonymMerges.size;
+  for (const [oldTag, canonical] of synonymMerges) {
+    report.synonymsMerged.push({ from: oldTag, to: canonical });
   }
 
   for (const tag of tagsToRemove) {

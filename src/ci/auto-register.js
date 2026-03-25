@@ -146,13 +146,17 @@ function findTestFile(sourceFile, baseDir) {
  * @param {string} name — Function or pattern name
  * @returns {boolean}
  */
+// Cache for existing pattern names — populated once per autoRegister() call
+let _registeredNamesCache = null;
+
 function isRegistered(oracle, name) {
   try {
-    if (typeof oracle.patterns?.getAll === 'function') {
-      const all = oracle.patterns.getAll();
-      return all.some(p => p.name === name);
+    // Use cached names set if available (populated in autoRegister)
+    if (_registeredNamesCache) return _registeredNamesCache.has(name);
+    // Fallback: use targeted search instead of loading all patterns
+    if (typeof oracle.patterns?._sqlite?.getPatternByName === 'function') {
+      return !!oracle.patterns._sqlite.getPatternByName(name);
     }
-    // Fallback: search the store
     const results = oracle.search(name, { limit: 5 });
     return results.some(r => r.name === name);
   } catch (e) {
@@ -265,6 +269,8 @@ function autoRegister(oracle, cwd, options = {}) {
     if (process.env.ORACLE_DEBUG) console.warn('[auto-register:lookups] silent failure:', e?.message || e);
     // Fallback: check per-function
   }
+  // Set module-level cache so isRegistered() uses it instead of loading all patterns
+  _registeredNamesCache = existingNames;
 
   // Step 2: Process each changed file
   for (const relFile of changedFiles) {
@@ -408,6 +414,8 @@ function autoRegister(oracle, cwd, options = {}) {
     log(`Done: ${report.registered} registered, ${report.alreadyExists} already exist, ${report.skipped} skipped`);
   }
 
+  // Clear module-level cache to free memory
+  _registeredNamesCache = null;
   return report;
 }
 

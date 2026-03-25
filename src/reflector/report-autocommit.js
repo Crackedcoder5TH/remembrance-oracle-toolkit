@@ -9,7 +9,7 @@
 
 const { writeFileSync, existsSync } = require('fs');
 const { join, relative } = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
 const { scoring: _scoring, github: _github, history: _history } = require('./report-lazy');
@@ -31,10 +31,10 @@ function createSafetyBranch(rootDir, options = {}) {
   const { label = '' } = options;
   const timestamp = new Date().toISOString();
   const baseBranch = getCurrentBranch(rootDir);
-  const headCommit = git('rev-parse HEAD', rootDir);
+  const headCommit = git(['rev-parse', 'HEAD'], rootDir);
   const safetyBranch = `remembrance/safety-${Date.now()}`;
 
-  git(`branch ${safetyBranch}`, rootDir);
+  git(['branch', safetyBranch], rootDir);
 
   return {
     branch: safetyBranch,
@@ -150,14 +150,14 @@ function mergeIfPassing(rootDir, options) {
 
   if (!testResult || !testResult.passed) {
     try {
-      git(`checkout ${baseBranch}`, rootDir);
+      git(['checkout', baseBranch], rootDir);
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:mergeIfPassing] silent failure:', e?.message || e);
       // Best effort
     }
 
     try {
-      git(`branch -D ${healingBranch}`, rootDir);
+      git(['branch', '-D', healingBranch], rootDir);
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:mergeIfPassing] silent failure:', e?.message || e);
       // Best effort
@@ -174,17 +174,21 @@ function mergeIfPassing(rootDir, options) {
   }
 
   try {
-    git(`checkout ${baseBranch}`, rootDir);
+    git(['checkout', baseBranch], rootDir);
 
     if (squash) {
-      git(`merge --squash ${healingBranch}`, rootDir);
-      git(`commit -m "Remembrance Pull: Healed refinement (test-verified)"`, rootDir);
+      git(['merge', '--squash', healingBranch], rootDir);
+      execFileSync('git', ['commit', '-m', 'Remembrance Pull: Healed refinement (test-verified)'], {
+        cwd: rootDir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: TIMEOUTS.GIT_LOCAL,
+      });
     } else {
-      git(`merge ${healingBranch} --no-ff -m "Remembrance Pull: Healed refinement (test-verified)"`, rootDir);
+      execFileSync('git', ['merge', healingBranch, '--no-ff', '-m', 'Remembrance Pull: Healed refinement (test-verified)'], {
+        cwd: rootDir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: TIMEOUTS.GIT_LOCAL,
+      });
     }
 
     try {
-      git(`branch -D ${safetyBranch}`, rootDir);
+      git(['branch', '-D', safetyBranch], rootDir);
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:mergeIfPassing] silent failure:', e?.message || e);
       // Keep safety branch if delete fails
@@ -199,7 +203,7 @@ function mergeIfPassing(rootDir, options) {
     };
   } catch (err) {
     try {
-      git('merge --abort', rootDir);
+      git(['merge', '--abort'], rootDir);
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] silent failure:', e?.message || e);
       // Best effort
@@ -279,7 +283,7 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
       testCommand: testCommand || 'npm test',
       buildCommand: buildCommand || '(none)',
     };
-    try { git(`branch -D ${safetyInfo.branch}`, rootDir); } catch (e) {
+    try { git(['branch', '-D', safetyInfo.branch], rootDir); } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] ignore:', e?.message || e);
     }
     result.durationMs = Date.now() - startTime;
@@ -288,27 +292,29 @@ function safeAutoCommit(rootDir, healedFiles, options = {}) {
   }
 
   try {
-    git(`checkout -b ${healingBranch}`, rootDir);
+    git(['checkout', '-b', healingBranch], rootDir);
     result.pipeline.push({ step: 'healing-branch', status: 'ok', branch: healingBranch });
 
     for (const file of healedFiles) {
       const absPath = file.absolutePath || join(rootDir, file.path);
       writeFileSync(absPath, file.code, 'utf-8');
-      git(`add "${file.path}"`, rootDir);
+      git(['add', file.path], rootDir);
     }
 
     const msg = commitMessage || `Remembrance Pull: Healed ${healedFiles.length} file(s)`;
-    git(`commit -m "${msg.replace(/"/g, '\\"')}"`, rootDir);
+    execFileSync('git', ['commit', '-m', msg], {
+      cwd: rootDir, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: TIMEOUTS.GIT_LOCAL,
+    });
     result.pipeline.push({ step: 'commit', status: 'ok', files: healedFiles.length });
   } catch (err) {
     result.pipeline.push({ step: 'commit', status: 'error', error: err.message });
-    try { git(`checkout ${autoCommitBaseBranch}`, rootDir); } catch (e) {
+    try { git(['checkout', autoCommitBaseBranch], rootDir); } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] ignore:', e?.message || e);
     }
-    try { git(`branch -D ${healingBranch}`, rootDir); } catch (e) {
+    try { git(['branch', '-D', healingBranch], rootDir); } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] ignore:', e?.message || e);
     }
-    try { git(`branch -D ${safetyInfo.branch}`, rootDir); } catch (e) {
+    try { git(['branch', '-D', safetyInfo.branch], rootDir); } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[report-autocommit:init] ignore:', e?.message || e);
     }
     result.aborted = true;

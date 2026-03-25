@@ -436,11 +436,54 @@ module.exports = {
   },
 
   /**
+   * Bulk re-excite all decohered patterns — restore the quantum field.
+   */
+  debugReexciteAll(options = {}) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { reexcited: 0, total: 0, error: 'No SQLite store available' };
+    return debug.reexciteAll(options);
+  },
+
+  /**
    * Get the entanglement graph for a pattern — all linked patterns.
    */
   debugEntanglementGraph(id, depth = 2) {
     const debug = this._getDebugOracle();
     if (!debug) return { nodes: [], edges: [] };
     return debug.getEntanglementGraph(id, depth);
+  },
+
+  // ─── Debug Bridge — connects debug and main pattern systems ───
+
+  /**
+   * Promote high-amplitude debug fixes to the main pattern library.
+   */
+  bridgePromoteDebug(options = {}) {
+    const { promoteDebugToPatterns } = require('../unified/debug-bridge');
+    return promoteDebugToPatterns(this, options);
+  },
+
+  /**
+   * Capture repeatedly-failing main patterns as debug entries.
+   */
+  bridgeCaptureFailures(options = {}) {
+    const { captureFailingPatterns } = require('../unified/debug-bridge');
+    return captureFailingPatterns(this, options);
+  },
+
+  /**
+   * Search across both main patterns and debug patterns.
+   */
+  bridgeSearch(query, options = {}) {
+    const { federatedSearch } = require('../unified/debug-bridge');
+    return federatedSearch(this, query, options);
+  },
+
+  /**
+   * Full bridge sync: promote ready debug fixes + capture failing patterns.
+   */
+  bridgeSync(options = {}) {
+    const { bridgeSync } = require('../unified/debug-bridge');
+    return bridgeSync(this, options);
   },
 };

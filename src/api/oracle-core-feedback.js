@@ -1,10 +1,66 @@
 /**
- * Oracle Core — Feedback and auto-heal.
- * Records usage feedback and triggers automatic healing for failing patterns.
+ * Oracle Core — Feedback (Quantum Entanglement Propagation).
+ *
+ * Feedback is the post-measurement state update. After observing and using
+ * a pattern, the outcome updates the quantum field:
+ *   - SUCCESS: amplitude increases, entangled patterns shift positively
+ *   - FAILURE: amplitude decreases, entangled patterns shift negatively,
+ *              auto-healing attempts to repair the pattern
+ *   - CASCADE: high-amplitude successes trigger growth of new entangled variants
  */
 
 const { auditLog } = require('../core/audit-logger');
 const { captureFeedbackDebug } = require('../ci/auto-debug');
+
+/**
+ * Trigger compounding: spawn new candidates from a pattern that just succeeded.
+ * Only compounds when the pattern has enough successful uses to prove reliability.
+ * @param {object} oracle - The oracle instance (this)
+ * @param {string} id - Pattern ID
+ * @param {object} updated - Updated pattern/entry with usage stats
+ * @param {string} source - 'feedback' or 'pattern-feedback'
+ */
+function _tryCompound(oracle, id, updated, source) {
+  try {
+    const { COMPOUND } = require('../constants/thresholds');
+    const successCount = updated?.successCount ?? updated?.reliability?.successCount ?? 0;
+    const usageCount = updated?.usageCount ?? updated?.reliability?.usageCount ?? 0;
+    const reliability = updated?.reliability?.historicalScore ?? (usageCount > 0 ? successCount / usageCount : 0);
+
+    // Only compound if pattern has enough successful uses and high reliability
+    if (successCount < COMPOUND.MIN_SUCCESSES || reliability < COMPOUND.MIN_RELIABILITY) return null;
+
+    // Only compound on every Nth success to avoid flooding
+    if (successCount % COMPOUND.COMPOUND_EVERY !== 0) return null;
+
+    const { PatternRecycler } = require('../evolution/recycler');
+    const recycler = new PatternRecycler(oracle);
+
+    // Resolve the full pattern object
+    let pattern = null;
+    if (oracle.patterns._sqlite) {
+      pattern = oracle.patterns._sqlite.getPattern(id);
+    }
+    if (!pattern) {
+      pattern = oracle.patterns.getAll().find(p => p.id === id);
+    }
+    if (!pattern || !pattern.code) return null;
+
+    const report = recycler.generateFromPattern(pattern, {
+      methods: ['variant', 'iterative-refine'],
+    });
+
+    if (report.stored > 0) {
+      oracle._emit?.({ type: 'compound_growth', id, source, stored: report.stored, successCount });
+      auditLog('compound_growth', { id, source, stored: report.stored, successCount });
+    }
+
+    return report;
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn(`[oracle:feedback] compounding failed for ${id}:`, e?.message || e);
+    return null;
+  }
+}
 
 module.exports = {
   /**
@@ -35,9 +91,9 @@ module.exports = {
       try {
         const { needsAutoHeal, autoHeal } = require('../evolution/evolution');
         const { covenantCheck } = require('../core/covenant');
-        const pattern = this.patterns._sqlite
-          ? this.patterns._sqlite.getPattern(id)
-          : this.patterns.getAll().find(p => p.id === id);
+        const pattern = this.store.get(id)
+          || (this.patterns._sqlite ? this.patterns._sqlite.getPattern(id) : null)
+          || this.patterns.getAll().find(p => p.id === id);
         if (pattern && needsAutoHeal(pattern)) {
           const healed = autoHeal(pattern);
           if (healed && healed.improvement > 0) {
@@ -49,6 +105,12 @@ module.exports = {
               this._emit({ type: 'auto_heal', id, improvement: healed.improvement, newCoherency: healed.newCoherency });
             } else if (process.env.ORACLE_DEBUG) {
               console.warn(`[oracle:feedback] auto-heal rejected by covenant for ${id}`);
+            }
+          } else if (healed?.skipped) {
+            // Sentinel return from heal(): cooldown, no-improvement, or error
+            healResult = { healed: false, skipped: healed.skipped };
+            if (healed.skipped === 'error') {
+              this._emit({ type: 'auto_heal_failed', id, reason: 'error' });
             }
           }
         }
@@ -67,8 +129,24 @@ module.exports = {
       }
     }
 
-    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated?.reliability?.historicalScore ?? null, healed: !!healResult?.healed } });
-    return { success: true, newReliability: updated?.reliability?.historicalScore ?? null, healResult };
+    // Compounding: spawn new candidates from patterns that keep succeeding
+    let compoundResult = null;
+    if (succeeded) {
+      compoundResult = _tryCompound(this, id, updated, 'feedback');
+    }
+
+    // ─── Quantum Entanglement Propagation ───
+    let quantumFeedback = null;
+    if (this._quantumField) {
+      try {
+        quantumFeedback = this._quantumField.feedback('entries', id, succeeded);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[feedback] quantum propagation failed:', e?.message || e);
+      }
+    }
+
+    auditLog('feedback', { id, success: succeeded, meta: { newReliability: updated?.reliability?.historicalScore ?? null, healed: !!healResult?.healed, compounded: compoundResult?.stored ?? 0, quantum: quantumFeedback } });
+    return { success: true, newReliability: updated?.reliability?.historicalScore ?? null, healResult, compoundResult, quantum: quantumFeedback };
   },
 
   /**
@@ -105,6 +183,11 @@ module.exports = {
             } else if (process.env.ORACLE_DEBUG) {
               console.warn(`[oracle:patternFeedback] auto-heal rejected by covenant for ${id}`);
             }
+          } else if (healed?.skipped) {
+            healResult = { healed: false, skipped: healed.skipped };
+            if (healed.skipped === 'error') {
+              this._emit({ type: 'auto_heal_failed', id, reason: 'error' });
+            }
           }
         }
       } catch (e) {
@@ -121,7 +204,23 @@ module.exports = {
       }
     }
 
-    auditLog('pattern_feedback', { id, success: succeeded, meta: { usageCount: updated.usageCount, healed: !!healResult?.healed } });
-    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount, healResult };
+    // Compounding: spawn new candidates from patterns that keep succeeding
+    let compoundResult = null;
+    if (succeeded) {
+      compoundResult = _tryCompound(this, id, updated, 'pattern-feedback');
+    }
+
+    // ─── Quantum Entanglement Propagation ───
+    let quantumFeedback = null;
+    if (this._quantumField) {
+      try {
+        quantumFeedback = this._quantumField.feedback('patterns', id, succeeded);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[patternFeedback] quantum propagation failed:', e?.message || e);
+      }
+    }
+
+    auditLog('pattern_feedback', { id, success: succeeded, meta: { usageCount: updated.usageCount, healed: !!healResult?.healed, compounded: compoundResult?.stored ?? 0, quantum: quantumFeedback } });
+    return { success: true, usageCount: updated.usageCount, successCount: updated.successCount, healResult, compoundResult, quantum: quantumFeedback };
   },
 };

@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseCode, parseJavaScript, parsePython, astCoherencyBoost } = require('../src/core/parsers/ast');
+const { parseCode, parseJavaScript, parsePython, astCoherencyBoost } = require('../src/core/parsers/code-validator');
 
 describe('parseJavaScript', () => {
   it('parses valid JS and extracts functions', () => {

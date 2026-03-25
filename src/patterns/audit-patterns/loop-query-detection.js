@@ -37,7 +37,7 @@ function detectLoopQuery(code) {
   const queryPatterns = /\.getAll\w*\(\)|\.find\w*\(\)|\.query\(\)|\.select\(\)|\.fetch\(\)/;
 
   // Track brace depth to know when loop bodies end
-  // loopStack stores the braceDepth at which each loop started
+  // loopStack stores { depth, braceless } for each active loop
   let braceDepth = 0;
   const loopStack = [];
 
@@ -45,10 +45,19 @@ function detectLoopQuery(code) {
     const line = lines[i];
     if (line.trim().startsWith('//') || line.trim().startsWith('*')) continue;
 
+    // Pop braceless loops after their single statement line
+    for (let s = loopStack.length - 1; s >= 0; s--) {
+      if (loopStack[s].braceless && loopStack[s].bodyStarted) {
+        loopStack.splice(s, 1);
+      }
+    }
+
     // Check if line starts a loop — push current brace depth onto stack
-    const loopMatch = /\bfor\s*\(|\bwhile\s*\(|\.forEach\s*\(|\.map\s*\(/.test(line);
-    if (loopMatch) {
-      loopStack.push(braceDepth);
+    const isLoop = /\bfor\s*\(|\bwhile\s*\(|\.forEach\s*\(|\.map\s*\(/.test(line);
+    if (isLoop) {
+      // Check if this line contains an opening brace (braced loop body)
+      const hasBrace = line.includes('{');
+      loopStack.push({ depth: braceDepth, braceless: !hasBrace, bodyStarted: false });
     }
 
     // Count braces on this line
@@ -68,8 +77,16 @@ function detectLoopQuery(code) {
     // Update brace depth
     braceDepth += opens - closes;
 
-    // Pop loops whose body has closed (braceDepth returned to loop start level)
-    while (loopStack.length > 0 && braceDepth <= loopStack[loopStack.length - 1]) {
+    // Mark braceless loops as body-started (next iteration will pop them)
+    for (const entry of loopStack) {
+      if (entry.braceless && !entry.bodyStarted) {
+        entry.bodyStarted = true;
+      }
+    }
+
+    // Pop braced loops whose body has closed (braceDepth returned to loop start level)
+    while (loopStack.length > 0 && !loopStack[loopStack.length - 1].braceless &&
+           braceDepth <= loopStack[loopStack.length - 1].depth) {
       loopStack.pop();
     }
   }

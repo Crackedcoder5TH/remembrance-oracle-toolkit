@@ -38,7 +38,7 @@ function detectNullPropertyAccess(code) {
   const dangerousChains = [
     // .property.method() without optional chaining or guard
     {
-      pattern: /(\w+)\.(\w+)\.(?:toLowerCase|toUpperCase|trim|slice|split|join|map|filter|reduce|forEach|includes|indexOf|startsWith|endsWith|match|replace|toString|toFixed)\s*\(/,
+      pattern: /(\w+)\.(\w+)\.(toLowerCase|toUpperCase|trim|slice|split|join|map|filter|reduce|forEach|includes|indexOf|startsWith|endsWith|match|replace|toString|toFixed)\s*\(/,
       check: (match, line) => {
         // Skip if preceded by optional chaining or null check
         if (line.includes(`${match[1]}?.${match[2]}`) || line.includes(`${match[1]} && ${match[1]}.${match[2]}`)) return false;
@@ -50,7 +50,7 @@ function detectNullPropertyAccess(code) {
         if (new RegExp(`${match[1]}\\.${match[2]}\\s*\\?`).test(line)) return false;
         return true;
       },
-      suggestion: (match) => `Consider: (${match[1]}.${match[2]} || '').method() or ${match[1]}.${match[2]}?.method()`,
+      suggestion: (match) => `Consider: (${match[1]}.${match[2]} || '').${match[3]}() or ${match[1]}.${match[2]}?.${match[3]}()`,
     },
     // Direct iteration over potentially null array
     {

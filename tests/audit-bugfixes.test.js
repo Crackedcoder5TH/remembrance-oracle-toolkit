@@ -103,7 +103,7 @@ describe('Audit Bug #4: autoHeal wrong property access', () => {
     assert.strictEqual(needsAutoHeal(pattern), false);
   });
 
-  it('autoHeal returns null for pattern with no code improvement possible', () => {
+  it('autoHeal returns sentinel or result for pattern with no code improvement possible', () => {
     // autoHeal should not crash when reflectionLoop returns its actual shape
     const pattern = {
       code: '// stub',
@@ -112,10 +112,10 @@ describe('Audit Bug #4: autoHeal wrong property access', () => {
       tags: ['test'],
       coherencyScore: { total: 0.5 },
     };
-    // autoHeal may return null (no improvement) or an object — it should NOT throw
+    // autoHeal may return a sentinel (skipped/no-improvement/error) or an object — it should NOT throw
     const result = autoHeal(pattern, { maxLoops: 1 });
-    // Result is either null or has the correct shape
-    if (result !== null) {
+    // Result is either a sentinel (has .skipped) or has the correct healing shape
+    if (result && !result.skipped) {
       assert.ok('code' in result, 'result should have code property');
       assert.ok('improvement' in result, 'result should have improvement property');
       assert.ok('newCoherency' in result, 'result should have newCoherency property');

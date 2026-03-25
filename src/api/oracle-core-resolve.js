@@ -1,6 +1,13 @@
 /**
- * Oracle Core — Resolve.
- * Smart retrieval: PULL / EVOLVE / GENERATE decision with reflection healing.
+ * Oracle Core — Resolve (Quantum Measurement).
+ *
+ * Resolve is the fundamental MEASUREMENT of the quantum field.
+ * It collapses the superposition of all matching patterns into a
+ * definite decision (PULL / EVOLVE / GENERATE) via:
+ *   1. Quantum observation — decoherence + Born rule scoring
+ *   2. Interference — competing patterns interfere constructively/destructively
+ *   3. Entanglement — healing results propagate to linked patterns
+ *   4. State collapse — measured patterns transition to collapsed state
  */
 
 const { reflectionLoop } = require('../core/reflection');
@@ -8,8 +15,16 @@ const { _generateResolveWhisper, _generateCandidateNotes } = require('./oracle-c
 const { parseIntent, ARCHITECTURAL_PATTERNS } = require('../core/search-intelligence');
 const { auditLog } = require('../core/audit-logger');
 const { captureResolveDebug } = require('../ci/auto-debug');
-const { applyPromptTag } = require('../core/oracle-config');
+const { applyPromptTag, isOracleEnabled } = require('../core/oracle-config');
 const { trackResolve } = require('../core/session-tracker');
+const { enhanceResolveWithBugClasses } = require('../audit/resolve-hook');
+
+// Quantum measurement engine
+const {
+  applyDecoherence,
+  PLANCK_AMPLITUDE,
+  QUANTUM_STATES,
+} = require('../quantum/quantum-core');
 
 // Fractal alignment integration (graceful)
 let _computeFractalAlignment, _selectResonantFractal;
@@ -28,7 +43,17 @@ module.exports = {
     if (request == null || typeof request !== 'object') request = {};
     const { description = '', tags = [], language, minCoherency, heal = true } = request;
 
-    let decision = this.patterns.decide({ description, tags, language, minCoherency });
+    // When oracle is toggled off, skip all pattern matching and return GENERATE
+    if (!isOracleEnabled()) {
+      return {
+        decision: 'generate', confidence: 0, reasoning: 'Oracle is disabled (config off). Write new code.',
+        pattern: null, healedCode: null, healedVariantId: null, whisper: null,
+        candidateNotes: null, healing: null, alternatives: [], historyMatches: [],
+        quantum: null, oracleDisabled: true,
+      };
+    }
+
+    let decision = this.patterns.decide({ description, tags, language, minCoherency }) || { decision: 'generate', confidence: 0, alternatives: [] };
     const historyResults = this.query({ description, tags, language, limit: 3, minCoherency: 0.5 });
 
     // For structural queries with no strong match, check built-in architectural patterns.
@@ -115,7 +140,7 @@ module.exports = {
 
         // Store healed variant as linked lineage when coherency improved
         const originalCoherency = patternData.coherencyScore || 0;
-        const healedCoherency = healing.fullCoherency || healing.coherence || 0;
+        const healedCoherency = healing.fullCoherency ?? healing.coherence ?? 0;
         if (healedCoherency > originalCoherency && this.patterns._sqlite) {
           try {
             const variant = this.patterns._sqlite.addHealedVariant({
@@ -135,11 +160,13 @@ module.exports = {
         }
 
         // Record healing stats to persistent storage
-        this._trackHealingSuccess(patternData.id, true, {
-          coherencyBefore: originalCoherency,
-          coherencyAfter: healedCoherency,
-          healingLoops: healing.loops,
-        });
+        if (typeof this._trackHealingSuccess === 'function') {
+          this._trackHealingSuccess(patternData.id, true, {
+            coherencyBefore: originalCoherency,
+            coherencyAfter: healedCoherency,
+            healingLoops: healing.loops,
+          });
+        }
       } catch (_) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-resolve:onLoop] silent failure:', _?.message || _);
         healedCode = patternData.code;
@@ -149,8 +176,8 @@ module.exports = {
         });
 
         // Record failed healing attempt to persistent storage
-        this._trackHealingSuccess(patternData.id, false, {
-          coherencyBefore: patternData.coherencyScore || 0,
+        if (typeof this._trackHealingSuccess === 'function') this._trackHealingSuccess(patternData.id, false, {
+          coherencyBefore: patternData.coherencyScore ?? 0,
           healingLoops: 0,
         });
       }
@@ -183,6 +210,22 @@ module.exports = {
       }
     }
 
+    // ─── Quantum State Tracking ───
+    // Collapse the resolved pattern's quantum state and propagate entanglement
+    let quantumMeasurement = null;
+    if (patternData?.id && this._quantumField && (decision.decision === 'pull' || decision.decision === 'evolve')) {
+      try {
+        this._quantumField.observe('patterns', [patternData.id]);
+        quantumMeasurement = {
+          observed: true,
+          stateCollapsed: QUANTUM_STATES.COLLAPSED,
+          amplitude: patternData.amplitude || decision.confidence,
+        };
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[resolve] quantum observation failed:', e?.message || e);
+      }
+    }
+
     // Auto-capture debug patterns from healing results (healed code forwarding)
     let resolveResult = {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,
@@ -194,6 +237,8 @@ module.exports = {
       } : null,
       fractalResonance,
       alternatives: decision.alternatives, historyMatches: historyResults,
+      // Quantum measurement results
+      quantum: quantumMeasurement,
     };
 
     // Auto-capture debug patterns and forward healed code
@@ -201,6 +246,13 @@ module.exports = {
       captureResolveDebug(this, resolveResult, request);
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[resolve] auto-debug capture failed:', e?.message || e);
+    }
+
+    // Bug class check — warn if resolved code matches known risky patterns
+    try {
+      resolveResult = enhanceResolveWithBugClasses(resolveResult, this);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[resolve] bug class check failed:', e?.message || e);
     }
 
     // Append prompt tag when enabled

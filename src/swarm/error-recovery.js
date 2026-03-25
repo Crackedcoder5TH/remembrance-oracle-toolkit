@@ -33,7 +33,7 @@ const ERROR_CLASSES = {
 function classifyError(error) {
   const msg = (typeof error === 'string' ? error : error?.message || '').toLowerCase();
 
-  if (msg.includes('rate') || msg.includes('429') || msg.includes('quota') || msg.includes('limit')) {
+  if (msg.includes('rate limit') || msg.includes('429') || msg.includes('quota') || msg.includes('too many requests') || msg.includes('ratelimit')) {
     return ERROR_CLASSES.RATE_LIMIT;
   }
   if (msg.includes('timeout') || msg.includes('abort') || msg.includes('timed out')) {

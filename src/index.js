@@ -16,7 +16,7 @@
  */
 
 const { RemembranceOracle } = require('./api/oracle');
-const { computeCoherencyScore, detectLanguage } = require('./core/coherency');
+const { computeCoherencyScore, detectLanguage } = require('./unified/coherency');
 const { validateCode } = require('./core/validator');
 const { rankEntries, computeRelevance } = require('./core/relevance');
 const { VerifiedHistoryStore } = require('./store/history');
@@ -25,7 +25,7 @@ const { AIConnector } = require('./connectors/connector');
 const providers = require('./connectors/providers');
 const githubBridge = require('./connectors/github-bridge');
 const { PatternLibrary, classifyPattern, inferComplexity, THRESHOLDS } = require('./patterns/library');
-const { parseCode, astCoherencyBoost } = require('./core/parsers/ast');
+const { parseCode, astCoherencyBoost } = require('./core/parsers/code-validator');
 const { sandboxExecute, sandboxGo, sandboxRust } = require('./core/sandbox');
 const { semanticSearch, semanticSimilarity, expandQuery, identifyConcepts } = require('./search/embeddings');
 const { vectorSimilarity, embedDocument, nearestTerms } = require('./search/vectors');
@@ -54,6 +54,9 @@ const { retryWithBackoff, isRetryableError, withRetry, resilientFetchSource } = 
 
 // Fractal system
 const fractals = require('./fractals');
+
+// Unified infrastructure — shared engines replacing duplicated implementations
+const unified = require('./unified');
 
 // Plugin system for opt-in subsystems
 const { loadBuiltinPlugin, loadAllBuiltins, listBuiltins } = require('./plugins/builtins');
@@ -423,4 +426,8 @@ module.exports = {
 
   // Fractal System
   ...fractals,
+
+  // Unified Infrastructure (shared engines)
+  unified,
+
 };

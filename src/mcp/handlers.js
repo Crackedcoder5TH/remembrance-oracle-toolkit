@@ -50,6 +50,9 @@ const HANDLERS = {
 
   // ─── 3. Submit ───
   oracle_submit(oracle, args) {
+    if (!args.code || typeof args.code !== 'string') {
+      throw new Error('"code" is required and must be a non-empty string');
+    }
     return oracle.submit(args.code, {
       language: args.language,
       description: args.description || '',
@@ -60,6 +63,12 @@ const HANDLERS = {
 
   // ─── 4. Register ───
   oracle_register(oracle, args) {
+    if (!args.name || typeof args.name !== 'string') {
+      throw new Error('"name" is required and must be a non-empty string');
+    }
+    if (!args.code || typeof args.code !== 'string') {
+      throw new Error('"code" is required and must be a non-empty string');
+    }
     return oracle.registerPattern({
       name: args.name,
       code: args.code,
@@ -72,7 +81,13 @@ const HANDLERS = {
 
   // ─── 5. Feedback ───
   oracle_feedback(oracle, args) {
-    return oracle.feedback(args.id, args.success);
+    if (!args.id) {
+      throw new Error('"id" is required for feedback');
+    }
+    if (args.success === undefined || args.success === null) {
+      throw new Error('"success" (boolean) is required for feedback');
+    }
+    return oracle.feedback(args.id, !!args.success);
   },
 
   // ─── 6. Stats ───
@@ -141,7 +156,7 @@ const HANDLERS = {
       const shareResult = oracle.share({
         patterns: args.patterns,
         tags: args.tags,
-        minCoherency: args.minCoherency || 0.7,
+        minCoherency: args.minCoherency ?? 0.7,
         dryRun: args.dryRun || false,
       });
       if (scope === 'community') {
@@ -173,7 +188,7 @@ const HANDLERS = {
     // Security: restrict local harvest paths to the project directory or home directory.
     // Remote URLs (git clone) are allowed since they clone to a temp directory.
     const source = args.path || '';
-    const isUrl = source.includes('://') || source.startsWith('git@');
+    const isUrl = (source.includes('://') && !source.startsWith('file://')) || source.startsWith('git@');
     if (!isUrl) {
       const fs = require('fs');
       let resolved = path.resolve(source);
@@ -237,7 +252,7 @@ const HANDLERS = {
         const result = reflectionLoop(args.code || '', {
           language: args.language,
           maxLoops: args.maxLoops || 3,
-          targetCoherence: args.targetCoherence || 0.9,
+          targetCoherence: args.targetCoherence ?? 0.9,
         });
         result.history = (result.history || []).map(h => ({
           loop: h.loop,
@@ -280,7 +295,7 @@ const HANDLERS = {
         return oracle.healingStats();
       }
       case 'improved': {
-        return oracle.queryHealingImprovement(args.minDelta || 0.2);
+        return oracle.queryHealingImprovement(args.minDelta ?? 0.2);
       }
       case 'variants': {
         if (!args.patternId) throw new Error('patternId is required for variants action');

@@ -22,6 +22,7 @@ const { RemembranceOracle } = require('./api/oracle');
 const { c } = require('./cli/colors');
 const { generateHelp } = require('./cli/registry');
 const { warnDeprecation, getDeprecation } = require('./cli/deprecations');
+const { runPreflight, printPreflightWarnings, shouldBypass } = require('./core/preflight');
 
 // Command module registrations
 const { registerCoreCommands } = require('./cli/commands/core');
@@ -132,6 +133,14 @@ async function main() {
   if (!cmd || cmd === 'help') {
     showHelp();
     return;
+  }
+
+  // Preflight check — warn if hooks not installed or sync is stale
+  if (!shouldBypass(cmd)) {
+    const preflight = runPreflight(process.cwd());
+    if (!preflight.ok) {
+      printPreflightWarnings(preflight.warnings, c);
+    }
   }
 
   // Build the command registry

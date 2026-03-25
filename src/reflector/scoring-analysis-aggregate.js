@@ -4,7 +4,12 @@
 
 const { readFileSync } = require('fs');
 const { relative, resolve } = require('path');
-const { detectLanguage } = require('../core/coherency');
+// Lazy-load to break circular dependency (coherency → unified/coherency → reflector → coherency)
+let _detectLanguage;
+function detectLanguage(code) {
+  if (!_detectLanguage) _detectLanguage = require('../unified/coherency').detectLanguage;
+  return _detectLanguage(code);
+}
 const { observeCoherence } = require('../core/reflection');
 const { covenantCheck } = require('../core/covenant');
 const { calculateCyclomaticComplexity, analyzeCommentDensity, analyzeNestingDepth, computeQualityMetrics, extractFunctionBodies } = require('./scoring-analysis-complexity');

@@ -31,9 +31,10 @@ function detectSecurityScanBypass(code) {
   const lines = code.split('\n');
 
   // Look for functions that scan code for security patterns
+  // Track function boundaries via brace depth so we reset at function end
   let inSecurityScanFn = false;
   let hasStripCall = false;
-  let fnStartLine = 0;
+  let fnBraceDepth = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -41,10 +42,14 @@ function detectSecurityScanBypass(code) {
     if (/(?:function\s+|const\s+|let\s+|var\s+)\w*(?:[Ss]ecurity|[Ss]can|[Aa]udit|[Vv]alidat|[Cc]heck|[Dd]etect|[Aa]nalyz)\w*/.test(line)) {
       inSecurityScanFn = true;
       hasStripCall = false;
-      fnStartLine = i;
+      fnBraceDepth = 0;
     }
 
     if (inSecurityScanFn) {
+      // Track brace depth to detect function boundary end
+      fnBraceDepth += (line.match(/\{/g) || []).length;
+      fnBraceDepth -= (line.match(/\}/g) || []).length;
+
       if (/strip(?:Strings|Comments|Literals)|removeComments|cleanCode/.test(line)) {
         hasStripCall = true;
       }
@@ -55,6 +60,11 @@ function detectSecurityScanBypass(code) {
           pattern: line.trim().slice(0, 80),
           suggestion: 'Strip string literals and comments before security pattern matching to avoid false positives',
         });
+      }
+
+      // Reset when function body closes
+      if (fnBraceDepth <= 0) {
+        inSecurityScanFn = false;
       }
     }
   }

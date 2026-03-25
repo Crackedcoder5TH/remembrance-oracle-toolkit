@@ -173,8 +173,10 @@ describe('Storage Tier Full Audit', () => {
   describe('Cross-tier sync round-trip', () => {
     it('push then pull preserves pattern data', () => {
       const local = createStore('roundtrip-local');
+      const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const patternName = `roundtrip-test-${uid}`;
 
-      addPattern(local, 'roundtrip-test', {
+      addPattern(local, patternName, {
         code: 'function roundtrip() { return 42; }',
         coherencyScore: { total: 0.95 },
         testCode: 'assert.equal(roundtrip(), 42);',
@@ -191,22 +193,23 @@ describe('Storage Tier Full Audit', () => {
       assert.ok(pullResult.pulled >= 0, 'Pull should succeed');
 
       // Verify the pattern made it through
-      const pulled = fresh.getAllPatterns().find(p => p.name === 'roundtrip-test');
+      const pulled = fresh.getAllPatterns().find(p => p.name === patternName);
       assert.ok(pulled, 'Pattern should exist after round-trip');
       assert.ok(pulled.code.includes('return 42'), 'Code should be preserved');
     });
 
     it('community share enforces test + coherency gate', () => {
       const local = createStore('gate-local');
+      const uid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-      addPattern(local, 'good-pattern', {
+      addPattern(local, `good-pattern-${uid}`, {
         coherencyScore: { total: 0.95 },
         testCode: 'assert(true);',
       });
-      addPattern(local, 'no-tests', {
+      addPattern(local, `no-tests-${uid}`, {
         coherencyScore: { total: 0.95 },
       });
-      addPattern(local, 'low-coherency', {
+      addPattern(local, `low-coherency-${uid}`, {
         coherencyScore: { total: 0.5 },
         testCode: 'assert(true);',
       });

@@ -9,7 +9,7 @@
  * - Separate process (crash-safe)
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -43,22 +43,49 @@ function cleanupSandboxDir(dir) {
 
 /**
  * Execute JavaScript code in a sandboxed subprocess.
+ *
+ * Trust mode: When options.trustMode is true, the sandbox allows access to
+ * node_modules and node: built-in modules (except dangerous ones like
+ * child_process, net, etc.). This enables candidate promotion to work for
+ * patterns that import project dependencies or Node built-ins like node:sqlite.
  */
 function sandboxJS(code, testCode, options = {}) {
-  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY } = options;
+  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY, trustMode = false } = options;
   const sandboxDir = createSandboxDir();
 
   try {
+    // In trust mode, symlink node_modules into sandbox so requires resolve
+    if (trustMode) {
+      const projectRoot = _findProjectRoot();
+      if (projectRoot) {
+        const nmSource = path.join(projectRoot, 'node_modules');
+        const nmTarget = path.join(sandboxDir, 'node_modules');
+        if (fs.existsSync(nmSource)) {
+          try { fs.symlinkSync(nmSource, nmTarget, 'junction'); } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[sandbox:trustMode] symlink failed:', e?.message);
+          }
+        }
+      }
+    }
+
     // Write a preload script that intercepts Module._load
     const preloadPath = path.join(sandboxDir, '_preload.js');
+    // In trust mode, only block truly dangerous modules (process spawning, networking)
+    // but allow node: built-ins like node:sqlite, node:fs, node:path, etc.
+    const blockedModules = trustMode
+      ? "new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2'])"
+      : "new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2'])";
     const preload = `
 const Module = require('module');
 const _origLoad = Module._load;
-const blocked = new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2']);
+const blocked = ${blockedModules};
 Module._load = function(request, parent, isMain) {
-  if (blocked.has(request)) throw new Error('Module "' + request + '" is blocked in sandbox');
+  const bare = request.startsWith('node:') ? request.slice(5) : request;
+  if (blocked.has(bare)) throw new Error('Module "' + request + '" is blocked in sandbox');
   return _origLoad(request, parent, isMain);
 };
+if (process.binding) { const _origBinding = process.binding; process.binding = function(name) { throw new Error('process.binding("' + name + '") is blocked in sandbox'); }; }
+if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlopen is blocked in sandbox'); }; }
 `;
     // Write with restrictive permissions (owner-only) then make read-only
     // to close TOCTOU race between write and exec
@@ -76,9 +103,16 @@ Module._load = function(request, parent, isMain) {
     fs.closeSync(fdTest);
     fs.chmodSync(filePath, 0o400);
 
-    const memFlag = `--max-old-space-size=${maxMemory}`;
-    const result = execSync(
-      `node ${memFlag} --require "${preloadPath}" "${filePath}"`,
+    const safeMem = Math.max(1, Math.min(parseInt(maxMemory, 10) || DEFAULT_MAX_MEMORY, 8192));
+    const memFlag = `--max-old-space-size=${safeMem}`;
+
+    // In trust mode, set NODE_PATH to project's node_modules for module resolution
+    const projectRoot = _findProjectRoot();
+    const nodePath = trustMode && projectRoot
+      ? path.join(projectRoot, 'node_modules')
+      : '';
+
+    const result = execFileSync('node', [memFlag, '--require', preloadPath, filePath],
       {
         timeout,
         encoding: 'utf-8',
@@ -86,8 +120,8 @@ Module._load = function(request, parent, isMain) {
         cwd: sandboxDir,
         env: {
           PATH: process.env.PATH,
-          NODE_PATH: '',
-          HOME: sandboxDir,
+          NODE_PATH: nodePath,
+          HOME: trustMode ? (process.env.HOME || sandboxDir) : sandboxDir,
         },
       }
     );
@@ -96,6 +130,7 @@ Module._load = function(request, parent, isMain) {
       passed: true,
       output: result || 'All assertions passed',
       sandboxed: true,
+      trustMode,
     };
   } catch (err) {
     const isTimeout = err.killed || err.signal === 'SIGTERM';
@@ -104,6 +139,7 @@ Module._load = function(request, parent, isMain) {
       output: isTimeout ? 'Execution timed out' : (err.stderr || err.stdout || err.message),
       sandboxed: true,
       timedOut: isTimeout,
+      trustMode,
     };
   } finally {
     cleanupSandboxDir(sandboxDir);
@@ -114,30 +150,36 @@ Module._load = function(request, parent, isMain) {
  * Execute Python code in a sandboxed subprocess.
  */
 function sandboxPython(code, testCode, options = {}) {
-  const { timeout = DEFAULT_TIMEOUT } = options;
+  const { timeout = DEFAULT_TIMEOUT, trustMode = false } = options;
   const sandboxDir = createSandboxDir();
 
   try {
     // Write code+test to file via concatenation (not template literal interpolation)
     const filePath = path.join(sandboxDir, 'test.py');
-    const prelude = "import sys\n\n" +
-      "# Block dangerous modules\n" +
-      "_original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__\n" +
-      "blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'os', 'importlib', 'ctypes', 'signal'}\n\n" +
+    // In trust mode, allow safe standard library modules (os.path, sys, etc.)
+    // but still block process execution and network modules
+    const blockedSet = trustMode
+      ? "{'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'ctypes', '_ctypes', 'signal', 'multiprocessing', 'pty', 'fcntl', 'resource', 'code', 'codeop', 'compileall', 'runpy'}"
+      : "{'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'os', 'importlib', 'ctypes', '_ctypes', 'signal', 'multiprocessing', 'pty', 'fcntl', 'resource', 'sys', 'code', 'codeop', 'compileall', 'runpy'}";
+    const prelude = "import sys\nimport builtins\n\n" +
+      "# Block dangerous modules — handles both module and dict forms of __builtins__\n" +
+      "_original_import = __import__\n" +
+      "blocked = " + blockedSet + "\n\n" +
       "def _safe_import(name, *args, **kwargs):\n" +
       "    if name.split('.')[0] in blocked:\n" +
       '        raise ImportError(f\'Module "{name}" is blocked in sandbox\')\n' +
       "    return _original_import(name, *args, **kwargs)\n\n" +
-      "try:\n    __builtins__.__import__ = _safe_import\nexcept:\n    pass\n\n" +
-      "import builtins\nbuiltins.__import__ = _safe_import\n\n";
+      "builtins.__import__ = _safe_import\n" +
+      "# Also patch __builtins__ if it's a module (not a dict)\n" +
+      "if hasattr(__builtins__, '__import__'):\n" +
+      "    __builtins__.__import__ = _safe_import\n\n";
     const combined = prelude + code + "\n" + testCode + "\n";
     const fdPy = fs.openSync(filePath, 'w', 0o600);
     fs.writeSync(fdPy, combined);
     fs.closeSync(fdPy);
     fs.chmodSync(filePath, 0o400);
 
-    const result = execSync(
-      `python3 "${filePath}"`,
+    const result = execFileSync('python3', [filePath],
       {
         timeout,
         encoding: 'utf-8',
@@ -145,7 +187,7 @@ function sandboxPython(code, testCode, options = {}) {
         cwd: sandboxDir,
         env: {
           PATH: process.env.PATH,
-          HOME: sandboxDir,
+          HOME: trustMode ? (process.env.HOME || sandboxDir) : sandboxDir,
           PYTHONDONTWRITEBYTECODE: '1',
         },
       }
@@ -155,6 +197,7 @@ function sandboxPython(code, testCode, options = {}) {
       passed: true,
       output: result || 'All assertions passed',
       sandboxed: true,
+      trustMode,
     };
   } catch (err) {
     const isTimeout = err.killed || err.signal === 'SIGTERM';
@@ -163,6 +206,7 @@ function sandboxPython(code, testCode, options = {}) {
       output: isTimeout ? 'Execution timed out' : (err.stderr || err.stdout || err.message),
       sandboxed: true,
       timedOut: isTimeout,
+      trustMode,
     };
   } finally {
     cleanupSandboxDir(sandboxDir);
@@ -242,7 +286,7 @@ function isTsxAvailable() {
  * Code is pre-processed to normalize literal escape sequences.
  */
 function sandboxTypeScript(code, testCode, options = {}) {
-  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY } = options;
+  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY, trustMode = false } = options;
   const sandboxDir = createSandboxDir();
 
   // Pre-process: normalize literal escape sequences in code
@@ -251,14 +295,31 @@ function sandboxTypeScript(code, testCode, options = {}) {
 
   try {
     const preloadPath = path.join(sandboxDir, '_preload.js');
+    // In trust mode, symlink node_modules for TS module resolution
+    if (trustMode) {
+      const projectRoot = _findProjectRoot();
+      if (projectRoot) {
+        const nmSource = path.join(projectRoot, 'node_modules');
+        const nmTarget = path.join(sandboxDir, 'node_modules');
+        if (fs.existsSync(nmSource)) {
+          try { fs.symlinkSync(nmSource, nmTarget, 'junction'); } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[sandbox:trustMode:ts] symlink failed:', e?.message);
+          }
+        }
+      }
+    }
+
     const preload = `
 const Module = require('module');
 const _origLoad = Module._load;
 const blocked = new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2']);
 Module._load = function(request, parent, isMain) {
-  if (blocked.has(request)) throw new Error('Module "' + request + '" is blocked in sandbox');
+  const bare = request.startsWith('node:') ? request.slice(5) : request;
+  if (blocked.has(bare)) throw new Error('Module "' + request + '" is blocked in sandbox');
   return _origLoad(request, parent, isMain);
 };
+if (process.binding) { const _origBinding = process.binding; process.binding = function(name) { throw new Error('process.binding("' + name + '") is blocked in sandbox'); }; }
+if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlopen is blocked in sandbox'); }; }
 `;
     // Write with restrictive permissions then make read-only (TOCTOU mitigation)
     const fdPre = fs.openSync(preloadPath, 'w', 0o600);
@@ -270,7 +331,9 @@ Module._load = function(request, parent, isMain) {
     const wrapper = "'use strict';\n// Run user code\n" + normalizedCode + "\n;\n// Run tests\n" + normalizedTest + "\n";
 
     const memFlag = `--max-old-space-size=${maxMemory}`;
-    const sandboxEnv = { PATH: process.env.PATH, NODE_PATH: '', HOME: sandboxDir, NODE_NO_WARNINGS: '1' };
+    const projectRoot = _findProjectRoot();
+    const tsNodePath = trustMode && projectRoot ? path.join(projectRoot, 'node_modules') : '';
+    const sandboxEnv = { PATH: process.env.PATH, NODE_PATH: tsNodePath, HOME: trustMode ? (process.env.HOME || sandboxDir) : sandboxDir, NODE_NO_WARNINGS: '1' };
     const execOpts = { timeout, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], cwd: sandboxDir, env: sandboxEnv };
 
     // Strategy 1: Native --experimental-strip-types (.ts file)
@@ -432,7 +495,7 @@ function sandboxRust(code, testCode, options = {}) {
     fs.closeSync(fdRs);
     fs.chmodSync(rsPath, 0o400);
 
-    const result = execSync('cargo test 2>&1', {
+    const result = execFileSync('cargo', ['test'], {
       timeout,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -467,6 +530,27 @@ let _customRunnerRegistry = null;
  */
 function setRunnerRegistry(registry) {
   _customRunnerRegistry = registry;
+}
+
+/**
+ * Find the project root by walking up from cwd looking for package.json.
+ * Cached after first lookup.
+ */
+let _projectRoot = undefined;
+function _findProjectRoot() {
+  if (_projectRoot !== undefined) return _projectRoot;
+  let dir = process.cwd();
+  for (let i = 0; i < 10; i++) {
+    if (fs.existsSync(path.join(dir, 'package.json'))) {
+      _projectRoot = dir;
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  _projectRoot = null;
+  return null;
 }
 
 /**

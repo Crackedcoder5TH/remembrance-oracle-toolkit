@@ -314,7 +314,7 @@ describe('selectResonantFractal', () => {
 
 describe('Coherency integration', () => {
   it('computeCoherencyScore includes fractalAlignment', () => {
-    const { computeCoherencyScore } = require('../src/core/coherency');
+    const { computeCoherencyScore } = require('../src/unified/coherency');
     const code = `function add(a, b) { return a + b; }`;
     const result = computeCoherencyScore(code, { language: 'javascript' });
     assert.ok('fractalAlignment' in result.breakdown, 'breakdown should include fractalAlignment');

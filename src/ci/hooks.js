@@ -109,7 +109,7 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
     const { wasSearchRecent, getPendingFeedback } = require(path.join(root, 'src/core/session-tracker'));
     if (!wasSearchRecent(600000)) {
       console.error('\\x1b[33m[oracle] Warning: No oracle search in the last 10 minutes.\\x1b[0m');
-      console.error('\\x1b[33m  Consider: oracle search \"<what you need>\" before writing new code.\\x1b[0m');
+      console.error('\\x1b[33m  Consider: oracle search [what you need] before writing new code.\\x1b[0m');
     }
     const pending = getPendingFeedback();
     if (pending.length > 0) {
@@ -122,7 +122,7 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
 " 2>&1 || true
 
 # Audit cascade check (warning only, non-blocking)
-ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+STAGED_FILES="$STAGED" ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
   try {
     const path = require('path');
     const root = process.env.ORACLE_REPO_ROOT || process.cwd();

@@ -204,6 +204,11 @@ class SQLiteStore {
     try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_repo TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] candidates.source_repo:', e.message); }
     try { this.db.exec(`ALTER TABLE candidates ADD COLUMN source_license TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] candidates.source_license:', e.message); }
 
+    // Schema migration: add content_type column — enables non-code content (configs, docs, templates)
+    // Values: 'code' (default), 'config', 'template', 'documentation', 'schema', 'regex', 'snippet'
+    try { this.db.exec(`ALTER TABLE entries ADD COLUMN content_type TEXT DEFAULT 'code'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] entries.content_type:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN content_type TEXT DEFAULT 'code'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.content_type:', e.message); }
+
     // Votes log table — tracks individual votes to prevent duplicates
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS votes (

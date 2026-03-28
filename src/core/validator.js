@@ -58,12 +58,12 @@ function validateCode(code, options = {}) {
     feedback: null,
   };
 
-  // Determine content type — non-code content skips covenant and test execution
+  // Determine content type — non-code content skips test execution but NOT the covenant
   const contentType = options.contentType || contentTypeForLanguage(language);
   const isNonCode = contentType !== 'code';
 
-  // Step 0: Covenant check — the seal above all code (skipped for non-code content)
-  if (!skipCovenant && !isNonCode) {
+  // Step 0: Covenant check — the seal above ALL content, code and non-code alike
+  if (!skipCovenant) {
     const covenant = covenantCheck(code, {
       description: options.description,
       tags: options.tags,

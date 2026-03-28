@@ -12,7 +12,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { computeCoherencyScore } = require('../unified/coherency');
+const { computeCoherencyScore, contentTypeForLanguage } = require('../unified/coherency');
 const { sandboxExecute } = require('./sandbox');
 const { covenantCheck } = require('./covenant');
 const { actionableFeedback, formatFeedback } = require('./feedback');
@@ -58,7 +58,11 @@ function validateCode(code, options = {}) {
     feedback: null,
   };
 
-  // Step 0: Covenant check — the seal above all code
+  // Determine content type — non-code content skips test execution but NOT the covenant
+  const contentType = options.contentType || contentTypeForLanguage(language);
+  const isNonCode = contentType !== 'code';
+
+  // Step 0: Covenant check — the seal above ALL content, code and non-code alike
   if (!skipCovenant) {
     const covenant = covenantCheck(code, {
       description: options.description,
@@ -79,7 +83,8 @@ function validateCode(code, options = {}) {
   // Step 1: Run test if provided (sandboxed by default)
   // Trust mode: allows sandbox to access node_modules and node: built-ins
   // Used during candidate promotion where patterns may require project dependencies
-  if (testCode) {
+  // Non-code content types skip test execution entirely
+  if (testCode && !isNonCode) {
     const sandboxOpts = { timeout };
     if (options.trustMode) sandboxOpts.trustMode = true;
     const testResult = options.sandbox !== false
@@ -96,7 +101,8 @@ function validateCode(code, options = {}) {
   // Step 2: Compute coherency
   const coherency = computeCoherencyScore(code, {
     language,
-    testPassed: result.testPassed,
+    contentType,
+    testPassed: isNonCode ? null : result.testPassed,
   });
   result.coherencyScore = coherency;
 
@@ -133,36 +139,53 @@ function executeTest(code, testCode, language, timeout) {
 
   try {
     if (lang === 'javascript' || lang === 'js') {
-      const combined = `${code}\n;\n${testCode}`;
-      const file = tmpFile + '.js';
-      fs.writeFileSync(file, combined, 'utf-8');
+      // Write code to separate module to avoid const/let redeclaration conflicts
+      const codeFile = tmpFile + '-code.js';
+      const testFile = tmpFile + '.js';
+      fs.writeFileSync(codeFile, code, 'utf-8');
+      const hasRequire = /require\s*\(\s*['"][^'"]+['"]\s*\)/.test(testCode);
+      const testContent = hasRequire
+        ? testCode.replace(/require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g, `require('${codeFile}')`)
+        : `${code}\n;\n${testCode}`;
+      fs.writeFileSync(testFile, testContent, 'utf-8');
       try {
-        execFileSync('node', [file], {
+        execFileSync('node', [testFile], {
           timeout,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
         return { passed: true, output: 'All assertions passed' };
       } finally {
-        try { fs.unlinkSync(file); } catch (e) {
+        try { fs.unlinkSync(testFile); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
+        }
+        try { fs.unlinkSync(codeFile); } catch (e) {
           if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
         }
       }
     }
 
     if (lang === 'python' || lang === 'py') {
-      const combined = `${code}\n${testCode}`;
-      const file = tmpFile + '.py';
-      fs.writeFileSync(file, combined, 'utf-8');
+      const codeFile = tmpFile + '_code.py';
+      const testFile = tmpFile + '.py';
+      fs.writeFileSync(codeFile, code, 'utf-8');
+      const hasImport = /(?:from\s+\S+\s+import|import\s+\S+)/.test(testCode);
+      const testContent = hasImport
+        ? testCode.replace(/from\s+\S+\s+import\s+/g, `from ${path.basename(codeFile, '.py')} import `)
+        : `${code}\n${testCode}`;
+      fs.writeFileSync(testFile, testContent, 'utf-8');
       try {
-        const output = execFileSync('python3', [file], {
+        const output = execFileSync('python3', [testFile], {
           timeout,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
         return { passed: true, output: output || 'All assertions passed' };
       } finally {
-        try { fs.unlinkSync(file); } catch (e) {
+        try { fs.unlinkSync(testFile); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
+        }
+        try { fs.unlinkSync(codeFile); } catch (e) {
           if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
         }
       }

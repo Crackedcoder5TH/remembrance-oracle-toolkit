@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/admin-auth";
 import { getAllPurchases, updatePurchaseStatus, updateClientBalance } from "@/app/lib/client-database";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin Disputes API
  *

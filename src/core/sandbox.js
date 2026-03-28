@@ -94,12 +94,30 @@ if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlo
     fs.closeSync(fd);
     fs.chmodSync(preloadPath, 0o400);
 
-    // Write code+test to file via concatenation (not template literal interpolation)
-    // This avoids template literal injection (Pattern #8: backtick/${ escape)
+    // Write code to a separate module file so test can require() it
+    // without const/let redeclaration errors from concatenation
+    const codePath = path.join(sandboxDir, 'code.js');
+    const fdCode = fs.openSync(codePath, 'w', 0o600);
+    fs.writeSync(fdCode, "'use strict';\n" + code + "\n");
+    fs.closeSync(fdCode);
+    fs.chmodSync(codePath, 0o400);
+
+    // Write test file — rewrite require paths to point at sandbox code.js
     const filePath = path.join(sandboxDir, 'test.js');
-    const combined = "'use strict';\n" + code + ";\n" + testCode + "\n";
+    let testContent;
+    const hasRequire = /require\s*\(\s*['"][^'"]+['"]\s*\)/.test(testCode);
+    if (hasRequire) {
+      // Redirect any require('...') that isn't a node module to ./code.js
+      testContent = "'use strict';\n" + testCode.replace(
+        /require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g,
+        "require('./code.js')"
+      ) + "\n";
+    } else {
+      // No require — inline code then test (original behavior for standalone snippets)
+      testContent = "'use strict';\n" + code + ";\n" + testCode + "\n";
+    }
     const fdTest = fs.openSync(filePath, 'w', 0o600);
-    fs.writeSync(fdTest, combined);
+    fs.writeSync(fdTest, testContent);
     fs.closeSync(fdTest);
     fs.chmodSync(filePath, 0o400);
 
@@ -173,9 +191,27 @@ function sandboxPython(code, testCode, options = {}) {
       "# Also patch __builtins__ if it's a module (not a dict)\n" +
       "if hasattr(__builtins__, '__import__'):\n" +
       "    __builtins__.__import__ = _safe_import\n\n";
-    const combined = prelude + code + "\n" + testCode + "\n";
+    // Write code to separate module, import in test to avoid name collisions
+    const codePyPath = path.join(sandboxDir, 'code.py');
+    const fdPyCode = fs.openSync(codePyPath, 'w', 0o600);
+    fs.writeSync(fdPyCode, code + "\n");
+    fs.closeSync(fdPyCode);
+    fs.chmodSync(codePyPath, 0o400);
+
+    const hasImport = /(?:from\s+\S+\s+import|import\s+\S+)/.test(testCode);
+    let pyTestContent;
+    if (hasImport) {
+      // Rewrite relative imports to use the sandbox code module
+      pyTestContent = prelude + testCode.replace(
+        /from\s+\S+\s+import\s+/g,
+        'from code import '
+      ) + "\n";
+    } else {
+      // No imports — inline code then test (standalone snippets)
+      pyTestContent = prelude + code + "\n" + testCode + "\n";
+    }
     const fdPy = fs.openSync(filePath, 'w', 0o600);
-    fs.writeSync(fdPy, combined);
+    fs.writeSync(fdPy, pyTestContent);
     fs.closeSync(fdPy);
     fs.chmodSync(filePath, 0o400);
 
@@ -327,8 +363,23 @@ if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlo
     fs.closeSync(fdPre);
     fs.chmodSync(preloadPath, 0o400);
 
-    // Use string concatenation (not template literal interpolation) to prevent code injection
-    const wrapper = "'use strict';\n// Run user code\n" + normalizedCode + "\n;\n// Run tests\n" + normalizedTest + "\n";
+    // Write code to separate file for TypeScript, rewrite require paths in test
+    const tsCodePath = path.join(sandboxDir, 'code.ts');
+    const fdTsCode = fs.openSync(tsCodePath, 'w', 0o600);
+    fs.writeSync(fdTsCode, normalizedCode + "\n");
+    fs.closeSync(fdTsCode);
+    fs.chmodSync(tsCodePath, 0o400);
+
+    const tsHasRequire = /require\s*\(\s*['"][^'"]+['"]\s*\)|import\s+/.test(normalizedTest);
+    let wrapper;
+    if (tsHasRequire) {
+      wrapper = "'use strict';\n" + normalizedTest.replace(
+        /require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g,
+        "require('./code')"
+      ) + "\n";
+    } else {
+      wrapper = "'use strict';\n// Run user code\n" + normalizedCode + "\n;\n// Run tests\n" + normalizedTest + "\n";
+    }
 
     const memFlag = `--max-old-space-size=${maxMemory}`;
     const projectRoot = _findProjectRoot();
@@ -389,8 +440,24 @@ if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlo
     }
 
     // Strategy 3: Manual type stripping, run as .js
-    // Use string concatenation (not template literal interpolation) to prevent code injection
-    const strippedWrapper = "'use strict';\n// Run user code (types manually stripped)\n" + stripTypeAnnotations(normalizedCode) + "\n;\n// Run tests\n" + stripTypeAnnotations(normalizedTest) + "\n";
+    // Write stripped code to separate file, rewrite test requires
+    const strippedCode = stripTypeAnnotations(normalizedCode);
+    const strippedTest = stripTypeAnnotations(normalizedTest);
+    const jsCodePath = path.join(sandboxDir, 'code.js');
+    const fdJsCode = fs.openSync(jsCodePath, 'w', 0o600);
+    fs.writeSync(fdJsCode, "'use strict';\n" + strippedCode + "\n");
+    fs.closeSync(fdJsCode);
+    fs.chmodSync(jsCodePath, 0o400);
+
+    let strippedWrapper;
+    if (tsHasRequire) {
+      strippedWrapper = "'use strict';\n" + strippedTest.replace(
+        /require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g,
+        "require('./code')"
+      ) + "\n";
+    } else {
+      strippedWrapper = "'use strict';\n// Run user code (types manually stripped)\n" + strippedCode + "\n;\n// Run tests\n" + strippedTest + "\n";
+    }
     const jsPath = path.join(sandboxDir, 'test.js');
     const fdJs = fs.openSync(jsPath, 'w', 0o600);
     fs.writeSync(fdJs, strippedWrapper);
@@ -554,10 +621,30 @@ function _findProjectRoot() {
 }
 
 /**
+ * Non-executable content types that should bypass sandbox execution.
+ */
+const NON_CODE_LANGUAGES = new Set([
+  'yaml', 'yml', 'toml', 'ini', 'env', 'json', 'jsonc',
+  'markdown', 'md', 'txt', 'text',
+  'dockerfile', 'docker',
+  'sql', 'graphql', 'gql',
+  'regex', 'regexp',
+  'csv', 'tsv', 'xml', 'svg',
+  'html', 'css', 'scss', 'sass', 'less',
+  'ejs', 'handlebars', 'hbs', 'mustache', 'pug', 'jade',
+  'config', 'template', 'documentation', 'schema', 'snippet',
+]);
+
+/**
  * Universal sandboxed executor.
  */
 function sandboxExecute(code, testCode, language, options = {}) {
   const lang = (language || 'javascript').toLowerCase();
+
+  // Non-code content types bypass sandbox execution entirely
+  if (NON_CODE_LANGUAGES.has(lang)) {
+    return { passed: null, output: `Content type "${lang}" does not require test execution`, sandboxed: false, contentType: lang };
+  }
 
   if (lang === 'javascript' || lang === 'js') {
     return sandboxJS(code, testCode, options);

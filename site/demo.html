@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Try the Oracle — Remembrance Oracle</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .demo-section { padding: 60px 0; }
+    .demo-box {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .demo-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      font-family: var(--font-sans);
+      font-size: 1rem;
+      margin-bottom: 16px;
+      transition: border-color var(--transition);
+    }
+    .demo-input:focus {
+      outline: none;
+      border-color: var(--color-navy);
+    }
+    .demo-output {
+      background: var(--color-bg-alt);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      white-space: pre-wrap;
+      min-height: 120px;
+      color: var(--color-text);
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+    .demo-label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+    .demo-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .demo-row .demo-field { flex: 1; min-width: 200px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-pull { background: #d4edda; color: #155724; }
+    .badge-evolve { background: #fff3cd; color: #856404; }
+    .badge-generate { background: #cce5ff; color: #004085; }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <div class="header-inner">
+        <a href="/" class="logo">Remembrance Oracle</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <ul class="nav-list">
+            <li><a href="/" class="nav-link">Home</a></li>
+            <li><a href="#demo" class="nav-link active">Try It</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section id="demo" class="demo-section">
+      <div class="container">
+        <h1 class="section-title">Try the Oracle</h1>
+        <p class="section-description">Describe what you need and the oracle will search its memory for proven patterns.</p>
+
+        <div class="demo-box">
+          <div class="demo-row">
+            <div class="demo-field">
+              <label class="demo-label" for="query">Describe what you need</label>
+              <input class="demo-input" id="query" type="text" placeholder="e.g. debounce function, deep clone, retry with backoff">
+            </div>
+            <div>
+              <label class="demo-label" for="lang">Language</label>
+              <select class="demo-input" id="lang" style="width:auto;min-width:130px;">
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="python">Python</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="resolve-btn" style="width:100%;">Ask the Oracle</button>
+
+          <div class="demo-output" id="output">Results will appear here...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-inner">
+        <p class="footer-text">Remembrance Oracle Toolkit</p>
+        <nav class="footer-nav" aria-label="Footer navigation">
+          <a href="/">Home</a>
+          <a href="#demo">Try It</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var btn = document.getElementById('resolve-btn');
+      var queryInput = document.getElementById('query');
+      var langSelect = document.getElementById('lang');
+      var output = document.getElementById('output');
+
+      // Simulates oracle resolve for the demo (client-side only)
+      function mockResolve(description, language) {
+        var patterns = {
+          debounce: { decision: 'PULL', confidence: 0.92, name: 'debounce', code: 'function debounce(fn, ms) {\\n  let timer;\\n  return function(...args) {\\n    clearTimeout(timer);\\n    timer = setTimeout(() => fn.apply(this, args), ms);\\n  };\\n}' },
+          throttle: { decision: 'PULL', confidence: 0.97, name: 'throttle', code: 'function throttle(fn, limit) {\\n  let last = 0;\\n  return function(...args) {\\n    const now = Date.now();\\n    if (now - last >= limit) {\\n      last = now;\\n      fn.apply(this, args);\\n    }\\n  };\\n}' },
+          retry:    { decision: 'PULL', confidence: 0.88, name: 'retry-async', code: 'async function retry(fn, attempts = 3, delay = 1000) {\\n  for (let i = 0; i < attempts; i++) {\\n    try { return await fn(); }\\n    catch (e) {\\n      if (i === attempts - 1) throw e;\\n      await new Promise(r => setTimeout(r, delay * (i + 1)));\\n    }\\n  }\\n}' },
+          clone:    { decision: 'PULL', confidence: 0.91, name: 'deep-clone', code: 'function deepClone(obj) {\\n  if (obj === null || typeof obj !== "object") return obj;\\n  if (obj instanceof Date) return new Date(obj);\\n  const copy = Array.isArray(obj) ? [] : {};\\n  for (const key of Object.keys(obj)) {\\n    copy[key] = deepClone(obj[key]);\\n  }\\n  return copy;\\n}' },
+        };
+
+        var key = Object.keys(patterns).find(function (k) {
+          return description.toLowerCase().indexOf(k) !== -1;
+        });
+
+        if (key) {
+          var p = patterns[key];
+          return 'Decision: ' + p.decision + '\\nConfidence: ' + p.confidence +
+            '\\nPattern: ' + p.name + ' (' + language + ')\\n\\n' + p.code;
+        }
+
+        return 'Decision: GENERATE\\nConfidence: 0.00\\n\\nNo matching pattern found. Write new code and register it with:\\n  node src/cli.js register --file <code.js> --test <test.js>';
+      }
+
+      btn.addEventListener('click', function () {
+        var q = queryInput.value.trim();
+        if (!q) { output.textContent = 'Enter a description to search.'; return; }
+        output.textContent = 'Searching the oracle...';
+        // Simulate async delay
+        setTimeout(function () {
+          output.textContent = mockResolve(q, langSelect.value);
+        }, 400);
+      });
+
+      queryInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') btn.click();
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -4,6 +4,8 @@ import { getFilteredLeads } from "@/app/lib/database";
 import type { LeadFilters } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin CSV Export API
  *

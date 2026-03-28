@@ -174,13 +174,20 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       const { auditFiles } = require('../../audit/static-checkers');
       const { detectCascade } = require('../../audit/cascade-detector');
 
-      // Get recently changed files
+      // Get recently changed files — try HEAD~1, fall back to all tracked files
       let files = [];
       try {
         const changed = execSync('git diff HEAD~1 --name-only --diff-filter=ACM 2>/dev/null', { encoding: 'utf-8' })
           .trim().split('\n').filter(f => /\.(js|ts)$/.test(f) && f.trim());
         files = changed;
-      } catch (_) { /* empty */ }
+      } catch (_) {
+        // No prior commit or git error — fall back to staged or tracked .js/.ts files
+        try {
+          const tracked = execSync('git ls-files "*.js" "*.ts" 2>/dev/null', { encoding: 'utf-8' })
+            .trim().split('\n').filter(f => f.trim()).slice(0, 50); // cap at 50 files
+          files = tracked;
+        } catch (_2) { /* empty */ }
+      }
 
       console.log(c.boldCyan('Audit Summary\n'));
 
@@ -196,7 +203,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
           }
         }
       } else {
-        console.log(c.dim('  Static Checks: no changed files'));
+        console.log(c.dim('  Static Checks: no .js/.ts files found to audit'));
       }
 
       // Cascade detection

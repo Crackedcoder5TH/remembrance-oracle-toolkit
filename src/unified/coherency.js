@@ -94,6 +94,21 @@ const WEIGHT_PRESETS = {
     testProof: 0.25,
     historicalReliability: 0.15,
   },
+
+  /**
+   * Content preset — for non-code content (configs, templates, docs, schemas).
+   * No syntax parsing, no test proof requirement. Focuses on completeness,
+   * consistency, readability, and historical reliability.
+   */
+  content: {
+    syntax: 0.0,
+    completeness: 0.30,
+    consistency: 0.25,
+    readability: 0.25,
+    security: 0.0,
+    testProof: 0.0,
+    historicalReliability: 0.20,
+  },
 };
 
 // ─── Dimension Scorers ───
@@ -270,7 +285,10 @@ function computeCoherencyScore(code, metadata = {}) {
   }
 
   const language = metadata.language || detectLanguage(code);
-  const preset = metadata.preset || 'oracle';
+  const contentType = metadata.contentType || contentTypeForLanguage(language);
+  // Auto-select content preset for non-code content types
+  const defaultPreset = contentType !== 'code' ? 'content' : 'oracle';
+  const preset = metadata.preset || defaultPreset;
   const weights = metadata.weights || WEIGHT_PRESETS[preset] || WEIGHT_PRESETS.oracle;
 
   // Test proof
@@ -387,6 +405,14 @@ function computeCoverageGate(code, testCode, language) {
 // ─── Language Detection ───
 
 function detectLanguage(code) {
+  // Non-code content detection (check first since these are structurally distinct)
+  if ((/^---\s*\n/.test(code) || /^\w+\s*:\s*\S/m.test(code)) && /^\s+\w+\s*:/m.test(code) && !/[{();]/.test(code)) return 'yaml';
+  if (/^\s*\[[\w.-]+\]\s*$/m.test(code) && /^\s*\w+\s*=/m.test(code)) return 'toml';
+  if (/^#{1,6}\s+\w/m.test(code) && /\n#{1,6}\s+\w/m.test(code)) return 'markdown';
+  if (/^\s*FROM\s+\w/m.test(code) && /^\s*(RUN|CMD|COPY|EXPOSE|ENV|WORKDIR)\s/m.test(code)) return 'dockerfile';
+  if (/^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\s/im.test(code) && /\b(FROM|WHERE|INTO|TABLE|SET)\b/i.test(code)) return 'sql';
+
+  // Code language detection
   const rustRe = new RegExp('\\b' + 'fn' + '\\b.*->|let ' + 'mut |' + 'impl' + '\\b');
   if (rustRe.test(code)) return 'rust';
   const goRe = new RegExp('\\b' + 'func' + '\\b.*\\{|' + 'package' + '\\b|fmt\\.');
@@ -401,6 +427,24 @@ function detectLanguage(code) {
   if (/<\/?[a-z][\s\S]*>/i.test(code) && /className|onClick|useState/.test(code)) return 'jsx';
   if (/<\/?[a-z][\s\S]*>/i.test(code)) return 'html';
   return 'unknown';
+}
+
+/**
+ * Determine the content type category for a given language.
+ * Returns 'code' for programming languages, or a specific type for non-code.
+ */
+function contentTypeForLanguage(language) {
+  const lang = (language || '').toLowerCase();
+  const nonCodeTypes = {
+    yaml: 'config', toml: 'config', ini: 'config', env: 'config',
+    json: 'config', dockerfile: 'config',
+    markdown: 'documentation', md: 'documentation',
+    sql: 'schema', graphql: 'schema',
+    regex: 'regex',
+    html: 'template', ejs: 'template', handlebars: 'template',
+    pug: 'template', mustache: 'template',
+  };
+  return nonCodeTypes[lang] || 'code';
 }
 
 // ─── Brace Balancing ───
@@ -561,6 +605,7 @@ module.exports = {
   scoreSecurity,
   scoreNamingQuality,
   detectLanguage,
+  contentTypeForLanguage,
   checkBalancedBraces,
   WEIGHTS,
   WEIGHT_PRESETS,

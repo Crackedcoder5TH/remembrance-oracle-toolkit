@@ -24,6 +24,8 @@ import {
 import { isValidEmail } from "@/app/lib/validation";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   // Authenticate agent
   const agent = authenticateAgent(req);

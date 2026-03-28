@@ -5,6 +5,8 @@ import { scoreLead } from "@/app/lib/lead-scoring";
 import { getClientById, getPurchasesByLead } from "@/app/lib/client-database";
 import { getAllTierPrices } from "@/app/lib/lead-depreciation";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Client Leads API
  *

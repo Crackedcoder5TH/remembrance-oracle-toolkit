@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { put, del, list } from "@vercel/blob";
 import { verifyAdmin } from "../../lib/admin-auth";
 
+export const dynamic = "force-dynamic";
+
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/svg+xml", "image/gif"];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 const VALID_SLOTS = ["logo", "profile", "veteran-group", "founder-photo"];

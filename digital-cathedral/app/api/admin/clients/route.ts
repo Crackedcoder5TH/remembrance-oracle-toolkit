@@ -8,6 +8,8 @@ import {
 } from "@/app/lib/client-database";
 import type { ClientRecord } from "@/app/lib/client-database";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin Client Management API
  *

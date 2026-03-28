@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyClient } from "@/app/lib/client-auth";
 import { getPurchasesByClient } from "@/app/lib/client-database";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Client Purchase History API
  *

@@ -154,6 +154,28 @@ export default function PortalWelcomePage() {
           </div>
         </div>
 
+        {/* ROI Value Proposition */}
+        <div className="cathedral-surface p-6 rounded-xl">
+          <h3 className="text-sm metallic-gold uppercase tracking-wider mb-4 text-center">Why Agents Choose Valor Legacies</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Real-Time</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Fresh leads scored and delivered the moment they submit — not aged or recycled</p>
+            </div>
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Exclusive Tiers</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Choose your tier — from exclusive (1 buyer) to shared — and only pay for what converts</p>
+            </div>
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Track Your ROI</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Built-in conversion tracking shows your real cost-per-sale so you can scale with confidence</p>
+            </div>
+          </div>
+          <p className="text-xs text-[var(--text-muted)] text-center mt-4 leading-relaxed max-w-lg mx-auto">
+            Our agents see their conversion rates directly in the portal. When you know your numbers, you control your growth.
+          </p>
+        </div>
+
         {/* Admin Login */}
         <div className="text-center">
           <Link

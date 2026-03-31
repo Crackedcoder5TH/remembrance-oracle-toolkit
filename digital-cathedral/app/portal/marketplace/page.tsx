@@ -417,6 +417,35 @@ export default function AgentPortal() {
 
       {/* ─── Purchases Tab ─── */}
       {tab === "purchases" && (
+        <>
+        {/* Conversion Tracking Summary */}
+        {purchases.length > 0 && (() => {
+          const delivered = purchases.filter(p => p.status === "delivered");
+          const returned = purchases.filter(p => p.status === "disputed" || p.status === "returned");
+          const totalSpent = purchases.reduce((s, p) => s + p.pricePaid, 0);
+          const returnRate = purchases.length > 0 ? ((returned.length / purchases.length) * 100).toFixed(1) : "0";
+          const costPerDelivered = delivered.length > 0 ? Math.round(totalSpent / delivered.length) : 0;
+          return (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+              <div className="cathedral-surface p-4 text-center rounded-lg">
+                <p className="text-2xl font-bold text-teal-cathedral">{delivered.length}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Leads Delivered</p>
+              </div>
+              <div className="cathedral-surface p-4 text-center rounded-lg">
+                <p className="text-2xl font-bold text-[var(--text-primary)]">{formatCents(totalSpent)}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Total Invested</p>
+              </div>
+              <div className="cathedral-surface p-4 text-center rounded-lg">
+                <p className="text-2xl font-bold text-teal-cathedral">{formatCents(costPerDelivered)}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Cost per Delivered Lead</p>
+              </div>
+              <div className="cathedral-surface p-4 text-center rounded-lg">
+                <p className={`text-2xl font-bold ${parseFloat(returnRate) < 5 ? "text-emerald-600" : "text-amber-600"}`}>{returnRate}%</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Return Rate</p>
+              </div>
+            </div>
+          );
+        })()}
         <div className="cathedral-surface overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -465,6 +494,7 @@ export default function AgentPortal() {
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* ─── Billing Tab ─── */}
@@ -487,6 +517,85 @@ export default function AgentPortal() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* ROI & Conversion Value */}
+          <div className="cathedral-surface p-6">
+            <h3 className="text-lg font-light text-[var(--text-primary)] mb-1">Your ROI Advantage</h3>
+            <p className="text-sm text-[var(--text-muted)] mb-5">
+              Real-time, verified leads convert at dramatically higher rates than aged or recycled leads.
+              Track your numbers here — when you know your cost-per-sale, you control your growth.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* Valor Legacies Card */}
+              <div className="rounded-lg p-5 border-2 border-teal-cathedral/30 bg-teal-cathedral/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-teal-cathedral"></div>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Valor Legacies — Fresh Exclusive Leads</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-xl font-bold text-teal-cathedral">$120</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Cost per Lead</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-teal-cathedral">20–30%</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Expected Close Rate</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-teal-cathedral">$400–600</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Est. Cost per Sale</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-teal-cathedral/70 mt-3 text-center">Real-time, scored, exclusive — you&apos;re the only agent who gets this lead</p>
+              </div>
+
+              {/* Competitor Comparison Card */}
+              <div className="rounded-lg p-5 border border-indigo-cathedral/10 bg-[var(--bg-surface)] opacity-75">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                  <p className="text-sm font-semibold text-[var(--text-muted)]">Typical Aged / Shared Lead Vendors</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-xl font-bold text-[var(--text-muted)]">$20–50</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Cost per Lead</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-[var(--text-muted)]">5–10%</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Typical Close Rate</p>
+                  </div>
+                  <div>
+                    <p className="text-xl font-bold text-[var(--text-muted)]">$400–1,000</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">Est. Cost per Sale</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] mt-3 text-center">Aged 30–90 days, shared with 5–8+ agents, lower contact rates</p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-teal-cathedral/5 border border-teal-cathedral/15">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="shrink-0 mt-0.5 text-teal-cathedral" aria-hidden="true">
+                <path d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+              </svg>
+              <p className="text-xs text-[var(--text-muted)]">
+                <strong className="text-[var(--text-primary)]">The ROI case is simple:</strong> a $120 exclusive lead that closes at 25% costs you ~$480 per sale.
+                A $30 aged shared lead that closes at 7% costs you ~$430 per sale — but requires 3&times; the calls, 3&times; the time, and the lead already talked to other agents.
+                Your time has value. Fresh exclusive leads let you close faster and scale.
+              </p>
+            </div>
+
+            {/* Conversion Tracking Prompt */}
+            {purchases.length > 0 && (
+              <div className="mt-4 px-3 py-2.5 rounded-lg bg-[var(--bg-surface)] border border-indigo-cathedral/10">
+                <p className="text-xs text-[var(--text-muted)]">
+                  <strong className="text-teal-cathedral">Track your results:</strong> Check the{" "}
+                  <button onClick={() => setTab("purchases")} className="text-teal-cathedral underline hover:text-teal-cathedral/80">Purchases</button>
+                  {" "}tab to see your delivered leads, return rate, and cost-per-lead breakdown. As you close deals, your real conversion data becomes your most powerful growth tool.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* How Payment Works */}

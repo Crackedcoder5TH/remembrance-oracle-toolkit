@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client Portal Dashboard
+ * Agent Portal Dashboard
  *
  * Features:
  *  - Browse available leads (gated — no contact info until purchased)
@@ -100,7 +100,7 @@ interface Filters {
 
 type Tab = "leads" | "purchases" | "billing" | "filters";
 
-export default function ClientPortal() {
+export default function AgentPortal() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("leads");
   const [profile, setProfile] = useState<ClientProfile | null>(null);
@@ -274,7 +274,7 @@ export default function ClientPortal() {
       {/* Header */}
       <header className="flex items-center justify-between mb-8">
         <div>
-          <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase pulse-gentle">Client Portal</div>
+          <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase pulse-gentle">Agent Portal</div>
           <h1 className="text-2xl font-light text-[var(--text-primary)]">{profile.companyName}</h1>
           <p className="text-sm text-[var(--text-muted)]">{profile.contactName}</p>
         </div>
@@ -635,7 +635,7 @@ export default function ClientPortal() {
           <a href="/portal/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Terms of Service</a>
           <a href="/portal/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Privacy Policy</a>
         </nav>
-        <p>Client Portal — Lead data is confidential and for your use only.</p>
+        <p>Agent Portal — Lead data is confidential and for your use only.</p>
         <p>&copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.</p>
       </footer>
     </main>

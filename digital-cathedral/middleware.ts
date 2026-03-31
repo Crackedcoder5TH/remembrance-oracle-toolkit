@@ -23,7 +23,7 @@ const ADMIN_SESSION_COOKIE = "__admin_session";
 
 // ─── Multi-Domain Configuration ───
 // Leads domains serve only public/marketing pages — no admin or portal access.
-// Portal domain serves admin + client portal.
+// Portal domain serves admin + agent portal.
 const LEADS_DOMAINS: string[] = (process.env.LEADS_DOMAINS ?? "")
   .split(",")
   .map((d) => d.trim().toLowerCase())
@@ -115,7 +115,7 @@ export async function middleware(request: NextRequest) {
 
   // ─── Multi-Domain Route Enforcement ───
   // Block portal routes on leads domains; redirect to portal domain instead.
-  // On portal domain, redirect marketing pages to the client portal.
+  // On portal domain, redirect marketing pages to the agent portal.
   const domainType = getDomainType(hostname);
 
   if (domainType === "leads") {

@@ -3,7 +3,7 @@
  *
  * Hardcoded test leads spanning all 4 score tiers.
  * Used when no DATABASE_URL is configured (Vercel without a database).
- * Allows admin dashboard and client portal to display realistic data.
+ * Allows admin dashboard and agent portal to display realistic data.
  */
 
 import type { LeadRecord, LeadStats } from "./database";

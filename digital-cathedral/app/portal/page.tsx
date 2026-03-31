@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client Portal — Welcome Page
+ * Agent Portal — Welcome Page
  *
  * Landing page for valorlegacies.xyz.
  * Centers a welcome message with login form and quick links.
@@ -72,7 +72,7 @@ export default function PortalWelcomePage() {
             Valor Legacies
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
-            Welcome, Clients
+            Welcome, Agents
           </h1>
           <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-sm mx-auto">
             Your trusted partner portal for accessing qualified life insurance leads.
@@ -83,7 +83,7 @@ export default function PortalWelcomePage() {
         {/* Login Card */}
         <div className="cathedral-surface p-8 rounded-xl">
           <h2 className="text-lg font-light text-[var(--text-primary)] text-center mb-6">
-            Client Sign In
+            Agent Sign In
           </h2>
 
           {error && (
@@ -170,7 +170,7 @@ export default function PortalWelcomePage() {
         {/* Quick Links */}
         <div className="text-center space-y-2">
           <p className="text-xs text-[var(--text-muted)]">
-            Interested in becoming a client?{" "}
+            Interested in becoming an agent?{" "}
             <a
               href="https://valorlegacies.com/about"
               className="text-teal-cathedral hover:text-teal-cathedral/80 transition-colors"

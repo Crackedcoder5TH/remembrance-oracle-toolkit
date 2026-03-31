@@ -3,11 +3,11 @@
  *
  * Separates the application into two domain groups:
  *  - Leads domains (.com, .net, .info, .store, .shop) — public marketing + lead capture only
- *  - Portal domain (.xyz) — Admin dashboard + Client portal
+ *  - Portal domain (.xyz) — Admin dashboard + Agent portal
  *
  * Environment variables:
  *  - LEADS_DOMAINS: comma-separated hostnames for the leads website
- *  - PORTAL_DOMAIN: hostname for the admin/client portal
+ *  - PORTAL_DOMAIN: hostname for the admin/agent portal
  *  - NEXT_PUBLIC_PORTAL_URL: full URL for cross-domain portal links
  */
 

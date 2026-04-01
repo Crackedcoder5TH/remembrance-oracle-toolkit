@@ -55,7 +55,9 @@ export async function POST(req: NextRequest) {
 
   if (event.type === "payment_intent.succeeded") {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
-    const { clientId, type } = paymentIntent.metadata;
+    const metadata = paymentIntent.metadata ?? {};
+    const clientId = metadata.clientId;
+    const type = metadata.type;
 
     if (type === "add_funds" && clientId) {
       // Verify clientId exists and is active before crediting

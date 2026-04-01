@@ -6,6 +6,7 @@ import { Navbar } from "./components/navbar";
 import { SacredGeometryBg } from "./components/sacred-geometry-bg";
 import { AnalyticsScripts } from "./components/analytics-scripts";
 import { AuthProvider } from "./components/auth-provider";
+import { AEODefinitions, AEOHowTo } from "./components/aeo-schema";
 
 /** Take the first URL if env var contains comma-separated values. */
 const BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
@@ -27,6 +28,7 @@ export const metadata: Metadata = {
     canonical: "/",
     types: {
       "application/feed+json": "/feed.json",
+      "application/rss+xml": "/feed.xml",
       "application/json": "/api/agent/schema",
     },
   },
@@ -106,8 +108,19 @@ const jsonLd = {
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer service",
+        email: "valorlegacies@gmail.com",
         availableLanguage: "English",
       },
+      areaServed: { "@type": "Country", name: "United States" },
+      sameAs: [
+        "https://www.va.gov/life-insurance/",
+        "https://www.benefits.va.gov/insurance/",
+      ],
+      knowsAbout: [
+        "Life Insurance", "SGLI", "VGLI", "VA Life Insurance",
+        "Mortgage Protection", "Final Expense Insurance",
+        "Military Family Financial Planning",
+      ],
     },
     {
       "@type": "BreadcrumbList",
@@ -180,11 +193,15 @@ export default function RootLayout({
         <link rel="mcp-discovery" href="/.well-known/mcp.json" />
         <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Valor Legacies Search" />
         <link rel="alternate" type="application/feed+json" href="/feed.json" title="Valor Legacies JSON Feed" />
+        <link rel="alternate" type="application/rss+xml" href="/feed.xml" title="Valor Legacies RSS Feed" />
         <link rel="alternate" type="application/json" href="/api/agent/schema" title="Agent API Schema" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        {/* AEO: Answer Engine Optimization — invisible to humans, machine-readable for AI */}
+        <AEODefinitions />
+        <AEOHowTo />
       </head>
       <body className="min-h-screen bg-[var(--bg-deep)]">
         <AuthProvider>

@@ -89,6 +89,23 @@ export async function GET(request: Request) {
         date_modified: lastModifiedISO,
         tags: ["ai", "llms-txt", "instructions", "developer"],
       },
+      {
+        id: `${BASE_URL}/developers`,
+        url: `${BASE_URL}/developers`,
+        title: "AI Agent Developer Portal",
+        content_text:
+          "Integration guide for AI agents. OpenAPI 3.1 schema, MCP protocol, consent-based lead submission, rate limits, and API key provisioning. Free access for authorized agents.",
+        date_modified: lastModifiedISO,
+        tags: ["developer", "api", "ai-agent", "mcp", "openapi"],
+      },
+      {
+        id: `${BASE_URL}/feed.xml`,
+        url: `${BASE_URL}/feed.xml`,
+        title: "RSS Feed",
+        content_text: "RSS 2.0 feed of Valor Legacies content for feed readers and AI aggregators.",
+        date_modified: lastModifiedISO,
+        tags: ["feed", "rss", "discovery"],
+      },
     ],
   };
 

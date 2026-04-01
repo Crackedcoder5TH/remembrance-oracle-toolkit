@@ -1,5 +1,5 @@
 /**
- * Portal Session — Cookie-based session for client portal access.
+ * Portal Session — Cookie-based session for agent portal access.
  *
  * Uses HMAC-SHA256 signed cookies (same approach as admin-session.ts).
  * Payload includes client ID and email for route-level auth.

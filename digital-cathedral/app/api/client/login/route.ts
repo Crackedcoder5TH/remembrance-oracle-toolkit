@@ -9,9 +9,8 @@ import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
  * POST /api/client/login — Authenticate client and set session cookie.
  *
  * Auth paths (tried in order):
- *  1. Admin owner login — admin@valorlegacies.xyz with either:
- *     - Hardcoded password: ValorAdmin2026!
- *     - Any of the ADMIN_API_KEY values (comma-separated for rotation)
+ *  1. Admin owner login — admin@valorlegacies.xyz with any of the
+ *     ADMIN_API_KEY values (comma-separated for key rotation).
  *     Bypasses the database entirely.
  *  2. Database lookup — email + password verified against clients table.
  *  3. Demo mode (no DATABASE_URL, dev only) — demo client credentials.
@@ -20,23 +19,16 @@ import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 const ADMIN_CLIENT_ID = "client_admin_owner";
 const ADMIN_CLIENT_EMAIL = "admin@valorlegacies.xyz";
 const ADMIN_CLIENT_COMPANY = "Valor Legacies (Owner)";
-const ADMIN_HARDCODED_PASSWORD = "ValorAdmin2026!";
-
-/** Check if password matches the admin owner credentials. */
+/** Check if password matches the admin owner credentials via ADMIN_API_KEY env var. */
 function isAdminPassword(password: string): boolean {
   const pw = password.trim();
 
-  // Check hardcoded password first (always works, zero env var dependency)
-  if (pw === ADMIN_HARDCODED_PASSWORD) return true;
-
-  // Also accept any ADMIN_API_KEY (supports comma-separated rotation keys)
+  // Accept any ADMIN_API_KEY (supports comma-separated rotation keys)
   const keysRaw = process.env.ADMIN_API_KEY;
-  if (keysRaw) {
-    const keys = keysRaw.split(",").map((k) => k.trim()).filter(Boolean);
-    if (keys.some((key) => pw === key)) return true;
-  }
+  if (!keysRaw) return false;
 
-  return false;
+  const keys = keysRaw.split(",").map((k) => k.trim()).filter(Boolean);
+  return keys.some((key) => pw === key);
 }
 
 function makeAdminResponse(): NextResponse {

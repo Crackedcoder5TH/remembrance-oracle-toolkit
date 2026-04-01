@@ -14,6 +14,12 @@ export const metadata: Metadata = {
     "military family coverage",
     "veteran insurance options",
   ],
+  openGraph: {
+    title: "Military Life Insurance Resources",
+    description: "Explore life insurance options for veterans, active duty, National Guard, and military families.",
+    type: "article",
+    modifiedTime: "2026-03-12T00:00:00Z",
+  },
 };
 
 export default function ResourcesIndex() {

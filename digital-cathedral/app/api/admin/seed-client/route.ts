@@ -16,13 +16,13 @@ import type { ClientRecord } from "@/app/lib/client-database";
  * Protected by admin auth. Idempotent — won't duplicate if already exists.
  */
 
-// Admin owner account — full access to inspect the client portal
+// Admin owner account — full access to inspect the agent portal
 const ADMIN_CLIENT_EMAIL = "admin@valorlegacies.xyz";
 const ADMIN_CLIENT_PASSWORD = "ValorOwner2026!";
 
 // Test buyer account
 const TEST_EMAIL = "testclient@valorlegacies.com";
-const TEST_PASSWORD = "ClientPortal2026!";
+const TEST_PASSWORD = "AgentPortal2026!";
 
 interface SeedSpec {
   email: string;
@@ -118,7 +118,7 @@ async function seedAccount(spec: SeedSpec): Promise<{ created: boolean; clientId
 }
 
 export async function POST(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const results = await Promise.all(SEED_ACCOUNTS.map(seedAccount));

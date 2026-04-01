@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client Portal — Welcome Page
+ * Agent Portal — Welcome Page
  *
  * Landing page for valorlegacies.xyz.
  * Centers a welcome message with login form and quick links.
@@ -72,7 +72,7 @@ export default function PortalWelcomePage() {
             Valor Legacies
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
-            Welcome, Clients
+            Welcome, Agents
           </h1>
           <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-sm mx-auto">
             Your trusted partner portal for accessing qualified life insurance leads.
@@ -83,7 +83,7 @@ export default function PortalWelcomePage() {
         {/* Login Card */}
         <div className="cathedral-surface p-8 rounded-xl">
           <h2 className="text-lg font-light text-[var(--text-primary)] text-center mb-6">
-            Client Sign In
+            Agent Sign In
           </h2>
 
           {error && (
@@ -154,6 +154,28 @@ export default function PortalWelcomePage() {
           </div>
         </div>
 
+        {/* ROI Value Proposition */}
+        <div className="cathedral-surface p-6 rounded-xl">
+          <h3 className="text-sm metallic-gold uppercase tracking-wider mb-4 text-center">Why Agents Choose Valor Legacies</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Real-Time</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Fresh leads scored and delivered the moment they submit — not aged or recycled</p>
+            </div>
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Exclusive Tiers</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Choose your tier — from exclusive (1 buyer) to shared — and only pay for what converts</p>
+            </div>
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Track Your ROI</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Built-in conversion tracking shows your real cost-per-sale so you can scale with confidence</p>
+            </div>
+          </div>
+          <p className="text-xs text-[var(--text-muted)] text-center mt-4 leading-relaxed max-w-lg mx-auto">
+            Our agents see their conversion rates directly in the portal. When you know your numbers, you control your growth.
+          </p>
+        </div>
+
         {/* Admin Login */}
         <div className="text-center">
           <Link
@@ -170,7 +192,7 @@ export default function PortalWelcomePage() {
         {/* Quick Links */}
         <div className="text-center space-y-2">
           <p className="text-xs text-[var(--text-muted)]">
-            Interested in becoming a client?{" "}
+            Interested in becoming an agent?{" "}
             <a
               href="https://valorlegacies.com/about"
               className="text-teal-cathedral hover:text-teal-cathedral/80 transition-colors"

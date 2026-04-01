@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client Portal Login Page
+ * Agent Portal Login Page
  */
 
 import { useState, useEffect } from "react";
@@ -52,7 +52,7 @@ export default function ClientLoginPage() {
       <div className="cathedral-surface max-w-sm w-full p-8 rounded-xl">
         <div className="text-center mb-8">
           <div className="text-teal-cathedral text-xs tracking-[0.3em] uppercase pulse-gentle mb-2">
-            Client Portal
+            Agent Portal
           </div>
           <h1 className="text-2xl font-light text-[var(--text-primary)]">Sign In</h1>
           <p className="text-sm text-[var(--text-muted)] mt-2">Access your lead purchase dashboard</p>

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Admin authentication required
-    const authError = await verifyAdmin(request);
+    const authError = verifyAdmin(request);
     if (authError) return authError;
 
     const formData = await request.formData();

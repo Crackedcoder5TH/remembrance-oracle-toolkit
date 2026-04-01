@@ -10,7 +10,7 @@ import { getPricingConfig, savePricingConfig, type PricingConfig } from "@/app/l
  */
 
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const config = getPricingConfig();
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   try {

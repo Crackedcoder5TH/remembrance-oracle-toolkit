@@ -67,8 +67,17 @@ module.exports = {
    * Records usage feedback for a verified history entry.
    */
   feedback(id, succeeded) {
-    const updated = this.store.recordUsage(id, succeeded);
+    let updated = this.store.recordUsage(id, succeeded);
+    // If not found in entries table, try the patterns table
     if (!updated) {
+      try {
+        const patternResult = this.patterns.recordUsage(id, succeeded);
+        if (patternResult) {
+          return this.patternFeedback(id, succeeded);
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle:feedback] pattern fallback failed:', e?.message || e);
+      }
       return { success: false, error: `Entry ${id} not found` };
     }
     this._emit({ type: 'feedback', id, succeeded, newReliability: updated?.reliability?.historicalScore ?? null });

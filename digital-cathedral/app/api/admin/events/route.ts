@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { verifyAdmin } from "@/app/lib/admin-auth";
 import { subscribe, type LeadEvent } from "@/app/lib/lead-events";
 
+export const dynamic = "force-dynamic";
+
 /**
  * SSE endpoint for real-time admin notifications.
  *

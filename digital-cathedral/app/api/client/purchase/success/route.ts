@@ -8,6 +8,8 @@ import { getLeadById } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { stripe } from "@/app/lib/stripe";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Purchase Success Callback
  *

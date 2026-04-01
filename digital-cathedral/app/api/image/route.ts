@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { list, get } from "@vercel/blob";
 
+export const dynamic = "force-dynamic";
+
 const VALID_SLOTS = ["logo", "profile", "veteran-group", "founder-photo"];
 
 /** GET /api/image?slot=profile — proxies the private blob so it renders in <img> tags */

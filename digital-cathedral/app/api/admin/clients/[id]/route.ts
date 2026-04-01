@@ -8,6 +8,8 @@ import {
   hashPassword,
 } from "@/app/lib/client-database";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin Client Detail API
  *

@@ -5,6 +5,8 @@ import type { LeadFilters } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { VALID_STATES, VALID_COVERAGE, VALID_VETERAN_STATUS } from "@/app/lib/validation";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin Leads API
  *

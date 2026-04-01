@@ -145,6 +145,63 @@ const CONCEPT_CLUSTERS = [
     triggers: ['file', 'directory', 'path', 'read file', 'write file', 'glob', 'walk', 'mkdir', 'rename'],
     concepts: ['fs', 'readFile', 'writeFile', 'readdir', 'stat', 'path', 'join', 'resolve', 'mkdir', 'glob', 'walk'],
   },
+  // ─── Web Development Clusters ───
+  {
+    id: 'web-server',
+    triggers: ['server', 'http', 'https', 'request', 'response', 'listen', 'port', 'express', 'koa', 'fastify', 'api', 'endpoint', 'rest'],
+    concepts: ['http', 'createServer', 'listen', 'request', 'response', 'express', 'router', 'middleware', 'handler', 'endpoint', 'REST', 'API', 'port'],
+  },
+  {
+    id: 'web-frontend',
+    triggers: ['html', 'css', 'dom', 'browser', 'frontend', 'webpage', 'website', 'layout', 'responsive', 'component', 'render', 'ui', 'interface'],
+    concepts: ['html', 'css', 'dom', 'document', 'querySelector', 'addEventListener', 'classList', 'createElement', 'innerHTML', 'style', 'render', 'component', 'template'],
+  },
+  {
+    id: 'web-routing',
+    triggers: ['route', 'router', 'routing', 'url', 'path', 'navigate', 'redirect', 'param', 'query string', 'middleware'],
+    concepts: ['router', 'route', 'get', 'post', 'put', 'delete', 'param', 'middleware', 'next', 'redirect', 'url', 'pathname', 'query'],
+  },
+  {
+    id: 'web-security',
+    triggers: ['xss', 'csrf', 'cors', 'escape', 'sanitize', 'injection', 'helmet', 'cookie', 'secure', 'content security policy'],
+    concepts: ['escapeHtml', 'sanitize', 'cors', 'csrf', 'xss', 'helmet', 'cookie', 'httpOnly', 'secure', 'sameSite', 'csp', 'encode', 'decode'],
+  },
+  {
+    id: 'web-static',
+    triggers: ['static', 'serve', 'file server', 'mime', 'content type', 'asset', 'public', 'favicon', 'image'],
+    concepts: ['static', 'serve', 'mime', 'contentType', 'readFile', 'sendFile', 'etag', 'cache-control', 'gzip', 'compress'],
+  },
+  // ─── Non-Code Content Clusters ───
+  {
+    id: 'configuration',
+    triggers: ['config', 'yaml', 'toml', 'ini', 'env', 'settings', 'options', 'environment', 'dotenv', 'json config'],
+    concepts: ['config', 'yaml', 'toml', 'ini', 'env', 'dotenv', 'settings', 'options', 'parse', 'load', 'merge', 'override'],
+  },
+  {
+    id: 'database',
+    triggers: ['database', 'sql', 'query', 'insert', 'update', 'select', 'migration', 'schema', 'orm', 'sqlite', 'postgres', 'mysql', 'mongo'],
+    concepts: ['sql', 'query', 'insert', 'update', 'delete', 'select', 'join', 'index', 'migration', 'schema', 'model', 'orm', 'transaction'],
+  },
+  {
+    id: 'devops',
+    triggers: ['docker', 'dockerfile', 'container', 'deploy', 'ci', 'cd', 'pipeline', 'kubernetes', 'nginx', 'terraform'],
+    concepts: ['docker', 'dockerfile', 'container', 'image', 'build', 'deploy', 'pipeline', 'nginx', 'proxy', 'kubernetes', 'helm', 'terraform'],
+  },
+  {
+    id: 'documentation',
+    triggers: ['readme', 'docs', 'documentation', 'markdown', 'guide', 'tutorial', 'api docs', 'jsdoc', 'comment'],
+    concepts: ['markdown', 'readme', 'documentation', 'guide', 'example', 'usage', 'api', 'reference', 'changelog', 'license'],
+  },
+  {
+    id: 'templating',
+    triggers: ['template', 'scaffold', 'boilerplate', 'skeleton', 'generator', 'ejs', 'handlebars', 'jinja', 'mustache', 'pug'],
+    concepts: ['template', 'render', 'partial', 'layout', 'block', 'extends', 'include', 'variable', 'filter', 'helper', 'scaffold'],
+  },
+  {
+    id: 'regex-patterns',
+    triggers: ['regex', 'regular expression', 'pattern match', 'capture group', 'lookahead', 'lookbehind', 'replace pattern'],
+    concepts: ['regex', 'match', 'test', 'exec', 'replace', 'capture', 'group', 'lookahead', 'lookbehind', 'quantifier', 'boundary'],
+  },
 ];
 
 // ─── N-gram Embedding ───

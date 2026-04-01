@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientByEmail, verifyPassword } from "@/app/lib/client-database";
+import { getClientByEmail } from "@/app/lib/client-database";
+import { verifyPassword } from "@/app/lib/password";
 import { createClientSessionToken, CLIENT_SESSION_COOKIE, CLIENT_SESSION_MAX_AGE } from "@/app/lib/client-auth";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
     if (!process.env.DATABASE_URL && process.env.NODE_ENV !== "production") {
       const { DEMO_CLIENT } = await import("@/app/lib/demo-client");
       const emailMatch = normalizedEmail === DEMO_CLIENT.email.toLowerCase();
-      const pwMatch = verifyPassword(password, DEMO_CLIENT.passwordHash);
+      const pwMatch = await verifyPassword(password, DEMO_CLIENT.passwordHash);
       if (!emailMatch || !pwMatch) {
         return NextResponse.json(
           { success: false, message: "Invalid credentials." },
@@ -146,7 +147,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!verifyPassword(password, client.passwordHash)) {
+    if (!(await verifyPassword(password, client.passwordHash))) {
       return NextResponse.json(
         { success: false, message: "Invalid credentials." },
         { status: 401 },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientByEmail, verifyPassword } from "@/app/lib/client-database";
+import { getClientByEmail } from "@/app/lib/client-database";
+import { verifyPassword } from "@/app/lib/password";
 import {
   createPortalSessionToken,
   PORTAL_SESSION_COOKIE,

@@ -9,12 +9,12 @@
  *   Password: ValorOwner2026!
  */
 
-import { createHmac } from "crypto";
 import type { ClientRecord, ClientFilters, LeadPurchase, ClientBilling, ClientStats } from "./client-database";
 
-// Pre-compute a deterministic hash so we don't need randomBytes at import time
-const DEMO_SALT = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
-const DEMO_HASH = createHmac("sha256", DEMO_SALT).update("ValorOwner2026!").digest("hex");
+// Pre-computed scrypt hash (salt:key in hex) so verifyPassword from password.ts works.
+// Generated with: scrypt("ValorOwner2026!", DEMO_SALT, 64)
+const DEMO_SALT = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2a3b4c5d6a7b8c9d0e1f2";
+const DEMO_HASH = "5284eb3e2b83ffda49681f4305827bc0fe1ee51f25a0b6208b7fc335bd9af01fc38535640eb753864b48d3c322ebabac668fe58e4ff566f2f7ae898e9994616e";
 
 const now = new Date().toISOString();
 

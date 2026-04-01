@@ -4,10 +4,10 @@ import {
   createClient,
   getClientByEmail,
   generateClientId,
-  hashPassword,
   upsertClientFilters,
 } from "@/app/lib/client-database";
 import type { ClientRecord } from "@/app/lib/client-database";
+import { hashPassword } from "@/app/lib/password";
 
 /**
  * Seed Client Accounts API
@@ -84,7 +84,7 @@ async function seedAccount(spec: SeedSpec): Promise<{ created: boolean; clientId
     contactName: spec.contactName,
     email: spec.email,
     phone: spec.phone,
-    passwordHash: hashPassword(spec.password),
+    passwordHash: await hashPassword(spec.password),
     status: "active",
     pricingTier: spec.pricingTier,
     pricePerLead: spec.pricePerLead,

@@ -21,7 +21,7 @@ export default function PortalWelcomePage() {
 
   // Auto-redirect if already authenticated
   useEffect(() => {
-    fetch("/api/client/profile")
+    fetch("/api/portal/session")
       .then((res) => {
         if (res.ok) router.push("/portal/dashboard");
       })
@@ -35,7 +35,7 @@ export default function PortalWelcomePage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/client/login", {
+      const res = await fetch("/api/portal/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -43,10 +43,10 @@ export default function PortalWelcomePage() {
 
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success || res.ok) {
         router.push("/portal/dashboard");
       } else {
-        setError(data.message || "Login failed.");
+        setError(data.error || data.message || "Login failed.");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -65,11 +65,11 @@ export default function PortalWelcomePage() {
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-12 relative">
-      {/* Admin Login — top right */}
-      <div className="absolute top-4 right-4">
+      {/* Admin Login — fixed top right, always visible */}
+      <div className="fixed top-4 right-4 z-50">
         <Link
           href="/admin/login"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border border-indigo-cathedral/20 text-[var(--text-muted)] hover:border-teal-cathedral/40 hover:text-teal-cathedral"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border border-indigo-cathedral/20 bg-[var(--bg-surface)] text-[var(--text-muted)] hover:border-teal-cathedral/40 hover:text-teal-cathedral shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />

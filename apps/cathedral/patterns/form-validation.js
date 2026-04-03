@@ -1,0 +1,13 @@
+// Form validation — real-time feedback with touched state tracking
+// Green/red borders, helper text, aria-invalid support
+
+function validateField({ value, touched, minLength }) {
+  const trimmed = value.trim();
+  const valid = trimmed.length >= minLength;
+  if (!touched) return { valid: false, error: '', fieldClass: 'border-teal-cathedral/20' };
+  if (valid) return { valid: true, error: '', fieldClass: 'field-valid' };
+  const error = trimmed.length === 0 ? 'This field is required' : `At least ${minLength} characters needed`;
+  return { valid: false, error, fieldClass: 'field-invalid' };
+}
+
+module.exports = { validateField };

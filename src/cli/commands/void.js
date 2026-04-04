@@ -76,6 +76,8 @@ function registerVoidCommands(handlers, { oracle }) {
       console.log('    oracle void watch      watch it learn live (Ctrl+C to stop)');
       console.log('    oracle void patterns   how many patterns so far?');
       console.log('    oracle void cascade    check any file against reality');
+      console.log('    oracle void api        start the REST API');
+      console.log('    oracle void api stop   stop the REST API');
       console.log('    oracle void connect    connect oracle to void substrate');
       console.log('    oracle void export     share oracle patterns with substrate');
       console.log('    oracle void measure    measure coherence of a file');
@@ -244,6 +246,56 @@ function registerVoidCommands(handlers, { oracle }) {
         } catch {}
       }
       console.log();
+      return;
+    }
+
+    // ── API ───────────────────────────────────────────────────────
+
+    if (sub === 'api') {
+      const action = positional[1] || 'start';
+      const dir = findVoidDir();
+      if (!dir) {
+        console.log('\n  Could not find Void-Data-Compressor.\n');
+        return;
+      }
+
+      if (action === 'stop') {
+        try {
+          execSync('pkill -f "api.py"', { shell: true });
+        } catch {}
+        console.log('\n  API stopped.\n');
+        return;
+      }
+
+      // Check if already running
+      try {
+        const out = execSync('ps aux', { encoding: 'utf-8' });
+        if (out.includes('api.py')) {
+          console.log('\n  API is already running!');
+          console.log('  Use: oracle void api stop — to stop it\n');
+          return;
+        }
+      } catch {}
+
+      const port = positional[1] && !isNaN(positional[1]) ? positional[1] : '8080';
+
+      try {
+        execSync(
+          `cd "${dir}" && nohup python3 api.py --port ${port} >> api.log 2>&1 &`,
+          { shell: true }
+        );
+        console.log(`\n  API started on port ${port}!\n`);
+        console.log('  Endpoints:');
+        console.log(`    GET  http://your-server:${port}/status`);
+        console.log(`    GET  http://your-server:${port}/patterns`);
+        console.log(`    GET  http://your-server:${port}/resonance`);
+        console.log(`    POST http://your-server:${port}/coherence`);
+        console.log(`    POST http://your-server:${port}/cascade`);
+        console.log(`    POST http://your-server:${port}/cascade/batch`);
+        console.log(`\n  Use: oracle void api stop — to stop it\n`);
+      } catch (e) {
+        console.log(`\n  Error: ${e.message}\n`);
+      }
       return;
     }
 

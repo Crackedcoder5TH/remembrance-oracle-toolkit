@@ -22,7 +22,7 @@ const SKIP_DIRS = new Set(['node_modules', '.git', '.remembrance', 'dist', 'buil
 
 function detectLanguage(filePath) {
   const ext = path.extname(filePath);
-  const map = { '.js': 'javascript', '.ts': 'typescript', '.py': 'python', '.go': 'go', '.rs': 'rust' };
+  const map = { '.js': 'javascript', '.ts': 'typescript', '.py': 'python', '.go': 'go', '.rs': 'rust', '.swift': 'swift' };
   return map[ext] || null;
 }
 
@@ -81,7 +81,7 @@ function extractImports(code, language) {
       if (m[1].startsWith('.')) imports.push(m[1]);
     }
   } else if (language === 'python') {
-    const re = /^from\s+(\.[\w.]+)\s+import/gm;
+    const re = /^from\s+(\.\w[\w.]+)\s+import/gm;
     let m;
     while ((m = re.exec(code)) !== null) {
       imports.push(m[1]);
@@ -98,6 +98,7 @@ function extractFunctionNames(code, language) {
     python: /^def\s+(\w+)\s*\(/gm,
     go: /^func\s+(?:\([^)]+\)\s+)?(\w+)\s*\(/gm,
     rust: /(?:pub\s+)?fn\s+(\w+)\s*[\(<]/gm,
+    swift: /(?:(?:(?:public|private|internal|open|fileprivate)\s+)?(?:static\s+)?(?:class\s+|struct\s+)?func\s+(\w+)|(?:class|struct|enum)\s+(\w+))/gm,
   };
   const re = patterns[language];
   if (!re) return fns;

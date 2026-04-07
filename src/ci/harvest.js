@@ -59,9 +59,9 @@ function harvestFunctions(baseDir, options = {}) {
     if (!fs.existsSync(dir)) return;
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
-      if (results.length >= maxFiles) return; // Cap total files to prevent unbounded growth
+      if (results.length >= maxFiles) return;
       if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
-      if (entry.isSymbolicLink()) continue; // Skip symlinks to prevent traversal/loops
+      if (entry.isSymbolicLink()) continue;
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(fullPath);
@@ -89,7 +89,6 @@ function harvestFunctions(baseDir, options = {}) {
             });
           }
         } catch (e) {
-          // Skip unreadable files
           if (process.env.ORACLE_DEBUG) console.warn('skipping unreadable file:', e.message);
         }
       }
@@ -108,14 +107,11 @@ function splitFunctions(code, language) {
   const patterns = [];
 
   if (language === 'javascript' || language === 'typescript') {
-    // Match function declarations and arrow functions
     const re = /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)\s*\{|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^=\s]+)\s*=>\s*(?:\{|[^{]))/g;
     let match;
     while ((match = re.exec(code)) !== null) {
       const name = match[1] || match[2];
       if (!name || ['if', 'for', 'while', 'test', 'describe', 'it'].includes(name)) continue;
-
-      // Extract the function body by brace matching
       const start = match.index;
       const body = extractBody(code, start);
       if (body && body.length > 20 && body.length < 5000) {
@@ -156,7 +152,7 @@ function splitFunctions(code, language) {
       }
     }
   } else if (language === 'swift') {
-    // Match Swift func, class, struct, enum declarations
+    // Match Swift func declarations
     const reFn = /^(\s*(?:(?:public|private|internal|open|fileprivate)\s+)?(?:static\s+)?(?:@\w+\s+)*func\s+(\w+)\s*[\(<])/gm;
     let match;
     while ((match = reFn.exec(code)) !== null) {
@@ -193,11 +189,9 @@ function extractBody(code, start) {
   let i = braceStart;
   while (i < code.length) {
     const ch = code[i];
-    // Skip string literals
     if (ch === "'" || ch === '"' || ch === '`') {
       i++;
       if (ch === '`') {
-        // Template literal — handle ${...} nesting
         while (i < code.length && code[i] !== '`') {
           if (code[i] === '\\') { i += 2; continue; }
           if (code[i] === '$' && code[i + 1] === '{') {
@@ -219,13 +213,11 @@ function extractBody(code, start) {
       }
       continue;
     }
-    // Skip single-line comments
     if (ch === '/' && code[i + 1] === '/') {
       const nl = code.indexOf('\n', i + 2);
       i = nl === -1 ? code.length : nl + 1;
       continue;
     }
-    // Skip block comments
     if (ch === '/' && code[i + 1] === '*') {
       const end = code.indexOf('*/', i + 2);
       i = end === -1 ? code.length : end + 2;
@@ -277,7 +269,6 @@ function harvest(oracle, source, options = {}) {
   let repoDir = null;
   let isTemp = false;
 
-  // Determine if source is a URL or local path
   if (source.startsWith('http') || source.startsWith('git@') || source.includes('github.com')) {
     repoDir = cloneRepo(source, { branch });
     isTemp = true;
@@ -289,13 +280,8 @@ function harvest(oracle, source, options = {}) {
   }
 
   try {
-    // First try auto-seed approach (test→source tracing)
     const discovered = discoverPatterns(repoDir, { language });
-
-    // Then harvest any remaining source files
     const harvested = harvestFunctions(repoDir, { language });
-
-    // Merge: prefer test-backed patterns, then standalone
     const seenFiles = new Set(discovered.map(d => d.sourceFile));
     const standalone = harvested.filter(h => !seenFiles.has(h.file)).slice(0, maxFiles);
 
@@ -316,16 +302,13 @@ function harvest(oracle, source, options = {}) {
       return result;
     }
 
-    // Pre-fetch existing pattern names once to avoid N×M similarity checks
     const existingNames = new Set();
     try {
       const allPatterns = oracle.patterns?.getAll?.() || [];
       for (const p of allPatterns) existingNames.add(p.name);
     } catch (_) { /* patterns API may not exist */ }
 
-    // Register test-backed patterns first (higher value)
     for (const d of discovered) {
-      // Skip already-registered patterns by name to avoid expensive similarity checks
       if (existingNames.has(d.name)) {
         result.skipped++;
         result.patterns.push({ name: d.name, status: 'skipped', reason: 'already registered' });
@@ -354,7 +337,6 @@ function harvest(oracle, source, options = {}) {
       }
     }
 
-    // Register standalone patterns (split by function or file)
     for (const s of standalone) {
       if (splitMode === 'function') {
         const fns = splitFunctions(s.code, s.language);

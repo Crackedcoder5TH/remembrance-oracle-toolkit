@@ -155,6 +155,28 @@ function splitFunctions(code, language) {
         patterns.push({ name, code: body, language });
       }
     }
+  } else if (language === 'swift') {
+    // Match Swift func, class, struct, enum declarations
+    const reFn = /^(\s*(?:(?:public|private|internal|open|fileprivate)\s+)?(?:static\s+)?(?:@\w+\s+)*func\s+(\w+)\s*[\(<])/gm;
+    let match;
+    while ((match = reFn.exec(code)) !== null) {
+      const name = match[2];
+      if (!name || ['body', 'makeUIViewController', 'updateUIViewController'].includes(name)) continue;
+      const body = extractBody(code, match.index);
+      if (body && body.length > 20 && body.length < 5000) {
+        patterns.push({ name, code: body, language });
+      }
+    }
+    // Also match struct/class/enum declarations
+    const reType = /^(\s*(?:(?:public|private|internal|open|fileprivate)\s+)?(?:final\s+)?(?:class|struct|enum)\s+(\w+))/gm;
+    while ((match = reType.exec(code)) !== null) {
+      const name = match[2];
+      if (!name || ['View', 'App', 'Scene'].includes(name)) continue;
+      const body = extractBody(code, match.index);
+      if (body && body.length > 20 && body.length < 5000) {
+        patterns.push({ name, code: body, language });
+      }
+    }
   }
 
   return patterns;

@@ -77,6 +77,7 @@ function registerVoidCommands(handlers, { oracle }) {
       console.log('    oracle void patterns   how many patterns so far?');
       console.log('    oracle void cascade    check any file against reality');
       console.log('    oracle void integrity  full Solana integrity audit');
+      console.log('    oracle void storage    check/fix substrate file sizes');
       console.log('    oracle void api        start the REST API');
       console.log('    oracle void api stop   stop the REST API');
       console.log('    oracle void connect    connect oracle to void substrate');
@@ -264,6 +265,31 @@ function registerVoidCommands(handlers, { oracle }) {
       try {
         const output = execSync(
           `cd "${dir}" && python3 solana_integrity.py`,
+          { encoding: 'utf-8', timeout: 60000 }
+        );
+        console.log(output);
+      } catch (e) {
+        if (e.stdout) console.log(e.stdout);
+        else console.log(`\n  Error: ${e.message}\n`);
+      }
+      return;
+    }
+
+    // ── STORAGE ───────────────────────────────────────────────────
+
+    if (sub === 'storage') {
+      const dir = findVoidDir();
+      if (!dir) {
+        console.log('\n  Could not find Void-Data-Compressor.\n');
+        return;
+      }
+
+      const action = positional[1] || 'status';
+      const flag = action === 'fix' ? '' : `--${action}`;
+
+      try {
+        const output = execSync(
+          `cd "${dir}" && python3 storage_manager.py ${flag}`,
           { encoding: 'utf-8', timeout: 60000 }
         );
         console.log(output);

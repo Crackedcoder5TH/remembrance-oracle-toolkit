@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started &mdash; Remembrance</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <header class="top-nav">
+    <div class="logo"><span>R</span>emembrance</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="getting-started.html" class="active">Getting Started</a>
+      <a href="api.html">API Reference</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+  </header>
+
+  <div class="container">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <h1>Getting Started</h1>
+      <p>Go from zero to pattern-aware oracle in five steps.</p>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps">
+
+      <!-- Step 1 -->
+      <div class="step">
+        <h3>Install the toolkit</h3>
+        <p>Add the package to your project with npm (or yarn / pnpm).</p>
+        <pre><code><span class="fn">npm</span> install remembrance-oracle-toolkit</code></pre>
+        <p>Or, if you prefer Yarn:</p>
+        <pre><code><span class="fn">yarn</span> add remembrance-oracle-toolkit</code></pre>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step">
+        <h3>Your first search</h3>
+        <p>
+          Import the oracle and search for patterns already harvested from your
+          codebase. The search is fuzzy and context-aware.
+        </p>
+        <pre><code><span class="kw">const</span> { Oracle } = <span class="fn">require</span>(<span class="str">'remembrance-oracle-toolkit'</span>);
+
+<span class="kw">const</span> oracle = <span class="kw">new</span> <span class="ty">Oracle</span>();
+
+<span class="cm">// Search for patterns matching "rate limiter"</span>
+<span class="kw">const</span> results = <span class="kw">await</span> oracle.<span class="fn">search</span>(<span class="str">'rate limiter'</span>);
+console.<span class="fn">log</span>(results);
+<span class="cm">// [</span>
+<span class="cm">//   { id: "P-017", name: "token-bucket-limiter", score: 0.94, ... },</span>
+<span class="cm">//   { id: "P-031", name: "sliding-window-rate", score: 0.87, ... }</span>
+<span class="cm">// ]</span></code></pre>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step">
+        <h3>Score code coherency</h3>
+        <p>
+          The coherency scorer evaluates how well a piece of code aligns with your
+          project's established patterns. Scores range from <code>0.0</code> (no
+          alignment) to <code>1.0</code> (perfect).
+        </p>
+        <pre><code><span class="kw">const</span> code = <span class="str">`
+  function retry(fn, attempts = 3) {
+    for (let i = 0; i &lt; attempts; i++) {
+      try { return fn(); }
+      catch (e) { if (i === attempts - 1) throw e; }
+    }
+  }
+`</span>;
+
+<span class="kw">const</span> score = <span class="kw">await</span> oracle.<span class="fn">computeCoherencyScore</span>(code, {
+  <span class="str">language</span>: <span class="str">'javascript'</span>
+});
+
+console.<span class="fn">log</span>(score);
+<span class="cm">// { coherency: 0.82, patterns: ["retry-with-backoff"], suggestions: [...] }</span></code></pre>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step">
+        <h3>Resolve a pattern</h3>
+        <p>
+          When you know <em>what</em> you need but not the exact implementation,
+          ask the oracle to resolve it. It returns the highest-scoring match along
+          with ready-to-use code.
+        </p>
+        <pre><code><span class="kw">const</span> pattern = <span class="kw">await</span> oracle.<span class="fn">resolve</span>({
+  <span class="str">description</span>: <span class="str">'retry with backoff'</span>
+});
+
+console.<span class="fn">log</span>(pattern.name);       <span class="cm">// "exponential-backoff-retry"</span>
+console.<span class="fn">log</span>(pattern.code);       <span class="cm">// Full implementation</span>
+console.<span class="fn">log</span>(pattern.coherency);  <span class="cm">// 0.96</span></code></pre>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="step">
+        <h3>Docker setup</h3>
+        <p>
+          For the full ecosystem &mdash; including the Void Compressor, Reflector,
+          and Swarm services &mdash; spin everything up with Docker Compose.
+        </p>
+        <pre><code><span class="cm"># Clone the repo (if you haven't already)</span>
+<span class="fn">git</span> clone https://github.com/your-org/remembrance-oracle-toolkit.git
+<span class="fn">cd</span> remembrance-oracle-toolkit
+
+<span class="cm"># Start all services</span>
+<span class="fn">docker</span> compose up -d
+
+<span class="cm"># Verify everything is running</span>
+<span class="fn">docker</span> compose ps
+
+<span class="cm"># Check the oracle health endpoint</span>
+<span class="fn">curl</span> http://localhost:3000/health</code></pre>
+        <p>
+          The <code>docker-compose.yml</code> at the repo root wires up the Oracle
+          MCP server, Void Compressor, Reflector, and Swarm coordinator. See the
+          <a href="architecture.html">Architecture</a> page for how they connect.
+        </p>
+      </div>
+
+    </div><!-- /steps -->
+
+    <hr>
+    <p>
+      Ready for the full API? Head to the <a href="api.html">API Reference</a>.
+    </p>
+
+  </div><!-- /container -->
+
+  <footer class="footer">
+    <p>Remembrance Oracle Toolkit &mdash; MIT License</p>
+  </footer>
+
+</body>
+</html>

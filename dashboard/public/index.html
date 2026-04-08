@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remembrance Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <h1><span class="accent">Remembrance</span> Dashboard</h1>
+    <span style="color:var(--text-muted);font-size:12px" id="ecosystem-status">Connecting...</span>
+    <div class="status-dot offline" id="status-dot"></div>
+  </header>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-section">
+      <h3>Overview</h3>
+      <a href="#" class="active" onclick="showPage('overview')">Dashboard</a>
+      <a href="#" onclick="showPage('patterns')">Pattern Browser</a>
+      <a href="#" onclick="showPage('cascade')">Cascade Resonance</a>
+    </div>
+    <div class="nav-section">
+      <h3>Tools</h3>
+      <a href="#" onclick="showPage('search')">Pattern Search</a>
+      <a href="#" onclick="showPage('score')">Score Code</a>
+      <a href="#" onclick="showPage('resolve')">Resolve (PULL/EVOLVE)</a>
+    </div>
+    <div class="nav-section">
+      <h3>Analysis</h3>
+      <a href="#" onclick="showPage('fractal')">Fractal Alignment</a>
+      <a href="#" onclick="showPage('healing')">Healing History</a>
+      <a href="#" onclick="showPage('substrate')">Void Substrate</a>
+    </div>
+    <div class="nav-section">
+      <h3>System</h3>
+      <a href="#" onclick="showPage('services')">Service Health</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main" id="content">
+    <!-- Overview page (default) -->
+    <div id="page-overview">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px;letter-spacing:-0.5px">Ecosystem Overview</h1>
+
+      <div class="card-grid" id="stat-cards">
+        <div class="stat">
+          <div class="label">Oracle Patterns</div>
+          <div class="value accent" id="stat-patterns">--</div>
+          <div class="sub">Across 15 seed files</div>
+        </div>
+        <div class="stat">
+          <div class="label">Void Substrate</div>
+          <div class="value" id="stat-substrate">--</div>
+          <div class="sub">Waveform patterns</div>
+        </div>
+        <div class="stat">
+          <div class="label">Languages</div>
+          <div class="value" id="stat-languages">--</div>
+          <div class="sub">JS, TS, Python, Go, Rust, Bash, YAML</div>
+        </div>
+        <div class="stat">
+          <div class="label">Avg Coherency</div>
+          <div class="value accent" id="stat-coherency">--</div>
+          <div class="sub">Above 0.68 = PULL-ready</div>
+        </div>
+      </div>
+
+      <!-- Language Distribution -->
+      <div class="card">
+        <h2>Language Distribution</h2>
+        <div id="lang-bars"></div>
+      </div>
+
+      <!-- Service Status -->
+      <div class="card">
+        <h2>Service Status</h2>
+        <table>
+          <thead><tr><th>Service</th><th>URL</th><th>Status</th></tr></thead>
+          <tbody id="service-table">
+            <tr><td>Oracle Toolkit</td><td><code id="oracle-url">--</code></td><td><span class="badge weak" id="oracle-status">checking</span></td></tr>
+            <tr><td>Void Compressor</td><td><code id="void-url">--</code></td><td><span class="badge weak" id="void-status">checking</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pattern Browser -->
+    <div id="page-patterns" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Pattern Browser</h1>
+      <div style="margin-bottom:16px;display:flex;gap:8px">
+        <input type="text" id="pattern-filter" placeholder="Filter patterns..." oninput="filterPatterns()">
+        <select id="pattern-lang" onchange="filterPatterns()" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);padding:8px">
+          <option value="">All languages</option>
+        </select>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Name</th><th>Language</th><th>Type</th><th>Coherency</th><th>Tags</th></tr></thead>
+          <tbody id="pattern-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pattern Search -->
+    <div id="page-search" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Pattern Search</h1>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="search-query" placeholder="Describe what you need... (e.g. 'rate limiter', 'retry with backoff')">
+        <button onclick="searchPatterns()">Search</button>
+      </div>
+      <div class="card" id="search-results">
+        <p style="color:var(--text-muted)">Enter a query to search 302 patterns</p>
+      </div>
+    </div>
+
+    <!-- Score Code -->
+    <div id="page-score" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Score Code</h1>
+      <textarea id="score-code" rows="10" placeholder="Paste code here to score coherency..." style="font-family:var(--mono);font-size:13px;margin-bottom:12px"></textarea>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <select id="score-lang" style="background:var(--bg-input);color:var(--text-primary);border:1px solid var(--border);border-radius:var(--radius);padding:8px">
+          <option value="javascript">JavaScript</option>
+          <option value="typescript">TypeScript</option>
+          <option value="python">Python</option>
+          <option value="go">Go</option>
+          <option value="rust">Rust</option>
+        </select>
+        <button onclick="scoreCode()">Score</button>
+      </div>
+      <div class="card" id="score-results" style="display:none">
+        <h2>Coherency Score</h2>
+        <div id="score-dimensions"></div>
+      </div>
+    </div>
+
+    <!-- Resolve -->
+    <div id="page-resolve" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Resolve Pattern</h1>
+      <p style="color:var(--text-secondary);margin-bottom:16px">Describe what you need. The Oracle will decide: <span class="badge pull">PULL</span> <span class="badge evolve">EVOLVE</span> or <span class="badge generate">GENERATE</span></p>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input type="text" id="resolve-desc" placeholder="e.g. 'encrypted key storage with AES-256'">
+        <button onclick="resolvePattern()">Resolve</button>
+      </div>
+      <div class="card" id="resolve-results">
+        <p style="color:var(--text-muted)">Describe a pattern need to get a PULL/EVOLVE/GENERATE decision</p>
+      </div>
+    </div>
+
+    <!-- Cascade Resonance -->
+    <div id="page-cascade" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Cascade Resonance</h1>
+      <p style="color:var(--text-secondary);margin-bottom:16px">Send code to the Void Compressor for cross-domain correlation analysis</p>
+      <textarea id="cascade-code" rows="8" placeholder="Paste code to cascade..." style="font-family:var(--mono);font-size:13px;margin-bottom:12px"></textarea>
+      <button onclick="cascadeCode()">Cascade</button>
+      <div class="card" id="cascade-results" style="margin-top:16px">
+        <p style="color:var(--text-muted)">Paste code and click Cascade to see cross-domain resonance</p>
+      </div>
+    </div>
+
+    <!-- Fractal Alignment -->
+    <div id="page-fractal" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Fractal Alignment</h1>
+      <p style="color:var(--text-secondary);margin-bottom:16px">Five mathematical engines score code for self-similar structure</p>
+      <textarea id="fractal-code" rows="8" placeholder="Paste code to analyze fractal alignment..." style="font-family:var(--mono);font-size:13px;margin-bottom:12px"></textarea>
+      <button onclick="analyzeFractal()">Analyze</button>
+      <div class="card" id="fractal-results" style="margin-top:16px">
+        <p style="color:var(--text-muted)">Paste code to see Sierpinski, Cantor, Mandelbrot, Logistic, and Stability scores</p>
+      </div>
+    </div>
+
+    <!-- Healing History -->
+    <div id="page-healing" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Healing History</h1>
+      <div class="card">
+        <p style="color:var(--text-muted)">Connect to Oracle API to view healing history (SERF loop iterations, before/after coherency, whisper messages)</p>
+      </div>
+    </div>
+
+    <!-- Void Substrate -->
+    <div id="page-substrate" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Void Substrate</h1>
+      <div class="card" id="substrate-info">
+        <p style="color:var(--text-muted)">Connect to Void API to browse substrate files and waveform patterns</p>
+      </div>
+    </div>
+
+    <!-- Service Health -->
+    <div id="page-services" style="display:none">
+      <h1 style="font-size:20px;font-weight:700;margin-bottom:20px">Service Health</h1>
+      <div class="card-grid">
+        <div class="stat">
+          <div class="label">Oracle</div>
+          <div class="value" id="svc-oracle">--</div>
+          <div class="sub" id="svc-oracle-detail">Checking...</div>
+        </div>
+        <div class="stat">
+          <div class="label">Void Compressor</div>
+          <div class="value" id="svc-void">--</div>
+          <div class="sub" id="svc-void-detail">Checking...</div>
+        </div>
+        <div class="stat">
+          <div class="label">Dashboard</div>
+          <div class="value accent">Online</div>
+          <div class="sub">Port 4000</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

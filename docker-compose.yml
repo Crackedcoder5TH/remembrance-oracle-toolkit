@@ -113,6 +113,24 @@ services:
     networks:
       - remembrance
 
+  # ─── Dashboard ───────────────────────────────────────────────────
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: ../Dockerfile.dashboard
+    ports:
+      - "${DASHBOARD_PORT:-4000}:4000"
+    environment:
+      - DASHBOARD_PORT=4000
+      - ORACLE_TOOLKIT_URL=http://oracle:3000
+      - VOID_COMPRESSOR_URL=http://void-compressor:8080
+    depends_on:
+      oracle:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - remembrance
+
 volumes:
   oracle-data:
   void-data:

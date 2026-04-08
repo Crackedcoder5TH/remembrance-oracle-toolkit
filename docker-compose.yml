@@ -1,0 +1,123 @@
+# ═══════════════════════════════════════════════════════════════════
+# Remembrance Ecosystem — Docker Compose
+#
+# Starts all services:
+#   - Oracle Toolkit API (Node.js, port 3000)
+#   - Void Data Compressor API (Python, port 8080)
+#   - Reflector Self-Healing Service (Node.js, port 3001)
+#
+# Usage:
+#   cp .env.example .env    # Configure API keys
+#   docker compose up -d    # Start all services
+#   docker compose logs -f  # Watch logs
+#
+# All services auto-discover each other via internal Docker network.
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─── Oracle Toolkit API ─────────────────────────────────────────
+  oracle:
+    build:
+      context: .
+      dockerfile: Dockerfile.oracle
+    ports:
+      - "${ORACLE_PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - ORACLE_PORT=3000
+      - ORACLE_THRESHOLD=${ORACLE_THRESHOLD:-0.6}
+      - ORACLE_AUTO_SEED=${ORACLE_AUTO_SEED:-true}
+      - ORACLE_DEBUG=${ORACLE_DEBUG:-false}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    volumes:
+      - oracle-data:/app/.remembrance
+      - ./src/patterns:/app/src/patterns:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', r => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - remembrance
+
+  # ─── Void Data Compressor API ───────────────────────────────────
+  void-compressor:
+    build:
+      context: ${VOID_COMPRESSOR_PATH:-../Void-Data-Compressor}
+      dockerfile: Dockerfile
+    ports:
+      - "${VOID_PORT:-8080}:8080"
+    environment:
+      - VOID_API_PORT=8080
+      - VOID_SUBSTRATE_DIR=/app/substrates
+      - VOID_COMPRESSION_LEVEL=${VOID_COMPRESSION_LEVEL:-adaptive}
+    volumes:
+      - void-data:/app/substrates
+      - ${VOID_COMPRESSOR_PATH:-../Void-Data-Compressor}:/app/src:ro
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - remembrance
+
+  # ─── Reflector Self-Healing Service ─────────────────────────────
+  reflector:
+    build:
+      context: ${REFLECTOR_PATH:-../Reflector-oracle-}
+      dockerfile: Dockerfile
+    ports:
+      - "${REFLECTOR_PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - REFLECTOR_PORT=3001
+      - ORACLE_TOOLKIT_URL=http://oracle:3000
+      - VOID_COMPRESSOR_URL=http://void-compressor:8080
+      - REFLECTOR_MODE=${REFLECTOR_MODE:-balanced}
+      - REFLECTOR_MIN_COHERENCE=${REFLECTOR_MIN_COHERENCE:-0.68}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    volumes:
+      - reflector-data:/app/.remembrance
+    depends_on:
+      oracle:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - remembrance
+
+  # ─── Agent Swarm (optional) ─────────────────────────────────────
+  swarm:
+    build:
+      context: ${SWARM_PATH:-../REMEMBRANCE-AGENT-Swarm-}
+      dockerfile: Dockerfile
+    ports:
+      - "${SWARM_PORT:-3002}:3002"
+    environment:
+      - NODE_ENV=production
+      - ORACLE_TOOLKIT_URL=http://oracle:3000
+      - VOID_COMPRESSOR_URL=http://void-compressor:8080
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+    depends_on:
+      oracle:
+        condition: service_healthy
+    restart: unless-stopped
+    profiles:
+      - full
+    networks:
+      - remembrance
+
+volumes:
+  oracle-data:
+  void-data:
+  reflector-data:
+
+networks:
+  remembrance:
+    driver: bridge

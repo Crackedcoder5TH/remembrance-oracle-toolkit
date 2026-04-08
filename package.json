@@ -1,6 +1,6 @@
 {
   "name": "remembrance-oracle-toolkit",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Attach this to your AI coding tool. It gives the AI a library of proven, tested patterns instead of generating from scratch. Your code gets better over time.",
   "main": "src/index.js",
   "types": "types/index.d.ts",

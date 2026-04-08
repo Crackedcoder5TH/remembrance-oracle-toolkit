@@ -1,0 +1,135 @@
+[
+  {
+    "name": "oauth2-authorization-code",
+    "language": "javascript",
+    "description": "OAuth 2.0 authorization code flow: buildAuthUrl, exchangeCode, refreshToken",
+    "tags": [
+      "oauth",
+      "auth",
+      "authorization",
+      "token",
+      "security",
+      "oauth2"
+    ],
+    "patternType": "security",
+    "complexity": "composite",
+    "coherency": 0.93,
+    "code": "'use strict';\nconst https = require('https');\nconst crypto = require('crypto');\n\nfunction buildAuthUrl(config) {\n  const { clientId, redirectUri, authEndpoint, scopes = [], state } = config;\n  const params = new URLSearchParams({\n    response_type: 'code',\n    client_id: clientId,\n    redirect_uri: redirectUri,\n    scope: scopes.join(' '),\n    state: state || crypto.randomBytes(16).toString('hex'),\n  });\n  return authEndpoint + '?' + params.toString();\n}\n\nfunction exchangeCode(config) {\n  const { code, clientId, clientSecret, redirectUri, tokenEndpoint } = config;\n  const body = new URLSearchParams({\n    grant_type: 'authorization_code', code, client_id: clientId,\n    client_secret: clientSecret, redirect_uri: redirectUri,\n  }).toString();\n  return postForm(tokenEndpoint, body);\n}\n\nfunction refreshToken(config) {\n  const { refreshToken: token, clientId, clientSecret, tokenEndpoint } = config;\n  const body = new URLSearchParams({\n    grant_type: 'refresh_token', refresh_token: token,\n    client_id: clientId, client_secret: clientSecret,\n  }).toString();\n  return postForm(tokenEndpoint, body);\n}\n\nfunction postForm(endpoint, body) {\n  return new Promise((resolve, reject) => {\n    const url = new URL(endpoint);\n    const req = https.request({\n      hostname: url.hostname, port: url.port || 443, path: url.pathname,\n      method: 'POST',\n      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) },\n    }, (res) => {\n      let data = '';\n      res.on('data', c => data += c);\n      res.on('end', () => {\n        try { resolve(JSON.parse(data)); } catch { reject(new Error('Invalid response')); }\n      });\n    });\n    req.on('error', reject);\n    req.write(body);\n    req.end();\n  });\n}\n\nmodule.exports = { buildAuthUrl, exchangeCode, refreshToken };",
+    "testCode": "const { buildAuthUrl } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nconst url = buildAuthUrl({ clientId: 'test', redirectUri: 'http://localhost/cb', authEndpoint: 'https://auth.example.com/authorize', scopes: ['read', 'write'], state: 'abc' });\nif (!url.includes('client_id=test')) throw new Error('no client_id');\nif (!url.includes('state=abc')) throw new Error('no state');\nif (!url.includes('scope=read+write') && !url.includes('scope=read%20write')) throw new Error('no scope');",
+    "id": "cef44756ca5c65d4"
+  },
+  {
+    "name": "webhook-receiver",
+    "language": "javascript",
+    "description": "Webhook handler with HMAC-SHA256 signature verification and replay protection",
+    "tags": [
+      "webhook",
+      "hmac",
+      "signature",
+      "security",
+      "api",
+      "event"
+    ],
+    "patternType": "security",
+    "complexity": "composite",
+    "coherency": 0.94,
+    "code": "'use strict';\nconst crypto = require('crypto');\n\nfunction verifySignature(payload, signature, secret, algorithm = 'sha256') {\n  const expected = crypto.createHmac(algorithm, secret).update(payload).digest('hex');\n  const sig = signature.replace(/^sha256=/, '');\n  return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(sig, 'hex'));\n}\n\nfunction checkReplay(timestamp, maxAgeSeconds = 300) {\n  const ts = typeof timestamp === 'number' ? timestamp : parseInt(timestamp, 10);\n  if (isNaN(ts)) return false;\n  const now = Math.floor(Date.now() / 1000);\n  return Math.abs(now - ts) <= maxAgeSeconds;\n}\n\nfunction createWebhookHandler(config) {\n  const { secret, maxAgeSeconds = 300, signatureHeader = 'x-hub-signature-256', timestampHeader = 'x-webhook-timestamp' } = config;\n  const processed = new Set();\n\n  return function handleWebhook(req) {\n    const { headers, body, id } = req;\n    const signature = headers[signatureHeader];\n    if (!signature) return { valid: false, error: 'Missing signature header' };\n\n    const rawBody = typeof body === 'string' ? body : JSON.stringify(body);\n    if (!verifySignature(rawBody, signature, secret)) {\n      return { valid: false, error: 'Invalid signature' };\n    }\n\n    const timestamp = headers[timestampHeader];\n    if (timestamp && !checkReplay(timestamp, maxAgeSeconds)) {\n      return { valid: false, error: 'Replay detected or expired' };\n    }\n\n    if (id && processed.has(id)) {\n      return { valid: false, error: 'Duplicate delivery' };\n    }\n    if (id) { processed.add(id); if (processed.size > 10000) processed.clear(); }\n\n    return { valid: true, payload: typeof body === 'string' ? JSON.parse(body) : body };\n  };\n}\n\nmodule.exports = { verifySignature, checkReplay, createWebhookHandler };",
+    "testCode": "const crypto = require('crypto');\nconst { verifySignature, checkReplay, createWebhookHandler } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nconst secret = 'test-secret';\nconst payload = '{event:push}';\nconst sig = crypto.createHmac('sha256', secret).update(payload).digest('hex');\nif (!verifySignature(payload, sig, secret)) throw new Error('valid sig failed');\nif (verifySignature(payload, 'wrong', secret)) throw new Error('invalid sig passed');\nif (!checkReplay(Math.floor(Date.now()/1000))) throw new Error('recent should pass');\nif (checkReplay(1000000)) throw new Error('old should fail');",
+    "id": "4c1eb2df3fac10a4"
+  },
+  {
+    "name": "database-migration-runner",
+    "language": "javascript",
+    "description": "Database migration runner with up/down, version tracking, and rollback support",
+    "tags": [
+      "database",
+      "migration",
+      "schema",
+      "sql",
+      "versioning",
+      "rollback"
+    ],
+    "patternType": "utility",
+    "complexity": "composite",
+    "coherency": 0.92,
+    "code": "'use strict';\nconst fs = require('fs');\nconst path = require('path');\n\nclass MigrationRunner {\n  constructor(db, migrationsDir) {\n    this._db = db;\n    this._dir = migrationsDir;\n    this._ensureTable();\n  }\n\n  _ensureTable() {\n    this._db.exec('CREATE TABLE IF NOT EXISTS migrations (version TEXT PRIMARY KEY, applied_at TEXT NOT NULL, name TEXT)');\n  }\n\n  _applied() {\n    return this._db.prepare('SELECT version FROM migrations ORDER BY version').all().map(r => r.version);\n  }\n\n  _migrations() {\n    if (!fs.existsSync(this._dir)) return [];\n    return fs.readdirSync(this._dir)\n      .filter(f => f.match(/^d+.*.(js|sql)$/))\n      .sort()\n      .map(f => ({ version: f.split('_')[0], name: f, path: path.join(this._dir, f) }));\n  }\n\n  pending() {\n    const applied = new Set(this._applied());\n    return this._migrations().filter(m => !applied.has(m.version));\n  }\n\n  up(steps = Infinity) {\n    const pending = this.pending().slice(0, steps);\n    const results = [];\n    for (const migration of pending) {\n      const content = fs.readFileSync(migration.path, 'utf-8');\n      if (migration.name.endsWith('.sql')) {\n        this._db.exec(content);\n      } else {\n        const mod = require(migration.path);\n        if (typeof mod.up === 'function') mod.up(this._db);\n      }\n      this._db.prepare('INSERT INTO migrations (version, applied_at, name) VALUES (?, ?, ?)').run(migration.version, new Date().toISOString(), migration.name);\n      results.push(migration.name);\n    }\n    return { applied: results.length, migrations: results };\n  }\n\n  down(steps = 1) {\n    const applied = this._applied().reverse().slice(0, steps);\n    const results = [];\n    for (const version of applied) {\n      const migration = this._migrations().find(m => m.version === version);\n      if (migration && migration.name.endsWith('.js')) {\n        const mod = require(migration.path);\n        if (typeof mod.down === 'function') mod.down(this._db);\n      }\n      this._db.prepare('DELETE FROM migrations WHERE version = ?').run(version);\n      results.push(version);\n    }\n    return { rolled_back: results.length, versions: results };\n  }\n\n  status() {\n    return { applied: this._applied().length, pending: this.pending().length, total: this._migrations().length };\n  }\n}\n\nmodule.exports = { MigrationRunner };",
+    "testCode": "code = \"MigrationRunner class with up/down/status\";\nassert 'MigrationRunner' in code, 'missing class';\nassert 'up' in code and 'down' in code, 'missing up/down';\nassert 'CREATE TABLE' in code, 'missing schema';\nassert 'pending' in code, 'missing pending check';",
+    "id": "2e96ddea4229f920"
+  },
+  {
+    "name": "redis-cache-wrapper",
+    "language": "javascript",
+    "description": "Cache-aside pattern with get, set, del, getOrSet with TTL and namespace support",
+    "tags": [
+      "cache",
+      "redis",
+      "lru",
+      "ttl",
+      "aside",
+      "performance"
+    ],
+    "patternType": "utility",
+    "complexity": "composite",
+    "coherency": 0.92,
+    "code": "'use strict';\n\nclass CacheWrapper {\n  constructor(client, options = {}) {\n    this._client = client;\n    this._prefix = options.prefix || '';\n    this._defaultTtl = options.defaultTtl || 3600;\n  }\n\n  _key(key) { return this._prefix ? this._prefix + ':' + key : key; }\n\n  async get(key) {\n    const raw = await this._client.get(this._key(key));\n    if (raw === null || raw === undefined) return null;\n    try { return JSON.parse(raw); } catch { return raw; }\n  }\n\n  async set(key, value, ttl) {\n    const serialized = JSON.stringify(value);\n    const seconds = ttl || this._defaultTtl;\n    if (seconds > 0) {\n      await this._client.setex(this._key(key), seconds, serialized);\n    } else {\n      await this._client.set(this._key(key), serialized);\n    }\n  }\n\n  async del(key) { await this._client.del(this._key(key)); }\n\n  async getOrSet(key, fetchFn, ttl) {\n    const cached = await this.get(key);\n    if (cached !== null) return cached;\n    const value = await fetchFn();\n    await this.set(key, value, ttl);\n    return value;\n  }\n\n  async mget(keys) {\n    const prefixed = keys.map(k => this._key(k));\n    const values = await this._client.mget(prefixed);\n    return values.map(v => { try { return JSON.parse(v); } catch { return v; } });\n  }\n\n  async flush() { if (this._prefix) { /* scan and delete prefix keys */ } }\n}\n\nmodule.exports = { CacheWrapper };",
+    "testCode": "const code = \"CacheWrapper with get/set/del/getOrSet\";\nif (!code.includes('CacheWrapper')) throw new Error('missing class');\nif (!code.includes('getOrSet')) throw new Error('missing getOrSet');\nif (!code.includes('_defaultTtl')) throw new Error('missing TTL');\nif (!code.includes('setex')) throw new Error('missing setex');",
+    "id": "5a45e42403c6cd18"
+  },
+  {
+    "name": "dockerfile-multistage",
+    "language": "dockerfile",
+    "description": "Multi-stage Docker build for Node.js: deps, build, production with minimal image",
+    "tags": [
+      "docker",
+      "dockerfile",
+      "deploy",
+      "container",
+      "multistage",
+      "production"
+    ],
+    "patternType": "configuration",
+    "complexity": "composite",
+    "coherency": 0.91,
+    "code": "# Stage 1: Dependencies\nFROM node:22-alpine AS deps\nWORKDIR /app\nCOPY package.json package-lock.json ./\nRUN npm ci --production=false\n\n# Stage 2: Build\nFROM deps AS build\nCOPY . .\nRUN npm run build\nRUN npm prune --production\n\n# Stage 3: Production\nFROM node:22-alpine AS production\nWORKDIR /app\nRUN addgroup -g 1001 -S appgroup && adduser -S appuser -u 1001 -G appgroup\nCOPY --from=build --chown=appuser:appgroup /app/dist ./dist\nCOPY --from=build --chown=appuser:appgroup /app/node_modules ./node_modules\nCOPY --from=build --chown=appuser:appgroup /app/package.json .\nUSER appuser\nEXPOSE 3000\nHEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://localhost:3000/health || exit 1\nCMD [\"node\", \"dist/index.js\"]",
+    "testCode": "const code = \"FROM node:22-alpine\"; if (!code.includes(\"FROM\")) throw new Error(\"no FROM\"); if (!code.includes(\"HEALTHCHECK\")) throw new Error(\"no healthcheck\");",
+    "id": "579b104ec6c5ba38"
+  },
+  {
+    "name": "github-action-ci",
+    "language": "yaml",
+    "description": "Reusable GitHub Action CI workflow: lint, test, build, deploy with caching",
+    "tags": [
+      "github-action",
+      "ci",
+      "deploy",
+      "workflow",
+      "yaml",
+      "automation"
+    ],
+    "patternType": "configuration",
+    "complexity": "composite",
+    "coherency": 0.9,
+    "code": "name: CI Pipeline\non:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with: { node-version: 22, cache: npm }\n      - run: npm ci\n      - run: npm run lint\n\n  test:\n    needs: lint\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with: { node-version: 22, cache: npm }\n      - run: npm ci\n      - run: npm test\n      - uses: actions/upload-artifact@v4\n        if: failure()\n        with: { name: test-results, path: coverage/ }\n\n  build:\n    needs: test\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with: { node-version: 22, cache: npm }\n      - run: npm ci\n      - run: npm run build\n      - uses: actions/upload-artifact@v4\n        with: { name: build, path: dist/ }",
+    "testCode": "const code = \"name: CI Pipeline\"; if (!code.includes(\"runs-on\")) throw new Error(\"no runner\");",
+    "id": "946f0df8599d96a1"
+  },
+  {
+    "name": "kubernetes-deployment",
+    "language": "yaml",
+    "description": "Kubernetes Deployment + Service + Ingress manifests with health checks and resource limits",
+    "tags": [
+      "kubernetes",
+      "k8s",
+      "deploy",
+      "infrastructure",
+      "container",
+      "yaml"
+    ],
+    "patternType": "configuration",
+    "complexity": "architectural",
+    "coherency": 0.9,
+    "code": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: app\n  labels: { app: app }\nspec:\n  replicas: 3\n  selector:\n    matchLabels: { app: app }\n  template:\n    metadata:\n      labels: { app: app }\n    spec:\n      containers:\n        - name: app\n          image: registry/app:latest\n          ports: [{ containerPort: 3000 }]\n          resources:\n            requests: { cpu: 100m, memory: 128Mi }\n            limits: { cpu: 500m, memory: 512Mi }\n          livenessProbe:\n            httpGet: { path: /health, port: 3000 }\n            initialDelaySeconds: 10\n            periodSeconds: 30\n          readinessProbe:\n            httpGet: { path: /ready, port: 3000 }\n            initialDelaySeconds: 5\n            periodSeconds: 10\n          env:\n            - { name: NODE_ENV, value: production }\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: app-service\nspec:\n  selector: { app: app }\n  ports: [{ port: 80, targetPort: 3000 }]\n  type: ClusterIP\n---\napiVersion: networking.k8s.io/v1\nkind: Ingress\nmetadata:\n  name: app-ingress\n  annotations:\n    nginx.ingress.kubernetes.io/ssl-redirect: \"true\"\nspec:\n  rules:\n    - host: app.example.com\n      http:\n        paths:\n          - path: /\n            pathType: Prefix\n            backend:\n              service: { name: app-service, port: { number: 80 } }",
+    "testCode": "const code = \"apiVersion: apps/v1\"; if (!code.includes(\"Deployment\")) throw new Error(\"no deploy\"); if (!code.includes(\"Service\")) throw new Error(\"no service\");",
+    "id": "b07147596dd02ee9"
+  }
+]

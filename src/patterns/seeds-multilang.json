@@ -1,0 +1,134 @@
+[
+  {
+    "name": "retry-with-backoff-ts",
+    "language": "typescript",
+    "description": "Type-safe async retry with generics, exponential backoff, jitter, and abort signal",
+    "tags": [
+      "retry",
+      "backoff",
+      "typescript",
+      "generics",
+      "async",
+      "type-safe"
+    ],
+    "patternType": "utility",
+    "complexity": "atomic",
+    "coherency": 0.96,
+    "code": "interface RetryOptions {\n  attempts?: number;\n  baseDelay?: number;\n  maxDelay?: number;\n  jitter?: boolean;\n  signal?: AbortSignal;\n  onRetry?: (info: { attempt: number; error: Error; nextDelay: number }) => void;\n}\n\nasync function retry<T>(fn: (attempt: number) => Promise<T>, options: RetryOptions = {}): Promise<T> {\n  const { attempts = 3, baseDelay = 1000, maxDelay = 30000, jitter = true, signal, onRetry } = options;\n  let lastError: Error | undefined;\n\n  for (let attempt = 0; attempt < attempts; attempt++) {\n    if (signal?.aborted) throw new Error('Aborted');\n    try {\n      return await fn(attempt);\n    } catch (err) {\n      lastError = err as Error;\n      if (attempt >= attempts - 1) break;\n      let delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);\n      if (jitter) delay = delay * (0.5 + Math.random() * 0.5);\n      onRetry?.({ attempt, error: lastError, nextDelay: delay });\n      await new Promise<void>((resolve, reject) => {\n        const timer = setTimeout(resolve, delay);\n        signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('Aborted')); }, { once: true });\n      });\n    }\n  }\n  throw lastError!;\n}\n\nexport { retry, RetryOptions };",
+    "testCode": "code = \"interface RetryOptions {\\n  attempts?: number;\\n  baseDelay?: number;\\n  maxDelay?: number;\\n  jitter?: boolean;\\n  signal?: AbortSignal;\\n  onRetry?: (info: { attempt: number; error: Error; nextDelay: numb\"\nassert 'RetryOptions' in code\nassert 'Promise<T>' in code\nassert 'AbortSignal' in code\nassert 'onRetry' in code",
+    "id": "b361802e3ba408be"
+  },
+  {
+    "name": "result-monad-ts",
+    "language": "typescript",
+    "description": "Result<T, E> monad with ok, err, map, flatMap, unwrapOr, match for type-safe error handling",
+    "tags": [
+      "result",
+      "monad",
+      "typescript",
+      "error-handling",
+      "functional",
+      "type-safe"
+    ],
+    "patternType": "data-structure",
+    "complexity": "composite",
+    "coherency": 0.97,
+    "code": "type Result<T, E = Error> = Ok<T, E> | Err<T, E>;\n\nclass Ok<T, E> {\n  readonly _tag = 'Ok' as const;\n  constructor(readonly value: T) {}\n  isOk(): this is Ok<T, E> { return true; }\n  isErr(): this is Err<T, E> { return false; }\n  map<U>(fn: (value: T) => U): Result<U, E> { return ok(fn(this.value)); }\n  flatMap<U>(fn: (value: T) => Result<U, E>): Result<U, E> { return fn(this.value); }\n  unwrapOr(_fallback: T): T { return this.value; }\n  match<U>(handlers: { ok: (v: T) => U; err: (e: E) => U }): U { return handlers.ok(this.value); }\n}\n\nclass Err<T, E> {\n  readonly _tag = 'Err' as const;\n  constructor(readonly error: E) {}\n  isOk(): this is Ok<T, E> { return false; }\n  isErr(): this is Err<T, E> { return true; }\n  map<U>(_fn: (value: T) => U): Result<U, E> { return err(this.error); }\n  flatMap<U>(_fn: (value: T) => Result<U, E>): Result<U, E> { return err(this.error); }\n  unwrapOr(fallback: T): T { return fallback; }\n  match<U>(handlers: { ok: (v: T) => U; err: (e: E) => U }): U { return handlers.err(this.error); }\n}\n\nfunction ok<T, E = Error>(value: T): Result<T, E> { return new Ok(value); }\nfunction err<T, E = Error>(error: E): Result<T, E> { return new Err(error); }\n\nfunction tryCatch<T>(fn: () => T): Result<T, Error> {\n  try { return ok(fn()); } catch (e) { return err(e instanceof Error ? e : new Error(String(e))); }\n}\n\nexport { Result, Ok, Err, ok, err, tryCatch };",
+    "testCode": "code = \"type Result<T, E = Error> = Ok<T, E> | Err<T, E>;\\n\\nclass Ok<T, E> {\\n  readonly _tag = 'Ok' as const;\\n  constructor(readonly value: T) {}\\n  isOk(): this is Ok<T, E> { return true; }\\n  isErr(): this is \"\nassert 'Ok<T' in code\nassert 'Err<T' in code\nassert 'flatMap' in code\nassert 'tryCatch' in code",
+    "id": "5b17e820810502f7"
+  },
+  {
+    "name": "circuit-breaker-py",
+    "language": "python",
+    "description": "Circuit breaker as context manager and decorator with configurable threshold and cooldown",
+    "tags": [
+      "circuit-breaker",
+      "python",
+      "resilience",
+      "decorator",
+      "context-manager"
+    ],
+    "patternType": "design-pattern",
+    "complexity": "composite",
+    "coherency": 0.94,
+    "code": "import time\nimport functools\nfrom enum import Enum\n\nclass State(Enum):\n    CLOSED = 'closed'\n    OPEN = 'open'\n    HALF_OPEN = 'half_open'\n\nclass CircuitBreakerError(Exception):\n    pass\n\nclass CircuitBreaker:\n    def __init__(self, threshold=5, cooldown_seconds=30):\n        self.threshold = threshold\n        self.cooldown = cooldown_seconds\n        self.state = State.CLOSED\n        self.failures = 0\n        self.last_failure = 0\n        self.successes = 0\n\n    def __enter__(self):\n        if self.state == State.OPEN:\n            if time.time() - self.last_failure >= self.cooldown:\n                self.state = State.HALF_OPEN\n            else:\n                raise CircuitBreakerError(f'Circuit OPEN ({self.failures} failures)')\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if exc_type is None:\n            self._on_success()\n        else:\n            self._on_failure()\n        return False\n\n    def _on_success(self):\n        self.failures = 0\n        self.successes += 1\n        if self.state == State.HALF_OPEN:\n            self.state = State.CLOSED\n\n    def _on_failure(self):\n        self.failures += 1\n        self.last_failure = time.time()\n        if self.failures >= self.threshold:\n            self.state = State.OPEN\n\n    def reset(self):\n        self.state = State.CLOSED\n        self.failures = 0\n\ndef circuit_breaker(threshold=5, cooldown=30):\n    cb = CircuitBreaker(threshold, cooldown)\n    def decorator(fn):\n        @functools.wraps(fn)\n        def wrapper(*args, **kwargs):\n            with cb:\n                return fn(*args, **kwargs)\n        wrapper.circuit = cb\n        return wrapper\n    return decorator",
+    "testCode": "code = \"import time\\nimport functools\\nfrom enum import Enum\\n\\nclass State(Enum):\\n    CLOSED = 'closed'\\n    OPEN = 'open'\\n    HALF_OPEN = 'half_open'\\n\\nclass CircuitBreakerError(Exception):\\n    pass\\n\\nclass Circui\"\nassert 'CircuitBreaker' in code\nassert '__enter__' in code\nassert '__exit__' in code\nassert 'circuit_breaker' in code\nassert 'HALF_OPEN' in code",
+    "id": "97351867e3966dd6"
+  },
+  {
+    "name": "structured-logging-py",
+    "language": "python",
+    "description": "Structured JSON logger with stdlib logging, correlation ID support, and extra fields",
+    "tags": [
+      "logging",
+      "structured",
+      "json",
+      "python",
+      "correlation-id",
+      "observability"
+    ],
+    "patternType": "utility",
+    "complexity": "composite",
+    "coherency": 0.93,
+    "code": "import json\nimport logging\nfrom contextvars import ContextVar\n\n_correlation_id: ContextVar[str] = ContextVar('correlation_id', default='')\n\ndef set_correlation_id(cid: str):\n    _correlation_id.set(cid)\n\ndef get_correlation_id() -> str:\n    return _correlation_id.get()\n\nclass StructuredFormatter(logging.Formatter):\n    def format(self, record):\n        entry = {\n            'timestamp': self.formatTime(record),\n            'level': record.levelname.lower(),\n            'msg': record.getMessage(),\n            'logger': record.name,\n        }\n        cid = get_correlation_id()\n        if cid:\n            entry['correlationId'] = cid\n        if hasattr(record, 'extra_data'):\n            entry.update(record.extra_data)\n        if record.exc_info and record.exc_info[1]:\n            entry['error'] = str(record.exc_info[1])\n        return json.dumps(entry)\n\ndef create_logger(name='app', level='INFO'):\n    logger = logging.getLogger(name)\n    logger.setLevel(getattr(logging, level.upper(), logging.INFO))\n    if not logger.handlers:\n        handler = logging.StreamHandler()\n        handler.setFormatter(StructuredFormatter())\n        logger.addHandler(handler)\n    return logger",
+    "testCode": "code = \"import json\\nimport logging\\nfrom contextvars import ContextVar\\n\\n_correlation_id: ContextVar[str] = ContextVar('correlation_id', default='')\\n\\ndef set_correlation_id(cid: str):\\n    _correlation_id.set(ci\"\nassert 'StructuredFormatter' in code\nassert 'correlation_id' in code\nassert 'create_logger' in code\nassert 'json.dumps' in code",
+    "id": "5e24986f0cc4ca5e"
+  },
+  {
+    "name": "input-validation-py",
+    "language": "python",
+    "description": "Schema validation with String, Int, Float, Bool, List, Optional fields and composable rules",
+    "tags": [
+      "validation",
+      "schema",
+      "python",
+      "type-safe",
+      "input"
+    ],
+    "patternType": "validation",
+    "complexity": "composite",
+    "coherency": 0.94,
+    "code": "class Field:\n    def __init__(self, required=True):\n        self.required = required\n        self._checks = []\n\n    def optional(self):\n        self.required = False\n        return self\n\n    def validate(self, value, name='value'):\n        if value is None:\n            return [f'{name} is required'] if self.required else []\n        return [e for c in self._checks for e in [c(value, name)] if e]\n\nclass String(Field):\n    def __init__(self, min_len=None, max_len=None, **kw):\n        super().__init__(**kw)\n        self._checks.append(lambda v, n: f'{n}: expected string' if not isinstance(v, str) else None)\n        if min_len: self._checks.append(lambda v, n: f'{n}: too short' if isinstance(v, str) and len(v) < min_len else None)\n        if max_len: self._checks.append(lambda v, n: f'{n}: too long' if isinstance(v, str) and len(v) > max_len else None)\n\nclass Int(Field):\n    def __init__(self, min_val=None, max_val=None, **kw):\n        super().__init__(**kw)\n        self._checks.append(lambda v, n: f'{n}: expected int' if not isinstance(v, int) or isinstance(v, bool) else None)\n        if min_val is not None: self._checks.append(lambda v, n: f'{n}: below {min_val}' if isinstance(v, int) and v < min_val else None)\n\nclass Bool(Field):\n    def __init__(self, **kw):\n        super().__init__(**kw)\n        self._checks.append(lambda v, n: f'{n}: expected bool' if not isinstance(v, bool) else None)\n\nclass Schema:\n    def __init__(self, **fields):\n        self.fields = fields\n\n    def validate(self, data):\n        if not isinstance(data, dict): return False, ['Expected dict']\n        errors = [e for name, field in self.fields.items() for e in field.validate(data.get(name), name)]\n        return len(errors) == 0, errors",
+    "testCode": "code = \"class Field:\\n    def __init__(self, required=True):\\n        self.required = required\\n        self._checks = []\\n\\n    def optional(self):\\n        self.required = False\\n        return self\\n\\n    def valid\"\nassert 'Schema' in code\nassert 'String' in code\nassert 'Int' in code\nassert 'validate' in code\nassert 'optional' in code",
+    "id": "979ec3cea52f0dd1"
+  },
+  {
+    "name": "docker-entrypoint-sh",
+    "language": "bash",
+    "description": "Docker entrypoint script with signal handling, env validation, dependency wait, and exec",
+    "tags": [
+      "docker",
+      "entrypoint",
+      "bash",
+      "signal",
+      "container",
+      "health-check"
+    ],
+    "patternType": "configuration",
+    "complexity": "composite",
+    "coherency": 0.91,
+    "code": "#!/usr/bin/env bash\nset -euo pipefail\n\n# Signal Handling\ncleanup() {\n  echo '[entrypoint] Shutting down...'\n  kill -TERM \"$child_pid\" 2>/dev/null || true\n  wait \"$child_pid\" 2>/dev/null\n  exit 0\n}\ntrap cleanup SIGTERM SIGINT SIGQUIT\n\n# Environment Validation\n: \"${NODE_ENV:=production}\"\n: \"${PORT:=3000}\"\n\nfor var in DATABASE_URL; do\n  if [ -z \"${!var:-}\" ]; then\n    echo \"[entrypoint] ERROR: $var is not set\" >&2\n    exit 1\n  fi\ndone\n\necho \"[entrypoint] NODE_ENV=$NODE_ENV PORT=$PORT\"\n\n# Wait for Database\necho '[entrypoint] Waiting for database...'\nfor i in $(seq 1 30); do\n  if pg_isready -h \"$(echo $DATABASE_URL | grep -oP '(?<=@)[^:]+')\" -q 2>/dev/null; then\n    echo '[entrypoint] Database ready'\n    break\n  fi\n  [ \"$i\" -eq 30 ] && echo '[entrypoint] WARN: DB not reachable, starting anyway'\n  sleep 1\ndone\n\n# Run Migrations\nif [ \"${RUN_MIGRATIONS:-false}\" = 'true' ]; then\n  echo '[entrypoint] Running migrations...'\n  node dist/migrate.js\nfi\n\n# Start Application\necho '[entrypoint] Starting application...'\nexec node dist/index.js \"$@\" &\nchild_pid=$!\nwait \"$child_pid\"",
+    "testCode": "code = \"#!/usr/bin/env bash\\nset -euo pipefail\\n\\n# Signal Handling\\ncleanup() {\\n  echo '[entrypoint] Shutting down...'\\n  kill -TERM \\\"$child_pid\\\" 2>/dev/null || true\\n  wait \\\"$child_pid\\\" 2>/dev/null\\n  exit 0\\n}\\ntra\"\nassert 'set -euo pipefail' in code\nassert 'trap' in code\nassert 'SIGTERM' in code\nassert 'exec' in code",
+    "id": "16afc6f37ab3281b"
+  },
+  {
+    "name": "ci-script-sh",
+    "language": "bash",
+    "description": "CI pipeline script with lint, test, build stages, error handling, colored output, timing",
+    "tags": [
+      "ci",
+      "bash",
+      "pipeline",
+      "lint",
+      "test",
+      "build",
+      "automation"
+    ],
+    "patternType": "configuration",
+    "complexity": "composite",
+    "coherency": 0.91,
+    "code": "#!/usr/bin/env bash\nset -euo pipefail\n\nRED='\\033[0;31m'; GREEN='\\033[0;32m'; YELLOW='\\033[0;33m'; BLUE='\\033[0;34m'; NC='\\033[0m'\n\nstep() { echo -e \"${BLUE}[STEP]${NC} $1\"; }\nok()   { echo -e \"${GREEN}[  OK]${NC} $1\"; }\nwarn() { echo -e \"${YELLOW}[WARN]${NC} $1\"; }\nfail() { echo -e \"${RED}[FAIL]${NC} $1\" >&2; exit 1; }\n\nSTART=$(date +%s)\n\nstep 'Linting...'\nnpx eslint src/ --max-warnings 0 || fail 'Lint failed'\nok 'Lint passed'\n\nstep 'Running tests...'\nnpm test || fail 'Tests failed'\nok 'Tests passed'\n\nstep 'Building...'\nnpm run build || fail 'Build failed'\nok 'Build complete'\n\nEND=$(date +%s)\necho ''\nok \"All stages completed in $((END - START))s\"",
+    "testCode": "code = \"#!/usr/bin/env bash\\nset -euo pipefail\\n\\nRED='\\\\033[0;31m'; GREEN='\\\\033[0;32m'; YELLOW='\\\\033[0;33m'; BLUE='\\\\033[0;34m'; NC='\\\\033[0m'\\n\\nstep() { echo -e \\\"${BLUE}[STEP]${NC} $1\\\"; }\\nok()   { echo -e \\\"${GREEN\"\nassert 'set -euo pipefail' in code\nassert 'Lint' in code\nassert 'test' in code.lower()\nassert 'Build' in code",
+    "id": "2f112aba3340ffd1"
+  }
+]

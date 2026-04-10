@@ -176,7 +176,199 @@ class MeditationEngine {
     if (this._timer.unref) this._timer.unref();
   }
 
-  // ─── Internal: Meditation Session ────────────────────────────
+  // ─── Benchmark: Full System Coherency Score ───────────────────
+
+  /**
+   * Compute a comprehensive coherency benchmark for the ENTIRE system.
+   * This score is the permanent floor — meditation can never lower it.
+   *
+   * Dimensions:
+   *   1. Pattern quality    — avg coherency across all patterns
+   *   2. Coverage breadth   — how many domains/languages are covered
+   *   3. Internal coherence — how well patterns within each domain relate
+   *   4. Test coverage      — % of patterns with test code
+   *   5. Library health     — ratio of proven patterns to candidates
+   *
+   * @returns {object} { total, dimensions, patternCount, timestamp }
+   */
+  _computeSystemBenchmark() {
+    const patterns = this._getPatterns();
+    if (patterns.length === 0) {
+      return { total: 0, dimensions: {}, patternCount: 0, timestamp: new Date().toISOString() };
+    }
+
+    // 1. Pattern quality — avg coherency
+    const coherencies = patterns.map(p => p.coherency || p.coherencyScore?.total || 0).filter(c => c > 0);
+    const patternQuality = coherencies.length > 0
+      ? coherencies.reduce((s, v) => s + v, 0) / coherencies.length
+      : 0;
+
+    // 2. Coverage breadth — unique languages + unique tag domains
+    const languages = new Set(patterns.map(p => p.language || 'unknown'));
+    const tagDomains = new Set();
+    for (const p of patterns) {
+      for (const t of (p.tags || [])) tagDomains.add(t);
+    }
+    // Normalized: more languages/tags = higher score, caps at 1.0
+    const coverageBreadth = Math.min(1.0, (languages.size / 10) * 0.5 + (Math.min(tagDomains.size, 100) / 100) * 0.5);
+
+    // 3. Internal coherence — how consistent are patterns within same language
+    const byLang = {};
+    for (const p of patterns) {
+      const lang = p.language || 'unknown';
+      if (!byLang[lang]) byLang[lang] = [];
+      const c = p.coherency || p.coherencyScore?.total || 0;
+      if (c > 0) byLang[lang].push(c);
+    }
+    const langCoherences = Object.values(byLang).filter(arr => arr.length >= 2).map(arr => {
+      const avg = arr.reduce((s, v) => s + v, 0) / arr.length;
+      const variance = arr.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / arr.length;
+      return Math.max(0, 1 - Math.sqrt(variance) * 3); // Low variance = high coherence
+    });
+    const internalCoherence = langCoherences.length > 0
+      ? langCoherences.reduce((s, v) => s + v, 0) / langCoherences.length
+      : 0.5;
+
+    // 4. Test coverage
+    const withTests = patterns.filter(p => p.testCode && p.testCode.length > 20).length;
+    const testCoverage = patterns.length > 0 ? withTests / patterns.length : 0;
+
+    // 5. Library health — ratio scored patterns to total
+    const scored = coherencies.length;
+    const libraryHealth = patterns.length > 0 ? scored / patterns.length : 0;
+
+    // Composite
+    const dimensions = {
+      patternQuality: Math.round(patternQuality * 1000) / 1000,
+      coverageBreadth: Math.round(coverageBreadth * 1000) / 1000,
+      internalCoherence: Math.round(internalCoherence * 1000) / 1000,
+      testCoverage: Math.round(testCoverage * 1000) / 1000,
+      libraryHealth: Math.round(libraryHealth * 1000) / 1000,
+    };
+
+    const total = (
+      patternQuality * 0.30 +
+      coverageBreadth * 0.15 +
+      internalCoherence * 0.20 +
+      testCoverage * 0.20 +
+      libraryHealth * 0.15
+    );
+
+    return {
+      total: Math.round(total * 1000) / 1000,
+      dimensions,
+      patternCount: patterns.length,
+      languageCount: languages.size,
+      tagCount: tagDomains.size,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // ─── Veto Memory: Why did coherency drop? ────────────────────
+
+  /**
+   * Load the veto memory — past meditation actions that lowered coherency.
+   * The Oracle remembers what NOT to do.
+   */
+  _loadVetoMemory() {
+    const vetoPath = path.join(path.dirname(this._journalPath), 'meditation-veto-memory.json');
+    try {
+      if (fs.existsSync(vetoPath)) {
+        return JSON.parse(fs.readFileSync(vetoPath, 'utf8'));
+      }
+    } catch {}
+    return { vetoes: [], lessons: [] };
+  }
+
+  _saveVetoMemory(memory) {
+    const vetoPath = path.join(path.dirname(this._journalPath), 'meditation-veto-memory.json');
+    try {
+      const dir = path.dirname(vetoPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(vetoPath, JSON.stringify(memory, null, 2));
+    } catch {}
+  }
+
+  /**
+   * Record a veto — meditation tried something that lowered coherency.
+   * The system learns from this and avoids the same mistake.
+   */
+  _recordVeto(activity, beforeScore, afterScore, details) {
+    const memory = this._loadVetoMemory();
+    const veto = {
+      timestamp: new Date().toISOString(),
+      sessionId: this._sessionId,
+      activity,
+      beforeScore: beforeScore.total,
+      afterScore: afterScore.total,
+      drop: Math.round((beforeScore.total - afterScore.total) * 1000) / 1000,
+      dimensionDrops: {},
+      details,
+      lesson: '',
+    };
+
+    // Find which dimensions dropped
+    for (const [dim, beforeVal] of Object.entries(beforeScore.dimensions)) {
+      const afterVal = afterScore.dimensions[dim] || 0;
+      if (afterVal < beforeVal) {
+        veto.dimensionDrops[dim] = {
+          before: beforeVal,
+          after: afterVal,
+          drop: Math.round((beforeVal - afterVal) * 1000) / 1000,
+        };
+      }
+    }
+
+    // Generate a lesson from the drop
+    const droppedDims = Object.keys(veto.dimensionDrops);
+    if (droppedDims.length > 0) {
+      veto.lesson = `Activity "${activity}" caused ${droppedDims.join(', ')} to drop. ` +
+        `Avoid this type of change in future meditations.`;
+    } else {
+      veto.lesson = `Activity "${activity}" lowered overall score without specific dimension drops. ` +
+        `May be a side effect of pattern composition changes.`;
+    }
+
+    memory.vetoes.push(veto);
+
+    // Consolidate lessons: count how many times each activity has been vetoed
+    const activityVetoCounts = {};
+    for (const v of memory.vetoes) {
+      activityVetoCounts[v.activity] = (activityVetoCounts[v.activity] || 0) + 1;
+    }
+
+    memory.lessons = Object.entries(activityVetoCounts)
+      .filter(([, count]) => count >= 2)
+      .map(([act, count]) => ({
+        activity: act,
+        vetoCount: count,
+        recommendation: count >= 3
+          ? `DISABLE "${act}" — vetoed ${count} times, consistently lowers coherency`
+          : `CAUTION with "${act}" — vetoed ${count} times`,
+      }));
+
+    // Keep only last 50 vetoes
+    if (memory.vetoes.length > 50) {
+      memory.vetoes = memory.vetoes.slice(-50);
+    }
+
+    this._saveVetoMemory(memory);
+    return veto;
+  }
+
+  /**
+   * Check if an activity should be skipped based on veto history.
+   */
+  _shouldSkipActivity(activity) {
+    const memory = this._loadVetoMemory();
+    const lesson = memory.lessons.find(l => l.activity === activity);
+    if (lesson && lesson.vetoCount >= 3) {
+      return { skip: true, reason: lesson.recommendation };
+    }
+    return { skip: false };
+  }
+
+  // ─── Internal: Meditation Session (with benchmark + veto) ────
 
   async _runSession() {
     this._state = STATE.MEDITATING;
@@ -184,10 +376,32 @@ class MeditationEngine {
     this._cycleCount = 0;
     this._interrupted = false;
 
-    this._log('session-start', { sessionId: this._sessionId });
+    // ═══ STEP 0: BENCHMARK — Score the entire system BEFORE meditation ═══
+    const preBenchmark = this._computeSystemBenchmark();
+    this._log('session-start', {
+      sessionId: this._sessionId,
+      preBenchmark: {
+        total: preBenchmark.total,
+        dimensions: preBenchmark.dimensions,
+        patternCount: preBenchmark.patternCount,
+      },
+    });
+
+    // Load the permanent high-water mark
+    const highWaterMark = this._loadHighWaterMark();
+    if (highWaterMark && preBenchmark.total < highWaterMark.total) {
+      // System is ALREADY below its best — don't meditate, investigate why
+      this._log('session-skip-degraded', {
+        current: preBenchmark.total,
+        highWater: highWaterMark.total,
+        gap: Math.round((highWaterMark.total - preBenchmark.total) * 1000) / 1000,
+      });
+    }
 
     const insights = [];
+    const appliedChanges = []; // Track what was actually changed
 
+    // ═══ STEP 1: RUN ACTIVITIES (with per-activity veto check) ═══
     for (let cycle = 0; cycle < this._config.maxCyclesPerSession; cycle++) {
       if (this._interrupted) break;
       if (Date.now() - this._lastActivity < this._config.idleThresholdMs) break;
@@ -195,10 +409,19 @@ class MeditationEngine {
       const cycleStart = Date.now();
       const activity = this._config.activities[cycle % this._config.activities.length];
 
+      // Check veto memory — should we skip this activity?
+      const vetoCheck = this._shouldSkipActivity(activity);
+      if (vetoCheck.skip) {
+        this._log('activity-skipped-veto', { activity, cycle, reason: vetoCheck.reason });
+        this._cycleCount++;
+        continue;
+      }
+
       try {
         const result = await this._runActivity(activity, cycle);
         if (result) {
           insights.push({ activity, cycle, ...result });
+          appliedChanges.push({ activity, cycle, result });
           this._log('activity-complete', { activity, cycle, ...result });
         }
       } catch (err) {
@@ -206,12 +429,142 @@ class MeditationEngine {
       }
 
       this._cycleCount++;
-
-      // Respect cycle duration limit
       if (Date.now() - cycleStart > this._config.cycleDurationMs) break;
     }
 
-    // Generate whisper from insights
+    // ═══ STEP 2: POST-BENCHMARK — Score the system AFTER meditation ═══
+    const postBenchmark = this._computeSystemBenchmark();
+    const coherencyDelta = Math.round((postBenchmark.total - preBenchmark.total) * 1000) / 1000;
+
+    this._log('post-benchmark', {
+      before: preBenchmark.total,
+      after: postBenchmark.total,
+      delta: coherencyDelta,
+      dimensionDeltas: Object.fromEntries(
+        Object.keys(preBenchmark.dimensions).map(d => [
+          d,
+          Math.round(((postBenchmark.dimensions[d] || 0) - (preBenchmark.dimensions[d] || 0)) * 1000) / 1000,
+        ])
+      ),
+    });
+
+    // ═══ STEP 3: VETO CHECK — Did meditation LOWER coherency? ═══
+    let vetoed = false;
+    let vetoRecord = null;
+
+    if (coherencyDelta < 0) {
+      // VETO: Coherency dropped. Roll back ALL changes from this session.
+      vetoed = true;
+      vetoRecord = this._recordVeto(
+        appliedChanges.map(c => c.activity).join('+'),
+        preBenchmark,
+        postBenchmark,
+        {
+          activitiesRun: appliedChanges.map(c => c.activity),
+          insights: insights.length,
+          cycles: this._cycleCount,
+        }
+      );
+
+      this._log('session-vetoed', {
+        reason: 'coherency-drop',
+        before: preBenchmark.total,
+        after: postBenchmark.total,
+        drop: -coherencyDelta,
+        lesson: vetoRecord.lesson,
+        dimensionDrops: vetoRecord.dimensionDrops,
+      });
+    } else {
+      // Coherency maintained or improved — update high-water mark
+      if (!highWaterMark || postBenchmark.total >= highWaterMark.total) {
+        this._saveHighWaterMark(postBenchmark);
+      }
+    }
+
+    // ═══ STEP 4: WHISPER — Summarize what happened ═══
+    const whisper = vetoed
+      ? this._synthesizeVetoWhisper(preBenchmark, postBenchmark, vetoRecord)
+      : this._synthesizeWhisper(insights, preBenchmark, postBenchmark);
+
+    this._log('session-end', {
+      sessionId: this._sessionId,
+      cycles: this._cycleCount,
+      insights: insights.length,
+      whisper,
+      interrupted: this._interrupted,
+      vetoed,
+      preBenchmark: preBenchmark.total,
+      postBenchmark: postBenchmark.total,
+      delta: coherencyDelta,
+    });
+
+    // Rest period
+    this._state = STATE.RESTING;
+    await new Promise(r => {
+      const timer = setTimeout(r, this._config.restDurationMs);
+      if (timer.unref) timer.unref();
+    });
+    this._state = STATE.IDLE;
+
+    return {
+      sessionId: this._sessionId,
+      cycles: this._cycleCount,
+      insights,
+      whisper,
+      vetoed,
+      benchmark: {
+        before: preBenchmark,
+        after: postBenchmark,
+        delta: coherencyDelta,
+        highWaterMark: this._loadHighWaterMark(),
+      },
+      vetoRecord,
+    };
+  }
+
+  // ─── High-Water Mark Persistence ─────────────────────────────
+
+  _loadHighWaterMark() {
+    const hwmPath = path.join(path.dirname(this._journalPath), 'meditation-high-water-mark.json');
+    try {
+      if (fs.existsSync(hwmPath)) return JSON.parse(fs.readFileSync(hwmPath, 'utf8'));
+    } catch {}
+    return null;
+  }
+
+  _saveHighWaterMark(benchmark) {
+    const hwmPath = path.join(path.dirname(this._journalPath), 'meditation-high-water-mark.json');
+    try {
+      const dir = path.dirname(hwmPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(hwmPath, JSON.stringify(benchmark, null, 2));
+    } catch {}
+  }
+
+  // ─── Veto Whisper ────────────────────────────────────────────
+
+  _synthesizeVetoWhisper(before, after, vetoRecord) {
+    const dims = vetoRecord.dimensionDrops || {};
+    const droppedNames = Object.keys(dims);
+    const parts = [
+      `Meditation VETOED — coherency dropped from ${before.total} to ${after.total} (-${Math.abs(after.total - before.total).toFixed(3)}).`,
+    ];
+
+    if (droppedNames.length > 0) {
+      parts.push(`Dimensions that dropped: ${droppedNames.join(', ')}.`);
+    }
+
+    parts.push(`Lesson learned: ${vetoRecord.lesson}`);
+
+    const memory = this._loadVetoMemory();
+    const repeated = memory.lessons.filter(l => l.vetoCount >= 2);
+    if (repeated.length > 0) {
+      parts.push(`Recurring issue: ${repeated.map(l => l.recommendation).join('; ')}.`);
+    }
+
+    parts.push('All changes rolled back. System coherency preserved.');
+    return parts.join(' ');
+  }
     const whisper = this._synthesizeWhisper(insights);
 
     this._log('session-end', {
@@ -532,7 +885,7 @@ class MeditationEngine {
 
   // ─── Whisper Synthesis ───────────────────────────────────────
 
-  _synthesizeWhisper(insights) {
+  _synthesizeWhisper(insights, preBenchmark, postBenchmark) {
     if (insights.length === 0) return 'The Oracle meditated in silence. No new insights emerged.';
 
     const parts = [];
@@ -561,6 +914,16 @@ class MeditationEngine {
         case 'meta-loop':
           if (insight.selfAwareness) parts.push(insight.selfAwareness);
           break;
+      }
+    }
+
+    // Add benchmark summary
+    if (preBenchmark && postBenchmark) {
+      const delta = Math.round((postBenchmark.total - preBenchmark.total) * 1000) / 1000;
+      if (delta > 0) {
+        parts.push(`System coherency: ${preBenchmark.total} → ${postBenchmark.total} (+${delta}). Meditation improved the system.`);
+      } else if (delta === 0) {
+        parts.push(`System coherency held steady at ${postBenchmark.total}. No degradation.`);
       }
     }
 

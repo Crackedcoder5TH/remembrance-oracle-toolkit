@@ -9,6 +9,7 @@
       "require": "./src/index.js",
       "types": "./types/index.d.ts"
     },
+    "./agent": "./src/agent-integration.js",
     "./oracle": "./src/api/oracle.js",
     "./coherency": "./src/core/coherency.js",
     "./covenant": "./src/core/covenant.js",

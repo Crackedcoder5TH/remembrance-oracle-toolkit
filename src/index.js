@@ -64,6 +64,9 @@ const { loadBuiltinPlugin, loadAllBuiltins, listBuiltins } = require('./plugins/
 // Auto-Workflow — ON BY DEFAULT (disable with REMEMBRANCE_AUTO_WORKFLOW=false)
 const { AutoWorkflow, initAutoWorkflow, loadWorkflowConfig, saveWorkflowConfig, DEFAULT_CONFIG: AUTO_WORKFLOW_DEFAULTS } = require('./core/auto-workflow');
 
+// Agent Integration — wraps ANY AI with the full auto-workflow
+const { wrapAgent, buildRememberedSystemPrompt, getWorkflowMcpTools } = require('./agent-integration');
+
 // Auth & SSO
 const { authMiddleware, authenticate, authorize, generateApiKey, validateApiKey, revokeApiKey, listApiKeys, createJwt, verifyJwt, auditLog, readAuditLog, ensureAdminKey, checkRateLimit, ROLES } = require('./core/auth');
 const { loadSsoConfig, buildAuthUrl, exchangeCode, getUserInfo, ssoStatus } = require('./core/sso');
@@ -478,4 +481,9 @@ module.exports = {
   healCode,
   cascadeCode,
   DECISION_THRESHOLDS,
+
+  // Agent Integration (wraps ANY AI with auto-workflow)
+  wrapAgent,
+  buildRememberedSystemPrompt,
+  getWorkflowMcpTools,
 };

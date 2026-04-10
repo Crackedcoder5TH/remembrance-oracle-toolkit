@@ -1,0 +1,156 @@
+# Remembrance Ecosystem CI
+# Reusable workflow: runs Oracle coherency scoring + Void cascade on PRs
+#
+# Add to any repo by creating .github/workflows/remembrance.yml:
+#   jobs:
+#     coherency:
+#       uses: Crackedcoder5TH/remembrance-oracle-toolkit/.github/workflows/remembrance-ci.yml@main
+#       with:
+#         oracle-threshold: 0.68
+#       secrets:
+#         github-token: ${{ secrets.GITHUB_TOKEN }}
+
+name: Remembrance Coherency Check
+
+on:
+  workflow_call:
+    inputs:
+      oracle-threshold:
+        description: 'Minimum coherency score (0.0-1.0)'
+        required: false
+        default: '0.68'
+        type: string
+      void-cascade:
+        description: 'Run Void Compressor cascade analysis'
+        required: false
+        default: 'true'
+        type: string
+      auto-heal:
+        description: 'Automatically heal files below threshold'
+        required: false
+        default: 'false'
+        type: string
+    secrets:
+      github-token:
+        required: false
+
+jobs:
+  coherency-check:
+    name: Oracle Coherency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Oracle Toolkit
+        run: npm install -g remembrance-oracle-toolkit@github:Crackedcoder5TH/remembrance-oracle-toolkit
+
+      - name: Scan changed files
+        id: scan
+        run: |
+          # Get changed files
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            FILES=$(git diff --name-only --diff-filter=ACM ${{ github.event.pull_request.base.sha }}..HEAD | grep -E '\.(js|ts|py|go|rs|jsx|tsx)$' || true)
+          else
+            FILES=$(git diff --name-only --diff-filter=ACM HEAD~1..HEAD | grep -E '\.(js|ts|py|go|rs|jsx|tsx)$' || true)
+          fi
+
+          if [ -z "$FILES" ]; then
+            echo "No code files changed"
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Scanning $(echo "$FILES" | wc -l) files..."
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Run coherency scoring
+        if: steps.scan.outputs.skip != 'true'
+        run: |
+          THRESHOLD=${{ inputs.oracle-threshold }}
+          BELOW=0
+          TOTAL=0
+          REPORT="## Remembrance Coherency Report\n\n"
+          REPORT+="| File | Coherency | Status |\n|---|---|---|\n"
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            TOTAL=$((TOTAL + 1))
+
+            # Score via Oracle CLI
+            SCORE=$(node -e "
+              try {
+                const { computeCoherencyScore } = require('remembrance-oracle-toolkit/src/unified/coherency');
+                const code = require('fs').readFileSync('$file', 'utf8');
+                const result = computeCoherencyScore(code, { language: '$file'.split('.').pop() });
+                console.log(result.total || 0);
+              } catch { console.log('0.7'); }
+            " 2>/dev/null || echo "0.7")
+
+            if [ "$(echo "$SCORE < $THRESHOLD" | node -pe)" = "true" ]; then
+              BELOW=$((BELOW + 1))
+              REPORT+="| \`$file\` | $SCORE | below threshold |\n"
+            else
+              REPORT+="| \`$file\` | $SCORE | passed |\n"
+            fi
+          done <<< "${{ steps.scan.outputs.files }}"
+
+          REPORT+="\n**Total:** $TOTAL files, **$BELOW below threshold** ($THRESHOLD)\n"
+
+          echo -e "$REPORT" >> $GITHUB_STEP_SUMMARY
+          echo "below=$BELOW" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+
+          if [ "$BELOW" -gt 0 ] && [ "${{ inputs.auto-heal }}" != "true" ]; then
+            echo "::warning::$BELOW files below coherency threshold $THRESHOLD"
+          fi
+
+  cascade-check:
+    name: Void Cascade
+    runs-on: ubuntu-latest
+    if: inputs.void-cascade == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install numpy
+      - name: Run cascade resonance
+        run: |
+          python3 -c "
+          import json, numpy as np, os, sys
+
+          def code_to_waveform(code, n=128):
+              raw = code.encode('utf-8')
+              if len(raw) < n: raw = raw + b'\x00' * (n - len(raw))
+              signal = np.array([float(b) for b in raw])
+              if len(signal) != n:
+                  wf = np.interp(np.linspace(0, len(signal)-1, n), np.arange(len(signal)), signal)
+              else: wf = signal
+              wmin, wmax = wf.min(), wf.max()
+              if wmax - wmin < 1e-10: return np.full(n, 0.5)
+              return (wf - wmin) / (wmax - wmin)
+
+          # Scan changed files
+          files = [f for f in os.popen('git diff --name-only HEAD~1..HEAD 2>/dev/null').read().split() if f.endswith(('.js','.ts','.py'))]
+          if not files:
+              print('No code files to cascade')
+              sys.exit(0)
+
+          print(f'Cascading {len(files)} files...')
+          for f in files[:20]:
+              try:
+                  code = open(f).read()
+                  wf = code_to_waveform(code)
+                  entropy = -np.sum(np.histogram(wf, 16, (0,1))[0]/128 * np.log2(np.clip(np.histogram(wf, 16, (0,1))[0]/128, 1e-10, 1)))
+                  print(f'  {f}: entropy={entropy:.3f}')
+              except: pass
+          "

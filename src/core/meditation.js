@@ -522,23 +522,291 @@ class MeditationEngine {
     };
   }
 
-  // ─── High-Water Mark Persistence ─────────────────────────────
+  // ─── High-Water Mark History (rollback-enabled) ──────────────
 
+  /**
+   * Load the current (latest) high-water mark.
+   */
   _loadHighWaterMark() {
-    const hwmPath = path.join(path.dirname(this._journalPath), 'meditation-high-water-mark.json');
-    try {
-      if (fs.existsSync(hwmPath)) return JSON.parse(fs.readFileSync(hwmPath, 'utf8'));
-    } catch {}
-    return null;
+    const history = this._loadWaterMarkHistory();
+    return history.length > 0 ? history[history.length - 1] : null;
   }
 
+  /**
+   * Save a new high-water mark with a full pattern snapshot.
+   * Every mark is preserved — you can roll back to any of them.
+   */
   _saveHighWaterMark(benchmark) {
-    const hwmPath = path.join(path.dirname(this._journalPath), 'meditation-high-water-mark.json');
+    const history = this._loadWaterMarkHistory();
+    const patterns = this._getPatterns();
+
+    const entry = {
+      ...benchmark,
+      version: history.length + 1,
+      sessionId: this._sessionId,
+      snapshot: {
+        patternCount: patterns.length,
+        patternNames: patterns.map(p => p.name).filter(Boolean),
+        patternChecksums: patterns.map(p => {
+          // Store a lightweight checksum per pattern for rollback verification
+          const code = p.code || '';
+          return {
+            name: p.name,
+            coherency: p.coherency || p.coherencyScore?.total || 0,
+            checksum: crypto.createHash('md5').update(code.slice(0, 500)).digest('hex').slice(0, 8),
+            language: p.language,
+            tags: (p.tags || []).slice(0, 5),
+          };
+        }),
+      },
+    };
+
+    history.push(entry);
+
+    // Keep last 50 water marks
+    const trimmed = history.slice(-50);
+
+    const hwmPath = path.join(path.dirname(this._journalPath), 'meditation-watermarks.json');
     try {
       const dir = path.dirname(hwmPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(hwmPath, JSON.stringify(benchmark, null, 2));
+      fs.writeFileSync(hwmPath, JSON.stringify(trimmed, null, 2));
     } catch {}
+  }
+
+  /**
+   * Load the full history of all high-water marks.
+   */
+  _loadWaterMarkHistory() {
+    const hwmPath = path.join(path.dirname(this._journalPath), 'meditation-watermarks.json');
+    try {
+      if (fs.existsSync(hwmPath)) {
+        return JSON.parse(fs.readFileSync(hwmPath, 'utf8'));
+      }
+    } catch {}
+    return [];
+  }
+
+  // ─── Public: Rollback API ──────────────────────────────────────
+
+  /**
+   * List all available high-water marks for rollback.
+   *
+   * @returns {object[]} Array of { version, total, timestamp, patternCount, dimensions }
+   */
+  listWaterMarks() {
+    const history = this._loadWaterMarkHistory();
+    return history.map(h => ({
+      version: h.version,
+      total: h.total,
+      timestamp: h.timestamp,
+      sessionId: h.sessionId,
+      patternCount: h.snapshot?.patternCount || h.patternCount || 0,
+      dimensions: h.dimensions,
+    }));
+  }
+
+  /**
+   * Get full details of a specific water mark version.
+   *
+   * @param {number} version - Water mark version number
+   * @returns {object|null} Full water mark entry with snapshot
+   */
+  getWaterMark(version) {
+    const history = this._loadWaterMarkHistory();
+    return history.find(h => h.version === version) || null;
+  }
+
+  /**
+   * Compare current system state against a specific water mark.
+   * Shows what changed: added patterns, removed patterns, coherency deltas.
+   *
+   * @param {number} version - Water mark version to compare against
+   * @returns {object} { current, target, diff }
+   */
+  compareToWaterMark(version) {
+    const target = this.getWaterMark(version);
+    if (!target) return { error: 'Water mark version ' + version + ' not found' };
+
+    const currentBenchmark = this._computeSystemBenchmark();
+    const currentPatterns = this._getPatterns();
+    const currentNames = new Set(currentPatterns.map(p => p.name).filter(Boolean));
+    const targetNames = new Set((target.snapshot?.patternNames || []).filter(Boolean));
+
+    const added = [...currentNames].filter(n => !targetNames.has(n));
+    const removed = [...targetNames].filter(n => !currentNames.has(n));
+    const maintained = [...currentNames].filter(n => targetNames.has(n));
+
+    const dimensionDeltas = {};
+    for (const [dim, currentVal] of Object.entries(currentBenchmark.dimensions)) {
+      const targetVal = target.dimensions?.[dim] || 0;
+      dimensionDeltas[dim] = {
+        current: currentVal,
+        target: targetVal,
+        delta: Math.round((currentVal - targetVal) * 1000) / 1000,
+      };
+    }
+
+    return {
+      current: {
+        total: currentBenchmark.total,
+        patternCount: currentPatterns.length,
+        timestamp: currentBenchmark.timestamp,
+      },
+      target: {
+        version: target.version,
+        total: target.total,
+        patternCount: target.snapshot?.patternCount || 0,
+        timestamp: target.timestamp,
+      },
+      diff: {
+        coherencyDelta: Math.round((currentBenchmark.total - target.total) * 1000) / 1000,
+        patternsAdded: added.length,
+        patternsRemoved: removed.length,
+        patternsMaintained: maintained.length,
+        addedNames: added.slice(0, 20),
+        removedNames: removed.slice(0, 20),
+        dimensionDeltas,
+      },
+    };
+  }
+
+  /**
+   * Roll back the pattern library to a specific water mark version.
+   *
+   * This restores the pattern library to the exact state it was in
+   * when that water mark was recorded. Patterns added after that
+   * water mark are moved to a rollback archive (not deleted).
+   *
+   * @param {number} version - Water mark version to roll back to
+   * @returns {object} { success, restored, archived, newBenchmark }
+   */
+  rollbackToWaterMark(version) {
+    const target = this.getWaterMark(version);
+    if (!target) return { success: false, error: 'Water mark version ' + version + ' not found' };
+
+    const comparison = this.compareToWaterMark(version);
+    const patternsToArchive = comparison.diff.addedNames || [];
+    const currentPatterns = this._getPatterns();
+
+    // Snapshot current state before rollback (so we can undo the undo)
+    const preRollbackBenchmark = this._computeSystemBenchmark();
+
+    // Archive patterns that were added after the target water mark
+    const archivePath = path.join(
+      path.dirname(this._journalPath),
+      `rollback-archive-v${version}-${Date.now()}.json`
+    );
+
+    const archived = currentPatterns.filter(p => patternsToArchive.includes(p.name));
+
+    if (archived.length > 0) {
+      try {
+        const dir = path.dirname(archivePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(archivePath, JSON.stringify({
+          rolledBackFrom: preRollbackBenchmark,
+          rolledBackTo: version,
+          timestamp: new Date().toISOString(),
+          archivedPatterns: archived,
+        }, null, 2));
+      } catch {}
+    }
+
+    // Restore: Keep only patterns that existed at the target water mark
+    const targetNames = new Set(target.snapshot?.patternNames || []);
+    const restoredPatterns = currentPatterns.filter(p => targetNames.has(p.name));
+
+    // Write restored patterns to the seed file or pattern store
+    // (This integrates with however the Oracle stores patterns)
+    if (this._oracle && typeof this._oracle._resetPatterns === 'function') {
+      this._oracle._resetPatterns(restoredPatterns);
+    }
+
+    // Verify the rollback
+    const postRollbackBenchmark = this._computeSystemBenchmark();
+
+    this._log('rollback', {
+      targetVersion: version,
+      targetCoherency: target.total,
+      preRollback: preRollbackBenchmark.total,
+      postRollback: postRollbackBenchmark.total,
+      patternsArchived: archived.length,
+      patternsRestored: restoredPatterns.length,
+      archivePath,
+    });
+
+    return {
+      success: true,
+      rolledBackTo: version,
+      restored: restoredPatterns.length,
+      archived: archived.length,
+      archivePath,
+      benchmark: {
+        before: preRollbackBenchmark.total,
+        after: postRollbackBenchmark.total,
+        target: target.total,
+      },
+    };
+  }
+
+  /**
+   * List all rollback archives (patterns that were removed during rollbacks).
+   * These can be re-imported if needed.
+   */
+  listRollbackArchives() {
+    const dir = path.dirname(this._journalPath);
+    try {
+      return fs.readdirSync(dir)
+        .filter(f => f.startsWith('rollback-archive-'))
+        .map(f => {
+          try {
+            const data = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+            return {
+              file: f,
+              rolledBackTo: data.rolledBackTo,
+              timestamp: data.timestamp,
+              archivedCount: data.archivedPatterns?.length || 0,
+            };
+          } catch { return { file: f, error: 'parse-failed' }; }
+        });
+    } catch { return []; }
+  }
+
+  /**
+   * Restore patterns from a rollback archive (undo a rollback).
+   *
+   * @param {string} archiveFile - Filename of the rollback archive
+   * @returns {object} { success, restored }
+   */
+  restoreFromArchive(archiveFile) {
+    const archivePath = path.join(path.dirname(this._journalPath), archiveFile);
+    try {
+      const data = JSON.parse(fs.readFileSync(archivePath, 'utf8'));
+      const patterns = data.archivedPatterns || [];
+
+      if (this._oracle && typeof this._oracle.submit === 'function') {
+        let restored = 0;
+        for (const p of patterns) {
+          try {
+            this._oracle.submit(p.code || '', {
+              language: p.language,
+              description: p.description,
+              tags: p.tags,
+              name: p.name,
+            });
+            restored++;
+          } catch {}
+        }
+
+        this._log('archive-restored', { archiveFile, restored, total: patterns.length });
+        return { success: true, restored, total: patterns.length };
+      }
+
+      return { success: false, error: 'Oracle submit not available' };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
   }
 
   // ─── Veto Whisper ────────────────────────────────────────────

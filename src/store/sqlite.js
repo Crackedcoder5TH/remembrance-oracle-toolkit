@@ -803,13 +803,15 @@ class SQLiteStore {
         description, tags, coherency_total, coherency_json, variants, test_code,
         usage_count, success_count, evolution_history, requires, composed_of,
         version, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, '[]', ?, ?, 1, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
     `).run(
       id, pattern.name, pattern.code, pattern.language || 'unknown',
       pattern.patternType || 'utility', pattern.complexity || 'composite',
       pattern.description || '', JSON.stringify(pattern.tags || []),
       pattern.coherencyScore?.total ?? 0, JSON.stringify(pattern.coherencyScore || {}),
       JSON.stringify(pattern.variants || []), pattern.testCode || null,
+      pattern.usageCount ?? 0, pattern.successCount ?? 0,
+      JSON.stringify(pattern.evolutionHistory || []),
       JSON.stringify(pattern.requires || []), JSON.stringify(pattern.composedOf || []),
       now, now
     );

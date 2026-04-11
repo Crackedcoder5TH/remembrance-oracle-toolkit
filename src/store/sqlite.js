@@ -519,8 +519,13 @@ class SQLiteStore {
       }
     }
 
-    // Rename all legacy files only after both migrations succeeded
+    // Rename legacy files EXCEPT patterns.json — keep it as persistent backup
+    // patterns.json is the git-tracked accumulator that survives across sessions
     for (const filePath of toRename) {
+      if (path.basename(filePath) === 'patterns.json') {
+        if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] keeping patterns.json as persistent backup (not renaming)');
+        continue;
+      }
       try {
         fs.renameSync(filePath, filePath + '.migrated');
       } catch (e) {

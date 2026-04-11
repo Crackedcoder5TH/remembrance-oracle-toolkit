@@ -256,6 +256,32 @@ function autoSubmit(oracle, baseDir, options = {}) {
     report.errors.push(`retention: ${e.message}`);
   }
 
+  // Step 9: Export patterns to patterns.json — git-tracked accumulator
+  // This ensures accumulated patterns survive across ephemeral sessions.
+  // patterns.json is committed to git, so it persists even when the DB is destroyed.
+  if (!dryRun) {
+    try {
+      const patternsJsonPath = path.join(baseDir, 'patterns.json');
+      const exportData = oracle.export({ limit: 999999, minCoherency: 0.0 });
+      if (exportData) {
+        const parsed = typeof exportData === 'string' ? JSON.parse(exportData) : exportData;
+        if (parsed.patterns && parsed.patterns.length > 0) {
+          // Atomic write: write to .tmp then rename
+          const tmpPath = patternsJsonPath + '.tmp';
+          fs.writeFileSync(tmpPath, JSON.stringify(parsed, null, 2), 'utf-8');
+          fs.renameSync(tmpPath, patternsJsonPath);
+          report.exported = parsed.patterns.length;
+          if (!silent) {
+            log(`Exported ${parsed.patterns.length} patterns to patterns.json`);
+          }
+        }
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:export] patterns.json export failed:', e?.message || e);
+      report.errors.push(`export: ${e.message}`);
+    }
+  }
+
   // Emit event for lifecycle engine
   try {
     oracle._emit({
@@ -265,6 +291,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       synced: report.synced,
       shared: report.shared,
       debugSweep: report.debugSweep,
+      exported: report.exported || 0,
     });
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);

@@ -102,9 +102,25 @@ class RemembranceOracle {
     // Auto-seed on first run if library is empty
     const wasEmpty = this.patterns.getAll().length === 0;
     if (options.autoSeed !== false && wasEmpty) {
+      // First try to import from patterns.json (accumulated proven patterns from git)
       try {
-        const { seedLibrary } = require('../patterns/seed-helpers');
+        const patternsJsonPath = require('path').join(require('path').dirname(storeDir), 'patterns.json');
+        if (require('fs').existsSync(patternsJsonPath)) {
+          const data = require('fs').readFileSync(patternsJsonPath, 'utf-8');
+          const result = this.import(data, { author: 'auto-import-patterns-json' });
+          if (process.env.ORACLE_DEBUG) console.log(`[oracle] auto-imported ${result.imported} patterns from patterns.json`);
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle] auto-import patterns.json failed:', e.message);
+      }
+      // Then seed all built-in libraries (fills gaps not covered by patterns.json)
+      try {
+        const { seedLibrary, seedExtendedLibrary, seedNativeLibrary, seedProductionLibrary3, seedProductionLibrary4 } = require('../patterns/seed-helpers');
         seedLibrary(this);
+        try { seedExtendedLibrary(this, {}); } catch (_) {}
+        try { seedNativeLibrary(this, {}); } catch (_) {}
+        try { seedProductionLibrary3(this, {}); } catch (_) {}
+        try { seedProductionLibrary4(this, {}); } catch (_) {}
       } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle] auto-seed failed:', e.message);
       }

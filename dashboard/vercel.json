@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/server.js" },
+    { "src": "/(.*\\.(html|css|js|png|svg|ico))", "dest": "/public/$1" },
+    { "src": "/(.*)", "dest": "/public/index.html" }
+  ],
+  "env": {
+    "ORACLE_TOOLKIT_URL": "@oracle-url",
+    "VOID_COMPRESSOR_URL": "@void-url"
+  }
+}

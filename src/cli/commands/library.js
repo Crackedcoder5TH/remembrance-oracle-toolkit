@@ -623,6 +623,88 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     }
   };
 
+  handlers['publish'] = (args) => {
+    const crypto = require('crypto');
+    const id = args.id || args._sub;
+    const name = args.name;
+
+    if (!id && !name) {
+      console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle publish')} --id <patternId> or --name <patternName>`);
+      process.exit(1);
+    }
+
+    // Look up the pattern by id or name
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+    let pattern = null;
+    if (id) {
+      pattern = store.getPattern ? store.getPattern(id) : null;
+    }
+    if (!pattern && name) {
+      pattern = store.getPatternByName ? store.getPatternByName(name) : null;
+    }
+    if (!pattern) {
+      console.error(c.boldRed('Error:') + ` Pattern not found: ${id || name}`);
+      process.exit(1);
+    }
+
+    // Check eligibility
+    const reasons = [];
+
+    // 1. Coherency >= 0.8
+    const coherency = pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+    if (coherency < 0.8) {
+      reasons.push(`Coherency ${coherency.toFixed(3)} below threshold 0.8`);
+    }
+
+    // 2. Covenant sealed
+    try {
+      const { covenantCheck } = require('../../core/covenant');
+      const covenant = covenantCheck(pattern.code, { description: pattern.name });
+      if (!covenant.sealed) {
+        const violations = (covenant.violations || []).map(v => v.rule || v).join(', ');
+        reasons.push(`Covenant not sealed — violations: ${violations}`);
+      }
+    } catch (_) {
+      reasons.push('Covenant check unavailable');
+    }
+
+    // 3. Must have test code
+    if (!pattern.testCode || !pattern.testCode.trim()) {
+      reasons.push('No test code — test proof required for blockchain publication');
+    }
+
+    if (reasons.length > 0) {
+      console.log(c.boldRed('Pattern NOT eligible for blockchain publication:\n'));
+      for (const reason of reasons) {
+        console.log(`  ${c.red('x')} ${reason}`);
+      }
+      return;
+    }
+
+    // Pattern is eligible — output as JSON for the REMEMBRANCE-BLOCKCHAIN publisher
+    const fullHash = crypto.createHash('sha256').update(pattern.code).digest('hex');
+    const exportPayload = {
+      id: pattern.id,
+      name: pattern.name,
+      code: pattern.code,
+      language: pattern.language,
+      patternType: pattern.patternType,
+      coherency: coherency,
+      tags: pattern.tags || [],
+      testCode: pattern.testCode,
+      hash: fullHash,
+      exportedAt: new Date().toISOString(),
+    };
+
+    console.log(c.boldGreen('Pattern eligible for blockchain publication'));
+    console.log(`  Name:      ${c.bold(pattern.name)}`);
+    console.log(`  ID:        ${c.cyan(pattern.id)}`);
+    console.log(`  Coherency: ${colorScore(coherency)}`);
+    console.log(`  Hash:      ${c.dim(fullHash.slice(0, 16))}...${c.dim(fullHash.slice(-8))}`);
+    console.log(`\n${c.dim('── Export Payload ──')}`);
+    console.log(JSON.stringify(exportPayload, null, 2));
+  };
+
   handlers['audit-integration'] = (args) => {
     const { auditIntegration } = require('../../compression/fractal-library-bridge');
     const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : null;

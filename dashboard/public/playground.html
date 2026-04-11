@@ -10,9 +10,9 @@
     .decision-ribbon { grid-column: 1/-1; height: 48px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; }
     .ribbon-bar { flex: 1; height: 8px; background: var(--bg-input); border-radius: 4px; position: relative; overflow: hidden; }
     .ribbon-fill { position: absolute; top: 0; height: 100%; border-radius: 4px; transition: left 0.5s ease, width 0.5s ease, background 0.5s ease; }
-    .ribbon-fill.pull { background: #3ecf8e; }
+    .ribbon-fill.pull { background: #14b8a6; }
     .ribbon-fill.evolve { background: #f59e0b; }
-    .ribbon-fill.generate { background: #3b82f6; }
+    .ribbon-fill.generate { background: #dc2626; }
     .ribbon-label { font-size: 13px; font-weight: 600; min-width: 120px; text-align: right; transition: color 0.3s; }
     .ribbon-score { font-family: var(--mono); font-size: 14px; font-weight: 700; min-width: 60px; }
 
@@ -36,7 +36,7 @@
     .waveform-dual .yours { flex: 1; display: flex; align-items: flex-end; gap: 1px; }
     .waveform-dual .yours .bar { flex: 1; background: var(--accent); opacity: 0.5; border-radius: 1px 1px 0 0; transition: height 0.2s; }
     .waveform-dual .pattern { flex: 1; display: flex; align-items: flex-end; gap: 1px; }
-    .waveform-dual .pattern .bar { flex: 1; background: #f59e0b; opacity: 0.4; border-radius: 1px 1px 0 0; }
+    .waveform-dual .pattern .bar { flex: 1; background: #dc2626; opacity: 0.4; border-radius: 1px 1px 0 0; }
     .waveform-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 4px; }
 
     .match-list { list-style: none; padding: 0; }
@@ -290,7 +290,7 @@ function updateDecisionRibbon(workflow) {
 
   if (decision === 'PULL') {
     label.textContent = 'PULL — proven pattern found';
-    label.style.color = '#3ecf8e';
+    label.style.color = '#14b8a6';
     fill.className = 'ribbon-fill pull';
     fill.style.left = '0%'; fill.style.width = (confidence * 100) + '%';
     badge.className = 'badge pull'; badge.textContent = 'PULL';
@@ -302,7 +302,7 @@ function updateDecisionRibbon(workflow) {
     badge.className = 'badge evolve'; badge.textContent = 'EVOLVE';
   } else {
     label.textContent = 'GENERATE — write fresh';
-    label.style.color = '#3b82f6';
+    label.style.color = '#dc2626';
     fill.className = 'ribbon-fill generate';
     fill.style.left = '60%'; fill.style.width = '40%';
     badge.className = 'badge generate'; badge.textContent = 'GENERATE';

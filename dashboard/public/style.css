@@ -1,30 +1,40 @@
-/* Remembrance Dashboard — Design System */
-/* Inspired by Linear/Supabase dark themes from ecosystem design-md patterns */
+/* REMEMBRANCE.LLC Dashboard — Kingdom Theme */
+/* Deep Indigo + Teal + Crimson | Fibonacci spacing | Sacred geometry */
 
 :root {
-  --bg-primary: #0a0a0b;
-  --bg-secondary: #111113;
-  --bg-card: #16161a;
-  --bg-hover: #1c1c21;
-  --bg-input: #1a1a1f;
+  /* Kingdom Colors */
+  --bg-primary: #0e0624;
+  --bg-secondary: #130830;
+  --bg-card: #1a0a3e;
+  --bg-hover: #201050;
+  --bg-input: #150935;
 
   --text-primary: #f0f0f3;
-  --text-secondary: #8b8b94;
-  --text-muted: #5c5c66;
+  --text-secondary: #a5b4c3;
+  --text-muted: #6b7a8d;
 
-  --accent: #3ecf8e;
-  --accent-dim: #2a9d6a;
-  --accent-glow: rgba(62, 207, 142, 0.15);
+  /* Teal — the living bridge */
+  --accent: #14b8a6;
+  --accent-dim: #0d9488;
+  --accent-glow: rgba(20, 184, 166, 0.15);
 
-  --danger: #ef4444;
+  /* Crimson — the passionate fire */
+  --danger: #dc2626;
+  --crimson: #dc2626;
+  --crimson-glow: rgba(220, 38, 38, 0.15);
   --warning: #f59e0b;
-  --info: #3b82f6;
+  --info: #14b8a6;
 
-  --border: #2a2a30;
-  --border-subtle: #1f1f25;
+  --border: #2a1a50;
+  --border-subtle: #1f1245;
+
+  /* Fibonacci spacing */
+  --sp-1: 1px; --sp-2: 2px; --sp-3: 3px; --sp-5: 5px;
+  --sp-8: 8px; --sp-13: 13px; --sp-21: 21px; --sp-34: 34px;
+  --sp-55: 55px; --sp-89: 89px; --sp-144: 144px;
 
   --radius: 8px;
-  --radius-lg: 12px;
+  --radius-lg: 13px;
 
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
@@ -38,6 +48,9 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  font-size: 13px;
+  /* Sacred geometry background — Flower of Life, very subtle */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='104' viewBox='0 0 120 104'%3E%3Ccircle cx='60' cy='52' r='34' fill='none' stroke='%231a0a3e' stroke-width='0.5' opacity='0.12'/%3E%3Ccircle cx='60' cy='18' r='34' fill='none' stroke='%231a0a3e' stroke-width='0.5' opacity='0.08'/%3E%3Ccircle cx='60' cy='86' r='34' fill='none' stroke='%231a0a3e' stroke-width='0.5' opacity='0.08'/%3E%3Ccircle cx='30' cy='35' r='34' fill='none' stroke='%231a0a3e' stroke-width='0.5' opacity='0.08'/%3E%3Ccircle cx='90' cy='35' r='34' fill='none' stroke='%231a0a3e' stroke-width='0.5' opacity='0.08'/%3E%3Ccircle cx='30' cy='69' r='34' fill='none' stroke='%231a0a3e' stroke-width='0.5' opacity='0.08'/%3E%3Ccircle cx='90' cy='69' r='34' fill='none' stroke='%231a0a3e' stroke-width='0.5' opacity='0.08'/%3E%3C/svg%3E");
 }
 
 /* ─── Layout ──────────────────────────────────────────────── */
@@ -51,8 +64,8 @@ body {
 
 .topbar {
   grid-column: 1 / -1;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, #1a0a3e, #0d3a3a);
+  border-bottom: 1px solid var(--crimson);
   display: flex;
   align-items: center;
   padding: 0 24px;
@@ -272,8 +285,8 @@ input:focus, textarea:focus {
 }
 
 button {
-  background: var(--accent);
-  color: #000;
+  background: var(--crimson);
+  color: #fff;
   border: none;
   border-radius: var(--radius);
   padding: 8px 16px;
@@ -302,12 +315,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   font-weight: 600;
 }
 
-.badge.pull { background: rgba(62, 207, 142, 0.15); color: #3ecf8e; }
+.badge.pull { background: rgba(20, 184, 166, 0.15); color: #14b8a6; }
 .badge.evolve { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.badge.generate { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
-.badge.healthy { background: rgba(62, 207, 142, 0.15); color: #3ecf8e; }
+.badge.generate { background: rgba(220, 38, 38, 0.15); color: #dc2626; }
+.badge.healthy { background: rgba(20, 184, 166, 0.15); color: #14b8a6; }
 .badge.weak { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.badge.critical { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.badge.critical { background: rgba(220, 38, 38, 0.15); color: #dc2626; }
 
 /* ─── Fractal Radar ───────────────────────────────────────── */
 

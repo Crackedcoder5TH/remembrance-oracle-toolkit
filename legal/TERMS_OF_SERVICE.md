@@ -103,39 +103,34 @@ Enterprise tier includes immutable audit logs of all API operations. Audit logs 
 
 ## 7. Service Tiers and Payment
 
-### 7.1 Free (Community)
-- Open source code + 302 seed patterns
-- Local-only scoring and healing
-- No API access to Substrate Data
+### 7.1 Free (1-Week Delay)
+- Complete access to all patterns, tools, and features
+- All new patterns delayed by 7 days from real-time availability
+- No payment or contribution required
+- Abundance for all — nobody is excluded
 - No SLA
 
-### 7.2 Pro ($29/user/month)
-- Full Substrate Data access (38,000+ patterns)
-- Cloud cascade resonance API
-- Unlimited SERF healing
-- VS Code extension (full features)
-- Email support
+### 7.2 Merit (Earned Real-Time Access)
+- Submit a pattern with coherency >= 0.80 AND cascade resonance >= 0.50
+- Earn 30 days of real-time access per qualifying submission
+- Same features as Premium while active
+- Pattern attributed to contributor (reputation building)
+- Community leaderboard position
+- Free through contribution
 
-### 7.3 Team ($49/user/month)
-- Everything in Pro
-- Multi-agent swarm access
-- Shared team pattern store
-- Self-healing CI for unlimited repos
+### 7.3 Premium ($50/month)
+- Real-time access to all patterns (zero delay)
+- Exponentially compounding advantage
+- Premium badge and community recognition
 - Priority support
+- Full API access
+- Enterprise SSO/SAML and audit logging available as add-on
 
-### 7.4 Enterprise ($499/org/month)
-- Everything in Team
-- SSO/SAML authentication
-- Immutable audit logging
-- Custom substrate training on your codebase
-- Dedicated support with SLA
-- On-premise deployment option
-
-### 7.5 Payment Terms
-- Subscriptions are billed monthly or annually (annual = 2 months free)
+### 7.4 Payment Terms
+- Premium subscriptions billed monthly or annually (annual = 2 months free)
+- Merit access renews with each qualifying contribution
 - You may cancel at any time; access continues through the end of the billing period
 - Refunds are not provided for partial months
-- Enterprise contracts may include custom terms
 
 ---
 

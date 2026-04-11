@@ -21,3 +21,4 @@ sync-queue.json.bak
 sync-queue.json.tmp
 # Cathedral subproject data
 .cathedral/
+__pycache__/

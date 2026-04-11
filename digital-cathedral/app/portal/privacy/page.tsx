@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Client Portal Privacy Policy — Valor Legacies",
+  title: "Agent Portal Privacy Policy — Valor Legacies",
   description:
-    "How Valor Legacies handles your data as a licensed insurance professional using our Client Portal.",
+    "How Valor Legacies handles your data as a licensed insurance professional using our Agent Portal.",
 };
 
 export default function PortalPrivacyPage() {
@@ -18,7 +18,7 @@ export default function PortalPrivacyPage() {
           &larr; Back to Portal
         </Link>
         <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
-          Client Portal
+          Agent Portal
         </div>
         <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
           Privacy Policy
@@ -34,7 +34,7 @@ export default function PortalPrivacyPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">1. Overview</h2>
           <p>
             This Privacy Policy applies to licensed insurance professionals (&ldquo;Clients&rdquo;)
-            who access the Valor Legacies Client Portal to purchase and manage leads. This policy
+            who access the Valor Legacies Agent Portal to purchase and manage leads. This policy
             is separate from the{" "}
             <Link href="/privacy" className="text-teal-cathedral hover:underline">consumer-facing Privacy Policy</Link>,
             which governs data collected from individuals seeking insurance coverage.
@@ -44,7 +44,7 @@ export default function PortalPrivacyPage() {
         {/* 2. Data We Collect */}
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">2. Data We Collect</h2>
-          <p className="mb-3">When you use the Client Portal, we collect:</p>
+          <p className="mb-3">When you use the Agent Portal, we collect:</p>
           <ul className="list-disc list-inside space-y-2 ml-2">
             <li>
               <strong className="text-[var(--text-primary)]">Account information:</strong>{" "}
@@ -113,7 +113,7 @@ export default function PortalPrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">4. How We Use Your Data</h2>
           <ul className="list-disc list-inside space-y-2 ml-2">
-            <li>To provide and manage your Client Portal account.</li>
+            <li>To provide and manage your Agent Portal account.</li>
             <li>To process lead purchases and maintain your account balance.</li>
             <li>To deliver leads matching your configured filters.</li>
             <li>To communicate account-related updates, billing notices, and support responses.</li>
@@ -126,7 +126,7 @@ export default function PortalPrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">5. Cookies &amp; Tracking</h2>
           <p className="mb-3">
-            The Client Portal uses only essential cookies and third-party services required for
+            The Agent Portal uses only essential cookies and third-party services required for
             functionality:
           </p>
           <ul className="list-disc list-inside space-y-2 ml-2">
@@ -234,7 +234,7 @@ export default function PortalPrivacyPage() {
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">10. Changes to This Policy</h2>
           <p>
             We may update this policy from time to time. The &ldquo;Last Updated&rdquo; date indicates
-            the most recent revision. Continued use of the Client Portal after changes constitutes
+            the most recent revision. Continued use of the Agent Portal after changes constitutes
             acceptance of the updated policy.
           </p>
         </section>
@@ -242,7 +242,7 @@ export default function PortalPrivacyPage() {
         {/* 11. Contact */}
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">11. Contact Us</h2>
-          <p>For privacy questions related to the Client Portal, contact:</p>
+          <p>For privacy questions related to the Agent Portal, contact:</p>
           <div className="mt-3 p-4 bg-[var(--bg-surface)] rounded-lg border border-indigo-cathedral/10">
             <p>Valor Legacies</p>
             <p>
@@ -258,7 +258,7 @@ export default function PortalPrivacyPage() {
       {/* Footer */}
       <footer className="mt-12 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center">
-          <a href="/portal" className="text-teal-cathedral/70 hover:text-teal-cathedral">Client Portal</a>
+          <a href="/portal" className="text-teal-cathedral/70 hover:text-teal-cathedral">Agent Portal</a>
           <a href="/portal/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Portal Terms</a>
           <a href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Consumer Privacy</a>
           <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Home</a>

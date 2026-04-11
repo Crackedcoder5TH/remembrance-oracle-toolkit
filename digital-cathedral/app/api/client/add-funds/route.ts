@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     // Create a billing record for this deposit
     const now = new Date().toISOString();
-    await createBilling({
+    const billingResult = await createBilling({
       billingId: generateBillingId(),
       clientId: auth.clientId,
       periodStart: now,
@@ -70,6 +70,18 @@ export async function POST(req: NextRequest) {
       invoiceUrl: "",
       createdAt: now,
     });
+
+    // If billing record failed, reverse the balance credit to keep data consistent
+    if (billingResult && !billingResult.ok) {
+      console.error("[add-funds] Billing record failed, reversing balance credit", { clientId: auth.clientId, amount });
+      await updateClientBalance(auth.clientId, -amount).catch((err) =>
+        console.error("[add-funds] CRITICAL: Balance reversal also failed", err)
+      );
+      return NextResponse.json(
+        { success: false, message: "Failed to record transaction. Balance was not charged." },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,

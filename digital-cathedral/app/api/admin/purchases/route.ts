@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * GET /api/admin/purchases — List all lead purchases across clients
  */
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const params = req.nextUrl.searchParams;

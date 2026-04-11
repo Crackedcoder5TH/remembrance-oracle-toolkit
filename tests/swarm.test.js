@@ -711,9 +711,9 @@ describe('Swarm MCP integration', () => {
     assert.ok(typeof HANDLERS.oracle_swarm === 'function', 'oracle_swarm handler not found');
   });
 
-  it('TOOLS has 11 entries', () => {
+  it('TOOLS has 13 entries', () => {
     const { TOOLS } = require('../src/mcp/tools');
-    assert.equal(TOOLS.length, 12);
+    assert.equal(TOOLS.length, 13);
   });
 });
 

@@ -212,6 +212,26 @@ const TOOLS = [
       required: ['action'],
     },
   },
+  // ─── 13. Fractal (fractal math engines + code alignment) ───
+  {
+    name: 'oracle_fractal',
+    description: 'Fractal system — 5 mathematical engines (Sierpinski, Mandelbrot, Barnsley, Julia, Lyapunov) and code alignment scoring. Actions: analyze (fractal alignment of code), engines (list engines), resonance (find best fractal for code), sierpinski/mandelbrot/julia/lyapunov (run engine directly).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['analyze', 'engines', 'resonance', 'sierpinski', 'mandelbrot', 'julia', 'lyapunov'], description: 'Fractal action (default: analyze)' },
+        code: { type: 'string', description: 'Code to analyze (for analyze/resonance)' },
+        description: { type: 'string', description: 'Task description (for resonance, improves matching)' },
+        level: { type: 'number', description: 'Sierpinski recursion depth (default: 5)' },
+        cr: { type: 'number', description: 'Real part of c (for mandelbrot/julia, default: -0.75/-0.7)' },
+        ci: { type: 'number', description: 'Imaginary part of c (for mandelbrot/julia, default: 0.1/0.27015)' },
+        r: { type: 'number', description: 'Growth rate parameter (for lyapunov, default: 3.57)' },
+        sequence: { type: 'string', description: 'Lyapunov sequence pattern (e.g., "AB", "AABB")' },
+        maxIter: { type: 'number', description: 'Max iterations (for mandelbrot, default: 100)' },
+      },
+      required: ['action'],
+    },
+  },
 ];
 
 module.exports = { TOOLS };

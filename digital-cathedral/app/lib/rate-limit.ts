@@ -11,6 +11,7 @@ interface RateLimitEntry {
 }
 
 const store = new Map<string, RateLimitEntry>();
+const MAX_STORE_SIZE = 10_000;
 
 // --- Sliding window with per-IP tracking for API protection ---
 
@@ -27,6 +28,11 @@ export function checkRateLimit(
   const entry = store.get(ip);
 
   if (!entry) {
+    // Evict oldest entry if store is at capacity
+    if (store.size >= MAX_STORE_SIZE) {
+      const oldestKey = store.keys().next().value;
+      if (oldestKey !== undefined) store.delete(oldestKey);
+    }
     store.set(ip, { timestamps: [now] });
     return { allowed: true };
   }
@@ -35,8 +41,8 @@ export function checkRateLimit(
   entry.timestamps = entry.timestamps.filter((t) => now - t < windowMs);
 
   if (entry.timestamps.length >= maxRequests) {
-    const oldest = entry.timestamps[0];
-    const retryAfterMs = windowMs - (now - oldest);
+    const oldest = entry.timestamps[0] ?? now;
+    const retryAfterMs = Math.max(0, windowMs - (now - oldest));
     return { allowed: false, retryAfterMs };
   }
 

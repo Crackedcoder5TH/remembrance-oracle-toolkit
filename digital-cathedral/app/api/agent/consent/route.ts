@@ -160,15 +160,34 @@ export async function GET(req: NextRequest) {
   );
 }
 
+/** Escape HTML special characters to prevent XSS injection. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 function renderConsentPage(
   title: string,
   errorMessage: string | null,
   consent: { email: string; scope: string; agentLabel: string } | null,
   confirmedToken?: string,
 ): string {
-  const scopeLabel = consent?.scope === "both"
+  const safeTitle = escapeHtml(title);
+  const safeError = errorMessage ? escapeHtml(errorMessage) : null;
+  const safeConsent = consent ? {
+    email: escapeHtml(consent.email),
+    scope: escapeHtml(consent.scope),
+    agentLabel: escapeHtml(consent.agentLabel),
+  } : null;
+  const safeToken = confirmedToken ? escapeHtml(confirmedToken) : undefined;
+
+  const scopeLabel = safeConsent?.scope === "both"
     ? "submit life insurance leads and create an account"
-    : consent?.scope === "lead-submission"
+    : safeConsent?.scope === "lead-submission"
       ? "submit life insurance leads"
       : "create an account";
 
@@ -177,7 +196,7 @@ function renderConsentPage(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} — Valor Legacies</title>
+  <title>${safeTitle} — Valor Legacies</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
@@ -194,20 +213,20 @@ function renderConsentPage(
 </head>
 <body>
   <div class="card">
-    <h1>${title}</h1>
-    ${errorMessage ? `<p class="error">${errorMessage}</p>` : ""}
-    ${consent && confirmedToken ? `
-      <p class="success">You have authorized <strong>${consent.agentLabel}</strong> to ${scopeLabel} on your behalf.</p>
+    <h1>${safeTitle}</h1>
+    ${safeError ? `<p class="error">${safeError}</p>` : ""}
+    ${safeConsent && safeToken ? `
+      <p class="success">You have authorized <strong>${safeConsent.agentLabel}</strong> to ${scopeLabel} on your behalf.</p>
       <div class="info">
         <p>Your AI assistant will use this confirmation automatically. If asked, provide this token:</p>
       </div>
-      <div class="token-box">${confirmedToken}</div>
+      <div class="token-box">${safeToken}</div>
       <p>This authorization expires in 24 hours. You can revoke it at any time by contacting support.</p>
-      <p><span class="badge">${consent.scope}</span></p>
+      <p><span class="badge">${safeConsent.scope}</span></p>
     ` : ""}
-    ${consent && !confirmedToken && !errorMessage ? `
-      <p>Consent for <strong>${consent.email}</strong> via <strong>${consent.agentLabel}</strong>.</p>
-      <p>Scope: <span class="badge">${consent.scope}</span></p>
+    ${safeConsent && !safeToken && !safeError ? `
+      <p>Consent for <strong>${safeConsent.email}</strong> via <strong>${safeConsent.agentLabel}</strong>.</p>
+      <p>Scope: <span class="badge">${safeConsent.scope}</span></p>
     ` : ""}
   </div>
 </body>

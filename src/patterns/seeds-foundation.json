@@ -1,0 +1,149 @@
+[
+  {
+    "name": "http-server-minimal",
+    "language": "javascript",
+    "description": "Zero-dependency HTTP server with JSON routing, error handling, and CORS",
+    "tags": [
+      "http",
+      "server",
+      "routing",
+      "rest",
+      "api",
+      "zero-dependency"
+    ],
+    "patternType": "utility",
+    "complexity": "composite",
+    "coherency": 0.94,
+    "code": "'use strict';\nconst http = require('http');\n\nfunction createServer(routes = {}, options = {}) {\n  const { port = 3000, cors = true } = options;\n\n  const server = http.createServer(async (req, res) => {\n    if (cors) {\n      res.setHeader('Access-Control-Allow-Origin', '*');\n      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');\n      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');\n      if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }\n    }\n\n    const url = new URL(req.url, 'http://localhost');\n    const key = req.method + ' ' + url.pathname;\n    const handler = routes[key] || routes[req.method + ' *'];\n\n    if (!handler) {\n      res.writeHead(404, { 'Content-Type': 'application/json' });\n      res.end(JSON.stringify({ error: 'Not Found', path: url.pathname }));\n      return;\n    }\n\n    try {\n      let body = null;\n      if (['POST', 'PUT', 'PATCH'].includes(req.method)) {\n        body = await readBody(req);\n        try { body = JSON.parse(body); } catch {}\n      }\n      const result = await handler({ url, body, headers: req.headers, query: Object.fromEntries(url.searchParams) });\n      const status = result?.status || 200;\n      const data = result?.body ?? result;\n      res.writeHead(status, { 'Content-Type': 'application/json' });\n      res.end(JSON.stringify(data));\n    } catch (err) {\n      const status = err.status || 500;\n      res.writeHead(status, { 'Content-Type': 'application/json' });\n      res.end(JSON.stringify({ error: err.message }));\n    }\n  });\n\n  function readBody(req) {\n    return new Promise((resolve, reject) => {\n      let data = '';\n      req.on('data', c => { data += c; if (data.length > 1e6) reject(new Error('Body too large')); });\n      req.on('end', () => resolve(data));\n      req.on('error', reject);\n    });\n  }\n\n  return { server, listen: () => new Promise(r => server.listen(port, () => r(port))), close: () => server.close() };\n}\n\nmodule.exports = { createServer };",
+    "testCode": "const { createServer } = (function() { const m = {}; const module = { exports: m }; const http = require('http'); eval(code); return m; })();\nif (typeof createServer !== 'function') throw new Error('no createServer');\nconst app = createServer({ 'GET /health': () => ({ status: 'ok' }) });\nif (!app.server) throw new Error('no server'); if (!app.listen) throw new Error('no listen');",
+    "id": "22f835a60b0eb906"
+  },
+  {
+    "name": "input-validator",
+    "language": "javascript",
+    "description": "Zod-like schema validation: string, number, boolean, object, array, optional, with chaining",
+    "tags": [
+      "validation",
+      "schema",
+      "input",
+      "zod",
+      "type-safe"
+    ],
+    "patternType": "validation",
+    "complexity": "composite",
+    "coherency": 0.95,
+    "code": "'use strict';\n\nclass Schema {\n  constructor(type, checks = []) { this._type = type; this._checks = checks; this._optional = false; }\n\n  optional() { const s = this._clone(); s._optional = true; return s; }\n\n  validate(value) {\n    if (value === undefined || value === null) {\n      if (this._optional) return { valid: true, data: value, errors: [] };\n      return { valid: false, data: value, errors: ['Value is required'] };\n    }\n    const errors = [];\n    for (const check of this._checks) {\n      const err = check(value);\n      if (err) errors.push(err);\n    }\n    return { valid: errors.length === 0, data: value, errors };\n  }\n\n  _clone() { const s = new Schema(this._type, [...this._checks]); s._optional = this._optional; return s; }\n}\n\nfunction string(opts = {}) {\n  const s = new Schema('string', [(v) => typeof v !== 'string' ? 'Expected string' : null]);\n  if (opts.min) s._checks.push(v => typeof v === 'string' && v.length < opts.min ? 'Too short (min ' + opts.min + ')' : null);\n  if (opts.max) s._checks.push(v => typeof v === 'string' && v.length > opts.max ? 'Too long (max ' + opts.max + ')' : null);\n  if (opts.pattern) s._checks.push(v => typeof v === 'string' && !opts.pattern.test(v) ? 'Pattern mismatch' : null);\n  return s;\n}\n\nfunction number(opts = {}) {\n  const s = new Schema('number', [(v) => typeof v !== 'number' || isNaN(v) ? 'Expected number' : null]);\n  if (opts.min !== undefined) s._checks.push(v => typeof v === 'number' && v < opts.min ? 'Below min ' + opts.min : null);\n  if (opts.max !== undefined) s._checks.push(v => typeof v === 'number' && v > opts.max ? 'Above max ' + opts.max : null);\n  if (opts.integer) s._checks.push(v => typeof v === 'number' && !Number.isInteger(v) ? 'Expected integer' : null);\n  return s;\n}\n\nfunction boolean() { return new Schema('boolean', [(v) => typeof v !== 'boolean' ? 'Expected boolean' : null]); }\n\nfunction object(shape) {\n  return new Schema('object', [(value) => {\n    if (typeof value !== 'object' || value === null || Array.isArray(value)) return 'Expected object';\n    for (const [key, schema] of Object.entries(shape)) {\n      const result = schema.validate(value[key]);\n      if (!result.valid) return key + ': ' + result.errors[0];\n    }\n    return null;\n  }]);\n}\n\nfunction array(itemSchema, opts = {}) {\n  const s = new Schema('array', [(value) => {\n    if (!Array.isArray(value)) return 'Expected array';\n    for (let i = 0; i < value.length; i++) {\n      const r = itemSchema.validate(value[i]);\n      if (!r.valid) return '[' + i + ']: ' + r.errors[0];\n    }\n    return null;\n  }]);\n  if (opts.min) s._checks.push(v => Array.isArray(v) && v.length < opts.min ? 'Array too short' : null);\n  if (opts.max) s._checks.push(v => Array.isArray(v) && v.length > opts.max ? 'Array too long' : null);\n  return s;\n}\n\nmodule.exports = { Schema, string, number, boolean, object, array };",
+    "testCode": "const { string, number, boolean, object, array } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nconst r1 = string({ min: 3 }).validate('hi');\nif (r1.valid) throw new Error('should fail min');\nconst r2 = string().validate('hello');\nif (!r2.valid) throw new Error('should pass');\nconst r3 = number({ min: 0 }).validate(-1);\nif (r3.valid) throw new Error('should fail min');\nconst r4 = object({ name: string(), age: number() }).validate({ name: 'test', age: 25 });\nif (!r4.valid) throw new Error('object should pass');\nconst r5 = string().optional().validate(undefined);\nif (!r5.valid) throw new Error('optional should pass');",
+    "id": "e2ca7c6e4e766ef9"
+  },
+  {
+    "name": "structured-logger",
+    "language": "javascript",
+    "description": "Structured JSON logger with levels, correlation IDs, timestamps, and child loggers",
+    "tags": [
+      "logging",
+      "structured",
+      "json",
+      "observability",
+      "correlation-id"
+    ],
+    "patternType": "utility",
+    "complexity": "composite",
+    "coherency": 0.93,
+    "code": "'use strict';\n\nconst LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };\n\nclass Logger {\n  constructor(opts = {}) {\n    this._level = LEVELS[opts.level || 'info'] ?? 1;\n    this._context = opts.context || {};\n    this._output = opts.output || process.stdout;\n    this._correlationId = opts.correlationId || null;\n  }\n\n  child(context) {\n    return new Logger({\n      level: Object.keys(LEVELS).find(k => LEVELS[k] === this._level),\n      context: { ...this._context, ...context },\n      output: this._output,\n      correlationId: this._correlationId,\n    });\n  }\n\n  setCorrelationId(id) { this._correlationId = id; return this; }\n\n  debug(msg, data) { this._log('debug', msg, data); }\n  info(msg, data) { this._log('info', msg, data); }\n  warn(msg, data) { this._log('warn', msg, data); }\n  error(msg, data) { this._log('error', msg, data); }\n\n  _log(level, msg, data = {}) {\n    if (LEVELS[level] < this._level) return;\n    const entry = {\n      timestamp: new Date().toISOString(),\n      level,\n      msg,\n      ...this._context,\n      ...data,\n    };\n    if (this._correlationId) entry.correlationId = this._correlationId;\n    this._output.write(JSON.stringify(entry) + '\n');\n  }\n}\n\nfunction createLogger(opts) { return new Logger(opts); }\n\nmodule.exports = { Logger, createLogger, LEVELS };",
+    "testCode": "const { createLogger, LEVELS } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nif (LEVELS.debug !== 0) throw new Error('debug level');\nif (LEVELS.error !== 3) throw new Error('error level');\nconst chunks = [];\nconst log = createLogger({ level: 'debug', output: { write: (c) => chunks.push(c) } });\nlog.info('test', { key: 'value' });\nconst entry = JSON.parse(chunks[0]);\nif (entry.msg !== 'test') throw new Error('msg');\nif (entry.key !== 'value') throw new Error('data');\nif (!entry.timestamp) throw new Error('no timestamp');\nconst child = log.child({ service: 'api' });\nchild.info('child test');\nconst e2 = JSON.parse(chunks[1]);\nif (e2.service !== 'api') throw new Error('child context');",
+    "id": "55dbe244e6d4e1df"
+  },
+  {
+    "name": "cursor-pagination",
+    "language": "javascript",
+    "description": "Cursor-based pagination with Base64 encoding, forward/backward navigation",
+    "tags": [
+      "pagination",
+      "cursor",
+      "api",
+      "database",
+      "base64"
+    ],
+    "patternType": "utility",
+    "complexity": "atomic",
+    "coherency": 0.94,
+    "code": "'use strict';\n\nfunction encodeCursor(value) {\n  return Buffer.from(JSON.stringify(value)).toString('base64url');\n}\n\nfunction decodeCursor(cursor) {\n  try { return JSON.parse(Buffer.from(cursor, 'base64url').toString()); }\n  catch { return null; }\n}\n\nfunction paginate(items, options = {}) {\n  const { cursor, limit = 20, direction = 'forward' } = options;\n  const maxLimit = Math.min(Math.max(1, limit), 100);\n\n  let startIdx = 0;\n  if (cursor) {\n    const decoded = decodeCursor(cursor);\n    if (decoded && decoded.idx !== undefined) {\n      startIdx = direction === 'forward' ? decoded.idx + 1 : Math.max(0, decoded.idx - maxLimit);\n    }\n  }\n\n  const slice = items.slice(startIdx, startIdx + maxLimit + 1);\n  const hasMore = slice.length > maxLimit;\n  const data = hasMore ? slice.slice(0, maxLimit) : slice;\n\n  const nextCursor = hasMore ? encodeCursor({ idx: startIdx + maxLimit - 1 }) : null;\n  const prevCursor = startIdx > 0 ? encodeCursor({ idx: startIdx - 1 }) : null;\n\n  return { data, nextCursor, prevCursor, hasMore, total: items.length };\n}\n\nmodule.exports = { encodeCursor, decodeCursor, paginate };",
+    "testCode": "const { encodeCursor, decodeCursor, paginate } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nconst items = Array.from({ length: 50 }, (_, i) => i);\nconst p1 = paginate(items, { limit: 10 });\nif (p1.data.length !== 10) throw new Error('page size: ' + p1.data.length);\nif (!p1.hasMore) throw new Error('should have more');\nif (!p1.nextCursor) throw new Error('no next cursor');\nconst p2 = paginate(items, { cursor: p1.nextCursor, limit: 10 });\nif (p2.data[0] !== 10) throw new Error('page 2 start: ' + p2.data[0]);\nconst c = encodeCursor({ test: 123 });\nconst d = decodeCursor(c);\nif (d.test !== 123) throw new Error('roundtrip');",
+    "id": "32d632f3d1eb629c"
+  },
+  {
+    "name": "circuit-breaker",
+    "language": "javascript",
+    "description": "Circuit breaker: closed/open/half-open states with configurable threshold, cooldown, and event tracking",
+    "tags": [
+      "circuit-breaker",
+      "resilience",
+      "fault-tolerance",
+      "retry",
+      "microservice"
+    ],
+    "patternType": "design-pattern",
+    "complexity": "composite",
+    "coherency": 0.95,
+    "code": "'use strict';\n\nconst STATES = { CLOSED: 'closed', OPEN: 'open', HALF_OPEN: 'half_open' };\n\nclass CircuitBreaker {\n  constructor(opts = {}) {\n    this._threshold = opts.threshold || 5;\n    this._cooldownMs = opts.cooldownMs || 30000;\n    this._state = STATES.CLOSED;\n    this._failures = 0;\n    this._lastFailure = 0;\n    this._successes = 0;\n    this._totalCalls = 0;\n  }\n\n  get state() { return this._state; }\n  get failures() { return this._failures; }\n\n  async call(fn) {\n    this._totalCalls++;\n\n    if (this._state === STATES.OPEN) {\n      if (Date.now() - this._lastFailure >= this._cooldownMs) {\n        this._state = STATES.HALF_OPEN;\n      } else {\n        throw new Error('Circuit is OPEN — call rejected');\n      }\n    }\n\n    try {\n      const result = await fn();\n      this._onSuccess();\n      return result;\n    } catch (err) {\n      this._onFailure();\n      throw err;\n    }\n  }\n\n  _onSuccess() {\n    this._failures = 0;\n    this._successes++;\n    if (this._state === STATES.HALF_OPEN) {\n      this._state = STATES.CLOSED;\n    }\n  }\n\n  _onFailure() {\n    this._failures++;\n    this._lastFailure = Date.now();\n    if (this._failures >= this._threshold) {\n      this._state = STATES.OPEN;\n    }\n  }\n\n  reset() { this._state = STATES.CLOSED; this._failures = 0; }\n\n  stats() {\n    return { state: this._state, failures: this._failures, successes: this._successes, totalCalls: this._totalCalls };\n  }\n}\n\nmodule.exports = { CircuitBreaker, STATES };",
+    "testCode": "const { CircuitBreaker, STATES } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nconst cb = new CircuitBreaker({ threshold: 3, cooldownMs: 100 });\nif (cb.state !== 'closed') throw new Error('initial state');\n// Succeed\ncb.call(() => 'ok').then(() => {\n  if (cb.failures !== 0) throw new Error('failures after success');\n});\n// Fail 3 times to trip\nlet fails = 0;\nfor (let i = 0; i < 3; i++) {\n  cb.call(() => { throw new Error('fail'); }).catch(() => fails++);\n}\nsetTimeout(() => {\n  if (cb.state !== 'open') throw new Error('should be open: ' + cb.state);\n}, 10);",
+    "id": "577c3e7478de7362"
+  },
+  {
+    "name": "retry-with-backoff",
+    "language": "javascript",
+    "description": "Generic async retry with exponential backoff, jitter, and abort signal support",
+    "tags": [
+      "retry",
+      "backoff",
+      "exponential",
+      "async",
+      "resilience",
+      "jitter"
+    ],
+    "patternType": "utility",
+    "complexity": "atomic",
+    "coherency": 0.96,
+    "code": "'use strict';\n\nasync function retry(fn, options = {}) {\n  const { attempts = 3, baseDelay = 1000, maxDelay = 30000, jitter = true, signal = null, onRetry = null } = options;\n\n  let lastError;\n  for (let attempt = 0; attempt < attempts; attempt++) {\n    if (signal?.aborted) throw new Error('Aborted');\n\n    try {\n      return await fn(attempt);\n    } catch (err) {\n      lastError = err;\n      if (attempt >= attempts - 1) break;\n\n      let delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);\n      if (jitter) delay = delay * (0.5 + Math.random() * 0.5);\n\n      if (onRetry) onRetry({ attempt, error: err, nextDelay: delay });\n\n      await new Promise((resolve, reject) => {\n        const timer = setTimeout(resolve, delay);\n        if (signal) signal.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('Aborted')); }, { once: true });\n      });\n    }\n  }\n  throw lastError;\n}\n\nmodule.exports = { retry };",
+    "testCode": "const { retry } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nlet calls = 0;\nretry(() => { calls++; if (calls < 3) throw new Error('fail'); return 'ok'; }, { attempts: 5, baseDelay: 10 })\n  .then(r => { if (r !== 'ok') throw new Error('result: ' + r); if (calls !== 3) throw new Error('calls: ' + calls); });",
+    "id": "68501c35131b3582"
+  },
+  {
+    "name": "event-bus",
+    "language": "javascript",
+    "description": "Typed event bus with on, off, once, emit, and waitFor (promise-based)",
+    "tags": [
+      "event",
+      "bus",
+      "pubsub",
+      "emitter",
+      "observer",
+      "typed"
+    ],
+    "patternType": "design-pattern",
+    "complexity": "atomic",
+    "coherency": 0.94,
+    "code": "'use strict';\n\nclass EventBus {\n  constructor() { this._listeners = new Map(); }\n\n  on(event, fn) {\n    if (!this._listeners.has(event)) this._listeners.set(event, []);\n    this._listeners.get(event).push({ fn, once: false });\n    return () => this.off(event, fn);\n  }\n\n  once(event, fn) {\n    if (!this._listeners.has(event)) this._listeners.set(event, []);\n    this._listeners.get(event).push({ fn, once: true });\n    return () => this.off(event, fn);\n  }\n\n  off(event, fn) {\n    const list = this._listeners.get(event);\n    if (!list) return;\n    this._listeners.set(event, list.filter(l => l.fn !== fn));\n  }\n\n  emit(event, ...args) {\n    const list = this._listeners.get(event);\n    if (!list) return;\n    const remaining = [];\n    for (const listener of list) {\n      listener.fn(...args);\n      if (!listener.once) remaining.push(listener);\n    }\n    this._listeners.set(event, remaining);\n  }\n\n  waitFor(event, timeoutMs = 5000) {\n    return new Promise((resolve, reject) => {\n      const timer = setTimeout(() => { this.off(event, handler); reject(new Error('Timeout waiting for ' + event)); }, timeoutMs);\n      const handler = (...args) => { clearTimeout(timer); resolve(args.length === 1 ? args[0] : args); };\n      this.once(event, handler);\n    });\n  }\n\n  listenerCount(event) { return (this._listeners.get(event) || []).length; }\n  clear() { this._listeners.clear(); }\n}\n\nmodule.exports = { EventBus };",
+    "testCode": "const { EventBus } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nconst bus = new EventBus();\nlet count = 0;\nbus.on('test', () => count++);\nbus.emit('test');\nbus.emit('test');\nif (count !== 2) throw new Error('on count: ' + count);\nlet onceCount = 0;\nbus.once('x', () => onceCount++);\nbus.emit('x'); bus.emit('x');\nif (onceCount !== 1) throw new Error('once count: ' + onceCount);\nif (bus.listenerCount('test') !== 1) throw new Error('listener count');",
+    "id": "ed20a1f13c116166"
+  },
+  {
+    "name": "middleware-chain",
+    "language": "javascript",
+    "description": "Express-like async middleware pipeline with use(), compose, and error handling",
+    "tags": [
+      "middleware",
+      "pipeline",
+      "compose",
+      "express",
+      "async"
+    ],
+    "patternType": "design-pattern",
+    "complexity": "composite",
+    "coherency": 0.93,
+    "code": "'use strict';\n\nclass MiddlewareChain {\n  constructor() { this._stack = []; }\n\n  use(fn) { this._stack.push(fn); return this; }\n\n  async handle(ctx) {\n    let idx = 0;\n    const next = async () => {\n      if (idx >= this._stack.length) return;\n      const fn = this._stack[idx++];\n      await fn(ctx, next);\n    };\n    await next();\n    return ctx;\n  }\n\n  compose(...chains) {\n    const merged = new MiddlewareChain();\n    merged._stack = [...this._stack];\n    for (const chain of chains) {\n      merged._stack.push(...(chain._stack || []));\n    }\n    return merged;\n  }\n}\n\nfunction createChain() { return new MiddlewareChain(); }\n\nmodule.exports = { MiddlewareChain, createChain };",
+    "testCode": "const { createChain } = (function() { const m = {}; const module = { exports: m }; eval(code); return m; })();\nconst chain = createChain();\nconst steps = [];\nchain.use(async (ctx, next) => { steps.push('a'); await next(); steps.push('a2'); });\nchain.use(async (ctx, next) => { steps.push('b'); ctx.result = 'done'; await next(); });\nchain.handle({}).then(ctx => {\n  if (steps.join(',') !== 'a,b,a2') throw new Error('order: ' + steps);\n  if (ctx.result !== 'done') throw new Error('ctx');\n});",
+    "id": "1a5d76e762f59c27"
+  }
+]

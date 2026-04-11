@@ -8,7 +8,7 @@ import { getClientStats, getRevenueByClient } from "@/app/lib/client-database";
  * GET /api/admin/revenue — Revenue stats and per-client breakdown
  */
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const [statsResult, revenueResult] = await Promise.all([

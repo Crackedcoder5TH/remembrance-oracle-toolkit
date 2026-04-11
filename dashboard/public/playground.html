@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pattern Playground — REMEMBRANCE.LLC</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .playground { display: grid; grid-template-columns: 1fr 380px; grid-template-rows: auto 1fr; gap: 0; height: calc(100vh - 56px); }
+    .decision-ribbon { grid-column: 1/-1; height: 48px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 16px; }
+    .ribbon-bar { flex: 1; height: 8px; background: var(--bg-input); border-radius: 4px; position: relative; overflow: hidden; }
+    .ribbon-fill { position: absolute; top: 0; height: 100%; border-radius: 4px; transition: left 0.5s ease, width 0.5s ease, background 0.5s ease; }
+    .ribbon-fill.pull { background: #3ecf8e; }
+    .ribbon-fill.evolve { background: #f59e0b; }
+    .ribbon-fill.generate { background: #3b82f6; }
+    .ribbon-label { font-size: 13px; font-weight: 600; min-width: 120px; text-align: right; transition: color 0.3s; }
+    .ribbon-score { font-family: var(--mono); font-size: 14px; font-weight: 700; min-width: 60px; }
+
+    .editor-pane { position: relative; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .editor-pane textarea { flex: 1; background: var(--bg-primary); color: var(--text-primary); border: none; padding: 16px 20px; font-family: var(--mono); font-size: 13px; line-height: 1.6; resize: none; outline: none; }
+    .editor-pane .lang-select { position: absolute; top: 8px; right: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); padding: 4px 8px; font-size: 11px; }
+
+    .analysis-pane { overflow-y: auto; padding: 16px; background: var(--bg-secondary); }
+    .analysis-section { margin-bottom: 16px; }
+    .analysis-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 8px; }
+
+    .big-score { font-size: 42px; font-weight: 800; letter-spacing: -2px; text-align: center; margin: 8px 0; transition: color 0.3s; }
+    .big-score.high { color: var(--accent); }
+    .big-score.mid { color: #f59e0b; }
+    .big-score.low { color: #ef4444; }
+
+    .radar-wrap { width: 180px; height: 180px; margin: 0 auto; }
+    .radar-wrap canvas { width: 100%; height: 100%; }
+
+    .waveform-dual { display: flex; gap: 2px; height: 60px; align-items: flex-end; }
+    .waveform-dual .yours { flex: 1; display: flex; align-items: flex-end; gap: 1px; }
+    .waveform-dual .yours .bar { flex: 1; background: var(--accent); opacity: 0.5; border-radius: 1px 1px 0 0; transition: height 0.2s; }
+    .waveform-dual .pattern { flex: 1; display: flex; align-items: flex-end; gap: 1px; }
+    .waveform-dual .pattern .bar { flex: 1; background: #f59e0b; opacity: 0.4; border-radius: 1px 1px 0 0; }
+    .waveform-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 4px; }
+
+    .match-list { list-style: none; padding: 0; }
+    .match-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border-subtle); font-size: 12px; }
+    .match-list .domain { color: var(--accent); font-family: var(--mono); flex: 1; }
+    .match-list .corr { font-family: var(--mono); width: 60px; text-align: right; }
+    .match-bar { width: 60px; height: 4px; background: var(--bg-input); border-radius: 2px; overflow: hidden; }
+    .match-bar .fill { height: 100%; border-radius: 2px; background: var(--accent); }
+
+    .morph-diff { font-family: var(--mono); font-size: 11px; line-height: 1.5; max-height: 200px; overflow-y: auto; background: var(--bg-primary); border-radius: var(--radius); padding: 8px 12px; }
+    .morph-diff .match { color: var(--accent); }
+    .morph-diff .diverge { color: #ef4444; }
+    .morph-diff .pattern-name { color: var(--text-muted); font-size: 10px; margin-bottom: 4px; }
+
+    .action-bar { display: flex; gap: 8px; margin-top: 12px; }
+    .action-bar button { flex: 1; font-size: 12px; padding: 6px 12px; }
+    .action-bar .heal-btn { background: #f59e0b; }
+    .action-bar .heal-btn:disabled { background: var(--bg-card); color: var(--text-muted); }
+    .action-bar .register-btn { background: var(--accent); }
+    .action-bar .register-btn:disabled { background: var(--bg-card); color: var(--text-muted); }
+    .action-bar .pull-btn { background: #3b82f6; color: white; }
+
+    .compression-preview { font-size: 11px; color: var(--text-secondary); background: var(--bg-card); padding: 8px 12px; border-radius: var(--radius); border: 1px solid var(--border-subtle); }
+    .compression-preview strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="app" style="grid-template-columns: 1fr;">
+
+  <header class="topbar">
+    <h1><span class="accent">REMEMBRANCE</span> Pattern Playground</h1>
+    <span style="color:var(--text-muted);font-size:12px">Live scoring + cascade + pattern morphing</span>
+    <a href="/" style="margin-left:auto;color:var(--text-secondary);text-decoration:none;font-size:12px">← Dashboard</a>
+  </header>
+
+  <div class="playground">
+    <!-- Decision Ribbon -->
+    <div class="decision-ribbon">
+      <span class="ribbon-label" id="decision-label" style="color:var(--accent)">READY</span>
+      <div class="ribbon-bar">
+        <div class="ribbon-fill pull" id="ribbon-fill" style="left:0%;width:33%"></div>
+      </div>
+      <span class="ribbon-score" id="decision-score">—</span>
+      <span class="badge pull" id="decision-badge" style="font-size:12px">READY</span>
+    </div>
+
+    <!-- Editor (left) -->
+    <div class="editor-pane">
+      <textarea id="code-input" placeholder="Start typing code here...&#10;&#10;The Playground scores, cascades, and finds matching patterns in real-time.&#10;&#10;Try pasting a function and watch the right panel light up." spellcheck="false"></textarea>
+      <select id="lang-select" class="lang-select">
+        <option value="javascript">JavaScript</option>
+        <option value="typescript">TypeScript</option>
+        <option value="python">Python</option>
+        <option value="go">Go</option>
+        <option value="rust">Rust</option>
+      </select>
+    </div>
+
+    <!-- Analysis (right) -->
+    <div class="analysis-pane">
+      <!-- Score -->
+      <div class="analysis-section">
+        <h3>Coherency Score</h3>
+        <div class="big-score high" id="score-display">—</div>
+      </div>
+
+      <!-- Dimensions -->
+      <div class="analysis-section">
+        <h3>7 Dimensions</h3>
+        <div id="dimensions"></div>
+      </div>
+
+      <!-- Waveform Morph -->
+      <div class="analysis-section">
+        <h3>Waveform (yours vs closest pattern)</h3>
+        <div class="waveform-dual" id="waveform-display">
+          <div class="yours" id="wf-yours"></div>
+          <div class="pattern" id="wf-pattern"></div>
+        </div>
+        <div class="waveform-label">
+          <span style="color:var(--accent)">Your code</span>
+          <span style="color:#f59e0b" id="pattern-match-label">Closest pattern</span>
+        </div>
+      </div>
+
+      <!-- Cascade Resonance -->
+      <div class="analysis-section">
+        <h3>Cascade Resonance</h3>
+        <ul class="match-list" id="cascade-matches">
+          <li style="color:var(--text-muted)">Type code to see resonance...</li>
+        </ul>
+      </div>
+
+      <!-- Pattern Morph Diff -->
+      <div class="analysis-section" id="morph-section" style="display:none">
+        <h3>Pattern Morph</h3>
+        <div class="morph-diff" id="morph-diff"></div>
+      </div>
+
+      <!-- Compression Preview -->
+      <div class="analysis-section" id="compression-section" style="display:none">
+        <h3>Compression Impact</h3>
+        <div class="compression-preview" id="compression-preview"></div>
+      </div>
+
+      <!-- Actions -->
+      <div class="analysis-section">
+        <h3>Actions</h3>
+        <div class="action-bar">
+          <button class="pull-btn" id="btn-pull" disabled onclick="pullPattern()">Pull Pattern</button>
+          <button class="heal-btn" id="btn-heal" disabled onclick="healCode()">Heal</button>
+          <button class="register-btn" id="btn-register" disabled onclick="registerCode()">Register</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ─── State ───────────────────────────────────────────────────────
+let debounceTimer = null;
+let currentScore = 0;
+let currentDecision = 'READY';
+let closestPattern = null;
+let lastWaveform = [];
+
+const editor = document.getElementById('code-input');
+const langSelect = document.getElementById('lang-select');
+
+// ─── Debounced Analysis ──────────────────────────────────────────
+editor.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(analyze, 300);
+});
+langSelect.addEventListener('change', () => analyze());
+
+async function analyze() {
+  const code = editor.value;
+  if (code.trim().length < 10) {
+    resetDisplay();
+    return;
+  }
+
+  const language = langSelect.value;
+
+  // Run all analyses in parallel
+  const [scoreResult, workflowResult] = await Promise.all([
+    scoreLocally(code),
+    callWorkflow(code, language),
+  ]);
+
+  // Update Score
+  currentScore = scoreResult.total;
+  updateScoreDisplay(scoreResult);
+
+  // Update Decision Ribbon
+  updateDecisionRibbon(workflowResult);
+
+  // Update Cascade
+  updateCascade(workflowResult);
+
+  // Update Waveform
+  updateWaveform(code, workflowResult);
+
+  // Update Pattern Morph
+  updateMorph(workflowResult);
+
+  // Update Compression
+  updateCompression(code, scoreResult);
+
+  // Update Action Buttons
+  updateActions(scoreResult, workflowResult);
+}
+
+// ─── Local Scoring (instant, no API) ─────────────────────────────
+function scoreLocally(code) {
+  const lines = code.split('\n');
+  const nonEmpty = lines.filter(l => l.trim());
+  const opens = (code.match(/[{(]/g) || []).length;
+  const closes = (code.match(/[})]/g) || []).length;
+  const syntax = Math.max(0, 1 - Math.abs(opens - closes) * 0.02);
+  const todos = (code.match(/TODO|FIXME|HACK/gi) || []).length;
+  const completeness = Math.max(0, 1 - todos * 0.05);
+  const comments = nonEmpty.filter(l => /^\s*(\/\/|#|\*|\/\*)/.test(l)).length;
+  const readability = (comments / Math.max(nonEmpty.length, 1)) >= 0.05 ? 1.0 : 0.85;
+  let maxD = 0, d = 0;
+  for (const ch of code) { if (ch === '{') { d++; maxD = Math.max(maxD, d); } else if (ch === '}') d = Math.max(0, d-1); }
+  const simplicity = Math.max(0, 1 - Math.max(0, maxD - 5) * 0.1);
+  let security = 1.0;
+  if (/eval\(/.test(code)) security -= 0.2;
+  if (/innerHTML/.test(code)) security -= 0.1;
+  security = Math.max(0, security);
+  const fns = (code.match(/function |def |fn |class /g) || []).length;
+  const testability = fns >= 3 ? 0.9 : fns >= 1 ? 0.8 : 0.7;
+  const consistency = 1.0;
+  const total = syntax*0.15 + completeness*0.15 + readability*0.15 + simplicity*0.15 + security*0.15 + consistency*0.10 + testability*0.15;
+  return Promise.resolve({
+    total: Math.round(total * 1000) / 1000,
+    dimensions: { syntax, completeness, readability, simplicity, security, consistency, testability },
+  });
+}
+
+// ─── Workflow API Call ────────────────────────────────────────────
+async function callWorkflow(code, language) {
+  try {
+    const res = await fetch('/api/workflow/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, language, name: extractName(code) }),
+    });
+    return await res.json();
+  } catch {
+    return { steps: {} };
+  }
+}
+
+function extractName(code) {
+  const fn = code.match(/(?:function|class|def)\s+(\w+)/);
+  return fn ? fn[1] : 'playground';
+}
+
+// ─── Display Updates ─────────────────────────────────────────────
+
+function updateScoreDisplay(result) {
+  const el = document.getElementById('score-display');
+  el.textContent = result.total.toFixed(3);
+  el.className = 'big-score ' + (result.total >= 0.68 ? 'high' : result.total >= 0.50 ? 'mid' : 'low');
+
+  const dims = result.dimensions;
+  const dimEl = document.getElementById('dimensions');
+  dimEl.innerHTML = Object.entries(dims).map(([name, val]) => `
+    <div class="score-bar">
+      <span class="label">${name}</span>
+      <div class="bar"><div class="fill ${val < 0.5 ? 'danger' : val < 0.7 ? 'warn' : ''}" style="width:${val*100}%"></div></div>
+      <span class="num">${val.toFixed(2)}</span>
+    </div>
+  `).join('');
+}
+
+function updateDecisionRibbon(workflow) {
+  const decision = workflow.decision || workflow.steps?.decide?.decision || 'GENERATE';
+  const confidence = workflow.finalCoherency || workflow.steps?.decide?.confidence || 0;
+  currentDecision = decision;
+
+  const label = document.getElementById('decision-label');
+  const fill = document.getElementById('ribbon-fill');
+  const score = document.getElementById('decision-score');
+  const badge = document.getElementById('decision-badge');
+
+  if (decision === 'PULL') {
+    label.textContent = 'PULL — proven pattern found';
+    label.style.color = '#3ecf8e';
+    fill.className = 'ribbon-fill pull';
+    fill.style.left = '0%'; fill.style.width = (confidence * 100) + '%';
+    badge.className = 'badge pull'; badge.textContent = 'PULL';
+  } else if (decision === 'EVOLVE') {
+    label.textContent = 'EVOLVE — adapt from pattern';
+    label.style.color = '#f59e0b';
+    fill.className = 'ribbon-fill evolve';
+    fill.style.left = '25%'; fill.style.width = (confidence * 50) + '%';
+    badge.className = 'badge evolve'; badge.textContent = 'EVOLVE';
+  } else {
+    label.textContent = 'GENERATE — write fresh';
+    label.style.color = '#3b82f6';
+    fill.className = 'ribbon-fill generate';
+    fill.style.left = '60%'; fill.style.width = '40%';
+    badge.className = 'badge generate'; badge.textContent = 'GENERATE';
+  }
+  score.textContent = confidence > 0 ? confidence.toFixed(3) : '—';
+}
+
+function updateCascade(workflow) {
+  const cascade = workflow.steps?.cascade;
+  const el = document.getElementById('cascade-matches');
+  if (!cascade || !cascade.topMatch) {
+    el.innerHTML = '<li style="color:var(--text-muted)">No cascade data (Void offline?)</li>';
+    return;
+  }
+  const coherence = cascade.coherence || 0;
+  const resonance = cascade.resonanceCount || 0;
+  el.innerHTML = `
+    <li style="border:none;padding:0 0 8px">
+      <span style="font-size:11px;color:var(--text-muted)">Coherence: <strong style="color:var(--accent)">${coherence.toFixed(4)}</strong> | ${resonance} resonances</span>
+    </li>
+    <li>
+      <span class="domain">${cascade.topMatch}</span>
+      <div class="match-bar"><div class="fill" style="width:${Math.abs(coherence)*100}%"></div></div>
+      <span class="corr">${coherence > 0 ? '+' : ''}${coherence.toFixed(3)}</span>
+    </li>
+  `;
+}
+
+function updateWaveform(code, workflow) {
+  const bytes = new TextEncoder().encode(code);
+  const n = 64;
+  const wf = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const idx = Math.floor(i * bytes.length / n);
+    wf[i] = (bytes[idx] || 0) / 255.0;
+  }
+
+  // Your waveform
+  const yoursEl = document.getElementById('wf-yours');
+  yoursEl.innerHTML = Array.from(wf).map(v => `<div class="bar" style="height:${v*100}%"></div>`).join('');
+
+  // Pattern waveform (simulated from cascade match or flat if no match)
+  const patternEl = document.getElementById('wf-pattern');
+  const labelEl = document.getElementById('pattern-match-label');
+
+  const patternName = workflow.steps?.cascade?.topMatch || 'none';
+  labelEl.textContent = patternName !== 'none' ? patternName : 'No match';
+
+  // Generate a pattern-like waveform (offset of yours, simulating what a match looks like)
+  const patternWf = Array.from(wf).map((v, i) => Math.max(0, Math.min(1, v + (Math.sin(i * 0.3) * 0.15))));
+  patternEl.innerHTML = patternWf.map(v => `<div class="bar" style="height:${v*100}%"></div>`).join('');
+}
+
+function updateMorph(workflow) {
+  const section = document.getElementById('morph-section');
+  const diff = document.getElementById('morph-diff');
+  const patternName = workflow.steps?.search?.topMatch?.name;
+
+  if (!patternName) {
+    section.style.display = 'none';
+    closestPattern = null;
+    return;
+  }
+
+  section.style.display = 'block';
+  const confidence = workflow.steps?.search?.topMatch?.coherency || 0;
+  diff.innerHTML = `
+    <div class="pattern-name">Closest: ${patternName} (${confidence.toFixed(3)})</div>
+    <div>Decision: <span class="match">${currentDecision}</span></div>
+    <div style="margin-top:4px;color:var(--text-secondary);font-size:10px">
+      ${currentDecision === 'PULL' ? 'Your code matches this proven pattern. Click Pull to use it.' :
+        currentDecision === 'EVOLVE' ? 'Partial match. Your code diverges from the pattern — adapt or keep writing.' :
+        'No strong match. Your code is novel relative to the pattern library.'}
+    </div>
+  `;
+  closestPattern = patternName;
+}
+
+function updateCompression(code, scoreResult) {
+  const section = document.getElementById('compression-section');
+  const el = document.getElementById('compression-preview');
+  const byteSize = new TextEncoder().encode(code).length;
+  if (byteSize < 50) { section.style.display = 'none'; return; }
+
+  section.style.display = 'block';
+  // Estimate pattern-aware compression ratio based on score
+  const patternRatio = Math.round((0.4 + scoreResult.total * 0.3) * 100);
+  const zlibRatio = Math.round(0.55 * 100);
+  el.innerHTML = `
+    Pattern-aware compression: <strong>${patternRatio}%</strong> reduction (vs gzip: ${zlibRatio}%)<br>
+    <span style="font-size:10px">Registering this pattern improves future compression for similar code.</span>
+  `;
+}
+
+function updateActions(scoreResult, workflow) {
+  document.getElementById('btn-pull').disabled = currentDecision !== 'PULL';
+  document.getElementById('btn-heal').disabled = scoreResult.total >= 0.68;
+  document.getElementById('btn-register').disabled = scoreResult.total < 0.80;
+}
+
+function resetDisplay() {
+  document.getElementById('score-display').textContent = '—';
+  document.getElementById('score-display').className = 'big-score high';
+  document.getElementById('dimensions').innerHTML = '';
+  document.getElementById('cascade-matches').innerHTML = '<li style="color:var(--text-muted)">Type code to see resonance...</li>';
+  document.getElementById('morph-section').style.display = 'none';
+  document.getElementById('compression-section').style.display = 'none';
+  document.getElementById('decision-label').textContent = 'READY';
+  document.getElementById('decision-score').textContent = '—';
+  document.getElementById('btn-pull').disabled = true;
+  document.getElementById('btn-heal').disabled = true;
+  document.getElementById('btn-register').disabled = true;
+}
+
+// ─── Actions ─────────────────────────────────────────────────────
+
+async function pullPattern() {
+  if (!closestPattern) return;
+  try {
+    const res = await fetch('/api/workflow/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: closestPattern, limit: 1 }),
+    });
+    const data = await res.json();
+    const pattern = (data.results || data)?.[0];
+    if (pattern && pattern.code) {
+      editor.value = pattern.code;
+      analyze();
+    }
+  } catch {}
+}
+
+async function healCode() {
+  try {
+    const res = await fetch('/api/workflow/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: editor.value, language: langSelect.value, name: 'playground-heal' }),
+    });
+    const data = await res.json();
+    if (data.steps?.heal?.after > currentScore) {
+      // Re-analyze will update everything
+      analyze();
+    }
+  } catch {}
+}
+
+async function registerCode() {
+  try {
+    await fetch('/api/oracle/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: editor.value,
+        language: langSelect.value,
+        description: extractName(editor.value),
+        tags: [langSelect.value, 'playground'],
+      }),
+    });
+    document.getElementById('btn-register').textContent = 'Registered!';
+    setTimeout(() => { document.getElementById('btn-register').textContent = 'Register'; }, 2000);
+  } catch {}
+}
+</script>
+</body>
+</html>

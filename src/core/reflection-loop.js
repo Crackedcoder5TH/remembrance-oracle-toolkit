@@ -29,6 +29,7 @@ const DIMENSION_DROP_DIAGNOSTICS = {
   security: 'Transform introduced security concerns — covenant violations, eval, var, or loose equality.',
   unity: 'Transform broke style consistency — mixed camelCase/snake_case or mixed quote styles.',
   correctness: 'Transform reduced correctness — unbalanced brackets, TODO markers, or empty catch blocks.',
+  fractalAlignment: 'Transform reduced fractal alignment — lost self-similar structure, boundary depth, or growth cascade patterns.',
 };
 
 /**

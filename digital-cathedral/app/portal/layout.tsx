@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
   title: {
-    template: "%s | Valor Legacies Client Portal",
-    default: "Client Portal | Valor Legacies",
+    template: "%s | Valor Legacies Agent Portal",
+    default: "Agent Portal | Valor Legacies",
   },
 };
 

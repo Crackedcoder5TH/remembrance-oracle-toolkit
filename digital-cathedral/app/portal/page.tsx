@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client Portal — Welcome Page
+ * Agent Portal — Welcome Page
  *
  * Landing page for valorlegacies.xyz.
  * Centers a welcome message with login form and quick links.
@@ -64,7 +64,20 @@ export default function PortalWelcomePage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4 py-12">
+    <main className="min-h-screen flex items-center justify-center px-4 py-12 relative">
+      {/* Admin Login — top right */}
+      <div className="absolute top-4 right-4">
+        <Link
+          href="/admin/login"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border border-indigo-cathedral/20 text-[var(--text-muted)] hover:border-teal-cathedral/40 hover:text-teal-cathedral"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+          </svg>
+          Admin Login
+        </Link>
+      </div>
+
       <div className="max-w-md w-full space-y-8">
         {/* Welcome Header */}
         <div className="text-center">
@@ -72,7 +85,7 @@ export default function PortalWelcomePage() {
             Valor Legacies
           </div>
           <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
-            Welcome, Clients
+            Welcome, Agents
           </h1>
           <p className="text-sm text-[var(--text-muted)] leading-relaxed max-w-sm mx-auto">
             Your trusted partner portal for accessing qualified life insurance leads.
@@ -83,7 +96,7 @@ export default function PortalWelcomePage() {
         {/* Login Card */}
         <div className="cathedral-surface p-8 rounded-xl">
           <h2 className="text-lg font-light text-[var(--text-primary)] text-center mb-6">
-            Client Sign In
+            Agent Sign In
           </h2>
 
           {error && (
@@ -154,23 +167,32 @@ export default function PortalWelcomePage() {
           </div>
         </div>
 
-        {/* Admin Login */}
-        <div className="text-center">
-          <Link
-            href="/admin/login"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all border border-indigo-cathedral/20 text-[var(--text-muted)] hover:border-teal-cathedral/40 hover:text-teal-cathedral"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
-            </svg>
-            Admin Login
-          </Link>
+        {/* ROI Value Proposition */}
+        <div className="cathedral-surface p-6 rounded-xl">
+          <h3 className="text-sm metallic-gold uppercase tracking-wider mb-4 text-center">Why Agents Choose Valor Legacies</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Real-Time</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Fresh leads scored and delivered the moment they submit — not aged or recycled</p>
+            </div>
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Exclusive Tiers</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Choose your tier — from exclusive (1 buyer) to shared — and only pay for what converts</p>
+            </div>
+            <div className="p-3">
+              <p className="text-2xl font-bold text-teal-cathedral">Track Your ROI</p>
+              <p className="text-xs text-[var(--text-muted)] mt-1">Built-in conversion tracking shows your real cost-per-sale so you can scale with confidence</p>
+            </div>
+          </div>
+          <p className="text-xs text-[var(--text-muted)] text-center mt-4 leading-relaxed max-w-lg mx-auto">
+            Our agents see their conversion rates directly in the portal. When you know your numbers, you control your growth.
+          </p>
         </div>
 
         {/* Quick Links */}
         <div className="text-center space-y-2">
           <p className="text-xs text-[var(--text-muted)]">
-            Interested in becoming a client?{" "}
+            Interested in becoming an agent?{" "}
             <a
               href="https://valorlegacies.com/about"
               className="text-teal-cathedral hover:text-teal-cathedral/80 transition-colors"

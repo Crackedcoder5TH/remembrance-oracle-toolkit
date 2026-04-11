@@ -332,8 +332,8 @@ describe('Auto-Commit Safety — reflector functions (MCP consolidated)', () => 
     assert.strictEqual(typeof report.formatAutoCommit, 'function');
   });
 
-  it('MCP has 12 consolidated tools', () => {
+  it('MCP has 13 consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 12);
+    assert.equal(TOOLS.length, 13);
   });
 });

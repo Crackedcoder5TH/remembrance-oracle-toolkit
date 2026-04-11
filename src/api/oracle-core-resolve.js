@@ -1,13 +1,17 @@
 /**
- * Oracle Core — Resolve (Quantum Measurement).
+ * Oracle Core — Resolve (Unified Quantum Measurement).
  *
  * Resolve is the fundamental MEASUREMENT of the quantum field.
  * It collapses the superposition of all matching patterns into a
- * definite decision (PULL / EVOLVE / GENERATE) via:
- *   1. Quantum observation — decoherence + Born rule scoring
- *   2. Interference — competing patterns interfere constructively/destructively
- *   3. Entanglement — healing results propagate to linked patterns
- *   4. State collapse — measured patterns transition to collapsed state
+ * definite decision (PULL / EVOLVE / GENERATE) via a single unified
+ * measurement that fuses three formerly-separate systems:
+ *
+ *   1. FRACTAL ALIGNMENT → determines quantum sector + structural resonance
+ *   2. AUDIT BUG-CLASS   → applies decoherence (bugs reduce amplitude)
+ *   3. QUANTUM MECHANICS  → amplitude, interference, tunneling, Born rule
+ *
+ * The unified scorer replaces three independent post-processing passes
+ * with one coherent measurement where all signals interact.
  */
 
 const { reflectionLoop } = require('../core/reflection');
@@ -21,10 +25,24 @@ const { enhanceResolveWithBugClasses } = require('../audit/resolve-hook');
 
 // Quantum measurement engine
 const {
-  applyDecoherence,
-  PLANCK_AMPLITUDE,
   QUANTUM_STATES,
 } = require('../quantum/quantum-core');
+
+// Unified quantum scorer — single measurement fusing quantum + fractal + audit
+let _unifiedMeasurement;
+try {
+  ({ unifiedMeasurement: _unifiedMeasurement } = require('../unified/quantum-scorer'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[resolve:init] Unified quantum scorer not available:', e?.message || e);
+}
+
+// Fractal alignment integration (fallback if unified scorer unavailable)
+let _computeFractalAlignment, _selectResonantFractal;
+try {
+  ({ computeFractalAlignment: _computeFractalAlignment, selectResonantFractal: _selectResonantFractal } = require('../fractals'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[resolve:init] Fractal system not available:', e?.message || e);
+}
 
 module.exports = {
   /**
@@ -185,23 +203,102 @@ module.exports = {
 
     auditLog('resolve', { id: patternData?.id, name: patternData?.name, success: true, language: patternData?.language, meta: { decision: decision.decision, confidence: decision.confidence, healed: !!healing } });
 
-    // ─── Quantum State Tracking ───
-    // Collapse the resolved pattern's quantum state and propagate entanglement
+    // ─── UNIFIED QUANTUM MEASUREMENT ───
+    // Single measurement fusing fractal alignment, audit bug-class check, and quantum state.
+    // Replaces three formerly-separate post-processing passes with one coherent signal.
+    let unifiedResult = null;
+    let fractalResonance = null;
     let quantumMeasurement = null;
-    if (patternData?.id && this._quantumField && (decision.decision === 'pull' || decision.decision === 'evolve')) {
+    let bugClassWarnings = null;
+    let bugClassOverride = null;
+
+    if (_unifiedMeasurement && healedCode) {
       try {
-        this._quantumField.observe('patterns', [patternData.id]);
+        unifiedResult = _unifiedMeasurement(healedCode, {
+          language: language || patternData?.language,
+          description,
+          pattern: {
+            id: patternData?.id,
+            name: patternData?.name,
+            tags: patternData?.tags,
+            sector: patternData?.patternType,
+            usageCount: decision.pattern?.usageCount || 0,
+            successCount: decision.pattern?.successCount || 0,
+          },
+          quantumState: {
+            amplitude: patternData?.amplitude || decision.confidence,
+            lastObservedAt: decision.pattern?.lastObservedAt,
+            observationCount: decision.pattern?.observationCount || 0,
+            phase: decision.pattern?.phase,
+            quantum_state: decision.pattern?.quantum_state,
+          },
+          relevance: decision.confidence || 0.5,
+          historicalReliability: decision.pattern?.historicalReliability,
+          preset: 'oracle',
+        });
+
+        // Extract sub-results for backwards-compatible output
+        fractalResonance = unifiedResult.fractal;
         quantumMeasurement = {
           observed: true,
           stateCollapsed: QUANTUM_STATES.COLLAPSED,
-          amplitude: patternData.amplitude || decision.confidence,
+          amplitude: unifiedResult.amplitude,
+          unifiedAmplitude: unifiedResult.amplitude,
+          sector: unifiedResult.quantum?.sector,
+          sectorWeight: unifiedResult.quantum?.sectorWeight,
         };
+        if (unifiedResult.audit?.warnings?.length > 0) {
+          bugClassWarnings = unifiedResult.audit.warnings;
+        }
+        if (unifiedResult.audit?.override) {
+          bugClassOverride = unifiedResult.audit.override;
+        }
       } catch (e) {
-        if (process.env.ORACLE_DEBUG) console.warn('[resolve] quantum observation failed:', e?.message || e);
+        if (process.env.ORACLE_DEBUG) console.warn('[resolve] unified measurement failed, falling back:', e?.message || e);
       }
     }
 
-    // Auto-capture debug patterns from healing results (healed code forwarding)
+    // Fallback: if unified scorer unavailable, use legacy separate passes
+    if (!unifiedResult) {
+      // Legacy fractal pass
+      if (_computeFractalAlignment && healedCode) {
+        try {
+          const alignment = _computeFractalAlignment(healedCode);
+          const resonant = _selectResonantFractal ? _selectResonantFractal(healedCode, description) : null;
+          fractalResonance = {
+            alignment: alignment.composite,
+            dimensions: alignment.dimensions,
+            dominantFractal: alignment.dominantFractal,
+            resonantTemplate: resonant ? { fractal: resonant.fractal, resonance: resonant.resonance, reason: resonant.reason } : null,
+          };
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[resolve] Fractal alignment failed:', e?.message || e);
+        }
+      }
+
+      // Legacy quantum observation
+      if (patternData?.id && this._quantumField && (decision.decision === 'pull' || decision.decision === 'evolve')) {
+        try {
+          this._quantumField.observe('patterns', [patternData.id]);
+          quantumMeasurement = {
+            observed: true,
+            stateCollapsed: QUANTUM_STATES.COLLAPSED,
+            amplitude: patternData.amplitude || decision.confidence,
+          };
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[resolve] quantum observation failed:', e?.message || e);
+        }
+      }
+    }
+
+    // Collapse quantum state in the field (whether unified or legacy)
+    if (patternData?.id && this._quantumField && (decision.decision === 'pull' || decision.decision === 'evolve')) {
+      try {
+        this._quantumField.observe('patterns', [patternData.id]);
+      } catch (_) { /* non-fatal */ }
+    }
+
+    // Build resolve result
     let resolveResult = {
       decision: decision.decision, confidence: decision.confidence, reasoning: decision.reasoning,
       pattern: patternData, healedCode, healedVariantId, whisper, candidateNotes,
@@ -210,9 +307,17 @@ module.exports = {
         finalCoherence: healing.reflection?.finalCoherence, improvement: healing.reflection?.improvement,
         healingPath: healing.healingPath,
       } : null,
+      fractalResonance,
       alternatives: decision.alternatives, historyMatches: historyResults,
-      // Quantum measurement results
       quantum: quantumMeasurement,
+      // Unified measurement sub-scores (when available)
+      unifiedMeasurement: unifiedResult ? {
+        amplitude: unifiedResult.amplitude,
+        coherency: unifiedResult.coherency?.total,
+        auditPenalty: unifiedResult.audit?.decoherencePenalty,
+        sector: unifiedResult.quantum?.sector,
+        sectorWeight: unifiedResult.quantum?.sectorWeight,
+      } : null,
     };
 
     // Auto-capture debug patterns and forward healed code
@@ -222,11 +327,16 @@ module.exports = {
       if (process.env.ORACLE_DEBUG) console.warn('[resolve] auto-debug capture failed:', e?.message || e);
     }
 
-    // Bug class check — warn if resolved code matches known risky patterns
-    try {
-      resolveResult = enhanceResolveWithBugClasses(resolveResult, this);
-    } catch (e) {
-      if (process.env.ORACLE_DEBUG) console.warn('[resolve] bug class check failed:', e?.message || e);
+    // Bug class check — use unified results if available, else legacy pass
+    if (bugClassWarnings) {
+      resolveResult.bugClassWarnings = bugClassWarnings;
+      if (bugClassOverride) resolveResult.bugClassOverride = bugClassOverride;
+    } else {
+      try {
+        resolveResult = enhanceResolveWithBugClasses(resolveResult, this);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[resolve] bug class check failed:', e?.message || e);
+      }
     }
 
     // Append prompt tag when enabled

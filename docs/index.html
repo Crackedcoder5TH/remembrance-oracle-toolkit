@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remembrance — Your codebase remembers what works</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <header class="top-nav">
+    <div class="logo"><span>R</span>emembrance</div>
+    <nav>
+      <a href="index.html" class="active">Home</a>
+      <a href="getting-started.html">Getting Started</a>
+      <a href="api.html">API Reference</a>
+      <a href="architecture.html">Architecture</a>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>Remembrance &mdash; Your codebase <em>remembers</em> what works</h1>
+    <p>
+      A pattern-aware oracle that learns from your codebase, heals your CI pipeline,
+      and coordinates multi-agent consensus &mdash; so proven solutions are never lost.
+    </p>
+    <div class="cta-group">
+      <a href="getting-started.html" class="btn btn-primary">Get Started</a>
+      <a href="api.html" class="btn btn-secondary">API Reference</a>
+    </div>
+  </section>
+
+  <!-- Feature Cards -->
+  <section class="container">
+    <div class="features">
+
+      <div class="card">
+        <span class="icon">&#x1F9E0;</span>
+        <h3>Pattern Memory</h3>
+        <p>
+          Every pattern your team writes is indexed, scored for coherency, and made
+          searchable. The oracle surfaces the right solution the moment you need it.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="icon">&#x1F527;</span>
+        <h3>Self-Healing CI</h3>
+        <p>
+          When builds break, the healing engine matches failures to known fixes,
+          applies patches, and re-runs the pipeline &mdash; automatically.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="icon">&#x1F310;</span>
+        <h3>Multi-Agent Consensus</h3>
+        <p>
+          Multiple agents propose, vote on, and converge toward the best solution.
+          Swarm intelligence ensures no single point of failure in decision-making.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Quick Start -->
+  <section class="container quickstart">
+    <h2>Quick Start</h2>
+    <p>Install the toolkit and start using the oracle in under a minute.</p>
+    <pre><code><span class="cm"># Install</span>
+<span class="fn">npm</span> install remembrance-oracle-toolkit
+
+<span class="cm"># Search for a known pattern</span>
+<span class="kw">const</span> oracle = <span class="fn">require</span>(<span class="str">'remembrance-oracle-toolkit'</span>);
+<span class="kw">const</span> results = <span class="kw">await</span> oracle.<span class="fn">search</span>(<span class="str">'rate limiter'</span>);
+
+<span class="cm"># Score code coherency</span>
+<span class="kw">const</span> score = <span class="kw">await</span> oracle.<span class="fn">computeCoherencyScore</span>(code, {
+  <span class="str">language</span>: <span class="str">'javascript'</span>
+});</code></pre>
+    <p>
+      Read the full <a href="getting-started.html">Getting Started guide</a> for
+      Docker setup, pattern resolution, and more.
+    </p>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>Remembrance Oracle Toolkit &mdash; MIT License</p>
+  </footer>
+
+</body>
+</html>

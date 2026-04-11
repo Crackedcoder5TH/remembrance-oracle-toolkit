@@ -51,6 +51,14 @@ try {
   if (process.env.ORACLE_DEBUG) console.warn('[unified-coherency:init] covenant not available:', e?.message || e);
 }
 
+// Fractal alignment — graceful fallback if fractal engines not available
+let _computeFractalAlignment;
+try {
+  ({ computeFractalAlignment: _computeFractalAlignment } = require('../fractals/alignment'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[unified-coherency:init] fractal alignment not available:', e?.message || e);
+}
+
 // ─── Weight Presets ───
 
 const WEIGHT_PRESETS = {
@@ -59,13 +67,14 @@ const WEIGHT_PRESETS = {
    * Security and readability get zero weight (not computed), preserving the original 5-dimension model.
    */
   oracle: {
-    syntax: 0.25,
-    completeness: 0.20,
-    consistency: 0.15,
+    syntax: 0.22,
+    completeness: 0.18,
+    consistency: 0.12,
     readability: 0.0,
     security: 0.0,
-    testProof: 0.30,
+    testProof: 0.28,
     historicalReliability: 0.10,
+    fractalAlignment: 0.10,
   },
 
   /**
@@ -73,26 +82,28 @@ const WEIGHT_PRESETS = {
    * Completeness and consistency get zero weight, adds readability + security.
    */
   reflector: {
-    syntax: 0.25,
+    syntax: 0.22,
     completeness: 0.0,
     consistency: 0.0,
-    readability: 0.20,
-    security: 0.15,
-    testProof: 0.30,
+    readability: 0.18,
+    security: 0.12,
+    testProof: 0.28,
     historicalReliability: 0.10,
+    fractalAlignment: 0.10,
   },
 
   /**
    * Full preset — uses all 7 dimensions. Best overall quality signal.
    */
   full: {
-    syntax: 0.15,
-    completeness: 0.10,
-    consistency: 0.10,
-    readability: 0.15,
-    security: 0.10,
-    testProof: 0.25,
-    historicalReliability: 0.15,
+    syntax: 0.13,
+    completeness: 0.09,
+    consistency: 0.09,
+    readability: 0.13,
+    security: 0.09,
+    testProof: 0.22,
+    historicalReliability: 0.13,
+    fractalAlignment: 0.12,
   },
 
   /**
@@ -267,6 +278,20 @@ function scoreSecurity(code, language) {
   return scan.score;
 }
 
+/**
+ * Score fractal alignment (0-1). Maps code structure to the 5 fractal systems.
+ * Returns fallback when fractal engines are not available.
+ */
+function scoreFractalAlignment(code, language) {
+  if (!_computeFractalAlignment) return COHERENCY_DEFAULTS.FRACTAL_ALIGNMENT_FALLBACK;
+  try {
+    const result = _computeFractalAlignment(code, language);
+    return typeof result === 'object' ? result.composite : (typeof result === 'number' ? result : COHERENCY_DEFAULTS.FRACTAL_ALIGNMENT_FALLBACK);
+  } catch (_) {
+    return COHERENCY_DEFAULTS.FRACTAL_ALIGNMENT_FALLBACK;
+  }
+}
+
 // ─── Main Scoring Function ───
 
 /**
@@ -280,11 +305,15 @@ function computeCoherencyScore(code, metadata = {}) {
   if (code == null || typeof code !== 'string') {
     return {
       total: 0,
-      breakdown: { syntaxValid: 0, completeness: 0, consistency: 0, readability: 0, security: 0, testProof: 0, historicalReliability: 0 },
+      breakdown: { syntaxValid: 0, completeness: 0, consistency: 0, readability: 0, security: 0, testProof: 0, historicalReliability: 0, fractalAlignment: 0 },
     };
   }
 
-  const language = metadata.language || detectLanguage(code);
+  // Guard: cap code length for expensive regex-based scorers
+  const MAX_COHERENCY_CHARS = 50000;
+  const scoringCode = code.length > MAX_COHERENCY_CHARS ? code.slice(0, MAX_COHERENCY_CHARS) : code;
+
+  const language = metadata.language || detectLanguage(scoringCode);
   const contentType = metadata.contentType || contentTypeForLanguage(language);
   // Auto-select content preset for non-code content types
   const defaultPreset = contentType !== 'code' ? 'content' : 'oracle';
@@ -301,15 +330,16 @@ function computeCoherencyScore(code, metadata = {}) {
 
   const historicalReliability = metadata.historicalReliability ?? COHERENCY_DEFAULTS.HISTORICAL_RELIABILITY_FALLBACK;
 
-  // Score all dimensions
+  // Score all dimensions (use size-capped scoringCode for regex-heavy scorers)
   const scores = {
-    syntaxValid: scoreSyntax(code, language),
-    completeness: scoreCompleteness(code),
-    consistency: scoreConsistency(code, language),
-    readability: weights.readability > 0 ? scoreReadability(code, language) : 0,
-    security: weights.security > 0 ? scoreSecurity(code, language) : 0,
+    syntaxValid: scoreSyntax(scoringCode, language),
+    completeness: scoreCompleteness(scoringCode),
+    consistency: scoreConsistency(scoringCode, language),
+    readability: weights.readability > 0 ? scoreReadability(scoringCode, language) : 0,
+    security: weights.security > 0 ? scoreSecurity(scoringCode, language) : 0,
     testProof,
     historicalReliability,
+    fractalAlignment: weights.fractalAlignment > 0 ? scoreFractalAlignment(scoringCode, language) : COHERENCY_DEFAULTS.FRACTAL_ALIGNMENT_FALLBACK,
   };
 
   // Weighted sum (only active dimensions)
@@ -320,12 +350,13 @@ function computeCoherencyScore(code, metadata = {}) {
     scores.readability * weights.readability +
     scores.security * weights.security +
     scores.testProof * weights.testProof +
-    scores.historicalReliability * weights.historicalReliability;
+    scores.historicalReliability * weights.historicalReliability +
+    scores.fractalAlignment * (weights.fractalAlignment || 0);
 
   // AST-based boost/penalty
   let ast;
   try {
-    ast = astCoherencyBoost(code, language);
+    ast = astCoherencyBoost(scoringCode, language);
   } catch (_) {
     ast = { boost: 0, parsed: { valid: false, functions: [], classes: [], complexity: 0 } };
   }
@@ -593,6 +624,7 @@ const WEIGHTS = {
   consistency: WEIGHT_PRESETS.oracle.consistency,
   testProof: WEIGHT_PRESETS.oracle.testProof,
   historicalReliability: WEIGHT_PRESETS.oracle.historicalReliability,
+  fractalAlignment: WEIGHT_PRESETS.oracle.fractalAlignment,
 };
 
 module.exports = {
@@ -603,6 +635,7 @@ module.exports = {
   scoreConsistency,
   scoreReadability,
   scoreSecurity,
+  scoreFractalAlignment,
   scoreNamingQuality,
   detectLanguage,
   contentTypeForLanguage,

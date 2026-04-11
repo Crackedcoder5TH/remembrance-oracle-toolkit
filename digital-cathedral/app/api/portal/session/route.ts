@@ -20,6 +20,14 @@ export async function GET(req: NextRequest) {
     getClientDocuments(session.id),
   ]);
 
+  // If all queries failed, the database is likely down
+  if (!leadsResult.ok && !messagesResult.ok && !documentsResult.ok) {
+    return NextResponse.json(
+      { authenticated: true, error: "Service temporarily unavailable. Please try again." },
+      { status: 503 },
+    );
+  }
+
   return NextResponse.json({
     authenticated: true,
     user: {
@@ -31,5 +39,6 @@ export async function GET(req: NextRequest) {
     leads: leadsResult.ok ? leadsResult.value : [],
     messages: messagesResult.ok ? messagesResult.value : [],
     documents: documentsResult.ok ? documentsResult.value : [],
+    _partial: !leadsResult.ok || !messagesResult.ok || !documentsResult.ok,
   });
 }

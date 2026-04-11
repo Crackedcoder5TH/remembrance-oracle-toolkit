@@ -1,7 +1,7 @@
 /**
  * Demo Client Data
  *
- * Hardcoded admin owner client for the client portal when no DATABASE_URL is configured.
+ * Hardcoded admin owner client for the agent portal when no DATABASE_URL is configured.
  * Password is pre-hashed so verifyPassword("ValorOwner2026!", hash) returns true.
  *
  * Credentials (local dev):

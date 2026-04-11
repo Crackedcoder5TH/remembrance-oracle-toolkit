@@ -59,6 +59,7 @@ interface WebPageProps {
   title: string;
   description: string;
   url: string;
+  dateModified?: string;
 }
 
 // ---------- coverage definitions ----------
@@ -161,10 +162,23 @@ export function LocalBusinessSchema() {
       "Veteran-founded life insurance agency dedicated to protecting military families, veterans, and first responders with affordable, personalized coverage.",
     url: baseUrl,
     email: "valorlegacies@gmail.com",
-    areaServed: {
-      "@type": "Country",
-      name: "United States",
-    },
+    areaServed: [
+      { "@type": "Country", name: "United States" },
+      // All 50 states + DC + Puerto Rico for maximum entity coverage
+      ...([
+        "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+        "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
+        "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+        "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+        "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+        "New Hampshire", "New Jersey", "New Mexico", "New York",
+        "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
+        "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+        "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+        "West Virginia", "Wisconsin", "Wyoming", "District of Columbia",
+        "Puerto Rico",
+      ].map((s) => ({ "@type": "State", name: s }))),
+    ],
     founder: {
       "@type": "Person",
       jobTitle: "Founder",
@@ -176,11 +190,49 @@ export function LocalBusinessSchema() {
       "Final Expense Insurance",
       "Veterans Benefits",
       "Military Family Financial Planning",
+      "SGLI",
+      "VGLI",
+      "VA Life Insurance",
+      "Indexed Universal Life Insurance",
+      "Term Life Insurance",
+      "Whole Life Insurance",
     ],
     slogan: "Protecting Those Who Served",
     serviceType: "Life Insurance Brokerage",
     priceRange: "$$",
-    sameAs: [],
+    // sameAs links strengthen entity recognition in knowledge graphs
+    sameAs: [
+      "https://www.va.gov/life-insurance/",
+      "https://www.benefits.va.gov/insurance/",
+    ],
+    // Additional entity enrichment
+    parentOrganization: undefined,
+    isRelatedTo: [
+      {
+        "@type": "GovernmentService",
+        name: "Servicemembers' Group Life Insurance (SGLI)",
+        url: "https://www.va.gov/life-insurance/options-eligibility/sgli/",
+        provider: { "@type": "GovernmentOrganization", name: "U.S. Department of Veterans Affairs" },
+      },
+      {
+        "@type": "GovernmentService",
+        name: "Veterans' Group Life Insurance (VGLI)",
+        url: "https://www.va.gov/life-insurance/options-eligibility/vgli/",
+        provider: { "@type": "GovernmentOrganization", name: "U.S. Department of Veterans Affairs" },
+      },
+    ],
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "Life Insurance Products for Veterans",
+      itemListElement: [
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Mortgage Protection Insurance" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Final Expense Insurance" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Income Replacement Insurance" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Indexed Universal Life Insurance (IUL)" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Guaranteed Income Annuity" } },
+        { "@type": "Offer", itemOffered: { "@type": "Service", name: "Legacy Planning Insurance" } },
+      ],
+    },
   };
 
   return <JsonLd data={data} />;
@@ -299,7 +351,7 @@ export function ServiceSchema() {
 /**
  * Renders generic WebPage schema.
  */
-export function WebPageSchema({ title, description, url }: WebPageProps) {
+export function WebPageSchema({ title, description, url, dateModified }: WebPageProps) {
   const baseUrl = getBaseUrl();
   const fullUrl = url.startsWith("http") ? url : `${baseUrl}${url}`;
 
@@ -309,6 +361,7 @@ export function WebPageSchema({ title, description, url }: WebPageProps) {
     name: title,
     description,
     url: fullUrl,
+    ...(dateModified && { dateModified }),
     isPartOf: {
       "@type": "WebSite",
       name: "Valor Legacies",

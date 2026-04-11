@@ -1063,7 +1063,8 @@ class DebugOracle {
       // Update parent's entanglement list
       const parentRow = this.store.db.prepare('SELECT entangled_with FROM debug_patterns WHERE id = ?').get(parentId);
       if (parentRow) {
-        const existing = JSON.parse(parentRow.entangled_with || '[]');
+        let existing = [];
+        try { existing = JSON.parse(parentRow.entangled_with || '[]'); } catch (_) { /* corrupt data — reset */ }
         const merged = [...new Set([...existing, ...childIds])];
         this.store.db.prepare('UPDATE debug_patterns SET entangled_with = ? WHERE id = ?')
           .run(JSON.stringify(merged), parentId);
@@ -1073,7 +1074,8 @@ class DebugOracle {
       for (const childId of childIds) {
         const childRow = this.store.db.prepare('SELECT entangled_with FROM debug_patterns WHERE id = ?').get(childId);
         if (childRow) {
-          const existing = JSON.parse(childRow.entangled_with || '[]');
+          let existing = [];
+          try { existing = JSON.parse(childRow.entangled_with || '[]'); } catch (_) { /* corrupt data — reset */ }
           const merged = [...new Set([...existing, parentId])];
           this.store.db.prepare('UPDATE debug_patterns SET entangled_with = ? WHERE id = ?')
             .run(JSON.stringify(merged), childId);

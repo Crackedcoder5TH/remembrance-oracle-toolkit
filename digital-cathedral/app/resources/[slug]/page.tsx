@@ -117,6 +117,7 @@ export default async function ResourcePage({ params }: Props) {
         title={page.metaTitle}
         description={page.metaDescription}
         url={`${baseUrl}/resources/${page.slug}`}
+        dateModified="2026-03-12T00:00:00Z"
       />
 
       <article className="w-full max-w-3xl space-y-10">

@@ -132,7 +132,7 @@ export default function PortalDashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-teal-cathedral text-xs tracking-[0.3em] uppercase mb-1">
-              Client Portal
+              Agent Portal
             </div>
             <h1 className="text-2xl font-light text-[var(--text-primary)]">
               Welcome, {user.firstName}

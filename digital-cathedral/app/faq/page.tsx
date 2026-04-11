@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AEOSpeakablePage } from "../components/aeo-schema";
 
 export const metadata: Metadata = {
   title: "Frequently Asked Questions",
@@ -95,6 +96,12 @@ export default function FaqPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <AEOSpeakablePage
+        title="Frequently Asked Questions — Valor Legacies"
+        description="Common questions about military life insurance, SGLI, VGLI, VA programs, and veteran coverage options."
+        url="/faq"
+        speakableCssSelectors={["h1", "h2", "p"]}
       />
 
       <article className="w-full max-w-2xl space-y-8">

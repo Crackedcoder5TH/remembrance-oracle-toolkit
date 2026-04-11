@@ -236,6 +236,38 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
       console.log(`${c.yellow('\u25CB')} Provenance tracking ${c.dim('disabled')}`);
       return;
     }
+    // Search enforcement level
+    if (sub === 'search-enforcement') {
+      const level = args._?.[2] || args._?.[1];
+      if (['block', 'warn', 'off'].includes(level)) {
+        const config = loadConfig();
+        config.searchEnforcement = level;
+        saveConfig(config);
+        const icon = level === 'block' ? c.boldRed('BLOCK') : level === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
+        console.log(`${c.green('\u2713')} Search enforcement set to ${icon}`);
+      } else {
+        const current = loadConfig().searchEnforcement || 'block';
+        console.log(`  Search enforcement: ${current}`);
+        console.log(`  Usage: ${c.cyan('oracle config search-enforcement <block|warn|off>')}`);
+      }
+      return;
+    }
+    // Feedback enforcement level
+    if (sub === 'feedback-enforcement') {
+      const level = args._?.[2] || args._?.[1];
+      if (['block', 'warn', 'off'].includes(level)) {
+        const config = loadConfig();
+        config.feedbackEnforcement = level;
+        saveConfig(config);
+        const icon = level === 'block' ? c.boldRed('BLOCK') : level === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
+        console.log(`${c.green('\u2713')} Feedback enforcement set to ${icon}`);
+      } else {
+        const current = loadConfig().feedbackEnforcement || 'warn';
+        console.log(`  Feedback enforcement: ${current}`);
+        console.log(`  Usage: ${c.cyan('oracle config feedback-enforcement <block|warn|off>')}`);
+      }
+      return;
+    }
 
     // Default: show status
     const config = loadConfig();
@@ -245,12 +277,20 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
     console.log(`  Prompt Tag: ${config.promptTagEnabled ? c.boldGreen('ON') : c.dim('OFF')}`);
     console.log(`  Tag Text:   ${c.cyan(config.promptTag || '(none)')}`);
     console.log(`  Provenance: ${config.provenanceTracking !== false ? c.boldGreen('ON') : c.dim('OFF')} — pattern pull watermarking`);
+    const searchEnf = config.searchEnforcement || 'block';
+    const feedbackEnf = config.feedbackEnforcement || 'warn';
+    const searchColor = searchEnf === 'block' ? c.boldRed('BLOCK') : searchEnf === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
+    const feedbackColor = feedbackEnf === 'block' ? c.boldRed('BLOCK') : feedbackEnf === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
+    console.log(`  Search:     ${searchColor} — commits ${searchEnf === 'block' ? 'blocked' : searchEnf === 'warn' ? 'warned' : 'unchecked'} without oracle search`);
+    console.log(`  Feedback:   ${feedbackColor} — commits ${feedbackEnf === 'block' ? 'blocked' : feedbackEnf === 'warn' ? 'warned' : 'unchecked'} with pending feedback`);
     console.log(`\n${c.dim('Commands:')}`);
-    console.log(`  ${c.cyan('oracle config on|off')}            — Toggle oracle on/off`);
-    console.log(`  ${c.cyan('oracle config prompt-tag')}        — View current prompt tag`);
-    console.log(`  ${c.cyan('oracle config prompt-tag <text>')} — Set custom prompt tag`);
-    console.log(`  ${c.cyan('oracle config prompt-tag-on|off')} — Enable/disable prompt tag`);
-    console.log(`  ${c.cyan('oracle config provenance-on|off')} — Enable/disable provenance watermarking`);
+    console.log(`  ${c.cyan('oracle config on|off')}                        — Toggle oracle on/off`);
+    console.log(`  ${c.cyan('oracle config search-enforcement <level>')}    — Set search gate: block/warn/off`);
+    console.log(`  ${c.cyan('oracle config feedback-enforcement <level>')}  — Set feedback gate: block/warn/off`);
+    console.log(`  ${c.cyan('oracle config prompt-tag')}                    — View current prompt tag`);
+    console.log(`  ${c.cyan('oracle config prompt-tag <text>')}             — Set custom prompt tag`);
+    console.log(`  ${c.cyan('oracle config prompt-tag-on|off')}             — Enable/disable prompt tag`);
+    console.log(`  ${c.cyan('oracle config provenance-on|off')}             — Enable/disable provenance watermarking`);
   };
 
   handlers['preflight'] = (args) => {

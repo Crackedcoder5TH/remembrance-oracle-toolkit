@@ -20,6 +20,18 @@ const DEFAULT_CONFIG = {
   promptTag: 'Pull the healed code from the kingdom into the eternal now completed.',
   promptTagEnabled: true,
   provenanceTracking: true, // Functional role: watermark pattern lineage
+  // Enforcement level for query-before-write reflex:
+  //   'block'  — commit is rejected if no search in last 10 minutes (recommended)
+  //   'warn'   — yellow warning only (legacy behavior)
+  //   'off'    — no check at all
+  searchEnforcement: 'block',
+  // Enforcement level for feedback loop:
+  //   'block'  — commit is rejected if patterns were pulled without feedback
+  //   'warn'   — yellow warning only
+  //   'off'    — no check at all
+  feedbackEnforcement: 'warn',
+  // Grace period (ms) for search enforcement — how recently a search must have happened
+  searchGracePeriod: 600000, // 10 minutes
 };
 
 /**
@@ -174,6 +186,31 @@ function toggleProvenance(state) {
   return config.provenanceTracking;
 }
 
+/**
+ * Get search enforcement level: 'block', 'warn', or 'off'.
+ */
+function getSearchEnforcement() {
+  const config = loadConfig();
+  if (!config.enabled) return 'off';
+  return config.searchEnforcement || 'block';
+}
+
+/**
+ * Get feedback enforcement level: 'block', 'warn', or 'off'.
+ */
+function getFeedbackEnforcement() {
+  const config = loadConfig();
+  if (!config.enabled) return 'off';
+  return config.feedbackEnforcement || 'warn';
+}
+
+/**
+ * Get search grace period in ms.
+ */
+function getSearchGracePeriod() {
+  return loadConfig().searchGracePeriod || 600000;
+}
+
 module.exports = {
   loadConfig,
   saveConfig,
@@ -186,6 +223,9 @@ module.exports = {
   applyPromptTag,
   generateProvenance,
   toggleProvenance,
+  getSearchEnforcement,
+  getFeedbackEnforcement,
+  getSearchGracePeriod,
   DEFAULT_CONFIG,
   CONFIG_FILENAME,
 };

@@ -8,6 +8,29 @@
  * Extracted from the monolithic switch in server.js for maintainability.
  */
 
+/**
+ * Enforcement helper: check if a search was done recently.
+ * Returns an enforcement notice to prepend to tool results when search reflex was skipped.
+ */
+function _searchEnforcementNotice() {
+  try {
+    const { wasSearchRecent } = require('../core/session-tracker');
+    const { getSearchEnforcement, getSearchGracePeriod } = require('../core/oracle-config');
+    const level = getSearchEnforcement();
+    if (level === 'off') return null;
+    const grace = getSearchGracePeriod();
+    if (!wasSearchRecent(grace)) {
+      const mins = Math.round(grace / 60000);
+      return {
+        _enforcement: `WARNING: No oracle search in the last ${mins} minutes. ` +
+          `You MUST call oracle_search before submitting or registering code. ` +
+          `The oracle exists so you don't reinvent proven patterns.`,
+      };
+    }
+  } catch (_) {}
+  return null;
+}
+
 const HANDLERS = {
   // ─── 1. Search (unified) ───
   oracle_search(oracle, args) {
@@ -53,12 +76,14 @@ const HANDLERS = {
     if (!args.code || typeof args.code !== 'string') {
       throw new Error('"code" is required and must be a non-empty string');
     }
-    return oracle.submit(args.code, {
+    const notice = _searchEnforcementNotice();
+    const result = oracle.submit(args.code, {
       language: args.language,
       description: args.description || '',
       tags: args.tags || [],
       testCode: args.testCode,
     });
+    return notice ? { ...result, ...notice } : result;
   },
 
   // ─── 4. Register ───
@@ -69,7 +94,8 @@ const HANDLERS = {
     if (!args.code || typeof args.code !== 'string') {
       throw new Error('"code" is required and must be a non-empty string');
     }
-    return oracle.registerPattern({
+    const notice = _searchEnforcementNotice();
+    const result = oracle.registerPattern({
       name: args.name,
       code: args.code,
       language: args.language,
@@ -77,6 +103,7 @@ const HANDLERS = {
       tags: args.tags || [],
       testCode: args.testCode,
     });
+    return notice ? { ...result, ...notice } : result;
   },
 
   // ─── 5. Feedback ───

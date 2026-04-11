@@ -101,25 +101,61 @@ if [ $FAILED -ne 0 ]; then
   exit 1
 fi
 
-# Query-before-write check (warning only, non-blocking)
+# Query-before-write and feedback enforcement (config-driven: block / warn / off)
 ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
   try {
     const path = require('path');
     const root = process.env.ORACLE_REPO_ROOT || process.cwd();
     const { wasSearchRecent, getPendingFeedback } = require(path.join(root, 'src/core/session-tracker'));
-    if (!wasSearchRecent(600000)) {
-      console.error('\\x1b[33m[oracle] Warning: No oracle search in the last 10 minutes.\\x1b[0m');
-      console.error('\\x1b[33m  Consider: oracle search [what you need] before writing new code.\\x1b[0m');
+    const { getSearchEnforcement, getFeedbackEnforcement, getSearchGracePeriod } = require(path.join(root, 'src/core/oracle-config'));
+    const searchLevel = getSearchEnforcement();
+    const feedbackLevel = getFeedbackEnforcement();
+    const gracePeriod = getSearchGracePeriod();
+    let shouldBlock = false;
+
+    // Search enforcement
+    if (searchLevel !== 'off' && !wasSearchRecent(gracePeriod)) {
+      const mins = Math.round(gracePeriod / 60000);
+      if (searchLevel === 'block') {
+        console.error('\\x1b[31m[oracle] BLOCKED: No oracle search in the last ' + mins + ' minutes.\\x1b[0m');
+        console.error('\\x1b[31m  You must search before writing: oracle search [what you need]\\x1b[0m');
+        console.error('\\x1b[31m  To downgrade to warning: oracle config search-enforcement warn\\x1b[0m');
+        shouldBlock = true;
+      } else {
+        console.error('\\x1b[33m[oracle] Warning: No oracle search in the last ' + mins + ' minutes.\\x1b[0m');
+        console.error('\\x1b[33m  Consider: oracle search [what you need] before writing new code.\\x1b[0m');
+      }
     }
-    const pending = getPendingFeedback();
-    if (pending.length > 0) {
-      console.error('\\x1b[33m[oracle] Warning: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
-      console.error('\\x1b[33m  Run: oracle pending-feedback\\x1b[0m');
+
+    // Feedback enforcement
+    if (feedbackLevel !== 'off') {
+      const pending = getPendingFeedback();
+      if (pending.length > 0) {
+        if (feedbackLevel === 'block') {
+          console.error('\\x1b[31m[oracle] BLOCKED: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
+          console.error('\\x1b[31m  Run: oracle feedback --id <id> --success  (for each pattern)\\x1b[0m');
+          console.error('\\x1b[31m  To downgrade to warning: oracle config feedback-enforcement warn\\x1b[0m');
+          shouldBlock = true;
+        } else {
+          console.error('\\x1b[33m[oracle] Warning: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
+          console.error('\\x1b[33m  Run: oracle pending-feedback\\x1b[0m');
+        }
+      }
     }
+
+    process.exit(shouldBlock ? 1 : 0);
   } catch(e) {
+    // If enforcement code fails, don't block — degrade gracefully
     console.error('[oracle:pre-commit] ' + (e.message || e));
+    process.exit(0);
   }
-" 2>&1 || true
+" 2>&1
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Commit blocked by Remembrance Oracle enforcement."
+  echo "Search the oracle first, or use --no-verify to bypass."
+  exit 1
+fi
 
 # Audit cascade check (warning only, non-blocking)
 STAGED_FILES="$STAGED" ORACLE_REPO_ROOT="$REPO_ROOT" node -e "

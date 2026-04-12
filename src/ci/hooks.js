@@ -247,20 +247,31 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
         var _bridge = require(path.join(root, 'src/blockchain/bridge'));
         var _store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
         var _allPatterns = _store.getAll ? _store.getAll() : [];
-        var _pubCount = 0;
+        var _eligible = [];
         for (var _pi = 0; _pi < _allPatterns.length; _pi++) {
           var _pat = _allPatterns[_pi];
           var _coh = _pat.coherencyTotal || (_pat.coherencyScore && _pat.coherencyScore.total) || 0;
           if (_coh >= 0.8 && _pat.testCode && _pat.testCode.trim() && !_pat.blockchain_tx) {
-            var _pubRes = _bridge.publishPattern({ coherencyScore: _coh, testCode: _pat.testCode, code: _pat.code, name: _pat.name, language: _pat.language });
-            if (_pubRes && _pubRes.published && _pubRes.signature) {
-              try { _acfg.setBlockchainTx(_pat.id, _pubRes.signature, _store); } catch(_tx) {}
-              _pubCount++;
-            }
+            _eligible.push({ pat: _pat, coh: _coh });
           }
         }
-        if (_pubCount > 0) {
-          console.log('Oracle: Auto-published ' + _pubCount + ' pattern(s) to blockchain');
+        if (_eligible.length > 0) {
+          Promise.all(_eligible.map(function(item) {
+            return _bridge.publishPattern({ coherencyScore: item.coh, testCode: item.pat.testCode, code: item.pat.code, name: item.pat.name, language: item.pat.language })
+              .then(function(res) { return { pat: item.pat, res: res }; })
+              .catch(function() { return null; });
+          })).then(function(results) {
+            var _pubCount = 0;
+            for (var _ri = 0; _ri < results.length; _ri++) {
+              if (results[_ri] && results[_ri].res && results[_ri].res.published && results[_ri].res.signature) {
+                try { _acfg.setBlockchainTx(results[_ri].pat.id, results[_ri].res.signature, _store); } catch(_tx) {}
+                _pubCount++;
+              }
+            }
+            if (_pubCount > 0) {
+              console.log('Oracle: Auto-published ' + _pubCount + ' pattern(s) to blockchain');
+            }
+          }).catch(function() {});
         }
       }
     } catch(_ap) {

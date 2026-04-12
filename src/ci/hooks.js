@@ -239,6 +239,33 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\n';
       try { fs.appendFileSync(logPath, entry); } catch(_w) { console.error('[oracle:post-commit] log write failed: ' + _w.message); }
     }
+
+    // Auto-publish: publish high-coherency patterns to blockchain (opt-in)
+    try {
+      var _acfg = require(path.join(root, 'src/core/oracle-config'));
+      if (_acfg.getAutoPublish && _acfg.getAutoPublish()) {
+        var _bridge = require(path.join(root, 'src/blockchain/bridge'));
+        var _store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+        var _allPatterns = _store.getAll ? _store.getAll() : [];
+        var _pubCount = 0;
+        for (var _pi = 0; _pi < _allPatterns.length; _pi++) {
+          var _pat = _allPatterns[_pi];
+          var _coh = _pat.coherencyTotal || (_pat.coherencyScore && _pat.coherencyScore.total) || 0;
+          if (_coh >= 0.8 && _pat.testCode && _pat.testCode.trim() && !_pat.blockchain_tx) {
+            var _pubRes = _bridge.publishPattern({ coherencyScore: _coh, testCode: _pat.testCode, code: _pat.code, name: _pat.name, language: _pat.language });
+            if (_pubRes && _pubRes.published && _pubRes.signature) {
+              try { _acfg.setBlockchainTx(_pat.id, _pubRes.signature, _store); } catch(_tx) {}
+              _pubCount++;
+            }
+          }
+        }
+        if (_pubCount > 0) {
+          console.log('Oracle: Auto-published ' + _pubCount + ' pattern(s) to blockchain');
+        }
+      }
+    } catch(_ap) {
+      // Blockchain module not found or autoPublish off — skip silently
+    }
   } catch(e) {
     // Always emit to stderr so errors are never fully silent.
     console.error('[oracle:post-commit] ' + (e.message || e));

@@ -32,6 +32,7 @@ const DEFAULT_CONFIG = {
   feedbackEnforcement: 'warn',
   // Grace period (ms) for search enforcement — how recently a search must have happened
   searchGracePeriod: 600000, // 10 minutes
+  autoPublish: false, // Auto-publish high-coherency patterns to blockchain on commit
 };
 
 /**
@@ -252,6 +253,13 @@ function getSearchGracePeriod() {
   return loadConfig().searchGracePeriod || 600000;
 }
 
+/**
+ * Get auto-publish setting (defaults to false).
+ */
+function getAutoPublish() {
+  return loadConfig().autoPublish || false;
+}
+
 module.exports = {
   loadConfig,
   saveConfig,
@@ -268,6 +276,7 @@ module.exports = {
   getSearchEnforcement,
   getFeedbackEnforcement,
   getSearchGracePeriod,
+  getAutoPublish,
   DEFAULT_CONFIG,
   CONFIG_FILENAME,
 };

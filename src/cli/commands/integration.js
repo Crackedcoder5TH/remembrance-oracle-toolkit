@@ -183,7 +183,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['config'] = (args) => {
-    const { loadConfig, saveConfig, toggleOracle, togglePromptTag, setPromptTag, isOracleEnabled, getPromptTag, toggleProvenance } = require('../../core/oracle-config');
+    const { loadConfig, saveConfig, toggleOracle, togglePromptTag, setPromptTag, isOracleEnabled, getPromptTag, toggleProvenance, getAutoPublish } = require('../../core/oracle-config');
     const sub = args._sub;
 
     if (sub === 'on') {
@@ -236,6 +236,20 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
       console.log(`${c.yellow('\u25CB')} Provenance tracking ${c.dim('disabled')}`);
       return;
     }
+    if (sub === 'auto-publish-on') {
+      const config = loadConfig();
+      config.autoPublish = true;
+      saveConfig(config);
+      console.log(`${c.green('\u2713')} Auto-publish ${c.boldGreen('enabled')} — high-coherency patterns publish to blockchain on commit`);
+      return;
+    }
+    if (sub === 'auto-publish-off') {
+      const config = loadConfig();
+      config.autoPublish = false;
+      saveConfig(config);
+      console.log(`${c.yellow('\u25CB')} Auto-publish ${c.dim('disabled')}`);
+      return;
+    }
     // Search enforcement level
     if (sub === 'search-enforcement') {
       const level = args._?.[2] || args._?.[1];
@@ -283,6 +297,8 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
     const feedbackColor = feedbackEnf === 'block' ? c.boldRed('BLOCK') : feedbackEnf === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
     console.log(`  Search:     ${searchColor} — commits ${searchEnf === 'block' ? 'blocked' : searchEnf === 'warn' ? 'warned' : 'unchecked'} without oracle search`);
     console.log(`  Feedback:   ${feedbackColor} — commits ${feedbackEnf === 'block' ? 'blocked' : feedbackEnf === 'warn' ? 'warned' : 'unchecked'} with pending feedback`);
+    const autoPublish = config.autoPublish || false;
+    console.log(`  AutoPublish:${autoPublish ? c.boldGreen(' ON') : c.dim(' OFF')} — blockchain publish on commit`);
     console.log(`\n${c.dim('Commands:')}`);
     console.log(`  ${c.cyan('oracle config on|off')}                        — Toggle oracle on/off`);
     console.log(`  ${c.cyan('oracle config search-enforcement <level>')}    — Set search gate: block/warn/off`);
@@ -291,6 +307,7 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
     console.log(`  ${c.cyan('oracle config prompt-tag <text>')}             — Set custom prompt tag`);
     console.log(`  ${c.cyan('oracle config prompt-tag-on|off')}             — Enable/disable prompt tag`);
     console.log(`  ${c.cyan('oracle config provenance-on|off')}             — Enable/disable provenance watermarking`);
+    console.log(`  ${c.cyan('oracle config auto-publish-on|off')}           — Enable/disable blockchain auto-publish on commit`);
   };
 
   handlers['preflight'] = (args) => {

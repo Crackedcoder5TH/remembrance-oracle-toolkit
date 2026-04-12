@@ -701,6 +701,52 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     console.log(`  ID:        ${c.cyan(pattern.id)}`);
     console.log(`  Coherency: ${colorScore(coherency)}`);
     console.log(`  Hash:      ${c.dim(fullHash.slice(0, 16))}...${c.dim(fullHash.slice(-8))}`);
+
+    // Try to publish via REMEMBRANCE-BLOCKCHAIN
+    try {
+      const { publishPattern } = require('../../blockchain/bridge');
+      publishPattern({
+        coherencyScore: coherency,
+        testCode: pattern.testCode,
+        code: pattern.code,
+        name: pattern.name,
+        language: pattern.language,
+      }).then((publishResult) => {
+        if (publishResult && publishResult.published) {
+          console.log(`\n${c.boldGreen('── Published to Blockchain ──')}`);
+          if (publishResult.hash) console.log(`  Hash:      ${c.dim(publishResult.hash)}`);
+          if (publishResult.watermark) console.log(`  Watermark: ${c.dim(publishResult.watermark)}`);
+          const bridgeStatus = (publishResult.metadata && publishResult.metadata.bridgeStatus) || publishResult.bridgeStatus || 'offline';
+          console.log(`  Bridge:    ${bridgeStatus === 'confirmed' ? c.boldGreen(bridgeStatus) : c.yellow(bridgeStatus)}`);
+          if (publishResult.signature) {
+            console.log(`  Signature: ${c.cyan(publishResult.signature)}`);
+            // Record blockchain_tx in DB
+            try {
+              const { setBlockchainTx } = require('../../core/oracle-config');
+              const txResult = setBlockchainTx(pattern.id, publishResult.signature, store);
+              if (txResult.success) {
+                console.log(`  ${c.green('Recorded')} blockchain_tx in pattern DB`);
+              }
+            } catch (_) {
+              // Non-fatal — pattern published but DB update failed
+            }
+          }
+        } else {
+          // Publish returned non-success — fall back to export payload
+          console.log(`\n${c.dim('── Export Payload ──')}`);
+          console.log(JSON.stringify(exportPayload, null, 2));
+        }
+      }).catch(() => {
+        // Blockchain publish failed — fall back to export payload
+        console.log(`\n${c.dim('── Export Payload ──')}`);
+        console.log(JSON.stringify(exportPayload, null, 2));
+      });
+      return;
+    } catch (_) {
+      // Blockchain module not available — fall back to export payload
+    }
+
+    // Fallback: just print the export payload JSON
     console.log(`\n${c.dim('── Export Payload ──')}`);
     console.log(JSON.stringify(exportPayload, null, 2));
   };

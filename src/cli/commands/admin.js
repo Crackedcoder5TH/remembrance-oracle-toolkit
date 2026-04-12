@@ -446,20 +446,35 @@ ${c.bold('Options:')}
       const dryRun = parseDryRun(args);
       const range = args.commit || args.range || 'HEAD~1..HEAD';
       const wholeFile = args['whole-file'] === 'true' || args['whole-file'] === true;
-      const result = autoRegister(oracle, process.cwd(), { range, dryRun, wholeFile });
+      const qualityThreshold = args['quality-threshold'] !== undefined
+        ? parseFloat(args['quality-threshold'])
+        : 0.4;
+      const result = autoRegister(oracle, process.cwd(), { range, dryRun, wholeFile, qualityThreshold });
 
       console.log(c.boldCyan('Auto-Register Report:'));
-      console.log(`  Files scanned: ${c.bold(String(result.files.length))}`);
-      console.log(`  Registered:    ${c.boldGreen(String(result.registered))}`);
-      console.log(`  Already exist: ${c.dim(String(result.alreadyExists))}`);
-      console.log(`  Skipped:       ${c.dim(String(result.skipped))}`);
-      console.log(`  Failed:        ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+      console.log(`  Files scanned:     ${c.bold(String(result.files.length))}`);
+      console.log(`  Discovered:        ${c.bold(String(result.discovered))}`);
+      console.log(`  Registered:        ${c.boldGreen(String(result.registered))}`);
+      console.log(`  Below threshold:   ${c.dim(String(result.belowThreshold))}`);
+      console.log(`  Already exist:     ${c.dim(String(result.alreadyExists))}`);
+      console.log(`  Skipped:           ${c.dim(String(result.skipped))}`);
+      console.log(`  Failed:            ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
 
       if (result.patterns.length > 0) {
         console.log(`\n${c.bold('Patterns:')}`);
         for (const p of result.patterns) {
-          const statusColor = p.status === 'registered' ? c.boldGreen : p.status === 'dry-run' ? c.yellow : c.dim;
-          console.log(`  ${statusColor(p.status.padEnd(10))} ${c.cyan(p.name)} ${c.dim(p.file)}`);
+          const scoreStr = p.score !== undefined ? ` (${p.score.toFixed(2)})` : '';
+          const reasonStr = p.reasons && p.reasons.length > 0 ? ` — ${p.reasons.join(', ')}` : '';
+          if (p.status === 'below-threshold') {
+            console.log(`  ${c.dim('~')} ${c.dim(p.name)}${c.dim(scoreStr)} ${c.dim('— skipped (below threshold)')}`);
+          } else if (p.status === 'registered') {
+            console.log(`  ${c.boldGreen('+')} ${c.cyan(p.name)}${c.bold(scoreStr)}${c.dim(reasonStr)}`);
+          } else if (p.status === 'dry-run') {
+            console.log(`  ${c.yellow('+')} ${c.cyan(p.name)}${c.bold(scoreStr)}${c.dim(reasonStr)} ${c.yellow('[dry-run]')}`);
+          } else {
+            const statusColor = c.dim;
+            console.log(`  ${statusColor('-')} ${statusColor(p.name)}${statusColor(scoreStr)} ${c.dim(p.file)}`);
+          }
         }
       }
     } catch (err) {

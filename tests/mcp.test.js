@@ -235,12 +235,12 @@ describe('MCPServer', () => {
     assert.ok(res.result.content);
   });
 
-  it('has exactly 13 consolidated tools', async () => {
+  it('has exactly 14 consolidated tools', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({ id: 15, method: 'tools/list' });
     const names = res.result.tools.map(t => t.name);
 
-    // All 13 consolidated tools
+    // All 14 consolidated tools
     assert.ok(names.includes('oracle_search'), 'missing oracle_search');
     assert.ok(names.includes('oracle_resolve'), 'missing oracle_resolve');
     assert.ok(names.includes('oracle_submit'), 'missing oracle_submit');
@@ -254,7 +254,8 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_healing'), 'missing oracle_healing');
     assert.ok(names.includes('oracle_swarm'), 'missing oracle_swarm');
     assert.ok(names.includes('oracle_fractal'), 'missing oracle_fractal');
+    assert.ok(names.includes('oracle_pending_feedback'), 'missing oracle_pending_feedback');
 
-    assert.equal(res.result.tools.length, 13, `Expected exactly 13 tools, got ${res.result.tools.length}`);
+    assert.equal(res.result.tools.length, 14, `Expected exactly 14 tools, got ${res.result.tools.length}`);
   });
 });

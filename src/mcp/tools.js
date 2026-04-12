@@ -212,7 +212,17 @@ const TOOLS = [
       required: ['action'],
     },
   },
-  // ─── 13. Fractal (fractal math engines + code alignment) ───
+  // ─── 13. Pending Feedback ───
+  {
+    name: 'oracle_pending_feedback',
+    description: 'List patterns that were pulled or evolved but have not yet received feedback. Helps close the feedback loop by showing what still needs a success/failure report.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  // ─── 14. Fractal (fractal math engines + code alignment) ───
   {
     name: 'oracle_fractal',
     description: 'Fractal system — 5 mathematical engines (Sierpinski, Mandelbrot, Barnsley, Julia, Lyapunov) and code alignment scoring. Actions: analyze (fractal alignment of code), engines (list engines), resonance (find best fractal for code), sierpinski/mandelbrot/julia/lyapunov (run engine directly).',

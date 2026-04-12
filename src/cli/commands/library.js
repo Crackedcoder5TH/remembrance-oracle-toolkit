@@ -123,6 +123,16 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const stats = oracle.patternStats();
     console.log(c.boldCyan('Pattern Library:'));
     console.log(`  Total patterns: ${c.bold(String(stats.totalPatterns))}`);
+    // Published to chain count
+    let publishedCount = 0;
+    try {
+      const sqliteStore = oracle.store?.getSQLiteStore?.() || oracle.patterns?._sqlite;
+      if (sqliteStore && sqliteStore.db) {
+        const pub = sqliteStore.db.prepare('SELECT COUNT(*) as c FROM patterns WHERE blockchain_tx IS NOT NULL').get();
+        publishedCount = pub ? pub.c : 0;
+      }
+    } catch (_) { /* non-fatal */ }
+    console.log(`  Published to chain: ${c.bold(String(publishedCount))}`);
     console.log(`  Avg coherency: ${colorScore(stats.avgCoherency)}`);
     if (Object.keys(stats.byType).length > 0) {
       console.log(`  By type: ${Object.entries(stats.byType).map(([k, v]) => `${c.magenta(k)}(${v})`).join(', ')}`);
@@ -749,6 +759,159 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     // Fallback: just print the export payload JSON
     console.log(`\n${c.dim('── Export Payload ──')}`);
     console.log(JSON.stringify(exportPayload, null, 2));
+  };
+
+  // ─── Verify & Publications ───
+
+  handlers['verify'] = (args) => {
+    const tx = args.tx;
+    const name = args.name;
+    const id = args.id || args._sub;
+
+    if (!tx && !name && !id) {
+      console.error(c.boldRed('Error:') + ` Usage:\n  ${c.cyan('oracle verify')} --tx <signature>\n  ${c.cyan('oracle verify')} --name <pattern>\n  ${c.cyan('oracle verify')} --id <patternId>`);
+      process.exit(1);
+    }
+
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+
+    if (tx) {
+      // Verify a Solana transaction
+      // First check if any pattern in DB has this tx
+      let dbPattern = null;
+      if (store && store.db) {
+        try {
+          const row = store.db.prepare('SELECT * FROM patterns WHERE blockchain_tx = ?').get(tx);
+          if (row) {
+            dbPattern = store._rowToPattern ? store._rowToPattern(row) : row;
+          }
+        } catch (_) { /* non-fatal */ }
+      }
+
+      if (dbPattern) {
+        console.log(c.boldGreen('Transaction found in local DB:'));
+        console.log(`  Pattern:   ${c.bold(dbPattern.name)}`);
+        console.log(`  ID:        ${c.cyan(dbPattern.id)}`);
+        if (dbPattern.blockchainHash) console.log(`  Hash:      ${c.dim(dbPattern.blockchainHash)}`);
+        if (dbPattern.publishedAt) console.log(`  Published: ${c.blue(dbPattern.publishedAt)}`);
+        console.log(`  TX:        ${c.cyan(tx)}`);
+      }
+
+      // Try to reach blockchain verification
+      try {
+        const { getPublisher } = require('../../blockchain/bridge');
+        const publisher = getPublisher();
+        if (publisher && typeof publisher.verify === 'function') {
+          const result = publisher.verify(tx);
+          if (result && result.verified) {
+            console.log(c.boldGreen('\nOn-chain verification: CONFIRMED'));
+            if (result.slot) console.log(`  Slot:    ${result.slot}`);
+            if (result.block) console.log(`  Block:   ${result.block}`);
+          } else {
+            console.log(c.yellow('\nOn-chain verification: UNCONFIRMED'));
+          }
+          return;
+        }
+      } catch (_) { /* blockchain module not available */ }
+
+      // Offline fallback
+      if (!dbPattern) {
+        console.log(`  Signature: ${c.cyan(tx)}`);
+      }
+      console.log(c.dim('\nNetwork verification unavailable (blockchain bridge offline)'));
+      return;
+    }
+
+    // --name or --id: look up publication status
+    let pattern = null;
+    if (id) {
+      pattern = store.getPattern ? store.getPattern(id) : null;
+    }
+    if (!pattern && name) {
+      pattern = store.getPatternByName ? store.getPatternByName(name) : null;
+      // Fallback: LIKE search for partial name match
+      if (!pattern && store.db) {
+        try {
+          const likeParam = '%' + name.replace(/[%_]/g, '') + '%';
+          const row = store.db.prepare('SELECT * FROM patterns WHERE LOWER(name) LIKE LOWER(?) LIMIT 1').get(likeParam);
+          if (row) pattern = store._rowToPattern ? store._rowToPattern(row) : row;
+        } catch (_) { /* non-fatal */ }
+      }
+    }
+
+    if (!pattern) {
+      console.log(c.red('Pattern not found: ') + (id || name));
+      return;
+    }
+
+    console.log(c.boldCyan(`Publication Status: ${c.bold(pattern.name)}\n`));
+    console.log(`  ID:        ${c.cyan(pattern.id)}`);
+    const coherency = pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+    console.log(`  Coherency: ${colorScore(coherency)}`);
+
+    if (pattern.blockchainTx) {
+      console.log(`\n  Status:    ${c.boldGreen('PUBLISHED')}`);
+      console.log(`  TX:        ${c.cyan(pattern.blockchainTx)}`);
+      if (pattern.blockchainHash) console.log(`  Hash:      ${c.dim(pattern.blockchainHash)}`);
+      if (pattern.publishedAt) console.log(`  Published: ${c.blue(pattern.publishedAt)}`);
+    } else {
+      console.log(`\n  Status:    ${c.yellow('NOT PUBLISHED')}`);
+    }
+  };
+
+  handlers['publications'] = (args) => {
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+
+    if (!store || !store.db) {
+      console.log(c.red('SQLite store not available'));
+      return;
+    }
+
+    const countOnly = args.count || false;
+
+    // Count published
+    const countRow = store.db.prepare('SELECT COUNT(*) as c FROM patterns WHERE blockchain_tx IS NOT NULL').get();
+    const publishedCount = countRow ? countRow.c : 0;
+
+    if (countOnly) {
+      console.log(`Published patterns: ${c.bold(String(publishedCount))}`);
+      return;
+    }
+
+    if (publishedCount === 0) {
+      console.log(c.dim('No patterns have been published to the blockchain yet.'));
+      return;
+    }
+
+    // Fetch published patterns
+    const rows = store.db.prepare(
+      'SELECT * FROM patterns WHERE blockchain_tx IS NOT NULL ORDER BY published_at DESC'
+    ).all();
+
+    const patterns = rows.map(r => store._rowToPattern ? store._rowToPattern(r) : r);
+
+    console.log(c.boldCyan('Published Patterns:\n'));
+
+    for (const p of patterns) {
+      const coherency = p.coherencyTotal ?? p.coherencyScore?.total ?? 0;
+      const hashTrunc = p.blockchainHash ? p.blockchainHash.slice(0, 12) + '...' : c.dim('n/a');
+      const txTrunc = p.blockchainTx ? p.blockchainTx.slice(0, 16) + '...' : c.dim('n/a');
+      console.log(`  ${c.bold(p.name)} (${c.blue(p.language || '?')}) coherency: ${colorScore(coherency)}`);
+      console.log(`    Hash: ${c.dim(hashTrunc)} | TX: ${c.cyan(txTrunc)} | Published: ${c.blue(p.publishedAt || 'unknown')}`);
+    }
+
+    // Summary
+    const avgCoherency = patterns.reduce((sum, p) => sum + (p.coherencyTotal ?? p.coherencyScore?.total ?? 0), 0) / patterns.length;
+    const langBreakdown = {};
+    for (const p of patterns) {
+      const lang = p.language || 'unknown';
+      langBreakdown[lang] = (langBreakdown[lang] || 0) + 1;
+    }
+
+    console.log(`\n${c.boldCyan('Summary:')}`);
+    console.log(`  Total published: ${c.bold(String(publishedCount))}`);
+    console.log(`  Avg coherency:   ${colorScore(avgCoherency)}`);
+    console.log(`  Languages:       ${Object.entries(langBreakdown).map(([k, v]) => `${c.blue(k)}(${v})`).join(', ')}`);
   };
 
   handlers['audit-integration'] = (args) => {

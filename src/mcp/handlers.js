@@ -184,7 +184,16 @@ const HANDLERS = {
     const storeStats = oracle.stats();
     const patternStats = oracle.patternStats();
     const candidateStats = oracle.candidateStats();
-    return { store: storeStats, patterns: patternStats, candidates: candidateStats };
+    // Publication stats from SQLite
+    let publicationStats = { published: 0 };
+    try {
+      const sqliteStore = oracle.store?.getSQLiteStore?.() || (oracle.patterns && oracle.patterns._sqlite);
+      if (sqliteStore && sqliteStore.db) {
+        const pub = sqliteStore.db.prepare('SELECT COUNT(*) as c FROM patterns WHERE blockchain_tx IS NOT NULL').get();
+        publicationStats.published = pub ? pub.c : 0;
+      }
+    } catch (_) { /* non-fatal */ }
+    return { store: storeStats, patterns: patternStats, candidates: candidateStats, publications: publicationStats };
   },
 
   // ─── 7. Debug (unified) ───

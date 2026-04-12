@@ -763,15 +763,15 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   // ─── Verify & Publications ───
 
-  handlers['verify'] = (args) => {
+  /**
+   * Publication verification logic — checks blockchain publication status.
+   * Handles --tx, --name, --id flags for on-chain verification.
+   * Exposed via handlers['_verifyPublication'] so versioning.js can delegate.
+   */
+  function _verifyPublication(args) {
     const tx = args.tx;
     const name = args.name;
-    const id = args.id || args._sub;
-
-    if (!tx && !name && !id) {
-      console.error(c.boldRed('Error:') + ` Usage:\n  ${c.cyan('oracle verify')} --tx <signature>\n  ${c.cyan('oracle verify')} --name <pattern>\n  ${c.cyan('oracle verify')} --id <patternId>`);
-      process.exit(1);
-    }
+    const id = args.id;
 
     const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
 
@@ -857,7 +857,10 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     } else {
       console.log(`\n  Status:    ${c.yellow('NOT PUBLISHED')}`);
     }
-  };
+  }
+
+  // Expose as a hidden handler so versioning.js's verify handler can delegate
+  handlers['_verifyPublication'] = _verifyPublication;
 
   handlers['publications'] = (args) => {
     const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;

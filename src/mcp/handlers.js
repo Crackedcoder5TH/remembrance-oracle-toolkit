@@ -522,6 +522,30 @@ const HANDLERS = {
         throw new Error(`Unknown fractal action: ${action}. Use: analyze, engines, resonance, sierpinski, mandelbrot, julia, lyapunov`);
     }
   },
+
+  // ─── 15. Test Forge (auto-generate, run, score tests) ───
+  oracle_forge(oracle, args) {
+    const { TestForge } = require('../test-forge');
+    const forge = new TestForge(oracle);
+    const action = args.action || 'forge';
+
+    switch (action) {
+      case 'forge': {
+        if (args.id) {
+          return forge.forgeTest(args.id, { dryRun: !!args.dryRun });
+        }
+        return forge.forgeTests({ dryRun: !!args.dryRun, limit: args.limit });
+      }
+      case 'run':
+        return forge.runTests();
+      case 'score':
+        return forge.scoreTests();
+      case 'promote':
+        return forge.forgeAndPromote({ limit: args.limit });
+      default:
+        throw new Error(`Unknown forge action: ${action}. Use: forge, run, score, promote`);
+    }
+  },
 };
 
 module.exports = { HANDLERS };

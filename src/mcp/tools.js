@@ -242,6 +242,20 @@ const TOOLS = [
       required: ['action'],
     },
   },
+  // ─── 15. Test Forge (auto-generate, run, score tests) ───
+  {
+    name: 'oracle_forge',
+    description: 'Test Forge — auto-generate, run, and score tests for oracle patterns. Actions: forge (generate tests for untested patterns), run (run all tests), score (score test quality), promote (full pipeline: generate + run + score + promote).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['forge', 'run', 'score', 'promote'], description: 'Forge action (default: forge)' },
+        id: { type: 'string', description: 'Pattern ID to generate test for (forge action only)' },
+        dryRun: { type: 'boolean', description: 'Preview without storing tests (default: false)' },
+        limit: { type: 'number', description: 'Max patterns to process' },
+      },
+    },
+  },
 ];
 
 module.exports = { TOOLS };

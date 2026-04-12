@@ -4,7 +4,7 @@
  * Dispatch map for all MCP tool calls. Each handler is a function
  * (oracle, args) => result that implements one tool's logic.
  *
- * 14 focused handlers (down from 55+).
+ * 15 focused handlers (down from 55+).
  * Extracted from the monolithic switch in server.js for maintainability.
  */
 

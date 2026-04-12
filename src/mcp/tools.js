@@ -1,7 +1,7 @@
 /**
  * MCP Tool Definitions
  *
- * 12 focused tools (down from 55+).
+ * 15 focused tools (down from 55+).
  * Extracted from server.js for maintainability.
  */
 

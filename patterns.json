@@ -1,6 +1,6 @@
 {
-  "exported": "2026-04-12T00:50:59.072Z",
-  "count": 530,
+  "exported": "2026-04-12T01:52:04.284Z",
+  "count": 542,
   "patterns": [
     {
       "id": "52efe5f00a9bf627",
@@ -1846,7 +1846,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:54:00.822Z",
-      "updatedAt": "2026-04-12T00:50:58.740Z"
+      "updatedAt": "2026-04-12T01:52:03.981Z"
     },
     {
       "id": "9b4ed4da3460238f",
@@ -6001,7 +6001,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:42.397Z",
-      "updatedAt": "2026-04-12T00:50:58.739Z"
+      "updatedAt": "2026-04-12T01:52:03.997Z"
     },
     {
       "id": "f95b201197ca8360",
@@ -6054,7 +6054,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:42.236Z",
-      "updatedAt": "2026-04-12T00:50:58.393Z"
+      "updatedAt": "2026-04-12T01:52:03.981Z"
     },
     {
       "id": "9c054ec215be9ba7",
@@ -6269,7 +6269,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:41.315Z",
-      "updatedAt": "2026-04-12T00:50:58.739Z"
+      "updatedAt": "2026-04-12T01:52:03.981Z"
     },
     {
       "id": "1fb5b8b5ae9dc28f",
@@ -6753,7 +6753,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:39.673Z",
-      "updatedAt": "2026-04-12T00:50:58.739Z"
+      "updatedAt": "2026-04-12T01:52:03.997Z"
     },
     {
       "id": "067c544be9b59769",
@@ -6808,7 +6808,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:39.514Z",
-      "updatedAt": "2026-04-12T00:50:58.739Z"
+      "updatedAt": "2026-04-12T01:52:03.982Z"
     },
     {
       "id": "f62dc6d090e82bbf",
@@ -6862,7 +6862,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:39.379Z",
-      "updatedAt": "2026-04-12T00:50:58.738Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "7f826de35379a819",
@@ -7187,7 +7187,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:37.974Z",
-      "updatedAt": "2026-04-12T00:50:58.738Z"
+      "updatedAt": "2026-04-12T01:52:03.982Z"
     },
     {
       "id": "0beef8d8a00769c4",
@@ -7297,7 +7297,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:37.590Z",
-      "updatedAt": "2026-04-12T00:50:58.738Z"
+      "updatedAt": "2026-04-12T01:52:03.982Z"
     },
     {
       "id": "86e6a83a4bbc1c9e",
@@ -7562,7 +7562,7 @@
       "usageCount": 5,
       "successCount": 5,
       "createdAt": "2026-04-11T20:53:36.229Z",
-      "updatedAt": "2026-04-12T00:50:58.738Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "13cba2ad8eabb2c1",
@@ -7946,7 +7946,7 @@
       "usageCount": 6,
       "successCount": 6,
       "createdAt": "2026-04-11T20:53:01.044Z",
-      "updatedAt": "2026-04-12T00:50:58.711Z"
+      "updatedAt": "2026-04-12T01:52:03.982Z"
     },
     {
       "id": "7ab38ff6299e88c0",
@@ -10354,7 +10354,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:43.806Z",
-      "updatedAt": "2026-04-12T00:50:58.719Z"
+      "updatedAt": "2026-04-12T01:52:03.982Z"
     },
     {
       "id": "001a3edf02097375",
@@ -10409,7 +10409,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:43.630Z",
-      "updatedAt": "2026-04-12T00:50:58.712Z"
+      "updatedAt": "2026-04-12T01:52:03.982Z"
     },
     {
       "id": "12a840537cde4f76",
@@ -10464,7 +10464,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:43.204Z",
-      "updatedAt": "2026-04-12T00:50:58.714Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "ff9bb90b8cc98aea",
@@ -10517,7 +10517,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:43.076Z",
-      "updatedAt": "2026-04-12T00:50:58.714Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "97f097bcd0ec7305",
@@ -10671,7 +10671,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:42.560Z",
-      "updatedAt": "2026-04-12T00:50:58.713Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "e928eae0a0b2c0a8",
@@ -10832,7 +10832,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:42.177Z",
-      "updatedAt": "2026-04-12T00:50:58.714Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "5e074ebd1b4528c5",
@@ -11048,7 +11048,7 @@
       "usageCount": 5,
       "successCount": 5,
       "createdAt": "2026-04-11T20:39:41.608Z",
-      "updatedAt": "2026-04-12T00:50:58.712Z"
+      "updatedAt": "2026-04-12T01:52:03.983Z"
     },
     {
       "id": "5879f6d534976966",
@@ -11364,7 +11364,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:40.503Z",
-      "updatedAt": "2026-04-12T00:50:58.321Z"
+      "updatedAt": "2026-04-12T01:52:03.983Z"
     },
     {
       "id": "364f9aac47ffb96f",
@@ -11780,7 +11780,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:39.154Z",
-      "updatedAt": "2026-04-12T00:50:58.715Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "13d39e1c9bf1d3f7",
@@ -11831,7 +11831,7 @@
       "usageCount": 5,
       "successCount": 5,
       "createdAt": "2026-04-11T20:39:38.993Z",
-      "updatedAt": "2026-04-12T00:50:58.712Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "70d22da7a7ff48ee",
@@ -12035,7 +12035,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:38.291Z",
-      "updatedAt": "2026-04-12T00:50:58.712Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "6ae615aa0239654d",
@@ -13027,7 +13027,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:35.196Z",
-      "updatedAt": "2026-04-12T00:50:58.715Z"
+      "updatedAt": "2026-04-12T01:52:03.983Z"
     },
     {
       "id": "55028473cd950788",
@@ -13080,7 +13080,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:35.077Z",
-      "updatedAt": "2026-04-12T00:50:58.713Z"
+      "updatedAt": "2026-04-12T01:52:03.983Z"
     },
     {
       "id": "39deab262a642260",
@@ -13133,7 +13133,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:34.973Z",
-      "updatedAt": "2026-04-12T00:50:58.713Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "38d5d7640508412b",
@@ -13184,7 +13184,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:34.847Z",
-      "updatedAt": "2026-04-12T00:50:58.715Z"
+      "updatedAt": "2026-04-12T01:52:03.983Z"
     },
     {
       "id": "f2ed97900063cf90",
@@ -13235,7 +13235,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:34.632Z",
-      "updatedAt": "2026-04-12T00:50:58.715Z"
+      "updatedAt": "2026-04-12T01:52:03.983Z"
     },
     {
       "id": "c4eaf7659fc41939",
@@ -13287,7 +13287,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:34.529Z",
-      "updatedAt": "2026-04-12T00:50:58.716Z"
+      "updatedAt": "2026-04-12T01:52:03.984Z"
     },
     {
       "id": "f4942ff9fe483206",
@@ -13339,7 +13339,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:33.620Z",
-      "updatedAt": "2026-04-12T00:50:58.717Z"
+      "updatedAt": "2026-04-12T01:52:03.984Z"
     },
     {
       "id": "710d421700f3dfc5",
@@ -13390,7 +13390,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T12:06:59.192Z",
-      "updatedAt": "2026-04-12T00:50:58.718Z"
+      "updatedAt": "2026-04-12T01:52:03.998Z"
     },
     {
       "id": "8a09171b66f090b5",
@@ -13440,7 +13440,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T12:06:58.585Z",
-      "updatedAt": "2026-04-12T00:50:58.718Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "708b7f044e05bacb",
@@ -13490,7 +13490,7 @@
       "usageCount": 5,
       "successCount": 4,
       "createdAt": "2026-04-11T12:06:58.131Z",
-      "updatedAt": "2026-04-12T00:50:58.718Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "74f03565ef917c3a",
@@ -13540,7 +13540,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T12:06:52.123Z",
-      "updatedAt": "2026-04-12T00:50:58.718Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "e44efcadfc378ff5",
@@ -14571,7 +14571,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:54:02.423Z",
-      "updatedAt": "2026-04-12T00:50:58.740Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "d5938985c975b0d5",
@@ -14729,7 +14729,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:54:02.005Z",
-      "updatedAt": "2026-04-12T00:50:51.694Z"
+      "updatedAt": "2026-04-12T01:52:03.984Z"
     },
     {
       "id": "178f72a5155eb889",
@@ -14833,7 +14833,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:38.421Z",
-      "updatedAt": "2026-04-12T00:50:51.695Z"
+      "updatedAt": "2026-04-12T01:52:03.984Z"
     },
     {
       "id": "4fd5305596f06210",
@@ -14990,7 +14990,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:37.448Z",
-      "updatedAt": "2026-04-12T00:50:58.720Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "fb76f2afe7b32c7c",
@@ -15093,7 +15093,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T12:05:53.228Z",
-      "updatedAt": "2026-04-12T00:50:58.671Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "dd870184f2fa4d50",
@@ -15200,7 +15200,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:43.355Z",
-      "updatedAt": "2026-04-12T00:50:58.712Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "0538b536a346916b",
@@ -15255,7 +15255,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T12:05:53.033Z",
-      "updatedAt": "2026-04-12T00:50:58.714Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "83d178fa2c1b903c",
@@ -15308,7 +15308,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:34.207Z",
-      "updatedAt": "2026-04-12T00:50:58.715Z"
+      "updatedAt": "2026-04-12T01:52:03.984Z"
     },
     {
       "id": "e8a55e95123144a4",
@@ -15363,7 +15363,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:53:42.732Z",
-      "updatedAt": "2026-04-12T00:50:58.740Z"
+      "updatedAt": "2026-04-12T01:52:03.984Z"
     },
     {
       "id": "ceea6b3d7ebdc659",
@@ -15418,7 +15418,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:53:42.531Z",
-      "updatedAt": "2026-04-12T00:50:58.739Z"
+      "updatedAt": "2026-04-12T01:52:03.985Z"
     },
     {
       "id": "bdcca591bbe683aa",
@@ -15471,7 +15471,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:34.740Z",
-      "updatedAt": "2026-04-12T00:50:58.715Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "b971882c01952633",
@@ -15525,7 +15525,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:34.424Z",
-      "updatedAt": "2026-04-12T00:50:58.716Z"
+      "updatedAt": "2026-04-12T01:52:03.985Z"
     },
     {
       "id": "0b0cd56a2676999d",
@@ -15580,7 +15580,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:34.315Z",
-      "updatedAt": "2026-04-12T00:50:58.716Z"
+      "updatedAt": "2026-04-12T01:52:03.985Z"
     },
     {
       "id": "e1d915c9290f07af",
@@ -15632,7 +15632,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:33.989Z",
-      "updatedAt": "2026-04-12T00:50:58.716Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "e4e25d8d70970007",
@@ -15685,7 +15685,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:33.882Z",
-      "updatedAt": "2026-04-12T00:50:58.717Z"
+      "updatedAt": "2026-04-12T01:52:03.999Z"
     },
     {
       "id": "50210d530368e503",
@@ -15738,7 +15738,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:33.764Z",
-      "updatedAt": "2026-04-12T00:50:58.717Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "4ed513b9ca5367ae",
@@ -16229,7 +16229,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:39:34.090Z",
-      "updatedAt": "2026-04-12T00:50:58.720Z"
+      "updatedAt": "2026-04-12T01:52:03.985Z"
     },
     {
       "id": "ede408d990d90b94",
@@ -19787,7 +19787,7 @@
       "usageCount": 0,
       "successCount": 0,
       "createdAt": "2026-04-11T20:39:43.491Z",
-      "updatedAt": "2026-04-12T00:50:58.719Z"
+      "updatedAt": "2026-04-12T01:52:03.985Z"
     },
     {
       "id": "ef4a2a4904ae1fc0",
@@ -20713,7 +20713,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:23.048Z",
-      "updatedAt": "2026-04-12T00:50:58.726Z"
+      "updatedAt": "2026-04-12T01:52:03.985Z"
     },
     {
       "id": "941d4570e611f9df",
@@ -21093,7 +21093,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:33.170Z",
-      "updatedAt": "2026-04-12T00:50:58.737Z"
+      "updatedAt": "2026-04-12T01:52:03.985Z"
     },
     {
       "id": "8386813a210a3720",
@@ -21255,7 +21255,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.923Z",
-      "updatedAt": "2026-04-12T00:50:58.721Z"
+      "updatedAt": "2026-04-12T01:52:03.985Z"
     },
     {
       "id": "e9823082e5f13ad5",
@@ -21309,7 +21309,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.854Z",
-      "updatedAt": "2026-04-12T00:50:58.721Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "737a04879f932a8e",
@@ -21417,7 +21417,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:22.143Z",
-      "updatedAt": "2026-04-12T00:50:58.721Z"
+      "updatedAt": "2026-04-12T01:52:03.986Z"
     },
     {
       "id": "fb1fabf3f60eac24",
@@ -21684,7 +21684,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.714Z",
-      "updatedAt": "2026-04-12T00:50:58.721Z"
+      "updatedAt": "2026-04-12T01:52:03.986Z"
     },
     {
       "id": "77dea6397d709a6b",
@@ -21952,7 +21952,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.268Z",
-      "updatedAt": "2026-04-12T00:50:58.722Z"
+      "updatedAt": "2026-04-12T01:52:03.986Z"
     },
     {
       "id": "ad2baa160aa1379f",
@@ -22170,7 +22170,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:26.069Z",
-      "updatedAt": "2026-04-12T00:50:58.730Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "4bbd02b0ca1bdc46",
@@ -22222,7 +22222,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T23:51:19.204Z",
-      "updatedAt": "2026-04-12T00:50:58.626Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "67956585f5b16761",
@@ -22438,7 +22438,7 @@
       "usageCount": 2,
       "successCount": 2,
       "createdAt": "2026-04-12T00:47:41.914Z",
-      "updatedAt": "2026-04-12T00:50:58.708Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "68509c7868636f40",
@@ -22488,7 +22488,7 @@
       "usageCount": 2,
       "successCount": 2,
       "createdAt": "2026-04-11T21:15:50.339Z",
-      "updatedAt": "2026-04-12T00:50:58.741Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "3014015575fcbb44",
@@ -22702,7 +22702,7 @@
       "usageCount": 44,
       "successCount": 40,
       "createdAt": "2026-04-11T21:21:05.501Z",
-      "updatedAt": "2026-04-12T00:50:58.741Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "d8e1a6f4ade3fcff",
@@ -23080,7 +23080,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:29.045Z",
-      "updatedAt": "2026-04-12T00:50:58.733Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "682430545c134b58",
@@ -23188,7 +23188,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:32.999Z",
-      "updatedAt": "2026-04-12T00:50:58.736Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "c9e9eb3c80bd565f",
@@ -23242,7 +23242,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:32.228Z",
-      "updatedAt": "2026-04-12T00:50:58.736Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "f109201db754db48",
@@ -23348,7 +23348,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.577Z",
-      "updatedAt": "2026-04-12T00:50:58.722Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "1a6c4c95206188be",
@@ -23508,7 +23508,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:29.358Z",
-      "updatedAt": "2026-04-12T00:50:58.734Z"
+      "updatedAt": "2026-04-12T01:52:04.000Z"
     },
     {
       "id": "883f8a2e72461f84",
@@ -23670,7 +23670,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:25.275Z",
-      "updatedAt": "2026-04-12T00:50:58.729Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "6e5b09fb7daeaa8f",
@@ -23723,7 +23723,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:23.758Z",
-      "updatedAt": "2026-04-12T00:50:58.727Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "e346c50e457fe14c",
@@ -23777,7 +23777,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:23.440Z",
-      "updatedAt": "2026-04-12T00:50:58.726Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "f8a6f605963d6a96",
@@ -23884,7 +23884,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:34.274Z",
-      "updatedAt": "2026-04-12T00:50:58.737Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "7a7a7d93188dd2c9",
@@ -23992,7 +23992,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:30.571Z",
-      "updatedAt": "2026-04-12T00:50:58.735Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "34f36a979988ef9b",
@@ -24043,7 +24043,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:28.529Z",
-      "updatedAt": "2026-04-12T00:50:58.732Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "5d5757a2f07ee3c5",
@@ -24097,7 +24097,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:28.016Z",
-      "updatedAt": "2026-04-12T00:50:58.732Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "fcab0144ac19de76",
@@ -24151,7 +24151,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:27.854Z",
-      "updatedAt": "2026-04-12T00:50:58.732Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "7a414a380dec26d5",
@@ -24205,7 +24205,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:27.508Z",
-      "updatedAt": "2026-04-12T00:50:58.731Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "b702b2fbf4737975",
@@ -24259,7 +24259,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:27.206Z",
-      "updatedAt": "2026-04-12T00:50:58.731Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "3aa15ce22114e122",
@@ -24313,7 +24313,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:26.347Z",
-      "updatedAt": "2026-04-12T00:50:58.731Z"
+      "updatedAt": "2026-04-12T01:52:04.001Z"
     },
     {
       "id": "eaac935fd2e3262e",
@@ -24367,7 +24367,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:24.326Z",
-      "updatedAt": "2026-04-12T00:50:58.728Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "b4a7b9b07dc591b6",
@@ -24421,7 +24421,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:24.044Z",
-      "updatedAt": "2026-04-12T00:50:58.727Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "3c81a207890733fc",
@@ -24475,7 +24475,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.199Z",
-      "updatedAt": "2026-04-12T00:50:58.722Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "7b1721780692f912",
@@ -24583,7 +24583,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:33.757Z",
-      "updatedAt": "2026-04-12T00:50:58.737Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "24fdf1fd2f6f0ab7",
@@ -24635,7 +24635,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:33.376Z",
-      "updatedAt": "2026-04-12T00:50:58.737Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "ae6c6f37521547a5",
@@ -24689,7 +24689,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:32.584Z",
-      "updatedAt": "2026-04-12T00:50:58.736Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "f35b9e30416e5118",
@@ -24742,7 +24742,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:31.630Z",
-      "updatedAt": "2026-04-12T00:50:58.735Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "3f753323302c3467",
@@ -24796,7 +24796,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:31.270Z",
-      "updatedAt": "2026-04-12T00:50:58.735Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "5c219fbf21dd0420",
@@ -24848,7 +24848,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:30.926Z",
-      "updatedAt": "2026-04-12T00:50:58.735Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "b0dee156bcad7b76",
@@ -24902,7 +24902,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:30.756Z",
-      "updatedAt": "2026-04-12T00:50:58.735Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "a60b793610260ba3",
@@ -25010,7 +25010,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:29.679Z",
-      "updatedAt": "2026-04-12T00:50:58.734Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "632a0e9b9b7fa202",
@@ -25064,7 +25064,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:28.197Z",
-      "updatedAt": "2026-04-12T00:50:58.732Z"
+      "updatedAt": "2026-04-12T01:52:04.002Z"
     },
     {
       "id": "606bf6826b5c8a41",
@@ -25118,7 +25118,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:26.926Z",
-      "updatedAt": "2026-04-12T00:50:58.731Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "f2b34f5fbcb7992a",
@@ -25172,7 +25172,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.674Z",
-      "updatedAt": "2026-04-12T00:50:58.722Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "719363641d7c7db9",
@@ -25279,7 +25279,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:30.034Z",
-      "updatedAt": "2026-04-12T00:50:58.734Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "cab879c4e59bc676",
@@ -25386,7 +25386,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:22.693Z",
-      "updatedAt": "2026-04-12T00:50:58.722Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "91d77adea1ac4824",
@@ -25439,7 +25439,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:22.495Z",
-      "updatedAt": "2026-04-12T00:50:58.722Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "0ef3d94965c0283d",
@@ -25492,7 +25492,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.818Z",
-      "updatedAt": "2026-04-12T00:50:58.723Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "53cab66c1a1bb66e",
@@ -25544,7 +25544,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.547Z",
-      "updatedAt": "2026-04-12T00:50:58.723Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "0442f706e4b4ce59",
@@ -25596,7 +25596,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.446Z",
-      "updatedAt": "2026-04-12T00:50:58.723Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "e6954b58af9963b8",
@@ -25649,7 +25649,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.360Z",
-      "updatedAt": "2026-04-12T00:50:58.723Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "103bcb3571336d39",
@@ -25702,7 +25702,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.165Z",
-      "updatedAt": "2026-04-12T00:50:58.723Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "2f4706f2cd612ed0",
@@ -25755,7 +25755,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.379Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "d6e604e7e6117d45",
@@ -25809,7 +25809,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.009Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:03.990Z"
     },
     {
       "id": "e79d01f28b2be1e9",
@@ -26077,7 +26077,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:23.194Z",
-      "updatedAt": "2026-04-12T00:50:58.726Z"
+      "updatedAt": "2026-04-12T01:52:04.003Z"
     },
     {
       "id": "5ef4e61f8c3e0640",
@@ -26129,7 +26129,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:22.950Z",
-      "updatedAt": "2026-04-12T00:50:58.726Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "7a2d04c366da3711",
@@ -26181,7 +26181,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:22.584Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "1f176819d6b26df8",
@@ -26234,7 +26234,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:22.276Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "4c605f285436560a",
@@ -26288,7 +26288,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:22.045Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "069e4e46aa0c698f",
@@ -26341,7 +26341,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.634Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "aedfeb36ad21ac81",
@@ -26394,7 +26394,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:21.267Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "1ef02b73baf8ab0f",
@@ -26446,7 +26446,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:20.950Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "9cb7b90592e96e98",
@@ -26498,7 +26498,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:20.633Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "41e6b9a9364cf64c",
@@ -26552,7 +26552,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:20.327Z",
-      "updatedAt": "2026-04-12T00:50:58.724Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "a0da079d96ac6a03",
@@ -26604,7 +26604,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:20.205Z",
-      "updatedAt": "2026-04-12T00:50:58.725Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "ab068789c32ecf41",
@@ -26658,7 +26658,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.464Z",
-      "updatedAt": "2026-04-12T00:50:58.725Z"
+      "updatedAt": "2026-04-12T01:52:04.004Z"
     },
     {
       "id": "7f72cd649e2c099b",
@@ -27036,6 +27036,215 @@
       "updatedAt": "2026-04-12T00:50:58.998Z"
     },
     {
+      "id": "cb70522a0ea1a6d6",
+      "name": "inferFeedbackFromActivity",
+      "code": "function inferFeedbackFromActivity(oracle) {\n  const inferred = [];\n  for (const [id, info] of _pendingPulls) {\n    if (Date.now() - info.pulledAt < 30 * 60 * 1000) { // within 30 min\n      try {\n        oracle.feedback(id, true); // infer success\n        inferred.push({ id, name: info.name, decision: info.decision });\n      } catch (e) { /* non-fatal */ }\n    }\n  }\n  _pendingPulls.clear();\n  return inferred;\n}",
+      "language": "javascript",
+      "description": "Auto-registered function from src/mcp/feedback-tracker.js",
+      "tags": [
+        "array",
+        "auto-registered",
+        "date-time",
+        "error-handling",
+        "infer-feedback-from-activity",
+        "inferfeedbackfromactivity",
+        "javascript",
+        "logging",
+        "math",
+        "mcp",
+        "src"
+      ],
+      "patternType": "utility",
+      "complexity": "architectural",
+      "coherency": 0.845,
+      "coherencyScore": {
+        "total": 0.845,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.546
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 4,
+            "maxDepth": 5,
+            "lines": 13
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:51:02.876Z",
+      "updatedAt": "2026-04-12T01:52:04.004Z"
+    },
+    {
+      "id": "1e85b22b335bf78f",
+      "name": "safeJsonWrite",
+      "code": "function safeJsonWrite(filePath, data) {',\n      '  const json = JSON.stringify(data, null, 2);',\n      '  const tmp = filePath + \".tmp\";',\n      '  fs.writeFileSync(tmp, json);',\n      '  fs.renameSync(tmp, filePath);',\n      '  return true;',\n      '}",
+      "language": "javascript",
+      "description": "Auto-registered function from tests/auto-register.test.js",
+      "tags": [
+        "auto-register",
+        "auto-registered",
+        "file-io",
+        "file-system",
+        "javascript",
+        "safe-json-write",
+        "safejsonwrite",
+        "serialization",
+        "string-processing",
+        "testing",
+        "tests"
+      ],
+      "patternType": "io",
+      "complexity": "atomic",
+      "coherency": 0.844,
+      "coherencyScore": {
+        "total": 0.844,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 1,
+          "fractalAlignment": 0.537
+        },
+        "astAnalysis": {
+          "boost": 0.03,
+          "valid": false,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 7
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 1,
+      "successCount": 1,
+      "createdAt": "2026-04-12T01:51:46.195Z",
+      "updatedAt": "2026-04-12T01:52:04.005Z"
+    },
+    {
+      "id": "d47a45d076b4734a",
+      "name": "myFn",
+      "code": "function myFn() {',\n      '  const a = 1;',\n      '  const b = 2;',\n      '  const c = a + b;',\n      '  return c;',\n      '}",
+      "language": "javascript",
+      "description": "Auto-registered function from tests/auto-register.test.js",
+      "tags": [
+        "auto-register",
+        "auto-registered",
+        "javascript",
+        "my-fn",
+        "myfn",
+        "regex-patterns",
+        "testing",
+        "tests",
+        "validation"
+      ],
+      "patternType": "utility",
+      "complexity": "atomic",
+      "coherency": 0.843,
+      "coherencyScore": {
+        "total": 0.843,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 1,
+          "fractalAlignment": 0.531
+        },
+        "astAnalysis": {
+          "boost": 0.03,
+          "valid": false,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 6
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 1,
+      "successCount": 1,
+      "createdAt": "2026-04-12T01:51:45.975Z",
+      "updatedAt": "2026-04-12T01:52:03.992Z"
+    },
+    {
+      "id": "f6dd5da3edbd2d82",
+      "name": "trackPull",
+      "code": "function trackPull(patternId, name, decision) {\n  if (decision === 'pull' || decision === 'evolve') {\n    _pendingPulls.set(patternId, { pulledAt: Date.now(), name, decision });\n  }\n}",
+      "language": "javascript",
+      "description": "Auto-registered function from src/mcp/feedback-tracker.js",
+      "tags": [
+        "auto-registered",
+        "data-structure",
+        "data-structures",
+        "date-time",
+        "deduplication",
+        "javascript",
+        "mcp",
+        "src",
+        "track-pull",
+        "trackpull"
+      ],
+      "patternType": "utility",
+      "complexity": "architectural",
+      "coherency": 0.843,
+      "coherencyScore": {
+        "total": 0.843,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.528
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 2,
+            "maxDepth": 3,
+            "lines": 5
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:50:50.017Z",
+      "updatedAt": "2026-04-12T01:52:04.004Z"
+    },
+    {
       "id": "33fe7db3a5ef303b",
       "name": "partial.test",
       "code": "const { describe, it } = require('node:test');\nconst assert = require('node:assert/strict');\n\n// partial is available via isolated sandbox concatenation\n\ndescribe('partial', () => {\n  it('should partially apply the first argument', () => {\n    const add = (a, b) => a + b;\n    const add5 = partial(add, 5);\n    assert.equal(add5(3), 8);\n  });\n\n  it('should partially apply multiple arguments', () => {\n    const sum3 = (a, b, c) => a + b + c;\n    const sum10And = partial(sum3, 4, 6);\n    assert.equal(sum10And(5), 15);\n  });\n\n  it('should work with no partial arguments', () => {\n    const add = (a, b) => a + b;\n    const same = partial(add);\n    assert.equal(same(2, 3), 5);\n  });\n\n  it('should work with all arguments pre-filled', () => {\n    const add = (a, b) => a + b;\n    const precomputed = partial(add, 10, 20);\n    assert.equal(precomputed(), 30);\n  });\n\n  it('should pass extra arguments through', () => {\n    const fn = (...args) => args;\n    const p = partial(fn, 1, 2);\n    assert.deepEqual(p(3, 4), [1, 2, 3, 4]);\n  });\n});\n",
@@ -27087,7 +27296,165 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:25.384Z",
-      "updatedAt": "2026-04-12T00:50:58.729Z"
+      "updatedAt": "2026-04-12T01:52:04.005Z"
+    },
+    {
+      "id": "3aa52928d088a661",
+      "name": "clearPendingPull",
+      "code": "function clearPendingPull(patternId) {\n  _pendingPulls.delete(patternId);\n}",
+      "language": "javascript",
+      "description": "Auto-registered function from src/mcp/feedback-tracker.js",
+      "tags": [
+        "auto-registered",
+        "clear-pending-pull",
+        "clearpendingpull",
+        "database",
+        "javascript",
+        "mcp",
+        "src",
+        "validation"
+      ],
+      "patternType": "utility",
+      "complexity": "atomic",
+      "coherency": 0.842,
+      "coherencyScore": {
+        "total": 0.842,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.52
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 1,
+            "lines": 3
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:51:03.085Z",
+      "updatedAt": "2026-04-12T01:52:04.005Z"
+    },
+    {
+      "id": "3d29dba100433461",
+      "name": "cross-repo-bridge",
+      "code": "/**\n * Blockchain Bridge — connects oracle-toolkit to REMEMBRANCE-BLOCKCHAIN.\n * Resolves the blockchain publisher from multiple possible locations.\n */\n\nconst fs = require('fs');\nconst path = require('path');\n\n/**\n * Resolve the root directory of the REMEMBRANCE-BLOCKCHAIN repo.\n * Tries paths in order:\n *   1. BLOCKCHAIN_ROOT env var\n *   2. Sibling directory: ../REMEMBRANCE-BLOCKCHAIN (relative to cwd)\n *   3. Parent sibling: ../../REMEMBRANCE-BLOCKCHAIN (relative to oracle-toolkit root)\n * Returns the path if found, null if not.\n */\nfunction resolveBlockchainRoot() {\n  const candidates = [];\n\n  // 1. BLOCKCHAIN_ROOT env var\n  if (process.env.BLOCKCHAIN_ROOT) {\n    candidates.push(path.resolve(process.env.BLOCKCHAIN_ROOT));\n  }\n\n  // 2. Sibling directory relative to cwd\n  candidates.push(path.resolve(process.cwd(), '..', 'REMEMBRANCE-BLOCKCHAIN'));\n\n  // 3. Parent sibling relative to oracle-toolkit root\n  const oracleRoot = path.join(__dirname, '..', '..');\n  candidates.push(path.resolve(oracleRoot, '..', 'REMEMBRANCE-BLOCKCHAIN'));\n\n  for (const candidate of candidates) {\n    try {\n      const publisherPath = path.join(candidate, 'src', 'publisher');\n      // Check if directory or file exists (publisher.js or publisher/index.js)\n      if (fs.existsSync(publisherPath) || fs.existsSync(publisherPath + '.js')) {\n        return candidate;\n      }\n    } catch (_) {\n      // skip inaccessible paths\n    }\n  }\n\n  return null;\n}\n\n/**\n * Get a Publisher instance from REMEMBRANCE-BLOCKCHAIN.\n * Returns null if the blockchain repo is not found.\n */\nfunction getPublisher(options = {}) {\n  const root = resolveBlockchainRoot();\n  if (!root) return null;\n\n  try {\n    const publisherModule = require(path.join(root, 'src', 'publisher'));\n    const Publisher = publisherModule.Publisher || publisherModule;\n\n    if (typeof Publisher === 'function') {\n      return new Publisher({\n        oracleRoot: path.join(__dirname, '..', '..'),\n        network: options.network || 'devnet',\n        walletPath: options.walletPath || null,\n      });\n    }\n\n    // If it's already an object with a publish method, return it directly\n    if (Publisher && typeof Publisher.publish === 'function') {\n      return Publisher;\n    }\n\n    return null;\n  } catch (_) {\n    return null;\n  }\n}\n\n/**\n * Publish a pattern to the blockchain.\n * Returns a promise that resolves to { published, hash, watermark, bridgeStatus, signature, reasons }.\n * The publisher may be sync or async — this function always returns a promise.\n */\nasync function publishPattern(pattern, options = {}) {\n  const publisher = getPublisher(options);\n  if (!publisher) {\n    return { published: false, reasons: ['REMEMBRANCE-BLOCKCHAIN not found'] };\n  }\n\n  try {\n    const result = await publisher.publish(pattern);\n    return result;\n  } catch (err) {\n    return { published: false, reasons: [err.message || String(err)] };\n  }\n}\n\nmodule.exports = { resolveBlockchainRoot, getPublisher, publishPattern };\n",
+      "language": "javascript",
+      "description": "Cross-repo module resolver for ecosystem integration. Finds sibling repositories by checking BLOCKCHAIN_ROOT env var, sibling directories, and parent directories. Gracefully degrades if target repo not found.",
+      "tags": [
+        "array",
+        "async",
+        "async-control",
+        "blockchain",
+        "bridge",
+        "config",
+        "cross-repo",
+        "cross-repo-bridge",
+        "crypto",
+        "database",
+        "ecosystem",
+        "error-handling"
+      ],
+      "patternType": "data-structure",
+      "complexity": "architectural",
+      "coherency": 0.842,
+      "coherencyScore": {
+        "total": 0.842,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.679
+        },
+        "astAnalysis": {
+          "boost": 0.1,
+          "valid": true,
+          "functions": 3,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 15,
+            "maxDepth": 4,
+            "lines": 76
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:45:04.717Z",
+      "updatedAt": "2026-04-12T01:45:04.717Z"
+    },
+    {
+      "id": "decce7bba4e092b0",
+      "name": "solana-memo-bridge",
+      "code": "/**\n * REMEMBRANCE-BLOCKCHAIN — Solana Bridge\n *\n * Wraps Solana memo transaction publishing for pattern provenance.\n * Works fully offline (computes hash locally) if no wallet is configured\n * or if @solana/web3.js is not installed.\n *\n * @solana/web3.js is NOT a hard dependency — it is dynamically loaded\n * via try/catch when needed.\n */\n\nconst crypto = require('crypto');\n\nclass SolanaBridge {\n  /**\n   * @param {object} opts\n   * @param {string} [opts.network='devnet'] — Solana network to use\n   * @param {string|null} [opts.walletPath=null] — path to wallet keypair JSON\n   */\n  constructor({ network, walletPath } = {}) {\n    this.network = network || 'devnet';\n    this.walletPath = walletPath || null;\n    this._solana = null;\n\n    // Try to load @solana/web3.js (optional dependency)\n    try {\n      this._solana = require('@solana/web3.js');\n    } catch (_) {\n      // Not installed — we'll run in offline mode\n    }\n  }\n\n  /**\n   * Compute SHA-256 hash of input string.\n   * @param {string} input\n   * @returns {string} hex-encoded hash\n   */\n  _hash(input) {\n    return crypto.createHash('sha256').update(input).digest('hex');\n  }\n\n  /**\n   * Publish a pattern hash and metadata to Solana as a memo transaction.\n   *\n   * If offline (no wallet or no @solana/web3.js), returns the computed\n   * hash and memo without sending anything on-chain.\n   *\n   * @param {string} patternHash — SHA-256 hash of the pattern\n   * @param {object} metadata — { coherency, name, language, watermark }\n   * @returns {Promise<{ status: string, signature?: string, hash: string, memo: object, cost_sol?: number }>}\n   */\n  async publish(patternHash, metadata = {}) {\n    const memo = {\n      type: 'pattern',\n      hash: patternHash,\n      coherency: metadata.coherency || null,\n      covenant: 'sealed',\n      name: metadata.name || null,\n      language: metadata.language || null,\n      watermark: metadata.watermark || null,\n      timestamp: new Date().toISOString(),\n    };\n\n    const hash = this._hash(JSON.stringify(memo));\n\n    // Offline mode: no Solana SDK or no wallet\n    if (!this._solana || !this.walletPath) {\n      return {\n        status: 'offline',\n        memo,\n        hash,\n      };\n    }\n\n    // Online mode: attempt to send memo transaction\n    try {\n      const connection = new this._solana.Connection(\n        this._solana.clusterApiUrl(this.network),\n        'confirmed'\n      );\n\n      const walletData = require(this.walletPath);\n      const keypair = this._solana.Keypair.fromSecretKey(\n        Uint8Array.from(walletData)\n      );\n\n      const transaction = new this._solana.Transaction().add(\n        new this._solana.TransactionInstruction({\n          keys: [],\n          programId: new this._solana.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),\n          data: Buffer.from(JSON.stringify(memo)),\n        })\n      );\n\n      const signature = await this._solana.sendAndConfirmTransaction(\n        connection,\n        transaction,\n        [keypair]\n      );\n\n      return {\n        status: 'confirmed',\n        signature,\n        hash,\n        memo,\n        cost_sol: 0.000005, // approximate memo tx cost\n      };\n    } catch (err) {\n      return {\n        status: 'error',\n        hash,\n        memo,\n        error: err.message,\n      };\n    }\n  }\n\n  /**\n   * Publish a coherence milestone to Solana.\n   *\n   * @param {object} milestoneData — { coherence_index, top_resonances, domains, pattern_count }\n   * @returns {Promise<{ status: string, signature?: string, hash: string, memo: object, cost_sol?: number }>}\n   */\n  async publishMilestone(milestoneData = {}) {\n    const memo = {\n      type: 'milestone',\n      coherence_index: milestoneData.coherence_index || 0,\n      top_resonances: milestoneData.top_resonances || [],\n      domains: milestoneData.domains || [],\n      hash: this._hash(JSON.stringify(milestoneData)),\n      pattern_count: milestoneData.pattern_count || 0,\n    };\n\n    const hash = this._hash(JSON.stringify(memo));\n\n    // Offline mode\n    if (!this._solana || !this.walletPath) {\n      return {\n        status: 'offline',\n        memo,\n        hash,\n      };\n    }\n\n    // Online mode\n    try {\n      const connection = new this._solana.Connection(\n        this._solana.clusterApiUrl(this.network),\n        'confirmed'\n      );\n\n      const walletData = require(this.walletPath);\n      const keypair = this._solana.Keypair.fromSecretKey(\n        Uint8Array.from(walletData)\n      );\n\n      const transaction = new this._solana.Transaction().add(\n        new this._solana.TransactionInstruction({\n          keys: [],\n          programId: new this._solana.PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'),\n          data: Buffer.from(JSON.stringify(memo)),\n        })\n      );\n\n      const signature = await this._solana.sendAndConfirmTransaction(\n        connection,\n        transaction,\n        [keypair]\n      );\n\n      return {\n        status: 'confirmed',\n        signature,\n        hash,\n        memo,\n        cost_sol: 0.000005,\n      };\n    } catch (err) {\n      return {\n        status: 'error',\n        hash,\n        memo,\n        error: err.message,\n      };\n    }\n  }\n\n  /**\n   * Verify that a Solana transaction exists (stub — always returns unverified for now).\n   *\n   * @param {string} signature — Solana transaction signature\n   * @returns {Promise<{ verified: boolean, signature: string, status: string }>}\n   */\n  async verify(signature) {\n    return {\n      verified: false,\n      signature,\n      status: 'stub — verification not yet implemented',\n    };\n  }\n}\n\nmodule.exports = { SolanaBridge };\n",
+      "language": "javascript",
+      "description": "Offline-first Solana memo transaction publisher. Computes SHA-256 hashes locally, optionally publishes to devnet/mainnet. Loads @solana/web3.js via try/catch — works fully without it.",
+      "tags": [
+        "async",
+        "async-control",
+        "blockchain",
+        "bridge",
+        "class",
+        "crypto",
+        "database",
+        "date-time",
+        "error-handling",
+        "factory",
+        "javascript",
+        "logging"
+      ],
+      "patternType": "validation",
+      "complexity": "architectural",
+      "coherency": 0.836,
+      "coherencyScore": {
+        "total": 0.836,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.621
+        },
+        "astAnalysis": {
+          "boost": 0.1,
+          "valid": true,
+          "functions": 0,
+          "classes": 1,
+          "complexity": {
+            "cyclomatic": 15,
+            "maxDepth": 4,
+            "lines": 175
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:45:04.417Z",
+      "updatedAt": "2026-04-12T01:45:04.417Z"
     },
     {
       "id": "9be23988bbc6dcc2",
@@ -27141,7 +27508,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:26.195Z",
-      "updatedAt": "2026-04-12T00:50:58.730Z"
+      "updatedAt": "2026-04-12T01:52:03.991Z"
     },
     {
       "id": "385f4174e6ef52eb",
@@ -27303,7 +27670,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:19.769Z",
-      "updatedAt": "2026-04-12T00:50:58.725Z"
+      "updatedAt": "2026-04-12T01:52:04.005Z"
     },
     {
       "id": "bffbb382ae67f58e",
@@ -27357,7 +27724,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:20.516Z",
-      "updatedAt": "2026-04-12T00:50:58.725Z"
+      "updatedAt": "2026-04-12T01:52:04.005Z"
     },
     {
       "id": "4855878325981fff",
@@ -27410,7 +27777,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:20.429Z",
-      "updatedAt": "2026-04-12T00:50:58.725Z"
+      "updatedAt": "2026-04-12T01:52:04.005Z"
     },
     {
       "id": "25abd3ed2b795561",
@@ -27463,7 +27830,7 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:20.006Z",
-      "updatedAt": "2026-04-12T00:50:58.726Z"
+      "updatedAt": "2026-04-12T01:52:04.005Z"
     },
     {
       "id": "6c6d50ea059d64d5",
@@ -27783,7 +28150,61 @@
       "usageCount": 3,
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:22.786Z",
-      "updatedAt": "2026-04-12T00:50:58.708Z"
+      "updatedAt": "2026-04-12T01:52:04.005Z"
+    },
+    {
+      "id": "e63abce7cf7ec440",
+      "name": "debug-fix-type-5e38c84e",
+      "code": "// Fix: destructuring from undefined/null source\n// Wrong:\n// const { x } = undefined;\n\n// Fix option 1: Default to empty object\nconst { x } = config || {};\n\n// Fix option 2: Default parameter in function\nfunction init({ host, port } = {}) {\n  // host and port are undefined but no TypeError\n}\n\n// Fix option 3: Optional chaining before destructure\nconst result = data?.response;\nif (result) {\n  const { x, y } = result;\n}",
+      "language": "javascript",
+      "description": "Destructuring from undefined — provide default empty object with || {} or default parameters",
+      "tags": [
+        "composition",
+        "config",
+        "database",
+        "debug-fix-type-5e38c84e",
+        "debug-promoted",
+        "default",
+        "destructuring",
+        "error-handling",
+        "init",
+        "javascript",
+        "network",
+        "provide"
+      ],
+      "patternType": "utility",
+      "complexity": "atomic",
+      "coherency": 0.807,
+      "coherencyScore": {
+        "total": 0.807,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.8,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.534
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 3,
+            "maxDepth": 2,
+            "lines": 7
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:52:04.139Z",
+      "updatedAt": "2026-04-12T01:52:04.139Z"
     },
     {
       "id": "21fb1ee01e8803a7",
@@ -27894,6 +28315,59 @@
       "updatedAt": "2026-04-12T00:50:58.993Z"
     },
     {
+      "id": "55d2c20730a9c542",
+      "name": "getPendingPulls",
+      "code": "function getPendingPulls() {\n  return [..._pendingPulls.entries()].map(([id, info]) => ({ id, ...info }));\n}",
+      "language": "javascript",
+      "description": "Auto-registered function from src/mcp/feedback-tracker.js",
+      "tags": [
+        "array",
+        "auto-registered",
+        "caching",
+        "data-structure",
+        "data-structures",
+        "get-pending-pulls",
+        "getpendingpulls",
+        "javascript",
+        "logging",
+        "mcp",
+        "src"
+      ],
+      "patternType": "data-structure",
+      "complexity": "composite",
+      "coherency": 0.789,
+      "coherencyScore": {
+        "total": 0.789,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.53
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 1,
+            "maxDepth": 2,
+            "lines": 3
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:51:03.321Z",
+      "updatedAt": "2026-04-12T01:52:04.005Z"
+    },
+    {
       "id": "c4746aec590fe745",
       "name": "password",
       "code": "/**\n * Password hashing using Node.js built-in crypto (scrypt).\n * No external dependencies needed.\n */\n\nimport { scrypt, randomBytes, timingSafeEqual } from \"crypto\";\n\nconst SALT_LENGTH = 32;\nconst KEY_LENGTH = 64;\n\n/** Hash a password. Returns \"salt:hash\" in hex. */\nexport function hashPassword(password: string): Promise<string> {\n  return new Promise((resolve, reject) => {\n    const salt = randomBytes(SALT_LENGTH).toString(\"hex\");\n    scrypt(password, salt, KEY_LENGTH, (err, derivedKey) => {\n      if (err) return reject(err);\n      resolve(`${salt}:${derivedKey.toString(\"hex\")}`);\n    });\n  });\n}\n\n/** Verify a password against a stored hash. */\nexport function verifyPassword(password: string, stored: string): Promise<boolean> {\n  return new Promise((resolve, reject) => {\n    const [salt, hash] = stored.split(\":\");\n    if (!salt || !hash) return resolve(false);\n\n    scrypt(password, salt, KEY_LENGTH, (err, derivedKey) => {\n      if (err) return reject(err);\n      const storedBuffer = Buffer.from(hash, \"hex\");\n      resolve(timingSafeEqual(storedBuffer, derivedKey));\n    });\n  });\n}\n",
@@ -28002,6 +28476,60 @@
       "updatedAt": "2026-04-12T00:50:58.993Z"
     },
     {
+      "id": "fbc4ef689a9adb86",
+      "name": "covenant-waveform-filter",
+      "code": "#!/usr/bin/env python3\n\"\"\"\nCovenant Filter — Filters patterns through the Weave's covenant before chain publication.\n\nUses covenant_substrate.json separability metrics to determine if a pattern\nmeets the covenant's standards for public publication.\n\nThe covenant substrate contains 55 separability metric waveforms.  A candidate\npattern is correlated against each metric; the mean of the top-K correlations\ngives a covenant coherence score.  Patterns that exceed the threshold are\nconsidered publication-worthy.\n\"\"\"\n\nimport json\nimport os\nfrom typing import Dict, List, Optional, Tuple\n\nimport numpy as np\n\n\n# ── Defaults ─────────────────────────────────────────────────────────────\n\nDEFAULT_COVENANT_FILE = \"covenant_substrate.json\"\nPASS_THRESHOLD = 0.35          # minimum covenant coherence to publish\nTOP_K_METRICS = 5              # number of best-matching metrics to average\nWAVEFORM_LEN = 128             # standard resampled waveform length\n\n\n# ── Helpers ──────────────────────────────────────────────────────────────\n\ndef _resample(waveform: np.ndarray, target_len: int = WAVEFORM_LEN) -> np.ndarray:\n    \"\"\"Linearly resample a waveform to *target_len* points.\"\"\"\n    if len(waveform) == target_len:\n        return waveform\n    xp = np.linspace(0, 1, len(waveform))\n    x = np.linspace(0, 1, target_len)\n    return np.interp(x, xp, waveform)\n\n\ndef _safe_corr(a: np.ndarray, b: np.ndarray) -> float:\n    \"\"\"Pearson correlation that returns 0.0 on degenerate inputs.\"\"\"\n    if np.std(a) < 1e-12 or np.std(b) < 1e-12:\n        return 0.0\n    r = float(np.corrcoef(a, b)[0, 1])\n    return r if np.isfinite(r) else 0.0\n\n\n# ── CovenantFilter ───────────────────────────────────────────────────────\n\nclass CovenantFilter:\n    \"\"\"Checks pattern waveforms against covenant separability metrics.\"\"\"\n\n    def __init__(self, covenant_path: Optional[str] = None):\n        \"\"\"Load covenant substrate patterns.\n\n        Parameters\n        ----------\n        covenant_path : str or None\n            Path to covenant_substrate.json.  When *None*, looks in the same\n            directory as this module.\n        \"\"\"\n        if covenant_path is None:\n            covenant_path = os.path.join(\n                os.path.dirname(os.path.abspath(__file__)),\n                DEFAULT_COVENANT_FILE,\n            )\n\n        self.covenant_path = covenant_path\n        self.metrics: List[np.ndarray] = []\n        self.metric_names: List[str] = []\n        self._load(covenant_path)\n\n    # ── Internal ─────────────────────────────────────────────────────\n\n    def _load(self, path: str):\n        \"\"\"Parse covenant_substrate.json and extract resampled waveforms.\"\"\"\n        if not os.path.exists(path):\n            return\n\n        with open(path) as f:\n            data = json.load(f)\n\n        patterns = data.get(\"patterns\", [])\n        for p in patterns:\n            wf = p.get(\"waveform\", [])\n            if len(wf) < 4:\n                continue\n            arr = np.array(wf, dtype=np.float64)\n            if not np.all(np.isfinite(arr)):\n                continue\n            self.metrics.append(_resample(arr))\n            self.metric_names.append(p.get(\"name\", \"unknown\"))\n\n    # ── Public API ───────────────────────────────────────────────────\n\n    def check(self, pattern_waveform, name: str = \"\") -> Dict:\n        \"\"\"Check if a pattern meets covenant standards.\n\n        Parameters\n        ----------\n        pattern_waveform : array-like\n            The candidate waveform (any length >= 4).\n        name : str\n            Optional human-readable label for log messages.\n\n        Returns\n        -------\n        dict\n            ``passes``  – bool, whether the pattern clears the covenant gate.\n            ``score``   – float 0-1, mean correlation with top-K covenant metrics.\n            ``reason``  – str, human-readable explanation.\n        \"\"\"\n        if not self.metrics:\n            return {\n                \"passes\": True,\n                \"score\": 1.0,\n                \"reason\": \"No covenant metrics loaded — pass by default.\",\n            }\n\n        arr = np.asarray(pattern_waveform, dtype=np.float64)\n        if len(arr) < 4 or not np.all(np.isfinite(arr)):\n            return {\n                \"passes\": False,\n                \"score\": 0.0,\n                \"reason\": \"Pattern waveform too short or contains NaN/Inf.\",\n            }\n\n        resampled = _resample(arr)\n\n        # Correlate against every covenant metric\n        correlations = []\n        for metric in self.metrics:\n            correlations.append(abs(_safe_corr(resampled, metric)))\n\n        correlations.sort(reverse=True)\n        top_k = correlations[: min(TOP_K_METRICS, len(correlations))]\n        score = float(np.mean(top_k))\n\n        passes = score >= PASS_THRESHOLD\n\n        if passes:\n            reason = (\n                f\"Covenant coherence {score:.3f} >= {PASS_THRESHOLD} \"\n                f\"(top-{len(top_k)} metric avg).\"\n            )\n        else:\n            reason = (\n                f\"Covenant coherence {score:.3f} < {PASS_THRESHOLD} threshold. \"\n                f\"Pattern '{name}' does not meet publication standards.\"\n            )\n\n        return {\"passes\": passes, \"score\": round(score, 4), \"reason\": reason}\n\n    def filter_batch(\n        self, patterns: List[Dict]\n    ) -> Tuple[List[Dict], int, List[str]]:\n        \"\"\"Filter a list of pattern dicts, returning only those that pass.\n\n        Each pattern dict must have a ``waveform`` key (list of floats) and\n        optionally a ``name`` key.\n\n        Returns\n        -------\n        tuple\n            (passed_patterns, filtered_count, reasons)\n        \"\"\"\n        passed: List[Dict] = []\n        reasons: List[str] = []\n        filtered = 0\n\n        for p in patterns:\n            wf = p.get(\"waveform\", [])\n            name = p.get(\"name\", \"unnamed\")\n            result = self.check(wf, name=name)\n            if result[\"passes\"]:\n                passed.append(p)\n            else:\n                filtered += 1\n                reasons.append(result[\"reason\"])\n\n        return passed, filtered, reasons\n",
+      "language": "python",
+      "description": "Covenant filter using 55 separability metric waveforms from covenant_substrate.json. Correlates candidate patterns against covenant metrics, passes patterns above threshold. Used for blockchain publication gating.",
+      "tags": [
+        "algorithm",
+        "array",
+        "blockchain",
+        "class",
+        "cli",
+        "config",
+        "correlation",
+        "covenant",
+        "covenant-filter",
+        "covenant-waveform-filter",
+        "database",
+        "file-io"
+      ],
+      "patternType": "algorithm",
+      "complexity": "architectural",
+      "coherency": 0.779,
+      "coherencyScore": {
+        "total": 0.779,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 0.8,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.626
+        },
+        "astAnalysis": {
+          "boost": 0.03,
+          "valid": true,
+          "functions": 6,
+          "classes": 1,
+          "complexity": {
+            "cyclomatic": 25,
+            "maxDepth": 4,
+            "lines": 136
+          }
+        },
+        "coverageGate": null,
+        "language": "python"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:45:05.012Z",
+      "updatedAt": "2026-04-12T01:45:05.012Z"
+    },
+    {
       "id": "f55b94b80843e108",
       "name": "analytics",
       "code": "/**\n * Conversion and Analytics Tracking\n *\n * Privacy-first analytics:\n *  - Checks cookie consent before firing any tracking events\n *  - Supports configurable conversion pixels via env vars\n *  - Tracks: page views, form step progress, conversions\n *  - Extensible: add Google Ads, Facebook Pixel, etc. via gtag/fbq globals\n *\n * No third-party scripts are loaded by default — this provides\n * the event dispatch layer. External pixels are fired only when\n * their global (gtag, fbq) is present on the window.\n */\n\n/** Check if user has accepted analytics cookies */\nfunction hasAnalyticsConsent(): boolean {\n  if (typeof document === \"undefined\") return false;\n  return document.cookie.includes(\"cookie-consent=accepted\");\n}\n\n/* eslint-disable @typescript-eslint/no-explicit-any */\n/** Safe access to window.gtag (Google Ads / GA4) */\nfunction gtag(...args: unknown[]): void {\n  if (typeof window !== \"undefined\") {\n    const w = window as any;\n    if (typeof w.gtag === \"function\") w.gtag(...args);\n  }\n}\n\n/** Safe access to window.fbq (Meta/Facebook Pixel) */\nfunction fbq(...args: unknown[]): void {\n  if (typeof window !== \"undefined\") {\n    const w = window as any;\n    if (typeof w.fbq === \"function\") w.fbq(...args);\n  }\n}\n/* eslint-enable @typescript-eslint/no-explicit-any */\n\nexport interface ConversionEvent {\n  event: string;\n  category?: string;\n  label?: string;\n  value?: number;\n  metadata?: Record<string, string | number | boolean>;\n}\n\n/**\n * Track a custom analytics event.\n * Respects cookie consent — events are silently dropped if consent is not given.\n */\nexport function trackEvent(event: ConversionEvent): void {\n  if (!hasAnalyticsConsent()) return;\n\n  // Google Analytics / Google Ads\n  gtag(\"event\", event.event, {\n    event_category: event.category,\n    event_label: event.label,\n    value: event.value,\n    ...event.metadata,\n  });\n\n  // Facebook Pixel\n  fbq(\"trackCustom\", event.event, {\n    category: event.category,\n    label: event.label,\n    value: event.value,\n    ...event.metadata,\n  });\n}\n\n/**\n * Track a lead form conversion.\n * Fires standard conversion events on all configured pixels.\n */\nexport function trackConversion(leadId: string, coverageType: string, state: string): void {\n  if (!hasAnalyticsConsent()) return;\n\n  // Google Ads conversion\n  gtag(\"event\", \"conversion\", {\n    send_to: process.env.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_ID || \"\",\n    event_category: \"lead\",\n    event_label: coverageType,\n    value: 1,\n  });\n\n  // Facebook Pixel Lead event\n  fbq(\"track\", \"Lead\", {\n    content_name: coverageType,\n    content_category: \"life_insurance\",\n    status: \"submitted\",\n  });\n\n  // Generic event for any other analytics\n  trackEvent({\n    event: \"lead_submitted\",\n    category: \"conversion\",\n    label: coverageType,\n    value: 1,\n    metadata: { leadId, state },\n  });\n}\n\n/**\n * Track form step progression.\n * Useful for funnel analysis — see where users drop off.\n */\nexport function trackFormStep(step: number, stepName: string): void {\n  trackEvent({\n    event: \"form_step\",\n    category: \"engagement\",\n    label: stepName,\n    value: step,\n  });\n}\n\n/**\n * Track page view (for SPA navigation).\n */\nexport function trackPageView(path: string, title?: string): void {\n  if (!hasAnalyticsConsent()) return;\n\n  gtag(\"event\", \"page_view\", {\n    page_path: path,\n    page_title: title,\n  });\n\n  fbq(\"track\", \"PageView\");\n}\n",
@@ -28108,6 +28636,60 @@
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:17.088Z",
       "updatedAt": "2026-04-12T00:50:58.992Z"
+    },
+    {
+      "id": "7d843fd1fe20e17f",
+      "name": "safe-json-write",
+      "code": "def safe_json_write(filepath, data):\n    \"\"\"Atomic JSON write: backup original, write to .tmp, then rename.\"\"\" \n    import shutil, os, json\n    if os.path.exists(filepath):\n        try:\n            shutil.copy2(filepath, filepath + \".bak\")\n        except Exception:\n            pass\n    tmp_path = filepath + \".tmp\"\n    with open(tmp_path, \"w\") as f:\n        json.dump(data, f)\n    os.replace(tmp_path, filepath)",
+      "language": "python",
+      "description": "Atomic JSON write with backup: copies to .bak, writes to .tmp, then os.replace for POSIX-safe atomic swap. Prevents data loss if process crashes mid-write.",
+      "tags": [
+        "atomic",
+        "atomic-write",
+        "backup",
+        "cloning",
+        "concurrency",
+        "crash-safe",
+        "error-handling",
+        "file-io",
+        "file-system",
+        "json",
+        "persistence",
+        "python"
+      ],
+      "patternType": "io",
+      "complexity": "atomic",
+      "coherency": 0.763,
+      "coherencyScore": {
+        "total": 0.763,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.7,
+          "consistency": 0.8,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.51
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 3,
+            "maxDepth": 3,
+            "lines": 12
+          }
+        },
+        "coverageGate": null,
+        "language": "python"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:45:03.384Z",
+      "updatedAt": "2026-04-12T01:45:03.384Z"
     },
     {
       "id": "2bd88b42f48ba9b9",
@@ -28324,6 +28906,60 @@
       "successCount": 3,
       "createdAt": "2026-04-11T20:53:16.403Z",
       "updatedAt": "2026-04-12T00:50:58.992Z"
+    },
+    {
+      "id": "dbd093799c36f1bd",
+      "name": "covenant-publication-gate",
+      "code": "/**\n * REMEMBRANCE-BLOCKCHAIN — Covenant Gate\n *\n * Checks whether a pattern is eligible for chain publication.\n * This gate does NOT implement the covenant itself — it calls into\n * the oracle toolkit's covenant system for the actual check.\n *\n * The gate enforces four requirements:\n *   1. Covenant sealed (0 violations via oracle toolkit)\n *   2. Coherency score >= 0.8\n *   3. Test code exists and is non-empty\n *   4. No duplicate (name + language not already published)\n */\n\nconst path = require('path');\n\nclass CovenantGate {\n  /**\n   * @param {object} opts\n   * @param {string} opts.oracleRoot — absolute path to oracle toolkit root\n   */\n  constructor({ oracleRoot } = {}) {\n    this.oracleRoot = oracleRoot || null;\n    this.published = new Set();\n    this._covenantCheck = null;\n\n    // Try to load the oracle toolkit's covenant checker\n    if (this.oracleRoot) {\n      try {\n        const covenantPath = path.join(this.oracleRoot, 'src', 'covenant');\n        const covenant = require(covenantPath);\n        if (typeof covenant.covenantCheck === 'function') {\n          this._covenantCheck = covenant.covenantCheck;\n        }\n      } catch (_) {\n        // Oracle toolkit not available — will return ineligible\n      }\n    }\n  }\n\n  /**\n   * Run the full publication eligibility check for a pattern.\n   *\n   * @param {object} pattern\n   * @param {string} pattern.name — pattern name\n   * @param {string} pattern.language — pattern language\n   * @param {string} pattern.code — pattern source code\n   * @param {string} [pattern.testCode] — test code for the pattern\n   * @param {object} pattern.coherencyScore — { total: number, ... }\n   * @returns {{ eligible: boolean, reasons: string[], covenantResult: object|null, coherency: number|null }}\n   */\n  check(pattern) {\n    const reasons = [];\n    let covenantResult = null;\n    let coherency = null;\n\n    // Requirement 1: Covenant check via oracle toolkit\n    if (!this._covenantCheck) {\n      reasons.push('Oracle toolkit not available');\n    } else {\n      try {\n        covenantResult = this._covenantCheck(pattern.code);\n        if (!covenantResult || covenantResult.violations > 0) {\n          reasons.push(\n            `Covenant not sealed: ${covenantResult ? covenantResult.violations : 'unknown'} violations`\n          );\n        }\n      } catch (err) {\n        reasons.push(`Covenant check failed: ${err.message}`);\n      }\n    }\n\n    // Requirement 2: Coherency score >= 0.8\n    if (pattern.coherencyScore && typeof pattern.coherencyScore.total === 'number') {\n      coherency = pattern.coherencyScore.total;\n      if (coherency < 0.8) {\n        reasons.push(`Coherency too low: ${coherency} (minimum 0.8)`);\n      }\n    } else {\n      reasons.push('Missing coherency score');\n    }\n\n    // Requirement 3: Test code must exist and be non-empty\n    if (!pattern.testCode || (typeof pattern.testCode === 'string' && pattern.testCode.trim().length === 0)) {\n      reasons.push('Test code is missing or empty');\n    }\n\n    // Requirement 4: No duplicate (name + language)\n    const key = `${pattern.name}:${pattern.language}`;\n    if (this.published.has(key)) {\n      reasons.push(`Duplicate: ${key} already published`);\n    }\n\n    const eligible = reasons.length === 0;\n\n    // If eligible, record it in the published set\n    if (eligible) {\n      this.published.add(key);\n    }\n\n    return {\n      eligible,\n      reasons,\n      covenantResult,\n      coherency,\n    };\n  }\n}\n\nmodule.exports = { CovenantGate };\n",
+      "language": "javascript",
+      "description": "Publication eligibility gate for blockchain: checks covenant sealed (15 principles), coherency >= 0.8, test proof exists, and dedup before allowing chain publication.",
+      "tags": [
+        "array",
+        "blockchain",
+        "class",
+        "covenant",
+        "covenant-gate",
+        "covenant-publication-gate",
+        "data-structure",
+        "database",
+        "eligibility",
+        "error-handling",
+        "file-io",
+        "gate"
+      ],
+      "patternType": "validation",
+      "complexity": "architectural",
+      "coherency": 0.731,
+      "coherencyScore": {
+        "total": 0.731,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 0.49999999999999994,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 0.5,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.609
+        },
+        "astAnalysis": {
+          "boost": 0.05,
+          "valid": true,
+          "functions": 0,
+          "classes": 1,
+          "complexity": {
+            "cyclomatic": 17,
+            "maxDepth": 6,
+            "lines": 91
+          }
+        },
+        "coverageGate": null,
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-04-12T01:45:04.054Z",
+      "updatedAt": "2026-04-12T01:45:04.054Z"
     },
     {
       "id": "5f353e8769472f18",

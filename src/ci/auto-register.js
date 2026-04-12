@@ -337,18 +337,12 @@ function _qualityScore(func, filePath, baseDir) {
   }
 
   // 4. Meaningful name (+0.15)
+  // Name must have 3+ word parts (camelCase/snake_case), not a single generic word
   const nameParts = splitNameParts(func.name);
-  const isMeaningful = nameParts.length >= 3 || (nameParts.length >= 1 && !GENERIC_NAMES.has(func.name));
-  // Only award if 3+ word parts OR the name is at least not a single generic word
-  // The spec says "3+ words (camelCase/snake_case parts), not single-word generic names"
   if (nameParts.length >= 3) {
     score += 0.15;
     reasons.push('meaningful name');
-  } else if (nameParts.length >= 2 && !GENERIC_NAMES.has(nameParts[0])) {
-    // 2-part names that aren't generic get partial credit — but spec says 3+
-    // so we don't award this
   }
-  // Single generic names get nothing
 
   // 5. Sufficient size (+0.15): 5-50 lines
   const lineCount = func.code.split('\n').length;

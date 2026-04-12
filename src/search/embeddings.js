@@ -306,8 +306,12 @@ function identifyConcepts(text) {
  * 4. N-gram structural similarity (0.15 weight) — character-level patterns
  *
  * Returns: { similarity, vectorScore, conceptScore, keywordScore, ngramScore, matchedConcepts }
+ *
+ * @param {string} query
+ * @param {string} document
+ * @param {object} [opts] — { idf: Map<string,number> } optional IDF weights
  */
-function semanticSimilarity(query, document) {
+function semanticSimilarity(query, document, opts = {}) {
   const queryLower = query.toLowerCase();
   const docLower = document.toLowerCase();
 
@@ -332,18 +336,37 @@ function semanticSimilarity(query, document) {
     conceptScore = Math.min(1, conceptScore);
   }
 
-  // 2. Expanded keyword matching
+  // 2. Expanded keyword matching (IDF-weighted when available)
   const expandedQuery = expandQuery(query);
   const docWords = docLower.split(/[^a-z0-9]+/).filter(w => w.length > 1);
   const docWordSet = new Set(docWords);
+  const idf = opts && opts.idf;
 
-  let keywordHits = 0;
-  for (const term of expandedQuery) {
-    if (docWordSet.has(term) || docLower.includes(term)) {
-      keywordHits++;
+  let keywordScore = 0;
+  if (expandedQuery.length > 0) {
+    if (idf && idf.size > 0) {
+      // IDF-weighted: rare term matches count more
+      let idfHitSum = 0;
+      let idfTotalSum = 0;
+      for (const term of expandedQuery) {
+        const w = idf.get(term) || 1;
+        idfTotalSum += w;
+        if (docWordSet.has(term) || docLower.includes(term)) {
+          idfHitSum += w;
+        }
+      }
+      keywordScore = idfTotalSum > 0 ? Math.min(1, idfHitSum / idfTotalSum) : 0;
+    } else {
+      // Uniform weighting fallback
+      let keywordHits = 0;
+      for (const term of expandedQuery) {
+        if (docWordSet.has(term) || docLower.includes(term)) {
+          keywordHits++;
+        }
+      }
+      keywordScore = Math.min(1, keywordHits / expandedQuery.length);
     }
   }
-  const keywordScore = expandedQuery.length > 0 ? Math.min(1, keywordHits / expandedQuery.length) : 0;
 
   // 3. N-gram structural similarity (use shorter n=2 for better cross-naming match)
   const queryGrams = charNgrams(queryLower, 2);
@@ -389,7 +412,7 @@ const _QUERY_CACHE_MAX = 64;
 function semanticSearch(items, query, options = {}) {
   if (!Array.isArray(items)) return [];
   if (query == null || typeof query !== 'string') return [];
-  const { limit = 10, minScore = 0.05, language } = options;
+  const { limit = 10, minScore = 0.05, language, idf } = options;
 
   let filtered = items;
   if (language) {
@@ -428,11 +451,11 @@ function semanticSearch(items, query, options = {}) {
       item.code || '',
     ].join(' ');
 
-    const sim = semanticSimilarity(query, docText);
+    const sim = semanticSimilarity(query, docText, { idf });
 
     // Name match bonus — if query concepts appear in the name, it's very likely relevant
     const nameText = (item.name || '').toLowerCase();
-    const nameSim = semanticSimilarity(query, nameText);
+    const nameSim = semanticSimilarity(query, nameText, { idf });
     const nameBonus = nameSim.similarity > 0.1 ? nameSim.similarity * 0.3 : 0;
 
     return {
@@ -449,6 +472,90 @@ function semanticSearch(items, query, options = {}) {
   return results;
 }
 
+// ─── TF-IDF Weighting ───
+
+/**
+ * Tokenize text into lowercase word tokens, filtering short ones.
+ * Reused by buildIDF, tokenNgramScore, and IDF-weighted concept scoring.
+ */
+function tokenize(text) {
+  return (text || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 1);
+}
+
+/**
+ * Build IDF (inverse document frequency) weights from a corpus of patterns.
+ * Returns a Map of term → IDF weight.
+ *
+ * @param {Array} patterns — Array of { name, description, tags, code }
+ * @returns {Map<string, number>} IDF weights
+ */
+function buildIDF(patterns) {
+  if (!Array.isArray(patterns) || patterns.length === 0) return new Map();
+  const df = new Map();
+  const N = patterns.length;
+  for (const p of patterns) {
+    const tokens = new Set([
+      ...tokenize(p.name || ''),
+      ...tokenize(p.description || ''),
+      ...(p.tags || []).map(t => t.toLowerCase()),
+      ...tokenize((p.code || '').slice(0, 500)),
+    ]);
+    for (const t of tokens) {
+      df.set(t, (df.get(t) || 0) + 1);
+    }
+  }
+  const idf = new Map();
+  for (const [term, freq] of df) {
+    idf.set(term, Math.log((N + 1) / (freq + 1)));
+  }
+  return idf;
+}
+
+// ─── Token N-gram Scoring ───
+
+/**
+ * Compute token-level n-gram (trigram) similarity between query and pattern text.
+ * Uses Jaccard similarity over 3-grams of tokens.
+ *
+ * @param {string} patternText — Code or document text
+ * @param {string} query — Search query
+ * @returns {number} 0-1 similarity score
+ */
+function tokenNgramScore(patternText, query) {
+  const patTokens = tokenize(patternText);
+  const qTokens = tokenize(query);
+
+  if (patTokens.length < 3 || qTokens.length < 3) {
+    // Fall back to unigram Jaccard for short texts
+    const a = new Set(patTokens);
+    const b = new Set(qTokens);
+    if (a.size === 0 && b.size === 0) return 0;
+    let inter = 0;
+    for (const t of b) { if (a.has(t)) inter++; }
+    return inter / (a.size + b.size - inter);
+  }
+
+  const makeNgrams = (tokens, n) => {
+    const grams = new Set();
+    for (let i = 0; i <= tokens.length - n; i++) {
+      grams.add(tokens.slice(i, i + n).join('|'));
+    }
+    return grams;
+  };
+
+  const patGrams = makeNgrams(patTokens, 3);
+  const qGrams = makeNgrams(qTokens, 3);
+
+  if (patGrams.size === 0 && qGrams.size === 0) return 0;
+
+  let intersection = 0;
+  for (const g of qGrams) {
+    if (patGrams.has(g)) intersection++;
+  }
+  const union = patGrams.size + qGrams.size - intersection;
+  return union > 0 ? intersection / union : 0;
+}
+
 module.exports = {
   semanticSearch,
   semanticSimilarity,
@@ -457,4 +564,7 @@ module.exports = {
   charNgrams,
   cosineSim,
   CONCEPT_CLUSTERS,
+  buildIDF,
+  tokenize,
+  tokenNgramScore,
 };

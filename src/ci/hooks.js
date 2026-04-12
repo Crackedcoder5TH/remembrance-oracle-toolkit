@@ -257,7 +257,7 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
         }
         if (_eligible.length > 0) {
           Promise.all(_eligible.map(function(item) {
-            return _bridge.publishPattern({ coherencyScore: item.coh, testCode: item.pat.testCode, code: item.pat.code, name: item.pat.name, language: item.pat.language })
+            return _bridge.publishPattern({ coherencyScore: { total: item.coh }, testCode: item.pat.testCode, code: item.pat.code, name: item.pat.name, language: item.pat.language })
               .then(function(res) { return { pat: item.pat, res: res }; })
               .catch(function() { return null; });
           })).then(function(results) {

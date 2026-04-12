@@ -4,9 +4,11 @@
  * Dispatch map for all MCP tool calls. Each handler is a function
  * (oracle, args) => result that implements one tool's logic.
  *
- * 12 focused handlers (down from 55+).
+ * 14 focused handlers (down from 55+).
  * Extracted from the monolithic switch in server.js for maintainability.
  */
+
+const { trackPull, inferFeedbackFromActivity, clearPendingPull, getPendingPulls } = require('./feedback-tracker');
 
 /**
  * Enforcement helper: check if a search was done recently.
@@ -35,40 +37,56 @@ const HANDLERS = {
   // ─── 1. Search (unified) ───
   oracle_search(oracle, args) {
     const mode = args.mode || 'hybrid';
+    let result;
     // Structured query mode: description provided without query
     if (args.description && !args.query) {
-      return oracle.query({
+      result = oracle.query({
         description: args.description || '',
         tags: args.tags || [],
         language: args.language,
         limit: args.limit || 5,
       });
-    }
-    if (!args.query) {
+    } else if (!args.query) {
       throw new Error('Either "query" or "description" is required');
-    }
-    if (mode === 'smart') {
-      return oracle.smartSearch(args.query, {
+    } else if (mode === 'smart') {
+      result = oracle.smartSearch(args.query, {
         language: args.language,
         limit: args.limit || 10,
         mode: 'hybrid',
       });
+    } else {
+      result = oracle.search(args.query, {
+        limit: args.limit || 5,
+        language: args.language,
+        mode: mode,
+      });
     }
-    return oracle.search(args.query, {
-      limit: args.limit || 5,
-      language: args.language,
-      mode: mode,
-    });
+    // Instrumentation: track search in session
+    try {
+      const { trackSearch } = require('../core/session-tracker');
+      trackSearch(args.query || args.description || '', result, { mode, language: args.language });
+    } catch (_) { /* non-fatal */ }
+    return result;
   },
 
   // ─── 2. Resolve ───
   oracle_resolve(oracle, args) {
-    return oracle.resolve({
+    const request = {
       description: args.description || '',
       tags: args.tags || [],
       language: args.language,
       heal: args.heal !== false,
-    });
+    };
+    const result = oracle.resolve(request);
+    // Instrumentation: track resolve in session + feedback tracker
+    try {
+      const { trackResolve } = require('../core/session-tracker');
+      trackResolve(result, request);
+    } catch (_) { /* non-fatal */ }
+    if (result.pattern && result.pattern.id) {
+      trackPull(result.pattern.id, result.pattern.name, result.decision);
+    }
+    return result;
   },
 
   // ─── 3. Submit ───
@@ -83,7 +101,25 @@ const HANDLERS = {
       tags: args.tags || [],
       testCode: args.testCode,
     });
-    return notice ? { ...result, ...notice } : result;
+    // Infer feedback for any pending pulls — model wrote new code, so pulled patterns were useful
+    const inferred = inferFeedbackFromActivity(oracle);
+    const out = notice ? { ...result, ...notice } : result;
+    if (inferred.length > 0) {
+      out._inferredFeedback = inferred;
+    }
+    // Instrumentation: log submit to session
+    try {
+      const { getSession } = require('../core/session-tracker');
+      const session = getSession();
+      if (!session._submits) session._submits = [];
+      session._submits.push({
+        timestamp: new Date().toISOString(),
+        language: args.language || null,
+        description: args.description || '',
+        inferredFeedback: inferred.length,
+      });
+    } catch (_) { /* non-fatal */ }
+    return out;
   },
 
   // ─── 4. Register ───
@@ -103,7 +139,25 @@ const HANDLERS = {
       tags: args.tags || [],
       testCode: args.testCode,
     });
-    return notice ? { ...result, ...notice } : result;
+    // Infer feedback for any pending pulls — model registered new code, so pulled patterns were useful
+    const inferred = inferFeedbackFromActivity(oracle);
+    const out = notice ? { ...result, ...notice } : result;
+    if (inferred.length > 0) {
+      out._inferredFeedback = inferred;
+    }
+    // Instrumentation: log register to session
+    try {
+      const { getSession } = require('../core/session-tracker');
+      const session = getSession();
+      if (!session._registers) session._registers = [];
+      session._registers.push({
+        timestamp: new Date().toISOString(),
+        name: args.name,
+        language: args.language || null,
+        inferredFeedback: inferred.length,
+      });
+    } catch (_) { /* non-fatal */ }
+    return out;
   },
 
   // ─── 5. Feedback ───
@@ -114,7 +168,15 @@ const HANDLERS = {
     if (args.success === undefined || args.success === null) {
       throw new Error('"success" (boolean) is required for feedback');
     }
-    return oracle.feedback(args.id, !!args.success);
+    const result = oracle.feedback(args.id, !!args.success);
+    // Clear from pending pulls — explicit feedback was given
+    clearPendingPull(args.id);
+    // Instrumentation: track feedback in session
+    try {
+      const { trackFeedback } = require('../core/session-tracker');
+      trackFeedback(args.id);
+    } catch (_) { /* non-fatal */ }
+    return result;
   },
 
   // ─── 6. Stats ───
@@ -392,7 +454,18 @@ const HANDLERS = {
         throw new Error(`Unknown swarm action: ${action}. Use: code, review, heal, status, providers`);
     }
   },
-  // ─── 13. Fractal (math engines + code alignment) ───
+  // ─── 13. Pending Feedback ───
+  oracle_pending_feedback(_oracle, _args) {
+    const pending = getPendingPulls();
+    let sessionPending = [];
+    try {
+      const { getPendingFeedback } = require('../core/session-tracker');
+      sessionPending = getPendingFeedback();
+    } catch (_) { /* non-fatal */ }
+    return { mcpPending: pending, sessionPending };
+  },
+
+  // ─── 14. Fractal (math engines + code alignment) ───
   oracle_fractal(oracle, args) {
     const { computeFractalAlignment, selectResonantFractal, FRACTAL_TEMPLATES,
             sierpinski, mandelbrot, mandelbrotResonance, juliaStabilityMap,

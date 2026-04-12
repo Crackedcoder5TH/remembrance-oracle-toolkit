@@ -29,7 +29,7 @@ const DEFAULT_CONFIG = {
   //   'block'  — commit is rejected if patterns were pulled without feedback
   //   'warn'   — yellow warning only
   //   'off'    — no check at all
-  feedbackEnforcement: 'warn',
+  feedbackEnforcement: 'block',
   // Grace period (ms) for search enforcement — how recently a search must have happened
   searchGracePeriod: 600000, // 10 minutes
   autoPublish: false, // Auto-publish high-coherency patterns to blockchain on commit

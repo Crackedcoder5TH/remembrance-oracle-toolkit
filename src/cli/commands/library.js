@@ -706,7 +706,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     try {
       const { publishPattern } = require('../../blockchain/bridge');
       publishPattern({
-        coherencyScore: coherency,
+        coherencyScore: { total: coherency },
         testCode: pattern.testCode,
         code: pattern.code,
         name: pattern.name,

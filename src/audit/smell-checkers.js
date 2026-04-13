@@ -32,9 +32,15 @@ const DEFAULT_THRESHOLDS = {
 
 function smellCode(source, options = {}) {
   if (typeof source !== 'string' || !source) return emptyResult();
+  // Parse-once fast path: reuse a caller-supplied program (from the
+  // analysis envelope) instead of re-parsing.
   let program;
-  try { program = parseProgram(source); }
-  catch (e) { return emptyResult(); }
+  if (options.program && options.program.tokens && options.program.lines) {
+    program = options.program;
+  } else {
+    try { program = parseProgram(source); }
+    catch (e) { return emptyResult(); }
+  }
 
   const thresholds = { ...DEFAULT_THRESHOLDS, ...(options.thresholds || {}) };
   const supp = parseComments(program.comments, program.lines.length);
@@ -215,7 +221,9 @@ function smellFile(filePath, options = {}) {
   }
   try {
     const source = fs.readFileSync(filePath, 'utf-8');
-    return { file: filePath, ...smellCode(source, options) };
+    const { analyzeCached } = require('../core/analyze');
+    const env = analyzeCached(source, filePath);
+    return { file: filePath, ...smellCode(source, { ...options, program: env.program }) };
   } catch (e) {
     return { file: filePath, findings: [], summary: { total: 0, byRule: {} }, error: e.message };
   }

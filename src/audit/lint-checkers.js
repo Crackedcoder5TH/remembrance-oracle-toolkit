@@ -30,9 +30,15 @@ const SEVERITY = { WARN: 'warn', INFO: 'info' };
 
 function lintCode(source, options = {}) {
   if (typeof source !== 'string' || !source) return emptyResult();
+  // Parse-once fast path: reuse a caller-supplied program (from the
+  // analysis envelope) instead of re-parsing.
   let program;
-  try { program = parseProgram(source); }
-  catch (e) { return emptyResult(); }
+  if (options.program && options.program.tokens && options.program.lines) {
+    program = options.program;
+  } else {
+    try { program = parseProgram(source); }
+    catch (e) { return emptyResult(); }
+  }
 
   const supp = parseComments(program.comments, program.lines.length);
   const findings = [];
@@ -181,7 +187,9 @@ function lintFile(filePath, options = {}) {
   }
   try {
     const source = fs.readFileSync(filePath, 'utf-8');
-    return { file: filePath, ...lintCode(source, options) };
+    const { analyzeCached } = require('../core/analyze');
+    const env = analyzeCached(source, filePath);
+    return { file: filePath, ...lintCode(source, { ...options, program: env.program }) };
   } catch (e) {
     return { file: filePath, findings: [], summary: { total: 0, byRule: {} }, error: e.message };
   }

@@ -160,12 +160,14 @@ function analyze(source, filePath, options = {}) {
     functions: { enumerable: true, get() { return envelope.program.functions; } },
 
     // ── Audit: the 6 bug classes ───────────────────────────────────────
+    // Passes the envelope's pre-parsed program so auditCode skips its
+    // own parse pass. Parse-once, walk-many.
     audit: {
       enumerable: true,
       get() {
         return memo('audit', () => {
           const { auditCode } = require('../audit/ast-checkers');
-          return auditCode(source, { filePath });
+          return auditCode(source, { filePath, program: envelope.program });
         });
       },
     },
@@ -176,7 +178,7 @@ function analyze(source, filePath, options = {}) {
       get() {
         return memo('lint', () => {
           const { lintCode } = require('../audit/lint-checkers');
-          return lintCode(source);
+          return lintCode(source, { program: envelope.program });
         });
       },
     },
@@ -187,7 +189,7 @@ function analyze(source, filePath, options = {}) {
       get() {
         return memo('smell', () => {
           const { smellCode } = require('../audit/smell-checkers');
-          return smellCode(source);
+          return smellCode(source, { program: envelope.program });
         });
       },
     },

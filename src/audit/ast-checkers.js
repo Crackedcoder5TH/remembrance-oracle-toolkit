@@ -62,12 +62,20 @@ function auditCode(source, options = {}) {
     return emptyResult();
   }
 
+  // Parse-once fast path: if the caller already has a parsed program
+  // (from src/core/analyze's envelope), reuse it instead of re-parsing.
+  // This turns N analysis passes on the same file into one parse + N
+  // walks, which is the whole point of the envelope cache.
   let program;
-  try {
-    program = parseProgram(source);
-  } catch (e) {
-    if (process.env.ORACLE_DEBUG) console.warn('[audit:parse]', e?.message || e);
-    return emptyResult();
+  if (options.program && options.program.tokens && options.program.lines) {
+    program = options.program;
+  } else {
+    try {
+      program = parseProgram(source);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[audit:parse]', e?.message || e);
+      return emptyResult();
+    }
   }
 
   const suppressionTable = parseComments(program.comments, program.lines.length);
@@ -641,7 +649,12 @@ function auditFile(filePath, options = {}) {
   }
   try {
     const source = fs.readFileSync(filePath, 'utf-8');
-    const result = auditCode(source, { ...options, filePath });
+    // Route through the process-level envelope cache so a second
+    // analysis of the same file (audit, lint, smell, prior in one
+    // session) hits the same parsed program.
+    const { analyzeCached } = require('../core/analyze');
+    const env = analyzeCached(source, filePath, { language: options.language });
+    const result = auditCode(source, { ...options, filePath, program: env.program });
     return { file: filePath, ...result };
   } catch (e) {
     return { file: filePath, findings: [], summary: { total: 0, byClass: {}, bySeverity: {} }, error: e.message };

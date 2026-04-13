@@ -31,6 +31,17 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     if (process.env.ORACLE_DEBUG) console.warn('[admin] reactions wiring failed:', e?.message || e);
   }
 
+  // Wire the session compliance ledger. Every search/write/audit/feedback
+  // event on the bus is recorded into the active session so `oracle session
+  // status` can compute a live compliance score, and the pre-commit hook
+  // can block on non-compliance when ORACLE_WORKFLOW=enforce.
+  try {
+    const { wireCompliance } = require('../../core/compliance');
+    wireCompliance(process.cwd());
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[admin] compliance wiring failed:', e?.message || e);
+  }
+
   handlers['users'] = (args) => {
     try {
       const { AuthManager } = require('../../auth/auth');
@@ -112,6 +123,14 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       const bugClasses = args['bug-class'] ? args['bug-class'].split(',').map(s => s.trim()) : undefined;
       const minSeverity = args['min-severity'] || undefined;
       const result = auditFiles(files, { bugClasses, minSeverity });
+
+      // Compliance: every audited file counts toward the audit-on-write
+      // check. Emit a bus event per file so the session ledger records it.
+      try {
+        const { getEventBus } = require('../../core/events');
+        const bus = getEventBus();
+        for (const f of files) bus.emitSync('audit.file-scanned', { file: f });
+      } catch { /* ignore */ }
 
       // ─── Tier 3: baseline + calibration + auto-fix ────────────────────
       // Each file result carries a `findings` array. Re-key them into a
@@ -198,6 +217,22 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
         }
         console.log('');
       }
+
+      // Session compliance banner — visible on every audit check run
+      // so the score stays in the developer's face until it's fixed.
+      try {
+        const { complianceBanner } = require('../../core/compliance');
+        const banner = complianceBanner(repoRoot);
+        if (banner) {
+          const color = banner.score >= 0.5 ? c.yellow : c.boldRed;
+          console.log(color(`  Session compliance: ${(banner.score * 100).toFixed(0)}% (${banner.status})`));
+          if (banner.topViolation) {
+            console.log(c.dim(`    top issue: ${banner.topViolation.message}`));
+            console.log(c.dim(`    fix: ${banner.topViolation.fix}`));
+          }
+          console.log('');
+        }
+      } catch { /* ignore */ }
 
       if (result.totalFindings === 0) {
         console.log(c.boldGreen('  \u2713 No assumption mismatches found!\n'));
@@ -985,6 +1020,132 @@ ${c.bold('Related commands:')}
   // `oracle history` — unified event timeline across every subsystem.
   // Reads from the history namespace populated by src/core/events via
   // wireHistory. Supports --type, --prefix, --since, --until, --limit.
+  // `oracle session` — compliance ledger for agent / human sessions.
+  // Makes the CLAUDE.md mandates operational: start / status / end /
+  // bypass / record. The pre-commit hook reads from this ledger and
+  // blocks commits when ORACLE_WORKFLOW=enforce is set and
+  // compliance is incomplete.
+  handlers['session'] = (args) => {
+    const {
+      startSession, endSession, getCurrentSession, saveSession,
+      recordEvent, scoreCompliance,
+    } = require('../../core/compliance');
+    const repoRoot = process.cwd();
+    const sub = args._sub || 'status';
+
+    if (sub === 'start') {
+      const s = startSession(repoRoot, { agent: args.agent || process.env.ORACLE_AGENT });
+      console.log(c.boldGreen('Session started:'));
+      console.log(`  id:      ${c.cyan(s.id)}`);
+      console.log(`  started: ${c.dim(s.startedAt)}`);
+      console.log(c.dim('  Every search / write / audit from now on is tracked.'));
+      console.log(c.dim('  Run `oracle session status` to see compliance live.'));
+      console.log(c.dim('  Run `oracle session end` when the session is done.'));
+      return;
+    }
+
+    if (sub === 'status') {
+      const s = getCurrentSession(repoRoot);
+      if (!s) {
+        console.log(c.yellow('No active session. Start one with: oracle session start'));
+        return;
+      }
+      const score = scoreCompliance(s);
+      if (args.json === true) { console.log(JSON.stringify({ session: s, score }, null, 2)); return; }
+      const scoreColor = score.score >= 0.9 ? c.boldGreen : score.score >= 0.5 ? c.yellow : c.boldRed;
+      console.log(c.boldCyan('Session status'));
+      console.log(`  id:      ${c.cyan(s.id)}`);
+      console.log(`  agent:   ${c.dim(s.agent || 'unknown')}`);
+      console.log(`  started: ${c.dim(s.startedAt)}`);
+      console.log(`  ended:   ${s.endedAt ? c.dim(s.endedAt) : c.yellow('(open)')}`);
+      console.log('');
+      console.log(`  Compliance:  ${scoreColor((score.score * 100).toFixed(0) + '%')}  [${score.status}]`);
+      console.log(`  Stats:       written=${score.stats.filesWritten} searched=${score.stats.filesSearched} audited=${score.stats.filesAudited} pulled=${score.stats.patternsPulled} fedBack=${score.stats.patternsFedBack}`);
+      if (score.violations.length > 0) {
+        console.log('');
+        console.log(c.bold('  Violations:'));
+        for (const v of score.violations) {
+          console.log(`    ${c.red('✗')} ${v.check} (weight ${v.weight})`);
+          console.log(`      ${v.message}`);
+          console.log(`      ${c.dim('fix:')} ${c.cyan(v.fix)}`);
+          if (v.files && v.files.length > 0) {
+            console.log(`      ${c.dim('files:')} ${v.files.slice(0, 5).join(', ')}${v.files.length > 5 ? ' …' : ''}`);
+          }
+        }
+      } else {
+        console.log('');
+        console.log(c.boldGreen('  ✓ Fully compliant'));
+      }
+      return;
+    }
+
+    if (sub === 'end') {
+      const s = endSession(repoRoot);
+      if (!s) { console.log(c.yellow('No session to end.')); return; }
+      const score = scoreCompliance(s);
+      console.log(c.boldCyan('Session ended:'));
+      console.log(`  id:     ${c.cyan(s.id)}`);
+      console.log(`  duration: ${c.dim(s.startedAt)} → ${c.dim(s.endedAt)}`);
+      console.log(`  final compliance: ${(score.score * 100).toFixed(0)}% (${score.status})`);
+      if (score.violations.length > 0) {
+        console.log('');
+        console.log(c.yellow('  Final violations:'));
+        for (const v of score.violations.slice(0, 5)) {
+          console.log(`    ${c.red('✗')} ${v.check}: ${v.message}`);
+        }
+      }
+      return;
+    }
+
+    if (sub === 'bypass') {
+      const s = getCurrentSession(repoRoot) || startSession(repoRoot);
+      const reason = args.reason || args._positional[1];
+      if (!reason) { console.log(c.yellow('Usage: oracle session bypass <reason> [--files f1,f2]')); return; }
+      const files = args.files ? String(args.files).split(',').map(f => f.trim()) : [];
+      recordEvent(s, 'bypass', { reason, files });
+      saveSession(s, repoRoot);
+      console.log(c.boldGreen('Bypass recorded:'));
+      console.log(`  reason: ${c.yellow(reason)}`);
+      if (files.length > 0) console.log(`  files:  ${files.join(', ')}`);
+      console.log(c.dim('  These files will not count as query-before-write violations.'));
+      return;
+    }
+
+    if (sub === 'record') {
+      // Manual event recording for harnesses that can't emit bus events.
+      //   oracle session record search --file foo.js
+      //   oracle session record write  --file foo.js
+      //   oracle session record audit  --file foo.js
+      const kind = args.kind || args._positional[1];
+      if (!kind) { console.log(c.yellow('Usage: oracle session record <search|write|audit> --file <f>')); return; }
+      const s = getCurrentSession(repoRoot) || startSession(repoRoot);
+      recordEvent(s, kind, { file: args.file });
+      saveSession(s, repoRoot);
+      console.log(c.dim(`recorded: ${kind} ${args.file || ''}`));
+      return;
+    }
+
+    if (sub === 'help' || !sub) {
+      console.log(`
+${c.boldCyan('Oracle session — compliance ledger')}
+
+${c.bold('Subcommands:')}
+  ${c.cyan('session start')}                 Begin a tracked session
+  ${c.cyan('session status')}                Show compliance score + violations
+  ${c.cyan('session end')}                   Close the session + final report
+  ${c.cyan('session bypass <reason>')}       Record an explicit bypass
+  ${c.cyan('session record <kind>')}         Manually record search/write/audit
+
+${c.bold('Environment:')}
+  ${c.yellow('ORACLE_WORKFLOW=enforce')}     Pre-commit blocks commits below 100% compliance
+  ${c.yellow('ORACLE_AGENT=<name>')}         Tags the session with an agent identifier
+`);
+      return;
+    }
+
+    console.error(c.boldRed('Error:') + ` Unknown session subcommand: ${sub}`);
+  };
+
   handlers['history'] = (args) => {
     const { readHistory, summarizeHistory } = require('../../core/history');
     const repoRoot = process.cwd();
@@ -1348,6 +1509,11 @@ ${c.bold('Related commands:')}
         console.log(`  ${c.dim('Location:')} ${result.hooksDir}`);
         console.log(`  ${c.cyan('pre-commit')}  \u2014 Covenant check on staged files`);
         console.log(`  ${c.cyan('post-commit')} \u2014 Auto-seed patterns from committed files`);
+        // Compliance: emit so session.hooksInstalled flips true.
+        try {
+          const { getEventBus } = require('../../core/events');
+          getEventBus().emitSync('hooks.installed', { hooks: result.hooks });
+        } catch { /* ignore */ }
       } else {
         console.error(c.boldRed('Error:') + ' ' + result.error);
       }

@@ -121,6 +121,65 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
   }
 " 2>&1 || true
 
+# Session compliance gate. When ORACLE_WORKFLOW=enforce is set, commits
+# are blocked if any staged file was written without a preceding
+# oracle search / audit / bypass. The gate also reports the current
+# session compliance score so the developer sees it on every commit,
+# regardless of whether enforcement is on. Staged code files are
+# auto-recorded as 'write' events before the check so the ledger
+# always reflects reality — the agent can't bypass by just not
+# emitting a write event.
+STAGED_FILES="$STAGED" ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { checkCommitAllowed, complianceBanner, getCurrentSession, startSession, recordEvent, saveSession } = require(path.join(root, 'src/core/compliance'));
+    const files = (process.env.STAGED_FILES || '').split(' ').filter(Boolean);
+
+    // Auto-record every staged code file as a write. If the agent
+    // forgot (or chose not to) emit a write event explicitly, the
+    // hook synthesizes one here so the compliance check sees reality.
+    if (files.length > 0) {
+      let session = getCurrentSession(root);
+      if (!session) session = startSession(root);
+      for (const f of files) {
+        if (!/\\.(js|ts|mjs|cjs|jsx|tsx|py|go|rs)$/.test(f)) continue;
+        recordEvent(session, 'write', { file: f, source: 'pre-commit-autorecord' });
+      }
+      saveSession(session, root);
+    }
+
+    const result = checkCommitAllowed(root, files);
+    if (result.score != null) {
+      const scoreStr = Math.round(result.score * 100) + '%';
+      if (result.score >= 0.9) {
+        console.error('\\x1b[32m[oracle] Session compliance: ' + scoreStr + '\\x1b[0m');
+      } else if (result.score >= 0.5) {
+        console.error('\\x1b[33m[oracle] Session compliance: ' + scoreStr + ' (partial) — run: oracle session status\\x1b[0m');
+      } else {
+        console.error('\\x1b[31m[oracle] Session compliance: ' + scoreStr + ' — run: oracle session status\\x1b[0m');
+      }
+    }
+    if (result.stagedViolations && result.stagedViolations.length > 0) {
+      console.error('\\x1b[33m[oracle] ' + result.stagedViolations.length + ' staged file(s) lack query-before-write proof:\\x1b[0m');
+      for (const v of result.stagedViolations.slice(0, 5)) {
+        console.error('  ' + v.file + ' — ' + v.reason);
+      }
+      if (!result.allowed) {
+        console.error('\\x1b[31m[oracle] ORACLE_WORKFLOW=enforce — commit BLOCKED.\\x1b[0m');
+        console.error('\\x1b[31m  Fix: run \\x1b[1moracle search\\x1b[22m, \\x1b[1moracle audit check\\x1b[22m, or \\x1b[1moracle session bypass\\x1b[22m for each file.\\x1b[0m');
+        process.exit(1);
+      }
+    }
+  } catch(e) {
+    if (process.env.ORACLE_DEBUG) console.error('[oracle:pre-commit-compliance] ' + (e.message || e));
+  }
+" 2>&1
+COMPLIANCE_EXIT=$?
+if [ $COMPLIANCE_EXIT -ne 0 ]; then
+  exit $COMPLIANCE_EXIT
+fi
+
 # Audit / Lint / Smell sweep on staged files.
 # By default: warning only, non-blocking.
 # If ORACLE_CI_STRICT=1 is set, HIGH-severity audit findings block the commit.

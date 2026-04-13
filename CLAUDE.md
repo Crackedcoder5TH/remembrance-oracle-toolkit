@@ -74,9 +74,93 @@ Before ending a session or when the user says they are done, ALWAYS run:
 ```bash
 node src/cli.js auto-submit    # Full pipeline: register + harvest + promote + sync
 node src/cli.js audit summary  # Final audit report — static checks + cascade detection
+node src/cli.js session end    # Close the compliance ledger + print final score
 ```
 
 This is the safety net — it catches anything missed during the session. Never end a session without it.
+
+## Compliance Ledger — how the mandates are ENFORCED
+
+Prior to `oracle session`, the mandates above were social: an agent could
+read them and then skip them. They are no longer social. Every session now
+writes to a persistent ledger at `.remembrance/sessions/current.json`, and
+every `search / write / audit / pattern pulled / feedback` event gets a row.
+
+Five checks run continuously:
+
+| check              | weight | passes when                                    |
+|--------------------|-------:|------------------------------------------------|
+| hooksInstalled     | 0.15   | `oracle hooks install` has been run            |
+| queryBeforeWrite   | 0.40   | every written file has a preceding search      |
+| feedbackLoop       | 0.20   | every pulled pattern has a feedback event      |
+| auditOnWrite       | 0.15   | every written file was audited in-session      |
+| sessionEndCalled   | 0.10   | `oracle session end` was run                   |
+
+The score is 0..1. `>= 0.9` is compliant. Anything below surfaces as a
+LOUD banner in:
+
+- `oracle session status`
+- `oracle audit check` (top of output)
+- `oracle audit summary`
+- the pre-commit hook (printed on every `git commit`)
+
+### Pre-commit enforcement
+
+Set `ORACLE_WORKFLOW=enforce` in the environment and the pre-commit hook
+REFUSES to commit any staged file that lacks a preceding search / audit /
+bypass in the session ledger. This is the hard gate — the agent cannot
+finish the commit without closing the loop.
+
+```bash
+export ORACLE_WORKFLOW=enforce      # block commits below 100% on staged files
+export ORACLE_WORKFLOW=warn          # print the score but never block (default)
+```
+
+### Bypass protocol — when skipping is legitimate
+
+There are legitimate reasons to skip the query-before-write reflex:
+
+- Bootstrapping a new module where no existing pattern could possibly match
+- Editing an existing file for a trivial one-line fix
+- Authoring the library itself — patterns about the library can't be
+  searched inside the library
+- Emergency hotfix under time pressure
+
+When any of these apply, use the structured bypass:
+
+```bash
+node src/cli.js session bypass "bootstrapping new analysis envelope" \
+  --files src/core/analyze.js,src/core/storage.js
+```
+
+The bypass is logged to the session ledger AND to the unified history,
+with a reason string and file list. Post-hoc audits see exactly why the
+workflow was skipped. Bypasses are cheap to record and produce a proper
+paper trail — a silent skip produces none.
+
+### What to run at session start (the literal first three commands)
+
+```bash
+node src/cli.js session start       # begin the tracked session
+node src/cli.js hooks install        # bumps hooksInstalled to true
+node src/cli.js sync pull            # latest patterns available to search
+```
+
+### What to run when you touch a file (the reflex)
+
+```bash
+node src/cli.js search "<what the file does>"   # counts as query-before-write
+node src/cli.js audit check --file <file>        # counts as audit-on-write
+# THEN edit the file
+```
+
+### What to run at session end
+
+```bash
+node src/cli.js audit summary        # final audit + compliance banner
+node src/cli.js auto-submit           # register / harvest / promote / sync
+node src/cli.js session end           # close ledger + print final score
+```
 
 ## Auto-Registration (Automatic Pattern Capture)
 

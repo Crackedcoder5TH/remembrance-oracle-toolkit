@@ -144,6 +144,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       language: args.language,
       mode,
     });
+    // Emit a compliance signal so the session ledger records this
+    // search. `--file <f>` associates the search with a target file;
+    // otherwise we record the query term as the signal.
+    try {
+      const { getEventBus } = require('../../core/events');
+      getEventBus().emitSync('search', { file: args.file, term, mode });
+    } catch { /* ignore */ }
     if (jsonOut()) { console.log(JSON.stringify(results)); return; }
     if (results.length === 0) {
       console.log(c.yellow('No matches found.'));

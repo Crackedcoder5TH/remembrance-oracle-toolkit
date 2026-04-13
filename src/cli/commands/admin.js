@@ -20,6 +20,17 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     if (process.env.ORACLE_DEBUG) console.warn('[admin] history wiring failed:', e?.message || e);
   }
 
+  // Wire cross-subsystem reactions so every subsystem learns from
+  // every other. A feedback.fix now fans out to audit calibration,
+  // pattern-library reliability, and debug-oracle amplitude all at
+  // once — see src/core/reactions.js for the subscription graph.
+  try {
+    const { wireReactions } = require('../../core/reactions');
+    wireReactions(oracle, { storageRoot: process.cwd() });
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[admin] reactions wiring failed:', e?.message || e);
+  }
+
   handlers['users'] = (args) => {
     try {
       const { AuthManager } = require('../../auth/auth');

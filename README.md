@@ -82,7 +82,7 @@ Open [http://localhost:4000/playground.html](http://localhost:4000/playground.ht
 
 ## The Full Ecosystem
 
-Nine repos. One system.
+Six repos. One system.
 
 | Repo | What It Does |
 |---|---|
@@ -92,8 +92,6 @@ Nine repos. One system.
 | **REMEMBRANCE-AGENT-Swarm-** | 7-LLM multi-agent consensus |
 | **Remembrance-dialer** | 6 integration dialers (CI, hosts, notifications, LLMs) |
 | **REMEMBRANCE-API-Key-Plugger** | Encrypted key storage, OAuth |
-| **claw-code** | Rust CLI harness |
-| **awesome-design-md** | 58 AI-optimized design systems |
 
 All connected via the Fractal Bridge. All wrapped by the Auto-Workflow. All feeding the pattern library.
 

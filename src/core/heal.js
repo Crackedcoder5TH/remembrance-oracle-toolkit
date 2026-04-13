@@ -123,7 +123,10 @@ async function heal(source, options = {}) {
   }
 
   // ── Level 2: LLM-assisted heal ──────────────────────────────────────
-  if (levelIndex('llm') <= maxIdx && options.llmClient) {
+  // No explicit client required — tryLlmLevel auto-discovers the
+  // built-in llm-healing module. Caller-supplied clients still work
+  // via options.llmClient.
+  if (levelIndex('llm') <= maxIdx) {
     bus.emitSync(EVENTS.HEAL_ATTEMPT, { level: 'llm', file: filePath });
     try {
       const result = await tryLlmLevel(source, envelope, options);
@@ -141,7 +144,9 @@ async function heal(source, options = {}) {
   }
 
   // ── Level 3: Swarm consensus ────────────────────────────────────────
-  if (levelIndex('swarm') <= maxIdx && options.swarmClient) {
+  // Auto-discovers the built-in src/swarm orchestrator. Still accepts
+  // caller-supplied clients via options.swarmClient.
+  if (levelIndex('swarm') <= maxIdx) {
     bus.emitSync(EVENTS.HEAL_ATTEMPT, { level: 'swarm', file: filePath });
     try {
       const result = await trySwarmLevel(source, envelope, options);
@@ -237,45 +242,146 @@ async function trySerfLevel(source, envelope, options) {
 }
 
 async function tryLlmLevel(source, envelope, options) {
-  // We don't ship an LLM here — the caller passes one in. We feed it a
-  // structured prompt built from the envelope's findings and let it
-  // propose a fix. Any non-deterministic output is re-analyzed before
-  // we accept it.
-  const { llmClient, llmModel = 'claude-sonnet-4-6' } = options;
-  if (!llmClient) return { success: false, level: 'llm', reason: 'no llmClient' };
+  // The toolkit ships its own LLM healer at src/core/llm-healing.js —
+  // it already handles provider detection (Anthropic/OpenAI/Gemini
+  // from env), prompt construction, code extraction, and retry logic.
+  // If the caller provides their own `llmClient` we use that; otherwise
+  // we delegate to the built-in healer.
+  const { llmClient, llmModel, llmProvider } = options;
 
-  const prompt = buildLlmPrompt(source, envelope);
-  const response = await llmClient.complete({ model: llmModel, prompt });
-  const nextSource = extractCodeBlock(response) || source;
-  if (nextSource === source) return { success: false, level: 'llm' };
+  // Caller-supplied client path (backward compat)
+  if (llmClient && typeof llmClient.complete === 'function') {
+    const prompt = buildLlmPrompt(source, envelope);
+    const response = await llmClient.complete({ model: llmModel || 'claude-sonnet-4-6', prompt });
+    const nextSource = extractCodeBlock(response) || source;
+    if (nextSource === source) return { success: false, level: 'llm' };
 
-  const after = analyze(nextSource, envelope.filePath);
-  if (after.audit.findings.length > envelope.audit.findings.length) {
-    return { success: false, level: 'llm', reason: 'LLM output introduced new findings' };
+    const after = analyze(nextSource, envelope.filePath);
+    if (after.audit.findings.length > envelope.audit.findings.length) {
+      return { success: false, level: 'llm', reason: 'LLM output introduced new findings' };
+    }
+    return buildLlmResult('llm-custom-client', source, nextSource, envelope, after);
   }
+
+  // Built-in toolkit LLM healer. Provider auto-detection lives there.
+  let llmHeal, detectLlmProvider;
+  try { ({ llmHeal, detectLlmProvider } = require('./llm-healing')); }
+  catch { return { success: false, level: 'llm', reason: 'llm-healing module not available' }; }
+  if (typeof llmHeal !== 'function') return { success: false, level: 'llm', reason: 'llmHeal missing' };
+
+  // Fast-fail if no provider is configured. Otherwise the heal ladder
+  // would wait for the 90s timeout on every nullable-deref finding
+  // just to discover there's no API key.
+  if (typeof detectLlmProvider === 'function' && !detectLlmProvider() && !options.llmProvider) {
+    return { success: false, level: 'llm', reason: 'no llm provider configured (set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)' };
+  }
+  try {
+    const result = await Promise.race([
+      llmHeal(source, {
+        language: envelope.language,
+        provider: llmProvider || null,
+        // A lightweight score fn keyed off the envelope's re-analysis
+        scoreFn: (c) => {
+          const e = analyze(c, envelope.filePath);
+          return e.coherency || { total: 0 };
+        },
+        maxAttempts: options.llmMaxAttempts || 2,
+        targetCoherence: options.targetCoherence || 0.8,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('llm timeout')), options.llmTimeout || 90000)),
+    ]);
+    const nextSource = result?.code || result?.finalCode || source;
+    if (nextSource === source) return { success: false, level: 'llm', reason: 'llm healer returned unchanged source' };
+    const after = analyze(nextSource, envelope.filePath);
+    if (after.audit.findings.length > envelope.audit.findings.length) {
+      return { success: false, level: 'llm', reason: 'LLM output introduced new findings' };
+    }
+    return buildLlmResult('llm-builtin', source, nextSource, envelope, after, result?.whisper);
+  } catch (e) {
+    return { success: false, level: 'llm', reason: e?.message || String(e) };
+  }
+}
+
+function buildLlmResult(note, source, nextSource, envelope, after, whisper) {
   return {
     success: true,
     level: 'llm',
-    patches: [{ note: 'llm-full-rewrite', source: nextSource }],
+    patches: [{ note, source: nextSource }],
     before: { coherency: envelope.coherency, findings: envelope.allFindings },
-    after: { coherency: after.coherency, findings: after.allFindings },
+    after:  { coherency: after.coherency,  findings: after.allFindings },
     source: nextSource,
+    whisper,
   };
 }
 
 async function trySwarmLevel(source, envelope, options) {
+  // Caller-supplied swarm client path
   const { swarmClient } = options;
-  if (!swarmClient || typeof swarmClient.heal !== 'function') {
-    return { success: false, level: 'swarm', reason: 'no swarmClient' };
+  if (swarmClient && typeof swarmClient.heal === 'function') {
+    const result = await swarmClient.heal({
+      source,
+      findings: envelope.allFindings,
+      filePath: envelope.filePath,
+      language: envelope.language,
+    });
+    return buildSwarmResult('swarm-custom-client', source, result, envelope);
   }
-  const result = await swarmClient.heal({
-    source,
-    findings: envelope.allFindings,
-    filePath: envelope.filePath,
-    language: envelope.language,
-  });
-  const nextSource = result?.source || source;
-  if (nextSource === source) return { success: false, level: 'swarm' };
+
+  // Built-in swarm orchestrator from src/swarm/index.js
+  let swarmHeal, getAvailableProviders, loadSwarmConfig;
+  try { ({ swarmHeal, getAvailableProviders, loadSwarmConfig } = require('../swarm')); }
+  catch { return { success: false, level: 'swarm', reason: 'swarm module not available' }; }
+  if (typeof swarmHeal !== 'function') {
+    return { success: false, level: 'swarm', reason: 'swarmHeal missing' };
+  }
+
+  // Fast-fail when no API-keyed cloud providers are configured. The
+  // swarm config may still list local providers (ollama, claude-code)
+  // but those require running daemons and can hang on network I/O.
+  // Cloud providers are the reliable "will actually respond" path;
+  // if none are set, treat swarm as unavailable so the heal ladder
+  // moves on instead of blocking on a 3-minute timeout.
+  const cloudAvailable = !!(process.env.ANTHROPIC_API_KEY ||
+                            process.env.OPENAI_API_KEY ||
+                            process.env.GOOGLE_API_KEY ||
+                            process.env.XAI_API_KEY ||
+                            process.env.MISTRAL_API_KEY);
+  if (!cloudAvailable && !options.forceSwarm) {
+    return { success: false, level: 'swarm', reason: 'no cloud swarm providers configured (local-only providers skipped; set ANTHROPIC_API_KEY/OPENAI_API_KEY/GOOGLE_API_KEY or pass forceSwarm:true)' };
+  }
+
+  if (typeof getAvailableProviders === 'function') {
+    try {
+      const config = typeof loadSwarmConfig === 'function' ? loadSwarmConfig() : {};
+      const providers = getAvailableProviders(config);
+      if (!providers || providers.length === 0) {
+        return { success: false, level: 'swarm', reason: 'no swarm providers configured' };
+      }
+    } catch { /* ignore — proceed to full call */ }
+  }
+
+  try {
+    const result = await Promise.race([
+      swarmHeal({
+        code: source,
+        language: envelope.language,
+        findings: envelope.allFindings,
+        filePath: envelope.filePath,
+        crossScoring: options.swarmCrossScoring !== false,
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('swarm timeout')), options.swarmTimeout || 180000)),
+    ]);
+    return buildSwarmResult('swarm-builtin', source, result, envelope);
+  } catch (e) {
+    return { success: false, level: 'swarm', reason: e?.message || String(e) };
+  }
+}
+
+function buildSwarmResult(note, source, result, envelope) {
+  const nextSource = result?.code || result?.source || result?.final || source;
+  if (!nextSource || nextSource === source) {
+    return { success: false, level: 'swarm', reason: 'swarm returned unchanged source' };
+  }
   const after = analyze(nextSource, envelope.filePath);
   if (after.audit.findings.length > envelope.audit.findings.length) {
     return { success: false, level: 'swarm', reason: 'swarm consensus introduced new findings' };
@@ -283,10 +389,11 @@ async function trySwarmLevel(source, envelope, options) {
   return {
     success: true,
     level: 'swarm',
-    patches: [{ note: 'swarm', source: nextSource, consensus: result.consensus }],
+    patches: [{ note, source: nextSource, consensus: result?.consensus || result?.votes }],
     before: { coherency: envelope.coherency, findings: envelope.allFindings },
-    after: { coherency: after.coherency, findings: after.allFindings },
+    after:  { coherency: after.coherency,  findings: after.allFindings },
     source: nextSource,
+    whisper: result?.whisper,
   };
 }
 

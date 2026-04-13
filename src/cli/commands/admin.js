@@ -577,19 +577,28 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       console.log(c.bold('  Good:'));
       for (const line of info.good.split('\n')) console.log(c.green(`    ${line}`));
       console.log('');
-      if (info.patternTag) {
-        // Try to resolve a concrete pattern from the library
-        try {
-          const patterns = oracle.patterns.getAll().filter(p => (p.tags || []).includes(info.patternTag));
-          if (patterns.length > 0) {
-            console.log(c.bold('  Library patterns:'));
-            for (const p of patterns.slice(0, 3)) {
-              console.log(`    ${c.cyan(p.name)} (${c.dim(p.language || 'unknown')})`);
-            }
+      // Surface matching library patterns via the secondary indexes.
+      // We look up by both ruleId (the explain key) and patternTag
+      // so authors can associate patterns either way.
+      try {
+        const library = oracle.patterns;
+        const matches = new Set();
+        if (typeof library.findByRuleId === 'function') {
+          for (const p of library.findByRuleId(ruleId)) matches.add(p);
+        }
+        if (info.patternTag && typeof library.findByTag === 'function') {
+          for (const p of library.findByTag(info.patternTag)) matches.add(p);
+        }
+        if (matches.size > 0) {
+          console.log(c.bold('  Library patterns:'));
+          for (const p of Array.from(matches).slice(0, 3)) {
+            console.log(`    ${c.cyan(p.name)} (${c.dim(p.language || 'unknown')})`);
+          }
+          if (info.patternTag) {
             console.log(c.dim('  Pull with: `oracle resolve --description "..." --tag ' + info.patternTag + '`'));
           }
-        } catch { /* no library */ }
-      }
+        }
+      } catch { /* no library */ }
       return;
     }
 

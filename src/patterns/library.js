@@ -377,6 +377,9 @@ class PatternLibrary {
     } finally {
       unlock();
     }
+    // Any write invalidates the ruleId / tag secondary indexes. Next
+    // findByRuleId / findByTag / listTags call rebuilds from getAll().
+    if (typeof this._invalidateIndexes === 'function') this._invalidateIndexes();
   }
 
   _hash(str) {
@@ -391,6 +394,8 @@ class PatternLibrary {
    * @returns {object} The registered pattern record with id and coherency score
    */
   register(pattern) {
+    // Any register / update / merge invalidates the rule+tag indexes.
+    if (typeof this._invalidateIndexes === 'function') this._invalidateIndexes();
     // Sanitize code before scoring — fixes known SERF transform bugs
     const sanitizedCode = sanitizePatternCode(pattern.code);
     const patternWithCleanCode = { ...pattern, code: sanitizedCode };
@@ -799,12 +804,101 @@ class PatternLibrary {
   }
 
   /**
+   * Find patterns by rule id. Looks at three places, in order of
+   * precedence:
+   *
+   *   1. p.ruleId / p.rule       — explicit association
+   *   2. p.metadata.ruleId        — namespaced metadata
+   *   3. tags that start with 'rule:'   — `rule:type/division-by-zero`
+   *
+   * Memoized per library instance. The cache is invalidated on any
+   * mutation (register, mergePatterns, update, retire).
+   *
+   * Used by `audit explain` to surface concrete library patterns that
+   * exemplify a rule's fix, and by `heal generate` to pull a proven
+   * pattern when structural auto-fix can't handle a finding.
+   */
+  findByRuleId(ruleId) {
+    if (!ruleId) return [];
+    if (!this._ruleIndex) this._buildSecondaryIndexes();
+    return this._ruleIndex.get(ruleId) || [];
+  }
+
+  /**
+   * Find patterns by tag (case-insensitive). Memoized.
+   */
+  findByTag(tag) {
+    if (!tag) return [];
+    if (!this._tagIndex) this._buildSecondaryIndexes();
+    return this._tagIndex.get(tag.toLowerCase()) || [];
+  }
+
+  /**
+   * List all known tags and their frequencies.
+   */
+  listTags() {
+    if (!this._tagIndex) this._buildSecondaryIndexes();
+    const out = [];
+    for (const [tag, patterns] of this._tagIndex.entries()) {
+      out.push({ tag, count: patterns.length });
+    }
+    return out.sort((a, b) => b.count - a.count);
+  }
+
+  /**
+   * Rebuild the secondary indexes from scratch. Called lazily on first
+   * findByRuleId/findByTag, and invalidated by mutating methods.
+   */
+  _buildSecondaryIndexes() {
+    this._ruleIndex = new Map();
+    this._tagIndex = new Map();
+    for (const p of this.getAll()) {
+      // Rule id
+      const ruleIds = [];
+      if (p.ruleId) ruleIds.push(p.ruleId);
+      if (p.rule) ruleIds.push(p.rule);
+      if (p.metadata && p.metadata.ruleId) ruleIds.push(p.metadata.ruleId);
+      if (Array.isArray(p.tags)) {
+        for (const t of p.tags) {
+          if (typeof t === 'string' && t.startsWith('rule:')) {
+            ruleIds.push(t.slice(5));
+          }
+        }
+      }
+      for (const rid of ruleIds) {
+        const arr = this._ruleIndex.get(rid) || [];
+        arr.push(p);
+        this._ruleIndex.set(rid, arr);
+      }
+      // Tags
+      if (Array.isArray(p.tags)) {
+        for (const t of p.tags) {
+          if (typeof t !== 'string') continue;
+          const key = t.toLowerCase();
+          const arr = this._tagIndex.get(key) || [];
+          arr.push(p);
+          this._tagIndex.set(key, arr);
+        }
+      }
+    }
+  }
+
+  /**
+   * Invalidate the secondary indexes after a mutation.
+   */
+  _invalidateIndexes() {
+    this._ruleIndex = null;
+    this._tagIndex = null;
+  }
+
+  /**
    * Update a pattern's fields by ID.
    * @param {string} id - Pattern ID
    * @param {object} updates - Object with fields to update
    * @returns {object|null} Updated pattern record or null if not found
    */
   update(id, updates) {
+    if (typeof this._invalidateIndexes === 'function') this._invalidateIndexes();
     if (this._backend === 'sqlite') {
       return this._sqlite.updatePattern(id, updates);
     }
@@ -1281,6 +1375,7 @@ class PatternLibrary {
     if (!Array.isArray(incoming) || incoming.length === 0) {
       return { added: 0, updated: 0 };
     }
+    if (typeof this._invalidateIndexes === 'function') this._invalidateIndexes();
 
     if (this._backend === 'sqlite') {
       let added = 0, updated = 0, skipped = 0;

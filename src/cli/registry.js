@@ -17,6 +17,7 @@ const CATEGORIES = [
       { name: 'auto-submit', description: 'Full pipeline: harvest, promote, sync (end-of-session)' },
       { name: 'audit', description: 'Static analysis + cascade detection (real bugs only)' },
       { name: 'lint', description: 'Style/opinion checks (parameter validation, TODOs, var)' },
+      { name: 'smell', description: 'Architectural smells (long fns, deep nesting, god files)' },
       { name: 'config', description: 'Oracle toggle (on/off) and settings' },
       { name: 'mcp', description: 'Start MCP server for AI agents (12 tools, JSON-RPC)' },
       { name: 'mcp-install', description: 'Auto-configure AI tools (Claude, Cursor, VS Code)' },

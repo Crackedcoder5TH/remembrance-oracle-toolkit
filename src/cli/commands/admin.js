@@ -92,9 +92,91 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       const minSeverity = args['min-severity'] || undefined;
       const result = auditFiles(files, { bugClasses, minSeverity });
 
+      // ─── Tier 3: baseline + calibration + auto-fix ────────────────────
+      // Each file result carries a `findings` array. Re-key them into a
+      // per-file map so baseline / feedback can diff and calibrate.
+      const repoRoot = process.cwd();
+      const useBaseline = args['no-baseline'] !== true && args['no-baseline'] !== 'true';
+      const useCalibration = args['no-calibrate'] !== true && args['no-calibrate'] !== 'true';
+
+      const findingsByFile = {};
+      for (const fr of result.files || []) {
+        findingsByFile[fr.file] = fr.findings;
+      }
+
+      let diff = null;
+      if (useBaseline) {
+        try {
+          const baselineMod = require('../../audit/baseline');
+          const baselinePath = baselineMod.resolveBaselinePath(repoRoot);
+          const baseline = baselineMod.readBaseline(baselinePath);
+          if (baseline) {
+            diff = baselineMod.diffAgainstBaseline(baseline, findingsByFile, repoRoot);
+            // Replace per-file findings with NEW findings only (baseline hides known debt)
+            const hiddenCount = diff.persisted.length;
+            for (const fr of result.files) {
+              fr.findings = fr.findings.filter(f =>
+                diff.new.some(n => n.file === fr.file && n.line === f.line && n.ruleId === f.ruleId)
+              );
+            }
+            result.files = result.files.filter(fr => fr.findings.length > 0);
+            result.totalFindings = diff.new.length;
+            result._baselineHidden = hiddenCount;
+            result._baselineNew = diff.new.length;
+            result._baselineFixed = diff.fixed.length;
+          }
+        } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[audit:baseline]', e.message); }
+      }
+
+      if (useCalibration) {
+        try {
+          const { calibrateFindings } = require('../../audit/feedback');
+          for (const fr of result.files) {
+            fr.findings = calibrateFindings(fr.findings, repoRoot);
+          }
+          // Recount after calibration (drops noise-gated findings)
+          let newTotal = 0;
+          for (const fr of result.files) newTotal += fr.findings.length;
+          result.totalFindings = newTotal;
+        } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[audit:calibration]', e.message); }
+      }
+
+      // Auto-fix pass
+      let autoFixReport = null;
+      if (args['auto-fix'] === true || args['auto-fix'] === 'true' || args.fix === true) {
+        try {
+          const { autoFixFile } = require('../../audit/auto-fix');
+          autoFixReport = { fixed: 0, unfixed: 0, touched: [] };
+          const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+          for (const fr of result.files) {
+            const r = autoFixFile(fr.file, fr.findings, { write: !dryRun });
+            autoFixReport.fixed += r.fixed;
+            autoFixReport.unfixed += r.unfixed.length;
+            if (r.fixed > 0) autoFixReport.touched.push({ file: fr.file, fixed: r.fixed, dryRun });
+            fr.findings = r.unfixed;
+          }
+          let newTotal = 0;
+          for (const fr of result.files) newTotal += fr.findings.length;
+          result.totalFindings = newTotal;
+        } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[audit:auto-fix]', e.message); }
+      }
+
       if (args.json === true) { console.log(JSON.stringify(result)); return; }
 
       console.log(c.boldCyan(`Audit Check \u2014 ${result.summary.filesScanned} files scanned\n`));
+
+      if (typeof result._baselineHidden === 'number') {
+        console.log(c.dim(`  Baseline: ${result._baselineHidden} known-debt finding(s) hidden, ${result._baselineNew} new, ${result._baselineFixed} fixed since baseline.\n`));
+      }
+
+      if (autoFixReport) {
+        const verb = (args['dry-run'] === true || args['dry-run'] === 'true') ? 'would fix' : 'fixed';
+        console.log(c.boldGreen(`  Auto-fix: ${verb} ${autoFixReport.fixed} finding(s), ${autoFixReport.unfixed} remaining.`));
+        for (const t of autoFixReport.touched) {
+          console.log(c.dim(`    ${t.file}: ${t.fixed} patch(es)${t.dryRun ? ' (dry run)' : ''}`));
+        }
+        console.log('');
+      }
 
       if (result.totalFindings === 0) {
         console.log(c.boldGreen('  \u2713 No assumption mismatches found!\n'));
@@ -186,53 +268,154 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     // Subcommand: audit summary — combined audit report
     if (sub === 'summary') {
       const { auditFiles } = loadAuditBackend();
-      const { detectCascade } = require('../../audit/cascade-detector');
+      const { smellFiles } = require('../../audit/smell-checkers');
+      const { lintFiles } = require('../../audit/lint-checkers');
+      const { scorePrior } = require('../../audit/bayesian-prior');
+      const baselineMod = require('../../audit/baseline');
+      const { summarizeStore } = require('../../audit/feedback');
+      const { buildSummary, recordRun, loadHistory } = require('../../audit/rich-summary');
+      const repoRoot = process.cwd();
 
-      // Get recently changed files — try HEAD~1, fall back to all tracked files
+      // Collect files: prefer tracked files, fall back to src/
       let files = [];
       try {
-        const changed = execSync('git diff HEAD~1 --name-only --diff-filter=ACM 2>/dev/null', { encoding: 'utf-8' })
-          .trim().split('\n').filter(f => /\.(js|ts)$/.test(f) && f.trim());
-        files = changed;
-      } catch (_) {
-        // No prior commit or git error — fall back to staged or tracked .js/.ts files
-        try {
-          const tracked = execSync('git ls-files "*.js" "*.ts" 2>/dev/null', { encoding: 'utf-8' })
-            .trim().split('\n').filter(f => f.trim()).slice(0, 50); // cap at 50 files
-          files = tracked;
-        } catch (_2) { /* empty */ }
+        const tracked = execSync('git ls-files "*.js" "*.mjs" "*.cjs" 2>/dev/null', { encoding: 'utf-8' })
+          .trim().split('\n').filter(f => f.trim() && !f.includes('node_modules')).slice(0, 300);
+        files = tracked;
+      } catch (_) { /* empty */ }
+
+      // Run all three analyses in one pass
+      const bugResult = auditFiles(files);
+      const smellResult = smellFiles(files);
+      const lintResult = lintFiles(files);
+
+      const bugFlat = [];
+      for (const fr of bugResult.files || []) {
+        for (const f of fr.findings) bugFlat.push({ ...f, file: fr.file });
       }
+      const smellFlat = [];
+      for (const fr of smellResult.files || []) {
+        for (const f of fr.findings) smellFlat.push({ ...f, file: fr.file });
+      }
+      const lintFlat = [];
+      for (const fr of lintResult.files || []) {
+        for (const f of fr.findings) lintFlat.push({ ...f, file: fr.file });
+      }
+
+      // Bayesian prior (top files only, it's cheap but let's cap)
+      const priorFlat = [];
+      for (const f of files.slice(0, 100)) {
+        try {
+          const src = fs.readFileSync(f, 'utf-8');
+          const found = scorePrior(src, f);
+          for (const fnd of found) priorFlat.push({ ...fnd, file: f });
+        } catch { /* skip */ }
+      }
+
+      // Baseline diff
+      const baselinePath = baselineMod.resolveBaselinePath(repoRoot);
+      const baseline = baselineMod.readBaseline(baselinePath);
+      const findingsByFile = {};
+      for (const fr of bugResult.files || []) findingsByFile[fr.file] = fr.findings;
+      const diff = baseline ? baselineMod.diffAgainstBaseline(baseline, findingsByFile, repoRoot) : null;
+
+      // Feedback calibration state
+      const calibration = summarizeStore(repoRoot);
+
+      // Healing stats (best-effort)
+      let healing = null;
+      try {
+        const oracleHealing = oracle.healing || (oracle.store && oracle.store.getSQLiteStore()?.getAllHealingStats?.());
+        if (oracleHealing) {
+          const stats = Array.isArray(oracleHealing) ? oracleHealing : [oracleHealing];
+          let attempts = 0, succeeded = 0;
+          for (const s of stats) {
+            attempts += s.attempts || 0;
+            succeeded += s.succeeded || 0;
+          }
+          if (attempts > 0) healing = { attempts, succeeded };
+        }
+      } catch { /* no healing data */ }
+
+      const history = loadHistory(repoRoot);
+      const rich = buildSummary({
+        findings: bugFlat,
+        smellFindings: smellFlat,
+        lintFindings: lintFlat,
+        priorFindings: priorFlat,
+        diff: diff || undefined,
+        calibration,
+        healing,
+        history,
+      });
+      // Record for trend tracking
+      try { recordRun(repoRoot, bugFlat); } catch { /* non-fatal */ }
+
+      if (args.json === true) { console.log(JSON.stringify(rich, null, 2)); return; }
 
       console.log(c.boldCyan('Audit Summary\n'));
+      console.log(c.bold('  Totals:'));
+      console.log(`    Bugs:          ${rich.totals.bugs > 0 ? c.boldRed(String(rich.totals.bugs)) : c.boldGreen('0')}`);
+      console.log(`    Style hints:   ${c.dim(String(rich.totals.styleHints))}`);
+      console.log(`    Smells:        ${c.dim(String(rich.totals.smells))}`);
+      console.log(`    Prior risks:   ${c.dim(String(rich.totals.priorRisks))}`);
 
-      // Static checks
-      if (files.length > 0) {
-        const staticResult = auditFiles(files);
-        console.log(c.bold('  Static Checks:'));
-        console.log(`    Files:     ${c.bold(String(staticResult.summary.filesScanned))}`);
-        console.log(`    Findings:  ${staticResult.totalFindings > 0 ? c.boldRed(String(staticResult.totalFindings)) : c.boldGreen('0')}`);
-        if (staticResult.totalFindings > 0) {
-          for (const [cls, count] of Object.entries(staticResult.summary.byClass)) {
-            console.log(`      ${c.cyan(cls.padEnd(16))} ${c.bold(String(count))}`);
-          }
+      if (rich.breakdown.topBugClasses.length > 0) {
+        console.log('\n' + c.bold('  Top bug classes:'));
+        for (const { cls, count } of rich.breakdown.topBugClasses) {
+          console.log(`    ${c.cyan(cls.padEnd(20))} ${c.bold(String(count))}`);
         }
-      } else {
-        console.log(c.dim('  Static Checks: no .js/.ts files found to audit'));
+      }
+      if (rich.breakdown.topRules.length > 0) {
+        console.log('\n' + c.bold('  Top rules:'));
+        for (const { rule, count } of rich.breakdown.topRules.slice(0, 5)) {
+          console.log(`    ${c.cyan(rule.padEnd(32))} ${c.bold(String(count))}`);
+        }
       }
 
-      // Cascade detection
-      try {
-        const cascadeResult = detectCascade('HEAD~1..HEAD', process.cwd());
-        console.log(`\n${c.bold('  Cascade Detection:')}`);
-        console.log(`    Functions changed: ${c.bold(String(cascadeResult.summary.functionsChanged))}`);
-        console.log(`    Cascades found:    ${cascadeResult.summary.cascadesFound > 0 ? c.boldRed(String(cascadeResult.summary.cascadesFound)) : c.boldGreen('0')}`);
-        if (cascadeResult.summary.cascadesFound > 0) {
-          for (const [type, count] of Object.entries(cascadeResult.summary.byType)) {
-            console.log(`      ${c.cyan(type.padEnd(16))} ${c.bold(String(count))}`);
-          }
+      if (rich.baseline.hasBaseline) {
+        console.log('\n' + c.bold('  Baseline diff:'));
+        console.log(`    New:          ${rich.baseline.newSinceBaseline > 0 ? c.yellow(String(rich.baseline.newSinceBaseline)) : c.dim('0')}`);
+        console.log(`    Fixed:        ${rich.baseline.fixedSinceBaseline > 0 ? c.green(String(rich.baseline.fixedSinceBaseline)) : c.dim('0')}`);
+        console.log(`    Persisted:    ${c.dim(String(rich.baseline.persistedFromBaseline))}`);
+        if (rich.baseline.regressedFiles.length > 0) {
+          console.log(c.bold('  Regressed files:'));
+          for (const f of rich.baseline.regressedFiles.slice(0, 10)) console.log(`    ${c.red(f)}`);
         }
-      } catch (_) {
-        console.log(c.dim('\n  Cascade Detection: unable to analyze'));
+        if (rich.baseline.improvedFiles.length > 0) {
+          console.log(c.bold('  Improved files:'));
+          for (const f of rich.baseline.improvedFiles.slice(0, 10)) console.log(`    ${c.green(f)}`);
+        }
+      } else {
+        console.log(c.dim('\n  No baseline — run `oracle audit baseline` to snapshot current state.'));
+      }
+
+      if (rich.worstFiles.length > 0) {
+        console.log('\n' + c.bold('  Worst files:'));
+        for (const { file, count } of rich.worstFiles.slice(0, 5)) {
+          console.log(`    ${c.cyan(String(count).padStart(3))} ${c.dim(file)}`);
+        }
+      }
+
+      if (rich.healing) {
+        const rate = (rich.healing.successRate * 100).toFixed(0);
+        console.log('\n' + c.bold('  Healing:'));
+        console.log(`    ${rich.healing.succeeded}/${rich.healing.attempts} (${rate}%) fixes succeeded`);
+      }
+
+      if (rich.calibration.downgradedRules.length > 0) {
+        console.log('\n' + c.bold('  Calibration:'));
+        console.log(`    ${c.dim(String(rich.calibration.downgradedRules.length) + ' rule(s) downgraded based on feedback')}`);
+        for (const r of rich.calibration.downgradedRules.slice(0, 5)) {
+          console.log(`    ${c.cyan(r.ruleId.padEnd(32))} conf=${r.confidence.toFixed(2)}`);
+        }
+      }
+
+      if (rich.trend.recent.length > 0) {
+        const arrow = rich.trend.direction === 'up' ? c.red('\u2191')
+                    : rich.trend.direction === 'down' ? c.green('\u2193')
+                    : c.dim('\u2192');
+        console.log('\n' + c.bold(`  Trend: ${arrow} delta ${rich.trend.delta >= 0 ? '+' : ''}${rich.trend.delta}`));
       }
 
       console.log('');
@@ -295,6 +478,199 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
         console.log(`    ${c.dim('Assumes:')} ${f.assumption}`);
         console.log(`    ${c.dim('Reality:')} ${f.reality}`);
         console.log(`    ${c.dim('Fix:')}     ${f.suggestion}`);
+      }
+      return;
+    }
+
+    // ─── Subcommand: audit baseline ───────────────────────────────────
+    // Snapshot current findings. Subsequent `audit check` runs hide
+    // everything already in the baseline and only report new findings.
+    if (sub === 'baseline') {
+      const baselineMod = require('../../audit/baseline');
+      const { auditFiles } = loadAuditBackend();
+      const repoRoot = process.cwd();
+      const baselinePath = baselineMod.resolveBaselinePath(repoRoot);
+
+      if (args.show === true || args.show === 'true') {
+        const existing = baselineMod.readBaseline(baselinePath);
+        if (args.json === true) { console.log(JSON.stringify(existing || {})); return; }
+        if (!existing) { console.log(c.yellow('No baseline exists.')); return; }
+        console.log(c.boldCyan('Baseline'));
+        console.log(`  Created:  ${existing.createdAt}`);
+        console.log(`  Total:    ${existing.totalFindings}`);
+        console.log(`  Files:    ${Object.keys(existing.files).length}`);
+        return;
+      }
+
+      if (args.clear === true || args.clear === 'true') {
+        if (fs.existsSync(baselinePath)) fs.unlinkSync(baselinePath);
+        console.log(c.yellow('Baseline cleared.'));
+        return;
+      }
+
+      // Default: snapshot current findings
+      let files = [];
+      try {
+        const tracked = execSync('git ls-files "*.js" "*.mjs" "*.cjs" 2>/dev/null', { encoding: 'utf-8' })
+          .trim().split('\n').filter(f => f.trim() && !f.includes('node_modules'));
+        files = tracked;
+      } catch (_) { /* empty */ }
+      if (files.length === 0) {
+        console.log(c.yellow('No files found to baseline.'));
+        return;
+      }
+      const result = auditFiles(files);
+      const findingsByFile = {};
+      for (const fr of result.files || []) findingsByFile[fr.file] = fr.findings;
+      const baseline = baselineMod.buildBaseline(findingsByFile, repoRoot);
+      baselineMod.writeBaseline(baseline, baselinePath);
+      console.log(c.boldGreen(`Baseline written: ${baselinePath}`));
+      console.log(`  ${baseline.totalFindings} finding(s) across ${Object.keys(baseline.files).length} file(s).`);
+      console.log(c.dim(`  Future \`audit check\` runs will hide these and only report new findings.`));
+      console.log(c.dim(`  To rebuild: \`oracle audit baseline\` again, or delete with \`--clear\`.`));
+      return;
+    }
+
+    // ─── Subcommand: audit explain <rule> ─────────────────────────────
+    if (sub === 'explain') {
+      const { explain, listRules } = require('../../audit/explain');
+      const ruleId = args.rule || args._positional[1];
+      if (!ruleId) {
+        // List all rules
+        const category = args.category || null;
+        const rules = listRules(category);
+        if (args.json === true) { console.log(JSON.stringify(rules)); return; }
+        console.log(c.boldCyan(`Audit rules (${rules.length}):\n`));
+        const groups = { bug: [], style: [], smell: [] };
+        for (const r of rules) (groups[r.category] || []).push(r);
+        for (const g of ['bug', 'style', 'smell']) {
+          if (groups[g].length === 0) continue;
+          console.log(c.bold(`  ${g.toUpperCase()}:`));
+          for (const r of groups[g]) {
+            const sev = r.severity === 'high' ? c.red : r.severity === 'medium' ? c.yellow : c.dim;
+            console.log(`    ${sev((r.severity || 'info').padEnd(6))} ${c.cyan(r.ruleId.padEnd(32))} ${c.dim(r.summary)}`);
+          }
+          console.log('');
+        }
+        console.log(c.dim('  Use `oracle audit explain <rule>` for a worked example.'));
+        return;
+      }
+      const info = explain(ruleId);
+      if (args.json === true) { console.log(JSON.stringify(info || {})); return; }
+      if (!info) {
+        console.log(c.yellow(`Unknown rule: ${ruleId}`));
+        console.log(c.dim('  Run `oracle audit explain` to list all rules.'));
+        return;
+      }
+      console.log(c.boldCyan(`${ruleId}`));
+      console.log(c.dim(`  category: ${info.category}  severity: ${info.severity}`));
+      console.log('');
+      console.log(c.bold('  Summary:'));
+      console.log(`    ${info.summary}`);
+      console.log('');
+      console.log(c.bold('  Why it matters:'));
+      console.log(`    ${info.why}`);
+      console.log('');
+      console.log(c.bold('  Bad:'));
+      for (const line of info.bad.split('\n')) console.log(c.red(`    ${line}`));
+      console.log('');
+      console.log(c.bold('  Good:'));
+      for (const line of info.good.split('\n')) console.log(c.green(`    ${line}`));
+      console.log('');
+      if (info.patternTag) {
+        // Try to resolve a concrete pattern from the library
+        try {
+          const patterns = oracle.patterns.getAll().filter(p => (p.tags || []).includes(info.patternTag));
+          if (patterns.length > 0) {
+            console.log(c.bold('  Library patterns:'));
+            for (const p of patterns.slice(0, 3)) {
+              console.log(`    ${c.cyan(p.name)} (${c.dim(p.language || 'unknown')})`);
+            }
+            console.log(c.dim('  Pull with: `oracle resolve --description "..." --tag ' + info.patternTag + '`'));
+          }
+        } catch { /* no library */ }
+      }
+      return;
+    }
+
+    // ─── Subcommand: audit feedback ───────────────────────────────────
+    // Record fix/dismiss events against a rule. Used for severity calibration.
+    if (sub === 'feedback') {
+      const { recordFeedback, summarizeStore } = require('../../audit/feedback');
+      const action = args.action || args._positional[1]; // 'fix' | 'dismiss' | 'show'
+      const ruleId = args.rule || args._positional[2];
+      const repoRoot = process.cwd();
+
+      if (!action || action === 'show') {
+        const summary = summarizeStore(repoRoot);
+        if (args.json === true) { console.log(JSON.stringify(summary)); return; }
+        console.log(c.boldCyan(`Audit feedback (${summary.total} rule(s) observed):\n`));
+        for (const row of summary.rules) {
+          const conf = row.confidence == null ? '—' : row.confidence.toFixed(2);
+          const sev = row.confidence != null && row.confidence < 0.4 ? c.red
+            : row.confidence != null && row.confidence < 0.7 ? c.yellow : c.dim;
+          console.log(`  ${c.cyan(row.ruleId.padEnd(32))} fixed=${row.fixed} dismissed=${row.dismissed} conf=${sev(conf)}`);
+        }
+        return;
+      }
+
+      if (action !== 'fix' && action !== 'dismiss') {
+        console.log(c.yellow('Usage: oracle audit feedback fix|dismiss <ruleId> [--file <path> --line <n>]'));
+        return;
+      }
+      if (!ruleId) {
+        console.log(c.yellow('Usage: oracle audit feedback ' + action + ' <ruleId>'));
+        return;
+      }
+      const rule = recordFeedback(repoRoot, action, ruleId, { file: args.file, line: args.line });
+      console.log(c.boldGreen(`Recorded: ${ruleId} ${action}ed`));
+      if (rule) {
+        console.log(c.dim(`  fixed=${rule.fixed} dismissed=${rule.dismissed}`));
+      }
+      return;
+    }
+
+    // ─── Subcommand: audit prior ──────────────────────────────────────
+    // Run the Bayesian bug-prior risk signal against files.
+    if (sub === 'prior') {
+      const { scorePrior, loadPrior } = require('../../audit/bayesian-prior');
+      const targetFile = args.file || args._positional[1];
+      if (args.show === true || args.show === 'true') {
+        const prior = loadPrior();
+        console.log(c.boldCyan(`Bayesian bug-prior (${prior.patterns?.length || 0} entries):\n`));
+        for (const e of (prior.patterns || [])) {
+          console.log(`  ${c.cyan(e.name)} (${e.language || 'any'}) prior=${(e.priorBugRate || 0).toFixed(2)}`);
+          console.log(`    ${c.dim(e.suggestion || '')}`);
+        }
+        return;
+      }
+      let files = [];
+      if (targetFile) files = [targetFile];
+      else {
+        try {
+          const tracked = execSync('git ls-files "*.js" 2>/dev/null', { encoding: 'utf-8' })
+            .trim().split('\n').filter(f => f.trim() && !f.includes('node_modules')).slice(0, 100);
+          files = tracked;
+        } catch { /* empty */ }
+      }
+      const allFindings = [];
+      for (const f of files) {
+        try {
+          const src = fs.readFileSync(f, 'utf-8');
+          const found = scorePrior(src, f);
+          for (const fnd of found) allFindings.push({ ...fnd, file: f });
+        } catch { /* skip */ }
+      }
+      if (args.json === true) { console.log(JSON.stringify(allFindings)); return; }
+      if (allFindings.length === 0) {
+        console.log(c.boldGreen('  \u2713 No bug-prior matches.'));
+        return;
+      }
+      console.log(c.boldCyan(`Bug-prior matches (${allFindings.length}):\n`));
+      for (const f of allFindings) {
+        const sev = f.severity === 'medium' ? c.yellow : c.dim;
+        console.log(`  ${sev(f.severity.toUpperCase().padEnd(6))} ${c.bold(f.file)}  (${c.dim(f.evidence.matchedPattern)} sim=${f.evidence.similarity.toFixed(2)})`);
+        console.log(`    ${c.dim(f.suggestion)}`);
       }
       return;
     }
@@ -365,22 +741,42 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     // If no subcommand, show help for new audit commands
     if (!sub) {
       console.log(`
-${c.boldCyan('Audit Commands')} \u2014 assumption mismatch detection (AST-based, zero dependencies)
+${c.boldCyan('Audit Commands')} \u2014 bug detection (AST-based, zero dependencies)
 
 ${c.bold('Subcommands:')}
   ${c.cyan('audit check')}       Run static checkers on files (6 bug classes)
+  ${c.cyan('audit baseline')}    Snapshot current findings as known-debt
+  ${c.cyan('audit explain')}     Worked example for a rule, good + bad
+  ${c.cyan('audit feedback')}    Record fix/dismiss events for severity calibration
+  ${c.cyan('audit prior')}       Bayesian bug-prior risk signal (substrate-driven)
   ${c.cyan('audit cascade')}     Detect cascading mismatches from a commit (diff-based)
   ${c.cyan('audit cross-file')}  Real call-graph analysis across the project
   ${c.cyan('audit xref')}        Cross-reference findings with debug pattern fixes
-  ${c.cyan('audit summary')}     Combined audit report (static + cascade + xref)
+  ${c.cyan('audit summary')}     Rich summary (totals + baseline diff + trend + healing)
   ${c.cyan('audit log')}         Show audit log entries (default)
 
-${c.bold('Options:')}
+${c.bold('Check flags:')}
   ${c.yellow('--file')} <path>        Specific file to check
-  ${c.yellow('--from')} <commit>      Commit range for cascade detection
-  ${c.yellow('--bug-class')} <class>  Filter by bug class (state-mutation,security,concurrency,type,integration,edge-case)
+  ${c.yellow('--auto-fix')}           Apply confident fixes in-place
+  ${c.yellow('--dry-run')}            With --auto-fix, show patches without writing
+  ${c.yellow('--no-baseline')}        Do not hide findings already in the baseline
+  ${c.yellow('--no-calibrate')}       Skip feedback-driven severity calibration
+  ${c.yellow('--bug-class')} <class>  Filter by bug class
   ${c.yellow('--min-severity')} <s>   Minimum severity (high,medium,low)
   ${c.yellow('--json')}               JSON output
+
+${c.bold('Explain flags:')}
+  ${c.yellow('<ruleId>')}             Show the worked example for one rule
+  ${c.yellow('--category')} <c>       Filter list by bug|style|smell
+
+${c.bold('Feedback flags:')}
+  ${c.cyan('oracle audit feedback show')}                List current calibration state
+  ${c.cyan('oracle audit feedback fix <ruleId>')}        Mark a rule as a true positive
+  ${c.cyan('oracle audit feedback dismiss <ruleId>')}    Mark a rule as a false positive
+
+${c.bold('Baseline flags:')}
+  ${c.yellow('--show')}                Show current baseline contents
+  ${c.yellow('--clear')}               Delete the baseline
 
 ${c.bold('Suppression:')}
   Inline:   ${c.dim('// oracle-ignore-next-line: type')}
@@ -390,8 +786,9 @@ ${c.bold('Suppression:')}
 ${c.bold('Backend:')}
   Default is AST-based. Set ${c.yellow('ORACLE_AUDIT_BACKEND=regex')} to use the legacy checker.
 
-${c.bold('Related:')}
-  ${c.cyan('oracle lint')}       Style/opinion checks (parameter validation, TODOs, var)
+${c.bold('Related commands:')}
+  ${c.cyan('oracle lint')}        Style checks (parameter validation, TODOs, var)
+  ${c.cyan('oracle smell')}       Architectural smells (long fns, deep nesting, god files)
       `);
       return;
     }
@@ -464,6 +861,60 @@ ${c.bold('Related:')}
       console.log('');
     }
 
+    console.log(c.bold('  Summary:'));
+    for (const [rule, count] of Object.entries(result.summary.byRule)) {
+      console.log(`    ${c.cyan(rule.padEnd(28))} ${c.bold(String(count))}`);
+    }
+  };
+
+  // `oracle smell` — architectural smell detectors. These are structural
+  // hints (long functions, deep nesting, too many params, god files,
+  // feature envy) that aren't bugs but suggest maintainability trouble.
+  handlers['smell'] = (args) => {
+    const { smellFiles } = require('../../audit/smell-checkers');
+    const targetFile = args.file || args._positional[1];
+    let files = [];
+    if (targetFile) files = [targetFile];
+    else {
+      try {
+        const tracked = execSync('git ls-files "*.js" "*.mjs" "*.cjs" 2>/dev/null', { encoding: 'utf-8' })
+          .trim().split('\n').filter(f => f.trim() && !f.includes('node_modules'));
+        files = tracked;
+      } catch (_) { /* empty */ }
+    }
+    if (files.length === 0) {
+      console.log(c.yellow('No files found.'));
+      return;
+    }
+
+    // Parse --threshold k=v flags
+    const thresholds = {};
+    if (args.threshold) {
+      const parts = (Array.isArray(args.threshold) ? args.threshold : [args.threshold]);
+      for (const p of parts) {
+        const [k, v] = String(p).split('=');
+        if (k && v != null) thresholds[k] = Number(v) || v;
+      }
+    }
+
+    const result = smellFiles(files, { thresholds });
+    if (args.json === true) { console.log(JSON.stringify(result)); return; }
+
+    console.log(c.boldCyan(`Smell \u2014 ${result.summary.filesScanned} files scanned\n`));
+    if (result.totalFindings === 0) {
+      console.log(c.boldGreen('  \u2713 No smells found.\n'));
+      return;
+    }
+    console.log(c.bold(`  ${result.totalFindings} finding(s):\n`));
+    for (const fileResult of result.files) {
+      console.log(`  ${c.bold(fileResult.file)}:`);
+      for (const f of fileResult.findings) {
+        console.log(`    ${c.dim('INFO ')} L${String(f.line).padStart(4)} [${c.cyan(f.ruleId)}]`);
+        console.log(`      ${f.message}`);
+        if (f.suggestion) console.log(`      ${c.dim('Fix:')}  ${f.suggestion}`);
+      }
+      console.log('');
+    }
     console.log(c.bold('  Summary:'));
     for (const [rule, count] of Object.entries(result.summary.byRule)) {
       console.log(`    ${c.cyan(rule.padEnd(28))} ${c.bold(String(count))}`);

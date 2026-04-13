@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "description": "Seed fingerprints of code shapes historically associated with bugs. Each entry carries a canonical fingerprint + a prior bug rate (0..1) estimated from past healing data. The Bayesian audit check compares incoming files against these fingerprints and emits risk findings for matches above the configured threshold.",
+  "patterns": [
+    {
+      "name": "uncaught-json-parse-in-handler",
+      "language": "javascript",
+      "category": "bug-prior",
+      "priorBugRate": 0.85,
+      "fingerprint": {
+        "skeleton": "function IDENT ( IDENT ) { const IDENT = JSON . parse ( IDENT ) ; return IDENT . IDENT ; }"
+      },
+      "suggestion": "Wrap JSON.parse in try/catch. Return null or a default on invalid input instead of letting a SyntaxError propagate into the caller."
+    },
+    {
+      "name": "mutable-sort-returned",
+      "language": "javascript",
+      "category": "bug-prior",
+      "priorBugRate": 0.7,
+      "fingerprint": {
+        "skeleton": "function IDENT ( IDENT ) { return IDENT . sort ( ) ; }"
+      },
+      "suggestion": "The caller's array is mutated as a side effect. Copy before sort: `[...items].sort(...)`."
+    },
+    {
+      "name": "sql-via-template-literal",
+      "language": "javascript",
+      "category": "bug-prior",
+      "priorBugRate": 0.9,
+      "fingerprint": {
+        "skeleton": "function IDENT ( IDENT ) { return IDENT . query ( ` SELECT STAR FROM IDENT WHERE IDENT = $ { IDENT } ` ) ; }"
+      },
+      "suggestion": "SQL via template literals is injection-prone. Use parameterized statements: `db.prepare('... WHERE id = ?').get(id)`."
+    },
+    {
+      "name": "exec-with-string-concat",
+      "language": "javascript",
+      "category": "bug-prior",
+      "priorBugRate": 0.88,
+      "fingerprint": {
+        "skeleton": "execSync ( IDENT + IDENT )"
+      },
+      "suggestion": "Shell exec with string concatenation enables command injection. Use execFile with an args array."
+    },
+    {
+      "name": "nullable-chain-without-guard",
+      "language": "javascript",
+      "category": "bug-prior",
+      "priorBugRate": 0.72,
+      "fingerprint": {
+        "skeleton": "const IDENT = IDENT ( IDENT ) ; return IDENT . IDENT . IDENT"
+      },
+      "suggestion": "Chaining property access on a maybe-null callee crashes on the null path. Add a guard or use optional chaining."
+    },
+    {
+      "name": "check-then-set-shared-state",
+      "language": "javascript",
+      "category": "bug-prior",
+      "priorBugRate": 0.78,
+      "fingerprint": {
+        "skeleton": "if ( ! IDENT . IDENT ) { IDENT . IDENT = IDENT ; }"
+      },
+      "suggestion": "Check-then-set on shared state is racy under concurrency. Use an atomic update, a mutex, or make the update idempotent."
+    },
+    {
+      "name": "division-by-length-unguarded",
+      "language": "javascript",
+      "category": "bug-prior",
+      "priorBugRate": 0.65,
+      "fingerprint": {
+        "skeleton": "IDENT . reduce ( ( IDENT , IDENT ) => IDENT + IDENT , 0 ) / IDENT . length"
+      },
+      "suggestion": "Division by `.length` without a guard produces NaN on empty arrays. Use `arr.length > 0 ? sum / arr.length : 0`."
+    }
+  ]
+}

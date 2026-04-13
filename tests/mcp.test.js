@@ -235,12 +235,12 @@ describe('MCPServer', () => {
     assert.ok(res.result.content);
   });
 
-  it('has exactly 13 consolidated tools', async () => {
+  it('exposes the full tool catalog including the Tier-1..4 audit/lint/smell/analyze/heal tools', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({ id: 15, method: 'tools/list' });
     const names = res.result.tools.map(t => t.name);
 
-    // All 13 consolidated tools
+    // Original 13 consolidated tools
     assert.ok(names.includes('oracle_search'), 'missing oracle_search');
     assert.ok(names.includes('oracle_resolve'), 'missing oracle_resolve');
     assert.ok(names.includes('oracle_submit'), 'missing oracle_submit');
@@ -255,6 +255,13 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_swarm'), 'missing oracle_swarm');
     assert.ok(names.includes('oracle_fractal'), 'missing oracle_fractal');
 
-    assert.equal(res.result.tools.length, 13, `Expected exactly 13 tools, got ${res.result.tools.length}`);
+    // New Tier-1..4 tools
+    assert.ok(names.includes('oracle_audit'),    'missing oracle_audit');
+    assert.ok(names.includes('oracle_lint'),     'missing oracle_lint');
+    assert.ok(names.includes('oracle_smell'),    'missing oracle_smell');
+    assert.ok(names.includes('oracle_analyze'),  'missing oracle_analyze');
+    assert.ok(names.includes('oracle_heal'),     'missing oracle_heal');
+
+    assert.ok(res.result.tools.length >= 18, `Expected at least 18 tools, got ${res.result.tools.length}`);
   });
 });

@@ -201,14 +201,22 @@ module.exports = {
       results.errors.push({ remote: 'all', error: err.message });
     }
 
-    // Merge and deduplicate
+    // Merge and deduplicate. Prefer (name:language) over id because each
+    // tier's store generates its own id hash — the same logical pattern
+    // has different ids across local, remote, and cross-repo tiers, so an
+    // id-keyed set lets duplicates slip through. The dedup key matches the
+    // caller-visible invariant: result[i].name + language is unique.
     const seen = new Set();
     const merged = [];
     for (const list of [results.local, results.repos, results.remote]) {
       for (const p of list) {
-        const key = `${p.id || p.name || ''}:${p.language}`;
-        if (key !== ':' && seen.has(key)) continue;
-        seen.add(key);
+        if (!p) continue;
+        const nameKey = p.name ? `${p.name}:${p.language || 'unknown'}` : null;
+        const idKey = p.id ? `id:${p.id}` : null;
+        if (nameKey && seen.has(nameKey)) continue;
+        if (idKey && seen.has(idKey)) continue;
+        if (nameKey) seen.add(nameKey);
+        if (idKey) seen.add(idKey);
         merged.push(p);
       }
     }

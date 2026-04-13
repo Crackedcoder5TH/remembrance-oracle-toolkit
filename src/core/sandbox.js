@@ -102,18 +102,28 @@ if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlo
     fs.closeSync(fdCode);
     fs.chmodSync(codePath, 0o400);
 
-    // Write test file — rewrite require paths to point at sandbox code.js
+    // Write test file — rewrite RELATIVE require paths to point at
+    // sandbox code.js. Detect only relative requires here (./foo, ../foo)
+    // so that tests which do `require("assert")` or any other node builtin
+    // fall through to the inline-code path and still have access to the
+    // functions defined in `code`. Previously the bare `/require\(...\)/`
+    // test matched `require("assert")` and sent the test down the rewrite
+    // path, which skipped inlining and left functions like `sort`
+    // undefined in the test's scope.
     const filePath = path.join(sandboxDir, 'test.js');
     let testContent;
-    const hasRequire = /require\s*\(\s*['"][^'"]+['"]\s*\)/.test(testCode);
-    if (hasRequire) {
-      // Redirect any require('...') that isn't a node module to ./code.js
+    const hasRelativeRequire = /require\s*\(\s*['"]\.\.?\/[^'"]+['"]\s*\)/.test(testCode);
+    if (hasRelativeRequire) {
+      // Redirect relative require('./...') calls to the sandbox's code.js
       testContent = "'use strict';\n" + testCode.replace(
         /require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g,
         "require('./code.js')"
       ) + "\n";
     } else {
-      // No require — inline code then test (original behavior for standalone snippets)
+      // No relative require — inline code then test so the test can see
+      // functions/classes defined in `code` directly. This is the common
+      // path for pattern registration where testCode only uses node
+      // builtins like `assert`.
       testContent = "'use strict';\n" + code + ";\n" + testCode + "\n";
     }
     const fdTest = fs.openSync(filePath, 'w', 0o600);

@@ -24,7 +24,15 @@
     "./plugins": "./src/plugins/manager.js",
     "./health": "./src/health/monitor.js",
     "./swarm": "./src/swarm/index.js",
-    "./client": "./src/client/index.js"
+    "./client": "./src/client/index.js",
+    "./analyze": "./src/core/analyze.js",
+    "./storage": "./src/core/storage.js",
+    "./events": "./src/core/events.js",
+    "./heal": "./src/core/heal.js",
+    "./audit": "./src/audit/ast-checkers.js",
+    "./lint": "./src/audit/lint-checkers.js",
+    "./smell": "./src/audit/smell-checkers.js",
+    "./reflector": "./src/reflector/bridge.js"
   },
   "bin": {
     "remembrance-oracle": "src/cli.js",

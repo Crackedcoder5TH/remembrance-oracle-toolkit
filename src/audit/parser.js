@@ -525,10 +525,13 @@ function extractInlineFunction(toks, i, fnTok) {
 
 function extractMethodLike(toks, i) {
   // Pattern: identifier ( ... ) { body }
-  // Only consider if the identifier is not a known call-site leader (i.e.
-  // the previous non-comment token is `{`, `,`, `;`, or a keyword like `class`).
+  // Class methods start with either `{` (first method), `}` (subsequent
+  // methods after the previous method's closing brace), `;` (after a
+  // field declaration), `,` (object literal), or a keyword modifier
+  // (static / get / set / async). Anything else is a function call,
+  // not a method declaration.
   const prev = toks[i - 1];
-  if (prev && !['{', ',', ';'].includes(prev.value) && prev.value !== 'static' && prev.value !== 'get' && prev.value !== 'set' && prev.value !== 'async') return null;
+  if (prev && !['{', '}', ',', ';'].includes(prev.value) && prev.value !== 'static' && prev.value !== 'get' && prev.value !== 'set' && prev.value !== 'async') return null;
 
   const nameTok = toks[i];
   let j = i + 1;

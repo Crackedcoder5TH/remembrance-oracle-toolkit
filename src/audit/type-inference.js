@@ -31,20 +31,48 @@ const { walkFunctions } = require('./parser');
  * key based on their byte offset so the cascade detector can reference them.
  */
 function inferNullability(program) {
-  const functions = new Map();
-
+  // Track every definition per name so we can detect ambiguity.
+  // When two functions share a name (inner helper + class method,
+  // nested scopes, forked paths), we can't know which one a given
+  // call site resolves to without full scope analysis. Rather than
+  // risk a false positive, we mark the name as ambiguous and the
+  // integration checker skips call-site nullability checks for it.
+  const byName = new Map(); // name → DefRecord[]
   walkFunctions(program, (fn) => {
     if (!fn.name) return;
     const nullable = computeNullable(fn);
-    functions.set(fn.name, {
+    const record = {
       name: fn.name,
       nullable,
       returns: fn.returns,
       line: fn.line,
       column: fn.column,
       node: fn,
-    });
+    };
+    if (!byName.has(fn.name)) byName.set(fn.name, [record]);
+    else byName.get(fn.name).push(record);
   });
+
+  // Build the final map the integration checker consumes. For
+  // ambiguous names we mark the entry as `ambiguous: true` and set
+  // nullable=false so the checker skips them (err on silence rather
+  // than false positives). For unambiguous names we expose the
+  // single record as-is.
+  const functions = new Map();
+  for (const [name, records] of byName.entries()) {
+    if (records.length === 1) {
+      functions.set(name, records[0]);
+    } else {
+      // Same-name shadowing: first definition wins for stats, but we
+      // mark the entry ambiguous so integration/nullable-deref skips it.
+      functions.set(name, {
+        ...records[0],
+        ambiguous: true,
+        nullable: false, // conservative: don't flag call sites
+        alternates: records.slice(1),
+      });
+    }
+  }
 
   return { functions };
 }

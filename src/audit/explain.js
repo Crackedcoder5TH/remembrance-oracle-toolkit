@@ -507,7 +507,7 @@ function listRules(filter) {
       summary: info.summary,
     });
   }
-  return out.sort((a, b) => a.ruleId.localeCompare(b.ruleId));
+  return [...out].sort((a, b) => a.ruleId.localeCompare(b.ruleId));
 }
 
 function explain(ruleId) {

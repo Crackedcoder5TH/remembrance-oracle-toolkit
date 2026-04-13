@@ -60,14 +60,15 @@ function lintCode(source, options = {}) {
   // File-level rules
   checkTodoComments(program, emit);
 
-  // Sort + filter
-  findings.sort((a, b) => a.line - b.line);
+  // Sort + filter — use an immutable copy so the caller's local
+  // `findings` array isn't mutated after we've handed it to consumers.
+  const sorted = [...findings].sort((a, b) => a.line - b.line);
 
   return {
-    findings,
+    findings: sorted,
     summary: {
-      total: findings.length,
-      byRule: countBy(findings, 'ruleId'),
+      total: sorted.length,
+      byRule: countBy(sorted, 'ruleId'),
     },
   };
 }

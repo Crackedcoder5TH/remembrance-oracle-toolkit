@@ -92,9 +92,26 @@ function generatePatchFor(finding, source, program) {
 }
 
 /**
- * Fix .sort / .reverse by inserting `.slice()` before the method token.
- * We locate the method-call token on the finding's line via the token
- * stream and the ruleId suffix.
+ * Fix .sort / .reverse by inserting `.slice()` before the method token
+ * — but ONLY when the result is consumed as an expression. If the call
+ * is a bare statement (`items.sort(...);`), inserting `.slice()` breaks
+ * the program: `items.slice().sort(...)` builds a new array, sorts it,
+ * and throws it away — the original `items` stays unsorted.
+ *
+ * Context detection walks left from the receiver to classify the call:
+ *
+ *   RETURN_EXPR    `return items.sort(...)`           → safe to patch
+ *   DECL_RHS       `const x = items.sort(...)`        → safe to patch
+ *   ASSIGN_RHS     `x = items.sort(...)`              → safe to patch
+ *   CHAIN          `items.sort(...).map(...)`         → safe to patch
+ *   ARG            `fn(items.sort(...), ...)`         → safe to patch
+ *   STATEMENT      `items.sort(...);` at top of line  → NOT auto-fixable
+ *                  — would require `items = items.slice().sort(...)`
+ *                    which is a semantic change we won't do without a
+ *                    human-in-the-loop
+ *
+ * For the unsafe cases we skip the fix and leave the finding for a
+ * reviewer. Previously this module silently produced a broken patch.
  */
 function patchSliceInsertion(finding, source, program) {
   const method = finding.ruleId.split('/')[1]; // 'sort' or 'reverse'
@@ -105,11 +122,86 @@ function patchSliceInsertion(finding, source, program) {
     if (t.type !== 'identifier' || t.value !== method) continue;
     const prev = tokens[i - 1];
     if (prev?.value !== '.') continue;
-    // Insert `.slice()` at prev.start (the position of the `.`), so
-    // `x.sort(` becomes `x.slice().sort(`
+
+    // Find the receiver's start — the token that begins the chain
+    // (walk back through identifier/./member pieces).
+    let receiverStart = i - 2;
+    while (receiverStart > 0) {
+      const rt = tokens[receiverStart - 1];
+      if (!rt) break;
+      if (rt.type === 'identifier' || rt.value === '.' || rt.value === ']' || rt.value === ')') {
+        receiverStart--;
+        continue;
+      }
+      break;
+    }
+
+    // Classify the call site's context by looking at the token that
+    // immediately precedes the receiver.
+    const before = tokens[receiverStart - 1];
+    let safe = false;
+    if (!before) {
+      // Receiver is at the start of the program — it's a statement.
+      safe = false;
+    } else if (before.type === 'keyword' && (before.value === 'return' || before.value === 'throw' || before.value === 'await' || before.value === 'yield')) {
+      safe = true;
+    } else if (before.value === '=' && before.type === 'operator') {
+      // const x = items.sort() / x = items.sort()
+      safe = true;
+    } else if (before.value === '(' || before.value === ',' || before.value === '[' || before.value === ':') {
+      // Function arg, array element, object value, ternary branch
+      safe = true;
+    } else if (before.value === '=>') {
+      // Arrow body that immediately returns the call
+      safe = true;
+    } else if (before.value === '&&' || before.value === '||' || before.value === '??' || before.value === '?') {
+      // Inside a boolean/ternary expression
+      safe = true;
+    } else if (before.value === ';' || before.value === '{' || before.value === '}') {
+      // Start-of-statement — this is the bare-statement case.
+      safe = false;
+    } else {
+      // Unknown context → be conservative
+      safe = false;
+    }
+
+    // Also check the RIGHT side: if the sort result is immediately
+    // chained (.sort().map()), that's an expression context.
+    const afterCall = findAfterCall(tokens, i);
+    if (afterCall && afterCall.value === '.') safe = true;
+
+    if (!safe) {
+      // The sort is a bare statement — can't auto-fix without flow
+      // analysis. Return null so the caller leaves the finding open.
+      return null;
+    }
+
+    // Safe: insert `.slice()` at the `.` position before the method.
     return [new Patch(prev.start, prev.start, '.slice()', `copy before .${method}`)];
   }
   return null;
+}
+
+/**
+ * Given the method identifier token at tokens[i], find the first
+ * meaningful token after the closing paren of its call. Returns null
+ * if the parens don't balance or there's no next token.
+ */
+function findAfterCall(tokens, methodIdx) {
+  // Expect: identifier ( ... )
+  const open = tokens[methodIdx + 1];
+  if (!open || open.value !== '(') return null;
+  let depth = 1;
+  let j = methodIdx + 2;
+  while (j < tokens.length && depth > 0) {
+    if (tokens[j].value === '(' || tokens[j].value === '[' || tokens[j].value === '{') depth++;
+    if (tokens[j].value === ')' || tokens[j].value === ']' || tokens[j].value === '}') {
+      depth--;
+      if (depth === 0) { j++; break; }
+    }
+    j++;
+  }
+  return tokens[j] || null;
 }
 
 /**

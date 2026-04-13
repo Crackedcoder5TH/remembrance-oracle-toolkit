@@ -112,15 +112,17 @@ function auditCode(source, options = {}) {
   // File-level checks that don't need a function context
   if (isEnabled(BUG_CLASSES.EDGE_CASE)) checkEdgeCase(program, emit);
 
-  // Sort by severity then line
+  // Sort by severity then line. Use an immutable copy so consumers
+  // that captured the findings array earlier aren't surprised by
+  // in-place reordering.
   const sevOrder = { high: 3, medium: 2, low: 1 };
-  findings.sort((a, b) => (sevOrder[b.severity] || 0) - (sevOrder[a.severity] || 0) || a.line - b.line);
+  const sorted = [...findings].sort((a, b) => (sevOrder[b.severity] || 0) - (sevOrder[a.severity] || 0) || a.line - b.line);
 
   // Filter by minSeverity
-  let filtered = findings;
+  let filtered = sorted;
   if (options.minSeverity) {
     const min = sevOrder[options.minSeverity] || 0;
-    filtered = findings.filter(f => (sevOrder[f.severity] || 0) >= min);
+    filtered = sorted.filter(f => (sevOrder[f.severity] || 0) >= min);
   }
 
   return {
@@ -423,19 +425,20 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
     }
   }
   // Ternary guard that covers this very division, e.g.:
-  //   nonEmpty.length > 0 ? a / nonEmpty.length : 0
-  //   count !== 0 ? sum / count : 0
-  //   arr.length ? total / arr.length : 0
+  //   nonEmpty.length > 0 ? a / nonEmpty.length : 0   (positive test)
+  //   count !== 0 ? sum / count : 0                    (negative test)
+  //   arr.length ? total / arr.length : 0              (truthy test)
+  //   thisCount === 0 ? Infinity : topCount / thisCount  (INVERTED test)
   //
   // We look backward for a `?` with a preceding comparison mentioning
-  // `divisor` and then a truthy test that proves non-zero.
+  // `divisor` and then a test that proves non-zero.
   for (let i = idx - 1; i >= Math.max(0, idx - 50); i--) {
     const t = tokens[i];
     if (!t) continue;
     if (t.value === ';' || t.value === '{' || t.value === '}') break;
     if (t.value !== '?') continue;
     // Walk further back: look for `<divisor> > 0`, `<divisor> !== 0`, or
-    // just `<divisor>` (truthy test).
+    // just `<divisor>` (truthy test), or inverted `<divisor> === 0`.
     for (let j = i - 1; j >= Math.max(0, i - 12); j--) {
       const tk = tokens[j];
       if (!tk) break;
@@ -444,9 +447,16 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
         const rhs = tokens[j + 2];
         // Truthy test: `x ?`
         if (op === '?') return true;
-        // Comparison test: `x > 0 ?`, `x !== 0 ?`, `x != 0 ?`
+        // Positive comparison test: `x > 0 ?`, `x !== 0 ?`, `x != 0 ?`
         if ((op === '>' || op === '>=' || op === '!=' || op === '!==') &&
             rhs && (rhs.type === 'number' || rhs.value === 'null' || rhs.value === 'undefined')) {
+          return true;
+        }
+        // INVERTED test: `x === 0 ? <constant> : ... / x`
+        // When the test is `x === 0`, the SHORT branch is the guard
+        // (returns a constant), so the LONG branch — which contains
+        // our division — is the safe path.
+        if ((op === '===' || op === '==') && rhs && rhs.type === 'number' && parseFloat(rhs.value) === 0) {
           return true;
         }
       }
@@ -456,6 +466,49 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
         const chainName = tokens[j - 1].value + '.' + tokens[j + 1].value;
         if (chainName === divisor) return true;
       }
+    }
+  }
+  // Backward: early-exit guard clause
+  //   if (divisor === 0) return <whatever>;
+  //   if (divisor === 0) throw ...;
+  //   if (divisor === 0) continue;
+  // When the guard's body is a terminator, the continuation (where our
+  // division lives) is guaranteed to have divisor !== 0.
+  for (let i = Math.max(0, idx - 40); i < idx; i++) {
+    const t = tokens[i];
+    if (t.type !== 'keyword' || t.value !== 'if') continue;
+    if (tokens[i + 1]?.value !== '(') continue;
+    // Walk the condition until the closing paren
+    let j = i + 2; let depth = 1;
+    let matchedDivisor = false;
+    while (j < tokens.length && depth > 0) {
+      if (tokens[j].value === '(') depth++;
+      if (tokens[j].value === ')') { depth--; if (depth === 0) break; }
+      if (tokens[j].type === 'identifier' && tokens[j].value === divisor) {
+        const op = tokens[j + 1]?.value;
+        const rhs = tokens[j + 2];
+        if ((op === '===' || op === '==') && rhs?.type === 'number' && parseFloat(rhs.value) === 0) {
+          matchedDivisor = true;
+        }
+        if ((op === '!==' || op === '!=') && rhs?.type === 'number' && parseFloat(rhs.value) === 0) {
+          // `if (x !== 0) { ... division ... }` — only valid if our
+          // division is inside the if body, which we don't check here.
+          // Skip — the primary non-null scope tracker handles block cases.
+        }
+      }
+      j++;
+    }
+    if (!matchedDivisor) continue;
+    // The next token after `)` should be an early-exit (return / throw
+    // / continue) — possibly inside a `{ }` single-line block.
+    const bodyStart = tokens[j + 1];
+    if (!bodyStart) continue;
+    if (bodyStart.type === 'keyword' && (bodyStart.value === 'return' || bodyStart.value === 'throw' || bodyStart.value === 'continue' || bodyStart.value === 'break')) {
+      return true;
+    }
+    if (bodyStart.value === '{' && tokens[j + 2]?.type === 'keyword' &&
+        (tokens[j + 2].value === 'return' || tokens[j + 2].value === 'throw' || tokens[j + 2].value === 'continue')) {
+      return true;
     }
   }
   // Look backward for `if (divisor !== 0)` in the enclosing 30 tokens

@@ -122,8 +122,8 @@ function scorePrior(source, filePath, opts = {}) {
     });
   }
 
-  findings.sort((a, b) => b.confidence - a.confidence);
-  return findings.slice(0, maxFindings);
+  const sorted = [...findings].sort((a, b) => b.confidence - a.confidence);
+  return sorted.slice(0, maxFindings);
 }
 
 function computeFingerprint(source, language) {

@@ -184,8 +184,8 @@ function summarizeStore(repoRoot) {
       lastEvent: stats.lastEvent,
     });
   }
-  rows.sort((a, b) => b.dismissed - a.dismissed);
-  return { total: rows.length, rules: rows };
+  const sorted = [...rows].sort((a, b) => b.dismissed - a.dismissed);
+  return { total: sorted.length, rules: sorted };
 }
 
 module.exports = {

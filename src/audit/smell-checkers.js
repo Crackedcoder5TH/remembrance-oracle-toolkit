@@ -62,13 +62,13 @@ function smellCode(source, options = {}) {
 
   checkGodFile(program, thresholds, emit);
 
-  findings.sort((a, b) => a.line - b.line);
+  const sorted = [...findings].sort((a, b) => a.line - b.line);
 
   return {
-    findings,
+    findings: sorted,
     summary: {
-      total: findings.length,
-      byRule: countBy(findings, 'ruleId'),
+      total: sorted.length,
+      byRule: countBy(sorted, 'ruleId'),
     },
   };
 }

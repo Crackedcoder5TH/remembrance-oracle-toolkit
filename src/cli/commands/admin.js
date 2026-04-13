@@ -42,12 +42,26 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     }
   };
 
+  // Pick the audit backend. The AST-based checker is the default because
+  // it eliminates the regex-era false positives on regex flags, SQL PRAGMA
+  // template literals, already-guarded null derefs, and comment content.
+  // Users can opt back into the legacy regex checker via
+  // ORACLE_AUDIT_BACKEND=regex if the new backend misbehaves on a file
+  // the old one handled.
+  function loadAuditBackend() {
+    const backend = (process.env.ORACLE_AUDIT_BACKEND || 'ast').toLowerCase();
+    if (backend === 'regex' || backend === 'legacy') {
+      return require('../../audit/static-checkers');
+    }
+    return require('../../audit/ast-checkers');
+  }
+
   handlers['audit'] = (args) => {
     const sub = args._sub;
 
     // Subcommand: audit check — run static checkers on files
     if (sub === 'check') {
-      const { auditFiles, auditFile, BUG_CLASSES } = require('../../audit/static-checkers');
+      const { auditFiles, auditFile, BUG_CLASSES } = loadAuditBackend();
       const targetFile = args.file || args._positional[1];
 
       let files = [];
@@ -171,7 +185,7 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
 
     // Subcommand: audit summary — combined audit report
     if (sub === 'summary') {
-      const { auditFiles } = require('../../audit/static-checkers');
+      const { auditFiles } = loadAuditBackend();
       const { detectCascade } = require('../../audit/cascade-detector');
 
       // Get recently changed files — try HEAD~1, fall back to all tracked files
@@ -225,9 +239,69 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       return;
     }
 
+    // Subcommand: audit cross-file — real call-graph cascade analysis.
+    // This loads every changed file, builds a shared call graph, runs
+    // nullability inference across it, and reports call sites that
+    // dereference a nullable-return function without a guard — even
+    // when the caller and callee are in different files.
+    if (sub === 'cross-file' || sub === 'crossfile') {
+      const { parseProgram } = require('../../audit/parser');
+      const { inferNullability, mergeProjectNullability } = require('../../audit/type-inference');
+      const { buildCallGraph, findNullDerefCascades } = require('../../audit/call-graph');
+
+      let files = [];
+      const targetFile = args.file || args._positional[1];
+      if (targetFile) {
+        files = [targetFile];
+      } else {
+        try {
+          const tracked = execSync('git ls-files "*.js" "*.mjs" "*.cjs" 2>/dev/null', { encoding: 'utf-8' })
+            .trim().split('\n').filter(f => f.trim() && !f.includes('node_modules') && !f.includes('/tests/'));
+          files = tracked.slice(0, 200); // cap at 200 files for time
+        } catch (_) { /* empty */ }
+      }
+
+      if (files.length === 0) {
+        console.log(c.yellow('No files to analyze.'));
+        return;
+      }
+
+      const parsed = [];
+      const parsedByFile = new Map();
+      for (const f of files) {
+        try {
+          const src = fs.readFileSync(f, 'utf-8');
+          const program = parseProgram(src);
+          parsed.push({ file: f, program });
+          parsedByFile.set(f, program);
+        } catch (_) { /* skip parse errors */ }
+      }
+
+      const graph = buildCallGraph(parsed);
+      const perFile = parsed.map(({ program }) => inferNullability(program));
+      const nullability = mergeProjectNullability(perFile);
+      const findings = findNullDerefCascades(graph, nullability, parsedByFile);
+
+      if (args.json === true) { console.log(JSON.stringify({ findings, stats: { files: parsed.length, functions: graph.defs.size } })); return; }
+
+      console.log(c.boldCyan(`Cross-File Cascade Analysis \u2014 ${parsed.length} files, ${graph.defs.size} function(s)\n`));
+      if (findings.length === 0) {
+        console.log(c.boldGreen('  \u2713 No cross-file nullable-deref cascades found.\n'));
+        return;
+      }
+      console.log(c.boldRed(`  ${findings.length} cross-file cascade(s):\n`));
+      for (const f of findings) {
+        console.log(`  ${c.bold(f.file)}:${f.line}`);
+        console.log(`    ${c.dim('Assumes:')} ${f.assumption}`);
+        console.log(`    ${c.dim('Reality:')} ${f.reality}`);
+        console.log(`    ${c.dim('Fix:')}     ${f.suggestion}`);
+      }
+      return;
+    }
+
     // Subcommand: audit xref — cross-reference findings with debug patterns
     if (sub === 'xref') {
-      const { auditFiles } = require('../../audit/static-checkers');
+      const { auditFiles } = loadAuditBackend();
       const { crossReference, crossReferenceSummary } = require('../../audit/cross-reference');
 
       let files = [];
@@ -291,11 +365,12 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     // If no subcommand, show help for new audit commands
     if (!sub) {
       console.log(`
-${c.boldCyan('Audit Commands')} \u2014 assumption mismatch detection
+${c.boldCyan('Audit Commands')} \u2014 assumption mismatch detection (AST-based, zero dependencies)
 
 ${c.bold('Subcommands:')}
   ${c.cyan('audit check')}       Run static checkers on files (6 bug classes)
-  ${c.cyan('audit cascade')}     Detect cascading mismatches from a commit
+  ${c.cyan('audit cascade')}     Detect cascading mismatches from a commit (diff-based)
+  ${c.cyan('audit cross-file')}  Real call-graph analysis across the project
   ${c.cyan('audit xref')}        Cross-reference findings with debug pattern fixes
   ${c.cyan('audit summary')}     Combined audit report (static + cascade + xref)
   ${c.cyan('audit log')}         Show audit log entries (default)
@@ -306,6 +381,17 @@ ${c.bold('Options:')}
   ${c.yellow('--bug-class')} <class>  Filter by bug class (state-mutation,security,concurrency,type,integration,edge-case)
   ${c.yellow('--min-severity')} <s>   Minimum severity (high,medium,low)
   ${c.yellow('--json')}               JSON output
+
+${c.bold('Suppression:')}
+  Inline:   ${c.dim('// oracle-ignore-next-line: type')}
+  File:     ${c.dim('// oracle-ignore-file: security')}
+  Project:  ${c.dim('.oracle-ignore file with glob patterns')}
+
+${c.bold('Backend:')}
+  Default is AST-based. Set ${c.yellow('ORACLE_AUDIT_BACKEND=regex')} to use the legacy checker.
+
+${c.bold('Related:')}
+  ${c.cyan('oracle lint')}       Style/opinion checks (parameter validation, TODOs, var)
       `);
       return;
     }
@@ -331,6 +417,57 @@ ${c.bold('Options:')}
     }
 
     console.error(c.boldRed('Error:') + ` Unknown audit subcommand: ${sub}. Run ${c.cyan('oracle audit')} for help.`);
+  };
+
+  // `oracle lint` — style / opinion checks that used to live as low-severity
+  // findings in `audit check`. These are NOT bugs — they're conventions
+  // you opt into. Split out so the bug audit stays focused on real bugs.
+  handlers['lint'] = (args) => {
+    const { lintFiles } = require('../../audit/lint-checkers');
+    const targetFile = args.file || args._positional[1];
+
+    let files = [];
+    if (targetFile) {
+      files = [targetFile];
+    } else {
+      try {
+        const staged = execSync('git diff --cached --name-only --diff-filter=ACM 2>/dev/null || git diff HEAD~1 --name-only --diff-filter=ACM 2>/dev/null', { encoding: 'utf-8' })
+          .trim().split('\n').filter(f => /\.(js|ts|mjs|cjs)$/.test(f) && f.trim());
+        files = staged;
+      } catch (_) { /* empty */ }
+    }
+
+    if (files.length === 0) {
+      console.log(c.yellow('No files to lint. Specify --file or have staged changes.'));
+      return;
+    }
+
+    const result = lintFiles(files);
+    if (args.json === true) { console.log(JSON.stringify(result)); return; }
+
+    console.log(c.boldCyan(`Lint \u2014 ${result.summary.filesScanned} files scanned\n`));
+
+    if (result.totalFindings === 0) {
+      console.log(c.boldGreen('  \u2713 No lint findings.\n'));
+      return;
+    }
+
+    console.log(c.bold(`  ${result.totalFindings} finding(s):\n`));
+    for (const fileResult of result.files) {
+      console.log(`  ${c.bold(fileResult.file)}:`);
+      for (const f of fileResult.findings) {
+        const sevColor = f.severity === 'warn' ? c.yellow : c.dim;
+        console.log(`    ${sevColor((f.severity || 'info').toUpperCase().padEnd(5))} L${String(f.line).padStart(4)} [${c.cyan(f.ruleId)}]`);
+        console.log(`      ${f.message}`);
+        if (f.suggestion) console.log(`      ${c.dim('Fix:')}  ${f.suggestion}`);
+      }
+      console.log('');
+    }
+
+    console.log(c.bold('  Summary:'));
+    for (const [rule, count] of Object.entries(result.summary.byRule)) {
+      console.log(`    ${c.cyan(rule.padEnd(28))} ${c.bold(String(count))}`);
+    }
   };
 
   handlers['auto-submit'] = (args) => {

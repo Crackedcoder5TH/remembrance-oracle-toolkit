@@ -4,8 +4,8 @@
  * Exposes the Remembrance Oracle as an MCP-compatible tool server.
  * Communicates via JSON-RPC 2.0 over stdin/stdout.
  *
- * 12 focused tools:
- *   search, resolve, submit, register, feedback, stats, debug, sync, harvest, maintain, healing, swarm
+ * 15 focused tools:
+ *   search, resolve, submit, register, feedback, stats, debug, sync, harvest, maintain, healing, swarm, pending_feedback, fractal, forge
  *
  * Tool definitions in ./tools.js, handler implementations in ./handlers.js.
  */
@@ -57,8 +57,12 @@ const RATE_LIMITS = {
   oracle_harvest:  { windowMs: 60000, maxCalls: 5 },
   oracle_maintain: { windowMs: 60000, maxCalls: 5 },
   oracle_swarm:    { windowMs: 60000, maxCalls: 5 },
+  // Pending feedback: read-only
+  oracle_pending_feedback: { windowMs: 60000, maxCalls: 60 },
   // Fractal: read-heavy with some compute
   oracle_fractal:  { windowMs: 60000, maxCalls: 30 },
+  // Test Forge: compute-heavy (sandbox execution)
+  oracle_forge:    { windowMs: 60000, maxCalls: 10 },
 };
 
 // ─── Numeric parameter bounds ───

@@ -209,6 +209,11 @@ class SQLiteStore {
     try { this.db.exec(`ALTER TABLE entries ADD COLUMN content_type TEXT DEFAULT 'code'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] entries.content_type:', e.message); }
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN content_type TEXT DEFAULT 'code'`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.content_type:', e.message); }
 
+    // Schema migration: add blockchain publication columns
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN blockchain_tx TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.blockchain_tx:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN blockchain_hash TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.blockchain_hash:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN published_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] patterns.published_at:', e.message); }
+
     // Votes log table — tracks individual votes to prevent duplicates
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS votes (
@@ -519,8 +524,13 @@ class SQLiteStore {
       }
     }
 
-    // Rename all legacy files only after both migrations succeeded
+    // Rename legacy files EXCEPT patterns.json — keep it as persistent backup
+    // patterns.json is the git-tracked accumulator that survives across sessions
     for (const filePath of toRename) {
+      if (path.basename(filePath) === 'patterns.json') {
+        if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] keeping patterns.json as persistent backup (not renaming)');
+        continue;
+      }
       try {
         fs.renameSync(filePath, filePath + '.migrated');
       } catch (e) {
@@ -533,6 +543,14 @@ class SQLiteStore {
 
   _hash(input) {
     return crypto.createHash('sha256').update(input).digest('hex').slice(0, 16);
+  }
+
+  /**
+   * Full SHA-256 hash (64-char hex digest, no truncation).
+   * Used for blockchain publication hashes where the complete digest is required.
+   */
+  _fullHash(input) {
+    return crypto.createHash('sha256').update(input).digest('hex');
   }
 
   // ─── Audit log ───
@@ -798,13 +816,15 @@ class SQLiteStore {
         description, tags, coherency_total, coherency_json, variants, test_code,
         usage_count, success_count, evolution_history, requires, composed_of,
         version, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, '[]', ?, ?, 1, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
     `).run(
       id, pattern.name, pattern.code, pattern.language || 'unknown',
       pattern.patternType || 'utility', pattern.complexity || 'composite',
       pattern.description || '', JSON.stringify(pattern.tags || []),
       pattern.coherencyScore?.total ?? 0, JSON.stringify(pattern.coherencyScore || {}),
       JSON.stringify(pattern.variants || []), pattern.testCode || null,
+      pattern.usageCount ?? 0, pattern.successCount ?? 0,
+      JSON.stringify(pattern.evolutionHistory || []),
       JSON.stringify(pattern.requires || []), JSON.stringify(pattern.composedOf || []),
       now, now
     );
@@ -1629,6 +1649,9 @@ class SQLiteStore {
       sourceLicense: row.source_license || null,
       sourceCommit: row.source_commit || null,
       sourceFile: row.source_file || null,
+      blockchainTx: row.blockchain_tx || null,
+      blockchainHash: row.blockchain_hash || null,
+      publishedAt: row.published_at || null,
       lastUsed: row.last_used_at || null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -1647,6 +1670,8 @@ class SQLiteStore {
       sourceUrl: 'source_url', sourceRepo: 'source_repo',
       sourceLicense: 'source_license', sourceCommit: 'source_commit',
       sourceFile: 'source_file',
+      blockchainTx: 'blockchain_tx', blockchainHash: 'blockchain_hash',
+      publishedAt: 'published_at',
     };
     return map[field] || null;
   }

@@ -20,6 +20,19 @@ const DEFAULT_CONFIG = {
   promptTag: 'Pull the healed code from the kingdom into the eternal now completed.',
   promptTagEnabled: true,
   provenanceTracking: true, // Functional role: watermark pattern lineage
+  // Enforcement level for query-before-write reflex:
+  //   'block'  — commit is rejected if no search in last 10 minutes (recommended)
+  //   'warn'   — yellow warning only (legacy behavior)
+  //   'off'    — no check at all
+  searchEnforcement: 'block',
+  // Enforcement level for feedback loop:
+  //   'block'  — commit is rejected if patterns were pulled without feedback
+  //   'warn'   — yellow warning only
+  //   'off'    — no check at all
+  feedbackEnforcement: 'block',
+  // Grace period (ms) for search enforcement — how recently a search must have happened
+  searchGracePeriod: 600000, // 10 minutes
+  autoPublish: false, // Auto-publish high-coherency patterns to blockchain on commit
 };
 
 /**
@@ -124,21 +137,62 @@ function togglePromptTag(state) {
  * Generate a provenance watermark for a pattern pull.
  * Encodes: timestamp, pattern ID, source tier, and a short hash for verification.
  */
-function generateProvenance(patternId, sourceTier = 'local') {
+function generateProvenance(patternId, sourceTier = 'local', options = {}) {
   const config = loadConfig();
   if (!config.provenanceTracking) return null;
 
+  // sourceTier can be 'local', 'personal', 'community', or 'blockchain'
+  const validTiers = ['local', 'personal', 'community', 'blockchain'];
+  const tier = validTiers.includes(sourceTier) ? sourceTier : 'local';
+
   const timestamp = new Date().toISOString();
-  const payload = `${patternId}:${sourceTier}:${timestamp}`;
+  const payload = `${patternId}:${tier}:${timestamp}`;
   const hash = crypto.createHash('sha256').update(payload).digest('hex').slice(0, 12);
 
-  return {
+  const provenance = {
     patternId,
-    sourceTier,
+    sourceTier: tier,
     pulledAt: timestamp,
     watermark: `oracle:${hash}`,
     lineage: payload,
   };
+
+  // Optionally include blockchain transaction signature (Solana)
+  if (options.blockchainTx) {
+    provenance.blockchainTx = options.blockchainTx;
+  }
+
+  return provenance;
+}
+
+/**
+ * Record a blockchain transaction signature against a pattern's metadata.
+ * This writes to the pattern's provenance record in the store.
+ *
+ * @param {string} patternId - The pattern ID
+ * @param {string} txSignature - Solana transaction signature
+ * @param {object} [store] - Optional SQLiteStore instance for direct write
+ * @returns {{ success: boolean, reason?: string }}
+ */
+function setBlockchainTx(patternId, txSignature, store) {
+  if (!patternId || !txSignature) {
+    return { success: false, reason: 'patternId and txSignature are required' };
+  }
+
+  if (store && store.db) {
+    try {
+      const now = new Date().toISOString();
+      store.db.prepare(`
+        UPDATE patterns SET blockchain_tx = ?, published_at = ?, updated_at = ?
+        WHERE id = ?
+      `).run(txSignature, now, now, patternId);
+      return { success: true };
+    } catch (e) {
+      return { success: false, reason: e.message };
+    }
+  }
+
+  return { success: false, reason: 'No store provided — cannot persist blockchain tx' };
 }
 
 /**
@@ -174,6 +228,38 @@ function toggleProvenance(state) {
   return config.provenanceTracking;
 }
 
+/**
+ * Get search enforcement level: 'block', 'warn', or 'off'.
+ */
+function getSearchEnforcement() {
+  const config = loadConfig();
+  if (!config.enabled) return 'off';
+  return config.searchEnforcement || 'block';
+}
+
+/**
+ * Get feedback enforcement level: 'block', 'warn', or 'off'.
+ */
+function getFeedbackEnforcement() {
+  const config = loadConfig();
+  if (!config.enabled) return 'off';
+  return config.feedbackEnforcement || 'warn';
+}
+
+/**
+ * Get search grace period in ms.
+ */
+function getSearchGracePeriod() {
+  return loadConfig().searchGracePeriod || 600000;
+}
+
+/**
+ * Get auto-publish setting (defaults to false).
+ */
+function getAutoPublish() {
+  return loadConfig().autoPublish || false;
+}
+
 module.exports = {
   loadConfig,
   saveConfig,
@@ -185,7 +271,12 @@ module.exports = {
   togglePromptTag,
   applyPromptTag,
   generateProvenance,
+  setBlockchainTx,
   toggleProvenance,
+  getSearchEnforcement,
+  getFeedbackEnforcement,
+  getSearchGracePeriod,
+  getAutoPublish,
   DEFAULT_CONFIG,
   CONFIG_FILENAME,
 };

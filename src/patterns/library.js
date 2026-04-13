@@ -349,6 +349,9 @@ class PatternLibrary {
         coherencyScore: coherency,
         variants: pattern.variants || [],
         testCode: pattern.testCode || null,
+        usageCount: pattern.usageCount ?? 0,
+        successCount: pattern.successCount ?? 0,
+        evolutionHistory: pattern.evolutionHistory || [],
       };
       // Use dedup-safe insert: skip or update if (name, language) already exists.
       // FractalStore.addPatternIfNotExists auto-integrates embeddings & families.

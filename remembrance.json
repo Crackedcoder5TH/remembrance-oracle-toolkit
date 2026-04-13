@@ -1,0 +1,102 @@
+{
+  "name": "remembrance-oracle-toolkit",
+  "version": "3.2.0",
+  "description": "Pattern memory, scoring, MCP tools, audit, lint, smell, heal, compliance ledger. The cognitive layer of the Remembrance ecosystem.",
+  "role": "oracle",
+  "language": "javascript",
+  "manifestVersion": 1,
+
+  "entrypoints": {
+    "cli":  "src/cli.js",
+    "api":  null,
+    "mcp":  "src/mcp/server.js",
+    "require": "remembrance-oracle-toolkit",
+    "bridge":  "src/reflector/bridge.js"
+  },
+
+  "capabilities": [
+    "pattern-library",
+    "audit",
+    "lint",
+    "smell",
+    "heal",
+    "baseline",
+    "feedback-calibration",
+    "bayesian-prior",
+    "bridge-to-reflector",
+    "covenant-check",
+    "mcp-server",
+    "compliance-ledger",
+    "event-bus",
+    "unified-history",
+    "session-tracking",
+    "cascade-cross-file"
+  ],
+
+  "healthCheck": {
+    "command": "node src/cli.js stats",
+    "timeoutMs": 5000,
+    "expectsExitCode": 0
+  },
+
+  "peers": {
+    "void-data-compressor": {
+      "role": "substrate",
+      "optional": true,
+      "autoWire": "src/core/ecosystem-bindings/void.js",
+      "describes": "When the Void API is reachable, the Bayesian bug prior upgrades from local seed file to full 42K-waveform substrate via HTTP /cascade."
+    },
+    "reflector-oracle": {
+      "role": "ci-overseer",
+      "optional": true,
+      "autoWire": "src/core/ecosystem-bindings/reflector.js",
+      "describes": "Reflector subscribes to audit events and handles GitHub PR creation for healing commits."
+    },
+    "remembrance-agent-swarm": {
+      "role": "multi-agent-heal",
+      "optional": true,
+      "autoWire": "src/core/ecosystem-bindings/swarm.js",
+      "describes": "External swarm service used by heal level 3 when cloud providers are available."
+    },
+    "remembrance-api-key-plugger": {
+      "role": "secret-store",
+      "optional": true,
+      "autoWire": "src/core/ecosystem-bindings/plugger.js",
+      "describes": "Encrypted key store for LLM/swarm providers — replaces raw env vars when present."
+    },
+    "remembrance-dialer": {
+      "role": "integrations",
+      "optional": true,
+      "autoWire": "src/core/ecosystem-bindings/dialer.js",
+      "describes": "Routes heal.succeeded / pattern.registered events to external notifications."
+    }
+  },
+
+  "provides": {
+    "events": [
+      "feedback.fix",
+      "feedback.dismiss",
+      "audit.finding",
+      "audit.baseline",
+      "lint.finding",
+      "smell.finding",
+      "pattern.registered",
+      "pattern.pulled",
+      "pattern.feedback",
+      "heal.attempt",
+      "heal.succeeded",
+      "heal.failed",
+      "covenant.violation",
+      "covenant.passed",
+      "ecosystem.peer.found",
+      "ecosystem.peer.lost"
+    ],
+    "storageNamespaces": [
+      "audit",
+      "sessions",
+      "history",
+      "modules",
+      "patterns"
+    ]
+  }
+}

@@ -42,6 +42,27 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     if (process.env.ORACLE_DEBUG) console.warn('[admin] compliance wiring failed:', e?.message || e);
   }
 
+  // Auto-discover + auto-wire ecosystem peers. Runs best-effort at
+  // bootstrap: if the Void Compressor, Reflector, Swarm, etc. are
+  // alive in the environment, their bindings install automatically
+  // so every CLI command benefits from them without explicit opt-in.
+  // Skipped when ORACLE_ECOSYSTEM=off.
+  if ((process.env.ORACLE_ECOSYSTEM || 'on').toLowerCase() !== 'off') {
+    try {
+      const eco = require('../../core/ecosystem');
+      // Announce ourselves first so peers find us
+      eco.announceModule(process.cwd());
+      // Then wire any peers that are already alive. We fire-and-forget
+      // because this is best-effort — a failing peer shouldn't block
+      // the CLI from running.
+      Promise.resolve(eco.autoWireAll({ repoRoot: process.cwd() })).catch((e) => {
+        if (process.env.ORACLE_DEBUG) console.warn('[admin] ecosystem autoWire failed:', e?.message || e);
+      });
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[admin] ecosystem init failed:', e?.message || e);
+    }
+  }
+
   handlers['users'] = (args) => {
     try {
       const { AuthManager } = require('../../auth/auth');
@@ -1025,6 +1046,102 @@ ${c.bold('Related commands:')}
   // bypass / record. The pre-commit hook reads from this ledger and
   // blocks commits when ORACLE_WORKFLOW=enforce is set and
   // compliance is incomplete.
+  // `oracle ecosystem` — discover peer modules (Oracle, Void, Reflector,
+  // Swarm, Dialer, API Key Plugger) and auto-wire any that are alive.
+  // Layer 1: static manifests (filesystem walk for remembrance.json)
+  // Layer 2: runtime registry (~/.remembrance/modules/*.json)
+  // Layer 3: event-bus reactions (ecosystem.peer.found / lost)
+  handlers['ecosystem'] = async (args) => {
+    const eco = require('../../core/ecosystem');
+    const repoRoot = process.cwd();
+    const sub = args._sub || 'status';
+
+    if (sub === 'status' || sub === 'discover') {
+      const result = await eco.discoverEcosystem({ repoRoot, checkHealth: true, emit: false });
+      if (args.json === true) { console.log(JSON.stringify(result, null, 2)); return; }
+      console.log(c.boldCyan('Ecosystem discovery'));
+      console.log(`  Found: ${c.bold(String(result.modules.length))} module(s)`);
+      console.log(`  Alive: ${result.alive.length > 0 ? c.boldGreen(String(result.alive.length)) : c.dim('0')}`);
+      console.log(`  Stale: ${result.stale.length > 0 ? c.yellow(String(result.stale.length)) : c.dim('0')}`);
+      console.log('');
+      for (const m of result.modules) {
+        const status = m.health?.alive ? c.boldGreen('UP  ')
+          : m.health?.error ? c.red('DOWN')
+          : c.dim('???? ');
+        const lang = c.dim(`[${m.language || '?'}]`);
+        console.log(`  ${status}  ${c.cyan(m.name.padEnd(32))} ${c.dim('v' + (m.version || '?'))} ${lang}`);
+        console.log(`        ${c.dim(m.repoRoot)}`);
+        if (m.role) console.log(`        role: ${c.magenta(m.role)}`);
+        if (m.health?.error) console.log(`        ${c.red('error: ' + m.health.error)}`);
+        if (m.live?.port) console.log(`        live: ${m.live.host}:${m.live.port} pid=${m.live.pid}`);
+        if (Array.isArray(m.capabilities) && m.capabilities.length > 0) {
+          const caps = m.capabilities.slice(0, 5).join(', ');
+          console.log(`        capabilities: ${c.dim(caps)}${m.capabilities.length > 5 ? c.dim(' …') : ''}`);
+        }
+        console.log('');
+      }
+      return;
+    }
+
+    if (sub === 'connect' || sub === 'wire') {
+      const result = await eco.autoWireAll({ repoRoot });
+      if (args.json === true) { console.log(JSON.stringify(result, null, 2)); return; }
+      console.log(c.boldCyan('Ecosystem auto-wire'));
+      if (result.wired.length === 0) {
+        console.log(c.yellow('  No peers were wired. Check `oracle ecosystem status` for reachability.'));
+        return;
+      }
+      for (const w of result.wired) {
+        console.log(`  ${c.boldGreen('✓')} ${c.cyan(w.peer.padEnd(32))} → ${c.dim(w.role)}`);
+      }
+      console.log('');
+      console.log(c.dim(`  ${result.wired.length} binding(s) active. Subsystems that depend on these peers have switched from fallback mode to the live service.`));
+      return;
+    }
+
+    if (sub === 'announce') {
+      // Write this module's runtime record to the registry.
+      const record = eco.announceModule(repoRoot, {
+        port: args.port ? Number(args.port) : undefined,
+        host: args.host,
+      });
+      if (!record) {
+        console.log(c.yellow('No remembrance.json found in ' + repoRoot));
+        return;
+      }
+      console.log(c.boldGreen('Announced:'));
+      console.log(`  name:  ${c.cyan(record.name)}`);
+      console.log(`  pid:   ${record.pid}`);
+      console.log(`  host:  ${record.host}`);
+      if (record.port) console.log(`  port:  ${record.port}`);
+      console.log(`  role:  ${c.magenta(record.role || '?')}`);
+      return;
+    }
+
+    if (sub === 'help' || !sub) {
+      console.log(`
+${c.boldCyan('Oracle ecosystem — discovery + auto-wire')}
+
+${c.bold('Subcommands:')}
+  ${c.cyan('ecosystem status')}     Show all discovered modules + health
+  ${c.cyan('ecosystem connect')}    Auto-wire live peers into the running toolkit
+  ${c.cyan('ecosystem announce')}   Register this module in the runtime registry
+
+${c.bold('Discovery layers:')}
+  1. remembrance.json manifests in sibling repos and $HOME
+  2. runtime registry at ~/.remembrance/modules/
+  3. event bus: ecosystem.peer.found / ecosystem.peer.lost
+
+${c.bold('Environment:')}
+  ${c.yellow('ORACLE_ECOSYSTEM_ROOTS')}  Colon-separated list of additional root dirs to scan
+  ${c.yellow('VOID_API_KEY')}              API key for the Void Compressor's cascade endpoint
+`);
+      return;
+    }
+
+    console.error(c.boldRed('Error:') + ` Unknown ecosystem subcommand: ${sub}`);
+  };
+
   handlers['session'] = (args) => {
     const {
       startSession, endSession, getCurrentSession, saveSession,
@@ -1108,6 +1225,40 @@ ${c.bold('Related commands:')}
       console.log(`  reason: ${c.yellow(reason)}`);
       if (files.length > 0) console.log(`  files:  ${files.join(', ')}`);
       console.log(c.dim('  These files will not count as query-before-write violations.'));
+      return;
+    }
+
+    if (sub === 'todo') {
+      // Friction-exit mitigation: the agent self-reports open/close/defer
+      // for each task. If the session ends with any 'open' todo, the
+      // todosAllClosed compliance check drops the score.
+      //   oracle session todo open  --id t1 --content "Write parser"
+      //   oracle session todo close --id t1
+      //   oracle session todo defer --id t1 --reason "waiting on user"
+      const action = args.action || args._positional[1];
+      const s = getCurrentSession(repoRoot) || startSession(repoRoot);
+      if (action === 'open') {
+        recordEvent(s, 'todo.open', { id: args.id, content: args.content });
+      } else if (action === 'close') {
+        recordEvent(s, 'todo.close', { id: args.id });
+      } else if (action === 'defer') {
+        recordEvent(s, 'todo.defer', { id: args.id, reason: args.reason });
+      } else if (action === 'list' || !action) {
+        const todos = s.todos || [];
+        if (todos.length === 0) { console.log(c.dim('no todos recorded')); return; }
+        for (const t of todos) {
+          const mark = t.status === 'closed' ? c.green('✓')
+            : t.status === 'deferred' ? c.yellow('⏸')
+            : c.red('✗');
+          console.log(`  ${mark} ${c.cyan(t.id.padEnd(16))} ${c.dim(t.status.padEnd(9))} ${t.content || ''}`);
+        }
+        return;
+      } else {
+        console.log(c.yellow('Usage: oracle session todo <open|close|defer|list> [--id <id>] [--content "..."] [--reason "..."]'));
+        return;
+      }
+      saveSession(s, repoRoot);
+      console.log(c.dim(`todo ${action}: ${args.id || '(no id)'}`));
       return;
     }
 

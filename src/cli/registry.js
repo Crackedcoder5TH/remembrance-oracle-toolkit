@@ -20,6 +20,7 @@ const CATEGORIES = [
       { name: 'smell', description: 'Architectural smells (long fns, deep nesting, god files)' },
       { name: 'history', description: 'Unified event timeline across every subsystem' },
       { name: 'session', description: 'Compliance ledger (start/status/end/bypass)' },
+      { name: 'ecosystem', description: 'Discover + auto-wire peer modules (Oracle, Void, Reflector, Swarm)' },
       { name: 'config', description: 'Oracle toggle (on/off) and settings' },
       { name: 'mcp', description: 'Start MCP server for AI agents (12 tools, JSON-RPC)' },
       { name: 'mcp-install', description: 'Auto-configure AI tools (Claude, Cursor, VS Code)' },

@@ -155,6 +155,40 @@ function recordEvent(session, kind, payload) {
         at: new Date().toISOString(),
       });
       break;
+    // Self-reported todo state — mitigates the "friction-exit" failure
+    // mode where the agent abandons an in-progress task mid-turn. When
+    // the session ends with any todo still open, the todosAllClosed
+    // check fails and the score drops.
+    case 'todo.open':
+      if (!session.todos) session.todos = [];
+      session.todos.push({
+        id: payload?.id || `todo-${session.todos.length + 1}`,
+        content: payload?.content || '',
+        status: 'open',
+        openedAt: new Date().toISOString(),
+      });
+      break;
+    case 'todo.close': {
+      if (!session.todos) session.todos = [];
+      const id = payload?.id;
+      const match = session.todos.find(t => t.id === id && t.status !== 'closed');
+      if (match) {
+        match.status = 'closed';
+        match.closedAt = new Date().toISOString();
+      }
+      break;
+    }
+    case 'todo.defer': {
+      if (!session.todos) session.todos = [];
+      const id = payload?.id;
+      const match = session.todos.find(t => t.id === id && t.status !== 'closed');
+      if (match) {
+        match.status = 'deferred';
+        match.reason = payload?.reason || 'no reason given';
+        match.deferredAt = new Date().toISOString();
+      }
+      break;
+    }
     case 'session.end':
       session.sessionEndCalled = true;
       break;
@@ -265,14 +299,37 @@ function scoreCompliance(session) {
     }
   }
 
-  // 5. session end sweep
-  if (session.sessionEndCalled) score += 0.10;
+  // 5. session end sweep (weight reduced to make room for todo check)
+  if (session.sessionEndCalled) score += 0.05;
   else violations.push({
     check: 'sessionEndCalled',
-    weight: 0.10,
+    weight: 0.05,
     message: 'session end sweep not yet run',
     fix: 'oracle session end (also runs `auto-submit` and `audit summary`)',
   });
+
+  // 6. todosAllClosed — the friction-exit mitigation.
+  // Any todo still marked `open` at scoring time counts as an
+  // abandoned task. `deferred` todos are fine — a deferral is an
+  // explicit decision to pause. This check catches the failure
+  // mode where the agent silently stops mid-task.
+  const todos = session.todos || [];
+  const openTodos = todos.filter(t => t.status === 'open');
+  if (todos.length === 0) {
+    score += 0.05; // no todos tracked, pass by default
+  } else if (openTodos.length === 0) {
+    score += 0.05;
+  } else {
+    const closedRatio = (todos.length - openTodos.length) / todos.length;
+    score += 0.05 * closedRatio;
+    violations.push({
+      check: 'todosAllClosed',
+      weight: 0.05,
+      message: `${openTodos.length}/${todos.length} todo(s) still open — unresolved tasks indicate a friction-exit`,
+      todos: openTodos.slice(0, 5).map(t => ({ id: t.id, content: t.content })),
+      fix: 'Either close each todo (task done) or defer it explicitly with a reason',
+    });
+  }
 
   return {
     score: Math.round(score * 100) / 100,
@@ -285,6 +342,8 @@ function scoreCompliance(session) {
       patternsPulled: pulled,
       patternsFedBack: pulled - unfed.length,
       bypassesCount: (session.bypasses || []).length,
+      todosOpen: openTodos.length,
+      todosTotal: todos.length,
     },
   };
 }
@@ -331,6 +390,14 @@ function wireCompliance(repoRoot, options = {}) {
 
     // Explicit bypass
     bus.on('session.bypass', (p) => withSession(s => recordEvent(s, 'bypass', p))),
+
+    // Todo lifecycle — friction-exit mitigation. The agent emits
+    // `session.todo.open` when starting a task and `session.todo.close`
+    // when finishing. `session.todo.defer` is the explicit pause with
+    // a reason. An open todo at session end drops the compliance score.
+    bus.on('session.todo.open',  (p) => withSession(s => recordEvent(s, 'todo.open',  p))),
+    bus.on('session.todo.close', (p) => withSession(s => recordEvent(s, 'todo.close', p))),
+    bus.on('session.todo.defer', (p) => withSession(s => recordEvent(s, 'todo.defer', p))),
 
     // Session end sweep
     bus.on('session.end', (p) => withSession(s => recordEvent(s, 'session.end', p))),

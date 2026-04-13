@@ -790,7 +790,18 @@ class SQLiteStore {
    * @private
    */
   _insertPattern(pattern) {
-    const id = this._hash(pattern.code + pattern.name + Date.now() + crypto.randomBytes(4).toString('hex'));
+    // Coerce nullable/undefined fields to SQLite-bindable primitives.
+    // SQLite's DatabaseSync refuses to bind `undefined`, and silently corrupts
+    // on objects/functions — this was the source of
+    // "Provided value cannot be bound to SQLite parameter 3" when callers
+    // passed patterns with missing `code`. Strings get '' fallback, nullable
+    // fields get null, and everything is stringified for safety.
+    const code = typeof pattern.code === 'string' ? pattern.code : (pattern.code == null ? '' : String(pattern.code));
+    const name = typeof pattern.name === 'string' ? pattern.name : String(pattern.name ?? '');
+    const description = typeof pattern.description === 'string' ? pattern.description : '';
+    const testCode = pattern.testCode == null ? null : String(pattern.testCode);
+
+    const id = this._hash(code + name + Date.now() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
 
     this.db.prepare(`
@@ -800,11 +811,11 @@ class SQLiteStore {
         version, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, '[]', ?, ?, 1, ?, ?)
     `).run(
-      id, pattern.name, pattern.code, pattern.language || 'unknown',
+      id, name, code, pattern.language || 'unknown',
       pattern.patternType || 'utility', pattern.complexity || 'composite',
-      pattern.description || '', JSON.stringify(pattern.tags || []),
+      description, JSON.stringify(pattern.tags || []),
       pattern.coherencyScore?.total ?? 0, JSON.stringify(pattern.coherencyScore || {}),
-      JSON.stringify(pattern.variants || []), pattern.testCode || null,
+      JSON.stringify(pattern.variants || []), testCode,
       JSON.stringify(pattern.requires || []), JSON.stringify(pattern.composedOf || []),
       now, now
     );
@@ -835,8 +846,15 @@ class SQLiteStore {
       ).get(name, lang);
 
       if (existing) {
-        // If new version has higher coherency, update the existing row
+        // If new version has higher coherency, update the existing row.
+        // Preserve existing fields when incoming values are undefined — this
+        // matches the JSON backend's "don't overwrite with undefined" semantic
+        // so importing a high-score stub doesn't wipe the good code.
         if (newCoherency > (existing.coherency_total ?? 0)) {
+          const existingRow = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(existing.id);
+          const nextCode = pattern.code !== undefined ? String(pattern.code ?? '') : existingRow.code;
+          const nextDesc = pattern.description !== undefined ? String(pattern.description ?? '') : existingRow.description;
+          const nextTestCode = pattern.testCode !== undefined ? (pattern.testCode == null ? null : String(pattern.testCode)) : existingRow.test_code;
           const now = new Date().toISOString();
           this.db.prepare(`
             UPDATE patterns SET code = ?, description = ?, tags = ?,
@@ -845,10 +863,10 @@ class SQLiteStore {
               updated_at = ?, version = version + 1
             WHERE id = ?
           `).run(
-            pattern.code, pattern.description || '',
+            nextCode, nextDesc,
             JSON.stringify(pattern.tags || []),
             newCoherency, JSON.stringify(pattern.coherencyScore || {}),
-            pattern.testCode || null,
+            nextTestCode,
             pattern.patternType || 'utility', pattern.complexity || 'composite',
             JSON.stringify(pattern.evolutionHistory || []),
             now, existing.id

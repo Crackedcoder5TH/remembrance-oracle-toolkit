@@ -122,6 +122,7 @@ function acquireLock(storeDir, label = 'pattern-library') {
  * Load JSON with .bak recovery — prevents data loss on corruption.
  */
 function loadJSONSafe(filePath, fallback) {
+  if (!filePath) return fallback;
   try {
     if (fs.existsSync(filePath)) {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -268,10 +269,27 @@ function tryGetSQLite(storeDir) {
 class PatternLibrary {
   constructor(storeDir) {
     this.storeDir = storeDir;
-    this.libraryPath = path.join(storeDir, PATTERN_FILE);
+    // Recognize both the toolkit's canonical `pattern-library.json` and the
+    // legacy/Standalone `patterns.json` shape. If either file already exists
+    // we prefer the file that's on disk so external writers don't get
+    // silently shadowed by a fresh SQLite DB.
+    const canonicalPath = path.join(storeDir, PATTERN_FILE);
+    const legacyPath = path.join(storeDir, 'patterns.json');
+    const canonicalExists = fs.existsSync(canonicalPath);
+    const legacyExists = fs.existsSync(legacyPath);
+    this.libraryPath = canonicalExists
+      ? canonicalPath
+      : (legacyExists ? legacyPath : canonicalPath);
     this._backend = 'json';
 
-    const sqlite = tryGetSQLite(storeDir);
+    // Backend selection: if a legacy/canonical JSON file already exists in
+    // the storeDir, honor it — the caller (tests, migrations, external
+    // tools) is managing persistence as JSON. Only use SQLite when no JSON
+    // file is present, so fresh stores get the fast path while existing
+    // JSON stores keep working. Closes the silent backend-mismatch where
+    // writes to `patterns.json` were invisible to a SQLite-backed reader.
+    const jsonExists = canonicalExists || legacyExists;
+    const sqlite = jsonExists ? null : tryGetSQLite(storeDir);
     if (sqlite) {
       // Wrap in FractalStore so every mutation auto-maintains embeddings & families.
       // Falls back to raw SQLiteStore if FractalStore is unavailable.
@@ -301,13 +319,61 @@ class PatternLibrary {
       patterns: [],
       meta: { created: new Date().toISOString(), version: 1, decisions: 0 },
     };
-    return loadJSONSafe(this.libraryPath, fallback);
+    const raw = loadJSONSafe(this.libraryPath, fallback);
+    // Tolerate the legacy "raw array" shape that StandalonePatternLibrary and
+    // external callers (tests, migrations) write. Both shapes become the
+    // wrapped { patterns, meta } object used by the rest of this class.
+    if (Array.isArray(raw)) {
+      return {
+        patterns: raw,
+        meta: { created: new Date().toISOString(), version: 1, decisions: 0 },
+      };
+    }
+    if (raw && !Array.isArray(raw.patterns)) {
+      raw.patterns = [];
+    }
+    if (raw && !raw.meta) {
+      raw.meta = { created: new Date().toISOString(), version: 1, decisions: 0 };
+    }
+    return raw;
+  }
+
+  /**
+   * Write the library, honoring the on-disk shape. If the existing file is
+   * a raw array (StandalonePatternLibrary format), write it back as an array
+   * so external callers that expect that shape keep working. Otherwise use
+   * the wrapped { patterns, meta } shape.
+   */
+  _writeJSONShapeAware(data) {
+    let shape = 'wrapped';
+    try {
+      if (fs.existsSync(this.libraryPath)) {
+        const existing = JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
+        if (Array.isArray(existing)) shape = 'array';
+      }
+    } catch { /* treat as wrapped */ }
+    const payload = shape === 'array' ? (data.patterns || []) : data;
+    this._writeJSON(payload);
   }
 
   _writeJSON(data) {
+    // Preserve the on-disk shape so legacy raw-array stores (written by
+    // StandalonePatternLibrary and external tools) don't get silently
+    // upgraded to the wrapped { patterns, meta } shape mid-session, which
+    // would break callers reading the file directly.
+    let payload = data;
+    try {
+      if (fs.existsSync(this.libraryPath)) {
+        const existing = JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
+        if (Array.isArray(existing) && data && Array.isArray(data.patterns)) {
+          payload = data.patterns;
+        }
+      }
+    } catch { /* treat as wrapped */ }
+
     const unlock = acquireLock(this.storeDir);
     try {
-      atomicWriteJSON(this.libraryPath, data);
+      atomicWriteJSON(this.libraryPath, payload);
     } finally {
       unlock();
     }
@@ -746,9 +812,14 @@ class PatternLibrary {
     const data = this._readJSON();
     const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
-    Object.assign(pattern, updates, { updatedAt: new Date().toISOString() });
+    // Build a new object from the existing + updates so we don't mutate
+    // the shared reference before committing. Write-through still goes via
+    // _writeJSON() which handles locking + atomic persistence.
+    const merged = Object.assign({}, pattern, updates, { updatedAt: new Date().toISOString() });
+    const idx = data.patterns.indexOf(pattern);
+    data.patterns[idx] = merged;
     this._writeJSON(data);
-    return pattern;
+    return merged;
   }
 
   /**
@@ -1212,13 +1283,16 @@ class PatternLibrary {
     }
 
     if (this._backend === 'sqlite') {
-      let added = 0, skipped = 0;
+      let added = 0, updated = 0, skipped = 0;
       for (const p of incoming) {
+        if (!p || !p.name) { skipped++; continue; }
+        const existing = this._sqlite.getPatternByName(p.name);
         const result = this._sqlite.addPatternIfNotExists(p);
-        if (result) added++;
+        if (result && !existing) added++;
+        else if (result && existing) updated++;
         else skipped++;
       }
-      return { added, updated: 0, skipped };
+      return { added, updated, skipped };
     }
 
     const data = this._readJSON();

@@ -684,6 +684,37 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       return;
     }
 
+    // ─── Subcommand: audit prior-promote ──────────────────────────────
+    // Walk the debug oracle and promote high-amplitude bug patterns
+    // into the Bayesian bug-prior seed file. Closes the substrate ↔
+    // prior learning loop — the prior strengthens as the debug
+    // oracle's quantum field learns.
+    if (sub === 'prior-promote' || sub === 'promote-prior') {
+      const { promoteFromSubstrate } = require('../../audit/prior-promoter');
+      const opts = {
+        amplitudeThreshold: args.threshold ? Number(args.threshold) : 0.7,
+        maxPromote: args['max-promote'] ? Number(args['max-promote']) : 50,
+        dryRun: args['dry-run'] === true || args['dry-run'] === 'true',
+      };
+      const result = promoteFromSubstrate(oracle, opts);
+      if (args.json === true) { console.log(JSON.stringify(result, null, 2)); return; }
+      console.log(c.boldCyan('Bayesian bug-prior promotion'));
+      console.log(`  Considered: ${result.considered}`);
+      console.log(`  Promoted:   ${result.promoted > 0 ? c.boldGreen(String(result.promoted)) : c.dim('0')}`);
+      console.log(`  Updated:    ${result.updated > 0 ? c.yellow(String(result.updated)) : c.dim('0')}`);
+      console.log(`  Skipped:    ${c.dim(String(result.skipped))}`);
+      if (result.dryRun) console.log(c.yellow('  DRY RUN — seed file not written'));
+      if (result.reason) console.log(c.dim('  ' + result.reason));
+      if (result.entries.length > 0) {
+        console.log('');
+        for (const e of result.entries.slice(0, 10)) {
+          const icon = e.action === 'promote' ? c.green('+') : c.yellow('~');
+          console.log(`  ${icon} ${c.cyan(e.name)}  amp=${(e.amplitude || 0).toFixed(2)}  prior=${e.priorBugRate.toFixed(2)}`);
+        }
+      }
+      return;
+    }
+
     // Subcommand: audit xref — cross-reference findings with debug patterns
     if (sub === 'xref') {
       const { auditFiles } = loadAuditBackend();

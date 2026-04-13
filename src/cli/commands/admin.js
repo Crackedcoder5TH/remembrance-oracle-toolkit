@@ -10,6 +10,16 @@ const { parseDryRun } = require('../validate-args');
 
 function registerAdminCommands(handlers, { oracle, jsonOut }) {
 
+  // Wire the unified history log on first command invocation. Every
+  // event emitted on the bus is appended to .remembrance/history/events.log
+  // so `oracle history` can replay it.
+  try {
+    const { wireHistory } = require('../../core/history');
+    wireHistory(process.cwd());
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[admin] history wiring failed:', e?.message || e);
+  }
+
   handlers['users'] = (args) => {
     try {
       const { AuthManager } = require('../../auth/auth');
@@ -960,6 +970,64 @@ ${c.bold('Related commands:')}
       console.log(`    ${c.cyan(rule.padEnd(28))} ${c.bold(String(count))}`);
     }
   };
+
+  // `oracle history` — unified event timeline across every subsystem.
+  // Reads from the history namespace populated by src/core/events via
+  // wireHistory. Supports --type, --prefix, --since, --until, --limit.
+  handlers['history'] = (args) => {
+    const { readHistory, summarizeHistory } = require('../../core/history');
+    const repoRoot = process.cwd();
+
+    if (args.summary === true || args.summary === 'true') {
+      const summary = summarizeHistory(repoRoot, { since: args.since });
+      if (args.json === true) { console.log(JSON.stringify(summary, null, 2)); return; }
+      console.log(c.boldCyan('Oracle history summary'));
+      console.log(`  Since:  ${summary.since}`);
+      console.log(`  Total:  ${summary.total}`);
+      console.log('');
+      const rows = Object.entries(summary.byType).sort((a, b) => b[1] - a[1]);
+      for (const [type, count] of rows.slice(0, 20)) {
+        console.log(`  ${c.cyan(type.padEnd(32))} ${c.bold(String(count))}`);
+      }
+      return;
+    }
+
+    const filters = {
+      limit: args.limit ? Number(args.limit) : 50,
+      since: args.since,
+      until: args.until,
+      type: args.type,
+      typePrefix: args.prefix,
+    };
+    const entries = readHistory(repoRoot, filters);
+    if (args.json === true) { console.log(JSON.stringify(entries, null, 2)); return; }
+
+    if (entries.length === 0) {
+      console.log(c.yellow('No history entries match the filters.'));
+      console.log(c.dim('  Tip: run `oracle hooks install` to start capturing events.'));
+      return;
+    }
+
+    console.log(c.boldCyan(`Oracle history (${entries.length} entries)`));
+    console.log('');
+    for (const e of entries) {
+      const when = (e._at || '').slice(11, 19);
+      const dim = c.dim;
+      console.log(`  ${dim(when)}  ${c.cyan(e.type.padEnd(24))}  ${formatPayload(e.payload)}`);
+    }
+  };
+
+  // Compact payload summary for the history timeline.
+  function formatPayload(p) {
+    if (!p || typeof p !== 'object') return c.dim(String(p || ''));
+    const bits = [];
+    if (p.ruleId) bits.push(c.cyan(p.ruleId));
+    if (p.file)   bits.push(c.dim(String(p.file).slice(-40)));
+    if (p.level)  bits.push(`level=${p.level}`);
+    if (p.success !== undefined) bits.push(p.success ? c.green('ok') : c.red('fail'));
+    if (p.patchCount !== undefined) bits.push('patches=' + p.patchCount);
+    return bits.join(' ');
+  }
 
   handlers['auto-submit'] = (args) => {
     try {

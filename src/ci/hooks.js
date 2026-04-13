@@ -121,25 +121,67 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
   }
 " 2>&1 || true
 
-# Audit cascade check (warning only, non-blocking)
+# Audit / Lint / Smell sweep on staged files.
+# By default: warning only, non-blocking.
+# If ORACLE_CI_STRICT=1 is set, HIGH-severity audit findings block the commit.
 STAGED_FILES="$STAGED" ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
   try {
     const path = require('path');
     const root = process.env.ORACLE_REPO_ROOT || process.cwd();
-    const { auditFiles } = require(path.join(root, 'src/audit/static-checkers'));
+    // Prefer the AST-based checker, fall back to the legacy regex checker
+    let auditFiles;
+    try { ({ auditFiles } = require(path.join(root, 'src/audit/ast-checkers'))); }
+    catch { ({ auditFiles } = require(path.join(root, 'src/audit/static-checkers'))); }
+    const lint = (() => { try { return require(path.join(root, 'src/audit/lint-checkers')); } catch { return null; } })();
+    const smell = (() => { try { return require(path.join(root, 'src/audit/smell-checkers')); } catch { return null; } })();
     const staged = process.env.STAGED_FILES;
-    if (staged) {
-      const files = staged.split(' ').filter(f => f.trim());
-      if (files.length > 0) {
-        const result = auditFiles(files, { minSeverity: 'high' });
-        if (result.totalFindings > 0) {
-          console.error('\\x1b[33m[oracle] Audit: ' + result.totalFindings + ' high-severity assumption mismatch(es) in staged files.\\x1b[0m');
-          console.error('\\x1b[33m  Run: oracle audit check for details.\\x1b[0m');
-        }
+    if (!staged) process.exit(0);
+    const files = staged.split(' ').filter(f => f.trim());
+    if (files.length === 0) process.exit(0);
+
+    // Baseline-aware audit: findings that already existed before the
+    // commit are hidden so the developer only sees NEW problems.
+    const auditOpts = { minSeverity: 'high' };
+    const auditResult = auditFiles(files, auditOpts);
+    let auditFindings = auditResult.totalFindings || 0;
+    try {
+      const baselineMod = require(path.join(root, 'src/audit/baseline'));
+      const baseline = baselineMod.readBaseline(baselineMod.resolveBaselinePath(root));
+      if (baseline) {
+        const byFile = {};
+        for (const fr of auditResult.files || []) byFile[fr.file] = fr.findings;
+        const diff = baselineMod.diffAgainstBaseline(baseline, byFile, root);
+        auditFindings = diff.new.length;
+      }
+    } catch { /* baseline optional */ }
+
+    if (auditFindings > 0) {
+      console.error('\\x1b[33m[oracle] Audit: ' + auditFindings + ' high-severity finding(s) in staged files.\\x1b[0m');
+      console.error('\\x1b[33m  Run: oracle audit check for details.\\x1b[0m');
+      if (process.env.ORACLE_CI_STRICT === '1' || process.env.ORACLE_CI_STRICT === 'true') {
+        console.error('\\x1b[31m[oracle] ORACLE_CI_STRICT is set — commit BLOCKED until the findings are fixed or suppressed.\\x1b[0m');
+        process.exit(1);
+      }
+    }
+
+    // Lint (style hints) — warning only, always non-blocking
+    if (lint && typeof lint.lintFiles === 'function') {
+      const r = lint.lintFiles(files);
+      if (r.totalFindings > 0) {
+        console.error('\\x1b[90m[oracle] Lint: ' + r.totalFindings + ' style hint(s). Run: oracle lint\\x1b[0m');
+      }
+    }
+
+    // Smell (architectural) — warning only, always non-blocking
+    if (smell && typeof smell.smellFiles === 'function') {
+      const r = smell.smellFiles(files);
+      if (r.totalFindings > 0) {
+        console.error('\\x1b[90m[oracle] Smell: ' + r.totalFindings + ' architectural hint(s). Run: oracle smell\\x1b[0m');
       }
     }
   } catch(e) {
-    // Audit module not available — skip
+    // Audit module not available — skip gracefully
+    if (process.env.ORACLE_DEBUG) console.error('[oracle:pre-commit-audit] ' + (e.message || e));
   }
 " 2>&1 || true
 `;
@@ -221,6 +263,76 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
 }
 
 /**
+ * Generate pre-push hook script.
+ * Runs the cross-file cascade analysis over the whole repo so a push
+ * that introduces a cross-file assumption mismatch (nullable return
+ * dereferenced without a guard from another file) surfaces before it
+ * hits CI. Warning by default; blocks the push when ORACLE_CI_STRICT=1.
+ */
+function prePushScript() {
+  return `#!/bin/sh
+${HOOK_MARKER}
+# Remembrance Oracle — pre-push cross-file cascade check
+
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+if [ -z "$REPO_ROOT" ]; then
+  exit 0
+fi
+
+# Honor the oracle toggle
+ORACLE_ENABLED=$(ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { isOracleEnabled } = require(path.join(root, 'src/core/oracle-config'));
+    process.stdout.write(isOracleEnabled() ? 'true' : 'false');
+  } catch(e) { process.stdout.write('true'); }
+" 2>/dev/null || echo "true")
+
+if [ "$ORACLE_ENABLED" = "false" ]; then
+  exit 0
+fi
+
+ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+  try {
+    const path = require('path');
+    const fs = require('fs');
+    const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+    const { analyzeFiles, crossFileCallGraph } = require(path.join(root, 'src/core/analyze'));
+    const { execFileSync } = require('child_process');
+
+    // Collect tracked JS/TS files (cap to keep the hook fast)
+    let tracked;
+    try {
+      tracked = execFileSync('git', ['ls-files', '*.js', '*.mjs', '*.cjs', '*.ts'], { encoding: 'utf-8' })
+        .trim().split('\\n').filter(f => f.trim() && !f.includes('node_modules')).slice(0, 300);
+    } catch { tracked = []; }
+    if (tracked.length === 0) process.exit(0);
+
+    const envs = analyzeFiles(tracked.map(f => path.join(root, f)));
+    const cross = crossFileCallGraph(envs);
+    const cascades = cross.cascades || [];
+    if (cascades.length === 0) process.exit(0);
+
+    console.error('\\x1b[33m[oracle] Pre-push: ' + cascades.length + ' cross-file cascade(s) detected.\\x1b[0m');
+    for (const c of cascades.slice(0, 5)) {
+      console.error('  ' + (c.file || '') + ':' + (c.line || '') + '  ' + (c.reality || c.ruleId || ''));
+    }
+    if (cascades.length > 5) console.error('  ... and ' + (cascades.length - 5) + ' more.');
+
+    if (process.env.ORACLE_CI_STRICT === '1' || process.env.ORACLE_CI_STRICT === 'true') {
+      console.error('\\x1b[31m[oracle] ORACLE_CI_STRICT is set — push BLOCKED.\\x1b[0m');
+      console.error('\\x1b[31m  Run: oracle audit cross-file\\x1b[0m');
+      process.exit(1);
+    }
+  } catch(e) {
+    if (process.env.ORACLE_DEBUG) console.error('[oracle:pre-push] ' + (e.message || e));
+  }
+" 2>&1 || true
+`;
+}
+
+/**
  * Install git hooks in the given repo.
  */
 function installHooks(cwd = process.cwd()) {
@@ -265,6 +377,21 @@ function installHooks(cwd = process.cwd()) {
   fs.chmodSync(postCommitPath, '755');
   installed.push('post-commit');
 
+  // Pre-push — runs the cross-file cascade check before the push goes out
+  const prePushPath = path.join(hooksDir, 'pre-push');
+  if (fs.existsSync(prePushPath)) {
+    const existing = fs.readFileSync(prePushPath, 'utf-8');
+    if (existing.includes(HOOK_MARKER)) {
+      fs.writeFileSync(prePushPath, prePushScript());
+    } else {
+      fs.appendFileSync(prePushPath, '\n' + prePushScript().replace(/^#!\/bin\/sh\n/, ''));
+    }
+  } else {
+    fs.writeFileSync(prePushPath, prePushScript());
+  }
+  fs.chmodSync(prePushPath, '755');
+  installed.push('pre-push');
+
   return { installed: true, hooks: installed, hooksDir };
 }
 
@@ -279,7 +406,7 @@ function uninstallHooks(cwd = process.cwd()) {
 
   const removed = [];
 
-  for (const hook of ['pre-commit', 'post-commit']) {
+  for (const hook of ['pre-commit', 'post-commit', 'pre-push']) {
     const hookPath = path.join(hooksDir, hook);
     if (!fs.existsSync(hookPath)) continue;
 

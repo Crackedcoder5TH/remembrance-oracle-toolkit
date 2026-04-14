@@ -15,6 +15,26 @@
  *   remembrance-oracle prune --min-coherency 0.5
  */
 
+// Suppress the `node:sqlite` ExperimentalWarning that prints on every
+// CLI invocation. We opt in to the experimental feature knowingly; the
+// banner just clutters script output. `ORACLE_SHOW_WARNINGS=1` keeps
+// the default Node behavior for anyone debugging Node itself.
+if (!process.env.ORACLE_SHOW_WARNINGS) {
+  const _origEmit = process.emit;
+  process.emit = function (name, data, ...rest) {
+    if (
+      name === 'warning'
+      && data
+      && data.name === 'ExperimentalWarning'
+      && typeof data.message === 'string'
+      && data.message.includes('SQLite')
+    ) {
+      return false;
+    }
+    return _origEmit.call(this, name, data, ...rest);
+  };
+}
+
 const fs = require('fs');
 const path = require('path');
 const { safePath } = require('./core/safe-path');

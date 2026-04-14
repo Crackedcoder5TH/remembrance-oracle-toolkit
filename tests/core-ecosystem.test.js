@@ -20,7 +20,7 @@ const os = require('os');
 
 const {
   discoverStatic, discoverEcosystem, announceModule, readRegistry,
-  autoWireAll, loadSelfManifest,
+  autoWireAll, ensureWired, resetEcosystemWiring, loadSelfManifest,
 } = require('../src/core/ecosystem');
 
 const { resetEventBus } = require('../src/core/events');
@@ -212,6 +212,19 @@ describe('ecosystem: autoWireAll invokes bindings', () => {
     assert.ok(result.wired.length >= 1, `expected >=1 wired, got ${result.wired.length}`);
     const wired = result.wired.find(w => w.peer === 'peer-module');
     assert.ok(wired);
+  });
+
+  it('ensureWired memoizes in-flight promise per repoRoot', async () => {
+    resetEcosystemWiring();
+    const p1 = ensureWired({ repoRoot: root, roots: [root] });
+    const p2 = ensureWired({ repoRoot: root, roots: [root] });
+    assert.equal(p1, p2, 'second call must return the same promise');
+    const result = await p1;
+    assert.ok(result.wired, 'resolves with wire result');
+    // After resolution, a third call still returns the cached promise.
+    const p3 = ensureWired({ repoRoot: root, roots: [root] });
+    assert.equal(p1, p3);
+    resetEcosystemWiring();
   });
 });
 

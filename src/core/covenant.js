@@ -307,9 +307,43 @@ function safeJsonParse(str, fallback = {}) {
   }
 }
 
+/**
+ * Read the dismissal-calibration log for a covenant principle.
+ *
+ * Every time a user dismisses a finding tagged `bugClass: 'covenant'`,
+ * the reactions module records a row in
+ * `namespace('covenant_calibration').append(principleId, {...})`.
+ * This reader returns the raw dismissal list so tuning tools (and,
+ * eventually, a self-adjusting principle weight) can consult it.
+ */
+function getCovenantCalibration(principleId, repoRoot = process.cwd()) {
+  try {
+    const { getStorage } = require('./storage');
+    const ns = getStorage(repoRoot).namespace('covenant_calibration');
+    // append() writes to a keyed log — if the storage backend is JSON,
+    // the log lives in <namespace>/<key>.log.json-lines; if sqlite, it
+    // lives in oracle_storage_log. Both expose the data via a raw read.
+    // For a simple first-pass reader we return the entries list.
+    const fs = require('fs');
+    const path = require('path');
+    const logPath = path.join(repoRoot, '.remembrance', 'covenant_calibration', `${principleId}.log.log`);
+    if (fs.existsSync(logPath)) {
+      return fs.readFileSync(logPath, 'utf-8')
+        .split('\n')
+        .filter(Boolean)
+        .map(line => { try { return JSON.parse(line); } catch { return null; } })
+        .filter(Boolean);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 module.exports = {
   covenantCheck,
   getCovenant,
+  getCovenantCalibration,
   formatCovenantResult,
   deepSecurityScan,
   safeJsonParse,

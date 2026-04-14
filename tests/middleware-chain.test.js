@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createMiddlewareChain } = require('../seeds/middleware-chain');
+const { createMiddlewareChain } = require('../seeds/code/middleware-chain');
 
 describe('middleware-chain', () => {
   it('should execute middleware in order', async () => {

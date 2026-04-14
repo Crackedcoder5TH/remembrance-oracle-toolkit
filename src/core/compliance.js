@@ -72,12 +72,33 @@ function startSession(repoRoot, options = {}) {
     filesSearched: [],
     filesAudited: [],
     patternsPulled: [],
-    hooksInstalled: false,
+    hooksInstalled: probeHooksInstalled(repoRoot),
     sessionEndCalled: false,
     agent: options.agent || process.env.ORACLE_AGENT || 'unknown',
   };
+  if (session.hooksInstalled) {
+    // Seed the ledger with the observation so reporters don't re-probe.
+    session.events.push({
+      kind: 'hooks.installed',
+      payload: { source: 'filesystem-probe' },
+      at: new Date().toISOString(),
+    });
+  }
   ns.set(CURRENT_KEY, session);
   return session;
+}
+
+/**
+ * Probe the filesystem to see if our git hooks are already on disk.
+ * Used by startSession so a fresh session doesn't falsely report
+ * "hooks not installed" when a previous session already installed them.
+ */
+function probeHooksInstalled(repoRoot) {
+  try {
+    const { checkHooksInstalled } = require('./preflight');
+    const result = checkHooksInstalled(repoRoot || process.cwd());
+    return !!result.installed;
+  } catch { return false; }
 }
 
 function getCurrentSession(repoRoot, options = {}) {

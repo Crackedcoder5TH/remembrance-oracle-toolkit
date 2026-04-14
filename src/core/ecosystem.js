@@ -378,7 +378,15 @@ async function autoWireAll(options = {}) {
 
   // Forward the caller's explicit roots so test fixtures and isolated
   // environments can find peers without relying on cwd + $HOME.
-  const discoverOpts = { repoRoot, checkHealth: true };
+  //
+  // Health checks default to ON (so explicit `oracle ecosystem connect`
+  // still runs them) but callers on the hot bootstrap path pass
+  // `checkHealth: false` to skip the execFileSync-based probes — those
+  // were adding ~7s to every CLI invocation.
+  const discoverOpts = {
+    repoRoot,
+    checkHealth: options.checkHealth !== false,
+  };
   if (Array.isArray(options.roots)) discoverOpts.roots = options.roots;
   const eco = await discoverEcosystem(discoverOpts);
   const wired = [];
@@ -405,6 +413,43 @@ async function autoWireAll(options = {}) {
   return { wired, ecosystem: eco };
 }
 
+// ─── Awaitable wire-once helper ────────────────────────────────────────────
+
+// Memoized promise so every caller in the same process shares one
+// autoWireAll invocation. Commands that need the ecosystem (e.g.
+// `oracle ecosystem connect`, `oracle resolve` with Void cascade)
+// can `await ensureWired()` and know the bindings are installed.
+let _wireOnce = null;
+let _wireOnceRoot = null;
+
+/**
+ * Trigger autoWireAll once per process and return the resolving
+ * promise. Subsequent calls for the same repoRoot return the cached
+ * promise, so commands that depend on the ecosystem being wired can
+ * `await ensureWired()` without blocking the CLI bootstrap path.
+ *
+ * The bootstrap call in cli/commands/admin.js is still fire-and-forget
+ * (it can't block CLI startup), but it primes this cache so downstream
+ * commands pay no latency when they await.
+ */
+function ensureWired(options = {}) {
+  const repoRoot = options.repoRoot || process.cwd();
+  if (_wireOnce && _wireOnceRoot === repoRoot) return _wireOnce;
+  _wireOnceRoot = repoRoot;
+  _wireOnce = autoWireAll({ ...options, repoRoot }).catch((e) => {
+    // Reset on failure so a retry can try again on next call.
+    _wireOnce = null;
+    _wireOnceRoot = null;
+    throw e;
+  });
+  return _wireOnce;
+}
+
+function resetEcosystemWiring() {
+  _wireOnce = null;
+  _wireOnceRoot = null;
+}
+
 function loadSelfManifest(repoRoot) {
   const p = path.join(repoRoot, MANIFEST_FILE);
   if (!fs.existsSync(p)) return null;
@@ -419,6 +464,8 @@ module.exports = {
   readRegistry,
   runHealthCheck,
   autoWireAll,
+  ensureWired,
+  resetEcosystemWiring,
   loadSelfManifest,
   MANIFEST_FILE,
   USER_DIR,

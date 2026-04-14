@@ -50,14 +50,14 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
   if ((process.env.ORACLE_ECOSYSTEM || 'on').toLowerCase() !== 'off') {
     try {
       const eco = require('../../core/ecosystem');
-      // Announce ourselves first so peers find us
+      // Announce ourselves so peers find us. Sync filesystem writes —
+      // cheap and doesn't block the CLI. We deliberately do NOT call
+      // ensureWired() here: autoWireAll runs health checks that use
+      // execFileSync and can add seconds to every CLI invocation.
+      // Commands that actually depend on the ecosystem being wired
+      // (e.g. `oracle ecosystem connect`) call `await eco.ensureWired()`
+      // themselves, which memoizes the in-flight promise.
       eco.announceModule(process.cwd());
-      // Then wire any peers that are already alive. We fire-and-forget
-      // because this is best-effort — a failing peer shouldn't block
-      // the CLI from running.
-      Promise.resolve(eco.autoWireAll({ repoRoot: process.cwd() })).catch((e) => {
-        if (process.env.ORACLE_DEBUG) console.warn('[admin] ecosystem autoWire failed:', e?.message || e);
-      });
     } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[admin] ecosystem init failed:', e?.message || e);
     }

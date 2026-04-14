@@ -267,6 +267,12 @@ function tryGetSQLite(storeDir) {
 }
 
 class PatternLibrary {
+  // Secondary-index caches — rebuilt lazily on first access and
+  // invalidated by every mutating method. `#` fields keep them truly
+  // private so callers can't poke at internal state.
+  #ruleIndex = null;
+  #tagIndex = null;
+
   constructor(storeDir) {
     this.storeDir = storeDir;
     // Recognize both the toolkit's canonical `pattern-library.json` and the
@@ -379,7 +385,7 @@ class PatternLibrary {
     }
     // Any write invalidates the ruleId / tag secondary indexes. Next
     // findByRuleId / findByTag / listTags call rebuilds from getAll().
-    if (typeof this._invalidateIndexes === 'function') this._invalidateIndexes();
+    this.#invalidateIndexes();
   }
 
   _hash(str) {
@@ -395,7 +401,7 @@ class PatternLibrary {
    */
   register(pattern) {
     // Any register / update / merge invalidates the rule+tag indexes.
-    if (typeof this._invalidateIndexes === 'function') this._invalidateIndexes();
+    this.#invalidateIndexes();
     // Sanitize code before scoring — fixes known SERF transform bugs
     const sanitizedCode = sanitizePatternCode(pattern.code);
     const patternWithCleanCode = { ...pattern, code: sanitizedCode };
@@ -820,8 +826,8 @@ class PatternLibrary {
    */
   findByRuleId(ruleId) {
     if (!ruleId) return [];
-    if (!this._ruleIndex) this._buildSecondaryIndexes();
-    return this._ruleIndex.get(ruleId) || [];
+    if (!this.#ruleIndex) this.#buildSecondaryIndexes();
+    return this.#ruleIndex.get(ruleId) || [];
   }
 
   /**
@@ -829,17 +835,17 @@ class PatternLibrary {
    */
   findByTag(tag) {
     if (!tag) return [];
-    if (!this._tagIndex) this._buildSecondaryIndexes();
-    return this._tagIndex.get(tag.toLowerCase()) || [];
+    if (!this.#tagIndex) this.#buildSecondaryIndexes();
+    return this.#tagIndex.get(tag.toLowerCase()) || [];
   }
 
   /**
    * List all known tags and their frequencies.
    */
   listTags() {
-    if (!this._tagIndex) this._buildSecondaryIndexes();
+    if (!this.#tagIndex) this.#buildSecondaryIndexes();
     const out = [];
-    for (const [tag, patterns] of this._tagIndex.entries()) {
+    for (const [tag, patterns] of this.#tagIndex.entries()) {
       out.push({ tag, count: patterns.length });
     }
     return out.sort((a, b) => b.count - a.count);
@@ -849,9 +855,9 @@ class PatternLibrary {
    * Rebuild the secondary indexes from scratch. Called lazily on first
    * findByRuleId/findByTag, and invalidated by mutating methods.
    */
-  _buildSecondaryIndexes() {
-    this._ruleIndex = new Map();
-    this._tagIndex = new Map();
+  #buildSecondaryIndexes() {
+    this.#ruleIndex = new Map();
+    this.#tagIndex = new Map();
     for (const p of this.getAll()) {
       // Rule id
       const ruleIds = [];
@@ -866,18 +872,18 @@ class PatternLibrary {
         }
       }
       for (const rid of ruleIds) {
-        const arr = this._ruleIndex.get(rid) || [];
+        const arr = this.#ruleIndex.get(rid) || [];
         arr.push(p);
-        this._ruleIndex.set(rid, arr);
+        this.#ruleIndex.set(rid, arr);
       }
       // Tags
       if (Array.isArray(p.tags)) {
         for (const t of p.tags) {
           if (typeof t !== 'string') continue;
           const key = t.toLowerCase();
-          const arr = this._tagIndex.get(key) || [];
+          const arr = this.#tagIndex.get(key) || [];
           arr.push(p);
-          this._tagIndex.set(key, arr);
+          this.#tagIndex.set(key, arr);
         }
       }
     }
@@ -886,9 +892,9 @@ class PatternLibrary {
   /**
    * Invalidate the secondary indexes after a mutation.
    */
-  _invalidateIndexes() {
-    this._ruleIndex = null;
-    this._tagIndex = null;
+  #invalidateIndexes() {
+    this.#ruleIndex = null;
+    this.#tagIndex = null;
   }
 
   /**
@@ -898,7 +904,7 @@ class PatternLibrary {
    * @returns {object|null} Updated pattern record or null if not found
    */
   update(id, updates) {
-    if (typeof this._invalidateIndexes === 'function') this._invalidateIndexes();
+    this.#invalidateIndexes();
     if (this._backend === 'sqlite') {
       return this._sqlite.updatePattern(id, updates);
     }
@@ -1375,7 +1381,7 @@ class PatternLibrary {
     if (!Array.isArray(incoming) || incoming.length === 0) {
       return { added: 0, updated: 0 };
     }
-    if (typeof this._invalidateIndexes === 'function') this._invalidateIndexes();
+    this.#invalidateIndexes();
 
     if (this._backend === 'sqlite') {
       let added = 0, updated = 0, skipped = 0;

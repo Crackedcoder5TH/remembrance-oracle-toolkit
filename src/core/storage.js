@@ -182,6 +182,14 @@ class SqliteStorage {
   }
 
   _initSchema() {
+    // WAL mode + NORMAL fsync + busy_timeout is the Node 22 default
+    // recipe for letting multiple CLI processes write to the same DB
+    // without "database is locked". The retry loop below catches any
+    // SQLITE_BUSY that slips past the busy_timeout (e.g. a long-held
+    // exclusive write transaction from another process).
+    try { this.db.exec(`PRAGMA journal_mode = WAL`); } catch { /* not fatal */ }
+    try { this.db.exec(`PRAGMA synchronous = NORMAL`); } catch { /* not fatal */ }
+    try { this.db.exec(`PRAGMA busy_timeout = 5000`); } catch { /* not fatal */ }
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS oracle_storage (
         namespace TEXT NOT NULL,
@@ -207,6 +215,32 @@ class SqliteStorage {
     return new StorageNamespace(this, name);
   }
 
+  /**
+   * Run a write against the DB with a bounded retry loop for
+   * SQLITE_BUSY / SQLITE_LOCKED. Three retries with short jittered
+   * backoff is enough in practice — the busy_timeout pragma already
+   * handles the common case, so this only fires under genuine
+   * contention from a sibling CLI process.
+   */
+  _withRetry(fn) {
+    const MAX = 4;
+    let attempt = 0;
+    // busy_timeout already waits ~5s; retries here are a safety net.
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try { return fn(); }
+      catch (e) {
+        const msg = String(e && (e.code || e.message) || e);
+        const isBusy = /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i.test(msg);
+        attempt++;
+        if (!isBusy || attempt >= MAX) throw e;
+        const waitMs = 25 * Math.pow(2, attempt) + Math.floor(Math.random() * 25);
+        const end = Date.now() + waitMs;
+        while (Date.now() < end) { /* tight spin — sync API, no await */ }
+      }
+    }
+  }
+
   _get(namespace, key, fallback) {
     const row = this.db.prepare('SELECT value FROM oracle_storage WHERE namespace = ? AND key = ?').get(namespace, key);
     if (!row) return fallback === undefined ? null : fallback;
@@ -217,17 +251,21 @@ class SqliteStorage {
   _set(namespace, key, value) {
     const now = new Date().toISOString();
     const json = JSON.stringify(value);
-    this.db.prepare(`
-      INSERT INTO oracle_storage (namespace, key, value, updated_at)
-      VALUES (?, ?, ?, ?)
-      ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-    `).run(namespace, key, json, now);
-    return true;
+    return this._withRetry(() => {
+      this.db.prepare(`
+        INSERT INTO oracle_storage (namespace, key, value, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(namespace, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+      `).run(namespace, key, json, now);
+      return true;
+    });
   }
 
   _delete(namespace, key) {
-    const r = this.db.prepare('DELETE FROM oracle_storage WHERE namespace = ? AND key = ?').run(namespace, key);
-    return r.changes > 0;
+    return this._withRetry(() => {
+      const r = this.db.prepare('DELETE FROM oracle_storage WHERE namespace = ? AND key = ?').run(namespace, key);
+      return r.changes > 0;
+    });
   }
 
   _keys(namespace) {
@@ -244,8 +282,10 @@ class SqliteStorage {
   _append(namespace, key, entry) {
     const at = entry._at || new Date().toISOString();
     const json = JSON.stringify({ ...entry, _at: at });
-    this.db.prepare('INSERT INTO oracle_storage_log (namespace, key, entry, at) VALUES (?, ?, ?, ?)').run(namespace, key, json, at);
-    return true;
+    return this._withRetry(() => {
+      this.db.prepare('INSERT INTO oracle_storage_log (namespace, key, entry, at) VALUES (?, ?, ?, ?)').run(namespace, key, json, at);
+      return true;
+    });
   }
 
   _list(namespace, keyPrefix) {

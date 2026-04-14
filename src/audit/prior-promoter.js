@@ -181,7 +181,8 @@ function hashString(s) {
 
 function resolveSeedPath() {
   const candidates = [
-    path.join(__dirname, '..', '..', 'seeds', 'audit-bug-prior.json'),
+    path.join(__dirname, '..', '..', 'seeds', 'data', 'audit-bug-prior.json'),
+    path.join(__dirname, '..', '..', 'seeds', 'audit-bug-prior.json'), // legacy
     path.join(__dirname, '..', 'patterns', 'audit-bug-prior.json'),
   ];
   for (const p of candidates) {

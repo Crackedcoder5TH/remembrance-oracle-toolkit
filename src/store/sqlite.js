@@ -1606,6 +1606,40 @@ class SQLiteStore {
     return { retired: toRetire.length, remaining };
   }
 
+  /**
+   * Delete a single pattern by id, archiving it first so it can be
+   * restored via `oracle restore`. Emits `pattern.deleted` on the
+   * event bus so reactions (search index, analytics, dashboards) can
+   * react to the removal.
+   *
+   * @param {string} id - The pattern id to delete
+   * @param {object} options
+   *   - reason: string explaining why (stored in the archive + event)
+   * @returns {{ deleted: boolean, id: string, reason: string }}
+   */
+  deletePatternById(id, options = {}) {
+    const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
+    if (!row) return { deleted: false, id, reason: 'not found' };
+    const reason = options.reason || 'manual-delete';
+    this.db.exec('BEGIN');
+    try {
+      this._archivePattern(row, reason);
+      this._cleanupFractalData(row.id);
+      this.db.prepare('DELETE FROM patterns WHERE id = ?').run(row.id);
+      this._audit('delete', 'patterns', row.id, { name: row.name, reason });
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+    // Fire cross-subsystem event so reactions can update indexes.
+    try {
+      const { getEventBus } = require('../core/events');
+      getEventBus().emitSync('pattern.deleted', { id: row.id, name: row.name, reason });
+    } catch { /* best-effort */ }
+    return { deleted: true, id: row.id, name: row.name, reason };
+  }
+
   patternSummary() {
     const patterns = this.getAllPatterns();
     return {

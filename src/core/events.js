@@ -183,6 +183,7 @@ const EVENTS = Object.freeze({
   PATTERN_REGISTERED: 'pattern.registered',
   PATTERN_PULLED:     'pattern.pulled',
   PATTERN_FEEDBACK:   'pattern.feedback',
+  PATTERN_DELETED:    'pattern.deleted',
   HEAL_ATTEMPT:   'heal.attempt',
   HEAL_SUCCEEDED: 'heal.succeeded',
   HEAL_FAILED:    'heal.failed',

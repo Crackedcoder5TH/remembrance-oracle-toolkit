@@ -81,6 +81,25 @@ function wireReactions(oracle, options = {}) {
       safely('feedback.dismiss→debug-amplitude', () => {
         nudgeDebugAmplitude(oracle, payload, -0.05);
       });
+      // Covenant-specific calibration: if the user is dismissing a
+      // finding that came from a covenant principle, append the
+      // dismissal to the per-principle calibration log. A future
+      // covenantCheck() can consult this log to soften a principle
+      // that keeps getting rejected by the user (learning from
+      // false positives without hand-editing weights).
+      safely('feedback.dismiss→covenant-calibration', () => {
+        if (payload?.bugClass !== 'covenant') return;
+        const principleId = payload?.principleId || payload?.ruleId;
+        if (!principleId) return;
+        const { getStorage } = require('./storage');
+        const ns = getStorage(storageRoot).namespace('covenant_calibration');
+        ns.append(principleId, {
+          action: 'dismiss',
+          file: payload.file,
+          line: payload.line,
+          reason: payload.reason || null,
+        });
+      });
     }),
 
     // ── audit.finding → nudge debug oracle amplitude + update baseline

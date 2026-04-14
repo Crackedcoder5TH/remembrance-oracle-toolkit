@@ -13,7 +13,7 @@
  *      carries its own waveform and the debug oracle tracks which bug
  *      classes have been registered against it.
  *   2. A bundled seed file of known-buggy fingerprints shipped with
- *      the toolkit (`seeds/audit-bug-prior.json`). This gives us a
+ *      the toolkit (`seeds/data/audit-bug-prior.json`). This gives us a
  *      baseline even without the full substrate.
  *   3. Ad-hoc fingerprints from the feedback store — if a rule fires
  *      repeatedly on files with a certain shape, we promote that
@@ -49,7 +49,8 @@ function loadFingerprint() {
 // ─── Seed store ─────────────────────────────────────────────────────────────
 
 const SEED_PATHS = [
-  path.join(__dirname, '..', '..', 'seeds', 'audit-bug-prior.json'),
+  path.join(__dirname, '..', '..', 'seeds', 'data', 'audit-bug-prior.json'),
+  path.join(__dirname, '..', '..', 'seeds', 'audit-bug-prior.json'), // legacy
   path.join(__dirname, '..', 'patterns', 'audit-bug-prior.json'),
 ];
 

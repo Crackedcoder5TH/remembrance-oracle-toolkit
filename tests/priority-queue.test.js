@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createPriorityQueue } = require('../seeds/priority-queue');
+const { createPriorityQueue } = require('../seeds/code/priority-queue');
 
 describe('priority-queue', () => {
   it('should dequeue lowest priority first (min-heap)', () => {

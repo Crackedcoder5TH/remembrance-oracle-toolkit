@@ -40,7 +40,7 @@ const CATEGORIES = [
   {
     name: 'Library',
     commands: [
-      { name: 'patterns', description: 'Show pattern library statistics' },
+      { name: 'patterns', description: 'Show pattern library statistics (subcmd: delete <id>)' },
       { name: 'stats', description: 'Show store statistics' },
       { name: 'seed', description: 'Seed the library with built-in + native patterns' },
       { name: 'analytics', description: 'Show pattern analytics and library health report' },

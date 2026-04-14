@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { validate, isValid, assert: assertValid } = require('../seeds/schema-validate');
+const { validate, isValid, assert: assertValid } = require('../seeds/code/schema-validate');
 
 describe('schema-validate', () => {
   it('should validate primitive types', () => {

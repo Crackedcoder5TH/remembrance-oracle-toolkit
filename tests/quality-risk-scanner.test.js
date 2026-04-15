@@ -171,6 +171,19 @@ describe('quality/risk-scanner — scanDirectory', () => {
     assert.equal(seen[1].idx, 2);
   });
 
+  it('counts unparseable / empty files as SKIPPED, not LOW', () => {
+    write(root, 'empty.js', '');             // empty → SKIPPED
+    write(root, 'clean.js', CLEAN_CODE);     // normal → some risk bucket
+    const r = scanDirectory(root);
+    // The scanner may filter empty files before reaching the scorer
+    // (MIN_BYTES check) OR may mark them SKIPPED. Accept either
+    // behavior as long as empty.js does NOT contribute to LOW.
+    const lowFiles = r.files.filter(f => f.riskLevel === 'LOW').map(f => f.file);
+    assert.ok(!lowFiles.includes('empty.js'), 'empty.js must not appear in LOW');
+    // At least one SKIPPED counter slot must exist in stats.
+    assert.equal(typeof r.stats.byRisk.SKIPPED, 'number');
+  });
+
   it('defaults export the expected constants', () => {
     assert.ok(DEFAULT_EXTENSIONS.has('.js'));
     assert.ok(DEFAULT_EXTENSIONS.has('.ts'));

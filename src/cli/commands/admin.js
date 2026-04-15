@@ -1080,6 +1080,9 @@ ${c.bold('Related commands:')}
     console.log(`    ${c.boldRed('HIGH  ')}  ${String(report.stats.byRisk.HIGH).padStart(4)}`);
     console.log(`    ${c.boldYellow('MEDIUM')}  ${String(report.stats.byRisk.MEDIUM).padStart(4)}`);
     console.log(`    ${c.boldGreen('LOW   ')}  ${String(report.stats.byRisk.LOW).padStart(4)}`);
+    if (report.stats.byRisk.SKIPPED > 0) {
+      console.log(`    ${c.dim('SKIPPED')} ${String(report.stats.byRisk.SKIPPED).padStart(4)}  ${c.dim('(unparseable / empty)')}`);
+    }
     console.log('');
 
     const toShow = filter

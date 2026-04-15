@@ -91,10 +91,14 @@ function scanDirectory(rootDir, options = {}) {
     catch { continue; }
 
     const analysis = computeBugProbability(code, { filePath: file, weights });
+    // Unparseable / empty files come back with meta.skipped set and
+    // probability 0. Surface those as SKIPPED so they don't silently
+    // inflate the LOW bucket count in batch reports.
+    const riskLevel = analysis.meta?.skipped ? 'SKIPPED' : analysis.riskLevel;
     results.push({
       file: path.relative(rootDir, file) || file,
       probability: analysis.probability,
-      riskLevel: analysis.riskLevel,
+      riskLevel,
       components: analysis.components,
       signals: {
         cyclomatic: analysis.signals.cyclomatic,
@@ -103,6 +107,7 @@ function scanDirectory(rootDir, options = {}) {
         lines: analysis.signals.lines,
       },
       topFactor: analysis.topFactors[0]?.name || null,
+      skipped: analysis.meta?.skipped || null,
     });
 
     if (onFile) { try { onFile(file, idx, candidates.length); } catch { /* ignore */ } }
@@ -152,9 +157,11 @@ function collectFiles(rootDir, extensions, excludes) {
  */
 function buildReport(rootDir, results, topN) {
   const sorted = results.slice().sort((a, b) => b.probability - a.probability);
-  const byRisk = { HIGH: 0, MEDIUM: 0, LOW: 0 };
+  // SKIPPED covers files where computeBugProbability couldn't score
+  // (empty, unparseable, scorer threw). Counted separately so they
+  // don't silently inflate LOW.
+  const byRisk = { HIGH: 0, MEDIUM: 0, LOW: 0, SKIPPED: 0 };
   for (const r of sorted) {
-    // classifyRisk guarantees one of HIGH/MEDIUM/LOW
     byRisk[r.riskLevel] = (byRisk[r.riskLevel] || 0) + 1;
   }
 
@@ -192,7 +199,7 @@ function emptyReport(rootDir, reason) {
     files: [],
     stats: {
       total: 0,
-      byRisk: { HIGH: 0, MEDIUM: 0, LOW: 0 },
+      byRisk: { HIGH: 0, MEDIUM: 0, LOW: 0, SKIPPED: 0 },
       meanProbability: 0,
       medianProbability: 0,
       top: [],

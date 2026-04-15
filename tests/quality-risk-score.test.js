@@ -93,8 +93,11 @@ describe('quality/risk-score — result shape', () => {
 
 describe('quality/risk-score — cyclomatic cap', () => {
   it('pins cyclomaticRisk to 1.0 when complexity exceeds CYCLOMATIC_CAP', () => {
-    // Build a function with many branches to push cyclomatic > 30
-    const branches = Array.from({ length: 40 }, (_, i) => `if (x === ${i}) return ${i};`).join('\n  ');
+    // Build a function with enough branches to exceed the cap.
+    // Use CYCLOMATIC_CAP + 20 so the test tracks the constant and
+    // stays valid if the cap is retuned.
+    const branchCount = CYCLOMATIC_CAP + 20;
+    const branches = Array.from({ length: branchCount }, (_, i) => `if (x === ${i}) return ${i};`).join('\n  ');
     const code = `function f(x) {\n  ${branches}\n  return -1;\n}`;
     const r = computeBugProbability(code, { filePath: 't.js' });
     assert.equal(r.components.cyclomaticRisk, 1);
@@ -140,7 +143,10 @@ describe('quality/risk-score — weight override', () => {
 
 describe('quality/risk-score — topFactors breakdown', () => {
   it('populates cyclomatic factor when complexity crosses 0.3 * CAP', () => {
-    const branches = Array.from({ length: 12 }, (_, i) => `if (x === ${i}) return ${i};`).join('\n  ');
+    // Generate slightly more than 0.3 * cap branches so the factor
+    // detector's threshold is crossed on any valid cap setting.
+    const branchCount = Math.ceil(CYCLOMATIC_CAP * 0.4);
+    const branches = Array.from({ length: branchCount }, (_, i) => `if (x === ${i}) return ${i};`).join('\n  ');
     const code = `function f(x) {\n  ${branches}\n  return -1;\n}`;
     const r = computeBugProbability(code);
     const cyc = r.topFactors.find(f => f.name === 'cyclomatic');
@@ -150,7 +156,8 @@ describe('quality/risk-score — topFactors breakdown', () => {
   });
 
   it('produces a recommendation list matching the factors', () => {
-    const branches = Array.from({ length: 20 }, (_, i) => `if (x === ${i}) return ${i};`).join('\n  ');
+    const branchCount = Math.ceil(CYCLOMATIC_CAP * 0.7);
+    const branches = Array.from({ length: branchCount }, (_, i) => `if (x === ${i}) return ${i};`).join('\n  ');
     const code = `function f(x) {\n  ${branches}\n}`;
     const r = computeBugProbability(code);
     assert.ok(r.recommendations.length >= 1);
@@ -199,6 +206,19 @@ describe('quality/risk-score — real fixtures', () => {
     assert.notEqual(r.riskLevel, 'LOW', `expected >= MEDIUM, got ${r.riskLevel} with p=${r.probability}`);
     // At least one factor surfaced.
     assert.ok(r.topFactors.length > 0);
+  });
+});
+
+describe('quality/risk-score — fractalAlignment not in factors', () => {
+  it('does not include fractalAlignment as a top factor (Phase 1 data went wrong direction)', () => {
+    // Generate code where fractalAlignment would be low enough to
+    // trigger any theoretical detector, and verify it does NOT appear.
+    const code = `const x = 1; const y = 2; const z = x + y;`;
+    const r = computeBugProbability(code);
+    const hasFractal = r.topFactors.some(f => f.name === 'fractalAlignment');
+    assert.equal(hasFractal, false, 'fractalAlignment must not appear in topFactors');
+    // But it should still be reported in signals for context.
+    assert.equal(typeof r.signals.fractalAlignment, 'number');
   });
 });
 

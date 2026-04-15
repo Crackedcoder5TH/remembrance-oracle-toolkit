@@ -182,6 +182,70 @@ describe('covenantCheck — harmful code rejected', () => {
   });
 });
 
+describe('covenantCheck — comments describing rules should not trigger', () => {
+  // Regression test for the "covenant mismatch" bug: before the Phase 2
+  // polish, the default was to run HARM_PATTERNS against raw code, which
+  // meant any comment that merely described a rule (e.g. "innerHTML =
+  // variable is XSS") triggered that rule. The fix flipped the default
+  // to stripped code and marked rules that legitimately target string
+  // contents as rawOnly:true.
+
+  it('does not flag a comment describing the innerHTML rule', () => {
+    const code = `
+      // The Living Water principle flags element.innerHTML = variable
+      // as a potential XSS vector. Use textContent or createElement.
+      function safe(el, val) {
+        el.textContent = val;
+      }
+    `;
+    const result = covenantCheck(code);
+    assert.equal(result.sealed, true, 'comment describing the rule must not trigger it');
+  });
+
+  it('does not flag a docstring describing the SQL injection rule', () => {
+    const code = `
+      /**
+       * Do NOT build queries like: "SELECT * FROM users WHERE id=" + userId
+       * Use parameterized queries instead.
+       */
+      function query(userId, db) {
+        return db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      }
+    `;
+    const result = covenantCheck(code);
+    assert.equal(result.sealed, true, 'docstring describing SQL injection must not trigger it');
+  });
+
+  it('still catches the real innerHTML = variable pattern', () => {
+    const code = `function unsafe(el, data) { el.innerHTML = data; }`;
+    const result = covenantCheck(code);
+    assert.equal(result.sealed, false);
+    assert.ok(result.violations.some(v => v.reason.includes('inner')));
+  });
+
+  it('still catches template-literal innerHTML with interpolation', () => {
+    const code = 'function unsafe(el, x) { el.innerHTML = `<p>${x}</p>`; }';
+    const result = covenantCheck(code);
+    assert.equal(result.sealed, false, 'template literal interpolation should trigger');
+    assert.ok(result.violations.some(v => v.reason.includes('inner')));
+  });
+
+  it('still catches hardcoded env var credentials (rawOnly rule)', () => {
+    const code = 'process.env["DB_PASS"] = "my-real-password-12345";';
+    const result = covenantCheck(code);
+    assert.equal(result.sealed, false);
+    assert.ok(result.violations.some(v => v.principle === 8));
+  });
+
+  it('allows hardcoded innerHTML with a static string literal', () => {
+    // The existing innerHTML regex uses a negative lookahead to permit
+    // `innerHTML = '<static>'` since there's no interpolation.
+    const code = `function render(el) { el.innerHTML = '<p>static content</p>'; }`;
+    const result = covenantCheck(code);
+    assert.equal(result.sealed, true, 'static HTML string literal is allowed');
+  });
+});
+
 describe('covenantCheck — metadata intent', () => {
   it('rejects harmful description', () => {
     const result = covenantCheck('function scan() {}', {

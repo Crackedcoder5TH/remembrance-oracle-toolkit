@@ -5,6 +5,57 @@
 // Zero-dependency, works with vanilla JS
 // ═══════════════════════════════════════════════════════════════════
 
+// Tiny safe-element helper. Replaces innerHTML interpolation with
+// createElement + textContent so dynamic values never reach the
+// HTML parser. Covenant's Living Water principle flags innerHTML =
+// variable patterns; h() gives us a clean way to build dynamic DOM
+// without tripping the rule OR actually shipping XSS vectors.
+//
+// Usage:
+//   h('div', { className: 'foo', style: { width: '50%' } }, [
+//     h('span', { className: 'label' }, ['Score']),
+//     'plain text is auto-text-noded',
+//     h('strong', null, [value.toFixed(3)]),
+//   ])
+function h(tag, props, children) {
+  const el = document.createElement(tag);
+  if (props) {
+    for (const [k, v] of Object.entries(props)) {
+      if (v == null) continue;
+      if (k === 'className') el.className = v;
+      else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+      else el.setAttribute(k, v);
+    }
+  }
+  if (children) {
+    for (const child of children) {
+      if (child == null || child === false) continue;
+      if (typeof child === 'string' || typeof child === 'number') {
+        el.appendChild(document.createTextNode(String(child)));
+      } else {
+        el.appendChild(child);
+      }
+    }
+  }
+  return el;
+}
+
+function clearChildren(el) {
+  while (el.firstChild) el.removeChild(el.firstChild);
+}
+
+function replaceChildren(el, newChildren) {
+  clearChildren(el);
+  for (const c of newChildren) {
+    if (c == null) continue;
+    if (typeof c === 'string' || typeof c === 'number') {
+      el.appendChild(document.createTextNode(String(c)));
+    } else {
+      el.appendChild(c);
+    }
+  }
+}
+
 let allPatterns = [];
 let currentPage = 'overview';
 
@@ -121,10 +172,10 @@ async function loadLocalStats() {
   ];
 
   const maxCount = Math.max(...langData.map(l => l.count));
-  // Safe DOM construction via createElement + textContent. The
-  // covenant's Living Water principle blocks writing untrusted values
-  // into innerHTML; the createElement path escapes text automatically
-  // via textContent and has no HTML parsing step to exploit.
+  // Safe DOM construction instead of innerHTML interpolation. The
+  // covenant's Living Water principle flags `element.innerHTML = variable`
+  // as an XSS vector; using createElement + textContent avoids the
+  // vector entirely and passes the seal.
   const container = document.getElementById('lang-bars');
   while (container.firstChild) container.removeChild(container.firstChild);
   for (const l of langData) {
@@ -190,9 +241,9 @@ function renderPatterns(patterns) {
   const tbody = document.getElementById('pattern-table');
   // Pattern names, types, and tags come from the oracle API and may
   // contain user-controlled content — a malicious pattern could store
-  // `<script>...` in its name field and execute in the dashboard.
-  // textContent on each cell escapes automatically; DOM construction
-  // is verbose but safe and passes the Living Water seal.
+  // `<script>...` in its name field and XSS the dashboard. textContent
+  // on each cell escapes automatically; DOM construction is verbose but
+  // passes the covenant's Living Water principle and is actually safe.
   while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
   for (const p of patterns.slice(0, 100)) {
     const tr = document.createElement('tr');
@@ -319,20 +370,24 @@ async function scoreCode() {
     { label: 'Testability', value: testability },
   ];
 
-  dims.innerHTML = `
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:48px;font-weight:700;color:var(--accent);letter-spacing:-2px">${total.toFixed(3)}</div>
-      <span class="badge ${verdict.toLowerCase()}">${verdict}</span>
-    </div>
-    ${scores.map(s => `
-      <div class="score-bar">
-        <span class="label">${s.label}</span>
-        <div class="bar"><div class="fill ${s.value < 0.5 ? 'danger' : s.value < 0.7 ? 'warn' : ''}" style="width:${s.value*100}%"></div></div>
-        <span class="num">${s.value.toFixed(3)}</span>
-      </div>
-    `).join('')}
-    <p style="color:var(--text-muted);font-size:12px;margin-top:12px">${lines.length} lines, ${nonEmpty.length} non-empty, ${comments} comments, max nesting: ${maxD}</p>
-  `;
+  const header = h('div', { style: { textAlign: 'center', marginBottom: '16px' } }, [
+    h('div', { style: { fontSize: '48px', fontWeight: '700', color: 'var(--accent)', letterSpacing: '-2px' } }, [total.toFixed(3)]),
+    h('span', { className: 'badge ' + verdict.toLowerCase() }, [verdict]),
+  ]);
+  const bars = scores.map(s => {
+    const fillClass = 'fill ' + (s.value < 0.5 ? 'danger' : s.value < 0.7 ? 'warn' : '');
+    return h('div', { className: 'score-bar' }, [
+      h('span', { className: 'label' }, [s.label]),
+      h('div', { className: 'bar' }, [
+        h('div', { className: fillClass, style: { width: (s.value * 100) + '%' } }, []),
+      ]),
+      h('span', { className: 'num' }, [s.value.toFixed(3)]),
+    ]);
+  });
+  const footer = h('p', { style: { color: 'var(--text-muted)', fontSize: '12px', marginTop: '12px' } }, [
+    `${lines.length} lines, ${nonEmpty.length} non-empty, ${comments} comments, max nesting: ${maxD}`,
+  ]);
+  replaceChildren(dims, [header, ...bars, footer]);
 }
 
 // ─── Resolve Pattern ─────────────────────────────────────────────
@@ -355,17 +410,40 @@ async function resolvePattern() {
     const pattern = data.pattern || {};
     const confidence = data.confidence || 0;
 
-    el.innerHTML = `
-      <h2>Decision: <span class="badge ${decision.toLowerCase()}">${decision}</span></h2>
-      <p style="margin:8px 0;color:var(--text-secondary)">${data.reasoning || data.reason || 'No reasoning provided'}</p>
-      <div class="score-bar">
-        <span class="label">Confidence</span>
-        <div class="bar"><div class="fill" style="width:${confidence*100}%"></div></div>
-        <span class="num">${(confidence).toFixed(3)}</span>
-      </div>
-      ${pattern.name ? `<p style="margin-top:12px">Best match: <code>${pattern.name}</code> (${pattern.language || 'unknown'})</p>` : ''}
-      ${pattern.code ? `<pre style="background:var(--bg-input);padding:12px;border-radius:var(--radius);margin-top:8px;font-size:12px;overflow-x:auto;max-height:300px"><code>${escapeHtml(pattern.code.slice(0, 1000))}</code></pre>` : ''}
-    `;
+    const children = [
+      h('h2', null, [
+        'Decision: ',
+        h('span', { className: 'badge ' + decision.toLowerCase() }, [decision]),
+      ]),
+      h('p', { style: { margin: '8px 0', color: 'var(--text-secondary)' } }, [
+        data.reasoning || data.reason || 'No reasoning provided',
+      ]),
+      h('div', { className: 'score-bar' }, [
+        h('span', { className: 'label' }, ['Confidence']),
+        h('div', { className: 'bar' }, [
+          h('div', { className: 'fill', style: { width: (confidence * 100) + '%' } }, []),
+        ]),
+        h('span', { className: 'num' }, [confidence.toFixed(3)]),
+      ]),
+    ];
+    if (pattern.name) {
+      children.push(h('p', { style: { marginTop: '12px' } }, [
+        'Best match: ',
+        h('code', null, [pattern.name]),
+        ' (' + (pattern.language || 'unknown') + ')',
+      ]));
+    }
+    if (pattern.code) {
+      children.push(h('pre', {
+        style: {
+          background: 'var(--bg-input)', padding: '12px', borderRadius: 'var(--radius)',
+          marginTop: '8px', fontSize: '12px', overflowX: 'auto', maxHeight: '300px',
+        },
+      }, [
+        h('code', null, [pattern.code.slice(0, 1000)]),
+      ]));
+    }
+    replaceChildren(el, children);
   } catch {
     el.innerHTML = '<p style="color:var(--danger)">Oracle API unavailable. Start with: docker compose up -d</p>';
   }
@@ -389,23 +467,32 @@ async function cascadeCode() {
     const matches = data.matches || [];
     const coherence = data.coherence || 0;
 
-    el.innerHTML = `
-      <h2>Cascade Coherence: <span style="color:var(--accent)">${coherence.toFixed(4)}</span></h2>
-      <table><thead><tr><th>Domain</th><th>Correlation</th><th>Type</th></tr></thead><tbody>
-      ${matches.slice(0, 15).map(m => `
-        <tr>
-          <td><code>${m.domain}</code></td>
-          <td>
-            <div class="score-bar" style="margin:0">
-              <div class="bar"><div class="fill ${m.type === 'harmonic' ? '' : m.type === 'weak' ? 'warn' : 'danger'}" style="width:${Math.abs(m.correlation)*100}%"></div></div>
-              <span class="num">${m.correlation > 0 ? '+' : ''}${m.correlation.toFixed(4)}</span>
-            </div>
-          </td>
-          <td><span class="badge ${m.type === 'harmonic' ? 'pull' : m.type === 'weak' ? 'evolve' : 'generate'}">${m.type}</span></td>
-        </tr>
-      `).join('')}
-      </tbody></table>
-    `;
+    const heading = h('h2', null, [
+      'Cascade Coherence: ',
+      h('span', { style: { color: 'var(--accent)' } }, [coherence.toFixed(4)]),
+    ]);
+    const table = h('table', null, [
+      h('thead', null, [h('tr', null, [
+        h('th', null, ['Domain']), h('th', null, ['Correlation']), h('th', null, ['Type']),
+      ])]),
+      h('tbody', null, matches.slice(0, 15).map(m => {
+        const fillClass = 'fill ' + (m.type === 'harmonic' ? '' : m.type === 'weak' ? 'warn' : 'danger');
+        const badgeClass = 'badge ' + (m.type === 'harmonic' ? 'pull' : m.type === 'weak' ? 'evolve' : 'generate');
+        return h('tr', null, [
+          h('td', null, [h('code', null, [m.domain])]),
+          h('td', null, [
+            h('div', { className: 'score-bar', style: { margin: '0' } }, [
+              h('div', { className: 'bar' }, [
+                h('div', { className: fillClass, style: { width: (Math.abs(m.correlation) * 100) + '%' } }, []),
+              ]),
+              h('span', { className: 'num' }, [(m.correlation > 0 ? '+' : '') + m.correlation.toFixed(4)]),
+            ]),
+          ]),
+          h('td', null, [h('span', { className: badgeClass }, [m.type])]),
+        ]);
+      })),
+    ]);
+    replaceChildren(el, [heading, table]);
   } catch {
     el.innerHTML = '<p style="color:var(--danger)">Void Compressor unavailable. Start with: docker compose up -d</p>';
   }
@@ -470,22 +557,30 @@ function analyzeFractal() {
     { name: 'Stability', value: stability, desc: 'Structural consistency' },
   ];
 
-  el.innerHTML = `
-    <h2>Fractal Alignment: <span style="color:var(--accent)">${alignment.toFixed(3)}</span></h2>
-    ${engines.map(e => `
-      <div class="score-bar">
-        <span class="label">${e.name}</span>
-        <div class="bar"><div class="fill ${e.value < 0.3 ? 'danger' : e.value < 0.5 ? 'warn' : ''}" style="width:${e.value*100}%"></div></div>
-        <span class="num">${e.value.toFixed(3)}</span>
-      </div>
-      <p style="font-size:11px;color:var(--text-muted);margin:0 0 8px 108px">${e.desc}</p>
-    `).join('')}
-
-    <div class="waveform" style="margin-top:16px">
-      ${Array.from(wf).map(v => `<div class="bar" style="height:${v*100}%"></div>`).join('')}
-    </div>
-    <p style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:4px">128-point waveform signature</p>
-  `;
+  const heading = h('h2', null, [
+    'Fractal Alignment: ',
+    h('span', { style: { color: 'var(--accent)' } }, [alignment.toFixed(3)]),
+  ]);
+  const engineRows = [];
+  for (const e of engines) {
+    const fillClass = 'fill ' + (e.value < 0.3 ? 'danger' : e.value < 0.5 ? 'warn' : '');
+    engineRows.push(h('div', { className: 'score-bar' }, [
+      h('span', { className: 'label' }, [e.name]),
+      h('div', { className: 'bar' }, [
+        h('div', { className: fillClass, style: { width: (e.value * 100) + '%' } }, []),
+      ]),
+      h('span', { className: 'num' }, [e.value.toFixed(3)]),
+    ]));
+    engineRows.push(h('p', { style: {
+      fontSize: '11px', color: 'var(--text-muted)', margin: '0 0 8px 108px',
+    } }, [e.desc]));
+  }
+  const wave = h('div', { className: 'waveform', style: { marginTop: '16px' } },
+    Array.from(wf).map(v => h('div', { className: 'bar', style: { height: (v * 100) + '%' } }, [])));
+  const footer = h('p', { style: {
+    textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px',
+  } }, ['128-point waveform signature']);
+  replaceChildren(el, [heading, ...engineRows, wave, footer]);
 }
 
 // ─── Substrate Browser ───────────────────────────────────────────
@@ -495,13 +590,22 @@ async function loadSubstrate() {
   try {
     const res = await fetch('/api/void/patterns');
     const data = await res.json();
-    el.innerHTML = `
-      <h2>Substrate Files</h2>
-      <p style="margin-bottom:12px">${data.total_patterns || '--'} patterns across ${data.domains || '--'} domains</p>
-      <table><thead><tr><th>Domain</th><th>Patterns</th><th>Group</th></tr></thead><tbody>
-      ${(data.domains_detail || []).slice(0, 20).map(d => `<tr><td><code>${d.name}</code></td><td>${d.count}</td><td>${d.group || '--'}</td></tr>`).join('')}
-      </tbody></table>
-    `;
+    const heading = h('h2', null, ['Substrate Files']);
+    const count = h('p', { style: { marginBottom: '12px' } }, [
+      (data.total_patterns || '--') + ' patterns across ' + (data.domains || '--') + ' domains',
+    ]);
+    const rows = (data.domains_detail || []).slice(0, 20).map(d => h('tr', null, [
+      h('td', null, [h('code', null, [d.name])]),
+      h('td', null, [String(d.count)]),
+      h('td', null, [d.group || '--']),
+    ]));
+    const table = h('table', null, [
+      h('thead', null, [h('tr', null, [
+        h('th', null, ['Domain']), h('th', null, ['Patterns']), h('th', null, ['Group']),
+      ])]),
+      h('tbody', null, rows),
+    ]);
+    replaceChildren(el, [heading, count, table]);
   } catch {
     el.innerHTML = '<p style="color:var(--text-muted)">Void API offline — substrate data unavailable</p>';
   }

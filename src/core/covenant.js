@@ -26,7 +26,7 @@
  *     not tear down.
  */
 
-const { COVENANT_PRINCIPLES, stripNonExecutableContent } = require('./covenant-principles');
+const { COVENANT_PRINCIPLES, stripNonExecutableContent, stripComments } = require('./covenant-principles');
 const { HARM_PATTERNS } = require('./covenant-harm');
 const { DEEP_SECURITY_PATTERNS } = require('./covenant-deep-security');
 
@@ -81,12 +81,26 @@ function covenantCheck(code, metadata = {}) {
   const isPatternDefinition = isTrusted && /@oracle-pattern-definitions\b/.test(code);
   const isInfrastructure = isTrusted && /@oracle-infrastructure\b/.test(code);
 
-  // Strip non-executable content for keyword-only patterns
+  // Three-tier source surface to balance true positives against
+  // comments-describing-rules false positives:
+  //
+  //   strippedCode:    comments + string bodies removed. Default for rules
+  //                    that match syntactic structure (loops, method calls,
+  //                    assignment patterns). Safe by default.
+  //   commentStripped: comments removed, string bodies preserved. Used by
+  //                    rawOnly rules that need to see string contents
+  //                    (SQL keywords inside queries, passwords in env
+  //                    assignments, rm -rf in shell strings). Still blocks
+  //                    comment false positives.
+  //   code (raw):      never used for harm patterns. Was the old default;
+  //                    caused the covenant-mismatch bug where comments
+  //                    describing rules triggered the rules they described.
   const strippedCode = stripNonExecutableContent(code);
+  const commentStripped = stripComments(code);
 
   if (!isPatternDefinition && !isInfrastructure) {
     for (const hp of HARM_PATTERNS) {
-      const codeToCheck = hp.keywordOnly ? strippedCode : code;
+      const codeToCheck = hp.rawOnly === true ? commentStripped : strippedCode;
       if (hp.pattern.lastIndex) hp.pattern.lastIndex = 0;
       if (hp.pattern.test(codeToCheck)) {
         const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);

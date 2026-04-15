@@ -607,6 +607,40 @@ const HANDLERS = {
       patches: result.patches?.length ?? 0,
     };
   },
+
+  // ─── 19. Risk (Phase 2 bug probability scorer) ───
+  oracle_risk(_oracle, args) {
+    const fs = require('fs');
+    const { computeBugProbability } = require('../quality/risk-score');
+    const { scanDirectory } = require('../quality/risk-scanner');
+
+    // Directory batch mode
+    if (args.dir) {
+      const report = scanDirectory(args.dir, {
+        topN: typeof args.topN === 'number' ? args.topN : 10,
+      });
+      if (args.filter && typeof args.filter === 'string') {
+        const want = args.filter.toUpperCase();
+        const filtered = report.files.filter(f => f.riskLevel === want);
+        return { ...report, files: filtered, stats: { ...report.stats, top: filtered.slice(0, report.stats.top.length) } };
+      }
+      return report;
+    }
+
+    // Single-file / inline code mode
+    let code = null;
+    let filePath = null;
+    if (args.file) {
+      if (!fs.existsSync(args.file)) throw new Error(`oracle_risk: file not found: ${args.file}`);
+      filePath = args.file;
+      code = fs.readFileSync(args.file, 'utf-8');
+    } else if (args.code) {
+      code = args.code;
+    } else {
+      throw new Error('oracle_risk requires one of: file, code, or dir');
+    }
+    return computeBugProbability(code, { filePath });
+  },
 };
 
 module.exports = { HANDLERS };

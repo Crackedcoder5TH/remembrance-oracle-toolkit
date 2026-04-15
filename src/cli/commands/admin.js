@@ -109,6 +109,24 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
     return require('../../audit/ast-checkers');
   }
 
+  /**
+   * Compute the mean Phase 2 risk score across the repo's src/
+   * directory. Returns null on any error so callers can degrade
+   * gracefully. Used by `session start` / `session end` to track
+   * risk deltas across a work session.
+   */
+  function computeSessionMeanRisk(repoRoot) {
+    try {
+      const { scanDirectory } = require('../../quality/risk-scanner');
+      const srcDir = path.join(repoRoot, 'src');
+      if (!fs.existsSync(srcDir)) return null;
+      const report = scanDirectory(srcDir, { topN: 1 });
+      return report.stats.meanProbability;
+    } catch {
+      return null;
+    }
+  }
+
   handlers['audit'] = (args) => {
     const sub = args._sub;
 
@@ -493,6 +511,36 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
                     : rich.trend.direction === 'down' ? c.green('\u2193')
                     : c.dim('\u2192');
         console.log('\n' + c.bold(`  Trend: ${arrow} delta ${rich.trend.delta >= 0 ? '+' : ''}${rich.trend.delta}`));
+      }
+
+      // Top-risk files from the Phase 2 bug-probability scorer. This
+      // surfaces the files with the highest combined coherency +
+      // cyclomatic risk at the end of `audit summary` so users see
+      // them where they actually look. Skipped if `--no-risk` was
+      // passed or if the scanner fails (e.g. empty tree).
+      if (args['no-risk'] !== true) {
+        try {
+          const { computeBugProbability } = require('../../quality/risk-score');
+          const perFile = [];
+          for (const file of files.slice(0, 300)) {
+            try {
+              const code = fs.readFileSync(file, 'utf-8');
+              const r = computeBugProbability(code, { filePath: file });
+              if (r.meta?.skipped) continue;
+              perFile.push({ file, probability: r.probability, riskLevel: r.riskLevel, cyclomatic: r.signals.cyclomatic });
+            } catch { /* skip unreadable files */ }
+          }
+          const topRisk = perFile.slice().sort((a, b) => b.probability - a.probability).slice(0, 5);
+          if (topRisk.length > 0) {
+            console.log('\n' + c.bold('  Top-risk files (risk-score):'));
+            for (const r of topRisk) {
+              const color = r.riskLevel === 'HIGH' ? c.red
+                          : r.riskLevel === 'MEDIUM' ? c.yellow
+                          : c.green;
+              console.log(`    ${color(r.riskLevel.padEnd(6))} ${c.bold(r.probability.toFixed(3))}  ${c.dim('cyc:' + r.cyclomatic)}  ${c.dim(r.file)}`);
+            }
+          }
+        } catch { /* non-fatal — risk-score is advisory */ }
       }
 
       console.log('');
@@ -1308,9 +1356,19 @@ ${c.bold('Environment:')}
 
     if (sub === 'start') {
       const s = startSession(repoRoot, { agent: args.agent || process.env.ORACLE_AGENT });
+      // Snapshot the baseline risk score so `session end` can show
+      // whether the session improved or regressed the codebase.
+      const baselineRisk = computeSessionMeanRisk(repoRoot);
+      if (baselineRisk !== null) {
+        recordEvent(s, 'risk.snapshot', { phase: 'start', meanRisk: baselineRisk });
+        saveSession(s, repoRoot);
+      }
       console.log(c.boldGreen('Session started:'));
       console.log(`  id:      ${c.cyan(s.id)}`);
       console.log(`  started: ${c.dim(s.startedAt)}`);
+      if (baselineRisk !== null) {
+        console.log(`  baseline risk: ${c.dim(baselineRisk.toFixed(4))} ${c.dim('(mean probability across src/)')}`);
+      }
       console.log(c.dim('  Every search / write / audit from now on is tracked.'));
       console.log(c.dim('  Run `oracle session status` to see compliance live.'));
       console.log(c.dim('  Run `oracle session end` when the session is done.'));
@@ -1356,10 +1414,26 @@ ${c.bold('Environment:')}
       const s = endSession(repoRoot);
       if (!s) { console.log(c.yellow('No session to end.')); return; }
       const score = scoreCompliance(s);
+      // Compute the end-of-session risk score and compare against
+      // the start snapshot (if any). The delta tells us whether the
+      // session improved or regressed codebase risk.
+      const endRisk = computeSessionMeanRisk(repoRoot);
+      const startSnapshot = (s.events || []).find(e => e.kind === 'risk.snapshot' && e.payload?.phase === 'start');
+      const startRisk = startSnapshot?.payload?.meanRisk ?? null;
       console.log(c.boldCyan('Session ended:'));
       console.log(`  id:     ${c.cyan(s.id)}`);
       console.log(`  duration: ${c.dim(s.startedAt)} → ${c.dim(s.endedAt)}`);
       console.log(`  final compliance: ${(score.score * 100).toFixed(0)}% (${score.status})`);
+      if (endRisk !== null) {
+        if (startRisk !== null) {
+          const delta = endRisk - startRisk;
+          const arrow = delta < -0.001 ? c.green('↓') : delta > 0.001 ? c.red('↑') : c.dim('→');
+          const sign = delta >= 0 ? '+' : '';
+          console.log(`  risk score: ${startRisk.toFixed(4)} → ${endRisk.toFixed(4)}  ${arrow} ${sign}${delta.toFixed(4)}`);
+        } else {
+          console.log(`  risk score: ${c.dim(endRisk.toFixed(4))} ${c.dim('(no start snapshot)')}`);
+        }
+      }
       if (score.violations.length > 0) {
         console.log('');
         console.log(c.yellow('  Final violations:'));

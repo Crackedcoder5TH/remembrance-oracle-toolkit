@@ -121,14 +121,37 @@ async function loadLocalStats() {
   ];
 
   const maxCount = Math.max(...langData.map(l => l.count));
-  const barsHtml = langData.map(l => `
-    <div class="score-bar">
-      <span class="label">${l.lang}</span>
-      <div class="bar"><div class="fill" style="width:${(l.count/maxCount*100)}%;background:${l.color}"></div></div>
-      <span class="num">${l.count}</span>
-    </div>
-  `).join('');
-  document.getElementById('lang-bars').innerHTML = barsHtml;
+  // Safe DOM construction via createElement + textContent. The
+  // covenant's Living Water principle blocks writing untrusted values
+  // into innerHTML; the createElement path escapes text automatically
+  // via textContent and has no HTML parsing step to exploit.
+  const container = document.getElementById('lang-bars');
+  while (container.firstChild) container.removeChild(container.firstChild);
+  for (const l of langData) {
+    const wrap = document.createElement('div');
+    wrap.className = 'score-bar';
+
+    const label = document.createElement('span');
+    label.className = 'label';
+    label.textContent = l.lang;
+
+    const barWrap = document.createElement('div');
+    barWrap.className = 'bar';
+    const fill = document.createElement('div');
+    fill.className = 'fill';
+    fill.style.width = (l.count / maxCount * 100) + '%';
+    fill.style.background = l.color;
+    barWrap.appendChild(fill);
+
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = String(l.count);
+
+    wrap.appendChild(label);
+    wrap.appendChild(barWrap);
+    wrap.appendChild(num);
+    container.appendChild(wrap);
+  }
 }
 
 // ─── Pattern Browser ─────────────────────────────────────────────
@@ -165,15 +188,46 @@ async function loadPatterns() {
 
 function renderPatterns(patterns) {
   const tbody = document.getElementById('pattern-table');
-  tbody.innerHTML = patterns.slice(0, 100).map(p => `
-    <tr>
-      <td><code>${p.name || '--'}</code></td>
-      <td>${p.language || '--'}</td>
-      <td>${p.patternType || p.pattern_type || '--'}</td>
-      <td><span class="badge ${(p.coherency || p.coherencyScore?.total || 0) >= 0.68 ? 'pull' : 'evolve'}">${(p.coherency || p.coherencyScore?.total || 0).toFixed(3)}</span></td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${(p.tags || []).slice(0, 5).join(', ')}</td>
-    </tr>
-  `).join('');
+  // Pattern names, types, and tags come from the oracle API and may
+  // contain user-controlled content — a malicious pattern could store
+  // `<script>...` in its name field and execute in the dashboard.
+  // textContent on each cell escapes automatically; DOM construction
+  // is verbose but safe and passes the Living Water seal.
+  while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+  for (const p of patterns.slice(0, 100)) {
+    const tr = document.createElement('tr');
+
+    const nameCell = document.createElement('td');
+    const code = document.createElement('code');
+    code.textContent = p.name || '--';
+    nameCell.appendChild(code);
+
+    const langCell = document.createElement('td');
+    langCell.textContent = p.language || '--';
+
+    const typeCell = document.createElement('td');
+    typeCell.textContent = p.patternType || p.pattern_type || '--';
+
+    const coh = p.coherency || p.coherencyScore?.total || 0;
+    const cohCell = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = 'badge ' + (coh >= 0.68 ? 'pull' : 'evolve');
+    badge.textContent = coh.toFixed(3);
+    cohCell.appendChild(badge);
+
+    const tagsCell = document.createElement('td');
+    tagsCell.style.maxWidth = '200px';
+    tagsCell.style.overflow = 'hidden';
+    tagsCell.style.textOverflow = 'ellipsis';
+    tagsCell.textContent = (p.tags || []).slice(0, 5).join(', ');
+
+    tr.appendChild(nameCell);
+    tr.appendChild(langCell);
+    tr.appendChild(typeCell);
+    tr.appendChild(cohCell);
+    tr.appendChild(tagsCell);
+    tbody.appendChild(tr);
+  }
 }
 
 function filterPatterns() {

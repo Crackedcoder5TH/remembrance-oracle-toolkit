@@ -316,6 +316,23 @@ const TOOLS = [
       required: [],
     },
   },
+
+  // ─── 19. Risk (Phase 2 bug probability scorer) ───
+  {
+    name: 'oracle_risk',
+    description: 'File-level bug probability score combining semantic coherency and cyclomatic complexity. Returns a 0..1 probability, a LOW/MEDIUM/HIGH classification, top risk factors, and specific recommendations. Use `file` for a single file or `dir` to batch-scan a directory tree (excludes node_modules/.git/.remembrance by default). Validated at Spearman ρ ≈ +0.26 across random samples from src/ — good for ranking, not absolute classification.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'Single file path to score (mutually exclusive with dir)' },
+        code: { type: 'string', description: 'Inline source to score (alternative to file)' },
+        dir: { type: 'string', description: 'Directory path to batch-scan (mutually exclusive with file/code)' },
+        topN: { type: 'number', description: 'For dir scans: how many worst offenders to return (default 10)' },
+        filter: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'], description: 'For dir scans: only return files in this risk bucket' },
+      },
+      required: [],
+    },
+  },
 ];
 
 module.exports = { TOOLS };

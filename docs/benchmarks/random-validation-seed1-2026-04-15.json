@@ -1,0 +1,283 @@
+{
+  "seed": 1,
+  "n": 30,
+  "sampleSize": 30,
+  "correlations": {
+    "combined": 0.27252502780867627,
+    "cyclomatic": 0.20400444938820916,
+    "coherency": 0.17107897664071192
+  },
+  "rows": [
+    {
+      "file": "src/api/oracle-core-resolve.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 113,
+      "lines": 291,
+      "totalCoherency": 0.63
+    },
+    {
+      "file": "src/evolution/lifecycle.js",
+      "findings": 1,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 132,
+      "lines": 452,
+      "totalCoherency": 0.745
+    },
+    {
+      "file": "src/cli/commands/debug.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 104,
+      "lines": 425,
+      "totalCoherency": 0.772
+    },
+    {
+      "file": "src/ci/implicit-feedback.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 51,
+      "lines": 212,
+      "totalCoherency": 0.416
+    },
+    {
+      "file": "src/evolution/pattern-state-machine.js",
+      "findings": 2,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 53,
+      "lines": 466,
+      "totalCoherency": 0.641
+    },
+    {
+      "file": "src/audit/static-checkers.js",
+      "findings": 1,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 117,
+      "lines": 636,
+      "totalCoherency": 0.61
+    },
+    {
+      "file": "src/reflector/report-autocommit.js",
+      "findings": 2,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 69,
+      "lines": 412,
+      "totalCoherency": 0.751
+    },
+    {
+      "file": "src/ide/bridge.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 87,
+      "lines": 429,
+      "totalCoherency": 0.716
+    },
+    {
+      "file": "src/cli/commands/quality.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 70,
+      "lines": 384,
+      "totalCoherency": 0.584
+    },
+    {
+      "file": "src/compression/index.js",
+      "findings": 0,
+      "probability": 0.98,
+      "riskLevel": "HIGH",
+      "cyclomatic": 49,
+      "lines": 300,
+      "totalCoherency": 0.62
+    },
+    {
+      "file": "src/reflector/scoring-analysis-security.js",
+      "findings": 0,
+      "probability": 0.96,
+      "riskLevel": "HIGH",
+      "cyclomatic": 48,
+      "lines": 113,
+      "totalCoherency": 0.782
+    },
+    {
+      "file": "src/core/reflection-transforms.js",
+      "findings": 1,
+      "probability": 0.96,
+      "riskLevel": "HIGH",
+      "cyclomatic": 48,
+      "lines": 184,
+      "totalCoherency": 0.804
+    },
+    {
+      "file": "src/swarm/swarm-config.js",
+      "findings": 0,
+      "probability": 0.94,
+      "riskLevel": "HIGH",
+      "cyclomatic": 47,
+      "lines": 227,
+      "totalCoherency": 0.744
+    },
+    {
+      "file": "src/patterns/fractal-code-example.js",
+      "findings": 0,
+      "probability": 0.72,
+      "riskLevel": "HIGH",
+      "cyclomatic": 36,
+      "lines": 244,
+      "totalCoherency": 0.748
+    },
+    {
+      "file": "src/core/websocket.js",
+      "findings": 0,
+      "probability": 0.7,
+      "riskLevel": "HIGH",
+      "cyclomatic": 35,
+      "lines": 208,
+      "totalCoherency": 0.774
+    },
+    {
+      "file": "src/evolution/evolution.js",
+      "findings": 0,
+      "probability": 0.64,
+      "riskLevel": "HIGH",
+      "cyclomatic": 32,
+      "lines": 341,
+      "totalCoherency": 0.624
+    },
+    {
+      "file": "src/api/oracle-patterns-export.js",
+      "findings": 0,
+      "probability": 0.64,
+      "riskLevel": "HIGH",
+      "cyclomatic": 32,
+      "lines": 89,
+      "totalCoherency": 0.713
+    },
+    {
+      "file": "src/audit/prior-promoter.js",
+      "findings": 0,
+      "probability": 0.62,
+      "riskLevel": "HIGH",
+      "cyclomatic": 31,
+      "lines": 172,
+      "totalCoherency": 0.756
+    },
+    {
+      "file": "src/unified/debug-bridge.js",
+      "findings": 1,
+      "probability": 0.6,
+      "riskLevel": "HIGH",
+      "cyclomatic": 30,
+      "lines": 236,
+      "totalCoherency": 0.62
+    },
+    {
+      "file": "src/core/validator.js",
+      "findings": 0,
+      "probability": 0.6,
+      "riskLevel": "HIGH",
+      "cyclomatic": 30,
+      "lines": 191,
+      "totalCoherency": 0.665
+    },
+    {
+      "file": "src/reflector/scoring-utils.js",
+      "findings": 0,
+      "probability": 0.54,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 27,
+      "lines": 103,
+      "totalCoherency": 0.8
+    },
+    {
+      "file": "src/swarm/dimension-router.js",
+      "findings": 0,
+      "probability": 0.52,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 26,
+      "lines": 152,
+      "totalCoherency": 0.737
+    },
+    {
+      "file": "src/swarm/auto-register.js",
+      "findings": 0,
+      "probability": 0.4,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 20,
+      "lines": 163,
+      "totalCoherency": 0.419
+    },
+    {
+      "file": "src/dashboard/websocket.js",
+      "findings": 0,
+      "probability": 0.3,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 15,
+      "lines": 46,
+      "totalCoherency": 0.869
+    },
+    {
+      "file": "src/core/semantic-consistency.js",
+      "findings": 2,
+      "probability": 0.3,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 15,
+      "lines": 123,
+      "totalCoherency": 0.699
+    },
+    {
+      "file": "src/core/relevance.js",
+      "findings": 1,
+      "probability": 0.26,
+      "riskLevel": "LOW",
+      "cyclomatic": 13,
+      "lines": 155,
+      "totalCoherency": 0.706
+    },
+    {
+      "file": "src/cli/validate-args.js",
+      "findings": 0,
+      "probability": 0.24,
+      "riskLevel": "LOW",
+      "cyclomatic": 12,
+      "lines": 69,
+      "totalCoherency": 0.884
+    },
+    {
+      "file": "src/audit/void-scan.js",
+      "findings": 0,
+      "probability": 0.2,
+      "riskLevel": "LOW",
+      "cyclomatic": 10,
+      "lines": 122,
+      "totalCoherency": 0.814
+    },
+    {
+      "file": "src/api/oracle-patterns-voting.js",
+      "findings": 0,
+      "probability": 0.18,
+      "riskLevel": "LOW",
+      "cyclomatic": 9,
+      "lines": 49,
+      "totalCoherency": 0.794
+    },
+    {
+      "file": "src/api/oracle-core.js",
+      "findings": 0,
+      "probability": 0.04,
+      "riskLevel": "LOW",
+      "cyclomatic": 2,
+      "lines": 30,
+      "totalCoherency": 0.779
+    }
+  ],
+  "ts": "2026-04-15T04:26:43.436Z"
+}

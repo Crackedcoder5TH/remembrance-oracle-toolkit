@@ -82,6 +82,62 @@ describe('MCPServer', () => {
     assert.ok(Array.isArray(data));
   });
 
+  it('handles oracle_risk with inline code', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 100,
+      method: 'tools/call',
+      params: { name: 'oracle_risk', arguments: { code: 'function add(a, b) { return a + b; }' } },
+    });
+    assert.ok(res.result.content, 'risk result should have content');
+    const data = JSON.parse(res.result.content[0].text);
+    assert.equal(typeof data.probability, 'number');
+    assert.ok(['LOW', 'MEDIUM', 'HIGH'].includes(data.riskLevel));
+    assert.ok(data.components);
+    assert.ok(data.signals);
+  });
+
+  it('handles oracle_risk with file path', async () => {
+    server = new MCPServer(oracle);
+    // Use a real file in the toolkit — seeds/code/async-mutex.js is LOW.
+    const res = await server.handleRequest({
+      id: 101,
+      method: 'tools/call',
+      params: { name: 'oracle_risk', arguments: { file: 'seeds/code/async-mutex.js' } },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.equal(typeof data.probability, 'number');
+    assert.equal(data.meta.filePath, 'seeds/code/async-mutex.js');
+  });
+
+  it('handles oracle_risk with dir batch scan', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 102,
+      method: 'tools/call',
+      params: { name: 'oracle_risk', arguments: { dir: 'src/quality', topN: 3 } },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.ok(Array.isArray(data.files));
+    assert.ok(data.stats);
+    assert.ok(data.stats.total >= 1);
+    assert.equal(typeof data.stats.meanProbability, 'number');
+  });
+
+  it('oracle_risk rejects empty args', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 103,
+      method: 'tools/call',
+      params: { name: 'oracle_risk', arguments: {} },
+    });
+    // Error should come back as an error, not crash.
+    assert.ok(res.error || (res.result && res.result.isError),
+      'expected error response for empty args');
+  });
+
   it('handles oracle_search with smart mode', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({

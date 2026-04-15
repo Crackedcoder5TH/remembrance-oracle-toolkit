@@ -59,6 +59,8 @@ const RATE_LIMITS = {
   oracle_swarm:    { windowMs: 60000, maxCalls: 5 },
   // Fractal: read-heavy with some compute
   oracle_fractal:  { windowMs: 60000, maxCalls: 30 },
+  // Risk: file/dir scoring (pure function, no I/O cost besides fs reads)
+  oracle_risk:     { windowMs: 60000, maxCalls: 60 },
 };
 
 // ─── Numeric parameter bounds ───

@@ -1052,6 +1052,24 @@ ${c.bold('Related commands:')}
     }
     const code = fs.readFileSync(targetFile, 'utf-8');
     const result = computeBugProbability(code, { filePath: targetFile });
+
+    // Stage-5 feedback harness: log every prediction so we can join
+    // it to outcomes later and retune weights once we have ~200+
+    // paired rows. Silent, best-effort, never blocks the command.
+    try {
+      const { recordPrediction } = require('../../quality/feedback-store');
+      const { getCurrentSession } = require('../../core/compliance');
+      const sess = getCurrentSession(process.cwd());
+      recordPrediction({
+        file: targetFile,
+        probability: result.probability,
+        riskLevel: result.riskLevel,
+        cyclomatic: result.signals?.cyclomatic || 0,
+        totalCoherency: result.signals?.totalCoherency || 0,
+        sessionId: sess?.id || null,
+      }, { repoRoot: process.cwd() });
+    } catch { /* advisory — never break risk-score */ }
+
     if (jsonOut()) { console.log(JSON.stringify(result)); return; }
 
     const color =
@@ -1157,6 +1175,188 @@ ${c.bold('Related commands:')}
   // the empirical study in docs/benchmarks/ found this hits known
   // bugs ~33% of the time, not enough to be a detector, but enough
   // to be a useful "weirdest regions of this file" signal.
+  // `oracle feedback-stats` — stage 5 of the anti-hallucination
+  // pipeline. Reports the state of the prediction→outcome store that
+  // every `oracle risk-score` call contributes to. Once enough paired
+  // rows accumulate (~200+), the training loop can retune the risk-
+  // score weights using real outcomes instead of the v1 baseline.
+  handlers['feedback-stats'] = (_args) => {
+    const { loadStats } = require('../../quality/feedback-store');
+    const stats = loadStats({ repoRoot: process.cwd() });
+    if (jsonOut()) { console.log(JSON.stringify(stats)); return; }
+    console.log('');
+    console.log(c.boldCyan('Feedback store'));
+    console.log(`  total predictions  : ${stats.totalPredictions}`);
+    console.log(`  outcomes paired    : ${stats.totalPaired}`);
+    console.log(`  unpaired           : ${stats.unpaired}`);
+    console.log('');
+    console.log(c.bold('  By risk level:'));
+    console.log(`    ${c.boldRed('HIGH  ')}  ${String(stats.byRiskLevel.HIGH).padStart(4)}`);
+    console.log(`    ${c.boldYellow('MEDIUM')}  ${String(stats.byRiskLevel.MEDIUM).padStart(4)}`);
+    console.log(`    ${c.boldGreen('LOW   ')}  ${String(stats.byRiskLevel.LOW).padStart(4)}`);
+    console.log('');
+    if (stats.readyForTraining) {
+      console.log(c.boldGreen('  \u2713 Ready for training (200+ paired rows)'));
+    } else {
+      const need = 200 - stats.totalPaired;
+      console.log(c.dim(`  Need ${need} more paired rows before training is worthwhile.`));
+    }
+    console.log('');
+  };
+
+  // `oracle plan` — stage 1 of the anti-hallucination generation
+  // pipeline. Takes a high-level intent + a proposed symbol list and
+  // verifies each symbol against the four-tier ground-truth chain
+  // (built-ins → session-seen → oracle library → repo scan). Returns
+  // a verified plan or a list of missing symbols that need revision.
+  //
+  // Usage:
+  //   oracle plan --intent "description" --symbols a,b,c [--json]
+  //   cat plan.json | oracle plan --stdin  (draft-plan shape)
+  //
+  // The caller is expected to iterate: if ok=false, re-prompt the
+  // generator with the missing list, receive a revised plan, repeat
+  // until ok=true. Then hand the plan to `oracle generate` which
+  // enforces that every call site uses only verified symbols.
+  handlers['plan'] = (args) => {
+    const { planFromIntent } = require('../../quality/planner');
+    const fs = require('fs');
+    const intent = args.intent || '';
+    let symbols = [];
+    if (args.symbols) {
+      symbols = String(args.symbols).split(',').map(s => s.trim()).filter(Boolean);
+    }
+    // Allow a plan file as input: --from <path> loads { intent, symbols }.
+    if (args.from) {
+      try {
+        const raw = JSON.parse(fs.readFileSync(args.from, 'utf-8'));
+        if (raw.intent && !intent) args.intent = raw.intent;
+        if (Array.isArray(raw.symbols) && symbols.length === 0) symbols = raw.symbols;
+      } catch (e) {
+        console.error(c.boldRed('Error:') + ' cannot read --from file: ' + e.message);
+        process.exit(1);
+      }
+    }
+    if (symbols.length === 0) {
+      console.error(c.boldRed('Error:') + ' Usage: ' + c.cyan('oracle plan --intent "..." --symbols a,b,c'));
+      process.exit(1);
+    }
+
+    // Pull session-touched identifiers as ground truth
+    let knownIdentifiers = new Set();
+    try {
+      const { getCurrentSession } = require('../../core/compliance');
+      const sess = getCurrentSession(process.cwd());
+      if (sess?.touchedIdentifiers) knownIdentifiers = new Set(sess.touchedIdentifiers);
+    } catch { /* no session is fine */ }
+
+    const plan = planFromIntent({
+      intent: args.intent || intent,
+      symbols,
+      oracle,
+      repoRoot: process.cwd(),
+      knownIdentifiers,
+    });
+
+    if (jsonOut()) { console.log(JSON.stringify(plan)); return; }
+
+    console.log('');
+    console.log(c.boldCyan('Plan verification'));
+    if (plan.intent) console.log(`  ${c.dim('intent:')} ${plan.intent}`);
+    console.log(`  ${c.dim('symbols:')} ${plan.symbols.length}`);
+    console.log('');
+    console.log(c.bold('  Verified:'));
+    if (plan.verified.length === 0) {
+      console.log(c.dim('    (none)'));
+    } else {
+      for (const v of plan.verified) {
+        const icon = v.status === 'builtin' ? c.blue('\u25c6')
+                   : v.status === 'seen'    ? c.cyan('\u25c6')
+                   : v.status === 'pattern' ? c.magenta('\u25c6')
+                   : c.green('\u25c6');
+        console.log(`    ${icon} ${c.bold(v.symbol.padEnd(28))} ${c.dim(v.status.padEnd(8))} ${c.dim(v.source)}`);
+      }
+    }
+    console.log('');
+    if (plan.missing.length > 0) {
+      console.log(c.boldYellow(`  Missing (${plan.missing.length}):`));
+      for (const m of plan.missing) {
+        console.log(`    ${c.yellow('?')} ${c.bold(m.symbol.padEnd(28))} ${c.dim(m.evidence)}`);
+      }
+      console.log('');
+      console.log(c.dim('  Revise the plan: remove these symbols, or search/read the files that define them.'));
+    } else {
+      console.log(c.boldGreen(`  \u2713 Plan verified (${plan.summary.verified}/${plan.summary.total})`));
+      console.log(c.dim('  Pass to `oracle generate --plan <path>` to constrain code generation.'));
+    }
+    console.log('');
+  };
+
+  // `oracle generate-gate` — stage 2 of the anti-hallucination pipeline.
+  // Takes a verified plan + a draft file and rejects the draft if any
+  // call site uses a symbol that isn't in the plan, isn't defined
+  // locally, and isn't a built-in. Returns structured violations so
+  // a caller (CLI, swarm, MCP) can re-prompt the generator.
+  //
+  // Usage:
+  //   oracle generate-gate --plan plan.json --draft path/to/draft.js [--json]
+  //
+  // The --plan file is the JSON output of `oracle plan --json`.
+  handlers['generate-gate'] = (args) => {
+    const { checkAgainstPlan } = require('../../quality/generate-gate');
+    const fs = require('fs');
+    const planPath = args.plan;
+    const draftPath = args.draft || args.file;
+    if (!planPath || !draftPath) {
+      console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle generate-gate --plan <plan.json> --draft <file>')}`);
+      process.exit(1);
+    }
+    if (!fs.existsSync(planPath)) {
+      console.error(c.boldRed('Error:') + ` Plan not found: ${planPath}`);
+      process.exit(1);
+    }
+    if (!fs.existsSync(draftPath)) {
+      console.error(c.boldRed('Error:') + ` Draft not found: ${draftPath}`);
+      process.exit(1);
+    }
+    let plan;
+    try { plan = JSON.parse(fs.readFileSync(planPath, 'utf-8')); }
+    catch (e) {
+      console.error(c.boldRed('Error:') + ' cannot parse plan: ' + e.message);
+      process.exit(1);
+    }
+
+    const result = checkAgainstPlan({ plan, draftPath });
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+    if (result.error) {
+      console.error(c.boldRed('Error:') + ' ' + result.error);
+      process.exit(1);
+    }
+
+    console.log('');
+    console.log(c.boldCyan('Generate-gate —') + ' ' + c.bold(draftPath));
+    console.log(`  plan: ${plan.intent || c.dim('(no intent)')}`);
+    console.log(`  verified symbols in plan: ${result.plan.verifiedSymbols.length}`);
+    console.log(`  call sites in draft: ${result.summary.totalCalls}`);
+    console.log(`  grounded: ${result.summary.grounded}`);
+    console.log(`  violations: ${result.summary.violations}`);
+    console.log('');
+    if (result.ok) {
+      console.log(c.boldGreen('  \u2713 Draft conforms to the plan'));
+      console.log(c.dim('  Every call site resolves to a verified symbol, local definition, or built-in.'));
+    } else {
+      console.log(c.boldRed(`  \u2717 Draft violates the plan (${result.violations.length} symbol(s) not in plan):`));
+      for (const v of result.violations) {
+        console.log(`    ${c.red('!')} L${String(v.line).padStart(4)}  ${c.bold(v.name)}()`);
+      }
+      console.log('');
+      console.log(c.dim('  Either: (a) revise the plan to include these symbols and re-run planning,'));
+      console.log(c.dim('          (b) revise the draft to use only plan symbols.'));
+      process.exit(2); // distinct exit code for gate rejection
+    }
+    console.log('');
+  };
+
   // `oracle ground <file>` — grounding check for AI-generated code.
   // Parses the file's identifier references, cross-checks against the
   // session ledger's touched-identifier set + JS/Node built-ins, and

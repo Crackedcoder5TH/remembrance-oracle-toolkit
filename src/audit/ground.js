@@ -160,27 +160,50 @@ function extractDefinedIdentifiers(tokens) {
     }
   }
 
-  // Also pick up function parameter names. Cheap heuristic: any
-  // identifier that appears between `function` (or `=>`) and `{` in
-  // a function declaration/expression position.
+  // Pick up function parameter names. Two shapes:
+  //   function foo(a, b, c) { ... }  — params after `function [name]`
+  //   (a, b) => { ... }              — params before `=>`
+  //   x => ...                        — single param before `=>`
   for (let i = 0; i < tokens.length; i++) {
-    if (tokens[i].value !== 'function' && tokens[i].value !== '=>') continue;
-    // Find the parameter list
-    let j = i + 1;
-    if (tokens[i].value === 'function') {
-      // skip optional name
+    const t = tokens[i];
+    // Shape 1: `function [name](params)`
+    if (t.value === 'function') {
+      let j = i + 1;
       if (tokens[j]?.type === 'identifier') j++;
-    }
-    if (tokens[j]?.value !== '(') continue;
-    j++;
-    let depth = 1;
-    while (j < tokens.length && depth > 0) {
-      if (tokens[j].value === '(') depth++;
-      else if (tokens[j].value === ')') depth--;
-      if (depth > 0 && tokens[j].type === 'identifier') {
-        defined.add(tokens[j].value);
-      }
+      if (tokens[j]?.value !== '(') continue;
       j++;
+      let depth = 1;
+      while (j < tokens.length && depth > 0) {
+        if (tokens[j].value === '(') depth++;
+        else if (tokens[j].value === ')') depth--;
+        if (depth > 0 && tokens[j].type === 'identifier') {
+          defined.add(tokens[j].value);
+        }
+        j++;
+      }
+      continue;
+    }
+    // Shape 2/3: `...(params) =>` or `name =>` — work backwards from `=>`
+    if (t.value === '=>') {
+      // Case: `name =>` (single bare-identifier param before arrow)
+      const prev = tokens[i - 1];
+      if (prev?.type === 'identifier') {
+        defined.add(prev.value);
+        continue;
+      }
+      // Case: `(a, b, c) =>` — prev is `)`, walk back to matching `(`
+      if (prev?.value === ')') {
+        let depth = 1;
+        let j = i - 2;
+        while (j >= 0 && depth > 0) {
+          if (tokens[j].value === ')') depth++;
+          else if (tokens[j].value === '(') depth--;
+          if (depth > 0 && tokens[j].type === 'identifier') {
+            defined.add(tokens[j].value);
+          }
+          j--;
+        }
+      }
     }
   }
 
@@ -200,9 +223,32 @@ function extractCalledIdentifiers(tokens) {
     if (tokens[i + 1]?.value !== '(') continue;
     // Skip member-access calls like `obj.foo(`
     if (tokens[i - 1]?.value === '.') continue;
-    // Skip `new Foo(` — the constructor name might not be in scope
-    // by simple lexical check, but if it's a fabrication we want to
-    // catch it. Keep it.
+    // Skip function declarations / function expressions:
+    //   function NAME(...)    — `function` precedes NAME
+    //   class NAME            — not in call position, already skipped
+    //   NAME is a definition, not a call.
+    if (tokens[i - 1]?.value === 'function') continue;
+    // Skip object-getter/setter shorthand: `get name(` / `set name(`.
+    // The tokenizer emits `get`/`set` as identifiers, not keywords,
+    // so we can't rely on token.type — check the previous token value.
+    const prevVal = tokens[i - 1]?.value;
+    if (prevVal === 'get' || prevVal === 'set') continue;
+    // Skip method shorthand in object/class bodies where the method
+    // name is preceded by `{` or `,` (shape: `{ method() {...}, next() {...} }`).
+    // These are definitions, not calls.
+    if (prevVal === '{' || prevVal === ',') {
+      // Only treat as definition if the tokens after `(` look like
+      // a param list followed by `{` (a body). Otherwise it could be
+      // a call in a sequence expression.
+      let j = i + 2;
+      let depth = 1;
+      while (j < tokens.length && depth > 0) {
+        if (tokens[j].value === '(') depth++;
+        else if (tokens[j].value === ')') depth--;
+        j++;
+      }
+      if (tokens[j]?.value === '{') continue;
+    }
     calls.push({ name: t.value, line: t.line, column: t.column });
   }
   return calls;

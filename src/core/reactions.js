@@ -100,6 +100,20 @@ function wireReactions(oracle, options = {}) {
           reason: payload.reason || null,
         });
       });
+      // Stage-5 feedback harness: a dismiss on a file that was
+      // previously risk-scored counts as a "bug confirmed" outcome
+      // for that file's prediction. Over time these rows become
+      // the training signal for retuning risk-score weights.
+      safely('feedback.dismiss→risk-score-outcome', () => {
+        if (!payload?.file) return;
+        const { recordOutcome } = require('../quality/feedback-store');
+        recordOutcome({
+          file: payload.file,
+          outcome: 'bug_confirmed',
+          source: 'feedback.dismiss',
+          predictionId: payload.predictionId || null,
+        }, { repoRoot: storageRoot });
+      });
     }),
 
     // ── audit.finding → nudge debug oracle amplitude + update baseline
@@ -120,6 +134,15 @@ function wireReactions(oracle, options = {}) {
     //    level=confident, the rule that was auto-fixed gets credit as
     //    a trustworthy fix (calibration confidence nudges up).
     bus.on(EVENTS.HEAL_SUCCEEDED, (payload) => {
+      safely('heal.succeeded→risk-score-outcome', () => {
+        if (!payload?.file) return;
+        const { recordOutcome } = require('../quality/feedback-store');
+        recordOutcome({
+          file: payload.file,
+          outcome: 'healing_succeeded',
+          source: 'heal.succeeded',
+        }, { repoRoot: storageRoot });
+      });
       safely('heal.succeeded→pattern-usage', () => {
         if (payload?.level === 'generate' && payload?.patternId && oracle?.patterns) {
           oracle.patterns.recordUsage(payload.patternId, true);

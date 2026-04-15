@@ -163,6 +163,50 @@ function registerAdminCommands(handlers, { oracle, jsonOut }) {
       const minSeverity = args['min-severity'] || undefined;
       const result = auditFiles(files, { bugClasses, minSeverity });
 
+      // ─── Tier-coverage check — architectural self-similarity ────────
+      // Runs alongside the static checkers. For each file, if there's
+      // a nearest architecture.json walking up the directory tree, the
+      // file's call graph is compared against the declared tiers and
+      // a finding is emitted when the file engages a strict subset
+      // (unless it opts out with a `single-tier-by-design:` marker).
+      // Silent no-op when no manifest exists anywhere above the file.
+      try {
+        const tierCoverage = require('../../audit/tier-coverage');
+        const fileResultMap = new Map();
+        for (const fr of result.files || []) {
+          fileResultMap.set(fr.file, fr);
+        }
+        for (const f of files) {
+          const tcResult = tierCoverage.checkFile(f);
+          if (!tcResult || tcResult.findings.length === 0) continue;
+          let fr = fileResultMap.get(f);
+          if (!fr) {
+            fr = { file: f, findings: [], summary: { total: 0, byClass: {}, bySeverity: {} } };
+            result.files.push(fr);
+            fileResultMap.set(f, fr);
+          }
+          fr.findings.push(...tcResult.findings);
+          fr.summary.total = (fr.summary.total || 0) + tcResult.findings.length;
+          fr.summary.byClass = fr.summary.byClass || {};
+          fr.summary.byClass['tier-coverage'] = (fr.summary.byClass['tier-coverage'] || 0) + tcResult.findings.length;
+          fr.summary.bySeverity = fr.summary.bySeverity || {};
+          for (const tf of tcResult.findings) {
+            fr.summary.bySeverity[tf.severity] = (fr.summary.bySeverity[tf.severity] || 0) + 1;
+          }
+          result.totalFindings = (result.totalFindings || 0) + tcResult.findings.length;
+          if (result.summary) {
+            result.summary.byClass = result.summary.byClass || {};
+            result.summary.byClass['tier-coverage'] = (result.summary.byClass['tier-coverage'] || 0) + tcResult.findings.length;
+            result.summary.bySeverity = result.summary.bySeverity || {};
+            for (const tf of tcResult.findings) {
+              result.summary.bySeverity[tf.severity] = (result.summary.bySeverity[tf.severity] || 0) + 1;
+            }
+          }
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[audit:tier-coverage]', e.message);
+      }
+
       // Compliance: every audited file counts toward the audit-on-write
       // check. Emit a bus event per file so the session ledger records it.
       try {

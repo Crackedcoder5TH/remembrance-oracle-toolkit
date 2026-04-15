@@ -1157,6 +1157,59 @@ ${c.bold('Related commands:')}
   // the empirical study in docs/benchmarks/ found this hits known
   // bugs ~33% of the time, not enough to be a detector, but enough
   // to be a useful "weirdest regions of this file" signal.
+  // `oracle ground <file>` — grounding check for AI-generated code.
+  // Parses the file's identifier references, cross-checks against the
+  // session ledger's touched-identifier set + JS/Node built-ins, and
+  // reports any function calls that don't resolve to anything the
+  // agent has observed. Designed to run as a PostToolUse hook after
+  // every Edit/Write so fabricated APIs get caught at write-time
+  // instead of test-time.
+  handlers['ground'] = (args) => {
+    const { groundFile } = require('../../audit/ground');
+    const targetFile = args.file || args._positional[1];
+    if (!targetFile) {
+      console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle ground <file>')} [--json]`);
+      process.exit(1);
+    }
+    const fs = require('fs');
+    if (!fs.existsSync(targetFile)) {
+      console.error(c.boldRed('Error:') + ` File not found: ${targetFile}`);
+      process.exit(1);
+    }
+
+    // Pull the touched-identifier set from the current compliance session.
+    let knownSet = new Set();
+    try {
+      const { getCurrentSession } = require('../../core/compliance');
+      const sess = getCurrentSession(process.cwd());
+      if (sess?.touchedIdentifiers) knownSet = new Set(sess.touchedIdentifiers);
+    } catch { /* no session — only built-ins */ }
+
+    const result = groundFile(targetFile, knownSet);
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+
+    if (result.error) {
+      console.error(c.boldRed('Error:') + ' ' + result.error);
+      process.exit(1);
+    }
+
+    console.log('');
+    console.log(`${c.boldCyan('Grounding —')} ${c.bold(targetFile)}`);
+    console.log(`  ${result.totalCalls} call site(s), ${result.definedLocally} local def(s), ${result.grounded} grounded`);
+    if (result.ungrounded.length === 0) {
+      console.log(`  ${c.boldGreen('\u2713 All calls grounded')}`);
+    } else {
+      console.log('');
+      console.log(c.boldYellow(`  ${result.ungrounded.length} ungrounded call(s) — possible fabrications:`));
+      for (const u of result.ungrounded) {
+        console.log(`    ${c.yellow('?')} L${String(u.line).padStart(4)}  ${c.bold(u.name)}()`);
+      }
+      console.log('');
+      console.log(c.dim('  Either read the file that defines these symbols, or replace them with proven calls.'));
+    }
+    console.log('');
+  };
+
   handlers['void-scan'] = async (args) => {
     const targetFile = args.file || args._positional[1];
     if (!targetFile) {
@@ -1455,6 +1508,30 @@ ${c.bold('Environment:')}
       console.log(`  reason: ${c.yellow(reason)}`);
       if (files.length > 0) console.log(`  files:  ${files.join(', ')}`);
       console.log(c.dim('  These files will not count as query-before-write violations.'));
+      return;
+    }
+
+    // `oracle session record-read <file>` — called by the Claude Code
+    // PostToolUse hook after Read. Reads the file, extracts every
+    // identifier, and stores them in the session's touchedIdentifiers
+    // set so the next `oracle ground` call has fresh ground truth to
+    // check against.
+    if (sub === 'record-read') {
+      const file = args.file || args._positional[1];
+      if (!file) { console.log(c.yellow('Usage: oracle session record-read <file>')); return; }
+      const fs = require('fs');
+      if (!fs.existsSync(file)) { console.log(c.yellow('File not found: ' + file)); return; }
+      const { extractAllIdentifiers } = require('../../audit/ground');
+      const source = fs.readFileSync(file, 'utf-8');
+      const ids = Array.from(extractAllIdentifiers(source));
+      const s = getCurrentSession(repoRoot) || startSession(repoRoot);
+      recordEvent(s, 'read', { file, identifiers: ids });
+      saveSession(s, repoRoot);
+      if (args.json === true) {
+        console.log(JSON.stringify({ file, identifiers: ids.length, sessionId: s.id }));
+        return;
+      }
+      console.log(c.dim(`recorded read: ${file} (${ids.length} identifiers)`));
       return;
     }
 

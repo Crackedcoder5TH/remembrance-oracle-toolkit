@@ -71,6 +71,8 @@ function startSession(repoRoot, options = {}) {
     filesWritten: [],
     filesSearched: [],
     filesAudited: [],
+    filesRead: [],
+    touchedIdentifiers: [],
     patternsPulled: [],
     hooksInstalled: probeHooksInstalled(repoRoot),
     sessionEndCalled: false,
@@ -154,6 +156,28 @@ function recordEvent(session, kind, payload) {
     case 'audit':
       if (payload?.file) {
         if (!session.filesAudited.includes(payload.file)) session.filesAudited.push(payload.file);
+      }
+      break;
+    case 'read':
+      // Track files the agent has read AND the identifiers visible
+      // in those files. The grounding check uses this set to decide
+      // whether a function call in a written file is grounded in
+      // observed reality or fabricated. Populated by Claude Code's
+      // PostToolUse hook on Read, and by `oracle session record-read`.
+      if (payload?.file) {
+        if (!session.filesRead) session.filesRead = [];
+        if (!session.filesRead.includes(payload.file)) session.filesRead.push(payload.file);
+      }
+      if (payload?.identifiers && Array.isArray(payload.identifiers)) {
+        if (!session.touchedIdentifiers) session.touchedIdentifiers = [];
+        // Cap at 5000 to keep the ledger small. With realistic reads
+        // we'll grow to a few hundred per file; the cap is a safety net.
+        const set = new Set(session.touchedIdentifiers);
+        for (const id of payload.identifiers) {
+          if (set.size >= 5000) break;
+          set.add(id);
+        }
+        session.touchedIdentifiers = Array.from(set);
       }
       break;
     case 'pattern.pulled':

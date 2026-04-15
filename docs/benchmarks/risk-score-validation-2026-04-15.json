@@ -1,0 +1,213 @@
+{
+  "rows": [
+    {
+      "file": "seeds/code/async-mutex.js",
+      "findings": 0,
+      "combinedRisk": 0.1667,
+      "coherencyRisk": 0.127,
+      "cyclomaticRisk": 0.1667,
+      "totalCoherency": 0.873,
+      "cyclomatic": 5,
+      "riskLevel": "LOW"
+    },
+    {
+      "file": "seeds/code/priority-queue.js",
+      "findings": 0,
+      "combinedRisk": 0.3,
+      "coherencyRisk": 0.17,
+      "cyclomaticRisk": 0.3,
+      "totalCoherency": 0.83,
+      "cyclomatic": 9,
+      "riskLevel": "MEDIUM"
+    },
+    {
+      "file": "seeds/code/circuit-breaker.js",
+      "findings": 0,
+      "combinedRisk": 0.2667,
+      "coherencyRisk": 0.154,
+      "cyclomaticRisk": 0.2667,
+      "totalCoherency": 0.846,
+      "cyclomatic": 8,
+      "riskLevel": "LOW"
+    },
+    {
+      "file": "seeds/code/promise-pool.js",
+      "findings": 0,
+      "combinedRisk": 0.1667,
+      "coherencyRisk": 0.118,
+      "cyclomaticRisk": 0.1667,
+      "totalCoherency": 0.882,
+      "cyclomatic": 5,
+      "riskLevel": "LOW"
+    },
+    {
+      "file": "seeds/code/state-machine.js",
+      "findings": 2,
+      "combinedRisk": 0.3333,
+      "coherencyRisk": 0.18,
+      "cyclomaticRisk": 0.3333,
+      "totalCoherency": 0.82,
+      "cyclomatic": 10,
+      "riskLevel": "MEDIUM"
+    },
+    {
+      "file": "src/core/events.js",
+      "findings": 0,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.348,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.652,
+      "cyclomatic": 37,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/core/preflight.js",
+      "findings": 0,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.162,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.838,
+      "cyclomatic": 33,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/core/resilience.js",
+      "findings": 0,
+      "combinedRisk": 0.7667,
+      "coherencyRisk": 0.246,
+      "cyclomaticRisk": 0.7667,
+      "totalCoherency": 0.754,
+      "cyclomatic": 23,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/core/reactions.js",
+      "findings": 0,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.255,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.745,
+      "cyclomatic": 58,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/core/compliance.js",
+      "findings": 4,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.337,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.663,
+      "cyclomatic": 73,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/core/ecosystem.js",
+      "findings": 0,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.243,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.757,
+      "cyclomatic": 83,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/core/covenant.js",
+      "findings": 0,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.39,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.61,
+      "cyclomatic": 57,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/core/storage.js",
+      "findings": 0,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.331,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.669,
+      "cyclomatic": 43,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/patterns/library.js",
+      "findings": 2,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.566,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.434,
+      "cyclomatic": 167,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "src/cli/commands/library.js",
+      "findings": 0,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.256,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.744,
+      "cyclomatic": 171,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "dashboard/public/app.js",
+      "findings": 8,
+      "combinedRisk": 1,
+      "coherencyRisk": 0.342,
+      "cyclomaticRisk": 1,
+      "totalCoherency": 0.658,
+      "cyclomatic": 88,
+      "riskLevel": "HIGH"
+    },
+    {
+      "file": "seeds/code/bloom-filter.js",
+      "findings": 3,
+      "combinedRisk": 0.2333,
+      "coherencyRisk": 0.112,
+      "cyclomaticRisk": 0.2333,
+      "totalCoherency": 0.888,
+      "cyclomatic": 7,
+      "riskLevel": "LOW"
+    },
+    {
+      "file": ".remembrance/debug-fixes/debug-fix-negotiation-sort-mutation.js",
+      "findings": 4,
+      "combinedRisk": 0.3667,
+      "coherencyRisk": 0.176,
+      "cyclomaticRisk": 0.3667,
+      "totalCoherency": 0.824,
+      "cyclomatic": 11,
+      "riskLevel": "MEDIUM"
+    },
+    {
+      "file": "digital-cathedral/patterns/batch4/sorted-array.js",
+      "findings": 4,
+      "combinedRisk": 0.2667,
+      "coherencyRisk": 0.123,
+      "cyclomaticRisk": 0.2667,
+      "totalCoherency": 0.877,
+      "cyclomatic": 8,
+      "riskLevel": "LOW"
+    },
+    {
+      "file": "digital-cathedral/tests/lead-distribution.test.js",
+      "findings": 4,
+      "combinedRisk": 0.6667,
+      "coherencyRisk": 0.32,
+      "cyclomaticRisk": 0.6667,
+      "totalCoherency": 0.68,
+      "cyclomatic": 20,
+      "riskLevel": "HIGH"
+    }
+  ],
+  "correlations": {
+    "combined": 0.37293233082706767,
+    "coherencyOnly": 0.3007518796992481,
+    "cyclomaticOnly": 0.3533834586466166
+  },
+  "bestSingleMagnitude": 0.3533834586466166,
+  "combinedMagnitude": 0.37293233082706767,
+  "delta": 0.019548872180451093,
+  "ts": "2026-04-15T01:26:25.417Z"
+}

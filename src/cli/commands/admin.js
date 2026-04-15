@@ -984,6 +984,122 @@ ${c.bold('Related commands:')}
     }
   };
 
+  // `oracle risk-score` — file-level bug-probability score. Combines
+  // Oracle's semantic coherency (ρ = -0.30 vs audit findings) and
+  // cyclomatic complexity (ρ = +0.35) into a 0..1 probability with
+  // a risk level (LOW|MEDIUM|HIGH), component breakdown, and
+  // actionable recommendations. See docs/benchmarks/risk-score-
+  // phase2.md for the empirical basis.
+  handlers['risk-score'] = (args) => {
+    const { computeBugProbability } = require('../../quality/risk-score');
+    const targetFile = args.file || args._positional[1];
+    if (!targetFile) {
+      console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle risk-score <file>')} [--json]`);
+      process.exit(1);
+    }
+    const fs = require('fs');
+    if (!fs.existsSync(targetFile)) {
+      console.error(c.boldRed('Error:') + ` File not found: ${targetFile}`);
+      process.exit(1);
+    }
+    const code = fs.readFileSync(targetFile, 'utf-8');
+    const result = computeBugProbability(code, { filePath: targetFile });
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+
+    const color =
+      result.riskLevel === 'HIGH'   ? c.boldRed   :
+      result.riskLevel === 'MEDIUM' ? c.boldYellow :
+      c.boldGreen;
+    console.log('');
+    console.log(`${c.boldCyan('Risk score —')} ${c.bold(targetFile)}`);
+    console.log(`  ${color(result.riskLevel.padEnd(6))}  probability: ${c.bold(result.probability.toFixed(4))}`);
+    console.log('');
+    console.log(c.bold('  Components:'));
+    console.log(`    coherency risk:  ${result.components.coherencyRisk.toFixed(4)}`);
+    console.log(`    cyclomatic risk: ${result.components.cyclomaticRisk.toFixed(4)}`);
+    console.log('');
+    console.log(c.bold('  Signals:'));
+    console.log(`    total coherency:   ${result.signals.totalCoherency}`);
+    console.log(`    cyclomatic:        ${result.signals.cyclomatic}`);
+    console.log(`    max depth:         ${result.signals.maxDepth}`);
+    console.log(`    lines:             ${result.signals.lines}`);
+    console.log(`    fractal alignment: ${result.signals.fractalAlignment}`);
+    console.log('');
+    if (result.topFactors.length > 0) {
+      console.log(c.bold('  Top risk factors:'));
+      for (const f of result.topFactors) {
+        console.log(`    ${c.yellow('•')} ${c.bold(f.name)}  severity: ${f.severity.toFixed(3)}`);
+        console.log(`      ${c.dim(f.message)}`);
+      }
+      console.log('');
+    }
+    if (result.recommendations.length > 0) {
+      console.log(c.bold('  Recommendations:'));
+      for (const rec of result.recommendations) {
+        console.log(`    ${c.cyan('→')} ${rec}`);
+      }
+      console.log('');
+    }
+  };
+
+  // `oracle risk-scan` — batch risk scan across a directory tree.
+  // Walks the tree, scores every source file, and reports the
+  // distribution + top N worst offenders. Excludes node_modules,
+  // .git, .remembrance, dist, build, and digital-cathedral (which
+  // holds intentionally-buggy fixtures) by default.
+  handlers['risk-scan'] = (args) => {
+    const { scanDirectory } = require('../../quality/risk-scanner');
+    const targetDir = args.dir || args._positional[1] || process.cwd();
+    const topN = Number(args.top) || 10;
+    const filter = args.filter || null; // 'HIGH' | 'MEDIUM' | 'LOW'
+
+    const report = scanDirectory(targetDir, {
+      topN,
+      onFile: args.verbose
+        ? (file, idx, total) => console.error(c.dim(`[${idx}/${total}] ${file}`))
+        : null,
+    });
+
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    if (report.error) {
+      console.error(c.boldRed('Error:') + ' ' + report.error);
+      process.exit(1);
+    }
+
+    console.log('');
+    console.log(`${c.boldCyan('Risk scan —')} ${c.bold(report.root)}`);
+    console.log(`  ${c.dim(report.scannedAt)}`);
+    console.log('');
+    console.log(c.bold('  Summary:'));
+    console.log(`    files scanned:      ${report.stats.total}`);
+    console.log(`    mean probability:   ${report.stats.meanProbability.toFixed(4)}`);
+    console.log(`    median probability: ${report.stats.medianProbability.toFixed(4)}`);
+    console.log('');
+    console.log(c.bold('  By risk level:'));
+    console.log(`    ${c.boldRed('HIGH  ')}  ${String(report.stats.byRisk.HIGH).padStart(4)}`);
+    console.log(`    ${c.boldYellow('MEDIUM')}  ${String(report.stats.byRisk.MEDIUM).padStart(4)}`);
+    console.log(`    ${c.boldGreen('LOW   ')}  ${String(report.stats.byRisk.LOW).padStart(4)}`);
+    console.log('');
+
+    const toShow = filter
+      ? report.files.filter(f => f.riskLevel === filter.toUpperCase()).slice(0, topN)
+      : report.stats.top;
+
+    if (toShow.length > 0) {
+      const label = filter ? `All ${filter.toUpperCase()} files (top ${topN}):` : `Top ${topN} worst offenders:`;
+      console.log(c.bold(`  ${label}`));
+      for (const f of toShow) {
+        const color =
+          f.riskLevel === 'HIGH'   ? c.red   :
+          f.riskLevel === 'MEDIUM' ? c.yellow :
+          c.green;
+        console.log(`    ${color(f.riskLevel.padEnd(6))} ${c.bold(f.probability.toFixed(4))}  ${f.file}  ${c.dim('cyc:' + f.signals.cyclomatic + ' lines:' + f.signals.lines)}`);
+      }
+      console.log('');
+    }
+  };
+
   // `oracle void-scan` — sliding-window Void coherence diagnostic.
   // Calls Void Compressor's /coherence endpoint on each window and
   // surfaces the regions with the lowest coherence. DIAGNOSTIC ONLY:

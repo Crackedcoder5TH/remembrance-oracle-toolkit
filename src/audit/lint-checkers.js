@@ -55,6 +55,7 @@ function lintCode(source, options = {}) {
     checkParameterValidation(fn, emit);
     checkParseIntRadix(fn, emit);
     checkVarUsage(fn, emit);
+    checkSymmetryPairs(fn, emit);
   });
 
   // File-level rules
@@ -159,6 +160,107 @@ function checkVarUsage(fn, emit) {
         suggestion: 'Use const for immutable bindings, let for reassigned ones',
       });
     }
+  }
+}
+
+// ─── Symmetry / paired-operation balance ──────────────────────────────────
+//
+// Detection pattern #5 from the coherence-based bug taxonomy:
+//
+//   "If operation O exists, inverse O⁻¹ must exist.
+//    Bug signature: O exists but O⁻¹ missing or broken."
+//
+// Every pair listed below represents a resource acquired by calling
+// `open` and released by calling `close`. A function that calls the
+// `open` side of a pair but never calls the `close` side leaks the
+// resource. The checker runs per-function so a missing `close` in
+// one function isn't masked by a `close` in another.
+//
+// False-positive guardrails:
+//   - Only fires on functions that call the open side AT LEAST ONCE.
+//   - Tolerates one-sided usage when the function is clearly a setup
+//     helper (name contains "setup", "install", "register", "start",
+//     "attach", "bind", "init", "create") — those legitimately only
+//     open, with teardown elsewhere.
+//   - Tolerates when the close call is syntactically visible via a
+//     different method name used by the same ecosystem (e.g.
+//     `finally` block containing `release()` counts as release).
+//   - Fires as INFO, not WARN, because the checker is lexical, not
+//     flow-sensitive. It's a nudge, not a verdict.
+
+// Each entry: [openIdentifier, closeIdentifier, humanLabel]
+//
+// Notable omission: setTimeout/clearTimeout. A one-shot
+// `await new Promise(r => setTimeout(r, ms))` is the canonical delay
+// pattern and doesn't need clearing — flagging it would drown the
+// real leaks in noise. setInterval/clearInterval stays because an
+// un-cleared interval is almost always a leak.
+const SYMMETRY_PAIRS = [
+  ['lock',                'unlock',              'lock/unlock'],
+  ['acquire',             'release',             'acquire/release'],
+  ['subscribe',           'unsubscribe',         'subscribe/unsubscribe'],
+  ['addEventListener',    'removeEventListener', 'addEventListener/removeEventListener'],
+  ['addListener',         'removeListener',      'addListener/removeListener'],
+  ['setInterval',         'clearInterval',       'setInterval/clearInterval'],
+  ['openSync',            'closeSync',           'openSync/closeSync'],
+  ['connect',             'disconnect',          'connect/disconnect'],
+  ['watch',               'unwatch',             'watch/unwatch'],
+  ['attach',              'detach',              'attach/detach'],
+  ['mount',               'unmount',             'mount/unmount'],
+];
+
+// Match camelCase names like `setupListeners`, `installHook`, `bootServer`
+// by checking the lowercase prefix. `\b` word boundaries don't work on
+// the boundary between two word characters in camelCase.
+const SETUP_NAME_PREFIXES = [
+  'setup', 'install', 'register', 'start', 'attach', 'bind',
+  'init', 'create', 'configure', 'boot', 'constructor',
+];
+function isSetupName(name) {
+  if (!name || typeof name !== 'string') return false;
+  // Strip leading underscores so `_startAutoFlush` is recognized as a
+  // start-style setup function. Also strip the common anonymous-fn
+  // convention of `bound #name`.
+  const lower = name.replace(/^_+/, '').toLowerCase();
+  return SETUP_NAME_PREFIXES.some(p => lower === p || lower.startsWith(p));
+}
+
+function checkSymmetryPairs(fn, emit) {
+  const tokens = fn.bodyTokens || [];
+  if (tokens.length === 0) return;
+
+  // Count identifier-call occurrences per name. We count a name only
+  // when followed by a `(`, so properties and string literals don't
+  // score. This is lexical, not flow-sensitive — deliberately cheap.
+  const callCounts = new Map();
+  const firstSeen = new Map();
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (t.type !== 'identifier') continue;
+    if (tokens[i + 1]?.value !== '(') continue;
+    callCounts.set(t.value, (callCounts.get(t.value) || 0) + 1);
+    if (!firstSeen.has(t.value)) firstSeen.set(t.value, t);
+  }
+
+  // Setup-style functions are allowed to only open. The teardown
+  // side lives in a sibling destroy/stop/uninstall function.
+  const isSetup = isSetupName(fn.name);
+
+  for (const [openName, closeName, label] of SYMMETRY_PAIRS) {
+    const opens = callCounts.get(openName) || 0;
+    const closes = callCounts.get(closeName) || 0;
+    if (opens === 0) continue;
+    if (opens <= closes) continue;
+    if (isSetup) continue;
+    const tok = firstSeen.get(openName);
+    if (!tok) continue;
+    emit({
+      line: tok.line, column: tok.column,
+      ruleId: 'lint/symmetry-pair',
+      severity: SEVERITY.INFO,
+      message: `${label}: ${opens} call(s) to ${openName}(), only ${closes} to ${closeName}()`,
+      suggestion: `Pair every ${openName}() with a matching ${closeName}() — a try/finally keeps them balanced on the error path too`,
+    });
   }
 }
 

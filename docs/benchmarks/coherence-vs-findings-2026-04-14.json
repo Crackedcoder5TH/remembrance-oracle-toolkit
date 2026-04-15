@@ -1,0 +1,126 @@
+{
+  "rows": [
+    {
+      "file": "seeds/code/async-mutex.js",
+      "findings": 0,
+      "voidCoherence": 0.3821,
+      "size": 1241
+    },
+    {
+      "file": "seeds/code/priority-queue.js",
+      "findings": 0,
+      "voidCoherence": 0.3791,
+      "size": 1655
+    },
+    {
+      "file": "seeds/code/circuit-breaker.js",
+      "findings": 0,
+      "voidCoherence": 0.3576,
+      "size": 2124
+    },
+    {
+      "file": "seeds/code/promise-pool.js",
+      "findings": 0,
+      "voidCoherence": 0.3431,
+      "size": 1419
+    },
+    {
+      "file": "seeds/code/state-machine.js",
+      "findings": 2,
+      "voidCoherence": 0.3205,
+      "size": 2061
+    },
+    {
+      "file": "src/core/events.js",
+      "findings": 0,
+      "voidCoherence": 0.4322,
+      "size": 7968
+    },
+    {
+      "file": "src/core/preflight.js",
+      "findings": 0,
+      "voidCoherence": 0.3118,
+      "size": 7114
+    },
+    {
+      "file": "src/core/resilience.js",
+      "findings": 0,
+      "voidCoherence": 0.3583,
+      "size": 4992
+    },
+    {
+      "file": "src/core/reactions.js",
+      "findings": 0,
+      "voidCoherence": 0.3761,
+      "size": 8280
+    },
+    {
+      "file": "src/core/compliance.js",
+      "findings": 4,
+      "voidCoherence": 0.4496,
+      "size": 18488
+    },
+    {
+      "file": "src/core/ecosystem.js",
+      "findings": 0,
+      "voidCoherence": 0.4065,
+      "size": 16259
+    },
+    {
+      "file": "src/core/covenant.js",
+      "findings": 0,
+      "voidCoherence": 0.3446,
+      "size": 13918
+    },
+    {
+      "file": "src/core/storage.js",
+      "findings": 0,
+      "voidCoherence": 0.4482,
+      "size": 11361
+    },
+    {
+      "file": "src/patterns/library.js",
+      "findings": 2,
+      "voidCoherence": 0.3679,
+      "size": 60306
+    },
+    {
+      "file": "src/cli/commands/library.js",
+      "findings": 0,
+      "voidCoherence": 0.354,
+      "size": 36768
+    },
+    {
+      "file": "dashboard/public/app.js",
+      "findings": 8,
+      "voidCoherence": 0.4731,
+      "size": 20290
+    },
+    {
+      "file": "seeds/code/bloom-filter.js",
+      "findings": 3,
+      "voidCoherence": 0.3426,
+      "size": 2254
+    },
+    {
+      "file": ".remembrance/debug-fixes/debug-fix-negotiation-sort-mutation.js",
+      "findings": 4,
+      "voidCoherence": 0.3784,
+      "size": 2022
+    },
+    {
+      "file": "digital-cathedral/patterns/batch4/sorted-array.js",
+      "findings": 4,
+      "voidCoherence": 0.3943,
+      "size": 1249
+    },
+    {
+      "file": "digital-cathedral/tests/lead-distribution.test.js",
+      "findings": 4,
+      "voidCoherence": 0.3473,
+      "size": 11560
+    }
+  ],
+  "correlation": 0.14436090225563913,
+  "ts": "2026-04-14T23:50:39.261Z"
+}

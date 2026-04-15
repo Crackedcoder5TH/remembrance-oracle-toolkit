@@ -984,6 +984,43 @@ ${c.bold('Related commands:')}
     }
   };
 
+  // `oracle void-scan` — sliding-window Void coherence diagnostic.
+  // Calls Void Compressor's /coherence endpoint on each window and
+  // surfaces the regions with the lowest coherence. DIAGNOSTIC ONLY:
+  // the empirical study in docs/benchmarks/ found this hits known
+  // bugs ~33% of the time, not enough to be a detector, but enough
+  // to be a useful "weirdest regions of this file" signal.
+  handlers['void-scan'] = async (args) => {
+    const targetFile = args.file || args._positional[1];
+    if (!targetFile) {
+      console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle void-scan <file>')} [--window 20] [--stride 5] [--top 5]`);
+      process.exit(1);
+    }
+    if (!process.env.VOID_API_KEY) {
+      console.error(c.boldRed('Error:') + ' VOID_API_KEY is not set. Start Void and export a key.');
+      process.exit(1);
+    }
+    const { voidScanFile } = require('../../audit/void-scan');
+    const result = await voidScanFile(targetFile, {
+      windowLines: Number(args.window) || 20,
+      stride: Number(args.stride) || 5,
+      topN: Number(args.top) || 5,
+    });
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+    if (result.error) {
+      console.error(c.boldRed('Error:') + ' ' + result.error);
+      process.exit(1);
+    }
+    console.log(c.boldCyan(`Void-scan — ${result.file}`));
+    console.log(`  ${result.totalLines} lines, ${result.windowsScored} windows scored\n`);
+    console.log(c.dim('  DIAGNOSTIC: low coherence = unfamiliar to Void substrate, NOT always a bug.\n'));
+    console.log(c.bold(`  Lowest-coherence windows (${result.candidates.length}):`));
+    for (const w of result.candidates) {
+      console.log(`    ${c.yellow('L' + String(w.startLine).padStart(4) + '-' + String(w.endLine).padEnd(4))}  coh: ${c.bold(w.coherence.toFixed(4))}  bytes: ${w.bytes}  ratio: ${w.voidRatio}x`);
+    }
+    console.log('');
+  };
+
   // `oracle smell` — architectural smell detectors. These are structural
   // hints (long functions, deep nesting, too many params, god files,
   // feature envy) that aren't bugs but suggest maintainability trouble.

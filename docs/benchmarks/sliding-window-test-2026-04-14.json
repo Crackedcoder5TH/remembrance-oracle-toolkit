@@ -1,0 +1,264 @@
+{
+  "results": [
+    {
+      "file": ".remembrance/debug-fixes/debug-fix-negotiation-sort-mutation.js",
+      "bugLines": [
+        34,
+        38,
+        42,
+        46
+      ],
+      "windows": [
+        {
+          "start": 25,
+          "end": 36,
+          "coherence": 0.335,
+          "bytes": 511,
+          "containsBug": true
+        },
+        {
+          "start": 29,
+          "end": 40,
+          "coherence": 0.35,
+          "bytes": 499,
+          "containsBug": true
+        },
+        {
+          "start": 9,
+          "end": 20,
+          "coherence": 0.365,
+          "bytes": 489,
+          "containsBug": false
+        },
+        {
+          "start": 41,
+          "end": 52,
+          "coherence": 0.3697,
+          "bytes": 425,
+          "containsBug": true
+        },
+        {
+          "start": 21,
+          "end": 32,
+          "coherence": 0.3732,
+          "bytes": 388,
+          "containsBug": false
+        },
+        {
+          "start": 17,
+          "end": 28,
+          "coherence": 0.3796,
+          "bytes": 431,
+          "containsBug": false
+        },
+        {
+          "start": 13,
+          "end": 24,
+          "coherence": 0.4018,
+          "bytes": 295,
+          "containsBug": false
+        },
+        {
+          "start": 37,
+          "end": 48,
+          "coherence": 0.4352,
+          "bytes": 489,
+          "containsBug": true
+        },
+        {
+          "start": 1,
+          "end": 12,
+          "coherence": 0.5236,
+          "bytes": 597,
+          "containsBug": false
+        },
+        {
+          "start": 5,
+          "end": 16,
+          "coherence": 0.5294,
+          "bytes": 552,
+          "containsBug": false
+        },
+        {
+          "start": 33,
+          "end": 44,
+          "coherence": 0.5671,
+          "bytes": 579,
+          "containsBug": true
+        }
+      ]
+    },
+    {
+      "file": "digital-cathedral/patterns/batch4/sorted-array.js",
+      "bugLines": [
+        25,
+        25,
+        31,
+        31
+      ],
+      "windows": [
+        {
+          "start": 5,
+          "end": 16,
+          "coherence": 0.3739,
+          "bytes": 347,
+          "containsBug": false
+        },
+        {
+          "start": 37,
+          "end": 48,
+          "coherence": 0.3821,
+          "bytes": 236,
+          "containsBug": false
+        },
+        {
+          "start": 29,
+          "end": 40,
+          "coherence": 0.3854,
+          "bytes": 343,
+          "containsBug": true
+        },
+        {
+          "start": 1,
+          "end": 12,
+          "coherence": 0.3959,
+          "bytes": 377,
+          "containsBug": false
+        },
+        {
+          "start": 45,
+          "end": 56,
+          "coherence": 0.4116,
+          "bytes": 199,
+          "containsBug": false
+        },
+        {
+          "start": 25,
+          "end": 36,
+          "coherence": 0.4364,
+          "bytes": 253,
+          "containsBug": true
+        },
+        {
+          "start": 9,
+          "end": 20,
+          "coherence": 0.4439,
+          "bytes": 260,
+          "containsBug": false
+        },
+        {
+          "start": 17,
+          "end": 28,
+          "coherence": 0.4596,
+          "bytes": 184,
+          "containsBug": true
+        },
+        {
+          "start": 21,
+          "end": 32,
+          "coherence": 0.4635,
+          "bytes": 295,
+          "containsBug": true
+        },
+        {
+          "start": 33,
+          "end": 44,
+          "coherence": 0.4663,
+          "bytes": 211,
+          "containsBug": false
+        },
+        {
+          "start": 13,
+          "end": 24,
+          "coherence": 0.4727,
+          "bytes": 233,
+          "containsBug": false
+        },
+        {
+          "start": 41,
+          "end": 52,
+          "coherence": 0.5615,
+          "bytes": 129,
+          "containsBug": false
+        }
+      ]
+    },
+    {
+      "file": "digital-cathedral/tests/lead-distribution.test.js",
+      "bugLines": [
+        32,
+        36,
+        51,
+        55
+      ],
+      "windows": [
+        {
+          "start": 17,
+          "end": 28,
+          "coherence": 0.3111,
+          "bytes": 308,
+          "containsBug": false
+        },
+        {
+          "start": 9,
+          "end": 20,
+          "coherence": 0.3168,
+          "bytes": 228,
+          "containsBug": false
+        },
+        {
+          "start": 13,
+          "end": 24,
+          "coherence": 0.3706,
+          "bytes": 223,
+          "containsBug": false
+        },
+        {
+          "start": 5,
+          "end": 16,
+          "coherence": 0.3779,
+          "bytes": 232,
+          "containsBug": false
+        },
+        {
+          "start": 21,
+          "end": 32,
+          "coherence": 0.3836,
+          "bytes": 423,
+          "containsBug": true
+        },
+        {
+          "start": 1,
+          "end": 12,
+          "coherence": 0.4209,
+          "bytes": 343,
+          "containsBug": false
+        },
+        {
+          "start": 25,
+          "end": 36,
+          "coherence": 0.4698,
+          "bytes": 567,
+          "containsBug": true
+        }
+      ]
+    },
+    {
+      "file": "dashboard/public/app.js",
+      "bugLines": [
+        372,
+        387,
+        390,
+        403,
+        405,
+        406,
+        478,
+        478
+      ],
+      "windows": []
+    }
+  ],
+  "hits": 1,
+  "misses": 2,
+  "ts": "2026-04-14T23:52:10.574Z"
+}

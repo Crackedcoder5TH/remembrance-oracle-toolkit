@@ -18,6 +18,7 @@ const CATEGORIES = [
       { name: 'audit', description: 'Static analysis + cascade detection (real bugs only)' },
       { name: 'lint', description: 'Style/opinion checks (parameter validation, TODOs, var)' },
       { name: 'smell', description: 'Architectural smells (long fns, deep nesting, god files)' },
+      { name: 'void-scan', description: 'Sliding-window Void coherence diagnostic (diagnostic only)' },
       { name: 'history', description: 'Unified event timeline across every subsystem' },
       { name: 'session', description: 'Compliance ledger (start/status/end/bypass)' },
       { name: 'ecosystem', description: 'Discover + auto-wire peer modules (Oracle, Void, Reflector, Swarm)' },

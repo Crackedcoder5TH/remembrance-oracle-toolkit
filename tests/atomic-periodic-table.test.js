@@ -104,7 +104,7 @@ describe('PeriodicTable', () => {
   });
 
   it('exports JSON with element data', () => {
-    table.addElement({ charge: 1, valence: 1, mass: 'medium', spin: 'odd', phase: 'liquid', reactivity: 'low', electronegativity: 0.5, group: 7, period: 3 });
+    table.addElement({ charge: 1, valence: 1, mass: 'medium', spin: 'odd', phase: 'liquid', reactivity: 'stable', electronegativity: 0.5, group: 7, period: 3 });
     const json = table.exportJSON();
     assert.equal(json.elementCount, 1);
     assert.ok(json.elements[0].signature);

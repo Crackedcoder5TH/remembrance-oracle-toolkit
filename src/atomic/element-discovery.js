@@ -128,7 +128,7 @@ function groupCompletionDiscovery(table, options = {}) {
         mass: { l: 'light', m: 'medium', h: 'heavy' }[m[3]],
         spin: { e: 'even', o: 'odd' }[m[4]],
         phase: { s: 'solid', l: 'liquid', g: 'gas' }[m[5]],
-        reactivity: { i: 'inert', l: 'low', m: 'medium', h: 'high' }[m[6]],
+        reactivity: { i: 'inert', s: 'stable', r: 'reactive', v: 'volatile' }[m[6]],
         electronegativity: 0.5,
         group: g,
         period: 3, // default middle period

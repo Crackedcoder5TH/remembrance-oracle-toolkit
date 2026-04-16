@@ -1297,7 +1297,7 @@ ${c.bold('Related commands:')}
         mass: props.mass === 'light' ? c.green(props.mass) : props.mass === 'heavy' ? c.red(props.mass) : c.yellow(props.mass),
         spin: props.spin === 'even' ? c.green('even (pure)') : c.yellow('odd (side-effects)'),
         phase: props.phase === 'solid' ? c.cyan('solid (cached)') : props.phase === 'liquid' ? c.yellow('liquid (mutable)') : c.dim('gas (computed)'),
-        reactivity: props.reactivity === 'inert' ? c.green(props.reactivity) : props.reactivity === 'high' ? c.red(props.reactivity) : c.yellow(props.reactivity),
+        reactivity: props.reactivity === 'inert' ? c.green(props.reactivity) : props.reactivity === 'volatile' ? c.red(props.reactivity) : c.yellow(props.reactivity),
       };
       console.log(`  charge          : ${labels.charge}`);
       console.log(`  valence         : ${c.bold(String(props.valence))} dependencies`);

@@ -1248,6 +1248,155 @@ ${c.bold('Related commands:')}
     console.log('');
   };
 
+  // ── ATOMIC CODING ──────────────────────────────────────────────────
+  //
+  // Three subcommands for the periodic table of code:
+  //   oracle atomic analyze --file <f>   — extract atomic properties
+  //   oracle atomic discover [--max N]   — find gaps in property space
+  //   oracle atomic table [--json]       — show the periodic table
+
+  handlers['atomic'] = (args) => {
+    const sub = args._sub || args._positional[1];
+    const path = require('path');
+    const fs = require('fs');
+
+    const tablePath = path.join(process.cwd(), '.remembrance', 'atomic-table.json');
+    const { PeriodicTable, encodeSignature, GROUPS } = require('../../atomic/periodic-table');
+    const table = new PeriodicTable({ storagePath: tablePath });
+
+    // ── oracle atomic analyze ─────────────────────────────────────
+    if (sub === 'analyze') {
+      const { extractAtomicProperties } = require('../../atomic/property-extractor');
+      const targetFile = args.file || args._positional[2];
+      if (!targetFile || !fs.existsSync(targetFile)) {
+        console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle atomic analyze --file <code.js>')}`);
+        process.exit(1);
+      }
+      const code = fs.readFileSync(targetFile, 'utf-8');
+      const props = extractAtomicProperties(code);
+      const sig = encodeSignature(props);
+
+      // Auto-register in the periodic table BEFORE any output
+      const existing = table.getElement(sig);
+      if (!existing) {
+        table.addElement(props, { name: path.basename(targetFile), source: 'analyze' });
+      } else {
+        table.recordUsage(sig);
+      }
+
+      if (jsonOut()) {
+        console.log(JSON.stringify({ file: targetFile, signature: sig, properties: props, registered: !existing }));
+        return;
+      }
+      console.log('');
+      console.log(c.boldCyan('Atomic Analysis') + ' — ' + c.bold(targetFile));
+      console.log(`  signature: ${c.bold(sig)}`);
+      console.log('');
+      const labels = {
+        charge: props.charge > 0 ? c.green('+1 expands') : props.charge < 0 ? c.red('-1 contracts') : c.dim('0 transforms'),
+        mass: props.mass === 'light' ? c.green(props.mass) : props.mass === 'heavy' ? c.red(props.mass) : c.yellow(props.mass),
+        spin: props.spin === 'even' ? c.green('even (pure)') : c.yellow('odd (side-effects)'),
+        phase: props.phase === 'solid' ? c.cyan('solid (cached)') : props.phase === 'liquid' ? c.yellow('liquid (mutable)') : c.dim('gas (computed)'),
+        reactivity: props.reactivity === 'inert' ? c.green(props.reactivity) : props.reactivity === 'high' ? c.red(props.reactivity) : c.yellow(props.reactivity),
+      };
+      console.log(`  charge          : ${labels.charge}`);
+      console.log(`  valence         : ${c.bold(String(props.valence))} dependencies`);
+      console.log(`  mass            : ${labels.mass}`);
+      console.log(`  spin            : ${labels.spin}`);
+      console.log(`  phase           : ${labels.phase}`);
+      console.log(`  reactivity      : ${labels.reactivity}`);
+      console.log(`  electronegativity: ${c.bold(String(props.electronegativity))}`);
+      console.log(`  group           : ${c.bold(String(props.group))} (${GROUPS[props.group] || 'unknown'})`);
+      console.log(`  period          : ${c.bold(String(props.period))}`);
+
+      // Report registration status
+      if (!existing) {
+        console.log('');
+        console.log(c.dim(`  Registered as new element in periodic table.`));
+      } else {
+        console.log('');
+        console.log(c.dim(`  Element already in table (usage: ${(existing.usageCount || 0) + 1}).`));
+      }
+      console.log('');
+      return;
+    }
+
+    // ── oracle atomic discover ────────────────────────────────────
+    if (sub === 'discover') {
+      const { runDiscovery } = require('../../atomic/element-discovery');
+      const maxResults = parseInt(args.max || args.limit || '10', 10);
+      const gaps = runDiscovery(table, { maxResults });
+
+      if (jsonOut()) {
+        console.log(JSON.stringify(gaps));
+        return;
+      }
+      console.log('');
+      console.log(c.boldCyan('Element Discovery') + ` — ${table.size} elements in table, ${gaps.length} gaps found`);
+      console.log('');
+      if (gaps.length === 0) {
+        console.log(c.dim('  No gaps discovered. Add more elements via `oracle atomic analyze` to seed discovery.'));
+      }
+      for (let i = 0; i < gaps.length; i++) {
+        const gap = gaps[i];
+        const stratIcon = gap.strategy === 'neighbor' ? c.blue('\u25c6')
+                        : gap.strategy === 'group' ? c.magenta('\u25c6')
+                        : c.green('\u25c6');
+        console.log(`  ${stratIcon} ${c.bold(gap.signature)}`);
+        console.log(`    ${c.dim(gap.description)}`);
+        console.log(`    strategy: ${gap.strategy}  priority: ${gap.priority.toFixed(3)}`);
+        const cstr = gap.generationSpec?.constraints;
+        if (cstr) {
+          console.log(`    constraints: ${c.dim(`${cstr.complexity} | pure=${cstr.pure} | composable=${cstr.composable} | deps≤${cstr.maxDependencies}`)}`);
+        }
+        console.log('');
+      }
+      return;
+    }
+
+    // ── oracle atomic table ───────────────────────────────────────
+    if (sub === 'table' || !sub) {
+      const stats = table.stats();
+      if (jsonOut()) {
+        console.log(JSON.stringify({ stats, elements: table.exportJSON().elements }));
+        return;
+      }
+      console.log('');
+      console.log(c.boldCyan('Periodic Table of Code'));
+      console.log(`  total elements: ${c.bold(String(stats.totalElements))}`);
+      console.log('');
+      if (stats.totalElements === 0) {
+        console.log(c.dim('  Empty. Run `oracle atomic analyze --file <code.js>` to register elements.'));
+        console.log('');
+        return;
+      }
+      console.log(c.bold('  By charge:'));
+      console.log(`    ${c.green('positive')}  ${stats.byCharge.positive}`);
+      console.log(`    ${c.dim('neutral ')}  ${stats.byCharge.neutral}`);
+      console.log(`    ${c.red('negative')}  ${stats.byCharge.negative}`);
+      console.log('');
+      console.log(c.bold('  By mass:'));
+      console.log(`    ${c.green('light ')}  ${stats.byMass.light || 0}`);
+      console.log(`    ${c.yellow('medium')}  ${stats.byMass.medium || 0}`);
+      console.log(`    ${c.red('heavy ')}  ${stats.byMass.heavy || 0}`);
+      console.log('');
+      console.log(c.bold('  By group:'));
+      for (const [name, count] of Object.entries(stats.byGroup).sort((a, b) => b[1] - a[1])) {
+        console.log(`    ${name.padEnd(16)} ${count}`);
+      }
+      console.log('');
+      if (stats.gaps > 0) {
+        console.log(c.dim(`  ${stats.gaps} discoverable gaps. Run \`oracle atomic discover\` to see them.`));
+        console.log('');
+      }
+      return;
+    }
+
+    console.error(c.boldRed('Error:') + ` Unknown atomic subcommand: ${sub}`);
+    console.error(c.dim('  Available: analyze, discover, table'));
+    process.exit(1);
+  };
+
   // `oracle plan` — stage 1 of the anti-hallucination generation
   // pipeline. Takes a high-level intent + a proposed symbol list and
   // verifies each symbol against the four-tier ground-truth chain

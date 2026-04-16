@@ -18,6 +18,7 @@ const CATEGORIES = [
       { name: 'audit', description: 'Static analysis + cascade detection (real bugs only)' },
       { name: 'lint', description: 'Style/opinion checks (parameter validation, TODOs, var)' },
       { name: 'smell', description: 'Architectural smells (long fns, deep nesting, god files)' },
+      { name: 'atomic', description: 'Periodic table of code: analyze (extract properties), discover (find gaps), table (show elements)' },
       { name: 'plan', description: 'Stage 1 pre-generation: verify proposed symbol list against ground truth' },
       { name: 'generate-gate', description: 'Stage 2 pre-output: reject drafts that use symbols not in the plan' },
       { name: 'ground', description: 'Identifier grounding: flag calls that don\'t resolve to anything seen' },

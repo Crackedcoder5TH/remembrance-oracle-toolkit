@@ -115,6 +115,34 @@ function validateCode(code, options = {}) {
 
   result.valid = result.errors.length === 0;
 
+  // ─── Atomic auto-registration ─────────────────────────────────
+  // When code passes validation, extract its atomic properties and
+  // register it in the periodic table. This is the auto-registration
+  // wire: every pattern that enters the oracle pipeline automatically
+  // becomes an element in the periodic table, growing the table from
+  // normal usage without any explicit atomic commands.
+  if (result.valid && code) {
+    try {
+      const { extractAtomicProperties } = require('../atomic/property-extractor');
+      const { PeriodicTable, encodeSignature } = require('../atomic/periodic-table');
+      const path = require('path');
+      const tablePath = path.join(process.cwd(), '.remembrance', 'atomic-table.json');
+      const table = new PeriodicTable({ storagePath: tablePath });
+      const props = extractAtomicProperties(code);
+      const sig = encodeSignature(props);
+      if (!table.getElement(sig)) {
+        table.addElement(props, {
+          name: options.name || options.description || sig,
+          source: 'auto-validation',
+        });
+      } else {
+        table.recordUsage(sig);
+      }
+      result.atomicSignature = sig;
+      result.atomicProperties = props;
+    } catch { /* atomic module not available — no-op */ }
+  }
+
   // Generate actionable feedback for any failures
   if (!result.valid) {
     result.feedback = actionableFeedback(code, result);

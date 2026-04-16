@@ -352,10 +352,54 @@ function formatSwarmResult(result) {
   return lines.join('\n');
 }
 
+/**
+ * Convenience: swarm for generating code from an atomic element spec.
+ *
+ * Takes a generationSpec from element-discovery.js and uses the swarm
+ * to produce an implementation. The spec contains a natural-language
+ * prompt plus constraints (complexity, purity, composability, max deps).
+ *
+ * The result goes through the gated-generate pipeline so fabricated
+ * calls get caught, then if it passes, it's auto-registered in the
+ * periodic table via the validator's auto-registration hook.
+ *
+ * @param {object} elementSpec - from element-discovery.js runDiscovery()
+ * @param {string} [language='javascript'] - target language
+ * @param {object} [options] - swarm options
+ * @returns {Promise<object>} swarm result with code
+ */
+async function swarmAtomicGenerate(elementSpec, language = 'javascript', options = {}) {
+  const spec = elementSpec.generationSpec || elementSpec;
+  const constraints = spec.constraints || {};
+
+  const prompt = [
+    `Generate a ${language} function matching this specification:`,
+    ``,
+    spec.prompt || elementSpec.description || 'Generate a utility function.',
+    ``,
+    `Constraints:`,
+    `  - Complexity: ${constraints.complexity || 'O(n)'}`,
+    `  - Pure (no side effects): ${constraints.pure !== false}`,
+    `  - Composable (can be chained): ${constraints.composable !== false}`,
+    `  - Maximum dependencies: ${constraints.maxDependencies ?? 3}`,
+    `  - Side effects allowed: ${constraints.sideEffects === true}`,
+    `  - Target group: ${spec.targetGroup || 'general'}`,
+    ``,
+    `Requirements:`,
+    `  - Export a single named function`,
+    `  - Include JSDoc with @param and @returns`,
+    `  - Handle edge cases (null, empty, invalid input)`,
+    `  - No external dependencies unless composability requires it`,
+  ].join('\n');
+
+  return swarmCode(prompt, language, { ...options, existingCode: null });
+}
+
 module.exports = {
   swarm,
   swarmCode,
   swarmReview,
   swarmHeal,
+  swarmAtomicGenerate,
   formatSwarmResult,
 };

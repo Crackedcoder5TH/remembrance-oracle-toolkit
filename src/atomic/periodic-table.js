@@ -441,3 +441,15 @@ module.exports = {
   MAX_GROUP,
   MAX_PERIOD,
 };
+
+// ── Atomic self-description ─────────────────────────────────────────
+// The periodic table describes ITSELF atomically. This is the bootstrap:
+// the code that stores atomic properties has its own atomic properties.
+encodeSignature.atomicProperties = {
+  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
+};
+decodeSignature.atomicProperties = {
+  charge: 1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
+};

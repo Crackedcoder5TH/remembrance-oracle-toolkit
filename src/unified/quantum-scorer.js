@@ -373,3 +373,13 @@ module.exports = {
   AUDIT_DECOHERENCE,
   FRACTAL_SECTOR_MAP,
 };
+
+// ── Atomic self-description ─────────────────────────────────────────
+// The oracle's own functions are elements in the periodic table.
+// These declarations make the oracle atomically coded native —
+// its structure IS its atomic description.
+
+unifiedMeasurement.atomicProperties = {
+  charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
+  reactivity: 'high', electronegativity: 0.9, group: 18, period: 7,
+};

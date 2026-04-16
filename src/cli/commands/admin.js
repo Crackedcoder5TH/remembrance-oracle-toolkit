@@ -1322,6 +1322,40 @@ ${c.bold('Related commands:')}
     }
 
     // ── oracle atomic discover ────────────────────────────────────
+    // ── oracle atomic introspect ────────────────────────────────────
+    if (sub === 'introspect') {
+      const { introspect } = require('../../atomic/self-introspect');
+      const result = introspect(table);
+      if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+      console.log('');
+      console.log(c.boldCyan('Atomic Self-Introspection'));
+      console.log(`  scanned: oracle + void compressor`);
+      console.log(`  registered: ${c.bold(String(result.registered.length))} elements from own code`);
+      console.log('');
+      if (result.registered.length > 0) {
+        console.log(c.bold('  Own elements:'));
+        for (const r of result.registered) {
+          const icon = r.name.startsWith('void/') ? c.magenta('\u25c6') : c.cyan('\u25c6');
+          console.log(`    ${icon} ${c.bold(r.name.padEnd(35))} ${c.dim(r.signature)}`);
+        }
+        console.log('');
+      }
+      if (result.gaps.length > 0) {
+        console.log(c.boldYellow(`  Self-gaps found: ${result.gaps.length}`));
+        for (const gap of result.gaps.slice(0, 5)) {
+          console.log(`    ${c.yellow('?')} ${c.bold(gap.signature)}`);
+          console.log(`      ${c.dim(gap.description)}`);
+        }
+        if (result.gaps.length > 5) console.log(c.dim(`    ... and ${result.gaps.length - 5} more`));
+        console.log('');
+      } else {
+        console.log(c.dim('  No self-gaps detected.'));
+        console.log('');
+      }
+      if (result.errors.length > 0) console.log(c.dim(`  (${result.errors.length} modules skipped)`));
+      return;
+    }
+
     if (sub === 'discover') {
       const { runDiscovery } = require('../../atomic/element-discovery');
       const maxResults = parseInt(args.max || args.limit || '10', 10);

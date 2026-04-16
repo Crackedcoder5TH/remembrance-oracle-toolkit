@@ -347,4 +347,12 @@ module.exports = {
 
     return resolveResult;
   },
+
+  // ── Atomic self-description ───────────────────────────────────────
+  _atomicProperties: {
+    resolve: {
+      charge: 0, valence: 4, mass: 'heavy', spin: 'odd', phase: 'gas',
+      reactivity: 'high', electronegativity: 0.85, group: 18, period: 6,
+    },
+  },
 };

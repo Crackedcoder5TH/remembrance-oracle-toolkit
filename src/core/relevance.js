@@ -170,3 +170,17 @@ module.exports = {
   computeTF,
   cosineSimilarity,
 };
+
+// ── Atomic self-description ─────────────────────────────────────────
+rankEntries.atomicProperties = {
+  charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'medium', electronegativity: 0.6, group: 13, period: 3,
+};
+cosineSimilarity.atomicProperties = {
+  charge: -1, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
+};
+computeRelevance.atomicProperties = {
+  charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.2, group: 2, period: 2,
+};

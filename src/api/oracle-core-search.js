@@ -267,4 +267,20 @@ module.exports = {
   parseSearchIntent(query) {
     return parseIntent(query);
   },
+
+  // ── Atomic self-description ───────────────────────────────────────
+  _atomicProperties: {
+    search: {
+      charge: 1, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
+      reactivity: 'medium', electronegativity: 0.7, group: 15, period: 4,
+    },
+    smartSearch: {
+      charge: 1, valence: 4, mass: 'medium', spin: 'even', phase: 'gas',
+      reactivity: 'high', electronegativity: 0.8, group: 15, period: 5,
+    },
+    query: {
+      charge: -1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
+      reactivity: 'low', electronegativity: 0.3, group: 15, period: 3,
+    },
+  },
 };

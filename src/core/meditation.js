@@ -833,26 +833,6 @@ class MeditationEngine {
     parts.push('All changes rolled back. System coherency preserved.');
     return parts.join(' ');
   }
-    const whisper = this._synthesizeWhisper(insights);
-
-    this._log('session-end', {
-      sessionId: this._sessionId,
-      cycles: this._cycleCount,
-      insights: insights.length,
-      whisper,
-      interrupted: this._interrupted,
-    });
-
-    // Rest period
-    this._state = STATE.RESTING;
-    await new Promise(r => {
-      const timer = setTimeout(r, this._config.restDurationMs);
-      if (timer.unref) timer.unref();
-    });
-    this._state = STATE.IDLE;
-
-    return { sessionId: this._sessionId, cycles: this._cycleCount, insights, whisper };
-  }
 
   // ─── Activity 1: SELF-REFLECTION ─────────────────────────────
 

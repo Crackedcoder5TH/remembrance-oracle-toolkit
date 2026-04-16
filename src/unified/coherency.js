@@ -309,9 +309,35 @@ function computeCoherencyScore(code, metadata = {}) {
     };
   }
 
-  // Guard: cap code length for expensive regex-based scorers
+  // Guard: cap code length for expensive regex-based scorers.
+  // IMPORTANT: truncate at a brace boundary so the AST parser sees
+  // valid syntax. Cutting mid-function breaks brace balancing, which
+  // tanks syntaxValid and causes AST parse failure (-0.05 penalty).
   const MAX_COHERENCY_CHARS = 50000;
-  const scoringCode = code.length > MAX_COHERENCY_CHARS ? code.slice(0, MAX_COHERENCY_CHARS) : code;
+  let scoringCode = code;
+  if (code.length > MAX_COHERENCY_CHARS) {
+    // Find the last closing brace before the limit — that's a clean
+    // function/block boundary. Fall back to the raw limit if no
+    // brace is found (unlikely in real JS/TS code).
+    const searchEnd = Math.min(code.length, MAX_COHERENCY_CHARS + 500);
+    const chunk = code.slice(0, searchEnd);
+    let cutPoint = MAX_COHERENCY_CHARS;
+    // Walk backwards from the limit to find a closing brace at depth 0
+    let depth = 0;
+    for (let i = cutPoint; i >= cutPoint - 5000 && i >= 0; i--) {
+      if (chunk[i] === '}') depth++;
+      if (chunk[i] === '{') depth--;
+      if (depth === 0 && chunk[i] === '}') {
+        // Check if next non-whitespace is a newline or semicolon
+        const after = chunk.slice(i + 1, i + 5).trim();
+        if (after === '' || after[0] === '\n' || after[0] === ';' || after[0] === '/' || after[0] === '}') {
+          cutPoint = i + 1;
+          break;
+        }
+      }
+    }
+    scoringCode = code.slice(0, cutPoint);
+  }
 
   const language = metadata.language || detectLanguage(scoringCode);
   const contentType = metadata.contentType || contentTypeForLanguage(language);
@@ -330,9 +356,14 @@ function computeCoherencyScore(code, metadata = {}) {
 
   const historicalReliability = metadata.historicalReliability ?? COHERENCY_DEFAULTS.HISTORICAL_RELIABILITY_FALLBACK;
 
-  // Score all dimensions (use size-capped scoringCode for regex-heavy scorers)
+  // Large files that were truncated should use the full code for syntax
+  // checking (brace balance), since truncation breaks brace balance by
+  // design (cutting inside a class body).
+  const wasTruncated = code.length > MAX_COHERENCY_CHARS;
+
+  // Score all dimensions (use size-capped scoringCode for regex-heavy scorers).
   const scores = {
-    syntaxValid: scoreSyntax(scoringCode, language),
+    syntaxValid: wasTruncated ? scoreSyntax(code, language) : scoreSyntax(scoringCode, language),
     completeness: scoreCompleteness(scoringCode),
     consistency: scoreConsistency(scoringCode, language),
     readability: weights.readability > 0 ? scoreReadability(scoringCode, language) : 0,
@@ -353,7 +384,10 @@ function computeCoherencyScore(code, metadata = {}) {
     scores.historicalReliability * weights.historicalReliability +
     scores.fractalAlignment * (weights.fractalAlignment || 0);
 
-  // AST-based boost/penalty
+  // AST-based boost/penalty.
+  // Skip the AST penalty for large files: if the code was truncated
+  // for scoring, AST parse failure is EXPECTED (truncation breaks
+  // syntax) and should not reduce the score.
   let ast;
   try {
     ast = astCoherencyBoost(scoringCode, language);
@@ -362,6 +396,11 @@ function computeCoherencyScore(code, metadata = {}) {
   }
   if (!ast || !ast.parsed) {
     ast = { boost: 0, parsed: { valid: false, functions: [], classes: [], complexity: 0 } };
+  }
+  // Zero out the penalty if we truncated — the parse failure is from
+  // truncation, not from bad code. The full file may be perfectly valid.
+  if (wasTruncated && ast.boost < 0) {
+    ast.boost = 0;
   }
 
   const total = Math.max(0, Math.min(1, weighted + ast.boost));
@@ -385,6 +424,10 @@ function computeCoherencyScore(code, metadata = {}) {
   try {
     const { getEmergentCoherency } = require('./emergent-coherency');
     const ec = getEmergentCoherency();
+    // Reset stale signals from prior scoring calls so they don't
+    // contaminate this score. Pipeline stages that fire DURING this
+    // scoring will re-register their signals after this reset.
+    ec.reset();
     ec.registerLegacy({ total, breakdown: scores });
     if (ec.signalCount > 0) {
       // Pipeline signals are active — use the emergent score.

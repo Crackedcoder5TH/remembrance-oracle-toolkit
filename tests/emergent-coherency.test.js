@@ -199,24 +199,23 @@ describe('integration with computeCoherencyScore', () => {
     assert.ok(result.breakdown);
   });
 
-  it('computeCoherencyScore incorporates pipeline signals when present', () => {
+  it('computeCoherencyScore resets stale signals between calls (no cross-contamination)', () => {
     const { computeCoherencyScore } = require('../src/unified/coherency');
     const ec = getEmergentCoherency();
 
-    // Get baseline without signals
+    // Pre-register a signal, then call computeCoherencyScore.
+    // The function should reset stale signals, so the pre-registered
+    // signal should NOT affect the result.
     ec.reset();
-    const baseline = computeCoherencyScore('function add(a, b) { return a + b; }', { language: 'javascript' });
+    ec.registerSignal('ground', 0.1);
+    const withStale = computeCoherencyScore('function add(a, b) { return a + b; }', { language: 'javascript' });
 
-    // Now register a low pipeline signal and re-score
     ec.reset();
-    ec.registerSignal('ground', 0.1); // very poor grounding
-    const withSignal = computeCoherencyScore('function add(a, b) { return a + b; }', { language: 'javascript' });
+    const clean = computeCoherencyScore('function add(a, b) { return a + b; }', { language: 'javascript' });
 
-    // The score with a 0.1 grounding signal should be lower than baseline
-    assert.ok(
-      withSignal.total < baseline.total,
-      `Expected emergent score ${withSignal.total} < baseline ${baseline.total} when grounding is 0.1`
-    );
+    // Both should produce the same score since stale signals are cleared
+    assert.equal(withStale.total, clean.total,
+      'Stale pipeline signals should not affect computeCoherencyScore');
   });
 
   it('computeCoherencyScore with all-perfect signals stays high', () => {

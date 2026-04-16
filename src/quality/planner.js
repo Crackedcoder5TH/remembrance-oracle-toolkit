@@ -207,6 +207,12 @@ function planFromIntent(args) {
     }, {}),
   };
 
+  // ─── Emergent SERF: register plan-verification signal ───────────
+  try {
+    const { registerPlanSignal } = require('../unified/emergent-coherency');
+    registerPlanSignal(missing.length, symbols.length);
+  } catch { /* emergent module not available */ }
+
   return {
     intent,
     symbols,

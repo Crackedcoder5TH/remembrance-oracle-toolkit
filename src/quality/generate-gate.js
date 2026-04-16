@@ -120,6 +120,12 @@ function checkAgainstPlan(args) {
     violations.push(call);
   }
 
+  // ─── Emergent SERF: register gate-compliance signal ─────────────
+  try {
+    const { registerGateSignal } = require('../unified/emergent-coherency');
+    registerGateSignal(violations.length, calls.length);
+  } catch { /* emergent module not available */ }
+
   return {
     ok: violations.length === 0,
     violations,

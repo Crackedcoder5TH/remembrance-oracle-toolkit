@@ -366,9 +366,41 @@ function computeCoherencyScore(code, metadata = {}) {
 
   const total = Math.max(0, Math.min(1, weighted + ast.boost));
 
+  // ─── Emergent SERF integration ─────────────────────────────────
+  //
+  // The legacy score (computed above via hard-coded dimensions) is
+  // registered with the EmergentCoherency singleton. If any pipeline
+  // stages have also registered signals (audit, ground, plan, gate,
+  // feedback, void compression, tier coverage), the emergent score
+  // is the geometric mean of ALL signals — legacy + pipeline. This
+  // is the SERF equation: the architecture's pipeline output IS the
+  // coherency, and the legacy scorer becomes just one signal among
+  // many as the pipeline grows.
+  //
+  // When no pipeline signals are registered, the emergent total
+  // equals the legacy total (backwards compatible). As more stages
+  // fire, the emergent total reflects the full pipeline reality.
+  let emergentTotal = total;
+  let emergentBreakdown = scores;
+  try {
+    const { getEmergentCoherency } = require('./emergent-coherency');
+    const ec = getEmergentCoherency();
+    ec.registerLegacy({ total, breakdown: scores });
+    if (ec.signalCount > 0) {
+      // Pipeline signals are active — use the emergent score.
+      // The legacy score is already inside the geometric mean via registerLegacy.
+      emergentTotal = ec.total;
+      emergentBreakdown = ec.breakdown;
+    }
+  } catch {
+    // emergent-coherency not available — use legacy score as-is
+  }
+
   return {
-    total: Math.round(total * ROUNDING_FACTOR) / ROUNDING_FACTOR,
-    breakdown: scores,
+    total: Math.round(emergentTotal * ROUNDING_FACTOR) / ROUNDING_FACTOR,
+    breakdown: emergentBreakdown,
+    // Legacy breakdown preserved for consumers that read specific dimensions
+    legacyBreakdown: scores,
     // Backwards-compatible alias: oracle consumers expect breakdown.syntaxValid
     astAnalysis: {
       boost: ast.boost,

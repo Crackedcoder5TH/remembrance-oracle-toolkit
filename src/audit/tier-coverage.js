@@ -294,6 +294,12 @@ function checkFile(filePath, options = {}) {
     : Math.max(1, totalTiers - 1);
   const severity = manifest.gap_severity || 'medium';
 
+  // ─── Emergent SERF: register tier-coverage signal ────────────────
+  try {
+    const { registerTierCoverageSignal } = require('../unified/emergent-coherency');
+    registerTierCoverageSignal(touched.length, totalTiers);
+  } catch { /* emergent module not available */ }
+
   // If the file meets the coverage minimum, it passes.
   if (touched.length >= minCoverage) {
     return { findings: [], tiersTouched: touched, optOut: null, manifestPath };

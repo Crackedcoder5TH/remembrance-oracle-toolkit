@@ -306,6 +306,12 @@ function groundFile(filePath, knownIdentifiers, options = {}) {
     ungrounded.push(call);
   }
 
+  // ─── Emergent SERF: register grounding signal ──────────────────
+  try {
+    const { registerGroundSignal } = require('../unified/emergent-coherency');
+    registerGroundSignal(ungrounded.length, calls.length);
+  } catch { /* emergent module not available */ }
+
   return {
     file: filePath,
     totalCalls: calls.length,

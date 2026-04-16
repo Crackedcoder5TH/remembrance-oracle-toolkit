@@ -615,6 +615,14 @@ function auditCode(code, options = {}) {
     bySeverity[f.severity] = (bySeverity[f.severity] || 0) + 1;
   }
 
+  // ─── Emergent SERF: register audit signal ────────────────────────
+  // Fewer findings = higher coherency. The audit stage's natural output
+  // becomes a dimension of the emergent coherency score automatically.
+  try {
+    const { registerAuditSignal } = require('../unified/emergent-coherency');
+    registerAuditSignal(findings.length);
+  } catch { /* emergent module not available — no-op */ }
+
   return {
     findings,
     summary: {

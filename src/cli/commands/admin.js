@@ -1248,6 +1248,84 @@ ${c.bold('Related commands:')}
     console.log('');
   };
 
+  // ── COHERENCY ORCHESTRATOR ─────────────────────────────────────────
+  handlers['orchestrate'] = async (args) => {
+    const sub = args._sub || args._positional[1] || 'status';
+    const fs = require('fs');
+    const path = require('path');
+    const { CoherencyDirector } = require('../../orchestrator/coherency-director');
+    const director = new CoherencyDirector();
+
+    // Scan src/ files as zones
+    const srcFiles = [];
+    function walk(dir) {
+      try {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+          const p = path.join(dir, entry.name);
+          if (entry.isDirectory()) walk(p);
+          else if (entry.name.endsWith('.js')) {
+            try {
+              srcFiles.push({ id: path.relative(process.cwd(), p), code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' });
+            } catch { /* skip unreadable */ }
+          }
+        }
+      } catch { /* skip inaccessible dirs */ }
+    }
+    const scanDir = args.dir || 'src';
+    if (fs.existsSync(scanDir)) walk(scanDir);
+
+    director.scan(srcFiles);
+
+    if (sub === 'scan' || sub === 'status') {
+      director.measureWithOracle();
+      const stats = director.field.stats();
+      const { analyzeFieldCharge } = require('../../orchestrator/charge-balancer');
+      const charge = analyzeFieldCharge(director.field);
+      const { rankZones, computeHealingBudget } = require('../../orchestrator/priority-engine');
+      const queue = rankZones(director.field, { maxResults: 5 });
+      const budget = computeHealingBudget(director.field);
+
+      if (jsonOut()) {
+        console.log(JSON.stringify({ stats, charge: charge.globalCharge, queue, budget }));
+        return;
+      }
+      console.log('');
+      console.log(c.boldCyan('Coherency Orchestrator'));
+      console.log(`  zones scanned     : ${c.bold(String(stats.totalZones))}`);
+      console.log(`  zones measured    : ${stats.measuredZones}`);
+      console.log(`  global coherency  : ${c.bold(stats.globalCoherency.toFixed(3))}`);
+      console.log(`  needs healing     : ${stats.needsHealing > 0 ? c.boldYellow(String(stats.needsHealing)) : c.green('0')}`);
+      console.log(`  stable            : ${c.green(String(stats.stable))}`);
+      console.log(`  high (preserve)   : ${c.boldGreen(String(stats.needsPreservation))}`);
+      console.log('');
+      console.log(c.bold('  Charge flow:'));
+      console.log(`    net charge  : ${charge.globalCharge.netCharge > 0 ? c.green('+' + charge.globalCharge.netCharge) : charge.globalCharge.netCharge < 0 ? c.red(String(charge.globalCharge.netCharge)) : c.dim('0')}`);
+      console.log(`    balance     : ${charge.globalCharge.balance}`);
+      if (charge.globalCharge.mostContracting.length > 0) {
+        console.log(`    weakest     : ${c.yellow(charge.globalCharge.mostContracting[0].name)} (contracting in ${charge.globalCharge.mostContracting[0].count} zones)`);
+      }
+      console.log('');
+      if (queue.length > 0) {
+        console.log(c.bold('  Healing queue (top 5):'));
+        for (const item of queue) {
+          console.log(`    ${c.yellow('\u25cf')} ${c.bold(item.zoneId.padEnd(40))} coherency=${item.coherency.toFixed(3)}  priority=${item.priority.toFixed(3)}`);
+          if (item.reason) console.log(`      ${c.dim(item.reason)}`);
+        }
+        console.log('');
+        console.log(c.dim(`  Healing budget: ${budget.budget} zone(s) — ${budget.reason}`));
+      } else {
+        console.log(c.boldGreen('  No zones need healing.'));
+      }
+      console.log('');
+      return;
+    }
+
+    console.error(c.boldRed('Error:') + ` Unknown orchestrate subcommand: ${sub}`);
+    console.error(c.dim('  Available: scan, status'));
+    process.exit(1);
+  };
+
   // ── ATOMIC CODING ──────────────────────────────────────────────────
   //
   // Three subcommands for the periodic table of code:

@@ -1,86 +1,112 @@
 'use strict';
 
 /**
- * Periodic Table of Code — the foundational data structure for
- * Atomic Coding.
+ * Periodic Table of Code — Living, Covenant-Native, Fractal
  *
- * Every function is an "element" defined by 9 atomic properties:
+ * Refined atomic properties (12 dimensions):
  *
- *   charge          : -1 (contracts) | 0 (transforms) | +1 (expands)
- *   valence         : 0-8 (how many other functions it composes with)
- *   mass            : 'light' | 'medium' | 'heavy' (complexity: O(1)/O(n)/O(n²))
- *   spin            : 'even' (reversible/pure) | 'odd' (irreversible/side-effects)
- *   phase           : 'solid' (cached) | 'liquid' (mutable) | 'gas' (computed)
- *   reactivity      : 'inert' (pure) | 'low' | 'medium' | 'high' (interaction level)
- *   electronegativity: 0-1 (how strongly it pulls dependencies toward itself)
- *   group           : 1-18 (functional family: math, string, array, async, etc.)
- *   period          : 1-7 (abstraction level: primitive → framework)
+ *   CORE PROPERTIES (9):
+ *   charge           : -1 (contracts) | 0 (transforms) | +1 (expands)
+ *   valence          : 0-8 (composition capacity, 'n' for polymeric)
+ *   mass             : 'light' | 'medium' | 'heavy' | 'superheavy'
+ *   spin             : 'even' (reversible) | 'odd' (irreversible) | 'complex' (conditional)
+ *   phase            : 'solid' (sync) | 'liquid' (async) | 'gas' (event) | 'plasma' (reactive stream)
+ *   reactivity       : 'inert' | 'stable' | 'reactive' | 'volatile'
+ *   electronegativity: 0-1 (dependency pull strength)
+ *   group            : 1-18 (functional family)
+ *   period           : 1-7 (abstraction level)
  *
- * Elements with the same property signature are INTERCHANGEABLE —
- * different implementations of the same functional role.
+ *   COVENANT DIMENSIONS (3) — intrinsic, not external:
+ *   harmPotential    : 'none' | 'minimal' | 'moderate' | 'dangerous'
+ *   alignment        : 'healing' | 'neutral' | 'degrading'
+ *   intention        : 'benevolent' | 'neutral' | 'malevolent'
  *
- * The periodic table tracks which property combinations are
- * REALIZED (have at least one implementation) and which are GAPS
- * (predicted to be useful but not yet implemented).
+ * The covenant is STRUCTURAL — dangerous/degrading/malevolent elements
+ * are rejected at registration, not filtered after the fact. No-harm
+ * is a property of the table's structure, not an optional check.
  *
- * The three-level capability model:
- *   INNATE      — encoded properties, exist before execution
- *   EMERGENT    — meta-functions from fractal structure at complexity thresholds
- *   INTERACTION — novel behaviors from property combination
+ * The table is LIVING — elements EMERGE when coherence thresholds are
+ * crossed, not just when gaps are found. Emergence is creation from
+ * coherence, not discovery of pre-existing gaps.
  *
- * Integration:
- *   Oracle:  uses the table for systematic pattern discovery
- *   Void:    uses signatures for compression (same signature = interchangeable)
- *   Both:    the self-improvement loop — void finds gaps, oracle fills them
+ * Signatures are FRACTAL — they encode self-similarity, recursive
+ * depth, and composition patterns alongside the 12 property dimensions.
  */
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
-// ── Property value enums ────────────────────────────────────────────
+// ── Property enums ──────────────────────────────────────────────────
 
 const CHARGE_VALUES = [-1, 0, 1];
-const MASS_VALUES = ['light', 'medium', 'heavy'];
-const SPIN_VALUES = ['even', 'odd'];
-const PHASE_VALUES = ['solid', 'liquid', 'gas'];
-const REACTIVITY_VALUES = ['inert', 'low', 'medium', 'high'];
+const MASS_VALUES = ['light', 'medium', 'heavy', 'superheavy'];
+const SPIN_VALUES = ['even', 'odd', 'complex'];
+const PHASE_VALUES = ['solid', 'liquid', 'gas', 'plasma'];
+const REACTIVITY_VALUES = ['inert', 'stable', 'reactive', 'volatile'];
+const HARM_VALUES = ['none', 'minimal', 'moderate', 'dangerous'];
+const ALIGNMENT_VALUES = ['healing', 'neutral', 'degrading'];
+const INTENTION_VALUES = ['benevolent', 'neutral', 'malevolent'];
 const MAX_VALENCE = 8;
 const MAX_GROUP = 18;
 const MAX_PERIOD = 7;
 
-// ── Functional groups ───────────────────────────────────────────────
-// Maps group numbers to functional families (like chemical groups)
-
 const GROUPS = {
-  1: 'math',           // Arithmetic, numeric operations
-  2: 'comparison',     // Equality, ordering, matching
-  3: 'string',         // String manipulation
-  4: 'array',          // Array/list operations
-  5: 'object',         // Object/map/record operations
-  6: 'io',             // Input/output, file system
-  7: 'network',        // HTTP, sockets, IPC
-  8: 'async',          // Promises, streams, concurrency
-  9: 'error',          // Error handling, validation
-  10: 'state',         // State management, caching
-  11: 'transform',     // Data transformation, mapping
-  12: 'filter',        // Data filtering, selection
-  13: 'aggregate',     // Reduction, accumulation
-  14: 'sort',          // Ordering, ranking
-  15: 'search',        // Lookup, indexing
-  16: 'crypto',        // Hashing, encryption, signatures
-  17: 'compression',   // Encoding, compression, serialization
-  18: 'meta',          // Reflection, code generation, meta-programming
+  1: 'math', 2: 'comparison', 3: 'string', 4: 'array', 5: 'object',
+  6: 'io', 7: 'network', 8: 'async', 9: 'error', 10: 'state',
+  11: 'transform', 12: 'filter', 13: 'aggregate', 14: 'sort',
+  15: 'search', 16: 'crypto', 17: 'compression', 18: 'meta',
 };
+
+// ── Emergence thresholds ────────────────────────────────────────────
+
+const EMERGENCE_THRESHOLDS = [
+  { coherence: 0.70, name: 'Foundation' },
+  { coherence: 0.75, name: 'Stability' },
+  { coherence: 0.80, name: 'Optimization' },
+  { coherence: 0.85, name: 'Synergy' },
+  { coherence: 0.90, name: 'Intelligence' },
+  { coherence: 0.95, name: 'Transcendence' },
+  { coherence: 0.98, name: 'Unity' },
+];
+
+// ── Covenant Validator ──────────────────────────────────────────────
+
+class CovenantValidator {
+  static validate(props) {
+    const violations = [];
+    if (props.harmPotential === 'dangerous') {
+      violations.push({ severity: 'CRITICAL', property: 'harmPotential', message: 'Dangerous harm potential' });
+    }
+    if (props.alignment === 'degrading') {
+      violations.push({ severity: 'CRITICAL', property: 'alignment', message: 'Degrades coherence' });
+    }
+    if (props.intention === 'malevolent') {
+      violations.push({ severity: 'CRITICAL', property: 'intention', message: 'Malevolent intention' });
+    }
+    if (props.reactivity === 'volatile' && props.harmPotential !== 'none') {
+      violations.push({ severity: 'HIGH', property: 'reactivity+harmPotential', message: 'Volatile with harm potential' });
+    }
+    return { valid: violations.length === 0, violations };
+  }
+
+  static enforce(props) {
+    const result = this.validate(props);
+    if (!result.valid) {
+      const critical = result.violations.filter(v => v.severity === 'CRITICAL');
+      if (critical.length > 0) {
+        throw new Error(`COVENANT VIOLATION: ${critical.map(v => v.message).join(', ')}`);
+      }
+    }
+    return result;
+  }
+}
 
 // ── Signature encoding ──────────────────────────────────────────────
 
 /**
- * Encode atomic properties into a compact signature string.
- * Format: C{charge}V{valence}M{mass[0]}S{spin[0]}P{phase[0]}R{reactivity[0]}E{electronegativity}G{group}D{period}
- *
- * Examples:
- *   C+V2MlSePsRiE3G1D1 = positive charge, valence 2, light, even spin, solid phase, inert, low electronegativity, math group, period 1
- *   C-V1MmSoPlRhE7G8D3 = negative charge, valence 1, medium, odd spin, liquid, high reactivity, high electronegativity, async group, period 3
+ * Encode 12-dimensional atomic properties into a compact signature.
+ * Format: C{charge}V{valence}M{mass}S{spin}P{phase}R{reactivity}E{en}G{group}D{period}H{harm}A{align}I{intent}
  */
 function encodeSignature(props) {
   const c = props.charge > 0 ? '+' : props.charge < 0 ? '-' : '0';
@@ -92,55 +118,89 @@ function encodeSignature(props) {
   const e = Math.min(9, Math.max(0, Math.round((props.electronegativity || 0) * 9)));
   const g = Math.min(MAX_GROUP, Math.max(1, Math.round(props.group || 1)));
   const d = Math.min(MAX_PERIOD, Math.max(1, Math.round(props.period || 1)));
-  return `C${c}V${v}M${m}S${s}P${p}R${r}E${e}G${g}D${d}`;
+  const h = (props.harmPotential || 'none')[0];
+  const a = (props.alignment || 'neutral')[0];
+  const i = (props.intention || 'neutral')[0];
+  return `C${c}V${v}M${m}S${s}P${p}R${r}E${e}G${g}D${d}H${h}A${a}I${i}`;
 }
 
-/**
- * Decode a signature string back to atomic properties.
- */
 function decodeSignature(sig) {
-  const m = sig.match(/C([+\-0])V(\d)M([lmh])S([eo])P([slg])R([ilmh])E(\d)G(\d+)D(\d)/);
+  // Parse the 12-dimensional signature. Each dimension is encoded as a single char.
+  // The covenant dimensions (H, A, I) are optional for backwards compatibility.
+  const m = sig.match(/C([+\-0])V(\d)M([a-z])S([a-z])P([a-z])R([a-z])E(\d)G(\d+)D(\d)(?:H([a-z])A([a-z])I([a-z]))?/);
   if (!m) return null;
   return {
     charge: m[1] === '+' ? 1 : m[1] === '-' ? -1 : 0,
     valence: parseInt(m[2]),
-    mass: { l: 'light', m: 'medium', h: 'heavy' }[m[3]],
-    spin: { e: 'even', o: 'odd' }[m[4]],
-    phase: { s: 'solid', l: 'liquid', g: 'gas' }[m[5]],
-    reactivity: { i: 'inert', l: 'low', m: 'medium', h: 'high' }[m[6]],
+    mass: { l: 'light', m: 'medium', h: 'heavy', s: 'superheavy' }[m[3]] || 'light',
+    spin: { e: 'even', o: 'odd', c: 'complex' }[m[4]] || 'even',
+    phase: { s: 'solid', l: 'liquid', g: 'gas', p: 'plasma' }[m[5]] || 'solid',
+    reactivity: { i: 'inert', s: 'stable', r: 'reactive', v: 'volatile' }[m[6]] || 'inert',
     electronegativity: parseInt(m[7]) / 9,
     group: parseInt(m[8]),
     period: parseInt(m[9]),
+    harmPotential: m[10] ? { n: 'none', m: 'minimal', o: 'moderate', d: 'dangerous' }[m[10]] || 'none' : 'none',
+    alignment: m[11] ? { h: 'healing', n: 'neutral', d: 'degrading' }[m[11]] || 'neutral' : 'neutral',
+    intention: m[12] ? { b: 'benevolent', n: 'neutral', m: 'malevolent' }[m[12]] || 'neutral' : 'neutral',
   };
 }
 
-// ── The Periodic Table ──────────────────────────────────────────────
+/**
+ * Generate a fractal signature — encodes self-similarity alongside properties.
+ */
+function generateFractalSignature(code, props) {
+  const propSig = encodeSignature(props);
+  // Fractal dimensions from code structure
+  const nesting = (code.match(/\{/g) || []).length;
+  const selfSim = Math.min(1, nesting * 0.1);
+  const funcCount = (code.match(/function|=>/g) || []).length;
+  const fractalBits = `F${Math.round(selfSim * 9)}N${Math.min(9, funcCount)}`;
+  return `${propSig}:${fractalBits}`;
+}
+
+/**
+ * Calculate emergence potential — functions with high coherence + low harm
+ * have the highest potential for emergent behavior.
+ */
+function calculateEmergencePotential(props) {
+  let potential = 0.5;
+  if (props.harmPotential === 'none') potential += 0.2;
+  if (props.alignment === 'healing') potential += 0.2;
+  if (props.intention === 'benevolent') potential += 0.2;
+  if (props.reactivity === 'inert' || props.reactivity === 'stable') potential += 0.1;
+  if (props.spin === 'even') potential += 0.1;
+  if (props.harmPotential === 'dangerous') potential -= 0.5;
+  if (props.alignment === 'degrading') potential -= 0.5;
+  if (props.intention === 'malevolent') potential -= 0.5;
+  return Math.max(0, Math.min(1, potential));
+}
+
+// ── Living Periodic Table ───────────────────────────────────────────
 
 class PeriodicTable {
-  /**
-   * @param {object} [options]
-   *   - storagePath: path to persist the table as JSON (default: .remembrance/atomic-table.json)
-   */
   constructor(options = {}) {
     this._storagePath = options.storagePath || null;
-    /** @type {Map<string, Element>} signature → element */
     this._elements = new Map();
-    /** @type {Map<string, string[]>} group name → list of signatures in that group */
     this._byGroup = new Map();
+    this._emergedThresholds = new Set();
+    this._emergenceHistory = [];
     if (this._storagePath) this._load();
   }
 
   /**
-   * Register an element (a realized property combination).
-   *
-   * @param {object} props - atomic properties
-   * @param {object} [meta]
-   *   - name: human-readable name (optional)
-   *   - code: implementation source (optional)
-   *   - patternId: link to oracle pattern store (optional)
-   *   - source: where this element was discovered ('harvest', 'discovery', 'manual')
+   * Register an element. Covenant enforcement is STRUCTURAL —
+   * dangerous/degrading/malevolent elements are rejected here.
    */
   addElement(props, meta = {}) {
+    // Covenant enforcement at the gate
+    const covenant = CovenantValidator.validate(props);
+    if (!covenant.valid) {
+      const critical = covenant.violations.filter(v => v.severity === 'CRITICAL');
+      if (critical.length > 0) {
+        return { rejected: true, violations: critical };
+      }
+    }
+
     const sig = encodeSignature(props);
     const groupName = GROUPS[props.group] || `group_${props.group}`;
 
@@ -154,238 +214,251 @@ class PeriodicTable {
       realized: true,
       discoveredAt: new Date().toISOString(),
       usageCount: 0,
+      emergencePotential: calculateEmergencePotential(props),
+      covenantStatus: covenant,
+      isEmergent: meta.isEmergent || false,
     };
 
     this._elements.set(sig, element);
-
     if (!this._byGroup.has(groupName)) this._byGroup.set(groupName, []);
     const groupList = this._byGroup.get(groupName);
     if (!groupList.includes(sig)) groupList.push(sig);
-
     if (this._storagePath) this._save();
     return element;
   }
 
-  /**
-   * Get an element by its signature.
-   */
-  getElement(signature) {
-    return this._elements.get(signature) || null;
-  }
+  getElement(signature) { return this._elements.get(signature) || null; }
 
-  /**
-   * Get an element by its properties (computes signature internally).
-   */
-  getByProperties(props) {
-    return this.getElement(encodeSignature(props));
-  }
+  getByProperties(props) { return this.getElement(encodeSignature(props)); }
 
-  /**
-   * Find all elements in a functional group.
-   */
   getGroup(groupNumber) {
     const name = GROUPS[groupNumber] || `group_${groupNumber}`;
-    const sigs = this._byGroup.get(name) || [];
-    return sigs.map(s => this._elements.get(s)).filter(Boolean);
+    return (this._byGroup.get(name) || []).map(s => this._elements.get(s)).filter(Boolean);
   }
 
-  /**
-   * Total number of realized elements.
-   */
   get size() { return this._elements.size; }
-
-  /**
-   * All realized signatures.
-   */
   get signatures() { return Array.from(this._elements.keys()); }
-
-  /**
-   * All realized elements.
-   */
   get elements() { return Array.from(this._elements.values()); }
 
-  /**
-   * Record a usage of an element (for frequency tracking).
-   */
   recordUsage(signature) {
     const el = this._elements.get(signature);
-    if (el) {
-      el.usageCount = (el.usageCount || 0) + 1;
-      if (this._storagePath) this._save();
-    }
+    if (el) { el.usageCount = (el.usageCount || 0) + 1; if (this._storagePath) this._save(); }
   }
 
   /**
-   * Predict which property combinations SHOULD exist but don't.
-   * This is the gap discovery engine.
-   *
-   * Strategy: for each realized element, generate "neighbor"
-   * signatures by varying one property at a time. Neighbors that
-   * don't exist in the table are gaps. Gaps that have many
-   * realized neighbors are higher priority (the property space
-   * around them is well-explored, suggesting the gap is meaningful).
-   *
-   * @param {object} [options]
-   *   - maxGaps: maximum number of gaps to return (default 50)
-   *   - minNeighborCount: minimum realized neighbors to consider a gap meaningful (default 2)
-   * @returns {Array<{ signature, properties, neighborCount, priority }>}
+   * Check emergence thresholds — when system coherence crosses a
+   * threshold, new elements EMERGE (are created, not discovered).
+   */
+  checkEmergence(systemCoherence, systemComplexity) {
+    const emerged = [];
+    for (const threshold of EMERGENCE_THRESHOLDS) {
+      const key = `C${threshold.coherence}`;
+      if (this._emergedThresholds.has(key)) continue;
+      if (systemCoherence >= threshold.coherence) {
+        const props = this._coherenceToProperties(systemCoherence, systemComplexity);
+        const element = this.addElement(props, {
+          name: `${threshold.name}Element`,
+          source: 'emergence',
+          isEmergent: true,
+        });
+        if (element && !element.rejected) {
+          this._emergedThresholds.add(key);
+          this._emergenceHistory.push({
+            threshold: threshold.name, coherence: systemCoherence,
+            complexity: systemComplexity, element, ts: new Date().toISOString(),
+          });
+          emerged.push(element);
+        }
+      }
+    }
+    return emerged;
+  }
+
+  _coherenceToProperties(coherence, complexity) {
+    return {
+      charge: coherence > 0.9 ? 1 : coherence > 0.7 ? 0 : -1,
+      valence: Math.min(4, Math.floor((complexity || 100) / 500) + 1),
+      mass: coherence > 0.9 ? 'light' : coherence > 0.7 ? 'medium' : 'heavy',
+      spin: coherence > 0.85 ? 'even' : 'odd',
+      phase: 'solid',
+      reactivity: coherence > 0.85 ? 'inert' : coherence > 0.7 ? 'stable' : 'reactive',
+      electronegativity: Math.round((1 - coherence) * 9) / 9,
+      group: 18, // meta — emerged elements are meta-functions
+      period: Math.min(7, Math.ceil(coherence * 7)),
+      harmPotential: coherence > 0.85 ? 'none' : 'minimal',
+      alignment: coherence > 0.9 ? 'healing' : 'neutral',
+      intention: coherence > 0.9 ? 'benevolent' : 'neutral',
+    };
+  }
+
+  /**
+   * Find gaps (neighbor variation discovery).
    */
   findGaps(options = {}) {
     const maxGaps = options.maxGaps || 50;
     const minNeighbors = options.minNeighborCount || 2;
-
     const gapScores = new Map();
 
     for (const el of this._elements.values()) {
-      const neighbors = this._generateNeighbors(el.properties);
-      for (const neighbor of neighbors) {
+      for (const neighbor of this._generateNeighbors(el.properties)) {
         const sig = encodeSignature(neighbor);
-        if (this._elements.has(sig)) continue; // already realized
+        if (this._elements.has(sig)) continue;
+        // Covenant check: don't propose gaps that violate covenant
+        if (!CovenantValidator.validate(neighbor).valid) continue;
         const current = gapScores.get(sig) || { signature: sig, properties: neighbor, neighborCount: 0 };
         current.neighborCount++;
         gapScores.set(sig, current);
       }
     }
 
-    // Filter by minimum neighbor count, sort by priority (more neighbors = more meaningful gap)
-    const gaps = Array.from(gapScores.values())
+    return Array.from(gapScores.values())
       .filter(g => g.neighborCount >= minNeighbors)
-      .map(g => ({ ...g, priority: g.neighborCount / this._elements.size }))
+      .map(g => ({ ...g, priority: g.neighborCount / this._elements.size, emergencePotential: calculateEmergencePotential(g.properties) }))
       .sort((a, b) => b.neighborCount - a.neighborCount)
       .slice(0, maxGaps);
-
-    return gaps;
   }
 
-  /**
-   * Generate all single-property-variation neighbors of an element.
-   * For each property, try each possible value; skip the current value.
-   */
   _generateNeighbors(props) {
     const neighbors = [];
     const base = { ...props };
-
-    // Charge variations
-    for (const c of CHARGE_VALUES) {
-      if (c !== base.charge) neighbors.push({ ...base, charge: c });
-    }
-    // Valence variations (±1)
+    for (const c of CHARGE_VALUES) { if (c !== base.charge) neighbors.push({ ...base, charge: c }); }
     if (base.valence > 0) neighbors.push({ ...base, valence: base.valence - 1 });
     if (base.valence < MAX_VALENCE) neighbors.push({ ...base, valence: base.valence + 1 });
-    // Mass variations
-    for (const m of MASS_VALUES) {
-      if (m !== base.mass) neighbors.push({ ...base, mass: m });
-    }
-    // Spin variations
-    for (const s of SPIN_VALUES) {
-      if (s !== base.spin) neighbors.push({ ...base, spin: s });
-    }
-    // Phase variations
-    for (const p of PHASE_VALUES) {
-      if (p !== base.phase) neighbors.push({ ...base, phase: p });
-    }
-    // Reactivity variations
-    for (const r of REACTIVITY_VALUES) {
-      if (r !== base.reactivity) neighbors.push({ ...base, reactivity: r });
-    }
-    // Group ±1 (same period, adjacent family)
+    for (const m of MASS_VALUES) { if (m !== base.mass) neighbors.push({ ...base, mass: m }); }
+    for (const s of SPIN_VALUES) { if (s !== base.spin) neighbors.push({ ...base, spin: s }); }
+    for (const p of PHASE_VALUES) { if (p !== base.phase) neighbors.push({ ...base, phase: p }); }
+    for (const r of REACTIVITY_VALUES) { if (r !== base.reactivity) neighbors.push({ ...base, reactivity: r }); }
     if (base.group > 1) neighbors.push({ ...base, group: base.group - 1 });
     if (base.group < MAX_GROUP) neighbors.push({ ...base, group: base.group + 1 });
-    // Period ±1 (same group, different abstraction level)
     if (base.period > 1) neighbors.push({ ...base, period: base.period - 1 });
     if (base.period < MAX_PERIOD) neighbors.push({ ...base, period: base.period + 1 });
-
+    // Covenant dimension neighbors (only toward safe values)
+    for (const h of HARM_VALUES) { if (h !== base.harmPotential) neighbors.push({ ...base, harmPotential: h }); }
+    for (const a of ALIGNMENT_VALUES) { if (a !== base.alignment) neighbors.push({ ...base, alignment: a }); }
+    for (const i of INTENTION_VALUES) { if (i !== base.intention) neighbors.push({ ...base, intention: i }); }
     return neighbors;
   }
 
   /**
-   * Measure the interaction coherence between two elements.
-   * Positive + negative charge = balanced = high coherence.
-   * Same valence = composable = medium coherence.
-   * Same phase = synchronous = base coherence.
-   *
-   * Returns 0-1.
+   * Interaction coherence with covenant awareness.
    */
   interactionCoherence(sig1, sig2) {
     const e1 = this._elements.get(sig1);
     const e2 = this._elements.get(sig2);
     if (!e1 || !e2) return 0;
-    const p1 = e1.properties;
-    const p2 = e2.properties;
+    const p1 = e1.properties, p2 = e2.properties;
 
-    let score = 0;
-    let dimensions = 0;
+    let score = 0, dims = 0;
 
     // Charge balance
-    dimensions++;
-    if (p1.charge + p2.charge === 0 && p1.charge !== 0) score += 1.0; // perfect balance
-    else if (p1.charge === 0 || p2.charge === 0) score += 0.5; // neutral + anything
-    else score += 0.2; // same charge = some tension
-
-    // Valence compatibility
-    dimensions++;
-    if (p1.valence === p2.valence) score += 0.8;
-    else if (Math.abs(p1.valence - p2.valence) <= 1) score += 0.5;
+    dims++;
+    if (p1.charge + p2.charge === 0 && p1.charge !== 0) score += 1.0;
+    else if (p1.charge === 0 || p2.charge === 0) score += 0.5;
     else score += 0.2;
 
+    // Valence compatibility
+    dims++;
+    score += p1.valence === p2.valence ? 0.8 : Math.abs(p1.valence - p2.valence) <= 1 ? 0.5 : 0.2;
+
     // Phase alignment
-    dimensions++;
-    if (p1.phase === p2.phase) score += 0.7;
-    else score += 0.3;
+    dims++;
+    score += p1.phase === p2.phase ? 0.7 : 0.3;
 
-    // Reactivity compatibility (inert + inert = stable, high + high = volatile)
-    dimensions++;
-    const rOrder = { inert: 0, low: 1, medium: 2, high: 3 };
-    const rDiff = Math.abs((rOrder[p1.reactivity] || 0) - (rOrder[p2.reactivity] || 0));
-    score += 1.0 - (rDiff / 3);
+    // Reactivity compatibility
+    dims++;
+    const rOrder = { inert: 0, stable: 1, reactive: 2, volatile: 3 };
+    score += 1.0 - Math.abs((rOrder[p1.reactivity] || 0) - (rOrder[p2.reactivity] || 0)) / 3;
 
-    // Mass compatibility (similar = balanced pipeline)
-    dimensions++;
-    const mOrder = { light: 0, medium: 1, heavy: 2 };
-    const mDiff = Math.abs((mOrder[p1.mass] || 0) - (mOrder[p2.mass] || 0));
-    score += 1.0 - (mDiff / 2);
+    // Mass compatibility
+    dims++;
+    const mOrder = { light: 0, medium: 1, heavy: 2, superheavy: 3 };
+    score += 1.0 - Math.abs((mOrder[p1.mass] || 0) - (mOrder[p2.mass] || 0)) / 3;
 
-    return Math.round((score / dimensions) * 1000) / 1000;
+    // COVENANT DIMENSIONS — covenant-violating combos get zero coherence
+    dims++;
+    const h1 = p1.harmPotential || 'none', h2 = p2.harmPotential || 'none';
+    if (h1 === 'none' && h2 === 'none') score += 1.0;
+    else if (h1 === 'dangerous' || h2 === 'dangerous') score += 0;
+    else score += 0.5;
+
+    dims++;
+    const a1 = p1.alignment || 'neutral', a2 = p2.alignment || 'neutral';
+    if (a1 === 'healing' && a2 === 'healing') score += 1.0;
+    else if (a1 === 'degrading' || a2 === 'degrading') score += 0;
+    else score += 0.6;
+
+    return Math.round((score / dims) * 1000) / 1000;
   }
 
   /**
-   * Get summary statistics about the table.
+   * Check if two elements can bond (covenant-aware).
    */
+  canBond(sig1, sig2) {
+    const e1 = this._elements.get(sig1);
+    const e2 = this._elements.get(sig2);
+    if (!e1 || !e2) return false;
+    const p1 = e1.properties, p2 = e2.properties;
+    // Covenant prevents bonding with harmful elements
+    if (p1.harmPotential === 'dangerous' || p2.harmPotential === 'dangerous') return false;
+    if (p1.alignment === 'degrading' || p2.alignment === 'degrading') return false;
+    if (p1.intention === 'malevolent' || p2.intention === 'malevolent') return false;
+    // Property compatibility
+    const chargeCompat = p1.charge !== p2.charge || p1.charge === 0;
+    const valenceCompat = p1.valence > 0 && p2.valence > 0;
+    return chargeCompat && valenceCompat;
+  }
+
   stats() {
     const byGroup = {};
-    for (const [name, sigs] of this._byGroup) {
-      byGroup[name] = sigs.length;
-    }
+    for (const [name, sigs] of this._byGroup) byGroup[name] = sigs.length;
     const byCharge = { positive: 0, neutral: 0, negative: 0 };
-    const byMass = { light: 0, medium: 0, heavy: 0 };
+    const byMass = { light: 0, medium: 0, heavy: 0, superheavy: 0 };
+    const byAlignment = { healing: 0, neutral: 0, degrading: 0 };
+    let emergentCount = 0;
     for (const el of this._elements.values()) {
       if (el.properties.charge > 0) byCharge.positive++;
       else if (el.properties.charge < 0) byCharge.negative++;
       else byCharge.neutral++;
       byMass[el.properties.mass] = (byMass[el.properties.mass] || 0) + 1;
+      byAlignment[el.properties.alignment || 'neutral']++;
+      if (el.isEmergent) emergentCount++;
     }
     return {
       totalElements: this._elements.size,
-      byGroup,
-      byCharge,
-      byMass,
+      emergentElements: emergentCount,
+      byGroup, byCharge, byMass, byAlignment,
+      emergenceHistory: this._emergenceHistory.length,
       gaps: this.findGaps({ maxGaps: 5 }).length,
     };
   }
 
-  // ── Persistence ───────────────────────────────────────────────────
+  exportJSON() {
+    return {
+      version: 2,
+      exportedAt: new Date().toISOString(),
+      elementCount: this._elements.size,
+      elements: Array.from(this._elements.values()).map(el => ({
+        signature: el.signature, properties: el.properties, name: el.name,
+        source: el.source, usageCount: el.usageCount,
+        emergencePotential: el.emergencePotential, isEmergent: el.isEmergent,
+        covenantStatus: el.covenantStatus,
+      })),
+      emergenceHistory: this._emergenceHistory,
+      thresholds: EMERGENCE_THRESHOLDS,
+    };
+  }
 
   _save() {
     if (!this._storagePath) return;
     try {
       const dir = path.dirname(this._storagePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      const data = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
+      fs.writeFileSync(this._storagePath, JSON.stringify({
+        version: 2, exportedAt: new Date().toISOString(),
         elements: Array.from(this._elements.values()),
-      };
-      fs.writeFileSync(this._storagePath, JSON.stringify(data, null, 2));
+        emergedThresholds: Array.from(this._emergedThresholds),
+        emergenceHistory: this._emergenceHistory,
+      }, null, 2));
     } catch { /* best effort */ }
   }
 
@@ -404,52 +477,36 @@ class PeriodicTable {
           }
         }
       }
+      if (raw.emergedThresholds) {
+        for (const t of raw.emergedThresholds) this._emergedThresholds.add(t);
+      }
+      if (raw.emergenceHistory) this._emergenceHistory = raw.emergenceHistory;
     } catch { /* best effort */ }
-  }
-
-  /**
-   * Export the table as JSON for cross-system sharing.
-   * This is how the oracle shares its periodic table with the void compressor.
-   */
-  exportJSON() {
-    return {
-      version: 1,
-      exportedAt: new Date().toISOString(),
-      elementCount: this._elements.size,
-      elements: Array.from(this._elements.values()).map(el => ({
-        signature: el.signature,
-        properties: el.properties,
-        name: el.name,
-        source: el.source,
-        usageCount: el.usageCount,
-      })),
-    };
   }
 }
 
 module.exports = {
   PeriodicTable,
+  CovenantValidator,
   encodeSignature,
   decodeSignature,
+  generateFractalSignature,
+  calculateEmergencePotential,
   GROUPS,
-  CHARGE_VALUES,
-  MASS_VALUES,
-  SPIN_VALUES,
-  PHASE_VALUES,
-  REACTIVITY_VALUES,
-  MAX_VALENCE,
-  MAX_GROUP,
-  MAX_PERIOD,
+  CHARGE_VALUES, MASS_VALUES, SPIN_VALUES, PHASE_VALUES,
+  REACTIVITY_VALUES, HARM_VALUES, ALIGNMENT_VALUES, INTENTION_VALUES,
+  MAX_VALENCE, MAX_GROUP, MAX_PERIOD,
+  EMERGENCE_THRESHOLDS,
 };
 
 // ── Atomic self-description ─────────────────────────────────────────
-// The periodic table describes ITSELF atomically. This is the bootstrap:
-// the code that stores atomic properties has its own atomic properties.
 encodeSignature.atomicProperties = {
   charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
 };
 decodeSignature.atomicProperties = {
   charge: 1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
 };

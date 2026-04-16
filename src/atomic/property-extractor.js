@@ -71,6 +71,9 @@ function extractAtomicProperties(code, options = {}) {
   return {
     charge, valence, mass, spin, phase,
     reactivity, electronegativity, group, period,
+    harmPotential: computeHarmPotential(code, tokens),
+    alignment: computeAlignment(code, tokens),
+    intention: computeIntention(code, tokens),
   };
 }
 
@@ -250,11 +253,60 @@ function safeTokenize(code) {
   catch { return []; }
 }
 
+// ── Covenant dimension computers ────────────────────────────────────
+
+function computeHarmPotential(code, tokens) {
+  const dangerous = countMatches(code, [
+    /eval\s*\(/g, /exec\s*\(/g, /child_process/g, /rm\s+-rf/g,
+    /DROP\s+TABLE/gi, /DELETE\s+FROM/gi, /\.destroy\b/g,
+    /process\.exit/g, /process\.kill/g,
+  ]);
+  const io = countMatches(code, [
+    /fs\.write/g, /fs\.unlink/g, /\.send\b/g, /\.emit\b/g,
+    /\.delete\b/g, /\.remove\b/g,
+  ]);
+  if (dangerous > 0) return 'dangerous';
+  if (io > 3) return 'moderate';
+  if (io > 0) return 'minimal';
+  return 'none';
+}
+
+function computeAlignment(code, tokens) {
+  const healing = countMatches(code, [
+    /optimize\b/gi, /heal\b/gi, /repair\b/gi, /fix\b/gi,
+    /improve\b/gi, /refine\b/gi, /clean\b/gi, /validate\b/gi,
+    /coherenc/gi, /align\b/gi,
+  ]);
+  const degrading = countMatches(code, [
+    /corrupt\b/gi, /break\b/gi, /destroy\b/gi, /pollut/gi,
+    /leak\b/gi, /overflow\b/gi, /inject\b/gi,
+  ]);
+  if (healing > degrading + 2) return 'healing';
+  if (degrading > healing + 1) return 'degrading';
+  return 'neutral';
+}
+
+function computeIntention(code, tokens) {
+  // Code intention is structural — benevolent code helps, malevolent code harms
+  const benevolent = countMatches(code, [
+    /help\b/gi, /assist\b/gi, /enable\b/gi, /protect\b/gi,
+    /guard\b/gi, /safe\b/gi, /sanitize\b/gi, /verify\b/gi,
+  ]);
+  const malevolent = countMatches(code, [
+    /exploit\b/gi, /attack\b/gi, /inject\b/gi, /bypass\b/gi,
+    /escalat\b/gi, /brute\s*force/gi, /payload\b/gi,
+  ]);
+  if (benevolent > malevolent + 1) return 'benevolent';
+  if (malevolent > benevolent) return 'malevolent';
+  return 'neutral';
+}
+
 function defaultProperties() {
   return {
     charge: 0, valence: 0, mass: 'light', spin: 'even',
     phase: 'gas', reactivity: 'inert', electronegativity: 0,
     group: 11, period: 1,
+    harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
   };
 }
 

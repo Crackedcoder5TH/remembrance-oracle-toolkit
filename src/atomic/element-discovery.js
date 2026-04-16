@@ -25,7 +25,8 @@
  */
 
 const { encodeSignature, GROUPS, CHARGE_VALUES, MASS_VALUES, SPIN_VALUES,
-  PHASE_VALUES, REACTIVITY_VALUES, MAX_GROUP, MAX_PERIOD } = require('./periodic-table');
+  PHASE_VALUES, REACTIVITY_VALUES, HARM_VALUES, ALIGNMENT_VALUES, INTENTION_VALUES,
+  MAX_GROUP, MAX_PERIOD, CovenantValidator } = require('./periodic-table');
 
 /**
  * Run all three discovery strategies and return a ranked list

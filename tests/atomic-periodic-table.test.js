@@ -4,7 +4,7 @@ const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
 
 const {
-  PeriodicTable, encodeSignature, decodeSignature, GROUPS,
+  PeriodicTable, CovenantValidator, encodeSignature, decodeSignature, GROUPS,
 } = require('../src/atomic/periodic-table');
 const { extractAtomicProperties } = require('../src/atomic/property-extractor');
 const { runDiscovery, buildDescription } = require('../src/atomic/element-discovery');
@@ -13,8 +13,9 @@ describe('encodeSignature / decodeSignature', () => {
   it('roundtrips a property set', () => {
     const props = {
       charge: 1, valence: 3, mass: 'medium', spin: 'odd',
-      phase: 'liquid', reactivity: 'high', electronegativity: 0.7,
+      phase: 'liquid', reactivity: 'reactive', electronegativity: 0.7,
       group: 8, period: 4,
+      harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
     };
     const sig = encodeSignature(props);
     const decoded = decodeSignature(sig);
@@ -23,9 +24,12 @@ describe('encodeSignature / decodeSignature', () => {
     assert.equal(decoded.mass, 'medium');
     assert.equal(decoded.spin, 'odd');
     assert.equal(decoded.phase, 'liquid');
-    assert.equal(decoded.reactivity, 'high');
+    assert.equal(decoded.reactivity, 'reactive');
     assert.equal(decoded.group, 8);
     assert.equal(decoded.period, 4);
+    assert.equal(decoded.harmPotential, 'minimal');
+    assert.equal(decoded.alignment, 'healing');
+    assert.equal(decoded.intention, 'benevolent');
   });
 
   it('encodes negative charge correctly', () => {
@@ -202,11 +206,155 @@ describe('buildDescription', () => {
   it('produces readable descriptions', () => {
     const desc = buildDescription({
       charge: 1, valence: 3, mass: 'heavy', spin: 'odd',
-      phase: 'liquid', reactivity: 'high', group: 8, period: 4,
+      phase: 'liquid', reactivity: 'reactive', group: 8, period: 4,
     });
     assert.ok(desc.includes('expanding'));
     assert.ok(desc.includes('heavy'));
     assert.ok(desc.includes('async'));
     assert.ok(desc.includes('side-effecting'));
+  });
+});
+
+describe('CovenantValidator', () => {
+  it('validates covenant-aligned properties', () => {
+    const result = CovenantValidator.validate({
+      harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+    });
+    assert.equal(result.valid, true);
+    assert.equal(result.violations.length, 0);
+  });
+
+  it('rejects dangerous harm potential', () => {
+    const result = CovenantValidator.validate({
+      harmPotential: 'dangerous', alignment: 'neutral', intention: 'neutral',
+    });
+    assert.equal(result.valid, false);
+    assert.ok(result.violations.some(v => v.property === 'harmPotential'));
+  });
+
+  it('rejects degrading alignment', () => {
+    const result = CovenantValidator.validate({
+      harmPotential: 'none', alignment: 'degrading', intention: 'neutral',
+    });
+    assert.equal(result.valid, false);
+  });
+
+  it('rejects malevolent intention', () => {
+    const result = CovenantValidator.validate({
+      harmPotential: 'none', alignment: 'neutral', intention: 'malevolent',
+    });
+    assert.equal(result.valid, false);
+  });
+
+  it('enforce() throws on critical violations', () => {
+    assert.throws(() => {
+      CovenantValidator.enforce({ harmPotential: 'dangerous', alignment: 'degrading', intention: 'malevolent' });
+    }, /COVENANT VIOLATION/);
+  });
+
+  it('enforce() passes on safe properties', () => {
+    const result = CovenantValidator.enforce({
+      harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+    });
+    assert.equal(result.valid, true);
+  });
+});
+
+describe('PeriodicTable — covenant enforcement', () => {
+  it('rejects elements with dangerous harm potential at registration', () => {
+    const table = new PeriodicTable();
+    const result = table.addElement({
+      charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+      reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
+      harmPotential: 'dangerous', alignment: 'neutral', intention: 'neutral',
+    });
+    assert.ok(result.rejected, 'Should reject dangerous elements');
+    assert.equal(table.size, 0, 'Table should not grow from rejected element');
+  });
+
+  it('accepts elements with healing alignment', () => {
+    const table = new PeriodicTable();
+    const result = table.addElement({
+      charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+      reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
+      harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+    });
+    assert.ok(!result.rejected);
+    assert.equal(table.size, 1);
+  });
+
+  it('canBond returns false when either element violates covenant', () => {
+    const table = new PeriodicTable();
+    // Both safe elements
+    table.addElement({
+      charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
+      reactivity: 'inert', electronegativity: 0.3, group: 1, period: 1,
+      harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+    }, { name: 'safe1' });
+    table.addElement({
+      charge: -1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
+      reactivity: 'inert', electronegativity: 0.3, group: 1, period: 1,
+      harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+    }, { name: 'safe2' });
+    const sigs = table.signatures;
+    assert.ok(table.canBond(sigs[0], sigs[1]), 'Safe elements should bond');
+  });
+});
+
+describe('PeriodicTable — emergence', () => {
+  it('emerges new elements when coherence threshold is crossed', () => {
+    const table = new PeriodicTable();
+    const emerged = table.checkEmergence(0.72, 100);
+    assert.ok(emerged.length > 0, 'Should emerge at least one element at 0.72');
+    assert.ok(emerged[0].isEmergent);
+  });
+
+  it('does not re-emerge at the same threshold', () => {
+    const table = new PeriodicTable();
+    table.checkEmergence(0.72, 100);
+    const second = table.checkEmergence(0.72, 100);
+    assert.equal(second.length, 0, 'Should not re-emerge');
+  });
+
+  it('emerges multiple elements at high coherence', () => {
+    const table = new PeriodicTable();
+    const emerged = table.checkEmergence(0.96, 500);
+    assert.ok(emerged.length >= 5, `Expected 5+ emerged at 0.96, got ${emerged.length}`);
+  });
+
+  it('emerged elements have high emergence potential', () => {
+    const table = new PeriodicTable();
+    const emerged = table.checkEmergence(0.92, 200);
+    for (const el of emerged) {
+      assert.ok(el.emergencePotential >= 0.7, `Expected high potential, got ${el.emergencePotential}`);
+    }
+  });
+});
+
+describe('extractAtomicProperties — covenant dimensions', () => {
+  it('detects dangerous harm potential from eval/exec patterns', () => {
+    const code = `function danger() { eval(userInput); child_process.exec(cmd); }`;
+    const props = extractAtomicProperties(code);
+    assert.equal(props.harmPotential, 'dangerous');
+  });
+
+  it('detects healing alignment from optimization patterns', () => {
+    const code = `function optimize(data) { return refine(clean(validate(data))); }`;
+    const props = extractAtomicProperties(code);
+    assert.equal(props.alignment, 'healing');
+  });
+
+  it('detects benevolent intention from protective patterns', () => {
+    const code = `function protect(input) { return sanitize(guard(verify(input))); }`;
+    const props = extractAtomicProperties(code);
+    assert.equal(props.intention, 'benevolent');
+  });
+
+  it('defaults covenant to safe values for simple code', () => {
+    const code = `function add(a, b) { return a + b; }`;
+    const props = extractAtomicProperties(code);
+    assert.equal(props.harmPotential, 'none');
+    assert.equal(props.alignment, 'neutral');
+    assert.equal(props.intention, 'neutral');
   });
 });

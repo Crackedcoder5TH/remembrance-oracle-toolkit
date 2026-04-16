@@ -381,5 +381,6 @@ module.exports = {
 
 unifiedMeasurement.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
-  reactivity: 'high', electronegativity: 0.9, group: 18, period: 7,
+  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
 };

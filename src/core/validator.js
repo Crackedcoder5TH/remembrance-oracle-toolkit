@@ -45,7 +45,6 @@ function validateCode(code, options = {}) {
     testCode,
     threshold = MIN_COHERENCY_THRESHOLD,
     timeout = DEFAULT_VALIDATION_TIMEOUT_MS,
-    skipCovenant = false,
   } = options;
 
   const result = {
@@ -62,8 +61,10 @@ function validateCode(code, options = {}) {
   const contentType = options.contentType || contentTypeForLanguage(language);
   const isNonCode = contentType !== 'code';
 
-  // Step 0: Covenant check — the seal above ALL content, code and non-code alike
-  if (!skipCovenant) {
+  // Step 0: Covenant check — STRUCTURAL, UNBYPASSABLE
+  // The covenant is intrinsic to the system, not an optional filter.
+  // skipCovenant is deliberately removed — no code path can bypass this.
+  {
     const covenant = covenantCheck(code, {
       description: options.description,
       tags: options.tags,

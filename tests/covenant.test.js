@@ -323,13 +323,17 @@ describe('Covenant integration with validator', () => {
     assert.equal(result.covenantResult.sealed, true);
   });
 
-  it('validator can skip covenant with skipCovenant option', () => {
+  it('covenant is structurally unbypassable — skipCovenant has no effect', () => {
     const { validateCode } = require('../src/core/validator');
-    const result = validateCode('// keylogger stub', {
+    // Even with skipCovenant: true, the covenant STILL runs because
+    // the bypass was structurally removed. The covenant is intrinsic.
+    const result = validateCode('function safe() { return 1; }', {
       language: 'javascript',
-      skipCovenant: true,
+      skipCovenant: true, // This flag is now ignored
     });
-    assert.equal(result.covenantResult, null);
+    // The covenant ran regardless — covenantResult is present
+    assert.ok(result.covenantResult, 'Covenant should run even with skipCovenant: true');
+    assert.equal(result.covenantResult.sealed, true);
   });
 });
 

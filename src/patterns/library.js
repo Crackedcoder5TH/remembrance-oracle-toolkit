@@ -676,7 +676,9 @@ class PatternLibrary {
         language: pattern.language,
         testCode: pattern.testCode,
         threshold: 0, // We only care about test execution, not coherency here
-        skipCovenant: true, // Already passed covenant at registration time
+        // Covenant runs EVERY time — structurally unbypassable.
+        // If it already passed at registration, it will pass again (fast).
+        // If the code was modified since registration, this catches it.
         sandbox: true,
       });
       if (result.testPassed === true) {

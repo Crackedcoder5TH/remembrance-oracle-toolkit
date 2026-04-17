@@ -600,6 +600,21 @@ class SQLiteStore {
   // ─── Entry (history) methods — same interface as VerifiedHistoryStore ───
 
   addEntry(entry) {
+    // ── Structural covenant enforcement ─────────────────────────────
+    if (entry.code && typeof entry.code === 'string') {
+      try {
+        const { covenantCheck } = require('../core/covenant');
+        const check = covenantCheck(entry.code, { description: entry.description, trusted: false });
+        if (!check.sealed) {
+          const violations = (check.violations || []).map(v => `[${v.name}]: ${v.reason}`).join('; ');
+          throw new Error(`COVENANT VIOLATION at store gate: ${violations}`);
+        }
+      } catch (e) {
+        if (e.message.startsWith('COVENANT VIOLATION')) throw e;
+        if (process.env.ORACLE_DEBUG) console.warn('[store] covenant check unavailable:', e.message);
+      }
+    }
+
     const id = this._hash(entry.code + Date.now().toString() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
 
@@ -790,12 +805,26 @@ class SQLiteStore {
    * @private
    */
   _insertPattern(pattern) {
+    // ── Structural covenant enforcement ─────────────────────────────
+    // Every pattern that enters the store passes through the covenant.
+    // This is the LAST gate — even if validation was somehow bypassed,
+    // the store itself refuses to persist covenant-violating code.
+    if (pattern.code && typeof pattern.code === 'string') {
+      try {
+        const { covenantCheck } = require('../core/covenant');
+        const check = covenantCheck(pattern.code, { description: pattern.name, trusted: false });
+        if (!check.sealed) {
+          const violations = (check.violations || []).map(v => `[${v.name}]: ${v.reason}`).join('; ');
+          throw new Error(`COVENANT VIOLATION at store gate: ${violations}`);
+        }
+      } catch (e) {
+        if (e.message.startsWith('COVENANT VIOLATION')) throw e;
+        // If covenant module is unavailable, degrade — but log it
+        if (process.env.ORACLE_DEBUG) console.warn('[store] covenant check unavailable:', e.message);
+      }
+    }
+
     // Coerce nullable/undefined fields to SQLite-bindable primitives.
-    // SQLite's DatabaseSync refuses to bind `undefined`, and silently corrupts
-    // on objects/functions — this was the source of
-    // "Provided value cannot be bound to SQLite parameter 3" when callers
-    // passed patterns with missing `code`. Strings get '' fallback, nullable
-    // fields get null, and everything is stringified for safety.
     const code = typeof pattern.code === 'string' ? pattern.code : (pattern.code == null ? '' : String(pattern.code));
     const name = typeof pattern.name === 'string' ? pattern.name : String(pattern.name ?? '');
     const description = typeof pattern.description === 'string' ? pattern.description : '';

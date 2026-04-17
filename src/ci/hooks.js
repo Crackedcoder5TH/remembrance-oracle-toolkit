@@ -97,7 +97,7 @@ done
 if [ $FAILED -ne 0 ]; then
   echo ""
   echo "Commit blocked by Remembrance Oracle Covenant."
-  echo "Fix the violations above or use --no-verify to skip."
+  echo "Fix the violations above. The covenant is structural and cannot be bypassed."
   exit 1
 fi
 

@@ -1249,6 +1249,174 @@ ${c.bold('Related commands:')}
   };
 
   // ── COHERENCY ORCHESTRATOR ─────────────────────────────────────────
+  // ── SELF-IMPROVEMENT LOOP ──────────────────────────────────────────
+  handlers['self-improve'] = async (args) => {
+    const sub = args._sub || args._positional[1] || 'status';
+    const path = require('path');
+    const { SelfImprovementEngine } = require('../../orchestrator/self-improvement');
+    const { PeriodicTable } = require('../../atomic/periodic-table');
+
+    const tablePath = path.join(process.cwd(), '.remembrance', 'atomic-table.json');
+    const table = new PeriodicTable({ storagePath: tablePath });
+    const engine = new SelfImprovementEngine();
+
+    // Get current global coherency
+    let globalCoherency = 0.762;
+    try {
+      const { CoherencyDirector } = require('../../orchestrator/coherency-director');
+      const fs = require('fs');
+      const d = new CoherencyDirector();
+      const files = [];
+      (function walk(dir) {
+        try {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+            const p = path.join(dir, entry.name);
+            if (entry.isDirectory()) walk(p);
+            else if (entry.name.endsWith('.js')) {
+              try { files.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); } catch {}
+            }
+          }
+        } catch {}
+      })('src');
+      d.scan(files.slice(0, 50));
+      d.measureWithOracle();
+      globalCoherency = d.field.globalCoherency;
+    } catch {}
+
+    // ── improve status ────────────────────────────────────────────
+    if (sub === 'status') {
+      const status = engine.status(globalCoherency);
+      if (jsonOut()) { console.log(JSON.stringify(status)); return; }
+      console.log('');
+      console.log(c.boldCyan('Self-Improvement Loop'));
+      console.log(`  approval mode     : ${c.bold(status.approvalMode)}`);
+      console.log(`  global coherency  : ${c.bold(globalCoherency.toFixed(3))}`);
+      console.log('');
+      console.log(c.bold('  Thresholds:'));
+      console.log(`    supervised       : below C=${status.coherencyThresholds.SUPERVISED}`);
+      console.log(`    semi-autonomous  : C=${status.coherencyThresholds.SEMI_AUTONOMOUS} - ${status.coherencyThresholds.AUTONOMOUS}`);
+      console.log(`    autonomous       : C=${status.coherencyThresholds.AUTONOMOUS}+`);
+      console.log('');
+      console.log(c.bold('  Proposals:'));
+      console.log(`    total            : ${status.totalProposals}`);
+      console.log(`    pending          : ${status.pending > 0 ? c.boldYellow(String(status.pending)) : '0'}`);
+      console.log(`    approved         : ${c.green(String(status.approved))}`);
+      console.log(`    auto-incorporated: ${c.cyan(String(status.autoIncorporated))}`);
+      console.log(`    rejected         : ${status.rejected}`);
+      if (status.nextModeAt) {
+        console.log('');
+        console.log(c.dim(`  Next mode: ${status.nextModeAt.mode} at C=${status.nextModeAt.threshold} (gap: +${status.nextModeAt.gap.toFixed(3)})`));
+      }
+      console.log('');
+      return;
+    }
+
+    // ── improve discover ──────────────────────────────────────────
+    if (sub === 'discover') {
+      const maxProposals = parseInt(args.max || '5', 10);
+      console.log('');
+      console.log(c.boldCyan('Self-Improvement Discovery'));
+      console.log(c.dim(`  Discovering gaps and generating proposals (max ${maxProposals})...`));
+      console.log('');
+
+      // Populate table via introspection first
+      try {
+        const { introspect } = require('../../atomic/self-introspect');
+        introspect(table, { includeVoid: true });
+      } catch {}
+
+      const result = await engine.discoverAndPropose({
+        table, globalCoherency, maxProposals,
+      });
+
+      if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+
+      console.log(`  approval mode    : ${c.bold(result.approvalMode)}`);
+      console.log(`  proposals found  : ${result.proposals.length}`);
+      console.log(`  auto-incorporated: ${result.autoIncorporated}`);
+      console.log('');
+
+      for (const p of result.proposals) {
+        const icon = p.status === 'pending' ? c.yellow('\u25cb')
+                   : p.status === 'auto-incorporated' ? c.green('\u2713')
+                   : p.status === 'rejected' ? c.red('\u2717')
+                   : c.dim('\u25cb');
+        console.log(`  ${icon} ${c.bold(p.id)}`);
+        console.log(`    gap: ${c.dim(p.gap.description || p.gap.signature)}`);
+        console.log(`    status: ${p.status}${p.decidedBy ? ' (by ' + p.decidedBy + ')' : ''}`);
+        if (p.rejectionReason) console.log(`    reason: ${c.dim(p.rejectionReason)}`);
+        console.log('');
+      }
+
+      if (result.approvalMode === 'supervised' && result.proposals.some(p => p.status === 'pending')) {
+        console.log(c.dim('  Pending proposals need human approval:'));
+        console.log(c.dim('    oracle improve approve <proposal-id>'));
+        console.log(c.dim('    oracle improve reject <proposal-id>'));
+      }
+      console.log('');
+      return;
+    }
+
+    // ── improve approve <id> ──────────────────────────────────────
+    if (sub === 'approve') {
+      const id = args.id || args._positional[2];
+      if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle improve approve <proposal-id>')}`); process.exit(1); }
+
+      // Populate table
+      try { const { introspect } = require('../../atomic/self-introspect'); introspect(table, { includeVoid: true }); } catch {}
+
+      const result = engine.approve(id, table);
+      if (result.error) { console.error(c.boldRed('Error:') + ` ${result.error}`); process.exit(1); }
+      console.log('');
+      console.log(c.boldGreen(`  \u2713 Proposal ${id} approved and incorporated`));
+      console.log(c.dim(`    Gap filled: ${result.proposal.gap?.description || result.proposal.gap?.signature}`));
+      console.log(c.dim(`    Decided by: human`));
+      console.log('');
+      return;
+    }
+
+    // ── improve reject <id> ──────────────────────────────────────
+    if (sub === 'reject') {
+      const id = args.id || args._positional[2];
+      const reason = args.reason || 'Rejected by human';
+      if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle improve reject <proposal-id>')}`); process.exit(1); }
+      const result = engine.reject(id, reason);
+      if (result.error) { console.error(c.boldRed('Error:') + ` ${result.error}`); process.exit(1); }
+      console.log('');
+      console.log(c.boldRed(`  \u2717 Proposal ${id} rejected`));
+      console.log(c.dim(`    Reason: ${reason}`));
+      console.log('');
+      return;
+    }
+
+    // ── improve pending ───────────────────────────────────────────
+    if (sub === 'pending') {
+      const pending = engine.getPending();
+      if (jsonOut()) { console.log(JSON.stringify(pending)); return; }
+      console.log('');
+      console.log(c.boldCyan(`Pending Proposals (${pending.length})`));
+      if (pending.length === 0) {
+        console.log(c.dim('  No pending proposals. Run `oracle improve discover` to find gaps.'));
+      } else {
+        for (const p of pending) {
+          console.log(`  ${c.yellow('\u25cb')} ${c.bold(p.id)}`);
+          console.log(`    ${c.dim(p.gap?.description || p.gap?.signature || 'unknown gap')}`);
+          console.log(`    created: ${p.createdAt}`);
+          console.log('');
+        }
+        console.log(c.dim('  oracle improve approve <id>  — incorporate into the system'));
+        console.log(c.dim('  oracle improve reject <id>   — reject the proposal'));
+      }
+      console.log('');
+      return;
+    }
+
+    console.error(c.boldRed('Error:') + ` Unknown improve subcommand: ${sub}`);
+    console.error(c.dim('  Available: status, discover, approve, reject, pending'));
+    process.exit(1);
+  };
+
   // ── LIVING COVENANT ──────────────────────────────────────────────────
   handlers['covenant-status'] = (args) => {
     const { LivingCovenant } = require('../../core/living-covenant');

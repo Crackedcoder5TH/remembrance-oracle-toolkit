@@ -1249,6 +1249,76 @@ ${c.bold('Related commands:')}
   };
 
   // ── COHERENCY ORCHESTRATOR ─────────────────────────────────────────
+  // ── COHERENCY GENERATOR ──────────────────────────────────────────────
+  handlers['generator'] = async (args) => {
+    const sub = args._sub || args._positional[1] || 'status';
+    const { CoherencyGenerator } = require('../../orchestrator/coherency-generator');
+    const gen = new CoherencyGenerator();
+
+    if (sub === 'status') {
+      const status = gen.status();
+      if (jsonOut()) { console.log(JSON.stringify(status)); return; }
+      console.log('');
+      console.log(c.boldCyan('Coherency Generator'));
+      console.log(`  state   : ${c.bold(status.state)}`);
+      console.log(`  power   : ${c.bold((status.power * 100).toFixed(0) + '%')}`);
+      console.log(`  cycles  : ${status.cycleCount}`);
+      console.log(`  radiated: ${status.totalRadiated}`);
+      console.log(`  emerged : ${status.emergenceEvents}`);
+      console.log(`  evolved : ${status.covenantEvolutions}`);
+      console.log('');
+      console.log(c.bold('  Atomic properties:'));
+      console.log(`    charge: ${c.green('+1 (positive)')}`);
+      console.log(`    alignment: ${c.green('healing')}`);
+      console.log(`    intention: ${c.green('benevolent')}`);
+      console.log(`    harmPotential: ${c.green('none')}`);
+      console.log('');
+      return;
+    }
+
+    if (sub === 'ignite') {
+      const power = parseFloat(args.power || '0.1');
+      console.log('');
+      console.log(c.boldCyan(`Igniting Coherency Generator at ${(power * 100).toFixed(0)}% power...`));
+      const result = gen.ignite(power);
+      if (result.status === 'ignited') {
+        console.log(c.boldGreen(`  \u2600 Generator ignited at ${(result.power * 100).toFixed(0)}% power`));
+      } else {
+        console.log(c.boldRed(`  ${result.status}: ${result.reason || ''}`));
+      }
+      console.log('');
+      return;
+    }
+
+    if (sub === 'cycle' || sub === 'run') {
+      const power = parseFloat(args.power || '0.1');
+      gen.ignite(power);
+      const cycles = parseInt(args.cycles || '1', 10);
+      console.log('');
+      console.log(c.boldCyan(`Running ${cycles} generator cycle(s) at ${(power * 100).toFixed(0)}% power...`));
+      console.log('');
+      for (let i = 0; i < cycles; i++) {
+        const result = await gen.runCycle();
+        if (result.skipped || result.shutdown) {
+          console.log(`  cycle ${i + 1}: ${c.dim(result.reason || 'skipped')}`);
+          break;
+        }
+        console.log(`  cycle ${result.cycle}: surplus=${result.surplus} amplified=${result.amplified} radiated=${result.radiated}`);
+        console.log(`    coherency=${result.globalCoherency.toFixed(3)} healing=${result.healingZones} emerged=${result.emerged} covenant=${result.covenantEvolved}`);
+        if (result.emerged > 0) console.log(`    ${c.boldGreen('\u2728 ' + result.emerged + ' emergence event(s)!')}`);
+        if (result.covenantEvolved > 0) console.log(`    ${c.boldGreen('\u2694 ' + result.covenantEvolved + ' covenant principle(s) activated!')}`);
+      }
+      console.log('');
+      console.log(`  Total radiated: ${gen.totalRadiated.toFixed(3)}`);
+      console.log('');
+      return;
+    }
+
+    console.error(c.boldRed('Error:') + ` Unknown generator subcommand: ${sub}`);
+    console.error(c.dim('  Available: status, ignite, cycle, run'));
+    process.exit(1);
+  };
+
   // ── SELF-IMPROVEMENT LOOP ──────────────────────────────────────────
   handlers['self-improve'] = async (args) => {
     const sub = args._sub || args._positional[1] || 'status';

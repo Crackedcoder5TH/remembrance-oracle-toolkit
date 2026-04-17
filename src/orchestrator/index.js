@@ -13,25 +13,12 @@ const { CoherencyDirector, CoherencyField, CoherencyZone } = require('./coherenc
 const { signalToCharge, analyzeChargeFlow, analyzeFieldCharge, analyzeCodebaseCharge } = require('./charge-balancer');
 const { computeZonePriority, rankZones, computeHealingBudget } = require('./priority-engine');
 const { synthesizeTestStubs, extractExportedFunctions } = require('./test-synthesizer');
+const { CoherencyGenerator, GENERATOR_STATES } = require('./coherency-generator');
 
 module.exports = {
-  // Director (the conductor)
-  CoherencyDirector,
-  CoherencyField,
-  CoherencyZone,
-
-  // Charge balancer
-  signalToCharge,
-  analyzeChargeFlow,
-  analyzeFieldCharge,
-  analyzeCodebaseCharge,
-
-  // Priority engine
-  computeZonePriority,
-  rankZones,
-  computeHealingBudget,
-
-  // Test synthesizer
-  synthesizeTestStubs,
-  extractExportedFunctions,
+  CoherencyDirector, CoherencyField, CoherencyZone,
+  signalToCharge, analyzeChargeFlow, analyzeFieldCharge, analyzeCodebaseCharge,
+  computeZonePriority, rankZones, computeHealingBudget,
+  synthesizeTestStubs, extractExportedFunctions,
+  CoherencyGenerator, GENERATOR_STATES,
 };

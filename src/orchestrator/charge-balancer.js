@@ -175,3 +175,25 @@ module.exports = {
   analyzeFieldCharge,
   analyzeCodebaseCharge,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+signalToCharge.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+analyzeChargeFlow.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+analyzeFieldCharge.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 13, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+analyzeCodebaseCharge.atomicProperties = {
+  charge: 0, valence: 2, mass: 'heavy', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 1, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

@@ -410,3 +410,40 @@ module.exports = {
   detectLanguage,
   sourceHash,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+analyze.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+analyzeCached.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+analyzeFiles.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+crossFileCallGraph.atomicProperties = {
+  charge: 1, valence: 2, mass: 'medium', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 1, group: 2, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+clearCache.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+detectLanguage.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+sourceHash.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 16, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

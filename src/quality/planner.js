@@ -229,3 +229,20 @@ module.exports = {
   verifySymbol,
   scanForDefinition,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+planFromIntent.atomicProperties = {
+  charge: 1, valence: 1, mass: 'medium', spin: 'odd', phase: 'gas',
+  reactivity: 'inert', electronegativity: 1, group: 13, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+verifySymbol.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'low', electronegativity: 0, group: 2, period: 4,
+  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
+};
+scanForDefinition.atomicProperties = {
+  charge: 1, valence: 0, mass: 'heavy', spin: 'odd', phase: 'liquid',
+  reactivity: 'medium', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

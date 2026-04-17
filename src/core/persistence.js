@@ -1794,3 +1794,135 @@ module.exports = {
   PERSONAL_DIR,
   COMMUNITY_DIR,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+getGlobalDir.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+hasGlobalStore.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'odd', phase: 'gas',
+  reactivity: 'low', electronegativity: 0, group: 3, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+openGlobalStore.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+openPersonalStore.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+openCommunityStore.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+syncToGlobal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+syncFromGlobal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+syncBidirectional.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+shareToCommunity.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+pullFromCommunity.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+federatedQuery.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+globalStats.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 5, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
+};
+personalStats.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+communityStats.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+shareDebugPatterns.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+pullDebugPatterns.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+syncDebugToPersonal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+federatedDebugSearch.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+debugGlobalStats.atomicProperties = {
+  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'low', electronegativity: 1, group: 10, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+discoverRepoStores.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+registerRepo.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'odd', phase: 'gas',
+  reactivity: 'high', electronegativity: 0, group: 6, period: 3,
+  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+};
+listRepos.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'medium', electronegativity: 0, group: 6, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+crossRepoSearch.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+sanitizePatternForTransfer.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+getCoherency.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 13, period: 1,
+  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
+};
+dedupKey.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

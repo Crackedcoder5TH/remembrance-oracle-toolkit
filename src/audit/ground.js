@@ -350,3 +350,25 @@ module.exports = {
   extractCalledIdentifiers,
   BUILTINS,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+groundFile.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+extractAllIdentifiers.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 9, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+extractDefinedIdentifiers.atomicProperties = {
+  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'inert', electronegativity: 1, group: 2, period: 4,
+  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+};
+extractCalledIdentifiers.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

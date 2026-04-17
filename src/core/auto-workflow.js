@@ -434,3 +434,20 @@ module.exports = {
   initAutoWorkflow,
   DEFAULT_CONFIG,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+loadWorkflowConfig.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'odd', phase: 'gas',
+  reactivity: 'high', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
+};
+saveWorkflowConfig.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'odd', phase: 'gas',
+  reactivity: 'high', electronegativity: 0, group: 6, period: 2,
+  harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+};
+initAutoWorkflow.atomicProperties = {
+  charge: 0, valence: 1, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 1, group: 9, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

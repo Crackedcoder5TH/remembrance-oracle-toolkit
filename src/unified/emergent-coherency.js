@@ -407,3 +407,50 @@ module.exports = {
   registerTierCoverageSignal,
   geometricMean,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+getEmergentCoherency.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+registerVoidSignal.atomicProperties = {
+  charge: 0, valence: 5, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'high', electronegativity: 1, group: 3, period: 4,
+  harmPotential: 'dangerous', alignment: 'healing', intention: 'neutral',
+};
+registerAuditSignal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 13, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+registerGroundSignal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 13, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+registerPlanSignal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 13, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+registerGateSignal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 13, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+registerFeedbackSignal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+registerTierCoverageSignal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+geometricMean.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 13, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

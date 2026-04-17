@@ -161,3 +161,10 @@ function emptyResult(plan, draftPath, reason) {
 module.exports = {
   checkAgainstPlan,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+checkAgainstPlan.atomicProperties = {
+  charge: 1, valence: 1, mass: 'medium', spin: 'odd', phase: 'liquid',
+  reactivity: 'medium', electronegativity: 1, group: 13, period: 4,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

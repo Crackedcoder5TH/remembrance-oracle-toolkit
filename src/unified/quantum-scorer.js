@@ -384,3 +384,15 @@ unifiedMeasurement.atomicProperties = {
   reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
   harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+unifiedFieldMeasurement.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+quickAmplitude.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

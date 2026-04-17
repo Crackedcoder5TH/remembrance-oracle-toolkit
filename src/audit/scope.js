@@ -321,3 +321,15 @@ module.exports = {
   buildScope,
   analyzeCondition,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+buildScope.atomicProperties = {
+  charge: 1, valence: 0, mass: 'heavy', spin: 'odd', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 4,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+};
+analyzeCondition.atomicProperties = {
+  charge: 1, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 4,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

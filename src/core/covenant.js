@@ -367,3 +367,40 @@ module.exports = {
   HARM_PATTERNS,
   DEEP_SECURITY_PATTERNS,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+covenantCheck.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+getCovenant.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+getCovenantCalibration.atomicProperties = {
+  charge: 0, valence: 3, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'medium', electronegativity: 1, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+formatCovenantResult.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+deepSecurityScan.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+safeJsonParse.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+setPrincipleRegistry.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

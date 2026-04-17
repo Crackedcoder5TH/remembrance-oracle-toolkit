@@ -711,3 +711,50 @@ module.exports = {
   BUG_CLASSES,
   SEVERITY,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+auditCode.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+auditFile.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+auditFiles.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+checkStateMutation.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 4,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+};
+checkSecurity.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+checkConcurrency.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+checkType.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+checkIntegration.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 4,
+  harmPotential: 'none', alignment: 'degrading', intention: 'neutral',
+};
+checkEdgeCase.atomicProperties = {
+  charge: -1, valence: 0, mass: 'heavy', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 4,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+};

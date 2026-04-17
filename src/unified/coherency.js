@@ -718,3 +718,65 @@ module.exports = {
   WEIGHTS,
   WEIGHT_PRESETS,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+computeCoherencyScore.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+computeCoverageGate.atomicProperties = {
+  charge: 1, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 13, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+scoreSyntax.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+scoreCompleteness.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+scoreConsistency.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+scoreReadability.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+scoreSecurity.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+scoreFractalAlignment.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
+  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
+};
+scoreNamingQuality.atomicProperties = {
+  charge: -1, valence: 0, mass: 'medium', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+detectLanguage.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+contentTypeForLanguage.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+checkBalancedBraces.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

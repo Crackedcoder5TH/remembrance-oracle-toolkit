@@ -558,3 +558,15 @@ decodeSignature.atomicProperties = {
   reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+generateFractalSignature.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+calculateEmergencePotential.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

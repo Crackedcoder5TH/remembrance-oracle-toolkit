@@ -313,3 +313,30 @@ module.exports = {
   checkDimensionMonotonicity,
   DIMENSION_DROP_THRESHOLD,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+reflectionLoop.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+formatReflectionResult.atomicProperties = {
+  charge: 1, valence: 0, mass: 'medium', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+generateCandidates.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};
+generateWhisper.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
+};
+checkDimensionMonotonicity.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+};

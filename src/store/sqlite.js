@@ -1653,6 +1653,31 @@ class SQLiteStore {
     };
   }
 
+  /**
+   * Update only the coherency of a stored pattern. Used by the
+   * recalibration sweep when the scorer changes — re-scoring a
+   * pattern with the current scorer may produce a different value,
+   * and the stored value should reflect the current scorer's output.
+   *
+   * @param {number} id - pattern id
+   * @param {{total, breakdown}} coherencyScore
+   * @returns {boolean} true if updated
+   */
+  updatePatternCoherency(id, coherencyScore) {
+    if (!coherencyScore || typeof coherencyScore.total !== 'number') return false;
+    try {
+      const stmt = this.db.prepare(
+        'UPDATE patterns SET coherency_total = ?, coherency_json = ? WHERE id = ?'
+      );
+      const result = stmt.run(
+        coherencyScore.total,
+        JSON.stringify(coherencyScore),
+        id
+      );
+      return result.changes > 0;
+    } catch { return false; }
+  }
+
   _rowToPattern(row) {
     return {
       id: row.id,

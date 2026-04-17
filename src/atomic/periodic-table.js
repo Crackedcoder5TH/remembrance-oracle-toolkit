@@ -248,9 +248,29 @@ class PeriodicTable {
   /**
    * Check emergence thresholds — when system coherence crosses a
    * threshold, new elements EMERGE (are created, not discovered).
+   *
+   * Two emergence triggers:
+   *   1. ABSOLUTE threshold crossing — system coherence reaches a
+   *      level that hasn't been reached before (Foundation → Unity)
+   *   2. IMPROVEMENT delta — system coherence jumps by 0.03+ in one
+   *      cycle, regardless of absolute level. This catches the case
+   *      where the system starts above Foundation and needs
+   *      emergence to respond to healing work, not to static levels.
+   *
+   * @param {number} systemCoherence - current global coherency
+   * @param {number} systemComplexity - total zone count (for property shaping)
+   * @param {object} [options]
+   *   - previousCoherence: the coherency BEFORE this cycle. When
+   *     provided, delta-based emergence fires if coherence improved
+   *     by deltaThreshold (default 0.03) or more.
+   *   - deltaThreshold: minimum improvement to trigger delta-emergence
    */
-  checkEmergence(systemCoherence, systemComplexity) {
+  checkEmergence(systemCoherence, systemComplexity, options = {}) {
     const emerged = [];
+    const prev = typeof options.previousCoherence === 'number' ? options.previousCoherence : null;
+    const deltaThreshold = options.deltaThreshold ?? 0.03;
+
+    // ── ABSOLUTE threshold crossings ────────────────────────────────
     for (const threshold of EMERGENCE_THRESHOLDS) {
       const key = `C${threshold.coherence}`;
       if (this._emergedThresholds.has(key)) continue;
@@ -258,19 +278,47 @@ class PeriodicTable {
         const props = this._coherenceToProperties(systemCoherence, systemComplexity);
         const element = this.addElement(props, {
           name: `${threshold.name}Element`,
-          source: 'emergence',
+          source: 'emergence-absolute',
           isEmergent: true,
         });
         if (element && !element.rejected) {
           this._emergedThresholds.add(key);
           this._emergenceHistory.push({
-            threshold: threshold.name, coherence: systemCoherence,
+            threshold: threshold.name, trigger: 'absolute', coherence: systemCoherence,
             complexity: systemComplexity, element, ts: new Date().toISOString(),
           });
           emerged.push(element);
         }
       }
     }
+
+    // ── IMPROVEMENT delta emergence ─────────────────────────────────
+    // If coherency jumped by deltaThreshold+ in this cycle, emerge a
+    // new element that embodies the improvement. The element's
+    // properties are shaped by the CURRENT coherence, but it's tagged
+    // with the delta so history shows what healing caused it.
+    if (prev !== null) {
+      const delta = systemCoherence - prev;
+      if (delta >= deltaThreshold) {
+        const props = this._coherenceToProperties(systemCoherence, systemComplexity);
+        // Give it a slightly higher valence to signal improvement
+        props.valence = Math.min(8, (props.valence || 1) + 1);
+        const element = this.addElement(props, {
+          name: `Delta+${Math.round(delta * 100)}Element`,
+          source: 'emergence-delta',
+          isEmergent: true,
+        });
+        if (element && !element.rejected) {
+          this._emergenceHistory.push({
+            threshold: `Improvement (+${Math.round(delta * 1000) / 1000})`,
+            trigger: 'delta', coherence: systemCoherence, previousCoherence: prev,
+            delta, complexity: systemComplexity, element, ts: new Date().toISOString(),
+          });
+          emerged.push(element);
+        }
+      }
+    }
+
     return emerged;
   }
 

@@ -304,6 +304,25 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       const entry = new Date().toISOString() + ' [post-commit] ' + result.errors.join('; ') + '\\n';
       try { fs.appendFileSync(logPath, entry); } catch(_w) { console.error('[oracle:post-commit] log write failed: ' + _w.message); }
     }
+
+    // ── Coherency monitoring: scan only the changed files ──────
+    try {
+      const { CoherencyDirector } = require(path.join(root, 'src/orchestrator/coherency-director'));
+      const { execSync } = require('child_process');
+      const fs = require('fs');
+      const changed = execSync('git diff --name-only HEAD~1 HEAD 2>/dev/null', { encoding: 'utf-8' })
+        .trim().split('\\n').filter(f => /\\.js$/.test(f) && fs.existsSync(f));
+      if (changed.length > 0) {
+        const items = changed.map(f => ({ id: f, filePath: f, language: 'javascript', code: fs.readFileSync(f, 'utf-8') }));
+        const d = new CoherencyDirector();
+        d.scan(items); d.measureWithOracle();
+        const targets = d.field.findHealingTargets();
+        if (targets.length > 0) {
+          console.log('Oracle: ' + targets.length + ' changed file(s) below coherency threshold:');
+          for (const t of targets.slice(0, 5)) console.log('  - ' + t.id + ' (' + t.coherency.toFixed(3) + ')');
+        }
+      }
+    } catch(_c) { /* coherency check is advisory, never block */ }
   } catch(e) {
     // Always emit to stderr so errors are never fully silent.
     console.error('[oracle:post-commit] ' + (e.message || e));

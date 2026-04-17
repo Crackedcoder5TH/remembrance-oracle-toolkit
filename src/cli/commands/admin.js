@@ -1249,10 +1249,65 @@ ${c.bold('Related commands:')}
   };
 
   // ── COHERENCY ORCHESTRATOR ─────────────────────────────────────────
+  // ── COHERENCY RECALIBRATION ─────────────────────────────────────────
+  handlers['recalibrate'] = (args) => {
+    const { recalibrateCoherency } = require('../../unified/coherency-recalibrate');
+    const dryRun = args['dry-run'] === true || args['dry-run'] === 'true';
+    const threshold = parseFloat(args.threshold || '0.05');
+
+    console.log('');
+    console.log(c.boldCyan('Coherency Recalibration' + (dryRun ? ' (dry-run)' : '')));
+    console.log(c.dim('  Re-scoring all stored patterns with the current scorer...'));
+    console.log('');
+
+    let lastReport = 0;
+    const result = recalibrateCoherency(oracle.store, {
+      driftThreshold: threshold,
+      dryRun,
+      onProgress: (done, total) => {
+        const pct = Math.floor((done / total) * 10);
+        if (pct !== lastReport) {
+          lastReport = pct;
+          process.stdout.write(`\r  progress: ${done}/${total}  `);
+        }
+      },
+    });
+    process.stdout.write('\r' + ' '.repeat(40) + '\r');
+
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+
+    console.log(`  total patterns   : ${c.bold(String(result.totalPatterns))}`);
+    console.log(`  changed (|Δ| ≥ ${threshold}) : ${c.bold(String(result.changed))}`);
+    console.log(`    raised  : ${c.green(String(result.raised))}`);
+    console.log(`    lowered : ${c.red(String(result.lowered))}`);
+    console.log(`  unchanged        : ${result.unchanged}`);
+    console.log(`  skipped          : ${result.skipped}`);
+    console.log(`  avg |drift|      : ${result.avgDriftAbs}`);
+    console.log(`  max |drift|      : ${result.maxDrift}${result.maxDriftPattern ? ' (' + result.maxDriftPattern.name + ')' : ''}`);
+    console.log('');
+    if (result.examples.length > 0) {
+      console.log(c.bold('  Examples (top drift):'));
+      for (const ex of result.examples.slice(0, 10)) {
+        const arrow = ex.drift > 0 ? c.green('↑') : c.red('↓');
+        console.log(`    ${arrow} ${c.bold(ex.name.padEnd(40))} ${ex.oldScore} → ${ex.newScore}  (Δ${ex.drift > 0 ? '+' : ''}${ex.drift})`);
+      }
+    }
+    console.log('');
+    if (dryRun) {
+      console.log(c.dim('  (dry run — no changes written. Re-run without --dry-run to apply.)'));
+    } else if (result.changed > 0) {
+      console.log(c.boldGreen(`  ✓ Updated ${result.changed} pattern(s) in the store.`));
+    } else {
+      console.log(c.dim('  No patterns drifted past threshold. Library is calibrated.'));
+    }
+    console.log('');
+  };
+
   handlers['orchestrate'] = async (args) => {
     const sub = args._sub || args._positional[1] || 'status';
     const fs = require('fs');
     const path = require('path');
+    const { execSync } = require('child_process');
     const { CoherencyDirector } = require('../../orchestrator/coherency-director');
     const director = new CoherencyDirector();
 
@@ -1276,6 +1331,115 @@ ${c.bold('Related commands:')}
     if (fs.existsSync(scanDir)) walk(scanDir);
 
     director.scan(srcFiles);
+
+    // ── orchestrate changed — post-commit mode: scan only changed files ──
+    if (sub === 'changed') {
+      let changedFiles = [];
+      try {
+        const since = args.since || 'HEAD~1';
+        const diffOutput = execSync(`git diff --name-only ${since} HEAD 2>/dev/null`, { encoding: 'utf-8' });
+        changedFiles = diffOutput.trim().split('\n')
+          .filter(f => f.trim() && /\.js$/.test(f) && fs.existsSync(f));
+      } catch (_) {
+        console.error(c.boldRed('Error:') + ` git diff failed. Are you in a git repo?`);
+        process.exit(1);
+      }
+      if (changedFiles.length === 0) {
+        console.log(c.dim('  No changed .js files since last commit.'));
+        return;
+      }
+      const changedItems = changedFiles.map(f => ({
+        id: f, filePath: path.resolve(f), language: 'javascript',
+        code: fs.readFileSync(f, 'utf-8'),
+      }));
+      const changedDirector = new CoherencyDirector();
+      changedDirector.scan(changedItems);
+      changedDirector.measureWithOracle();
+      const result = changedDirector.field.stats();
+      const targets = changedDirector.field.findHealingTargets();
+      if (jsonOut()) { console.log(JSON.stringify({ stats: result, targets: targets.map(t => ({ id: t.id, coherency: t.coherency })) })); return; }
+      console.log('');
+      console.log(c.boldCyan('Coherency on changed files'));
+      console.log(`  files changed       : ${c.bold(String(changedFiles.length))}`);
+      console.log(`  global coherency    : ${c.bold(result.globalCoherency.toFixed(3))}`);
+      console.log(`  needs healing       : ${targets.length > 0 ? c.boldYellow(String(targets.length)) : c.green('0')}`);
+      console.log('');
+      if (targets.length > 0) {
+        console.log(c.bold('  Zones below threshold:'));
+        for (const z of targets) {
+          console.log(`    ${c.yellow('\u25cf')} ${c.bold(z.id)}  coherency=${z.coherency.toFixed(3)}`);
+        }
+        console.log('');
+        console.log(c.dim('  Run `oracle orchestrate diagnose <file>` to categorize root cause.'));
+      } else {
+        console.log(c.boldGreen('  ✓ All changed files are above threshold.'));
+      }
+      console.log('');
+      return;
+    }
+
+    // ── orchestrate diagnose <file> — categorize root cause ──
+    if (sub === 'diagnose') {
+      const target = args.file || args._positional[2];
+      if (!target || !fs.existsSync(target)) {
+        console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle orchestrate diagnose <file>')}`);
+        process.exit(1);
+      }
+      const diagDirector = new CoherencyDirector();
+      diagDirector.scan([{ id: target, filePath: path.resolve(target), language: 'javascript',
+        code: fs.readFileSync(target, 'utf-8') }]);
+      diagDirector.measureWithOracle();
+      const zone = diagDirector.field.getZone(target);
+      const diagnosis = diagDirector.categorizeRootCause(zone);
+      if (jsonOut()) { console.log(JSON.stringify({ zone: target, coherency: zone.coherency, diagnosis })); return; }
+      console.log('');
+      console.log(c.boldCyan('Root cause diagnosis') + ' — ' + c.bold(target));
+      console.log(`  coherency : ${zone.coherency.toFixed(3)}`);
+      console.log('');
+      const icon = diagnosis.category === 'code-bug' ? c.boldRed('\u25cf') :
+                   diagnosis.category === 'missing-data' ? c.boldYellow('\u25cf') :
+                   diagnosis.category === 'measurement-error' ? c.boldMagenta('\u25cf') :
+                   c.dim('\u25cf');
+      console.log(`  ${icon} category  : ${c.bold(diagnosis.category)}`);
+      console.log(`  reason    : ${diagnosis.reason}`);
+      console.log(`  action    : ${c.cyan(diagnosis.suggestedAction)}`);
+      console.log('');
+      return;
+    }
+
+    // ── orchestrate heal <file> — smart-route healing ──
+    if (sub === 'heal') {
+      const target = args.file || args._positional[2];
+      if (!target || !fs.existsSync(target)) {
+        console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle orchestrate heal <file>')}`);
+        process.exit(1);
+      }
+      const healDirector = new CoherencyDirector();
+      healDirector.scan([{ id: target, filePath: path.resolve(target), language: 'javascript',
+        code: fs.readFileSync(target, 'utf-8') }]);
+      healDirector.measureWithOracle();
+      const healResult = await healDirector.healZoneSmart(target);
+      if (jsonOut()) { console.log(JSON.stringify(healResult)); return; }
+      console.log('');
+      console.log(c.boldCyan('Smart heal') + ' — ' + c.bold(target));
+      if (healResult && healResult.diagnosis) {
+        console.log(`  diagnosis : ${healResult.diagnosis.category} (${healResult.diagnosis.reason})`);
+      }
+      if (healResult && healResult.result) {
+        const r = healResult.result;
+        if (r.type === 'heal' || r.type === 'synthesize') {
+          console.log(`  ${c.green('✓')} ${r.type}: ${r.before.toFixed(3)} → ${r.after.toFixed(3)}`);
+        } else if (r.type === 'flag') {
+          console.log(`  ${c.yellow('⚠')} flagged: ${r.reason}`);
+        } else {
+          console.log(`  ${c.dim('skipped: ' + (r.reason || 'no action taken'))}`);
+        }
+      } else {
+        console.log(c.dim('  No intervention applied.'));
+      }
+      console.log('');
+      return;
+    }
 
     if (sub === 'scan' || sub === 'status') {
       director.measureWithOracle();
@@ -1322,7 +1486,7 @@ ${c.bold('Related commands:')}
     }
 
     console.error(c.boldRed('Error:') + ` Unknown orchestrate subcommand: ${sub}`);
-    console.error(c.dim('  Available: scan, status'));
+    console.error(c.dim('  Available: scan, status, changed, diagnose, heal'));
     process.exit(1);
   };
 

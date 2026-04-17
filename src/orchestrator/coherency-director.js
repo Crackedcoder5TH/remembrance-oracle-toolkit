@@ -386,13 +386,19 @@ class CoherencyDirector {
       healResult = await this.healZone(healingTargets[0].id);
     }
 
-    // 4. Check emergence
+    // 4. Check emergence — both absolute thresholds AND improvement deltas
     let emerged = [];
     try {
       const { PeriodicTable } = require('../atomic/periodic-table');
       const tablePath = path.join(process.cwd(), '.remembrance', 'atomic-table.json');
       const table = new PeriodicTable({ storagePath: tablePath });
-      emerged = table.checkEmergence(this.field.globalCoherency, this.field.size);
+      const prevCoherence = this.field.history.length >= 2
+        ? this.field.history[this.field.history.length - 2].global
+        : null;
+      emerged = table.checkEmergence(this.field.globalCoherency, this.field.size, {
+        previousCoherence: prevCoherence,
+        deltaThreshold: 0.03,
+      });
     } catch { /* atomic module unavailable */ }
 
     return {
@@ -403,6 +409,162 @@ class CoherencyDirector {
       emerged: emerged.length,
       globalCoherency: this.field.globalCoherency,
     };
+  }
+
+  /**
+   * Categorize the root cause of a zone's low coherency.
+   *
+   * Three categories:
+   *   - 'measurement-error': scorer calibration issue (e.g. truncation
+   *     breaks AST on large files). Fix the scorer, not the code.
+   *   - 'code-bug': real syntax error or semantic issue. Route to
+   *     the heal() pipeline.
+   *   - 'missing-data': defaults for testProof/historicalReliability,
+   *     no test results recorded. Route to test synthesis.
+   *
+   * @param {CoherencyZone} zone
+   * @returns {{ category, reason, suggestedAction }}
+   */
+  categorizeRootCause(zone) {
+    if (!zone || !zone.data || !zone.data.code) {
+      return { category: 'unknown', reason: 'no code to analyze', suggestedAction: 'skip' };
+    }
+
+    const code = zone.data.code;
+    const chars = code.length;
+
+    // Check for real syntax errors via node --check
+    let syntaxValid = true;
+    let syntaxError = null;
+    try {
+      const { execFileSync } = require('child_process');
+      if (zone.data.filePath && (zone.data.language === 'javascript' || !zone.data.language)) {
+        execFileSync('node', ['--check', zone.data.filePath], {
+          stdio: 'pipe', timeout: 5000,
+        });
+      }
+    } catch (e) {
+      syntaxValid = false;
+      syntaxError = (e.stderr || e.message || '').toString().split('\n').slice(0, 3).join(' ');
+    }
+
+    if (!syntaxValid) {
+      return {
+        category: 'code-bug',
+        reason: 'Node parser rejected the file: ' + (syntaxError || 'syntax error'),
+        suggestedAction: 'inspect-and-fix',
+      };
+    }
+
+    // Check for missing-data signature: testProof and historicalReliability
+    // both at default 0.5, indicating no test results or usage history.
+    const signals = zone.oracleSignals || {};
+    const testProof = signals.testProof;
+    const history = signals.historicalReliability;
+    const hasDefaultTestProof = testProof === 0.5 || testProof === undefined;
+    const hasDefaultHistory = history === 0.5 || history === undefined;
+    const hasLowReadability = (signals.readability === 0 || signals.readability === undefined);
+
+    // If the code is large (truncation risk) but Node parses it fine,
+    // and the remaining low dimensions are readability/security (zeroed
+    // by preset) plus defaults, it's likely measurement calibration.
+    if (chars > 50000 && hasDefaultTestProof && hasDefaultHistory) {
+      return {
+        category: 'measurement-error',
+        reason: `Large file (${chars} chars) — likely affected by truncation penalty.`,
+        suggestedAction: 'scorer-review',
+      };
+    }
+
+    if (hasDefaultTestProof && hasDefaultHistory && hasLowReadability) {
+      return {
+        category: 'missing-data',
+        reason: 'No test results or usage history recorded; readability zeroed by preset.',
+        suggestedAction: 'synthesize-tests',
+      };
+    }
+
+    // Fall through: could be a subtle code issue
+    return {
+      category: 'code-bug',
+      reason: 'Low coherency from code characteristics (nesting, completeness, etc.)',
+      suggestedAction: 'inspect-and-fix',
+    };
+  }
+
+  /**
+   * Heal a zone by routing to the appropriate strategy based on root cause.
+   * Returns the intervention record.
+   */
+  async healZoneSmart(zoneId) {
+    const zone = this.field.getZone(zoneId);
+    if (!zone) return null;
+    const diagnosis = this.categorizeRootCause(zone);
+    const before = zone.coherency;
+
+    let result;
+    if (diagnosis.category === 'code-bug') {
+      result = await this.healZone(zoneId);
+    } else if (diagnosis.category === 'missing-data') {
+      result = await this._healViaTestSynthesis(zoneId);
+    } else if (diagnosis.category === 'measurement-error') {
+      // Can't auto-fix — scorer review is a meta-level concern.
+      result = { type: 'flag', zone: zoneId, category: diagnosis.category,
+        reason: diagnosis.reason, suggestedAction: diagnosis.suggestedAction,
+        before, ts: new Date().toISOString() };
+      this.interventions.push(result);
+    } else {
+      result = null;
+    }
+
+    return { diagnosis, result };
+  }
+
+  /**
+   * Heal a zone by synthesizing tests for it (fills testProof signal).
+   * Uses the oracle's existing synthesize infrastructure when available.
+   */
+  async _healViaTestSynthesis(zoneId) {
+    const zone = this.field.getZone(zoneId);
+    if (!zone || !zone.data.code) return null;
+
+    const before = zone.coherency;
+    let testCode = null;
+    try {
+      const { synthesizeTestStubs } = require('../orchestrator/test-synthesizer');
+      testCode = synthesizeTestStubs(zone.data.code, zone.data.filePath);
+    } catch { /* synthesis module unavailable */ }
+
+    if (!testCode) {
+      const intervention = {
+        type: 'synthesize-skipped', zone: zoneId, before,
+        reason: 'no testable functions detected', ts: new Date().toISOString(),
+      };
+      this.interventions.push(intervention);
+      return intervention;
+    }
+
+    // Re-measure with the synthesized testCode providing testProof
+    try {
+      const { computeCoherencyScore } = require('../unified/coherency');
+      const newScore = computeCoherencyScore(zone.data.code, {
+        language: zone.data.language || 'javascript',
+        testCode,
+        testPassed: true,
+      });
+      const after = newScore.total;
+      const intervention = {
+        type: 'synthesize', zone: zoneId, before, after,
+        improvement: after - before,
+        testLines: testCode.split('\n').length,
+        ts: new Date().toISOString(),
+      };
+      this.interventions.push(intervention);
+      zone.coherency = after;
+      zone.lastMeasured = Date.now();
+      this.field._updateGlobal();
+      return intervention;
+    } catch { return null; }
   }
 
   /**

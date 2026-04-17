@@ -323,6 +323,46 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
         }
       }
     } catch(_c) { /* coherency check is advisory, never block */ }
+
+    // ── Generator radiation: run one cycle after each commit ──────
+    // The sun radiates on every commit. Advisory, never blocks.
+    try {
+      const { CoherencyGenerator } = require(path.join(root, 'src/orchestrator/coherency-generator'));
+      const gen = new CoherencyGenerator();
+      gen.ignite(0.1);
+      gen.runCycle().catch(function() {});
+    } catch(_g) { /* generator is advisory */ }
+
+    // ── Tier-coverage check on changed files ──────────────────────
+    // New files should be checked for fractal alignment at commit time.
+    try {
+      const tierCov = require(path.join(root, 'src/audit/tier-coverage'));
+      for (const f of changed || []) {
+        const tc = tierCov.checkFile(f);
+        if (tc && tc.findings && tc.findings.length > 0) {
+          console.log('Oracle: tier-coverage gap in ' + f + ' (' + tc.tiersTouched.join(',') + ')');
+        }
+      }
+    } catch(_t) { /* tier-coverage is advisory */ }
+
+    // ── Atomic analyze on changed files ───────────────────────────
+    // Auto-extract atomic properties and register in periodic table.
+    try {
+      const { extractAtomicProperties } = require(path.join(root, 'src/atomic/property-extractor'));
+      const { PeriodicTable, encodeSignature } = require(path.join(root, 'src/atomic/periodic-table'));
+      const ptPath = path.join(process.cwd(), '.remembrance', 'atomic-table.json');
+      const table = new PeriodicTable({ storagePath: ptPath });
+      for (const f of changed || []) {
+        try {
+          const code = fs.readFileSync(f, 'utf-8');
+          const props = extractAtomicProperties(code);
+          const sig = encodeSignature(props);
+          if (!table.getElement(sig)) {
+            table.addElement(props, { name: f, source: 'post-commit-auto' });
+          }
+        } catch(_a) { /* per-file atomic is advisory */ }
+      }
+    } catch(_at) { /* atomic analyze is advisory */ }
   } catch(e) {
     // Always emit to stderr so errors are never fully silent.
     console.error('[oracle:post-commit] ' + (e.message || e));

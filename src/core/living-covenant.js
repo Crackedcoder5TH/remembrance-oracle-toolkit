@@ -114,7 +114,12 @@ const EVOLVED_PRINCIPLE_TEMPLATES = [
     check(code) {
       const touchesCovenant = /covenantCheck|CovenantValidator|skipCovenant|no.verify/i.test(code);
       if (touchesCovenant) {
-        // Code that references the covenant system is under extra scrutiny
+        // Skip if this looks like a pattern/regex definition file
+        // (contains regex literals that mention these terms for detection)
+        const isPatternDef = /pattern:\s*\/.*(?:exec|skip|bypass)/i.test(code) ||
+                              /PATTERNS\s*=\s*\[/.test(code);
+        if (isPatternDef) return { pass: true };
+
         const hasBypassAttempt = /skipCovenant\s*[=:]\s*true|--no-verify|bypass.*covenant/i.test(code);
         if (hasBypassAttempt) {
           return { pass: false, reason: 'Code attempts to bypass the covenant — blocked by evolved principle' };

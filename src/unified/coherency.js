@@ -439,6 +439,14 @@ function computeCoherencyScore(code, metadata = {}) {
     // emergent-coherency not available — use legacy score as-is
   }
 
+  // ─── Auto-evolve living covenant + emergence ────────────────────
+  // These fire from the orchestrator and generator cycles explicitly,
+  // not from every computeCoherencyScore call. The orchestrator's
+  // runCycle() and generator's runCycle() both call living.evolve()
+  // and table.checkEmergence() directly. The post-commit hook also
+  // fires the generator which handles both. This avoids test
+  // interference from the scoring function creating persistent state.
+
   return {
     total: Math.round(emergentTotal * ROUNDING_FACTOR) / ROUNDING_FACTOR,
     breakdown: emergentBreakdown,

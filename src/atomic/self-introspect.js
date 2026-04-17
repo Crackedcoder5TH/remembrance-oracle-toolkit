@@ -122,6 +122,24 @@ function introspect(table, options = {}) {
     errors.push(`discovery: ${e.message || e}`);
   }
 
+  // ── Auto-propose self-improvement if gaps found ────────────────
+  // Every introspection that finds gaps automatically feeds them to
+  // the self-improvement engine as proposals. In supervised mode
+  // they'll wait for human approval. In semi-autonomous+ they may
+  // auto-incorporate. This is observation + proposal, not action.
+  if (gaps.length > 0) {
+    try {
+      const { SelfImprovementEngine } = require('../orchestrator/self-improvement');
+      const engine = new SelfImprovementEngine();
+      // Only propose if we have fewer than 10 pending — don't flood
+      if (engine.getPending().length < 10) {
+        engine.discoverAndPropose({
+          table, globalCoherency: 0.76, maxProposals: Math.min(5, gaps.length),
+        }).catch(() => {}); // async, fire-and-forget
+      }
+    } catch { /* self-improvement not available */ }
+  }
+
   return { registered, gaps, errors };
 }
 

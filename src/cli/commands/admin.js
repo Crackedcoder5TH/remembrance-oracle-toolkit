@@ -1249,6 +1249,74 @@ ${c.bold('Related commands:')}
   };
 
   // ── COHERENCY ORCHESTRATOR ─────────────────────────────────────────
+  // ── LIVING COVENANT ──────────────────────────────────────────────────
+  handlers['covenant-status'] = (args) => {
+    const { LivingCovenant } = require('../../core/living-covenant');
+    const living = new LivingCovenant();
+    // Get current global coherency from orchestrator
+    let globalCoherency = 0.762; // fallback
+    try {
+      const { CoherencyDirector } = require('../../orchestrator/coherency-director');
+      const d = new CoherencyDirector();
+      const fs = require('fs');
+      const path = require('path');
+      const scanDir = 'src';
+      if (fs.existsSync(scanDir)) {
+        const files = [];
+        (function walk(dir) {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+            const p = path.join(dir, entry.name);
+            if (entry.isDirectory()) walk(p);
+            else if (entry.name.endsWith('.js')) {
+              try { files.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); } catch {}
+            }
+          }
+        })(scanDir);
+        d.scan(files.slice(0, 50)); // sample for speed
+        d.measureWithOracle();
+        globalCoherency = d.field.globalCoherency;
+      }
+    } catch {}
+
+    // Evolve (activates any new principles we're eligible for)
+    const evolution = living.evolve(globalCoherency);
+    const status = living.status(globalCoherency);
+
+    if (jsonOut()) { console.log(JSON.stringify({ status, evolution, globalCoherency })); return; }
+
+    console.log('');
+    console.log(c.boldCyan('Living Covenant'));
+    console.log(`  founding principles : ${c.bold('15')} (permanent, unbypassable)`);
+    console.log(`  evolved principles  : ${c.bold(String(status.activePrinciples))}`);
+    console.log(`  total principles    : ${c.bold(String(status.totalPrinciples))}`);
+    console.log(`  global coherency    : ${c.bold(globalCoherency.toFixed(3))}`);
+    console.log('');
+    if (living.activePrinciples.length > 0) {
+      console.log(c.bold('  Active evolved principles:'));
+      for (const p of living.activePrinciples) {
+        console.log(`    ${c.green('\u2713')} ${c.bold(p.name)} (activated at C=${p.activatedAtCoherency.toFixed(3)})`);
+        console.log(`      ${c.dim(p.description)}`);
+      }
+      console.log('');
+    }
+    if (status.pendingQueue > 0 && status.nextActivation) {
+      console.log(c.bold('  Next activation:'));
+      console.log(`    ${c.yellow('\u25cb')} ${c.bold(status.nextActivation.name)} at C=${status.nextActivation.threshold}`);
+      console.log(`      gap: ${c.dim('+' + status.nextActivation.gap + ' coherency needed')}`);
+      console.log('');
+    }
+    if (evolution.activated.length > 0) {
+      console.log(c.boldGreen(`  \u2728 ${evolution.activated.length} NEW principle(s) activated this cycle!`));
+      for (const a of evolution.activated) {
+        console.log(`    ${c.green('\u2713')} ${c.bold(a.name)}: ${a.description}`);
+      }
+      console.log('');
+    }
+    console.log(c.dim('  The covenant expands with coherency. It can never contract.'));
+    console.log('');
+  };
+
   // ── COHERENCY RECALIBRATION ─────────────────────────────────────────
   handlers['recalibrate'] = (args) => {
     const { recalibrateCoherency } = require('../../unified/coherency-recalibrate');

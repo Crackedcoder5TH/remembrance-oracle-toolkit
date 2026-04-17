@@ -153,7 +153,31 @@ function covenantCheck(code, metadata = {}) {
     }
   }
 
-  const totalPrinciples = COVENANT_PRINCIPLES.length + customPrincipleCount;
+  // ── Living covenant: evolved principles ─────────────────────────
+  // These are coherency-gated principles that activated when the
+  // system's global coherency crossed their threshold. They can
+  // never be deactivated — once the immune response develops, it
+  // persists. The check runs alongside the founding 15 principles.
+  let evolvedPrincipleCount = 0;
+  try {
+    const { LivingCovenant } = require('./living-covenant');
+    const living = new LivingCovenant();
+    const evolvedResult = living.check(code, metadata);
+    evolvedPrincipleCount = evolvedResult.total;
+    for (const ev of evolvedResult.violations) {
+      violations.push({
+        principle: `evolved:${ev.id}`,
+        name: ev.name,
+        seal: ev.reason,
+        reason: ev.reason,
+        evolved: true,
+        category: ev.category,
+      });
+      violatedPrinciples.add(`evolved:${ev.id}`);
+    }
+  } catch { /* living covenant not available — founding principles still run */ }
+
+  const totalPrinciples = COVENANT_PRINCIPLES.length + customPrincipleCount + evolvedPrincipleCount;
   const principlesPassed = totalPrinciples - violatedPrinciples.size;
 
   const result = {

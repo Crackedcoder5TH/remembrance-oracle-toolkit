@@ -386,7 +386,15 @@ class CoherencyDirector {
       healResult = await this.healZone(healingTargets[0].id);
     }
 
-    // 4. Check emergence — both absolute thresholds AND improvement deltas
+    // 4a. Evolve the living covenant — activate new principles if coherency crossed thresholds
+    let covenantEvolution = { activated: [], pending: [], total: 0 };
+    try {
+      const { LivingCovenant } = require('../core/living-covenant');
+      const living = new LivingCovenant();
+      covenantEvolution = living.evolve(this.field.globalCoherency);
+    } catch { /* living covenant not available */ }
+
+    // 4b. Check emergence — both absolute thresholds AND improvement deltas
     let emerged = [];
     try {
       const { PeriodicTable } = require('../atomic/periodic-table');
@@ -407,6 +415,7 @@ class CoherencyDirector {
       preservationTargets: preservationTargets.length,
       healed: healResult,
       emerged: emerged.length,
+      covenantEvolution,
       globalCoherency: this.field.globalCoherency,
     };
   }

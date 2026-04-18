@@ -38,6 +38,8 @@ const ORACLE_MODULES = [
   ['../audit/ground', 'Grounding check (symbol resolution)'],
   ['../quality/planner', 'Plan verification (symbol-level pre-generation)'],
   ['../quality/generate-gate', 'Generate gate (plan compliance)'],
+  ['../utils/gap-filled', 'Gap-filled utilities (discovery-driven implementations)'],
+  ['../utils/gap-filled-wave2', 'Gap-filled wave 2 (frontier expansion implementations)'],
 ];
 
 /**

@@ -76,7 +76,8 @@ class CoherencyGenerator {
       harmPotential: 'none',
       alignment: 'healing',
       intention: 'benevolent',
-    };
+      domain: 'orchestration',
+};
   }
 
   /**

@@ -550,49 +550,59 @@ startSession.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };
 endSession.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };
 getCurrentSession.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };
 saveSession.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };
 recordEvent.atomicProperties = {
   charge: 1, valence: 0, mass: 'heavy', spin: 'odd', phase: 'liquid',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 4,
   harmPotential: 'none', alignment: 'degrading', intention: 'malevolent',
+  domain: 'oracle',
 };
 scoreCompliance.atomicProperties = {
   charge: 1, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 4,
   harmPotential: 'none', alignment: 'healing', intention: 'malevolent',
+  domain: 'oracle',
 };
 checkCommitAllowed.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };
 complianceBanner.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };
 wireCompliance.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };
 resetCompliance.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };

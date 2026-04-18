@@ -26,6 +26,7 @@
 
 const { encodeSignature, GROUPS, CHARGE_VALUES, MASS_VALUES, SPIN_VALUES,
   PHASE_VALUES, REACTIVITY_VALUES, HARM_VALUES, ALIGNMENT_VALUES, INTENTION_VALUES,
+  DOMAIN_VALUES,
   MAX_GROUP, MAX_PERIOD, CovenantValidator } = require('./periodic-table');
 
 /**
@@ -215,6 +216,7 @@ function averageProperties(p1, p2) {
     electronegativity: Math.round(((p1.electronegativity || 0) + (p2.electronegativity || 0)) / 2 * 100) / 100,
     group: Math.round((p1.group + p2.group) / 2),
     period: Math.round((p1.period + p2.period) / 2),
+    domain: p1.domain === p2.domain ? p1.domain : 'core',
   };
 }
 
@@ -257,29 +259,35 @@ runDiscovery.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
 neighborGapDiscovery.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
 groupCompletionDiscovery.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
 interactionPredictionDiscovery.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
 buildDescription.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
 buildGenerationSpec.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };

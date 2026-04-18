@@ -125,14 +125,17 @@ inferNullability.atomicProperties = {
   charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 mergeProjectNullability.atomicProperties = {
   charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0, group: 5, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 computeNullable.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };

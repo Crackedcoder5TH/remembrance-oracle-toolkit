@@ -274,16 +274,19 @@ module.exports = {
       charge: 1, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
       reactivity: 'stable', electronegativity: 0.7, group: 15, period: 4,
       harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+      domain: 'oracle',
     },
     smartSearch: {
       charge: 1, valence: 4, mass: 'medium', spin: 'even', phase: 'gas',
       reactivity: 'reactive', electronegativity: 0.8, group: 15, period: 5,
       harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+      domain: 'oracle',
     },
     query: {
       charge: -1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
       reactivity: 'stable', electronegativity: 0.3, group: 15, period: 3,
       harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+      domain: 'oracle',
     },
   },
 };

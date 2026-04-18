@@ -34,6 +34,7 @@ memoizeOne.atomicProperties = {
   charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.15, group: 10, period: 2,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -51,6 +52,7 @@ clamp.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 1, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -69,6 +71,7 @@ truncate.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 3, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -116,6 +119,7 @@ analyzeModuleCoverage.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'odd', phase: 'gas',
   reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
   harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'quality',
 };
 
 /**
@@ -182,6 +186,7 @@ atomicDistance.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
   reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 6,
   harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'core',
 };
 
 /**
@@ -205,6 +210,7 @@ sortByKey.atomicProperties = {
   charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.45, group: 14, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -222,6 +228,7 @@ sortInPlace.atomicProperties = {
   charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'liquid',
   reactivity: 'inert', electronegativity: 0.55, group: 14, period: 4,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -245,6 +252,7 @@ errorSentinel.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.05, group: 9, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -262,6 +270,7 @@ unique.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 4, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -283,6 +292,7 @@ pick.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 5, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -306,6 +316,7 @@ formatBytes.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 6, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -336,6 +347,7 @@ parseQueryString.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 7, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -377,6 +389,7 @@ measureComplexity.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
   reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
   harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
+  domain: 'quality',
 };
 
 /**
@@ -417,6 +430,7 @@ deepEqual.atomicProperties = {
   charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
   harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -439,6 +453,7 @@ mutAssign.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'liquid',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -464,6 +479,7 @@ reactiveMap.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'plasma',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -481,6 +497,7 @@ compact.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 12, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -500,6 +517,7 @@ safeTransform.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -520,6 +538,7 @@ isSubsetOf.atomicProperties = {
   charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.2, group: 2, period: 2,
   harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -563,6 +582,7 @@ coherencyAccumulator.atomicProperties = {
   charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'stable', electronegativity: 0.6, group: 13, period: 3,
   harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
+  domain: 'core',
 };
 
 module.exports = {

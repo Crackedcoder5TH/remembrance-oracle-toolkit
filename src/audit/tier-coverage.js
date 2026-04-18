@@ -377,34 +377,41 @@ checkFile.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 checkFiles.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 loadArchitectureManifest.atomicProperties = {
   charge: 0, valence: 0, mass: 'medium', spin: 'odd', phase: 'gas',
   reactivity: 'medium', electronegativity: 0, group: 6, period: 2,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 findManifestForFile.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 extractCalledIdentifiers.atomicProperties = {
   charge: 0, valence: 3, mass: 'heavy', spin: 'even', phase: 'gas',
   reactivity: 'medium', electronegativity: 1, group: 3, period: 3,
   harmPotential: 'dangerous', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 tiersTouched.atomicProperties = {
   charge: 1, valence: 0, mass: 'heavy', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0, group: 4, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 findOptOut.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 3, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };

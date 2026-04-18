@@ -74,6 +74,7 @@ function extractAtomicProperties(code, options = {}) {
     harmPotential: computeHarmPotential(code, tokens),
     alignment: computeAlignment(code, tokens),
     intention: computeIntention(code, tokens),
+    domain: computeDomain(code, tokens, options),
   };
 }
 
@@ -301,12 +302,45 @@ function computeIntention(code, tokens) {
   return 'neutral';
 }
 
+function computeDomain(code, tokens, options = {}) {
+  if (options.domain) return options.domain;
+  if (options.filePath) {
+    const fp = options.filePath.replace(/\\/g, '/');
+    if (/\/compression\/|compress|void.compressor|zlib|deflate/i.test(fp)) return 'compression';
+    if (/\/quality\/|\/audit\//i.test(fp)) return 'quality';
+    if (/\/orchestrator\//i.test(fp)) return 'orchestration';
+    if (/\/swarm\/|\/generat/i.test(fp)) return 'generation';
+    if (/\/security\/|\/covenant/i.test(fp)) return 'security';
+    if (/\/search\//i.test(fp)) return 'search';
+    if (/\/bridge\/|fractal.bridge/i.test(fp)) return 'bridge';
+    if (/\/atomic\/|\/core\//i.test(fp)) return 'core';
+    if (/\/unified\/|\/api\//i.test(fp)) return 'oracle';
+    if (/\/utils\//i.test(fp)) return 'utility';
+  }
+  const indicators = {
+    compression: countMatches(code, [/compress/gi, /decompress/gi, /encode/gi, /decode/gi, /zlib/g]),
+    quality: countMatches(code, [/coherenc/gi, /lint/gi, /audit/gi, /check/gi, /validat/gi]),
+    oracle: countMatches(code, [/oracle/gi, /pattern/gi, /resolve/gi, /relevance/gi]),
+    search: countMatches(code, [/search/gi, /query/gi, /find/gi, /index/gi]),
+    security: countMatches(code, [/covenant/gi, /security/gi, /sanitiz/gi, /protect/gi]),
+    orchestration: countMatches(code, [/orchestrat/gi, /schedule/gi, /priority/gi, /heal/gi]),
+    generation: countMatches(code, [/generate/gi, /create/gi, /spawn/gi, /swarm/gi]),
+  };
+  let best = 'utility';
+  let bestCount = 0;
+  for (const [domain, count] of Object.entries(indicators)) {
+    if (count > bestCount) { best = domain; bestCount = count; }
+  }
+  return bestCount >= 3 ? best : 'utility';
+}
+
 function defaultProperties() {
   return {
     charge: 0, valence: 0, mass: 'light', spin: 'even',
     phase: 'gas', reactivity: 'inert', electronegativity: 0,
     group: 11, period: 1,
     harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+    domain: 'core',
   };
 }
 
@@ -319,4 +353,5 @@ extractAtomicProperties.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };

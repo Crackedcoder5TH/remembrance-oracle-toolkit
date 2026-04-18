@@ -105,9 +105,11 @@ synthesizeTestStubs.atomicProperties = {
   charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.3, group: 18, period: 3,
   harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'orchestration',
 };
 extractExportedFunctions.atomicProperties = {
   charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.2, group: 15, period: 2,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'orchestration',
 };

@@ -176,14 +176,17 @@ rankEntries.atomicProperties = {
   charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'stable', electronegativity: 0.6, group: 13, period: 3,
   harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'oracle',
 };
 cosineSimilarity.atomicProperties = {
   charge: -1, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };
 computeRelevance.atomicProperties = {
   charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.2, group: 2, period: 2,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };

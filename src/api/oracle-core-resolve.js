@@ -354,6 +354,7 @@ module.exports = {
       charge: 0, valence: 4, mass: 'heavy', spin: 'odd', phase: 'gas',
       reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 6,
       harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+      domain: 'oracle',
     },
   },
 };

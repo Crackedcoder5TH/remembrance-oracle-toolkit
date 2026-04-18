@@ -3,7 +3,7 @@
 /**
  * Periodic Table of Code — Living, Covenant-Native, Fractal
  *
- * Refined atomic properties (12 dimensions):
+ * Atomic properties (13 dimensions):
  *
  *   CORE PROPERTIES (9):
  *   charge           : -1 (contracts) | 0 (transforms) | +1 (expands)
@@ -21,16 +21,24 @@
  *   alignment        : 'healing' | 'neutral' | 'degrading'
  *   intention        : 'benevolent' | 'neutral' | 'malevolent'
  *
+ *   CONTEXT DIMENSION (1) — evolvable:
+ *   domain           : application domain (evolves with the system)
+ *                      Initial: core | utility | compression | quality |
+ *                      oracle | security | orchestration | bridge |
+ *                      generation | search | data | transform
+ *                      New domains emerge when collisions are detected
+ *                      at high coherency. The domain set grows but
+ *                      never shrinks (same as the covenant).
+ *
  * The covenant is STRUCTURAL — dangerous/degrading/malevolent elements
- * are rejected at registration, not filtered after the fact. No-harm
- * is a property of the table's structure, not an optional check.
+ * are rejected at registration, not filtered after the fact.
  *
  * The table is LIVING — elements EMERGE when coherence thresholds are
- * crossed, not just when gaps are found. Emergence is creation from
- * coherence, not discovery of pre-existing gaps.
+ * crossed, and domains EVOLVE when collisions indicate the need for
+ * finer-grained separation.
  *
  * Signatures are FRACTAL — they encode self-similarity, recursive
- * depth, and composition patterns alongside the 12 property dimensions.
+ * depth, and composition patterns alongside the 13 property dimensions.
  */
 
 const fs = require('fs');
@@ -50,6 +58,50 @@ const INTENTION_VALUES = ['benevolent', 'neutral', 'malevolent'];
 const MAX_VALENCE = 8;
 const MAX_GROUP = 18;
 const MAX_PERIOD = 7;
+
+// ── Domain dimension (13th, evolvable) ─────────────────────────────
+
+const DOMAIN_VALUES = [
+  'core',           // c — fundamental, domain-agnostic
+  'utility',        // u — general-purpose utilities
+  'compression',    // p — compression/encoding
+  'quality',        // q — code quality/analysis
+  'oracle',         // o — oracle-specific operations
+  'security',       // s — security/covenant enforcement
+  'orchestration',  // r — system orchestration
+  'bridge',         // b — cross-system integration
+  'generation',     // g — code generation
+  'search',         // f — search/retrieval (f for find)
+  'data',           // d — data structure operations
+  'transform',      // t — data transformation
+];
+
+const DOMAIN_ENCODE = {
+  core: 'c', utility: 'u', compression: 'p', quality: 'q',
+  oracle: 'o', security: 's', orchestration: 'r', bridge: 'b',
+  generation: 'g', search: 'f', data: 'd', transform: 't',
+};
+
+const DOMAIN_DECODE = Object.fromEntries(
+  Object.entries(DOMAIN_ENCODE).map(([k, v]) => [v, k])
+);
+
+// ── Remembrance Register Pattern ───────────────────────────────────
+// Functions that accumulate signal strength over time — they grow
+// coherency rather than just measuring it. Identifiable by:
+//   charge: +1 (expanding), alignment: healing, group: aggregate
+// The coherencyAccumulator is the first instance. Any function with
+// these properties is a remembrance register.
+
+const REMEMBRANCE_REGISTER_SIGNATURE = {
+  charge: 1, alignment: 'healing', intention: 'benevolent',
+};
+
+function isRemembranceRegister(props) {
+  return props.charge === 1
+    && props.alignment === 'healing'
+    && props.intention === 'benevolent';
+}
 
 const GROUPS = {
   1: 'math', 2: 'comparison', 3: 'string', 4: 'array', 5: 'object',
@@ -105,8 +157,9 @@ class CovenantValidator {
 // ── Signature encoding ──────────────────────────────────────────────
 
 /**
- * Encode 12-dimensional atomic properties into a compact signature.
- * Format: C{charge}V{valence}M{mass}S{spin}P{phase}R{reactivity}E{en}G{group}D{period}H{harm}A{align}I{intent}
+ * Encode 13-dimensional atomic properties into a compact signature.
+ * Format: C{charge}V{valence}M{mass}S{spin}P{phase}R{reactivity}E{en}G{group}D{period}H{harm}A{align}I{intent}X{domain}
+ * The domain dimension (X) is the 13th — evolvable, never contracting.
  */
 function encodeSignature(props) {
   const c = props.charge > 0 ? '+' : props.charge < 0 ? '-' : '0';
@@ -121,13 +174,13 @@ function encodeSignature(props) {
   const h = (props.harmPotential || 'none')[0];
   const a = (props.alignment || 'neutral')[0];
   const i = (props.intention || 'neutral')[0];
-  return `C${c}V${v}M${m}S${s}P${p}R${r}E${e}G${g}D${d}H${h}A${a}I${i}`;
+  const x = DOMAIN_ENCODE[props.domain] || 'c';
+  return `C${c}V${v}M${m}S${s}P${p}R${r}E${e}G${g}D${d}H${h}A${a}I${i}X${x}`;
 }
 
 function decodeSignature(sig) {
-  // Parse the 12-dimensional signature. Each dimension is encoded as a single char.
-  // The covenant dimensions (H, A, I) are optional for backwards compatibility.
-  const m = sig.match(/C([+\-0])V(\d)M([a-z])S([a-z])P([a-z])R([a-z])E(\d)G(\d+)D(\d)(?:H([a-z])A([a-z])I([a-z]))?/);
+  // Parse the 13-dimensional signature. Domain (X) is optional for backward compat.
+  const m = sig.match(/C([+\-0])V(\d)M([a-z])S([a-z])P([a-z])R([a-z])E(\d)G(\d+)D(\d)(?:H([a-z])A([a-z])I([a-z]))?(?:X([a-z]))?/);
   if (!m) return null;
   return {
     charge: m[1] === '+' ? 1 : m[1] === '-' ? -1 : 0,
@@ -142,6 +195,7 @@ function decodeSignature(sig) {
     harmPotential: m[10] ? { n: 'none', m: 'minimal', o: 'moderate', d: 'dangerous' }[m[10]] || 'none' : 'none',
     alignment: m[11] ? { h: 'healing', n: 'neutral', d: 'degrading' }[m[11]] || 'neutral' : 'neutral',
     intention: m[12] ? { b: 'benevolent', n: 'neutral', m: 'malevolent' }[m[12]] || 'neutral' : 'neutral',
+    domain: m[13] ? (DOMAIN_DECODE[m[13]] || 'core') : 'core',
   };
 }
 
@@ -184,8 +238,37 @@ class PeriodicTable {
     this._byGroup = new Map();
     this._emergedThresholds = new Set();
     this._emergenceHistory = [];
+    this._knownDomains = new Set(DOMAIN_VALUES);
+    this._evolvedDomains = [];
     if (this._storagePath) this._load();
   }
+
+  registerDomain(name, encoding) {
+    if (typeof name !== 'string' || !name) return false;
+    if (this._knownDomains.has(name)) return true;
+    this._knownDomains.add(name);
+    if (encoding && typeof encoding === 'string' && encoding.length === 1) {
+      DOMAIN_ENCODE[name] = encoding;
+      DOMAIN_DECODE[encoding] = name;
+    }
+    this._evolvedDomains.push({ name, evolvedAt: new Date().toISOString() });
+    if (this._storagePath) this._save();
+    return true;
+  }
+
+  detectCollisions() {
+    const by12D = new Map();
+    for (const el of this._elements.values()) {
+      const props12D = { ...el.properties };
+      delete props12D.domain;
+      const sig12 = _encode12D(props12D);
+      if (!by12D.has(sig12)) by12D.set(sig12, []);
+      by12D.get(sig12).push(el);
+    }
+    return Array.from(by12D.values()).filter(set => set.length > 1);
+  }
+
+  get knownDomains() { return Array.from(this._knownDomains); }
 
   /**
    * Register an element. Covenant enforcement is STRUCTURAL —
@@ -331,11 +414,12 @@ class PeriodicTable {
       phase: 'solid',
       reactivity: coherence > 0.85 ? 'inert' : coherence > 0.7 ? 'stable' : 'reactive',
       electronegativity: Math.round((1 - coherence) * 9) / 9,
-      group: 18, // meta — emerged elements are meta-functions
+      group: 18,
       period: Math.min(7, Math.ceil(coherence * 7)),
       harmPotential: coherence > 0.85 ? 'none' : 'minimal',
       alignment: coherence > 0.9 ? 'healing' : 'neutral',
       intention: coherence > 0.9 ? 'benevolent' : 'neutral',
+      domain: 'core',
     };
   }
 
@@ -384,6 +468,8 @@ class PeriodicTable {
     for (const h of HARM_VALUES) { if (h !== base.harmPotential) neighbors.push({ ...base, harmPotential: h }); }
     for (const a of ALIGNMENT_VALUES) { if (a !== base.alignment) neighbors.push({ ...base, alignment: a }); }
     for (const i of INTENTION_VALUES) { if (i !== base.intention) neighbors.push({ ...base, intention: i }); }
+    // Domain neighbors — same element in a different domain is a gap
+    for (const d of this._knownDomains) { if (d !== (base.domain || 'core')) neighbors.push({ ...base, domain: d }); }
     return neighbors;
   }
 
@@ -462,19 +548,28 @@ class PeriodicTable {
     const byCharge = { positive: 0, neutral: 0, negative: 0 };
     const byMass = { light: 0, medium: 0, heavy: 0, superheavy: 0 };
     const byAlignment = { healing: 0, neutral: 0, degrading: 0 };
+    const byDomain = {};
     let emergentCount = 0;
+    let registerCount = 0;
     for (const el of this._elements.values()) {
       if (el.properties.charge > 0) byCharge.positive++;
       else if (el.properties.charge < 0) byCharge.negative++;
       else byCharge.neutral++;
       byMass[el.properties.mass] = (byMass[el.properties.mass] || 0) + 1;
       byAlignment[el.properties.alignment || 'neutral']++;
+      const dom = el.properties.domain || 'core';
+      byDomain[dom] = (byDomain[dom] || 0) + 1;
       if (el.isEmergent) emergentCount++;
+      if (isRemembranceRegister(el.properties)) registerCount++;
     }
     return {
       totalElements: this._elements.size,
       emergentElements: emergentCount,
-      byGroup, byCharge, byMass, byAlignment,
+      remembranceRegisters: registerCount,
+      byGroup, byCharge, byMass, byAlignment, byDomain,
+      knownDomains: this.knownDomains,
+      evolvedDomains: this._evolvedDomains.length,
+      collisions: this.detectCollisions().length,
       emergenceHistory: this._emergenceHistory.length,
       gaps: this.findGaps({ maxGaps: 5 }).length,
     };
@@ -502,10 +597,12 @@ class PeriodicTable {
       const dir = path.dirname(this._storagePath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(this._storagePath, JSON.stringify({
-        version: 2, exportedAt: new Date().toISOString(),
+        version: 3, exportedAt: new Date().toISOString(),
         elements: Array.from(this._elements.values()),
         emergedThresholds: Array.from(this._emergedThresholds),
         emergenceHistory: this._emergenceHistory,
+        knownDomains: Array.from(this._knownDomains),
+        evolvedDomains: this._evolvedDomains,
       }, null, 2));
     } catch { /* best effort */ }
   }
@@ -529,8 +626,28 @@ class PeriodicTable {
         for (const t of raw.emergedThresholds) this._emergedThresholds.add(t);
       }
       if (raw.emergenceHistory) this._emergenceHistory = raw.emergenceHistory;
+      if (raw.knownDomains) {
+        for (const d of raw.knownDomains) this._knownDomains.add(d);
+      }
+      if (raw.evolvedDomains) this._evolvedDomains = raw.evolvedDomains;
     } catch { /* best effort */ }
   }
+}
+
+function _encode12D(props) {
+  const c = props.charge > 0 ? '+' : props.charge < 0 ? '-' : '0';
+  const v = Math.min(MAX_VALENCE, Math.max(0, Math.round(props.valence || 0)));
+  const m = (props.mass || 'light')[0];
+  const s = (props.spin || 'even')[0];
+  const p = (props.phase || 'solid')[0];
+  const r = (props.reactivity || 'inert')[0];
+  const e = Math.min(9, Math.max(0, Math.round((props.electronegativity || 0) * 9)));
+  const g = Math.min(MAX_GROUP, Math.max(1, Math.round(props.group || 1)));
+  const d = Math.min(MAX_PERIOD, Math.max(1, Math.round(props.period || 1)));
+  const h = (props.harmPotential || 'none')[0];
+  const a = (props.alignment || 'neutral')[0];
+  const i = (props.intention || 'neutral')[0];
+  return `C${c}V${v}M${m}S${s}P${p}R${r}E${e}G${g}D${d}H${h}A${a}I${i}`;
 }
 
 module.exports = {
@@ -540,9 +657,12 @@ module.exports = {
   decodeSignature,
   generateFractalSignature,
   calculateEmergencePotential,
+  isRemembranceRegister,
   GROUPS,
   CHARGE_VALUES, MASS_VALUES, SPIN_VALUES, PHASE_VALUES,
   REACTIVITY_VALUES, HARM_VALUES, ALIGNMENT_VALUES, INTENTION_VALUES,
+  DOMAIN_VALUES, DOMAIN_ENCODE, DOMAIN_DECODE,
+  REMEMBRANCE_REGISTER_SIGNATURE,
   MAX_VALENCE, MAX_GROUP, MAX_PERIOD,
   EMERGENCE_THRESHOLDS,
 };
@@ -552,21 +672,29 @@ encodeSignature.atomicProperties = {
   charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
 decodeSignature.atomicProperties = {
   charge: 1, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
-
-// ── Atomic self-description (batch-generated) ────────────────────
 generateFractalSignature.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
 calculateEmergencePotential.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'liquid',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
+};
+isRemembranceRegister.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };

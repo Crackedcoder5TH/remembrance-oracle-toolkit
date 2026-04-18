@@ -309,19 +309,23 @@ buildCallGraph.atomicProperties = {
   charge: 1, valence: 0, mass: 'heavy', spin: 'odd', phase: 'solid',
   reactivity: 'low', electronegativity: 0, group: 8, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 findNullDerefCascades.atomicProperties = {
   charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 3, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 diffCallGraphs.atomicProperties = {
   charge: 1, valence: 0, mass: 'heavy', spin: 'odd', phase: 'gas',
   reactivity: 'low', electronegativity: 0, group: 3, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };
 hasNullGuardAfter.atomicProperties = {
   charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
 };

@@ -150,4 +150,5 @@ recalibrateCoherency.atomicProperties = {
   charge: 0, valence: 2, mass: 'medium', spin: 'even', phase: 'solid',
   reactivity: 'stable', electronegativity: 0.4, group: 18, period: 5,
   harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'oracle',
 };

@@ -32,6 +32,7 @@ runLengthEncode.atomicProperties = {
   charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0.1, group: 17, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'compression',
 };
 
 /**
@@ -82,6 +83,7 @@ analyzeElementDensity.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.88, group: 18, period: 7,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'core',
 };
 
 /**
@@ -98,6 +100,7 @@ delay.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 8, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -119,6 +122,7 @@ snapshot.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 10, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -140,6 +144,7 @@ isSorted.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 14, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -166,6 +171,7 @@ binarySearch.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 15, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'search',
 };
 
 /**
@@ -188,6 +194,7 @@ simpleHash.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 16, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -206,6 +213,7 @@ compressionRatio.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0.5, group: 17, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'compression',
 };
 
 /**
@@ -256,6 +264,7 @@ auditAtomicCoverage.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'odd', phase: 'gas',
   reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
   harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
+  domain: 'quality',
 };
 
 /**
@@ -295,6 +304,7 @@ predictEmergence.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
   reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 6,
   harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
+  domain: 'core',
 };
 
 /**
@@ -314,6 +324,7 @@ mutTransform.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'liquid',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -339,6 +350,7 @@ reactiveFilter.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'plasma',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -358,6 +370,7 @@ filterByPattern.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 12, period: 1,
   harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -378,6 +391,7 @@ frozenIdentity.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -420,6 +434,7 @@ conditionalAnalyze.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'complex', phase: 'gas',
   reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
   harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'quality',
 };
 
 /**
@@ -437,6 +452,7 @@ absFloor.atomicProperties = {
   charge: -1, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
   reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
   harmPotential: 'minimal', alignment: 'neutral', intention: 'neutral',
+  domain: 'utility',
 };
 
 /**
@@ -475,6 +491,7 @@ fuzzySearch.atomicProperties = {
   charge: 1, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
   reactivity: 'stable', electronegativity: 0.7, group: 15, period: 4,
   harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
+  domain: 'search',
 };
 
 /**
@@ -506,6 +523,7 @@ semanticSearch.atomicProperties = {
   charge: 1, valence: 4, mass: 'medium', spin: 'even', phase: 'gas',
   reactivity: 'reactive', electronegativity: 0.8, group: 15, period: 5,
   harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
+  domain: 'search',
 };
 
 module.exports = {

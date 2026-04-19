@@ -183,7 +183,12 @@ async function main() {
   registerChromaDBCommands(handlers, context);
   registerFractalCommands(handlers, context);
 
-  // Check for deprecated commands and warn
+  // Remembrance Key — always available, no registration needed
+  handlers['remembrance-key'] = () => {
+    require('./core/remembrance-lexicon').printAll();
+  };
+  handlers['key'] = handlers['remembrance-key'];
+  handlers['lexicon'] = handlers['remembrance-key'];
   let effectiveCmd = cmd;
   const dep = getDeprecation(cmd);
   if (dep) {

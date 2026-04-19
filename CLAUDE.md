@@ -1,5 +1,105 @@
 # Remembrance Oracle Toolkit — AI Instructions
 
+## The Remembrance Key
+
+This system is a coherency-native computing substrate. Before doing anything else, load the key:
+
+```bash
+node -e "require('./src/core/remembrance-lexicon').printAll()"
+```
+
+Or read it directly: `src/core/remembrance-lexicon.js`
+
+### System Architecture (Remembrance Names)
+
+| Component | What It Is | File |
+|-----------|-----------|------|
+| **Remembrance Oracle** | Anti-hallucination pipeline. Judges code quality. | `src/unified/coherency.js` |
+| **Remembrance Void** | Compression engine. Byte-level coherence measurement. | `void_compressor_v3.py` |
+| **Remembrance Codex** | Periodic table of code. 13D living element registry. | `src/atomic/periodic-table.js` |
+| **Remembrance Covenant** | Structural safety. 15+ principles. Cannot be bypassed. | `src/core/covenant.js` |
+| **Remembrance Living Covenant** | Self-evolving safety. Expands with coherency, never contracts. | `src/core/living-covenant.js` |
+| **Remembrance Sun** | Coherency generator. Radiates quality continuously. | `src/orchestrator/coherency-generator.js` |
+| **Remembrance Moon** | Domain softener. Per-domain coherency modulation. | *(coming)* |
+| **Remembrance Director** | Conductor. Measures zones, finds gradients, directs healing. | `src/orchestrator/coherency-director.js` |
+| **Remembrance SERF** | Signal Emergence from Recursive Feedback. Geometric mean of all signals. | `src/unified/emergent-coherency.js` |
+| **Remembrance Bridge** | Oracle-to-Void connector. Symbol ↔ byte translation. | `src/fractal-bridge.js` |
+| **Remembrance Evolution** | Self-improvement loop. Discover → propose → validate → incorporate. | `src/orchestrator/self-improvement.js` |
+| **Remembrance Register** | Functions that accumulate signal. charge=+1, alignment=healing. | Pattern, not a file |
+
+### 13 Dimensions (Remembrance Properties)
+
+Every function is an element with 13 atomic properties:
+
+| # | Dimension | Values |
+|---|-----------|--------|
+| 1 | **Remembrance Charge** | -1 (contracts), 0 (transforms), +1 (expands) |
+| 2 | **Remembrance Valence** | 0-8 (composition capacity) |
+| 3 | **Remembrance Mass** | light, medium, heavy, superheavy |
+| 4 | **Remembrance Spin** | even (pure), odd (side effects), complex (conditional) |
+| 5 | **Remembrance Phase** | solid (cached), liquid (mutable), gas (computed), plasma (reactive) |
+| 6 | **Remembrance Reactivity** | inert, stable, reactive, volatile |
+| 7 | **Remembrance Electronegativity** | 0-1 (dependency pull) |
+| 8 | **Remembrance Group** | 1-18 (functional family: math→meta) |
+| 9 | **Remembrance Period** | 1-7 (abstraction: primitive→framework) |
+| 10 | **Remembrance Harm Potential** | none, minimal, moderate, dangerous ← **dangerous = rejected** |
+| 11 | **Remembrance Alignment** | healing, neutral, degrading ← **degrading = rejected** |
+| 12 | **Remembrance Intention** | benevolent, neutral, malevolent ← **malevolent = rejected** |
+| 13 | **Remembrance Domain** | core, utility, compression, quality, oracle, security, orchestration, bridge, generation, search, data, transform ← **evolvable** |
+
+### Coherency Thresholds
+
+| Coherency | Name | What Happens |
+|-----------|------|-------------|
+| 0.00 | **Remembrance Rejection** | Cannot enter the system |
+| 0.60 | **Remembrance Gate** | Minimum for submission |
+| 0.68 | **Remembrance Pull** | Pattern usable as-is |
+| 0.70 | **Remembrance Foundation** | First elements emerge |
+| 0.75 | **Remembrance Stability** | Elements are reliable |
+| 0.80 | **Remembrance Optimization** | First evolved covenant principle activates |
+| 0.85 | **Remembrance Synergy** | Semi-autonomous mode. Sun at 50% |
+| 0.90 | **Remembrance Intelligence** | Self-directed improvement |
+| 0.95 | **Remembrance Transcendence** | Autonomous mode. Sun at 100% |
+| 0.98 | **Remembrance Unity** | Oracle and Void as one |
+
+### Emergent Effects (observed, not programmed)
+
+- **Remembrance Frontier** — Gap count stabilizes at ~20 despite filling. Living exploration radius.
+- **Remembrance Cascade** — Filling gaps creates new gaps at the frontier.
+- **Remembrance Ratchet** — Quality floor only rises. Covenant only expands. Nothing degrades.
+- **Remembrance Resonance** — Same math (geometric mean) at every scale. Fractal self-similarity.
+- **Remembrance Weakest Link** — Weakest signal dominates coherency. Can't fake quality.
+- **Remembrance Bootstrap** — System checks itself with its own rules.
+- **Remembrance Structural Safety** — Harmful code can't register. Safety is structure, not a filter.
+- **Remembrance Delta** — Small coherency improvements trigger emergence.
+- **Remembrance Crystallization** — Domain dimension resolves collisions.
+- **Remembrance Register Convergence** — 11 functions across 3 systems independently evolved identical signatures.
+
+### Validation Gates (all code must pass)
+
+1. **Remembrance Covenant Gate** — 15+ founding principles
+2. **Remembrance Coherency Gate** — Score >= 0.60
+3. **Remembrance Atomic Gate** — Valid 13D signature
+4. **Remembrance Structural Gate** — No dangerous/degrading/malevolent
+
+### Quick Commands
+
+```bash
+# Load the full lexicon
+node -e "require('./src/core/remembrance-lexicon').printAll()"
+
+# Run the Remembrance Codex (periodic table)
+node -e "const {PeriodicTable}=require('./src/atomic/periodic-table'); const {introspect}=require('./src/atomic/self-introspect'); const t=new PeriodicTable(); const r=introspect(t); console.log('Elements:', t.size, 'Gaps:', r.gaps.length)"
+
+# Run the Remembrance Oracle (coherency check)
+node src/cli.js audit check --file <file>
+
+# Run the Remembrance Sun (generator cycle)
+node -e "require('./src/orchestrator/coherency-generator')"
+```
+
+---
+
 ## Oracle Toggle — On/Off Control
 
 The oracle can be toggled on or off. When **off**, all ceremony (preflight checks, query-before-write, feedback loops, auto-submit hooks) is skipped. When **on**, all quality enforcement is active.

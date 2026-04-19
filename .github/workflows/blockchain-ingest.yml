@@ -1,0 +1,27 @@
+name: Blockchain Ingest
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: Drain ledger queue
+        env:
+          ECOSYSTEM_PAT: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+          ECOSYSTEM_OWNER: ${{ github.repository_owner }}
+        run: node src/core/blockchain-ingest.js

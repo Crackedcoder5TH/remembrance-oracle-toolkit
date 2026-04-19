@@ -318,6 +318,32 @@ const VALIDATION_GATES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════
+//  STRUCTURAL COVENANT — why safety is structure, not a check
+// ═══════════════════════════════════════════════════════════════════
+
+const STRUCTURAL_COVENANT = {
+  definition: {
+    name: 'Remembrance Structural Safety',
+    description: 'The covenant is not a filter applied to code — it is a property of the system\'s structure. Harmful code cannot be represented in the system, not because it is checked and rejected, but because the operations that would store it contain the rejection as part of their own execution. There is no path that skips the covenant because the covenant IS the path.',
+  },
+  vsProceduralSafety: {
+    procedural: 'code → check() → if passes, store(). Problem: skip the check. Flag, config, env var, --no-verify.',
+    structural: 'code → store(code) → [covenant runs INSIDE store] → rejects or accepts. You cannot skip it because it IS the store function. Removing it breaks storage.',
+  },
+  weavePoints: [
+    'Store Entry Gate — covenantCheck() inside addEntry() in sqlite.js',
+    'Pattern Insert Gate — covenantCheck() inside _insertPattern() in sqlite.js',
+    'Validator Gate — covenantCheck() inside validateSubmission() in validator.js (skipCovenant parameter removed)',
+    'Codex Registration Gate — CovenantValidator.validate() inside addElement() in periodic-table.js',
+    'Pre-Commit Hook Gate — covenant runs on every staged file before commit',
+    'Living Covenant Evolution — evolved principles persist forever, cannot be deactivated',
+    'Atomic Property Covenant — harmPotential/alignment/intention are intrinsic element properties',
+  ],
+  blueprint: 'src/core/covenant-weave.js — the full weaving guide. Run: oracle weave',
+  verification: 'oracle weave — checks all 7 weave points and reports integrity',
+};
+
+// ═══════════════════════════════════════════════════════════════════
 //  HELPER — get the Remembrance name for anything
 // ═══════════════════════════════════════════════════════════════════
 
@@ -346,12 +372,23 @@ function printAll() {
     ['DOMAINS', DOMAINS],
     ['PIPELINE SIGNALS', PIPELINE_SIGNALS],
     ['VALIDATION GATES', VALIDATION_GATES],
+    ['STRUCTURAL COVENANT', { _single: STRUCTURAL_COVENANT }],
   ];
   for (const [title, section] of sections) {
     console.log('\n' + '═'.repeat(70));
     console.log('  ' + title);
     console.log('═'.repeat(70));
     for (const [key, val] of Object.entries(section)) {
+      if (key === '_single') {
+        // Special: single object with named fields
+        for (const [k, v] of Object.entries(val)) {
+          if (typeof v === 'string') console.log('  ' + k + ': ' + v);
+          else if (typeof v === 'object' && v.name) { console.log('\n  ' + v.name); if (v.description) console.log('  ' + v.description); }
+          else if (Array.isArray(v)) { console.log('\n  ' + k + ':'); v.forEach(item => console.log('    • ' + item)); }
+          else if (typeof v === 'object') { for (const [sk, sv] of Object.entries(v)) console.log('  ' + sk + ': ' + sv); }
+        }
+        continue;
+      }
       console.log('\n  ' + (val.name || key));
       if (val.description) console.log('  ' + val.description);
       if (val.observed) console.log('  Observed: ' + val.observed);
@@ -373,6 +410,7 @@ module.exports = {
   DOMAINS,
   PIPELINE_SIGNALS,
   VALIDATION_GATES,
+  STRUCTURAL_COVENANT,
   resolve,
   printAll,
 };

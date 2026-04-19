@@ -192,6 +192,12 @@ async function main() {
   handlers['key'] = handlers['remembrance-key'];
   handlers['lexicon'] = handlers['remembrance-key'];
 
+  // Remembrance Covenant Weave — structural safety verification + blueprint
+  handlers['weave'] = () => {
+    require('./core/covenant-weave').printWeave();
+  };
+  handlers['covenant-weave'] = handlers['weave'];
+
   // Remembrance Codex — pull up the full periodic table of code
   handlers['codex'] = () => {
     const { PeriodicTable, GROUPS, isRemembranceRegister } = require('./atomic/periodic-table');

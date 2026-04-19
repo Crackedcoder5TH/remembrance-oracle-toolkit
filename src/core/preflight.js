@@ -114,7 +114,13 @@ function runPreflight(cwd = process.cwd()) {
 
   const warnings = [];
 
-  const hooks = checkHooksInstalled(cwd);
+  // Hooks check:
+  //   1. If the compliance ledger has already observed `hooks.installed`
+  //      for this session, trust it (avoids re-probing on every command).
+  //   2. Otherwise probe the filesystem.
+  //   3. If the filesystem says installed but the ledger doesn't know,
+  //      record the observation so future reporters stay consistent.
+  const hooks = checkHooksWithLedger(cwd);
   if (!hooks.installed) {
     warnings.push({
       type: 'hooks',
@@ -159,6 +165,41 @@ function printPreflightWarnings(warnings, c) {
  */
 function shouldBypass(command) {
   return BYPASS_COMMANDS.has(command);
+}
+
+/**
+ * Hooks check that consults the compliance ledger first, then falls
+ * back to the filesystem — and self-heals the ledger when the two
+ * sources disagree. This prevents the "Missing hooks" banner from
+ * printing on every command when hooks have already been installed
+ * in a previous session but the current ledger hasn't observed it yet.
+ */
+function checkHooksWithLedger(cwd) {
+  // Ledger-first: if the active session already believes hooks are on,
+  // trust it and skip the filesystem probe.
+  try {
+    const { getCurrentSession, recordEvent, saveSession } = require('./compliance');
+    const session = getCurrentSession(cwd);
+    if (session && session.endedAt == null && session.hooksInstalled) {
+      return { installed: true, source: 'ledger' };
+    }
+
+    // Ledger says no (or no session). Run the filesystem probe.
+    const fs = checkHooksInstalled(cwd);
+    if (fs.installed && session && session.endedAt == null) {
+      // Heal: filesystem says yes, so record the observation on the
+      // ledger once. Subsequent commands won't re-probe.
+      try {
+        recordEvent(session, 'hooks.installed', { source: 'filesystem-heal' });
+        saveSession(session, cwd);
+      } catch { /* best-effort */ }
+    }
+    return fs;
+  } catch {
+    // If anything in the ledger path goes wrong, fall back to the raw
+    // filesystem check — never break preflight over a bookkeeping error.
+    return checkHooksInstalled(cwd);
+  }
 }
 
 function _humanAge(ms) {

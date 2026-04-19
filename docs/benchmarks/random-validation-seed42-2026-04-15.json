@@ -1,0 +1,283 @@
+{
+  "seed": 42,
+  "n": 30,
+  "sampleSize": 30,
+  "correlations": {
+    "combined": 0.32636262513904335,
+    "cyclomatic": 0.21557285873192433,
+    "coherency": 0.29610678531701895
+  },
+  "rows": [
+    {
+      "file": "src/patterns/seed-helpers.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 53,
+      "lines": 244,
+      "totalCoherency": 0.748
+    },
+    {
+      "file": "src/cli/commands/debug.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 104,
+      "lines": 425,
+      "totalCoherency": 0.772
+    },
+    {
+      "file": "src/core/ast-parser.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 160,
+      "lines": 557,
+      "totalCoherency": 0.756
+    },
+    {
+      "file": "src/evolution/self-optimize.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 167,
+      "lines": 1091,
+      "totalCoherency": 0.616
+    },
+    {
+      "file": "src/ci/implicit-feedback.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 51,
+      "lines": 212,
+      "totalCoherency": 0.416
+    },
+    {
+      "file": "src/cli/commands/self-manage.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 164,
+      "lines": 521,
+      "totalCoherency": 0.749
+    },
+    {
+      "file": "src/api/oracle-core-resolve.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 113,
+      "lines": 291,
+      "totalCoherency": 0.63
+    },
+    {
+      "file": "src/debug/debug-oracle.js",
+      "findings": 1,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 135,
+      "lines": 1131,
+      "totalCoherency": 0.595
+    },
+    {
+      "file": "src/patterns/composer.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 88,
+      "lines": 765,
+      "totalCoherency": 0.602
+    },
+    {
+      "file": "src/reflector/report-pr.js",
+      "findings": 1,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 78,
+      "lines": 246,
+      "totalCoherency": 0.722
+    },
+    {
+      "file": "src/mcp/handlers.js",
+      "findings": 0,
+      "probability": 1,
+      "riskLevel": "HIGH",
+      "cyclomatic": 161,
+      "lines": 552,
+      "totalCoherency": 0.634
+    },
+    {
+      "file": "src/reflector/multi-scheduler.js",
+      "findings": 0,
+      "probability": 0.98,
+      "riskLevel": "HIGH",
+      "cyclomatic": 49,
+      "lines": 306,
+      "totalCoherency": 0.748
+    },
+    {
+      "file": "src/cli/registry.js",
+      "findings": 0,
+      "probability": 0.96,
+      "riskLevel": "HIGH",
+      "cyclomatic": 48,
+      "lines": 287,
+      "totalCoherency": 0.831
+    },
+    {
+      "file": "src/core/storage.js",
+      "findings": 0,
+      "probability": 0.86,
+      "riskLevel": "HIGH",
+      "cyclomatic": 43,
+      "lines": 288,
+      "totalCoherency": 0.669
+    },
+    {
+      "file": "src/audit/explain.js",
+      "findings": 0,
+      "probability": 0.82,
+      "riskLevel": "HIGH",
+      "cyclomatic": 41,
+      "lines": 486,
+      "totalCoherency": 0.631
+    },
+    {
+      "file": "src/audit/cross-reference.js",
+      "findings": 3,
+      "probability": 0.76,
+      "riskLevel": "HIGH",
+      "cyclomatic": 38,
+      "lines": 225,
+      "totalCoherency": 0.754
+    },
+    {
+      "file": "src/evolution/whisper.js",
+      "findings": 3,
+      "probability": 0.76,
+      "riskLevel": "HIGH",
+      "cyclomatic": 38,
+      "lines": 281,
+      "totalCoherency": 0.774
+    },
+    {
+      "file": "src/unified/quantum-scorer.js",
+      "findings": 1,
+      "probability": 0.74,
+      "riskLevel": "HIGH",
+      "cyclomatic": 37,
+      "lines": 331,
+      "totalCoherency": 0.653
+    },
+    {
+      "file": "src/core/analyze.js",
+      "findings": 0,
+      "probability": 0.74,
+      "riskLevel": "HIGH",
+      "cyclomatic": 37,
+      "lines": 347,
+      "totalCoherency": 0.414
+    },
+    {
+      "file": "src/cli/commands/swarm.js",
+      "findings": 0,
+      "probability": 0.7,
+      "riskLevel": "HIGH",
+      "cyclomatic": 35,
+      "lines": 125,
+      "totalCoherency": 0.77
+    },
+    {
+      "file": "src/swarm/cross-scoring.js",
+      "findings": 0,
+      "probability": 0.46,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 23,
+      "lines": 149,
+      "totalCoherency": 0.616
+    },
+    {
+      "file": "src/swarm/swarm-history.js",
+      "findings": 0,
+      "probability": 0.4,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 20,
+      "lines": 208,
+      "totalCoherency": 0.665
+    },
+    {
+      "file": "src/audit/type-inference.js",
+      "findings": 0,
+      "probability": 0.38,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 19,
+      "lines": 113,
+      "totalCoherency": 0.676
+    },
+    {
+      "file": "src/analytics/analytics.js",
+      "findings": 1,
+      "probability": 0.38,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 19,
+      "lines": 142,
+      "totalCoherency": 0.677
+    },
+    {
+      "file": "src/dashboard/websocket.js",
+      "findings": 0,
+      "probability": 0.3,
+      "riskLevel": "MEDIUM",
+      "cyclomatic": 15,
+      "lines": 46,
+      "totalCoherency": 0.869
+    },
+    {
+      "file": "src/patterns/audit-patterns/security-scan-bypass.js",
+      "findings": 0,
+      "probability": 0.24,
+      "riskLevel": "LOW",
+      "cyclomatic": 12,
+      "lines": 65,
+      "totalCoherency": 0.687
+    },
+    {
+      "file": "src/core/feedback.js",
+      "findings": 0,
+      "probability": 0.22,
+      "riskLevel": "LOW",
+      "cyclomatic": 11,
+      "lines": 57,
+      "totalCoherency": 0.87
+    },
+    {
+      "file": "src/patterns/audit-patterns/falsy-zero-coercion.js",
+      "findings": 0,
+      "probability": 0.16,
+      "riskLevel": "LOW",
+      "cyclomatic": 8,
+      "lines": 68,
+      "totalCoherency": 0.771
+    },
+    {
+      "file": "src/api/oracle-core-similarity.js",
+      "findings": 0,
+      "probability": 0.04,
+      "riskLevel": "LOW",
+      "cyclomatic": 2,
+      "lines": 14,
+      "totalCoherency": 0.831
+    },
+    {
+      "file": "src/plugins/builtins/auth-plugin.js",
+      "findings": 0,
+      "probability": 0.02,
+      "riskLevel": "LOW",
+      "cyclomatic": 1,
+      "lines": 32,
+      "totalCoherency": 0.809
+    }
+  ],
+  "ts": "2026-04-15T04:26:08.566Z"
+}

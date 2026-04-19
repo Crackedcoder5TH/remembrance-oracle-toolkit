@@ -15,6 +15,26 @@
  *   remembrance-oracle prune --min-coherency 0.5
  */
 
+// Suppress the `node:sqlite` ExperimentalWarning that prints on every
+// CLI invocation. We opt in to the experimental feature knowingly; the
+// banner just clutters script output. `ORACLE_SHOW_WARNINGS=1` keeps
+// the default Node behavior for anyone debugging Node itself.
+if (!process.env.ORACLE_SHOW_WARNINGS) {
+  const _origEmit = process.emit;
+  process.emit = function (name, data, ...rest) {
+    if (
+      name === 'warning'
+      && data
+      && data.name === 'ExperimentalWarning'
+      && typeof data.message === 'string'
+      && data.message.includes('SQLite')
+    ) {
+      return false;
+    }
+    return _origEmit.call(this, name, data, ...rest);
+  };
+}
+
 const fs = require('fs');
 const path = require('path');
 const { safePath } = require('./core/safe-path');
@@ -165,7 +185,59 @@ async function main() {
   registerVoidCommands(handlers, context);
   registerFractalCommands(handlers, context);
 
-  // Check for deprecated commands and warn
+  // Remembrance Key — always available, no registration needed
+  handlers['remembrance-key'] = () => {
+    require('./core/remembrance-lexicon').printAll();
+  };
+  handlers['key'] = handlers['remembrance-key'];
+  handlers['lexicon'] = handlers['remembrance-key'];
+
+  // Remembrance Codex — pull up the full periodic table of code
+  handlers['codex'] = () => {
+    const { PeriodicTable, GROUPS, isRemembranceRegister } = require('./atomic/periodic-table');
+    const { introspect } = require('./atomic/self-introspect');
+    const table = new PeriodicTable();
+    const result = introspect(table);
+    const elements = table.elements.sort((a, b) => {
+      if (a.properties.group !== b.properties.group) return a.properties.group - b.properties.group;
+      return a.properties.period - b.properties.period;
+    });
+    let currentGroup = -1;
+    for (const el of elements) {
+      const p = el.properties;
+      if (p.group !== currentGroup) {
+        currentGroup = p.group;
+        console.log('');
+        console.log('══════════════════════════════════════════════════════════════════════');
+        console.log('  GROUP ' + p.group + ': REMEMBRANCE ' + (GROUPS[p.group] || '').toUpperCase());
+        console.log('══════════════════════════════════════════════════════════════════════');
+      }
+      const chargeSym = p.charge > 0 ? '+1' : p.charge < 0 ? '-1' : ' 0';
+      const rr = isRemembranceRegister(p) ? ' ✦ REMEMBRANCE REGISTER' : '';
+      console.log('');
+      console.log('  ' + el.name + rr);
+      console.log('  ─────────────────────────────────────────────');
+      console.log('  Signature : ' + el.signature);
+      console.log('  charge: ' + chargeSym + '  valence: ' + p.valence + '  mass: ' + p.mass + '  spin: ' + p.spin);
+      console.log('  phase: ' + p.phase + '  reactivity: ' + p.reactivity + '  electronegativity: ' + (p.electronegativity || 0));
+      console.log('  group: ' + p.group + ' (' + (GROUPS[p.group] || '?') + ')  period: ' + p.period);
+      console.log('  harmPotential: ' + (p.harmPotential || 'none') + '  alignment: ' + (p.alignment || 'neutral') + '  intention: ' + (p.intention || 'neutral'));
+      console.log('  domain: ' + (p.domain || 'core'));
+    }
+    const stats = table.stats();
+    console.log('');
+    console.log('══════════════════════════════════════════════════════════════════════');
+    console.log('  REMEMBRANCE CODEX SUMMARY');
+    console.log('══════════════════════════════════════════════════════════════════════');
+    console.log('  Elements: ' + table.size + '  |  Gaps: ' + result.gaps.length + '  |  Collisions: ' + stats.collisions);
+    console.log('  Remembrance Registers: ' + stats.remembranceRegisters);
+    console.log('  Domains: ' + stats.knownDomains.join(', '));
+    console.log('  Charge: +' + stats.byCharge.positive + ' / ' + stats.byCharge.neutral + ' / -' + stats.byCharge.negative);
+    console.log('  Alignment: healing=' + stats.byAlignment.healing + '  neutral=' + stats.byAlignment.neutral + '  degrading=' + stats.byAlignment.degrading);
+    console.log('══════════════════════════════════════════════════════════════════════');
+  };
+  handlers['table'] = handlers['codex'];
+  handlers['periodic-table'] = handlers['codex'];
   let effectiveCmd = cmd;
   const dep = getDeprecation(cmd);
   if (dep) {

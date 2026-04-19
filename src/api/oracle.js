@@ -99,6 +99,21 @@ class RemembranceOracle {
       // Audit init failures are non-fatal
     }
 
+    // Wire the cross-subsystem event reactions so every emit flows to
+    // the right stores (audit calibration, pattern reliability, debug
+    // amplitude, unified history). Idempotent — the reactions module
+    // guards against double-wiring.
+    if (options.reactions !== false) {
+      try {
+        const { wireReactions } = require('../core/reactions');
+        const { wireHistory } = require('../core/history');
+        wireReactions(this, { storageRoot: require('path').dirname(storeDir) });
+        wireHistory(require('path').dirname(storeDir));
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle] reactions init failed:', e.message);
+      }
+    }
+
     // Auto-seed on first run if library is empty
     const wasEmpty = this.patterns.getAll().length === 0;
     if (options.autoSeed !== false && wasEmpty) {

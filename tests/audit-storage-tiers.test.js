@@ -38,9 +38,26 @@ const REQUIRED_TABLES = [
   'candidate_archive', 'entry_archive',
 ];
 
+// The Local/Personal/Community suites below inspect the *real* global
+// stores (~/.remembrance/personal/, ~/.remembrance/community/) and the
+// current project's local DB. They are production-audit assertions, not
+// unit tests — they depend on whatever a given machine has already
+// synced. That made them flake in CI and on fresh clones (e.g. test
+// #160 "community <= local" would fail when an earlier session seeded
+// community but not local).
+//
+// Gate them behind ORACLE_PROD_AUDIT=1 so they only run when the caller
+// explicitly opts into auditing the live environment. The cross-tier
+// round-trip suite below uses isolated temp dirs and always runs.
+const PROD_AUDIT = process.env.ORACLE_PROD_AUDIT === '1';
+
 describe('Storage Tier Full Audit', () => {
   if (!DatabaseSync) {
     it('skips (no SQLite)', () => assert.ok(true));
+    return;
+  }
+  if (!PROD_AUDIT) {
+    it('skipped — set ORACLE_PROD_AUDIT=1 to audit real global stores', () => assert.ok(true));
     return;
   }
 

@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createBloomFilter, createOptimalBloomFilter } = require('../seeds/bloom-filter');
+const { createBloomFilter, createOptimalBloomFilter } = require('../seeds/code/bloom-filter');
 
 describe('bloom-filter', () => {
   it('should confirm membership for added items', () => {

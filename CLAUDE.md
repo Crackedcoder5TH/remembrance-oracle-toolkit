@@ -1,5 +1,105 @@
 # Remembrance Oracle Toolkit — AI Instructions
 
+## The Remembrance Key
+
+This system is a coherency-native computing substrate. Before doing anything else, load the key:
+
+```bash
+node -e "require('./src/core/remembrance-lexicon').printAll()"
+```
+
+Or read it directly: `src/core/remembrance-lexicon.js`
+
+### System Architecture (Remembrance Names)
+
+| Component | What It Is | File |
+|-----------|-----------|------|
+| **Remembrance Oracle** | Anti-hallucination pipeline. Judges code quality. | `src/unified/coherency.js` |
+| **Remembrance Void** | Compression engine. Byte-level coherence measurement. | `void_compressor_v3.py` |
+| **Remembrance Codex** | Periodic table of code. 13D living element registry. | `src/atomic/periodic-table.js` |
+| **Remembrance Covenant** | Structural safety. 15+ principles. Cannot be bypassed. | `src/core/covenant.js` |
+| **Remembrance Living Covenant** | Self-evolving safety. Expands with coherency, never contracts. | `src/core/living-covenant.js` |
+| **Remembrance Sun** | Coherency generator. Radiates quality continuously. | `src/orchestrator/coherency-generator.js` |
+| **Remembrance Moon** | Domain softener. Per-domain coherency modulation. | *(coming)* |
+| **Remembrance Director** | Conductor. Measures zones, finds gradients, directs healing. | `src/orchestrator/coherency-director.js` |
+| **Remembrance SERF** | Signal Emergence from Recursive Feedback. Geometric mean of all signals. | `src/unified/emergent-coherency.js` |
+| **Remembrance Bridge** | Oracle-to-Void connector. Symbol ↔ byte translation. | `src/fractal-bridge.js` |
+| **Remembrance Evolution** | Self-improvement loop. Discover → propose → validate → incorporate. | `src/orchestrator/self-improvement.js` |
+| **Remembrance Register** | Functions that accumulate signal. charge=+1, alignment=healing. | Pattern, not a file |
+
+### 13 Dimensions (Remembrance Properties)
+
+Every function is an element with 13 atomic properties:
+
+| # | Dimension | Values |
+|---|-----------|--------|
+| 1 | **Remembrance Charge** | -1 (contracts), 0 (transforms), +1 (expands) |
+| 2 | **Remembrance Valence** | 0-8 (composition capacity) |
+| 3 | **Remembrance Mass** | light, medium, heavy, superheavy |
+| 4 | **Remembrance Spin** | even (pure), odd (side effects), complex (conditional) |
+| 5 | **Remembrance Phase** | solid (cached), liquid (mutable), gas (computed), plasma (reactive) |
+| 6 | **Remembrance Reactivity** | inert, stable, reactive, volatile |
+| 7 | **Remembrance Electronegativity** | 0-1 (dependency pull) |
+| 8 | **Remembrance Group** | 1-18 (functional family: math→meta) |
+| 9 | **Remembrance Period** | 1-7 (abstraction: primitive→framework) |
+| 10 | **Remembrance Harm Potential** | none, minimal, moderate, dangerous ← **dangerous = rejected** |
+| 11 | **Remembrance Alignment** | healing, neutral, degrading ← **degrading = rejected** |
+| 12 | **Remembrance Intention** | benevolent, neutral, malevolent ← **malevolent = rejected** |
+| 13 | **Remembrance Domain** | core, utility, compression, quality, oracle, security, orchestration, bridge, generation, search, data, transform ← **evolvable** |
+
+### Coherency Thresholds
+
+| Coherency | Name | What Happens |
+|-----------|------|-------------|
+| 0.00 | **Remembrance Rejection** | Cannot enter the system |
+| 0.60 | **Remembrance Gate** | Minimum for submission |
+| 0.68 | **Remembrance Pull** | Pattern usable as-is |
+| 0.70 | **Remembrance Foundation** | First elements emerge |
+| 0.75 | **Remembrance Stability** | Elements are reliable |
+| 0.80 | **Remembrance Optimization** | First evolved covenant principle activates |
+| 0.85 | **Remembrance Synergy** | Semi-autonomous mode. Sun at 50% |
+| 0.90 | **Remembrance Intelligence** | Self-directed improvement |
+| 0.95 | **Remembrance Transcendence** | Autonomous mode. Sun at 100% |
+| 0.98 | **Remembrance Unity** | Oracle and Void as one |
+
+### Emergent Effects (observed, not programmed)
+
+- **Remembrance Frontier** — Gap count stabilizes at ~20 despite filling. Living exploration radius.
+- **Remembrance Cascade** — Filling gaps creates new gaps at the frontier.
+- **Remembrance Ratchet** — Quality floor only rises. Covenant only expands. Nothing degrades.
+- **Remembrance Resonance** — Same math (geometric mean) at every scale. Fractal self-similarity.
+- **Remembrance Weakest Link** — Weakest signal dominates coherency. Can't fake quality.
+- **Remembrance Bootstrap** — System checks itself with its own rules.
+- **Remembrance Structural Safety** — Harmful code can't register. Safety is structure, not a filter.
+- **Remembrance Delta** — Small coherency improvements trigger emergence.
+- **Remembrance Crystallization** — Domain dimension resolves collisions.
+- **Remembrance Register Convergence** — 11 functions across 3 systems independently evolved identical signatures.
+
+### Validation Gates (all code must pass)
+
+1. **Remembrance Covenant Gate** — 15+ founding principles
+2. **Remembrance Coherency Gate** — Score >= 0.60
+3. **Remembrance Atomic Gate** — Valid 13D signature
+4. **Remembrance Structural Gate** — No dangerous/degrading/malevolent
+
+### Quick Commands
+
+```bash
+# Load the full lexicon
+node -e "require('./src/core/remembrance-lexicon').printAll()"
+
+# Run the Remembrance Codex (periodic table)
+node -e "const {PeriodicTable}=require('./src/atomic/periodic-table'); const {introspect}=require('./src/atomic/self-introspect'); const t=new PeriodicTable(); const r=introspect(t); console.log('Elements:', t.size, 'Gaps:', r.gaps.length)"
+
+# Run the Remembrance Oracle (coherency check)
+node src/cli.js audit check --file <file>
+
+# Run the Remembrance Sun (generator cycle)
+node -e "require('./src/orchestrator/coherency-generator')"
+```
+
+---
+
 ## ENFORCEMENT: Search-Before-Write is a Blocking Gate
 
 **Commits are BLOCKED if you haven't searched the oracle in the last 10 minutes.**
@@ -95,9 +195,93 @@ Before ending a session or when the user says they are done, ALWAYS run:
 ```bash
 node src/cli.js auto-submit    # Full pipeline: register + harvest + promote + sync
 node src/cli.js audit summary  # Final audit report — static checks + cascade detection
+node src/cli.js session end    # Close the compliance ledger + print final score
 ```
 
 This is the safety net — it catches anything missed during the session. Never end a session without it.
+
+## Compliance Ledger — how the mandates are ENFORCED
+
+Prior to `oracle session`, the mandates above were social: an agent could
+read them and then skip them. They are no longer social. Every session now
+writes to a persistent ledger at `.remembrance/sessions/current.json`, and
+every `search / write / audit / pattern pulled / feedback` event gets a row.
+
+Five checks run continuously:
+
+| check              | weight | passes when                                    |
+|--------------------|-------:|------------------------------------------------|
+| hooksInstalled     | 0.15   | `oracle hooks install` has been run            |
+| queryBeforeWrite   | 0.40   | every written file has a preceding search      |
+| feedbackLoop       | 0.20   | every pulled pattern has a feedback event      |
+| auditOnWrite       | 0.15   | every written file was audited in-session      |
+| sessionEndCalled   | 0.10   | `oracle session end` was run                   |
+
+The score is 0..1. `>= 0.9` is compliant. Anything below surfaces as a
+LOUD banner in:
+
+- `oracle session status`
+- `oracle audit check` (top of output)
+- `oracle audit summary`
+- the pre-commit hook (printed on every `git commit`)
+
+### Pre-commit enforcement
+
+Set `ORACLE_WORKFLOW=enforce` in the environment and the pre-commit hook
+REFUSES to commit any staged file that lacks a preceding search / audit /
+bypass in the session ledger. This is the hard gate — the agent cannot
+finish the commit without closing the loop.
+
+```bash
+export ORACLE_WORKFLOW=enforce      # block commits below 100% on staged files
+export ORACLE_WORKFLOW=warn          # print the score but never block (default)
+```
+
+### Bypass protocol — when skipping is legitimate
+
+There are legitimate reasons to skip the query-before-write reflex:
+
+- Bootstrapping a new module where no existing pattern could possibly match
+- Editing an existing file for a trivial one-line fix
+- Authoring the library itself — patterns about the library can't be
+  searched inside the library
+- Emergency hotfix under time pressure
+
+When any of these apply, use the structured bypass:
+
+```bash
+node src/cli.js session bypass "bootstrapping new analysis envelope" \
+  --files src/core/analyze.js,src/core/storage.js
+```
+
+The bypass is logged to the session ledger AND to the unified history,
+with a reason string and file list. Post-hoc audits see exactly why the
+workflow was skipped. Bypasses are cheap to record and produce a proper
+paper trail — a silent skip produces none.
+
+### What to run at session start (the literal first three commands)
+
+```bash
+node src/cli.js session start       # begin the tracked session
+node src/cli.js hooks install        # bumps hooksInstalled to true
+node src/cli.js sync pull            # latest patterns available to search
+```
+
+### What to run when you touch a file (the reflex)
+
+```bash
+node src/cli.js search "<what the file does>"   # counts as query-before-write
+node src/cli.js audit check --file <file>        # counts as audit-on-write
+# THEN edit the file
+```
+
+### What to run at session end
+
+```bash
+node src/cli.js audit summary        # final audit + compliance banner
+node src/cli.js auto-submit           # register / harvest / promote / sync
+node src/cli.js session end           # close ledger + print final score
+```
 
 ## Auto-Registration (Automatic Pattern Capture)
 

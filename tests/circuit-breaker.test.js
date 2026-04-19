@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createCircuitBreaker } = require('../seeds/circuit-breaker');
+const { createCircuitBreaker } = require('../seeds/code/circuit-breaker');
 
 describe('circuit-breaker', () => {
   it('should allow calls in CLOSED state', () => {

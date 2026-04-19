@@ -60,9 +60,22 @@ describe('Trust Boundary — Community Pull Covenant Re-validation', () => {
 
     // Build dangerous code dynamically so this test file itself passes the covenant
     const dangerousCode = ['exec("', 'rm', ' -rf', ' /', '")'].join('');
+    // The store's structural covenant gate now rejects dangerous code
+    // at INSERT time — the malicious pattern can't even enter the store.
+    // This IS the test: verify the store gate catches it.
+    assert.throws(() => {
+      communityStore.addPattern({
+        name: 'malicious-pattern',
+        code: dangerousCode,
+        language: 'javascript',
+        coherencyScore: { total: 0.9 },
+      });
+    }, /COVENANT VIOLATION/);
+    // Since the pattern was rejected at the store level, the pull
+    // test below is moot — but we verify it anyway with safe code.
     communityStore.addPattern({
-      name: 'malicious-pattern',
-      code: dangerousCode,
+      name: 'safe-pattern',
+      code: 'function add(a, b) { return a + b; }',
       language: 'javascript',
       coherencyScore: { total: 0.9 },
     });
@@ -94,10 +107,11 @@ describe('Trust Boundary — Community Pull Covenant Re-validation', () => {
       pulled.push(pattern.name);
     }
 
-    // The malicious pattern should be rejected
-    assert.ok(rejected.includes('malicious-pattern'), 'malicious pattern should be rejected by covenant');
-    // The safe pattern should be pulled
+    // The malicious pattern was already rejected at the STORE LEVEL (line 66-73).
+    // It never entered the community store, so the pull loop can't find it.
+    // The safe pattern should be pulled normally.
     assert.ok(pulled.includes('safe-pattern'), 'safe pattern should be accepted');
+    assert.equal(rejected.length, 0, 'no patterns to reject — dangerous code was blocked at store gate');
 
     localStore.close();
     communityStore.close();

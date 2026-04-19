@@ -122,6 +122,7 @@ function acquireLock(storeDir, label = 'pattern-library') {
  * Load JSON with .bak recovery — prevents data loss on corruption.
  */
 function loadJSONSafe(filePath, fallback) {
+  if (!filePath) return fallback;
   try {
     if (fs.existsSync(filePath)) {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -266,12 +267,35 @@ function tryGetSQLite(storeDir) {
 }
 
 class PatternLibrary {
+  // Secondary-index caches — rebuilt lazily on first access and
+  // invalidated by every mutating method. `#` fields keep them truly
+  // private so callers can't poke at internal state.
+  #ruleIndex = null;
+  #tagIndex = null;
+
   constructor(storeDir) {
     this.storeDir = storeDir;
-    this.libraryPath = path.join(storeDir, PATTERN_FILE);
+    // Recognize both the toolkit's canonical `pattern-library.json` and the
+    // legacy/Standalone `patterns.json` shape. If either file already exists
+    // we prefer the file that's on disk so external writers don't get
+    // silently shadowed by a fresh SQLite DB.
+    const canonicalPath = path.join(storeDir, PATTERN_FILE);
+    const legacyPath = path.join(storeDir, 'patterns.json');
+    const canonicalExists = fs.existsSync(canonicalPath);
+    const legacyExists = fs.existsSync(legacyPath);
+    this.libraryPath = canonicalExists
+      ? canonicalPath
+      : (legacyExists ? legacyPath : canonicalPath);
     this._backend = 'json';
 
-    const sqlite = tryGetSQLite(storeDir);
+    // Backend selection: if a legacy/canonical JSON file already exists in
+    // the storeDir, honor it — the caller (tests, migrations, external
+    // tools) is managing persistence as JSON. Only use SQLite when no JSON
+    // file is present, so fresh stores get the fast path while existing
+    // JSON stores keep working. Closes the silent backend-mismatch where
+    // writes to `patterns.json` were invisible to a SQLite-backed reader.
+    const jsonExists = canonicalExists || legacyExists;
+    const sqlite = jsonExists ? null : tryGetSQLite(storeDir);
     if (sqlite) {
       // Wrap in FractalStore so every mutation auto-maintains embeddings & families.
       // Falls back to raw SQLiteStore if FractalStore is unavailable.
@@ -301,16 +325,67 @@ class PatternLibrary {
       patterns: [],
       meta: { created: new Date().toISOString(), version: 1, decisions: 0 },
     };
-    return loadJSONSafe(this.libraryPath, fallback);
+    const raw = loadJSONSafe(this.libraryPath, fallback);
+    // Tolerate the legacy "raw array" shape that StandalonePatternLibrary and
+    // external callers (tests, migrations) write. Both shapes become the
+    // wrapped { patterns, meta } object used by the rest of this class.
+    if (Array.isArray(raw)) {
+      return {
+        patterns: raw,
+        meta: { created: new Date().toISOString(), version: 1, decisions: 0 },
+      };
+    }
+    if (raw && !Array.isArray(raw.patterns)) {
+      raw.patterns = [];
+    }
+    if (raw && !raw.meta) {
+      raw.meta = { created: new Date().toISOString(), version: 1, decisions: 0 };
+    }
+    return raw;
+  }
+
+  /**
+   * Write the library, honoring the on-disk shape. If the existing file is
+   * a raw array (StandalonePatternLibrary format), write it back as an array
+   * so external callers that expect that shape keep working. Otherwise use
+   * the wrapped { patterns, meta } shape.
+   */
+  _writeJSONShapeAware(data) {
+    let shape = 'wrapped';
+    try {
+      if (fs.existsSync(this.libraryPath)) {
+        const existing = JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
+        if (Array.isArray(existing)) shape = 'array';
+      }
+    } catch { /* treat as wrapped */ }
+    const payload = shape === 'array' ? (data.patterns || []) : data;
+    this._writeJSON(payload);
   }
 
   _writeJSON(data) {
+    // Preserve the on-disk shape so legacy raw-array stores (written by
+    // StandalonePatternLibrary and external tools) don't get silently
+    // upgraded to the wrapped { patterns, meta } shape mid-session, which
+    // would break callers reading the file directly.
+    let payload = data;
+    try {
+      if (fs.existsSync(this.libraryPath)) {
+        const existing = JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
+        if (Array.isArray(existing) && data && Array.isArray(data.patterns)) {
+          payload = data.patterns;
+        }
+      }
+    } catch { /* treat as wrapped */ }
+
     const unlock = acquireLock(this.storeDir);
     try {
-      atomicWriteJSON(this.libraryPath, data);
+      atomicWriteJSON(this.libraryPath, payload);
     } finally {
       unlock();
     }
+    // Any write invalidates the ruleId / tag secondary indexes. Next
+    // findByRuleId / findByTag / listTags call rebuilds from getAll().
+    this.#invalidateIndexes();
   }
 
   _hash(str) {
@@ -325,6 +400,8 @@ class PatternLibrary {
    * @returns {object} The registered pattern record with id and coherency score
    */
   register(pattern) {
+    // Any register / update / merge invalidates the rule+tag indexes.
+    this.#invalidateIndexes();
     // Sanitize code before scoring — fixes known SERF transform bugs
     const sanitizedCode = sanitizePatternCode(pattern.code);
     const patternWithCleanCode = { ...pattern, code: sanitizedCode };
@@ -602,7 +679,9 @@ class PatternLibrary {
         language: pattern.language,
         testCode: pattern.testCode,
         threshold: 0, // We only care about test execution, not coherency here
-        skipCovenant: true, // Already passed covenant at registration time
+        // Covenant runs EVERY time — structurally unbypassable.
+        // If it already passed at registration, it will pass again (fast).
+        // If the code was modified since registration, this catches it.
         sandbox: true,
       });
       if (result.testPassed === true) {
@@ -736,12 +815,101 @@ class PatternLibrary {
   }
 
   /**
+   * Find patterns by rule id. Looks at three places, in order of
+   * precedence:
+   *
+   *   1. p.ruleId / p.rule       — explicit association
+   *   2. p.metadata.ruleId        — namespaced metadata
+   *   3. tags that start with 'rule:'   — `rule:type/division-by-zero`
+   *
+   * Memoized per library instance. The cache is invalidated on any
+   * mutation (register, mergePatterns, update, retire).
+   *
+   * Used by `audit explain` to surface concrete library patterns that
+   * exemplify a rule's fix, and by `heal generate` to pull a proven
+   * pattern when structural auto-fix can't handle a finding.
+   */
+  findByRuleId(ruleId) {
+    if (!ruleId) return [];
+    if (!this.#ruleIndex) this.#buildSecondaryIndexes();
+    return this.#ruleIndex.get(ruleId) || [];
+  }
+
+  /**
+   * Find patterns by tag (case-insensitive). Memoized.
+   */
+  findByTag(tag) {
+    if (!tag) return [];
+    if (!this.#tagIndex) this.#buildSecondaryIndexes();
+    return this.#tagIndex.get(tag.toLowerCase()) || [];
+  }
+
+  /**
+   * List all known tags and their frequencies.
+   */
+  listTags() {
+    if (!this.#tagIndex) this.#buildSecondaryIndexes();
+    const out = [];
+    for (const [tag, patterns] of this.#tagIndex.entries()) {
+      out.push({ tag, count: patterns.length });
+    }
+    return out.sort((a, b) => b.count - a.count);
+  }
+
+  /**
+   * Rebuild the secondary indexes from scratch. Called lazily on first
+   * findByRuleId/findByTag, and invalidated by mutating methods.
+   */
+  #buildSecondaryIndexes() {
+    this.#ruleIndex = new Map();
+    this.#tagIndex = new Map();
+    for (const p of this.getAll()) {
+      // Rule id
+      const ruleIds = [];
+      if (p.ruleId) ruleIds.push(p.ruleId);
+      if (p.rule) ruleIds.push(p.rule);
+      if (p.metadata && p.metadata.ruleId) ruleIds.push(p.metadata.ruleId);
+      if (Array.isArray(p.tags)) {
+        for (const t of p.tags) {
+          if (typeof t === 'string' && t.startsWith('rule:')) {
+            ruleIds.push(t.slice(5));
+          }
+        }
+      }
+      for (const rid of ruleIds) {
+        const arr = this.#ruleIndex.get(rid) || [];
+        arr.push(p);
+        this.#ruleIndex.set(rid, arr);
+      }
+      // Tags
+      if (Array.isArray(p.tags)) {
+        for (const t of p.tags) {
+          if (typeof t !== 'string') continue;
+          const key = t.toLowerCase();
+          const arr = this.#tagIndex.get(key) || [];
+          arr.push(p);
+          this.#tagIndex.set(key, arr);
+        }
+      }
+    }
+  }
+
+  /**
+   * Invalidate the secondary indexes after a mutation.
+   */
+  #invalidateIndexes() {
+    this.#ruleIndex = null;
+    this.#tagIndex = null;
+  }
+
+  /**
    * Update a pattern's fields by ID.
    * @param {string} id - Pattern ID
    * @param {object} updates - Object with fields to update
    * @returns {object|null} Updated pattern record or null if not found
    */
   update(id, updates) {
+    this.#invalidateIndexes();
     if (this._backend === 'sqlite') {
       return this._sqlite.updatePattern(id, updates);
     }
@@ -749,9 +917,14 @@ class PatternLibrary {
     const data = this._readJSON();
     const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
-    Object.assign(pattern, updates, { updatedAt: new Date().toISOString() });
+    // Build a new object from the existing + updates so we don't mutate
+    // the shared reference before committing. Write-through still goes via
+    // _writeJSON() which handles locking + atomic persistence.
+    const merged = Object.assign({}, pattern, updates, { updatedAt: new Date().toISOString() });
+    const idx = data.patterns.indexOf(pattern);
+    data.patterns[idx] = merged;
     this._writeJSON(data);
-    return pattern;
+    return merged;
   }
 
   /**
@@ -1213,15 +1386,19 @@ class PatternLibrary {
     if (!Array.isArray(incoming) || incoming.length === 0) {
       return { added: 0, updated: 0 };
     }
+    this.#invalidateIndexes();
 
     if (this._backend === 'sqlite') {
-      let added = 0, skipped = 0;
+      let added = 0, updated = 0, skipped = 0;
       for (const p of incoming) {
+        if (!p || !p.name) { skipped++; continue; }
+        const existing = this._sqlite.getPatternByName(p.name);
         const result = this._sqlite.addPatternIfNotExists(p);
-        if (result) added++;
+        if (result && !existing) added++;
+        else if (result && existing) updated++;
         else skipped++;
       }
-      return { added, updated: 0, skipped };
+      return { added, updated, skipped };
     }
 
     const data = this._readJSON();

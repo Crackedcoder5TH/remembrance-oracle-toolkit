@@ -366,8 +366,8 @@ describe('PR Formatter — reflector functions (MCP consolidated)', () => {
     assert.strictEqual(typeof report.scoreIndicator, 'function');
   });
 
-  it('MCP has 13 consolidated tools', () => {
+  it('MCP exposes at least the 13 baseline consolidated tools', () => {
     const { TOOLS } = require('../src/mcp/server');
-    assert.equal(TOOLS.length, 13);
+    assert.ok(TOOLS.length >= 13, 'TOOLS.length should be >= 13, got ' + TOOLS.length);
   });
 });

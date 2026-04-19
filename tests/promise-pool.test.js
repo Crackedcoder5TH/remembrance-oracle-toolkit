@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createPromisePool } = require('../seeds/promise-pool');
+const { createPromisePool } = require('../seeds/code/promise-pool');
 
 describe('promise-pool', () => {
   it('should limit concurrency', async () => {

@@ -346,3 +346,41 @@ module.exports = {
   inferBrokenAssumptions,
   isTestFile,
 };
+
+// ── Atomic self-description (batch-generated) ────────────────────
+detectCascade.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+parseDiffForFunctions.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+findDependents.atomicProperties = {
+  charge: 0, valence: 1, mass: 'heavy', spin: 'odd', phase: 'liquid',
+  reactivity: 'low', electronegativity: 1, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+findCallers.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'odd', phase: 'liquid',
+  reactivity: 'medium', electronegativity: 0, group: 3, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+inferBrokenAssumptions.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+isTestFile.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};

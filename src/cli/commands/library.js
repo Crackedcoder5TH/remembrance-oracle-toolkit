@@ -120,6 +120,33 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['patterns'] = (args) => {
+    // Subcommand: `oracle patterns delete <id> --reason "..."`
+    // Archives + deletes a single pattern and fires `pattern.deleted`
+    // on the event bus so reactions (indexes, analytics) stay in sync.
+    const sub = args._sub;
+    if (sub === 'delete') {
+      const id = args.id || (args._positional && args._positional[1]);
+      if (!id) {
+        console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle patterns delete <id>')} [--reason "..."]`);
+        process.exit(1);
+      }
+      const reason = args.reason || 'manual-delete';
+      const store = oracle.store.getSQLiteStore?.() || oracle.store;
+      if (typeof store.deletePatternById !== 'function') {
+        console.error(c.boldRed('Error:') + ' Delete is only supported on the SQLite store.');
+        process.exit(1);
+      }
+      const result = store.deletePatternById(id, { reason });
+      if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+      if (result.deleted) {
+        console.log(`${c.boldGreen('Deleted:')} ${c.bold(result.name || result.id)} ${c.dim('(' + result.reason + ')')}`);
+        console.log(c.dim('  archived — restore with `oracle restore <name>`'));
+      } else {
+        console.log(`${c.yellow('Not deleted:')} ${result.reason}`);
+      }
+      return;
+    }
+
     const stats = oracle.patternStats();
     console.log(c.boldCyan('Pattern Library:'));
     console.log(`  Total patterns: ${c.bold(String(stats.totalPatterns))}`);
@@ -154,6 +181,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       language: args.language,
       mode,
     });
+    // Emit a compliance signal so the session ledger records this
+    // search. `--file <f>` associates the search with a target file;
+    // otherwise we record the query term as the signal.
+    try {
+      const { getEventBus } = require('../../core/events');
+      getEventBus().emitSync('search', { file: args.file, term, mode });
+    } catch { /* ignore */ }
     if (jsonOut()) { console.log(JSON.stringify(results)); return; }
     if (results.length === 0) {
       console.log(c.yellow('No matches found.'));

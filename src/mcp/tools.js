@@ -242,6 +242,108 @@ const TOOLS = [
       required: ['action'],
     },
   },
+  // ─── 14. Audit (bug detection across all subcommands) ───
+  {
+    name: 'oracle_audit',
+    description: 'AST-based bug audit — 6 bug classes (state-mutation, security, concurrency, type, integration, edge-case) with scope, taint, nullability, and call-graph analysis. Actions: check (run on files/staged), baseline (snapshot known debt), baseline-show, baseline-clear, explain (worked examples), feedback (fix/dismiss/show), prior (Bayesian bug-prior risk), cross-file (real call-graph cascade), summary (rich report).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['check', 'baseline', 'baseline-show', 'baseline-clear', 'explain', 'feedback-fix', 'feedback-dismiss', 'feedback-show', 'prior', 'cross-file', 'summary'], description: 'Audit action' },
+        file: { type: 'string', description: 'Target file (for check/explain/prior/cross-file)' },
+        rule: { type: 'string', description: 'Rule id (for explain and feedback-fix/dismiss)' },
+        bugClass: { type: 'string', description: 'Filter by bug class (for check)' },
+        minSeverity: { type: 'string', enum: ['high', 'medium', 'low', 'info'], description: 'Minimum severity filter' },
+        autoFix: { type: 'boolean', description: 'Apply confident fixes in place (for check)' },
+        dryRun: { type: 'boolean', description: 'Preview auto-fix without writing' },
+        noBaseline: { type: 'boolean', description: 'Do not hide findings already in baseline' },
+      },
+      required: ['action'],
+    },
+  },
+
+  // ─── 15. Lint (style hints) ───
+  {
+    name: 'oracle_lint',
+    description: 'Style and opinion checks (parameter validation, TODO comments, parseInt radix, var usage). Not bugs — these are conventions you opt into.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File to lint' },
+        code: { type: 'string', description: 'Inline code (alternative to file)' },
+      },
+      required: [],
+    },
+  },
+
+  // ─── 16. Smell (architectural) ───
+  {
+    name: 'oracle_smell',
+    description: 'Architectural smells: long functions, deep nesting, too many parameters, god files, feature envy. Opt-in structural hints with override-able thresholds.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File to scan' },
+        code: { type: 'string', description: 'Inline code (alternative to file)' },
+        longFunctionLines: { type: 'number', description: 'Threshold for smell/long-function' },
+        deepNestingDepth: { type: 'number', description: 'Threshold for smell/deep-nesting' },
+        tooManyParams: { type: 'number', description: 'Threshold for smell/too-many-params' },
+      },
+      required: [],
+    },
+  },
+
+  // ─── 17. Analyze (unified envelope) ───
+  {
+    name: 'oracle_analyze',
+    description: 'Run the unified analysis envelope on a source string or file. Returns every signal (audit, lint, smell, prior, covenant, coherency, fingerprint) in a single pass. Parse once, reuse everywhere.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File path to analyze' },
+        code: { type: 'string', description: 'Inline source (alternative to file)' },
+        language: { type: 'string', description: 'Language hint (auto-detected from path if omitted)' },
+        include: { type: 'array', items: { type: 'string' }, description: 'Which envelope fields to include in the result (default: audit, lint, smell, coherency, meta)' },
+      },
+      required: [],
+    },
+  },
+
+  // ─── 18. Heal (unified pipeline: confident → serf → llm → swarm → generate) ───
+  {
+    name: 'oracle_heal',
+    description: 'Unified healing pipeline. Escalation ladder: confident auto-fix (0) → SERF structural reflection (1) → LLM (2) → Swarm consensus (3) → pattern-pull / regenerate (4). Every level reads the same envelope and returns the same result shape. Caps via maxLevel.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'File to heal (read from disk)' },
+        code: { type: 'string', description: 'Inline source (alternative to file)' },
+        maxLevel: { type: 'string', enum: ['confident', 'serf', 'llm', 'swarm', 'generate'], description: 'Stop the escalation at this level (default: generate)' },
+        targetRule: { type: 'string', description: 'Only attempt fixes for this ruleId' },
+        dryRun: { type: 'boolean', description: 'Do not write the file, just return the healed source' },
+        writeFile: { type: 'boolean', description: 'Write the healed source back to disk (default: false)' },
+      },
+      required: [],
+    },
+  },
+
+  // ─── 19. Risk (Phase 2 bug probability scorer) ───
+  {
+    name: 'oracle_risk',
+    description: 'File-level bug probability score combining semantic coherency and cyclomatic complexity. Returns a 0..1 probability, a LOW/MEDIUM/HIGH classification, top risk factors, and specific recommendations. Use `file` for a single file or `dir` to batch-scan a directory tree (excludes node_modules/.git/.remembrance by default). Validated at Spearman ρ ≈ +0.26 across random samples from src/ — good for ranking, not absolute classification.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', description: 'Single file path to score (mutually exclusive with dir)' },
+        code: { type: 'string', description: 'Inline source to score (alternative to file)' },
+        dir: { type: 'string', description: 'Directory path to batch-scan (mutually exclusive with file/code)' },
+        topN: { type: 'number', description: 'For dir scans: how many worst offenders to return (default 10)' },
+        filter: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'], description: 'For dir scans: only return files in this risk bucket' },
+      },
+      required: [],
+    },
+  },
+
   // ─── 15. Test Forge (auto-generate, run, score tests) ───
   {
     name: 'oracle_forge',

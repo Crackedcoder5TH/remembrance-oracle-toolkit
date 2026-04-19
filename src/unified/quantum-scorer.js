@@ -373,3 +373,29 @@ module.exports = {
   AUDIT_DECOHERENCE,
   FRACTAL_SECTOR_MAP,
 };
+
+// ── Atomic self-description ─────────────────────────────────────────
+// The oracle's own functions are elements in the periodic table.
+// These declarations make the oracle atomically coded native —
+// its structure IS its atomic description.
+
+unifiedMeasurement.atomicProperties = {
+  charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',
+  reactivity: 'reactive', electronegativity: 0.9, group: 18, period: 7,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'oracle',
+};
+
+// ── Atomic self-description (batch-generated) ────────────────────
+unifiedFieldMeasurement.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+quickAmplitude.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};

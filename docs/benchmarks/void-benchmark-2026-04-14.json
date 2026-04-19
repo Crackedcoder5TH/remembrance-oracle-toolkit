@@ -1,0 +1,466 @@
+[
+  {
+    "file": "src/core/events.js",
+    "before": {
+      "coherence": 0.4428,
+      "void_wins": false,
+      "void_ratio": 3.1017,
+      "zlib_ratio": 3.1017,
+      "raw_size": 8359,
+      "void_size": 2695,
+      "zlib_size": 2695,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 3462.1,
+      "substrate_patterns": 29602
+    },
+    "after": {
+      "coherence": 0.4322,
+      "void_wins": false,
+      "void_ratio": 3.1019,
+      "zlib_ratio": 3.1019,
+      "raw_size": 8400,
+      "void_size": 2708,
+      "zlib_size": 2708,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 3568.9,
+      "substrate_patterns": 29602
+    }
+  },
+  {
+    "file": "src/audit/prior-promoter.js",
+    "before": {
+      "coherence": 0.398,
+      "void_wins": false,
+      "void_ratio": 2.7762,
+      "zlib_ratio": 2.7762,
+      "raw_size": 7479,
+      "void_size": 2694,
+      "zlib_size": 2694,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 3237.6,
+      "substrate_patterns": 29604
+    },
+    "after": {
+      "coherence": 0.3855,
+      "void_wins": false,
+      "void_ratio": 2.7926,
+      "zlib_ratio": 2.7926,
+      "raw_size": 7568,
+      "void_size": 2710,
+      "zlib_size": 2710,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 3680.8,
+      "substrate_patterns": 29604
+    }
+  },
+  {
+    "file": "src/cli.js",
+    "before": {
+      "coherence": 0.32,
+      "void_wins": false,
+      "void_ratio": 3.0452,
+      "zlib_ratio": 3.0452,
+      "raw_size": 6535,
+      "void_size": 2146,
+      "zlib_size": 2146,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 2631.9,
+      "substrate_patterns": 29604
+    },
+    "after": {
+      "coherence": 0.3725,
+      "void_wins": false,
+      "void_ratio": 2.9529,
+      "zlib_ratio": 2.9529,
+      "raw_size": 7208,
+      "void_size": 2441,
+      "zlib_size": 2441,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 2942.3,
+      "substrate_patterns": 29604
+    }
+  },
+  {
+    "file": "src/audit/bayesian-prior.js",
+    "before": {
+      "coherence": 0.421,
+      "void_wins": false,
+      "void_ratio": 2.6941,
+      "zlib_ratio": 2.6941,
+      "raw_size": 7072,
+      "void_size": 2625,
+      "zlib_size": 2625,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 2764.4,
+      "substrate_patterns": 29604
+    },
+    "after": {
+      "coherence": 0.4369,
+      "void_wins": false,
+      "void_ratio": 2.7054,
+      "zlib_ratio": 2.7054,
+      "raw_size": 7164,
+      "void_size": 2648,
+      "zlib_size": 2648,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 3434.5,
+      "substrate_patterns": 29604
+    }
+  },
+  {
+    "file": "src/core/preflight.js",
+    "before": {
+      "coherence": 0.3351,
+      "void_wins": false,
+      "void_ratio": 2.739,
+      "zlib_ratio": 2.739,
+      "raw_size": 5311,
+      "void_size": 1939,
+      "zlib_size": 1939,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 3384,
+      "substrate_patterns": 29604
+    },
+    "after": {
+      "coherence": 0.3118,
+      "void_wins": false,
+      "void_ratio": 2.748,
+      "zlib_ratio": 2.748,
+      "raw_size": 7120,
+      "void_size": 2591,
+      "zlib_size": 2591,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 3236.9,
+      "substrate_patterns": 29604
+    }
+  },
+  {
+    "file": "src/core/reactions.js",
+    "before": {
+      "coherence": 0.3924,
+      "void_wins": false,
+      "void_ratio": 2.8904,
+      "zlib_ratio": 2.8904,
+      "raw_size": 7463,
+      "void_size": 2582,
+      "zlib_size": 2582,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 4105.3,
+      "substrate_patterns": 29605
+    },
+    "after": {
+      "coherence": 0.3761,
+      "void_wins": false,
+      "void_ratio": 2.9095,
+      "zlib_ratio": 2.9095,
+      "raw_size": 8388,
+      "void_size": 2883,
+      "zlib_size": 2883,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 4671.7,
+      "substrate_patterns": 29605
+    }
+  },
+  {
+    "file": "tests/audit-storage-tiers.test.js",
+    "before": {
+      "coherence": 0.3577,
+      "void_wins": false,
+      "void_ratio": 3.9196,
+      "zlib_ratio": 3.9196,
+      "raw_size": 9454,
+      "void_size": 2412,
+      "zlib_size": 2412,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 4527.3,
+      "substrate_patterns": 29605
+    },
+    "after": {
+      "coherence": 0.3661,
+      "void_wins": false,
+      "void_ratio": 3.6777,
+      "zlib_ratio": 3.6777,
+      "raw_size": 10316,
+      "void_size": 2805,
+      "zlib_size": 2805,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 4691.3,
+      "substrate_patterns": 29605
+    }
+  },
+  {
+    "file": "tests/core-ecosystem.test.js",
+    "before": {
+      "coherence": 0.3267,
+      "void_wins": false,
+      "void_ratio": 3.9104,
+      "zlib_ratio": 3.9104,
+      "raw_size": 9475,
+      "void_size": 2423,
+      "zlib_size": 2423,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 4441.1,
+      "substrate_patterns": 29605
+    },
+    "after": {
+      "coherence": 0.329,
+      "void_wins": false,
+      "void_ratio": 3.9067,
+      "zlib_ratio": 3.9067,
+      "raw_size": 10091,
+      "void_size": 2583,
+      "zlib_size": 2583,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 4709.7,
+      "substrate_patterns": 29605
+    }
+  },
+  {
+    "file": "src/core/storage.js",
+    "before": {
+      "coherence": 0.4715,
+      "void_wins": false,
+      "void_ratio": 3.4718,
+      "zlib_ratio": 3.4718,
+      "raw_size": 10214,
+      "void_size": 2942,
+      "zlib_size": 2942,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 5908.8,
+      "substrate_patterns": 29610
+    },
+    "after": {
+      "coherence": 0.4482,
+      "void_wins": false,
+      "void_ratio": 3.2721,
+      "zlib_ratio": 3.2721,
+      "raw_size": 11943,
+      "void_size": 3650,
+      "zlib_size": 3650,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 7298.3,
+      "substrate_patterns": 29607
+    }
+  },
+  {
+    "file": "src/core/covenant.js",
+    "before": {
+      "coherence": 0.3419,
+      "void_wins": false,
+      "void_ratio": 2.735,
+      "zlib_ratio": 2.735,
+      "raw_size": 12630,
+      "void_size": 4618,
+      "zlib_size": 4618,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 6391.6,
+      "substrate_patterns": 29610
+    },
+    "after": {
+      "coherence": 0.3446,
+      "void_wins": false,
+      "void_ratio": 2.7285,
+      "zlib_ratio": 2.7285,
+      "raw_size": 13992,
+      "void_size": 5128,
+      "zlib_size": 5128,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 6989.5,
+      "substrate_patterns": 29610
+    }
+  },
+  {
+    "file": "src/core/ecosystem.js",
+    "before": {
+      "coherence": 0.4061,
+      "void_wins": false,
+      "void_ratio": 3.1102,
+      "zlib_ratio": 3.1102,
+      "raw_size": 15075,
+      "void_size": 4847,
+      "zlib_size": 4847,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 7054.5,
+      "substrate_patterns": 29610
+    },
+    "after": {
+      "coherence": 0.4073,
+      "void_wins": false,
+      "void_ratio": 3.0961,
+      "zlib_ratio": 3.0961,
+      "raw_size": 16855,
+      "void_size": 5444,
+      "zlib_size": 5444,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 7743.3,
+      "substrate_patterns": 29610
+    }
+  },
+  {
+    "file": "src/core/compliance.js",
+    "before": {
+      "coherence": 0.4245,
+      "void_wins": false,
+      "void_ratio": 3.5583,
+      "zlib_ratio": 3.5583,
+      "raw_size": 18325,
+      "void_size": 5150,
+      "zlib_size": 5150,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 9416.7,
+      "substrate_patterns": 29612
+    },
+    "after": {
+      "coherence": 0.4494,
+      "void_wins": false,
+      "void_ratio": 3.5381,
+      "zlib_ratio": 3.5381,
+      "raw_size": 19060,
+      "void_size": 5387,
+      "zlib_size": 5387,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 9457.8,
+      "substrate_patterns": 29610
+    }
+  },
+  {
+    "file": "src/patterns/library.js",
+    "before": {
+      "coherence": 0.3627,
+      "void_wins": false,
+      "void_ratio": 3.8403,
+      "zlib_ratio": 3.8403,
+      "raw_size": 60554,
+      "void_size": 15768,
+      "zlib_size": 15768,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 25647.8,
+      "substrate_patterns": 29612
+    },
+    "after": {
+      "coherence": 0.3679,
+      "void_wins": false,
+      "void_ratio": 3.8203,
+      "zlib_ratio": 3.8203,
+      "raw_size": 60583,
+      "void_size": 15858,
+      "zlib_size": 15858,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 25892.8,
+      "substrate_patterns": 29612
+    }
+  },
+  {
+    "file": "src/cli/commands/admin.js",
+    "before": {
+      "coherence": 0.3775,
+      "void_wins": false,
+      "void_ratio": 4.3709,
+      "zlib_ratio": 4.3709,
+      "raw_size": 90321,
+      "void_size": 20664,
+      "zlib_size": 20664,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 34122,
+      "substrate_patterns": 29612
+    },
+    "after": {
+      "coherence": 0.3861,
+      "void_wins": false,
+      "void_ratio": 4.3575,
+      "zlib_ratio": 4.3575,
+      "raw_size": 90375,
+      "void_size": 20740,
+      "zlib_size": 20740,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 40251.9,
+      "substrate_patterns": 29612
+    }
+  },
+  {
+    "file": "src/cli/commands/library.js",
+    "before": {
+      "coherence": 0.3521,
+      "void_wins": false,
+      "void_ratio": 4.5204,
+      "zlib_ratio": 4.5204,
+      "raw_size": 35612,
+      "void_size": 7878,
+      "zlib_size": 7878,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 15308.1,
+      "substrate_patterns": 29612
+    },
+    "after": {
+      "coherence": 0.354,
+      "void_wins": false,
+      "void_ratio": 4.4898,
+      "zlib_ratio": 4.4898,
+      "raw_size": 36897,
+      "void_size": 8218,
+      "zlib_size": 8218,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 14834.9,
+      "substrate_patterns": 29612
+    }
+  },
+  {
+    "file": "src/store/sqlite.js",
+    "before": {
+      "coherence": 0.3973,
+      "void_wins": false,
+      "void_ratio": 4.8926,
+      "zlib_ratio": 4.8926,
+      "raw_size": 121552,
+      "void_size": 24844,
+      "zlib_size": 24844,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 52297.3,
+      "substrate_patterns": 29613
+    },
+    "after": {
+      "coherence": 0.3932,
+      "void_wins": false,
+      "void_ratio": 4.8687,
+      "zlib_ratio": 4.8687,
+      "raw_size": 122953,
+      "void_size": 25254,
+      "zlib_size": 25254,
+      "method": "v4_chunked",
+      "lossless": true,
+      "elapsed_ms": 47319.2,
+      "substrate_patterns": 29612
+    }
+  }
+]

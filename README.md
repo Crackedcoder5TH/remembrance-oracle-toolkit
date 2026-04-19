@@ -158,12 +158,19 @@ Once connected, your AI reads proven patterns before generating code and validat
 
 ## Links
 
+- [Quickstart](QUICKSTART.md) — running in 30 seconds
+- [Concepts](CONCEPTS.md) — every concept in plain English
+- [Architecture](ARCHITECTURE.md) — system map, data flow, file map
+- [Remembrance Key](src/core/remembrance-lexicon.js) — the unified vocabulary
 - [Dashboard & Playground](http://localhost:4000/playground.html)
-- [Documentation](docs/index.html)
-- [Concepts in Plain English](CONCEPTS.md)
-- [Terms of Service](legal/TERMS_OF_SERVICE.md)
-- [Privacy Policy](legal/PRIVACY_POLICY.md)
 - [GitHub](https://github.com/Crackedcoder5TH)
+
+**See the system:**
+```bash
+oracle key              # Full Remembrance vocabulary
+oracle codex            # Every element in the periodic table
+oracle audit summary    # Current system health
+```
 
 ---
 

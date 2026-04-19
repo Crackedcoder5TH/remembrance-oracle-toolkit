@@ -25,22 +25,99 @@ const COVENANT_PRINCIPLES = [
  * Strip non-executable content (comments, string/regex literal bodies) from code
  * before harm pattern scanning. Prevents false positives from keywords appearing
  * in comments, string definitions, or regex pattern bodies.
+ *
+ * Template literals are a special case: we strip the static text between
+ * interpolations but PRESERVE the `${...}` markers so downstream rules that
+ * detect unsafe interpolation (SQL injection, innerHTML XSS, command injection)
+ * can still see them. Earlier versions of this function collapsed `${x}` to
+ * bare `x`, which silently broke every regex that looked for `${`.
  */
+//
+// stripComments — strip ONLY line and block comments, preserving
+// string/regex/template literal contents. Used by rawOnly covenant
+// rules that need to see string literal contents (SQL keywords inside
+// queries, passwords in env assignments, base64 blobs) but still want
+// comment false-positives filtered out.
+//
+// Must respect string boundaries: a naive regex that matches `//.*$`
+// would strip the `//` inside `"http://example.com"` and break URLs
+// inside strings. This is a tiny tokenizer that tracks string state
+// so line and block comment markers only match at code level.
+//
+// (This is deliberately a line-comment doc block instead of a
+// JSDoc `/** ... */` — the doc describes block-comment markers, and
+// putting the literal block-comment end sequence inside a JSDoc block
+// closes the JSDoc block prematurely. Bit me once; never again.)
+//
+// Without this intermediate strip level, a docstring that describes a
+// rule (e.g. 'do not write "SELECT * " + userInput') triggers the rule
+// it documents. See the covenant-mismatch regression in
+// tests/covenant.test.js.
+function stripComments(code) {
+  let out = '';
+  let i = 0;
+  const n = code.length;
+  while (i < n) {
+    const ch = code[i];
+    // Line comment — skip to end of line
+    if (ch === '/' && code[i + 1] === '/') {
+      while (i < n && code[i] !== '\n') i++;
+      continue;
+    }
+    // Block comment — skip until */
+    if (ch === '/' && code[i + 1] === '*') {
+      i += 2;
+      while (i < n && !(code[i] === '*' && code[i + 1] === '/')) i++;
+      if (i < n) i += 2;
+      continue;
+    }
+    // String literal (single, double, or template) — preserve as-is
+    // but track state so `//` and `/*` inside strings don't match.
+    if (ch === '\'' || ch === '"' || ch === '`') {
+      const quote = ch;
+      out += ch;
+      i++;
+      while (i < n) {
+        if (code[i] === '\\') {
+          out += code[i];
+          if (i + 1 < n) out += code[i + 1];
+          i += 2;
+          continue;
+        }
+        if (code[i] === quote) {
+          out += quote;
+          i++;
+          break;
+        }
+        out += code[i];
+        i++;
+      }
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+  return out;
+}
+
 function stripNonExecutableContent(code) {
   let stripped = code;
   stripped = stripped.replace(/\/\/.*$/gm, '');
   stripped = stripped.replace(/\/\*[\s\S]*?\*\//g, '');
-  // Preserve ${...} interpolation content (executable) while stripping static template parts
-  stripped = stripped.replace(/`(?:[^`\\$]|\\.|\$(?!\{))*`/g, '``');
+  // Template literals: strip static body, preserve interpolation markers.
+  // Put the interpolation FIRST so downstream regexes that expect
+  // `${` right after a `=` (like innerHTML, SQL) still see it. If no
+  // interpolations, fall back to empty template quotes to preserve
+  // position for regexes that count syntactic structure.
   stripped = stripped.replace(/`(?:[^`\\]|\\.)*`/g, (match) => {
-    // Extract and keep ${...} expressions, replace static parts
-    const expressions = [];
-    match.replace(/\$\{([^}]*)\}/g, (_, expr) => { expressions.push(expr); });
-    return '``' + (expressions.length > 0 ? ' ' + expressions.join(' ') : '');
+    const pieces = [];
+    match.replace(/\$\{([^}]*)\}/g, (_, expr) => { pieces.push('${' + expr + '}'); });
+    if (pieces.length === 0) return '``';
+    return pieces.join('');
   });
   stripped = stripped.replace(/'(?:[^'\\]|\\.)*'/g, "''");
   stripped = stripped.replace(/"(?:[^"\\]|\\.)*"/g, '""');
   return stripped;
 }
 
-module.exports = { COVENANT_PRINCIPLES, stripNonExecutableContent };
+module.exports = { COVENANT_PRINCIPLES, stripNonExecutableContent, stripComments };

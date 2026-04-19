@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "Project-local hooks for the Remembrance Oracle Toolkit. Three anti-hallucination loops: (1) PostToolUse on Edit/Write/MultiEdit runs the inline audit + grounding check on the just-written file, surfacing any findings or ungrounded identifier references in the next model turn — closes the write→verify gap. (2) PostToolUse on Read records the file in the session ledger and extracts every identifier into the touchedIdentifiers set, so the grounding check has fresh ground truth to compare against. (3) Stop hook runs a final audit+ground pass over every file the agent touched this turn and blocks the Stop event with decision=block if anything is still dirty — the last chance to catch fabrications that slipped past per-edit checks. PostToolUse hooks are advisory (exit 0); the Stop hook blocks.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh /home/user/remembrance-oracle-toolkit/scripts/claude-hooks/post-edit.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh /home/user/remembrance-oracle-toolkit/scripts/claude-hooks/post-read.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh /home/user/remembrance-oracle-toolkit/scripts/claude-hooks/stop-final-check.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

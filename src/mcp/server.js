@@ -61,6 +61,8 @@ const RATE_LIMITS = {
   oracle_pending_feedback: { windowMs: 60000, maxCalls: 60 },
   // Fractal: read-heavy with some compute
   oracle_fractal:  { windowMs: 60000, maxCalls: 30 },
+  // Risk: file/dir scoring (pure function, no I/O cost besides fs reads)
+  oracle_risk:     { windowMs: 60000, maxCalls: 60 },
   // Test Forge: compute-heavy (sandbox execution)
   oracle_forge:    { windowMs: 60000, maxCalls: 10 },
 };

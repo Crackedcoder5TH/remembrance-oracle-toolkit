@@ -615,6 +615,14 @@ function auditCode(code, options = {}) {
     bySeverity[f.severity] = (bySeverity[f.severity] || 0) + 1;
   }
 
+  // ─── Emergent SERF: register audit signal ────────────────────────
+  // Fewer findings = higher coherency. The audit stage's natural output
+  // becomes a dimension of the emergent coherency score automatically.
+  try {
+    const { registerAuditSignal } = require('../unified/emergent-coherency');
+    registerAuditSignal(findings.length);
+  } catch { /* emergent module not available — no-op */ }
+
   return {
     findings,
     summary: {
@@ -702,4 +710,60 @@ module.exports = {
   checkEdgeCase,
   BUG_CLASSES,
   SEVERITY,
+};
+
+// ── Atomic self-description (batch-generated) ────────────────────
+auditCode.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+auditFile.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+auditFiles.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+checkStateMutation.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 4,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+  domain: 'quality',
+};
+checkSecurity.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+checkConcurrency.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+checkType.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'quality',
+};
+checkIntegration.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 4,
+  harmPotential: 'none', alignment: 'degrading', intention: 'neutral',
+  domain: 'quality',
+};
+checkEdgeCase.atomicProperties = {
+  charge: -1, valence: 0, mass: 'heavy', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 4,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+  domain: 'quality',
 };

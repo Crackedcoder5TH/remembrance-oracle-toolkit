@@ -45,7 +45,6 @@ function validateCode(code, options = {}) {
     testCode,
     threshold = MIN_COHERENCY_THRESHOLD,
     timeout = DEFAULT_VALIDATION_TIMEOUT_MS,
-    skipCovenant = false,
   } = options;
 
   const result = {
@@ -62,8 +61,10 @@ function validateCode(code, options = {}) {
   const contentType = options.contentType || contentTypeForLanguage(language);
   const isNonCode = contentType !== 'code';
 
-  // Step 0: Covenant check — the seal above ALL content, code and non-code alike
-  if (!skipCovenant) {
+  // Step 0: Covenant check — STRUCTURAL, UNBYPASSABLE
+  // The covenant is intrinsic to the system, not an optional filter.
+  // skipCovenant is deliberately removed — no code path can bypass this.
+  {
     const covenant = covenantCheck(code, {
       description: options.description,
       tags: options.tags,
@@ -114,6 +115,34 @@ function validateCode(code, options = {}) {
   }
 
   result.valid = result.errors.length === 0;
+
+  // ─── Atomic auto-registration ─────────────────────────────────
+  // When code passes validation, extract its atomic properties and
+  // register it in the periodic table. This is the auto-registration
+  // wire: every pattern that enters the oracle pipeline automatically
+  // becomes an element in the periodic table, growing the table from
+  // normal usage without any explicit atomic commands.
+  if (result.valid && code) {
+    try {
+      const { extractAtomicProperties } = require('../atomic/property-extractor');
+      const { PeriodicTable, encodeSignature } = require('../atomic/periodic-table');
+      const path = require('path');
+      const tablePath = path.join(process.cwd(), '.remembrance', 'atomic-table.json');
+      const table = new PeriodicTable({ storagePath: tablePath });
+      const props = extractAtomicProperties(code);
+      const sig = encodeSignature(props);
+      if (!table.getElement(sig)) {
+        table.addElement(props, {
+          name: options.name || options.description || sig,
+          source: 'auto-validation',
+        });
+      } else {
+        table.recordUsage(sig);
+      }
+      result.atomicSignature = sig;
+      result.atomicProperties = props;
+    } catch { /* atomic module not available — no-op */ }
+  }
 
   // Generate actionable feedback for any failures
   if (!result.valid) {
@@ -204,4 +233,18 @@ module.exports = {
   validateCode,
   executeTest,
   MIN_COHERENCY_THRESHOLD,
+};
+
+// ── Atomic self-description (batch-generated) ────────────────────
+validateCode.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+executeTest.atomicProperties = {
+  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'high', electronegativity: 1, group: 3, period: 4,
+  harmPotential: 'moderate', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };

@@ -55,10 +55,16 @@ function handleRequest(req, res) {
   serveFile(res, filePath);
 }
 
-const server = http.createServer(handleRequest);
-
-server.listen(PORT, () => {
-  console.log(`Remembrance Oracle site running at http://localhost:${PORT}`);
-});
+// Only start the HTTP listener when this file is executed directly. When
+// it's `require()`d by tests or other modules we export the handlers and
+// let the caller decide whether to bind. Previously the listener started
+// on import, which kept the test-runner's event loop alive and timed out
+// `tests/site-server.test.js` after 5 minutes.
+if (require.main === module) {
+  const server = http.createServer(handleRequest);
+  server.listen(PORT, () => {
+    console.log(`Remembrance Oracle site running at http://localhost:${PORT}`);
+  });
+}
 
 module.exports = { serveFile, handleRequest, MIME_TYPES };

@@ -26,7 +26,7 @@
  *     not tear down.
  */
 
-const { COVENANT_PRINCIPLES, stripNonExecutableContent } = require('./covenant-principles');
+const { COVENANT_PRINCIPLES, stripNonExecutableContent, stripComments } = require('./covenant-principles');
 const { HARM_PATTERNS } = require('./covenant-harm');
 const { DEEP_SECURITY_PATTERNS } = require('./covenant-deep-security');
 
@@ -81,12 +81,26 @@ function covenantCheck(code, metadata = {}) {
   const isPatternDefinition = isTrusted && /@oracle-pattern-definitions\b/.test(code);
   const isInfrastructure = isTrusted && /@oracle-infrastructure\b/.test(code);
 
-  // Strip non-executable content for keyword-only patterns
+  // Three-tier source surface to balance true positives against
+  // comments-describing-rules false positives:
+  //
+  //   strippedCode:    comments + string bodies removed. Default for rules
+  //                    that match syntactic structure (loops, method calls,
+  //                    assignment patterns). Safe by default.
+  //   commentStripped: comments removed, string bodies preserved. Used by
+  //                    rawOnly rules that need to see string contents
+  //                    (SQL keywords inside queries, passwords in env
+  //                    assignments, rm -rf in shell strings). Still blocks
+  //                    comment false positives.
+  //   code (raw):      never used for harm patterns. Was the old default;
+  //                    caused the covenant-mismatch bug where comments
+  //                    describing rules triggered the rules they described.
   const strippedCode = stripNonExecutableContent(code);
+  const commentStripped = stripComments(code);
 
   if (!isPatternDefinition && !isInfrastructure) {
     for (const hp of HARM_PATTERNS) {
-      const codeToCheck = hp.keywordOnly ? strippedCode : code;
+      const codeToCheck = hp.rawOnly === true ? commentStripped : strippedCode;
       if (hp.pattern.lastIndex) hp.pattern.lastIndex = 0;
       if (hp.pattern.test(codeToCheck)) {
         const principle = COVENANT_PRINCIPLES.find(p => p.id === hp.principle);
@@ -139,7 +153,31 @@ function covenantCheck(code, metadata = {}) {
     }
   }
 
-  const totalPrinciples = COVENANT_PRINCIPLES.length + customPrincipleCount;
+  // ── Living covenant: evolved principles ─────────────────────────
+  // These are coherency-gated principles that activated when the
+  // system's global coherency crossed their threshold. They can
+  // never be deactivated — once the immune response develops, it
+  // persists. The check runs alongside the founding 15 principles.
+  let evolvedPrincipleCount = 0;
+  try {
+    const { LivingCovenant } = require('./living-covenant');
+    const living = new LivingCovenant();
+    const evolvedResult = living.check(code, metadata);
+    evolvedPrincipleCount = evolvedResult.total;
+    for (const ev of evolvedResult.violations) {
+      violations.push({
+        principle: `evolved:${ev.id}`,
+        name: ev.name,
+        seal: ev.reason,
+        reason: ev.reason,
+        evolved: true,
+        category: ev.category,
+      });
+      violatedPrinciples.add(`evolved:${ev.id}`);
+    }
+  } catch { /* living covenant not available — founding principles still run */ }
+
+  const totalPrinciples = COVENANT_PRINCIPLES.length + customPrincipleCount + evolvedPrincipleCount;
   const principlesPassed = totalPrinciples - violatedPrinciples.size;
 
   const result = {
@@ -307,9 +345,43 @@ function safeJsonParse(str, fallback = {}) {
   }
 }
 
+/**
+ * Read the dismissal-calibration log for a covenant principle.
+ *
+ * Every time a user dismisses a finding tagged `bugClass: 'covenant'`,
+ * the reactions module records a row in
+ * `namespace('covenant_calibration').append(principleId, {...})`.
+ * This reader returns the raw dismissal list so tuning tools (and,
+ * eventually, a self-adjusting principle weight) can consult it.
+ */
+function getCovenantCalibration(principleId, repoRoot = process.cwd()) {
+  try {
+    const { getStorage } = require('./storage');
+    const ns = getStorage(repoRoot).namespace('covenant_calibration');
+    // append() writes to a keyed log — if the storage backend is JSON,
+    // the log lives in <namespace>/<key>.log.json-lines; if sqlite, it
+    // lives in oracle_storage_log. Both expose the data via a raw read.
+    // For a simple first-pass reader we return the entries list.
+    const fs = require('fs');
+    const path = require('path');
+    const logPath = path.join(repoRoot, '.remembrance', 'covenant_calibration', `${principleId}.log.log`);
+    if (fs.existsSync(logPath)) {
+      return fs.readFileSync(logPath, 'utf-8')
+        .split('\n')
+        .filter(Boolean)
+        .map(line => { try { return JSON.parse(line); } catch { return null; } })
+        .filter(Boolean);
+    }
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 module.exports = {
   covenantCheck,
   getCovenant,
+  getCovenantCalibration,
   formatCovenantResult,
   deepSecurityScan,
   safeJsonParse,
@@ -318,4 +390,48 @@ module.exports = {
   COVENANT_PRINCIPLES,
   HARM_PATTERNS,
   DEEP_SECURITY_PATTERNS,
+};
+
+// ── Atomic self-description (batch-generated) ────────────────────
+covenantCheck.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+getCovenant.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+getCovenantCalibration.atomicProperties = {
+  charge: 0, valence: 3, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'medium', electronegativity: 1, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+formatCovenantResult.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 2,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+deepSecurityScan.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+safeJsonParse.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+setPrincipleRegistry.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0, group: 10, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };

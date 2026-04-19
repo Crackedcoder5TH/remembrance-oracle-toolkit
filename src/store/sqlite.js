@@ -618,6 +618,21 @@ class SQLiteStore {
   // ─── Entry (history) methods — same interface as VerifiedHistoryStore ───
 
   addEntry(entry) {
+    // ── Structural covenant enforcement ─────────────────────────────
+    if (entry.code && typeof entry.code === 'string') {
+      try {
+        const { covenantCheck } = require('../core/covenant');
+        const check = covenantCheck(entry.code, { description: entry.description, trusted: false });
+        if (!check.sealed) {
+          const violations = (check.violations || []).map(v => `[${v.name}]: ${v.reason}`).join('; ');
+          throw new Error(`COVENANT VIOLATION at store gate: ${violations}`);
+        }
+      } catch (e) {
+        if (e.message.startsWith('COVENANT VIOLATION')) throw e;
+        if (process.env.ORACLE_DEBUG) console.warn('[store] covenant check unavailable:', e.message);
+      }
+    }
+
     const id = this._hash(entry.code + Date.now().toString() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
 
@@ -808,7 +823,32 @@ class SQLiteStore {
    * @private
    */
   _insertPattern(pattern) {
-    const id = this._hash(pattern.code + pattern.name + Date.now() + crypto.randomBytes(4).toString('hex'));
+    // ── Structural covenant enforcement ─────────────────────────────
+    // Every pattern that enters the store passes through the covenant.
+    // This is the LAST gate — even if validation was somehow bypassed,
+    // the store itself refuses to persist covenant-violating code.
+    if (pattern.code && typeof pattern.code === 'string') {
+      try {
+        const { covenantCheck } = require('../core/covenant');
+        const check = covenantCheck(pattern.code, { description: pattern.name, trusted: false });
+        if (!check.sealed) {
+          const violations = (check.violations || []).map(v => `[${v.name}]: ${v.reason}`).join('; ');
+          throw new Error(`COVENANT VIOLATION at store gate: ${violations}`);
+        }
+      } catch (e) {
+        if (e.message.startsWith('COVENANT VIOLATION')) throw e;
+        // If covenant module is unavailable, degrade — but log it
+        if (process.env.ORACLE_DEBUG) console.warn('[store] covenant check unavailable:', e.message);
+      }
+    }
+
+    // Coerce nullable/undefined fields to SQLite-bindable primitives.
+    const code = typeof pattern.code === 'string' ? pattern.code : (pattern.code == null ? '' : String(pattern.code));
+    const name = typeof pattern.name === 'string' ? pattern.name : String(pattern.name ?? '');
+    const description = typeof pattern.description === 'string' ? pattern.description : '';
+    const testCode = pattern.testCode == null ? null : String(pattern.testCode);
+
+    const id = this._hash(code + name + Date.now() + crypto.randomBytes(4).toString('hex'));
     const now = new Date().toISOString();
 
     this.db.prepare(`
@@ -818,9 +858,9 @@ class SQLiteStore {
         version, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
     `).run(
-      id, pattern.name, pattern.code, pattern.language || 'unknown',
+      id, name, code, pattern.language || 'unknown',
       pattern.patternType || 'utility', pattern.complexity || 'composite',
-      pattern.description || '', JSON.stringify(pattern.tags || []),
+      description, JSON.stringify(pattern.tags || []),
       pattern.coherencyScore?.total ?? 0, JSON.stringify(pattern.coherencyScore || {}),
       JSON.stringify(pattern.variants || []), pattern.testCode || null,
       pattern.usageCount ?? 0, pattern.successCount ?? 0,
@@ -855,8 +895,15 @@ class SQLiteStore {
       ).get(name, lang);
 
       if (existing) {
-        // If new version has higher coherency, update the existing row
+        // If new version has higher coherency, update the existing row.
+        // Preserve existing fields when incoming values are undefined — this
+        // matches the JSON backend's "don't overwrite with undefined" semantic
+        // so importing a high-score stub doesn't wipe the good code.
         if (newCoherency > (existing.coherency_total ?? 0)) {
+          const existingRow = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(existing.id);
+          const nextCode = pattern.code !== undefined ? String(pattern.code ?? '') : existingRow.code;
+          const nextDesc = pattern.description !== undefined ? String(pattern.description ?? '') : existingRow.description;
+          const nextTestCode = pattern.testCode !== undefined ? (pattern.testCode == null ? null : String(pattern.testCode)) : existingRow.test_code;
           const now = new Date().toISOString();
           this.db.prepare(`
             UPDATE patterns SET code = ?, description = ?, tags = ?,
@@ -865,10 +912,10 @@ class SQLiteStore {
               updated_at = ?, version = version + 1
             WHERE id = ?
           `).run(
-            pattern.code, pattern.description || '',
+            nextCode, nextDesc,
             JSON.stringify(pattern.tags || []),
             newCoherency, JSON.stringify(pattern.coherencyScore || {}),
-            pattern.testCode || null,
+            nextTestCode,
             pattern.patternType || 'utility', pattern.complexity || 'composite',
             JSON.stringify(pattern.evolutionHistory || []),
             now, existing.id
@@ -1608,6 +1655,40 @@ class SQLiteStore {
     return { retired: toRetire.length, remaining };
   }
 
+  /**
+   * Delete a single pattern by id, archiving it first so it can be
+   * restored via `oracle restore`. Emits `pattern.deleted` on the
+   * event bus so reactions (search index, analytics, dashboards) can
+   * react to the removal.
+   *
+   * @param {string} id - The pattern id to delete
+   * @param {object} options
+   *   - reason: string explaining why (stored in the archive + event)
+   * @returns {{ deleted: boolean, id: string, reason: string }}
+   */
+  deletePatternById(id, options = {}) {
+    const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
+    if (!row) return { deleted: false, id, reason: 'not found' };
+    const reason = options.reason || 'manual-delete';
+    this.db.exec('BEGIN');
+    try {
+      this._archivePattern(row, reason);
+      this._cleanupFractalData(row.id);
+      this.db.prepare('DELETE FROM patterns WHERE id = ?').run(row.id);
+      this._audit('delete', 'patterns', row.id, { name: row.name, reason });
+      this.db.exec('COMMIT');
+    } catch (e) {
+      this.db.exec('ROLLBACK');
+      throw e;
+    }
+    // Fire cross-subsystem event so reactions can update indexes.
+    try {
+      const { getEventBus } = require('../core/events');
+      getEventBus().emitSync('pattern.deleted', { id: row.id, name: row.name, reason });
+    } catch { /* best-effort */ }
+    return { deleted: true, id: row.id, name: row.name, reason };
+  }
+
   patternSummary() {
     const patterns = this.getAllPatterns();
     return {
@@ -1619,6 +1700,31 @@ class SQLiteStore {
         ? Math.round(patterns.reduce((s, p) => s + (p.coherencyScore?.total ?? 0), 0) / patterns.length * 1000) / 1000
         : 0,
     };
+  }
+
+  /**
+   * Update only the coherency of a stored pattern. Used by the
+   * recalibration sweep when the scorer changes — re-scoring a
+   * pattern with the current scorer may produce a different value,
+   * and the stored value should reflect the current scorer's output.
+   *
+   * @param {number} id - pattern id
+   * @param {{total, breakdown}} coherencyScore
+   * @returns {boolean} true if updated
+   */
+  updatePatternCoherency(id, coherencyScore) {
+    if (!coherencyScore || typeof coherencyScore.total !== 'number') return false;
+    try {
+      const stmt = this.db.prepare(
+        'UPDATE patterns SET coherency_total = ?, coherency_json = ? WHERE id = ?'
+      );
+      const result = stmt.run(
+        coherencyScore.total,
+        JSON.stringify(coherencyScore),
+        id
+      );
+      return result.changes > 0;
+    } catch { return false; }
   }
 
   _rowToPattern(row) {

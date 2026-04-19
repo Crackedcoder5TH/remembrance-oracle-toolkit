@@ -30,7 +30,6 @@ const {
  * @param {string} [options.testCode] - Test code to execute against the source code
  * @param {number} [options.threshold] - Minimum coherency threshold (default: MIN_COHERENCY_THRESHOLD)
  * @param {number} [options.timeout] - Test execution timeout in milliseconds (default: DEFAULT_VALIDATION_TIMEOUT_MS)
- * @param {boolean} [options.skipCovenant] - Skip covenant check if true
  * @param {string} [options.description] - Code description for covenant context
  * @param {string[]} [options.tags] - Code tags for covenant context
  * @param {boolean} [options.sandbox] - Use sandboxed execution if true (default: true)
@@ -62,8 +61,7 @@ function validateCode(code, options = {}) {
   const isNonCode = contentType !== 'code';
 
   // Step 0: Covenant check — STRUCTURAL, UNBYPASSABLE
-  // The covenant is intrinsic to the system, not an optional filter.
-  // skipCovenant is deliberately removed — no code path can bypass this.
+  // The covenant runs INSIDE validation. No parameter can disable it.
   {
     const covenant = covenantCheck(code, {
       description: options.description,

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Emergent Coherency — the SERF equation as a meta-function.
+ * Remembrance SERF — Signal Emergence from Recursive Feedback.
  *
  * In the void compressor, SERF (self-refinement) isn't a function —
  * it's the emergent property that low-coherence inputs fail to

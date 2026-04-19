@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Coherency Generator — the sun of the remembrance ecosystem.
+ * Remembrance Sun — the coherency generator of the ecosystem.
  *
  * Not a measurement tool. Not a checker. Not a healer.
  * A GENERATOR. It produces coherency and radiates it outward.

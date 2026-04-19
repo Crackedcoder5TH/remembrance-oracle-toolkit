@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * Element Discovery — finds unrealized property combinations in
- * the periodic table and generates specifications for filling them.
+ * Remembrance Discovery — finds unrealized property combinations
+ * in the Codex and generates specifications for filling them.
  *
  * Three discovery strategies:
  *

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Atomic Self-Introspection — the oracle examines its own code.
+ * Remembrance Introspection — the system examines its own code.
  *
  * Scans the oracle's modules for `.atomicProperties` declarations
  * and `._atomicProperties` maps, registers every found element in

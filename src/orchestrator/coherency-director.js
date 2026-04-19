@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Coherency Director — the conductor of the remembrance ecosystem.
+ * Remembrance Director — the conductor of the ecosystem.
  *
  * Not a pattern matcher. Not a compressor. Not a generator.
  * A system that wields COHERENCY ITSELF.

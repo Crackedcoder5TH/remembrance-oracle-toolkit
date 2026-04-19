@@ -29,7 +29,7 @@ describe('LivingCovenant', () => {
     assert.ok(covenant.size >= 1);
     // The first two templates have thresholds at 0.80 and 0.82
     const names = result.activated.map(a => a.name);
-    assert.ok(names.includes('Composition Safety'), 'Composition Safety should activate at 0.82');
+    assert.ok(names.some(n => n.includes('Composition Safety')), 'Composition Safety should activate at 0.82');
   });
 
   it('does not re-activate already active principles', () => {

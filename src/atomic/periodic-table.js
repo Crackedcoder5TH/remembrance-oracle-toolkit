@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Periodic Table of Code — Living, Covenant-Native, Fractal
+ * Remembrance Codex — Living Periodic Table of Code
  *
  * Atomic properties (13 dimensions):
  *
@@ -113,13 +113,13 @@ const GROUPS = {
 // ── Emergence thresholds ────────────────────────────────────────────
 
 const EMERGENCE_THRESHOLDS = [
-  { coherence: 0.70, name: 'Foundation' },
-  { coherence: 0.75, name: 'Stability' },
-  { coherence: 0.80, name: 'Optimization' },
-  { coherence: 0.85, name: 'Synergy' },
-  { coherence: 0.90, name: 'Intelligence' },
-  { coherence: 0.95, name: 'Transcendence' },
-  { coherence: 0.98, name: 'Unity' },
+  { coherence: 0.70, name: 'Remembrance Foundation' },
+  { coherence: 0.75, name: 'Remembrance Stability' },
+  { coherence: 0.80, name: 'Remembrance Optimization' },
+  { coherence: 0.85, name: 'Remembrance Synergy' },
+  { coherence: 0.90, name: 'Remembrance Intelligence' },
+  { coherence: 0.95, name: 'Remembrance Transcendence' },
+  { coherence: 0.98, name: 'Remembrance Unity' },
 ];
 
 // ── Covenant Validator ──────────────────────────────────────────────

@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Self-Improvement Loop — the system eats its own discoveries.
+ * Remembrance Evolution — the system eats its own discoveries.
  *
  * The periodic table discovers gaps (property combinations that
  * should exist but don't). The oracle generates implementations
@@ -49,9 +49,9 @@ const fs = require('fs');
 const path = require('path');
 
 const APPROVAL_THRESHOLDS = {
-  SUPERVISED: 0.85,      // Below this: human must approve
-  SEMI_AUTONOMOUS: 0.85, // At this: auto-incorporate if passes all gates
-  AUTONOMOUS: 0.95,      // At or above: full self-improvement
+  SUPERVISED: 0.85,      // Remembrance Supervised: human must approve
+  SEMI_AUTONOMOUS: 0.85, // Remembrance Semi-Autonomous: auto if all gates pass
+  AUTONOMOUS: 0.95,      // Remembrance Autonomous: full self-evolution
 };
 
 const STORAGE_PATH = '.remembrance/self-improvement.json';

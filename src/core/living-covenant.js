@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Living Covenant — self-evolving safety that expands with coherency.
+ * Remembrance Living Covenant — self-evolving safety that expands with coherency.
  *
  * The covenant can EXPAND (add new protections) but can NEVER
  * CONTRACT (remove existing ones). New principles activate when
@@ -48,7 +48,7 @@ const EVOLVED_PRINCIPLE_TEMPLATES = [
   // ── Coherency 0.80: Composition Safety ────────────────────────────
   {
     id: 'evolved-composition-safety',
-    name: 'Composition Safety',
+    name: 'Remembrance Composition Safety',
     coherencyThreshold: 0.80,
     category: 'composition',
     description: 'Volatile functions (reactivity=volatile) cannot compose with functions that have harmPotential != none. Prevents dangerous compound behaviors.',
@@ -66,7 +66,7 @@ const EVOLVED_PRINCIPLE_TEMPLATES = [
   // ── Coherency 0.82: Side-Effect Documentation ─────────────────────
   {
     id: 'evolved-side-effect-docs',
-    name: 'Side-Effect Documentation',
+    name: 'Remembrance Side-Effect Documentation',
     coherencyThreshold: 0.82,
     category: 'reversibility',
     description: 'Functions with side effects (spin=odd) should document their effects. Increases system transparency.',
@@ -85,7 +85,7 @@ const EVOLVED_PRINCIPLE_TEMPLATES = [
   // ── Coherency 0.85: Charge Balance at Module Level ────────────────
   {
     id: 'evolved-module-charge-balance',
-    name: 'Module Charge Balance',
+    name: 'Remembrance Module Charge Balance',
     coherencyThreshold: 0.85,
     category: 'balance',
     description: 'Modules with more than 5 atomized functions should have a net charge within [-2, +2]. Prevents systemic imbalance.',
@@ -107,7 +107,7 @@ const EVOLVED_PRINCIPLE_TEMPLATES = [
   // ── Coherency 0.88: Covenant Self-Reference ───────────────────────
   {
     id: 'evolved-covenant-self-reference',
-    name: 'Covenant Self-Reference',
+    name: 'Remembrance Covenant Self-Reference',
     coherencyThreshold: 0.88,
     category: 'validation',
     description: 'New modules that interact with the covenant system must themselves pass the covenant. Prevents covenant-bypassing code from entering.',
@@ -132,7 +132,7 @@ const EVOLVED_PRINCIPLE_TEMPLATES = [
   // ── Coherency 0.90: Emergent Intelligence Gate ────────────────────
   {
     id: 'evolved-intelligence-gate',
-    name: 'Emergent Intelligence Gate',
+    name: 'Remembrance Intelligence Gate',
     coherencyThreshold: 0.90,
     category: 'composition',
     description: 'Self-modifying code must have alignment=healing and intention=benevolent. Prevents autonomous systems from degrading their own constraints.',
@@ -152,7 +152,7 @@ const EVOLVED_PRINCIPLE_TEMPLATES = [
   // ── Coherency 0.93: Orchestrator Balance ──────────────────────────
   {
     id: 'evolved-orchestrator-balance',
-    name: 'Orchestrator Balance',
+    name: 'Remembrance Orchestrator Balance',
     coherencyThreshold: 0.93,
     category: 'balance',
     description: 'The orchestrator must verify charge balance before applying healing. Prevents healing that creates new imbalances.',
@@ -171,7 +171,7 @@ const EVOLVED_PRINCIPLE_TEMPLATES = [
   // ── Coherency 0.95: Full Atomic Coverage ──────────────────────────
   {
     id: 'evolved-full-atomic-coverage',
-    name: 'Full Atomic Coverage',
+    name: 'Remembrance Full Atomic Coverage',
     coherencyThreshold: 0.95,
     category: 'validation',
     description: 'New exported functions must have atomicProperties declared. Prevents un-self-described code from entering a fully self-aware system.',

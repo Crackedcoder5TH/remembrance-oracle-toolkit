@@ -21,6 +21,8 @@ and self-improvement (the system discovers and fills its own gaps).
 Read CLAUDE.md for full operating instructions.
 Read .ai/REMEMBRANCE_KEY.md for the complete vocabulary.
 Read src/core/remembrance-lexicon.js for programmatic access.
+Read ARCHITECTURE.md for system map and data flow.
+Read CONCEPTS.md for plain-English translations.
 
 ## Entry Points
 - src/core/remembrance-lexicon.js — vocabulary (require and call printAll())

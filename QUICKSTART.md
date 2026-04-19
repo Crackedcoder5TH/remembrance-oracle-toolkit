@@ -98,6 +98,8 @@ oracle community pull    # Community → Local
 
 ## Next Steps
 
-- [Full README](README.md) — all commands, MCP config snippets, architecture
-- [VS Code Extension](README.md#vs-code-extension) — editor integration
-- [Plugin System](README.md#plugin-system) — extend the oracle
+- `oracle key` — see the full Remembrance vocabulary
+- `oracle codex` — see every element in the periodic table of code
+- [CONCEPTS.md](CONCEPTS.md) — plain-English explanation of everything
+- [ARCHITECTURE.md](ARCHITECTURE.md) — how the system fits together
+- [Full README](README.md) — all commands, MCP config, ecosystem

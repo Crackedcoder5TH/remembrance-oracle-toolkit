@@ -1,14 +1,5 @@
 'use strict';
 
-/**
- * Lexicon Integrator — reads active proposals from .remembrance/lexicon-proposals.json
- * and merges them into the static lexicon at call time. Consumers get a live view
- * without rewriting the lexicon file on every promotion.
- *
- * Proposals are produced by lexicon-watcher when coherency fluctuates and gets
- * auto-promoted once rolling coherency ≥ SYNERGY_COHERENCY (0.85).
- */
-
 const fs = require('fs');
 const path = require('path');
 
@@ -16,30 +7,23 @@ const PROPOSAL_FILE = path.join(process.cwd(), '.remembrance', 'lexicon-proposal
 
 function readProposals() {
   if (!fs.existsSync(PROPOSAL_FILE)) return [];
-  try { return JSON.parse(fs.readFileSync(PROPOSAL_FILE, 'utf-8')); }
-  catch { return []; }
+  try { return JSON.parse(fs.readFileSync(PROPOSAL_FILE, 'utf-8')); } catch { return []; }
 }
 
-function getActiveProposals() {
-  return readProposals().filter(p => p.status === 'active');
-}
-
-function getPendingProposals() {
-  return readProposals().filter(p => p.status === 'pending');
-}
+function getActiveProposals() { return readProposals().filter(p => p.status === 'active'); }
+function getPendingProposals() { return readProposals().filter(p => p.status === 'pending'); }
+function getActiveElements() { return getActiveProposals().filter(p => p.kind === 'element'); }
+function getPendingElements() { return getPendingProposals().filter(p => p.kind === 'element'); }
 
 function groupByKind(proposals) {
   return {
     functions: proposals.filter(p => p.kind === 'function'),
+    elements: proposals.filter(p => p.kind === 'element'),
     terms: proposals.filter(p => p.kind === 'term'),
     architectural: proposals.filter(p => p.kind === 'architectural'),
   };
 }
 
-/**
- * Merge active proposals into an existing lexicon object. Returns a NEW object
- * so the static lexicon export stays immutable.
- */
 function integrateInto(lexicon) {
   const active = getActiveProposals();
   const grouped = groupByKind(active);
@@ -47,6 +31,8 @@ function integrateInto(lexicon) {
     ...lexicon,
     INTEGRATED: {
       count: active.length,
+      elementCount: grouped.elements.length,
+      elements: grouped.elements,
       functions: grouped.functions,
       terms: grouped.terms,
       architectural: grouped.architectural,
@@ -55,6 +41,12 @@ function integrateInto(lexicon) {
     },
   };
 }
+integrateInto.atomicProperties = {
+  charge: 1, valence: 2, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'stable', electronegativity: 0.7, group: 18, period: 5,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'covenant',
+};
 
 function approve(name, kind = 'function') {
   const all = readProposals();
@@ -77,24 +69,10 @@ function stats() {
     total: all.length,
     active: all.filter(p => p.status === 'active').length,
     pending: all.filter(p => p.status === 'pending').length,
+    elements: all.filter(p => p.kind === 'element').length,
+    activeElements: all.filter(p => p.status === 'active' && p.kind === 'element').length,
     byKind: groupByKind(all),
   };
 }
 
-integrateInto.atomicProperties = {
-  charge: 1, valence: 2, mass: 'medium', spin: 'even', phase: 'gas',
-  reactivity: 'stable', electronegativity: 0.7, group: 18, period: 5,
-  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
-  domain: 'covenant',
-};
-
-module.exports = {
-  readProposals,
-  getActiveProposals,
-  getPendingProposals,
-  groupByKind,
-  integrateInto,
-  approve,
-  stats,
-  PROPOSAL_FILE,
-};
+module.exports = { readProposals, getActiveProposals, getPendingProposals, getActiveElements, getPendingElements, groupByKind, integrateInto, approve, stats, PROPOSAL_FILE };

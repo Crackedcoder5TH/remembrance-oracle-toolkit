@@ -296,7 +296,7 @@ describe('MCPServer', () => {
     const res = await server.handleRequest({ id: 15, method: 'tools/list' });
     const names = res.result.tools.map(t => t.name);
 
-    // Original 13 consolidated tools
+    // All consolidated tools (original 13 + forge + audit/lint/smell/analyze/heal)
     assert.ok(names.includes('oracle_search'), 'missing oracle_search');
     assert.ok(names.includes('oracle_resolve'), 'missing oracle_resolve');
     assert.ok(names.includes('oracle_submit'), 'missing oracle_submit');
@@ -310,6 +310,8 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_healing'), 'missing oracle_healing');
     assert.ok(names.includes('oracle_swarm'), 'missing oracle_swarm');
     assert.ok(names.includes('oracle_fractal'), 'missing oracle_fractal');
+    assert.ok(names.includes('oracle_pending_feedback'), 'missing oracle_pending_feedback');
+    assert.ok(names.includes('oracle_forge'), 'missing oracle_forge');
 
     // New Tier-1..4 tools
     assert.ok(names.includes('oracle_audit'),    'missing oracle_audit');
@@ -318,6 +320,6 @@ describe('MCPServer', () => {
     assert.ok(names.includes('oracle_analyze'),  'missing oracle_analyze');
     assert.ok(names.includes('oracle_heal'),     'missing oracle_heal');
 
-    assert.ok(res.result.tools.length >= 18, `Expected at least 18 tools, got ${res.result.tools.length}`);
+    assert.ok(res.result.tools.length >= 20, `Expected at least 20 tools, got ${res.result.tools.length}`);
   });
 });

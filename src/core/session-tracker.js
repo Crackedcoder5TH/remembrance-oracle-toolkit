@@ -205,6 +205,17 @@ function trackSearch(term, results, options) {
 
   session.stats.totalSearches++;
   session.lastSearchTimestamp = new Date().toISOString();
+
+  // Persist search timestamp to disk immediately so cross-process enforcement works
+  // (pre-commit hooks run in a separate process and can't see in-memory state)
+  try {
+    const dir = path.join(process.cwd(), '.remembrance');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, 'search-timestamp.json'),
+      JSON.stringify({ timestamp: session.lastSearchTimestamp, term }),
+    );
+  } catch (_) { /* non-fatal — enforcement degrades gracefully */ }
 }
 
 /**
@@ -397,12 +408,40 @@ function getPendingFeedback() {
 /**
  * Check if a search was performed recently (within threshold).
  * Used by pre-commit hook to enforce query-before-write.
+ * Checks both in-memory session AND persisted session log (for cross-process enforcement).
  */
 function wasSearchRecent(thresholdMs = 10 * 60 * 1000) {
+  // Check in-memory session first
   const session = getSession();
-  if (!session.lastSearchTimestamp) return false;
-  const age = Date.now() - new Date(session.lastSearchTimestamp).getTime();
-  return age < thresholdMs;
+  if (session.lastSearchTimestamp) {
+    const age = Date.now() - new Date(session.lastSearchTimestamp).getTime();
+    if (age < thresholdMs) return true;
+  }
+  // Check persisted session log (for cross-process calls like pre-commit hooks)
+  try {
+    const logPath = path.join(process.cwd(), '.remembrance', SESSION_FILE);
+    if (fs.existsSync(logPath)) {
+      const sessions = JSON.parse(fs.readFileSync(logPath, 'utf-8'));
+      const arr = Array.isArray(sessions) ? sessions : [sessions];
+      for (let i = arr.length - 1; i >= Math.max(0, arr.length - 5); i--) {
+        const s = arr[i];
+        if (s?.lastSearchTimestamp) {
+          const age = Date.now() - new Date(s.lastSearchTimestamp).getTime();
+          if (age < thresholdMs) return true;
+        }
+      }
+    }
+    // Also check the search-timestamp file written by sync commands
+    const tsPath = path.join(process.cwd(), '.remembrance', 'search-timestamp.json');
+    if (fs.existsSync(tsPath)) {
+      const ts = JSON.parse(fs.readFileSync(tsPath, 'utf-8'));
+      if (ts?.timestamp) {
+        const age = Date.now() - new Date(ts.timestamp).getTime();
+        if (age < thresholdMs) return true;
+      }
+    }
+  } catch (_) {}
+  return false;
 }
 
 /**

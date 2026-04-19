@@ -59,6 +59,7 @@ const { registerSelfManageCommands } = require('./cli/commands/self-manage');
 const { registerSwarmCommands } = require('./cli/commands/swarm');
 const { registerReflectorCommands } = require('./cli/commands/reflector');
 const { registerChromaDBCommands } = require('./cli/commands/chromadb');
+const { registerVoidCommands } = require('./cli/commands/void');
 const { registerFractalCommands } = require('./cli/commands/fractals');
 
 const oracle = new RemembranceOracle({ autoSync: true });
@@ -181,6 +182,7 @@ async function main() {
   registerSwarmCommands(handlers, context);
   registerReflectorCommands(handlers, context);
   registerChromaDBCommands(handlers, context);
+  registerVoidCommands(handlers, context);
   registerFractalCommands(handlers, context);
 
   // Remembrance Key — always available, no registration needed

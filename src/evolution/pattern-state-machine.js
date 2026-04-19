@@ -7,12 +7,15 @@
  *   CANDIDATE  → Unproven code awaiting test proof
  *   PATTERN    → Proven, active, searchable code
  *   RETIRED    → Archived due to low usage/coherency
+ *   PUBLISHED  → Proven pattern published to blockchain
  *
  * Transitions:
- *   CANDIDATE → PATTERN   (promote: test proof + coherency gate)
- *   PATTERN   → RETIRED   (retire: composite score below threshold)
- *   PATTERN   → PATTERN   (evolve: new version replaces old)
- *   RETIRED   → CANDIDATE (resurrect: re-enter via healing)
+ *   CANDIDATE → PATTERN    (promote: test proof + coherency gate)
+ *   PATTERN   → RETIRED    (retire: composite score below threshold)
+ *   PATTERN   → PATTERN    (evolve: new version replaces old)
+ *   PATTERN   → PUBLISHED  (publish: coherency >= 0.8, covenant sealed, test proof)
+ *   PUBLISHED → PATTERN    (retract: withdraw from blockchain)
+ *   RETIRED   → CANDIDATE  (resurrect: re-enter via healing)
  *
  * Each transition runs hooks:
  *   - guard:  validates preconditions (returns boolean)
@@ -24,6 +27,8 @@
  *   sm.promote(candidateId, testCode);    // CANDIDATE → PATTERN
  *   sm.retire(patternId);                 // PATTERN → RETIRED
  *   sm.evolve(patternId, newCode, meta);  // PATTERN → PATTERN (new version)
+ *   sm.publish(patternId);                // PATTERN → PUBLISHED (blockchain)
+ *   sm.retract(patternId);               // PUBLISHED → PATTERN (withdraw)
  *   sm.resurrect(archivedId);             // RETIRED → CANDIDATE
  */
 
@@ -31,6 +36,7 @@ const STATES = {
   CANDIDATE: 'candidate',
   PATTERN: 'pattern',
   RETIRED: 'retired',
+  PUBLISHED: 'published',
 };
 
 const TRANSITIONS = {
@@ -38,6 +44,8 @@ const TRANSITIONS = {
   RETIRE: 'retire',
   EVOLVE: 'evolve',
   RESURRECT: 'resurrect',
+  PUBLISH: 'publish',
+  RETRACT: 'retract',
 };
 
 // Valid state transitions: from → [allowed events]
@@ -48,9 +56,13 @@ const TRANSITION_MAP = {
   [STATES.PATTERN]: {
     [TRANSITIONS.RETIRE]: STATES.RETIRED,
     [TRANSITIONS.EVOLVE]: STATES.PATTERN,
+    [TRANSITIONS.PUBLISH]: STATES.PUBLISHED,
   },
   [STATES.RETIRED]: {
     [TRANSITIONS.RESURRECT]: STATES.CANDIDATE,
+  },
+  [STATES.PUBLISHED]: {
+    [TRANSITIONS.RETRACT]: STATES.PATTERN,
   },
 };
 
@@ -90,8 +102,12 @@ function createPatternLifecycle(store, options = {}) {
     if (!store || !store.db) return null;
 
     // Check patterns table first (most common lookup)
-    const pattern = store.db.prepare('SELECT id FROM patterns WHERE id = ?').get(id);
-    if (pattern) return STATES.PATTERN;
+    const pattern = store.db.prepare('SELECT id, blockchain_tx FROM patterns WHERE id = ?').get(id);
+    if (pattern) {
+      // A pattern with a blockchain_tx is in PUBLISHED state
+      if (pattern.blockchain_tx) return STATES.PUBLISHED;
+      return STATES.PATTERN;
+    }
 
     // Check candidates table (unpromoted)
     const candidate = store.db.prepare(
@@ -490,6 +506,147 @@ function createPatternLifecycle(store, options = {}) {
     return { success: true, candidate, event };
   }
 
+  // ─── PUBLISH: PATTERN → PUBLISHED ───
+
+  /**
+   * Mark a pattern as published to the blockchain.
+   *
+   * Guards:
+   *   - Pattern must exist in patterns table and be in PATTERN state
+   *   - Coherency must be >= 0.8
+   *   - Covenant must be sealed (no violations)
+   *   - Must have test code (test proof required)
+   *
+   * Hooks:
+   *   - After: record blockchain_tx, audit log
+   *
+   * @param {string} patternId
+   * @param {object} [opts]
+   * @param {string} [opts.txSignature] - Solana transaction signature
+   * @param {string} [opts.blockchainHash] - Full SHA-256 hash used for chain publication
+   * @returns {{ success: boolean, reason?: string, event?: object }}
+   */
+  function publish(patternId, opts = {}) {
+    const currentState = getState(patternId);
+    const validation = _validateTransition(patternId, currentState, TRANSITIONS.PUBLISH);
+    if (!validation.valid) {
+      return { success: false, reason: validation.reason };
+    }
+
+    const row = store.db.prepare('SELECT * FROM patterns WHERE id = ?').get(patternId);
+    if (!row) {
+      return { success: false, reason: 'Pattern not found in patterns table' };
+    }
+
+    // Guard: coherency >= 0.8
+    const coherency = row.coherency_total || 0;
+    if (coherency < 0.8) {
+      return {
+        success: false,
+        reason: `Coherency ${coherency.toFixed(3)} below blockchain publication threshold 0.8`,
+      };
+    }
+
+    // Guard: must have test code
+    if (!row.test_code || !row.test_code.trim()) {
+      return {
+        success: false,
+        reason: 'Test proof required for blockchain publication',
+      };
+    }
+
+    // Guard: covenant must be sealed
+    try {
+      const { covenantCheck } = require('../core/covenant');
+      const covenant = covenantCheck(row.code, { description: row.name });
+      if (!covenant.sealed) {
+        const violations = (covenant.violations || []).map(v => v.rule || v).join(', ');
+        return {
+          success: false,
+          reason: `Covenant not sealed — violations: ${violations}`,
+        };
+      }
+    } catch (_) {
+      // If covenant module unavailable, skip this guard
+    }
+
+    // Record the publication in the pattern row
+    const now = new Date().toISOString();
+    try {
+      const txSig = opts.txSignature || null;
+      const bHash = opts.blockchainHash || null;
+      store.db.prepare(`
+        UPDATE patterns SET blockchain_tx = ?, blockchain_hash = ?, published_at = ?, updated_at = ?
+        WHERE id = ?
+      `).run(txSig, bHash, now, now, patternId);
+      store._audit('publish', 'patterns', patternId, {
+        name: row.name,
+        txSignature: txSig,
+        blockchainHash: bHash,
+      });
+    } catch (e) {
+      return { success: false, reason: `Publication record failed: ${e.message}` };
+    }
+
+    const event = {
+      transition: TRANSITIONS.PUBLISH,
+      from: STATES.PATTERN,
+      to: STATES.PUBLISHED,
+      entityId: patternId,
+      name: row.name,
+      txSignature: opts.txSignature || null,
+      timestamp: now,
+    };
+    _emit(event);
+
+    return { success: true, event };
+  }
+
+  // ─── RETRACT: PUBLISHED → PATTERN ───
+
+  /**
+   * Retract a published pattern back to regular PATTERN state.
+   * Clears blockchain publication metadata.
+   *
+   * @param {string} patternId
+   * @returns {{ success: boolean, reason?: string, event?: object }}
+   */
+  function retract(patternId) {
+    const currentState = getState(patternId);
+    const validation = _validateTransition(patternId, currentState, TRANSITIONS.RETRACT);
+    if (!validation.valid) {
+      return { success: false, reason: validation.reason };
+    }
+
+    const row = store.db.prepare('SELECT * FROM patterns WHERE id = ?').get(patternId);
+    if (!row) {
+      return { success: false, reason: 'Pattern not found in patterns table' };
+    }
+
+    const now = new Date().toISOString();
+    try {
+      store.db.prepare(`
+        UPDATE patterns SET blockchain_tx = NULL, blockchain_hash = NULL, published_at = NULL, updated_at = ?
+        WHERE id = ?
+      `).run(now, patternId);
+      store._audit('retract', 'patterns', patternId, { name: row.name });
+    } catch (e) {
+      return { success: false, reason: `Retraction failed: ${e.message}` };
+    }
+
+    const event = {
+      transition: TRANSITIONS.RETRACT,
+      from: STATES.PUBLISHED,
+      to: STATES.PATTERN,
+      entityId: patternId,
+      name: row.name,
+      timestamp: now,
+    };
+    _emit(event);
+
+    return { success: true, event };
+  }
+
   // ─── Subscriptions ───
 
   function subscribe(listener) {
@@ -513,6 +670,8 @@ function createPatternLifecycle(store, options = {}) {
     retireBulk,
     evolve,
     resurrect,
+    publish,
+    retract,
 
     // Subscriptions
     subscribe,

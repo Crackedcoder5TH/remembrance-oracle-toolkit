@@ -53,6 +53,11 @@ module.exports = {
         id: p.id, name: p.name, code: p.code, testCode: p.testCode || undefined,
         language: p.language, description: p.description, tags: p.tags,
         patternType: p.patternType, complexity: p.complexity, coherency: p.coherencyScore?.total,
+        coherencyScore: p.coherencyScore || undefined,
+        usageCount: p.usageCount ?? 0, successCount: p.successCount ?? 0,
+        evolutionHistory: p.evolutionHistory?.length ? p.evolutionHistory : undefined,
+        variants: p.variants?.length ? p.variants : undefined,
+        createdAt: p.createdAt || undefined, updatedAt: p.updatedAt || undefined,
       })),
     }, null, 2);
   },
@@ -90,6 +95,8 @@ module.exports = {
         description: p.description || p.name, tags: [...(p.tags || []), 'imported'],
         patternType: p.patternType || 'utility', complexity: p.complexity || 'moderate',
         author, testCode: p.testCode,
+        usageCount: p.usageCount, successCount: p.successCount,
+        evolutionHistory: p.evolutionHistory, variants: p.variants,
       });
 
       if (regResult.registered) { results.push({ name: p.name, status: 'imported', id: regResult.pattern.id }); imported++; }

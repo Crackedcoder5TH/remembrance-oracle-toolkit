@@ -12,6 +12,8 @@ const {
   findTestFile,
   extractFunctions,
   buildTags,
+  _qualityScore,
+  splitNameParts,
 } = require('../src/ci/auto-register');
 
 /**
@@ -344,5 +346,274 @@ module.exports = { uniq };
     const result = autoRegister(oracle, gitDir, { silent: true });
     assert.equal(result.registered, 0);
     assert.equal(result.files.length, 0);
+  });
+
+  it('report includes discovered and belowThreshold fields', () => {
+    const { RemembranceOracle } = require('../src/api/oracle');
+    const oracle = new RemembranceOracle({ baseDir: gitDir, threshold: 0.3, autoSeed: false });
+
+    const result = autoRegister(oracle, gitDir, { silent: true });
+    assert.ok('discovered' in result, 'Should have discovered field');
+    assert.ok('belowThreshold' in result, 'Should have belowThreshold field');
+    assert.equal(typeof result.discovered, 'number');
+    assert.equal(typeof result.belowThreshold, 'number');
+  });
+
+  it('respects qualityThreshold option to filter functions', () => {
+    const { RemembranceOracle } = require('../src/api/oracle');
+    const oracle = new RemembranceOracle({ baseDir: gitDir, threshold: 0.3, autoSeed: false });
+
+    // Write a non-exported function with no tests and a generic name — should score low
+    fs.writeFileSync(path.join(gitDir, 'low.js'), `
+function run(items) {
+  const result = [];
+  for (const item of items) {
+    result.push(item);
+  }
+  return result;
+}
+`);
+    gitCommit(gitDir, 'add low quality function');
+
+    // With a very high threshold, everything should be below threshold
+    const result = autoRegister(oracle, gitDir, { silent: true, qualityThreshold: 1.0 });
+    assert.ok(result.belowThreshold >= result.discovered || result.discovered === 0,
+      'All discovered functions should be below a 1.0 threshold');
+  });
+});
+
+// ── Quality scoring tests ───────────────────────────��────────────
+
+describe('auto-register — splitNameParts', () => {
+  it('splits camelCase names', () => {
+    const parts = splitNameParts('safeJsonWrite');
+    assert.deepEqual(parts, ['safe', 'json', 'write']);
+  });
+
+  it('splits snake_case names', () => {
+    const parts = splitNameParts('safe_json_write');
+    assert.deepEqual(parts, ['safe', 'json', 'write']);
+  });
+
+  it('splits mixed camelCase and snake_case', () => {
+    const parts = splitNameParts('parse_jsonValue');
+    assert.deepEqual(parts, ['parse', 'json', 'value']);
+  });
+
+  it('handles single-word names', () => {
+    const parts = splitNameParts('handle');
+    assert.deepEqual(parts, ['handle']);
+  });
+
+  it('handles empty string', () => {
+    const parts = splitNameParts('');
+    assert.deepEqual(parts, []);
+  });
+});
+
+describe('auto-register — _qualityScore', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'quality-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns score and reasons object', () => {
+    const srcPath = path.join(tmpDir, 'mod.js');
+    fs.writeFileSync(srcPath, 'function foo() { return 1; }');
+    const result = _qualityScore(
+      { name: 'foo', code: 'function foo() { return 1; }', language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok('score' in result);
+    assert.ok('reasons' in result);
+    assert.ok(Array.isArray(result.reasons));
+    assert.equal(typeof result.score, 'number');
+  });
+
+  it('awards +0.3 when a test file exists', () => {
+    const srcPath = path.join(tmpDir, 'utils.js');
+    const testPath = path.join(tmpDir, 'utils.test.js');
+    fs.writeFileSync(srcPath, 'function myFn() { return 1; }');
+    fs.writeFileSync(testPath, 'test("myFn", () => {})');
+
+    const result = _qualityScore(
+      { name: 'myFn', code: 'function myFn() { return 1; }', language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(result.score >= 0.3, `Score should be >= 0.3 with tests, got ${result.score}`);
+    assert.ok(result.reasons.includes('has tests'));
+  });
+
+  it('awards +0.25 when function is exported via module.exports', () => {
+    const srcPath = path.join(tmpDir, 'mod.js');
+    fs.writeFileSync(srcPath, `
+function myFn() { return 1; }
+module.exports = { myFn };
+`);
+
+    const result = _qualityScore(
+      { name: 'myFn', code: 'function myFn() { return 1; }', language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(result.reasons.includes('exported'), 'Should detect module.exports');
+  });
+
+  it('awards +0.25 when function uses export default', () => {
+    const srcPath = path.join(tmpDir, 'mod.ts');
+    fs.writeFileSync(srcPath, `
+export default function calculateTotal(items) {
+  return items.reduce((sum, i) => sum + i.price, 0);
+}
+`);
+
+    const result = _qualityScore(
+      { name: 'calculateTotal', code: 'export default function calculateTotal(items) {}', language: 'typescript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(result.reasons.includes('exported'), 'Should detect export default');
+  });
+
+  it('awards +0.15 when function has JSDoc', () => {
+    const srcPath = path.join(tmpDir, 'doc.js');
+    fs.writeFileSync(srcPath, `
+/**
+ * Does something useful.
+ */
+function myFn() { return 1; }
+module.exports = { myFn };
+`);
+
+    const result = _qualityScore(
+      { name: 'myFn', code: 'function myFn() { return 1; }', language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(result.reasons.includes('documented'), 'Should detect JSDoc');
+  });
+
+  it('awards +0.15 for meaningful name with 3+ parts', () => {
+    const srcPath = path.join(tmpDir, 'mod.js');
+    fs.writeFileSync(srcPath, 'function safeJsonWrite() { return 1; }');
+
+    const result = _qualityScore(
+      { name: 'safeJsonWrite', code: 'function safeJsonWrite() { return 1; }', language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(result.reasons.includes('meaningful name'), 'safeJsonWrite has 3 parts');
+  });
+
+  it('does not award meaningful name for single generic names', () => {
+    const srcPath = path.join(tmpDir, 'mod.js');
+    fs.writeFileSync(srcPath, 'function handle() { return 1; }');
+
+    const result = _qualityScore(
+      { name: 'handle', code: 'function handle() { return 1; }', language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(!result.reasons.includes('meaningful name'), 'handle is a generic name');
+  });
+
+  it('awards +0.15 for functions with 5-50 lines', () => {
+    const lines = [
+      'function myFn() {',
+      '  const a = 1;',
+      '  const b = 2;',
+      '  const c = a + b;',
+      '  return c;',
+      '}',
+    ];
+    const code = lines.join('\n');
+    const srcPath = path.join(tmpDir, 'mod.js');
+    fs.writeFileSync(srcPath, code);
+
+    const result = _qualityScore(
+      { name: 'myFn', code, language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(result.reasons.includes('good size'), `${lines.length} lines should count as good size`);
+  });
+
+  it('does not award size for functions under 5 lines', () => {
+    const code = 'function tiny() {\n  return 1;\n}';
+    const srcPath = path.join(tmpDir, 'mod.js');
+    fs.writeFileSync(srcPath, code);
+
+    const result = _qualityScore(
+      { name: 'tiny', code, language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(!result.reasons.includes('good size'), 'Tiny function should not get size bonus');
+  });
+
+  it('scores high for exported + tested + documented + meaningful + right-sized function', () => {
+    const srcPath = path.join(tmpDir, 'utils.js');
+    const testPath = path.join(tmpDir, 'utils.test.js');
+    const code = [
+      '/**',
+      ' * Safely writes JSON to a file with error handling.',
+      ' */',
+      'function safeJsonWrite(filePath, data) {',
+      '  const json = JSON.stringify(data, null, 2);',
+      '  const tmp = filePath + ".tmp";',
+      '  fs.writeFileSync(tmp, json);',
+      '  fs.renameSync(tmp, filePath);',
+      '  return true;',
+      '}',
+      '',
+      'module.exports = { safeJsonWrite };',
+    ].join('\n');
+
+    fs.writeFileSync(srcPath, code);
+    fs.writeFileSync(testPath, 'test("safeJsonWrite", () => {})');
+
+    const result = _qualityScore(
+      { name: 'safeJsonWrite', code: code.split('module.exports')[0], language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    // Should get all 5 bonuses: 0.3 + 0.25 + 0.15 + 0.15 + 0.15 = 1.0
+    assert.ok(result.score >= 0.85, `High-quality function should score >= 0.85, got ${result.score}`);
+    assert.ok(result.reasons.includes('has tests'));
+    assert.ok(result.reasons.includes('exported'));
+    assert.ok(result.reasons.includes('documented'));
+    assert.ok(result.reasons.includes('meaningful name'));
+  });
+
+  it('scores 0 for unexported, untested, undocumented, generic, tiny function', () => {
+    const srcPath = path.join(tmpDir, 'mod.js');
+    fs.writeFileSync(srcPath, 'function run() { return 1; }');
+
+    const result = _qualityScore(
+      { name: 'run', code: 'function run() { return 1; }', language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.equal(result.score, 0, 'Generic unexported tiny function should score 0');
+    assert.equal(result.reasons.length, 0);
+  });
+
+  it('score is always between 0 and 1', () => {
+    const srcPath = path.join(tmpDir, 'mod.js');
+    fs.writeFileSync(srcPath, 'function x() {}');
+
+    const result = _qualityScore(
+      { name: 'x', code: 'function x() {}', language: 'javascript' },
+      srcPath,
+      tmpDir
+    );
+    assert.ok(result.score >= 0 && result.score <= 1, `Score must be 0-1, got ${result.score}`);
   });
 });

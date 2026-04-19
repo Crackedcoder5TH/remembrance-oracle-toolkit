@@ -11,7 +11,7 @@
  */
 
 const { rankEntries } = require('../core/relevance');
-const { semanticSearch: semanticSearchEngine } = require('../search/embeddings');
+const { semanticSearch: semanticSearchEngine, buildIDF, tokenNgramScore } = require('../search/embeddings');
 const { smartSearch: intelligentSearch, parseIntent } = require('../core/search-intelligence');
 const { EmbeddingEngine } = require('../search/embedding-engine');
 const { trackSearch } = require('../core/session-tracker');
@@ -77,7 +77,10 @@ module.exports = {
       return words.length > 0 ? hits / words.length : 0;
     };
 
-    const semanticResults = semanticSearchEngine(items, term, { limit: items.length, minScore: 0, language });
+    // Build TF-IDF weights from corpus for IDF-weighted keyword scoring
+    const idfWeights = buildIDF(items);
+
+    const semanticResults = semanticSearchEngine(items, term, { limit: items.length, minScore: 0, language, idf: idfWeights });
     const semanticMap = new Map(semanticResults.map(r => [r.id, r.semanticScore]));
 
     // Holographic search (third signal — graceful degradation)
@@ -111,10 +114,19 @@ module.exports = {
       const semScore = semanticMap.get(item.id) || 0;
       const holoScore = holoMap.get(item.id) || 0;
 
-      // Classical signal blend
+      // Token n-gram score — structural similarity at the token level
+      const docText = [
+        item.name || '',
+        item.description || '',
+        (item.tags || []).join(' '),
+        (item.code || '').slice(0, 500),
+      ].join(' ');
+      const ngramScore = tokenNgramScore(docText, term);
+
+      // Classical signal blend (with n-gram)
       const classicalScore = hasHolo
-        ? kwScore * 0.30 + semScore * 0.45 + holoScore * 0.25
-        : kwScore * 0.40 + semScore * 0.60;
+        ? kwScore * 0.25 + semScore * 0.40 + holoScore * 0.20 + ngramScore * 0.15
+        : kwScore * 0.30 + semScore * 0.50 + ngramScore * 0.20;
 
       // ─── Quantum Observation ───
       // Apply decoherence to amplitude before scoring
@@ -138,7 +150,7 @@ module.exports = {
       return {
         source: item.source, id: item.id, name: item.name, description: item.description,
         language: item.language, tags: item.tags, coherency: item.coherency, code: item.code,
-        matchScore, keywordScore: kwScore, semanticScore: semScore, holoScore,
+        matchScore, keywordScore: kwScore, semanticScore: semScore, holoScore, ngramScore,
         // Quantum state
         amplitude: rawAmplitude,
         decoheredAmplitude,

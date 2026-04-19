@@ -100,6 +100,27 @@ node -e "require('./src/orchestrator/coherency-generator')"
 
 ---
 
+## ENFORCEMENT: Search-Before-Write is a Blocking Gate
+
+**Commits are BLOCKED if you haven't searched the oracle in the last 10 minutes.**
+
+This is not a suggestion — it's enforced by the pre-commit hook. Any model or developer that tries to commit without searching first will be rejected. The oracle exists so you don't reinvent proven patterns.
+
+```bash
+# BEFORE writing any new code:
+node src/cli.js search "what you need"     # Search first — REQUIRED
+node src/cli.js resolve --description "..." # Get PULL/EVOLVE/GENERATE decision
+
+# Enforcement levels (configurable):
+node src/cli.js config search-enforcement block   # Commits blocked without search (DEFAULT)
+node src/cli.js config search-enforcement warn    # Warning only
+node src/cli.js config search-enforcement off     # No check
+node src/cli.js config feedback-enforcement block # Commits blocked with pending feedback
+node src/cli.js config feedback-enforcement warn  # Warning only (DEFAULT)
+```
+
+**MCP enforcement**: When connected via MCP, `oracle_submit` and `oracle_register` will include enforcement warnings if no search was done. All models see the same enforcement.
+
 ## Oracle Toggle — On/Off Control
 
 The oracle can be toggled on or off. When **off**, all ceremony (preflight checks, query-before-write, feedback loops, auto-submit hooks) is skipped. When **on**, all quality enforcement is active.

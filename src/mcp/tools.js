@@ -1,7 +1,7 @@
 /**
  * MCP Tool Definitions
  *
- * 12 focused tools (down from 55+).
+ * 15 focused tools (down from 55+).
  * Extracted from server.js for maintainability.
  */
 
@@ -212,7 +212,17 @@ const TOOLS = [
       required: ['action'],
     },
   },
-  // ─── 13. Fractal (fractal math engines + code alignment) ───
+  // ─── 13. Pending Feedback ───
+  {
+    name: 'oracle_pending_feedback',
+    description: 'List patterns that were pulled or evolved but have not yet received feedback. Helps close the feedback loop by showing what still needs a success/failure report.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  // ─── 14. Fractal (fractal math engines + code alignment) ───
   {
     name: 'oracle_fractal',
     description: 'Fractal system — 5 mathematical engines (Sierpinski, Mandelbrot, Barnsley, Julia, Lyapunov) and code alignment scoring. Actions: analyze (fractal alignment of code), engines (list engines), resonance (find best fractal for code), sierpinski/mandelbrot/julia/lyapunov (run engine directly).',
@@ -331,6 +341,21 @@ const TOOLS = [
         filter: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'], description: 'For dir scans: only return files in this risk bucket' },
       },
       required: [],
+    },
+  },
+
+  // ─── 15. Test Forge (auto-generate, run, score tests) ───
+  {
+    name: 'oracle_forge',
+    description: 'Test Forge — auto-generate, run, and score tests for oracle patterns. Actions: forge (generate tests for untested patterns), run (run all tests), score (score test quality), promote (full pipeline: generate + run + score + promote).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['forge', 'run', 'score', 'promote'], description: 'Forge action (default: forge)' },
+        id: { type: 'string', description: 'Pattern ID to generate test for (forge action only)' },
+        dryRun: { type: 'boolean', description: 'Preview without storing tests (default: false)' },
+        limit: { type: 'number', description: 'Max patterns to process' },
+      },
     },
   },
 ];

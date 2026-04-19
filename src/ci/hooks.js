@@ -101,25 +101,61 @@ if [ $FAILED -ne 0 ]; then
   exit 1
 fi
 
-# Query-before-write check (warning only, non-blocking)
+# Query-before-write and feedback enforcement (config-driven: block / warn / off)
 ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
   try {
     const path = require('path');
     const root = process.env.ORACLE_REPO_ROOT || process.cwd();
     const { wasSearchRecent, getPendingFeedback } = require(path.join(root, 'src/core/session-tracker'));
-    if (!wasSearchRecent(600000)) {
-      console.error('\\x1b[33m[oracle] Warning: No oracle search in the last 10 minutes.\\x1b[0m');
-      console.error('\\x1b[33m  Consider: oracle search [what you need] before writing new code.\\x1b[0m');
+    const { getSearchEnforcement, getFeedbackEnforcement, getSearchGracePeriod } = require(path.join(root, 'src/core/oracle-config'));
+    const searchLevel = getSearchEnforcement();
+    const feedbackLevel = getFeedbackEnforcement();
+    const gracePeriod = getSearchGracePeriod();
+    let shouldBlock = false;
+
+    // Search enforcement
+    if (searchLevel !== 'off' && !wasSearchRecent(gracePeriod)) {
+      const mins = Math.round(gracePeriod / 60000);
+      if (searchLevel === 'block') {
+        console.error('\\x1b[31m[oracle] BLOCKED: No oracle search in the last ' + mins + ' minutes.\\x1b[0m');
+        console.error('\\x1b[31m  You must search before writing: oracle search [what you need]\\x1b[0m');
+        console.error('\\x1b[31m  To downgrade to warning: oracle config search-enforcement warn\\x1b[0m');
+        shouldBlock = true;
+      } else {
+        console.error('\\x1b[33m[oracle] Warning: No oracle search in the last ' + mins + ' minutes.\\x1b[0m');
+        console.error('\\x1b[33m  Consider: oracle search [what you need] before writing new code.\\x1b[0m');
+      }
     }
-    const pending = getPendingFeedback();
-    if (pending.length > 0) {
-      console.error('\\x1b[33m[oracle] Warning: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
-      console.error('\\x1b[33m  Run: oracle pending-feedback\\x1b[0m');
+
+    // Feedback enforcement
+    if (feedbackLevel !== 'off') {
+      const pending = getPendingFeedback();
+      if (pending.length > 0) {
+        if (feedbackLevel === 'block') {
+          console.error('\\x1b[31m[oracle] BLOCKED: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
+          console.error('\\x1b[31m  Run: oracle feedback --id <id> --success  (for each pattern)\\x1b[0m');
+          console.error('\\x1b[31m  To downgrade to warning: oracle config feedback-enforcement warn\\x1b[0m');
+          shouldBlock = true;
+        } else {
+          console.error('\\x1b[33m[oracle] Warning: ' + pending.length + ' pattern(s) pulled without feedback.\\x1b[0m');
+          console.error('\\x1b[33m  Run: oracle pending-feedback\\x1b[0m');
+        }
+      }
     }
+
+    process.exit(shouldBlock ? 1 : 0);
   } catch(e) {
+    // If enforcement code fails, don't block — degrade gracefully
     console.error('[oracle:pre-commit] ' + (e.message || e));
+    process.exit(0);
   }
-" 2>&1 || true
+" 2>&1
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "Commit blocked by Remembrance Oracle enforcement."
+  echo "Search the oracle first, or use --no-verify to bypass."
+  exit 1
+fi
 
 # Session compliance gate. When ORACLE_WORKFLOW=enforce is set, commits
 # are blocked if any staged file was written without a preceding
@@ -363,6 +399,44 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
         } catch(_a) { /* per-file atomic is advisory */ }
       }
     } catch(_at) { /* atomic analyze is advisory */ }
+
+    // Auto-publish: publish high-coherency patterns to blockchain (opt-in)
+    try {
+      var _acfg = require(path.join(root, 'src/core/oracle-config'));
+      if (_acfg.getAutoPublish && _acfg.getAutoPublish()) {
+        var _bridge = require(path.join(root, 'src/blockchain/bridge'));
+        var _store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+        var _allPatterns = _store.getAll ? _store.getAll() : [];
+        var _eligible = [];
+        for (var _pi = 0; _pi < _allPatterns.length; _pi++) {
+          var _pat = _allPatterns[_pi];
+          var _coh = _pat.coherencyTotal || (_pat.coherencyScore && _pat.coherencyScore.total) || 0;
+          if (_coh >= 0.8 && _pat.testCode && _pat.testCode.trim() && !_pat.blockchain_tx) {
+            _eligible.push({ pat: _pat, coh: _coh });
+          }
+        }
+        if (_eligible.length > 0) {
+          Promise.all(_eligible.map(function(item) {
+            return _bridge.publishPattern({ coherencyScore: { total: item.coh }, testCode: item.pat.testCode, code: item.pat.code, name: item.pat.name, language: item.pat.language })
+              .then(function(res) { return { pat: item.pat, res: res }; })
+              .catch(function() { return null; });
+          })).then(function(results) {
+            var _pubCount = 0;
+            for (var _ri = 0; _ri < results.length; _ri++) {
+              if (results[_ri] && results[_ri].res && results[_ri].res.published && results[_ri].res.signature) {
+                try { _acfg.setBlockchainTx(results[_ri].pat.id, results[_ri].res.signature, _store); } catch(_tx) {}
+                _pubCount++;
+              }
+            }
+            if (_pubCount > 0) {
+              console.log('Oracle: Auto-published ' + _pubCount + ' pattern(s) to blockchain');
+            }
+          }).catch(function() {});
+        }
+      }
+    } catch(_ap) {
+      // Blockchain module not found or autoPublish off — skip silently
+    }
   } catch(e) {
     // Always emit to stderr so errors are never fully silent.
     console.error('[oracle:post-commit] ' + (e.message || e));

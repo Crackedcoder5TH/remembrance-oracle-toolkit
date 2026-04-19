@@ -1,0 +1,119 @@
+{
+  "name": "remembrance-ecosystem",
+  "version": "1.0.0",
+  "description": "The complete Remembrance pattern ecosystem — oracle, compression, reflection, blockchain, swarm, dialer, CLI, and design.",
+  "repos": {
+    "remembrance-oracle-toolkit": {
+      "role": "core",
+      "description": "Core pattern library, oracle engine, MCP server, and ecosystem hub",
+      "language": "javascript",
+      "port": 3000,
+      "services": [
+        "oracle",
+        "mcp",
+        "dashboard",
+        "api"
+      ]
+    },
+    "Void-Data-Compressor": {
+      "role": "data",
+      "description": "Substrate data compression, learned patterns, and data harvesting",
+      "language": "python",
+      "port": 5000,
+      "services": [
+        "compressor",
+        "api",
+        "crawler"
+      ]
+    },
+    "Reflector-oracle-": {
+      "role": "reflection",
+      "description": "Oracle reflection layer — pattern analysis and quality scoring",
+      "language": "javascript",
+      "port": 3001,
+      "services": [
+        "reflector",
+        "oracle-bridge"
+      ]
+    },
+    "REMEMBRANCE-BLOCKCHAIN": {
+      "role": "ledger",
+      "description": "Public verifiable coordination layer — covenant-filtered pattern hashes on Solana",
+      "language": "javascript",
+      "port": 3002,
+      "services": [
+        "ledger",
+        "covenant-gate",
+        "solana-bridge",
+        "publisher",
+        "milestone-tracker"
+      ],
+      "architecture": {
+        "layers": [
+          "sovereign-core",
+          "covenant-filter",
+          "local-ledger",
+          "solana-chain",
+          "weave-network"
+        ],
+        "publicationThreshold": {
+          "coherency": 0.8,
+          "covenantSealed": true,
+          "testProof": true
+        },
+        "solanaProgram": "memo (phase 1) → custom program (phase 2)",
+        "token": "RMB (phase 3, optional, fractal abundance rules)"
+      }
+    },
+    "REMEMBRANCE-AGENT-Swarm-": {
+      "role": "orchestration",
+      "description": "Multi-agent swarm orchestration, consensus, and task dispatch",
+      "language": "javascript",
+      "port": 3003,
+      "services": [
+        "swarm",
+        "mcp"
+      ]
+    },
+    "Remembrance-dialer": {
+      "role": "integration",
+      "description": "Universal integration hub with six dialer types",
+      "language": "javascript",
+      "port": 3004,
+      "services": [
+        "dialers",
+        "registry"
+      ]
+    },
+    "claw-code": {
+      "role": "cli",
+      "description": "CLI tool for interacting with the ecosystem",
+      "language": "rust",
+      "services": [
+        "cli"
+      ]
+    },
+    "awesome-design-md": {
+      "role": "design",
+      "description": "Design resources and documentation in Markdown",
+      "language": "markdown",
+      "services": [
+        "docs"
+      ]
+    }
+  },
+  "patternStats": {
+    "oraclePatterns": 440,
+    "learnedPatterns": 16735,
+    "substrateEntries": 22107,
+    "archiveEntries": 39103,
+    "reflectorPatterns": 255,
+    "toolkitPatterns": 71,
+    "seedPatterns": 10,
+    "totalDataPoints": 78721
+  },
+  "github": {
+    "org": "Crackedcoder5TH",
+    "branch": "claude/setup-remembrance-ecosystem-9quRc"
+  }
+}

@@ -2747,20 +2747,35 @@ ${c.bold('Environment:')}
       const dryRun = parseDryRun(args);
       const range = args.commit || args.range || 'HEAD~1..HEAD';
       const wholeFile = args['whole-file'] === 'true' || args['whole-file'] === true;
-      const result = autoRegister(oracle, process.cwd(), { range, dryRun, wholeFile });
+      const qualityThreshold = args['quality-threshold'] !== undefined
+        ? parseFloat(args['quality-threshold'])
+        : 0.4;
+      const result = autoRegister(oracle, process.cwd(), { range, dryRun, wholeFile, qualityThreshold });
 
       console.log(c.boldCyan('Auto-Register Report:'));
-      console.log(`  Files scanned: ${c.bold(String(result.files.length))}`);
-      console.log(`  Registered:    ${c.boldGreen(String(result.registered))}`);
-      console.log(`  Already exist: ${c.dim(String(result.alreadyExists))}`);
-      console.log(`  Skipped:       ${c.dim(String(result.skipped))}`);
-      console.log(`  Failed:        ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+      console.log(`  Files scanned:     ${c.bold(String(result.files.length))}`);
+      console.log(`  Discovered:        ${c.bold(String(result.discovered))}`);
+      console.log(`  Registered:        ${c.boldGreen(String(result.registered))}`);
+      console.log(`  Below threshold:   ${c.dim(String(result.belowThreshold))}`);
+      console.log(`  Already exist:     ${c.dim(String(result.alreadyExists))}`);
+      console.log(`  Skipped:           ${c.dim(String(result.skipped))}`);
+      console.log(`  Failed:            ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
 
       if (result.patterns.length > 0) {
         console.log(`\n${c.bold('Patterns:')}`);
         for (const p of result.patterns) {
-          const statusColor = p.status === 'registered' ? c.boldGreen : p.status === 'dry-run' ? c.yellow : c.dim;
-          console.log(`  ${statusColor(p.status.padEnd(10))} ${c.cyan(p.name)} ${c.dim(p.file)}`);
+          const scoreStr = p.score !== undefined ? ` (${p.score.toFixed(2)})` : '';
+          const reasonStr = p.reasons && p.reasons.length > 0 ? ` — ${p.reasons.join(', ')}` : '';
+          if (p.status === 'below-threshold') {
+            console.log(`  ${c.dim('~')} ${c.dim(p.name)}${c.dim(scoreStr)} ${c.dim('— skipped (below threshold)')}`);
+          } else if (p.status === 'registered') {
+            console.log(`  ${c.boldGreen('+')} ${c.cyan(p.name)}${c.bold(scoreStr)}${c.dim(reasonStr)}`);
+          } else if (p.status === 'dry-run') {
+            console.log(`  ${c.yellow('+')} ${c.cyan(p.name)}${c.bold(scoreStr)}${c.dim(reasonStr)} ${c.yellow('[dry-run]')}`);
+          } else {
+            const statusColor = c.dim;
+            console.log(`  ${statusColor('-')} ${statusColor(p.name)}${statusColor(scoreStr)} ${c.dim(p.file)}`);
+          }
         }
       }
     } catch (err) {
@@ -3206,6 +3221,121 @@ ${c.bold('Subcommands:')}
 
     console.error(c.boldRed('Error:') + ` Unknown registry subcommand: ${sub}. Run ${c.cyan('oracle registry help')} for usage.`);
     process.exit(1);
+  };
+
+  handlers['forge'] = (args) => {
+    try {
+      const { TestForge } = require('../../test-forge');
+      const forge = new TestForge(oracle);
+      const dryRun = parseDryRun(args);
+      const id = args.id;
+      const limit = args.limit ? parseInt(args.limit, 10) : undefined;
+
+      // forge --score — score all existing tests
+      if (args.score === true || args.score === 'true') {
+        const result = forge.scoreTests();
+        if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+        console.log(c.boldCyan(`Test Quality Scores — ${result.total} pattern(s)\n`));
+        console.log(`  Average score: ${colorScore(result.avgScore)}\n`);
+        for (const r of result.results.slice(0, 30)) {
+          const scoreBar = c.green('\u2588'.repeat(Math.round(r.score * 10)));
+          console.log(`  ${colorScore(r.score)} ${scoreBar} ${c.bold(r.name)}`);
+          if (r.suggestions.length > 0) {
+            console.log(`    ${c.dim(r.suggestions[0])}`);
+          }
+        }
+        if (result.results.length > 30) console.log(c.dim(`  ... and ${result.results.length - 30} more`));
+        return;
+      }
+
+      // forge --run — generate + run tests
+      if (args.run === true || args.run === 'true') {
+        const result = forge.runTests();
+        if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+        console.log(c.boldCyan(`Test Run Results — ${result.total} pattern(s)\n`));
+        console.log(`  Passed: ${c.boldGreen(String(result.passed))}  Failed: ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}\n`);
+        for (const r of result.results) {
+          const icon = r.passed ? c.green('\u2713') : c.red('\u2717');
+          console.log(`  ${icon} ${c.bold(r.name)} ${c.dim(`(${r.duration}ms)`)}`);
+          if (!r.passed && r.error) {
+            console.log(`    ${c.red(r.error.slice(0, 120))}`);
+          }
+        }
+        return;
+      }
+
+      // forge --promote — full pipeline
+      if (args.promote === true || args.promote === 'true') {
+        const result = forge.forgeAndPromote({ limit });
+        if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+        console.log(c.boldCyan(`Test Forge — Full Pipeline\n`));
+        console.log(`  Untested:   ${c.bold(String(result.total))}`);
+        console.log(`  Generated:  ${c.boldGreen(String(result.generated))}`);
+        console.log(`  Passed:     ${c.boldGreen(String(result.passed))}`);
+        console.log(`  Failed:     ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+        console.log(`  Promoted:   ${c.boldGreen(String(result.promoted))}`);
+        console.log(`  Avg score:  ${colorScore(result.avgScore)}`);
+        if (result.newlyEligible.length > 0) {
+          console.log(`\n${c.bold('  Newly publication-eligible:')}`);
+          for (const p of result.newlyEligible) {
+            console.log(`    ${c.green('\u2713')} ${c.bold(p.name)} (coherency: ${colorScore(p.coherency)})`);
+          }
+        }
+        return;
+      }
+
+      // forge --id <id> — single pattern
+      if (id) {
+        const result = forge.forgeTest(id, { dryRun });
+        if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+        if (result.success) {
+          console.log(`${c.boldGreen('Test generated')} for pattern ${c.cyan(id)}`);
+          console.log(`  Strategy:    ${c.bold(result.strategy)}`);
+          console.log(`  Assertions:  ${c.bold(String(result.assertions))}`);
+          console.log(`  Duration:    ${c.dim(result.duration + 'ms')}`);
+          if (dryRun) console.log(c.yellow('\n(dry run — test not stored)'));
+          if (args.verbose === true) {
+            console.log(`\n${c.dim('Generated test code:')}`);
+            console.log(result.testCode);
+          }
+        } else {
+          console.error(c.boldRed('Error:') + ' ' + result.error);
+          if (result.testCode && args.verbose === true) {
+            console.log(`\n${c.dim('Generated test code (failed):')}`);
+            console.log(result.testCode);
+          }
+        }
+        return;
+      }
+
+      // Default: forge — generate tests for all untested
+      const result = forge.forgeTests({ dryRun, limit });
+      if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+      console.log(c.boldCyan(`Test Forge — Generate Tests\n`));
+      console.log(`  Untested:   ${c.bold(String(result.total))}`);
+      console.log(`  Generated:  ${c.boldGreen(String(result.generated))}`);
+      console.log(`  Skipped:    ${c.dim(String(result.skipped))}`);
+      console.log(`  Failed:     ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
+
+      if (result.results.length > 0) {
+        console.log('');
+        for (const r of result.results.slice(0, 30)) {
+          if (r.status === 'generated' || r.status === 'dry-run') {
+            const tag = r.status === 'dry-run' ? c.yellow(' [dry-run]') : '';
+            console.log(`  ${c.green('\u2713')} ${c.bold(r.name)} — ${r.strategy} (${r.assertions} assertions, ${r.duration}ms)${tag}`);
+          } else if (r.status === 'failed' || r.status === 'error') {
+            console.log(`  ${c.red('\u2717')} ${c.bold(r.name)} — ${c.dim(r.reason || 'failed')}`);
+          } else {
+            console.log(`  ${c.dim('-')} ${c.dim(r.name)} — ${c.dim(r.reason || 'skipped')}`);
+          }
+        }
+        if (result.results.length > 30) console.log(c.dim(`  ... and ${result.results.length - 30} more`));
+      }
+
+      if (dryRun) console.log(c.yellow('\n(dry run — no tests stored)'));
+    } catch (err) {
+      console.error(c.boldRed('Error:') + ' Test forge error: ' + err.message);
+    }
   };
 }
 

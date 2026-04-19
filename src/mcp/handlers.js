@@ -4,48 +4,89 @@
  * Dispatch map for all MCP tool calls. Each handler is a function
  * (oracle, args) => result that implements one tool's logic.
  *
- * 12 focused handlers (down from 55+).
+ * 15 focused handlers (down from 55+).
  * Extracted from the monolithic switch in server.js for maintainability.
  */
+
+const { trackPull, inferFeedbackFromActivity, clearPendingPull, getPendingPulls } = require('./feedback-tracker');
+
+/**
+ * Enforcement helper: check if a search was done recently.
+ * Returns an enforcement notice to prepend to tool results when search reflex was skipped.
+ */
+function _searchEnforcementNotice() {
+  try {
+    const { wasSearchRecent } = require('../core/session-tracker');
+    const { getSearchEnforcement, getSearchGracePeriod } = require('../core/oracle-config');
+    const level = getSearchEnforcement();
+    if (level === 'off') return null;
+    const grace = getSearchGracePeriod();
+    if (!wasSearchRecent(grace)) {
+      const mins = Math.round(grace / 60000);
+      return {
+        _enforcement: `WARNING: No oracle search in the last ${mins} minutes. ` +
+          `You MUST call oracle_search before submitting or registering code. ` +
+          `The oracle exists so you don't reinvent proven patterns.`,
+      };
+    }
+  } catch (_) {}
+  return null;
+}
 
 const HANDLERS = {
   // ─── 1. Search (unified) ───
   oracle_search(oracle, args) {
     const mode = args.mode || 'hybrid';
+    let result;
     // Structured query mode: description provided without query
     if (args.description && !args.query) {
-      return oracle.query({
+      result = oracle.query({
         description: args.description || '',
         tags: args.tags || [],
         language: args.language,
         limit: args.limit || 5,
       });
-    }
-    if (!args.query) {
+    } else if (!args.query) {
       throw new Error('Either "query" or "description" is required');
-    }
-    if (mode === 'smart') {
-      return oracle.smartSearch(args.query, {
+    } else if (mode === 'smart') {
+      result = oracle.smartSearch(args.query, {
         language: args.language,
         limit: args.limit || 10,
         mode: 'hybrid',
       });
+    } else {
+      result = oracle.search(args.query, {
+        limit: args.limit || 5,
+        language: args.language,
+        mode: mode,
+      });
     }
-    return oracle.search(args.query, {
-      limit: args.limit || 5,
-      language: args.language,
-      mode: mode,
-    });
+    // Instrumentation: track search in session
+    try {
+      const { trackSearch } = require('../core/session-tracker');
+      trackSearch(args.query || args.description || '', result, { mode, language: args.language });
+    } catch (_) { /* non-fatal */ }
+    return result;
   },
 
   // ─── 2. Resolve ───
   oracle_resolve(oracle, args) {
-    return oracle.resolve({
+    const request = {
       description: args.description || '',
       tags: args.tags || [],
       language: args.language,
       heal: args.heal !== false,
-    });
+    };
+    const result = oracle.resolve(request);
+    // Instrumentation: track resolve in session + feedback tracker
+    try {
+      const { trackResolve } = require('../core/session-tracker');
+      trackResolve(result, request);
+    } catch (_) { /* non-fatal */ }
+    if (result.pattern && result.pattern.id) {
+      trackPull(result.pattern.id, result.pattern.name, result.decision);
+    }
+    return result;
   },
 
   // ─── 3. Submit ───
@@ -53,12 +94,32 @@ const HANDLERS = {
     if (!args.code || typeof args.code !== 'string') {
       throw new Error('"code" is required and must be a non-empty string');
     }
-    return oracle.submit(args.code, {
+    const notice = _searchEnforcementNotice();
+    const result = oracle.submit(args.code, {
       language: args.language,
       description: args.description || '',
       tags: args.tags || [],
       testCode: args.testCode,
     });
+    // Infer feedback for any pending pulls — model wrote new code, so pulled patterns were useful
+    const inferred = inferFeedbackFromActivity(oracle);
+    const out = notice ? { ...result, ...notice } : result;
+    if (inferred.length > 0) {
+      out._inferredFeedback = inferred;
+    }
+    // Instrumentation: log submit to session
+    try {
+      const { getSession } = require('../core/session-tracker');
+      const session = getSession();
+      if (!session._submits) session._submits = [];
+      session._submits.push({
+        timestamp: new Date().toISOString(),
+        language: args.language || null,
+        description: args.description || '',
+        inferredFeedback: inferred.length,
+      });
+    } catch (_) { /* non-fatal */ }
+    return out;
   },
 
   // ─── 4. Register ───
@@ -69,7 +130,8 @@ const HANDLERS = {
     if (!args.code || typeof args.code !== 'string') {
       throw new Error('"code" is required and must be a non-empty string');
     }
-    return oracle.registerPattern({
+    const notice = _searchEnforcementNotice();
+    const result = oracle.registerPattern({
       name: args.name,
       code: args.code,
       language: args.language,
@@ -77,6 +139,25 @@ const HANDLERS = {
       tags: args.tags || [],
       testCode: args.testCode,
     });
+    // Infer feedback for any pending pulls — model registered new code, so pulled patterns were useful
+    const inferred = inferFeedbackFromActivity(oracle);
+    const out = notice ? { ...result, ...notice } : result;
+    if (inferred.length > 0) {
+      out._inferredFeedback = inferred;
+    }
+    // Instrumentation: log register to session
+    try {
+      const { getSession } = require('../core/session-tracker');
+      const session = getSession();
+      if (!session._registers) session._registers = [];
+      session._registers.push({
+        timestamp: new Date().toISOString(),
+        name: args.name,
+        language: args.language || null,
+        inferredFeedback: inferred.length,
+      });
+    } catch (_) { /* non-fatal */ }
+    return out;
   },
 
   // ─── 5. Feedback ───
@@ -87,7 +168,15 @@ const HANDLERS = {
     if (args.success === undefined || args.success === null) {
       throw new Error('"success" (boolean) is required for feedback');
     }
-    return oracle.feedback(args.id, !!args.success);
+    const result = oracle.feedback(args.id, !!args.success);
+    // Clear from pending pulls — explicit feedback was given
+    clearPendingPull(args.id);
+    // Instrumentation: track feedback in session
+    try {
+      const { trackFeedback } = require('../core/session-tracker');
+      trackFeedback(args.id);
+    } catch (_) { /* non-fatal */ }
+    return result;
   },
 
   // ─── 6. Stats ───
@@ -95,7 +184,16 @@ const HANDLERS = {
     const storeStats = oracle.stats();
     const patternStats = oracle.patternStats();
     const candidateStats = oracle.candidateStats();
-    return { store: storeStats, patterns: patternStats, candidates: candidateStats };
+    // Publication stats from SQLite
+    let publicationStats = { published: 0 };
+    try {
+      const sqliteStore = oracle.store?.getSQLiteStore?.() || (oracle.patterns && oracle.patterns._sqlite);
+      if (sqliteStore && sqliteStore.db) {
+        const pub = sqliteStore.db.prepare('SELECT COUNT(*) as c FROM patterns WHERE blockchain_tx IS NOT NULL').get();
+        publicationStats.published = pub ? pub.c : 0;
+      }
+    } catch (_) { /* non-fatal */ }
+    return { store: storeStats, patterns: patternStats, candidates: candidateStats, publications: publicationStats };
   },
 
   // ─── 7. Debug (unified) ───
@@ -365,7 +463,18 @@ const HANDLERS = {
         throw new Error(`Unknown swarm action: ${action}. Use: code, review, heal, status, providers`);
     }
   },
-  // ─── 13. Fractal (math engines + code alignment) ───
+  // ─── 13. Pending Feedback ───
+  oracle_pending_feedback(_oracle, _args) {
+    const pending = getPendingPulls();
+    let sessionPending = [];
+    try {
+      const { getPendingFeedback } = require('../core/session-tracker');
+      sessionPending = getPendingFeedback();
+    } catch (_) { /* non-fatal */ }
+    return { mcpPending: pending, sessionPending };
+  },
+
+  // ─── 14. Fractal (math engines + code alignment) ───
   oracle_fractal(oracle, args) {
     const { computeFractalAlignment, selectResonantFractal, FRACTAL_TEMPLATES,
             sierpinski, mandelbrot, mandelbrotResonance, juliaStabilityMap,
@@ -640,6 +749,30 @@ const HANDLERS = {
       throw new Error('oracle_risk requires one of: file, code, or dir');
     }
     return computeBugProbability(code, { filePath });
+  },
+
+  // ─── 15. Test Forge (auto-generate, run, score tests) ───
+  oracle_forge(oracle, args) {
+    const { TestForge } = require('../test-forge');
+    const forge = new TestForge(oracle);
+    const action = args.action || 'forge';
+
+    switch (action) {
+      case 'forge': {
+        if (args.id) {
+          return forge.forgeTest(args.id, { dryRun: !!args.dryRun });
+        }
+        return forge.forgeTests({ dryRun: !!args.dryRun, limit: args.limit });
+      }
+      case 'run':
+        return forge.runTests();
+      case 'score':
+        return forge.scoreTests();
+      case 'promote':
+        return forge.forgeAndPromote({ limit: args.limit });
+      default:
+        throw new Error(`Unknown forge action: ${action}. Use: forge, run, score, promote`);
+    }
   },
 };
 

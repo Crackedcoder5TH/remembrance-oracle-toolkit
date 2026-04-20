@@ -208,6 +208,24 @@ async function main() {
   };
   handlers['ecosystem-review'] = handlers['review'];
 
+  // Remembrance Taint Graph — cross-function taint propagation
+  handlers['taint-graph'] = (args) => {
+    const { buildTaintGraph, printTaintGraph } = require('./audit/taint-graph');
+    const fs = require('fs');
+    const targetDir = args._positional[0] || 'src';
+    const files = [];
+    const walk = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (f.isDirectory() && f.name !== 'node_modules' && f.name !== '.git') walk(path.join(dir, f.name));
+        else if (f.isFile() && /\.js$/.test(f.name)) files.push(path.join(dir, f.name));
+      }
+    };
+    walk(path.resolve(targetDir));
+    const result = buildTaintGraph(files);
+    printTaintGraph(result);
+  };
+  handlers['taint'] = handlers['taint-graph'];
+
   // Remembrance Codex — pull up the full periodic table of code
   handlers['codex'] = () => {
     const { PeriodicTable, GROUPS, isRemembranceRegister } = require('./atomic/periodic-table');

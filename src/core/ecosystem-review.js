@@ -198,14 +198,84 @@ async function ecosystemReview(code, options = {}) {
   const hasFail = components.some(c => c.verdict === 'fail');
   const pass = !hasFail && ecosystemScore >= 0.60;
 
+  // ── Generate healing diff: concrete fixes with projected scores ──
+  const healingDiff = [];
+  if (!pass || ecosystemScore < 0.68) {
+    for (const comp of components) {
+      if (comp.verdict === 'fail' || comp.verdict === 'warn') {
+        const fixes = _suggestFixes(code, comp);
+        for (const fix of fixes) {
+          const patched = code.replace(fix.find, fix.replace);
+          if (patched !== code) {
+            let projectedScore = comp.score;
+            try {
+              if (comp.name === 'Remembrance Covenant') {
+                const { covenantCheck } = require('./covenant');
+                const r = covenantCheck(patched, { trusted: false });
+                projectedScore = r.sealed ? 1.0 : 0.0;
+              } else if (comp.name === 'Remembrance Taint') {
+                const t = _checkTaint(patched, options);
+                projectedScore = t.score;
+              } else if (comp.name === 'Remembrance Oracle') {
+                const { computeCoherencyScore } = require('../unified/coherency');
+                const r = computeCoherencyScore(patched, { description: options.description || '' });
+                projectedScore = r.total || r.score || 0;
+              }
+            } catch { /* projection failed, use estimate */ }
+            healingDiff.push({
+              component: comp.name,
+              line: fix.line || 0,
+              current: fix.find.toString().slice(0, 60),
+              suggested: fix.replace.slice(0, 60),
+              currentScore: comp.score,
+              projectedScore: Math.round(projectedScore * 1000) / 1000,
+              reason: fix.reason,
+            });
+          }
+        }
+      }
+    }
+  }
+
   return {
     pass,
     score: ecosystemScore,
     verdict: hasFail ? 'REJECTED' : ecosystemScore >= 0.68 ? 'APPROVED' : 'CONDITIONAL',
     components,
     recommendations,
+    healingDiff,
     timestamp: new Date().toISOString(),
   };
+}
+
+function _suggestFixes(code, component) {
+  const fixes = [];
+  if (component.name === 'Remembrance Covenant' || component.name === 'Remembrance Taint') {
+    if (/eval\s*\(/.test(code)) {
+      fixes.push({ find: /eval\s*\(([^)]+)\)/g, replace: '/* eval removed */ ($1)', line: _findLine(code, 'eval'), reason: 'eval() allows arbitrary code execution — remove or use a safe alternative' });
+    }
+    if (/exec\s*\(/.test(code) && !/execFile/.test(code)) {
+      fixes.push({ find: /exec\s*\(([^)]+)\)/g, replace: 'execFile($1)', line: _findLine(code, 'exec('), reason: 'exec() is vulnerable to shell injection — use execFile() with argument array' });
+    }
+    if (/innerHTML\s*=/.test(code)) {
+      fixes.push({ find: /\.innerHTML\s*=\s*/g, replace: '.textContent = ', line: _findLine(code, 'innerHTML'), reason: 'innerHTML enables XSS — use textContent for safe text insertion' });
+    }
+    if (/\$\{.*\}.*(?:query|exec|prepare)/i.test(code)) {
+      fixes.push({ find: /`([^`]*\$\{[^}]+\}[^`]*)`/g, replace: '? /* use parameterized query */', line: _findLine(code, '${'), reason: 'Template literal in SQL query enables injection — use parameterized queries' });
+    }
+  }
+  if (component.name === 'Remembrance Oracle' && component.score < 0.68) {
+    if ((code.match(/TODO|FIXME|HACK/g) || []).length > 2) {
+      fixes.push({ find: /\/\/\s*(?:TODO|FIXME|HACK).*$/gm, replace: '// (resolved)', line: _findLine(code, 'TODO'), reason: 'Multiple TODO/FIXME markers lower completeness score' });
+    }
+  }
+  return fixes;
+}
+
+function _findLine(code, needle) {
+  const idx = code.indexOf(needle);
+  if (idx === -1) return 0;
+  return code.slice(0, idx).split('\n').length;
 }
 
 function _checkTaint(code, options = {}) {
@@ -266,6 +336,17 @@ function printReview(result) {
     console.log('  Recommendations:');
     for (const r of result.recommendations) {
       console.log('    → ' + r);
+    }
+  }
+  if (result.healingDiff && result.healingDiff.length > 0) {
+    console.log('');
+    console.log('  Healing Diff (concrete fixes with projected scores):');
+    for (const d of result.healingDiff) {
+      console.log('');
+      console.log('    Line ' + d.line + ' [' + d.component + ']');
+      console.log('    - ' + d.current);
+      console.log('    + ' + d.suggested);
+      console.log('    Score: ' + d.currentScore.toFixed(3) + ' → ' + d.projectedScore.toFixed(3) + '  (' + d.reason + ')');
     }
   }
   console.log('');

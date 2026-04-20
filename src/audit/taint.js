@@ -389,10 +389,30 @@ function suggestionFor(rule) {
   }
 }
 
+function classifyFunctionTaint(code) {
+  if (typeof code !== 'string') return 'none';
+  const hasSource = TAINTED_CHAINS.some(chain =>
+    code.includes(chain.join('.')) || code.includes(chain[chain.length - 1]));
+  const paramSource = /function\s*\w*\s*\([^)]+\)|=>\s*\{/.test(code) &&
+    /(req|request|ctx|input|data|payload|body|params)\b/.test(code);
+  const hasSink = SINK_CHAINS.some(s => code.includes(s.chain[s.chain.length - 1] + '('));
+  const hasSanitizer = SANITIZERS.some(s => code.includes(s));
+
+  if (hasSource || paramSource) {
+    if (hasSink && !hasSanitizer) return 'source';
+    if (hasSink && hasSanitizer) return 'propagator';
+    return 'source';
+  }
+  if (hasSink) return 'sink';
+  return 'none';
+}
+
 module.exports = {
   computeTainted,
   findSinkCalls,
   readMemberChain,
+  classifyFunctionTaint,
+  TAINTED_CHAINS,
   SINK_CHAINS,
   SINK_METHODS,
   SANITIZERS,

@@ -54,6 +54,8 @@ const APPROVAL_THRESHOLDS = {
   AUTONOMOUS: 0.95,      // Remembrance Autonomous: full self-evolution
 };
 
+const AUTONOMOUS_VOTE_COUNT = 3; // N-vote consensus at autonomous tier
+
 const STORAGE_PATH = '.remembrance/self-improvement.json';
 
 // ── Improvement Proposal ────────────────────────────────────────────
@@ -133,8 +135,10 @@ class SelfImprovementEngine {
       const code = this._generateFromSpec(gap);
       if (!code) continue;
 
-      // 3. Validate through all gates
-      const validation = this._validateElement(code, gap);
+      // 3. Validate through all gates (N-vote at autonomous tier)
+      const validation = mode === 'autonomous'
+        ? this._validateWithConsensus(code, gap, AUTONOMOUS_VOTE_COUNT)
+        : this._validateElement(code, gap);
 
       // 4. Create proposal
       const proposal = new ImprovementProposal(gap, code, validation);
@@ -146,10 +150,23 @@ class SelfImprovementEngine {
         proposal.decidedBy = 'system';
         proposal.rejectionReason = validation.failedGates.join('; ');
       } else if (mode === 'autonomous' || mode === 'semi-autonomous') {
-        // Auto-incorporate — all gates passed and coherency is high enough
+        // Ecosystem review — all components vote before incorporation
+        try {
+          const { ecosystemReview } = require('../core/ecosystem-review');
+          const review = await ecosystemReview(code, { description: gap.description });
+          proposal.ecosystemReview = { score: review.score, verdict: review.verdict };
+          if (review.verdict === 'REJECTED') {
+            proposal.status = 'rejected';
+            proposal.decidedAt = new Date().toISOString();
+            proposal.decidedBy = 'ecosystem';
+            proposal.rejectionReason = 'Ecosystem review: ' + review.recommendations.join('; ');
+            continue;
+          }
+        } catch { /* ecosystem review advisory at this stage */ }
+        // Auto-incorporate — all gates passed and ecosystem approves
         proposal.status = 'auto-incorporated';
         proposal.decidedAt = new Date().toISOString();
-        proposal.decidedBy = 'system';
+        proposal.decidedBy = 'system+ecosystem';
         this._incorporate(proposal, table);
         autoIncorporated++;
       } else {
@@ -331,6 +348,27 @@ class SelfImprovementEngine {
     }
 
     return { passesAllGates, gates, failedGates };
+  }
+
+  _validateWithConsensus(code, gap, voteCount = AUTONOMOUS_VOTE_COUNT) {
+    const votes = [];
+    for (let i = 0; i < voteCount; i++) {
+      try {
+        const { getEmergentCoherency } = require('../unified/emergent-coherency');
+        getEmergentCoherency().reset();
+      } catch { /* reset not available */ }
+      votes.push(this._validateElement(code, gap));
+    }
+    const allPass = votes.every(v => v.passesAllGates);
+    const failedGates = [...new Set(votes.flatMap(v => v.failedGates))];
+    return {
+      passesAllGates: allPass,
+      gates: votes[0].gates,
+      failedGates,
+      votes: votes.length,
+      unanimousPass: allPass,
+      consensusPassed: allPass,
+    };
   }
 
   /**

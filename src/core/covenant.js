@@ -29,6 +29,7 @@
 const { COVENANT_PRINCIPLES, stripNonExecutableContent, stripComments } = require('./covenant-principles');
 const { HARM_PATTERNS } = require('./covenant-harm');
 const { DEEP_SECURITY_PATTERNS } = require('./covenant-deep-security');
+const { resolveIndirections } = require('../audit/ground');
 
 // ─── Custom principle registry reference (set by PluginManager integration) ───
 let _customPrincipleRegistry = null;
@@ -113,6 +114,25 @@ function covenantCheck(code, metadata = {}) {
         });
         violatedPrinciples.add(hp.principle);
       }
+    }
+  }
+
+  // ── AST-level indirection resolution ────────────────────────────
+  // Run on RAW code (before stripping) because stripping removes the
+  // string literals we need to analyze for obfuscated identifiers.
+  if (!isPatternDefinition && !isInfrastructure) {
+    const indirections = resolveIndirections(code);
+    for (const ind of indirections) {
+      violations.push({
+        principle: 'Indirection Detection',
+        name: 'Indirection Detection',
+        seal: 'Obfuscated calls are not permitted.',
+        reason: `Obfuscated call to ${ind.resolved} detected via string concatenation`,
+        severity: 'high',
+        line: ind.line,
+        original: ind.original,
+      });
+      violatedPrinciples.add('Indirection Detection');
     }
   }
 

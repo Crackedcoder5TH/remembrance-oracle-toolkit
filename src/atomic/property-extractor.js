@@ -75,6 +75,7 @@ function extractAtomicProperties(code, options = {}) {
     alignment: computeAlignment(code, tokens),
     intention: computeIntention(code, tokens),
     domain: computeDomain(code, tokens, options),
+    taint: computeTaint(code),
   };
 }
 
@@ -302,6 +303,13 @@ function computeIntention(code, tokens) {
   return 'neutral';
 }
 
+function computeTaint(code) {
+  try {
+    const { classifyFunctionTaint } = require('../audit/taint');
+    return classifyFunctionTaint(code);
+  } catch { return 'none'; }
+}
+
 function computeDomain(code, tokens, options = {}) {
   if (options.domain) return options.domain;
   if (options.filePath) {
@@ -340,7 +348,7 @@ function defaultProperties() {
     phase: 'gas', reactivity: 'inert', electronegativity: 0,
     group: 11, period: 1,
     harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
-    domain: 'core',
+    domain: 'core', taint: 'none',
   };
 }
 

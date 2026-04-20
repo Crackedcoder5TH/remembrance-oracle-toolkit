@@ -343,11 +343,214 @@ function extractAllIdentifiers(source) {
   return all;
 }
 
+// ─── Indirection Resolution ─────────────────────────────────────────────────
+//
+// Detect obfuscated identifiers produced by string concatenation, template
+// literals with constant-only parts, computed property access, and variable
+// aliasing. Returns an array of { resolved, original, line } entries for
+// every indirection that resolves to a known harmful identifier.
+
+const HARMFUL_IDENTIFIERS = new Set([
+  'eval', 'exec', 'execSync', 'child_process', 'Function', 'spawn', 'fork',
+]);
+
+/**
+ * Try to resolve a string-literal token to its unquoted value.
+ * Returns null if the token is not a string literal.
+ */
+function unquoteString(tok) {
+  if (!tok || tok.type !== 'string') return null;
+  const v = tok.value;
+  if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
+    return v.slice(1, -1);
+  }
+  return null;
+}
+
+/**
+ * Resolve a run of string concatenation tokens starting at index `start`.
+ * Handles patterns like: 'ev' + 'al', 'child' + '_process'
+ *
+ * Returns { resolved, endIndex } or null if not a pure-string concatenation.
+ */
+function resolveStringConcat(tokens, start) {
+  const first = unquoteString(tokens[start]);
+  if (first === null) return null;
+
+  let result = first;
+  let j = start + 1;
+
+  while (j < tokens.length) {
+    // Expect a '+' operator
+    if (tokens[j].type !== 'operator' || tokens[j].value !== '+') break;
+    // Expect another string literal
+    const next = unquoteString(tokens[j + 1]);
+    if (next === null) break;
+    result += next;
+    j += 2;
+  }
+
+  // Only report if we actually concatenated (consumed at least one '+')
+  if (j === start + 1) return null;
+  return { resolved: result, endIndex: j - 1 };
+}
+
+/**
+ * Resolve a template literal with only constant parts (no dynamic
+ * expressions, or all expressions are string literals).
+ *
+ * The tokenizer produces template tokens with a `parts` array where each
+ * part is either { type: 'str', value } or { type: 'expr', value }.
+ * For expression parts we check if the expression is a bare string literal.
+ */
+function resolveTemplateLiteral(tok) {
+  if (!tok || tok.type !== 'template') return null;
+  const parts = tok.value?.parts;
+  if (!parts || !Array.isArray(parts)) return null;
+
+  let resolved = '';
+  for (const part of parts) {
+    if (part.type === 'str') {
+      resolved += part.value;
+    } else if (part.type === 'expr') {
+      // Check if the expression is a bare string literal like 'ev'
+      const trimmed = part.value.trim();
+      if ((trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+          (trimmed.startsWith('"') && trimmed.endsWith('"'))) {
+        resolved += trimmed.slice(1, -1);
+      } else {
+        // Dynamic expression — cannot resolve statically
+        return null;
+      }
+    }
+  }
+
+  // Only report if there was interpolation (otherwise it's just a plain string)
+  const hasInterp = tok.value?.hasInterp;
+  if (!hasInterp) return null;
+
+  return resolved;
+}
+
+/**
+ * Resolve indirections in source code.
+ *
+ * Tokenizes the source and walks the token stream looking for:
+ *   1. String concatenation: 'ev' + 'al' -> 'eval'
+ *   2. Template literals with constant parts: `${'ev'}${'al'}` -> 'eval'
+ *   3. Computed property access: obj['ev' + 'al'] -> obj.eval
+ *   4. Variable assignment from concatenation: const x = 'ev' + 'al'; x(...) -> flags x as alias
+ *
+ * @param {string} code — raw source code (before stripping)
+ * @returns {Array<{ resolved: string, original: string, line: number }>}
+ */
+function resolveIndirections(code) {
+  let tokens;
+  try { tokens = tokenize(code); }
+  catch { return []; }
+
+  // Filter out comments for analysis
+  const toks = tokens.filter(t => t.type !== 'comment');
+  const results = [];
+  const seen = new Set(); // Deduplicate by "resolved:line"
+
+  function addResult(resolved, original, line) {
+    const key = `${resolved}:${line}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push({ resolved, original, line });
+  }
+
+  // Track variable assignments from concatenation: const x = 'ev' + 'al'
+  // Maps variable name -> resolved string value
+  const aliasMap = new Map();
+
+  for (let i = 0; i < toks.length; i++) {
+    const t = toks[i];
+
+    // ── Pattern 1 & 4: String concatenation (standalone or in assignment) ──
+    if (t.type === 'string' && toks[i + 1]?.value === '+') {
+      const concat = resolveStringConcat(toks, i);
+      if (concat && HARMFUL_IDENTIFIERS.has(concat.resolved)) {
+        // Reconstruct original expression
+        const originalParts = [];
+        for (let k = i; k <= concat.endIndex; k++) {
+          if (toks[k].type === 'string' || toks[k].value === '+') {
+            originalParts.push(toks[k].type === 'string' ? toks[k].value : '+');
+          }
+        }
+        const original = originalParts.join(' ');
+        addResult(concat.resolved, original, t.line);
+      }
+
+      // Check if this concatenation is a variable assignment: const/let/var NAME = 'ev' + 'al'
+      if (concat && i >= 2 &&
+          toks[i - 1]?.value === '=' &&
+          toks[i - 2]?.type === 'identifier') {
+        // Verify there's a const/let/var before the identifier
+        if (i >= 3 && (toks[i - 3]?.value === 'const' || toks[i - 3]?.value === 'let' || toks[i - 3]?.value === 'var')) {
+          aliasMap.set(toks[i - 2].value, concat.resolved);
+        }
+      }
+
+      // Check if this is inside a require() call: require('child' + '_process')
+      if (concat && i >= 2 &&
+          toks[i - 1]?.value === '(' &&
+          toks[i - 2]?.type === 'identifier' && toks[i - 2]?.value === 'require') {
+        if (HARMFUL_IDENTIFIERS.has(concat.resolved)) {
+          const original = `require(${toks.slice(i, concat.endIndex + 1).map(tt => tt.type === 'string' ? tt.value : tt.value).join(' ')})`;
+          addResult(concat.resolved, original, toks[i - 2].line);
+        }
+      }
+
+      // Check if this is inside computed property access: obj['ev' + 'al']
+      if (concat && i >= 1 && toks[i - 1]?.value === '[') {
+        if (HARMFUL_IDENTIFIERS.has(concat.resolved)) {
+          const originalParts = [];
+          for (let k = i; k <= concat.endIndex; k++) {
+            if (toks[k].type === 'string' || toks[k].value === '+') {
+              originalParts.push(toks[k].type === 'string' ? toks[k].value : '+');
+            }
+          }
+          const original = `[${originalParts.join(' ')}]`;
+          addResult(concat.resolved, original, t.line);
+        }
+      }
+    }
+
+    // ── Pattern 2: Template literals with constant parts ──
+    if (t.type === 'template') {
+      const resolved = resolveTemplateLiteral(t);
+      if (resolved && HARMFUL_IDENTIFIERS.has(resolved)) {
+        addResult(resolved, t.value.raw || String(t.value), t.line);
+      }
+    }
+
+    // ── Pattern 4 (usage): Variable alias used in call or property access ──
+    if (t.type === 'identifier' && aliasMap.has(t.value)) {
+      const resolved = aliasMap.get(t.value);
+      if (HARMFUL_IDENTIFIERS.has(resolved)) {
+        // Check if it's used in a call position: x(...) or obj[x]
+        const next = toks[i + 1];
+        const prev = toks[i - 1];
+        if ((next && next.value === '(') ||  // direct call: x(...)
+            (prev && prev.value === '[') ||   // computed access: obj[x]
+            (next && next.value === ']')) {    // also computed access
+          addResult(resolved, `${t.value} (alias)`, t.line);
+        }
+      }
+    }
+  }
+
+  return results;
+}
+
 module.exports = {
   groundFile,
   extractAllIdentifiers,
   extractDefinedIdentifiers,
   extractCalledIdentifiers,
+  resolveIndirections,
   BUILTINS,
 };
 
@@ -375,4 +578,10 @@ extractCalledIdentifiers.atomicProperties = {
   reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
   domain: 'quality',
+};
+resolveIndirections.atomicProperties = {
+  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'reactive', electronegativity: 1, group: 8, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'benevolent',
+  domain: 'security',
 };

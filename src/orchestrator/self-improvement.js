@@ -113,6 +113,9 @@ class SelfImprovementEngine {
 
     if (!table) throw new Error('PeriodicTable instance required');
 
+    // 0. Purge stale proposals whose gaps are now filled
+    this._purgeStale(table);
+
     // 1. Discover gaps
     let gaps;
     try {
@@ -369,6 +372,25 @@ class SelfImprovementEngine {
       unanimousPass: allPass,
       consensusPassed: allPass,
     };
+  }
+
+  _purgeStale(table) {
+    const { encodeSignature } = require('../atomic/periodic-table');
+    const filled12D = new Set();
+    for (const el of table.elements) {
+      const p = { ...el.properties };
+      delete p.domain; delete p.taint;
+      filled12D.add(encodeSignature(p));
+    }
+    const before = this._proposals.length;
+    this._proposals = this._proposals.filter(p => {
+      if (p.status !== 'pending') return true;
+      if (!p.gap?.properties) return false;
+      const props = { ...p.gap.properties };
+      delete props.domain; delete props.taint;
+      return !filled12D.has(encodeSignature(props));
+    });
+    if (this._proposals.length < before) this._save();
   }
 
   /**

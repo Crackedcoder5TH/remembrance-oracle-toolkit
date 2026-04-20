@@ -2469,6 +2469,32 @@ ${c.bold('Environment:')}
           console.log(`    ${c.red('✗')} ${v.check}: ${v.message}`);
         }
       }
+
+      // ── Auto-gather patterns + share with void substrate ─────────
+      try {
+        const { VoidBridge } = require('../../compression/void-bridge');
+        const bridge = new VoidBridge(repoRoot);
+        if (bridge.connected) {
+          const result = bridge.exportToSubstrate();
+          if (result.exported > 0) {
+            console.log('');
+            console.log(c.boldGreen('Patterns shared with Void substrate:'));
+            console.log(`  ${c.green('+' + result.exported)} new patterns merged (${result.total} total in substrate)`);
+          }
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.error('[session-end:void-share]', e.message);
+      }
+
+      // ── Auto-harvest + auto-submit to capture anything missed ────
+      try {
+        const { execSync } = require('child_process');
+        execSync('node ' + path.join(repoRoot, 'src/cli.js') + ' auto-submit', {
+          cwd: repoRoot, timeout: 30000, stdio: 'pipe',
+        });
+        console.log(c.dim('  Auto-submit pipeline ran (harvest + promote + sync)'));
+      } catch { /* best-effort */ }
+
       return;
     }
 

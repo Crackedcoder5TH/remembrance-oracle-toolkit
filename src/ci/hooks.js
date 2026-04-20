@@ -279,6 +279,59 @@ STAGED_FILES="$STAGED" ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
     if (process.env.ORACLE_DEBUG) console.error('[oracle:pre-commit-audit] ' + (e.message || e));
   }
 " 2>&1 || true
+
+# ── SERF enforcement (Layers 5-6): grounding + geometric mean ────
+# Fires when ORACLE_SERF_GATE=1 or ORACLE_CI_STRICT=1
+# Runs the full emergent coherency pipeline on each staged file.
+if [ "$ORACLE_SERF_GATE" = "1" ] || [ "$ORACLE_CI_STRICT" = "1" ]; then
+  STAGED_FILES="$STAGED" ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
+    try {
+      const path = require('path');
+      const fs = require('fs');
+      const root = process.env.ORACLE_REPO_ROOT || process.cwd();
+      const { computeCoherencyScore } = require(path.join(root, 'src/unified/coherency'));
+      const { groundFile } = require(path.join(root, 'src/audit/ground'));
+      const { getEmergentCoherency } = require(path.join(root, 'src/unified/emergent-coherency'));
+
+      const files = (process.env.STAGED_FILES || '').split(' ').filter(Boolean);
+      const MIN_SERF = 0.50;
+      let belowGate = 0;
+
+      for (const f of files) {
+        if (!/\\.(js|ts|mjs|cjs)$/.test(f)) continue;
+        const fullPath = path.resolve(root, f);
+        if (!fs.existsSync(fullPath)) continue;
+
+        const code = fs.readFileSync(fullPath, 'utf-8');
+        const ec = getEmergentCoherency();
+        ec.reset();
+
+        // Layer 5: Grounding
+        try { groundFile(fullPath, new Set()); } catch {}
+
+        // Layer 6: Full coherency triggers SERF signals
+        computeCoherencyScore(code, { language: f.split('.').pop() });
+
+        const serfScore = ec.total || 0;
+        if (serfScore > 0 && serfScore < MIN_SERF) {
+          console.error('\\x1b[33m[oracle:SERF] ' + f + ': ' + serfScore.toFixed(3) + ' (min: ' + MIN_SERF + ')\\x1b[0m');
+          belowGate++;
+        }
+      }
+
+      if (belowGate > 0) {
+        console.error('\\x1b[31m[oracle] SERF gate: ' + belowGate + ' file(s) below threshold.\\x1b[0m');
+        process.exit(1);
+      }
+    } catch(e) {
+      if (process.env.ORACLE_DEBUG) console.error('[oracle:pre-commit-serf] ' + (e.message || e));
+    }
+  " 2>&1
+  SERF_EXIT=$?
+  if [ $SERF_EXIT -ne 0 ]; then
+    exit $SERF_EXIT
+  fi
+fi
 `;
 }
 
@@ -399,6 +452,42 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
         } catch(_a) { /* per-file atomic is advisory */ }
       }
     } catch(_at) { /* atomic analyze is advisory */ }
+
+    // ── Ecosystem Review on changed files ────────────────────────
+    // Every implementation gets input from ALL system components.
+    // Advisory — prints verdict but doesn't block.
+    try {
+      const { ecosystemReview } = require(path.join(root, 'src/core/ecosystem-review'));
+      const _ecoFiles = (changed || []).filter(f => fs.existsSync(f));
+      if (_ecoFiles.length > 0 && _ecoFiles.length <= 10) {
+        let _ecoFails = 0;
+        for (const f of _ecoFiles) {
+          const code = fs.readFileSync(f, 'utf-8');
+          ecosystemReview(code, { filePath: f }).then(result => {
+            if (result.verdict === 'REJECTED') {
+              console.log('\\x1b[33m[ecosystem] ' + f + ': ' + result.verdict + ' (score: ' + result.score + ')\\x1b[0m');
+              for (const r of result.recommendations.slice(0, 2)) console.log('  → ' + r);
+              _ecoFails++;
+            } else if (result.verdict === 'CONDITIONAL') {
+              console.log('[ecosystem] ' + f + ': ' + result.verdict + ' (score: ' + result.score + ')');
+            }
+          }).catch(function() {});
+        }
+      }
+    } catch(_eco) { /* ecosystem review is advisory, never blocks */ }
+
+    // ── Auto-share patterns with Void substrate ──────────────────
+    // Every commit feeds the void. Advisory, never blocks.
+    try {
+      const { VoidBridge } = require(path.join(root, 'src/compression/void-bridge'));
+      const bridge = new VoidBridge(root);
+      if (bridge.connected) {
+        const result = bridge.exportToSubstrate();
+        if (result.exported > 0) {
+          console.log('Oracle → Void: ' + result.exported + ' new patterns shared (' + result.total + ' total)');
+        }
+      }
+    } catch(_vb) { /* void share is advisory */ }
 
     // Auto-publish: publish high-coherency patterns to blockchain (opt-in)
     try {

@@ -476,6 +476,19 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
       }
     } catch(_eco) { /* ecosystem review is advisory, never blocks */ }
 
+    // ── Auto-share patterns with Void substrate ──────────────────
+    // Every commit feeds the void. Advisory, never blocks.
+    try {
+      const { VoidBridge } = require(path.join(root, 'src/compression/void-bridge'));
+      const bridge = new VoidBridge(root);
+      if (bridge.connected) {
+        const result = bridge.exportToSubstrate();
+        if (result.exported > 0) {
+          console.log('Oracle → Void: ' + result.exported + ' new patterns shared (' + result.total + ' total)');
+        }
+      }
+    } catch(_vb) { /* void share is advisory */ }
+
     // Auto-publish: publish high-coherency patterns to blockchain (opt-in)
     try {
       var _acfg = require(path.join(root, 'src/core/oracle-config'));

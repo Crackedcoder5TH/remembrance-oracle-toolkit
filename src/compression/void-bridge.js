@@ -337,23 +337,42 @@ class VoidBridge {
       });
     }
 
-    // Write to substrate directory
+    // Write to substrate directory — MERGE with existing patterns
     if (substratePatterns.length > 0) {
+      const outputPath = path.join(this.substratePath, 'oracle_patterns.json');
+      let existing = { patterns: [] };
+      try {
+        if (fs.existsSync(outputPath)) {
+          existing = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
+        }
+      } catch { /* start fresh if corrupt */ }
+      const existingNames = new Set((existing.patterns || []).map(p => p.name));
+      let added = 0;
+      for (const p of substratePatterns) {
+        if (!existingNames.has(p.name)) {
+          existing.patterns.push(p);
+          added++;
+        }
+      }
       const output = {
         exported: new Date().toISOString(),
         source: 'oracle_abundance_export',
-        count: substratePatterns.length,
-        patterns: substratePatterns,
+        count: existing.patterns.length,
+        patterns: existing.patterns,
       };
-
-      const outputPath = path.join(this.substratePath, 'oracle_patterns.json');
       fs.writeFileSync(outputPath, JSON.stringify(output));
+      return {
+        exported: added,
+        total: existing.patterns.length,
+        message: `Merged ${added} new patterns into substrate (${existing.patterns.length} total)`,
+        abundanceFlow: 'oracle → substrate (both benefit)',
+      };
     }
 
     return {
-      exported: substratePatterns.length,
-      message: `Exported ${substratePatterns.length} oracle patterns to substrate`,
-      abundanceFlow: 'oracle → substrate (both benefit)',
+      exported: 0,
+      message: 'No patterns to export',
+      abundanceFlow: 'oracle → substrate',
     };
   }
 

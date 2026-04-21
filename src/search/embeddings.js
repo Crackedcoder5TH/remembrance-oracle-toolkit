@@ -311,14 +311,90 @@ function identifyConcepts(text) {
  * @param {string} document
  * @param {object} [opts] — { idf: Map<string,number> } optional IDF weights
  */
+// Pre-resolve vectors module once at load time
+let _vectorSimilarity = null;
+try { _vectorSimilarity = require('./vectors').vectorSimilarity; } catch {}
+
+function _fastSimilarity(queryData, docFeatures, idf) {
+  // Concept overlap (pre-computed sets)
+  let conceptScore = 0;
+  const matchedConcepts = [];
+  if (queryData.conceptIds.size > 0) {
+    const intersection = [...queryData.conceptIds].filter(id => docFeatures.conceptIds.has(id));
+    const union = new Set([...queryData.conceptIds, ...docFeatures.conceptIds]);
+    conceptScore = union.size > 0 ? intersection.length / union.size : 0;
+    for (const id of intersection) {
+      const qScore = queryData.concepts.find(c => c.id === id)?.score || 0;
+      const dScore = docFeatures.concepts.find(c => c.id === id)?.score || 0;
+      conceptScore += Math.min(qScore, dScore) * 0.5;
+      matchedConcepts.push(id);
+    }
+    conceptScore = Math.min(1, conceptScore);
+  }
+  // Keyword matching (pre-computed word set)
+  let keywordScore = 0;
+  const expandedQuery = queryData.expanded;
+  if (expandedQuery.length > 0) {
+    if (idf && idf.size > 0) {
+      let idfHitSum = 0, idfTotalSum = 0;
+      for (const term of expandedQuery) {
+        const w = idf.get(term) || 1;
+        idfTotalSum += w;
+        if (docFeatures.words.has(term) || docFeatures.text.includes(term)) idfHitSum += w;
+      }
+      keywordScore = idfTotalSum > 0 ? Math.min(1, idfHitSum / idfTotalSum) : 0;
+    } else {
+      let hits = 0;
+      for (const term of expandedQuery) {
+        if (docFeatures.words.has(term) || docFeatures.text.includes(term)) hits++;
+      }
+      keywordScore = Math.min(1, hits / expandedQuery.length);
+    }
+  }
+  // N-gram similarity (pre-computed ngrams)
+  const ngramScore = cosineSim(queryData.ngrams, docFeatures.ngrams);
+  // Vector similarity
+  let vectorScore = 0;
+  try { if (_vectorSimilarity) vectorScore = _vectorSimilarity(queryData.concepts[0]?.id || '', docFeatures.text.slice(0, 200)); } catch {}
+  const similarity = conceptScore * 0.4 + keywordScore * 0.3 + ngramScore * 0.2 + vectorScore * 0.1;
+  return { similarity: Math.min(1, similarity), matchedConcepts };
+}
+
+function _fastNameSimilarity(queryData, docFeatures) {
+  if (!docFeatures.nameText) return 0;
+  let conceptScore = 0;
+  if (queryData.conceptIds.size > 0 && docFeatures.nameConceptIds.size > 0) {
+    const intersection = [...queryData.conceptIds].filter(id => docFeatures.nameConceptIds.has(id));
+    const union = new Set([...queryData.conceptIds, ...docFeatures.nameConceptIds]);
+    conceptScore = union.size > 0 ? intersection.length / union.size : 0;
+  }
+  const ngramScore = cosineSim(queryData.ngrams, docFeatures.nameNgrams);
+  return conceptScore * 0.6 + ngramScore * 0.4;
+}
+
+// Per-query cache: avoid recomputing query concepts/ngrams for every document
+let _lastQueryKey = null;
+let _lastQueryData = null;
+
 function semanticSimilarity(query, document, opts = {}) {
   const queryLower = query.toLowerCase();
   const docLower = document.toLowerCase();
 
+  // Cache query-side computation (same query, many documents)
+  if (_lastQueryKey !== queryLower) {
+    _lastQueryData = {
+      concepts: identifyConcepts(queryLower),
+      expanded: expandQuery(query),
+      ngrams: charNgrams(queryLower, 2),
+    };
+    _lastQueryData.conceptIds = new Set(_lastQueryData.concepts.map(c => c.id));
+    _lastQueryKey = queryLower;
+  }
+  const queryConcepts = _lastQueryData.concepts;
+  const queryConceptIds = _lastQueryData.conceptIds;
+
   // 1. Concept overlap
-  const queryConcepts = identifyConcepts(queryLower);
   const docConcepts = identifyConcepts(docLower);
-  const queryConceptIds = new Set(queryConcepts.map(c => c.id));
   const docConceptIds = new Set(docConcepts.map(c => c.id));
 
   let conceptScore = 0;
@@ -337,7 +413,7 @@ function semanticSimilarity(query, document, opts = {}) {
   }
 
   // 2. Expanded keyword matching (IDF-weighted when available)
-  const expandedQuery = expandQuery(query);
+  const expandedQuery = _lastQueryData.expanded;
   const docWords = docLower.split(/[^a-z0-9]+/).filter(w => w.length > 1);
   const docWordSet = new Set(docWords);
   const idf = opts && opts.idf;
@@ -369,18 +445,16 @@ function semanticSimilarity(query, document, opts = {}) {
   }
 
   // 3. N-gram structural similarity (use shorter n=2 for better cross-naming match)
-  const queryGrams = charNgrams(queryLower, 2);
+  const queryGrams = _lastQueryData.ngrams;
   const docGrams = charNgrams(docLower, 2);
   const ngramScore = cosineSim(queryGrams, docGrams);
 
   // 4. Word vector similarity
   let vectorScore = 0;
   try {
-    const { vectorSimilarity } = require('./vectors');
-    vectorScore = vectorSimilarity(queryLower, docLower);
+    if (_vectorSimilarity) vectorScore = _vectorSimilarity(queryLower, docLower);
   } catch (e) {
     if (process.env.ORACLE_DEBUG) console.warn('[embeddings:semanticSimilarity] silent failure:', e?.message || e);
-    // vectors module not available — skip
   }
 
   // Weighted combination (4 signals)
@@ -442,27 +516,38 @@ function semanticSearch(items, query, options = {}) {
     _querySimilarityCache.set(queryCacheKey, cachedQueryData);
   }
 
+  // Pre-compute document features once (heavy) then reuse across queries
+  for (const item of filtered) {
+    if (!item._docFeatures) {
+      const docText = [
+        item.name || '', item.description || '', (item.tags || []).join(' '),
+        (item.code || '').slice(0, 500),  // cap code to 500 chars — name/desc/tags carry identity
+      ].join(' ').toLowerCase();
+      const nameText = (item.name || '').toLowerCase();
+      item._docFeatures = {
+        text: docText,
+        concepts: identifyConcepts(docText),
+        words: new Set(docText.split(/[^a-z0-9]+/).filter(w => w.length > 1)),
+        ngrams: charNgrams(docText, 2),
+        nameText,
+        nameConcepts: identifyConcepts(nameText),
+        nameNgrams: charNgrams(nameText, 2),
+      };
+      item._docFeatures.conceptIds = new Set(item._docFeatures.concepts.map(c => c.id));
+      item._docFeatures.nameConceptIds = new Set(item._docFeatures.nameConcepts.map(c => c.id));
+    }
+  }
+
   const results = filtered.map(item => {
-    // Build a rich text representation for matching
-    const docText = [
-      item.name || '',
-      item.description || '',
-      (item.tags || []).join(' '),
-      item.code || '',
-    ].join(' ');
-
-    const sim = semanticSimilarity(query, docText, { idf });
-
-    // Name match bonus — if query concepts appear in the name, it's very likely relevant
-    const nameText = (item.name || '').toLowerCase();
-    const nameSim = semanticSimilarity(query, nameText, { idf });
-    const nameBonus = nameSim.similarity > 0.1 ? nameSim.similarity * 0.3 : 0;
+    const df = item._docFeatures;
+    const sim = _fastSimilarity(cachedQueryData, df, idf);
+    const nameSim = _fastNameSimilarity(cachedQueryData, df);
+    const nameBonus = nameSim > 0.1 ? nameSim * 0.3 : 0;
 
     return {
       ...item,
       semanticScore: Math.min(1, sim.similarity + nameBonus),
       matchedConcepts: sim.matchedConcepts,
-      _debug: { ...sim, nameBonus },
     };
   })
   .filter(r => r.semanticScore >= minScore)

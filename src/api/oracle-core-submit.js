@@ -149,6 +149,8 @@ module.exports = {
       coherencyScore: validation.coherencyScore, testPassed: validation.testPassed, testOutput: validation.testOutput,
     });
 
+    // Invalidate search cache so new pattern is immediately findable
+    this._searchCache = null;
     this._emit({ type: 'pattern_registered', id: registered.id, name: pattern.name, language: registered.language });
 
     // Record in temporal memory

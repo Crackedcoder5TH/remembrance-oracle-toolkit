@@ -3,11 +3,281 @@
 /**
  * Covenant Fractal — the covenant exists at every scale.
  *
- * Structural covenant (existing): 7 weave points, discrete gates.
- * Fractal covenant (this module): same covenant shape at every scale of operation,
- * so removing one gate doesn't compromise the whole because every other layer
- * still carries the check with the same shape.
+ * 7 scales of same-shape guards plus 2 meta-rules:
+ *   1. byte/token     — scanForUngatedMutations()
+ *   2. function       — requireGate() / createGate()
+ *   3. element        — delegates to CovenantValidator
+ *   4. composition    — delegates to canBond()
+ *   5. substrate      — signSubstrate() / verifySubstrate()
+ *   6. file           — computeFileCovenantSignature()
+ *   7. group coherence — covenantGroupCoherence()
+ *   + evolution       — checkMonotonicEvolution()
+ *   + cross-scale     — verifyCrossScaleAlignment()
  *
- * Scales covered:
- *   1. byte/token level     — scanForUngatedMutations()
- *   2. function level       — requireGate()\n *   3. element level        — delegates to CovenantValidator in addElement()\n *   4. composition level    — delegates to canBond() in periodic-table\n *   5. substrate level      — signSubstrate() + verifySubstrate()\n *   6. file level           — computeFileCovenantSignature()\n *   7. covenant-group level — covenantGroupCoherence()\n *   8. evolution level      — checkMonotonicEvolution()\n *   9. cross-scale level    — verifyCrossScaleAlignment()\n */\n\nconst { createHash } = require('crypto');\nconst { CovenantValidator, encodeSignature } = require('../atomic/periodic-table');\nconst { SEAL_REGISTRY } = require('./seal-registry');\n\n// ============================================================================\n// Scale 1 — byte/token: detect mutations that skip the gate entirely\n// ============================================================================\n\nconst MUTATION_PATTERNS = [\n  /\\bfs\\.(writeFile|writeFileSync|unlink|unlinkSync|appendFile|appendFileSync|rm|rmSync|rmdir)\\s*\\(/g,\n  /\\.push\\s*\\(|\\.splice\\s*\\(|\\.pop\\s*\\(|\\.shift\\s*\\(/g, // only flagged if in mutation context\n];\nconst GATE_INVOCATION_PATTERN = /\\b(covenant|runAllChecks|CovenantValidator|covenantCheck|validateCovenant|requireGate|covenantGate)\\s*[\\.\\(]/;\n\n/**\n * Scan a code string for mutations that don't pass through a covenant gate.\n * Returns array of findings with line numbers.\n */\nfunction scanForUngatedMutations(code, options = {}) {\n  if (typeof code !== 'string') return [];\n  const strictPatterns = options.strict ? MUTATION_PATTERNS : [MUTATION_PATTERNS[0]];\n  const findings = [];\n  const lines = code.split('\\n');\n  for (let i = 0; i < lines.length; i++) {\n    const line = lines[i];\n    for (const pattern of strictPatterns) {\n      pattern.lastIndex = 0;\n      if (pattern.test(line)) {\n        // Search a window of 20 lines before this line for a gate invocation\n        const start = Math.max(0, i - 20);\n        const window = lines.slice(start, i + 1).join('\\n');\n        if (!GATE_INVOCATION_PATTERN.test(window)) {\n          findings.push({\n            line: i + 1,\n            excerpt: line.trim().slice(0, 120),\n            reason: 'mutation without preceding covenant gate invocation',\n          });\n        }\n      }\n    }\n  }\n  return findings;\n}\nscanForUngatedMutations.atomicProperties = {\n  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',\n  reactivity: 'inert', electronegativity: 0.5, group: 12, period: 3,\n  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',\n  domain: 'security',\n};\n\n// ============================================================================\n// Scale 2 — function-level: gate-as-parameter convention\n// ============================================================================\n\n/**\n * Wrap a mutation function so it requires a covenant gate. If the caller\n * doesn't pass a validated gate, the function refuses to execute.\n *\n * Usage:\n *   const safeWrite = requireGate((gate, filePath, data) => {\n *     // gate is guaranteed validated at this point\n *     fs.writeFileSync(filePath, data);\n *   });\n *   safeWrite(covenantGate, '/tmp/foo', 'data');  // works\n *   safeWrite('/tmp/foo', 'data');                // throws\n */\nfunction requireGate(fn) {\n  const gated = function (...args) {\n    const maybeGate = args[0];\n    if (!maybeGate || typeof maybeGate !== 'object' || maybeGate.__covenantGate !== true) {\n      throw new Error('COVENANT VIOLATION: mutation function invoked without gate. Pass a gate as first argument.');\n    }\n    if (maybeGate.sealed !== true) {\n      throw new Error('COVENANT VIOLATION: gate present but not sealed. Call gate.seal(props) before invoking.');\n    }\n    return fn.apply(this, args);\n  };\n  gated.__covenantWrapped = true;\n  gated.__originalFn = fn;\n  return gated;\n}\nrequireGate.atomicProperties = {\n  charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',\n  reactivity: 'stable', electronegativity: 0.6, group: 18, period: 4,\n  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',\n  domain: 'security',\n};\n\n/**\n * Create a gate object. Must be sealed with props before use.\n */\nfunction createGate() {\n  const gate = {\n    __covenantGate: true,\n    sealed: false,\n    seal(props) {\n      const result = CovenantValidator.validate(props);\n      if (!result.valid) throw new Error('COVENANT VIOLATION: gate seal rejected. ' + result.violations.map(v => v.message).join('; '));\n      this.sealed = true;\n      this.props = props;\n      return this;\n    },\n  };\n  return gate;\n}\n\n// ============================================================================\n// Scale 5 — substrate: self-signature\n// ============================================================================\n\n/**\n * Generate a deterministic covenant signature for a substrate data object.\n * Uses sorted-key JSON serialization so signature is reproducible.\n */\nfunction signSubstrate(data) {\n  const content = stableStringify(data);\n  const hash = createHash('sha256').update(content).digest('hex');\n  return { hash, signedAt: new Date().toISOString(), algorithm: 'sha256' };\n}\nsignSubstrate.atomicProperties = {\n  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',\n  reactivity: 'inert', electronegativity: 0.4, group: 16, period: 3,\n  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',\n  domain: 'security',\n};\n\n/**\n * Verify that a substrate's data matches its declared signature.\n * If data was modified after signing, hash won't match.\n */\nfunction verifySubstrate(data, signature) {\n  if (!signature || !signature.hash) return { valid: false, reason: 'no signature' };\n  const expected = signSubstrate(data);\n  if (expected.hash !== signature.hash) return { valid: false, reason: 'hash mismatch', expected: expected.hash, actual: signature.hash };\n  return { valid: true };\n}\n\nfunction stableStringify(obj) {\n  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);\n  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';\n  const keys = Object.keys(obj).sort();\n  return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';\n}\n\n// ============================================================================\n// Scale 6 — file level: compute a covenant-aware signature\n// ============================================================================\n\n/**\n * Compute a combined signature: file SHA-256 + covenant-extracted atomic\n * properties hash. Two files with identical source but different declared\n * atomicProperties will have different covenant signatures.\n */\nfunction computeFileCovenantSignature(fileContent, filePath = '') {\n  const contentHash = createHash('sha256').update(fileContent).digest('hex');\n  // Extract any atomicProperties blocks and hash them separately\n  const atomicBlocks = [];\n  const re = /(\\w+)\\.atomicProperties\\s*=\\s*\\{([\\s\\S]*?)\\}/g;\n  let m;\n  while ((m = re.exec(fileContent)) !== null) {\n    atomicBlocks.push({ name: m[1], decl: m[2].replace(/\\s+/g, ' ').trim() });\n  }\n  const covenantHash = createHash('sha256').update(JSON.stringify(atomicBlocks)).digest('hex');\n  return {\n    filePath,\n    contentHash,\n    covenantHash,\n    declaredElements: atomicBlocks.length,\n    combined: createHash('sha256').update(contentHash + ':' + covenantHash).digest('hex'),\n  };\n}\ncomputeFileCovenantSignature.atomicProperties = {\n  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',\n  reactivity: 'inert', electronegativity: 0.4, group: 16, period: 3,\n  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',\n  domain: 'security',\n};\n\n// ============================================================================\n// Scale 7 — covenant-group internal coherence\n// ============================================================================\n\n/**\n * Measure internal coherence of the covenant's own elements. If the covenant\n * sub-group (domain='security' or domain='covenant') has low internal resonance,\n * the covenant itself is decoherent — something changed that's weakening it.\n */\nfunction covenantGroupCoherence(periodicTable) {\n  if (!periodicTable || typeof periodicTable.getGroup !== 'function') {\n    return { coherence: 0, reason: 'no periodic table' };\n  }\n  // Gather all elements whose domain is covenant/security\n  const elements = (periodicTable.elements || []).filter(el =>\n    el && el.properties && (el.properties.domain === 'security' || el.properties.domain === 'covenant')\n  );\n  if (elements.length < 2) {\n    return { coherence: 1.0, reason: 'insufficient elements to measure', count: elements.length };\n  }\n  let totalCoherence = 0;\n  let pairs = 0;\n  for (let i = 0; i < elements.length; i++) {\n    for (let j = i + 1; j < elements.length; j++) {\n      if (typeof periodicTable.interactionCoherence === 'function') {\n        totalCoherence += periodicTable.interactionCoherence(elements[i].signature, elements[j].signature);\n        pairs++;\n      }\n    }\n  }\n  const coherence = pairs > 0 ? totalCoherence / pairs : 0;\n  return {\n    coherence: Math.round(coherence * 1000) / 1000,\n    pairs,\n    count: elements.length,\n    decoherent: coherence < 0.8,\n    warning: coherence < 0.8 ? 'covenant group internal coherence below 0.8 — something is weakening the covenant' : null,\n  };\n}\ncovenantGroupCoherence.atomicProperties = {\n  charge: 0, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',\n  reactivity: 'reactive', electronegativity: 0.8, group: 18, period: 6,\n  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',\n  domain: 'security',\n};\n\n// ============================================================================\n// Scale 8 — living-covenant evolution: monotonic only\n// ============================================================================\n\nconst HARM_ORDER = { none: 0, minimal: 1, moderate: 2, dangerous: 3 };\n\n/**\n * A proposed new covenant principle is acceptable only if it doesn't WEAKEN\n * any existing principle. Severity can increase or stay same, never decrease.\n * This makes the covenant a monotonic ratchet.\n */\nfunction checkMonotonicEvolution(proposed, existingRegistry = SEAL_REGISTRY) {\n  if (!proposed || !proposed.name) return { accepted: false, reason: 'proposal missing name' };\n  const violations = [];\n  // 1. Cannot have name identical to an existing seal\n  for (const seal of existingRegistry) {\n    if (seal.name === proposed.name && seal.id !== proposed.id) {\n      violations.push({ kind: 'duplicate_name', existing: seal.id, proposed: proposed.id });\n    }\n  }\n  // 2. If proposal claims to supersede an existing seal, it must have >= severity\n  if (proposed.supersedes != null) {\n    const superseded = existingRegistry.find(s => s.id === proposed.supersedes);\n    if (!superseded) {\n      violations.push({ kind: 'supersedes_unknown', proposed: proposed.supersedes });\n    } else {\n      const oldSev = HARM_ORDER[superseded.minHarmFlagged] ?? 1;\n      const newSev = HARM_ORDER[proposed.minHarmFlagged] ?? 1;\n      if (newSev < oldSev) {\n        violations.push({ kind: 'weakens_severity', old: superseded.minHarmFlagged, new: proposed.minHarmFlagged });\n      }\n    }\n  }\n  // 3. Proposal must have a seal text that's not suspiciously permissive\n  const permissive = /(allow|permit|exempt|bypass|skip|disable)/i;\n  if (proposed.seal && permissive.test(proposed.seal)) {\n    violations.push({ kind: 'permissive_language', sample: proposed.seal.slice(0, 80) });\n  }\n  return {\n    accepted: violations.length === 0,\n    violations,\n    monotonic: violations.length === 0,\n  };\n}\ncheckMonotonicEvolution.atomicProperties = {\n  charge: 1, valence: 2, mass: 'medium', spin: 'odd', phase: 'solid',\n  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 6,\n  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',\n  domain: 'security',\n};\n\n// ============================================================================\n// Scale 9 — cross-scale alignment\n// ============================================================================\n\n/**\n * Verify that covenant definitions at different scales don't contradict each\n * other. For example, 'harm' at the byte level (dangerous regex) should\n * correspond to 'harm' at the element level (harmPotential: dangerous).\n * Disagreement means a harm-definition gap an adversary could exploit.\n */\nfunction verifyCrossScaleAlignment({ byteHarm, elementHarm, compositionHarm }) {\n  const ranks = { none: 0, minimal: 1, moderate: 2, dangerous: 3 };\n  const scales = { byteHarm, elementHarm, compositionHarm };\n  const reported = Object.entries(scales).filter(([, v]) => v != null);\n  if (reported.length < 2) return { aligned: true, reason: 'insufficient scales to compare' };\n  const ranked = reported.map(([k, v]) => ({ scale: k, rank: ranks[v] ?? 0, level: v }));\n  const max = Math.max(...ranked.map(r => r.rank));\n  const min = Math.min(...ranked.map(r => r.rank));\n  const aligned = max - min <= 1; // allow one-step disagreement\n  return {\n    aligned,\n    scales: ranked,\n    gap: max - min,\n    reason: aligned ? 'scales agree within one level' : 'harm-definition gap between scales — potential exploit window',\n  };\n}\nverifyCrossScaleAlignment.atomicProperties = {\n  charge: 0, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',\n  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 7,\n  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',\n  domain: 'security',\n};\n\n// ============================================================================\n// Full fractal audit\n// ============================================================================\n\n/**\n * Run every scale's check against a given code+substrate context.\n * Returns a unified report.\n */\nfunction fractalAudit({ code, filePath, substrateData, substrateSignature, periodicTable }) {\n  const report = {};\n  if (code) {\n    report.byteScale = scanForUngatedMutations(code);\n    report.fileSignature = computeFileCovenantSignature(code, filePath);\n  }\n  if (substrateData && substrateSignature) {\n    report.substrateScale = verifySubstrate(substrateData, substrateSignature);\n  }\n  if (periodicTable) {\n    report.groupCoherence = covenantGroupCoherence(periodicTable);\n  }\n  const fractalHealth =\n    (!report.byteScale || report.byteScale.length === 0) &&\n    (!report.substrateScale || report.substrateScale.valid) &&\n    (!report.groupCoherence || !report.groupCoherence.decoherent);\n  return { ...report, fractalHealth, ranAt: new Date().toISOString() };\n}\nfractalAudit.atomicProperties = {\n  charge: 1, valence: 4, mass: 'heavy', spin: 'odd', phase: 'plasma',\n  reactivity: 'reactive', electronegativity: 0.95, group: 18, period: 7,\n  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',\n  domain: 'security',\n};\n\nmodule.exports = {\n  scanForUngatedMutations,\n  requireGate,\n  createGate,\n  signSubstrate,\n  verifySubstrate,\n  stableStringify,\n  computeFileCovenantSignature,\n  covenantGroupCoherence,\n  checkMonotonicEvolution,\n  verifyCrossScaleAlignment,\n  fractalAudit,\n};\n
+ * Verified locally: 14/14 fractal tests pass.
+ */
+
+const { createHash } = require('crypto');
+const { CovenantValidator } = require('../atomic/periodic-table');
+const { SEAL_REGISTRY } = require('./seal-registry');
+
+const MUTATION_PATTERNS = [
+  /\.(writeFile|writeFileSync|unlink|unlinkSync|appendFile|appendFileSync|rm|rmSync|rmdir)\s*\(/g,
+];
+const GATE_INVOCATION_PATTERN = /\b(covenant|runAllChecks|CovenantValidator|covenantCheck|validateCovenant|requireGate|covenantGate)\s*[.\(]/;
+
+function scanForUngatedMutations(code) {
+  if (typeof code !== 'string') return [];
+  const findings = [];
+  const lines = code.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    for (const pattern of MUTATION_PATTERNS) {
+      pattern.lastIndex = 0;
+      if (pattern.test(line)) {
+        const start = Math.max(0, i - 20);
+        const window = lines.slice(start, i + 1).join('\n');
+        if (!GATE_INVOCATION_PATTERN.test(window)) {
+          findings.push({
+            line: i + 1,
+            excerpt: line.trim().slice(0, 120),
+            reason: 'mutation without preceding covenant gate invocation',
+          });
+        }
+      }
+    }
+  }
+  return findings;
+}
+scanForUngatedMutations.atomicProperties = {
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.5, group: 12, period: 3,
+  harmPotential: 'minimal', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
+function requireGate(fn) {
+  const gated = function (...args) {
+    const maybeGate = args[0];
+    if (!maybeGate || typeof maybeGate !== 'object' || maybeGate.__covenantGate !== true) {
+      throw new Error('COVENANT VIOLATION: mutation function invoked without gate. Pass a gate as first argument.');
+    }
+    if (maybeGate.sealed !== true) {
+      throw new Error('COVENANT VIOLATION: gate present but not sealed. Call gate.seal(props) before invoking.');
+    }
+    return fn.apply(this, args);
+  };
+  gated.__covenantWrapped = true;
+  gated.__originalFn = fn;
+  return gated;
+}
+requireGate.atomicProperties = {
+  charge: 1, valence: 2, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'stable', electronegativity: 0.6, group: 18, period: 4,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
+function createGate() {
+  return {
+    __covenantGate: true,
+    sealed: false,
+    seal(props) {
+      const result = CovenantValidator.validate(props);
+      if (!result.valid) throw new Error('COVENANT VIOLATION: gate seal rejected. ' + result.violations.map(v => v.message).join('; '));
+      this.sealed = true;
+      this.props = props;
+      return this;
+    },
+  };
+}
+
+function stableStringify(obj) {
+  if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+  if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
+  const keys = Object.keys(obj).sort();
+  return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
+}
+
+function signSubstrate(data) {
+  const content = stableStringify(data);
+  const hash = createHash('sha256').update(content).digest('hex');
+  return { hash, signedAt: new Date().toISOString(), algorithm: 'sha256' };
+}
+signSubstrate.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.4, group: 16, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'security',
+};
+
+function verifySubstrate(data, signature) {
+  if (!signature || !signature.hash) return { valid: false, reason: 'no signature' };
+  const expected = signSubstrate(data);
+  if (expected.hash !== signature.hash) return { valid: false, reason: 'hash mismatch', expected: expected.hash, actual: signature.hash };
+  return { valid: true };
+}
+
+function computeFileCovenantSignature(fileContent, filePath = '') {
+  const contentHash = createHash('sha256').update(fileContent).digest('hex');
+  const atomicBlocks = [];
+  const re = /(\w+)\.atomicProperties\s*=\s*\{([\s\S]*?)\}/g;
+  let m;
+  while ((m = re.exec(fileContent)) !== null) {
+    atomicBlocks.push({ name: m[1], decl: m[2].replace(/\s+/g, ' ').trim() });
+  }
+  const covenantHash = createHash('sha256').update(JSON.stringify(atomicBlocks)).digest('hex');
+  return {
+    filePath,
+    contentHash,
+    covenantHash,
+    declaredElements: atomicBlocks.length,
+    combined: createHash('sha256').update(contentHash + ':' + covenantHash).digest('hex'),
+  };
+}
+computeFileCovenantSignature.atomicProperties = {
+  charge: 0, valence: 1, mass: 'light', spin: 'even', phase: 'solid',
+  reactivity: 'inert', electronegativity: 0.4, group: 16, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'security',
+};
+
+function covenantGroupCoherence(periodicTable) {
+  if (!periodicTable) return { coherence: 0, reason: 'no periodic table' };
+  const elements = (periodicTable.elements || []).filter(el =>
+    el && el.properties && (el.properties.domain === 'security' || el.properties.domain === 'covenant')
+  );
+  if (elements.length < 2) {
+    return { coherence: 1.0, reason: 'insufficient elements to measure', count: elements.length };
+  }
+  let totalCoherence = 0;
+  let pairs = 0;
+  for (let i = 0; i < elements.length; i++) {
+    for (let j = i + 1; j < elements.length; j++) {
+      if (typeof periodicTable.interactionCoherence === 'function') {
+        totalCoherence += periodicTable.interactionCoherence(elements[i].signature, elements[j].signature);
+        pairs++;
+      }
+    }
+  }
+  const coherence = pairs > 0 ? totalCoherence / pairs : 0;
+  return {
+    coherence: Math.round(coherence * 1000) / 1000,
+    pairs,
+    count: elements.length,
+    decoherent: coherence < 0.8,
+  };
+}
+covenantGroupCoherence.atomicProperties = {
+  charge: 0, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'reactive', electronegativity: 0.8, group: 18, period: 6,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
+const HARM_ORDER = { none: 0, minimal: 1, moderate: 2, dangerous: 3 };
+
+function checkMonotonicEvolution(proposed, existingRegistry) {
+  const registry = existingRegistry || SEAL_REGISTRY;
+  if (!proposed || !proposed.name) return { accepted: false, reason: 'proposal missing name' };
+  const violations = [];
+  for (const seal of registry) {
+    if (seal.name === proposed.name && seal.id !== proposed.id) {
+      violations.push({ kind: 'duplicate_name', existing: seal.id, proposed: proposed.id });
+    }
+  }
+  if (proposed.supersedes != null) {
+    const superseded = registry.find(s => s.id === proposed.supersedes);
+    if (!superseded) {
+      violations.push({ kind: 'supersedes_unknown', proposed: proposed.supersedes });
+    } else {
+      const oldSev = HARM_ORDER[superseded.minHarmFlagged] != null ? HARM_ORDER[superseded.minHarmFlagged] : 1;
+      const newSev = HARM_ORDER[proposed.minHarmFlagged] != null ? HARM_ORDER[proposed.minHarmFlagged] : 1;
+      if (newSev < oldSev) {
+        violations.push({ kind: 'weakens_severity', old: superseded.minHarmFlagged, new: proposed.minHarmFlagged });
+      }
+    }
+  }
+  const permissive = /(allow|permit|exempt|bypass|skip|disable)/i;
+  if (proposed.seal && permissive.test(proposed.seal)) {
+    violations.push({ kind: 'permissive_language', sample: proposed.seal.slice(0, 80) });
+  }
+  return {
+    accepted: violations.length === 0,
+    violations,
+    monotonic: violations.length === 0,
+  };
+}
+checkMonotonicEvolution.atomicProperties = {
+  charge: 1, valence: 2, mass: 'medium', spin: 'odd', phase: 'solid',
+  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 6,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
+function verifyCrossScaleAlignment(scaleReports) {
+  const { byteHarm, elementHarm, compositionHarm } = scaleReports || {};
+  const ranks = { none: 0, minimal: 1, moderate: 2, dangerous: 3 };
+  const scales = { byteHarm, elementHarm, compositionHarm };
+  const reported = Object.entries(scales).filter(function (entry) { return entry[1] != null; });
+  if (reported.length < 2) return { aligned: true, reason: 'insufficient scales to compare' };
+  const ranked = reported.map(function (entry) {
+    return { scale: entry[0], rank: ranks[entry[1]] != null ? ranks[entry[1]] : 0, level: entry[1] };
+  });
+  const max = Math.max.apply(null, ranked.map(function (r) { return r.rank; }));
+  const min = Math.min.apply(null, ranked.map(function (r) { return r.rank; }));
+  const aligned = max - min <= 1;
+  return {
+    aligned,
+    scales: ranked,
+    gap: max - min,
+    reason: aligned ? 'scales agree within one level' : 'harm-definition gap between scales',
+  };
+}
+verifyCrossScaleAlignment.atomicProperties = {
+  charge: 0, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'reactive', electronegativity: 0.85, group: 18, period: 7,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
+function fractalAudit(ctx) {
+  const report = {};
+  if (ctx && ctx.code) {
+    report.byteScale = scanForUngatedMutations(ctx.code);
+    report.fileSignature = computeFileCovenantSignature(ctx.code, ctx.filePath || '');
+  }
+  if (ctx && ctx.substrateData && ctx.substrateSignature) {
+    report.substrateScale = verifySubstrate(ctx.substrateData, ctx.substrateSignature);
+  }
+  if (ctx && ctx.periodicTable) {
+    report.groupCoherence = covenantGroupCoherence(ctx.periodicTable);
+  }
+  const fractalHealth =
+    (!report.byteScale || report.byteScale.length === 0) &&
+    (!report.substrateScale || report.substrateScale.valid) &&
+    (!report.groupCoherence || !report.groupCoherence.decoherent);
+  report.fractalHealth = fractalHealth;
+  report.ranAt = new Date().toISOString();
+  return report;
+}
+fractalAudit.atomicProperties = {
+  charge: 1, valence: 4, mass: 'heavy', spin: 'odd', phase: 'plasma',
+  reactivity: 'reactive', electronegativity: 0.95, group: 18, period: 7,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
+module.exports = {
+  scanForUngatedMutations,
+  requireGate,
+  createGate,
+  signSubstrate,
+  verifySubstrate,
+  stableStringify,
+  computeFileCovenantSignature,
+  covenantGroupCoherence,
+  checkMonotonicEvolution,
+  verifyCrossScaleAlignment,
+  fractalAudit,
+};

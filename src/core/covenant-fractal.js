@@ -10,16 +10,21 @@
  *   4. composition    — delegates to canBond()
  *   5. substrate      — signSubstrate() / verifySubstrate()
  *   6. file           — computeFileCovenantSignature()
- *   7. group coherence — covenantGroupCoherence()
+ *   7. group coherence — covenantGroupCoherence()  [role-aware by default]
  *   + evolution       — checkMonotonicEvolution()
  *   + cross-scale     — verifyCrossScaleAlignment()
- *
- * Verified locally: 14/14 fractal tests pass.
  */
 
 const { createHash } = require('crypto');
 const { CovenantValidator } = require('../atomic/periodic-table');
 const { SEAL_REGISTRY } = require('./seal-registry');
+
+let _roleAware;
+try {
+  ({ covenantGroupCoherenceRoleAware: _roleAware } = require('../atomic/role-aware-coherence'));
+} catch (e) {
+  _roleAware = null;
+}
 
 const MUTATION_PATTERNS = [
   /\.(writeFile|writeFileSync|unlink|unlinkSync|appendFile|appendFileSync|rm|rmSync|rmdir)\s*\(/g,
@@ -142,7 +147,18 @@ computeFileCovenantSignature.atomicProperties = {
   domain: 'security',
 };
 
-function covenantGroupCoherence(periodicTable) {
+/**
+ * covenantGroupCoherence — primary self-measurement at fractal scale 7.
+ *
+ * Delegates to role-aware coherence by default (rewards functional
+ * complementarity). Falls back to similarity-based math if role-aware
+ * module is missing. Pass { method: 'similarity' } to force legacy math.
+ */
+function covenantGroupCoherence(periodicTable, options) {
+  const opts = options || {};
+  if (_roleAware && opts.method !== 'similarity') {
+    return _roleAware(periodicTable);
+  }
   if (!periodicTable) return { coherence: 0, reason: 'no periodic table' };
   const elements = (periodicTable.elements || []).filter(el =>
     el && el.properties && (el.properties.domain === 'security' || el.properties.domain === 'covenant')
@@ -166,6 +182,7 @@ function covenantGroupCoherence(periodicTable) {
     pairs,
     count: elements.length,
     decoherent: coherence < 0.8,
+    method: 'similarity-fallback',
   };
 }
 covenantGroupCoherence.atomicProperties = {

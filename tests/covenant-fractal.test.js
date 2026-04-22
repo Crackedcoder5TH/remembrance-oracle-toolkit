@@ -1,11 +1,11 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import {
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {
   scanForUngatedMutations, requireGate, createGate,
   signSubstrate, verifySubstrate, stableStringify,
   computeFileCovenantSignature, checkMonotonicEvolution,
   verifyCrossScaleAlignment, fractalAudit,
-} from '../src/core/covenant-fractal.js';
+} = require('../src/core/covenant-fractal');
 
 test('scanForUngatedMutations catches fs.writeFileSync without gate', () => {
   const code = `function innocent() { require('fs').writeFileSync('/tmp/x', 'data'); }`;

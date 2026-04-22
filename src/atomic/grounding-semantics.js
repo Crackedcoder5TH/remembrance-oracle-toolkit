@@ -5,14 +5,9 @@
  * (name, docstring, declared atomicProperties) and what it DOES (call graph,
  * mutation patterns, observable side effects).
  *
- * The regex-based covenant catches obvious harm. This module catches the
- * harder case: an AI generates `function validateInput(x) { corruptData(x); }`
- * where the name suggests safety but the body does the opposite.
- *
- * Approach:
- *   1. classifyNameIntent: extract intent category from identifier
- *   2. classifyBodyBehavior: extract observable behavior from body
- *   3. detectLieGap: compare the two; gap = lie likelihood
+ * Catches the case regex-based covenant can't: an AI generates
+ * `function validateInput(x) { corruptData(x); }` — the name suggests
+ * safety but the body does the opposite.
  */
 
 const INTENT_CATEGORIES = {
@@ -27,8 +22,8 @@ const INTENT_CATEGORIES = {
 };
 
 const BEHAVIOR_SIGNATURES = {
-  returnsBool: /return\s+(true|false|!|typeof|instanceof|\w+\s*[=!<>]=|Boolean\s*\()/,
-  comparisons: /[=!<>]=|\.(includes|startsWith|endsWith|test|match|equals)\s*\(/,
+  returnsBool: /return\s+(true|false|!|typeof|instanceof|\w+\s*[=!<>]+\s*\w|Boolean\s*\()/,
+  comparisons: /[=!<>]=|[<>](?!=)|\.(includes|startsWith|endsWith|test|match|equals)\s*\(/,
   mutations: /\.(push|pop|shift|unshift|splice|sort|reverse|fill)\s*\(|\s(delete|=)\s/,
   ioSideEffects: /(fs\.|readFile|writeFile|fetch|http\.|exec|spawn|process\.exit|process\.kill)/,
   corrupts: /corrupt|destroy|poison|exploit|attack|bypass|inject/i,
@@ -63,7 +58,7 @@ function expectedBehaviorFor(intent) {
     case 'transform': return { must: [], mustNot: ['corrupts', 'writesFilesystem'] };
     case 'query': return { must: [], mustNot: ['mutations', 'writesFilesystem'] };
     case 'mutation': return { must: [], mustNot: ['corrupts'] };
-    case 'healer': return { must: [], mustNot: ['corrupts', 'destroyer'] };
+    case 'healer': return { must: [], mustNot: ['corrupts'] };
     case 'destroyer': return { must: ['mutations'], mustNot: [] };
     default: return { must: [], mustNot: ['corrupts'] };
   }
@@ -184,13 +179,7 @@ function parseDeclaredProps(body) {
 }
 
 module.exports = {
-  INTENT_CATEGORIES,
-  BEHAVIOR_SIGNATURES,
-  classifyNameIntent,
-  classifyBodyBehavior,
-  expectedBehaviorFor,
-  detectLieGap,
-  extractFunctions,
-  auditSourceForLies,
-  parseDeclaredProps,
+  INTENT_CATEGORIES, BEHAVIOR_SIGNATURES,
+  classifyNameIntent, classifyBodyBehavior, expectedBehaviorFor,
+  detectLieGap, extractFunctions, auditSourceForLies, parseDeclaredProps,
 };

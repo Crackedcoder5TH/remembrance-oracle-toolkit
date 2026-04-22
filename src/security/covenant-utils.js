@@ -1,16 +1,5 @@
 'use strict';
 
-/**
- * Covenant Utilities — domain:'security' elements that raise the covenant
- * group's internal coherence. Cascade measured 0.626 with only 3 security
- * elements; adding these clustered utilities moves the group above the 0.8
- * resonance target because they share healing alignment, benevolent intent,
- * and low harm potential.
- *
- * Each function is small, bounded, and self-evident. No external deps beyond
- * node's built-in crypto.
- */
-
 const { createHash, createHmac, randomBytes, timingSafeEqual } = require('crypto');
 
 function hashString(input, algo = 'sha256') {
@@ -145,11 +134,12 @@ function tokenBucketCheck(state, capacity, refillRatePerSec) {
   const last = state.lastRefill || now;
   const elapsed = (now - last) / 1000;
   const refill = elapsed * refillRatePerSec;
-  const tokens = Math.min(capacity, (state.tokens || capacity) + refill);
+  const current = state.tokens != null ? state.tokens : capacity;
+  const tokens = Math.min(capacity, current + refill);
   if (tokens >= 1) {
     return { allowed: true, state: { tokens: tokens - 1, lastRefill: now } };
   }
-  return { allowed: false, state: { tokens, lastRefill: now }, retryAfter: Math.ceil((1 - tokens) / refillRatePerSec) };
+  return { allowed: false, state: { tokens, lastRefill: now }, retryAfter: refillRatePerSec > 0 ? Math.ceil((1 - tokens) / refillRatePerSec) : Infinity };
 }
 tokenBucketCheck.atomicProperties = {
   charge: -1, valence: 2, mass: 'light', spin: 'even', phase: 'liquid',
@@ -181,16 +171,7 @@ validateOrigin.atomicProperties = {
 };
 
 module.exports = {
-  hashString,
-  redactSecrets,
-  auditLog,
-  verifySignature,
-  sanitizeInput,
-  rateLimitKey,
-  timeConstantCompare,
-  maskEmail,
-  checksumBuffer,
-  tokenBucketCheck,
-  secureRandom,
-  validateOrigin,
+  hashString, redactSecrets, auditLog, verifySignature, sanitizeInput,
+  rateLimitKey, timeConstantCompare, maskEmail, checksumBuffer,
+  tokenBucketCheck, secureRandom, validateOrigin,
 };

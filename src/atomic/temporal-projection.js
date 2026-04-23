@@ -73,9 +73,7 @@ function _autocorrPeak(w) {
   const var0 = c.reduce((s, v) => s + v * v, 0);
   if (var0 === 0) return { lag: 0, ratio: 0 };
   // Unbiased autocorrelation: normalise by pair count (n - lag), not raw sum.
-  // This makes lag=1 and lag=period/2 comparable; otherwise lag=1 always wins
-  // on a smooth signal just because it has more sample pairs.
-  // Also skip lag=1 (trivial smoothness peak) — periods we care about are >= 2.
+  // Skip lag=1 (trivial smoothness peak) — periods we care about are >= 2.
   let bestLag = 0;
   let bestRatio = 0;
   for (let lag = 2; lag < Math.floor(n / 2); lag++) {
@@ -115,21 +113,46 @@ function _trendStrength(w) {
   return { slope, intercept, r2 };
 }
 
-function classifyWaveform(w) {
-  if (!Array.isArray(w) || w.length < 8) return 'unknown';
-  if (w.some(v => !Number.isFinite(v))) return 'unknown';
-  // Order matters: trend has the sharpest signal (linear regression r²),
-  // so check it first. Otherwise a monotonic line autocorrelates strongly
-  // at every lag and is misclassified as periodic.
+/**
+ * Internal: single-pass classification returning both the bucket and a
+ * [0, 1] strength score for how confidently the signal fits that bucket.
+ */
+function _classifyWithStrength(w) {
+  if (!Array.isArray(w) || w.length < 8) return { label: 'unknown', strength: 0 };
+  if (w.some(v => !Number.isFinite(v))) return { label: 'unknown', strength: 0 };
+  // Trend first: sharpest signal; otherwise monotonic lines get flagged periodic.
   const t = _trendStrength(w);
-  if (t.r2 > TREND_R2_THRESHOLD) return 'trend';
-  // Periodic requires a non-trivial peak (lag >= 2) above the threshold.
+  if (t.r2 > TREND_R2_THRESHOLD) {
+    const strength = Math.max(0, Math.min(1, (t.r2 - TREND_R2_THRESHOLD) / (1 - TREND_R2_THRESHOLD)));
+    return { label: 'trend', strength };
+  }
   const ac = _autocorrPeak(w);
-  if (ac.ratio > PERIODIC_AC_THRESHOLD && ac.lag >= 2) return 'periodic';
+  if (ac.ratio > PERIODIC_AC_THRESHOLD && ac.lag >= 2) {
+    const strength = Math.max(0, Math.min(1, (ac.ratio - PERIODIC_AC_THRESHOLD) / (1 - PERIODIC_AC_THRESHOLD)));
+    return { label: 'periodic', strength };
+  }
   const mean = w.reduce((s, v) => s + v, 0) / w.length;
   const std = Math.sqrt(w.reduce((s, v) => s + (v - mean) ** 2, 0) / w.length);
-  if (Math.abs(mean) > 1e-9 && std / Math.abs(mean) < DISTRIBUTION_CV_THRESHOLD) return 'distribution';
-  return 'unknown';
+  if (Math.abs(mean) > 1e-9 && std / Math.abs(mean) < DISTRIBUTION_CV_THRESHOLD) {
+    const cv = std / Math.abs(mean);
+    const strength = Math.max(0, Math.min(1, 1 - cv / DISTRIBUTION_CV_THRESHOLD));
+    return { label: 'distribution', strength };
+  }
+  return { label: 'unknown', strength: 0 };
+}
+
+function classifyWaveform(w) {
+  return _classifyWithStrength(w).label;
+}
+
+/**
+ * Return a [0, 1] score for how confidently ``w`` fits its classifier
+ * bucket. Feeds into projectionConfidence so a weakly-classified signal
+ * (e.g. a trend at r²=0.86 — barely above threshold) earns less pull
+ * than a strongly-classified one (r²=0.99).
+ */
+function classificationStrength(w) {
+  return _classifyWithStrength(w).strength;
 }
 
 // ─── Future projection ──────────────────────────────────────────
@@ -171,6 +194,18 @@ function projectForward(pattern, tNow) {
 
 // ─── Confidence ─────────────────────────────────────────────────
 
+/**
+ * Confidence in [0, 1] that a projection to ``tNow`` is honest.
+ *
+ * Two independent factors, multiplied:
+ *   - horizon factor: linear decay from 1.0 (just past observed_end) to 0.0
+ *     at ``PROJECTION_HORIZON_MAX_DEFAULT × window`` out.
+ *   - classification strength: how confidently the waveform fits its
+ *     bucket (trend r², periodic autocorr ratio, etc.). Weak classifiers
+ *     earn less pull.
+ *
+ * Either factor being zero zeros the overall confidence.
+ */
 function projectionConfidence(pattern, tNow) {
   if (!isTimeAligned(pattern)) return 0;
   const tEnd = parseTimestamp(pattern.ledger.observed_end);
@@ -180,10 +215,11 @@ function projectionConfidence(pattern, tNow) {
   if (dtMs <= 0) return 0;
   const windowMs = tEnd - tStart;
   if (windowMs <= 0) return 0;
-  const cls = classifyWaveform(pattern.waveform);
-  if (cls === 'unknown' || cls === 'distribution') return 0;
+  const { label, strength } = _classifyWithStrength(pattern.waveform);
+  if (label === 'unknown' || label === 'distribution') return 0;
   const horizonRatio = dtMs / (windowMs * PROJECTION_HORIZON_MAX_DEFAULT);
-  return Math.max(0, Math.min(1, 1 - horizonRatio));
+  const horizonFactor = Math.max(0, Math.min(1, 1 - horizonRatio));
+  return horizonFactor * strength;
 }
 
 // ─── Lightweight covenant gate on the projection ────────────────
@@ -263,6 +299,7 @@ module.exports = {
   cadenceToMs,
   isTimeAligned,
   classifyWaveform,
+  classificationStrength,
   projectForward,
   projectionConfidence,
   gateProjection,
@@ -283,6 +320,12 @@ projectForward.atomicProperties = {
   domain: 'oracle',
 };
 classifyWaveform.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+classificationStrength.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
   reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
   harmPotential: 'none', alignment: 'neutral', intention: 'neutral',

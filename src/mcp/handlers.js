@@ -774,6 +774,130 @@ const HANDLERS = {
         throw new Error(`Unknown forge action: ${action}. Use: forge, run, score, promote`);
     }
   },
+
+  // ─── Diagnostic, Ratchet, Ecosystem ────────────────────────────────────
+
+  async oracle_diagnostic(_oracle, args) {
+    const { spawnSync } = require('child_process');
+    const path = require('path');
+    const fs = require('fs');
+    const action = args.action || 'run';
+    const scriptPath = path.resolve(__dirname, '../../scripts/cathedral-diagnostic.js');
+    const reportPath = path.resolve(__dirname, '../../.remembrance/diagnostics/cathedral-latest.json');
+
+    if (action === 'summary') {
+      try {
+        return JSON.parse(fs.readFileSync(reportPath, 'utf-8'));
+      } catch {
+        return { error: 'no diagnostic report yet — run action=run first' };
+      }
+    }
+
+    const flag = {
+      run: [], fix: ['--fix'], 'dry-fix': ['--dry-fix'], 'suggest-suppressions': ['--suggest-suppressions'],
+    }[action];
+    if (!flag) throw new Error(`Unknown diagnostic action: ${action}`);
+    const scriptArgs = [scriptPath, ...flag];
+    if (args.path) { scriptArgs.push('--path', args.path); }
+    const r = spawnSync(process.execPath, scriptArgs, { encoding: 'utf-8' });
+    const stdoutTail = (r.stdout || '').split('\n').slice(-12).join('\n');
+    let summary = null;
+    try { summary = JSON.parse(fs.readFileSync(reportPath, 'utf-8')); } catch {}
+    return {
+      action,
+      exitCode: r.status,
+      summary: summary ? {
+        generatedAt: summary.generatedAt,
+        filesScanned: summary.filesScanned,
+        totalFindings: summary.summary?.totalFindings,
+        bySeverity: summary.summary?.bySeverity,
+        bySource: summary.summary?.bySource,
+        fixesApplied: summary.fixes?.applied,
+      } : null,
+      tail: stdoutTail,
+    };
+  },
+
+  async oracle_ratchet(_oracle, args) {
+    const { spawnSync } = require('child_process');
+    const path = require('path');
+    const action = args.action || 'check';
+    const scriptPath = path.resolve(__dirname, '../../scripts/covenant-ratchet.js');
+    const cliArgs = [scriptPath, '--json'];
+    if (action === 'save-baseline') cliArgs.push('--save-baseline');
+    if (typeof args.tolerance === 'number') cliArgs.push('--tolerance', String(args.tolerance));
+    const r = spawnSync(process.execPath, cliArgs, { encoding: 'utf-8' });
+    let parsed = null;
+    try { parsed = JSON.parse(r.stdout || '{}'); } catch { parsed = { raw: r.stdout }; }
+    return { action, exitCode: r.status, result: parsed };
+  },
+
+  async oracle_ecosystem(_oracle, args) {
+    const { spawnSync } = require('child_process');
+    const path = require('path');
+    const fs = require('fs');
+    const action = args.action || 'run';
+    const diagScript = path.resolve(__dirname, '../../scripts/ecosystem-diagnostic.js');
+    const ratchetScript = path.resolve(__dirname, '../../scripts/ecosystem-ratchet.js');
+    const reportPath = path.resolve(__dirname, '../../.remembrance/diagnostics/ecosystem-latest.json');
+    const parent = args.parent || path.resolve(__dirname, '../../..');
+
+    const loadReport = () => {
+      try { return JSON.parse(fs.readFileSync(reportPath, 'utf-8')); } catch { return null; }
+    };
+
+    if (action === 'summary') {
+      const r = loadReport();
+      if (!r) return { error: 'no ecosystem report yet — run action=run first' };
+      return {
+        generatedAt: r.generatedAt,
+        totalRepos: r.repos.length,
+        foundRepos: r.repos.filter((x) => x.found).length,
+        totalFindings: r.repos.reduce((s, x) => s + (x.counts?.findings ?? 0), 0),
+        totalGaps: r.repos.reduce((s, x) => s + (x.wiringGaps?.length ?? 0), 0),
+        perRepo: r.repos.map((x) => ({
+          repo: x.repo,
+          found: x.found,
+          findings: x.counts?.findings ?? 0,
+          high: x.bySeverity?.high ?? 0,
+          wiringGaps: x.wiringGaps ?? [],
+        })),
+      };
+    }
+
+    if (action === 'gaps') {
+      const r = loadReport();
+      if (!r) return { error: 'no ecosystem report yet' };
+      const gaps = [];
+      for (const repo of r.repos) {
+        if (!repo.found || !repo.wiringGaps?.length) continue;
+        for (const g of repo.wiringGaps) gaps.push({ repo: repo.repo, primitive: g });
+      }
+      return { totalGaps: gaps.length, gaps };
+    }
+
+    if (action === 'run') {
+      const res = spawnSync(process.execPath, [diagScript, '--parent', parent], { encoding: 'utf-8' });
+      return { action, exitCode: res.status, summary: loadReport() ? {
+        generatedAt: loadReport().generatedAt,
+        totalGaps: loadReport().repos.reduce((s, x) => s + (x.wiringGaps?.length ?? 0), 0),
+      } : null, tail: (res.stdout || '').split('\n').slice(-12).join('\n') };
+    }
+
+    if (action === 'save-baseline') {
+      const res = spawnSync(process.execPath, [ratchetScript, '--save-baseline'], { encoding: 'utf-8' });
+      return { action, exitCode: res.status, stdout: res.stdout };
+    }
+
+    if (action === 'ratchet') {
+      const res = spawnSync(process.execPath, [ratchetScript, '--json'], { encoding: 'utf-8' });
+      let parsed = null;
+      try { parsed = JSON.parse(res.stdout || '{}'); } catch { parsed = { raw: res.stdout }; }
+      return { action, exitCode: res.status, result: parsed };
+    }
+
+    throw new Error(`Unknown ecosystem action: ${action}`);
+  },
 };
 
 module.exports = { HANDLERS };

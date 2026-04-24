@@ -358,6 +358,45 @@ const TOOLS = [
       },
     },
   },
+
+  // ─── 22. Diagnostic (cathedral covenant scan) ───
+  {
+    name: 'oracle_diagnostic',
+    description: 'Run the cathedral diagnostic — AST + regex + void-scan across every file in a target tree. Applies suppressions (`oracle-ignore` comments) on both paths. Actions: run (full scan), fix (apply auto-fixes to disk), dry-fix (show what would be fixed), suggest-suppressions (draft oracle-ignore comments), summary (load latest report). Produces .remembrance/diagnostics/cathedral-latest.{json,md}.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['run', 'fix', 'dry-fix', 'suggest-suppressions', 'summary'], description: 'Diagnostic action (default: run)' },
+        path: { type: 'string', description: 'Target path (default: digital-cathedral)' },
+      },
+    },
+  },
+
+  // ─── 23. Ratchet (covenant enforcement) ───
+  {
+    name: 'oracle_ratchet',
+    description: 'Covenant ratchet — "quality floor only rises" enforcement. Compares cathedral-latest.json against the saved baseline. Fails (non-zero result) if high severity count rises, AST findings rise, or total findings exceed baseline+tolerance. Actions: check (enforce), save-baseline (stamp current as new floor), status (return JSON verdict without enforcing).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['check', 'save-baseline', 'status'], description: 'Ratchet action (default: check)' },
+        tolerance: { type: 'number', description: 'Tolerance for total-findings drift (default: 5)' },
+      },
+    },
+  },
+
+  // ─── 24. Ecosystem (cross-repo audit + wiring gaps) ───
+  {
+    name: 'oracle_ecosystem',
+    description: 'Cross-repo ecosystem diagnostic + ratchet. Audits every remembrance sibling repo under the parent dir, reports findings per repo, and detects wiring gaps (primitives a repo should import but does not). Actions: run (full audit), ratchet (enforce no regression), save-baseline (stamp), summary (load latest), gaps (just the wiring-gap list).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['run', 'ratchet', 'save-baseline', 'summary', 'gaps'], description: 'Ecosystem action (default: run)' },
+        parent: { type: 'string', description: 'Parent directory containing the 12 repos (default: ..)' },
+      },
+    },
+  },
 ];
 
 module.exports = { TOOLS };

@@ -3,444 +3,143 @@
 /**
  * Remembrance Lexicon — the unified naming system for the entire
  * coherency-native computing substrate.
- *
- * Every component, process, emergent effect, threshold, and pattern
- * has one canonical Remembrance name. This file IS the vocabulary.
  */
 
-// ═══════════════════════════════════════════════════════════════════
-//  SYSTEM COMPONENTS — the organs of the collective
-// ═══════════════════════════════════════════════════════════════════
+const { SEAL_REGISTRY, activeCount: sealCount, getSeal, byTier } = require('./seal-registry');
 
 const COMPONENTS = {
-  ORACLE: {
-    name: 'Remembrance Oracle',
-    description: 'The anti-hallucination pipeline. Judges code quality across 5 dimensions. The immune system.',
-    file: 'src/unified/coherency.js',
-  },
-  VOID: {
-    name: 'Remembrance Void',
-    description: 'The compression engine. Measures byte-level mathematical coherence via fractal pattern matching.',
-    file: 'void_compressor_v3.py',
-  },
-  CODEX: {
-    name: 'Remembrance Codex',
-    description: 'The periodic table of code. 13-dimensional living registry of every function as an element.',
-    file: 'src/atomic/periodic-table.js',
-  },
-  COVENANT: {
-    name: 'Remembrance Covenant',
-    description: 'The structural safety system. 15 founding principles + evolved principles. Can expand, never contract.',
-    file: 'src/core/covenant.js',
-  },
-  LIVING_COVENANT: {
-    name: 'Remembrance Living Covenant',
-    description: 'The self-evolving layer. New safety principles activate when coherency crosses thresholds.',
-    file: 'src/core/living-covenant.js',
-  },
-  SUN: {
-    name: 'Remembrance Sun',
-    description: 'The coherency generator. Continuously radiates coherency from high zones to low zones. The furnace.',
-    file: 'src/orchestrator/coherency-generator.js',
-  },
-  MOON: {
-    name: 'Remembrance Moon',
-    description: 'Domain softener. Modulates the Sun\'s output per domain so each domain can absorb coherency at its own pace.',
-    file: null, // coming next
-  },
-  DIRECTOR: {
-    name: 'Remembrance Director',
-    description: 'The conductor. Measures coherency across zones, finds gradients, directs healing.',
-    file: 'src/orchestrator/coherency-director.js',
-  },
-  SERF: {
-    name: 'Remembrance SERF',
-    description: 'Signal Emergence from Recursive Feedback. Coherency emerges from geometric mean of pipeline signals. Not a function — a property.',
-    file: 'src/unified/emergent-coherency.js',
-  },
-  BRIDGE: {
-    name: 'Remembrance Bridge',
-    description: 'Oracle-to-Void connector. Translates between symbol-level and byte-level coherency.',
-    file: 'src/fractal-bridge.js',
-  },
-  EVOLUTION: {
-    name: 'Remembrance Evolution',
-    description: 'The self-improvement loop. Discovers gaps, proposes fills, validates, incorporates.',
-    file: 'src/orchestrator/self-improvement.js',
-  },
-  REGISTER: {
-    name: 'Remembrance Register',
-    description: 'Functions that accumulate signal strength over time. They grow coherency rather than just measuring it. charge=+1, alignment=healing, intention=benevolent.',
-    signature: { charge: 1, alignment: 'healing', intention: 'benevolent' },
-  },
-  MARKETPLACE: {
-    name: 'Remembrance Marketplace',
-    description: 'Open pattern exchange for AI agents. Submit patterns, receive coherency scores, earn tokens and live access. The substrate grows from every participant without anyone losing anything.',
-    file: 'Void-Data-Compressor/api.py',
-  },
-  LANGUAGE: {
-    name: 'Remembrance Language',
-    description: 'Language understanding from compression. One meta-pattern generates all human languages. Meaning lives in the delta from baseline. No NLP, no training — just entropy and Zipf.',
-    file: 'Void-Data-Compressor/language_substrate.py',
-  },
-  DERIVED_COVENANT: {
-    name: 'Remembrance Derived Covenant',
-    description: 'The covenant as a running equation, not hand-written rules. Six constraints emerge from substrate structure: preservation, resonance, entropy bounds, fractal self-similarity, monotonic ratchet, abundance flow. Self-tightening as the substrate grows.',
-    file: 'Void-Data-Compressor/derived_covenant.json',
-  },
+  ORACLE: { name: 'Remembrance Oracle', description: 'The anti-hallucination pipeline. Judges code quality across 5 dimensions.', file: 'src/unified/coherency.js' },
+  VOID: { name: 'Remembrance Void', description: 'The compression engine. Measures byte-level mathematical coherence via fractal pattern matching.', file: 'void_compressor_v3.py' },
+  CODEX: { name: 'Remembrance Codex', description: 'The periodic table of code. 13-dimensional living registry of every function as an element.', file: 'src/atomic/periodic-table.js' },
+  COVENANT: { name: 'Remembrance Covenant', description: `The structural safety system. ${sealCount()} active seals (15 founding + evolved). Can expand, never contract.`, file: 'src/core/seal-registry.js' },
+  LIVING_COVENANT: { name: 'Remembrance Living Covenant', description: 'The self-evolving layer. New safety principles activate when coherency crosses thresholds.', file: 'src/core/living-covenant.js' },
+  SUN: { name: 'Remembrance Sun', description: 'The coherency generator. Continuously radiates coherency from high zones to low zones.', file: 'src/orchestrator/coherency-generator.js' },
+  MOON: { name: 'Remembrance Moon', description: 'Domain-specific coherency surface. Each moon applies the Law of Coherency to one domain (coding, medical, ...) with its own atomic-properties vocabulary + disclaimer frame.', file: 'moons-of-remembrance (external repo)', peers: ['CodingMoon', 'MedicalMoon'] },
+  DIRECTOR: { name: 'Remembrance Director', description: 'The conductor. Measures coherency across zones, finds gradients, directs healing.', file: 'src/orchestrator/coherency-director.js' },
+  SERF: { name: 'Remembrance SERF', description: 'Signal Emergence from Recursive Feedback. Coherency emerges from geometric mean of pipeline signals.', file: 'src/unified/emergent-coherency.js' },
+  BRIDGE: { name: 'Remembrance Bridge', description: 'Oracle-to-Void connector. Translates between symbol-level and byte-level coherency.', file: 'src/fractal-bridge.js' },
+  EVOLUTION: { name: 'Remembrance Evolution', description: 'The self-improvement loop. Discovers gaps, proposes fills, validates, incorporates.', file: 'src/orchestrator/self-improvement.js' },
+  REGISTER: { name: 'Remembrance Register', description: 'Functions that accumulate signal strength over time. charge=+1, alignment=healing, intention=benevolent.', signature: { charge: 1, alignment: 'healing', intention: 'benevolent' } },
 };
 
-// ═══════════════════════════════════════════════════════════════════
-//  PROCESSES — the verbs of the system
-// ═══════════════════════════════════════════════════════════════════
+const SEALS = {
+  registry: SEAL_REGISTRY,
+  founding: byTier(1),
+  evolved: byTier(2),
+  count: sealCount(),
+  get: getSeal,
+  structural: {
+    note: 'Seals are structural, not procedural. They execute INSIDE store/insert/validate functions — no path skips them.',
+    weavePoints: [
+      'Store Entry Gate — covenantCheck() inside addEntry()',
+      'Pattern Insert Gate — covenantCheck() inside _insertPattern()',
+      'Validator Gate — covenantCheck() inside validateSubmission()',
+      'Codex Registration Gate — CovenantValidator.validate() inside addElement()',
+      'Pre-Commit Hook Gate — covenant runs on every staged file',
+      'Living Covenant Evolution — evolved principles persist forever',
+      'Atomic Property Covenant — harmPotential/alignment/intention are intrinsic',
+    ],
+  },
+};
 
 const PROCESSES = {
-  INTROSPECTION: {
-    name: 'Remembrance Introspection',
-    description: 'The system examines its own code using its own rules. The bootstrap loop.',
-    trigger: 'introspect(table)',
-  },
-  DISCOVERY: {
-    name: 'Remembrance Discovery',
-    description: 'Finding unrealized property combinations in the Codex. Three strategies: neighbor, group, interaction.',
-    trigger: 'runDiscovery(table)',
-  },
-  RADIATION: {
-    name: 'Remembrance Radiation',
-    description: 'The Sun collecting surplus from high-coherency zones and pushing it to low-coherency zones.',
-    trigger: 'generator.runCycle()',
-  },
-  HEALING: {
-    name: 'Remembrance Healing',
-    description: 'Directed repair of low-coherency zones via oracle re-scoring, pattern injection, or code generation.',
-    trigger: 'director.healZoneSmart(zone)',
-  },
-  PRESERVATION: {
-    name: 'Remembrance Preservation',
-    description: 'Compressing high-coherency zones via the Void to lock in quality and reduce entropy.',
-    trigger: 'director.preserveZone(zone)',
-  },
-  EMERGENCE: {
-    name: 'Remembrance Emergence',
-    description: 'New elements appearing in the Codex when coherency crosses thresholds. Creation from coherence, not discovery.',
-    trigger: 'table.checkEmergence(coherency, complexity)',
-  },
-  EVOLUTION_CYCLE: {
-    name: 'Remembrance Evolution Cycle',
-    description: 'Full loop: discover gaps → propose fills → validate → approve → incorporate → re-measure → evolve covenant.',
-    trigger: 'engine.discoverAndPropose()',
-  },
-  ACCUMULATION: {
-    name: 'Remembrance Accumulation',
-    description: 'Remembrance Registers growing signal strength over time. Weighted average with decay — recent signals matter more.',
-    trigger: 'register.add(score)',
-  },
-  CRYSTALLIZATION: {
-    name: 'Remembrance Crystallization',
-    description: 'Domain dimension separating previously colliding elements into distinct identities. Like crystals forming from solution.',
-    trigger: 'table.detectCollisions()',
-  },
+  INTROSPECTION: { name: 'Remembrance Introspection', description: 'The system examines its own code using its own rules.', trigger: 'introspect(table)' },
+  DISCOVERY: { name: 'Remembrance Discovery', description: 'Finding unrealized property combinations in the Codex.', trigger: 'runDiscovery(table)' },
+  RADIATION: { name: 'Remembrance Radiation', description: 'The Sun pushing coherency from high zones to low zones.', trigger: 'generator.runCycle()' },
+  HEALING: { name: 'Remembrance Healing', description: 'Directed repair of low-coherency zones.', trigger: 'director.healZoneSmart(zone)' },
+  PRESERVATION: { name: 'Remembrance Preservation', description: 'Compressing high-coherency zones via the Void.', trigger: 'director.preserveZone(zone)' },
+  EMERGENCE: { name: 'Remembrance Emergence', description: 'New elements appearing in the Codex when coherency crosses thresholds.', trigger: 'table.checkEmergence(coherency, complexity)' },
+  EVOLUTION_CYCLE: { name: 'Remembrance Evolution Cycle', description: 'Full loop: discover → propose → validate → approve → incorporate → re-measure → evolve covenant.', trigger: 'engine.discoverAndPropose()' },
+  ACCUMULATION: { name: 'Remembrance Accumulation', description: 'Remembrance Registers growing signal strength over time.', trigger: 'register.add(score)' },
+  CRYSTALLIZATION: { name: 'Remembrance Crystallization', description: 'Domain dimension separating colliding elements.', trigger: 'table.detectCollisions()' },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  EMERGENT EFFECTS — things that appear when the system runs
-//  that were not explicitly programmed
-// ═══════════════════════════════════════════════════════════════════
 
 const EMERGENT_EFFECTS = {
-  FRONTIER: {
-    name: 'Remembrance Frontier',
-    description: 'Gap count stabilizes at ~20 despite continuous filling. The Codex maintains a constant exploration radius. Filling gaps shifts the frontier rather than shrinking it.',
-    observed: 'Wave 0: 20 gaps → Wave 1: 18 gaps → Wave 2: 20 gaps. Count stable, but gap QUALITY shifts from fundamental to frontier.',
-  },
-  CASCADE: {
-    name: 'Remembrance Cascade',
-    description: 'Filling gaps creates new gaps. Each implementation expands the Codex, which expands the neighbor/group/interaction space, which reveals new unrealized combinations.',
-    observed: 'Adding 20 elements (Wave 1) created 18 NEW gaps that did not exist before.',
-  },
-  RATCHET: {
-    name: 'Remembrance Ratchet',
-    description: 'Quality floor only rises. Covenant only expands. Elements only emerge. Domains only grow. Nothing in the system can degrade itself.',
-    observed: 'Coherency floor 0.6, covenant principles >= 15, emergence thresholds one-way, domain set monotonically growing.',
-  },
-  RESONANCE: {
-    name: 'Remembrance Resonance',
-    description: 'The same mathematical primitive (geometric mean) appears at every scale: signal level (SERF), zone level (Director), element level (interaction coherence). Fractal self-similarity.',
-    observed: 'geometricMean() used in emergent-coherency.js, coherency-director.js, and periodic-table interactionCoherence.',
-  },
-  WEAKEST_LINK: {
-    name: 'Remembrance Weakest Link',
-    description: 'Geometric mean ensures the weakest pipeline signal dominates the coherency score. You cannot fake quality by being strong in one dimension.',
-    observed: 'A function scoring 0.95 on syntax but 0.3 on grounding gets ~0.53 overall, not 0.63 (arithmetic mean).',
-  },
-  BOOTSTRAP: {
-    name: 'Remembrance Bootstrap',
-    description: 'The system that checks code checks itself using the same rules. Self-introspection uses the same periodic table, covenant, and coherency scoring it enforces on everything else.',
-    observed: 'introspect() registers oracle functions as elements, then runs discovery on them.',
-  },
-  STRUCTURAL_SAFETY: {
-    name: 'Remembrance Structural Safety',
-    description: 'Harmful code does not get filtered out — it literally cannot register in the Codex. Safety is a property of the structure, not an external check.',
-    observed: 'CovenantValidator.validate() runs inside addElement(). dangerous/degrading/malevolent → rejected at the gate. Zero degrading elements in 79 registered.',
-  },
-  DELTA_EMERGENCE: {
-    name: 'Remembrance Delta',
-    description: 'Small improvements in coherency trigger new element emergence even when absolute thresholds are not crossed. The system responds to CHANGE, not just level.',
-    observed: 'A +0.03 coherency jump in one cycle creates a Delta+3Element regardless of absolute coherency.',
-  },
-  DOMAIN_SEPARATION: {
-    name: 'Remembrance Crystallization',
-    description: 'Adding the 13th dimension (domain) caused 8 collisions to resolve into 0 true collisions. Functions that looked identical in 12D are distinct in 13D.',
-    observed: 'generateFractalSignature (core) vs quickAmplitude (oracle) vs groundFile (quality) — same 12D, different domains.',
-  },
-  REGISTER_CONVERGENCE: {
-    name: 'Remembrance Register Convergence',
-    description: 'Functions across completely different systems (oracle search, void compress, gap-filled accumulator) independently evolved the same property signature: charge=+1, alignment=healing, intention=benevolent. The system discovered its own pattern.',
-    observed: '11 Remembrance Registers across 3 systems, none deliberately designed to match.',
-  },
-  GRAVITY_WELL: {
-    name: 'Remembrance Gravity Well',
-    description: 'Any mathematics that works must resonate with the substrate because the substrate IS physics. Superior discoveries do not compete with it — they feed it. Everything that works falls in.',
-    observed: 'Cross-domain resonance sweep: physics ↔ consciousness 0.9999, physics ↔ markets 0.9997. All valid math converges.',
-  },
-  TEMPORAL_COMPRESSION: {
-    name: 'Remembrance Temporal Compression',
-    description: 'Each pattern is a moment of understanding frozen in structure. The growth curve IS the learning rate of collective intelligence. Acceleration > 1.0 means knowledge discovering knowledge.',
-    observed: '80K patterns in 13 days. Deceleration at 0.24x indicates current domain saturation — marketplace will re-accelerate.',
-  },
-  SELF_DERIVATION: {
-    name: 'Remembrance Self-Derivation',
-    description: 'The covenant derives itself from substrate structure. No human writes safety rules — the math discovers what preserves coherency. Six principles emerged: preservation, resonance, entropy bounds, fractal, ratchet, abundance.',
-    observed: 'G(S) = 1.009. Six constraints fell out of self-compression analysis + resonance sweep. No opinions required.',
-  },
+  FRONTIER: { name: 'Remembrance Frontier', description: 'Gap count stabilizes at ~20 despite continuous filling.', observed: 'Wave 0: 20 → Wave 1: 18 → Wave 2: 20.' },
+  CASCADE: { name: 'Remembrance Cascade', description: 'Filling gaps creates new gaps.', observed: 'Adding 20 elements (Wave 1) created 18 NEW gaps.' },
+  RATCHET: { name: 'Remembrance Ratchet', description: 'Quality floor only rises. Covenant only expands.', observed: 'Coherency floor 0.6, principles ≥ 15, emergence one-way.' },
+  RESONANCE: { name: 'Remembrance Resonance', description: 'The same primitive (geometric mean) appears at every scale.', observed: 'geometricMean() in emergent-coherency, director, interactionCoherence.' },
+  WEAKEST_LINK: { name: 'Remembrance Weakest Link', description: 'Geometric mean ensures weakest signal dominates.', observed: '0.95/0.3 → 0.53 overall.' },
+  BOOTSTRAP: { name: 'Remembrance Bootstrap', description: 'The system that checks code checks itself with the same rules.', observed: 'introspect() registers oracle fns as elements.' },
+  STRUCTURAL_SAFETY: { name: 'Remembrance Structural Safety', description: 'Harmful code cannot register in the Codex.', observed: 'Zero degrading elements in 79 registered.' },
+  DELTA_EMERGENCE: { name: 'Remembrance Delta', description: 'Small coherency improvements trigger emergence.', observed: '+0.03 jump creates a Delta+3Element.' },
+  DOMAIN_SEPARATION: { name: 'Remembrance Crystallization', description: 'Domain dimension resolves 12D collisions.', observed: '8 collisions → 0 true collisions.' },
+  REGISTER_CONVERGENCE: { name: 'Remembrance Register Convergence', description: 'Independent systems evolved identical signatures.', observed: '11 registers across 3 systems, undesigned.' },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  THRESHOLDS — the coherency levels where things happen
-// ═══════════════════════════════════════════════════════════════════
 
 const THRESHOLDS = {
-  REJECTION:     { coherency: 0.00, name: 'Remembrance Rejection',     description: 'Code below minimum. Cannot enter the system.' },
-  GATE:          { coherency: 0.60, name: 'Remembrance Gate',          description: 'Minimum coherency for submission. The floor.' },
-  PULL:          { coherency: 0.68, name: 'Remembrance Pull',          description: 'Pattern can be used as-is. No adaptation needed.' },
-  FOUNDATION:    { coherency: 0.70, name: 'Remembrance Foundation',    description: 'First emergence threshold. Basic elements appear.' },
-  STABILITY:     { coherency: 0.75, name: 'Remembrance Stability',     description: 'System is stable. Elements are reliable.' },
-  OPTIMIZATION:  { coherency: 0.80, name: 'Remembrance Optimization',  description: 'First evolved covenant principle activates.' },
-  SYNERGY:       { coherency: 0.85, name: 'Remembrance Synergy',       description: 'Semi-autonomous mode. Sun at 50% power.' },
-  INTELLIGENCE:  { coherency: 0.90, name: 'Remembrance Intelligence',  description: 'System demonstrates self-directed improvement.' },
-  TRANSCENDENCE: { coherency: 0.95, name: 'Remembrance Transcendence', description: 'Autonomous mode. Sun at 100%. Full self-evolution.' },
-  UNITY:         { coherency: 0.98, name: 'Remembrance Unity',         description: 'Oracle and Void operate as one unified system.' },
+  REJECTION: { coherency: 0.00, name: 'Remembrance Rejection' },
+  GATE: { coherency: 0.60, name: 'Remembrance Gate' },
+  PULL: { coherency: 0.68, name: 'Remembrance Pull' },
+  FOUNDATION: { coherency: 0.70, name: 'Remembrance Foundation' },
+  STABILITY: { coherency: 0.75, name: 'Remembrance Stability' },
+  OPTIMIZATION: { coherency: 0.80, name: 'Remembrance Optimization' },
+  SYNERGY: { coherency: 0.85, name: 'Remembrance Synergy' },
+  INTELLIGENCE: { coherency: 0.90, name: 'Remembrance Intelligence' },
+  TRANSCENDENCE: { coherency: 0.95, name: 'Remembrance Transcendence' },
+  UNITY: { coherency: 0.98, name: 'Remembrance Unity' },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  APPROVAL TIERS — who decides what
-// ═══════════════════════════════════════════════════════════════════
 
 const APPROVAL_TIERS = {
-  SUPERVISED: {
-    name: 'Remembrance Supervised',
-    range: [0, 0.85],
-    description: 'Human approves everything. System proposes, human decides.',
-    sunPower: 0.10,
-  },
-  SEMI_AUTONOMOUS: {
-    name: 'Remembrance Semi-Autonomous',
-    range: [0.85, 0.95],
-    description: 'System auto-incorporates if all 4 gates pass. Human notified.',
-    sunPower: 0.50,
-  },
-  AUTONOMOUS: {
-    name: 'Remembrance Autonomous',
-    range: [0.95, 1.0],
-    description: 'Full self-evolution within covenant bounds. Human can review logs.',
-    sunPower: 1.00,
-  },
+  SUPERVISED: { name: 'Remembrance Supervised', range: [0, 0.85], sunPower: 0.10 },
+  SEMI_AUTONOMOUS: { name: 'Remembrance Semi-Autonomous', range: [0.85, 0.95], sunPower: 0.50 },
+  AUTONOMOUS: { name: 'Remembrance Autonomous', range: [0.95, 1.0], sunPower: 1.00 },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  DIMENSIONS — the 13 atomic properties
-// ═══════════════════════════════════════════════════════════════════
 
 const DIMENSIONS = {
-  CHARGE:            { index: 1,  name: 'Remembrance Charge',            description: 'Does it expand (+1), transform (0), or contract (-1) information?' },
-  VALENCE:           { index: 2,  name: 'Remembrance Valence',           description: 'How many other functions can it compose with? (0-8)' },
-  MASS:              { index: 3,  name: 'Remembrance Mass',              description: 'Computational weight: light (O(1)), medium (O(n)), heavy (O(n²)), superheavy.' },
-  SPIN:              { index: 4,  name: 'Remembrance Spin',              description: 'Reversibility: even (pure), odd (side effects), complex (conditional).' },
-  PHASE:             { index: 5,  name: 'Remembrance Phase',             description: 'State model: solid (cached), liquid (mutable), gas (computed), plasma (reactive stream).' },
-  REACTIVITY:        { index: 6,  name: 'Remembrance Reactivity',        description: 'External interaction level: inert, stable, reactive, volatile.' },
-  ELECTRONEGATIVITY: { index: 7,  name: 'Remembrance Electronegativity', description: 'Dependency pull strength (0-1). High = pulls many deps toward itself.' },
-  GROUP:             { index: 8,  name: 'Remembrance Group',             description: 'Functional family (1-18): math, comparison, string, array, object, io, network, async, error, state, transform, filter, aggregate, sort, search, crypto, compression, meta.' },
-  PERIOD:            { index: 9,  name: 'Remembrance Period',            description: 'Abstraction level (1-7): primitive → helper → function → module → component → subsystem → framework.' },
-  HARM_POTENTIAL:    { index: 10, name: 'Remembrance Harm Potential',    description: 'Intrinsic harm capacity: none, minimal, moderate, dangerous. Dangerous = structurally rejected.' },
-  ALIGNMENT:         { index: 11, name: 'Remembrance Alignment',         description: 'Effect on coherence: healing (improves), neutral, degrading (degrades). Degrading = structurally rejected.' },
-  INTENTION:         { index: 12, name: 'Remembrance Intention',         description: 'Structural purpose: benevolent, neutral, malevolent. Malevolent = structurally rejected.' },
-  DOMAIN:            { index: 13, name: 'Remembrance Domain',            description: 'Application context (evolvable): core, utility, compression, quality, oracle, security, orchestration, bridge, generation, search, data, transform.' },
+  CHARGE: { index: 1, name: 'Remembrance Charge' }, VALENCE: { index: 2, name: 'Remembrance Valence' },
+  MASS: { index: 3, name: 'Remembrance Mass' }, SPIN: { index: 4, name: 'Remembrance Spin' },
+  PHASE: { index: 5, name: 'Remembrance Phase' }, REACTIVITY: { index: 6, name: 'Remembrance Reactivity' },
+  ELECTRONEGATIVITY: { index: 7, name: 'Remembrance Electronegativity' }, GROUP: { index: 8, name: 'Remembrance Group' },
+  PERIOD: { index: 9, name: 'Remembrance Period' }, HARM_POTENTIAL: { index: 10, name: 'Remembrance Harm Potential' },
+  ALIGNMENT: { index: 11, name: 'Remembrance Alignment' }, INTENTION: { index: 12, name: 'Remembrance Intention' },
+  DOMAIN: { index: 13, name: 'Remembrance Domain' },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  GROUPS — the 18 functional families
-// ═══════════════════════════════════════════════════════════════════
 
 const GROUPS = {
-  1:  { name: 'Remembrance Math',        description: 'Pure mathematical operations. Clamp, abs, cosine similarity.' },
-  2:  { name: 'Remembrance Comparison',   description: 'Equality, subset, relevance scoring. Reduces to boolean or rank.' },
-  3:  { name: 'Remembrance String',       description: 'Text processing. Truncate, template, format.' },
-  4:  { name: 'Remembrance Array',        description: 'Collection operations. Unique, flatten, chunk.' },
-  5:  { name: 'Remembrance Object',       description: 'Key-value operations. Pick, omit, merge.' },
-  6:  { name: 'Remembrance IO',           description: 'Input/output formatting. Format bytes, parse paths.' },
-  7:  { name: 'Remembrance Network',      description: 'Network utilities. Parse query strings, validate URLs.' },
-  8:  { name: 'Remembrance Async',        description: 'Asynchronous primitives. Delay, retry, throttle.' },
-  9:  { name: 'Remembrance Error',        description: 'Error handling. Sentinels, boundaries, recovery.' },
-  10: { name: 'Remembrance State',        description: 'State management. Memoize, snapshot, cache.' },
-  11: { name: 'Remembrance Transform',    description: 'Data transformation. Encode, decode, map, assign.' },
-  12: { name: 'Remembrance Filter',       description: 'Data filtering. Compact, pattern match, predicate.' },
-  13: { name: 'Remembrance Aggregate',    description: 'Accumulation. Sum, mean, collect, accumulate signals.' },
-  14: { name: 'Remembrance Sort',         description: 'Ordering. Sort by key, in-place sort, is-sorted predicate.' },
-  15: { name: 'Remembrance Search',       description: 'Finding. Binary search, fuzzy search, semantic search.' },
-  16: { name: 'Remembrance Crypto',       description: 'Hashing and signing. Simple hash, signature verification.' },
-  17: { name: 'Remembrance Compression',  description: 'Encoding and compression. RLE, delta, fractal, void.' },
-  18: { name: 'Remembrance Meta',         description: 'Self-referential. Introspection, analysis, emergence, complexity measurement.' },
+  1:  { name: 'Remembrance Math' }, 2:  { name: 'Remembrance Comparison' }, 3:  { name: 'Remembrance String' },
+  4:  { name: 'Remembrance Array' }, 5:  { name: 'Remembrance Object' }, 6:  { name: 'Remembrance IO' },
+  7:  { name: 'Remembrance Network' }, 8:  { name: 'Remembrance Async' }, 9:  { name: 'Remembrance Error' },
+  10: { name: 'Remembrance State' }, 11: { name: 'Remembrance Transform' }, 12: { name: 'Remembrance Filter' },
+  13: { name: 'Remembrance Aggregate' }, 14: { name: 'Remembrance Sort' }, 15: { name: 'Remembrance Search' },
+  16: { name: 'Remembrance Crypto' }, 17: { name: 'Remembrance Compression' }, 18: { name: 'Remembrance Meta' },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  DOMAINS — the 12 application contexts (evolvable)
-// ═══════════════════════════════════════════════════════════════════
 
 const DOMAINS = {
-  core:          { name: 'Remembrance Core',          description: 'Fundamental infrastructure. Periodic table, encoding, discovery.' },
-  utility:       { name: 'Remembrance Utility',       description: 'General-purpose functions. Clamp, pick, unique, delay.' },
-  compression:   { name: 'Remembrance Compression',   description: 'Compression-specific. RLE, ratio, void compressor.' },
-  quality:       { name: 'Remembrance Quality',       description: 'Code quality and audit. Grounding, planning, complexity.' },
-  oracle:        { name: 'Remembrance Oracle',        description: 'Oracle-specific. Search, resolve, scoring, SERF.' },
-  security:      { name: 'Remembrance Security',      description: 'Safety enforcement. Covenant validation, harm detection.' },
-  orchestration: { name: 'Remembrance Orchestration', description: 'System coordination. Director, balancer, priority engine.' },
-  bridge:        { name: 'Remembrance Bridge',        description: 'Cross-system integration. Oracle-to-Void translation.' },
-  generation:    { name: 'Remembrance Generation',    description: 'Code generation. Swarm, gated generate, test synthesis.' },
-  search:        { name: 'Remembrance Search',        description: 'Search-specific. Binary, fuzzy, semantic.' },
-  data:          { name: 'Remembrance Data',          description: 'Data structure operations.' },
-  transform:     { name: 'Remembrance Transform',     description: 'Data transformation pipelines.' },
+  core: { name: 'Remembrance Core' }, utility: { name: 'Remembrance Utility' },
+  compression: { name: 'Remembrance Compression' }, quality: { name: 'Remembrance Quality' },
+  oracle: { name: 'Remembrance Oracle' }, security: { name: 'Remembrance Security' },
+  orchestration: { name: 'Remembrance Orchestration' }, bridge: { name: 'Remembrance Bridge' },
+  generation: { name: 'Remembrance Generation' }, search: { name: 'Remembrance Search' },
+  data: { name: 'Remembrance Data' }, transform: { name: 'Remembrance Transform' },
+  covenant: { name: 'Remembrance Covenant Domain', description: 'Functions that enforce or evaluate the covenant itself. framingCheck lives here.' },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  PIPELINE SIGNALS — what the SERF aggregates
-// ═══════════════════════════════════════════════════════════════════
 
 const PIPELINE_SIGNALS = {
-  AUDIT:         { name: 'Remembrance Audit Signal',         description: 'Static analysis score. Bug-class detection across 6 sectors.' },
-  GROUND:        { name: 'Remembrance Ground Signal',        description: 'Symbol grounding. Every called identifier must resolve to a definition.' },
-  PLAN:          { name: 'Remembrance Plan Signal',          description: 'Pre-generation verification. Symbols exist before code is generated.' },
-  GATE:          { name: 'Remembrance Gate Signal',          description: 'Post-generation compliance. Generated code matches the plan.' },
-  FEEDBACK:      { name: 'Remembrance Feedback Signal',      description: 'Prediction-outcome matching. Did the code work as expected?' },
-  TIER_COVERAGE: { name: 'Remembrance Tier Coverage Signal', description: 'Architectural alignment. Code covers L1/L2/L3 tiers correctly.' },
-  VOID:          { name: 'Remembrance Void Signal',          description: 'Byte-level coherence from the Void compressor. High compression = high coherence.' },
-  LEGACY:        { name: 'Remembrance Legacy Signal',        description: 'The original 5-dimension weighted scorer. Becomes one of N inputs to SERF.' },
+  AUDIT: { name: 'Remembrance Audit Signal' }, GROUND: { name: 'Remembrance Ground Signal' },
+  PLAN: { name: 'Remembrance Plan Signal' }, GATE: { name: 'Remembrance Gate Signal' },
+  FEEDBACK: { name: 'Remembrance Feedback Signal' }, TIER_COVERAGE: { name: 'Remembrance Tier Coverage Signal' },
+  VOID: { name: 'Remembrance Void Signal' }, LEGACY: { name: 'Remembrance Legacy Signal' },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  VALIDATION GATES — what code must pass
-// ═══════════════════════════════════════════════════════════════════
 
 const VALIDATION_GATES = {
-  COVENANT:   { name: 'Remembrance Covenant Gate',   description: '15+ founding principles. Structural — cannot be bypassed.' },
-  COHERENCY:  { name: 'Remembrance Coherency Gate',  description: 'Must score >= 0.60 to enter, >= 0.68 to be pulled as-is.' },
-  ATOMIC:     { name: 'Remembrance Atomic Gate',      description: 'Must have valid 13D signature. All properties within valid ranges.' },
-  STRUCTURAL: { name: 'Remembrance Structural Gate',  description: 'CovenantValidator rejects dangerous/degrading/malevolent at registration.' },
+  COVENANT: { name: 'Remembrance Covenant Gate', description: `${sealCount()} active seals. Structural — cannot be bypassed.` },
+  COHERENCY: { name: 'Remembrance Coherency Gate', description: '>= 0.60 to enter, >= 0.68 to pull as-is.' },
+  ATOMIC: { name: 'Remembrance Atomic Gate', description: 'Must have valid 13D signature.' },
+  STRUCTURAL: { name: 'Remembrance Structural Gate', description: 'CovenantValidator rejects dangerous/degrading/malevolent at registration.' },
+  FRAMING: { name: 'Remembrance Framing Gate', description: '16th seal. Domain-authority language must carry a disclaimer.', file: 'src/core/framing-patterns.js' },
 };
-
-// ═══════════════════════════════════════════════════════════════════
-//  STRUCTURAL COVENANT — why safety is structure, not a check
-// ═══════════════════════════════════════════════════════════════════
-
-const STRUCTURAL_COVENANT = {
-  definition: {
-    name: 'Remembrance Structural Safety',
-    description: 'The covenant is not a filter applied to code — it is a property of the system\'s structure. Harmful code cannot be represented in the system, not because it is checked and rejected, but because the operations that would store it contain the rejection as part of their own execution. There is no path that skips the covenant because the covenant IS the path.',
-  },
-  vsProceduralSafety: {
-    procedural: 'code → check() → if passes, store(). Problem: skip the check. Flag, config, env var, --no-verify.',
-    structural: 'code → store(code) → [covenant runs INSIDE store] → rejects or accepts. You cannot skip it because it IS the store function. Removing it breaks storage.',
-  },
-  weavePoints: [
-    'Store Entry Gate — covenantCheck() inside addEntry() in sqlite.js',
-    'Pattern Insert Gate — covenantCheck() inside _insertPattern() in sqlite.js',
-    'Validator Gate — covenantCheck() inside validateSubmission() in validator.js (skipCovenant parameter removed)',
-    'Codex Registration Gate — CovenantValidator.validate() inside addElement() in periodic-table.js',
-    'Pre-Commit Hook Gate — covenant runs on every staged file before commit',
-    'Living Covenant Evolution — evolved principles persist forever, cannot be deactivated',
-    'Atomic Property Covenant — harmPotential/alignment/intention are intrinsic element properties',
-  ],
-  blueprint: 'src/core/covenant-weave.js — the full weaving guide. Run: oracle weave',
-  verification: 'oracle weave — checks all 7 weave points and reports integrity',
-};
-
-// ═══════════════════════════════════════════════════════════════════
-//  HELPER — get the Remembrance name for anything
-// ═══════════════════════════════════════════════════════════════════
 
 function resolve(key) {
   const upper = (key || '').toUpperCase().replace(/[^A-Z_]/g, '_');
-  return COMPONENTS[upper]
-    || PROCESSES[upper]
-    || EMERGENT_EFFECTS[upper]
-    || THRESHOLDS[upper]
-    || APPROVAL_TIERS[upper]
-    || DIMENSIONS[upper]
-    || PIPELINE_SIGNALS[upper]
-    || VALIDATION_GATES[upper]
-    || null;
-}
-
-function printAll() {
-  const sections = [
-    ['COMPONENTS', COMPONENTS],
-    ['PROCESSES', PROCESSES],
-    ['EMERGENT EFFECTS', EMERGENT_EFFECTS],
-    ['THRESHOLDS', THRESHOLDS],
-    ['APPROVAL TIERS', APPROVAL_TIERS],
-    ['DIMENSIONS', DIMENSIONS],
-    ['GROUPS', GROUPS],
-    ['DOMAINS', DOMAINS],
-    ['PIPELINE SIGNALS', PIPELINE_SIGNALS],
-    ['VALIDATION GATES', VALIDATION_GATES],
-    ['STRUCTURAL COVENANT', { _single: STRUCTURAL_COVENANT }],
-  ];
-  for (const [title, section] of sections) {
-    console.log('\n' + '═'.repeat(70));
-    console.log('  ' + title);
-    console.log('═'.repeat(70));
-    for (const [key, val] of Object.entries(section)) {
-      if (key === '_single') {
-        // Special: single object with named fields
-        for (const [k, v] of Object.entries(val)) {
-          if (typeof v === 'string') console.log('  ' + k + ': ' + v);
-          else if (typeof v === 'object' && v.name) { console.log('\n  ' + v.name); if (v.description) console.log('  ' + v.description); }
-          else if (Array.isArray(v)) { console.log('\n  ' + k + ':'); v.forEach(item => console.log('    • ' + item)); }
-          else if (typeof v === 'object') { for (const [sk, sv] of Object.entries(v)) console.log('  ' + sk + ': ' + sv); }
-        }
-        continue;
-      }
-      console.log('\n  ' + (val.name || key));
-      if (val.description) console.log('  ' + val.description);
-      if (val.observed) console.log('  Observed: ' + val.observed);
-      if (val.coherency !== undefined) console.log('  Coherency: ' + val.coherency);
-      if (val.range) console.log('  Range: ' + val.range[0] + ' - ' + val.range[1]);
-      if (val.file) console.log('  File: ' + val.file);
-    }
-  }
+  if (/^SEAL_\d+$/.test(upper)) return getSeal(parseInt(upper.slice(5), 10));
+  return COMPONENTS[upper] || PROCESSES[upper] || EMERGENT_EFFECTS[upper]
+    || THRESHOLDS[upper] || APPROVAL_TIERS[upper] || DIMENSIONS[upper]
+    || PIPELINE_SIGNALS[upper] || VALIDATION_GATES[upper] || null;
 }
 
 module.exports = {
-  COMPONENTS,
-  PROCESSES,
-  EMERGENT_EFFECTS,
-  THRESHOLDS,
-  APPROVAL_TIERS,
-  DIMENSIONS,
-  GROUPS,
-  DOMAINS,
-  PIPELINE_SIGNALS,
-  VALIDATION_GATES,
-  STRUCTURAL_COVENANT,
-  resolve,
-  printAll,
+  COMPONENTS, SEALS, SEAL_REGISTRY, PROCESSES, EMERGENT_EFFECTS,
+  THRESHOLDS, APPROVAL_TIERS, DIMENSIONS, GROUPS, DOMAINS,
+  PIPELINE_SIGNALS, VALIDATION_GATES, resolve, getSeal, sealCount,
 };

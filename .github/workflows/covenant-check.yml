@@ -1,0 +1,101 @@
+name: Covenant + Lexicon Watcher
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  covenant-and-lexicon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install (if package.json exists)
+        run: |
+          if [ -f package.json ]; then
+            npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          fi
+
+      - name: Run covenant checks
+        run: |
+          node -e "
+          const { runAllChecks } = require('./src/core/covenant-checks');
+          const fs = require('fs');
+          const { execSync } = require('child_process');
+          let files = [];
+          try {
+            files = execSync('git diff HEAD~1 HEAD --name-only', { encoding: 'utf-8' })
+              .split('\n').filter(f => /\.(js|jsx|ts|tsx)$/.test(f));
+          } catch { files = []; }
+          let failed = 0;
+          for (const f of files) {
+            if (!fs.existsSync(f)) continue;
+            const code = fs.readFileSync(f, 'utf-8');
+            const result = runAllChecks(code, f);
+            if (!result.sealed) {
+              console.log('::warning file=' + f + '::' + JSON.stringify(result.failed));
+              if (result.severity === 'high') failed++;
+            }
+          }
+          if (failed > 0) { console.log('::error::' + failed + ' breaches'); process.exit(1); }
+          console.log('covenant: all files sealed');
+          "
+
+      - name: Run lexicon watcher
+        if: always()
+        run: node src/core/lexicon-watcher.js --scan-head || true
+
+      - name: Print live lexicon snapshot
+        if: always()
+        run: node src/core/lexicon-live.js || true
+
+      - name: Run tests
+        if: always()
+        run: |
+          if [ -d tests ]; then node --test tests/ || true; fi
+
+      - name: Upload proposals
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lexicon-proposals
+          path: .remembrance/
+          if-no-files-found: ignore
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const file = '.remembrance/lexicon-proposals.json';
+            if (!fs.existsSync(file)) return;
+            const proposals = JSON.parse(fs.readFileSync(file, 'utf-8'));
+            const pending = proposals.filter(p => p.status === 'pending');
+            const active = proposals.filter(p => p.status === 'active');
+            if (pending.length === 0 && active.length === 0) return;
+            const body = [
+              '## Lexicon Watcher',
+              '',
+              '- pending: **' + pending.length + '**',
+              '- auto-promoted: **' + active.length + '**',
+              '',
+              pending.length ? '### Pending (awaiting approval)' : '',
+              ...pending.slice(0, 10).map(p => '- `' + p.kind + '` **' + p.name + '** (' + p.source + ')'),
+            ].filter(Boolean).join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

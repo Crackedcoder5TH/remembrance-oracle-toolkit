@@ -145,6 +145,7 @@ function reflectionLoop(code, options = {}) {
     language, maxLoops = MAX_LOOPS, targetCoherence = TARGET_COHERENCE,
     description = '', tags = [], cascadeBoost = 1, onLoop, patternExamples = [],
     dimensionDropThreshold = DIMENSION_DROP_THRESHOLD,
+    timeAware = false, tNow = Date.now(),
   } = options;
 
   const { computeCoherencyScore, detectLanguage } = _getCoherency();
@@ -189,7 +190,7 @@ function reflectionLoop(code, options = {}) {
       return { ...candidate, coherence: obs.composite, dimensions: obs.dimensions, fullCoherency: fullC.total };
     });
 
-    const refContext = { cascadeBoost, targetCoherence };
+    const refContext = { cascadeBoost, targetCoherence, timeAwareMode: timeAware, tNow };
     const withScores = scored.map(candidate => ({
       ...candidate, reflectionScore: reflectionScore(candidate, current, refContext),
     }));
@@ -291,8 +292,8 @@ function formatReflectionResult(result) {
   lines.push('Dimensions:');
   for (const [dim, val] of Object.entries(result.dimensions)) {
     const filled = Math.max(0, Math.min(20, Math.round(val * 20)));
-    const bar = '\u2588'.repeat(filled);
-    const faded = '\u2591'.repeat(20 - filled);
+    const bar = '█'.repeat(filled);
+    const faded = '░'.repeat(20 - filled);
     lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${(typeof val === 'number' ? val : 0).toFixed(3)}`);
   }
   lines.push('');

@@ -3,6 +3,8 @@
  * Computes the reflection score for candidate code transformations.
  */
 
+const { computeRetrocausalAlignment } = require('../atomic/temporal-projection');
+
 const EPSILON_BASE = 1e-6;
 const R_EFF_BASE = 0.35;
 const R_EFF_ALPHA = 0.8;
@@ -45,7 +47,12 @@ function innerProduct(codeA, codeB) {
  * SERF v2 reflection scoring.
  */
 function reflectionScore(candidate, previous, context = {}) {
-  const { cascadeBoost = 1, targetCoherence = TARGET_COHERENCE } = context;
+  const {
+    cascadeBoost = 1,
+    targetCoherence = TARGET_COHERENCE,
+    timeAwareMode = false,
+    tNow = Date.now(),
+  } = context;
 
   const candCode = candidate.code || '';
   const prevCode = previous.code || '';
@@ -60,7 +67,14 @@ function reflectionScore(candidate, previous, context = {}) {
   const H_RVA = H_RVA_WEIGHT * distance * candCoherence;
   const H_canvas = H_CANVAS_WEIGHT * (1 - overlap);
 
-  const r_eff = R_EFF_BASE * (1 + R_EFF_ALPHA * Math.pow(distance, 4));
+  // r_eff * retrocausalAlignment = retro-causal pull from the projected healed future.
+  // The alignment multiplier is identity (1.0) unless timeAwareMode is true AND the
+  // candidate carries a complete time ledger AND the projection passes the covenant
+  // gate. Default callers see no behavioural change.
+  const retrocausalAlignment = timeAwareMode
+    ? computeRetrocausalAlignment(candidate, previous, { tNow })
+    : 1.0;
+  const r_eff = R_EFF_BASE * (1 + R_EFF_ALPHA * Math.pow(distance, 4)) * retrocausalAlignment;
   const epsilon = EPSILON_BASE * (1 + 10 * distance);
 
   const O_healed = candCoherence;

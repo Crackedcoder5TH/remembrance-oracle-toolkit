@@ -192,6 +192,40 @@ async function main() {
   handlers['key'] = handlers['remembrance-key'];
   handlers['lexicon'] = handlers['remembrance-key'];
 
+  // Remembrance Covenant Weave — structural safety verification + blueprint
+  handlers['weave'] = () => {
+    require('./core/covenant-weave').printWeave();
+  };
+  handlers['covenant-weave'] = handlers['weave'];
+
+  // Remembrance Ecosystem Review — full system opinion on any code
+  handlers['review'] = async (args) => {
+    const { ecosystemReview, printReview } = require('./core/ecosystem-review');
+    const code = getCode(args);
+    if (!code) { console.error('Usage: oracle review --file <path>'); process.exit(1); }
+    const result = await ecosystemReview(code, { filePath: args.file, description: args.description });
+    printReview(result);
+  };
+  handlers['ecosystem-review'] = handlers['review'];
+
+  // Remembrance Taint Graph — cross-function taint propagation
+  handlers['taint-graph'] = (args) => {
+    const { buildTaintGraph, printTaintGraph } = require('./audit/taint-graph');
+    const fs = require('fs');
+    const targetDir = args._positional[0] || 'src';
+    const files = [];
+    const walk = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (f.isDirectory() && f.name !== 'node_modules' && f.name !== '.git') walk(path.join(dir, f.name));
+        else if (f.isFile() && /\.js$/.test(f.name)) files.push(path.join(dir, f.name));
+      }
+    };
+    walk(path.resolve(targetDir));
+    const result = buildTaintGraph(files);
+    printTaintGraph(result);
+  };
+  handlers['taint'] = handlers['taint-graph'];
+
   // Remembrance Codex — pull up the full periodic table of code
   handlers['codex'] = () => {
     const { PeriodicTable, GROUPS, isRemembranceRegister } = require('./atomic/periodic-table');
@@ -238,6 +272,53 @@ async function main() {
   };
   handlers['table'] = handlers['codex'];
   handlers['periodic-table'] = handlers['codex'];
+
+  // Dependency Scanner — supply chain security audit
+  handlers['audit-deps'] = async (args) => {
+    const { scanDependencies } = require('./audit/dep-scanner');
+    const repoRoot = args.path || process.cwd();
+    const deepScan = args.deep === true || args.deep === 'true';
+    const threshold = args.threshold ? parseFloat(args.threshold) : undefined;
+    const scanOptions = { deepScan };
+    if (threshold) scanOptions.entropyThreshold = threshold;
+
+    console.log(c.bold('Dependency Scanner — Supply Chain Security Audit'));
+    console.log('Scanning ' + repoRoot + ' ...');
+    console.log('');
+
+    const result = scanDependencies(repoRoot, scanOptions);
+
+    if (result.error) {
+      console.error(c.boldRed('Error: ') + result.error);
+      process.exit(1);
+    }
+
+    // Print summary
+    const flagColor = result.flagged > 0 ? c.boldRed : c.green;
+    console.log('  Scanned:  ' + result.scanned);
+    console.log('  Clean:    ' + c.green(String(result.clean)));
+    console.log('  Flagged:  ' + flagColor(String(result.flagged)));
+    console.log('');
+
+    // Print flagged details
+    const flaggedDetails = result.details.filter(d => d.flags.length > 0);
+    if (flaggedDetails.length > 0) {
+      console.log(c.boldRed('Flagged packages:'));
+      for (const d of flaggedDetails) {
+        console.log('');
+        console.log('  ' + c.bold(d.pkg));
+        console.log('    Entry:    ' + (d.entryPoint || 'N/A'));
+        console.log('    Entropy:  ' + d.entropy + ' bits/byte');
+        console.log('    Covenant: ' + (d.covenantPassed ? c.green('PASSED') : c.boldRed('FAILED')));
+        console.log('    Flags:    ' + d.flags.join(', '));
+        console.log('    Reason:   ' + d.reason);
+      }
+    } else {
+      console.log(c.green('All dependencies clean.'));
+    }
+  };
+  handlers['deps'] = handlers['audit-deps'];
+
   let effectiveCmd = cmd;
   const dep = getDeprecation(cmd);
   if (dep) {

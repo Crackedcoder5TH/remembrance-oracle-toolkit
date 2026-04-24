@@ -59,6 +59,12 @@ const MAX_VALENCE = 8;
 const MAX_GROUP = 18;
 const MAX_PERIOD = 7;
 
+
+// ── Taint dimension (14th — data flow safety) ──────────────────
+
+const TAINT_VALUES = ['none', 'source', 'sink', 'propagator'];
+const TAINT_ENCODE = { none: 'n', source: 's', sink: 'k', propagator: 'p' };
+const TAINT_DECODE = { n: 'none', s: 'source', k: 'sink', p: 'propagator' };
 // ── Domain dimension (13th, evolvable) ─────────────────────────────
 
 const DOMAIN_VALUES = [
@@ -175,12 +181,13 @@ function encodeSignature(props) {
   const a = (props.alignment || 'neutral')[0];
   const i = (props.intention || 'neutral')[0];
   const x = DOMAIN_ENCODE[props.domain] || 'c';
-  return `C${c}V${v}M${m}S${s}P${p}R${r}E${e}G${g}D${d}H${h}A${a}I${i}X${x}`;
+  const t = TAINT_ENCODE[props.taint] || 'n';
+  return `C${c}V${v}M${m}S${s}P${p}R${r}E${e}G${g}D${d}H${h}A${a}I${i}X${x}T${t}`;
 }
 
 function decodeSignature(sig) {
-  // Parse the 13-dimensional signature. Domain (X) is optional for backward compat.
-  const m = sig.match(/C([+\-0])V(\d)M([a-z])S([a-z])P([a-z])R([a-z])E(\d)G(\d+)D(\d)(?:H([a-z])A([a-z])I([a-z]))?(?:X([a-z]))?/);
+  // Parse the 14-dimensional signature. Domain (X) and Taint (T) optional for backward compat.
+  const m = sig.match(/C([+\-0])V(\d)M([a-z])S([a-z])P([a-z])R([a-z])E(\d)G(\d+)D(\d)(?:H([a-z])A([a-z])I([a-z]))?(?:X([a-z]))?(?:T([a-z]))?/);
   if (!m) return null;
   return {
     charge: m[1] === '+' ? 1 : m[1] === '-' ? -1 : 0,
@@ -196,6 +203,7 @@ function decodeSignature(sig) {
     alignment: m[11] ? { h: 'healing', n: 'neutral', d: 'degrading' }[m[11]] || 'neutral' : 'neutral',
     intention: m[12] ? { b: 'benevolent', n: 'neutral', m: 'malevolent' }[m[12]] || 'neutral' : 'neutral',
     domain: m[13] ? (DOMAIN_DECODE[m[13]] || 'core') : 'core',
+    taint: m[14] ? (TAINT_DECODE[m[14]] || 'none') : 'none',
   };
 }
 
@@ -536,6 +544,12 @@ class PeriodicTable {
     if (p1.harmPotential === 'dangerous' || p2.harmPotential === 'dangerous') return false;
     if (p1.alignment === 'degrading' || p2.alignment === 'degrading') return false;
     if (p1.intention === 'malevolent' || p2.intention === 'malevolent') return false;
+    // Taint propagation: source/propagator bonding with a sink in IO/network group = blocked
+    const tainted = (p1.taint === 'source' || p1.taint === 'propagator' ||
+                     p2.taint === 'source' || p2.taint === 'propagator');
+    const hasSink = (p1.taint === 'sink' || p2.taint === 'sink');
+    const ioSink = (p1.group === 6 || p1.group === 7 || p2.group === 6 || p2.group === 7);
+    if (tainted && (hasSink || ioSink)) return false;
     // Property compatibility
     const chargeCompat = p1.charge !== p2.charge || p1.charge === 0;
     const valenceCompat = p1.valence > 0 && p2.valence > 0;
@@ -662,6 +676,7 @@ module.exports = {
   CHARGE_VALUES, MASS_VALUES, SPIN_VALUES, PHASE_VALUES,
   REACTIVITY_VALUES, HARM_VALUES, ALIGNMENT_VALUES, INTENTION_VALUES,
   DOMAIN_VALUES, DOMAIN_ENCODE, DOMAIN_DECODE,
+  TAINT_VALUES, TAINT_ENCODE, TAINT_DECODE,
   REMEMBRANCE_REGISTER_SIGNATURE,
   MAX_VALENCE, MAX_GROUP, MAX_PERIOD,
   EMERGENCE_THRESHOLDS,

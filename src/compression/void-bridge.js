@@ -61,27 +61,51 @@ class VoidBridge {
 
   _loadSubstrateInfo() {
     try {
-      // Count total patterns across all substrate files
+      // Count patterns across EVERY pattern-bearing JSON file in the substrate.
+      // Earlier this filter only matched *substrate.json / *_map.json, which
+      // silently skipped learned_patterns*, learned_archive_*, oracle_patterns,
+      // resonance_field, l2_substrate, and ~30 other files. Now: any .json
+      // that exposes a recognisable pattern container is counted.
       const files = fs.readdirSync(this.substratePath)
-        .filter(f => f.endsWith('substrate.json') || f.endsWith('_map.json'));
+        .filter(f => f.endsWith('.json') && f !== 'api_keys.json');
 
       let total = 0;
+      const counted = [];
       for (const file of files) {
         try {
           const data = JSON.parse(fs.readFileSync(
             path.join(this.substratePath, file), 'utf-8'));
-          total += data.count || (data.patterns || []).length;
+          const n = this._extractCount(data);
+          if (n > 0) {
+            total += n;
+            counted.push(file);
+          }
         } catch (e) {
           // Skip unreadable files
         }
       }
 
       this.substratePatterns = total;
-      this.substrateFiles = files;
+      this.substrateFiles = counted;
       this.enhancedMode = true;
     } catch (e) {
       this.connected = false;
     }
+  }
+
+  _extractCount(data) {
+    if (!data || typeof data !== 'object') return 0;
+    if (Array.isArray(data)) return data.length;
+    if (Array.isArray(data.patterns)) return data.patterns.length;
+    if (Array.isArray(data.waveforms)) return data.waveforms.length;
+    if (Array.isArray(data.entries)) return data.entries.length;
+    if (typeof data.count === 'number') return data.count;
+    // Last resort: largest array field in the object
+    let max = 0;
+    for (const k of Object.keys(data)) {
+      if (Array.isArray(data[k]) && data[k].length > max) max = data[k].length;
+    }
+    return max;
   }
 
   connect(substratePath) {
@@ -337,23 +361,42 @@ class VoidBridge {
       });
     }
 
-    // Write to substrate directory
+    // Write to substrate directory — MERGE with existing patterns
     if (substratePatterns.length > 0) {
+      const outputPath = path.join(this.substratePath, 'oracle_patterns.json');
+      let existing = { patterns: [] };
+      try {
+        if (fs.existsSync(outputPath)) {
+          existing = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
+        }
+      } catch { /* start fresh if corrupt */ }
+      const existingNames = new Set((existing.patterns || []).map(p => p.name));
+      let added = 0;
+      for (const p of substratePatterns) {
+        if (!existingNames.has(p.name)) {
+          existing.patterns.push(p);
+          added++;
+        }
+      }
       const output = {
         exported: new Date().toISOString(),
         source: 'oracle_abundance_export',
-        count: substratePatterns.length,
-        patterns: substratePatterns,
+        count: existing.patterns.length,
+        patterns: existing.patterns,
       };
-
-      const outputPath = path.join(this.substratePath, 'oracle_patterns.json');
       fs.writeFileSync(outputPath, JSON.stringify(output));
+      return {
+        exported: added,
+        total: existing.patterns.length,
+        message: `Merged ${added} new patterns into substrate (${existing.patterns.length} total)`,
+        abundanceFlow: 'oracle → substrate (both benefit)',
+      };
     }
 
     return {
-      exported: substratePatterns.length,
-      message: `Exported ${substratePatterns.length} oracle patterns to substrate`,
-      abundanceFlow: 'oracle → substrate (both benefit)',
+      exported: 0,
+      message: 'No patterns to export',
+      abundanceFlow: 'oracle → substrate',
     };
   }
 

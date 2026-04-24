@@ -64,6 +64,38 @@ const ROUNDING_FACTOR = 1000; // Math.round(x * 1000) / 1000 = 3 decimals
  */
 const MIN_COHERENCY_THRESHOLD = 0.6;
 
+/**
+ * Domain-aware floor adjustments. Legitimate complex code in certain
+ * domains (performance, compression, data) naturally scores lower on
+ * readability/simplicity while being correct. These floors prevent
+ * false rejection of domain-appropriate code.
+ *
+ * The domain floor is always <= the default floor. Security domain
+ * NEVER gets a lower floor.
+ *
+ * The absolute minimum is 0.50 — below this, code is genuinely broken
+ * regardless of domain.
+ */
+const DOMAIN_FLOOR_ADJUSTMENTS = {
+  performance: 0.52,
+  data: 0.52,
+  compression: 0.52,
+  transform: 0.55,
+  core: 0.58,
+  utility: 0.60,
+  quality: 0.60,
+  oracle: 0.60,
+  orchestration: 0.60,
+  bridge: 0.60,
+  generation: 0.60,
+  search: 0.60,
+  security: 0.65,  // Security code gets HIGHER floor, not lower
+};
+
+function getDomainFloor(domain) {
+  return DOMAIN_FLOOR_ADJUSTMENTS[domain] || MIN_COHERENCY_THRESHOLD;
+}
+
 /** Default timeout for sandbox test execution (ms) */
 const DEFAULT_VALIDATION_TIMEOUT_MS = 10000;
 
@@ -294,4 +326,7 @@ module.exports = {
   TOURNAMENT,
   // Quantum
   QUANTUM,
+  // Domain floors
+  DOMAIN_FLOOR_ADJUSTMENTS,
+  getDomainFloor,
 };

@@ -92,7 +92,7 @@ export const FIELD_LABELS: Record<keyof LeadFormErrors, string> = {
   state: "State",
   coverageInterest: "Coverage Interest",
   purchaseIntent: "How Serious Are You",
-  veteranStatus: "Military Status",
+  veteranStatus: "Your Background",
   militaryBranch: "Branch of Service",
   tcpaConsent: "TCPA Consent",
   privacyConsent: "Privacy Policy Consent",
@@ -153,8 +153,15 @@ function validateStep(step: number, form: LeadFormData): LeadFormErrors {
     if (!form.state) errs.state = "Please select your state.";
     if (!form.coverageInterest) errs.coverageInterest = "Please select a coverage interest.";
     if (!form.purchaseIntent) errs.purchaseIntent = "Please select your level of interest.";
-    if (!form.veteranStatus) errs.veteranStatus = "Please select your military status.";
-    if (form.veteranStatus && form.veteranStatus !== "non-military" && !form.militaryBranch) {
+    if (!form.veteranStatus) errs.veteranStatus = "Please select your background.";
+    // Branch is required ONLY for service-connected statuses. Family-members
+    // and civilians skip it.
+    if (
+      form.veteranStatus
+      && form.veteranStatus !== "non-military"
+      && form.veteranStatus !== "civilian"
+      && !form.militaryBranch
+    ) {
       errs.militaryBranch = "Please select your branch of service.";
     }
   }
@@ -326,7 +333,10 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
           coverageInterest: data.coverageInterest,
           purchaseIntent: data.purchaseIntent,
           veteranStatus: data.veteranStatus,
-          militaryBranch: data.veteranStatus && data.veteranStatus !== "non-military" ? data.militaryBranch : "",
+          militaryBranch: data.veteranStatus
+            && data.veteranStatus !== "non-military"
+            && data.veteranStatus !== "civilian"
+            ? data.militaryBranch : "",
           tcpaConsent: data.tcpaConsent,
           privacyConsent: data.privacyConsent,
           consentTimestamp: new Date().toISOString(),

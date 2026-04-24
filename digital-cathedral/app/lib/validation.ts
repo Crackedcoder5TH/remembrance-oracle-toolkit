@@ -73,7 +73,11 @@ export const VALID_STATES = new Set([
 
 export const VALID_COVERAGE = new Set(["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "not-sure"]);
 export const VALID_PURCHASE_INTENT = new Set(["protect-family", "want-protection", "exploring"]);
-export const VALID_VETERAN_STATUS = new Set(["active-duty", "reserve", "national-guard", "veteran", "non-military"]);
+export const VALID_VETERAN_STATUS = new Set([
+  "active-duty", "reserve", "national-guard", "veteran",
+  "non-military", // military family member
+  "civilian",     // no military affiliation
+]);
 const VALID_MILITARY_BRANCHES = new Set([
   "army", "marine-corps", "navy", "air-force", "space-force",
   "coast-guard", "national-guard", "reserves",
@@ -153,13 +157,18 @@ export function validateLeadPayload(body: unknown): ValidationResult {
     errors.push("Invalid purchase intent.");
   }
 
-  // Veteran status
+  // Background status (service members, families, and civilians)
   if (!isString(b.veteranStatus) || !VALID_VETERAN_STATUS.has(b.veteranStatus)) {
-    errors.push("Invalid veteran status.");
+    errors.push("Invalid background selection.");
   }
 
-  // Military branch (required for all military service categories)
-  if (b.veteranStatus && b.veteranStatus !== "non-military") {
+  // Military branch is required only for service-connected statuses.
+  // Family members and civilians skip the branch field entirely.
+  if (
+    b.veteranStatus
+    && b.veteranStatus !== "non-military"
+    && b.veteranStatus !== "civilian"
+  ) {
     if (!isString(b.militaryBranch) || !VALID_MILITARY_BRANCHES.has(b.militaryBranch)) {
       errors.push("Military branch is required for military service members.");
     }
@@ -187,7 +196,10 @@ export function validateLeadPayload(body: unknown): ValidationResult {
       coverageInterest: b.coverageInterest as string,
       purchaseIntent: b.purchaseIntent as string,
       veteranStatus: b.veteranStatus as string,
-      militaryBranch: b.veteranStatus !== "non-military" ? (b.militaryBranch as string) : "",
+      militaryBranch:
+        b.veteranStatus !== "non-military" && b.veteranStatus !== "civilian"
+          ? (b.militaryBranch as string)
+          : "",
       tcpaConsent: true,
       privacyConsent: true,
       consentTimestamp: b.consentTimestamp as string,

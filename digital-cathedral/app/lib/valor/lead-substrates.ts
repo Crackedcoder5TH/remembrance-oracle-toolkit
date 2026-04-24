@@ -101,6 +101,17 @@ export const LEAD_ARCHETYPES: ReadonlyMap<string, readonly number[]> = new Map([
     0.95, 0.80, 0.80, 0.80, 0.80, 0.50, 0.65, 0.70, 0.70,
   ]],
 
+  // Civilian planner — no military connection but serious about coverage.
+  // Dimensions 2 + 3 (veteran_integrity + branch_specificity) are
+  // intentionally mid/low; everything else matches a real-intent lead.
+  // A civilian with strong intent + clear coverage + complete fields
+  // resonates with THIS archetype, not the protective-veteran one — so
+  // coherency stays high without false veteran-match.
+  ['valor/civilian-planner', [
+    0.88, 0.90, 0.50, 0.25, 0.80, 0.95, 0.98,
+    0.95, 0.88, 0.88, 0.88, 0.92, 0.60, 0.75, 0.78, 0.78,
+  ]],
+
   /* ── Fraud group: shapes we should reject ─────────────────── */
 
   // Fields don't cohere — e.g. branch=Navy but status=non-military, or

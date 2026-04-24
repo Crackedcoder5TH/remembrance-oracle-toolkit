@@ -92,12 +92,20 @@ const INTENT_STRENGTH: Record<string, number> = {
   'exploring': 0.30,
 };
 
+// The "veteran_integrity" dimension originally penalized anyone without
+// service connection. The site now accepts civilian leads explicitly, so
+// "civilian" gets a neutral score rather than a penalty — they're a
+// legitimate category, not a degraded veteran. Family members stay mid-
+// range (0.55) because their value to carriers is typically higher than
+// pure civilians for veteran-adjacent products, but lower than service
+// members themselves.
 const VETERAN_INTEGRITY: Record<string, number> = {
   'active-duty': 0.98,
   'veteran': 0.95,
   'reserve': 0.90,
   'national-guard': 0.90,
-  'non-military': 0.55,
+  'non-military': 0.55,  // military family member
+  'civilian': 0.50,      // no military affiliation — neutral, not penalized
 };
 
 function scoreEmail(email: string | undefined): number {
@@ -232,7 +240,10 @@ function scoreCompleteness(lead: LeadInput): number {
 
 function scoreBranchSpecificity(lead: LeadInput): number {
   if (!lead.veteranStatus) return 0;
+  // Non-service statuses don't need a branch and aren't penalized for
+  // lacking one. Family members score mid-range; civilians score neutral.
   if (lead.veteranStatus === 'non-military') return 0.30;
+  if (lead.veteranStatus === 'civilian') return 0.25;
   return lead.militaryBranch ? 0.92 : 0.55;
 }
 

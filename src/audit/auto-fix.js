@@ -81,9 +81,18 @@ function generatePatchFor(finding, source, program) {
     case 'state-mutation/object-assign':
       return patchObjectAssignSpread(finding, source, program);
     case 'type/division-by-zero':
-      return patchDivisionGuard(finding, source, program);
+      // DISABLED: the guard this generator produces can confuse TypeScript
+      // when the divisor is a const literal (TS flags `LIMIT === 0` as an
+      // impossible comparison). The check is safe for runtime but blocks
+      // `next build --typecheck`. Re-enable once the generator emits a
+      // type-aware guard (e.g. `Number.isFinite(x) && x !== 0` via helper).
+      return null;
     case 'type/json-parse-no-try':
-      return patchJsonParseTryCatch(finding, source, program);
+      // DISABLED: this generator produced invalid syntax in complex
+      // expression contexts (e.g. inside object literals), breaking the
+      // Vercel build. Re-enable once the patch preserves the surrounding
+      // expression grammar.
+      return null;
     case 'edge-case/switch-no-default':
       return patchSwitchDefault(finding, source, program);
     default:

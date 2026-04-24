@@ -276,7 +276,7 @@ export default function AdminDashboard() {
     fetchLeads();
   }, [fetchStats, fetchLeads]);
 
-  const totalPages = Math.ceil((LIMIT === 0 ? 0 : total / LIMIT));
+  const totalPages = Math.ceil(total / LIMIT);
 
   // --- Dashboard ---
   return (

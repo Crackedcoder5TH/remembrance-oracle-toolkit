@@ -230,7 +230,7 @@ export default function AdminClientsPage() {
 
   const [message, setMessage] = useState("");
 
-  const totalPages = Math.ceil((LIMIT === 0 ? 0 : totalClients / LIMIT));
+  const totalPages = Math.ceil(totalClients / LIMIT);
 
   const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 

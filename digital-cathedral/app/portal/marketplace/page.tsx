@@ -163,9 +163,14 @@ export default function AgentPortal() {
     if (res.ok) {
       const data = await res.json();
       if (data.filters) {
+        // Guard JSON parses — malformed filter payloads must not crash the portal.
+        const safeParse = <T,>(raw: string | undefined, fallback: T): T => {
+          try { return raw ? (JSON.parse(raw) as T) : fallback; }
+          catch { return fallback; }
+        };
         setFilters({
-          states: JSON.parse(data.filters.states || "[]"),
-          coverageTypes: try { JSON.parse(data.filters.coverageTypes || "[]"),
+          states: safeParse<string[]>(data.filters.states, []),
+          coverageTypes: safeParse<string[]>(data.filters.coverageTypes, []),
           veteranOnly: data.filters.veteranOnly,
           minScore: data.filters.minScore,
           maxLeadAge: data.filters.maxLeadAge,
@@ -201,7 +206,7 @@ export default function AgentPortal() {
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
-            setMessage(`Lead purchased! ${data.exclusive ? "(Exclusive)" : "(Shared)"} — $${(data.pricePaid / 100).toFixed(2)}`); } catch { /* noop */ }
+            setMessage(`Lead purchased! ${data.exclusive ? "(Exclusive)" : "(Shared)"} — $${(data.pricePaid / 100).toFixed(2)}`);
           } else {
             setMessage(data.message || "Purchase fulfillment issue — contact support.");
           }

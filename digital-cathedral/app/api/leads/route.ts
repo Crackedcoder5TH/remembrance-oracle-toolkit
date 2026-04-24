@@ -14,6 +14,7 @@ import { validateCsrfToken } from "@/app/lib/csrf";
 import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
 import { evaluateCovenant } from "@/app/lib/valor/covenant-gate";
 import { LEXICON, confirmationFor } from "@/app/lib/valor/lexicon";
+import { appendLedgerEntry } from "@/app/lib/valor/lead-ledger";
 
 /**
  * Lead submission API.
@@ -251,6 +252,57 @@ export async function POST(req: NextRequest) {
     // coherency cascade and projects back into the legacy LeadScore shape,
     // so nothing downstream has to change.
     const leadScore = scoreLead(leadRecord);
+
+    // ── Lead Ledger ─────────────────────────────────────────────
+    // Append-only JSONL record of every admitted lead. Accessible to the
+    // admin side via /api/admin/ledger. Independent of the DB so the
+    // covenant record survives even if the database is rotated, migrated,
+    // or temporarily unavailable. Non-blocking — write failures are logged
+    // but never affect the lead submission response.
+    appendLedgerEntry({
+      leadId,
+      writtenAt: new Date().toISOString(),
+      observedAt: leadRecord.createdAt,
+      lead: {
+        firstName: leadRecord.firstName,
+        lastName: leadRecord.lastName,
+        email: leadRecord.email,
+        phone: leadRecord.phone,
+        state: leadRecord.state,
+        dateOfBirth: leadRecord.dateOfBirth,
+        coverageInterest: leadRecord.coverageInterest,
+        purchaseIntent: leadRecord.purchaseIntent,
+        veteranStatus: leadRecord.veteranStatus,
+        militaryBranch: leadRecord.militaryBranch,
+      },
+      coherency: {
+        score: covenant.coherency.score,
+        tier: covenant.coherency.tier,
+        dominantArchetype: covenant.coherency.dominantArchetype,
+        dominantGroup: covenant.coherency.dominantGroup,
+        shape: covenant.coherency.shape,
+      },
+      covenant: {
+        verdict: covenant.verdict,
+        reason: covenant.reason,
+      },
+      source: {
+        ip: leadRecord.consentIp,
+        userAgent: leadRecord.consentUserAgent,
+        referer: leadRecord.consentPageUrl,
+        utmSource: leadRecord.utmSource,
+        utmMedium: leadRecord.utmMedium,
+        utmCampaign: leadRecord.utmCampaign,
+      },
+    }).then((result) => {
+      if (!result.ok) {
+        logger.error("Lead ledger write failed", { leadId, error: result.error });
+      } else {
+        logger.debug("Lead ledger appended", { leadId, path: result.path });
+      }
+    }).catch((err) => {
+      logger.error("Lead ledger threw", { leadId, error: String(err) });
+    });
 
     // Broadcast real-time event to connected admin dashboards (SSE)
     try {

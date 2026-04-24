@@ -55,6 +55,16 @@ async function loadSettings(): Promise<AgentSettings> {
 }
 
 async function saveSettings(settings: AgentSettings): Promise<void> {
+  // ⚠ Same Vercel ephemeral-filesystem warning as pricing-config: this
+  // write will NOT persist across Lambda cold starts on serverless.
+  // Migrate to Postgres or Blob before relying on in-UI agent settings edits.
+  if (process.env.VERCEL === "1" || process.env.VERCEL_ENV) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[agent-analytics] WARNING: settings write goes to ephemeral filesystem. " +
+        "Changes will NOT persist across cold starts. Migrate to Postgres or Blob.",
+    );
+  }
   await mkdir(SETTINGS_DIR, { recursive: true });
   await writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), "utf-8");
 }

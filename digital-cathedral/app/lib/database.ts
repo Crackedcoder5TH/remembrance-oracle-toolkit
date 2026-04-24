@@ -128,26 +128,36 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
 
 class PostgresAdapter implements DbAdapter {
   private pool: import("pg").Pool | null = null;
+  // Memoize the in-flight init promise so concurrent callers wait on the
+  // same Pool construction rather than each racing to create their own.
+  private poolInit: Promise<import("pg").Pool> | null = null;
   private initialized = false;
 
-  private async getPool(): Promise<import("pg").Pool> {
-    if (this.pool) return this.pool;
+  private getPool(): Promise<import("pg").Pool> {
+    if (this.pool) return Promise.resolve(this.pool);
+    if (this.poolInit) return this.poolInit;
 
-    // Dynamic import so pg is only loaded when DATABASE_URL is set
-    const { Pool } = await import("pg");
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-      ssl: process.env.DATABASE_URL?.includes("sslmode=require")
-        || process.env.DATABASE_SSL === "true"
-        || process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : undefined,
-    });
-
-    return this.pool;
+    this.poolInit = (async () => {
+      // Dynamic import so pg is only loaded when DATABASE_URL is set
+      const { Pool } = await import("pg");
+      const created = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: 10,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+        ssl: process.env.DATABASE_URL?.includes("sslmode=require")
+          || process.env.DATABASE_SSL === "true"
+          || process.env.NODE_ENV === "production"
+          ? { rejectUnauthorized: false }
+          : undefined,
+      });
+      this.pool = created;
+      return created;
+    })();
+    // If construction fails, clear the memoized promise so the next
+    // caller gets a fresh attempt instead of a permanently-poisoned init.
+    this.poolInit.catch(() => { this.poolInit = null; });
+    return this.poolInit;
   }
 
   async initialize(): Promise<void> {

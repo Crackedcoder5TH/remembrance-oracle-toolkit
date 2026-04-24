@@ -298,7 +298,7 @@ export async function POST(req: NextRequest) {
       if (!result.ok) {
         logger.error("Lead ledger write failed", { leadId, error: result.error });
       } else {
-        logger.debug("Lead ledger appended", { leadId, path: result.path });
+        logger.debug("Lead ledger appended", { leadId, location: result.location });
       }
     }).catch((err) => {
       logger.error("Lead ledger threw", { leadId, error: String(err) });
@@ -381,6 +381,10 @@ export async function POST(req: NextRequest) {
       coherency: {
         score: Number(covenant.coherency.score.toFixed(4)),
         tier: covenant.coherency.tier,
+        dominantArchetype: covenant.coherency.dominantArchetype,
+        // 16-D normalized lead shape — powers the CoherencyPulse visualization
+        // on the confirmation screen so the submitter sees their own signal.
+        shape: covenant.coherency.shape,
       },
     });
   } catch {

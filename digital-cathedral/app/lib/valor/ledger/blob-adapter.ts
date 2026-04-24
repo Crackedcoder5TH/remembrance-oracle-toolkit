@@ -139,8 +139,9 @@ export const blobAdapter: LedgerAdapter = {
       const currentMonth = monthOf(new Date());
       const blobs = await listAll(`${prefix()}/${currentMonth}/`);
       // Pathnames start with writtenAt ISO — reverse-sort gives newest first.
-      blobs.sort((a, b) => b.pathname.localeCompare(a.pathname));
-      const slice = blobs.slice(0, limit);
+      // Sort a copy so the array from listAll stays untouched.
+      const sorted = [...blobs].sort((a, b) => b.pathname.localeCompare(a.pathname));
+      const slice = sorted.slice(0, limit);
       const entries = await Promise.all(slice.map((b) => fetchEntry(b.url)));
       return entries.filter((e): e is LedgerEntry => e !== null);
     } catch {
@@ -152,8 +153,9 @@ export const blobAdapter: LedgerAdapter = {
     try {
       const blobs = await listAll(`${prefix()}/${month}/`);
       if (blobs.length === 0) return null;
-      blobs.sort((a, b) => a.pathname.localeCompare(b.pathname));
-      const entries = await Promise.all(blobs.map((b) => fetchEntry(b.url)));
+      // Sort a copy — chronological for JSONL export.
+      const sorted = [...blobs].sort((a, b) => a.pathname.localeCompare(b.pathname));
+      const entries = await Promise.all(sorted.map((b) => fetchEntry(b.url)));
       const lines = entries
         .filter((e): e is LedgerEntry => e !== null)
         .map((e) => JSON.stringify(e));

@@ -141,12 +141,14 @@ export function cascade(
       'noise';
     matches.push({ name, r, kind });
   }
-  matches.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
-  const top = matches.slice(0, 5);
+  // Return a sorted copy — never mutate the locally-built matches array,
+  // so the returned .matches property can be reasoned about independently.
+  const sorted = [...matches].sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+  const top = sorted.slice(0, 5);
   const coherency = top.length > 0
     ? top.reduce((s, m) => s + Math.abs(m.r), 0) / top.length
     : 0;
-  return { coherency, matches };
+  return { coherency, matches: sorted };
 }
 
 /**

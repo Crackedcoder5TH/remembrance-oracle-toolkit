@@ -4,6 +4,23 @@
  * Uses an in-memory sliding window approach. Each IP gets a window of
  * timestamps. Requests beyond the limit within the window are rejected.
  * Stale entries are cleaned up automatically to prevent memory leaks.
+ *
+ * ⚠ SERVERLESS LIMITATION ⚠
+ * The `store` Map is module-scoped — meaning each Lambda instance has its
+ * own copy. On Vercel under traffic, this means:
+ *   - An attacker can hit different Lambda instances and bypass the limit
+ *   - Effective limit becomes (configured_limit × N_lambdas) per minute
+ *   - For low-traffic or single-instance deploys, the limiter still works
+ *
+ * For real abuse defense in production, replace the in-memory store with
+ * one of:
+ *   1. Vercel KV (Redis) — drop-in replacement, ~10 min wire-up
+ *   2. Upstash Redis    — same idea, slightly different SDK
+ *   3. Postgres counter table — works with existing DATABASE_URL,
+ *      higher latency but no extra service
+ *
+ * The fix is one file (this one), wrap get/set/expire in a thin adapter
+ * with the same signature as Map.
  */
 
 interface RateLimitEntry {

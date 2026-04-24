@@ -12,6 +12,8 @@ import { distributeLead } from "@/app/lib/lead-distribution";
 import { startRequestTimer } from "@/app/lib/logger";
 import { validateCsrfToken } from "@/app/lib/csrf";
 import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
+import { evaluateCovenant } from "@/app/lib/valor/covenant-gate";
+import { LEXICON, confirmationFor } from "@/app/lib/valor/lexicon";
 
 /**
  * Lead submission API.
@@ -29,8 +31,11 @@ import { validateLeadPayload, isValidEmail } from "@/app/lib/validation";
 
 // Validation handled by app/lib/validation.ts
 
-/** Confirmation messages shown after successful submission */
-const CONFIRMATIONS = [
+/**
+ * Fallback confirmation messages — used only when the covenant evaluator
+ * can't determine a tier. Tier-matched messages live in valor/lexicon.
+ */
+const FALLBACK_CONFIRMATIONS = [
   "Your request has been received. A licensed professional will reach out soon.",
   "Thank you for taking the first step. Someone who understands military coverage will be in touch.",
   "Your information is secure. A licensed insurance professional will contact you shortly.",
@@ -78,33 +83,28 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Bot detection (honeypot + timing)
-    // 1. Honeypot: if the hidden field has any value, it's a bot
+    // Fast-path bot detection (honeypot). This catches the obvious case
+    // before any coherency math runs. The resonance cascade below handles
+    // every subtler variant via archetype matching.
     if (body._hp_website) {
       logger.warn("Honeypot triggered", { clientIp });
-      finish(200); // Return fake success to not alert the bot
+      finish(200); // Silent-success per covenant gate: bot sees no signal.
       return NextResponse.json({
         success: true,
-        message: "Your request has been received.",
+        message: LEXICON.tooFastOrBot,
         leadId: "lead_" + Date.now().toString(36),
-        confirmationMessage: "Your intention has been noted.",
+        confirmationMessage: LEXICON.tooFastOrBot,
       });
     }
-    // 2. Timing: if submitted faster than 3 seconds after page load, likely a bot
-    const MIN_SUBMIT_TIME_MS = 3000;
-    if (body._hp_ts && typeof body._hp_ts === "number") {
-      const elapsed = Date.now() - body._hp_ts;
-      if (elapsed < MIN_SUBMIT_TIME_MS) {
-        logger.warn("Timing check failed — too fast", { elapsed, clientIp });
-        finish(200); // Fake success
-        return NextResponse.json({
-          success: true,
-          message: "Your request has been received.",
-          leadId: "lead_" + Date.now().toString(36),
-          confirmationMessage: "Your intention has been noted.",
-        });
-      }
-    }
+
+    // Capture behavioral signals for the resonance layer. Absent → neutral.
+    const submitElapsedMs = (typeof body._hp_ts === "number" && body._hp_ts > 0)
+      ? Math.max(0, Date.now() - body._hp_ts)
+      : undefined;
+    const stepTimingsMs = Array.isArray(body._hp_step_ms)
+      ? body._hp_step_ms.filter((t: unknown): t is number =>
+          typeof t === "number" && Number.isFinite(t) && t >= 0)
+      : undefined;
 
     // Schema-based validation
     const validation = validateLeadPayload(body);
@@ -118,6 +118,70 @@ export async function POST(req: NextRequest) {
     }
 
     const validated = validation.data;
+
+    // ── Covenant Gate ──────────────────────────────────────────
+    // Coherency-native admission. Reduces the lead to its 16-dimensional
+    // shape, cascades it against the archetype library, and returns a
+    // verdict. Silent-rejects bot/fraud archetypes with fake-success so
+    // automated attackers get no adjustment signal; soft-rejects below-
+    // gate leads with a proper decline. Admitted leads continue to DB.
+    const covenant = evaluateCovenant({
+      coverageInterest: validated.coverageInterest,
+      purchaseIntent: validated.purchaseIntent,
+      veteranStatus: validated.veteranStatus,
+      militaryBranch: validated.militaryBranch,
+      state: validated.state,
+      firstName: validated.firstName,
+      lastName: validated.lastName,
+      email: validated.email,
+      phone: validated.phone,
+      dateOfBirth: validated.dateOfBirth,
+      consentTcpa: true,
+      consentPrivacy: true,
+      consentText: validated.consentText,
+      consentTimestamp: validated.consentTimestamp,
+      utmSource: validated.utmSource,
+      utmMedium: validated.utmMedium,
+      utmCampaign: validated.utmCampaign,
+      submitElapsedMs,
+      stepTimingsMs,
+      createdAt: new Date().toISOString(),
+    });
+
+    if (covenant.verdict === "silent-reject-bot"
+        || covenant.verdict === "silent-reject-fraud") {
+      logger.warn("Covenant gate silent-rejected", {
+        verdict: covenant.verdict,
+        reason: covenant.reason,
+        coherency: covenant.coherency.score,
+        dominantArchetype: covenant.coherency.dominantArchetype,
+        clientIp,
+      });
+      finish(200); // Silent-success — same pattern as honeypot.
+      return NextResponse.json({
+        success: true,
+        message: LEXICON.tooFastOrBot,
+        leadId: "lead_" + Date.now().toString(36),
+        confirmationMessage: LEXICON.tooFastOrBot,
+      });
+    }
+
+    if (covenant.verdict === "soft-reject-low") {
+      logger.info("Covenant gate soft-rejected", {
+        reason: covenant.reason,
+        coherency: covenant.coherency.score,
+        clientIp,
+      });
+      finish(422);
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "We couldn't verify enough information to route your request. Please review your entries and try again.",
+        },
+        { status: 422 },
+      );
+    }
 
     // Build the lead record with full consent metadata (TCPA compliance)
     const leadId = generateLeadId();
@@ -173,9 +237,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    logger.info("Lead stored", { leadId, rowId: dbResult.value.id, state: validated.state, coverageInterest: validated.coverageInterest });
+    logger.info("Lead stored", {
+      leadId, rowId: dbResult.value.id,
+      state: validated.state,
+      coverageInterest: validated.coverageInterest,
+      coherency: covenant.coherency.score,
+      tier: covenant.coherency.tier,
+      archetype: covenant.coherency.dominantArchetype,
+    });
 
-    // Score the lead (used by SSE broadcast and admin email)
+    // The lead score surface is kept stable for downstream consumers (SSE,
+    // admin email, distribution). The scoreLead shim now delegates to the
+    // coherency cascade and projects back into the legacy LeadScore shape,
+    // so nothing downstream has to change.
     const leadScore = scoreLead(leadRecord);
 
     // Broadcast real-time event to connected admin dashboards (SSE)
@@ -240,7 +314,11 @@ export async function POST(req: NextRequest) {
       logger.error("Lead distribution failed", { leadId, error: String(err) });
     });
 
-    const confirmationMessage = CONFIRMATIONS[Math.floor(Math.random() * CONFIRMATIONS.length)];
+    // Tier-matched confirmation from the Remembrance lexicon. Falls back to
+    // the rotating set only if the tier isn't mapped.
+    const confirmationMessage =
+      confirmationFor(covenant.coherency.tier) ||
+      FALLBACK_CONFIRMATIONS[Math.floor(Math.random() * FALLBACK_CONFIRMATIONS.length)];
 
     finish(200, { leadId });
     return NextResponse.json({
@@ -248,6 +326,10 @@ export async function POST(req: NextRequest) {
       message: "Your request has been received. A licensed insurance professional will contact you soon.",
       leadId,
       confirmationMessage,
+      coherency: {
+        score: Number(covenant.coherency.score.toFixed(4)),
+        tier: covenant.coherency.tier,
+      },
     });
   } catch {
     finish(400);

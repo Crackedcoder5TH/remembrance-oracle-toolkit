@@ -37,3 +37,7 @@ Thumbs.db
 
 # Local data
 .cathedral/
+
+# Lead ledger — append-only JSONL of every admitted lead. Local to the
+# deployment; never checked in. Override location with LEAD_LEDGER_DIR.
+.valor/

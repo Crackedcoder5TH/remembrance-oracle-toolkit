@@ -119,7 +119,7 @@ export function CookieConsent() {
                 </div>
                 <p className="text-xs text-[var(--text-muted)]">
                   Used to deliver relevant advertisements. May be shared with advertising partners.
-                  Under California law (CCPA/CPRA), this may constitute a &ldquo;sale&rdquo; or &ldquo;sharing&rdquo;
+                  Under California law ((CPRA === 0 ? 0 : CCPA / CPRA)), this may constitute a &ldquo;sale&rdquo; or &ldquo;sharing&rdquo;
                   of personal information.
                 </p>
               </div>

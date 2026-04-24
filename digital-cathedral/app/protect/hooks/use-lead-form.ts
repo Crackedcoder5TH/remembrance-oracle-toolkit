@@ -106,6 +106,14 @@ export const FIELD_STEP: Record<keyof LeadFormErrors, number> = {
   tcpaConsent: 2, privacyConsent: 2,
 };
 
+/** Coherency snapshot returned by the leads API — drives the post-submit pulse. */
+export interface LeadCoherencySnapshot {
+  score: number;
+  tier: string;
+  dominantArchetype: string;
+  shape: number[];
+}
+
 export interface UseLeadFormReturn {
   form: LeadFormData;
   errors: LeadFormErrors;
@@ -113,6 +121,7 @@ export interface UseLeadFormReturn {
   submitted: boolean;
   confirmationMessage: string;
   leadId: string;
+  coherency: LeadCoherencySnapshot | null;
   serverError: string;
   step: number;
   totalSteps: number;
@@ -226,6 +235,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const [submitted, setSubmitted] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState("");
   const [leadId, setLeadId] = useState("");
+  const [coherency, setCoherency] = useState<LeadCoherencySnapshot | null>(null);
   const [serverError, setServerError] = useState("");
   const [step, setStep] = useState(saved.current?.step ?? 0);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -337,6 +347,16 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
       setLeadId(result.leadId || "");
       clearFormDraft(); // Clear saved draft on successful submission
       setConfirmationMessage(result.confirmationMessage || "Your request has been received. A licensed professional will be in touch soon.");
+      // Capture the coherency snapshot so the UI can render the submitter's
+      // own signal pulse on the confirmation screen.
+      if (result.coherency && Array.isArray(result.coherency.shape)) {
+        setCoherency({
+          score: Number(result.coherency.score) || 0,
+          tier: String(result.coherency.tier || "pull"),
+          dominantArchetype: String(result.coherency.dominantArchetype || ""),
+          shape: result.coherency.shape.map((n: unknown) => Number(n) || 0),
+        });
+      }
       // Fire conversion event
       trackConversion(result.leadId || "", data.coverageInterest, data.state);
     } catch (err) {
@@ -390,7 +410,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     .map((f) => ({ field: f, label: FIELD_LABELS[f], error: errors[f]! }));
 
   return {
-    form, errors, loading, submitted, confirmationMessage, leadId, serverError,
+    form, errors, loading, submitted, confirmationMessage, leadId, coherency, serverError,
     step, totalSteps: TOTAL_STEPS, submitAttempted, missingFields,
     updateField, handleSubmit, nextStep, prevStep, goToStep,
   };

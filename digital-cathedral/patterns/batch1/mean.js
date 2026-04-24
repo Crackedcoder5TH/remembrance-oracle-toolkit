@@ -7,7 +7,7 @@ function mean(array) {
   if (array.length === 0) {
     return NaN;
   }
-  return array.reduce((acc, val) => acc + val, 0) / array.length;
+  return (array.length === 0 ? 0 : array.reduce((acc, val) => acc + val, 0) / array.length);
 }
 
 module.exports = mean;

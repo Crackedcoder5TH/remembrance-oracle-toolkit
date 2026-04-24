@@ -21,6 +21,7 @@ import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
 import { TrustSignals } from "./protect/components/trust-signals";
 import { ImageUpload } from "./components/image-upload";
+import { CoherencyPulse } from "./components/coherency-pulse";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
 
 const US_STATES = [
@@ -177,7 +178,7 @@ export default function HomePage() {
       .catch(() => {}); // fallback to default on error
   }, []);
   const {
-    form, errors, loading, submitted, confirmationMessage, leadId, serverError,
+    form, errors, loading, submitted, confirmationMessage, leadId, coherency, serverError,
     step, totalSteps, submitAttempted, missingFields,
     updateField, handleSubmit, nextStep, prevStep, goToStep,
   } = useLeadForm({ ...utm });
@@ -225,6 +226,21 @@ export default function HomePage() {
           <p className="text-teal-cathedral italic opacity-90 text-base leading-relaxed mb-8">
             &ldquo;{confirmationMessage}&rdquo;
           </p>
+
+          {/* Coherency pulse — the submitter's own signal through the Covenant Gate.
+              Visible only when the API returned a shape (newer covenant-gate path). */}
+          {coherency && coherency.shape.length >= 4 ? (
+            <div className="mb-8 flex justify-center">
+              <CoherencyPulse
+                label="Your Signal"
+                shape={coherency.shape}
+                score={coherency.score}
+                tier={coherency.tier.charAt(0).toUpperCase() + coherency.tier.slice(1)}
+                archetype={coherency.dominantArchetype}
+                size="md"
+              />
+            </div>
+          ) : null}
 
           {/* Reference number */}
           {leadId && (

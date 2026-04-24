@@ -18,6 +18,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { US_STATES } from "../../packages/shared/src/validate-state";
+import { CoherencyPulse } from "../components/coherency-pulse";
 
 // --- Debounce hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -47,6 +48,11 @@ interface LeadRow {
   score: number;
   tier: "hot" | "warm" | "standard" | "cool";
   scoreFactors: Record<string, number>;
+  /** Covenant-gate coherency. Present for leads admitted via the new path. */
+  coherency?: number;
+  coherencyTier?: string;
+  archetype?: string;
+  shape?: number[];
 }
 
 interface Stats {
@@ -570,10 +576,19 @@ export default function AdminDashboard() {
                   className="border-b border-indigo-cathedral/5 hover:bg-[var(--bg-surface)]/50 transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[lead.tier]}`}>
-                      {lead.score}
-                      <span className="opacity-70">{lead.tier}</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[lead.tier]}`}>
+                        {lead.score}
+                        <span className="opacity-70">{lead.tier}</span>
+                      </span>
+                      {lead.shape && lead.shape.length >= 4 ? (
+                        <CoherencyPulse
+                          shape={lead.shape}
+                          score={lead.coherency ?? lead.score / 100}
+                          size="sm"
+                        />
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-[var(--text-primary)]">
                     {lead.firstName} {lead.lastName}

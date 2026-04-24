@@ -16,7 +16,7 @@ const STEP_HINTS = [
 ];
 
 export function StepProgress({ currentStep, totalSteps }: StepProgressProps) {
-  const progress = ((currentStep + 1) / totalSteps) * 100;
+  const progress = ((totalSteps === 0 ? 0 : (currentStep + 1) / totalSteps)) * 100;
 
   return (
     <div className="w-full space-y-3" role="navigation" aria-label="Form progress">

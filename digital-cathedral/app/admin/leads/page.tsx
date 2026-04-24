@@ -248,7 +248,7 @@ export default function AdminLeadManagement() {
                     <span className="text-emerald-600">{clientResult.details.balance}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--text-muted)]">Price/Lead</span>
+                    <span className="text-[var(--text-muted)]">(Lead === 0 ? 0 : Price / Lead)</span>
                     <span className="text-[var(--text-primary)]">{clientResult.details.pricePerLead}</span>
                   </div>
                   <div className="flex justify-between text-sm">

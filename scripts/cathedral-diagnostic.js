@@ -1,36 +1,53 @@
 #!/usr/bin/env node
 /**
- * Cathedral Diagnostic — runs the full remembrance ecosystem's debug stack
- * on the Valor Legacies cathedral code.
+ * Cathedral Diagnostic v2 — AST-first + suppressions + auto-fix.
  *
- * Pulls in:
- *   - src/audit/static-checkers       — 6 bug-class regex audit
- *   - src/audit/ast-checkers          — AST-based checks (unused vars etc.)
- *   - src/audit/void-scan             — void compressor coherency per file
- *   - src/audit/cascade-detector      — cascading assumption mismatches
- *   - src/audit/rich-summary          — aggregated output formatter
+ * Runs the full oracle audit stack against the cathedral (or any
+ * specified path), applying in order:
  *
- * Walks every .ts/.tsx/.js file under digital-cathedral/ (skipping node_modules,
- * .next, tests, and generated files), runs the stack, and writes:
+ *   1. AST-based checkers  (src/audit/ast-checkers.js)
+ *        - Parses each file once, walks the tree, applies suppressions
+ *        - Lower false-positive rate than regex
+ *   2. Static (regex) checkers (src/audit/static-checkers.js)
+ *        - Fallback for patterns the AST path doesn't cover
+ *        - Suppressions applied here too (parsed from file comments)
+ *   3. Dedupe across both checkers
+ *        - AST finding wins when both flag the same {file, line, bugClass}
+ *   4. Optional auto-fix (src/audit/auto-fix.js)
+ *        - With --fix, apply generated patches to disk for AST-fixable findings
  *
- *   .remembrance/diagnostics/cathedral-latest.json   — machine-readable
- *   .remembrance/diagnostics/cathedral-latest.md     — human-readable
+ * Suppression syntax (line comments, applies to Oracle checkers only):
  *
- * The admin-side API route /api/admin/diagnostics reads the latest JSON and
- * surfaces it so operators can see live what the ecosystem thinks of the
- * cathedral's code without re-running the full cascade every request.
+ *   // oracle-ignore: state-mutation          ← same line, specific rule
+ *   // oracle-ignore                          ← same line, all rules
+ *   // oracle-ignore-next-line: security      ← next line
+ *   // oracle-ignore-file: type, integration  ← rest of file (must be in first 20 lines)
  *
- * Run locally:
+ * CLI:
  *   node scripts/cathedral-diagnostic.js
- *   node scripts/cathedral-diagnostic.js --json-only
- *   node scripts/cathedral-diagnostic.js --path digital-cathedral/app/api
+ *   node scripts/cathedral-diagnostic.js --fix          # apply auto-fixes to disk
+ *   node scripts/cathedral-diagnostic.js --path X       # scan a subtree
+ *   node scripts/cathedral-diagnostic.js --json-only    # skip markdown
+ *   node scripts/cathedral-diagnostic.js --dry-fix      # show patches without writing
  */
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
-const { auditFiles } = require('../src/audit/static-checkers');
+
+// AST-first path (has suppressions baked in)
+const astCheckers = require('../src/audit/ast-checkers');
+// Regex fallback
+const staticCheckers = require('../src/audit/static-checkers');
+// Suppression machinery for the regex path
+const { parseComments, isSuppressed } = require('../src/audit/suppressions');
+const { parseProgram } = require('../src/audit/parser');
+// Auto-fix
+const { autoFixFile } = require('../src/audit/auto-fix');
+// Optional: void-scan coherency
+let voidScan = null;
+try { voidScan = require('../src/audit/void-scan'); } catch { /* optional */ }
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const CATHEDRAL_ROOT = path.join(REPO_ROOT, 'digital-cathedral');
@@ -49,148 +66,243 @@ function walkFiles(root, acc = []) {
     if (entry.name.startsWith('.') && entry.name !== '.env.example') continue;
     if (SKIP_DIRS.has(entry.name)) continue;
     const p = path.join(root, entry.name);
-    if (entry.isDirectory()) {
-      walkFiles(p, acc);
-    } else if (entry.isFile()) {
-      if (INCLUDE_EXT.has(path.extname(entry.name))) acc.push(p);
-    }
+    if (entry.isDirectory()) walkFiles(p, acc);
+    else if (entry.isFile() && INCLUDE_EXT.has(path.extname(entry.name))) acc.push(p);
   }
   return acc;
 }
 
-function tryVoidScan(files) {
+/**
+ * Run both checkers on a file, apply suppressions (AST does it internally;
+ * we do it manually for static), dedupe, and return combined findings.
+ *
+ * Returns { findings, program } — program may be null if AST parse failed,
+ * which also disables auto-fix for that file.
+ */
+function auditOneFile(filePath) {
+  let source;
+  try { source = fs.readFileSync(filePath, 'utf-8'); }
+  catch { return { findings: [], program: null }; }
+
+  // AST path — already applies suppressions.
+  let program = null;
+  let astFindings = [];
   try {
-    const { voidScanFile, postCoherence } = require('../src/audit/void-scan');
-    const perFile = [];
-    for (const f of files) {
-      try {
-        const r = voidScanFile(f);
-        if (r) perFile.push({ file: path.relative(REPO_ROOT, f), ...r });
-      } catch {
-        // Void scan is optional — a failure on one file shouldn't poison the whole report.
-      }
-    }
-    return { available: true, files: perFile };
-  } catch (err) {
-    return { available: false, reason: err.message ?? String(err) };
+    program = parseProgram(source);
+    const astResult = astCheckers.auditCode(source, { program });
+    astFindings = (astResult.findings || []).map((f) => ({ ...f, source: 'ast' }));
+  } catch (e) {
+    // Parse failure → no AST findings; static path still runs below.
+    if (process.env.ORACLE_DEBUG) console.warn(`[diag:ast] ${filePath}: ${e.message}`);
+    program = null;
   }
+
+  // Static regex path — manually filter via suppressions table.
+  const staticResult = staticCheckers.auditCode(source);
+  let staticFindings = (staticResult.findings || []).map((f) => ({ ...f, source: 'static' }));
+
+  // Apply suppressions to static findings. Build a table from either the
+  // parsed AST comments (if we have them) or a minimal comment scan of the
+  // source text. The AST program gives us precise comment positions; the
+  // fallback is a looser line-based scan.
+  if (program && program.comments) {
+    const table = parseComments(program.comments, program.lines.length);
+    staticFindings = staticFindings.filter((f) => !isSuppressed(f, table));
+  } else {
+    // Lightweight fallback: scan for // oracle-ignore... comments by line.
+    const lines = source.split(/\r?\n/);
+    const directives = [];
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/\/\/\s*(?:oracle|oracle-audit|orc)-ignore(?:-(next-line|file))?(?::\s*([\w/,-]+))?/);
+      if (!m) continue;
+      directives.push({ line: i + 1, scope: m[1] || 'same-line', rules: m[2] });
+    }
+    staticFindings = staticFindings.filter((f) => {
+      for (const d of directives) {
+        const targetLine = d.scope === 'next-line' ? d.line + 1 : d.line;
+        if (d.scope === 'file' && d.line <= 20) {
+          if (!d.rules) return false;
+          const rules = d.rules.split(',').map((s) => s.trim());
+          if (rules.includes(f.bugClass)) return false;
+        } else if (targetLine === f.line) {
+          if (!d.rules) return false;
+          const rules = d.rules.split(',').map((s) => s.trim());
+          if (rules.includes(f.bugClass)) return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  // Dedupe — AST finding beats static when they flag the same (line, bugClass).
+  const key = (f) => `${f.line}:${f.bugClass}`;
+  const seen = new Map();
+  for (const f of astFindings) seen.set(key(f), f);
+  for (const f of staticFindings) if (!seen.has(key(f))) seen.set(key(f), f);
+
+  return { findings: [...seen.values()], program };
 }
 
-function summarizeAudit(audit) {
-  const severityOrder = ['high', 'medium', 'low'];
-  const byFile = new Map();
-  for (const fileResult of audit.files) {
-    if (!fileResult.findings || fileResult.findings.length === 0) continue;
-    byFile.set(fileResult.file, fileResult.findings);
+function tryVoidScan(files) {
+  if (!voidScan || !voidScan.voidScanFile) return { available: false, files: [] };
+  const out = [];
+  for (const f of files) {
+    try {
+      const r = voidScan.voidScanFile(f);
+      if (r) out.push({ file: path.relative(REPO_ROOT, f), ...r });
+    } catch { /* optional per-file */ }
   }
-  const top = [...byFile.entries()]
-    .map(([file, findings]) => ({
-      file: path.relative(REPO_ROOT, file),
-      count: findings.length,
-      bySeverity: findings.reduce((acc, f) => {
-        acc[f.severity] = (acc[f.severity] ?? 0) + 1;
-        return acc;
-      }, {}),
-      byClass: findings.reduce((acc, f) => {
-        acc[f.bugClass] = (acc[f.bugClass] ?? 0) + 1;
-        return acc;
-      }, {}),
-    }))
-    .sort((a, b) => {
-      // Sort by severity weight then count
-      const weight = (s) => ({ high: 1000, medium: 10, low: 1 }[s] ?? 0);
-      const wA = Object.entries(a.bySeverity).reduce((s, [sev, n]) => s + weight(sev) * n, 0);
-      const wB = Object.entries(b.bySeverity).reduce((s, [sev, n]) => s + weight(sev) * n, 0);
-      return wB - wA;
-    });
-  return { totalFiles: byFile.size, topFiles: top.slice(0, 25), severityOrder };
+  return { available: true, files: out };
+}
+
+function summarize(fileResults) {
+  const byClass = {};
+  const bySeverity = {};
+  const bySource = { ast: 0, static: 0 };
+  let totalFindings = 0;
+  let filesWithFindings = 0;
+  for (const fr of fileResults) {
+    if (fr.findings.length === 0) continue;
+    filesWithFindings++;
+    totalFindings += fr.findings.length;
+    for (const f of fr.findings) {
+      byClass[f.bugClass] = (byClass[f.bugClass] ?? 0) + 1;
+      bySeverity[f.severity] = (bySeverity[f.severity] ?? 0) + 1;
+      bySource[f.source] = (bySource[f.source] ?? 0) + 1;
+    }
+  }
+  return { totalFindings, filesWithFindings, byClass, bySeverity, bySource };
 }
 
 function formatMarkdown(report) {
-  const lines = [];
-  lines.push('# Cathedral Diagnostic Report');
-  lines.push('');
-  lines.push(`Run at: ${report.generatedAt}`);
-  lines.push(`Files scanned: ${report.audit.totalFilesScanned}`);
-  lines.push(`Files with findings: ${report.summary.totalFiles}`);
-  lines.push(`Total findings: ${report.audit.totalFindings}`);
-  lines.push('');
-  lines.push('## Findings by bug class');
-  for (const [cls, n] of Object.entries(report.audit.byClass).sort((a, b) => b[1] - a[1])) {
-    lines.push(`- **${cls}**: ${n}`);
+  const L = [];
+  L.push('# Cathedral Diagnostic Report');
+  L.push('');
+  L.push(`Run at: ${report.generatedAt}`);
+  L.push(`Mode: ${report.mode}`);
+  L.push(`Files scanned: ${report.filesScanned}`);
+  L.push(`Files with findings: ${report.summary.filesWithFindings}`);
+  L.push(`Total findings: ${report.summary.totalFindings}`);
+  if (report.fixes) {
+    L.push(`Auto-fixes applied: ${report.fixes.applied} across ${report.fixes.filesPatched} files`);
   }
-  lines.push('');
-  lines.push('## Findings by severity');
-  for (const sev of report.summary.severityOrder) {
-    const n = report.audit.bySeverity[sev] ?? 0;
-    if (n > 0) lines.push(`- **${sev}**: ${n}`);
+  L.push('');
+  L.push('## Findings by bug class');
+  for (const [cls, n] of Object.entries(report.summary.byClass).sort((a, b) => b[1] - a[1])) {
+    L.push(`- **${cls}**: ${n}`);
   }
-  lines.push('');
-  lines.push('## Top 25 files by weighted severity');
-  lines.push('| File | Findings | High | Medium | Low |');
-  lines.push('|------|---------:|-----:|-------:|----:|');
-  for (const f of report.summary.topFiles) {
-    lines.push(`| ${f.file} | ${f.count} | ${f.bySeverity.high ?? 0} | ${f.bySeverity.medium ?? 0} | ${f.bySeverity.low ?? 0} |`);
+  L.push('');
+  L.push('## Findings by severity');
+  for (const sev of ['high', 'medium', 'low']) {
+    const n = report.summary.bySeverity[sev] ?? 0;
+    if (n > 0) L.push(`- **${sev}**: ${n}`);
   }
-  if (report.voidScan?.available && report.voidScan.files.length > 0) {
-    lines.push('');
-    lines.push('## Void substrate coherency (top 15 files by distance)');
-    const sorted = [...report.voidScan.files]
-      .filter((f) => typeof f.coherency === 'number' || typeof f.distance === 'number')
-      .sort((a, b) => (b.distance ?? 0) - (a.distance ?? 0))
-      .slice(0, 15);
-    if (sorted.length === 0) {
-      lines.push('_No per-file coherency scores produced._');
-    } else {
-      for (const f of sorted) {
-        const score = f.coherency !== undefined ? `coh=${f.coherency.toFixed(3)}` : `dist=${(f.distance ?? 0).toFixed(3)}`;
-        lines.push(`- ${f.file} (${score})`);
-      }
-    }
+  L.push('');
+  L.push('## Findings by source');
+  L.push(`- AST-based: ${report.summary.bySource.ast ?? 0}`);
+  L.push(`- Regex-based: ${report.summary.bySource.static ?? 0}`);
+  L.push('');
+  L.push('## Top 25 files by weighted severity');
+  L.push('| File | Total | High | Medium | Low |');
+  L.push('|------|-----:|-----:|------:|----:|');
+  const weighted = report.files
+    .filter((f) => f.findings.length > 0)
+    .map((f) => {
+      const by = { high: 0, medium: 0, low: 0 };
+      for (const x of f.findings) by[x.severity] = (by[x.severity] ?? 0) + 1;
+      const w = by.high * 1000 + by.medium * 10 + by.low;
+      return { file: f.file, total: f.findings.length, by, w };
+    })
+    .sort((a, b) => b.w - a.w)
+    .slice(0, 25);
+  for (const f of weighted) {
+    L.push(`| ${f.file} | ${f.total} | ${f.by.high} | ${f.by.medium} | ${f.by.low} |`);
   }
-  lines.push('');
-  lines.push('---');
-  lines.push(`_Generated by scripts/cathedral-diagnostic.js. Re-run anytime with \`node scripts/cathedral-diagnostic.js\`._`);
-  return lines.join('\n') + '\n';
+  L.push('');
+  L.push('---');
+  L.push(`_Re-run: \`node scripts/cathedral-diagnostic.js\`. Auto-fix: add \`--fix\`._`);
+  return L.join('\n') + '\n';
 }
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   const jsonOnly = args.includes('--json-only');
+  const doFix = args.includes('--fix');
+  const dryFix = args.includes('--dry-fix');
   const pathArg = args.indexOf('--path');
   const scanRoot = pathArg >= 0 && args[pathArg + 1]
     ? path.resolve(REPO_ROOT, args[pathArg + 1])
     : CATHEDRAL_ROOT;
 
-  console.log(`[diagnostic] scanning ${path.relative(REPO_ROOT, scanRoot) || '.'}...`);
+  const mode = doFix ? 'audit+fix' : dryFix ? 'audit+dry-fix' : 'audit';
+  console.log(`[diagnostic] mode=${mode} scanning ${path.relative(REPO_ROOT, scanRoot) || '.'}`);
   const files = walkFiles(scanRoot);
   console.log(`[diagnostic] ${files.length} source files queued`);
+  console.log('[diagnostic] running AST + regex checkers with suppressions...');
 
-  console.log('[diagnostic] running static-checkers audit (6 bug classes)...');
-  const audit = auditFiles(files, { pedantic: false });
+  const fileResults = [];
+  let programCache = new Map();
+  for (const f of files) {
+    const { findings, program } = auditOneFile(f);
+    fileResults.push({
+      file: path.relative(REPO_ROOT, f),
+      absPath: f,
+      findings,
+    });
+    if (program) programCache.set(f, program);
+  }
+
+  let fixes = null;
+  if (doFix || dryFix) {
+    console.log(`[diagnostic] ${doFix ? 'applying' : 'dry-running'} auto-fixes...`);
+    let applied = 0;
+    let filesPatched = 0;
+    const fixedFiles = [];
+    for (const fr of fileResults) {
+      if (fr.findings.length === 0) continue;
+      try {
+        const result = autoFixFile(fr.absPath, fr.findings, { write: doFix });
+        if (result.fixed > 0) {
+          applied += result.fixed;
+          filesPatched += 1;
+          fixedFiles.push({
+            file: fr.file,
+            fixed: result.fixed,
+            unfixed: result.unfixed.length,
+          });
+        }
+      } catch (err) {
+        if (process.env.ORACLE_DEBUG) console.warn(`[diag:fix] ${fr.file}: ${err.message}`);
+      }
+    }
+    fixes = { applied, filesPatched, files: fixedFiles };
+    console.log(`[diagnostic] ${doFix ? 'applied' : 'would apply'} ${applied} fix(es) across ${filesPatched} file(s)`);
+  }
+
+  // Post-fix — if we just wrote fixes, re-scan to show the new baseline.
+  if (doFix && fixes && fixes.applied > 0) {
+    console.log('[diagnostic] re-scanning after fixes...');
+    fileResults.length = 0;
+    for (const f of files) {
+      const { findings } = auditOneFile(f);
+      fileResults.push({ file: path.relative(REPO_ROOT, f), absPath: f, findings });
+    }
+  }
 
   console.log('[diagnostic] running void-scan (coherency per file)...');
-  const voidScan = tryVoidScan(files);
+  const voidScanResult = tryVoidScan(files);
 
-  const summary = summarizeAudit(audit);
+  const summary = summarize(fileResults);
 
   const report = {
     generatedAt: new Date().toISOString(),
-    repoRoot: REPO_ROOT,
+    mode,
     scanRoot: path.relative(REPO_ROOT, scanRoot) || '.',
-    audit: {
-      totalFilesScanned: audit.summary.filesScanned,
-      totalFilesWithFindings: audit.summary.filesWithFindings,
-      totalFindings: audit.totalFindings,
-      byClass: audit.summary.byClass,
-      bySeverity: audit.summary.bySeverity,
-      files: audit.files.map((f) => ({
-        file: path.relative(REPO_ROOT, f.file),
-        findings: f.findings,
-      })),
-    },
+    filesScanned: files.length,
     summary,
-    voidScan,
+    fixes,
+    files: fileResults.map((fr) => ({ file: fr.file, findings: fr.findings })),
+    voidScan: voidScanResult,
   };
 
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -205,12 +317,16 @@ function main() {
   }
 
   console.log('');
-  console.log(`[diagnostic] files scanned: ${report.audit.totalFilesScanned}`);
-  console.log(`[diagnostic] files with findings: ${report.audit.totalFilesWithFindings}`);
-  console.log(`[diagnostic] total findings: ${report.audit.totalFindings}`);
-  if (report.audit.bySeverity.high) {
-    console.log(`[diagnostic] HIGH severity: ${report.audit.bySeverity.high}`);
+  console.log(`[diagnostic] files scanned: ${report.filesScanned}`);
+  console.log(`[diagnostic] files with findings: ${summary.filesWithFindings}`);
+  console.log(`[diagnostic] total findings: ${summary.totalFindings}`);
+  if (summary.bySeverity.high) {
+    console.log(`[diagnostic] HIGH severity: ${summary.bySeverity.high}`);
   }
+  console.log(`[diagnostic] by source: AST=${summary.bySource.ast ?? 0}, regex=${summary.bySource.static ?? 0}`);
 }
 
-main();
+main().catch((err) => {
+  console.error('[diagnostic] fatal:', err.message);
+  process.exit(1);
+});

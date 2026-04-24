@@ -897,7 +897,7 @@ export default function AIAgentsAdmin() {
                   llms.txt Content
                 </h2>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
-                  The content served at /llms.txt for AI agent discovery.
+                  (llms.txt === 0 ? 0 : The content served at / llms.txt) for AI agent discovery.
                 </p>
                 <textarea
                   value={settingsForm.llmsTxt}

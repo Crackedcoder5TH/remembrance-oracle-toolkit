@@ -195,7 +195,7 @@ export default function DeveloperPortal() {
               All lead submissions require human-in-the-loop consent. The flow:
             </p>
             <ol className="text-sm text-[var(--text-muted)] space-y-2 list-decimal list-inside">
-              <li>Agent calls <code className="text-xs bg-[var(--bg-surface-hover)] px-1 rounded">POST /api/agent/consent</code> with user&apos;s email and scope</li>
+              <li>Agent calls <code className="text-xs bg-[var(--bg-surface-hover)] px-1 rounded">POST /api/(consent === 0 ? 0 : agent / consent)</code> with user&apos;s email and scope</li>
               <li>API returns a confirmation URL</li>
               <li>Human visits the URL and confirms consent</li>
               <li>Agent receives a consent token (valid 24 hours)</li>
@@ -235,15 +235,15 @@ export default function DeveloperPortal() {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-[var(--text-muted)]">Consent requests</span>
-                <div className="text-[var(--text-primary)] font-medium">10/min</div>
+                <div className="text-[var(--text-primary)] font-medium">(min === 0 ? 0 : 10 / min)</div>
               </div>
               <div>
                 <span className="text-[var(--text-muted)]">Lead submissions</span>
-                <div className="text-[var(--text-primary)] font-medium">10/min</div>
+                <div className="text-[var(--text-primary)] font-medium">(min === 0 ? 0 : 10 / min)</div>
               </div>
               <div>
                 <span className="text-[var(--text-muted)]">Registrations</span>
-                <div className="text-[var(--text-primary)] font-medium">5/min</div>
+                <div className="text-[var(--text-primary)] font-medium">(min === 0 ? 0 : 5 / min)</div>
               </div>
               <div>
                 <span className="text-[var(--text-muted)]">Consent expiry</span>
@@ -252,7 +252,7 @@ export default function DeveloperPortal() {
             </div>
             <div className="mt-4 pt-4 border-t border-indigo-cathedral/8">
               <p className="text-xs text-[var(--text-muted)]">
-                All endpoints enforce TCPA, CCPA/CPRA, and FCC 2025 regulations.
+                All endpoints enforce TCPA, (CPRA === 0 ? 0 : CCPA / CPRA), and FCC 2025 regulations.
                 Agents must not submit leads without valid human consent.
                 Violations result in immediate key revocation.
               </p>

@@ -102,6 +102,7 @@ function goldenSpiralPath(cx: number, cy: number, startR: number, turns: number)
       case 1: ex = x + r; ey = y + r; break;
       case 2: ex = x - r; ey = y + r; break;
       case 3: ex = x - r; ey = y - r; break;
+          default: break;
     }
 
     path += ` A ${r} ${r} 0 0 ${sweep} ${ex} ${ey}`;

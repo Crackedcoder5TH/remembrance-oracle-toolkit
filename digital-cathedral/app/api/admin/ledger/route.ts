@@ -18,9 +18,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/admin-auth";
 import {
-  ledgerDir,
-  ledgerFileStats,
-  listLedgerFiles,
+  activeBackendName,
+  ledgerLocation,
+  listLedgerMonths,
   readLedgerMonth,
   readRecentEntries,
 } from "@/app/lib/valor/lead-ledger";
@@ -36,11 +36,6 @@ function parseLimit(raw: string | null): number {
   return Math.min(n, MAX_RECENT);
 }
 
-function monthFromFilename(name: string): string | null {
-  const m = /^ledger-(\d{4}-\d{2})\.jsonl$/.exec(name);
-  return m ? m[1] : null;
-}
-
 export async function GET(req: NextRequest) {
   const authError = verifyAdmin(req);
   if (authError) return authError;
@@ -53,20 +48,10 @@ export async function GET(req: NextRequest) {
 
   // Mode 1: list available months
   if (list) {
-    const files = await listLedgerFiles();
-    const months = [];
-    for (const f of files) {
-      const m = monthFromFilename(f);
-      if (!m) continue;
-      const stats = await ledgerFileStats(m);
-      months.push({
-        month: m,
-        lines: stats?.lines ?? 0,
-        size: stats?.size ?? 0,
-      });
-    }
+    const months = await listLedgerMonths();
     return NextResponse.json({
-      directory: ledgerDir(),
+      backend: activeBackendName(),
+      location: ledgerLocation(),
       months,
     });
   }
@@ -84,7 +69,7 @@ export async function GET(req: NextRequest) {
       const raw = await readLedgerMonth(month);
       if (raw === null) {
         return NextResponse.json(
-          { error: `no ledger file for ${month}` },
+          { error: `no ledger entries for ${month}` },
           { status: 404 },
         );
       }
@@ -101,7 +86,7 @@ export async function GET(req: NextRequest) {
     const raw = await readLedgerMonth(month);
     if (raw === null) {
       return NextResponse.json(
-        { month, entries: [], count: 0 },
+        { backend: activeBackendName(), month, entries: [], count: 0 },
         { status: 200 },
       );
     }
@@ -117,15 +102,18 @@ export async function GET(req: NextRequest) {
       })
       .filter((e) => e !== null);
     return NextResponse.json({
+      backend: activeBackendName(),
       month,
       count: entries.length,
       entries: entries.slice(-limit).reverse(),
     });
   }
 
-  // Mode 3 (default): recent entries from current month
+  // Mode 3 (default): recent entries from the current month
   const entries = await readRecentEntries(limit);
   return NextResponse.json({
+    backend: activeBackendName(),
+    location: ledgerLocation(),
     count: entries.length,
     entries,
   });

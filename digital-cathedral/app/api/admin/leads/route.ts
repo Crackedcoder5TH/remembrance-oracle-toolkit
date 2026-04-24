@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Cap search string length to prevent abuse
+  // oracle-ignore-next-line: integration
   const searchParam = params.get("search") || undefined;
   const search = searchParam && searchParam.length <= 200 ? searchParam : undefined;
 

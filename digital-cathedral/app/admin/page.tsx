@@ -242,18 +242,25 @@ export default function AdminDashboard() {
   }
 
   // --- Real-time notifications via SSE ---
+  // The stream must open ONCE per mount. If we depend on fetchStats/fetchLeads
+  // (which rebuild every time filters change), we'd close and re-open the
+  // EventSource on every keystroke — a reconnect storm. We stash the latest
+  // callbacks in a ref and read them inside the handler instead.
   const [newLeadFlash, setNewLeadFlash] = useState<string | null>(null);
+  const sseHandlersRef = useRef({ fetchStats, fetchLeads });
+  useEffect(() => { sseHandlersRef.current = { fetchStats, fetchLeads }; }, [fetchStats, fetchLeads]);
+
   useEffect(() => {
     // SSE uses cookies automatically — no query param token needed
     const es = new EventSource("/api/admin/events");
 
     es.addEventListener("lead.created", (e) => {
       try {
-        const data = JSON.parse(e.data);
+        const data = JSON.parse((e as MessageEvent).data);
         setNewLeadFlash(`New lead: ${data.firstName} from ${data.state} (${data.tier})`);
         setTimeout(() => setNewLeadFlash(null), 5000);
-        fetchStats();
-        fetchLeads();
+        sseHandlersRef.current.fetchStats();
+        sseHandlersRef.current.fetchLeads();
       } catch {
         // Ignore parse errors
       }
@@ -264,7 +271,7 @@ export default function AdminDashboard() {
     };
 
     return () => es.close();
-  }, [fetchStats, fetchLeads]);
+  }, []);
 
   // Reset page when debounced search changes
   useEffect(() => {

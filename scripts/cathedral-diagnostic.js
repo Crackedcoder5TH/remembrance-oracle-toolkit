@@ -35,6 +35,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 // AST-first path (has suppressions baked in)
 const astCheckers = require('../src/audit/ast-checkers');
@@ -57,7 +58,51 @@ const SKIP_DIRS = new Set([
   'node_modules', '.next', 'out', 'dist', 'build', '.valor',
   'public', '__tests__', 'tests', '.git',
 ]);
-const INCLUDE_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
+const JS_EXT = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
+const PY_EXT = new Set(['.py']);
+const INCLUDE_EXT = new Set([...JS_EXT, ...PY_EXT]);
+
+/**
+ * Optional Python audit via ruff subprocess. Bucketed into the same
+ * bug-class taxonomy the oracle uses so findings merge cleanly.
+ */
+const RUFF_BUG_CLASS = {
+  S: 'security', B: 'edge-case', E: 'type',
+  F: 'integration', W: 'type', C: 'edge-case',
+  N: 'type', UP: 'type', SIM: 'edge-case',
+};
+function ruffToBugClass(code) {
+  // Ruff codes look like S301, B008, E501. Use the alpha prefix.
+  const alpha = (code.match(/^[A-Z]+/) || [])[0] || '';
+  return RUFF_BUG_CLASS[alpha] || 'edge-case';
+}
+function ruffSeverity(code) {
+  if (/^S/.test(code)) return 'high';   // Security
+  if (/^(E7|E9|F)/.test(code)) return 'medium';
+  return 'low';
+}
+function auditPyFile(filePath) {
+  // Graceful fallback: if ruff isn't installed, skip Python entirely.
+  const r = spawnSync('ruff', ['check', '--output-format', 'json', filePath], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (r.error && r.error.code === 'ENOENT') return { findings: [], ruffAvailable: false };
+  let parsed = [];
+  try { parsed = r.stdout ? JSON.parse(r.stdout) : []; } catch { parsed = []; }
+  const findings = parsed.map((p) => ({
+    line: p.location?.row ?? 1,
+    column: p.location?.column ?? 1,
+    bugClass: ruffToBugClass(p.code || ''),
+    assumption: p.message || p.code,
+    reality: `${p.code}: ${p.message || 'ruff finding'}`,
+    suggestion: p.fix?.message || null,
+    severity: ruffSeverity(p.code || ''),
+    source: 'ruff',
+    ruffCode: p.code,
+  }));
+  return { findings, ruffAvailable: true };
+}
 
 function walkFiles(root, acc = []) {
   let entries;
@@ -229,6 +274,7 @@ async function main() {
   const jsonOnly = args.includes('--json-only');
   const doFix = args.includes('--fix');
   const dryFix = args.includes('--dry-fix');
+  const suggestSup = args.includes('--suggest-suppressions');
   const pathArg = args.indexOf('--path');
   const scanRoot = pathArg >= 0 && args[pathArg + 1]
     ? path.resolve(REPO_ROOT, args[pathArg + 1])
@@ -242,7 +288,19 @@ async function main() {
 
   const fileResults = [];
   let programCache = new Map();
+  let ruffAvailable = null;
   for (const f of files) {
+    const ext = path.extname(f);
+    if (PY_EXT.has(ext)) {
+      const { findings, ruffAvailable: ra } = auditPyFile(f);
+      if (ruffAvailable === null) ruffAvailable = ra;
+      fileResults.push({
+        file: path.relative(REPO_ROOT, f),
+        absPath: f,
+        findings,
+      });
+      continue;
+    }
     const { findings, program } = auditOneFile(f);
     fileResults.push({
       file: path.relative(REPO_ROOT, f),
@@ -250,6 +308,9 @@ async function main() {
       findings,
     });
     if (program) programCache.set(f, program);
+  }
+  if (ruffAvailable === false) {
+    console.log('[diagnostic] ruff not found on PATH — Python files scanned as 0-finding (install `pip install ruff` for full coverage)');
   }
 
   let fixes = null;
@@ -309,6 +370,42 @@ async function main() {
   const jsonPath = path.join(OUTPUT_DIR, 'cathedral-latest.json');
   fs.writeFileSync(jsonPath, JSON.stringify(report, null, 2));
   console.log(`[diagnostic] wrote ${path.relative(REPO_ROOT, jsonPath)}`);
+
+  if (suggestSup) {
+    // Emit a suppressions-draft markdown file grouping findings by file
+    // with a ready-to-paste `// oracle-ignore-next-line: <class>` comment
+    // for each one. Operator reviews, copies what they want, pastes into
+    // source.
+    const lines = [];
+    lines.push('# Suppression Suggestions');
+    lines.push('');
+    lines.push('Generated draft. For each finding below, the suggested line');
+    lines.push('contains the exact comment to paste on the line ABOVE the');
+    lines.push('flagged line to silence it. Review before applying.');
+    lines.push('');
+    for (const fr of fileResults) {
+      if (fr.findings.length === 0) continue;
+      lines.push(`## ${fr.file}`);
+      lines.push('');
+      const byLine = new Map();
+      for (const f of fr.findings) {
+        const key = f.line;
+        if (!byLine.has(key)) byLine.set(key, new Set());
+        byLine.get(key).add(f.bugClass);
+      }
+      for (const [line, classes] of [...byLine.entries()].sort((a, b) => a[0] - b[0])) {
+        const rules = [...classes].join(', ');
+        lines.push(`- line ${line} (${rules})`);
+        lines.push(`  \`\`\``);
+        lines.push(`  // oracle-ignore-next-line: ${rules}`);
+        lines.push(`  \`\`\``);
+      }
+      lines.push('');
+    }
+    const sugPath = path.join(OUTPUT_DIR, 'cathedral-suppressions-draft.md');
+    fs.writeFileSync(sugPath, lines.join('\n') + '\n');
+    console.log(`[diagnostic] wrote ${path.relative(REPO_ROOT, sugPath)}`);
+  }
 
   if (!jsonOnly) {
     const mdPath = path.join(OUTPUT_DIR, 'cathedral-latest.md');

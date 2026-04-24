@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
   // Rate limit (sliding window per-IP)
   const clientIp = getClientIp(req.headers);
-  const rateCheck = checkRateLimit(clientIp, 5, 60_000); // 5 requests per minute per IP
+  const rateCheck = await checkRateLimit(clientIp, 5, 60_000); // 5 requests per minute per IP
   if (!rateCheck.allowed) {
     logger.warn("Rate limit exceeded", { clientIp });
     finish(429);
@@ -407,7 +407,7 @@ export async function DELETE(req: NextRequest) {
   const { logger, finish } = startRequestTimer("DELETE", "/api/leads");
 
   const clientIp = getClientIp(req.headers);
-  const rateCheck = checkRateLimit(clientIp, 3, 60_000); // 3 deletion requests per minute
+  const rateCheck = await checkRateLimit(clientIp, 3, 60_000); // 3 deletion requests per minute
   if (!rateCheck.allowed) {
     logger.warn("Rate limit exceeded on DELETE", { clientIp });
     finish(429);

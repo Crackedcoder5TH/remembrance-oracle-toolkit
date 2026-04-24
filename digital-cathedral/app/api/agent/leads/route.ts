@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Rate limit per agent key (10/min)
-  const rateCheck = checkRateLimit(`agent:${agent.label}`, 10, 60_000);
+  const rateCheck = await checkRateLimit(`agent:${agent.label}`, 10, 60_000);
   if (!rateCheck.allowed) {
     return NextResponse.json(
       { success: false, error: "Rate limit exceeded. Maximum 10 requests per minute." },

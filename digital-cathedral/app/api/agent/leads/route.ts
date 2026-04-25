@@ -28,6 +28,7 @@ import { distributeLead } from "@/app/lib/lead-distribution";
 import { checkRateLimit } from "@/app/lib/rate-limit";
 import { evaluateCovenant } from "@/app/lib/valor/covenant-gate";
 import { buildAgentDiagnostic } from "@/app/lib/valor/agent-diagnostic";
+import { buildAgentAccess, computeAgentStats } from "@/app/lib/valor/agent-tier";
 
 function generateLeadId(): string {
   const ts = Date.now().toString(36);
@@ -137,6 +138,12 @@ export async function POST(req: NextRequest) {
       createdAt: new Date().toISOString(),
     });
 
+    // Compute the agent's tier from history BEFORE this submission so the
+    // response reflects the tier the agent walked in with. The covenant
+    // verdict from this submission feeds the NEXT call's tier derivation.
+    const agentStatsPre = await computeAgentStats(agent.label);
+    const agentAccess = buildAgentAccess(agent.label, agentStatsPre);
+
     if (
       covenant.verdict === "silent-reject-bot"
       || covenant.verdict === "silent-reject-fraud"
@@ -149,6 +156,7 @@ export async function POST(req: NextRequest) {
           rejected: true,
           error: "Lead rejected by covenant gate.",
           diagnostic,
+          access: agentAccess,
         },
         { status: 422 },
       );
@@ -236,6 +244,9 @@ export async function POST(req: NextRequest) {
       // see WHICH dimensions carried the score, so subsequent submissions
       // can target higher coherency tiers (and higher payouts).
       diagnostic: buildAgentDiagnostic(covenant),
+      // Agent access snapshot — tier, visibility delay, promotion progress.
+      // Same shape as GET /api/agent/access; saves the agent a round-trip.
+      access: agentAccess,
     });
   } catch {
     return NextResponse.json(

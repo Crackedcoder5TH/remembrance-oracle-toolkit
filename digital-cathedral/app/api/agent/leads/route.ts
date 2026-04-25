@@ -26,6 +26,8 @@ import { broadcast } from "@/app/lib/lead-events";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { distributeLead } from "@/app/lib/lead-distribution";
 import { checkRateLimit } from "@/app/lib/rate-limit";
+import { evaluateCovenant } from "@/app/lib/valor/covenant-gate";
+import { buildAgentDiagnostic } from "@/app/lib/valor/agent-diagnostic";
 
 function generateLeadId(): string {
   const ts = Date.now().toString(36);
@@ -109,6 +111,49 @@ export async function POST(req: NextRequest) {
     }
 
     const validated = validation.data;
+
+    // Covenant gate. Authenticated agents get the full diagnostic on rejection
+    // (unlike the public web form which silently fakes success to bots) — they
+    // are partners with a Bearer key, so they should learn the gate and
+    // improve. The diagnostic returns weakest dimensions + actionable hints.
+    const covenant = evaluateCovenant({
+      firstName: validated.firstName,
+      lastName: validated.lastName,
+      state: validated.state,
+      coverageInterest: validated.coverageInterest,
+      purchaseIntent: validated.purchaseIntent,
+      veteranStatus: validated.veteranStatus,
+      militaryBranch: validated.militaryBranch ?? undefined,
+      email: validated.email,
+      phone: validated.phone,
+      dateOfBirth: validated.dateOfBirth,
+      consentTcpa: true,
+      consentPrivacy: true,
+      consentText: validated.consentText,
+      consentTimestamp: validated.consentTimestamp,
+      utmSource: "ai-agent",
+      utmMedium: agent.label,
+      utmCampaign: validated.utmCampaign ?? null,
+      createdAt: new Date().toISOString(),
+    });
+
+    if (
+      covenant.verdict === "silent-reject-bot"
+      || covenant.verdict === "silent-reject-fraud"
+      || covenant.verdict === "soft-reject-low"
+    ) {
+      const diagnostic = buildAgentDiagnostic(covenant);
+      return NextResponse.json(
+        {
+          success: false,
+          rejected: true,
+          error: "Lead rejected by covenant gate.",
+          diagnostic,
+        },
+        { status: 422 },
+      );
+    }
+
     const leadId = generateLeadId();
 
     const leadRecord: LeadRecord = {
@@ -187,6 +232,10 @@ export async function POST(req: NextRequest) {
       message: "Lead submitted successfully. A licensed professional will contact the person soon.",
       score: leadScore.total,
       tier: leadScore.tier,
+      // Informational diagnostic on the success path too — lets the agent
+      // see WHICH dimensions carried the score, so subsequent submissions
+      // can target higher coherency tiers (and higher payouts).
+      diagnostic: buildAgentDiagnostic(covenant),
     });
   } catch {
     return NextResponse.json(

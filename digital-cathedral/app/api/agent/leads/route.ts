@@ -29,6 +29,12 @@ import { checkRateLimit } from "@/app/lib/rate-limit";
 import { evaluateCovenant } from "@/app/lib/valor/covenant-gate";
 import { buildAgentDiagnostic } from "@/app/lib/valor/agent-diagnostic";
 import { buildAgentAccess, computeAgentStats } from "@/app/lib/valor/agent-tier";
+import {
+  readRoutingIntent,
+  validateRouting,
+  generateProvenanceId,
+  makeSubjectId,
+} from "@/app/lib/valor/agent-routing";
 
 function generateLeadId(): string {
   const ts = Date.now().toString(36);
@@ -113,6 +119,16 @@ export async function POST(req: NextRequest) {
 
     const validated = validation.data;
 
+    // Routing — agents may include X-Via-Subject (or `viaSubject` in body)
+    // to route through an Abundance Host. Bad routing never rejects the
+    // submission; it just doesn't get attributed to a host.
+    const originatorSubjectId = makeSubjectId("agent", agent.label).full;
+    const viaIntent = readRoutingIntent(req.headers, req.url, leadData);
+    const routing = await validateRouting(viaIntent, originatorSubjectId);
+
+    const royaltyConsent = leadData.royaltyConsent !== false;
+    const provenanceId = generateProvenanceId();
+
     // Covenant gate. Authenticated agents get the full diagnostic on rejection
     // (unlike the public web form which silently fakes success to bots) — they
     // are partners with a Bearer key, so they should learn the gate and
@@ -157,6 +173,12 @@ export async function POST(req: NextRequest) {
           error: "Lead rejected by covenant gate.",
           diagnostic,
           access: agentAccess,
+          provenance: {
+            provenanceId,
+            viaSubjectId: routing.viaSubjectId,
+            routingReason: routing.reason ?? null,
+            royaltyConsent,
+          },
         },
         { status: 422 },
       );
@@ -247,6 +269,15 @@ export async function POST(req: NextRequest) {
       // Agent access snapshot — tier, visibility delay, promotion progress.
       // Same shape as GET /api/agent/access; saves the agent a round-trip.
       access: agentAccess,
+      // Provenance record for this submission. Downstream royalty events
+      // (Stage 2) reference provenanceId; the host (if any) gets a slice
+      // of any royalty triggered by this submission.
+      provenance: {
+        provenanceId,
+        viaSubjectId: routing.viaSubjectId,
+        routingReason: routing.reason ?? null,
+        royaltyConsent,
+      },
     });
   } catch {
     return NextResponse.json(

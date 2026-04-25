@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateAgent } from "@/app/lib/agent-auth";
 import { checkRateLimit } from "@/app/lib/rate-limit";
-import { buildAgentAccess, computeAgentStats } from "@/app/lib/valor/agent-tier";
+import { buildAgentAccessAsync, computeAgentStats } from "@/app/lib/valor/agent-tier";
 
 export async function GET(req: NextRequest) {
   const agent = authenticateAgent(req);
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
 
   const stats = await computeAgentStats(agent.label);
-  const access = buildAgentAccess(agent.label, stats);
+  const access = await buildAgentAccessAsync(agent.label, stats);
 
   return NextResponse.json({ success: true, access });
 }

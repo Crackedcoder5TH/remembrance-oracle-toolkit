@@ -10,6 +10,19 @@
  *  - failureThreshold: Number of failures before opening (default: 5)
  *  - resetTimeout: Time in ms before attempting recovery (default: 60s)
  *  - halfOpenMax: Max concurrent requests in half-open state (default: 1)
+ *
+ * ⚠ SERVERLESS LIMITATION ⚠
+ * Breaker state is module-scoped per Lambda. On Vercel: each Lambda
+ * tracks its own failure count, so a downstream service that's
+ * actually down will trip breakers gradually instead of instantly
+ * (each Lambda has to discover the failure independently).
+ *
+ * Lower-impact than rate-limit / SSE because the breaker only
+ * degrades from "instant fail-fast" to "fail-fast after that Lambda
+ * sees N failures." Functional correctness is preserved.
+ *
+ * To fix: shared counter via Vercel KV / Redis. Same one-file change
+ * pattern as rate-limit.
  */
 
 type CircuitState = "CLOSED" | "OPEN" | "HALF_OPEN";

@@ -26,6 +26,15 @@ import { broadcast } from "@/app/lib/lead-events";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { distributeLead } from "@/app/lib/lead-distribution";
 import { checkRateLimit } from "@/app/lib/rate-limit";
+import { evaluateCovenant } from "@/app/lib/valor/covenant-gate";
+import { buildAgentDiagnostic } from "@/app/lib/valor/agent-diagnostic";
+import { buildAgentAccess, computeAgentStats } from "@/app/lib/valor/agent-tier";
+import {
+  readRoutingIntent,
+  validateRouting,
+  generateProvenanceId,
+  makeSubjectId,
+} from "@/app/lib/valor/agent-routing";
 
 function generateLeadId(): string {
   const ts = Date.now().toString(36);
@@ -44,7 +53,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Rate limit per agent key (10/min)
-  const rateCheck = checkRateLimit(`agent:${agent.label}`, 10, 60_000);
+  const rateCheck = await checkRateLimit(`agent:${agent.label}`, 10, 60_000);
   if (!rateCheck.allowed) {
     return NextResponse.json(
       { success: false, error: "Rate limit exceeded. Maximum 10 requests per minute." },
@@ -109,6 +118,72 @@ export async function POST(req: NextRequest) {
     }
 
     const validated = validation.data;
+
+    // Routing — agents may include X-Via-Subject (or `viaSubject` in body)
+    // to route through an Abundance Host. Bad routing never rejects the
+    // submission; it just doesn't get attributed to a host.
+    const originatorSubjectId = makeSubjectId("agent", agent.label).full;
+    const viaIntent = readRoutingIntent(req.headers, req.url, leadData);
+    const routing = await validateRouting(viaIntent, originatorSubjectId);
+
+    const royaltyConsent = leadData.royaltyConsent !== false;
+    const provenanceId = generateProvenanceId();
+
+    // Covenant gate. Authenticated agents get the full diagnostic on rejection
+    // (unlike the public web form which silently fakes success to bots) — they
+    // are partners with a Bearer key, so they should learn the gate and
+    // improve. The diagnostic returns weakest dimensions + actionable hints.
+    const covenant = evaluateCovenant({
+      firstName: validated.firstName,
+      lastName: validated.lastName,
+      state: validated.state,
+      coverageInterest: validated.coverageInterest,
+      purchaseIntent: validated.purchaseIntent,
+      veteranStatus: validated.veteranStatus,
+      militaryBranch: validated.militaryBranch ?? undefined,
+      email: validated.email,
+      phone: validated.phone,
+      dateOfBirth: validated.dateOfBirth,
+      consentTcpa: true,
+      consentPrivacy: true,
+      consentText: validated.consentText,
+      consentTimestamp: validated.consentTimestamp,
+      utmSource: "ai-agent",
+      utmMedium: agent.label,
+      utmCampaign: validated.utmCampaign ?? null,
+      createdAt: new Date().toISOString(),
+    });
+
+    // Compute the agent's tier from history BEFORE this submission so the
+    // response reflects the tier the agent walked in with. The covenant
+    // verdict from this submission feeds the NEXT call's tier derivation.
+    const agentStatsPre = await computeAgentStats(agent.label);
+    const agentAccess = buildAgentAccess(agent.label, agentStatsPre);
+
+    if (
+      covenant.verdict === "silent-reject-bot"
+      || covenant.verdict === "silent-reject-fraud"
+      || covenant.verdict === "soft-reject-low"
+    ) {
+      const diagnostic = buildAgentDiagnostic(covenant);
+      return NextResponse.json(
+        {
+          success: false,
+          rejected: true,
+          error: "Lead rejected by covenant gate.",
+          diagnostic,
+          access: agentAccess,
+          provenance: {
+            provenanceId,
+            viaSubjectId: routing.viaSubjectId,
+            routingReason: routing.reason ?? null,
+            royaltyConsent,
+          },
+        },
+        { status: 422 },
+      );
+    }
+
     const leadId = generateLeadId();
 
     const leadRecord: LeadRecord = {
@@ -187,6 +262,22 @@ export async function POST(req: NextRequest) {
       message: "Lead submitted successfully. A licensed professional will contact the person soon.",
       score: leadScore.total,
       tier: leadScore.tier,
+      // Informational diagnostic on the success path too — lets the agent
+      // see WHICH dimensions carried the score, so subsequent submissions
+      // can target higher coherency tiers (and higher payouts).
+      diagnostic: buildAgentDiagnostic(covenant),
+      // Agent access snapshot — tier, visibility delay, promotion progress.
+      // Same shape as GET /api/agent/access; saves the agent a round-trip.
+      access: agentAccess,
+      // Provenance record for this submission. Downstream royalty events
+      // (Stage 2) reference provenanceId; the host (if any) gets a slice
+      // of any royalty triggered by this submission.
+      provenance: {
+        provenanceId,
+        viaSubjectId: routing.viaSubjectId,
+        routingReason: routing.reason ?? null,
+        royaltyConsent,
+      },
     });
   } catch {
     return NextResponse.json(

@@ -73,12 +73,13 @@ const PURCHASE_INTENT_OPTIONS = [
 ];
 
 const MILITARY_STATUS_OPTIONS = [
-  { value: "", label: "Select military status..." },
+  { value: "", label: "Select your background..." },
   { value: "active-duty", label: "Active-Duty" },
   { value: "reserve", label: "Reserve" },
   { value: "national-guard", label: "National Guard" },
   { value: "veteran", label: "Veteran" },
-  { value: "non-military", label: "Non-Military (family member)" },
+  { value: "non-military", label: "Military Family Member" },
+  { value: "civilian", label: "Civilian" },
 ];
 
 const BRANCH_PLACEHOLDER = { value: "", label: "Select branch of service..." };
@@ -501,17 +502,20 @@ export default function HomePage() {
               {errors.purchaseIntent && <p id="intent-error" className="text-crimson-cathedral text-xs" role="alert">{errors.purchaseIntent}</p>}
             </div>
 
-            {/* Military Status */}
+            {/* Background — service members, families, and civilians all welcome */}
             <div className="space-y-1">
-              <label htmlFor="veteranStatus" className={LABEL_CLASS}>Military Status</label>
-              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={selectClass(!!errors.veteranStatus)}>
+              <label htmlFor="veteranStatus" className={LABEL_CLASS}>Your Background</label>
+              <p className="text-xs text-[var(--text-muted)]" id="veteran-hint">
+                Veterans, service members, military families, and civilians are all welcome — we match every request to a licensed professional.
+              </p>
+              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : "veteran-hint"} className={selectClass(!!errors.veteranStatus)}>
                 {MILITARY_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
               {errors.veteranStatus && <p id="veteran-error" className="text-crimson-cathedral text-xs" role="alert">{errors.veteranStatus}</p>}
             </div>
 
             {/* Branch of Service — conditional subcategory (shown for all except non-military) */}
-            {form.veteranStatus && form.veteranStatus !== "non-military" && BRANCH_OPTIONS_BY_STATUS[form.veteranStatus] && (
+            {form.veteranStatus && form.veteranStatus !== "non-military" && form.veteranStatus !== "civilian" && BRANCH_OPTIONS_BY_STATUS[form.veteranStatus] && (
               <div className="space-y-1 animate-in fade-in">
                 <label htmlFor="militaryBranch" className={LABEL_CLASS}>Branch of Service</label>
                 <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={selectClass(!!errors.militaryBranch)}>
@@ -587,7 +591,7 @@ export default function HomePage() {
               </p>
               <p className="text-gray-600">
                 {MILITARY_STATUS_OPTIONS.find(o => o.value === form.veteranStatus)?.label}
-                {form.veteranStatus && form.veteranStatus !== "non-military" && form.militaryBranch && (
+                {form.veteranStatus && form.veteranStatus !== "non-military" && form.veteranStatus !== "civilian" && form.militaryBranch && (
                   <> &middot; {BRANCH_OPTIONS_BY_STATUS[form.veteranStatus]?.find(o => o.value === form.militaryBranch)?.label}</>
                 )}
               </p>

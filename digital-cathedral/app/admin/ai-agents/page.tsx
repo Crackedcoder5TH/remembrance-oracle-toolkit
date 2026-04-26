@@ -612,7 +612,7 @@ export default function AIAgentsAdmin() {
                   Top Agents by Request Volume
                 </h2>
                 <div className="space-y-3">
-                  {data.topReferringAgents
+                  {[...data.topReferringAgents]
                     .sort((a, b) => b.leads - a.leads)
                     .map((agent, i) => (
                       <div

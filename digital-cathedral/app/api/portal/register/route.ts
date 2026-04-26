@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   try {
     // Rate limit: 3 registrations per minute per IP
     const clientIp = getClientIp(req.headers);
-    const rateCheck = checkRateLimit(clientIp, 3, 60_000);
+    const rateCheck = await checkRateLimit(clientIp, 3, 60_000);
     if (!rateCheck.allowed) {
       return NextResponse.json(
         { error: "Too many registration attempts. Please try again later." },

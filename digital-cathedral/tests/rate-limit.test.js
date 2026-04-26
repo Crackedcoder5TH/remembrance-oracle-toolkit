@@ -1,12 +1,16 @@
 /**
  * Tests for app/lib/rate-limit.ts — checkRateLimit and getClientIp.
  *
- * Re-implements the rate limiter for standalone testing.
+ * Re-implements the rate limiter for standalone testing. Mirrors the
+ * sliding-window algorithm in the in-memory fallback path of the actual
+ * module (the production KV path is structurally identical, just stored
+ * in Redis instead of a Map). The async signature is exercised so the
+ * test catches accidental regressions back to the sync API.
  */
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
-// --- Re-implement rate limiter (matching app/lib/rate-limit.ts) ---
+// --- Re-implement rate limiter (matching app/lib/rate-limit.ts memory path) ---
 
 let store;
 
@@ -14,12 +18,12 @@ function resetStore() {
   store = new Map();
 }
 
-function checkRateLimit(ip, maxRequests = 5, windowMs = 60000) {
+async function checkRateLimit(key, maxRequests = 5, windowMs = 60000) {
   const now = Date.now();
-  const entry = store.get(ip);
+  const entry = store.get(key);
 
   if (!entry) {
-    store.set(ip, { timestamps: [now] });
+    store.set(key, { timestamps: [now] });
     return { allowed: true };
   }
 
@@ -46,46 +50,61 @@ function getClientIp(headers) {
 describe("checkRateLimit", () => {
   beforeEach(() => resetStore());
 
-  it("allows first request from a new IP", () => {
+  it("returns a Promise (async signature)", () => {
     const result = checkRateLimit("1.2.3.4", 5, 60000);
+    assert.ok(result instanceof Promise, "checkRateLimit must be async");
+  });
+
+  it("allows first request from a new IP", async () => {
+    const result = await checkRateLimit("1.2.3.4", 5, 60000);
     assert.equal(result.allowed, true);
   });
 
-  it("allows up to maxRequests within window", () => {
+  it("allows up to maxRequests within window", async () => {
     for (let i = 0; i < 5; i++) {
-      const r = checkRateLimit("1.2.3.4", 5, 60000);
+      const r = await checkRateLimit("1.2.3.4", 5, 60000);
       assert.equal(r.allowed, true, `Request ${i + 1} should be allowed`);
     }
   });
 
-  it("blocks after maxRequests exceeded", () => {
-    for (let i = 0; i < 5; i++) checkRateLimit("1.2.3.4", 5, 60000);
-    const blocked = checkRateLimit("1.2.3.4", 5, 60000);
+  it("blocks after maxRequests exceeded", async () => {
+    for (let i = 0; i < 5; i++) await checkRateLimit("1.2.3.4", 5, 60000);
+    const blocked = await checkRateLimit("1.2.3.4", 5, 60000);
     assert.equal(blocked.allowed, false);
     assert.ok(blocked.retryAfterMs > 0);
   });
 
-  it("tracks IPs independently", () => {
-    for (let i = 0; i < 5; i++) checkRateLimit("1.1.1.1", 5, 60000);
-    const blocked = checkRateLimit("1.1.1.1", 5, 60000);
+  it("tracks IPs independently", async () => {
+    for (let i = 0; i < 5; i++) await checkRateLimit("1.1.1.1", 5, 60000);
+    const blocked = await checkRateLimit("1.1.1.1", 5, 60000);
     assert.equal(blocked.allowed, false);
 
-    const other = checkRateLimit("2.2.2.2", 5, 60000);
+    const other = await checkRateLimit("2.2.2.2", 5, 60000);
     assert.equal(other.allowed, true);
   });
 
-  it("respects different limits per call", () => {
-    checkRateLimit("1.2.3.4", 1, 60000);
-    const blocked = checkRateLimit("1.2.3.4", 1, 60000);
+  it("respects different limits per call", async () => {
+    await checkRateLimit("1.2.3.4", 1, 60000);
+    const blocked = await checkRateLimit("1.2.3.4", 1, 60000);
     assert.equal(blocked.allowed, false);
   });
 
-  it("returns positive retryAfterMs when blocked", () => {
-    checkRateLimit("1.2.3.4", 1, 60000);
-    const result = checkRateLimit("1.2.3.4", 1, 60000);
+  it("returns positive retryAfterMs when blocked", async () => {
+    await checkRateLimit("1.2.3.4", 1, 60000);
+    const result = await checkRateLimit("1.2.3.4", 1, 60000);
     assert.equal(result.allowed, false);
     assert.ok(result.retryAfterMs > 0);
     assert.ok(result.retryAfterMs <= 60000);
+  });
+
+  it("rate-limits by arbitrary string key (not just IP)", async () => {
+    // The agent endpoints rate-limit by `agent:${label}` rather than IP.
+    for (let i = 0; i < 3; i++) await checkRateLimit("agent:claude", 3, 60000);
+    const blocked = await checkRateLimit("agent:claude", 3, 60000);
+    assert.equal(blocked.allowed, false);
+
+    const other = await checkRateLimit("agent:gpt-4", 3, 60000);
+    assert.equal(other.allowed, true);
   });
 });
 

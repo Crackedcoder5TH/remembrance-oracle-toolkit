@@ -22,6 +22,7 @@ import { StepProgress } from "./protect/components/step-progress";
 import { TrustSignals } from "./protect/components/trust-signals";
 import { ImageUpload } from "./components/image-upload";
 import { CoherencyPulse } from "./components/coherency-pulse";
+import { CoherencyVitals } from "./components/coherency-vitals";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
 
 const US_STATES = [
@@ -393,6 +394,9 @@ export default function HomePage() {
           No pressure. No obligation. Just clarity.
         </p>
       </section>
+
+      {/* Live substrate vitals — degrades gracefully if endpoint unavailable */}
+      <CoherencyVitals />
 
       {/* Hero — Above the Form */}
       <header className="text-center mb-10">

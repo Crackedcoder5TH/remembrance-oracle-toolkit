@@ -126,6 +126,19 @@ export default function DeveloperPortal() {
           </p>
         </header>
 
+        {/* ─── Full agent docs link ─── */}
+        <section className="space-y-3">
+          <div className="cathedral-surface p-5">
+            <p className="text-sm text-[var(--text-muted)]">
+              For the complete agent integration spec — auth, consent flow,
+              diagnostic shape, tier model, host routing, and provenance — see{" "}
+              <Link href="/developers/agents" className="text-teal-cathedral hover:underline font-medium">
+                Agent API Documentation &rarr;
+              </Link>
+            </p>
+          </div>
+        </section>
+
         {/* ─── Quick Start ─── */}
         <section className="space-y-4">
           <h2 className="text-lg font-medium text-[var(--text-primary)]">

@@ -43,22 +43,44 @@ jobs:
           path: oracle
           fetch-depth: 2
 
-      - name: checkout void (needed by ecosystem-health.js)
+      - name: checkout void (same branch)
+        id: void_same_branch
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/Void-Data-Compressor
           path: Void-Data-Compressor
-          # Pull the same branch if it exists on void; fall back to main
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 1
         continue-on-error: true
 
-      - name: fall back to void main if branch missing
-        if: failure()
+      - name: fall back to void main
+        id: void_main
+        if: steps.void_same_branch.outcome == 'failure'
         uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/Void-Data-Compressor
           path: Void-Data-Compressor
+
+      # #42 — when same-branch fell through AND the PR diff touches a
+      # cross-repo-coupled file (one whose API contract spans both
+      # repos), refuse to validate against stale main.
+      - name: detect cross-repo-coupled diff
+        id: coupled
+        if: steps.void_same_branch.outcome == 'failure'
+        run: |
+          cd oracle
+          COUPLED_FILES='src/core/coherency-uri.js src/core/covenant-spec.js src/core/code-to-waveform.js src/core/function-record.js src/unified/coherency-v1.js'
+          # Check the PR diff (vs the merge base) for any of these
+          BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)
+          touched=$(git diff --name-only "$BASE_SHA" HEAD)
+          for f in $COUPLED_FILES; do
+            if echo "$touched" | grep -qx "$f"; then
+              echo "::error::$f is cross-repo-coupled and the matching void branch is missing — refusing to validate against stale main"
+              echo "  Push the same feature branch name to Void-Data-Compressor first, or remove the coupled change from this PR."
+              exit 1
+            fi
+          done
+          echo "no cross-repo-coupled files in diff — safe to validate against void/main"
 
       - uses: actions/setup-node@v4
         with:

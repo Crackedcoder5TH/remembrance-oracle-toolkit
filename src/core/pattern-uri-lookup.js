@@ -26,8 +26,34 @@ function _baseOf(uri) {
 }
 
 class PatternUriLookup {
-  constructor(dbPath = DEFAULT_DB_PATH) {
-    this.db = new DatabaseSync(dbPath, { readonly: true });
+  /**
+   * Two construction modes:
+   *
+   *   new PatternUriLookup()                       — opens its own readonly connection
+   *   new PatternUriLookup(dbPath)                  — opens at the given path
+   *   new PatternUriLookup({ db })                  — uses caller's existing connection
+   *   new PatternUriLookup({ dbPath, readonly })    — opens with options
+   *
+   * Connection-passing mode is for long-running processes that already
+   * have a DatabaseSync open. close() is a no-op when caller owns the
+   * connection — they're responsible for closing it.
+   */
+  constructor(arg) {
+    let db, ownsConnection;
+    if (arg && typeof arg === 'object' && arg.db) {
+      db = arg.db;
+      ownsConnection = false;
+    } else if (arg && typeof arg === 'object') {
+      const { dbPath = DEFAULT_DB_PATH, readonly = true } = arg;
+      db = new DatabaseSync(dbPath, { readonly });
+      ownsConnection = true;
+    } else {
+      const dbPath = (typeof arg === 'string') ? arg : DEFAULT_DB_PATH;
+      db = new DatabaseSync(dbPath, { readonly: true });
+      ownsConnection = true;
+    }
+    this.db = db;
+    this._ownsConnection = ownsConnection;
     this._stmt_exact_pat = this.db.prepare(
       `SELECT id, name, language, code, coherency_total, uri
        FROM patterns WHERE uri = ? LIMIT 1`
@@ -89,7 +115,8 @@ class PatternUriLookup {
     return counts;
   }
 
-  close() { this.db.close(); }
+  /** No-op when caller owns the connection (passed in via { db }). */
+  close() { if (this._ownsConnection) this.db.close(); }
 }
 
 module.exports = { PatternUriLookup };

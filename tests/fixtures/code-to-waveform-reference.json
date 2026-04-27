@@ -1,0 +1,92 @@
+{
+  "_comment": "Cross-language reference fixture. Python (_code_to_waveform in Void-Data-Compressor/void_compressor_v3.py) and JS (codeToWaveform in src/core/code-to-waveform.js) MUST produce byte-identical output for these inputs within tolerance 1e-12. Regenerate via: python3 -c \"from void_compressor_v3 import VoidCompressorV3; c = VoidCompressorV3(self_introspect=False, load_substrate_files=False, use_canonical_store=False); print(c._code_to_waveform(<input>).tolist())\"",
+  "_generator": "void_compressor_v3._code_to_waveform on 2026-04-27",
+  "_tolerance": 1e-12,
+  "cases": [
+    {
+      "input": "def hello(): return 1",
+      "first_5": [
+        0.8,
+        0.8009227220299885,
+        0.8018454440599769,
+        0.8027681660899654,
+        0.8036908881199538
+      ],
+      "last_5": [
+        0.13725490196078455,
+        0.1529411764705884,
+        0.16862745098039228,
+        0.18431372549019615,
+        0.2
+      ]
+    },
+    {
+      "input": "",
+      "first_5": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "last_5": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "input": "a",
+      "first_5": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "last_5": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "input": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "first_5": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "last_5": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "input": "function f(){return 1}",
+      "first_5": [
+        0.7516198704103672,
+        0.7649599796722146,
+        0.7783000889340617,
+        0.7916401981959091,
+        0.8049803074577563
+      ],
+      "last_5": [
+        0.7296404522932293,
+        0.7972303392199221,
+        0.8648202261466146,
+        0.9324101130733075,
+        1.0
+      ]
+    }
+  ]
+}

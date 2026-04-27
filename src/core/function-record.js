@@ -18,7 +18,7 @@ const RECORDS_DIR = 'function_records';
 
 function makeRecord(uri, {
   name, module, language,
-  source, waveform, atomicProperties, ledger, coherencyV1,
+  source, waveform, atomicProperties, ledger, coherencyV1, derivedFrom,
 }) {
   if (!uri) throw new Error('makeRecord: uri required');
   if (!name) throw new Error('makeRecord: name required');
@@ -37,7 +37,25 @@ function makeRecord(uri, {
   if (atomicProperties !== undefined) rec.atomic_properties = atomicProperties;
   if (ledger !== undefined) rec.ledger = ledger;
   if (coherencyV1 !== undefined) rec.coherency_v1 = coherencyV1;
+  if (derivedFrom !== undefined) rec.derived_from = Array.from(derivedFrom);
   return rec;
+}
+
+const _URI_RE = /coh:\/\/[a-z][a-z0-9_-]*\/[a-z][a-z0-9_-]*\/[A-Za-z0-9_./:\-]+(?:@[A-Za-z0-9_.\-]+)?(?:#h:[0-9a-f]{12})?/g;
+
+/**
+ * Scan source code for explicit coh:// URI references in string literals
+ * or comments. Returns deduplicated, sorted list. Mirrors the Python
+ * detect_derived_from() so producers in either language emit the same
+ * provenance graph for the same source text.
+ */
+function detectDerivedFrom(source) {
+  if (!source) return [];
+  const found = new Set();
+  let m;
+  _URI_RE.lastIndex = 0;
+  while ((m = _URI_RE.exec(source)) !== null) found.add(m[0]);
+  return Array.from(found).sort();
 }
 
 function writeRecord(rec, rootDir = '.') {
@@ -58,4 +76,4 @@ function readRecord(uri, rootDir = '.') {
   return JSON.parse(fs.readFileSync(fp, 'utf8'));
 }
 
-module.exports = { SPEC_VERSION, makeRecord, writeRecord, readRecord };
+module.exports = { SPEC_VERSION, makeRecord, writeRecord, readRecord, detectDerivedFrom };

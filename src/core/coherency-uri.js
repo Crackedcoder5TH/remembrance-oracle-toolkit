@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const VALID_REPOS = new Set([
   'void', 'oracle', 'interface', 'blockchain', 'dialer',
   'reflector', 'swarm', 'moons', 'plugger', 'supabase',
+  'clawcode',
 ]);
 
 const VALID_DOMAINS = new Set([

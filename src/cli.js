@@ -61,6 +61,9 @@ const { registerReflectorCommands } = require('./cli/commands/reflector');
 const { registerChromaDBCommands } = require('./cli/commands/chromadb');
 const { registerVoidCommands } = require('./cli/commands/void');
 const { registerFractalCommands } = require('./cli/commands/fractals');
+const { registerReasoningCommands } = require('./cli/commands/reasoning');
+const { registerMeditationCommands } = require('./cli/commands/meditation');
+const { registerVoidStoreCommands } = require('./cli/commands/void-store');
 
 const oracle = new RemembranceOracle({ autoSync: true });
 
@@ -184,6 +187,9 @@ async function main() {
   registerChromaDBCommands(handlers, context);
   registerVoidCommands(handlers, context);
   registerFractalCommands(handlers, context);
+  registerReasoningCommands(handlers, context);
+  registerMeditationCommands(handlers, context);
+  registerVoidStoreCommands(handlers, context);
 
   // Remembrance Key — always available, no registration needed
   handlers['remembrance-key'] = () => {

@@ -63,6 +63,7 @@ const { registerVoidCommands } = require('./cli/commands/void');
 const { registerFractalCommands } = require('./cli/commands/fractals');
 const { registerReasoningCommands } = require('./cli/commands/reasoning');
 const { registerMeditationCommands } = require('./cli/commands/meditation');
+const { registerVoidStoreCommands } = require('./cli/commands/void-store');
 
 const oracle = new RemembranceOracle({ autoSync: true });
 
@@ -188,6 +189,7 @@ async function main() {
   registerFractalCommands(handlers, context);
   registerReasoningCommands(handlers, context);
   registerMeditationCommands(handlers, context);
+  registerVoidStoreCommands(handlers, context);
 
   // Remembrance Key — always available, no registration needed
   handlers['remembrance-key'] = () => {

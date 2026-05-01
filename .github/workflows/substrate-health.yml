@@ -1,0 +1,133 @@
+name: substrate-health (oracle-side)
+
+# Mirrors the gate in Void-Data-Compressor/.github/workflows/substrate-health.yml
+# but triggers on oracle-side changes that would affect the ecosystem
+# health number — covenant rules, JS coherency formula, MCP void tools,
+# the ingester/exporter scripts, and pattern-uri-lookup.
+#
+# Both gates write the same baseline format (`.ecosystem-health-baseline.json`
+# in this repo, `.substrate-health-baseline.json` in void). A regression
+# in either repo trips its corresponding gate.
+
+on:
+  pull_request:
+    paths:
+      - 'src/core/coherency-uri.js'
+      - 'src/core/covenant-spec.js'
+      - 'src/core/code-to-waveform.js'
+      - 'src/core/function-record.js'
+      - 'src/core/pattern-uri-lookup.js'
+      - 'src/unified/coherency-v1.js'
+      - 'src/mcp/void-tools.js'
+      - 'src/mcp/server.js'
+      - 'scripts/ecosystem-health.js'
+      - 'scripts/export-oracle-patterns.js'
+      - 'scripts/ingest-void-patterns.js'
+      - 'scripts/migrate-add-uri-column.js'
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/core/coherency-uri.js'
+      - 'src/core/covenant-spec.js'
+      - 'src/unified/coherency-v1.js'
+      - 'scripts/ecosystem-health.js'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout oracle
+        uses: actions/checkout@v4
+        with:
+          path: oracle
+          fetch-depth: 2
+
+      - name: checkout void (same branch)
+        id: void_same_branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/Void-Data-Compressor
+          path: Void-Data-Compressor
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 1
+        continue-on-error: true
+
+      - name: fall back to void main
+        id: void_main
+        if: steps.void_same_branch.outcome == 'failure'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/Void-Data-Compressor
+          path: Void-Data-Compressor
+
+      # #42 — when same-branch fell through AND the PR diff touches a
+      # cross-repo-coupled file (one whose API contract spans both
+      # repos), refuse to validate against stale main.
+      - name: detect cross-repo-coupled diff
+        id: coupled
+        if: steps.void_same_branch.outcome == 'failure'
+        run: |
+          cd oracle
+          COUPLED_FILES='src/core/coherency-uri.js src/core/covenant-spec.js src/core/code-to-waveform.js src/core/function-record.js src/unified/coherency-v1.js'
+          # Check the PR diff (vs the merge base) for any of these
+          BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || git rev-parse HEAD)
+          touched=$(git diff --name-only "$BASE_SHA" HEAD)
+          for f in $COUPLED_FILES; do
+            if echo "$touched" | grep -qx "$f"; then
+              echo "::error::$f is cross-repo-coupled and the matching void branch is missing — refusing to validate against stale main"
+              echo "  Push the same feature branch name to Void-Data-Compressor first, or remove the coupled change from this PR."
+              exit 1
+            fi
+          done
+          echo "no cross-repo-coupled files in diff — safe to validate against void/main"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: run ecosystem-health (JS twin)
+        id: head
+        run: |
+          cd oracle
+          export VOID_REPO=$GITHUB_WORKSPACE/Void-Data-Compressor
+          node scripts/ecosystem-health.js --json > .health-head.json
+          HEALTH=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(".health-head.json","utf8")).health)')
+          URIS=$(node -e 'console.log(JSON.parse(require("fs").readFileSync(".health-head.json","utf8")).total_uris || 0)')
+          echo "health=$HEALTH" >> "$GITHUB_OUTPUT"
+          echo "uris=$URIS"     >> "$GITHUB_OUTPUT"
+          echo "## ecosystem-health (oracle-side)" >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ecosystem-health.js >> "$GITHUB_STEP_SUMMARY"
+
+      - name: gate against baseline
+        run: |
+          cd oracle
+          if [ ! -f .ecosystem-health-baseline.json ]; then
+            echo "no baseline file — first run, snapshotting current state"
+            cp .health-head.json .ecosystem-health-baseline.json
+            exit 0
+          fi
+          node - <<'JS'
+          const fs = require('fs');
+          const base = JSON.parse(fs.readFileSync('.ecosystem-health-baseline.json', 'utf8'));
+          const head = JSON.parse(fs.readFileSync('.health-head.json', 'utf8'));
+          const fails = [];
+          const dh = head.health - base.health;
+          if (dh < -0.05) fails.push(`health regressed: ${base.health.toFixed(4)} → ${head.health.toFixed(4)} (Δ ${dh.toFixed(4)})`);
+          for (const k of ['coherency','provenance','replica_freshness']) {
+            const b = (base.health_components || {})[k] || 0;
+            const h = (head.health_components || {})[k] || 0;
+            if (h - b < -0.10) fails.push(`${k}: ${b.toFixed(4)} → ${h.toFixed(4)} (Δ ${(h-b).toFixed(4)})`);
+          }
+          const ub = base.total_uris || 0, uh = head.total_uris || 0;
+          if (ub > 0 && (ub - uh) / ub > 0.01) fails.push(`URI count dropped > 1%: ${ub} → ${uh}`);
+          console.log(`baseline health: ${base.health.toFixed(4)}`);
+          console.log(`HEAD health:     ${head.health.toFixed(4)}`);
+          console.log(`delta:           ${(dh >= 0 ? '+' : '')}${dh.toFixed(4)}`);
+          if (fails.length) {
+            console.log('\n=== REGRESSIONS ===');
+            for (const f of fails) console.log(`  ✗ ${f}`);
+            process.exit(1);
+          }
+          console.log('\n✓ no regressions');
+          JS

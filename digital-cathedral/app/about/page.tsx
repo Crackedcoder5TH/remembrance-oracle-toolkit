@@ -142,6 +142,57 @@ export default function AboutPage() {
 
         <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
           <h2 className="text-lg text-[var(--text-primary)] font-medium">
+            Transparency
+          </h2>
+          <p>
+            We score every lead against a 16-dimensional coherency model so
+            spam, bots, and low-quality data never reach the agents who serve
+            you. See{" "}
+            <Link
+              href="/how-we-score"
+              className="text-teal-cathedral hover:underline"
+            >
+              How We Score Quality
+            </Link>{" "}
+            for the plain-language explanation.
+          </p>
+          <p>
+            For partners, AI agents, and developers integrating with us, see{" "}
+            <Link
+              href="/developers/agents"
+              className="text-teal-cathedral hover:underline"
+            >
+              the agent API documentation
+            </Link>
+            . The full OpenAPI schema lives at{" "}
+            <a
+              href="/api/agent/schema"
+              className="text-teal-cathedral hover:underline"
+            >
+              /api/agent/schema
+            </a>
+            .
+          </p>
+          {process.env.NEXT_PUBLIC_FORECAST_REPO_URL && (
+            <p>
+              We publish our forecasting track record publicly. Every
+              prediction is signed and on-chain anchored before resolution
+              so it can&apos;t be edited after the fact:{" "}
+              <a
+                href={process.env.NEXT_PUBLIC_FORECAST_REPO_URL}
+                className="text-teal-cathedral hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                public forecasts
+              </a>
+              .
+            </p>
+          )}
+        </section>
+
+        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
+          <h2 className="text-lg text-[var(--text-primary)] font-medium">
             Legal
           </h2>
           <p>

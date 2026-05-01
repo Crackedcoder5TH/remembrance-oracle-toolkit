@@ -13,8 +13,13 @@
 const readline = require('readline');
 const { RemembranceOracle } = require('../api/oracle');
 const { safeJsonParse } = require('../core/covenant');
-const { TOOLS } = require('./tools');
-const { HANDLERS } = require('./handlers');
+const { TOOLS: ORACLE_TOOLS } = require('./tools');
+const { HANDLERS: ORACLE_HANDLERS } = require('./handlers');
+const { VOID_TOOLS, VOID_HANDLERS } = require('./void-tools');
+
+// Merge: oracle_* + void_* tools share one MCP namespace
+const TOOLS = [...ORACLE_TOOLS, ...VOID_TOOLS];
+const HANDLERS = { ...ORACLE_HANDLERS, ...VOID_HANDLERS };
 
 // ─── MCP Response Sanitizer ───
 // Strips fields that could leak user identity or local file paths to MCP clients.

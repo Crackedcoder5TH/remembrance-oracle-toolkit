@@ -1,19 +1,16 @@
 # remembrance-oracle-toolkit
 
-**The Remembrance Oracle — a code-pattern library with covenant-gated
-retrieval, multi-dimensional coherency scoring, and a structural safety
-filter.** Speaks in two registers: the **covenant** (the project's
-native theological framing) and the **technical** (plain engineering
-equivalents). Both point at the same mechanism — see the
-[Lexicon](#lexicon--covenant--technical-translation) below.
+**A code-pattern library with similarity-based retrieval, multi-dimensional
+coherency scoring, and a structural safety filter.**
 
 > **A [Remembrance.LLC](#about-remembrancellc) project.**
 > **Part of the [Remembrance Ecosystem](https://github.com/Crackedcoder5TH/Void-Data-Compressor)** —
 > reference implementation of [Coherency Protocol v1.0](https://github.com/Crackedcoder5TH/Void-Data-Compressor/blob/main/COHERENCY_PROTOCOL.md).
-> **Role**: the Oracle — text + atomic coherency scoring, MCP server, periodic-table-of-code registry. *(Technically: a code-retrieval and quality-scoring service.)*
+> **Role**: text + atomic coherency scoring service, MCP server, periodic-table-of-code registry.
 > **Verified capabilities**: see [CAPABILITIES.md](./CAPABILITIES.md).
 > **Conformance**: 44/44 substrate contracts pass via
 > `verify_capabilities --strict` in the [substrate hub](https://github.com/Crackedcoder5TH/Void-Data-Compressor).
+> **Project intent and framing**: see [MANIFESTO.md](./MANIFESTO.md).
 
 ```bash
 npm install remembrance-oracle-toolkit
@@ -79,27 +76,19 @@ Every file is scored across **five weighted dimensions**:
 
 Files scoring below the configurable threshold (default 0.6) are flagged for review.
 
-### The Covenant — *(in plain technical terms: the structural safety filter)*
+### Structural safety filter
 
-In the project's covenant framing, every pattern entering the library
-must pass the **Covenant** — a 15-rule gate that admits only patterns
-which preserve coherency. In plain technical terms, the Covenant is
-a **structural safety filter** that flags known unsafe patterns
-(injection, command-execution, known-vulnerable cryptographic
-primitives, etc.). The filter is content-based — it does not make
-claims about intent, only about structural matches against documented
-unsafe-pattern signatures.
+Before scoring, code passes through a **15-rule structural safety filter**
+that flags known unsafe patterns (injection, command-execution patterns,
+known-vulnerable cryptographic primitives, etc.). The filter is content-
+based — it does not make claims about intent, only about structural
+matches against documented unsafe-pattern signatures.
 
-The covenant framing matters because it captures the project's
-intent: nothing that lowers the system's coherency may enter. The
-technical framing matters because regulators, integrators, and
-reviewers need to know exactly what code runs.
-
-### Retrieval decisions — *(the three outcomes of consulting the Oracle)*
+### Retrieval decisions
 
 `resolve` returns one of three decisions:
 
-- **PULL** — strong match found (similarity above threshold). *"Pull the healed code from the kingdom into the eternal now."* Technically: use the stored pattern as-is.
+- **PULL** — strong match found (similarity above threshold). Use the stored pattern as-is.
 - **EVOLVE** — partial match. Adapt the stored pattern.
 - **GENERATE** — no match. Write new code.
 
@@ -186,32 +175,6 @@ Full ecosystem map in the [substrate hub](https://github.com/Crackedcoder5TH/Voi
 
 ---
 
-## Lexicon — covenant ↔ technical translation
-
-This project is published in two registers. The covenant register is
-the project's native vocabulary; the technical register is the literal
-engineering equivalent. Both registers describe the same mechanism.
-
-| Covenant term | Technical equivalent |
-|---|---|
-| Covenant | structural safety filter (15-rule content gate) |
-| Covenant Gate | eligibility check at admission |
-| Healing / Heal | iterative refinement (the SERF loop) |
-| Kingdom | the pattern library + its tier hierarchy |
-| Eternal now | the current head of the chain / library state |
-| "Pull the healed code" | retrieval of a previously refined pattern via `resolve` |
-| Sealed | passes the structural-safety filter |
-| Anointing | scoring + watermarking with `oracle:<sha>` provenance |
-| Oracle | this toolkit (scoring + retrieval) |
-| Sun / Generator | the coherency-generator background loop |
-| Resonance | cross-domain pattern similarity above threshold |
-
-The covenant register encodes the maintainer's intent. The technical
-register is for compliance, integration, and review. Neither overrides
-the other; they are two views of the same system.
-
----
-
 ## License
 
 Code is MIT. See `LICENSE`.
@@ -255,7 +218,8 @@ regardless of which path users choose.
 
 ---
 
-*Code retrieval, coherency scoring, the covenant. No model. No
+*Code retrieval, coherency scoring, structural safety. No model. No
 gradient descent. No predictions. The math is the gate.*
 
-*© Remembrance.LLC. Code MIT-licensed. Coherency Protocol CC BY 4.0.*
+*© Remembrance.LLC. Code MIT-licensed. Coherency Protocol CC BY 4.0.
+Project intent: see [MANIFESTO.md](./MANIFESTO.md).*

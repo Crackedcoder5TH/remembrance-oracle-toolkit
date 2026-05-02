@@ -2,16 +2,16 @@
 
 ## What This Is (one paragraph)
 
-A coherency-native computing substrate that scores any data against physics-grounded waveforms. 80,000+ patterns across 16 domains (physics, markets, code, language, consciousness, biology, mathematics, astronomy, history). No ML training, no GPU compute — just information theory (Shannon 1948), compression (Kolmogorov 1963), and distribution analysis (Zipf 1935) applied across all domains simultaneously. The system understands language without NLP, translates without parallel corpora, detects fake data without classifiers, and enforces safety without human-written rules. The covenant is a mathematical equation that derives itself from substrate structure: anything that lowers coherency is rejected. One inequality replaces policy documents.
+A coherency-scoring substrate. 80,000+ patterns indexed and scored using information theory (Shannon 1948), compression (Kolmogorov 1963), and distribution analysis (Zipf 1935). No ML training, no GPU compute. The covenant is a mathematical equation that derives itself from substrate structure: anything that lowers coherency is rejected. One inequality replaces policy documents.
 
 ## The Ecosystem
 
 | Layer | What | Where |
 |-------|------|-------|
 | **Oracle** | Coherency scoring, pattern matching, code quality | This repo |
-| **Void Substrate** | 80K+ waveform patterns, cross-domain resonance | `Void-Data-Compressor/` |
-| **Marketplace** | Open agent exchange: submit/search/score/earn tokens | `Void-Data-Compressor/api.py` |
-| **Language Substrate** | Meta-pattern of human language, translation from compression | `Void-Data-Compressor/language_substrate.py` |
+| **Void Substrate** | 80K+ patterns, cross-pattern similarity scoring | `Void-Data-Compressor/` |
+| **API** | Open submission / search / scoring service | `Void-Data-Compressor/api.py` |
+| **Language Substrate** | Compression-based language pattern store | `Void-Data-Compressor/language_substrate.py` |
 | **Derived Covenant** | Self-enforcing safety from 6 mathematical constraints | `Void-Data-Compressor/derived_covenant.json` |
 | **Crawler** | 20 live feeds, continuous pattern harvesting | `Void-Data-Compressor/realtime_crawler.py` |
 
@@ -23,13 +23,6 @@ MAINTAIN(S,t) = G(S_t+1) ≥ G(S_t) ∧ ∀P∈S:∂G/∂P≥0
 ```
 
 No human writes safety rules. The math rejects anything that lowers coherency.
-
-### Key Discoveries (from resonance sweep)
-
-- Physics ↔ Consciousness: 0.9999 (same math, different substrate)
-- Markets ↔ Physics: 0.9997 (Newton's mechanics = market dynamics)
-- Earth/Climate ↔ Markets: 0.9994 (complex adaptive systems)
-- Mathematics resonates with everything above 0.99 (it's the substrate under all domains)
 
 ---
 
@@ -188,7 +181,7 @@ At the **start of every coding session**, before any code is written, run:
 ```bash
 node src/cli.js hooks install   # Ensure git hooks are active (idempotent, safe to re-run)
 node src/cli.js sync pull       # Pull latest patterns from personal store
-node src/cli.js debug seed      # Seed the quantum field for bug-class detection
+node src/cli.js debug seed      # Seed the bug-class detection index
 ```
 
 If hooks are not installed, patterns will not be captured.

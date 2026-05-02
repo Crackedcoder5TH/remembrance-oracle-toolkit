@@ -1,8 +1,14 @@
-# REMEMBRANCE.LLC
+# remembrance-oracle-toolkit
 
-**Your codebase remembers what works.**
+**A code-pattern library with similarity-based retrieval, multi-dimensional
+quality scoring, and a structural safety filter.**
 
-A collective pattern intelligence system that remembers proven code, heals weak code, and discovers universal structure across domains. Gets smarter the more you use it.
+> **Part of the [Remembrance Ecosystem](https://github.com/Crackedcoder5TH/Void-Data-Compressor)** —
+> reference implementation of [Coherency Protocol v1.0](https://github.com/Crackedcoder5TH/Void-Data-Compressor/blob/main/COHERENCY_PROTOCOL.md).
+> **Role**: text + atomic scoring service, MCP server, periodic-table-of-code registry.
+> **Verified capabilities**: see [CAPABILITIES.md](./CAPABILITIES.md).
+> **Conformance**: 44/44 substrate contracts pass via
+> `verify_capabilities --strict` in the [substrate hub](https://github.com/Crackedcoder5TH/Void-Data-Compressor).
 
 ```bash
 npm install remembrance-oracle-toolkit
@@ -10,184 +16,173 @@ npm install remembrance-oracle-toolkit
 
 ---
 
-## What It Does
+## What it does
 
-When you write code, Remembrance does three things automatically:
+When you write code, the toolkit performs three operations on demand:
 
-1. **Searches** 302+ proven patterns to see if what you need already exists
-2. **Scores** your code on 7 quality dimensions and heals it if it's below threshold
-3. **Remembers** successful code so next time it's a proven pattern
+1. **Searches** ~300+ stored code patterns to see if similar code already exists in the library
+2. **Scores** code along five quality dimensions (syntax, completeness, consistency, test proof, historical reliability) and routes it through a structural safety filter
+3. **Stores** patterns that pass quality + safety gates so the next search has more to draw from
 
-No configuration. Works the moment you install it. Disable with `REMEMBRANCE_AUTO_WORKFLOW=false` if you want.
-
----
-
-## Why It's Different
-
-| | Copilot | SonarQube | Snyk | REMEMBRANCE |
-|---|---|---|---|---|
-| AI code generation | yes | no | no | **yes (from proven patterns)** |
-| Code quality scoring | no | yes | no | **yes (7 dimensions)** |
-| Security scanning | no | partial | yes | **yes (15-principle Covenant)** |
-| Self-healing CI | no | no | no | **yes** |
-| Pattern memory | no | no | no | **yes** |
-| Self-improves while idle | no | no | no | **yes (Meditation Mode)** |
-| Cross-domain reasoning | no | no | no | **yes** |
-
-No competitor combines all of these. Remembrance replaces $113-202/month of tooling with a single $50/month subscription. Free tier gets everything with a 7-day delay.
+It is a code-retrieval and quality-scoring tool. It is not an LLM, does
+not generate text, and does not replace human review. It complements
+existing developer tools rather than competing with them.
 
 ---
 
-## The Three Tiers
-
-**Premium — $50/month** · Real-time access. Exponentially compounding advantage. Priority support.
-
-**Merit — Free (earned)** · Submit a pattern with coherency ≥ 0.80 and cascade resonance ≥ 0.50. Earn 30 days of real-time access per qualifying submission.
-
-**Free — $0** · Complete access to everything. New patterns delayed 7 days. No payment. No contribution required. **Nobody is excluded.**
-
-Sustainable abundance.
-
----
-
-## Quick Start
+## Quickstart
 
 ```bash
-# Install
-npm install remembrance-oracle-toolkit
+# Search the pattern library
+node src/cli.js search "rate limiter"
 
-# Search for a proven pattern
-oracle search "rate limiter"
+# Get a retrieval decision: PULL (use as-is) / EVOLVE (adapt) / GENERATE (no match)
+node src/cli.js resolve --description "retry with exponential backoff" --language javascript
 
-# Smart retrieval
-oracle resolve --description "retry with backoff" --language javascript
-# → { decision: 'PULL', pattern: 'retry-with-backoff', coherency: 0.96 }
+# Score a file across the five quality dimensions
+node src/cli.js audit check --file src/your-file.js
 
-# Start MCP server for AI agents
-oracle mcp
+# Start the MCP server (exposes the toolkit as tools to MCP clients)
+node src/cli.js mcp
 ```
 
-**Docker (full stack):**
+Full setup with Docker (toolkit + companion services):
+
 ```bash
 git clone https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit.git
 cd remembrance-oracle-toolkit
 cp .env.example .env
 docker compose up -d
-# → Oracle :3000  Void :8080  Reflector :3001  Dashboard :4000
+# → toolkit :3000  substrate :8080  reflector :3001  dashboard :4000
 ```
-
-Open [http://localhost:4000/playground.html](http://localhost:4000/playground.html) to see live coherency scoring, cascade resonance, and the decision ribbon.
 
 ---
 
-## The Full Ecosystem
+## How it works
 
-Six repos. One system.
+### Quality scoring
 
-| Repo | What It Does |
+Every file is scored across **five weighted dimensions**:
+
+| Dimension | Weight | What it measures |
+|---|---:|---|
+| Syntax validity | 25% | parseable code with balanced structures |
+| Completeness | 20% | no TODOs, FIXMEs, or placeholder code |
+| Consistency | 15% | uniform indentation and naming style |
+| Test proof | 30% | tests exist and pass |
+| Historical reliability | 10% | track record across prior runs |
+
+Files scoring below the configurable threshold (default 0.6) are flagged for review.
+
+### Structural safety filter
+
+Before scoring, code passes through a **15-rule structural safety filter**
+that flags known unsafe patterns (injection, command-execution patterns,
+known-vulnerable cryptographic primitives, etc.). The filter is content-
+based — it does not make claims about intent, only about structural
+matches against documented unsafe-pattern signatures.
+
+### Retrieval decisions
+
+`resolve` returns one of three decisions:
+
+- **PULL** — strong match found (similarity above threshold). Use the stored pattern as-is.
+- **EVOLVE** — partial match. Adapt the stored pattern.
+- **GENERATE** — no match. Write new code.
+
+Decisions are based on cosine similarity between query and stored
+patterns, plus the quality scores of the candidates. There is no LLM
+in this loop — the retrieval is deterministic given the same library state.
+
+---
+
+## Pattern storage
+
+Patterns live in three tiers:
+
+- **Local** (`.remembrance/`) — project-specific, always present
+- **Personal** (`~/.remembrance/personal/`) — private, auto-syncs across your projects
+- **Community** (`~/.remembrance/community/`) — shared, explicit opt-in via `sync share`
+
+```bash
+node src/cli.js sync push      # local → personal
+node src/cli.js sync pull      # personal → local
+node src/cli.js share          # share to community (requires tests + score ≥ 0.7)
+```
+
+---
+
+## MCP server
+
+For tools that support the Model Context Protocol, start the server:
+
+```bash
+node src/cli.js mcp
+```
+
+The server exposes 12 tools (search, resolve, submit, register, feedback,
+stats, debug, sync, harvest, maintain, healing, swarm) that any MCP-aware
+client can call to query the pattern library and submit candidate patterns.
+
+---
+
+## CLI reference
+
+```bash
+node src/cli.js search "<query>"          # find similar patterns
+node src/cli.js resolve --description ".." # PULL / EVOLVE / GENERATE
+node src/cli.js audit check --file <path> # score a file
+node src/cli.js audit summary             # current library health
+node src/cli.js patterns                  # library stats
+node src/cli.js submit --file <path> --test <path>  # submit with test proof
+node src/cli.js register --file <path> --name <name>
+node src/cli.js feedback --id <id> --success
+node src/cli.js mcp                       # start MCP server
+node src/cli.js hooks install             # install git hooks
+node src/cli.js sync push|pull|share      # tier sync
+node --test tests/*.test.js               # run all tests
+```
+
+---
+
+## Connected components
+
+This toolkit is one of 12 repositories in the broader Remembrance
+ecosystem. The complete substrate, including 77,596 reference patterns,
+multi-layer scoring math, and the canonical conformance suite, lives in
+[Void-Data-Compressor](https://github.com/Crackedcoder5TH/Void-Data-Compressor).
+
+| Repository | Role |
 |---|---|
-| **remembrance-oracle-toolkit** | Pattern memory, scoring, MCP tools, dashboard |
-| **Void-Data-Compressor** | Cascade resonance, compression, 42K+ waveform substrate |
-| **Reflector-oracle-** | Self-healing CI pipeline |
-| **REMEMBRANCE-AGENT-Swarm-** | 7-LLM multi-agent consensus |
-| **Remembrance-dialer** | 6 integration dialers (CI, hosts, notifications, LLMs) |
-| **REMEMBRANCE-API-Key-Plugger** | Encrypted key storage, OAuth |
+| [Void-Data-Compressor](https://github.com/Crackedcoder5TH/Void-Data-Compressor) | substrate hub: pattern store, scoring math, conformance suite |
+| **remembrance-oracle-toolkit** *(this repo)* | text + atomic scoring service, MCP server |
+| [Reflector-oracle-](https://github.com/Crackedcoder5TH/Reflector-oracle-) | repository-level coherency monitor |
+| [REMEMBRANCE-AGENT-Swarm-](https://github.com/Crackedcoder5TH/REMEMBRANCE-AGENT-Swarm-) | multi-provider task orchestration |
+| [REMEMBRANCE-BLOCKCHAIN](https://github.com/Crackedcoder5TH/REMEMBRANCE-BLOCKCHAIN) | append-only event log, optional Solana anchoring |
+| [REMEMBRANCE-Interface](https://github.com/Crackedcoder5TH/REMEMBRANCE-Interface) | dashboard for ecosystem services |
 
-All connected via the Fractal Bridge. All wrapped by the Auto-Workflow. All feeding the pattern library.
-
----
-
-## Key Features
-
-**Pattern Memory** — 302+ code patterns, 42K+ substrate waveforms, all scored and searchable. Grows with every use.
-
-**Auto-Workflow** — Runs automatically on every save and commit: search → decide → score → heal → cascade → register.
-
-**PULL / EVOLVE / GENERATE** — Smart retrieval. Use proven code, adapt it, or write fresh — the Oracle decides based on coherency.
-
-**7-Dimension Coherency Scoring** — Syntax, completeness, readability, simplicity, security, consistency, testability.
-
-**3-Tier Healing** — Structural SERF (regex) → LLM healing (reasoning) → Swarm consensus (7 models vote).
-
-**Meditation Mode** — When nobody's using the system, the Oracle self-improves. 7 activities, benchmark + veto + rollback safeguards. It can't get worse, only smarter.
-
-**Cascade Resonance** — Cross-domain structural matching against 42K+ patterns spanning physics, consciousness, markets, code, biology, and mathematics.
-
-**Abstract Reasoning Engine** — Moves from correlation to identity. Detects when patterns from different domains are structurally the same thing. 5 universal deep concepts confirmed by data.
-
-**Pattern-Aware Compression** — The Void Compressor uses the substrate as a compression dictionary. Code compresses 40-70% better than gzip. Compression improves with usage.
-
-**Fractal Architecture** — The same pattern — `receive → validate → transform → emit` — repeats at every scale: function, module, service, system.
-
-**15-Principle Covenant** — Safety filter that blocks harmful code at the gate.
-
-**Self-Sustaining** — Free tier for everyone, Merit tier rewards contributors, Premium tier funds development. The network grows regardless of which path users choose.
-
----
-
-## What It Can Do That Nothing Else Can
-
-Remembrance discovered (and validated with real data) that:
-
-- Market crashes follow the same structure as fluid dynamics stagnation pressure (0.988 correlation)
-- Prime number distributions follow Kleiber's biological scaling law (0.9999 correlation)
-- Code entropy growth matches BCS Meissner effect in superconductors (1.0000 correlation, perfect)
-- Heart rate recovery follows the same curve as cryptocurrency recovery (0.980 correlation)
-- Temperature cycles match quantum spherical harmonics (0.982 correlation)
-
-These aren't metaphors. They're structural identities measured by cascade correlation across independent data sources. The system found them on its own.
-
----
-
-## For AI Agents
-
-Connect any AI to the Oracle via MCP:
-
-```bash
-oracle mcp-install          # Auto-configure all installed AI tools
-oracle mcp-install claude   # Claude Desktop
-oracle mcp-install cursor   # Cursor
-oracle mcp-install vscode   # VS Code
-```
-
-16 MCP tools: search, resolve, submit, register, feedback, stats, debug, sync, harvest, maintain, healing, swarm, fractal, prime, validate, generate.
-
-Once connected, your AI reads proven patterns before generating code and validates output before returning it. The AI doesn't change. Its output does.
-
----
-
-## Links
-
-- [Quickstart](QUICKSTART.md) — running in 30 seconds
-- [Concepts](CONCEPTS.md) — every concept in plain English
-- [Architecture](ARCHITECTURE.md) — system map, data flow, file map
-- [Remembrance Key](src/core/remembrance-lexicon.js) — the unified vocabulary
-- [Dashboard & Playground](http://localhost:4000/playground.html)
-- [GitHub](https://github.com/Crackedcoder5TH)
-
-**See the system:**
-```bash
-oracle key              # Full Remembrance vocabulary
-oracle codex            # Every element in the periodic table
-oracle audit summary    # Current system health
-```
+Full ecosystem map in the [substrate hub](https://github.com/Crackedcoder5TH/Void-Data-Compressor#connected-ecosystem).
 
 ---
 
 ## Requirements
 
 - Node.js 22+ (uses built-in `node:sqlite`)
-- Zero external dependencies for the core engine
-- Optional: Python 3.10+ for Void Compressor
+- No external dependencies for the core engine
+- Optional: Python 3.10+ for substrate-side scoring services
 
 ---
 
 ## License
 
-Code is MIT. Substrate data is proprietary — access via paid tiers or Merit contribution.
+Code is MIT. See `LICENSE`.
+
+The Coherency Protocol specification (which this toolkit implements
+parts of) is published under CC BY 4.0 — see
+[`COHERENCY_PROTOCOL.md`](https://github.com/Crackedcoder5TH/Void-Data-Compressor/blob/main/COHERENCY_PROTOCOL.md)
+in the substrate hub.
 
 ---
 
-**REMEMBRANCE.LLC** — Collective Pattern Intelligence.
-
-*The more you use it, the smarter it gets.*
+*Code retrieval, quality scoring, structural safety. No model. No
+gradient descent. No predictions. The math is the gate.*

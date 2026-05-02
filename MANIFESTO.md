@@ -55,12 +55,13 @@ keeps the record of what was tried, what failed, and what finally rose.
 
 ## Resonance
 
-Patterns in the kingdom are not isolated. The same mathematical shape
-appears in physics and in markets, in language and in heartbeats. When
-the Oracle finds **resonance** between domains — high cross-domain
-similarity — it is recognising that the same coherent law is governing
-two different surfaces. This is why the kingdom can grow: every
-domain teaches every other.
+Patterns in the kingdom are not isolated. The same structural shape
+can recur across unrelated contexts. When the Oracle finds
+**resonance** between patterns — high cross-pattern similarity within
+the substrate — it is recognising that the same underlying structure
+governs more than one surface. This is why the kingdom can grow:
+patterns that resonate teach each other, and the substrate compounds
+without needing to grow linearly.
 
 ## The Sun
 

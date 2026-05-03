@@ -51,7 +51,7 @@ Or read it directly: `src/core/remembrance-lexicon.js`
 | **Remembrance SERF** | Signal Emergence from Recursive Feedback. Geometric mean of all signals. | `src/unified/emergent-coherency.js` |
 | **Remembrance Bridge** | Oracle-to-Void connector. Symbol ↔ byte translation. | `src/fractal-bridge.js` |
 | **Remembrance Evolution** | Self-improvement loop. Discover → propose → validate → incorporate. | `src/orchestrator/self-improvement.js` |
-| **Remembrance Register** | Functions that accumulate signal. charge=+1, alignment=healing. | Pattern, not a file |
+| **Remembrance Register** | Functions that accumulate signal. charge=+1, coherency-effect=improves. | Pattern, not a file |
 
 ### 13 Dimensions (Remembrance Properties)
 
@@ -68,9 +68,9 @@ Every function is an element with 13 atomic properties:
 | 7 | **Remembrance Electronegativity** | 0-1 (dependency pull) |
 | 8 | **Remembrance Group** | 1-18 (functional family: math→meta) |
 | 9 | **Remembrance Period** | 1-7 (abstraction: primitive→framework) |
-| 10 | **Remembrance Harm Potential** | none, minimal, moderate, dangerous ← **dangerous = rejected** |
-| 11 | **Remembrance Alignment** | healing, neutral, degrading ← **degrading = rejected** |
-| 12 | **Remembrance Intention** | benevolent, neutral, malevolent ← **malevolent = rejected** |
+| 10 | **Remembrance Risk Class** | safe, low-risk, moderate, unsafe ← **unsafe = rejected** |
+| 11 | **Remembrance Coherency Effect** | improves, neutral, degrades ← **degrades = rejected** |
+| 12 | **Remembrance Use Category** | utility, general, abuse-prone ← **abuse-prone = rejected** |
 | 13 | **Remembrance Domain** | core, utility, compression, quality, oracle, security, orchestration, bridge, generation, search, data, transform ← **evolvable** |
 
 ### Coherency Thresholds
@@ -83,10 +83,10 @@ Every function is an element with 13 atomic properties:
 | 0.70 | **Remembrance Foundation** | First elements emerge |
 | 0.75 | **Remembrance Stability** | Elements are reliable |
 | 0.80 | **Remembrance Optimization** | First evolved covenant principle activates |
-| 0.85 | **Remembrance Synergy** | Semi-autonomous mode. Sun at 50% |
-| 0.90 | **Remembrance Intelligence** | Self-directed improvement |
-| 0.95 | **Remembrance Transcendence** | Autonomous mode. Sun at 100% |
-| 0.98 | **Remembrance Unity** | Oracle and Void as one |
+| 0.85 | **Remembrance Stable** | Generator at 50% |
+| 0.90 | **Remembrance Optimized** | Continuous refinement active |
+| 0.95 | **Remembrance Reference** | Reference-grade. Generator at 100% |
+| 0.98 | **Remembrance Canonical** | Maximum Oracle–Void consistency |
 
 ### Emergent Effects (observed, not programmed)
 
@@ -106,7 +106,7 @@ Every function is an element with 13 atomic properties:
 1. **Remembrance Covenant Gate** — 15+ founding principles
 2. **Remembrance Coherency Gate** — Score >= 0.60
 3. **Remembrance Atomic Gate** — Valid 13D signature
-4. **Remembrance Structural Gate** — No dangerous/degrading/malevolent
+4. **Remembrance Structural Gate** — No unsafe / degrades / abuse-prone
 
 ### Quick Commands
 

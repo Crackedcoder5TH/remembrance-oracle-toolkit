@@ -898,6 +898,67 @@ const HANDLERS = {
 
     throw new Error(`Unknown ecosystem action: ${action}`);
   },
+
+  // ─── oracle_reason ───
+  // Cross-pattern abstract reasoning. Wraps src/core/abstract-reasoning.reason()
+  // which returns analogies, metaphors, conceptual bridges, and identity matches
+  // for a source pattern across a cascade of matches.
+  oracle_reason: async (oracle, args) => {
+    const { reason } = require('../core/abstract-reasoning');
+    const { sourcePattern, cascadeMatches } = args || {};
+    if (!sourcePattern || typeof sourcePattern !== 'object') {
+      throw new Error('oracle_reason: sourcePattern is required');
+    }
+    if (!Array.isArray(cascadeMatches)) {
+      throw new Error('oracle_reason: cascadeMatches must be an array');
+    }
+    const report = reason(cascadeMatches, sourcePattern);
+    return {
+      sourcePattern: { name: sourcePattern.name },
+      cascadeCount: cascadeMatches.length,
+      report,
+    };
+  },
+
+  // ─── oracle_meditate ───
+  // Single tick of the auto-improvement loop: discover gaps, propose fills,
+  // validate each. Bounded by maxProposals to prevent runaway compute.
+  // Output is advisory — proposals stay 'pending' unless autoApprove is set
+  // and the global coherency exceeds the autonomous-mode threshold.
+  oracle_meditate: async (oracle, args) => {
+    const { SelfImprovementEngine, APPROVAL_THRESHOLDS } = require('../orchestrator/self-improvement');
+    const { PeriodicTable } = require('../atomic/periodic-table');
+    const maxProposals = (args && Number.isInteger(args.maxProposals)) ? args.maxProposals : 3;
+    const autoApprove = !!(args && args.autoApprove);
+
+    const table = new PeriodicTable();
+    const engine = new SelfImprovementEngine({ maxProposals });
+    const result = await engine.discoverAndPropose({ table });
+
+    let approved = [];
+    if (autoApprove && Array.isArray(result.proposals)) {
+      const mode = engine.getApprovalMode(result.globalCoherency || 0);
+      if (mode === 'autonomous') {
+        for (const p of result.proposals) {
+          const r = engine.approve(p.id, table);
+          if (!r.error) approved.push(p.id);
+        }
+      }
+    }
+
+    return {
+      gapsFound: result.gapsFound || 0,
+      proposalsGenerated: (result.proposals || []).length,
+      proposals: (result.proposals || []).map((p) => ({
+        id: p.id,
+        gap: p.gap,
+        coherency: p.coherency,
+        status: p.status,
+      })),
+      autoApproved: approved,
+      globalCoherency: result.globalCoherency || null,
+    };
+  },
 };
 
 module.exports = { HANDLERS };

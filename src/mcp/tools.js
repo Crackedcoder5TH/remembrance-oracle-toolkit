@@ -397,6 +397,34 @@ const TOOLS = [
       },
     },
   },
+
+  // ─── 25. Reason (cross-pattern abstract reasoning) ───
+  {
+    name: 'oracle_reason',
+    description: 'Cross-pattern abstract reasoning. Finds analogies, builds metaphors, identifies conceptual bridges, and detects identity relationships between a source pattern and matches from a cascade. Returns a reasoning report with discovered relationships and confidence per relationship.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sourcePattern: { type: 'object', description: 'The source pattern to reason from (name, optionally tags + code).' },
+        cascadeMatches: { type: 'array', items: { type: 'object' }, description: 'Cascade-matched patterns to reason against. Each entry has at least name + correlation.' },
+      },
+      required: ['sourcePattern', 'cascadeMatches'],
+    },
+  },
+
+  // ─── 26. Meditate (auto-improvement loop, single tick) ───
+  {
+    name: 'oracle_meditate',
+    description: 'Run a single tick of the auto-improvement loop: discover gaps in the periodic table, propose candidate fills, validate each through the structural-safety filter and coherency gates, return the proposals. Output is advisory — proposals stay in `pending` status until explicitly approved. Bounded by maxProposals to prevent runaway compute.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        maxProposals: { type: 'number', description: 'Max proposals to generate this tick (default: 3)', default: 3 },
+        autoApprove: { type: 'boolean', description: 'Auto-approve proposals at or above the autonomous-mode threshold (default: false)', default: false },
+      },
+      required: [],
+    },
+  },
 ];
 
 module.exports = { TOOLS };

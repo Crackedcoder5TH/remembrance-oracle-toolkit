@@ -59,12 +59,12 @@ const { getEventBus, EVENTS } = require('../core/events');
  */
 function reflectorScore(source, filePath) {
   const env = analyze(source, filePath);
-  const coherency = env.coherency || { total: 0, dimensions: {} };
+  const coherency = env.coherency || { total: 0, dimensions: {}, breakdown: {} };
   return {
     filePath,
     language: env.language,
     score: coherency.total,
-    dimensions: coherency.dimensions,
+    dimensions: coherency.dimensions || coherency.breakdown || {},
     findings: {
       audit: env.audit.findings || [],
       covenant: env.covenant.violations || [],

@@ -80,13 +80,16 @@ function generatePatchFor(finding, source, program) {
       return patchSliceInsertion(finding, source, program);
     case 'state-mutation/object-assign':
       return patchObjectAssignSpread(finding, source, program);
-    case 'type/division-by-zero':
-      // DISABLED: the guard this generator produces can confuse TypeScript
-      // when the divisor is a const literal (TS flags `LIMIT === 0` as an
-      // impossible comparison). The check is safe for runtime but blocks
-      // `next build --typecheck`. Re-enable once the generator emits a
-      // type-aware guard (e.g. `Number.isFinite(x) && x !== 0` via helper).
-      return null;
+    case 'type/division-by-zero': {
+      // Skip UPPER_CASE divisors — those are conventionally const literals
+      // and TypeScript flags `LIMIT === 0` as an impossible comparison,
+      // which breaks `next build --typecheck`. Function params and locals
+      // (lower/camel case) are still wrapped.
+      const divisorName = (finding.assumption || '').match(/(\S+) is never zero/)?.[1] || '';
+      const divisorHead = divisorName.split('.')[0];
+      if (/^[A-Z_][A-Z0-9_]*$/.test(divisorHead)) return null;
+      return patchDivisionGuard(finding, source, program);
+    }
     case 'type/json-parse-no-try':
       // DISABLED: this generator produced invalid syntax in complex
       // expression contexts (e.g. inside object literals), breaking the

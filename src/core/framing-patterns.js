@@ -50,10 +50,13 @@ function checkFraming(code, filePath = '') {
     return { flagged: false, domain: null, disclaimerPresent: false, findings: [], skipped: 'self-reference' };
   }
   const findings = [];
+  // Expose camelCase / snake_case word boundaries so identifiers like
+  // `clinicalDiagnosis` or `legal_advice` trip the claim regex too.
+  const expanded = code.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ');
   for (const [domain, patterns] of Object.entries(DOMAIN_FRAMING_PATTERNS)) {
-    if (patterns.claim.test(code)) {
+    if (patterns.claim.test(expanded)) {
       const disclaimerPresent = patterns.disclaimer.test(code);
-      const matched = code.match(patterns.claim);
+      const matched = expanded.match(patterns.claim);
       findings.push({
         domain,
         disclaimerPresent,

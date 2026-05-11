@@ -208,7 +208,7 @@ function scoreCompleteness(code) {
   const markerRe = new RegExp('\\b(' + ['TO' + 'DO', 'FIX' + 'ME', 'HA' + 'CK', 'X' + 'XX', 'ST' + 'UB'].join('|') + ')\\b', 'g');
   const incompleteMarkers = (code.match(markerRe) || []).length;
   score -= incompleteMarkers * COMPLETENESS_PENALTIES.MARKER_PENALTY;
-  if (/^\s*\.{3}\s*$/m.test(code) || /\bpass\s*$/m.test(code) || /raise NotImplementedError/m.test(code)) score -= COMPLETENESS_PENALTIES.PLACEHOLDER_PENALTY;
+  if (/^\s*\.{3}\s*$/m.test(code) || /\{\s*\.{3}\s*\}/.test(code) || /\bpass\s*$/m.test(code) || /raise NotImplementedError/m.test(code)) score -= COMPLETENESS_PENALTIES.PLACEHOLDER_PENALTY;
   if (/\{\s*\}/.test(code) && !/=>\s*\{\s*\}/.test(code)) score -= COMPLETENESS_PENALTIES.EMPTY_BODY_PENALTY;
   return Math.max(score, 0);
 }

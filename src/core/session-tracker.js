@@ -345,8 +345,15 @@ function resetSession() {
     _autoFlushTimer = null;
   }
   _session = _newSession();
+  _resetAt = Date.now();
   _startAutoFlush();
 }
+
+// Disk entries older than this epoch are ignored by wasSearchRecent after a
+// resetSession() call (in-process tests rely on a clean slate). Pre-commit
+// hooks and other processes don't call resetSession, so cross-process
+// enforcement still works.
+let _resetAt = 0;
 
 /**
  * Check if the session has any recorded interactions.
@@ -426,7 +433,9 @@ function wasSearchRecent(thresholdMs = 10 * 60 * 1000) {
       for (let i = arr.length - 1; i >= Math.max(0, arr.length - 5); i--) {
         const s = arr[i];
         if (s?.lastSearchTimestamp) {
-          const age = Date.now() - new Date(s.lastSearchTimestamp).getTime();
+          const tsMs = new Date(s.lastSearchTimestamp).getTime();
+          if (tsMs < _resetAt) continue;
+          const age = Date.now() - tsMs;
           if (age < thresholdMs) return true;
         }
       }
@@ -436,8 +445,11 @@ function wasSearchRecent(thresholdMs = 10 * 60 * 1000) {
     if (fs.existsSync(tsPath)) {
       const ts = JSON.parse(fs.readFileSync(tsPath, 'utf-8'));
       if (ts?.timestamp) {
-        const age = Date.now() - new Date(ts.timestamp).getTime();
-        if (age < thresholdMs) return true;
+        const tsMs = new Date(ts.timestamp).getTime();
+        if (tsMs >= _resetAt) {
+          const age = Date.now() - tsMs;
+          if (age < thresholdMs) return true;
+        }
       }
     }
   } catch (_) {}

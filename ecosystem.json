@@ -100,6 +100,31 @@
       "services": [
         "docs"
       ]
+    },
+    "MOONS-OF-REMEMBRANCE": {
+      "role": "interface",
+      "description": "Visual moons interface for the Remembrance ecosystem",
+      "language": "typescript",
+      "services": [
+        "ui"
+      ]
+    },
+    "REMEMBRANCE-Interface": {
+      "role": "interface",
+      "description": "Primary web interface for the Remembrance ecosystem",
+      "language": "typescript",
+      "services": [
+        "ui",
+        "api"
+      ]
+    },
+    "remembrance-api-key-plugger": {
+      "role": "integration",
+      "description": "API key management for ecosystem integrations",
+      "language": "javascript",
+      "services": [
+        "key-manager"
+      ]
     }
   },
   "patternStats": {

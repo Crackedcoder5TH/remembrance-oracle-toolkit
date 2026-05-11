@@ -21,11 +21,56 @@ const ECOSYSTEM_FILE = path.resolve(__dirname, '..', '..', 'ecosystem.json');
 const OWNER = process.env.ECOSYSTEM_OWNER || 'crackedcoder5th';
 const TOKEN = process.env.ECOSYSTEM_PAT || process.env.GITHUB_TOKEN;
 
+// Canonical repo-name cache. GitHub's REST returns 404 (not 301) on
+// case-mismatched sub-paths like `/repos/X/Y/pulls`, but the base
+// `/repos/X/Y` endpoint DOES redirect on case mismatch. We resolve once
+// per repo via that base endpoint, follow the redirect, read `full_name`
+// for the canonical casing, and rewrite subsequent paths.
+const _canonicalCache = new Map();
+
+function _ghHeaders(extra = {}) {
+  return { Authorization: `Bearer ${TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'ecosystem-sweep', ...extra };
+}
+
+function _resolveCanonical(owner, repo) {
+  const key = `${owner.toLowerCase()}/${repo.toLowerCase()}`;
+  // Cache the *promise* so concurrent 404s from probeRepo's Promise.all
+  // share a single resolution roundtrip instead of each kicking off their own.
+  if (_canonicalCache.has(key)) return _canonicalCache.get(key);
+  const p = (async () => {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+      headers: _ghHeaders(),
+      redirect: 'follow',
+    });
+    if (!res.ok) return null;
+    const body = await res.json().catch(() => null);
+    if (!body?.full_name) return null;
+    const [cOwner, cRepo] = body.full_name.split('/');
+    return { owner: cOwner, repo: cRepo };
+  })();
+  _canonicalCache.set(key, p);
+  return p;
+}
+
 async function gh(pathname, opts = {}) {
-  const res = await fetch(`https://api.github.com${pathname}`, {
-    headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/vnd.github+json', 'User-Agent': 'ecosystem-sweep', ...(opts.headers || {}) },
+  const doFetch = (p) => fetch(`https://api.github.com${p}`, {
+    headers: _ghHeaders(opts.headers || {}),
+    redirect: 'follow',
     ...opts,
   });
+  let res = await doFetch(pathname);
+  // 404 on a sub-path may be a case-mismatch — resolve canonical and retry once.
+  if (res.status === 404) {
+    const m = pathname.match(/^\/repos\/([^/]+)\/([^/?]+)(\/[^?]*)?(\?.*)?$/);
+    if (m) {
+      const [, oldOwner, oldRepo, rest = '', qs = ''] = m;
+      const canonical = await _resolveCanonical(oldOwner, oldRepo);
+      if (canonical && (canonical.owner !== oldOwner || canonical.repo !== oldRepo)) {
+        const fixed = `/repos/${canonical.owner}/${canonical.repo}${rest}${qs}`;
+        res = await doFetch(fixed);
+      }
+    }
+  }
   if (!res.ok) throw new Error(`${pathname}: ${res.status} ${await res.text().catch(() => '')}`);
   return res.json();
 }
@@ -34,14 +79,25 @@ function loadPeers() {
   if (fs.existsSync(ECOSYSTEM_FILE)) {
     try {
       const eco = JSON.parse(fs.readFileSync(ECOSYSTEM_FILE, 'utf-8'));
-      const peers = (eco.services || []).map(s => s.repo).filter(Boolean);
+      // Support two shapes:
+      //   { repos: { "Repo-Name": {...} } }     ← current canonical shape
+      //   { services: [{ repo: "name" }, ...] } ← older list shape
+      let peers = [];
+      if (eco.repos && typeof eco.repos === 'object') {
+        peers = Object.keys(eco.repos).filter(name => name && name !== 'remembrance-oracle-toolkit');
+      }
+      if (!peers.length && Array.isArray(eco.services)) {
+        peers = eco.services.map(s => s.repo).filter(Boolean);
+      }
       if (peers.length) return peers;
     } catch {}
   }
+  // Fallback uses canonical GitHub casing so the case-resolution roundtrip
+  // is avoided on a fresh checkout. _resolveCanonical still covers any drift.
   return [
-    'void-data-compressor', 'moons-of-remembrance', 'remembrance-agent-swarm-',
-    'remembrance-interface', 'remembrance-blockchain', 'reflector-oracle-',
-    'remembrance-dialer', 'remembrance-api-key-plugger',
+    'Void-Data-Compressor', 'MOONS-OF-REMEMBRANCE', 'REMEMBRANCE-AGENT-Swarm-',
+    'REMEMBRANCE-Interface', 'REMEMBRANCE-BLOCKCHAIN', 'Reflector-oracle-',
+    'Remembrance-dialer', 'remembrance-api-key-plugger',
   ];
 }
 
@@ -74,9 +130,12 @@ async function tryAutoMergeReflector(repo, pr) {
   if (failed.length > 0) return { merged: false, reason: `${failed.length} check(s) failing` };
   const incomplete = checks.check_runs.filter(c => c.status !== 'completed');
   if (incomplete.length > 0) return { merged: false, reason: `${incomplete.length} check(s) pending` };
-  const res = await fetch(`https://api.github.com/repos/${OWNER}/${repo}/pulls/${pr.number}/merge`, {
+  // Resolve canonical name (cached) so the merge PUT doesn't 404 on case mismatch.
+  const canonical = (await _resolveCanonical(OWNER, repo)) || { owner: OWNER, repo };
+  const res = await fetch(`https://api.github.com/repos/${canonical.owner}/${canonical.repo}/pulls/${pr.number}/merge`, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    headers: _ghHeaders({ 'Content-Type': 'application/json' }),
+    redirect: 'follow',
     body: JSON.stringify({ merge_method: 'squash', commit_title: `auto-merge: ${pr.title}` }),
   });
   if (res.ok) return { merged: true, reason: 'merged', at: new Date().toISOString() };
@@ -139,4 +198,4 @@ if (require.main === module) {
     .catch(e => { console.error(`# Sweep Failed\n\n${e.message}`); process.exit(1); });
 }
 
-module.exports = { runSweep, toMarkdown, probeRepo, loadPeers, tryAutoMergeReflector };
+module.exports = { runSweep, toMarkdown, probeRepo, loadPeers, tryAutoMergeReflector, _resolveCanonical, _canonicalCache };

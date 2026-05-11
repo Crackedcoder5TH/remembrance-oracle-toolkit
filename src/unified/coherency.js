@@ -59,6 +59,41 @@ try {
   if (process.env.ORACLE_DEBUG) console.warn('[unified-coherency:init] fractal alignment not available:', e?.message || e);
 }
 
+// ─── Filesystem Caches (avoid per-score disk probes) ───
+
+const _fsCache = new Map();
+const _FS_CACHE_TTL = 30000; // 30 seconds
+
+function _fileExistsCache(filePath) {
+  const now = Date.now();
+  const cached = _fsCache.get(filePath);
+  if (cached && (now - cached.time) < _FS_CACHE_TTL) return cached.exists;
+  const fs = require('fs');
+  const exists = fs.existsSync(filePath);
+  _fsCache.set(filePath, { exists, time: now });
+  return exists;
+}
+
+function _testFileExistsCache(filePath) {
+  const cacheKey = `test:${filePath}`;
+  const now = Date.now();
+  const cached = _fsCache.get(cacheKey);
+  if (cached && (now - cached.time) < _FS_CACHE_TTL) return cached.exists;
+  const fs = require('fs');
+  const path = require('path');
+  const base = path.basename(filePath, path.extname(filePath));
+  const repoRoot = path.resolve(path.dirname(filePath), '..');
+  const testCandidates = [
+    path.resolve('tests', base + '.test.js'),
+    path.resolve('tests', base.replace(/[-_]/g, '-') + '.test.js'),
+    path.resolve(repoRoot, 'tests', base + '.test.js'),
+    path.resolve('tests', base.replace(/^(.+)/, '$1.test.js')),
+  ];
+  const exists = testCandidates.some(t => fs.existsSync(t));
+  _fsCache.set(cacheKey, { exists, time: now });
+  return exists;
+}
+
 // ─── Weight Presets ───
 
 const WEIGHT_PRESETS = {
@@ -348,21 +383,12 @@ function computeCoherencyScore(code, metadata = {}) {
 
   // Test proof
   let testProof = metadata.testPassed === true ? 1.0 : metadata.testPassed === false ? 0.0 : COHERENCY_DEFAULTS.TEST_PROOF_FALLBACK;
-  // Auto-detect: if a corresponding test file exists, boost testProof
+  // Auto-detect: if a corresponding test file exists, boost testProof (memoized)
   if (testProof === COHERENCY_DEFAULTS.TEST_PROOF_FALLBACK && metadata.testPassed == null) {
     try {
-      const fs = require('fs');
       const filePath = metadata.filePath || metadata.file || '';
       if (filePath) {
-        const base = path.basename(filePath, path.extname(filePath));
-        const repoRoot = path.resolve(path.dirname(filePath), '..');
-        const testCandidates = [
-          path.resolve('tests', base + '.test.js'),
-          path.resolve('tests', base.replace(/[-_]/g, '-') + '.test.js'),
-          path.resolve(repoRoot, 'tests', base + '.test.js'),
-          path.resolve('tests', base.replace(/^(.+)/, '$1.test.js')),
-        ];
-        const hasTest = testCandidates.some(t => fs.existsSync(t));
+        const hasTest = _testFileExistsCache(filePath);
         if (hasTest) testProof = 0.75;
       }
     } catch { /* auto-detect is best-effort */ }
@@ -377,8 +403,7 @@ function computeCoherencyScore(code, metadata = {}) {
   // Files in the codebase that pass covenant have demonstrated reliability
   if (historicalReliability === COHERENCY_DEFAULTS.HISTORICAL_RELIABILITY_FALLBACK && metadata.filePath) {
     try {
-      const fs = require('fs');
-      if (fs.existsSync(metadata.filePath)) historicalReliability = 0.7;
+      if (_fileExistsCache(metadata.filePath)) historicalReliability = 0.7;
     } catch { /* best-effort */ }
   }
 

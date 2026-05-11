@@ -162,10 +162,11 @@ module.exports = {
 
     // ─── Quantum Tunneling ───
     // Low-amplitude items that didn't score high enough can still tunnel through
+    const scoredIds = new Set(scored.map(s => s.id));
     const tunneled = items
       .filter(item => {
         const amp = item.amplitude || item.coherency || PLANCK_AMPLITUDE;
-        return amp < 0.3 && amp > 0 && !scored.find(s => s.id === item.id);
+        return amp < 0.3 && amp > 0 && !scoredIds.has(item.id);
       })
       .filter(item => canTunnel(item.amplitude || item.coherency || PLANCK_AMPLITUDE, 0.3))
       .slice(0, Math.ceil(limit * 0.2));
@@ -186,11 +187,14 @@ module.exports = {
     }
 
     // ─── Quantum Interference ───
-    // Competing results interfere: similar code constructively, different destructively
-    applyFieldInterference(scored);
+    // Apply only to top candidates (O(k²) not O(n²))
+    const topK = scored
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, Math.min(50, limit * 3));
+    applyFieldInterference(topK);
 
     const seen = new Set();
-    const finalResults = scored
+    const finalResults = topK
       .sort((a, b) => b.matchScore - a.matchScore || (b.amplitude ?? 0) - (a.amplitude ?? 0))
       .filter(r => {
         const key = r.id || (r.code || '').slice(0, 100);
@@ -233,12 +237,21 @@ module.exports = {
       }));
   },
 
+  _searchCache: null,
+  _searchCacheKey: null,
+  _searchCacheTime: 0,
+
   _gatherSearchItems(language) {
+    const cacheKey = language || '__all__';
+    const now = Date.now();
+    if (this._searchCache && this._searchCacheKey === cacheKey && (now - this._searchCacheTime) < 30000) {
+      return this._searchCache;
+    }
+
     const filters = language ? { language } : {};
     const patterns = this.patterns.getAll(filters).map(p => ({
       source: 'pattern', id: p.id, name: p.name, description: p.description,
       language: p.language, tags: p.tags, coherency: p.coherencyScore?.total, code: p.code,
-      // Quantum state
       amplitude: p.amplitude || p.coherencyScore?.total || PLANCK_AMPLITUDE,
       phase: p.phase || 0,
       quantumState: p.quantumState || p.quantum_state || QUANTUM_STATES.SUPERPOSITION,
@@ -248,7 +261,6 @@ module.exports = {
     const history = this.store.getAll(filters).map(e => ({
       source: 'history', id: e.id, name: null, description: e.description,
       language: e.language, tags: e.tags, coherency: e.coherencyScore?.total, code: e.code,
-      // Quantum state
       amplitude: e.amplitude || e.coherencyScore?.total || PLANCK_AMPLITUDE,
       phase: e.phase || 0,
       quantumState: e.quantumState || e.quantum_state || QUANTUM_STATES.SUPERPOSITION,
@@ -257,11 +269,13 @@ module.exports = {
     }));
     const items = [...patterns, ...history];
 
-    // Build TF-IDF weights for embedding engine if available
     if (this._embeddingEngine) {
       this._embeddingEngine.buildIDF(items);
     }
 
+    this._searchCache = items;
+    this._searchCacheKey = cacheKey;
+    this._searchCacheTime = now;
     return items;
   },
 

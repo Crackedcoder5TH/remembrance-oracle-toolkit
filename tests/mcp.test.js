@@ -55,6 +55,47 @@ describe('MCPServer', () => {
     }
   });
 
+  it('handles ecosystem_orient (full)', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 200,
+      method: 'tools/call',
+      params: { name: 'ecosystem_orient', arguments: {} },
+    });
+    assert.ok(res.result.content, 'orient result should have content');
+    const data = JSON.parse(res.result.content[0].text);
+    assert.ok(data.canonicalHash, 'canonicalHash present');
+    assert.equal(typeof data.document, 'string');
+    assert.ok(data.document.includes('Remembrance Ecosystem'), 'document includes title');
+    assert.ok(Array.isArray(data.workflowSteps));
+    assert.equal(data.workflowSteps.length, 7);
+  });
+
+  it('handles ecosystem_orient (checklist format)', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 201,
+      method: 'tools/call',
+      params: { name: 'ecosystem_orient', arguments: { format: 'checklist' } },
+    });
+    const data = JSON.parse(res.result.content[0].text);
+    assert.ok(data.section, 'checklist section returned');
+    assert.ok(data.section.includes('audit'));
+    assert.ok(data.section.includes('covenant'));
+  });
+
+  it('handles ecosystem_orient (topology format)', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 202,
+      method: 'tools/call',
+      params: { name: 'ecosystem_orient', arguments: { format: 'topology' } },
+    });
+    const data = JSON.parse(res.result.content[0].text);
+    assert.ok(data.section.includes('12 repos'));
+    assert.ok(data.section.includes('remembrance-oracle-toolkit'));
+  });
+
   it('handles oracle_stats', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({

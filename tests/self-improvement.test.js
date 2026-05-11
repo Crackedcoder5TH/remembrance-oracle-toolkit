@@ -96,7 +96,9 @@ describe('SelfImprovementEngine', () => {
     // Some proposals that pass all gates should be auto-incorporated
     const autoInc = result.proposals.filter(p => p.status === 'auto-incorporated');
     if (autoInc.length > 0) {
-      assert.equal(autoInc[0].decidedBy, 'system');
+      // decidedBy starts with 'system' — may be 'system', 'system+ecosystem', etc.
+      // when the ecosystem cross-check also concurred.
+      assert.match(autoInc[0].decidedBy, /^system/);
     }
   });
 

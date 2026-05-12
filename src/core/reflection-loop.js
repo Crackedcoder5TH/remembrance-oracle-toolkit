@@ -265,6 +265,13 @@ function reflectionLoop(code, options = {}) {
   const iAmValues = history.map(h => h.coherence);
   const iAmAverage = iAmValues.reduce((s, v) => s + v, 0) / iAmValues.length;
 
+  // Contribute this reflection to the LivingRemembranceEngine field.
+  // cost = loops (work units), coherence = final composite (alignment).
+  try {
+    const { contribute } = require('./field-coupling');
+    contribute({ cost: loops, coherence: current.coherence, source: 'reflect' });
+  } catch (_) { /* field unavailable — best-effort */ }
+
   return {
     code: current.code, coherence: current.coherence, fullCoherency: current.fullCoherency,
     dimensions: current.dimensions, loops, history,

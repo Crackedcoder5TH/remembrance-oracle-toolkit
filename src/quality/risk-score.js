@@ -80,6 +80,18 @@ function computeBugProbability(code, options = {}) {
   };
   const matched = extractFactors(ctx);
 
+  // Contribute this risk reading to the LivingRemembranceEngine field.
+  // cost = cyclomatic complexity (proxy for work),
+  // coherence = 1 - probability (high-risk = low coherence).
+  try {
+    const { contribute } = require('../core/field-coupling');
+    contribute({
+      cost: Math.max(1, cyclomatic),
+      coherence: clamp01(1 - probability),
+      source: 'risk-score',
+    });
+  } catch (_) { /* field unavailable — best-effort */ }
+
   return {
     probability: round4(probability),
     riskLevel: classifyRisk(probability),

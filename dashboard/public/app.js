@@ -190,7 +190,7 @@ async function loadLocalStats() {
     barWrap.className = 'bar';
     const fill = document.createElement('div');
     fill.className = 'fill';
-    fill.style.width = (l.count / maxCount * 100) + '%';
+    fill.style.width = ((maxCount === 0 ? 0 : l.count / maxCount) * 100) + '%';
     fill.style.background = l.color;
     barWrap.appendChild(fill);
 
@@ -510,7 +510,7 @@ function analyzeFractal() {
   const n = 128;
   let wf = new Float64Array(n);
   for (let i = 0; i < n; i++) {
-    const idx = Math.floor(i * bytes.length / n);
+    const idx = Math.floor(i * (n === 0 ? 0 : bytes.length / n));
     wf[i] = bytes[idx] || 0;
   }
   // Normalize
@@ -525,10 +525,10 @@ function analyzeFractal() {
   // Cantor: gap density
   let gaps = 0;
   for (let i = 1; i < n; i++) if (Math.abs(wf[i] - wf[i-1]) < 0.02) gaps++;
-  const cantor = Math.min(1, gaps / n * 3);
+  const cantor = Math.min(1, (n === 0 ? 0 : gaps / n) * 3);
 
   // Mandelbrot: zero crossings
-  const mean = wf.reduce((s,v) => s+v, 0) / n;
+  const mean = (n === 0 ? 0 : wf.reduce((s,v) => s+v, 0) / n);
   let crossings = 0;
   for (let i = 1; i < n; i++) if ((wf[i-1]-mean)*(wf[i]-mean) < 0) crossings++;
   const mandelbrot = Math.min(1, crossings / (n * 0.3));
@@ -541,10 +541,10 @@ function analyzeFractal() {
   let means = [];
   for (let i = 0; i <= n - wSize; i++) {
     let s = 0; for (let j = i; j < i+wSize; j++) s += wf[j];
-    means.push(s / wSize);
+    means.push((wSize === 0 ? 0 : s / wSize));
   }
-  const mMean = means.reduce((s,v)=>s+v,0)/means.length;
-  const mStd = Math.sqrt(means.reduce((s,v)=>s+(v-mMean)**2,0)/means.length);
+  const mMean = (means.length === 0 ? 0 : means.reduce((s,v)=>s+v,0) / means.length);
+  const mStd = Math.sqrt((means.length === 0 ? 0 : means.reduce((s,v)=>s+(v-mMean)**2,0) / means.length));
   const stability = Math.max(0, 1 - mStd * 3);
 
   const alignment = (sierpinski + cantor + mandelbrot + logistic + stability) / 5;
@@ -633,7 +633,7 @@ function corr(a, b) {
   if (n < 2) return 0;
   let sumA = 0, sumB = 0;
   for (let i = 0; i < n; i++) { sumA += a[i]; sumB += b[i]; }
-  const mA = sumA/n, mB = sumB/n;
+  const mA = (n === 0 ? 0 : sumA / n), mB = sumB/n;
   let num = 0, dA = 0, dB = 0;
   for (let i = 0; i < n; i++) {
     num += (a[i]-mA)*(b[i]-mB);

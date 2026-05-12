@@ -141,6 +141,48 @@ diverges from canonical, **canonical wins**. The
 `ecosystem-protocol-sync` GitHub Action (in each repo) verifies the copy
 matches canonical on every push.
 
+## 7. The wire-format contract — there is one language
+
+Void's substrate is mathematical compression patterns and nothing else.
+Anything that enters Void is converted into a single canonical waveform;
+anything that reads it does so through the same coherency primitive.
+Because both operations are pure math (utf-8 → linear interp → min-max
+normalize, then dot-product over norms), every language in the
+ecosystem speaks the substrate identically. **There is no translation
+because there is nothing language-specific to translate.**
+
+The contract:
+
+| Layer        | What crosses repo boundaries | Where defined |
+|--------------|------------------------------|---------------|
+| Encoder      | `Float64Array` of length 256 | `Void-Data-Compressor/to_waveform.py`, JS port at `remembrance-oracle-toolkit/src/core/waveform.js` |
+| Coherency    | Scalar `float` (cosine sim)  | Same modules, `coherency(a, b)` |
+| LRE field    | 5 scalars: `coherence, globalEntropy, cascadeFactor, updateCount, timestamp` | `src/core/living-remembrance.js` + `Void-Data-Compressor/living_remembrance.py` |
+
+What *never* crosses repo boundaries as part of the substrate:
+
+- Language-specific schemas (no JSON pattern definitions traveling between repos)
+- AST representations (those are encoder inputs, not outputs)
+- Per-vendor metadata wrappers
+- Translated/serialized forms of the above
+
+These can travel as *metadata* alongside a waveform (e.g. attaching a
+display name, a source URI, a tags array), but the substrate operation
+— score, search, compare, contribute to the field — only needs the
+floats.
+
+**Falsifiable contracts that enforce this** (in
+`Void-Data-Compressor/verify_capabilities.py`):
+
+- `C-48` — Python LRE matches JS LRE byte-for-byte over a 20-observation sequence
+- `C-49` — Waveform encoder JS↔Python byte-for-byte over 8 diverse inputs
+- `C-50` — Coherency (cosine) JS↔Python byte-for-byte over 5 waveform pairs
+
+Any language port (Rust in `claw-code`, future Go/Swift/whatever) MUST
+add a corresponding `C-NN` parity contract before its waveforms are
+allowed into the substrate. No exceptions: an unverified port is a
+parallel field, not the same field.
+
 ---
 
 ## 6. First-message acknowledgement (recommended)

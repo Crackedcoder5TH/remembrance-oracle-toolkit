@@ -108,6 +108,73 @@ describe('MCPServer', () => {
     assert.ok(data.section.includes('remembrance-oracle-toolkit'));
   });
 
+  it('handles field_state via MCP', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 300,
+      method: 'tools/call',
+      params: { name: 'field_state', arguments: { includeSources: false } },
+    });
+    assert.ok(res.result.content, 'field_state should return content');
+    const data = JSON.parse(res.result.content[0].text);
+    assert.equal(typeof data.coherence, 'number');
+    assert.equal(typeof data.globalEntropy, 'number');
+    assert.equal(typeof data.cascadeFactor, 'number');
+    assert.equal(typeof data.updateCount, 'number');
+  });
+
+  it('handles field_contribute via MCP', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 301,
+      method: 'tools/call',
+      params: { name: 'field_contribute', arguments: { cost: 1, coherence: 0.85, source: 'mcp-test-contribute' } },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.ok(data.newState);
+    assert.equal(typeof data.newState.coherence, 'number');
+    assert.equal(data.source, 'mcp-test-contribute');
+  });
+
+  it('handles field_pressure via MCP', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 302,
+      method: 'tools/call',
+      params: { name: 'field_pressure', arguments: {} },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.equal(typeof data.hot, 'boolean');
+  });
+
+  it('handles field_introspect via MCP', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 303,
+      method: 'tools/call',
+      params: { name: 'field_introspect', arguments: { topN: 5 } },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.equal(typeof data.totalDistinctSources, 'number');
+    assert.ok(Array.isArray(data.topSources));
+  });
+
+  it('handles field_sources_diff via MCP', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 304,
+      method: 'tools/call',
+      params: { name: 'field_sources_diff', arguments: { expected: ['mcp-test-contribute', 'definitely-not-firing'] } },
+    });
+    assert.ok(res.result.content);
+    const data = JSON.parse(res.result.content[0].text);
+    assert.equal(data.expected, 2);
+    assert.ok(Array.isArray(data.silentSources));
+  });
+
   it('handles oracle_stats', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({

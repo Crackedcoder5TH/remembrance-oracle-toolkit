@@ -412,6 +412,67 @@ const TOOLS = [
     },
   },
 
+  // ─── 28-32. Remembrance Field (LRE) — expose the conserved field as MCP ───
+  {
+    name: 'field_state',
+    description: 'Read the LivingRemembranceEngine field state — the ecosystem-wide conserved scalar that every producer contributes to. Returns coherence, globalEntropy, cascadeFactor, updateCount, timestamp, and the per-source histogram. Read-only.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeSources: { type: 'boolean', description: 'Include the per-source histogram (can be large; default: true)', default: true },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'field_contribute',
+    description: 'Contribute an observation to the LRE field. The MCP caller participates as a producer: pass cost (work units), coherence (alignment 0..N — ratchets up unbounded), and source (identity string like "agent:claude:my-task"). Returns the new field state. The field updates persistently; every caller sees the same conserved scalar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        cost: { type: 'number', description: 'Work units consumed by this operation (default: 1)', default: 1 },
+        coherence: { type: 'number', description: 'Alignment score (typically 0..1, but unbounded above — coherency ratchets up).' },
+        source: { type: 'string', description: 'Caller identity, e.g. "agent:claude:my-task" or "mcp-client:tool-x"' },
+      },
+      required: ['coherence', 'source'],
+    },
+  },
+  {
+    name: 'field_pressure',
+    description: 'Get the field-driven backpressure signal. Returns hot=true when globalEntropy or cascadeFactor exceeds thresholds — high-volume producers should self-throttle when hot. Replaces hardcoded rate limits with conserved-field dynamics.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entropyThreshold: { type: 'number', description: 'Hot when globalEntropy exceeds this (default: 10)', default: 10 },
+        cascadeThreshold: { type: 'number', description: 'Hot when cascadeFactor exceeds this (default: 4)', default: 4 },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'field_introspect',
+    description: 'Ask the field who has been contributing. Returns the per-source histogram sorted by count (hot paths first), plus totals. Useful for finding silent-but-plumbed sources (the field knows what fires; this surfaces the gap). Read-only.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        topN: { type: 'number', description: 'Return the top-N most-active sources (default: 25, use 0 for all)', default: 25 },
+        prefix: { type: 'string', description: 'Filter sources by prefix (e.g. "void:" returns only Void producers)' },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'field_sources_diff',
+    description: 'Given a list of expected source labels, return which are firing in the field vs silent. The diagnostic primitive for "what should be wired but isn\'t" — pass the labels you expect to see, get back the gap. Read-only.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        expected: { type: 'array', items: { type: 'string' }, description: 'List of source labels to check' },
+      },
+      required: ['expected'],
+    },
+  },
+
   // ─── 27. Ecosystem Orient (cross-repo protocol on connect) ───
   {
     name: 'ecosystem_orient',

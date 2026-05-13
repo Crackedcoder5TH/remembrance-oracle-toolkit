@@ -70,7 +70,7 @@ function analyzeElementDensity(elements) {
     .sort((a, b) => b[1] - a[1])
     .map(([g, c]) => ({ group: parseInt(g), count: c }));
 
-  return {
+  const __retVal = {
     totalElements: elements.length,
     density: Math.round((occupiedCells / totalCells) * 1000) / 1000,
     groupDistribution: groupCounts,
@@ -78,6 +78,19 @@ function analyzeElementDensity(elements) {
     chargeBalance: chargeCounts,
     hotspots,
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.density || 0)), source: 'oracle:gap-filled-wave2:analyzeElementDensity' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 analyzeElementDensity.atomicProperties = {
   charge: 0, valence: 4, mass: 'heavy', spin: 'even', phase: 'gas',

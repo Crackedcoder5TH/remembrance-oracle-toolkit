@@ -159,7 +159,22 @@ function covenantGroupCoherence(periodicTable, options) {
   if (_roleAware && opts.method !== 'similarity') {
     return _roleAware(periodicTable);
   }
-  if (!periodicTable) return { coherence: 0, reason: 'no periodic table' };
+  if (!periodicTable) {
+      const __retVal = { coherence: 0, reason: 'no periodic table' };
+    // ── LRE field-coupling (auto-wired) ──
+    try {
+      const __lre_p1 = './../../core/field-coupling';
+      const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+      for (const __p of [__lre_p1, __lre_p2]) {
+        try {
+          const { contribute: __contribute } = require(__p);
+          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:covenant-fractal:covenantGroupCoherence' });
+          break;
+        } catch (_) { /* try next */ }
+      }
+    } catch (_) { /* best-effort */ }
+    return __retVal;
+  }
   const elements = (periodicTable.elements || []).filter(el =>
     el && el.properties && (el.properties.domain === 'security' || el.properties.domain === 'covenant')
   );

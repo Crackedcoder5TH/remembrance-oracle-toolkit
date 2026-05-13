@@ -728,6 +728,24 @@ function auditFiles(files, options = {}) {
       for (const [k, v] of Object.entries(r.summary.bySeverity)) bySeverity[k] = (bySeverity[k] || 0) + v;
     }
   }
+  // Contribute this audit run to the LivingRemembranceEngine field.
+  // cost = filesScanned (work units), coherence = 1 - weighted-severity
+  // where high counts as 1, medium 0.5, low 0.25. A clean run contributes
+  // coherence=1 (no findings = perfect alignment); a finding-heavy run
+  // drags the field toward higher entropy.
+  try {
+    const filesScanned = files ? files.length : 0;
+    const weighted = (bySeverity.high || 0) * 1.0 + (bySeverity.medium || 0) * 0.5 + (bySeverity.low || 0) * 0.25;
+    const severityScale = Math.max(1, filesScanned);
+    const coherence = Math.max(0, Math.min(1, 1 - (weighted / severityScale)));
+    const { contribute } = require('../core/field-coupling');
+    contribute({
+      cost: Math.max(1, filesScanned),
+      coherence,
+      source: 'audit',
+    });
+  } catch (_) { /* field unavailable — best-effort */ }
+
   return {
     files: results,
     totalFindings,

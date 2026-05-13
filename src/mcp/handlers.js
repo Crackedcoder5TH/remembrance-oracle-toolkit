@@ -8,7 +8,26 @@
  * Extracted from the monolithic switch in server.js for maintainability.
  */
 
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 const { trackPull, inferFeedbackFromActivity, clearPendingPull, getPendingPulls } = require('./feedback-tracker');
+
+const ECOSYSTEM_MD_PATH = path.join(__dirname, '..', '..', 'ECOSYSTEM.md');
+
+function _loadEcosystemDoc() {
+  try { return fs.readFileSync(ECOSYSTEM_MD_PATH, 'utf8'); }
+  catch (_) { return null; }
+}
+
+function _extractSection(doc, sectionHeading) {
+  if (!doc) return null;
+  const lines = doc.split('\n');
+  const startIdx = lines.findIndex(l => l.startsWith(sectionHeading));
+  if (startIdx === -1) return null;
+  const endIdx = lines.findIndex((l, i) => i > startIdx && /^## /.test(l));
+  return lines.slice(startIdx, endIdx === -1 ? lines.length : endIdx).join('\n');
+}
 
 /**
  * Enforcement helper: check if a search was done recently.
@@ -387,7 +406,20 @@ const HANDLERS = {
           if (sqliteStore && typeof sqliteStore.getPatternHealingStats === 'function') {
             return sqliteStore.getPatternHealingStats(args.patternId);
           }
-          return { patternId: args.patternId, attempts: 0, successes: 0, rate: 1.0 };
+          const __retVal = { patternId: args.patternId, attempts: 0, successes: 0, rate: 1.0 };
+          // ── LRE field-coupling (auto-wired) ──
+          try {
+            const __lre_p1 = './../../core/field-coupling';
+            const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+            for (const __p of [__lre_p1, __lre_p2]) {
+              try {
+                const { contribute: __contribute } = require(__p);
+                __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.rate || 0)), source: 'oracle:handlers:oracle_healing' });
+                break;
+              } catch (_) { /* try next */ }
+            }
+          } catch (_) { /* best-effort */ }
+          return __retVal;
         }
         // Aggregate stats
         return oracle.healingStats();
@@ -958,6 +990,40 @@ const HANDLERS = {
       autoApproved: approved,
       globalCoherency: result.globalCoherency || null,
     };
+  },
+
+  // ─── ecosystem_orient: return canonical 12-repo protocol on demand ───
+  ecosystem_orient(_oracle, args) {
+    const doc = _loadEcosystemDoc();
+    if (!doc) {
+      return {
+        error: 'ECOSYSTEM.md not found at repo root. The hub is misconfigured — re-run the propagation script.',
+        canonicalUrl: 'https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/blob/main/ECOSYSTEM.md',
+      };
+    }
+    const format = (args && args.format) || 'full';
+    const hash = crypto.createHash('sha256').update(doc).digest('hex').slice(0, 16);
+    const base = {
+      canonicalHash: hash,
+      canonicalUrl: 'https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/blob/main/ECOSYSTEM.md',
+      acknowledgement: 'Read ECOSYSTEM.md. Will run audit → reflect → covenant → swarm → substrate → ledger per change.',
+      workflowSteps: [
+        'a. oracle audit check / oracle reflect / oracle covenant / oracle security-scan / oracle risk-score (must return SEALED 15/15)',
+        'b. oracle debug capture (record fix as pattern in quantum field)',
+        'c. Reflector-oracle- reflect (independent cross-validation)',
+        'd. REMEMBRANCE-AGENT-Swarm- review (for multi-file or >50 LoC changes)',
+        'e. Void-Data-Compressor absorb (compress reusable patterns into substrate)',
+        'f. REMEMBRANCE-BLOCKCHAIN publish (covenant-sealed changes get logged)',
+        'g. git commit + push (only after a-f succeed)',
+      ],
+    };
+    if (format === 'checklist') {
+      return { ...base, section: _extractSection(doc, '## 2.') };
+    }
+    if (format === 'topology') {
+      return { ...base, section: _extractSection(doc, '## 1.') };
+    }
+    return { ...base, document: doc };
   },
 };
 

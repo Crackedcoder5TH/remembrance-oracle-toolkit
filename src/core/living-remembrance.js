@@ -26,8 +26,16 @@
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_ENTROPY_PATH = process.env.ENTROPY_PATH ||
-  path.join(process.cwd(), '.remembrance', 'entropy.json');
+// One field, one file. Resolution: $ENTROPY_PATH > hub-relative (this module's
+// __dirname climbs to the hub's repo root, then descends to .remembrance/) >
+// local cwd fallback. The hub-relative path is what unifies the field across
+// JS callers regardless of which peer-repo cwd they run from — the Python LRE
+// uses the same resolution shape so every language writes to the same file.
+const _HUB_RELATIVE_ENTROPY = path.join(__dirname, '..', '..', '.remembrance', 'entropy.json');
+const DEFAULT_ENTROPY_PATH = process.env.ENTROPY_PATH
+  || (fs.existsSync(path.dirname(_HUB_RELATIVE_ENTROPY)) || fs.existsSync(path.dirname(path.dirname(_HUB_RELATIVE_ENTROPY)))
+      ? _HUB_RELATIVE_ENTROPY
+      : path.join(process.cwd(), '.remembrance', 'entropy.json'));
 
 const PARAMS = {
   r0:      0.05,    // gentle baseline pull
@@ -57,10 +65,11 @@ class LivingRemembranceEngine {
           cascadeFactor:  typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
           updateCount:    typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
           timestamp:      parsed.timestamp || Date.now(),
+          sources:        (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
         };
       }
     } catch (_e) { /* fall through to fresh init */ }
-    return { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now() };
+    return { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
   }
 
   _persist() {
@@ -113,12 +122,25 @@ class LivingRemembranceEngine {
 
     const newCoherence = Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15);
 
+    // Per-source histogram — the field tracks who's contributing so it
+    // can answer "what's wired" and "what's missing" introspectively.
+    const sources = { ...(this._state.sources || {}) };
+    if (source) {
+      const prev = sources[source] || { count: 0, lastCoherence: 0, lastTimestamp: 0 };
+      sources[source] = {
+        count: prev.count + 1,
+        lastCoherence: newCoherence,
+        lastTimestamp: Date.now(),
+      };
+    }
+
     this._state = {
       coherence:     newCoherence,
       globalEntropy: cost / (newCoherence + epsilon),
       cascadeFactor: Math.min(5.0, this._state.cascadeFactor + 0.05 * newCoherence),
       updateCount:   this._state.updateCount + 1,
       timestamp:     Date.now(),
+      sources,
     };
     this._persist();
 

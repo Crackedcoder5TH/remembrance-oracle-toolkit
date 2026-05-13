@@ -1,5 +1,13 @@
 # Remembrance Oracle Toolkit — AI Instructions
 
+> **STOP. Before reading further, open [`ECOSYSTEM.md`](./ECOSYSTEM.md).**
+>
+> That file defines the 12-repo ecosystem you've connected to and the
+> required end-to-end workflow (audit → reflect → covenant → swarm →
+> substrate → ledger) you must run on every code change. This `AI.md`
+> only covers what *this* repo (the hub) does. The cross-repo protocol
+> is canonical and overrides any per-repo conventions.
+
 > **Applies to any AI agent working in this repo** (Claude, Cursor,
 > Aider, Continue, Windsurf, Cody, etc.). `CLAUDE.md` is a pointer to
 > this file — instructions are tool-neutral.

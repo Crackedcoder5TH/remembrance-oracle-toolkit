@@ -26,12 +26,25 @@ module.exports = {
     while (i < linesA.length) { diffLines.push({ type: 'removed', line: linesA[i++] }); }
     while (j < linesB.length) { diffLines.push({ type: 'added', line: linesB[j++] }); }
 
-    return {
+    const __retVal = {
       a: { id: idA, name: a.name || a.description || idA, language: a.language, coherency: a.coherencyScore?.total ?? '?' },
       b: { id: idB, name: b.name || b.description || idB, language: b.language, coherency: b.coherencyScore?.total ?? '?' },
       diff: diffLines,
       stats: { added: diffLines.filter(d => d.type === 'added').length, removed: diffLines.filter(d => d.type === 'removed').length, same: diffLines.filter(d => d.type === 'same').length },
     };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:oracle-patterns-export:diff' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   },
 
   export(options = {}) {

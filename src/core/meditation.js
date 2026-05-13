@@ -550,13 +550,26 @@ class MeditationEngine {
         patternChecksums: patterns.map(p => {
           // Store a lightweight checksum per pattern for rollback verification
           const code = p.code || '';
-          return {
+          const __retVal = {
             name: p.name,
             coherency: p.coherency || p.coherencyScore?.total || 0,
             checksum: crypto.createHash('md5').update(code.slice(0, 500)).digest('hex').slice(0, 8),
             language: p.language,
             tags: (p.tags || []).slice(0, 5),
           };
+          // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:meditation:_loadHighWaterMark' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+          return __retVal;
         }),
       },
     };

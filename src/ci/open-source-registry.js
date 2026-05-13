@@ -530,7 +530,7 @@ function getProvenance(oracle, options = {}) {
   }).map(p => {
     const sourceTag = p.tags.find(t => t.startsWith('source:'));
     const licenseTag = p.tags.find(t => t.startsWith('license:'));
-    return {
+    const __retVal = {
       id: p.id,
       name: p.name,
       language: p.language,
@@ -538,6 +538,19 @@ function getProvenance(oracle, options = {}) {
       license: licenseTag ? licenseTag.replace('license:', '') : 'unknown',
       coherency: p.coherencyScore?.total ?? 0,
     };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:open-source-registry:getProvenance' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   });
 }
 

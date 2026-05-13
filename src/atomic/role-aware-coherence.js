@@ -196,7 +196,20 @@ function covenantGroupCoherenceRoleAware(periodicTable) {
     el && el.properties && (el.properties.domain === 'security' || el.properties.domain === 'covenant')
   );
   if (elements.length < 2) {
-    return { coherence: 1.0, reason: 'insufficient elements', count: elements.length };
+    const __retVal = { coherence: 1.0, reason: 'insufficient elements', count: elements.length };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:role-aware-coherence:roleAwareCoherence' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   }
   let total = 0;
   let pairs = 0;

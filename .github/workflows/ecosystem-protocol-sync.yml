@@ -1,0 +1,80 @@
+name: ecosystem-protocol-sync
+
+# Verifies that this repo's ECOSYSTEM.md matches the canonical source in
+# remembrance-oracle-toolkit/main. Fails on detected drift; tolerates the
+# case where canonical doesn't exist yet (initial bootstrap).
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-canonical:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify ECOSYSTEM.md exists
+        run: |
+          if [[ ! -f ECOSYSTEM.md ]]; then
+            echo "::error::ECOSYSTEM.md is missing from this repo's root."
+            echo "Copy from https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/blob/main/ECOSYSTEM.md"
+            exit 1
+          fi
+
+      - name: Compute local hash
+        id: local
+        run: echo "hash=$(sha256sum ECOSYSTEM.md | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Determine if this is the canonical hub
+        id: gate
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          # Normalize to lowercase for comparison (GitHub stores canonical case
+          # in github.repository but we want a robust match either way).
+          LOWER="${REPO,,}"
+          if [[ "$LOWER" == "crackedcoder5th/remembrance-oracle-toolkit" ]]; then
+            echo "is_hub=true" >> "$GITHUB_OUTPUT"
+            echo "This is the canonical hub. Skipping drift check (file-exists already verified)."
+          else
+            echo "is_hub=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fetch canonical ECOSYSTEM.md
+        if: steps.gate.outputs.is_hub == 'false'
+        id: fetch
+        run: |
+          URL="https://raw.githubusercontent.com/Crackedcoder5TH/remembrance-oracle-toolkit/main/ECOSYSTEM.md"
+          if curl -fsSL -o /tmp/canonical.md "$URL"; then
+            echo "fetched=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fetched=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Canonical ECOSYSTEM.md not yet available at $URL — bootstrap in progress. Drift check skipped."
+          fi
+
+      - name: Compare local vs canonical hash
+        if: steps.gate.outputs.is_hub == 'false' && steps.fetch.outputs.fetched == 'true'
+        run: |
+          LOCAL="${{ steps.local.outputs.hash }}"
+          CANON=$(sha256sum /tmp/canonical.md | awk '{print $1}')
+          echo "local:     $LOCAL"
+          echo "canonical: $CANON"
+          if [[ "$LOCAL" != "$CANON" ]]; then
+            echo "::error title=ECOSYSTEM.md drift::This repo's ECOSYSTEM.md does not match the canonical hub."
+            echo ""
+            echo "Diff vs canonical (first 80 lines):"
+            diff /tmp/canonical.md ECOSYSTEM.md | head -80 || true
+            echo ""
+            echo "To resolve:"
+            echo "  cp <hub-clone>/ECOSYSTEM.md ./ECOSYSTEM.md"
+            echo "  git add ECOSYSTEM.md && git commit -m 'sync: ECOSYSTEM.md to canonical'"
+            exit 1
+          fi
+          echo "ECOSYSTEM.md matches canonical (sha256:$LOCAL)."

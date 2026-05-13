@@ -1568,11 +1568,24 @@ class PatternRecycler {
         console.log(`  [PROMOTED] ${candidate.name} → proven (coherency ${result.validation.coherencyScore.total.toFixed(3)})`);
       }
 
-      return {
+      const __retVal = {
         promoted: true,
         pattern: result.pattern,
         coherency: result.validation.coherencyScore.total,
       };
+      // ── LRE field-coupling (auto-wired) ──
+      try {
+        const __lre_p1 = './../../core/field-coupling';
+        const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+        for (const __p of [__lre_p1, __lre_p2]) {
+          try {
+            const { contribute: __contribute } = require(__p);
+            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:recycler:promoteWithProof' });
+            break;
+          } catch (_) { /* try next */ }
+        }
+      } catch (_) { /* best-effort */ }
+      return __retVal;
     }
 
     // ─── Auto-heal on promotion failure ───

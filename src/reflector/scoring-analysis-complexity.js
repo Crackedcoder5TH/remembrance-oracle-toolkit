@@ -128,7 +128,20 @@ function analyzeCommentDensity(code) {
   else quality = 0.8;
   if (docstrings > 0) quality = Math.min(1, quality + 0.05);
 
-  return { density: Math.round(density * 1000) / 1000, commentLines, codeLines, blankLines, totalLines: lines.length, quality: Math.round(quality * 1000) / 1000, docstrings };
+  const __retVal = { density: Math.round(density * 1000) / 1000, commentLines, codeLines, blankLines, totalLines: lines.length, quality: Math.round(quality * 1000) / 1000, docstrings };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.density || 0)), source: 'oracle:scoring-analysis-complexity:analyzeNestingDepth' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 function analyzeNestingDepth(code) {

@@ -207,6 +207,18 @@ function covenantCheck(code, metadata = {}) {
     totalPrinciples,
   };
 
+  // Contribute this seal to the LivingRemembranceEngine field.
+  // cost = 1 (a single covenant check is one work unit),
+  // coherence = passed/total (1.0 when fully sealed).
+  try {
+    const { contribute } = require('./field-coupling');
+    contribute({
+      cost: 1,
+      coherence: totalPrinciples > 0 ? principlesPassed / totalPrinciples : 0,
+      source: 'covenant',
+    });
+  } catch (_) { /* field unavailable — best-effort */ }
+
   // Cache the result (only for code-only checks)
   if (!hasMeta) {
     const key = _cacheKey(code);
@@ -322,6 +334,24 @@ function deepSecurityScan(code, options = {}) {
     whisper = 'The code stands clean. All security principles upheld.';
   }
 
+  const totalFindings = covenant.violations.length + deepFindings.length + externalTools.length;
+
+  // Contribute this security scan to the LivingRemembranceEngine field.
+  // cost = totalFindings + 1 (at least 1 unit of work even for clean scans),
+  // coherence = 0 on veto, otherwise 1 - (advisory-findings / (totalFindings + 1))
+  // so a clean pass contributes coherence=1, a fully-vetoed scan contributes 0.
+  // Note: covenantCheck() already contributed independently above; this is
+  // the security-scan-specific signal (deep findings + external tools).
+  try {
+    const coherence = veto ? 0 : (1 - ((deepFindings.length + externalTools.length) / (totalFindings + 1)));
+    const { contribute } = require('./field-coupling');
+    contribute({
+      cost: Math.max(1, totalFindings + 1),
+      coherence: Math.max(0, Math.min(1, coherence)),
+      source: 'security-scan',
+    });
+  } catch (_) { /* field unavailable — best-effort */ }
+
   return {
     passed: !veto,
     covenant: { sealed: covenant.sealed, violations: covenant.violations.length, principlesPassed: covenant.principlesPassed },
@@ -329,7 +359,7 @@ function deepSecurityScan(code, options = {}) {
     externalTools,
     veto,
     whisper,
-    totalFindings: covenant.violations.length + deepFindings.length + externalTools.length,
+    totalFindings,
   };
 }
 

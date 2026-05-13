@@ -55,12 +55,25 @@ module.exports = {
 
     // When oracle is toggled off, skip all pattern matching and return GENERATE
     if (!isOracleEnabled()) {
-      return {
+      const __retVal = {
         decision: 'generate', confidence: 0, reasoning: 'Oracle is disabled (config off). Write new code.',
         pattern: null, healedCode: null, healedVariantId: null, whisper: null,
         candidateNotes: null, healing: null, alternatives: [], historyMatches: [],
         quantum: null, oracleDisabled: true,
       };
+      // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.confidence || 0)), source: 'oracle:oracle-core-resolve:resolve' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+      return __retVal;
     }
 
     let decision = this.patterns.decide({ description, tags, language, minCoherency }) || { decision: 'generate', confidence: 0, alternatives: [] };

@@ -216,7 +216,7 @@ function stalePatterns(oracle, maxDays = 90, limit = 20) {
       const created = new Date(p.timestamp || p.createdAt || 0).getTime();
       const lastUsed = p.lastUsed ? new Date(p.lastUsed).getTime() : created;
       const daysSinceUse = Math.floor((now - lastUsed) / 86400000);
-      return {
+      const __retVal = {
         id: p.id,
         name: p.name,
         language: p.language,
@@ -225,6 +225,19 @@ function stalePatterns(oracle, maxDays = 90, limit = 20) {
         usageCount: p.usageCount || 0,
         isStale: daysSinceUse >= maxDays,
       };
+      // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:insights:stalePatterns' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+      return __retVal;
     })
     .filter(p => p.isStale)
     .sort((a, b) => b.daysSinceUse - a.daysSinceUse)

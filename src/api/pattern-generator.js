@@ -79,12 +79,25 @@ function searchPatterns(oracle, description, options = {}) {
  */
 function decideStrategy(matches, options = {}) {
   if (!matches || matches.length === 0) {
-    return {
+    const __retVal = {
       decision: 'GENERATE',
       pattern: null,
       confidence: 0,
       reasoning: 'No matching patterns found — generate fresh code',
     };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.confidence || 0)), source: 'oracle:pattern-generator:patternTags' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   }
 
   const best = matches[0];

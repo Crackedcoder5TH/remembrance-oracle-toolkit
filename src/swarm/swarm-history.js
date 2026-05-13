@@ -203,7 +203,7 @@ function getProviderReliability(rootDir) {
 function getHistorySummary(rootDir) {
   const history = loadHistory(rootDir);
 
-  return {
+  const __retVal = {
     totalRuns: history.runs.length,
     providers: Object.entries(history.providerStats).map(([name, stats]) => ({
       name,
@@ -221,6 +221,19 @@ function getHistorySummary(rootDir) {
       approved: r.userApproved,
     })),
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:swarm-history:getProviderReliability' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 module.exports = {

@@ -412,6 +412,19 @@ const TOOLS = [
     },
   },
 
+  // ─── 27. Ecosystem Orient (cross-repo protocol on connect) ───
+  {
+    name: 'ecosystem_orient',
+    description: 'Returns the canonical Remembrance 12-repo ecosystem protocol (ECOSYSTEM.md) plus the required per-change workflow checklist (audit → reflect → covenant → swarm → substrate → ledger). Any MCP-using agent SHOULD call this once at session start, before making code changes. Read-only; no side effects.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        format: { type: 'string', enum: ['full', 'checklist', 'topology'], description: 'full (default) = whole ECOSYSTEM.md, checklist = just the §2 workflow, topology = just the §1 repo table' },
+      },
+      required: [],
+    },
+  },
+
   // ─── 26. Meditate (auto-improvement loop, single tick) ───
   {
     name: 'oracle_meditate',

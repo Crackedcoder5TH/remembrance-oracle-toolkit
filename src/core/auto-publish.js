@@ -62,7 +62,20 @@ async function computeCoherency(repo, pr) {
     if (result.sealed) sealed++;
   }
   if (scanned === 0) return { coherency: 0.5, note: 'no scannable files' };
-  return { coherency: Math.round((sealed / scanned) * 100) / 100, scanned, sealed };
+  const __retVal = { coherency: Math.round((sealed / scanned) * 100) / 100, scanned, sealed };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:auto-publish:readPublished' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 computeCoherency.atomicProperties = {
   charge: 1, valence: 2, mass: 'medium', spin: 'even', phase: 'gas',

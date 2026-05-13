@@ -113,10 +113,23 @@ class VoidStore {
       this._index.keys[key] = { hash, ref: existing.key, timestamp: new Date().toISOString() };
       this._saveIndex();
       this._stats.deduped++;
-      return {
+      const __retVal = {
         key, hash, originalSize, compressedSize: 0,
         ratio: Infinity, method: 'dedup', ref: existing.key,
       };
+      // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.ratio || 0)), source: 'oracle:void-compression-layer:constructor' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+      return __retVal;
     }
 
     // Strategy selection

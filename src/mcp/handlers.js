@@ -1095,6 +1095,38 @@ const HANDLERS = {
     };
   },
 
+  // ─── field_checkpoint: commit field state to L2 chain + Solana + Cosmos ───
+  async field_checkpoint(_oracle, args) {
+    const { peekField } = require('../core/field-coupling');
+    const state = peekField();
+    if (!state) return { error: 'field not reachable' };
+    // Sibling-clone Publisher load (BLOCKCHAIN is a peer repo)
+    const enginePaths = [
+      'remembrance-blockchain/src/publisher',
+      path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'src', 'publisher'),
+    ];
+    let Publisher = null;
+    for (const p of enginePaths) {
+      try { ({ Publisher } = require(p)); break; } catch (_) { /* try next */ }
+    }
+    if (!Publisher) {
+      return {
+        error: 'REMEMBRANCE-BLOCKCHAIN Publisher not reachable',
+        hint: 'Ensure REMEMBRANCE-BLOCKCHAIN is cloned alongside this repo, or configured via env',
+      };
+    }
+    const publisher = new Publisher({ oracleRoot: path.join(__dirname, '..', '..') });
+    const checkpointInput = {
+      coherence: state.coherence,
+      globalEntropy: state.globalEntropy,
+      cascadeFactor: state.cascadeFactor,
+      updateCount: state.updateCount,
+    };
+    if (args?.includeSources) checkpointInput.sources = state.sources;
+    const result = await publisher.publishFieldCheckpoint(checkpointInput);
+    return result;
+  },
+
   // ─── field_sources_diff: find silent-but-expected sources ───
   field_sources_diff(_oracle, args) {
     const { peekField } = require('../core/field-coupling');

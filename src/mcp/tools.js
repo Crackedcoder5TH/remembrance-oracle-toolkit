@@ -472,6 +472,17 @@ const TOOLS = [
       required: ['expected'],
     },
   },
+  {
+    name: 'field_checkpoint',
+    description: 'Checkpoint the current LRE field state to the blockchain. Records a MILESTONE block on the L2 chain (REMEMBRANCE-BLOCKCHAIN PatternLedger) AND anchors the block hash to BOTH Solana and Cosmos in parallel. The same provenance is committed to two independent chains — Solana outage or governance event doesn\'t destroy the trail; Cosmos outage doesn\'t either. Returns the ledger block + per-chain anchor receipts. Returns fractured=true when at least one chain confirmed (provenance survives); provenance=true when both confirmed (full redundancy). Offline mode (no wallet / no RPC) returns receipts with status="offline" but still records the L2 milestone locally.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        includeSources: { type: 'boolean', description: 'Include the source histogram in the milestone payload (default: false — keeps memo small)', default: false },
+      },
+      required: [],
+    },
+  },
 
   // ─── 27. Ecosystem Orient (cross-repo protocol on connect) ───
   {

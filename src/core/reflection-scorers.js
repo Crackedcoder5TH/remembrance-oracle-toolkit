@@ -229,6 +229,17 @@ function observeCoherence(code, metadata = {}) {
   const composite = Object.entries(DIMENSION_WEIGHTS).reduce(
     (sum, [key, weight]) => sum + dimensions[key] * weight, 0
   );
+
+  // Wire each individual dimension to the LRE field — every moving
+  // number participates, not just the composite. Six contribute calls
+  // per observeCoherence, one per dimension.
+  try {
+    const { contribute } = require('./field-coupling');
+    for (const [dim, val] of Object.entries(dimensions)) {
+      contribute({ cost: 1, coherence: val, source: `reflection-scorer:${dim}` });
+    }
+  } catch (_) { /* best-effort */ }
+
   return { dimensions, composite: Math.round(composite * 1000) / 1000 };
 }
 

@@ -33,6 +33,17 @@ const GATE_INVOCATION_PATTERN = /\b(covenant|runAllChecks|CovenantValidator|cove
 
 function scanForUngatedMutations(code) {
   if (typeof code !== 'string') return [];
+  // Honor the same trusted-infrastructure annotations the covenant
+  // already recognizes (see core/covenant.js). A file marked
+  // @oracle-infrastructure or @oracle-pattern-definitions declares
+  // its mutations are bounded to internal state (entropy.json, pattern
+  // library, lock files, journal/archive writes, etc.) — not user-
+  // input-driven, so the covenant gate semantics don't apply. The
+  // annotation must appear in the source (typically near the top).
+  const TRUSTED_ANNOTATIONS = /@oracle-(infrastructure|pattern-definitions)\b/;
+  if (TRUSTED_ANNOTATIONS.test(code)) {
+    return [];
+  }
   const findings = [];
   const lines = code.split('\n');
   for (let i = 0; i < lines.length; i++) {

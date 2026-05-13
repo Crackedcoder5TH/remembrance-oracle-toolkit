@@ -189,7 +189,7 @@ function decodeSignature(sig) {
   // Parse the 14-dimensional signature. Domain (X) and Taint (T) optional for backward compat.
   const m = sig.match(/C([+\-0])V(\d)M([a-z])S([a-z])P([a-z])R([a-z])E(\d)G(\d+)D(\d)(?:H([a-z])A([a-z])I([a-z]))?(?:X([a-z]))?(?:T([a-z]))?/);
   if (!m) return null;
-  return {
+  const __retVal = {
     charge: m[1] === '+' ? 1 : m[1] === '-' ? -1 : 0,
     valence: parseInt(m[2]),
     mass: { l: 'light', m: 'medium', h: 'heavy', s: 'superheavy' }[m[3]] || 'light',
@@ -205,6 +205,19 @@ function decodeSignature(sig) {
     domain: m[13] ? (DOMAIN_DECODE[m[13]] || 'core') : 'core',
     taint: m[14] ? (TAINT_DECODE[m[14]] || 'none') : 'none',
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.alignment || 0)), source: 'oracle:periodic-table:i' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 /**

@@ -33,7 +33,7 @@ function parseIssue(issue) {
     const m = body.match(re);
     return m ? m[1].trim() : null;
   };
-  return {
+  const __retVal = {
     issueNumber: issue.number,
     repo: field('repo'),
     pr: field('pr')?.split(' ')[0]?.replace('#', ''),
@@ -43,6 +43,19 @@ function parseIssue(issue) {
     mergedAt: field('merged_at'),
     title: (field('pr') || '').split('—')[1]?.trim() || issue.title,
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:blockchain-ingest:gh' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 parseIssue.atomicProperties = {
   charge: -1, valence: 1, mass: 'light', spin: 'even', phase: 'gas',

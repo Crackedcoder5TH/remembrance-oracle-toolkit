@@ -391,7 +391,20 @@ function quantumDecision(amplitude, relevance) {
   const effective = amplitude * (0.6 + 0.4 * relevance);
 
   if (effective >= PULL_THRESHOLD) {
-    return { decision: 'pull', confidence: effective };
+    const __retVal = { decision: 'pull', confidence: effective };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.confidence || 0)), source: 'oracle:quantum-core:shouldEntangle' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   }
   if (effective >= EVOLVE_THRESHOLD) {
     return { decision: 'evolve', confidence: effective };

@@ -51,13 +51,26 @@ class LivingRemembranceEngine {
         const raw = fs.readFileSync(this._persistPath, 'utf8');
         const parsed = JSON.parse(raw);
         // Defensive: ensure required keys present.
-        return {
+        const __retVal = {
           coherence:      typeof parsed.coherence === 'number' ? parsed.coherence : 0.65,
           globalEntropy:  typeof parsed.globalEntropy === 'number' ? parsed.globalEntropy : 0.45,
           cascadeFactor:  typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
           updateCount:    typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
           timestamp:      parsed.timestamp || Date.now(),
         };
+        // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:living-remembrance:_loadOrInit' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+        return __retVal;
       }
     } catch (_e) { /* fall through to fresh init */ }
     return { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now() };

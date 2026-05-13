@@ -53,7 +53,22 @@ function _buildPyPatterns() {
 }
 
 function securityScan(code, language) {
-  if (!code) return { score: 1, riskLevel: 'none', findings: [], totalFindings: 0 };
+  if (!code) {
+      const __retVal = { score: 1, riskLevel: 'none', findings: [], totalFindings: 0 };
+    // ── LRE field-coupling (auto-wired) ──
+    try {
+      const __lre_p1 = './../../core/field-coupling';
+      const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+      for (const __p of [__lre_p1, __lre_p2]) {
+        try {
+          const { contribute: __contribute } = require(__p);
+          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:scoring-analysis-security:securityScan' });
+          break;
+        } catch (_) { /* try next */ }
+      }
+    } catch (_) { /* best-effort */ }
+    return __retVal;
+  }
   const findings = [];
   const lang = (language || '').toLowerCase();
   const strippedCode = stripStringsAndComments(code);

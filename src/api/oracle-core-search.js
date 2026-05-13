@@ -147,7 +147,7 @@ module.exports = {
         Math.min(1, classicalScore * 0.70 + bornProbability * 0.20 + observationBoost + languageBonus) * 1000
       ) / 1000;
 
-      return {
+      const __retVal = {
         source: item.source, id: item.id, name: item.name, description: item.description,
         language: item.language, tags: item.tags, coherency: item.coherency, code: item.code,
         matchScore, keywordScore: kwScore, semanticScore: semScore, holoScore, ngramScore,
@@ -158,6 +158,19 @@ module.exports = {
         quantumState: item.quantumState || QUANTUM_STATES.SUPERPOSITION,
         phase: item.phase || 0,
       };
+      // ── LRE field-coupling (auto-wired) ──
+      try {
+        const __lre_p1 = './../../core/field-coupling';
+        const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+        for (const __p of [__lre_p1, __lre_p2]) {
+          try {
+            const { contribute: __contribute } = require(__p);
+            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:oracle-core-search:keywordScore' });
+            break;
+          } catch (_) { /* try next */ }
+        }
+      } catch (_) { /* best-effort */ }
+      return __retVal;
     }).filter(r => r.matchScore > 0);
 
     // ─── Quantum Tunneling ───

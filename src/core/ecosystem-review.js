@@ -237,7 +237,7 @@ async function ecosystemReview(code, options = {}) {
     }
   }
 
-  return {
+  const __retVal = {
     pass,
     score: ecosystemScore,
     verdict: hasFail ? 'REJECTED' : ecosystemScore >= 0.68 ? 'APPROVED' : 'CONDITIONAL',
@@ -246,6 +246,19 @@ async function ecosystemReview(code, options = {}) {
     healingDiff,
     timestamp: new Date().toISOString(),
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_p1 = './../../core/field-coupling';
+    const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+    for (const __p of [__lre_p1, __lre_p2]) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:ecosystem-review:impact' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 function _suggestFixes(code, component) {

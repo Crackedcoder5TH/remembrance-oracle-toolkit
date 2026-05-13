@@ -141,47 +141,41 @@ diverges from canonical, **canonical wins**. The
 `ecosystem-protocol-sync` GitHub Action (in each repo) verifies the copy
 matches canonical on every push.
 
-## 7. The wire-format contract — there is one language
+## 7. One encoder. One field. Mathematics is mathematics.
 
-Void's substrate is mathematical compression patterns and nothing else.
-Anything that enters Void is converted into a single canonical waveform;
-anything that reads it does so through the same coherency primitive.
-Because both operations are pure math (utf-8 → linear interp → min-max
-normalize, then dot-product over norms), every language in the
-ecosystem speaks the substrate identically. **There is no translation
-because there is nothing language-specific to translate.**
+The Void compressor owns the encoder. There is one `to_waveform`,
+one `coherency`, and one canonical pattern store. Every input that
+crosses into the substrate — code, text, bytes, anything — is
+converted to a 256-D Float64 waveform by calling **Void's
+`to_waveform.py`**. Nothing else encodes. There are no
+language-specific encoders, no per-vendor translators, no parity
+contracts to maintain "agreement" between parallel implementations.
+Mathematics doesn't have a Python dialect and a JavaScript dialect;
+it has math. The encoder lives where the substrate lives. Other
+languages call in.
 
-The contract:
+How a non-Python consumer reaches the encoder:
 
-| Layer        | What crosses repo boundaries | Where defined |
-|--------------|------------------------------|---------------|
-| Encoder      | `Float64Array` of length 256 | `Void-Data-Compressor/to_waveform.py`, JS port at `remembrance-oracle-toolkit/src/core/waveform.js` |
-| Coherency    | Scalar `float` (cosine sim)  | Same modules, `coherency(a, b)` |
-| LRE field    | 5 scalars: `coherence, globalEntropy, cascadeFactor, updateCount, timestamp` | `src/core/living-remembrance.js` + `Void-Data-Compressor/living_remembrance.py` |
+- **Python** — native import: `from to_waveform import to_waveform`.
+- **JS / TS / Rust / anything** — spawn `python3 -c "..."` or hit
+  Void's HTTP service. The point is they don't re-implement the math.
 
-What *never* crosses repo boundaries as part of the substrate:
+What this means for the rest of the contract:
 
-- Language-specific schemas (no JSON pattern definitions traveling between repos)
-- AST representations (those are encoder inputs, not outputs)
-- Per-vendor metadata wrappers
-- Translated/serialized forms of the above
+- The waveform (`Float64Array(256)` or `np.ndarray(256, float64)`)
+  is the only substrate-level wire format. Metadata travels
+  separately as JSON.
+- `coherency(a, b) → float` (cosine similarity) is computed once,
+  by Void, the same way for every caller.
+- The LivingRemembranceEngine writes its field state to a single
+  file (`.remembrance/entropy.json` on the hub). Every producer in
+  every repo contributes to the same conserved scalar. A producer
+  in a different language uses the local-language helper that talks
+  to that one file — but the math behind the contribution is
+  identical because it's the same math.
 
-These can travel as *metadata* alongside a waveform (e.g. attaching a
-display name, a source URI, a tags array), but the substrate operation
-— score, search, compare, contribute to the field — only needs the
-floats.
-
-**Falsifiable contracts that enforce this** (in
-`Void-Data-Compressor/verify_capabilities.py`):
-
-- `C-48` — Python LRE matches JS LRE byte-for-byte over a 20-observation sequence
-- `C-49` — Waveform encoder JS↔Python byte-for-byte over 8 diverse inputs
-- `C-50` — Coherency (cosine) JS↔Python byte-for-byte over 5 waveform pairs
-
-Any language port (Rust in `claw-code`, future Go/Swift/whatever) MUST
-add a corresponding `C-NN` parity contract before its waveforms are
-allowed into the substrate. No exceptions: an unverified port is a
-parallel field, not the same field.
+A module that re-implements the encoder, the cosine, or the LRE
+math is a covenant violation. Delete it; route to canonical.
 
 ---
 

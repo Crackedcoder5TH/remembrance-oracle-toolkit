@@ -310,6 +310,16 @@ function lintFiles(files, options = {}) {
       for (const [k, v] of Object.entries(r.summary.byRule)) byRule[k] = (byRule[k] || 0) + v;
     }
   }
+
+  // Contribute lint outcome to the LRE field.
+  // cost = filesScanned (work units), coherence = 1 - (findings/files).
+  try {
+    const filesScanned = files ? files.length : 0;
+    const coh = Math.max(0, Math.min(1, 1 - (totalFindings / Math.max(1, filesScanned))));
+    const { contribute } = require('../core/field-coupling');
+    contribute({ cost: Math.max(1, filesScanned), coherence: coh, source: 'lint' });
+  } catch (_) { /* best-effort */ }
+
   return {
     files: results,
     totalFindings,

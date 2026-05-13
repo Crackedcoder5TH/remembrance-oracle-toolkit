@@ -391,6 +391,16 @@ function harvest(oracle, source, options = {}) {
     try { oracle._emit({ type: 'harvest_complete', source, registered: result.registered }); } catch (e) {
       if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] best effort:', e?.message || e);
     }
+
+    // Contribute harvest outcome to the LRE field. cost = harvested
+    // (functions found), coherence = registered/harvested (how many
+    // passed covenant + coherency to make it in).
+    try {
+      const coh = result.harvested > 0 ? result.registered / result.harvested : 0;
+      const { contribute } = require('../core/field-coupling');
+      contribute({ cost: Math.max(1, result.harvested), coherence: Math.max(0, Math.min(1, coh)), source: 'harvest' });
+    } catch (_) { /* best-effort */ }
+
     return result;
   } finally {
     if (isTemp && repoDir) {

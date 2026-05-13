@@ -284,10 +284,78 @@ verifyCrossScaleAlignment.atomicProperties = {
   domain: 'security',
 };
 
+// scanForMissingAtomicProperties — every top-level function in the
+// codebase must declare its atomicProperties { charge, valence, mass,
+// spin, phase, reactivity, electronegativity, group, period,
+// harmPotential, alignment, intention, domain }. The atomic table is
+// how the substrate identifies what each function IS at the elemental
+// scale; without it, a function is invisible to the periodic-table
+// scoring and to group-coherence checks. The covenant catches this
+// as a fractal-architecture violation: every node must declare its
+// place in the periodic table.
+//
+// Honors the same @oracle-infrastructure / @oracle-pattern-definitions
+// annotations the gate scanner uses — exempts internal-state files
+// where the function-as-element framing doesn't apply (e.g. tmpdir
+// cleanup, ledger persistence). The substantive code paths must
+// declare their atomic properties.
+const FN_DEF_RE = /^\s*(?:async\s+)?function\s+(\w+)\s*\(/gm;
+const ATOMIC_PROP_RE = /(\w+)\.atomicProperties\s*=\s*\{/g;
+const REQUIRED_ATOMIC_KEYS = ['charge', 'valence', 'mass', 'spin', 'phase',
+  'reactivity', 'electronegativity', 'group', 'period',
+  'harmPotential', 'alignment', 'intention', 'domain'];
+
+function scanForMissingAtomicProperties(code) {
+  if (typeof code !== 'string') return [];
+  const TRUSTED_ANNOTATIONS = /@oracle-(infrastructure|pattern-definitions)\b/;
+  if (TRUSTED_ANNOTATIONS.test(code)) return [];
+
+  // Find every function NAME defined at the top level
+  const functions = [];
+  FN_DEF_RE.lastIndex = 0;
+  let m;
+  while ((m = FN_DEF_RE.exec(code)) !== null) {
+    functions.push({ name: m.group ? m.group(1) : m[1], offset: m.index });
+  }
+  if (functions.length === 0) return [];
+
+  // Find every NAME.atomicProperties = { ... } block
+  const annotated = new Set();
+  ATOMIC_PROP_RE.lastIndex = 0;
+  while ((m = ATOMIC_PROP_RE.exec(code)) !== null) {
+    annotated.add(m[1]);
+  }
+
+  const findings = [];
+  for (const fn of functions) {
+    // Skip private (underscore-prefixed) helpers — convention says they're
+    // not substrate elements. Also skip names with no real production weight
+    // like one-liners and lambdas (already filtered by FN_DEF_RE which
+    // matches `function NAME (` only).
+    if (fn.name.startsWith('_')) continue;
+    if (!annotated.has(fn.name)) {
+      const line = code.slice(0, fn.offset).split('\n').length;
+      findings.push({
+        line,
+        excerpt: `function ${fn.name}(...)`,
+        reason: 'missing atomicProperties — function not declared in the periodic table',
+      });
+    }
+  }
+  return findings;
+}
+scanForMissingAtomicProperties.atomicProperties = {
+  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.55, group: 12, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
 function fractalAudit(ctx) {
   const report = {};
   if (ctx && ctx.code) {
     report.byteScale = scanForUngatedMutations(ctx.code);
+    report.atomicScale = scanForMissingAtomicProperties(ctx.code);
     report.fileSignature = computeFileCovenantSignature(ctx.code, ctx.filePath || '');
   }
   if (ctx && ctx.substrateData && ctx.substrateSignature) {
@@ -298,6 +366,7 @@ function fractalAudit(ctx) {
   }
   const fractalHealth =
     (!report.byteScale || report.byteScale.length === 0) &&
+    (!report.atomicScale || report.atomicScale.length === 0) &&
     (!report.substrateScale || report.substrateScale.valid) &&
     (!report.groupCoherence || !report.groupCoherence.decoherent);
   report.fractalHealth = fractalHealth;
@@ -313,6 +382,7 @@ fractalAudit.atomicProperties = {
 
 module.exports = {
   scanForUngatedMutations,
+  scanForMissingAtomicProperties,
   requireGate,
   createGate,
   signSubstrate,

@@ -115,6 +115,19 @@ class RemembranceOracle {
       }
     }
 
+    // Wire every emitted event into the LRE field. The bridge is the
+    // compass: each event type lands as `event:<type>` in the source
+    // histogram, so non-coders can see what's firing in real time.
+    // Best-effort — bridge failures never block the emit path.
+    if (options.fieldBridge !== false) {
+      try {
+        const { wireEventFieldBridge } = require('../core/event-field-bridge');
+        wireEventFieldBridge(this);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle] field bridge init failed:', e.message);
+      }
+    }
+
     // Auto-seed on first run if library is empty
     const wasEmpty = this.patterns.getAll().length === 0;
     if (options.autoSeed !== false && wasEmpty) {

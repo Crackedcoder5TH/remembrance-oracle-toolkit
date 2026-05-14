@@ -130,6 +130,36 @@ function validateCode(code, options = {}) {
 
   result.valid = result.errors.length === 0;
 
+  // ─── Domain-floor → LRE field contribution ────────────────────
+  // When a domain was supplied (so the per-domain floor mechanism
+  // engaged), contribute the result to the unified field. Tagged by
+  // domain so the source histogram shows which domains are gating
+  // patterns and at what coherency. Best-effort — never blocks
+  // validation if the field is unavailable.
+  if (domain) {
+    try {
+      const { contribute } = require('./field-coupling');
+      // If covenant rejected, coherency is null — treat as 0 (max disalignment).
+      const cohValue = result.coherencyScore?.total ?? 0;
+      contribute({
+        cost: 1,
+        coherence: result.valid ? cohValue : 0,
+        source: `validator:domain:${domain}`,
+      });
+      // When the domain floor RATCHETED the threshold above what the
+      // caller asked for, emit a second observation so that ratcheting
+      // events are visible in the histogram. Cost reflects the bump
+      // size to weight the field signal.
+      if (explicitThreshold !== undefined && domainFloor !== null && domainFloor > explicitThreshold) {
+        contribute({
+          cost: Math.max(0.5, (domainFloor - explicitThreshold) * 10),
+          coherence: result.valid ? cohValue : 0,
+          source: `validator:domain-floor-ratchet:${domain}`,
+        });
+      }
+    } catch (_) { /* best-effort */ }
+  }
+
   // ─── Atomic auto-registration ─────────────────────────────────
   // When code passes validation, extract its atomic properties and
   // register it in the periodic table. This is the auto-registration

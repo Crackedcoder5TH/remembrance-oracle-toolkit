@@ -346,4 +346,26 @@ describe('QuantumField — Decoherence sweep advances phase', () => {
     assert.ok(after.phase < 2 * Math.PI, `phase should be wrapped, got ${after.phase}`);
     assert.ok(report.totalPhaseDrifted >= 1, 'report should count the phase drift');
   });
+
+  it('contributes the sweep to the LRE field', () => {
+    const { peekField } = require('../src/core/field-coupling');
+    const before = peekField();
+    if (!before) return; // field unavailable — best-effort path
+    const beforeUpdateCount = before.updateCount;
+    const beforeDecoSweep = before.sources?.['quantum:decoherence-sweep']?.count || 0;
+    const beforePhaseSweep = before.sources?.['quantum:phase-drift-sweep']?.count || 0;
+
+    field.decoherenceSweep({ maxDays: 90 });
+
+    const after = peekField();
+    assert.ok(after.updateCount > beforeUpdateCount, 'sweep should contribute at least once');
+    const afterDecoSweep = after.sources?.['quantum:decoherence-sweep']?.count || 0;
+    const afterPhaseSweep = after.sources?.['quantum:phase-drift-sweep']?.count || 0;
+    assert.ok(
+      afterDecoSweep > beforeDecoSweep || afterPhaseSweep > beforePhaseSweep,
+      `expected one of the sweep counters to grow; ` +
+      `decoherence-sweep: ${beforeDecoSweep}→${afterDecoSweep}, ` +
+      `phase-drift-sweep: ${beforePhaseSweep}→${afterPhaseSweep}`
+    );
+  });
 });

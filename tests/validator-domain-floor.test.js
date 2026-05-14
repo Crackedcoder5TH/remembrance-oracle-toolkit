@@ -57,3 +57,58 @@ describe('validator — domain floor', () => {
     assert.equal(r.threshold, MIN_COHERENCY_THRESHOLD);
   });
 });
+
+describe('validator — domain floor → LRE field contribution', () => {
+  const { peekField } = require('../src/core/field-coupling');
+
+  it('contributes validator:domain:<domain> when domain is set', () => {
+    const before = peekField();
+    if (!before) return; // field unavailable — best-effort path
+    const beforeKeys = new Set(Object.keys(before.sources || {}));
+
+    validateCode(GOOD_CODE, { language: 'javascript', domain: 'security' });
+
+    const after = peekField();
+    const newKey = 'validator:domain:security';
+    assert.ok(after.sources[newKey] || beforeKeys.has(newKey), 'expected validator:domain:security in histogram');
+  });
+
+  it('emits an additional ratchet event when floor lifts the threshold', () => {
+    const before = peekField();
+    if (!before) return;
+
+    // security domain + threshold below 0.65 → ratchets up
+    validateCode(GOOD_CODE, { language: 'javascript', domain: 'security', threshold: 0.50 });
+
+    const after = peekField();
+    const ratchetKey = 'validator:domain-floor-ratchet:security';
+    assert.ok(after.sources[ratchetKey], 'expected ratchet event in histogram');
+  });
+
+  it('does NOT emit ratchet when threshold is already >= floor', () => {
+    const before = peekField();
+    if (!before) return;
+    const beforeCount = before.sources?.['validator:domain-floor-ratchet:performance']?.count || 0;
+
+    // performance floor = 0.52; caller threshold 0.80 dominates — no ratchet
+    validateCode(GOOD_CODE, { language: 'javascript', domain: 'performance', threshold: 0.80 });
+
+    const after = peekField();
+    const afterCount = after.sources?.['validator:domain-floor-ratchet:performance']?.count || 0;
+    assert.equal(afterCount, beforeCount, 'ratchet event should not fire when caller threshold dominates');
+  });
+
+  it('does NOT contribute when no domain is provided', () => {
+    const before = peekField();
+    if (!before) return;
+    const beforeUpdateCount = before.updateCount;
+    const validatorKeys = Object.keys(before.sources || {}).filter(k => k.startsWith('validator:'));
+    const beforeValidatorCount = validatorKeys.reduce((s, k) => s + (before.sources[k]?.count || 0), 0);
+
+    validateCode(GOOD_CODE, { language: 'javascript' });
+
+    const after = peekField();
+    const afterValidatorCount = validatorKeys.reduce((s, k) => s + (after.sources[k]?.count || 0), 0);
+    assert.equal(afterValidatorCount, beforeValidatorCount, 'no validator: sources should grow without a domain');
+  });
+});

@@ -383,6 +383,8 @@ class QuantumField {
     const now = new Date();
     const cutoff = new Date(now.getTime() - maxDays * 86400000).toISOString();
     const report = { totalDecohered: 0 };
+    let amplitudeSum = 0;
+    let amplitudeCount = 0;
 
     for (const table of QUANTUM_TABLES) {
       try {
@@ -405,6 +407,8 @@ class QuantumField {
           const decohered = applyDecoherence(rawAmplitude, anchor, now.toISOString());
           const driftedPhase = applyPhaseDrift(row.phase || 0, anchor, now.toISOString());
           const phaseChanged = driftedPhase !== (row.phase || 0);
+          amplitudeSum += decohered;
+          amplitudeCount += 1;
 
           if (decohered < minAmplitude) {
             this.db.prepare(
@@ -427,6 +431,31 @@ class QuantumField {
         report[table] = { error: e.message };
       }
     }
+
+    // Wire the sweep into the LRE field. Two contributions per sweep:
+    //   - decoherence-sweep: average amplitude of swept patterns (low =
+    //     field is forgetting). cost = number of stale rows touched.
+    //   - phase-drift-sweep: how many patterns drifted phase. coherence
+    //     reflects post-sweep amplitude (drift correlates with aging).
+    // Both best-effort — sweep results never fail because field is down.
+    try {
+      const { contribute } = require('../core/field-coupling');
+      if (amplitudeCount > 0) {
+        const avgAmplitude = amplitudeSum / amplitudeCount;
+        contribute({
+          cost: amplitudeCount,
+          coherence: avgAmplitude,
+          source: 'quantum:decoherence-sweep',
+        });
+        if ((report.totalPhaseDrifted || 0) > 0) {
+          contribute({
+            cost: report.totalPhaseDrifted,
+            coherence: avgAmplitude,
+            source: 'quantum:phase-drift-sweep',
+          });
+        }
+      }
+    } catch (_) { /* best-effort */ }
 
     return report;
   }

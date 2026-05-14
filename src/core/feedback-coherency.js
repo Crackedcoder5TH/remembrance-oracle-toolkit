@@ -1,5 +1,12 @@
 /**
  * Coherency Feedback — dimension-specific advice for improving code scores.
+ *
+ * Updated for Hybrid Coherency Formula:
+ *   S = Simplicity (LOC-weighted cyclomatic)
+ *   R = Readability (naming + structure + doc coverage)
+ *   N = No-Harm (severity-tiered security)
+ *   U = Unity/Abundance (modularity + no magic numbers + no global state)
+ *   I = Intuitive Correctness (library pattern similarity)
  */
 
 const { WEIGHTS } = require('../unified/coherency');
@@ -102,6 +109,107 @@ const COHERENCY_ADVICE = {
   },
 };
 
+/**
+ * Reflection-specific feedback for the 5 hybrid dimensions.
+ * Used by the reflection loop and healing systems.
+ */
+const REFLECTION_ADVICE = {
+  simplicity: {
+    threshold: 0.6,
+    diagnose(code, score) {
+      const issues = [];
+      const lines = code.split('\n').filter(l => l.trim());
+      if (lines.length > 50) {
+        issues.push(`${lines.length} lines of code — consider extracting helper functions to reduce LOC.`);
+      }
+      // Estimate cyclomatic complexity
+      const stripped = code.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+      const branches = (stripped.match(/\b(if|else if|while|for|case|catch|\?)\b/g) || []).length;
+      if (branches > 10) {
+        issues.push(`High cyclomatic complexity (~${branches} branches) — simplify control flow or extract functions.`);
+      }
+      return issues.length > 0 ? issues : ['Code is overly complex — reduce nesting, line count, or branching.'];
+    },
+  },
+
+  readability: {
+    threshold: 0.6,
+    diagnose(code, score) {
+      const issues = [];
+      // Check naming
+      const shortVars = (code.match(/\b(?:const|let|var)\s+[a-z]\s*[=,;]/g) || []).length;
+      if (shortVars > 2) issues.push(`${shortVars} single-character variable names — use descriptive names.`);
+      // Check doc coverage
+      const exportedFuncs = code.match(/module\.exports\s*=\s*\{([^}]+)\}/);
+      if (exportedFuncs) {
+        const hasJsdoc = /\/\*\*[\s\S]*?\*\/\s*(?:async\s+)?function/.test(code);
+        if (!hasJsdoc) issues.push('Exported functions lack JSDoc/docstring comments — add documentation for public APIs.');
+      }
+      // Check structure
+      const indents = code.split('\n').map(l => l.match(/^(\s+)/)?.[1] || '').filter(i => i);
+      const hasTabs = indents.some(i => i.includes('\t'));
+      const hasSpaces = indents.some(i => i.includes(' '));
+      if (hasTabs && hasSpaces) issues.push('Mixed tabs and spaces — pick one indentation style.');
+      return issues.length > 0 ? issues : ['Readability is low — improve naming, add docstrings, fix indentation.'];
+    },
+  },
+
+  security: {
+    threshold: 0.7,
+    diagnose(code, score) {
+      const issues = [];
+      if (score === 0) issues.push('CRITICAL: Covenant violation or critical security pattern detected — code cannot be accepted.');
+      if (/\beval\s*\(/.test(code)) issues.push('CRITICAL: eval() detected — remove and use safe alternatives.');
+      if (/\bnew\s+Function\s*\(/.test(code)) issues.push('CRITICAL: new Function() detected — use direct function declaration.');
+      if (/child_process/.test(code)) issues.push('CRITICAL: child_process usage detected — ensure this is infrastructure code with @oracle-infrastructure tag.');
+      if (/\bvar\s+/.test(code)) issues.push('MEDIUM: var declarations — use const/let instead.');
+      if (/==(?!=)/.test(code)) issues.push('MEDIUM: Loose equality (==) — use strict equality (===).');
+      return issues.length > 0 ? issues : ['Security concerns detected — review code for unsafe patterns.'];
+    },
+  },
+
+  unity: {
+    threshold: 0.6,
+    diagnose(code, score) {
+      const issues = [];
+      if (/\bglobal\.\w+\s*=|\bwindow\.\w+\s*=|\bglobalThis\.\w+\s*=/.test(code)) {
+        issues.push('Global state mutation detected — use module-scoped state or dependency injection.');
+      }
+      const magicNums = code.match(/(?<![.\w])(-?\d+\.?\d*)(?![.\w])/g) || [];
+      const allowed = new Set(['0', '1', '-1', '2', '100', '1000', '1e3']);
+      const trueMagic = magicNums.filter(n => !allowed.has(n));
+      if (trueMagic.length > 3) {
+        issues.push(`${trueMagic.length} magic numbers found — extract to named constants.`);
+      }
+      if (!/module\.exports|export\s/.test(code) && code.split('\n').length > 10) {
+        issues.push('No exports found in substantial file — consider making functions reusable/modular.');
+      }
+      return issues.length > 0 ? issues : ['Unity/abundance score is low — improve modularity and remove hardcoded values.'];
+    },
+  },
+
+  correctness: {
+    threshold: 0.5,
+    diagnose(code, score) {
+      const issues = [];
+      // Bracket balance
+      let braces = 0, parens = 0, brackets = 0;
+      for (const ch of code) {
+        if (ch === '{') braces++; else if (ch === '}') braces--;
+        if (ch === '(') parens++; else if (ch === ')') parens--;
+        if (ch === '[') brackets++; else if (ch === ']') brackets--;
+      }
+      if (braces !== 0) issues.push(`Unbalanced braces (off by ${Math.abs(braces)}).`);
+      if (parens !== 0) issues.push(`Unbalanced parentheses (off by ${Math.abs(parens)}).`);
+      if (brackets !== 0) issues.push(`Unbalanced brackets (off by ${Math.abs(brackets)}).`);
+      if (score < 0.5 && issues.length === 0) {
+        issues.push('Code does not match proven library patterns — consider aligning with established patterns or adding the code to the library after testing.');
+      }
+      return issues.length > 0 ? issues : ['Intuitive correctness is low — code diverges from proven patterns.'];
+    },
+  },
+};
+
 function coherencyFeedback(code, coherencyScore, threshold = 0.6) {
   if (!coherencyScore || coherencyScore.total >= threshold) return [];
 
@@ -134,4 +242,36 @@ function coherencyFeedback(code, coherencyScore, threshold = 0.6) {
   return feedback;
 }
 
-module.exports = { COHERENCY_ADVICE, coherencyFeedback };
+/**
+ * Reflection-specific feedback using the hybrid dimension advisors.
+ * Returns actionable advice for each underperforming dimension.
+ */
+function reflectionFeedback(code, observeResult) {
+  if (!observeResult) return [];
+
+  const feedback = [];
+  const { dimensions, composite, zone } = observeResult;
+
+  if (zone === 'accept') return [];
+
+  feedback.push(`Reflection coherency ${composite.toFixed(3)} — zone: ${zone}.`);
+
+  if (zone === 'veto') {
+    feedback.push('Code is below veto threshold (< 0.75) — must be rerun or healed.');
+  } else {
+    feedback.push('Code is in review zone (0.75–0.84) — consider a second-pass healing.');
+  }
+
+  for (const [dim, score] of Object.entries(dimensions)) {
+    const advisor = REFLECTION_ADVICE[dim];
+    if (advisor && score < advisor.threshold) {
+      feedback.push(`  ${dim}: ${score.toFixed(3)}`);
+      const issues = advisor.diagnose(code, score);
+      for (const issue of issues) feedback.push(`    - ${issue}`);
+    }
+  }
+
+  return feedback;
+}
+
+module.exports = { COHERENCY_ADVICE, REFLECTION_ADVICE, coherencyFeedback, reflectionFeedback };

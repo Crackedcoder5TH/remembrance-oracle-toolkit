@@ -278,7 +278,7 @@ function scoreCompliance(session) {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:compliance:compactPayload' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:compliance:scoreCompliance' });
         break;
       } catch (_) { /* try next */ }
     }

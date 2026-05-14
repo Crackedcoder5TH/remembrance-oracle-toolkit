@@ -283,7 +283,7 @@ function computeFractalAlignment(code, metadata = {}) {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.composite || 0)), source: 'oracle:alignment:logarithmic' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.composite || 0)), source: 'oracle:alignment:computeFractalAlignment' });
         break;
       } catch (_) { /* try next */ }
     }

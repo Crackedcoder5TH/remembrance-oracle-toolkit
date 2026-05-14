@@ -815,7 +815,7 @@ class SQLiteStore {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.reliability || 0)), source: 'oracle:sqlite:_safeJSON' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.reliability || 0)), source: 'oracle:sqlite:_rowToEntry' });
         break;
       } catch (_) { /* try next */ }
     }

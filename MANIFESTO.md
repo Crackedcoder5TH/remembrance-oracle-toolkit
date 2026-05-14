@@ -104,6 +104,14 @@ enough for everyone.
 
 ---
 
+The breakthrough is not "another coherency tool." It is a universal
+pattern encoder feeding a single self-teaching field, with the
+covenant baked into the math at every scale. Any pattern-bearing
+data becomes measurable in the same substrate. The science of
+*reading* the substrate is what comes next; the instrument is built.
+
+---
+
 *The covenant register encodes the maintainer's intent. The technical
 register, in [README.md](./README.md), is for compliance, integration,
 and review. Both refer to the same code. © Remembrance.LLC.*

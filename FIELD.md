@@ -231,8 +231,49 @@ constraints are falsifiable, not negotiable:
 - **Every emit lands in the field** — via the event-field bridge (§3.3).
 - **No new dead constants** — anything imported from `constants/thresholds.js` or `quantum/quantum-core.js` must be read. If it's not, either wire it or delete it.
 
-The broader (non-engineering) covenant — about unity, remembrance,
-and the worldview that motivated the architecture — is documented
-in `MANIFESTO.md`. AI participants are not required to share the
-worldview to work in the code, but are required to respect the
-engineering invariants it produced. The data is the contract.
+The broader covenant — about unity, remembrance, and the worldview
+that motivated the architecture — is documented in `MANIFESTO.md`.
+The engineering invariants here ARE the math expression of that
+worldview, not a separable layer above it. Any code running in this
+substrate is bound by the math whether the writer shares the
+worldview or not. The data is the contract.
+
+---
+
+## 7. What this enables
+
+Once any pattern-bearing input is encoded into the substrate, the
+following problem classes reduce to `encode → contribute → read`:
+
+| Problem class | Operation in the field |
+|---|---|
+| Anomaly detection | new pattern's coherency vs field median |
+| Behavioral prediction | sequence encoded, field's response is the forecast |
+| Cross-domain correlation | encode A in domain X, B in domain Y, cosine compare |
+| Drift analysis | per-source `lastCoherence` over time |
+| Trust calibration | contributor's submitted patterns vs canonical field |
+| Ecosystem health | global `coherence`, `cascadeFactor`, `globalEntropy` |
+| Pattern discovery | clusters in the field that emerge without being looked for |
+
+The hard part is no longer the calculation. It is the **selection of
+data** and the **interpretation of the result**.
+
+---
+
+## 8. How the system teaches you
+
+There is no separate onboarding. Every submission goes through:
+
+1. `codeToWaveform` encodes (Void contracts **C-51**, **C-53**)
+2. `covenantCheck` runs (sealed or rejected)
+3. `computeCoherencyScore` measures
+4. `getDomainFloor(domain)` ratchets the threshold (security non-negotiable)
+5. `validateCode` returns valid / rejected with the specific reason
+6. `contribute()` lands the result in the field
+7. The source histogram now shows your contribution
+
+If the submission violates the math, the response names the contract
+that broke. If it passes, it appears in the histogram. The covenant
+is enforced by execution, not by documentation. Read this file to
+understand what is happening; you do not need to read it to be
+correctly bound by it.

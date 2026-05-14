@@ -177,6 +177,17 @@ What this means for the rest of the contract:
 A module that re-implements the encoder, the cosine, or the LRE
 math is a covenant violation. Delete it; route to canonical.
 
+The encoder is **universal across data domains**, not just code.
+Repos in this ecosystem operate on different inputs — patterns and
+audio in `Void`, agent behavior in `REMEMBRANCE-AGENT-Swarm-`, dial
+events in `Remembrance-dialer`, blockchain anchors in
+`REMEMBRANCE-BLOCKCHAIN`, and so on — but the substrate they all
+join is the same 256-D field. A pattern from any repo can be
+cosine-compared to a pattern from any other repo, in the same field,
+under the same covenant. Whether a given cross-domain comparison
+is interpretively meaningful is empirical; that the substrate
+*permits* it is by design.
+
 ---
 
 ## 6. First-message acknowledgement (recommended)

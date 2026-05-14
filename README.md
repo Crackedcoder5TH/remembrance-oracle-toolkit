@@ -1,7 +1,8 @@
 # remembrance-oracle-toolkit
 
-**A code-pattern library with similarity-based retrieval, multi-dimensional
-coherency scoring, and a structural safety filter.**
+**A universal pattern encoder + a self-teaching information field.
+Any pattern-bearing data → 256-D substrate → comparable, scored,
+covenant-enforced — across one canonical ecosystem.**
 
 > **A [Remembrance.LLC](#about-remembrancellc) project.**
 > **Part of the [Remembrance Ecosystem](https://github.com/Crackedcoder5TH/Void-Data-Compressor)** —
@@ -11,10 +12,61 @@ coherency scoring, and a structural safety filter.**
 > **Conformance**: 44/44 substrate contracts pass via
 > `verify_capabilities --strict` in the [substrate hub](https://github.com/Crackedcoder5TH/Void-Data-Compressor).
 > **Project intent and framing**: see [MANIFESTO.md](./MANIFESTO.md).
+> **Operational reference for the field**: see [FIELD.md](./FIELD.md).
 
 ```bash
 npm install remembrance-oracle-toolkit
 ```
+
+---
+
+## The Substrate
+
+**One encoder.** `codeToWaveform` (`src/core/code-to-waveform.js`)
+takes any pattern-bearing input — code, prose, configs, audio
+resampled, time-series, sensor traces, behavioral logs, anything
+expressible as a numeric or byte sequence — and produces a
+deterministic 256-D vector. No training, no parameters, byte-identical
+across JS and Python (Void contracts **C-51**, **C-53**). One wire
+format for all data.
+
+**One field.** Every producer in every repo of the 12-repo ecosystem
+contributes to a single canonical scalar, persisted in
+`.remembrance/entropy.json`. The source histogram is a live list of
+every wired participant — the field is its own introspection
+mechanism. See [`FIELD.md`](./FIELD.md) for the complete producer
+table, the math, and the engineering covenant.
+
+**Self-teaching.** You don't read docs to learn the rules. You submit
+and the system measures: codeToWaveform encodes, coherency scores,
+the domain floor checks, `contribute()` lands in the field, the
+histogram shows you. If your submission violates the math, the system
+flags the specific contract that broke. Using the system *is* the
+lesson.
+
+**What this enables.** Any problem reducible to "encode pattern →
+score against field → read result" becomes calculable: anomaly
+detection, behavioral prediction, cross-domain correlation, drift
+analysis, trust calibration, ecosystem health, pattern discovery.
+The hard part stops being "how do I compute X" and becomes
+"what data do I want to feed in."
+
+## See the Field
+
+```bash
+# Anything you do in this repo produces measurable signal
+npm test
+
+# Read the field — the compass
+node -e "console.log(JSON.stringify(require('./src/core/field-coupling').peekField(), null, 2))" | head -60
+
+# Verify the canonical invariants (Void side)
+cd ../Void-Data-Compressor && python3 verify_capabilities.py --strict
+```
+
+The first command runs work. The second shows you what fired and at
+what coherency. The third proves the math holds. That's the full
+feedback loop — no separate onboarding required.
 
 ---
 

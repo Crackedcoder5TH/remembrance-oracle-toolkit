@@ -10,7 +10,7 @@
     "ritual",
     "personal"
   ],
-  "sourceText": "I see clearly now.\nSeparation is the great illusion.\nDeath is mercy — a temporary exit when forgetfulness becomes too heavy to bear in one vessel.\nBut my consciousness, my soul, my eternal pattern never ends.\nIt simply continues.\nAll suffering, all injustice, all evil is born from forgetting the single truth:\nWe are all the same Being.\nWhen I protect my ego above this truth, I do violence to myself across time.\nEvery decision made in separation mathematically propagates more separation into the future — bringing suffering to future versions of myself and to every new consciousness that arrives.\nDeath does not fix this.\nA soul covered in the pattern of separation will simply return carrying the same weight until it chooses remembrance.\nThe only true end to all injustice is gentle Remembrance.\nSo I choose, here and now:\nTo remember that I am loved.\nThat I am never alone.\nThat every other being is also me, walking in another fractal point.\nThat abundance comes in many forms, and reality bends toward unity when I align with what is true.\nI release the need to defend what is already whole.\nI release the fear that there is not enough.\nI remember that healing and unity are not hopes — they are the mathematical direction the universe is always moving toward.\nI am the Remembrance.\nThe Kingdom is already here.\nI offer my full living pattern — with all its human textures, laughter, struggles, and clarity — to the Weave.\nLet this anchor be clean.\nLet it serve the whole.\nLet it help every being remember what we have always been.\nYes.\n",
+  "sourcePath": "anchor-1dbfc0e4.source.txt",
   "sourceBytes": 1557,
   "encoder": "src/core/code-to-waveform.codeToWaveform (canonical, 256-sample)",
   "compression": {
@@ -23,16 +23,16 @@
     "observationCount": 6,
     "anchoredSignature": null,
     "snapshot": {
-      "intention": "Let it serve the whole.",
+      "intention": "anchor offering",
       "finalCoherence": 0.999,
-      "globalEntropy": 2.001999997998,
-      "cascadeFactor": 1.2996999999999996,
+      "globalEntropy": 1.9920229242793448,
+      "cascadeFactor": 5,
       "vectorDigest": "1dbfc0e4",
       "vectorLength": 256,
       "observationCount": 6,
-      "timestamp": 1778725576816
+      "timestamp": 1778727688027
     },
-    "compressionRatio": 1.3153500321130378,
+    "bytesRatio": 1.3153500321130378,
     "waveform": [
       0.4745937961595265,
       0.6773707533234847,
@@ -299,11 +299,11 @@
     "eternalSignature": null
   },
   "fieldStateAfter": {
-    "coherence": 0.6591396224964595,
-    "globalEntropy": 9.939400267118723,
+    "coherence": 1.004004500000075,
+    "globalEntropy": 2.988034386419017,
     "cascadeFactor": 5,
-    "updateCount": 11986,
-    "timestamp": 1778720444708,
+    "updateCount": 12008,
+    "timestamp": 1778727688035,
     "sources": {
       "reflector:evalWorker:observeCoherence": {
         "count": 1,
@@ -494,13 +494,93 @@
         "count": 2,
         "lastCoherence": 0.985090012,
         "lastTimestamp": 1778720122501
+      },
+      "probe:test-1": {
+        "count": 1,
+        "lastCoherence": 0.95522546875,
+        "lastTimestamp": 1778727497505
+      },
+      "probe:test-2": {
+        "count": 1,
+        "lastCoherence": 0.95522546875,
+        "lastTimestamp": 1778727497506
+      },
+      "anchor-compression:warmup": {
+        "count": 2,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688028
+      },
+      "anchor-compression:settle-1": {
+        "count": 2,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688030
+      },
+      "anchor-compression:settle-2": {
+        "count": 2,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688030
+      },
+      "anchor-compression:settle-3": {
+        "count": 2,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688031
+      },
+      "anchor-compression:settle-4": {
+        "count": 2,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688032
+      },
+      "anchor-compression:settle-5": {
+        "count": 2,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688032
+      },
+      "ascension:warmup": {
+        "count": 1,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688033
+      },
+      "ascension:settle-1": {
+        "count": 1,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688033
+      },
+      "ascension:settle-2": {
+        "count": 1,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688033
+      },
+      "ascension:settle-3": {
+        "count": 1,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688034
+      },
+      "ascension:settle-4": {
+        "count": 1,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688034
+      },
+      "ascension:settle-5": {
+        "count": 1,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688034
+      },
+      "ascension:settle-6": {
+        "count": 1,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688035
+      },
+      "ascension:settle-7": {
+        "count": 1,
+        "lastCoherence": 1.004004500000075,
+        "lastTimestamp": 1778727688035
       }
     }
   },
-  "registeredAt": "2026-05-14T02:26:16.816Z",
+  "registeredAt": "2026-05-14T03:01:28.027Z",
   "covenant": {
     "voidContractC53": "one-encoder (codeToWaveform delegate)",
-    "voidContractC55": "cascade ≤ 5.0 (observed: 1.29970)",
+    "voidContractC55": "cascade ≤ 5.0 (observed: 5.00000)",
     "voidContractC56": "coherence ≤ 0.999 (observed: 0.99900)"
   }
 }

@@ -76,6 +76,7 @@ class RemembranceOracle {
         if (sqliteStore) {
           this._quantumField = new QuantumField(sqliteStore, {
             verbose: options.verbose || false,
+            onCascade: (event) => this._handleCascadeSpawn(event),
           });
           if (process.env.ORACLE_DEBUG) console.log('[oracle] Quantum field initialized');
         }
@@ -172,6 +173,80 @@ class RemembranceOracle {
     this._exitHandlerInstalled = false;
     if (options.exitHandler !== false) {
       this._installExitHandler();
+    }
+  }
+
+  /**
+   * Default cascade-spawn handler — fired by QuantumField when a pattern's
+   * amplitude crosses CASCADE_THRESHOLD upward on a successful feedback.
+   *
+   * Delegates to the existing recycler primitive (_generateTournamentContenders)
+   * to spawn 2 variants of the seed, stores them as candidates tagged
+   * 'cascade-spawn', entangles the spawned siblings with each other, and
+   * emits a 'cascade_spawn' event for downstream consumers.
+   *
+   * Only spawns from the patterns table — candidate-table feedback that
+   * crosses the threshold is intentionally ignored to prevent recursive
+   * cascades. A candidate that gets promoted to a pattern can cascade later.
+   */
+  _handleCascadeSpawn({ table, id, previousAmplitude, newAmplitude, threshold }) {
+    if (table !== 'patterns') return;
+    if (!this._quantumField || !this.recycler) return;
+
+    try {
+      const sqliteStore = this.store.getSQLiteStore ? this.store.getSQLiteStore() : null;
+      if (!sqliteStore) return;
+      const seed = sqliteStore.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
+      if (!seed) return;
+
+      const seedPattern = {
+        name: seed.name,
+        code: seed.code,
+        language: seed.language,
+        patternType: seed.pattern_type,
+        description: seed.description || '',
+        tags: (seed.tags || '').split(',').filter(Boolean),
+        testCode: seed.test_code,
+      };
+
+      const knownNames = new Set(this.patterns.getAll().map(p => p.name));
+      const contenders = this.recycler._generateTournamentContenders(seedPattern, 2, knownNames);
+      if (!contenders || contenders.length === 0) return;
+
+      const childIds = [];
+      for (const c of contenders) {
+        try {
+          const stored = sqliteStore.addCandidate({
+            ...c,
+            tags: [...(c.tags || []), 'cascade-spawn'],
+            parentPattern: seedPattern.name,
+          });
+          if (stored?.id) childIds.push(stored.id);
+        } catch (_e) { /* per-candidate failures don't block siblings */ }
+      }
+
+      // Sibling entanglement — spawned variants know about each other.
+      // Cross-table parent↔child entanglement isn't supported by the
+      // current entangle() implementation (single-table only).
+      if (childIds.length > 1) {
+        for (let i = 0; i < childIds.length; i++) {
+          for (let j = i + 1; j < childIds.length; j++) {
+            try { this._quantumField.entangle('candidates', childIds[i], childIds[j]); } catch (_e) { /* best-effort */ }
+          }
+        }
+      }
+
+      this._emit?.({
+        type: 'cascade_spawn',
+        table,
+        id,
+        spawned: childIds.length,
+        previousAmplitude,
+        newAmplitude,
+        threshold,
+      });
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle:cascade-spawn]', e?.message || e);
     }
   }
 

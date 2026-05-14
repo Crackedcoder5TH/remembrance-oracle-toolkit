@@ -257,3 +257,65 @@ describe('QuantumField — Entanglement Graph', () => {
     assert.ok(nodeIds.includes('g-b'));
   });
 });
+
+describe('QuantumField — Cascade trigger', () => {
+  let cascadeEvents;
+  beforeEach(() => {
+    createTestStore();
+    cascadeEvents = [];
+    field = new QuantumField(store, {
+      onCascade: (e) => cascadeEvents.push(e),
+    });
+    const now = new Date().toISOString();
+    store.db.prepare(`
+      INSERT INTO patterns (id, name, code, language, coherency_total, amplitude, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('cas-just-below', 'cas-just-below', 'code', 'js', 0.8, 0.68, now, now);
+    store.db.prepare(`
+      INSERT INTO patterns (id, name, code, language, coherency_total, amplitude, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('cas-already-past', 'cas-already-past', 'code', 'js', 0.8, 0.85, now, now);
+    store.db.prepare(`
+      INSERT INTO patterns (id, name, code, language, coherency_total, amplitude, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('cas-far-below', 'cas-far-below', 'code', 'js', 0.8, 0.30, now, now);
+  });
+
+  it('fires onCascade when amplitude crosses CASCADE_THRESHOLD upward on success', () => {
+    // 0.68 + 0.05 = 0.73 → crosses 0.70
+    const result = field.feedback('patterns', 'cas-just-below', true);
+    assert.equal(result.cascadeTriggered, true);
+    assert.equal(cascadeEvents.length, 1);
+    assert.equal(cascadeEvents[0].id, 'cas-just-below');
+    assert.equal(cascadeEvents[0].threshold, 0.70);
+    assert.ok(cascadeEvents[0].previousAmplitude <= 0.70);
+    assert.ok(cascadeEvents[0].newAmplitude > 0.70);
+  });
+
+  it('does NOT fire when already past threshold', () => {
+    // 0.85 + 0.05 = 0.90 (still > threshold but no upward crossing)
+    const result = field.feedback('patterns', 'cas-already-past', true);
+    assert.equal(result.cascadeTriggered, false);
+    assert.equal(cascadeEvents.length, 0);
+  });
+
+  it('does NOT fire when feedback fails', () => {
+    // Failure decreases amplitude — no upward crossing possible
+    const result = field.feedback('patterns', 'cas-just-below', false);
+    assert.equal(result.cascadeTriggered, false);
+    assert.equal(cascadeEvents.length, 0);
+  });
+
+  it('does NOT fire when single bump leaves amplitude below threshold', () => {
+    // 0.30 + 0.05 = 0.35 (still < 0.70)
+    const result = field.feedback('patterns', 'cas-far-below', true);
+    assert.equal(result.cascadeTriggered, false);
+    assert.equal(cascadeEvents.length, 0);
+  });
+
+  it('fires exactly once per upward crossing — second success does not re-fire', () => {
+    field.feedback('patterns', 'cas-just-below', true);   // 0.68 → 0.73 (crosses)
+    field.feedback('patterns', 'cas-just-below', true);   // 0.73 → 0.78 (no new crossing)
+    assert.equal(cascadeEvents.length, 1);
+  });
+});

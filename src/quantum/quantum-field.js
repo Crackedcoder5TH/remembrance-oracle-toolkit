@@ -52,12 +52,18 @@ const QUANTUM_TABLES = ['patterns', 'entries', 'candidates', 'debug_patterns'];
 class QuantumField {
   /**
    * @param {object} store - SQLiteStore instance with .db property
-   * @param {object} [options] - { verbose }
+   * @param {object} [options]
+   * @param {boolean} [options.verbose]
+   * @param {function} [options.onCascade] — fired when a pattern's amplitude
+   *   crosses CASCADE_THRESHOLD upward on a successful feedback. Receives
+   *   { table, id, previousAmplitude, newAmplitude, threshold }. Best-effort:
+   *   exceptions are caught and logged under ORACLE_DEBUG.
    */
   constructor(store, options = {}) {
     this.store = store;
     this.db = store.db;
     this.verbose = options.verbose || false;
+    this.onCascade = typeof options.onCascade === 'function' ? options.onCascade : null;
 
     this._migrateAllTables();
   }
@@ -242,11 +248,55 @@ class QuantumField {
     const delta = computeEntanglementDelta(succeeded);
     const propagated = this._propagateEntanglement(entangled, delta, id);
 
+    // Cascade growth trigger — when a pattern's amplitude crosses
+    // CASCADE_THRESHOLD upward on a successful feedback, fire the
+    // cascade hook so consumers (e.g. the recycler) can spawn
+    // entangled variants. See quantum-core.CASCADE_THRESHOLD docstring.
+    const cascadeTriggered = this._fireCascadeIfCrossed(
+      table, id, currentAmplitude, newAmplitude, succeeded
+    );
+
     return {
       amplitude: Math.round(newAmplitude * 1000) / 1000,
       quantumState,
       entanglementPropagated: propagated,
+      cascadeTriggered,
     };
+  }
+
+  /**
+   * Detect an upward CASCADE_THRESHOLD crossing on a successful feedback,
+   * contribute the event to the LRE field, and (if wired) call the
+   * onCascade consumer. Returns true iff a crossing fired.
+   */
+  _fireCascadeIfCrossed(table, id, previousAmplitude, newAmplitude, succeeded) {
+    if (!succeeded) return false;
+    if (previousAmplitude > CASCADE_THRESHOLD) return false; // already past
+    if (newAmplitude <= CASCADE_THRESHOLD) return false;     // didn't cross
+
+    // Best-effort field contribution: the cascade is a meaningful event,
+    // so the LRE should see it regardless of whether a consumer is wired.
+    try {
+      const { contribute } = require('../core/field-coupling');
+      contribute({ cost: 1, coherence: newAmplitude, source: `quantum:cascade-spawn:${table}` });
+    } catch (_) { /* best-effort */ }
+
+    if (this.onCascade) {
+      try {
+        this.onCascade({
+          table,
+          id,
+          previousAmplitude,
+          newAmplitude,
+          threshold: CASCADE_THRESHOLD,
+        });
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) {
+          console.warn(`[quantum-field:cascade:${table}:${id}]`, e?.message || e);
+        }
+      }
+    }
+    return true;
   }
 
   /**

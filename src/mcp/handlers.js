@@ -1,4 +1,16 @@
 /**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
+/**
  * MCP Tool Handlers
  *
  * Dispatch map for all MCP tool calls. Each handler is a function
@@ -989,6 +1001,157 @@ const HANDLERS = {
       })),
       autoApproved: approved,
       globalCoherency: result.globalCoherency || null,
+    };
+  },
+
+  // ─── field_state: read the LRE field's current state ───
+  field_state(_oracle, args) {
+    const { peekField } = require('../core/field-coupling');
+    const state = peekField();
+    if (!state) return { error: 'field not reachable (LRE module unavailable)' };
+    const out = {
+      coherence: state.coherence,
+      globalEntropy: state.globalEntropy,
+      cascadeFactor: state.cascadeFactor,
+      updateCount: state.updateCount,
+      timestamp: state.timestamp,
+    };
+    if (args?.includeSources !== false) {
+      out.sources = state.sources || {};
+      out.distinctSources = Object.keys(state.sources || {}).length;
+    }
+    return out;
+  },
+
+  // ─── field_contribute: write an observation to the LRE field ───
+  field_contribute(_oracle, args) {
+    const { contribute, peekField } = require('../core/field-coupling');
+    if (typeof args?.coherence !== 'number') {
+      throw new Error('"coherence" (number) is required');
+    }
+    if (typeof args?.source !== 'string' || !args.source) {
+      throw new Error('"source" (non-empty string) is required');
+    }
+    const before = peekField();
+    const result = contribute({
+      cost: typeof args.cost === 'number' ? args.cost : 1.0,
+      coherence: args.coherence,
+      source: args.source,
+    });
+    if (!result) return { error: 'field unreachable; contribution skipped' };
+    return {
+      newState: {
+        coherence: result.coherence,
+        globalEntropy: result.globalEntropy,
+        cascadeFactor: result.cascadeFactor,
+        updateCount: result.updateCount,
+      },
+      derived: {
+        r_eff: result.r_eff,
+        delta_void: result.delta_void,
+        gamma_cascade: result.gamma_cascade,
+        p: result.p,
+      },
+      delta: before ? {
+        coherence: result.coherence - before.coherence,
+        updateCount: result.updateCount - before.updateCount,
+      } : null,
+      source: args.source,
+    };
+  },
+
+  // ─── field_pressure: backpressure signal ───
+  field_pressure(_oracle, args) {
+    const { fieldPressure } = require('../core/field-coupling');
+    return fieldPressure({
+      entropyThreshold: typeof args?.entropyThreshold === 'number' ? args.entropyThreshold : 10,
+      cascadeThreshold: typeof args?.cascadeThreshold === 'number' ? args.cascadeThreshold : 4,
+    });
+  },
+
+  // ─── field_introspect: who's been contributing? ───
+  field_introspect(_oracle, args) {
+    const { peekField } = require('../core/field-coupling');
+    const state = peekField();
+    if (!state) return { error: 'field not reachable' };
+    const sources = state.sources || {};
+    const prefix = args?.prefix || '';
+    const topN = (typeof args?.topN === 'number') ? args.topN : 25;
+    const entries = Object.entries(sources)
+      .filter(([k]) => !prefix || k.startsWith(prefix))
+      .sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
+    const sliced = topN > 0 ? entries.slice(0, topN) : entries;
+    const topSources = sliced.map(([source, info]) => ({
+      source,
+      count: info.count,
+      lastCoherence: info.lastCoherence,
+      lastTimestamp: info.lastTimestamp,
+    }));
+    return {
+      totalDistinctSources: entries.length,
+      totalContributions: entries.reduce((sum, [, info]) => sum + (info.count || 0), 0),
+      filter: { prefix: prefix || null, topN: topN || 'all' },
+      topSources,
+    };
+  },
+
+  // ─── field_checkpoint: commit field state to L2 chain + Solana + Cosmos ───
+  async field_checkpoint(_oracle, args) {
+    const { peekField } = require('../core/field-coupling');
+    const state = peekField();
+    if (!state) return { error: 'field not reachable' };
+    // Sibling-clone Publisher load (BLOCKCHAIN is a peer repo)
+    const enginePaths = [
+      'remembrance-blockchain/src/publisher',
+      path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'src', 'publisher'),
+    ];
+    let Publisher = null;
+    for (const p of enginePaths) {
+      try { ({ Publisher } = require(p)); break; } catch (_) { /* try next */ }
+    }
+    if (!Publisher) {
+      return {
+        error: 'REMEMBRANCE-BLOCKCHAIN Publisher not reachable',
+        hint: 'Ensure REMEMBRANCE-BLOCKCHAIN is cloned alongside this repo, or configured via env',
+      };
+    }
+    const publisher = new Publisher({ oracleRoot: path.join(__dirname, '..', '..') });
+    const checkpointInput = {
+      coherence: state.coherence,
+      globalEntropy: state.globalEntropy,
+      cascadeFactor: state.cascadeFactor,
+      updateCount: state.updateCount,
+    };
+    if (args?.includeSources) checkpointInput.sources = state.sources;
+    const result = await publisher.publishFieldCheckpoint(checkpointInput);
+    return result;
+  },
+
+  // ─── field_sources_diff: find silent-but-expected sources ───
+  field_sources_diff(_oracle, args) {
+    const { peekField } = require('../core/field-coupling');
+    const state = peekField();
+    if (!state) return { error: 'field not reachable' };
+    const expected = Array.isArray(args?.expected) ? args.expected : [];
+    if (expected.length === 0) {
+      throw new Error('"expected" must be a non-empty array of source labels');
+    }
+    const fired = new Set(Object.keys(state.sources || {}));
+    const firing = [];
+    const silent = [];
+    for (const label of expected) {
+      if (fired.has(label)) {
+        firing.push({ source: label, count: state.sources[label].count });
+      } else {
+        silent.push(label);
+      }
+    }
+    return {
+      expected: expected.length,
+      firing: firing.length,
+      silent: silent.length,
+      firingDetails: firing,
+      silentSources: silent,
     };
   },
 

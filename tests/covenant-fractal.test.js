@@ -120,13 +120,36 @@ test('verifyCrossScaleAlignment accepts one-level disagreement', () => {
 });
 
 test('fractalAudit returns fractalHealth=true for clean inputs', () => {
+  // A fractal-clean function declares its atomic properties (the periodic-
+  // table identity) and routes any mutations through a covenant gate.
   const code = `
     function safe() {
       runAllChecks(code, filePath);
       console.log('ok');
     }
+    safe.atomicProperties = {
+      charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+      reactivity: 'inert', electronegativity: 0, group: 1, period: 1,
+      harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+      domain: 'test',
+    };
   `;
   const report = fractalAudit({ code, filePath: 'test.js' });
   assert.equal(report.fractalHealth, true);
   assert.equal(report.byteScale.length, 0);
+  assert.equal(report.atomicScale.length, 0);
+});
+
+test('fractalAudit flags functions missing atomicProperties', () => {
+  // No atomic-table declaration → flagged. This is the new scale-2
+  // enforcement: every substrate function must declare its identity.
+  const code = `
+    function unidentified() {
+      return 42;
+    }
+  `;
+  const report = fractalAudit({ code, filePath: 'test.js' });
+  assert.equal(report.fractalHealth, false);
+  assert.equal(report.atomicScale.length, 1);
+  assert.equal(report.atomicScale[0].excerpt, 'function unidentified(...)');
 });

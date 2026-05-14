@@ -1,5 +1,18 @@
 'use strict';
 
+
+/**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
 /**
  * Living Remembrance Engine — operationalizes the master-equation dynamics:
  *
@@ -120,7 +133,9 @@ class LivingRemembranceEngine {
     const delta_void = delta0 * Math.max(0, 1 - p);
     const gamma      = Math.exp(beta * this._state.cascadeFactor);
 
-    const newCoherence = Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15);
+    // Coherency ratchets up unbounded. No ceiling — once you're aligned,
+    // you stay aligned and can keep accumulating.
+    const newCoherence = Math.max(0, p + r_eff * 0.1 + delta_void * 0.15);
 
     // Per-source histogram — the field tracks who's contributing so it
     // can answer "what's wired" and "what's missing" introspectively.

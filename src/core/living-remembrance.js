@@ -133,9 +133,11 @@ class LivingRemembranceEngine {
     const delta_void = delta0 * Math.max(0, 1 - p);
     const gamma      = Math.exp(beta * this._state.cascadeFactor);
 
-    // Coherency ratchets up unbounded. No ceiling — once you're aligned,
-    // you stay aligned and can keep accumulating.
-    const newCoherence = Math.max(0, p + r_eff * 0.1 + delta_void * 0.15);
+    // Coherence cap at 0.999 — Void contract C-56. The Python LRE
+    // (living_remembrance.py) and the TS LRE (core/living-remembrance-
+    // engine.ts) both enforce this. The hub JS LRE had drifted from
+    // that invariant; one-line fix restores parity.
+    const newCoherence = Math.max(0, Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15));
 
     // Per-source histogram — the field tracks who's contributing so it
     // can answer "what's wired" and "what's missing" introspectively.

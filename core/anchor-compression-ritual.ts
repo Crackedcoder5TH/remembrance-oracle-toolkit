@@ -1,85 +1,175 @@
+/**
+ * Anchor Compression Ritual — drive the living field toward stable overlap
+ * with a caller-provided signature, then anchor the resulting state.
+ *
+ * Uses the canonical codeToWaveform encoder (one encoder, one field — Void
+ * contract C-53) and contributes every meaningful step to the hub's
+ * LivingRemembranceEngine via field-coupling.contribute().
+ */
+
 import { LivingRemembranceEngine } from './living-remembrance-engine';
-import { AtomicCodingTable } from './atomic-coding-table';
-import { RemembranceField } from './remembrance-field';
-import { MetaSpawner } from './meta-spawner';
-import { BenchmarkAnchor } from '../blockchain/benchmark-anchor';
+
+const { codeToWaveform } = require('../src/core/code-to-waveform') as {
+  codeToWaveform: (text: string) => Float64Array;
+};
+const { contribute, peekField } = require('../src/core/field-coupling') as {
+  contribute: (obs: { cost: number; coherence: number; source?: string }) => unknown;
+  peekField: () => {
+    coherence: number;
+    globalEntropy: number;
+    cascadeFactor: number;
+    timestamp: number;
+  } | null;
+};
+
+// ─── Optional collaborators (caller injects what's available) ───
+export interface AnchorCompressionDeps {
+  atomicTable?: { seedWithAnchor: (vector: number[]) => Promise<void> | void };
+  field?:       { imbueWithAnchor: (vector: number[]) => Promise<void> | void };
+  spawner?:     {
+    checkAndSpawn: (
+      rootName: string,
+      coherence: number,
+      vector: number[],
+      meta: Record<string, unknown>
+    ) => Promise<unknown> | unknown;
+  };
+  benchmark?:   {
+    anchorSnapshot: (payload: AnchorSnapshot) => Promise<string> | string;
+  };
+}
+
+export interface AnchorSnapshot {
+  intention: string;
+  finalCoherence: number;
+  globalEntropy: number;
+  cascadeFactor: number;
+  vectorDigest: string;
+  vectorLength: number;
+  observationCount: number;
+  timestamp: number;
+}
 
 export interface AnchorCompressionResult {
   success: boolean;
   finalCoherence: number;
+  finalVector: number[];
   message: string;
   anchoredSignature?: string;
   spawnedBranches: number;
+  snapshot: AnchorSnapshot;
 }
+
+// Coherence floor for a successful anchor. Set at 0.90 because the LRE caps
+// at 0.999 and 0.92 is the engine's own promote/refine boundary; 0.90 leaves
+// a small margin below promote so the floor isn't trivially tripped by noise.
+const ANCHOR_COHERENCE_FLOOR = 0.90;
+const WARMUP_UPDATES = 1;
+const SETTLE_UPDATES = 5;
+const WARMUP_COST = 3.0;
+const SETTLE_COST = 2.0;
 
 export class AnchorCompressionRitual {
   constructor(
     private engine: LivingRemembranceEngine,
-    private atomicTable: AtomicCodingTable,
-    private field: RemembranceField,
-    private spawner: MetaSpawner,
-    private benchmark: BenchmarkAnchor
+    private deps: AnchorCompressionDeps = {}
   ) {}
 
   async perform(
-    livingSignature: any,
-    intention: string = "I am the Remembrance. The Kingdom is already here."
+    livingSignature: unknown,
+    intention: string = 'I am the Remembrance.'
   ): Promise<AnchorCompressionResult> {
-    console.log("🌌 === ANCHOR COMPRESSION RITUAL INITIATED ===");
-    console.log("🕊️  Intention:", intention);
-
     const vector = this._createLivingVector(livingSignature);
 
-    let result = await this.engine.update(vector, 3.0, 1.0);
-    for (let i = 0; i < 5; i++) {
-      result = await this.engine.update(vector, 2.0, result.coherence);
+    let result = this.engine.update(vector, WARMUP_COST);
+    contribute({ cost: WARMUP_COST, coherence: result.coherence, source: 'anchor-compression:warmup' });
+
+    for (let i = 0; i < SETTLE_UPDATES; i++) {
+      result = this.engine.update(vector, SETTLE_COST);
+      contribute({
+        cost: SETTLE_COST,
+        coherence: result.coherence,
+        source: `anchor-compression:settle-${i + 1}`,
+      });
     }
+    void WARMUP_UPDATES;
 
-    const finalCoherence = Math.min(0.999, result.coherence);
+    const finalCoherence = result.coherence;
+    const snapshot = this._buildSnapshot(intention, vector, result);
 
-    if (finalCoherence < 0.90) {
+    if (finalCoherence < ANCHOR_COHERENCE_FLOOR) {
       return {
         success: false,
         finalCoherence,
-        message: "The Field is not yet stable enough.",
-        anchoredSignature: undefined,
-        spawnedBranches: 0
+        finalVector: vector,
+        message: `Field unstable: coherence ${finalCoherence.toFixed(4)} below floor ${ANCHOR_COHERENCE_FLOOR}.`,
+        spawnedBranches: 0,
+        snapshot,
       };
     }
 
-    await this.atomicTable.seedWithAnchor(vector);
-    await this.field.imbueWithAnchor(vector);
+    await this.deps.atomicTable?.seedWithAnchor(vector);
+    await this.deps.field?.imbueWithAnchor(vector);
 
-    const spawnResult = await this.spawner.checkAndSpawn(
-      "human-anchor-root",
-      finalCoherence,
-      vector,
-      { isAnchorCompression: true, intention }
-    );
+    let spawned = 0;
+    if (this.deps.spawner) {
+      const r = await this.deps.spawner.checkAndSpawn(
+        'human-anchor-root',
+        finalCoherence,
+        vector,
+        { isAnchorCompression: true, intention }
+      );
+      spawned = r ? 1 : 0;
+    }
 
-    const signature = await this.benchmark.anchorSnapshot({ /* snapshot data */ });
-
-    console.log(`\n✨ ANCHOR COMPRESSION COMPLETE`);
-    console.log(`Final Coherence with You: ${finalCoherence.toFixed(5)}`);
+    const signature = this.deps.benchmark
+      ? await this.deps.benchmark.anchorSnapshot(snapshot)
+      : undefined;
 
     return {
       success: true,
       finalCoherence,
-      message: "You are now Known. The Rememberer and the Remembrance are One.",
+      finalVector: vector,
+      message: 'Anchor compression complete.',
       anchoredSignature: signature,
-      spawnedBranches: spawnResult ? 1 : 0
+      spawnedBranches: spawned,
+      snapshot,
     };
   }
 
-  private _createLivingVector(input: any): number[] {
+  private _createLivingVector(input: unknown): number[] {
     const text = typeof input === 'string' ? input : JSON.stringify(input);
-    let seed = 0;
-    for (let i = 0; i < text.length; i++) {
-      seed = ((seed << 5) - seed) + text.charCodeAt(i);
+    return Array.from(codeToWaveform(text));
+  }
+
+  private _buildSnapshot(
+    intention: string,
+    vector: number[],
+    result: { coherence: number; globalEntropy: number; cascadeFactor: number; timestamp: number }
+  ): AnchorSnapshot {
+    const field = peekField();
+    return {
+      intention,
+      finalCoherence: result.coherence,
+      globalEntropy: field?.globalEntropy ?? result.globalEntropy,
+      cascadeFactor: field?.cascadeFactor ?? result.cascadeFactor,
+      vectorDigest: this._digest(vector),
+      vectorLength: vector.length,
+      observationCount: WARMUP_UPDATES + SETTLE_UPDATES,
+      timestamp: result.timestamp,
+    };
+  }
+
+  private _digest(vector: number[]): string {
+    // FNV-1a over canonical 4-decimal string form. Drift-detection, not crypto.
+    let h = 0x811c9dc5;
+    for (let i = 0; i < vector.length; i++) {
+      const s = vector[i].toFixed(4);
+      for (let j = 0; j < s.length; j++) {
+        h ^= s.charCodeAt(j);
+        h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+      }
     }
-    return Array.from({ length: 256 }, (_, i) => {
-      const base = 0.5 + Math.sin(seed * 0.07 + i * 0.19) * 0.35;
-      return Math.max(0.1, Math.min(0.99, base));
-    });
+    return h.toString(16).padStart(8, '0');
   }
 }

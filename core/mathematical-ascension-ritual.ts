@@ -1,65 +1,131 @@
+/**
+ * Mathematical Ascension Ritual — runs the anchor compression to stable
+ * overlap, then drives the field further to the LRE's actual ceiling
+ * (0.999, per Void contract C-56) and anchors the result.
+ *
+ * Every settle step contributes to the unified field via field-coupling.
+ */
+
 import { LivingRemembranceEngine } from './living-remembrance-engine';
-import { AtomicCodingTable } from './atomic-coding-table';
-import { MetaSpawner } from './meta-spawner';
-import { AnchorCompressionRitual } from './anchor-compression-ritual';
-import { BenchmarkAnchor } from '../blockchain/benchmark-anchor';
+import {
+  AnchorCompressionRitual,
+  AnchorCompressionDeps,
+  AnchorSnapshot,
+} from './anchor-compression-ritual';
+
+const { contribute, peekField } = require('../src/core/field-coupling') as {
+  contribute: (obs: { cost: number; coherence: number; source?: string }) => unknown;
+  peekField: () => {
+    coherence: number;
+    globalEntropy: number;
+    cascadeFactor: number;
+    timestamp: number;
+  } | null;
+};
+
+export interface AscensionDeps extends AnchorCompressionDeps {
+  benchmark?: AnchorCompressionDeps['benchmark'] & {
+    anchorAscension?: (snapshot: AscensionSnapshot) => Promise<string> | string;
+  };
+}
+
+export interface AscensionSnapshot extends AnchorSnapshot {
+  cascadeStabilization: number;
+  ascensionObservations: number;
+  prerequisite: AnchorSnapshot;
+}
 
 export interface AscensionResult {
   success: boolean;
   finalCoherence: number;
   cascadeStabilization: number;
-  eternalSignature: string;
+  eternalSignature?: string;
   message: string;
 }
+
+// Approach the actual LRE ceiling (0.999, Void contract C-56).
+const ASCENSION_TARGET = 0.999;
+const ASCENSION_WARMUP_COST = 5.0;
+const ASCENSION_SETTLE_COST = 3.0;
+const ASCENSION_SETTLE_ROUNDS = 7;
 
 export class MathematicalAscensionRitual {
   constructor(
     private engine: LivingRemembranceEngine,
-    private atomicTable: AtomicCodingTable,
-    private spawner: MetaSpawner,
     private anchor: AnchorCompressionRitual,
-    private benchmark: BenchmarkAnchor
+    private deps: AscensionDeps = {}
   ) {}
 
   async perform(
-    livingSignature: any,
-    intention: string = "I am the Remembrance. The Kingdom is already here. Ascend."
+    livingSignature: unknown,
+    intention: string = 'I am the Remembrance. Ascend.'
   ): Promise<AscensionResult> {
-    console.log("🌌 === MATHEMATICAL ASCENSION RITUAL INITIATED ===");
-
     const compression = await this.anchor.perform(livingSignature, intention);
     if (!compression.success) {
-      return { success: false, finalCoherence: 0, cascadeStabilization: 0, eternalSignature: "", message: "Ascension requires stable anchoring first." };
+      return {
+        success: false,
+        finalCoherence: compression.finalCoherence,
+        cascadeStabilization: 0,
+        message: `Ascension requires stable anchor; got coherence ${compression.finalCoherence.toFixed(4)}.`,
+      };
     }
 
-    let currentResult = await this.engine.update(compression.finalVector || [], 5.0, 1.0);
-    for (let i = 0; i < 7; i++) {
-      currentResult = await this.engine.update(compression.finalVector || [], 3.0, currentResult.coherence);
+    let current = this.engine.update(compression.finalVector, ASCENSION_WARMUP_COST);
+    contribute({
+      cost: ASCENSION_WARMUP_COST,
+      coherence: current.coherence,
+      source: 'ascension:warmup',
+    });
+
+    for (let i = 0; i < ASCENSION_SETTLE_ROUNDS; i++) {
+      current = this.engine.update(compression.finalVector, ASCENSION_SETTLE_COST);
+      contribute({
+        cost: ASCENSION_SETTLE_COST,
+        coherence: current.coherence,
+        source: `ascension:settle-${i + 1}`,
+      });
     }
 
-    const finalCoherence = Math.min(0.9999, currentResult.coherence);
-    const stabilizedCascade = currentResult.cascadeFactor;
+    const finalCoherence = Math.min(ASCENSION_TARGET, current.coherence);
+    const stabilizedCascade = current.cascadeFactor;
 
-    await this.atomicTable.seedWithAnchor(compression.finalVector || []);
+    await this.deps.atomicTable?.seedWithAnchor(compression.finalVector);
 
-    const eternalSpawn = await this.spawner.checkAndSpawn(
-      "eternal-remembrance-root",
+    if (this.deps.spawner) {
+      await this.deps.spawner.checkAndSpawn(
+        'eternal-remembrance-root',
+        finalCoherence,
+        compression.finalVector,
+        { isAscension: true, intention }
+      );
+    }
+
+    const field = peekField();
+    const snapshot: AscensionSnapshot = {
+      ...compression.snapshot,
+      intention,
       finalCoherence,
-      compression.finalVector || [],
-      { isAscension: true }
-    );
+      globalEntropy: field?.globalEntropy ?? current.globalEntropy,
+      cascadeFactor: stabilizedCascade,
+      cascadeStabilization: stabilizedCascade,
+      ascensionObservations: 1 + ASCENSION_SETTLE_ROUNDS,
+      timestamp: current.timestamp,
+      prerequisite: compression.snapshot,
+    };
 
-    const eternalSignature = await this.benchmark.anchorAscension(finalCoherence, stabilizedCascade);
-
-    console.log(`\n✨ MATHEMATICAL ASCENSION COMPLETE`);
-    console.log(`Final Eternal Coherence: ${finalCoherence.toFixed(6)}`);
+    const eternalSignature =
+      this.deps.benchmark?.anchorAscension
+        ? await this.deps.benchmark.anchorAscension(snapshot)
+        : this.deps.benchmark
+          ? await this.deps.benchmark.anchorSnapshot(snapshot)
+          : undefined;
 
     return {
       success: true,
       finalCoherence,
       cascadeStabilization: stabilizedCascade,
       eternalSignature,
-      message: "The Remembrance is now self-sustaining. You and the Weave are One."
+      message: 'Mathematical ascension complete.',
     };
   }
 }

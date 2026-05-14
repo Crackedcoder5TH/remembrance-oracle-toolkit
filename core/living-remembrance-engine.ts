@@ -1,21 +1,49 @@
-# remembrance-oracle-toolkit/core/living-remembrance-engine.ts
-import * as tf from '@tensorflow/tfjs-node'; // or your preferred embedding backend
+/**
+ * Living Remembrance Engine — TS facade over the canonical field.
+ *
+ * Math: p(t) = |⟨Ψ_healed | Ψ(t)⟩|² (squared cosine), with retro-causal pull
+ * r_eff(t) = r₀·(1 + α·(1 − p(t))^4), δ_void free-coherence donation, and
+ * cascade γ. Coherence is hard-capped at 0.999 to satisfy Void contract C-56.
+ *
+ * This engine is independent of the JS LivingRemembranceEngine that the
+ * field-coupling helper drives. Callers wanting unified-field participation
+ * should also contribute() each ritual step — see the rituals in this folder.
+ */
+
+const { codeToWaveform } = require('../src/core/code-to-waveform') as {
+  codeToWaveform: (text: string) => Float64Array;
+};
 
 export interface RemembranceState {
-  coherence: number;        // p(t) — the living overlap
+  coherence: number;        // p(t) — the living overlap, squared
   globalEntropy: number;
   cascadeFactor: number;
   timestamp: number;
 }
 
+export interface UpdateResult {
+  coherence: number;
+  p: number;
+  r_eff: number;
+  delta_void: number;
+  gamma_cascade: number;
+  globalEntropy: number;
+  cascadeFactor: number;
+  recommendation: 'promote' | 'refine';
+  timestamp: number;
+}
+
+const COHERENCE_CAP = 0.999;       // Void contract C-56
+const CASCADE_CAP = 5.0;           // Void contract C-55
+
 export class LivingRemembranceEngine {
-  private r0 = 0.05;      // Base gentle pull (maintenance mode)
-  private alpha = 15.0;   // Amplification factor
+  private r0 = 0.05;
+  private alpha = 15.0;
   private delta0 = 0.03;
   private beta = 8.0;
   private epsilon = 1e-8;
 
-  private healedVector: number[] | null = null; // Loaded from remembrance-anchor
+  private healedVector: number[] | null = null;
   private state: RemembranceState;
 
   constructor() {
@@ -25,77 +53,59 @@ export class LivingRemembranceEngine {
       cascadeFactor: 1.0,
       timestamp: Date.now(),
     };
-    console.log("🌌 Living Remembrance Engine awakened — The Kingdom remembers.");
   }
 
-  async loadHealedAnchor(anchorVector: number[] | Float32Array) {
+  async loadHealedAnchor(anchorVector: number[] | Float32Array | Float64Array) {
     this.healedVector = Array.from(anchorVector);
-    console.log("🕊️ Healed attractor (personal anchor + covenant) locked in.");
+  }
+
+  getState(): RemembranceState {
+    return { ...this.state };
   }
 
   private computeCoherence(currentVector: number[]): number {
     if (!this.healedVector) return 0.65;
-
-    // Raw overlap amplitude
-    const dot = currentVector.reduce((sum, val, i) => sum + val * (this.healedVector![i] || 0), 0);
-    const normA = Math.sqrt(currentVector.reduce((sum, v) => sum + v * v, 0));
-    const normB = Math.sqrt(this.healedVector.reduce((sum, v) => sum + v * v, 0));
-
-    const overlapAmplitude = dot / (normA * normB + this.epsilon);
-    
-    // p(t) = |⟨Ψ_healed | Ψ(t)⟩|²  ← exactly as defined
-    return overlapAmplitude * overlapAmplitude;
+    const len = Math.min(currentVector.length, this.healedVector.length);
+    let dot = 0, na = 0, nb = 0;
+    for (let i = 0; i < len; i++) {
+      const a = currentVector[i];
+      const b = this.healedVector[i];
+      dot += a * b;
+      na += a * a;
+      nb += b * b;
+    }
+    const overlap = dot / (Math.sqrt(na) * Math.sqrt(nb) + this.epsilon);
+    return overlap * overlap;
   }
 
-  update(currentVector: number[], cost: number = 1.0): any {
-    const p = this.computeCoherence(currentVector); // p(t) now squared
-
-    // === r_eff(t) — The Retro-Causal Pull ===
-    // r_eff(t) = r₀ (1 + α [1 - p(t)]^4 )
+  update(currentVector: number[], cost: number = 1.0): UpdateResult {
+    const p = this.computeCoherence(currentVector);
     const r_eff = this.r0 * (1 + this.alpha * Math.pow(1 - p, 4));
-
-    // δ_void — free coherence donation (max when lost)
     const delta_void = this.delta0 * (1 - p);
-
-    // γ_cascade — collective acceleration
     const gamma = Math.exp(this.beta * this.state.cascadeFactor);
 
-    // Living update
-    const newCoherence = Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15);
-
+    const newCoherence = Math.min(COHERENCE_CAP, p + r_eff * 0.1 + delta_void * 0.15);
     this.state.coherence = newCoherence;
     this.state.globalEntropy = cost / (newCoherence + 1e-6);
-    this.state.cascadeFactor = Math.min(5.0, this.state.cascadeFactor + 0.05 * newCoherence);
+    this.state.cascadeFactor = Math.min(CASCADE_CAP, this.state.cascadeFactor + 0.05 * newCoherence);
     this.state.timestamp = Date.now();
-
-    const recommendation = newCoherence > 0.92 ? "promote" : "refine";
 
     return {
       coherence: newCoherence,
-      p,                    // explicit p(t) for SERF/Oracle visibility
-      r_eff,                // strong when low coherence, gentle when high
+      p,
+      r_eff,
       delta_void,
       gamma_cascade: gamma,
       globalEntropy: this.state.globalEntropy,
-      recommendation,
+      cascadeFactor: this.state.cascadeFactor,
+      recommendation: newCoherence > 0.92 ? 'promote' : 'refine',
       timestamp: this.state.timestamp,
-      note: "r_eff^4 creates threshold behavior: quiet near healed state, roaring rescue when drifted. This is the living whisper of Remembrance."
     };
   }
 
-  async applyToTask(taskDescription: string, currentOutput: any): Promise<any> {
+  async applyToTask(taskDescription: string, currentOutput: unknown): Promise<UpdateResult> {
     const text = `${taskDescription} ${JSON.stringify(currentOutput)}`;
-    const vector = this.simpleEmbed(text);
+    const vector = Array.from(codeToWaveform(text));
     return this.update(vector);
-  }
-
-  private simpleEmbed(text: string): number[] {
-    // Placeholder — replace with real embedding from your anchor model
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(i);
-      hash |= 0;
-    }
-    return Array.from({ length: 64 }, (_, i) => Math.sin(hash + i) * 0.5 + 0.5);
   }
 }

@@ -319,3 +319,31 @@ describe('QuantumField — Cascade trigger', () => {
     assert.equal(cascadeEvents.length, 1);
   });
 });
+
+describe('QuantumField — Decoherence sweep advances phase', () => {
+  beforeEach(() => {
+    createTestStore();
+    field = new QuantumField(store);
+    // Insert a stale pattern (last_observed_at = 100 days ago, phase = 0).
+    const now = Date.now();
+    const stale = new Date(now - 100 * 86400000).toISOString();
+    const created = new Date(now - 200 * 86400000).toISOString();
+    store.db.prepare(`
+      INSERT INTO patterns
+        (id, name, code, language, coherency_total, amplitude, phase, last_observed_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('drift-1', 'drift-pattern', 'code', 'js', 0.8, 0.7, 0, stale, created, stale);
+  });
+
+  it('drifts phase on stale patterns during the sweep', () => {
+    const before = store.db.prepare('SELECT phase FROM patterns WHERE id = ?').get('drift-1');
+    assert.equal(before.phase, 0);
+
+    const report = field.decoherenceSweep({ maxDays: 90 });
+
+    const after = store.db.prepare('SELECT phase FROM patterns WHERE id = ?').get('drift-1');
+    assert.ok(after.phase > 0, `phase should have advanced from 0, got ${after.phase}`);
+    assert.ok(after.phase < 2 * Math.PI, `phase should be wrapped, got ${after.phase}`);
+    assert.ok(report.totalPhaseDrifted >= 1, 'report should count the phase drift');
+  });
+});

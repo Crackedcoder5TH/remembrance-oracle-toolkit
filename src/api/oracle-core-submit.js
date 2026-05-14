@@ -28,10 +28,10 @@ module.exports = {
       return { success: false, accepted: false, stored: false, error: 'Invalid input: code must be a non-null string' };
     }
     if (metadata == null || typeof metadata !== 'object') metadata = {};
-    const { language, description = '', tags = [], author = 'anonymous', testCode } = metadata;
+    const { language, description = '', tags = [], author = 'anonymous', testCode, domain } = metadata;
 
     const validation = validateCode(code, {
-      language, testCode, threshold: this.threshold, description, tags,
+      language, testCode, threshold: this.threshold, description, tags, domain,
     });
 
     if (!validation.valid) {
@@ -96,6 +96,7 @@ module.exports = {
     const validation = validateCode(pattern.code, {
       language: pattern.language, testCode: pattern.testCode, threshold: this.threshold,
       description: pattern.description || pattern.name, tags: pattern.tags,
+      domain: pattern.domain,
       trustMode: pattern.trustMode || false,
     });
 

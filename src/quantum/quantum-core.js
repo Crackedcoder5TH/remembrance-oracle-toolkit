@@ -222,6 +222,32 @@ function applyDecoherence(amplitude, lastObservedAt, now) {
 }
 
 /**
+ * Apply phase drift over elapsed time. Phase advances by PHASE_DRIFT_RATE
+ * radians per day, wrapped to [0, 2π). Used by decoherence sweeps so older
+ * unobserved patterns drift out of phase with fresh ones — this is what
+ * makes their interference (computeInterference) increasingly destructive
+ * over time.
+ *
+ * @param {number} currentPhase - Current phase in radians (defaults to 0)
+ * @param {string|Date} lastObservedAt - Timestamp anchoring the drift start
+ * @param {Date} [now] - Current time (default: now)
+ * @returns {number} Drifted phase, wrapped to [0, 2π)
+ */
+function applyPhaseDrift(currentPhase, lastObservedAt, now) {
+  const phase = typeof currentPhase === 'number' && isFinite(currentPhase) ? currentPhase : 0;
+  if (!lastObservedAt) return phase;
+
+  const observedDate = new Date(lastObservedAt);
+  const nowDate = now ? new Date(now) : new Date();
+  const daysSince = Math.max(0, (nowDate.getTime() - observedDate.getTime()) / 86400000);
+  if (daysSince <= 0) return phase;
+
+  const TWO_PI = 2 * Math.PI;
+  const drifted = (phase + PHASE_DRIFT_RATE * daysSince) % TWO_PI;
+  return Math.round((drifted < 0 ? drifted + TWO_PI : drifted) * 10000) / 10000;
+}
+
+/**
  * Determine quantum state based on amplitude.
  *
  * @param {number} amplitude - Current amplitude
@@ -470,6 +496,7 @@ module.exports = {
 
   // Decoherence
   applyDecoherence,
+  applyPhaseDrift,
   determineState,
 
   // Phase & Interference

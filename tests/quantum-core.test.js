@@ -14,6 +14,8 @@ const {
   coherencyToAmplitude,
   amplitudeToCoherency,
   applyDecoherence,
+  applyPhaseDrift,
+  PHASE_DRIFT_RATE,
   determineState,
   computePhase,
   computeInterference,
@@ -284,5 +286,41 @@ describe('Quantum Core — Observation', () => {
     const withMatch = observePattern(pattern, 0.5, { languageMatch: true });
     const without = observePattern(pattern, 0.5, { languageMatch: false });
     assert.ok(withMatch.matchScore > without.matchScore);
+  });
+});
+
+describe('applyPhaseDrift', () => {
+  it('returns input phase unchanged when no time has passed', () => {
+    const now = new Date('2026-05-14T00:00:00Z');
+    const result = applyPhaseDrift(1.23, now.toISOString(), now);
+    assert.equal(result, 1.23);
+  });
+
+  it('advances phase by PHASE_DRIFT_RATE * daysElapsed', () => {
+    const observed = new Date('2026-05-14T00:00:00Z');
+    const tenDaysLater = new Date(observed.getTime() + 10 * 86400000);
+    const result = applyPhaseDrift(0, observed.toISOString(), tenDaysLater);
+    const expected = (PHASE_DRIFT_RATE * 10) % (2 * Math.PI);
+    assert.ok(Math.abs(result - expected) < 0.001, `expected ~${expected}, got ${result}`);
+  });
+
+  it('wraps phase into [0, 2π) after long durations', () => {
+    const observed = new Date('2026-05-14T00:00:00Z');
+    // 1000 days * 0.01 = 10 rad ≈ 1.59 * 2π — should wrap twice
+    const later = new Date(observed.getTime() + 1000 * 86400000);
+    const result = applyPhaseDrift(0, observed.toISOString(), later);
+    assert.ok(result >= 0 && result < 2 * Math.PI, `phase must wrap into [0, 2π), got ${result}`);
+  });
+
+  it('returns input phase unchanged when lastObservedAt is missing', () => {
+    assert.equal(applyPhaseDrift(0.5, null), 0.5);
+    assert.equal(applyPhaseDrift(0.5, undefined), 0.5);
+  });
+
+  it('handles missing/invalid currentPhase by defaulting to 0', () => {
+    const observed = new Date('2026-05-14T00:00:00Z');
+    const later = new Date(observed.getTime() + 5 * 86400000);
+    const result = applyPhaseDrift(undefined, observed.toISOString(), later);
+    assert.ok(result > 0 && result < 0.1);
   });
 });

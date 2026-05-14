@@ -19,6 +19,7 @@ const { actionableFeedback, formatFeedback } = require('./feedback');
 const {
   MIN_COHERENCY_THRESHOLD,
   DEFAULT_VALIDATION_TIMEOUT_MS,
+  getDomainFloor,
 } = require('../constants/thresholds');
 
 /**
@@ -28,23 +29,36 @@ const {
  * @param {Object} options - Validation options
  * @param {string} [options.language] - Programming language (e.g., 'javascript', 'python')
  * @param {string} [options.testCode] - Test code to execute against the source code
- * @param {number} [options.threshold] - Minimum coherency threshold (default: MIN_COHERENCY_THRESHOLD)
+ * @param {number} [options.threshold] - Minimum coherency threshold. If omitted and
+ *   `options.domain` is provided, defaults to `getDomainFloor(options.domain)`
+ *   (e.g. security → 0.65, performance → 0.52). Otherwise defaults to
+ *   MIN_COHERENCY_THRESHOLD.
+ * @param {string} [options.domain] - Pattern domain (security, performance, ui,
+ *   core, etc.) for per-domain floor selection. See DOMAIN_FLOOR_ADJUSTMENTS.
  * @param {number} [options.timeout] - Test execution timeout in milliseconds (default: DEFAULT_VALIDATION_TIMEOUT_MS)
  * @param {string} [options.description] - Code description for covenant context
  * @param {string[]} [options.tags] - Code tags for covenant context
  * @param {boolean} [options.sandbox] - Use sandboxed execution if true (default: true)
- * @returns {{valid: boolean, testPassed: boolean|null, testOutput: string|null, coherencyScore: Object|null, covenantResult: Object|null, errors: string[], feedback: Object|null}} Validation result
+ * @returns {{valid: boolean, testPassed: boolean|null, testOutput: string|null, coherencyScore: Object|null, covenantResult: Object|null, errors: string[], feedback: Object|null, threshold: number, domain: string|null}} Validation result
  */
 function validateCode(code, options = {}) {
   if (code == null || typeof code !== 'string') {
     return { valid: false, testPassed: null, testOutput: null, coherencyScore: null, covenantResult: null, errors: ['Invalid input: code must be a non-null string'], feedback: null };
   }
-  const {
-    language,
-    testCode,
-    threshold = MIN_COHERENCY_THRESHOLD,
-    timeout = DEFAULT_VALIDATION_TIMEOUT_MS,
-  } = options;
+  const { language, testCode, timeout = DEFAULT_VALIDATION_TIMEOUT_MS } = options;
+  const domain = typeof options.domain === 'string' && options.domain ? options.domain : null;
+
+  // Threshold resolution: the domain floor is a non-negotiable MINIMUM.
+  // A caller may require a stricter threshold (raises the bar), but
+  // cannot drop below the per-domain floor — this is what makes
+  // security-tagged code refuse to clear at 0.60 even if the caller
+  // is happy with that elsewhere. See DOMAIN_FLOOR_ADJUSTMENTS in
+  // src/constants/thresholds.js.
+  const domainFloor = domain ? getDomainFloor(domain) : null;
+  const explicitThreshold = options.threshold;
+  const threshold = explicitThreshold !== undefined
+    ? (domainFloor !== null ? Math.max(explicitThreshold, domainFloor) : explicitThreshold)
+    : (domainFloor !== null ? domainFloor : MIN_COHERENCY_THRESHOLD);
 
   const result = {
     valid: false,
@@ -54,6 +68,8 @@ function validateCode(code, options = {}) {
     covenantResult: null,
     errors: [],
     feedback: null,
+    threshold,
+    domain,
   };
 
   // Determine content type — non-code content skips test execution but NOT the covenant

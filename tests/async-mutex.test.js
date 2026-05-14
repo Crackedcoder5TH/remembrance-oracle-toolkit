@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createMutex, createSemaphore } = require('../seeds/async-mutex');
+const { createMutex, createSemaphore } = require('../seeds/code/async-mutex');
 
 describe('async-mutex', () => {
   it('mutex should enforce exclusive access', async () => {

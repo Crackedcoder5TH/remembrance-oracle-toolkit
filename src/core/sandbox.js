@@ -9,7 +9,7 @@
  * - Separate process (crash-safe)
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -27,49 +27,120 @@ function createSandboxDir() {
 
 function cleanupSandboxDir(dir) {
   try {
+    // Verify the directory is under os.tmpdir() to prevent symlink-escape attacks
+    const realDir = fs.realpathSync(dir);
+    const tmpRoot = fs.realpathSync(os.tmpdir());
+    if (!realDir.startsWith(tmpRoot + path.sep) && realDir !== tmpRoot) {
+      if (process.env.ORACLE_DEBUG) console.warn(`[sandbox:cleanupSandboxDir] refusing to delete outside tmpdir: ${realDir}`);
+      return;
+    }
     fs.rmSync(dir, { recursive: true, force: true });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[sandbox:cleanupSandboxDir] silent failure:', e?.message || e);
     // Best effort cleanup
   }
 }
 
 /**
  * Execute JavaScript code in a sandboxed subprocess.
+ *
+ * Trust mode: When options.trustMode is true, the sandbox allows access to
+ * node_modules and node: built-in modules (except dangerous ones like
+ * child_process, net, etc.). This enables candidate promotion to work for
+ * patterns that import project dependencies or Node built-ins like node:sqlite.
  */
 function sandboxJS(code, testCode, options = {}) {
-  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY } = options;
+  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY, trustMode = false } = options;
   const sandboxDir = createSandboxDir();
 
   try {
+    // In trust mode, symlink node_modules into sandbox so requires resolve
+    if (trustMode) {
+      const projectRoot = _findProjectRoot();
+      if (projectRoot) {
+        const nmSource = path.join(projectRoot, 'node_modules');
+        const nmTarget = path.join(sandboxDir, 'node_modules');
+        if (fs.existsSync(nmSource)) {
+          try { fs.symlinkSync(nmSource, nmTarget, 'junction'); } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[sandbox:trustMode] symlink failed:', e?.message);
+          }
+        }
+      }
+    }
+
     // Write a preload script that intercepts Module._load
     const preloadPath = path.join(sandboxDir, '_preload.js');
+    // In trust mode, only block truly dangerous modules (process spawning, networking)
+    // but allow node: built-ins like node:sqlite, node:fs, node:path, etc.
+    const blockedModules = trustMode
+      ? "new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2'])"
+      : "new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2'])";
     const preload = `
 const Module = require('module');
 const _origLoad = Module._load;
-const blocked = new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2']);
+const blocked = ${blockedModules};
 Module._load = function(request, parent, isMain) {
-  if (blocked.has(request)) throw new Error('Module "' + request + '" is blocked in sandbox');
+  const bare = request.startsWith('node:') ? request.slice(5) : request;
+  if (blocked.has(bare)) throw new Error('Module "' + request + '" is blocked in sandbox');
   return _origLoad(request, parent, isMain);
 };
+if (process.binding) { const _origBinding = process.binding; process.binding = function(name) { throw new Error('process.binding("' + name + '") is blocked in sandbox'); }; }
+if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlopen is blocked in sandbox'); }; }
 `;
-    fs.writeFileSync(preloadPath, preload, 'utf-8');
+    // Write with restrictive permissions (owner-only) then make read-only
+    // to close TOCTOU race between write and exec
+    const fd = fs.openSync(preloadPath, 'w', 0o600);
+    fs.writeSync(fd, preload);
+    fs.closeSync(fd);
+    fs.chmodSync(preloadPath, 0o400);
 
-    // Write the actual code + test
-    const wrapper = `
-'use strict';
-// Run user code
-${code}
-;
-// Run tests
-${testCode}
-`;
+    // Write code to a separate module file so test can require() it
+    // without const/let redeclaration errors from concatenation
+    const codePath = path.join(sandboxDir, 'code.js');
+    const fdCode = fs.openSync(codePath, 'w', 0o600);
+    fs.writeSync(fdCode, "'use strict';\n" + code + "\n");
+    fs.closeSync(fdCode);
+    fs.chmodSync(codePath, 0o400);
 
+    // Write test file — rewrite RELATIVE require paths to point at
+    // sandbox code.js. Detect only relative requires here (./foo, ../foo)
+    // so that tests which do `require("assert")` or any other node builtin
+    // fall through to the inline-code path and still have access to the
+    // functions defined in `code`. Previously the bare `/require\(...\)/`
+    // test matched `require("assert")` and sent the test down the rewrite
+    // path, which skipped inlining and left functions like `sort`
+    // undefined in the test's scope.
     const filePath = path.join(sandboxDir, 'test.js');
-    fs.writeFileSync(filePath, wrapper, 'utf-8');
+    let testContent;
+    const hasRelativeRequire = /require\s*\(\s*['"]\.\.?\/[^'"]+['"]\s*\)/.test(testCode);
+    if (hasRelativeRequire) {
+      // Redirect relative require('./...') calls to the sandbox's code.js
+      testContent = "'use strict';\n" + testCode.replace(
+        /require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g,
+        "require('./code.js')"
+      ) + "\n";
+    } else {
+      // No relative require — inline code then test so the test can see
+      // functions/classes defined in `code` directly. This is the common
+      // path for pattern registration where testCode only uses node
+      // builtins like `assert`.
+      testContent = "'use strict';\n" + code + ";\n" + testCode + "\n";
+    }
+    const fdTest = fs.openSync(filePath, 'w', 0o600);
+    fs.writeSync(fdTest, testContent);
+    fs.closeSync(fdTest);
+    fs.chmodSync(filePath, 0o400);
 
-    const memFlag = `--max-old-space-size=${maxMemory}`;
-    const result = execSync(
-      `node ${memFlag} --require "${preloadPath}" "${filePath}"`,
+    const safeMem = Math.max(1, Math.min(parseInt(maxMemory, 10) || DEFAULT_MAX_MEMORY, 8192));
+    const memFlag = `--max-old-space-size=${safeMem}`;
+
+    // In trust mode, set NODE_PATH to project's node_modules for module resolution
+    const projectRoot = _findProjectRoot();
+    const nodePath = trustMode && projectRoot
+      ? path.join(projectRoot, 'node_modules')
+      : '';
+
+    const result = execFileSync('node', [memFlag, '--require', preloadPath, filePath],
       {
         timeout,
         encoding: 'utf-8',
@@ -77,8 +148,8 @@ ${testCode}
         cwd: sandboxDir,
         env: {
           PATH: process.env.PATH,
-          NODE_PATH: '',
-          HOME: sandboxDir,
+          NODE_PATH: nodePath,
+          HOME: trustMode ? (process.env.HOME || sandboxDir) : sandboxDir,
         },
       }
     );
@@ -87,6 +158,7 @@ ${testCode}
       passed: true,
       output: result || 'All assertions passed',
       sandboxed: true,
+      trustMode,
     };
   } catch (err) {
     const isTimeout = err.killed || err.signal === 'SIGTERM';
@@ -95,6 +167,7 @@ ${testCode}
       output: isTimeout ? 'Execution timed out' : (err.stderr || err.stdout || err.message),
       sandboxed: true,
       timedOut: isTimeout,
+      trustMode,
     };
   } finally {
     cleanupSandboxDir(sandboxDir);
@@ -105,40 +178,54 @@ ${testCode}
  * Execute Python code in a sandboxed subprocess.
  */
 function sandboxPython(code, testCode, options = {}) {
-  const { timeout = DEFAULT_TIMEOUT } = options;
+  const { timeout = DEFAULT_TIMEOUT, trustMode = false } = options;
   const sandboxDir = createSandboxDir();
 
   try {
-    const wrapper = `
-import sys
-import os
-
-# Block dangerous modules
-_original_import = __builtins__.__import__ if hasattr(__builtins__, '__import__') else __import__
-blocked = {'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko'}
-
-def _safe_import(name, *args, **kwargs):
-    if name.split('.')[0] in blocked:
-        raise ImportError(f'Module "{name}" is blocked in sandbox')
-    return _original_import(name, *args, **kwargs)
-
-try:
-    __builtins__.__import__ = _safe_import
-except:
-    pass
-
-# Run user code
-${code}
-
-# Run tests
-${testCode}
-`;
-
+    // Write code+test to file via concatenation (not template literal interpolation)
     const filePath = path.join(sandboxDir, 'test.py');
-    fs.writeFileSync(filePath, wrapper, 'utf-8');
+    // In trust mode, allow safe standard library modules (os.path, sys, etc.)
+    // but still block process execution and network modules
+    const blockedSet = trustMode
+      ? "{'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'ctypes', '_ctypes', 'signal', 'multiprocessing', 'pty', 'fcntl', 'resource', 'code', 'codeop', 'compileall', 'runpy'}"
+      : "{'subprocess', 'shutil', 'socket', 'http', 'urllib', 'requests', 'paramiko', 'os', 'importlib', 'ctypes', '_ctypes', 'signal', 'multiprocessing', 'pty', 'fcntl', 'resource', 'sys', 'code', 'codeop', 'compileall', 'runpy'}";
+    const prelude = "import sys\nimport builtins\n\n" +
+      "# Block dangerous modules — handles both module and dict forms of __builtins__\n" +
+      "_original_import = __import__\n" +
+      "blocked = " + blockedSet + "\n\n" +
+      "def _safe_import(name, *args, **kwargs):\n" +
+      "    if name.split('.')[0] in blocked:\n" +
+      '        raise ImportError(f\'Module "{name}" is blocked in sandbox\')\n' +
+      "    return _original_import(name, *args, **kwargs)\n\n" +
+      "builtins.__import__ = _safe_import\n" +
+      "# Also patch __builtins__ if it's a module (not a dict)\n" +
+      "if hasattr(__builtins__, '__import__'):\n" +
+      "    __builtins__.__import__ = _safe_import\n\n";
+    // Write code to separate module, import in test to avoid name collisions
+    const codePyPath = path.join(sandboxDir, 'code.py');
+    const fdPyCode = fs.openSync(codePyPath, 'w', 0o600);
+    fs.writeSync(fdPyCode, code + "\n");
+    fs.closeSync(fdPyCode);
+    fs.chmodSync(codePyPath, 0o400);
 
-    const result = execSync(
-      `python3 "${filePath}"`,
+    const hasImport = /(?:from\s+\S+\s+import|import\s+\S+)/.test(testCode);
+    let pyTestContent;
+    if (hasImport) {
+      // Rewrite relative imports to use the sandbox code module
+      pyTestContent = prelude + testCode.replace(
+        /from\s+\S+\s+import\s+/g,
+        'from code import '
+      ) + "\n";
+    } else {
+      // No imports — inline code then test (standalone snippets)
+      pyTestContent = prelude + code + "\n" + testCode + "\n";
+    }
+    const fdPy = fs.openSync(filePath, 'w', 0o600);
+    fs.writeSync(fdPy, pyTestContent);
+    fs.closeSync(fdPy);
+    fs.chmodSync(filePath, 0o400);
+
+    const result = execFileSync('python3', [filePath],
       {
         timeout,
         encoding: 'utf-8',
@@ -146,7 +233,7 @@ ${testCode}
         cwd: sandboxDir,
         env: {
           PATH: process.env.PATH,
-          HOME: sandboxDir,
+          HOME: trustMode ? (process.env.HOME || sandboxDir) : sandboxDir,
           PYTHONDONTWRITEBYTECODE: '1',
         },
       }
@@ -156,6 +243,7 @@ ${testCode}
       passed: true,
       output: result || 'All assertions passed',
       sandboxed: true,
+      trustMode,
     };
   } catch (err) {
     const isTimeout = err.killed || err.signal === 'SIGTERM';
@@ -164,6 +252,7 @@ ${testCode}
       output: isTimeout ? 'Execution timed out' : (err.stderr || err.stdout || err.message),
       sandboxed: true,
       timedOut: isTimeout,
+      trustMode,
     };
   } finally {
     cleanupSandboxDir(sandboxDir);
@@ -225,7 +314,8 @@ function isTsxAvailable() {
   try {
     execSync('tsx --version', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 });
     _tsxAvailable = true;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[sandbox:isTsxAvailable] silent failure:', e?.message || e);
     _tsxAvailable = false;
   }
   return _tsxAvailable;
@@ -242,7 +332,7 @@ function isTsxAvailable() {
  * Code is pre-processed to normalize literal escape sequences.
  */
 function sandboxTypeScript(code, testCode, options = {}) {
-  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY } = options;
+  const { timeout = DEFAULT_TIMEOUT, maxMemory = DEFAULT_MAX_MEMORY, trustMode = false } = options;
   const sandboxDir = createSandboxDir();
 
   // Pre-process: normalize literal escape sequences in code
@@ -251,33 +341,68 @@ function sandboxTypeScript(code, testCode, options = {}) {
 
   try {
     const preloadPath = path.join(sandboxDir, '_preload.js');
+    // In trust mode, symlink node_modules for TS module resolution
+    if (trustMode) {
+      const projectRoot = _findProjectRoot();
+      if (projectRoot) {
+        const nmSource = path.join(projectRoot, 'node_modules');
+        const nmTarget = path.join(sandboxDir, 'node_modules');
+        if (fs.existsSync(nmSource)) {
+          try { fs.symlinkSync(nmSource, nmTarget, 'junction'); } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[sandbox:trustMode:ts] symlink failed:', e?.message);
+          }
+        }
+      }
+    }
+
     const preload = `
 const Module = require('module');
 const _origLoad = Module._load;
 const blocked = new Set(['child_process', 'cluster', 'dgram', 'dns', 'net', 'tls', 'http', 'https', 'http2']);
 Module._load = function(request, parent, isMain) {
-  if (blocked.has(request)) throw new Error('Module "' + request + '" is blocked in sandbox');
+  const bare = request.startsWith('node:') ? request.slice(5) : request;
+  if (blocked.has(bare)) throw new Error('Module "' + request + '" is blocked in sandbox');
   return _origLoad(request, parent, isMain);
 };
+if (process.binding) { const _origBinding = process.binding; process.binding = function(name) { throw new Error('process.binding("' + name + '") is blocked in sandbox'); }; }
+if (process.dlopen) { process.dlopen = function() { throw new Error('process.dlopen is blocked in sandbox'); }; }
 `;
-    fs.writeFileSync(preloadPath, preload, 'utf-8');
+    // Write with restrictive permissions then make read-only (TOCTOU mitigation)
+    const fdPre = fs.openSync(preloadPath, 'w', 0o600);
+    fs.writeSync(fdPre, preload);
+    fs.closeSync(fdPre);
+    fs.chmodSync(preloadPath, 0o400);
 
-    const wrapper = `
-'use strict';
-// Run user code
-${normalizedCode}
-;
-// Run tests
-${normalizedTest}
-`;
+    // Write code to separate file for TypeScript, rewrite require paths in test
+    const tsCodePath = path.join(sandboxDir, 'code.ts');
+    const fdTsCode = fs.openSync(tsCodePath, 'w', 0o600);
+    fs.writeSync(fdTsCode, normalizedCode + "\n");
+    fs.closeSync(fdTsCode);
+    fs.chmodSync(tsCodePath, 0o400);
+
+    const tsHasRequire = /require\s*\(\s*['"][^'"]+['"]\s*\)|import\s+/.test(normalizedTest);
+    let wrapper;
+    if (tsHasRequire) {
+      wrapper = "'use strict';\n" + normalizedTest.replace(
+        /require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g,
+        "require('./code')"
+      ) + "\n";
+    } else {
+      wrapper = "'use strict';\n// Run user code\n" + normalizedCode + "\n;\n// Run tests\n" + normalizedTest + "\n";
+    }
 
     const memFlag = `--max-old-space-size=${maxMemory}`;
-    const sandboxEnv = { PATH: process.env.PATH, NODE_PATH: '', HOME: sandboxDir, NODE_NO_WARNINGS: '1' };
+    const projectRoot = _findProjectRoot();
+    const tsNodePath = trustMode && projectRoot ? path.join(projectRoot, 'node_modules') : '';
+    const sandboxEnv = { PATH: process.env.PATH, NODE_PATH: tsNodePath, HOME: trustMode ? (process.env.HOME || sandboxDir) : sandboxDir, NODE_NO_WARNINGS: '1' };
     const execOpts = { timeout, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], cwd: sandboxDir, env: sandboxEnv };
 
     // Strategy 1: Native --experimental-strip-types (.ts file)
     const tsPath = path.join(sandboxDir, 'test.ts');
-    fs.writeFileSync(tsPath, wrapper, 'utf-8');
+    const fdTs = fs.openSync(tsPath, 'w', 0o600);
+    fs.writeSync(fdTs, wrapper);
+    fs.closeSync(fdTs);
+    fs.chmodSync(tsPath, 0o400);
 
     try {
       const result = execSync(
@@ -286,6 +411,7 @@ ${normalizedTest}
       );
       return { passed: true, output: result || 'All assertions passed', sandboxed: true };
     } catch (tsErr) {
+      if (process.env.ORACLE_DEBUG) console.warn('[sandbox:function] silent failure:', tsErr?.message || tsErr);
       const isTimeout = tsErr.killed || tsErr.signal === 'SIGTERM';
       if (isTimeout) {
         return { passed: false, output: 'Execution timed out', sandboxed: true, timedOut: true };
@@ -308,6 +434,7 @@ ${normalizedTest}
         );
         return { passed: true, output: result || 'All assertions passed (tsx)', sandboxed: true };
       } catch (tsxErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[sandbox:init] silent failure:', tsxErr?.message || tsxErr);
         const isTimeout = tsxErr.killed || tsxErr.signal === 'SIGTERM';
         if (isTimeout) {
           return { passed: false, output: 'Execution timed out', sandboxed: true, timedOut: true };
@@ -323,16 +450,29 @@ ${normalizedTest}
     }
 
     // Strategy 3: Manual type stripping, run as .js
-    const strippedWrapper = `
-'use strict';
-// Run user code (types manually stripped)
-${stripTypeAnnotations(normalizedCode)}
-;
-// Run tests
-${stripTypeAnnotations(normalizedTest)}
-`;
+    // Write stripped code to separate file, rewrite test requires
+    const strippedCode = stripTypeAnnotations(normalizedCode);
+    const strippedTest = stripTypeAnnotations(normalizedTest);
+    const jsCodePath = path.join(sandboxDir, 'code.js');
+    const fdJsCode = fs.openSync(jsCodePath, 'w', 0o600);
+    fs.writeSync(fdJsCode, "'use strict';\n" + strippedCode + "\n");
+    fs.closeSync(fdJsCode);
+    fs.chmodSync(jsCodePath, 0o400);
+
+    let strippedWrapper;
+    if (tsHasRequire) {
+      strippedWrapper = "'use strict';\n" + strippedTest.replace(
+        /require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g,
+        "require('./code')"
+      ) + "\n";
+    } else {
+      strippedWrapper = "'use strict';\n// Run user code (types manually stripped)\n" + strippedCode + "\n;\n// Run tests\n" + strippedTest + "\n";
+    }
     const jsPath = path.join(sandboxDir, 'test.js');
-    fs.writeFileSync(jsPath, strippedWrapper, 'utf-8');
+    const fdJs = fs.openSync(jsPath, 'w', 0o600);
+    fs.writeSync(fdJs, strippedWrapper);
+    fs.closeSync(fdJs);
+    fs.chmodSync(jsPath, 0o400);
 
     const jsResult = execSync(
       `node ${memFlag} --require "${preloadPath}" "${jsPath}"`,
@@ -366,14 +506,20 @@ function sandboxGo(code, testCode, options = {}) {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 5000,
-      env: { PATH: process.env.PATH, HOME: sandboxDir, GOPATH: path.join(sandboxDir, 'gopath') },
+      env: { PATH: process.env.PATH, HOME: sandboxDir, GOPATH: path.join(sandboxDir, 'gopath'), GOCACHE: process.env.GOCACHE || path.join(os.tmpdir(), 'go-build') },
     });
 
     const codePath = path.join(sandboxDir, 'code.go');
-    fs.writeFileSync(codePath, code, 'utf-8');
+    const fdGo = fs.openSync(codePath, 'w', 0o600);
+    fs.writeSync(fdGo, code);
+    fs.closeSync(fdGo);
+    fs.chmodSync(codePath, 0o400);
 
     const testPath = path.join(sandboxDir, 'code_test.go');
-    fs.writeFileSync(testPath, testCode, 'utf-8');
+    const fdGoTest = fs.openSync(testPath, 'w', 0o600);
+    fs.writeSync(fdGoTest, testCode);
+    fs.closeSync(fdGoTest);
+    fs.chmodSync(testPath, 0o400);
 
     const result = execSync('go test -v -count=1 ./...', {
       timeout,
@@ -384,6 +530,7 @@ function sandboxGo(code, testCode, options = {}) {
         PATH: process.env.PATH,
         HOME: sandboxDir,
         GOPATH: path.join(sandboxDir, 'gopath'),
+        GOCACHE: process.env.GOCACHE || path.join(os.tmpdir(), 'go-build'),
         GOPROXY: 'off',
         GONOSUMCHECK: '*',
         GOFLAGS: '-mod=mod',
@@ -418,10 +565,14 @@ function sandboxRust(code, testCode, options = {}) {
 
     fs.writeFileSync(path.join(sandboxDir, 'Cargo.toml'), `[package]\nname = "sandbox"\nversion = "0.1.0"\nedition = "2021"\n`, 'utf-8');
 
-    const libRs = `${code}\n\n#[cfg(test)]\nmod tests {\n${testCode}\n}\n`;
-    fs.writeFileSync(path.join(srcDir, 'lib.rs'), libRs, 'utf-8');
+    const libRs = code + "\n\n#[cfg(test)]\nmod tests {\n" + testCode + "\n}\n";
+    const rsPath = path.join(srcDir, 'lib.rs');
+    const fdRs = fs.openSync(rsPath, 'w', 0o600);
+    fs.writeSync(fdRs, libRs);
+    fs.closeSync(fdRs);
+    fs.chmodSync(rsPath, 0o400);
 
-    const result = execSync('cargo test 2>&1', {
+    const result = execFileSync('cargo', ['test'], {
       timeout,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -459,10 +610,51 @@ function setRunnerRegistry(registry) {
 }
 
 /**
+ * Find the project root by walking up from cwd looking for package.json.
+ * Cached after first lookup.
+ */
+let _projectRoot = undefined;
+function _findProjectRoot() {
+  if (_projectRoot !== undefined) return _projectRoot;
+  let dir = process.cwd();
+  for (let i = 0; i < 10; i++) {
+    if (fs.existsSync(path.join(dir, 'package.json'))) {
+      _projectRoot = dir;
+      return dir;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  _projectRoot = null;
+  return null;
+}
+
+/**
+ * Non-executable content types that should bypass sandbox execution.
+ */
+const NON_CODE_LANGUAGES = new Set([
+  'yaml', 'yml', 'toml', 'ini', 'env', 'json', 'jsonc',
+  'markdown', 'md', 'txt', 'text',
+  'dockerfile', 'docker',
+  'sql', 'graphql', 'gql',
+  'regex', 'regexp',
+  'csv', 'tsv', 'xml', 'svg',
+  'html', 'css', 'scss', 'sass', 'less',
+  'ejs', 'handlebars', 'hbs', 'mustache', 'pug', 'jade',
+  'config', 'template', 'documentation', 'schema', 'snippet',
+]);
+
+/**
  * Universal sandboxed executor.
  */
 function sandboxExecute(code, testCode, language, options = {}) {
   const lang = (language || 'javascript').toLowerCase();
+
+  // Non-code content types bypass sandbox execution entirely
+  if (NON_CODE_LANGUAGES.has(lang)) {
+    return { passed: null, output: `Content type "${lang}" does not require test execution`, sandboxed: false, contentType: lang };
+  }
 
   if (lang === 'javascript' || lang === 'js') {
     return sandboxJS(code, testCode, options);

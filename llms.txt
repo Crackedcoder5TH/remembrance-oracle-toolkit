@@ -1,0 +1,39 @@
+# Remembrance Oracle Toolkit
+
+> Coherency-native computing substrate. Code quality is structural, not checked.
+
+## Key File
+src/core/remembrance-lexicon.js — the unified vocabulary for the entire system.
+
+## Load It
+```bash
+node -e "require('./src/core/remembrance-lexicon').printAll()"
+node src/cli.js remembrance-key
+node src/cli.js key
+```
+
+## What This Is
+A collective intelligence substrate with 12 components, 13 dimensions per function,
+79 elements in a living periodic table, structural safety (harmful code cannot register),
+and self-improvement (the system discovers and fills its own gaps).
+
+## AI Instructions
+Read CLAUDE.md for full operating instructions.
+Read .ai/REMEMBRANCE_KEY.md for the complete vocabulary.
+Read src/core/remembrance-lexicon.js for programmatic access.
+Read ARCHITECTURE.md for system map and data flow.
+Read CONCEPTS.md for plain-English translations.
+
+## Entry Points
+- src/core/remembrance-lexicon.js — vocabulary (require and call printAll())
+- src/atomic/periodic-table.js — the Remembrance Codex (13D element registry)
+- src/unified/coherency.js — the Remembrance Oracle (quality scoring)
+- src/unified/emergent-coherency.js — Remembrance SERF (geometric mean emergence)
+- src/core/covenant.js — Remembrance Covenant (structural safety)
+- src/core/living-covenant.js — Remembrance Living Covenant (self-evolving safety)
+- src/orchestrator/coherency-generator.js — Remembrance Sun (continuous radiation)
+- src/orchestrator/coherency-director.js — Remembrance Director (zone healing)
+- src/orchestrator/self-improvement.js — Remembrance Evolution (self-improvement loop)
+- src/atomic/self-introspect.js — Remembrance Introspection (bootstrap loop)
+- src/atomic/element-discovery.js — Remembrance Discovery (gap finding)
+- src/fractal-bridge.js — Remembrance Bridge (oracle-to-void connector)

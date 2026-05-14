@@ -1,0 +1,14 @@
+{
+  "name": "remembrance-dashboard",
+  "version": "1.0.0",
+  "description": "Remembrance Ecosystem Dashboard — Pattern browser, coherency scoring, healing timeline, cascade resonance",
+  "private": true,
+  "scripts": {
+    "dev": "node server.js",
+    "start": "NODE_ENV=production node server.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

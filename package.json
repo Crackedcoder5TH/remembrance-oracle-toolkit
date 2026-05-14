@@ -1,7 +1,7 @@
 {
   "name": "remembrance-oracle-toolkit",
-  "version": "3.1.0",
-  "description": "Code memory system — stores only proven code (passes validation + coherency), scores everything 0-1, and serves the most relevant patterns to any AI or developer.",
+  "version": "3.2.0",
+  "description": "Attach this to your AI coding tool. It gives the AI a library of proven, tested patterns instead of generating from scratch. Your code gets better over time.",
   "main": "src/index.js",
   "types": "types/index.d.ts",
   "exports": {
@@ -9,6 +9,7 @@
       "require": "./src/index.js",
       "types": "./types/index.d.ts"
     },
+    "./agent": "./src/agent-integration.js",
     "./oracle": "./src/api/oracle.js",
     "./coherency": "./src/core/coherency.js",
     "./covenant": "./src/core/covenant.js",
@@ -23,7 +24,15 @@
     "./plugins": "./src/plugins/manager.js",
     "./health": "./src/health/monitor.js",
     "./swarm": "./src/swarm/index.js",
-    "./client": "./src/client/index.js"
+    "./client": "./src/client/index.js",
+    "./analyze": "./src/core/analyze.js",
+    "./storage": "./src/core/storage.js",
+    "./events": "./src/core/events.js",
+    "./heal": "./src/core/heal.js",
+    "./audit": "./src/audit/ast-checkers.js",
+    "./lint": "./src/audit/lint-checkers.js",
+    "./smell": "./src/audit/smell-checkers.js",
+    "./reflector": "./src/reflector/bridge.js"
   },
   "bin": {
     "remembrance-oracle": "src/cli.js",
@@ -41,22 +50,22 @@
     "action.yml"
   ],
   "workspaces": [
-    "apps/*",
     "packages/*",
     "tools/*"
   ],
   "scripts": {
     "test": "node --test --test-timeout=300000 tests/*.test.js",
     "start": "node src/deploy.js",
-    "setup": "node src/cli.js seed",
+    "setup": "node src/cli.js init",
+    "init": "node src/cli.js init",
     "dashboard": "node src/cli.js dashboard",
     "cloud": "node src/cli.js cloud start",
     "mcp": "node src/cli.js mcp",
     "seed": "node src/cli.js seed",
     "analytics": "node src/cli.js analytics --json",
     "postinstall": "node -e \"try{require('fs').mkdirSync('.remembrance',{recursive:true})}catch{}\"",
-    "dev:cathedral": "npm run dev --workspace=apps/cathedral",
-    "build:cathedral": "npm run build --workspace=apps/cathedral"
+    "dev:cathedral": "npm run dev --prefix digital-cathedral",
+    "build:cathedral": "npm run build --prefix digital-cathedral"
   },
   "keywords": [
     "ai",

@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/admin-auth";
 import { getAllPurchases } from "@/app/lib/client-database";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin Purchases API
  *
  * GET /api/admin/purchases — List all lead purchases across clients
  */
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const params = req.nextUrl.searchParams;

@@ -1,0 +1,22 @@
+{
+  "name": "remembrance-bot",
+  "url": "https://github.com/crackedcoder5th/remembrance-oracle-toolkit",
+  "hook_attributes": { "url": "https://example.invalid/hook" },
+  "redirect_url": "https://github.com/crackedcoder5th",
+  "public": false,
+  "default_permissions": {
+    "contents": "write",
+    "pull_requests": "write",
+    "issues": "write",
+    "actions": "read",
+    "checks": "read",
+    "metadata": "read"
+  },
+  "default_events": [
+    "push",
+    "pull_request",
+    "pull_request_review",
+    "check_run"
+  ],
+  "description": "Remembrance ecosystem bot. Commits auto-heal PRs, publishes ledger events, opens ecosystem-sweep issues. Separates bot commits from human commits in git log so auto-merge rules can condition on author.login."
+}

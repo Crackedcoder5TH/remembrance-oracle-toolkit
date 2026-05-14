@@ -1,11 +1,23 @@
 /**
- * Oracle Core — Submit, register, evolve.
- * Write operations that validate and store code in the pattern library.
+ * Oracle Core — Submit, Register, Evolve (Quantum Capture).
+ *
+ * Submission is CAPTURE — a new pattern enters the quantum field in
+ * |superposition⟩ with an initial amplitude derived from its coherency score.
+ * Registration establishes entanglement links with related patterns.
+ * Evolution creates entangled variants linked to the parent state.
  */
 
 const { validateCode } = require('../core/validator');
 const { autoTag } = require('../core/auto-tagger');
 const { _checkSimilarity } = require('./oracle-core-similarity');
+const { auditLog } = require('../core/audit-logger');
+
+// Quantum capture engine
+const {
+  coherencyToAmplitude,
+  computePhase,
+  QUANTUM_STATES,
+} = require('../quantum/quantum-core');
 
 module.exports = {
   /**
@@ -53,7 +65,7 @@ module.exports = {
 
     if (simCheck.action === 'candidate') {
       const candidate = this.patterns.addCandidate({
-        name: description ? description.slice(0, 60).replace(/[^a-zA-Z0-9-_ ]/g, '') : `candidate-${Date.now()}`,
+        name: (description ? description.slice(0, 60).replace(/[^a-zA-Z0-9-_ ]/g, '').trim() : '') || `candidate-${Date.now()}`,
         code, language: validation.coherencyScore.language, description, tags: enrichedTags,
         coherencyScore: validation.coherencyScore, testCode: testCode || null, source: 'similarity-candidate',
       });
@@ -70,6 +82,7 @@ module.exports = {
       author, coherencyScore: validation.coherencyScore, testPassed: validation.testPassed, testOutput: validation.testOutput,
     });
     this._emit({ type: 'entry_added', id: entry.id, language: validation.coherencyScore.language, description });
+    auditLog('submit', { id: entry.id, actor: author, language: validation.coherencyScore.language, success: true, meta: { description: description.slice(0, 120) } });
     return { success: true, accepted: true, entry, validation, similarity: simCheck.similarity };
   },
 
@@ -77,9 +90,13 @@ module.exports = {
    * Registers a new pattern in the pattern library after validation.
    */
   registerPattern(pattern) {
+    if (!pattern?.code || typeof pattern.code !== 'string') {
+      return { success: false, registered: false, error: 'pattern.code is required and must be a string' };
+    }
     const validation = validateCode(pattern.code, {
       language: pattern.language, testCode: pattern.testCode, threshold: this.threshold,
       description: pattern.description || pattern.name, tags: pattern.tags,
+      trustMode: pattern.trustMode || false,
     });
 
     if (!validation.valid) {
@@ -91,31 +108,34 @@ module.exports = {
       tags: pattern.tags, name: pattern.name,
     });
 
-    // Similarity gate
-    const existingPatterns = this.patterns.getAll();
-    const simCheck = _checkSimilarity(pattern.code, existingPatterns, validation.coherencyScore.language);
+    // Similarity gate — skip when promoting candidates (they ARE expected to be
+    // similar to existing patterns since they're variants/transpilations)
+    if (!pattern.skipSimilarityCheck) {
+      const existingPatterns = this.patterns.getAll();
+      const simCheck = _checkSimilarity(pattern.code, existingPatterns, validation.coherencyScore.language);
 
-    if (simCheck.action === 'reject') {
-      return {
-        success: false, registered: false,
-        error: `Near-duplicate rejected (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
-        reason: 'similarity_reject', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name,
-      };
-    }
+      if (simCheck.action === 'reject') {
+        return {
+          success: false, registered: false,
+          error: `Near-duplicate rejected (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
+          reason: 'similarity_reject', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name,
+        };
+      }
 
-    if (simCheck.action === 'candidate') {
-      const candidate = this.patterns.addCandidate({
-        name: pattern.name || `candidate-${Date.now()}`, code: pattern.code,
-        language: validation.coherencyScore.language, description: pattern.description || pattern.name,
-        tags: enrichedTags, coherencyScore: validation.coherencyScore, testCode: pattern.testCode || null,
-        source: 'similarity-candidate',
-      });
-      this._emit({ type: 'similarity_candidate', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name, name: pattern.name });
-      return {
-        success: true, registered: false, candidateStored: true, candidate, validation,
-        reason: `Routed to candidates (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
-        similarity: simCheck.similarity,
-      };
+      if (simCheck.action === 'candidate') {
+        const candidate = this.patterns.addCandidate({
+          name: pattern.name || `candidate-${Date.now()}`, code: pattern.code,
+          language: validation.coherencyScore.language, description: pattern.description || pattern.name,
+          tags: enrichedTags, coherencyScore: validation.coherencyScore, testCode: pattern.testCode || null,
+          source: 'similarity-candidate',
+        });
+        this._emit({ type: 'similarity_candidate', similarity: simCheck.similarity, matchedPattern: simCheck.matchedPattern?.name, name: pattern.name });
+        return {
+          success: true, registered: false, candidateStored: true, candidate, validation,
+          reason: `Routed to candidates (${(simCheck.similarity * 100).toFixed(1)}% similar to "${simCheck.matchedPattern?.name || 'existing pattern'}")`,
+          similarity: simCheck.similarity,
+        };
+      }
     }
 
     const registered = this.patterns.register({
@@ -129,6 +149,8 @@ module.exports = {
       coherencyScore: validation.coherencyScore, testPassed: validation.testPassed, testOutput: validation.testOutput,
     });
 
+    // Invalidate search cache so new pattern is immediately findable
+    this._searchCache = null;
     this._emit({ type: 'pattern_registered', id: registered.id, name: pattern.name, language: registered.language });
 
     // Record in temporal memory
@@ -140,16 +162,62 @@ module.exports = {
           detail: `Registered with coherency ${validation.coherencyScore?.total?.toFixed(3) || 'N/A'}`,
         });
       }
-    } catch { /* temporal memory not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-core-submit:init] temporal memory not available:', e?.message || e);
+    }
+
+    // ─── Quantum Capture ───
+    // Initialize quantum state for the new pattern and establish entanglement
+    let quantumCapture = null;
+    if (this._quantumField) {
+      try {
+        const amplitude = coherencyToAmplitude(validation.coherencyScore?.total || 0, {
+          usageCount: 0, successCount: 0,
+        });
+        // Set quantum state on the newly registered pattern
+        this._quantumField.db.prepare(
+          'UPDATE patterns SET amplitude = ?, phase = ?, quantum_state = ? WHERE id = ?'
+        ).run(amplitude, computePhase(registered.id), QUANTUM_STATES.SUPERPOSITION, registered.id);
+
+        quantumCapture = {
+          amplitude,
+          quantumState: QUANTUM_STATES.SUPERPOSITION,
+          entangled: false,
+        };
+
+        // Auto-entangle with similar existing patterns (same language + overlapping tags)
+        try {
+          const existingPatterns = this.patterns.getAll({ language: registered.language });
+          const regTags = new Set(registered.tags || []);
+          for (const ep of existingPatterns) {
+            if (ep.id === registered.id) continue;
+            const epTags = new Set(ep.tags || []);
+            const overlap = [...regTags].filter(t => epTags.has(t)).length;
+            if (overlap >= 2) {
+              this._quantumField.entangle('patterns', registered.id, ep.id);
+              quantumCapture.entangled = true;
+            }
+          }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[register] auto-entangle failed:', e?.message || e);
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[register] quantum capture failed:', e?.message || e);
+      }
+    }
 
     const growthReport = this._autoGrowFrom(registered);
-    return { success: true, registered: true, pattern: registered, validation, growth: growthReport };
+    auditLog('register', { id: registered.id, name: pattern.name, actor: pattern.author || 'oracle-pattern-library', language: registered.language, success: true });
+    return { success: true, registered: true, pattern: registered, validation, growth: growthReport, quantum: quantumCapture };
   },
 
   /**
    * Evolves an existing pattern by creating a new version linked to the parent.
    */
   evolvePattern(parentId, newCode, metadata = {}) {
+    if (newCode == null || typeof newCode !== 'string' || newCode.trim().length === 0) {
+      return { success: false, evolved: false, error: 'Invalid input: newCode must be a non-empty string' };
+    }
     const evolved = this.patterns.evolve(parentId, newCode, metadata);
     if (!evolved) return { success: false, evolved: false, error: `Pattern ${parentId} not found` };
 
@@ -158,6 +226,7 @@ module.exports = {
       tags: evolved.tags, author: metadata.author || 'oracle-evolution', coherencyScore: evolved.coherencyScore,
     });
     this._emit({ type: 'pattern_evolved', id: evolved.id, name: evolved.name, parentId });
+    auditLog('evolve', { id: evolved.id, name: evolved.name, actor: metadata.author || 'oracle-evolution', language: evolved.language, success: true, meta: { parentId } });
     return { success: true, evolved: true, pattern: evolved };
   },
 };

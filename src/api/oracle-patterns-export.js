@@ -10,6 +10,7 @@ module.exports = {
     const b = this.patterns.getAll().find(p => p.id === idB) || this.store.get(idB);
     if (!a) return { error: `Entry ${idA} not found` };
     if (!b) return { error: `Entry ${idB} not found` };
+    if (!a.code || !b.code) return { error: 'One or both entries have no code' };
 
     const linesA = a.code.split('\n');
     const linesB = b.code.split('\n');
@@ -25,12 +26,25 @@ module.exports = {
     while (i < linesA.length) { diffLines.push({ type: 'removed', line: linesA[i++] }); }
     while (j < linesB.length) { diffLines.push({ type: 'added', line: linesB[j++] }); }
 
-    return {
+    const __retVal = {
       a: { id: idA, name: a.name || a.description || idA, language: a.language, coherency: a.coherencyScore?.total ?? '?' },
       b: { id: idB, name: b.name || b.description || idB, language: b.language, coherency: b.coherencyScore?.total ?? '?' },
       diff: diffLines,
       stats: { added: diffLines.filter(d => d.type === 'added').length, removed: diffLines.filter(d => d.type === 'removed').length, same: diffLines.filter(d => d.type === 'same').length },
     };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:oracle-patterns-export:diff' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   },
 
   export(options = {}) {
@@ -38,7 +52,7 @@ module.exports = {
     let patterns = this.patterns.getAll({ language, minCoherency });
     if (tags && tags.length > 0) {
       const filterTags = new Set(tags.map(t => t.toLowerCase()));
-      patterns = patterns.filter(p => p.tags.some(t => filterTags.has(t.toLowerCase())));
+      patterns = patterns.filter(p => (p.tags || []).some(t => filterTags.has(t.toLowerCase())));
     }
     patterns = patterns.sort((a, b) => (b.coherencyScore?.total ?? 0) - (a.coherencyScore?.total ?? 0)).slice(0, limit);
     if (format === 'markdown' || format === 'md') return this._exportMarkdown(patterns);
@@ -52,6 +66,11 @@ module.exports = {
         id: p.id, name: p.name, code: p.code, testCode: p.testCode || undefined,
         language: p.language, description: p.description, tags: p.tags,
         patternType: p.patternType, complexity: p.complexity, coherency: p.coherencyScore?.total,
+        coherencyScore: p.coherencyScore || undefined,
+        usageCount: p.usageCount ?? 0, successCount: p.successCount ?? 0,
+        evolutionHistory: p.evolutionHistory?.length ? p.evolutionHistory : undefined,
+        variants: p.variants?.length ? p.variants : undefined,
+        createdAt: p.createdAt || undefined, updatedAt: p.updatedAt || undefined,
       })),
     }, null, 2);
   },
@@ -89,6 +108,8 @@ module.exports = {
         description: p.description || p.name, tags: [...(p.tags || []), 'imported'],
         patternType: p.patternType || 'utility', complexity: p.complexity || 'moderate',
         author, testCode: p.testCode,
+        usageCount: p.usageCount, successCount: p.successCount,
+        evolutionHistory: p.evolutionHistory, variants: p.variants,
       });
 
       if (regResult.registered) { results.push({ name: p.name, status: 'imported', id: regResult.pattern.id }); imported++; }

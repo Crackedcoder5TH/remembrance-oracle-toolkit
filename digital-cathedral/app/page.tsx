@@ -15,13 +15,14 @@
  *   Step 3 — Consent:   TCPA + Privacy → submit
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLeadForm, FIELD_STEP } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
 import { TrustSignals } from "./protect/components/trust-signals";
 import { ImageUpload } from "./components/image-upload";
-import { useIsAdmin } from "./protect/hooks/use-is-admin";
+import { CoherencyPulse } from "./components/coherency-pulse";
+import { CoherencyVitals } from "./components/coherency-vitals";
 import { useUtmTracking } from "./protect/hooks/use-utm-tracking";
 
 const US_STATES = [
@@ -73,12 +74,13 @@ const PURCHASE_INTENT_OPTIONS = [
 ];
 
 const MILITARY_STATUS_OPTIONS = [
-  { value: "", label: "Select military status..." },
+  { value: "", label: "Select your background..." },
   { value: "active-duty", label: "Active-Duty" },
   { value: "reserve", label: "Reserve" },
   { value: "national-guard", label: "National Guard" },
   { value: "veteran", label: "Veteran" },
-  { value: "non-military", label: "Non-Military (family member)" },
+  { value: "non-military", label: "Military Family Member" },
+  { value: "civilian", label: "Civilian" },
 ];
 
 const BRANCH_PLACEHOLDER = { value: "", label: "Select branch of service..." };
@@ -154,11 +156,31 @@ const FOOTER_LINKS = [
   { href: "/terms", label: "Terms of Service" },
 ];
 
+const DEFAULT_VETERAN_STORY = [
+  "As a veteran, I know what it means to carry responsibility both while you\u2019re wearing the uniform and long after it\u2019s folded away. During my time in service and especially after I transitioned to civilian life, I saw something that really bothered me. A lot of military families believed their standard coverage was enough\u2026 but they were never given the full picture about the life insurance options actually available to them.",
+  "Too many of us were left in the dark. That\u2019s why I created this platform.",
+  "My mission is simple: to make sure every service member and their families finally get clear, honest information so they can make the best decisions for the people they love.",
+  "When you request a review, we\u2019ll connect you with trusted, independent, licensed professionals who truly understand the unique needs of military families. No pressure. Just real guidance and options that actually fit your life.",
+  "Because the service we gave our country doesn\u2019t end when we take the uniform off, and neither should the protection we give our families.",
+].join("\n");
+
 export default function HomePage() {
-  const isAdmin = useIsAdmin();
   const utm = useUtmTracking();
+
+  // Fetch editable veteran story from API
+  const [veteranStory, setVeteranStory] = useState(DEFAULT_VETERAN_STORY);
+  useEffect(() => {
+    fetch("/api/site-content")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.content?.veteranStory) {
+          setVeteranStory(data.content.veteranStory);
+        }
+      })
+      .catch(() => {}); // fallback to default on error
+  }, []);
   const {
-    form, errors, loading, submitted, confirmationMessage, leadId, serverError,
+    form, errors, loading, submitted, confirmationMessage, leadId, coherency, serverError,
     step, totalSteps, submitAttempted, missingFields,
     updateField, handleSubmit, nextStep, prevStep, goToStep,
   } = useLeadForm({ ...utm });
@@ -206,6 +228,21 @@ export default function HomePage() {
           <p className="text-teal-cathedral italic opacity-90 text-base leading-relaxed mb-8">
             &ldquo;{confirmationMessage}&rdquo;
           </p>
+
+          {/* Coherency pulse — the submitter's own signal through the Covenant Gate.
+              Visible only when the API returned a shape (newer covenant-gate path). */}
+          {coherency && coherency.shape.length >= 4 ? (
+            <div className="mb-8 flex justify-center">
+              <CoherencyPulse
+                label="Your Signal"
+                shape={coherency.shape}
+                score={coherency.score}
+                tier={coherency.tier.charAt(0).toUpperCase() + coherency.tier.slice(1)}
+                archetype={coherency.dominantArchetype}
+                size="md"
+              />
+            </div>
+          ) : null}
 
           {/* Reference number */}
           {leadId && (
@@ -264,11 +301,11 @@ export default function HomePage() {
           Dedicated to Serving Those Who Served.
         </h2>
 
-        {/* Veteran group photo — uploadable when admin */}
+        {/* Veteran group photo — display only (upload via admin portal) */}
         <ImageUpload
           slot="veteran-group"
           alt="Military service members group photo"
-          editable={isAdmin}
+          editable={false}
           className="w-full max-w-xl mx-auto mb-8 rounded-lg bg-[var(--bg-surface)] border border-teal-cathedral/20 flex items-center justify-center overflow-hidden"
           imgClassName="w-full h-auto object-cover rounded-lg"
           fallback={
@@ -280,26 +317,12 @@ export default function HomePage() {
           }
         />
 
-        <div className="text-sm text-[var(--text-muted)] leading-relaxed space-y-4 max-w-xl mx-auto">
-          <p className="metallic-gold">
-            As a veteran, I understand the responsibility that comes with wearing the uniform
-            — and the responsibility that continues after it comes off.
-          </p>
-          <p className="metallic-gold">
-            After serving, I saw how many military families weren&rsquo;t fully informed about
-            their life insurance options outside of standard military coverage.
-          </p>
-          <p className="metallic-gold font-medium">
-            This platform was created as a bridge.
-          </p>
-          <p className="metallic-gold">
-            When you request a review, we connect you with trusted, independent, licensed
-            insurance professionals who understand the unique needs of military families.
-          </p>
-          <p className="metallic-gold italic font-medium">
-            This is personal.<br />
-            Service doesn&rsquo;t end at separation — and neither should protection.
-          </p>
+        <div className="text-sm leading-relaxed max-w-xl mx-auto text-center">
+          <div className="metallic-gold">
+            {veteranStory.split("\n").filter(Boolean).map((para, i) => (
+              <p key={i} className="mb-4 last:mb-0">{para}</p>
+            ))}
+          </div>
           <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-indigo-cathedral/8">
             We are not affiliated with the U.S. Government or Department of Defense. We connect
             individuals with independent, licensed insurance professionals.
@@ -371,6 +394,9 @@ export default function HomePage() {
           No pressure. No obligation. Just clarity.
         </p>
       </section>
+
+      {/* Live substrate vitals — degrades gracefully if endpoint unavailable */}
+      <CoherencyVitals />
 
       {/* Hero — Above the Form */}
       <header className="text-center mb-10">
@@ -480,17 +506,20 @@ export default function HomePage() {
               {errors.purchaseIntent && <p id="intent-error" className="text-crimson-cathedral text-xs" role="alert">{errors.purchaseIntent}</p>}
             </div>
 
-            {/* Military Status */}
+            {/* Background — service members, families, and civilians all welcome */}
             <div className="space-y-1">
-              <label htmlFor="veteranStatus" className={LABEL_CLASS}>Military Status</label>
-              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : undefined} className={selectClass(!!errors.veteranStatus)}>
+              <label htmlFor="veteranStatus" className={LABEL_CLASS}>Your Background</label>
+              <p className="text-xs text-[var(--text-muted)]" id="veteran-hint">
+                Veterans, service members, military families, and civilians are all welcome — we match every request to a licensed professional.
+              </p>
+              <select id="veteranStatus" value={form.veteranStatus} onChange={(e) => updateField("veteranStatus", e.target.value)} aria-required="true" aria-invalid={!!errors.veteranStatus} aria-describedby={errors.veteranStatus ? "veteran-error" : "veteran-hint"} className={selectClass(!!errors.veteranStatus)}>
                 {MILITARY_STATUS_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
               {errors.veteranStatus && <p id="veteran-error" className="text-crimson-cathedral text-xs" role="alert">{errors.veteranStatus}</p>}
             </div>
 
             {/* Branch of Service — conditional subcategory (shown for all except non-military) */}
-            {form.veteranStatus && form.veteranStatus !== "non-military" && BRANCH_OPTIONS_BY_STATUS[form.veteranStatus] && (
+            {form.veteranStatus && form.veteranStatus !== "non-military" && form.veteranStatus !== "civilian" && BRANCH_OPTIONS_BY_STATUS[form.veteranStatus] && (
               <div className="space-y-1 animate-in fade-in">
                 <label htmlFor="militaryBranch" className={LABEL_CLASS}>Branch of Service</label>
                 <select id="militaryBranch" value={form.militaryBranch} onChange={(e) => updateField("militaryBranch", e.target.value)} aria-required="true" aria-invalid={!!errors.militaryBranch} aria-describedby={errors.militaryBranch ? "branch-error branch-hint" : "branch-hint"} className={selectClass(!!errors.militaryBranch)}>
@@ -566,7 +595,7 @@ export default function HomePage() {
               </p>
               <p className="text-gray-600">
                 {MILITARY_STATUS_OPTIONS.find(o => o.value === form.veteranStatus)?.label}
-                {form.veteranStatus && form.veteranStatus !== "non-military" && form.militaryBranch && (
+                {form.veteranStatus && form.veteranStatus !== "non-military" && form.veteranStatus !== "civilian" && form.militaryBranch && (
                   <> &middot; {BRANCH_OPTIONS_BY_STATUS[form.veteranStatus]?.find(o => o.value === form.militaryBranch)?.label}</>
                 )}
               </p>

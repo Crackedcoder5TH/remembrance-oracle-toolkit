@@ -7,7 +7,7 @@ const {
   scoreConsistency,
   detectLanguage,
   checkBalancedBraces,
-} = require('../src/core/coherency');
+} = require('../src/unified/coherency');
 
 describe('checkBalancedBraces', () => {
   it('returns true for balanced braces', () => {

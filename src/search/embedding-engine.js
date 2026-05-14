@@ -105,7 +105,8 @@ function builtinEmbed(text) {
     for (let i = 0; i < 32 && i < wordVec.length; i++) {
       vec[32 + i] = wordVec[i];
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:builtinEmbed] silent failure:', e?.message || e);
     // vectors.js not available — leave zeros
   }
 
@@ -124,12 +125,14 @@ function builtinEmbed(text) {
  * Cosine similarity between two vectors.
  */
 function cosineSimilarity(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
+  if (!a || !b || a.length !== b.length || a.length === 0) return 0;
   let dot = 0, magA = 0, magB = 0;
   for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
+    const ai = a[i], bi = b[i];
+    if (typeof ai !== 'number' || typeof bi !== 'number' || Number.isNaN(ai) || Number.isNaN(bi)) return 0;
+    dot += ai * bi;
+    magA += ai * ai;
+    magB += bi * bi;
   }
   const denom = Math.sqrt(magA) * Math.sqrt(magB);
   return denom === 0 ? 0 : dot / denom;
@@ -162,7 +165,8 @@ function checkOllama(options = {}) {
             /embed|minilm|nomic|bge|gte|e5/i.test(m)
           );
           resolve({ available: true, models, embeddingModels });
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:models] silent failure:', e?.message || e);
           resolve({ available: false });
         }
       });
@@ -199,7 +203,8 @@ function ollamaEmbed(text, options = {}) {
         try {
           const parsed = JSON.parse(data);
           resolve(parsed.embedding || null);
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:ollamaEmbed] resolving null on error:', e?.message || e);
           resolve(null);
         }
       });
@@ -223,13 +228,66 @@ class EmbeddingEngine {
     this._ollamaAvailable = null; // null = not checked, true/false after check
     this._searchRegistry = options.searchRegistry || null;
     this._tier = 'builtin'; // Current active tier
+    this._idfWeights = null; // Lazily computed TF-IDF corpus weights
+    this._corpusSize = 0;    // Number of documents in last IDF build
+
+    // ChromaDB bridge (Tier 0 — highest quality when available)
+    this._chromadb = null;
+    this._chromadbAvailable = null;
+    if (options.enableChromaDB !== false) {
+      try {
+        const { ChromaDBBridge } = require('./chromadb/bridge');
+        this._chromadb = new ChromaDBBridge(options.chromadb || {});
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine] ChromaDB bridge not available:', e?.message || e);
+      }
+    }
+  }
+
+  /**
+   * Build TF-IDF inverse document frequency weights from a corpus of items.
+   * Call this when the pattern library changes to improve search quality.
+   * @param {Array} items — Array of { name, description, tags, code }
+   */
+  buildIDF(items) {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const df = {}; // document frequency per term
+    const N = items.length;
+    for (const item of items) {
+      const text = [item.name || '', item.description || '', (item.tags || []).join(' '), (item.code || '').slice(0, 500)].join(' ').toLowerCase();
+      const terms = new Set(text.split(/[^a-z0-9]+/).filter(w => w.length > 1));
+      for (const term of terms) {
+        df[term] = (df[term] || 0) + 1;
+      }
+    }
+    // IDF = log(N / df) — higher for rare terms, lower for common terms
+    this._idfWeights = {};
+    for (const [term, freq] of Object.entries(df)) {
+      this._idfWeights[term] = Math.log(N / freq);
+    }
+    this._corpusSize = N;
   }
 
   /**
    * Detect the best available embedding tier.
-   * @returns {Promise<string>} 'ollama' | 'plugin' | 'builtin'
+   * @returns {Promise<string>} 'chromadb' | 'ollama' | 'plugin' | 'builtin'
    */
   async detectTier() {
+    // Tier 0: ChromaDB (sentence-transformers — 384D dense embeddings)
+    if (this._chromadb) {
+      try {
+        const available = await this._chromadb.isAvailable();
+        if (available) {
+          this._chromadbAvailable = true;
+          this._tier = 'chromadb';
+          return 'chromadb';
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:detectTier] ChromaDB check failed:', e?.message || e);
+      }
+      this._chromadbAvailable = false;
+    }
+
     // Check for plugin-provided embedding providers
     if (this._searchRegistry) {
       const providers = this._searchRegistry.list().filter(p => p.type === 'embedding');
@@ -251,6 +309,14 @@ class EmbeddingEngine {
 
     this._tier = 'builtin';
     return 'builtin';
+  }
+
+  /**
+   * Get the ChromaDB bridge instance (if available).
+   * @returns {ChromaDBBridge|null}
+   */
+  get chromadb() {
+    return this._chromadb;
   }
 
   /**
@@ -292,7 +358,9 @@ class EmbeddingEngine {
               this._setCache(key, vec);
               return vec;
             }
-          } catch { /* fall through */ }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[embedding-engine:embedAsync] fall through:', e?.message || e);
+          }
         }
       }
     }
@@ -355,14 +423,21 @@ class EmbeddingEngine {
       const docVec = this.embed(docText);
       const embeddingSim = cosineSimilarity(queryVec, docVec);
 
-      // Keyword boost: expanded terms that appear in the document
+      // TF-IDF weighted keyword boost: expanded terms that appear in the document
       const docLower = docText.toLowerCase();
       let keywordHits = 0;
+      let idfWeightedHits = 0;
+      let idfWeightTotal = 0;
       for (const term of expandedTerms) {
-        if (docLower.includes(term)) keywordHits++;
+        const idfW = (this._idfWeights && this._idfWeights[term]) || 1;
+        idfWeightTotal += idfW;
+        if (docLower.includes(term)) {
+          keywordHits++;
+          idfWeightedHits += idfW;
+        }
       }
       const keywordBoost = expandedTerms.length > 0
-        ? (keywordHits / expandedTerms.length) * 0.2
+        ? (idfWeightTotal > 0 ? idfWeightedHits / idfWeightTotal : keywordHits / expandedTerms.length) * 0.2
         : 0;
 
       // Name match bonus
@@ -394,6 +469,7 @@ class EmbeddingEngine {
       tier: this._tier,
       cacheSize: this._cache.size,
       maxCache: this._maxCache,
+      chromadbAvailable: this._chromadbAvailable,
       ollamaAvailable: this._ollamaAvailable,
       ollamaModel: this._ollamaModel,
       pluginProviders: this._searchRegistry ? this._searchRegistry.list().filter(p => p.type === 'embedding').length : 0,

@@ -8,7 +8,44 @@ const { validatePort } = require('../validate-args');
 
 function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
 
-  handlers['mcp'] = () => {
+  handlers['mcp'] = (args = {}) => {
+    const sub = args._sub;
+
+    // `oracle mcp tools-json` → emit OpenAI function-calling schema for
+    // clients that don't speak MCP (Grok API, custom GPTs, OpenRouter).
+    if (sub === 'tools-json') {
+      const { toOpenAITools } = require('../../mcp/openai-schema');
+      process.stdout.write(JSON.stringify(toOpenAITools(), null, 2) + '\n');
+      return;
+    }
+
+    // `oracle mcp --http[=HOST:PORT] [--token TOKEN]` → HTTP transport.
+    // Defaults: 127.0.0.1:7787, no auth. `--http=0.0.0.0:7787 --token X`
+    // for remote / tunneled access (Grok API, web agents).
+    if (args.http) {
+      const { startHTTPServer } = require('../../mcp/http-server');
+      let host = '127.0.0.1';
+      let port = 7787;
+      if (typeof args.http === 'string') {
+        const [h, p] = args.http.split(':');
+        if (h) host = h;
+        if (p) {
+          const parsed = parseInt(p, 10);
+          if (Number.isFinite(parsed) && parsed > 0 && parsed < 65536) port = parsed;
+        }
+      }
+      const token = (typeof args.token === 'string' ? args.token : null)
+        || process.env.ORACLE_MCP_TOKEN
+        || null;
+      if (host !== '127.0.0.1' && host !== 'localhost' && !token) {
+        console.error(c.boldYellow('!') + ' Binding to ' + host + ' without --token — anyone reachable on this network can call the field.');
+        console.error('  Set ' + c.cyan('--token <secret>') + ' or ' + c.cyan('ORACLE_MCP_TOKEN=<secret>') + ' to require auth.');
+      }
+      startHTTPServer({ host, port, token, oracle });
+      return;
+    }
+
+    // Default: stdio transport (Claude Desktop, Cursor, Cline, etc.)
     const { startMCPServer } = require('../../mcp/server');
     startMCPServer(oracle);
   };
@@ -16,6 +53,16 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
   handlers['mcp-install'] = (args) => {
     const { installAll, uninstallAll, checkInstallation, installTo, uninstallFrom } = require('../../ide/mcp-install');
     const sub = args._sub;
+
+    // `oracle mcp-install print [--npx]` → emit the JSON config snippet
+    // to stdout for copy-paste into any MCP client we don't auto-register.
+    if (sub === 'print' || sub === 'snippet' || sub === 'show') {
+      const { getServerConfig, SERVER_NAME } = require('../../ide/mcp-install');
+      const useNpx = args.npx || false;
+      const cfg = getServerConfig(useNpx ? { command: 'npx' } : {});
+      process.stdout.write(JSON.stringify({ mcpServers: { [SERVER_NAME]: cfg } }, null, 2) + '\n');
+      return;
+    }
 
     if (sub === 'status' || sub === 'check') {
       const status = checkInstallation();
@@ -180,6 +227,257 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
   handlers['deploy'] = () => {
     const { start } = require('../../deploy');
     start();
+  };
+
+  handlers['config'] = (args) => {
+    const { loadConfig, saveConfig, toggleOracle, togglePromptTag, setPromptTag, isOracleEnabled, getPromptTag, toggleProvenance, getAutoPublish } = require('../../core/oracle-config');
+    const sub = args._sub;
+
+    if (sub === 'on') {
+      toggleOracle(true);
+      console.log(`${c.green('\u2713')} Oracle ${c.boldGreen('enabled')} — automatic pattern usage is ON`);
+      return;
+    }
+    if (sub === 'off') {
+      toggleOracle(false);
+      console.log(`${c.yellow('\u25CB')} Oracle ${c.dim('disabled')} — automatic pattern usage is OFF`);
+      return;
+    }
+    if (sub === 'toggle') {
+      const newState = toggleOracle();
+      console.log(newState
+        ? `${c.green('\u2713')} Oracle ${c.boldGreen('enabled')}`
+        : `${c.yellow('\u25CB')} Oracle ${c.dim('disabled')}`);
+      return;
+    }
+    if (sub === 'prompt-tag') {
+      const customTag = args._positional.slice(1).join(' ') || args.tag;
+      if (customTag) {
+        setPromptTag(customTag);
+        console.log(`${c.green('\u2713')} Prompt tag set: ${c.cyan(customTag)}`);
+      } else {
+        const tag = getPromptTag();
+        console.log(tag
+          ? `${c.bold('Prompt tag:')} ${c.cyan(tag)}`
+          : c.dim('Prompt tag is disabled'));
+      }
+      return;
+    }
+    if (sub === 'prompt-tag-on') {
+      togglePromptTag(true);
+      console.log(`${c.green('\u2713')} Prompt tag ${c.boldGreen('enabled')}`);
+      return;
+    }
+    if (sub === 'prompt-tag-off') {
+      togglePromptTag(false);
+      console.log(`${c.yellow('\u25CB')} Prompt tag ${c.dim('disabled')}`);
+      return;
+    }
+    if (sub === 'provenance-on') {
+      toggleProvenance(true);
+      console.log(`${c.green('\u2713')} Provenance tracking ${c.boldGreen('enabled')} — pattern pulls are watermarked`);
+      return;
+    }
+    if (sub === 'provenance-off') {
+      toggleProvenance(false);
+      console.log(`${c.yellow('\u25CB')} Provenance tracking ${c.dim('disabled')}`);
+      return;
+    }
+    if (sub === 'auto-publish-on') {
+      const config = loadConfig();
+      config.autoPublish = true;
+      saveConfig(config);
+      console.log(`${c.green('\u2713')} Auto-publish ${c.boldGreen('enabled')} — high-coherency patterns publish to blockchain on commit`);
+      return;
+    }
+    if (sub === 'auto-publish-off') {
+      const config = loadConfig();
+      config.autoPublish = false;
+      saveConfig(config);
+      console.log(`${c.yellow('\u25CB')} Auto-publish ${c.dim('disabled')}`);
+      return;
+    }
+    // Search enforcement level
+    if (sub === 'search-enforcement') {
+      const level = args._?.[2] || args._?.[1];
+      if (['block', 'warn', 'off'].includes(level)) {
+        const config = loadConfig();
+        config.searchEnforcement = level;
+        saveConfig(config);
+        const icon = level === 'block' ? c.boldRed('BLOCK') : level === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
+        console.log(`${c.green('\u2713')} Search enforcement set to ${icon}`);
+      } else {
+        const current = loadConfig().searchEnforcement || 'block';
+        console.log(`  Search enforcement: ${current}`);
+        console.log(`  Usage: ${c.cyan('oracle config search-enforcement <block|warn|off>')}`);
+      }
+      return;
+    }
+    // Feedback enforcement level
+    if (sub === 'feedback-enforcement') {
+      const level = args._?.[2] || args._?.[1];
+      if (['block', 'warn', 'off'].includes(level)) {
+        const config = loadConfig();
+        config.feedbackEnforcement = level;
+        saveConfig(config);
+        const icon = level === 'block' ? c.boldRed('BLOCK') : level === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
+        console.log(`${c.green('\u2713')} Feedback enforcement set to ${icon}`);
+      } else {
+        const current = loadConfig().feedbackEnforcement || 'warn';
+        console.log(`  Feedback enforcement: ${current}`);
+        console.log(`  Usage: ${c.cyan('oracle config feedback-enforcement <block|warn|off>')}`);
+      }
+      return;
+    }
+
+    // Default: show status
+    const config = loadConfig();
+    if (jsonOut()) { console.log(JSON.stringify(config)); return; }
+    console.log(`\n${c.boldCyan('Oracle Configuration')}\n`);
+    console.log(`  Oracle:     ${config.enabled ? c.boldGreen('ON') : c.dim('OFF')}`);
+    console.log(`  Prompt Tag: ${config.promptTagEnabled ? c.boldGreen('ON') : c.dim('OFF')}`);
+    console.log(`  Tag Text:   ${c.cyan(config.promptTag || '(none)')}`);
+    console.log(`  Provenance: ${config.provenanceTracking !== false ? c.boldGreen('ON') : c.dim('OFF')} — pattern pull watermarking`);
+    const searchEnf = config.searchEnforcement || 'block';
+    const feedbackEnf = config.feedbackEnforcement || 'warn';
+    const searchColor = searchEnf === 'block' ? c.boldRed('BLOCK') : searchEnf === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
+    const feedbackColor = feedbackEnf === 'block' ? c.boldRed('BLOCK') : feedbackEnf === 'warn' ? c.boldYellow('WARN') : c.dim('OFF');
+    console.log(`  Search:     ${searchColor} — commits ${searchEnf === 'block' ? 'blocked' : searchEnf === 'warn' ? 'warned' : 'unchecked'} without oracle search`);
+    console.log(`  Feedback:   ${feedbackColor} — commits ${feedbackEnf === 'block' ? 'blocked' : feedbackEnf === 'warn' ? 'warned' : 'unchecked'} with pending feedback`);
+    const autoPublish = config.autoPublish || false;
+    console.log(`  AutoPublish:${autoPublish ? c.boldGreen(' ON') : c.dim(' OFF')} — blockchain publish on commit`);
+    console.log(`\n${c.dim('Commands:')}`);
+    console.log(`  ${c.cyan('oracle config on|off')}                        — Toggle oracle on/off`);
+    console.log(`  ${c.cyan('oracle config search-enforcement <level>')}    — Set search gate: block/warn/off`);
+    console.log(`  ${c.cyan('oracle config feedback-enforcement <level>')}  — Set feedback gate: block/warn/off`);
+    console.log(`  ${c.cyan('oracle config prompt-tag')}                    — View current prompt tag`);
+    console.log(`  ${c.cyan('oracle config prompt-tag <text>')}             — Set custom prompt tag`);
+    console.log(`  ${c.cyan('oracle config prompt-tag-on|off')}             — Enable/disable prompt tag`);
+    console.log(`  ${c.cyan('oracle config provenance-on|off')}             — Enable/disable provenance watermarking`);
+    console.log(`  ${c.cyan('oracle config auto-publish-on|off')}           — Enable/disable blockchain auto-publish on commit`);
+  };
+
+  handlers['preflight'] = (args) => {
+    const { runPreflight } = require('../../core/preflight');
+    const result = runPreflight(process.cwd());
+
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+
+    if (result.ok) {
+      console.log(`${c.boldGreen('\u2713')} All preflight checks passed`);
+    } else {
+      console.log(`${c.boldYellow('Preflight issues:')}\n`);
+      for (const w of result.warnings) {
+        console.log(`  ${c.yellow('!')} ${w.message}`);
+        console.log(`    Fix: ${c.cyan(w.fix)}`);
+      }
+    }
+  };
+
+  handlers['pending-feedback'] = (args) => {
+    const { getPendingFeedback } = require('../../core/session-tracker');
+    const pending = getPendingFeedback();
+
+    if (jsonOut()) { console.log(JSON.stringify(pending)); return; }
+
+    if (pending.length === 0) {
+      console.log(`${c.boldGreen('\u2713')} No pending feedback — all resolved patterns have been reported.`);
+    } else {
+      console.log(`\n${c.boldYellow('Pending Feedback')} — ${pending.length} pattern(s) pulled but never given feedback:\n`);
+      for (const p of pending) {
+        console.log(`  ${c.yellow('\u25CB')} ${c.bold(p.patternName || 'unnamed')} [${c.dim(p.patternId || 'no-id')}]`);
+        console.log(`    Pulled at: ${c.dim(p.timestamp)}  Decision: ${c.cyan(p.decision)}`);
+        console.log(`    Fix: ${c.cyan(`oracle feedback --id ${p.patternId} --success`)}`);
+      }
+      console.log('');
+    }
+  };
+
+  handlers['session-summary'] = (args) => {
+    const { buildSummary, saveSession, hasInteractions, getPendingFeedback, hasUnsubmittedWork } = require('../../core/session-tracker');
+
+    if (!hasInteractions()) {
+      console.log(c.dim('No oracle interactions recorded in this session.'));
+      console.log(c.dim('Use ') + c.cyan('oracle resolve') + c.dim(' or ') + c.cyan('oracle search') + c.dim(' first.'));
+      return;
+    }
+
+    const summary = buildSummary();
+
+    if (jsonOut()) { console.log(JSON.stringify(summary)); return; }
+
+    console.log(`\n${c.boldCyan('═══ Oracle Session Summary ═══')}\n`);
+    console.log(`  Duration: ${c.bold(summary.duration)}`);
+    console.log(`  Resolves: ${c.bold(String(summary.stats.totalResolves))}  |  Searches: ${c.bold(String(summary.stats.totalSearches))}`);
+    console.log(`  Decisions: ${c.boldGreen(String(summary.stats.pulls) + ' PULL')}  ${c.boldYellow(String(summary.stats.evolves) + ' EVOLVE')}  ${c.boldMagenta(String(summary.stats.generates) + ' GENERATE')}`);
+    if (summary.stats.healingLoops > 0) {
+      console.log(`  Healing loops: ${c.bold(String(summary.stats.healingLoops))}`);
+    }
+    console.log(`  Unique patterns used: ${c.bold(String(summary.stats.uniquePatternsUsed))}`);
+
+    // What the oracle said
+    if (summary.said.length > 0) {
+      console.log(`\n${c.boldCyan('── What the Oracle Said ──')}\n`);
+      for (const s of summary.said) {
+        const icon = s.decision === 'pull' ? c.green('▸')
+          : s.decision === 'evolve' ? c.yellow('▸')
+          : c.magenta('▸');
+        const desc = s.description ? c.dim(` "${s.description}"`) : '';
+        console.log(`  ${icon} ${s.text}${desc}`);
+      }
+    }
+
+    // What the oracle whispered
+    if (summary.whispered.length > 0) {
+      console.log(`\n${c.boldMagenta('── What the Oracle Whispered ──')}\n`);
+      for (const w of summary.whispered) {
+        if (w.type === 'resolve') {
+          const label = w.patternName ? c.dim(`[${w.patternName}] `) : '';
+          console.log(`  ${c.magenta('~')} ${label}${c.italic(w.message)}`);
+        } else if (w.type === 'candidate-notes') {
+          console.log(`  ${c.cyan('~')} ${c.dim(w.message)}`);
+        }
+        console.log('');
+      }
+    }
+
+    // Prompt tags
+    if (summary.promptTags && summary.promptTags.length > 0) {
+      console.log(`${c.boldCyan('── Oracle Invocations ──')}\n`);
+      for (const tag of summary.promptTags) {
+        console.log(`  ${c.bold(tag)}`);
+      }
+      console.log('');
+    }
+
+    // Feedback gap warning
+    const pending = getPendingFeedback();
+    if (pending.length > 0) {
+      console.log(`${c.boldYellow('── Pending Feedback ──')}\n`);
+      console.log(`  ${c.yellow(String(pending.length))} pattern(s) pulled but never given feedback:\n`);
+      for (const p of pending.slice(0, 10)) {
+        console.log(`  ${c.yellow('\u25CB')} ${c.bold(p.patternName || 'unnamed')} [${c.dim(p.patternId || 'no-id')}]`);
+        console.log(`    Fix: ${c.cyan(`oracle feedback --id ${p.patternId} --success`)}`);
+      }
+      if (pending.length > 10) console.log(c.dim(`  ... and ${pending.length - 10} more`));
+      console.log('');
+    }
+
+    // End sweep warning
+    if (hasUnsubmittedWork()) {
+      console.log(`${c.boldYellow('── End Sweep Reminder ──')}\n`);
+      console.log(`  ${c.yellow('!')} Session has unsubmitted work. Run before ending:`);
+      console.log(`    ${c.cyan('oracle auto-submit')}`);
+      console.log('');
+    }
+
+    // Save the session
+    const savePath = saveSession();
+    if (savePath && !args.quiet) {
+      console.log(c.dim(`Session saved to ${savePath}`));
+    }
+
+    console.log(`${c.boldCyan('═'.repeat(30))}\n`);
   };
 
   handlers['analytics'] = (args) => {

@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { Ok, Err, tryCatch, all } = require('../seeds/result-type');
+const { Ok, Err, tryCatch, all } = require('../seeds/code/result-type');
 
 describe('result-type', () => {
   it('Ok should hold value', () => {

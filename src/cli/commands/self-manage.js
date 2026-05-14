@@ -15,7 +15,7 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
     console.log(`${c.dim('Running self-improve → self-optimize → self-evolve...')}\n`);
 
     const report = oracle.fullOptimizationCycle({
-      maxHealsPerRun: parseInt(args.max) || 20,
+      maxHealsPerRun: parseInt(args.max, 10) || 20,
     });
     if (jsonOut()) { console.log(JSON.stringify(report)); return; }
 
@@ -74,6 +74,15 @@ function registerSelfManageCommands(handlers, { oracle, jsonOut }) {
       }
     }
 
+    // Coherency refresh (fixes disconnect between reflect evaluator and DB)
+    if (report.coherencyRefresh) {
+      const cr = report.coherencyRefresh;
+      if (cr.updated > 0) {
+        console.log(`\n${c.boldCyan('Coherency Refresh:')} ${cr.updated} pattern(s) updated`);
+        console.log(`  Avg before: ${colorScore(cr.avgBefore)} → Avg after: ${colorScore(cr.avgAfter)}`);
+      }
+    }
+
     // Whisper
     if (report.whisper) {
       console.log(`\n${report.whisper}`);
@@ -119,7 +128,7 @@ ${c.bold('Commands:')}
       console.log(`\n${c.boldCyan('Consolidating Near-Duplicates')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
       const report = oracle.consolidateDuplicates({
-        similarityThreshold: parseFloat(args.threshold) || undefined,
+        similarityThreshold: args.threshold != null ? parseFloat(args.threshold) : undefined,
         dryRun,
       });
 
@@ -128,7 +137,7 @@ ${c.bold('Commands:')}
       if (report.linked.length > 0) {
         console.log(`${c.boldGreen('Language variants linked:')} ${report.linked.length}`);
         for (const l of report.linked.slice(0, 10)) {
-          console.log(`  ${c.green('+')} ${c.cyan(l.kept.name)} (${l.kept.language}) ${c.dim('kept')} — ${c.yellow(l.removed.name)} (${l.removed.language}) ${c.dim('removed')} (${(l.similarity * 100).toFixed(0)}% similar)`);
+          console.log(`  ${c.green('+')} ${c.cyan(l.kept.name)} (${l.kept.language}) ${c.dim('kept')} — ${c.yellow(l.linked.name)} (${l.linked.language}) ${c.dim('linked')} (${(l.similarity * 100).toFixed(0)}% similar)`);
         }
         if (report.linked.length > 10) console.log(`  ${c.dim('... and ' + (report.linked.length - 10) + ' more')}`);
       }
@@ -151,7 +160,7 @@ ${c.bold('Commands:')}
 
     if (sub === 'tags') {
       const dryRun = parseDryRun(args);
-      const minUsage = parseInt(args['min-usage']) || 2;
+      const minUsage = parseInt(args['min-usage'], 10) || 2;
       console.log(`\n${c.boldCyan('Consolidating Tags')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
 
       const report = oracle.consolidateTags({ minUsage, dryRun });
@@ -169,6 +178,15 @@ ${c.bold('Commands:')}
 
       if (report.noiseTagsStripped > 0) {
         console.log(`${c.bold('Noise tags stripped:')} ${report.noiseTagsStripped}`);
+      }
+
+      if (report.synonymsNormalized > 0) {
+        console.log(`${c.bold('Synonyms normalized:')} ${report.synonymsNormalized}`);
+        const merges = (report.synonymsMerged || []).slice(0, 20);
+        for (const m of merges) {
+          console.log(`  ${c.green('→')} ${c.yellow(m.from)} → ${c.cyan(m.to)}`);
+        }
+        if (report.synonymsNormalized > 20) console.log(`  ${c.dim('... and ' + (report.synonymsNormalized - 20) + ' more')}`);
       }
 
       console.log(`\n${c.dim('Tags:')} ${report.totalTagsBefore} → ${report.totalTagsAfter} ${c.dim('|')} ${c.dim('Patterns updated:')} ${report.patternsUpdated} ${c.dim('|')} ${c.dim('Duration:')} ${report.durationMs}ms`);
@@ -247,7 +265,7 @@ ${c.bold('Commands:')}
 
     if (sub === 'all') {
       const dryRun = parseDryRun(args);
-      const maxIterations = parseInt(args['max-iterations']) || undefined;
+      const maxIterations = args['max-iterations'] != null ? parseInt(args['max-iterations'], 10) : undefined;
       console.log(`\n${c.boldCyan('Iterative Polish')}${dryRun ? c.dim(' (dry run)') : ''}`);
       console.log(`${c.dim('Running self-reflection loop: polish → evaluate → repeat until convergence...')}\n`);
 
@@ -398,6 +416,239 @@ ${c.bold('Commands:')}
 
     console.error(c.boldRed('Error:') + ` Unknown lifecycle subcommand: ${sub}. Run ${c.cyan('oracle lifecycle help')} for usage.`);
     process.exit(1);
+  };
+
+  handlers['decay'] = (args) => {
+    const { decayPass } = require('../../unified/decay');
+    const patterns = oracle.patterns.getAll();
+    const report = decayPass(patterns);
+
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(c.boldCyan(`Confidence Decay Report\n`));
+    console.log(`  Total patterns:   ${c.bold(String(report.total))}`);
+    console.log(`  Decayed:          ${report.decayed > 0 ? c.yellow(String(report.decayed)) : c.bold('0')}`);
+    console.log(`  Fresh:            ${c.green(String(report.fresh))}\n`);
+
+    const decayed = report.patterns.filter(r => r.decayed).sort((a, b) => a.factor - b.factor);
+    if (decayed.length > 0) {
+      console.log(c.bold('Most decayed patterns:'));
+      for (const d of decayed.slice(0, 15)) {
+        const arrow = d.original !== d.adjusted ? ` → ${colorScore(d.adjusted.toFixed(3))}` : '';
+        console.log(`  ${c.cyan(d.name || d.id)} — ${colorScore(d.original.toFixed(3))}${arrow} (${d.daysSinceUse}d idle, ×${d.factor})`);
+      }
+    } else {
+      console.log(c.dim('All patterns are fresh — no decay applied.'));
+    }
+  };
+  // ─── Health Check ───
+
+  handlers['health'] = (args) => {
+    const sqliteStore = oracle.store.getSQLiteStore();
+    if (!sqliteStore || typeof sqliteStore.healthCheck !== 'function') {
+      console.error(c.boldRed('Error:') + ' SQLite store required for health check');
+      process.exit(1);
+    }
+
+    const report = sqliteStore.healthCheck();
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(`\n${c.boldCyan('Oracle Health Check')}\n`);
+
+    // Stats
+    const s = report.stats;
+    console.log(`${c.bold('Database:')}         ${s.dbSizeMB != null ? s.dbSizeMB + ' MB' : 'unknown'}`);
+    console.log(`${c.bold('Patterns:')}         ${s.patterns}`);
+    console.log(`${c.bold('Candidates:')}       ${s.candidates} (${s.candidateGroups} unique groups, ${s.candidateDuplicationRatio}x ratio)`);
+    console.log(`${c.bold('Entries:')}           ${s.entries} (${s.untestedEntries} untested)`);
+    console.log(`${c.bold('Audit log:')}        ${s.auditLogSize} rows`);
+    console.log(`${c.bold('Avg coherency:')}    ${colorScore(s.avgCoherency)}`);
+    console.log(`${c.bold('Personal store:')}   ${s.personalStoreExists ? c.green('exists') : c.red('missing')}`);
+    if (s.fragmentationPct != null) {
+      console.log(`${c.bold('Fragmentation:')}    ${s.fragmentationPct}%`);
+    }
+    if (s.orphanCandidates > 0) {
+      console.log(`${c.bold('Orphan candidates:')} ${c.yellow(String(s.orphanCandidates))}`);
+    }
+
+    // Warnings
+    if (report.warnings.length > 0) {
+      console.log(`\n${c.boldYellow('Warnings:')}`);
+      for (const w of report.warnings) {
+        const icon = w.level === 'high' ? c.red('!') : c.yellow('○');
+        console.log(`  ${icon} ${w.message}`);
+      }
+    } else {
+      console.log(`\n${c.boldGreen('No warnings — oracle is healthy.')}`);
+    }
+
+    console.log(`\n${c.bold('Status:')} ${report.healthy ? c.boldGreen('HEALTHY') : c.boldRed('NEEDS ATTENTION')}`);
+  };
+
+  // ─── Deduplicate Candidates ───
+
+  handlers['dedup-candidates'] = (args) => {
+    const sqliteStore = oracle.store.getSQLiteStore();
+    if (!sqliteStore || typeof sqliteStore.deduplicateCandidates !== 'function') {
+      console.error(c.boldRed('Error:') + ' SQLite store required');
+      process.exit(1);
+    }
+
+    const dryRun = parseDryRun(args);
+    const maxPerGroup = parseInt(args['max-per-group'], 10) || 1;
+    console.log(`\n${c.boldCyan('Deduplicating Candidates')}${dryRun ? c.dim(' (dry run)') : ''}`);
+    console.log(`${c.dim('Keeping top ' + maxPerGroup + ' per (name, language) pair...')}\n`);
+
+    const report = sqliteStore.deduplicateCandidates({ dryRun, maxPerGroup });
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(`${c.bold('Groups:')}  ${report.groups} unique (name, language) pairs`);
+    console.log(`${c.bold('Kept:')}    ${c.boldGreen(String(report.kept))}`);
+    console.log(`${c.bold('Removed:')} ${report.removed > 0 ? c.boldRed(String(report.removed)) : c.dim('0')}`);
+    if (dryRun && report.removed > 0) {
+      console.log(`\n${c.yellow('Run without --dry-run to apply changes.')}`);
+    }
+  };
+
+  // ─── Clean Orphan Candidates ───
+
+  handlers['clean-orphans'] = (args) => {
+    const sqliteStore = oracle.store.getSQLiteStore();
+    if (!sqliteStore || typeof sqliteStore.cleanOrphanCandidates !== 'function') {
+      console.error(c.boldRed('Error:') + ' SQLite store required');
+      process.exit(1);
+    }
+
+    const dryRun = parseDryRun(args);
+    console.log(`\n${c.boldCyan('Cleaning Orphan Candidates')}${dryRun ? c.dim(' (dry run)') : ''}\n`);
+
+    const report = sqliteStore.cleanOrphanCandidates({ dryRun });
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    if (report.removed > 0) {
+      console.log(`${c.bold('Removed:')} ${c.boldRed(String(report.removed))} orphan candidate(s)`);
+    } else {
+      console.log(`${c.green('No orphan candidates found.')}`);
+    }
+  };
+
+  // ─── Prune Stale Entries ───
+
+  handlers['prune-entries'] = (args) => {
+    const sqliteStore = oracle.store.getSQLiteStore();
+    if (!sqliteStore || typeof sqliteStore.pruneStaleEntries !== 'function') {
+      console.error(c.boldRed('Error:') + ' SQLite store required');
+      process.exit(1);
+    }
+
+    const dryRun = parseDryRun(args);
+    const maxAgeDays = parseInt(args['max-age'], 10) || 90;
+    console.log(`\n${c.boldCyan('Pruning Stale Entries')}${dryRun ? c.dim(' (dry run)') : ''}`);
+    console.log(`${c.dim('Removing entries with no tests and no usage, older than ' + maxAgeDays + ' days...')}\n`);
+
+    const report = sqliteStore.pruneStaleEntries({ dryRun, maxAgeDays });
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(`${c.bold('Removed:')}   ${report.removed > 0 ? c.boldRed(String(report.removed)) : c.dim('0')} stale entries`);
+    console.log(`${c.bold('Remaining:')} ${c.boldGreen(String(report.remaining))}`);
+  };
+
+  // ─── VACUUM ───
+
+  handlers['vacuum'] = (args) => {
+    const sqliteStore = oracle.store.getSQLiteStore();
+    if (!sqliteStore || typeof sqliteStore.vacuum !== 'function') {
+      console.error(c.boldRed('Error:') + ' SQLite store required');
+      process.exit(1);
+    }
+
+    console.log(`\n${c.boldCyan('Running VACUUM...')}\n`);
+    const report = sqliteStore.vacuum();
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(`${c.bold('Before:')} ${report.beforeMB} MB`);
+    console.log(`${c.bold('After:')}  ${report.afterMB} MB`);
+    if (report.savedMB != null && report.savedMB > 0) {
+      console.log(`${c.boldGreen('Saved:')}  ${report.savedMB} MB`);
+    } else {
+      console.log(`${c.dim('No space reclaimed — database was already compact.')}`);
+    }
+  };
+
+  // ─── Rotate Audit Log ───
+
+  handlers['rotate-audit'] = (args) => {
+    const sqliteStore = oracle.store.getSQLiteStore();
+    if (!sqliteStore || typeof sqliteStore.rotateAuditLogNow !== 'function') {
+      console.error(c.boldRed('Error:') + ' SQLite store required');
+      process.exit(1);
+    }
+
+    console.log(`\n${c.boldCyan('Rotating Audit Log...')}\n`);
+    const report = sqliteStore.rotateAuditLogNow();
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(`${c.bold('Before:')}  ${report.before} rows`);
+    console.log(`${c.bold('After:')}   ${report.after} rows`);
+    console.log(`${c.bold('Removed:')} ${report.removed > 0 ? c.boldRed(String(report.removed)) : c.dim('0')} rows`);
+  };
+
+  // ─── Deep Clean — runs all cleanup operations in sequence ───
+
+  handlers['deep-clean'] = (args) => {
+    const sqliteStore = oracle.store.getSQLiteStore();
+    if (!sqliteStore) {
+      console.error(c.boldRed('Error:') + ' SQLite store required');
+      process.exit(1);
+    }
+
+    const dryRun = parseDryRun(args);
+    console.log(`\n${c.boldCyan('Deep Clean')}${dryRun ? c.dim(' (dry run)') : ''}`);
+    console.log(`${c.dim('Running: dedup candidates → clean orphans → prune entries → rotate audit → vacuum...')}\n`);
+
+    const results = {};
+
+    // 1. Deduplicate candidates
+    if (typeof sqliteStore.deduplicateCandidates === 'function') {
+      results.candidates = sqliteStore.deduplicateCandidates({ dryRun });
+      console.log(`${c.bold('Candidates deduped:')} ${results.candidates.removed} removed, ${results.candidates.kept} kept`);
+    }
+
+    // 2. Clean orphan candidates
+    if (typeof sqliteStore.cleanOrphanCandidates === 'function') {
+      results.orphans = sqliteStore.cleanOrphanCandidates({ dryRun });
+      console.log(`${c.bold('Orphans cleaned:')}   ${results.orphans.removed} removed`);
+    }
+
+    // 3. Prune stale entries
+    if (typeof sqliteStore.pruneStaleEntries === 'function') {
+      results.entries = sqliteStore.pruneStaleEntries({ dryRun, maxAgeDays: 90 });
+      console.log(`${c.bold('Entries pruned:')}    ${results.entries.removed} stale entries removed`);
+    }
+
+    // 4. Rotate audit log
+    if (!dryRun && typeof sqliteStore.rotateAuditLogNow === 'function') {
+      results.audit = sqliteStore.rotateAuditLogNow();
+      console.log(`${c.bold('Audit log:')}        ${results.audit.removed} old rows removed`);
+    }
+
+    // 5. Clean fractal/embedding orphans
+    if (!dryRun && typeof sqliteStore.cleanOrphans === 'function') {
+      results.dataOrphans = sqliteStore.cleanOrphans();
+      const dataTotal = (results.dataOrphans.deletedDeltas || 0) + (results.dataOrphans.deletedEmbeddings || 0) +
+        (results.dataOrphans.deletedHealedVariants || 0) + (results.dataOrphans.deletedHealingStats || 0);
+      console.log(`${c.bold('Data orphans:')}     ${dataTotal} rows cleaned`);
+    }
+
+    // 6. VACUUM
+    if (!dryRun && typeof sqliteStore.vacuum === 'function') {
+      results.vacuum = sqliteStore.vacuum();
+      console.log(`${c.bold('VACUUM:')}           ${results.vacuum.beforeMB} MB → ${results.vacuum.afterMB} MB (${c.boldGreen(results.vacuum.savedMB + ' MB saved')})`);
+    }
+
+    if (jsonOut()) { console.log(JSON.stringify(results)); return; }
+    console.log(`\n${c.boldGreen('Deep clean complete.')}`);
+    if (dryRun) console.log(c.yellow('Run without --dry-run to apply changes.'));
   };
 }
 

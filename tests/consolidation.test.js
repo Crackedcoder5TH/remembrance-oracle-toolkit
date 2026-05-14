@@ -97,6 +97,7 @@ function createMockOracle(patterns = [], candidates = []) {
     _events: events,
     _deleted: deleted,
     _prunedCandidates: prunedCandidates,
+    deletePattern: (id) => { deleted.push(id); },
     autoPromote: () => ({ promoted: 0, skipped: 0, vetoed: 0, total: 0 }),
     deepClean: () => ({ removed: 0, duplicates: 0, stubs: 0, tooShort: 0, remaining: patterns.length }),
     retagAll: () => ({ total: patterns.length, enriched: 0, totalTagsAdded: 0 }),
@@ -130,7 +131,7 @@ describe('consolidateDuplicates', () => {
     const code = 'function calculate(a, b) {\n  return a + b;\n}';
     const patterns = [
       makePattern({ id: 'p1', name: 'calc-1', code, coherencyScore: { total: 0.9 } }),
-      makePattern({ id: 'p2', name: 'calc-2', code, coherencyScore: { total: 0.7 } }),
+      makePattern({ id: 'p2', name: 'calc-2', code, coherencyScore: { total: 0.6 } }),
     ];
     const oracle = createMockOracle(patterns);
     const report = consolidateDuplicates(oracle);
@@ -154,7 +155,8 @@ describe('consolidateDuplicates', () => {
     assert.equal(report.linked.length, 1);
     assert.equal(report.linked[0].kept.language, 'javascript'); // Higher coherency
     assert.ok(report.linked[0].variantTag.includes('typescript'));
-    assert.equal(report.removed.length, 1);
+    // Language variants are cross-linked, NOT deleted (safety rule)
+    assert.equal(report.removed.length, 0);
   });
 
   it('respects dry-run mode', () => {
@@ -582,7 +584,7 @@ describe('iterativePolish', () => {
     const code = 'function duplicate(a, b) {\n  return a + b;\n}';
     const patterns = [
       makePattern({ id: 'p1', name: 'dup-1', code, coherencyScore: { total: 0.9 } }),
-      makePattern({ id: 'p2', name: 'dup-2', code, coherencyScore: { total: 0.7 } }),
+      makePattern({ id: 'p2', name: 'dup-2', code, coherencyScore: { total: 0.5 } }),
       makePattern({ id: 'p3', name: 'unique', code: 'function unique() { return 42; }' }),
     ];
     const oracle = createMockOracle(patterns);

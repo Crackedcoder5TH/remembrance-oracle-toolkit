@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createPubSub } = require('../seeds/pub-sub');
+const { createPubSub } = require('../seeds/code/pub-sub');
 
 describe('pub-sub', () => {
   it('should publish and subscribe', () => {

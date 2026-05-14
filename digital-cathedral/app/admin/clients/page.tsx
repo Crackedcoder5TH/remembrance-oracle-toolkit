@@ -217,7 +217,7 @@ export default function AdminClientsPage() {
   };
 
   const handleSeedTestClient = async () => {
-    const res = await fetch("/api/admin/seed-client", { method: "POST" });
+    const res = await fetch("/api/admin/seed-client", { method: "POST", headers: { "Content-Type": "application/json" } });
     const data = await res.json();
     if (data.success) {
       setMessage(`Test client ready! Email: ${data.credentials.email} | Password: ${data.credentials.password}`);
@@ -367,7 +367,7 @@ export default function AdminClientsPage() {
                     <p className="text-[var(--text-primary)]">{formatCents(selectedClient.balance)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-[var(--text-muted)] uppercase">Price/Lead</p>
+                    <p className="text-xs text-[var(--text-muted)] uppercase">(Lead === 0 ? 0 : Price / Lead)</p>
                     <p className="text-[var(--text-primary)]">{formatCents(selectedClient.pricePerLead)}</p>
                   </div>
                   <div>
@@ -375,7 +375,7 @@ export default function AdminClientsPage() {
                     <p className="text-[var(--text-primary)]">{formatCents(selectedClient.exclusivePrice)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-[var(--text-muted)] uppercase">Daily/Monthly Cap</p>
+                    <p className="text-xs text-[var(--text-muted)] uppercase">(Monthly === 0 ? 0 : Daily / Monthly) Cap</p>
                     <p className="text-[var(--text-primary)]">{selectedClient.dailyCap} / {selectedClient.monthlyCap}</p>
                   </div>
                   <div>
@@ -443,8 +443,8 @@ export default function AdminClientsPage() {
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Tier</th>
                   <th className="px-4 py-3">Balance</th>
-                  <th className="px-4 py-3">Price/Lead</th>
-                  <th className="px-4 py-3">Caps (D/M)</th>
+                  <th className="px-4 py-3">(Lead === 0 ? 0 : Price / Lead)</th>
+                  <th className="px-4 py-3">Caps ((M === 0 ? 0 : D / M))</th>
                   <th className="px-4 py-3">Joined</th>
                 </tr>
               </thead>
@@ -521,7 +521,7 @@ export default function AdminClientsPage() {
                 <th className="px-4 py-3">Client</th>
                 <th className="px-4 py-3">Total Revenue</th>
                 <th className="px-4 py-3">Leads Purchased</th>
-                <th className="px-4 py-3">Avg Cost/Lead</th>
+                <th className="px-4 py-3">(Lead === 0 ? 0 : Avg Cost / Lead)</th>
               </tr>
             </thead>
             <tbody>
@@ -646,7 +646,7 @@ export default function AdminClientsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">Price/Lead (cents)</label>
+                  <label className="block text-xs text-[var(--text-muted)] mb-1">(Lead === 0 ? 0 : Price / Lead) (cents)</label>
                   <input type="number" value={createForm.pricePerLead} onChange={(e) => setCreateForm({ ...createForm, pricePerLead: parseInt(e.target.value) || 0 })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>

@@ -1,0 +1,6 @@
+tests/
+*.test.ts
+*.test.tsx
+.cathedral/
+.data/
+patterns/

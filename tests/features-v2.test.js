@@ -248,7 +248,7 @@ describe('Feature 5: Security Covenant Enforcement (Deeper Scan)', () => {
 
   it('deepSecurityScan catches hardcoded secrets', () => {
     const { deepSecurityScan } = require('../src/core/covenant');
-    const result = deepSecurityScan('const password = "hunter2";', { language: 'javascript' });
+    const result = deepSecurityScan('const password = "hunter2!!";', { language: 'javascript' });
     assert.ok(result.deepFindings.some(f => f.reason.includes('secret') || f.reason.includes('credential')));
   });
 

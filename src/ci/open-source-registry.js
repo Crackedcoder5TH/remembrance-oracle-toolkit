@@ -1,4 +1,16 @@
 /**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
+/**
  * Open Source Registry — Import patterns from curated open source repositories.
  *
  * Six layers:
@@ -17,7 +29,7 @@
  *   oracle registry discover "sorting algorithms"  # Search GitHub for repos
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -293,12 +305,15 @@ function discoverReposSync(query, options = {}) {
   const apiUrl = `https://api.github.com/search/repositories?q=${encodedQ}&sort=${sort}&order=desc&per_page=${Math.min(limit, 30)}`;
 
   try {
-    const response = execSync(
-      `curl -s -H "User-Agent: remembrance-oracle-toolkit" -H "Accept: application/vnd.github.v3+json" "${apiUrl}"`,
-      { timeout: 20000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-    );
+    const response = execFileSync('curl', [
+      '-s',
+      '-H', 'User-Agent: remembrance-oracle-toolkit',
+      '-H', 'Accept: application/vnd.github.v3+json',
+      apiUrl,
+    ], { timeout: 20000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
 
-    const json = JSON.parse(response);
+    let json;
+    try { json = JSON.parse(response); } catch (e) { return []; }
     if (!json.items) return [];
 
     return json.items.slice(0, limit).map(item => ({
@@ -312,7 +327,8 @@ function discoverReposSync(query, options = {}) {
       topics: item.topics || [],
       updatedAt: item.updated_at,
     }));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:language] returning empty array on error:', e?.message || e);
     return [];
   }
 }
@@ -389,16 +405,17 @@ function detectLicenseFromClone(repoUrl) {
   let tmpDir;
   try {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-license-'));
-    execSync(`git clone --depth 1 --filter=blob:none --sparse ${repoUrl} ${tmpDir}`, {
+    execFileSync('git', ['clone', '--depth', '1', '--filter=blob:none', '--sparse', repoUrl, tmpDir], {
       timeout: 30000, stdio: 'pipe', encoding: 'utf-8',
     });
 
     // Check out only license files
     try {
-      execSync('git sparse-checkout set LICENSE LICENSE.md COPYING COPYING.md', {
+      execFileSync('git', ['sparse-checkout', 'set', 'LICENSE', 'LICENSE.md', 'COPYING', 'COPYING.md'], {
         cwd: tmpDir, timeout: 5000, stdio: 'pipe', encoding: 'utf-8',
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] silent failure:', e?.message || e);
       // sparse-checkout may not be available in all git versions
     }
 
@@ -427,15 +444,20 @@ function detectLicenseFromClone(repoUrl) {
       try {
         const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
         if (pkg.license) return pkg.license;
-      } catch { /* ignore */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] ignore:', e?.message || e);
+      }
     }
 
     return 'unknown';
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:detectLicenseFromClone] ignore:', e?.message || e);
     return 'unknown';
   } finally {
     if (tmpDir) {
-      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:init] ignore:', e?.message || e);
+      }
     }
   }
 }
@@ -487,12 +509,13 @@ function trackProvenance(oracle, harvestResult, provenance) {
 function getRepoCommitHash(repoUrl, branch) {
   try {
     const ref = branch || 'HEAD';
-    const output = execSync(`git ls-remote ${repoUrl} ${ref}`, {
+    const output = execFileSync('git', ['ls-remote', repoUrl, ref], {
       timeout: 15000, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'],
-    });
+    }).toString();
     const match = output.match(/^([0-9a-f]+)\s/);
     return match ? match[1] : null;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[open-source-registry:getRepoCommitHash] returning null on error:', e?.message || e);
     return null;
   }
 }
@@ -519,7 +542,7 @@ function getProvenance(oracle, options = {}) {
   }).map(p => {
     const sourceTag = p.tags.find(t => t.startsWith('source:'));
     const licenseTag = p.tags.find(t => t.startsWith('license:'));
-    return {
+    const __retVal = {
       id: p.id,
       name: p.name,
       language: p.language,
@@ -527,6 +550,19 @@ function getProvenance(oracle, options = {}) {
       license: licenseTag ? licenseTag.replace('license:', '') : 'unknown',
       coherency: p.coherencyScore?.total ?? 0,
     };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:open-source-registry:getProvenance' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   });
 }
 

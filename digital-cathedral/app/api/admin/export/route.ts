@@ -4,6 +4,8 @@ import { getFilteredLeads } from "@/app/lib/database";
 import type { LeadFilters } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin CSV Export API
  *
@@ -12,7 +14,7 @@ import { scoreLead } from "@/app/lib/lead-scoring";
  * Protected by bearer token (ADMIN_API_KEY).
  */
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const params = req.nextUrl.searchParams;

@@ -17,8 +17,65 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { CSP_HEADER } from "./csp-directives.mjs";
 
 const ADMIN_SESSION_COOKIE = "__admin_session";
+
+// ─── Multi-Domain Configuration ───
+// Leads domains serve only public/marketing pages — no admin or portal access.
+// Portal domain serves admin + agent portal.
+const LEADS_DOMAINS: string[] = (process.env.LEADS_DOMAINS ?? "")
+  .split(",")
+  .map((d) => d.trim().toLowerCase())
+  .filter(Boolean);
+const PORTAL_DOMAIN: string = (process.env.PORTAL_DOMAIN ?? "").trim().toLowerCase();
+/** Canonical portal URL with protocol + www, used for redirects from leads domains. */
+const PORTAL_BASE_URL: string = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").trim().replace(/\/$/, "");
+
+type DomainType = "leads" | "portal" | "unknown";
+
+function getDomainType(hostname: string): DomainType {
+  const host = hostname.toLowerCase().split(":")[0].replace(/^www\./, "");
+  if (PORTAL_DOMAIN && host === PORTAL_DOMAIN) return "portal";
+  if (LEADS_DOMAINS.length > 0 && LEADS_DOMAINS.includes(host)) return "leads";
+  return "unknown";
+}
+
+/** Routes that must only be served on the portal domain. */
+const PORTAL_ONLY_PREFIXES = ["/admin", "/portal", "/api/admin", "/api/client", "/api/portal"];
+
+// ─── AI Crawler Detection ───
+// Known AI crawler user-agent patterns for telemetry
+const AI_CRAWLERS: Record<string, string> = {
+  "GPTBot": "OpenAI",
+  "ChatGPT-User": "OpenAI",
+  "ClaudeBot": "Anthropic",
+  "Claude-Web": "Anthropic",
+  "Google-Extended": "Google",
+  "Googlebot": "Google",
+  "PerplexityBot": "Perplexity",
+  "Amazonbot": "Amazon",
+  "cohere-ai": "Cohere",
+  "YouBot": "You.com",
+  "CCBot": "Common Crawl",
+  "Bytespider": "ByteDance",
+  "Meta-ExternalAgent": "Meta",
+  "FacebookBot": "Meta",
+};
+
+/**
+ * Detect AI crawler from User-Agent string.
+ * Returns { name, org } if matched, null otherwise.
+ */
+function detectAICrawler(ua: string): { name: string; org: string } | null {
+  if (!ua) return null;
+  for (const [pattern, org] of Object.entries(AI_CRAWLERS)) {
+    if (ua.includes(pattern)) {
+      return { name: pattern, org };
+    }
+  }
+  return null;
+}
 
 /** Comma-separated list of admin emails (case-insensitive). */
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
@@ -54,6 +111,68 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const hostname = request.headers.get("host") || request.nextUrl.host;
+
+  // ─── Multi-Domain Route Enforcement ───
+  // Block portal routes on leads domains; redirect to portal domain instead.
+  // On portal domain, redirect marketing pages to the agent portal.
+  const domainType = getDomainType(hostname);
+
+  if (domainType === "leads") {
+    const isPortalRoute = PORTAL_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
+    if (isPortalRoute) {
+      // If the portal domain is configured, redirect there; otherwise return 404
+      if (PORTAL_BASE_URL || PORTAL_DOMAIN) {
+        const base = PORTAL_BASE_URL || `https://${PORTAL_DOMAIN}`;
+        const portalUrl = new URL(pathname, base);
+        portalUrl.search = request.nextUrl.search;
+        return NextResponse.redirect(portalUrl.toString(), 301);
+      }
+      return NextResponse.json(
+        { error: "This route is not available on this domain." },
+        { status: 404 },
+      );
+    }
+  }
+
+  if (domainType === "portal") {
+    // On the portal domain, only serve portal/admin routes and their APIs.
+    // Redirect everything else (homepage, blog, about, etc.) to /portal.
+    const isPortalRoute =
+      pathname === "/portal" ||
+      pathname.startsWith("/portal/") ||
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/api/") ||
+      pathname.startsWith("/_next") ||
+      pathname.startsWith("/.well-known") ||
+      pathname.includes(".");
+    if (!isPortalRoute) {
+      const portalUrl = new URL("/portal", request.url);
+      return NextResponse.redirect(portalUrl, 301);
+    }
+  }
+
+  // ─── Content-Type enforcement for JSON API routes ───
+  // Reject POST/PUT/PATCH requests to /api/ without application/json content type
+  // (except webhook endpoints that receive non-JSON payloads)
+  const method = request.method;
+  if (
+    pathname.startsWith("/api/") &&
+    !pathname.startsWith("/api/auth") &&
+    !pathname.startsWith("/api/webhooks/") &&
+    !pathname.endsWith("/logout") &&
+    !pathname.endsWith("/upload") &&
+    (method === "POST" || method === "PUT" || method === "PATCH")
+  ) {
+    const contentType = request.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      return NextResponse.json(
+        { error: "Content-Type must be application/json" },
+        { status: 415 },
+      );
+    }
+  }
+
   // ─── Admin route protection ───
   if (
     pathname.startsWith("/admin") &&
@@ -84,26 +203,146 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // ─── AI Crawler Telemetry ───
+  const userAgent = request.headers.get("user-agent") || "";
+  const crawler = detectAICrawler(userAgent);
+
+  if (crawler) {
+    // Log crawler visit for telemetry (structured for log aggregation)
+    console.log(
+      JSON.stringify({
+        event: "ai_crawler_visit",
+        crawler: crawler.name,
+        org: crawler.org,
+        path: pathname,
+        timestamp: new Date().toISOString(),
+        ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown",
+      }),
+    );
+  }
+
+  // ─── Content Negotiation for AI Bots ───
+  // When an AI crawler requests a public page with Accept: application/json,
+  // serve structured data instead of HTML so agents get machine-readable content.
+  const accept = request.headers.get("accept") || "";
+  const isPublicPage =
+    !pathname.startsWith("/api") &&
+    !pathname.startsWith("/admin") &&
+    !pathname.startsWith("/portal") &&
+    !pathname.startsWith("/_next") &&
+    !pathname.startsWith("/.well-known") &&
+    !pathname.includes(".");
+
+  if (crawler && isPublicPage && accept.includes("application/json")) {
+    const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
+
+    // Page-specific structured data for known routes — AEO-enriched with quotable answers
+    const pageData: Record<string, object> = {
+      "/": {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Valor Legacies",
+        url: baseUrl,
+        description: "Valor Legacies is a veteran-founded platform that connects active duty service members, veterans, National Guard, Reserve, and military families with licensed life insurance professionals. Free, no-obligation coverage reviews. Not an insurance company — a service that matches you with the right licensed professional.",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${baseUrl}/faq?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+        founder: { "@type": "Person", description: "Veteran-founded and operated" },
+        areaServed: { "@type": "Country", name: "United States" },
+      },
+      "/about": {
+        "@context": "https://schema.org",
+        "@type": "AboutPage",
+        name: "About Valor Legacies",
+        url: `${baseUrl}/about`,
+        description: "Valor Legacies is a veteran-founded, independently operated platform. It is not affiliated with the U.S. Government, Department of Defense, or any military branch. The platform connects military families with licensed life insurance professionals for free, no-obligation coverage reviews across all 50 states, D.C., and Puerto Rico.",
+      },
+      "/faq": {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        name: "Frequently Asked Questions",
+        url: `${baseUrl}/faq`,
+        description: "Common questions about Valor Legacies, military life insurance options, SGLI, VGLI, VA programs, and AI agent consent.",
+        mainEntity: [
+          { "@type": "Question", name: "What is the best life insurance for veterans?", acceptedAnswer: { "@type": "Answer", text: "The best life insurance for veterans depends on individual needs. Term life is ideal for mortgage protection and income replacement. Whole life suits final expense and legacy planning. Indexed Universal Life (IUL) combines retirement savings with life insurance. Veterans should compare VGLI rates with private market options." } },
+          { "@type": "Question", name: "What happens to SGLI when you leave the military?", acceptedAnswer: { "@type": "Answer", text: "SGLI coverage continues for 120 days after separation at no cost. Veterans then have 240 days total to convert to VGLI without a medical exam. After that window, conversion requires proof of good health. Many veterans find private term policies more cost-effective than VGLI long-term." } },
+          { "@type": "Question", name: "Can disabled veterans get life insurance?", acceptedAnswer: { "@type": "Answer", text: "Yes. The VA offers Service-Disabled Veterans Life Insurance (S-DVI) and VALife, providing up to $40,000 in whole life coverage with guaranteed acceptance for any service-connected disability rating. Private guaranteed-issue policies are also available." } },
+          { "@type": "Question", name: "How much life insurance does a military family need?", acceptedAnswer: { "@type": "Answer", text: "Financial advisors recommend 10-12 times annual income, including BAH, base pay, and special pay. SGLI covers up to $500,000, but families with mortgages, children, or a single-income household typically need additional coverage." } },
+          { "@type": "Question", name: "Does Valor Legacies sell insurance?", acceptedAnswer: { "@type": "Answer", text: "No. Valor Legacies does not sell insurance, provide quotes, or bind coverage. It connects consumers with licensed insurance professionals. The consultation is free with no obligation." } },
+        ],
+      },
+      "/blog": {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: "Veteran Life Insurance Resources — Blog",
+        url: `${baseUrl}/blog`,
+        description: "Expert guides on SGLI, VGLI, VA insurance programs, and private coverage options for service members, veterans, and military families. Published by Valor Legacies.",
+      },
+      "/resources": {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        name: "Military Life Insurance Resources",
+        url: `${baseUrl}/resources`,
+        description: "Explore life insurance options for veterans, active duty, National Guard, and military families. Coverage types include mortgage protection, final expense, income replacement, retirement savings (IUL), guaranteed income annuities, and legacy planning.",
+      },
+      "/developers": {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        name: "Valor Legacies — AI Agent Developer Portal",
+        url: `${baseUrl}/developers`,
+        description: "Integrate your AI agent with Valor Legacies. OpenAPI 3.1 schema, MCP protocol support, consent-based lead submission API. Free API access for authorized AI agents. Supports ChatGPT, Claude, Gemini, Perplexity, and custom agents.",
+        mainEntity: {
+          "@type": "SoftwareApplication",
+          name: "Valor Legacies Agent API",
+          applicationCategory: "BusinessApplication",
+          url: `${baseUrl}/api/agent/schema`,
+          featureList: [
+            "OpenAPI 3.1 discovery",
+            "MCP protocol",
+            "Consent-based lead submission",
+            "Bearer token auth",
+            "TCPA/CCPA/FCC 2025 compliant",
+          ],
+        },
+      },
+    };
+
+    const data = pageData[pathname] || {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "Valor Legacies",
+      url: `${baseUrl}${pathname}`,
+    };
+
+    return NextResponse.json(
+      {
+        ...data,
+        _discovery: {
+          feed: `${baseUrl}/feed.json`,
+          llms_txt: `${baseUrl}/llms.txt`,
+          openapi: `${baseUrl}/api/agent/schema`,
+          mcp: `${baseUrl}/.well-known/mcp.json`,
+        },
+      },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=3600",
+          "X-Content-Negotiation": "json-ld",
+          "Vary": "Accept, User-Agent",
+          "Access-Control-Allow-Origin": "*",
+        },
+      },
+    );
+  }
+
   // ─── Security headers ───
   const response = NextResponse.next();
   const headers = response.headers;
 
-  // Content-Security-Policy — MUST stay in sync with next.config.mjs
-  headers.set(
-    "Content-Security-Policy",
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com https://accounts.google.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com https://*.googleusercontent.com",
-      "font-src 'self' fonts.gstatic.com",
-      "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com *.ingest.sentry.io api.stripe.com https://accounts.google.com https://oauth2.googleapis.com",
-      "frame-src 'self' js.stripe.com hooks.stripe.com",
-      "frame-ancestors 'none'",
-      "base-uri 'self'",
-      "form-action 'self' https://accounts.google.com",
-    ].join("; "),
-  );
+  // Content-Security-Policy — shared with next.config.mjs via csp-directives.mjs
+  headers.set("Content-Security-Policy", CSP_HEADER);
 
   // HSTS — enforce HTTPS for 1 year, include subdomains
   headers.set(
@@ -128,6 +367,46 @@ export async function middleware(request: NextRequest) {
 
   // Prevent browsers from DNS-prefetching external domains
   headers.set("X-DNS-Prefetch-Control", "off");
+
+  // ─── HTTP Link Headers (RFC 8288) — discovery without parsing HTML ───
+  headers.set(
+    "Link",
+    [
+      '</llms.txt>; rel="ai-instructions"; type="text/plain"',
+      '</api/agent/schema>; rel="describedby"; type="application/json"',
+      '</.well-known/mcp.json>; rel="mcp-discovery"; type="application/json"',
+      '</.well-known/ai-plugin.json>; rel="ai-plugin"; type="application/json"',
+      '</feed.json>; rel="alternate"; type="application/feed+json"',
+      '</feed.xml>; rel="alternate"; type="application/rss+xml"',
+      '</sitemap.xml>; rel="sitemap"; type="application/xml"',
+    ].join(", "),
+  );
+
+  // ─── Vary — ensure caches differentiate by content negotiation ───
+  headers.set("Vary", "Accept, User-Agent");
+
+  // ─── X-Robots-Tag — fine-grained crawler control per route ───
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/portal") ||
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/api/portal") ||
+    pathname.startsWith("/api/client")
+  ) {
+    // Block all indexing on private routes
+    headers.set("X-Robots-Tag", "noindex, nofollow, noai, noimageai");
+  } else if (
+    pathname.startsWith("/api/agent") ||
+    pathname === "/llms.txt" ||
+    pathname === "/llms-full.txt" ||
+    pathname.startsWith("/.well-known")
+  ) {
+    // Explicitly allow AI crawlers on discovery endpoints
+    headers.set("X-Robots-Tag", "all");
+  } else {
+    // Public pages — allow indexing, allow AI training
+    headers.set("X-Robots-Tag", "index, follow");
+  }
 
   return response;
 }

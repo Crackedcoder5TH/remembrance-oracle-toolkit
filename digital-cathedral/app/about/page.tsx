@@ -28,48 +28,23 @@ export default function AboutPage() {
             Our Mission
           </h2>
           <p>
-            Valor Legacies was founded by a veteran with a simple mission:
+            Valor Legacies was founded by a veteran with a simple mission: to
             help military families understand their life insurance options beyond
-            standard military coverage. We connect service members, veterans, and
-            their families with licensed insurance professionals who specialize
-            in military-family needs.
+            standard military coverage. We connect service members, veterans,
+            and their families with licensed professionals who specialize in
+            protecting military households.
           </p>
           <p>
-            We are <strong className="text-[var(--text-primary)]">not</strong> an
-            insurance company, agent, or broker. We do not sell insurance, provide
-            quotes, or bind coverage. We are an independent lead generation service
-            that bridges the gap between military families and qualified
-            professionals who can help.
+            &ldquo;Valor&rdquo; represents courage, bravery, and selfless
+            service, the very qualities that define those who have worn the
+            uniform. &ldquo;Legacies&rdquo; reflect what you leave behind, your
+            impact, your values, and the protection you provide for the people
+            you love.
           </p>
-        </section>
-
-        <section id="how-it-works" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed scroll-mt-8">
-          <h2 className="text-lg text-[var(--text-primary)] font-medium">
-            How It Works
-          </h2>
-          <ul className="list-disc list-inside space-y-2">
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                Submit a request:
-              </strong>{" "}
-              Fill out our short, secure form with your basic information and
-              coverage interest.
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                We match you:
-              </strong>{" "}
-              Your information is shared with a licensed insurance professional
-              experienced in military-family coverage.
-            </li>
-            <li>
-              <strong className="text-[var(--text-primary)]">
-                Free consultation:
-              </strong>{" "}
-              A professional reviews your needs and contacts you within 1-3
-              business days — no obligation, no pressure.
-            </li>
-          </ul>
+          <p>
+            Together, Valor Legacies stands for honoring a life of courage by
+            protecting the future of those you love.
+          </p>
         </section>
 
         <section id="who-we-serve" className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed scroll-mt-8">
@@ -101,24 +76,34 @@ export default function AboutPage() {
           </h2>
           <ul className="list-disc list-inside space-y-2">
             <li>
-              Valor Legacies is independently operated and{" "}
-              <strong className="text-[var(--text-primary)]">
-                not affiliated
-              </strong>{" "}
-              with the U.S. Government, Department of Defense, or any branch of
-              military service.
+              We are not an insurance company, agent, or broker, and we do not
+              sell, quote, or bind insurance coverage.
             </li>
             <li>
-              We do not provide insurance advice, quotes, or coverage of any
-              kind.
+              We operate as an independent lead generation service, connecting
+              military families with licensed insurance professionals.
+            </li>
+            <li>
+              We do not provide insurance advice, recommendations, or coverage
+              of any kind.
+            </li>
+            <li>
+              Valor Legacies is independently operated and is not affiliated
+              with the U.S. Government, Department of Defense, or any branch of
+              the military.
             </li>
             <li>
               Coverage availability, rates, and terms vary by state and are
-              subject to underwriting approval.
+              subject to individual carrier underwriting guidelines and approval.
             </li>
             <li>
-              Your information may be shared with licensed insurance
-              professionals who may contact you.
+              By submitting your information, you agree that it may be shared
+              with licensed insurance professionals who may contact you to
+              discuss coverage options.
+            </li>
+            <li>
+              Submission of your information does not guarantee eligibility or
+              coverage.
             </li>
           </ul>
         </section>
@@ -153,6 +138,57 @@ export default function AboutPage() {
               </a>
             </div>
           </div>
+        </section>
+
+        <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">
+          <h2 className="text-lg text-[var(--text-primary)] font-medium">
+            Transparency
+          </h2>
+          <p>
+            We score every lead against a 16-dimensional coherency model so
+            spam, bots, and low-quality data never reach the agents who serve
+            you. See{" "}
+            <Link
+              href="/how-we-score"
+              className="text-teal-cathedral hover:underline"
+            >
+              How We Score Quality
+            </Link>{" "}
+            for the plain-language explanation.
+          </p>
+          <p>
+            For partners, AI agents, and developers integrating with us, see{" "}
+            <Link
+              href="/developers/agents"
+              className="text-teal-cathedral hover:underline"
+            >
+              the agent API documentation
+            </Link>
+            . The full OpenAPI schema lives at{" "}
+            <a
+              href="/api/agent/schema"
+              className="text-teal-cathedral hover:underline"
+            >
+              /api/agent/schema
+            </a>
+            .
+          </p>
+          {process.env.NEXT_PUBLIC_FORECAST_REPO_URL && (
+            <p>
+              We publish our forecasting track record publicly. Every
+              prediction is signed and on-chain anchored before resolution
+              so it can&apos;t be edited after the fact:{" "}
+              <a
+                href={process.env.NEXT_PUBLIC_FORECAST_REPO_URL}
+                className="text-teal-cathedral hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                public forecasts
+              </a>
+              .
+            </p>
+          )}
         </section>
 
         <section className="space-y-4 text-sm text-[var(--text-muted)] leading-relaxed">

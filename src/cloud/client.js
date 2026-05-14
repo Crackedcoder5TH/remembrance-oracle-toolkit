@@ -17,12 +17,60 @@ const { withRetry } = require('../core/resilience');
 
 const REMOTES_CONFIG_DIR = path.join(os.homedir(), '.remembrance');
 const REMOTES_CONFIG_PATH = path.join(REMOTES_CONFIG_DIR, 'remotes.json');
+const crypto = require('crypto');
+
+// ─── Token encryption at rest ───
+
+function _deriveKey() {
+  // Derive a stable encryption key from the machine's user identity + a fixed salt.
+  // This is NOT a substitute for a proper secret manager, but prevents plaintext
+  // tokens from sitting in the config file readable by any process.
+  let username;
+  try { username = os.userInfo().username; } catch (_) {
+    username = process.env.USER || process.env.USERNAME || 'unknown';
+  }
+  const identity = `${os.hostname()}:${username}:remembrance-oracle`;
+  return crypto.scryptSync(identity, 'remembrance-token-salt', 32);
+}
+
+function _encryptToken(plaintext) {
+  if (!plaintext) return plaintext;
+  const key = _deriveKey();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return 'enc:' + iv.toString('hex') + ':' + tag.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function _decryptToken(stored) {
+  if (!stored || !stored.startsWith('enc:')) return stored; // plaintext fallback for migration
+  try {
+    const parts = stored.slice(4).split(':');
+    if (parts.length !== 3) return stored;
+    const [ivHex, tagHex, dataHex] = parts;
+    const key = _deriveKey();
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+    return decipher.update(Buffer.from(dataHex, 'hex'), null, 'utf8') + decipher.final('utf8');
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[client:_decryptToken] decryption failed (token was encrypted on a different machine?):', e?.message || e);
+    // Return null instead of encrypted gibberish — callers should re-authenticate
+    // This happens when a repo is forked/cloned to a different machine where
+    // os.hostname() + os.userInfo().username produce a different encryption key
+    return null;
+  }
+}
 
 // ─── HTTP Helper ───
 
 function request(url, options = {}) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
+    // Only allow HTTP/HTTPS protocols to prevent SSRF via file://, ftp://, etc.
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return reject(new Error(`Unsupported protocol: ${parsed.protocol} — only http: and https: are allowed`));
+    }
     const mod = parsed.protocol === 'https:' ? https : http;
     const timeout = options.timeout || 10000;
 
@@ -40,7 +88,8 @@ function request(url, options = {}) {
       res.on('end', () => {
         try {
           resolve({ status: res.statusCode, data: JSON.parse(data) });
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[client:request] silent failure:', e?.message || e);
           resolve({ status: res.statusCode, data: { raw: data } });
         }
       });
@@ -65,7 +114,9 @@ class RemoteOracleClient {
    */
   constructor(baseUrl, options = {}) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
-    this.name = options.name || new URL(baseUrl).hostname;
+    let hostname;
+    try { hostname = new URL(baseUrl).hostname; } catch (_) { hostname = baseUrl; }
+    this.name = options.name || hostname;
     this.token = options.token || null;
     this.timeout = options.timeout || 10000;
     // Wrap request with retry for network resilience
@@ -111,7 +162,8 @@ class RemoteOracleClient {
         ...(res.data || {}),
         latencyMs: Date.now() - start,
       };
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[client:health] silent failure:', e?.message || e);
       return { online: false, latencyMs: Date.now() - start };
     }
   }
@@ -238,15 +290,18 @@ function ensureDir(dir) {
 function registerRemote(url, options = {}) {
   ensureDir(REMOTES_CONFIG_DIR);
   let config = loadRemotesConfig();
-  const name = options.name || new URL(url).hostname;
+  let hostname;
+  try { hostname = new URL(url).hostname; } catch (_) { hostname = url; }
+  const name = options.name || hostname;
+  const encryptedToken = options.token ? _encryptToken(options.token) : null;
   const existing = config.remotes.find(r => r.url === url);
   if (existing) {
     existing.name = name;
-    if (options.token) existing.token = options.token;
+    if (options.token) existing.token = encryptedToken;
   } else {
-    config.remotes.push({ url, name, token: options.token || null, addedAt: new Date().toISOString() });
+    config.remotes.push({ url, name, token: encryptedToken, addedAt: new Date().toISOString() });
   }
-  fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2));
+  fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
   return { registered: true, name, url, totalRemotes: config.remotes.length };
 }
 
@@ -258,7 +313,7 @@ function removeRemote(urlOrName) {
   const before = config.remotes.length;
   config.remotes = config.remotes.filter(r => r.url !== urlOrName && r.name !== urlOrName);
   if (config.remotes.length < before) {
-    fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2));
+    fs.writeFileSync(REMOTES_CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
     return { removed: true };
   }
   return { removed: false, error: 'Remote not found' };
@@ -279,7 +334,9 @@ function loadRemotesConfig() {
     if (fs.existsSync(REMOTES_CONFIG_PATH)) {
       return JSON.parse(fs.readFileSync(REMOTES_CONFIG_PATH, 'utf-8'));
     }
-  } catch { /* fresh config */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[client:loadRemotesConfig] fresh config:', e?.message || e);
+  }
   return { remotes: [] };
 }
 
@@ -301,7 +358,7 @@ async function federatedRemoteSearch(query, options = {}) {
   const promises = remotes.map(async (remote) => {
     const client = new RemoteOracleClient(remote.url, {
       name: remote.name,
-      token: remote.token,
+      token: _decryptToken(remote.token),
       timeout,
     });
     try {
@@ -330,8 +387,8 @@ async function federatedRemoteSearch(query, options = {}) {
     if (res.error) errors.push({ remote: res.remote, error: res.error });
 
     for (const p of res.results) {
-      const key = `${p.name}:${p.language}`;
-      if (seen.has(key)) continue;
+      const key = `${p.id || p.name || ''}:${p.language}`;
+      if (key !== ':' && seen.has(key)) continue;
       seen.add(key);
       allResults.push(p);
     }
@@ -351,7 +408,7 @@ async function federatedRemoteSearch(query, options = {}) {
 async function checkRemoteHealth() {
   const remotes = listRemotes();
   const results = await Promise.all(remotes.map(async (remote) => {
-    const client = new RemoteOracleClient(remote.url, { name: remote.name });
+    const client = new RemoteOracleClient(remote.url, { name: remote.name, token: _decryptToken(remote.token) });
     const health = await client.health();
     return { name: remote.name, url: remote.url, ...health };
   }));
@@ -366,4 +423,6 @@ module.exports = {
   federatedRemoteSearch,
   checkRemoteHealth,
   request,
+  _encryptToken,
+  _decryptToken,
 };

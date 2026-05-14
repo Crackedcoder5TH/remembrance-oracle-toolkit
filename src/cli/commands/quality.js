@@ -1,5 +1,5 @@
 /**
- * Quality CLI commands: reflect, covenant, security, compose, deps, harvest, recycle, prune, deep-clean, retag
+ * Quality CLI commands: reflect, covenant, security, compose, deps, harvest, recycle, prune, deep-clean, retag, restore
  */
 
 const fs = require('fs');
@@ -10,6 +10,11 @@ const { parseDryRun, parseTags, parseMinCoherency } = require('../validate-args'
 function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['prune'] = (args) => {
+    if (args.untested) {
+      const result = oracle.pruneUntested();
+      console.log(`Pruned ${c.boldRed(String(result.removed))} untested entries. ${c.boldGreen(String(result.remaining))} remaining.`);
+      return;
+    }
     const min = parseMinCoherency(args, 0.4);
     const result = oracle.prune(min);
     console.log(`Pruned ${c.boldRed(String(result.removed))} entries. ${c.boldGreen(String(result.remaining))} remaining.`);
@@ -18,8 +23,8 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
   handlers['deep-clean'] = (args) => {
     const dryRun = parseDryRun(args);
     const result = oracle.deepClean({
-      minCodeLength: parseInt(args['min-code-length']) || 35,
-      minNameLength: parseInt(args['min-name-length']) || 3,
+      minCodeLength: parseInt(args['min-code-length'], 10) || 35,
+      minNameLength: parseInt(args['min-name-length'], 10) || 3,
       dryRun,
     });
     console.log(`${dryRun ? c.yellow('DRY RUN — ') : ''}Deep Clean Results:`);
@@ -126,8 +131,8 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     const { reflectionLoop } = require('../../core/reflection');
     const result = reflectionLoop(code, {
       language: args.language,
-      maxLoops: parseInt(args.loops) || 3,
-      targetCoherence: parseFloat(args.target) || 0.9,
+      maxLoops: parseInt(args.loops, 10) || 3,
+      targetCoherence: args.target != null ? parseFloat(args.target) : 0.9,
       description: args.description || '',
       tags: parseTags(args),
     });
@@ -238,7 +243,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
         dryRun,
         splitMode: args.split || 'file',
         branch: args.branch,
-        maxFiles: parseInt(args['max-files']) || 200,
+        maxFiles: parseInt(args['max-files'], 10) || 200,
       });
       console.log(c.boldCyan(`Harvest: ${source}\n`));
       console.log(`  Discovered: ${c.bold(String(result.harvested))}`);
@@ -268,7 +273,7 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     const { PatternRecycler } = require('../../evolution/recycler');
     const { SEEDS, EXTENDED_SEEDS } = require('../../patterns/seed-helpers');
 
-    const depth = parseInt(args.depth) || 2;
+    const depth = parseInt(args.depth, 10) || 2;
     const allSeeds = [...SEEDS, ...EXTENDED_SEEDS];
 
     console.log(c.boldCyan('Pattern Recycler') + ' \u2014 exponential growth engine\n');
@@ -283,6 +288,136 @@ function registerQualityCommands(handlers, { oracle, getCode, jsonOut }) {
     console.log('\n' + c.boldCyan('\u2500'.repeat(50)));
     console.log(PatternRecycler.formatReport(report));
     console.log(c.boldCyan('\u2500'.repeat(50)));
+  };
+  handlers['retention'] = (args) => {
+    const dryRun = parseDryRun(args);
+    const sqliteStore = oracle.store?.getSQLiteStore?.() || oracle.patterns?._sqlite;
+    if (!sqliteStore) { console.error(c.boldRed('Error:') + ' No SQLite store available.'); process.exit(1); }
+
+    if (jsonOut()) {
+      console.log(JSON.stringify(sqliteStore.retentionSweep({ dryRun })));
+      return;
+    }
+
+    console.log(c.boldCyan('Retention Sweep') + (dryRun ? c.yellow(' (dry run)') : '') + '\n');
+    const result = sqliteStore.retentionSweep({ dryRun });
+
+    console.log(`  ${c.bold('candidate_archive:')} ${c.boldRed(String(result.candidateArchive.removed))} purged (${result.candidateArchive.before} → ${result.candidateArchive.after})`);
+    console.log(`  ${c.bold('pattern_archive:')}   ${c.boldRed(String(result.patternArchive.removed))} purged (${result.patternArchive.before} → ${result.patternArchive.after})`);
+    console.log(`  ${c.bold('entries:')}           ${c.boldRed(String(result.entries.staleRemoved))} stale + ${c.boldRed(String(result.entries.duplicateRemoved))} dupes removed (${result.entries.remaining} remaining)`);
+    console.log(`  ${c.bold('audit_log:')}         ${result.auditLog.removed} rotated (${result.auditLog.before} → ${result.auditLog.after})`);
+
+    if (!dryRun) {
+      console.log(`\n  ${c.dim('Run')} ${c.cyan('oracle vacuum')} ${c.dim('to reclaim disk space.')}`);
+    }
+  };
+
+  handlers['vacuum'] = (args) => {
+    const sqliteStore = oracle.store?.getSQLiteStore?.() || oracle.patterns?._sqlite;
+    if (!sqliteStore) { console.error(c.boldRed('Error:') + ' No SQLite store available.'); process.exit(1); }
+    const result = sqliteStore.vacuum();
+    console.log(`VACUUM complete: ${result.beforeMB} MB → ${result.afterMB} MB (saved ${c.boldGreen(String(result.savedMB))} MB)`);
+  };
+
+  handlers['restore'] = (args) => {
+    const dryRun = parseDryRun(args);
+    const name = args._sub || args.name;
+
+    const db = oracle.patterns._sqlite?.db || oracle.store?.db;
+    if (!db) { console.log(c.red('No database available.')); return; }
+
+    // Ensure archive table exists
+    try { db.prepare('SELECT 1 FROM pattern_archive LIMIT 1').get(); }
+    catch { console.log(c.yellow('No archive table found — nothing to restore.')); return; }
+
+    if (name === 'lost' || name === 'all-lost') {
+      // Restore all patterns that no longer exist in the active library
+      const lost = db.prepare(`
+        SELECT pa.* FROM pattern_archive pa
+        WHERE NOT EXISTS (SELECT 1 FROM patterns p WHERE p.name = pa.name AND p.language = pa.language)
+        ORDER BY pa.coherency_total DESC
+      `).all();
+
+      const seen = new Set();
+      let restored = 0;
+      for (const row of lost) {
+        const key = row.name + ':' + row.language;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        if (dryRun) {
+          console.log(`  ${c.yellow('[dry-run]')} ${c.cyan(row.name)} (${row.language}) coherency=${row.coherency_total}`);
+          restored++;
+          continue;
+        }
+
+        let fullRow;
+        try { fullRow = JSON.parse(row.full_row_json); } catch { fullRow = null; }
+        const now = new Date().toISOString();
+        db.prepare(`
+          INSERT OR IGNORE INTO patterns
+            (id, name, code, language, pattern_type, complexity, description, tags,
+             coherency_total, coherency_json, test_code, usage_count, success_count,
+             version, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          row.id, row.name, row.code, row.language || 'javascript',
+          row.pattern_type || 'utility', fullRow?.complexity || 'atomic',
+          fullRow?.description || '', row.tags || '[]',
+          row.coherency_total || 0, row.coherency_json || '{}',
+          row.test_code || null, fullRow?.usage_count || 0,
+          fullRow?.success_count || 0, fullRow?.version || 1,
+          row.original_created_at || now, now
+        );
+        restored++;
+      }
+      console.log(`${dryRun ? c.yellow('DRY RUN — ') : ''}Restored ${c.boldGreen(String(restored))} lost patterns.`);
+      return;
+    }
+
+    if (name === 'stats') {
+      const total = db.prepare('SELECT COUNT(*) as c FROM pattern_archive').get();
+      const reasons = db.prepare('SELECT deleted_reason, COUNT(*) as c FROM pattern_archive GROUP BY deleted_reason ORDER BY c DESC').all();
+      const lostCount = db.prepare(`SELECT COUNT(DISTINCT name || ':' || language) as c FROM pattern_archive pa
+        WHERE NOT EXISTS (SELECT 1 FROM patterns p WHERE p.name = pa.name AND p.language = pa.language)`).get();
+      console.log(c.boldCyan('Archive Stats'));
+      console.log(`  Total archived: ${c.bold(String(total.c))}`);
+      console.log(`  Unique lost:    ${c.boldRed(String(lostCount.c))}`);
+      console.log(`\n  ${c.bold('By reason:')}`);
+      reasons.forEach(r => console.log(`    ${r.deleted_reason}: ${r.c}`));
+      return;
+    }
+
+    if (name) {
+      // Restore specific pattern by name
+      const row = db.prepare(`SELECT * FROM pattern_archive WHERE name = ? ORDER BY coherency_total DESC LIMIT 1`).get(name);
+      if (!row) { console.log(c.yellow(`No archived pattern named '${name}'.`)); return; }
+      if (!dryRun) {
+        let fullRow;
+        try { fullRow = JSON.parse(row.full_row_json); } catch { fullRow = null; }
+        const now = new Date().toISOString();
+        db.prepare(`INSERT OR REPLACE INTO patterns
+          (id, name, code, language, pattern_type, complexity, description, tags,
+           coherency_total, coherency_json, test_code, usage_count, success_count,
+           version, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(row.id, row.name, row.code, row.language || 'javascript',
+          row.pattern_type || 'utility', fullRow?.complexity || 'atomic',
+          fullRow?.description || '', row.tags || '[]',
+          row.coherency_total || 0, row.coherency_json || '{}',
+          row.test_code || null, fullRow?.usage_count || 0,
+          fullRow?.success_count || 0, fullRow?.version || 1,
+          row.original_created_at || now, now);
+      }
+      console.log(`${dryRun ? c.yellow('DRY RUN — ') : ''}Restored ${c.boldGreen(row.name)} (${row.language}, coherency=${row.coherency_total})`);
+      return;
+    }
+
+    console.log(c.boldCyan('Usage:'));
+    console.log(`  oracle restore stats          Show archive statistics`);
+    console.log(`  oracle restore lost            Restore all lost patterns`);
+    console.log(`  oracle restore <name>          Restore a specific pattern`);
+    console.log(`  oracle restore lost --dry-run  Preview what would be restored`);
   };
 }
 

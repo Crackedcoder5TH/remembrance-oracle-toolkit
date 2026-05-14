@@ -163,7 +163,9 @@ module.exports = {
       patterns: null,
     };
 
-    try { report.coverage = this.coverageMap(); } catch { /* unavailable */ }
+    try { report.coverage = this.coverageMap(); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-eternal:selfEvaluate] unavailable:', e?.message || e);
+    }
 
     try {
       const tm = this.getTemporalMemory();
@@ -171,10 +173,16 @@ module.exports = {
         report.temporal = tm.stats();
         report.temporal.regressions = tm.detectRegressions({ lookbackDays: 7 }).length;
       }
-    } catch { /* unavailable */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-eternal:selfEvaluate] unavailable:', e?.message || e);
+    }
 
-    try { report.covenant = this.evolvedCovenantStats(); } catch { /* unavailable */ }
-    try { report.daemon = this.daemonStatus(); } catch { /* unavailable */ }
+    try { report.covenant = this.evolvedCovenantStats(); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-eternal:selfEvaluate] unavailable:', e?.message || e);
+    }
+    try { report.daemon = this.daemonStatus(); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-eternal:selfEvaluate] unavailable:', e?.message || e);
+    }
 
     try {
       const all = this.patterns?.getAll() || [];
@@ -183,7 +191,9 @@ module.exports = {
         avgCoherency: all.length > 0 ? +(all.reduce((s, p) => s + (p.coherencyScore?.total ?? 0), 0) / all.length).toFixed(3) : 0,
         languages: [...new Set(all.map(p => p.language).filter(Boolean))],
       };
-    } catch { /* unavailable */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-eternal:selfEvaluate] unavailable:', e?.message || e);
+    }
 
     return report;
   },

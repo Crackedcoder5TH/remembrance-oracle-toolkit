@@ -1,0 +1,169 @@
+/* REMEMBRANCE.LLC — Kingdom Theme */
+/* Deep Indigo + Teal + Crimson | Fibonacci Spacing | Sacred Geometry */
+
+:root {
+  /* Kingdom Colors */
+  --indigo: #1a0a3e;
+  --indigo-deep: #0e0624;
+  --indigo-light: #201050;
+  --indigo-surface: #2a1660;
+  --teal: #14b8a6;
+  --teal-dim: #0d9488;
+  --teal-glow: rgba(20, 184, 166, 0.15);
+  --crimson: #dc2626;
+  --crimson-dim: #b91c1c;
+  --crimson-glow: rgba(220, 38, 38, 0.12);
+  --text: #f0f0f3;
+  --text-secondary: #a5b4c3;
+  --text-muted: #6b7a8d;
+  --border: #2a1a50;
+  /* Fibonacci */
+  --sp-3: 3px; --sp-5: 5px; --sp-8: 8px; --sp-13: 13px;
+  --sp-21: 21px; --sp-34: 34px; --sp-55: 55px; --sp-89: 89px; --sp-144: 144px;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'SF Mono', 'Fira Code', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font); background: var(--indigo-deep); color: var(--text);
+  font-size: 13px; line-height: 1.618; /* Golden ratio */
+  /* Sacred Geometry — Flower of Life */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='104'%3E%3Ccircle cx='60' cy='52' r='34' fill='none' stroke='%23201050' stroke-width='0.5' opacity='0.15'/%3E%3Ccircle cx='60' cy='18' r='34' fill='none' stroke='%23201050' stroke-width='0.5' opacity='0.1'/%3E%3Ccircle cx='60' cy='86' r='34' fill='none' stroke='%23201050' stroke-width='0.5' opacity='0.1'/%3E%3Ccircle cx='30' cy='35' r='34' fill='none' stroke='%23201050' stroke-width='0.5' opacity='0.1'/%3E%3Ccircle cx='90' cy='35' r='34' fill='none' stroke='%23201050' stroke-width='0.5' opacity='0.1'/%3E%3Ccircle cx='30' cy='69' r='34' fill='none' stroke='%23201050' stroke-width='0.5' opacity='0.1'/%3E%3Ccircle cx='90' cy='69' r='34' fill='none' stroke='%23201050' stroke-width='0.5' opacity='0.1'/%3E%3C/svg%3E");
+}
+
+a { color: var(--teal); text-decoration: none; } a:hover { color: #5eead4; }
+
+/* Nav */
+nav { position: fixed; top: 0; width: 100%; z-index: 100; padding: var(--sp-13) var(--sp-34);
+  background: rgba(14,6,36,0.85); backdrop-filter: blur(13px); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: var(--sp-21); }
+nav .logo { font-size: var(--sp-21); font-weight: 800; letter-spacing: -1px; }
+nav .logo .r { color: var(--crimson); }
+nav .links { margin-left: auto; display: flex; gap: var(--sp-21); font-size: 13px; }
+nav .links a { color: var(--text-secondary); } nav .links a:hover { color: var(--teal); }
+nav .cta { background: var(--crimson); color: #fff; padding: var(--sp-8) var(--sp-21);
+  border-radius: var(--sp-8); font-weight: 600; font-size: 13px; border: none; cursor: pointer; }
+nav .cta:hover { background: var(--crimson-dim); }
+
+/* Hero */
+.hero { padding: var(--sp-144) var(--sp-55) var(--sp-89); text-align: center;
+  background: linear-gradient(135deg, var(--indigo-deep), #0a2a2a, var(--indigo-deep));
+  position: relative; overflow: hidden; }
+.hero::before { content: ''; position: absolute; top: 50%; left: 50%; width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(20,184,166,0.08) 0%, transparent 70%);
+  transform: translate(-50%, -50%); pointer-events: none; }
+.hero h1 { font-size: var(--sp-55); font-weight: 900; letter-spacing: -2px;
+  background: linear-gradient(135deg, var(--text), var(--teal)); -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: var(--sp-21); }
+.hero .sub { font-size: var(--sp-21); color: var(--text-secondary); max-width: 610px;
+  margin: 0 auto var(--sp-34); }
+.hero .stats { display: flex; justify-content: center; gap: var(--sp-34); flex-wrap: wrap;
+  margin-bottom: var(--sp-34); }
+.hero .stat-item { text-align: center; }
+.hero .stat-num { font-size: var(--sp-34); font-weight: 800; color: var(--teal); }
+.hero .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.hero .cta-group { display: flex; gap: var(--sp-13); justify-content: center; }
+.hero .btn-primary { background: var(--crimson); color: #fff; padding: var(--sp-13) var(--sp-34);
+  border-radius: var(--sp-8); font-weight: 700; font-size: 15px; border: none; cursor: pointer; }
+.hero .btn-secondary { background: transparent; color: var(--teal); padding: var(--sp-13) var(--sp-34);
+  border-radius: var(--sp-8); font-weight: 600; font-size: 15px; border: 1px solid var(--teal); cursor: pointer; }
+
+/* Sections */
+section { padding: var(--sp-89) var(--sp-55); max-width: 1100px; margin: 0 auto; }
+section h2 { font-size: var(--sp-34); font-weight: 800; letter-spacing: -1px;
+  margin-bottom: var(--sp-34); text-align: center; }
+section h2 .accent { color: var(--teal); }
+section h2 .crimson { color: var(--crimson); }
+
+/* Cards */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--sp-21); margin: var(--sp-34) 0; }
+.card { background: var(--indigo); border: 1px solid var(--border); border-radius: var(--sp-13);
+  padding: var(--sp-34); transition: border-color 0.3s, transform 0.2s; }
+.card:hover { border-color: var(--teal); transform: translateY(-3px); }
+.card h3 { font-size: var(--sp-21); margin-bottom: var(--sp-13); color: var(--text); }
+.card p { color: var(--text-secondary); font-size: 13px; }
+.card.teal-border { border-left: 3px solid var(--teal); }
+.card.crimson-border { border-left: 3px solid var(--crimson); }
+.card.indigo-border { border-left: 3px solid var(--indigo-surface); }
+
+/* Pricing */
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-21);
+  max-width: 1000px; margin: var(--sp-34) auto; }
+.price-card { background: var(--indigo); border: 1px solid var(--border); border-radius: var(--sp-13);
+  padding: var(--sp-34); text-align: center; position: relative; transition: all 0.3s; }
+.price-card:hover { transform: translateY(-5px); }
+.price-card.premium { border-color: var(--crimson); box-shadow: 0 0 34px var(--crimson-glow); }
+.price-card.merit { border-color: var(--teal); box-shadow: 0 0 34px var(--teal-glow); }
+.price-card.free { border-color: var(--indigo-surface); }
+.price-card .tier-name { font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+  margin-bottom: var(--sp-13); }
+.price-card .tier-name.crimson { color: var(--crimson); }
+.price-card .tier-name.teal { color: var(--teal); }
+.price-card .tier-name.indigo { color: var(--text-muted); }
+.price-card .price { font-size: var(--sp-55); font-weight: 900; letter-spacing: -2px;
+  margin: var(--sp-8) 0; }
+.price-card .price .period { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+.price-card .tagline { font-size: 13px; color: var(--text-secondary);
+  margin-bottom: var(--sp-21); font-style: italic; }
+.price-card ul { list-style: none; text-align: left; margin: var(--sp-21) 0; }
+.price-card li { padding: var(--sp-5) 0; font-size: 13px; color: var(--text-secondary); }
+.price-card li::before { content: '✓ '; color: var(--teal); font-weight: 700; }
+.price-card .btn { display: block; width: 100%; padding: var(--sp-13); border-radius: var(--sp-8);
+  font-weight: 700; font-size: 13px; border: none; cursor: pointer; margin-top: var(--sp-21); }
+.price-card.premium .btn { background: var(--crimson); color: #fff; }
+.price-card.merit .btn { background: var(--teal); color: #000; }
+.price-card.free .btn { background: transparent; color: var(--teal); border: 1px solid var(--teal); }
+
+/* Nobody Excluded Banner */
+.abundance-banner { text-align: center; padding: var(--sp-55) var(--sp-34);
+  background: linear-gradient(135deg, rgba(220,38,38,0.05), rgba(20,184,166,0.05));
+  border-radius: var(--sp-13); margin: var(--sp-55) auto; max-width: 800px; }
+.abundance-banner h2 { font-size: var(--sp-34); margin-bottom: var(--sp-13); }
+.abundance-banner p { color: var(--text-secondary); font-size: 15px; }
+
+/* Table */
+table { width: 100%; border-collapse: collapse; font-size: 13px; margin: var(--sp-34) 0; }
+th { text-align: left; padding: var(--sp-13); font-size: 11px; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+td { padding: var(--sp-13); border-bottom: 1px solid rgba(42,26,80,0.5); color: var(--text-secondary); }
+tr:hover td { background: rgba(32,16,80,0.3); }
+td code { font-family: var(--mono); color: var(--teal); background: var(--teal-glow);
+  padding: 2px var(--sp-5); border-radius: 3px; font-size: 12px; }
+
+/* Code blocks */
+pre { background: var(--indigo); border: 1px solid var(--border); border-radius: var(--sp-8);
+  padding: var(--sp-21); overflow-x: auto; font-family: var(--mono); font-size: 12px;
+  line-height: 1.6; margin: var(--sp-21) 0; }
+code { font-family: var(--mono); }
+
+/* Footer */
+footer { padding: var(--sp-55) var(--sp-55) var(--sp-34); border-top: 1px solid var(--border);
+  max-width: 1100px; margin: var(--sp-89) auto 0; display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr; gap: var(--sp-34); font-size: 13px; }
+footer h4 { color: var(--text); margin-bottom: var(--sp-13); font-size: 13px; }
+footer a { color: var(--text-muted); display: block; padding: var(--sp-3) 0; }
+footer a:hover { color: var(--teal); }
+footer .brand { font-size: var(--sp-21); font-weight: 800; margin-bottom: var(--sp-8); }
+footer .tagline { color: var(--text-muted); font-size: 12px; }
+footer .legal { grid-column: 1/-1; text-align: center; color: var(--text-muted);
+  padding-top: var(--sp-21); border-top: 1px solid var(--border); font-size: 11px; margin-top: var(--sp-21); }
+
+/* FAQ */
+details { border: 1px solid var(--border); border-radius: var(--sp-8); margin: var(--sp-8) 0; }
+summary { padding: var(--sp-13) var(--sp-21); cursor: pointer; font-weight: 600; color: var(--text); }
+summary:hover { color: var(--teal); }
+details[open] summary { border-bottom: 1px solid var(--border); color: var(--teal); }
+details div, details p { padding: var(--sp-13) var(--sp-21); color: var(--text-secondary); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero h1 { font-size: var(--sp-34); }
+  .hero .sub { font-size: 15px; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  footer { grid-template-columns: 1fr 1fr; }
+  nav .links { display: none; }
+  section { padding: var(--sp-55) var(--sp-21); }
+}

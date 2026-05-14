@@ -55,7 +55,9 @@ function startDaemon(oracle, options = {}) {
     try {
       const registry = createEvolvedRegistry();
       setPrincipleRegistry(registry);
-    } catch { /* evolved principles not yet created */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[daemon:startDaemon] evolved principles not yet created:', e?.message || e);
+    }
   }
 
   // Initialize temporal memory
@@ -66,7 +68,9 @@ function startDaemon(oracle, options = {}) {
       if (sqliteStore) {
         temporal = new TemporalMemory(sqliteStore);
       }
-    } catch { /* temporal tracking not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[daemon:startDaemon] temporal tracking not available:', e?.message || e);
+    }
   }
 
   function log(msg) {
@@ -82,13 +86,24 @@ function startDaemon(oracle, options = {}) {
   function runCycle() {
     if (running) return lastReport;
     // Acquire maintenance lock — prevent lifecycle from overlapping
+    // TOCTOU fix: check-and-set atomically (single-threaded JS, but guards against
+    // re-entrant calls from setInterval firing while a sync runCycle is in progress)
     if (oracle._maintenanceInProgress) {
-      log(`Skipping cycle — maintenance already in progress (source: ${oracle._maintenanceSource})`);
-      return lastReport;
+      // Stale lock detection: if lock held >30 min, force-release (crash recovery)
+      if (oracle._maintenanceSince && Date.now() - oracle._maintenanceSince > 30 * 60 * 1000) {
+        log(`Force-releasing stale maintenance lock (held since ${new Date(oracle._maintenanceSince).toISOString()})`);
+        oracle._maintenanceInProgress = false;
+        oracle._maintenanceSource = null;
+        oracle._maintenanceSince = null;
+      } else {
+        log(`Skipping cycle — maintenance already in progress (source: ${oracle._maintenanceSource})`);
+        return lastReport;
+      }
     }
     running = true;
     oracle._maintenanceInProgress = true;
     oracle._maintenanceSource = 'daemon';
+    oracle._maintenanceSince = Date.now();
     const start = Date.now();
     cycleCount++;
 
@@ -162,7 +177,9 @@ function startDaemon(oracle, options = {}) {
                   domain: spot.domain,
                   suggestion: spot.suggestion,
                 });
-              } catch { /* emit not available */ }
+              } catch (e) {
+                if (process.env.ORACLE_DEBUG) console.warn('[daemon:init] emit not available:', e?.message || e);
+              }
             }
             log(`  Coverage gaps: ${report.coverage.blindSpots.map(b => b.domain).join(', ')}`);
           }
@@ -210,7 +227,9 @@ function startDaemon(oracle, options = {}) {
                       `Temporal regression detected: ${reg.possibleCause || 'unknown'}`,
                       null
                     );
-                  } catch { /* capture failed */ }
+                  } catch (e) {
+                    if (process.env.ORACLE_DEBUG) console.warn('[daemon:init] capture failed:', e?.message || e);
+                  }
                 }
               }
             }
@@ -222,12 +241,15 @@ function startDaemon(oracle, options = {}) {
 
     } catch (err) {
       report.errors.push(`cycle: ${err.message}`);
+    } finally {
+      // ALWAYS release lock — even if catch throws (Meta-Pattern 7 fix)
+      report.durationMs = Date.now() - start;
+      oracle._maintenanceInProgress = false;
+      oracle._maintenanceSource = null;
+      oracle._maintenanceSince = null;
+      running = false;
     }
 
-    report.durationMs = Date.now() - start;
-    // Release maintenance lock
-    oracle._maintenanceInProgress = false;
-    oracle._maintenanceSource = null;
     lastReport = report;
     history.push({
       cycle: report.cycle,
@@ -237,10 +259,9 @@ function startDaemon(oracle, options = {}) {
       healed: report.healing?.evolution?.healed?.length || 0,
       promoted: report.promotion?.promoted || 0,
     });
-    if (history.length > maxHistory) history.shift();
+    while (history.length > maxHistory) history.shift();
 
     log(`Cycle ${cycleCount} complete in ${report.durationMs}ms (${report.errors.length} errors)`);
-    running = false;
     return report;
   }
 

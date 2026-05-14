@@ -233,11 +233,11 @@ function attachCliReporter(emitter, options = {}) {
   });
 
   emitter.on('swarm:scoring', (data) => {
-    process.stdout.write(`[swarm]   Scoring ${data.agent}: ${data.score.toFixed(3)} (${data.phase})\n`);
+    process.stdout.write(`[swarm]   Scoring ${data.agent}: ${(data.score ?? 0).toFixed(3)} (${data.phase})\n`);
   });
 
   emitter.on('swarm:consensus', (data) => {
-    process.stdout.write(`[swarm] Consensus: ${data.winner} (${data.winnerScore?.toFixed(3)}) — ${(data.agreement * 100).toFixed(0)}% agreement\n`);
+    process.stdout.write(`[swarm] Consensus: ${data.winner} (${data.winnerScore?.toFixed(3)}) — ${((data.agreement ?? 0) * 100).toFixed(0)}% agreement\n`);
   });
 
   emitter.on('swarm:escalation', (data) => {

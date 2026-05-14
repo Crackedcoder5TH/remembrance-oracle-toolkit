@@ -19,13 +19,31 @@ const crypto = require('crypto');
 function _parseResponse(data) {
   try {
     return JSON.parse(data);
-  } catch {
-    const parsed = {};
-    data.split('&').forEach(pair => {
-      const [k, v] = pair.split('=');
-      if (k) parsed[decodeURIComponent(k)] = decodeURIComponent(v || '');
-    });
-    return parsed;
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:_parseResponse] silent failure:', e?.message || e);
+    // Only attempt URL-encoded parsing if it looks like form data (no HTML tags, contains =)
+    if (data && !data.includes('<') && data.includes('=')) {
+      const parsed = Object.create(null); // prevent prototype pollution
+      const FORBIDDEN_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+      const pairs = data.split('&');
+      if (pairs.length > 50) return { error: 'Too many form parameters', raw: String(data).slice(0, 500) };
+      for (const pair of pairs) {
+        const [k, v] = pair.split('=');
+        if (k) {
+          try {
+            const decoded = decodeURIComponent(k);
+            if (!FORBIDDEN_KEYS.has(decoded)) {
+              parsed[decoded] = decodeURIComponent(v || '');
+            }
+          } catch (decodeErr) {
+            // Skip malformed percent-encoded values (null bytes, invalid sequences)
+            continue;
+          }
+        }
+      }
+      return parsed;
+    }
+    return { error: 'Unexpected response format', raw: String(data).slice(0, 500) };
   }
 }
 
@@ -131,13 +149,21 @@ class GitHubIdentity {
       }
 
       const { login, id, avatar_url } = res.data;
+      if (!login || typeof login !== 'string') {
+        return { success: false, error: 'Invalid GitHub response: missing login field' };
+      }
+      if (id == null) {
+        return { success: false, error: 'Invalid GitHub response: missing id field' };
+      }
       const voterId = `github:${login}`;
+      // Sanitize avatar_url — must be a valid GitHub URL or empty
+      const safeAvatar = (typeof avatar_url === 'string' && /^https:\/\//.test(avatar_url)) ? avatar_url : '';
 
       this._saveIdentity({
         voterId,
         githubUsername: login,
         githubId: id,
-        avatarUrl: avatar_url || '',
+        avatarUrl: safeAvatar,
       });
 
       return {
@@ -145,7 +171,7 @@ class GitHubIdentity {
         voterId,
         username: login,
         githubId: id,
-        avatarUrl: avatar_url || '',
+        avatarUrl: safeAvatar,
       };
     } catch (err) {
       return { success: false, error: err.message };
@@ -247,7 +273,10 @@ class GitHubIdentity {
           'SELECT * FROM github_identities WHERE voter_id = ?'
         ).get(voterId);
         return row || null;
-      } catch { return null; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:getIdentity] returning null on error:', e?.message || e);
+        return null;
+      }
     }
     return this._identities.get(voterId) || null;
   }
@@ -269,7 +298,10 @@ class GitHubIdentity {
         return this.store.db.prepare(
           'SELECT * FROM github_identities ORDER BY contributions DESC LIMIT ?'
         ).all(limit);
-      } catch { return []; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:listIdentities] returning empty array on error:', e?.message || e);
+        return [];
+      }
     }
     return Array.from(this._identities.values()).slice(0, limit);
   }
@@ -303,7 +335,10 @@ class GitHubIdentity {
       try {
         this.store.db.prepare('DELETE FROM github_identities WHERE voter_id = ?').run(voterId);
         return true;
-      } catch { return false; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[github-oauth:removeIdentity] returning false on error:', e?.message || e);
+        return false;
+      }
     }
     return this._identities.delete(voterId);
   }
@@ -317,11 +352,12 @@ class GitHubIdentity {
       _saveToDb(this.store, identity, now);
     }
 
+    const existing = this._identities.get(identity.voterId);
     this._identities.set(identity.voterId, {
       ...identity,
-      verifiedAt: now,
+      verifiedAt: existing?.verifiedAt || now,
       lastSeen: now,
-      contributions: 0,
+      contributions: existing?.contributions || 0,
     });
   }
 }

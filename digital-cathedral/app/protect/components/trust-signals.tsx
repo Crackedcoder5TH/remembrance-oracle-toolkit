@@ -69,6 +69,11 @@ function TrustBadges() {
       description: "Connected only with state-licensed insurance professionals",
     },
     {
+      icon: "\u269C\uFE0F",
+      title: "Covenant Gate",
+      description: "Every request passes the coherency gate before a professional is notified",
+    },
+    {
       icon: "\uD83D\uDEE1\uFE0F",
       title: "Privacy Protected",
       description: "CCPA/CPRA compliant — your data, your control",

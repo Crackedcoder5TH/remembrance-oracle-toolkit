@@ -711,9 +711,9 @@ describe('Swarm MCP integration', () => {
     assert.ok(typeof HANDLERS.oracle_swarm === 'function', 'oracle_swarm handler not found');
   });
 
-  it('TOOLS has 11 entries', () => {
+  it('TOOLS has at least 13 entries (18 after Tier-1..4 additions)', () => {
     const { TOOLS } = require('../src/mcp/tools');
-    assert.equal(TOOLS.length, 12);
+    assert.ok(TOOLS.length >= 13);
   });
 });
 
@@ -1576,6 +1576,9 @@ describe('Voice I/O', () => {
     assert.equal(sanitizeForShell('hello "world"'), 'hello world');
     assert.equal(sanitizeForShell('test$var`cmd`'), 'testvarcmd');
     assert.equal(sanitizeForShell('line1\nline2'), 'line1. line2');
+    // Allowlist-based: only safe chars survive
+    assert.equal(sanitizeForShell('hello; echo bad'), 'hello echo bad');
+    assert.equal(sanitizeForShell('safe text 123!'), 'safe text 123!');
   });
 
   it('speakWhisper returns text summary even without TTS', () => {

@@ -3,11 +3,16 @@
  *
  * Weighted coherence formula (syntax, readability, security, test proof, reliability).
  * computeCoherence, computeRepoCoherence.
+ *
+ * Individual dimension scorers (readability, security, naming) NOW DELEGATE to
+ * src/unified/coherency.js where possible. File-path-based scoring functions
+ * (computeCoherence, scoreTestProof, scoreHistoricalReliability) remain here
+ * because they need filesystem access.
  */
 
 const { readFileSync, existsSync } = require('fs');
 const { join, extname, relative, dirname, basename } = require('path');
-const { detectLanguage } = require('../core/coherency');
+const { detectLanguage, scoreReadability: unifiedScoreReadability, scoreSecurity: unifiedScoreSecurity, scoreNamingQuality: unifiedScoreNamingQuality } = require('../unified/coherency');
 const { covenantCheck } = require('../core/covenant');
 const {
   analyzeCommentDensity,
@@ -45,14 +50,27 @@ function scoreSyntaxValidity(code, language) {
   const covenant = covenantCheck(code, { language });
   if (!covenant.sealed) {
     score -= 0.2;
-    details.push(`Covenant violations: ${covenant.violations?.length || 'unknown'}`);
+    details.push(`Covenant violations: ${covenant.violations?.length ?? 'unknown'}`);
   }
 
   const nonBlank = code.split('\n').filter(l => l.trim()).length;
   if (nonBlank === 0) { score = 0; details.push('Empty file'); }
   else if (nonBlank < 3) { score -= 0.1; details.push('Very small file (< 3 lines)'); }
 
-  return { score: Math.max(0, Math.min(1, Math.round(score * 1000) / 1000)), details };
+  const __retVal = { score: Math.max(0, Math.min(1, Math.round(score * 1000) / 1000)), details };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:scoring-coherence:scoreSyntaxValidity' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 function countBalanced(code, open, close) {
@@ -91,7 +109,7 @@ function scoreReadability(code, language) {
   details.push(`Naming quality: ${namingScore.toFixed(3)}`);
 
   const score = (commentScore * 0.30) + (nestingScore * 0.25) + (qualityScore * 0.25) + (namingScore * 0.20);
-  return { score: Math.round(score * 1000) / 1000, commentScore, nestingScore, qualityScore, namingScore, details };
+  return { score: Math.round(Math.max(0, Math.min(1, score)) * 1000) / 1000, commentScore, nestingScore, qualityScore, namingScore, details };
 }
 
 function scoreNamingQuality(code, language) {
@@ -155,7 +173,10 @@ function scoreTestProof(filePath, rootDir) {
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       testFile = candidate;
-      try { testCode = readFileSync(candidate, 'utf-8'); } catch { continue; }
+      try { testCode = readFileSync(candidate, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[scoring-coherence:scoreTestProof] skipping item:', e?.message || e);
+        continue;
+      }
       break;
     }
   }
@@ -302,7 +323,7 @@ function computeRepoCoherence(rootDir, config = {}) {
   const dimAvgs = {};
   for (const dim of dimNames) {
     dimAvgs[dim] = Math.round(
-      (fileScores.reduce((s, f) => s + (f.dimensions[dim]?.score || 0), 0) / fileScores.length) * 1000
+      (fileScores.reduce((s, f) => s + (f.dimensions[dim]?.score ?? 0), 0) / fileScores.length) * 1000
     ) / 1000;
   }
 

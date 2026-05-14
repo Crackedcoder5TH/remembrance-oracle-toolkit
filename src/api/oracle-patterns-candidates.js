@@ -68,12 +68,26 @@ function _evaluateCandidate(candidate, provenPatterns, options) {
         return { status: 'vetoed', reason: 'test execution failed' };
       }
     } catch (_) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-patterns-candidates:_evaluateCandidate] silent failure:', _?.message || _);
       return { status: 'vetoed', reason: 'sandbox error' };
     }
   }
 
   if (dryRun) {
-    return { status: 'would-promote', coherency: coherency.toFixed(3) };
+    const __retVal = { status: 'would-promote', coherency: coherency.toFixed(3) };
+    // ── LRE field-coupling (auto-wired) ──
+    try {
+      const __lre_p1 = './../../core/field-coupling';
+      const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+      for (const __p of [__lre_p1, __lre_p2]) {
+        try {
+          const { contribute: __contribute } = require(__p);
+          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:oracle-patterns-candidates:_evaluateCandidate' });
+          break;
+        } catch (_) { /* try next */ }
+      }
+    } catch (_) { /* best-effort */ }
+    return __retVal;
   }
 
   return { status: 'promote', coherency };
@@ -89,14 +103,15 @@ module.exports = {
     const newTags = retagPattern(pattern);
     const diff = tagDiff(oldTags, newTags);
 
-    if (!options.dryRun && diff.added.length > 0) {
+    const hasRemovals = oldTags.some(t => !newTags.map(n => n.toLowerCase()).includes(t.toLowerCase()));
+    if (!options.dryRun && (diff.added.length > 0 || hasRemovals)) {
       this.patterns.update(id, { tags: newTags });
     }
 
     const result = {
       success: true, id: pattern.id, name: pattern.name,
       oldTags, newTags, added: diff.added,
-      updated: !options.dryRun && diff.added.length > 0
+      updated: !options.dryRun && (diff.added.length > 0 || hasRemovals)
     };
     return result;
   },
@@ -112,7 +127,7 @@ module.exports = {
       const oldTags = [...(pattern.tags || [])];
       const newTags = retagPattern(pattern);
       const diff = tagDiff(oldTags, newTags);
-      if (diff.added.length > minAdded) {
+      if (diff.added.length > 0 && diff.added.length >= minAdded) {
         if (!dryRun) this.patterns.update(pattern.id, { tags: newTags });
         enriched++;
         totalTagsAdded += diff.added.length;
@@ -128,7 +143,7 @@ module.exports = {
   },
 
   deepClean(options = {}) {
-    const { minCodeLength = 35, minNameLength = 3, removeDuplicates = true, removeStubs = true, dryRun = false } = options;
+    const { minCodeLength = 35, minNameLength = 3, removeDuplicates = true, removeStubs = true, dryRun = false, maxRemovals = 50 } = options;
     const all = this.patterns.getAll();
     const toRemove = removeDuplicates ? _findDuplicates(all) : new Map();
 
@@ -146,6 +161,22 @@ module.exports = {
       }
     }
 
+    // SAFETY: Never delete patterns with coherency >= 0.7 or test code
+    for (const [id] of toRemove) {
+      const p = all.find(x => x.id === id);
+      if (!p) continue;
+      const coherency = p.coherencyScore?.total ?? p.coherency_total ?? 0;
+      if (coherency >= 0.7) { toRemove.delete(id); continue; }
+      if (p.test_code && p.test_code.trim().length > 20) { toRemove.delete(id); continue; }
+    }
+
+    // SAFETY: Cap total removals per run to prevent mass deletion
+    if (toRemove.size > maxRemovals) {
+      const entries = [...toRemove.entries()];
+      toRemove.clear();
+      for (let i = 0; i < maxRemovals; i++) toRemove.set(entries[i][0], entries[i][1]);
+    }
+
     let duplicates = 0, stubs = 0, tooShort = 0;
     const details = [];
     for (const [id, reason] of toRemove) {
@@ -157,19 +188,57 @@ module.exports = {
       if (!dryRun) {
         try {
           const db = this.patterns._sqlite?.db || this.store?.db;
-          if (db) db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
-        } catch { /* skip */ }
+          if (db) {
+            // Archive before delete for recovery safety
+            const row = db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
+            if (row) {
+              const now = new Date().toISOString();
+              const archiveResult = db.prepare(`
+                INSERT OR IGNORE INTO pattern_archive
+                  (id, name, code, language, pattern_type, coherency_total, coherency_json,
+                   test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `).run(
+                row.id, row.name, row.code, row.language || 'unknown',
+                row.pattern_type || 'utility', row.coherency_total || 0,
+                row.coherency_json || '{}', row.test_code || null,
+                row.tags || '[]', 'deep-clean:' + reason, now, row.created_at || null,
+                JSON.stringify(row)
+              );
+              // Verify archive before allowing delete
+              if (archiveResult.changes === 0) {
+                const archived = db.prepare('SELECT 1 FROM pattern_archive WHERE id = ?').get(row.id);
+                if (!archived) {
+                  if (process.env.ORACLE_DEBUG) console.warn(`[oracle-patterns-candidates:deepClean] ABORT delete of ${id} — archive failed`);
+                  continue;
+                }
+              }
+            }
+            db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
+          }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[oracle-patterns-candidates:code] skip:', e?.message || e);
+        }
       }
     }
 
-    const remaining = all.length - toRemove.size;
-    this._emit({ type: 'deep_clean', removed: toRemove.size, duplicates, stubs, tooShort, remaining, dryRun });
-    return { removed: toRemove.size, duplicates, stubs, tooShort, remaining, details };
+    // Count actual deletions — patterns where archive failed were skipped via continue
+    let actualRemoved = 0;
+    if (!dryRun) {
+      for (const id of toRemove) {
+        const still = db.prepare('SELECT 1 FROM patterns WHERE id = ?').get(id);
+        if (!still) actualRemoved++;
+      }
+    }
+    const remaining = all.length - actualRemoved;
+    this._emit({ type: 'deep_clean', removed: actualRemoved, duplicates, stubs, tooShort, remaining, dryRun });
+    return { removed: actualRemoved, duplicates, stubs, tooShort, remaining, dryRun, details };
   },
 
   recycle(options = {}) { return this.recycler.recycleFailed(options); },
   processSeeds(seeds, options = {}) { return this.recycler.processSeeds(seeds, options); },
   generateCandidates(options = {}) { return this.recycler.generateCandidates(options); },
+  tournamentGenerate(options = {}) { return this.recycler.tournamentGenerate(options); },
   candidates(filters = {}) { return this.patterns.getCandidates(filters); },
   candidateStats() { return this.patterns.candidateSummary(); },
   promote(candidateId, testCode) { return this.recycler.promoteWithProof(candidateId, testCode); },
@@ -197,7 +266,7 @@ module.exports = {
       }
 
       if (evaluation.status === 'would-promote') {
-        report.promoted++;
+        report.wouldPromote = (report.wouldPromote || 0) + 1;
         report.details.push({ name: candidate.name, status: 'would-promote', coherency: evaluation.coherency });
         continue;
       }

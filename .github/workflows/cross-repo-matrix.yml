@@ -1,0 +1,124 @@
+# Cross-Repo Matrix CI
+#
+# Runs the Reflector and Void Compressor test suites against the
+# current toolkit PR/commit so breaking changes in the toolkit are
+# caught before the downstream repos are the ones to notice. The
+# matrix clones each peer repo, npm-installs the toolkit from the
+# PR SHA, and runs their test suite.
+#
+# Trigger: every pull request touching src/ or every push to main.
+# Failures surface as a single CI check on the toolkit PR.
+
+name: Cross-Repo Matrix
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'remembrance.json'
+      - '.github/workflows/cross-repo-matrix.yml'
+  push:
+    branches: [main]
+
+jobs:
+  reflector-against-toolkit:
+    name: Reflector tests against toolkit PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout toolkit (this PR)
+        uses: actions/checkout@v4
+        with:
+          path: toolkit
+          fetch-depth: 1
+
+      - name: Checkout Reflector
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/Reflector-oracle-
+          path: reflector
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Point Reflector at the PR's toolkit SHA
+        working-directory: reflector
+        run: |
+          # Replace the pinned toolkit dep with a local file reference
+          # so Reflector tests the exact code in the PR.
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
+            pkg.dependencies['remembrance-oracle-toolkit'] = 'file:../toolkit';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Install Reflector deps
+        working-directory: reflector
+        run: npm install --no-audit --no-fund
+
+      - name: Run Reflector tests
+        working-directory: reflector
+        run: npm test
+
+  void-against-toolkit:
+    name: Void Compressor compat against toolkit PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout toolkit
+        uses: actions/checkout@v4
+        with:
+          path: toolkit
+          fetch-depth: 1
+
+      - name: Checkout Void Compressor
+        uses: actions/checkout@v4
+        with:
+          repository: Crackedcoder5TH/Void-Data-Compressor
+          path: void
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node (for toolkit ecosystem tests)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Void deps
+        working-directory: void
+        run: |
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Verify manifests line up across repos
+        run: |
+          node -e "
+            const fs = require('fs');
+            const tm = JSON.parse(fs.readFileSync('toolkit/remembrance.json', 'utf-8'));
+            const vm = JSON.parse(fs.readFileSync('void/remembrance.json', 'utf-8'));
+            if (!tm.peers || !tm.peers['void-data-compressor']) {
+              console.error('Toolkit manifest is missing void-data-compressor peer entry');
+              process.exit(1);
+            }
+            if (vm.role !== 'substrate') {
+              console.error('Void manifest role should be substrate, got:', vm.role);
+              process.exit(1);
+            }
+            console.log('Ecosystem manifests look good.');
+          "
+
+      - name: Run Void compat tests (if present)
+        working-directory: void
+        run: |
+          if [ -d tests ] && ls tests/test_*.py 2>/dev/null; then
+            python -m pytest tests/ -q || exit 1
+          else
+            echo 'No pytest suite found; skipping'
+          fi

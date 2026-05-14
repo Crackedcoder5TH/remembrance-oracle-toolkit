@@ -468,6 +468,51 @@ describe('PatternLibrary', () => {
         assert.equal(d.pattern.language, 'python');
       }
     });
+
+    it('two-phase scoring: high-quality irrelevant patterns do not override relevance', () => {
+      // Register a high-quality pattern that is completely irrelevant to the query
+      lib.register({
+        name: 'quickSort',
+        code: 'function quickSort(arr) { if (arr.length <= 1) return arr; const pivot = arr[0]; return [...quickSort(arr.filter(x => x < pivot)), pivot, ...quickSort(arr.filter(x => x > pivot))]; }',
+        language: 'javascript',
+        description: 'Sort an array using quicksort algorithm',
+        tags: ['sort', 'algorithm', 'array'],
+        testPassed: true,
+      });
+      // Give it stellar usage stats
+      const p = lib.getAll()[0];
+      for (let i = 0; i < 20; i++) lib.recordUsage(p.id, true);
+
+      // Query for something completely unrelated
+      const d = lib.decide({
+        description: 'parse markdown frontmatter into YAML metadata',
+        tags: ['markdown', 'yaml', 'parser'],
+        language: 'javascript',
+      });
+
+      // Despite perfect quality, the pattern should NOT be pulled because it's irrelevant
+      assert.ok(d.decision === 'generate' || d.decision === 'evolve',
+        `Expected generate or evolve, got ${d.decision} — high-quality irrelevant pattern should not be pulled`);
+    });
+
+    it('two-phase scoring: relevant patterns still get pulled', () => {
+      lib.register({
+        name: 'quickSort',
+        code: 'function quickSort(arr) { if (arr.length <= 1) return arr; const pivot = arr[0]; return [...quickSort(arr.filter(x => x < pivot)), pivot, ...quickSort(arr.filter(x => x > pivot))]; }',
+        language: 'javascript',
+        description: 'Sort an array using quicksort algorithm',
+        tags: ['sort', 'algorithm', 'array'],
+        testPassed: true,
+      });
+
+      const d = lib.decide({
+        description: 'sort an array',
+        tags: ['sort', 'array'],
+        language: 'javascript',
+      });
+
+      assert.equal(d.decision, 'pull', 'Relevant pattern should still be pulled');
+    });
   });
 
   describe('candidates', () => {

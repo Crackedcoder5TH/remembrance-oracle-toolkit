@@ -17,6 +17,34 @@
  */
 
 const path = require('path');
+const fs = require('fs');
+const { isOracleEnabled } = require('../core/oracle-config');
+
+/**
+ * Append pipeline errors to a persistent log file so they're never lost silently.
+ * This ensures errors are discoverable even when ORACLE_DEBUG is off.
+ */
+function _persistErrors(baseDir, errors) {
+  if (!errors || errors.length === 0) return;
+  try {
+    const logDir = path.join(baseDir, '.remembrance');
+    fs.mkdirSync(logDir, { recursive: true });
+    const logPath = path.join(logDir, 'pipeline-errors.log');
+    const entry = `[${new Date().toISOString()}] auto-submit errors:\n` +
+      errors.map(e => `  - ${e}`).join('\n') + '\n';
+    fs.appendFileSync(logPath, entry, 'utf-8');
+
+    // Rotate: keep last 500KB to prevent unbounded growth
+    try {
+      const stat = fs.statSync(logPath);
+      if (stat.size > 512 * 1024) {
+        const content = fs.readFileSync(logPath, 'utf-8');
+        // Keep the last 256KB
+        fs.writeFileSync(logPath, content.slice(-256 * 1024), 'utf-8');
+      }
+    } catch (_) { /* rotation failure is non-fatal */ }
+  } catch (_) { console.error('[auto-submit] error logging failed:', _.message, 'original errors:', errors); }
+}
 
 /**
  * Run the full auto-submission pipeline:
@@ -55,6 +83,13 @@ function autoSubmit(oracle, baseDir, options = {}) {
 
   const log = silent ? () => {} : (msg) => console.log(`[auto-submit] ${msg}`);
 
+  // When oracle is toggled off, skip the entire pipeline
+  if (!isOracleEnabled()) {
+    log('Oracle is disabled — skipping auto-submit pipeline');
+    report.oracleDisabled = true;
+    return report;
+  }
+
   // Step 0: Auto-register new functions from git diff (targeted)
   try {
     const { autoRegister } = require('./auto-register');
@@ -64,6 +99,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       log(`Auto-registered ${regResult.registered} new function(s) from diff`);
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:autoSubmit] silent failure:', e?.message || e);
     report.errors.push(`auto-register: ${e.message}`);
   }
 
@@ -85,6 +121,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       log(`Harvested ${harvestResult.registered} new pattern(s)`);
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:extraction] silent failure:', e?.message || e);
     report.errors.push(`harvest: ${e.message}`);
   }
 
@@ -103,6 +140,7 @@ function autoSubmit(oracle, baseDir, options = {}) {
       }
     }
   } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:extraction] silent failure:', e?.message || e);
     report.errors.push(`promote: ${e.message}`);
   }
 
@@ -114,11 +152,16 @@ function autoSubmit(oracle, baseDir, options = {}) {
       if (sqliteStore) {
         const syncResult = syncToGlobal(sqliteStore, { minCoherency: 0.0 });
         report.synced = true;
-        if (!silent && syncResult?.synced > 0) {
-          log(`Synced ${syncResult.synced} pattern(s) to personal store`);
+        report.syncDetails = { synced: syncResult?.synced || 0, upgraded: syncResult?.upgraded || 0 };
+        if (!silent && (syncResult?.synced > 0 || syncResult?.upgraded > 0)) {
+          const parts = [];
+          if (syncResult.synced > 0) parts.push(`${syncResult.synced} synced`);
+          if (syncResult.upgraded > 0) parts.push(`${syncResult.upgraded} upgraded`);
+          log(`Personal store: ${parts.join(', ')}`);
         }
       }
     } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
       report.errors.push(`sync: ${e.message}`);
     }
   }
@@ -136,7 +179,106 @@ function autoSubmit(oracle, baseDir, options = {}) {
         }
       }
     } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
       report.errors.push(`share: ${e.message}`);
+    }
+  }
+
+  // Step 5: Implicit feedback — infer success/failure from git activity
+  try {
+    const { inferFeedback } = require('./implicit-feedback');
+    const fbResult = inferFeedback(oracle, baseDir, { lookback: 5, silent });
+    report.implicitFeedback = {
+      generated: fbResult.feedbackGenerated,
+      successes: fbResult.successes.length,
+      failures: fbResult.failures.length,
+      reverts: fbResult.reverts.length,
+    };
+    if (!silent && fbResult.feedbackGenerated > 0) {
+      log(`Implicit feedback: ${fbResult.successes.length} success(es), ${fbResult.failures.length} failure(s), ${fbResult.reverts.length} revert(s)`);
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:implicitFeedback] silent failure:', e?.message || e);
+    report.errors.push(`implicit-feedback: ${e.message}`);
+  }
+
+  // Step 6 (was 5): Debug sweep — grow debug variants + sync debug patterns
+  try {
+    const { debugSweep } = require('./auto-debug');
+    const debugResult = debugSweep(oracle, { silent, dryRun });
+    report.debugSweep = {
+      grown: debugResult.grown?.stored || 0,
+      synced: debugResult.synced?.synced || 0,
+    };
+    if (!silent && (report.debugSweep.grown > 0 || report.debugSweep.synced > 0)) {
+      log(`Debug sweep: ${report.debugSweep.grown} grown, ${report.debugSweep.synced} synced`);
+    }
+    if (debugResult.errors.length > 0) {
+      report.errors.push(...debugResult.errors.map(e => `debug-sweep: ${e}`));
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:debugSweep] silent failure:', e?.message || e);
+    report.errors.push(`debug-sweep: ${e.message}`);
+  }
+
+  // Step 7: Debug bridge — promote debug fixes to patterns + capture failing patterns
+  try {
+    const { bridgeSync } = require('../unified/debug-bridge');
+    const bridgeResult = bridgeSync(oracle, { silent });
+    report.bridge = {
+      promoted: bridgeResult.promoted?.promoted || 0,
+      captured: bridgeResult.captured?.captured || 0,
+    };
+    if (!silent && (report.bridge.promoted > 0 || report.bridge.captured > 0)) {
+      log(`Debug bridge: ${report.bridge.promoted} promoted, ${report.bridge.captured} captured`);
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:bridge] silent failure:', e?.message || e);
+    report.errors.push(`bridge: ${e.message}`);
+  }
+
+  // Step 8 (was 7): Retention sweep — purge old archives, rotate entries
+  try {
+    const sqliteStore = oracle.store?.getSQLiteStore?.();
+    if (sqliteStore && typeof sqliteStore.retentionSweep === 'function') {
+      const retention = sqliteStore.retentionSweep({ dryRun });
+      report.retention = retention;
+      const totalRemoved = (retention.candidateArchive?.removed || 0) +
+        (retention.patternArchive?.removed || 0) +
+        (retention.entries?.staleRemoved || 0) +
+        (retention.entries?.duplicateRemoved || 0);
+      if (!silent && totalRemoved > 0) {
+        log(`Retention sweep: ${totalRemoved} stale row(s) purged`);
+      }
+    }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:retention] silent failure:', e?.message || e);
+    report.errors.push(`retention: ${e.message}`);
+  }
+
+  // Step 9: Export patterns to patterns.json — git-tracked accumulator
+  // This ensures accumulated patterns survive across ephemeral sessions.
+  // patterns.json is committed to git, so it persists even when the DB is destroyed.
+  if (!dryRun) {
+    try {
+      const patternsJsonPath = path.join(baseDir, 'patterns.json');
+      const exportData = oracle.export({ limit: 999999, minCoherency: 0.0 });
+      if (exportData) {
+        const parsed = typeof exportData === 'string' ? JSON.parse(exportData) : exportData;
+        if (parsed.patterns && parsed.patterns.length > 0) {
+          // Atomic write: write to .tmp then rename
+          const tmpPath = patternsJsonPath + '.tmp';
+          fs.writeFileSync(tmpPath, JSON.stringify(parsed, null, 2), 'utf-8');
+          fs.renameSync(tmpPath, patternsJsonPath);
+          report.exported = parsed.patterns.length;
+          if (!silent) {
+            log(`Exported ${parsed.patterns.length} patterns to patterns.json`);
+          }
+        }
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:export] patterns.json export failed:', e?.message || e);
+      report.errors.push(`export: ${e.message}`);
     }
   }
 
@@ -148,10 +290,16 @@ function autoSubmit(oracle, baseDir, options = {}) {
       promoted: report.promoted,
       synced: report.synced,
       shared: report.shared,
+      debugSweep: report.debugSweep,
+      exported: report.exported || 0,
     });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:init] silent failure:', e?.message || e);
     // Best-effort event emission
   }
+
+  // Persist errors to disk so pipeline failures are always discoverable
+  _persistErrors(baseDir, report.errors);
 
   return report;
 }
@@ -165,8 +313,8 @@ function autoSubmit(oracle, baseDir, options = {}) {
  */
 function shouldAutoSubmit(cwd) {
   try {
-    const { execSync } = require('child_process');
-    const changed = execSync('git diff --name-only HEAD~1 HEAD', {
+    const { execFileSync } = require('child_process');
+    const changed = execFileSync('git', ['diff', '--name-only', 'HEAD~1', 'HEAD'], {
       cwd,
       encoding: 'utf-8',
       timeout: 5000,
@@ -176,7 +324,8 @@ function shouldAutoSubmit(cwd) {
 
     const codeExts = /\.(js|ts|py|go|rs|jsx|tsx)$/;
     return changed.split('\n').some(f => codeExts.test(f));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-submit:shouldAutoSubmit] silent failure:', e?.message || e);
     // If git command fails (initial commit, etc.), run anyway
     return true;
   }

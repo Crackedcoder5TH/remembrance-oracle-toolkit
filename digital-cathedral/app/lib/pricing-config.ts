@@ -136,6 +136,26 @@ export function savePricingConfig(config: PricingConfig): { ok: true } | { ok: f
     }
   }
 
+  // ⚠ Vercel ephemeral-filesystem warning:
+  // This write goes to the container's local disk. On Vercel (and any
+  // serverless platform with ephemeral storage), the file will NOT persist
+  // between Lambda invocations. Pricing changes made in the admin UI on
+  // Vercel will be lost when the function cold-starts. Fix paths (pick one):
+  //   1. Move config to a Postgres table (production-grade).
+  //   2. Use @vercel/blob — same adapter pattern as valor/lead-ledger.
+  //   3. Seed pricing via env var or a build-time JSON file checked into the
+  //      repo, and treat in-UI edits as temporary overrides.
+  // Track via: remembrance-oracle-toolkit issue "migrate pricing-config
+  // off local fs for serverless".
+  if (process.env.VERCEL === "1" || process.env.VERCEL_ENV) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      "[pricing-config] WARNING: writing to ephemeral Vercel filesystem. " +
+        "Changes will NOT persist across Lambda cold starts. Migrate to " +
+        "Postgres or Vercel Blob before relying on in-UI pricing edits.",
+    );
+  }
+
   try {
     if (!existsSync(DATA_DIR)) {
       mkdirSync(DATA_DIR, { recursive: true });

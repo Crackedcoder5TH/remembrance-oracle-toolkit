@@ -17,6 +17,7 @@ const path = require('path');
 
 const MAX_RETRIES = 4;
 const BASE_DELAY_MS = 2000;
+const DEFAULT_RETENTION_MS = 7 * 86400000; // 7 days (was 24h — too aggressive)
 
 class SyncQueue {
   /**
@@ -28,6 +29,7 @@ class SyncQueue {
     this._queueDir = options.queueDir || path.join(process.cwd(), '.remembrance');
     this._queueFile = path.join(this._queueDir, 'sync-queue.json');
     this._onDrained = options.onDrained || null;
+    this._retentionMs = options.retentionMs || DEFAULT_RETENTION_MS;
     this._draining = false;
     this._queue = this._load();
   }
@@ -41,7 +43,22 @@ class SyncQueue {
         const data = JSON.parse(fs.readFileSync(this._queueFile, 'utf-8'));
         return Array.isArray(data) ? data : [];
       }
-    } catch { /* corrupted file — start fresh */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:_load] primary corrupted — try backup:', e?.message || e);
+      // Attempt .bak recovery
+      const bakPath = this._queueFile + '.bak';
+      try {
+        if (fs.existsSync(bakPath)) {
+          const raw = fs.readFileSync(bakPath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          const data = Array.isArray(parsed) ? parsed : [];
+          try { fs.writeFileSync(this._queueFile, raw, 'utf-8'); } catch (_) { /* best effort */ }
+          return data;
+        }
+      } catch (bakErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:_load] backup also corrupted:', bakErr?.message || bakErr);
+      }
+    }
     return [];
   }
 
@@ -53,7 +70,14 @@ class SyncQueue {
       if (!fs.existsSync(this._queueDir)) {
         fs.mkdirSync(this._queueDir, { recursive: true });
       }
-      fs.writeFileSync(this._queueFile, JSON.stringify(this._queue, null, 2));
+      // Atomic write: tmp → backup → rename
+      const json = JSON.stringify(this._queue, null, 2);
+      const tmpPath = this._queueFile + '.tmp';
+      fs.writeFileSync(tmpPath, json, 'utf-8');
+      if (fs.existsSync(this._queueFile)) {
+        try { fs.copyFileSync(this._queueFile, this._queueFile + '.bak'); } catch (_) { /* best effort */ }
+      }
+      fs.renameSync(tmpPath, this._queueFile);
     } catch (err) {
       if (process.env.ORACLE_DEBUG) console.error('[sync-queue] save error:', err.message);
     }
@@ -110,52 +134,67 @@ class SyncQueue {
     let drained = 0;
     let failed = 0;
 
-    for (const op of this._queue) {
-      if (op.status !== 'pending') continue;
+    try {
+      // Snapshot pending ops — avoid mutating array during iteration
+      const pending = this._queue.filter(op => op.status === 'pending');
+      for (const op of pending) {
 
-      op.lastAttempt = new Date().toISOString();
+        op.lastAttempt = new Date().toISOString();
 
-      try {
-        await executor(op);
-        op.status = 'completed';
-        drained++;
-      } catch (err) {
-        op.retries++;
-        op.lastError = err.message;
+        try {
+          await executor(op);
+          op.status = 'completed';
+          drained++;
+        } catch (err) {
+          op.retries++;
+          op.lastError = err.message;
 
-        if (op.retries >= MAX_RETRIES) {
-          op.status = 'failed';
-          failed++;
-        } else {
-          // Exponential backoff
-          const delay = BASE_DELAY_MS * Math.pow(2, op.retries - 1);
-          await new Promise(resolve => setTimeout(resolve, delay));
+          if (op.retries >= MAX_RETRIES) {
+            op.status = 'failed';
+            failed++;
+          } else {
+            // Exponential backoff
+            const delay = BASE_DELAY_MS * Math.pow(2, op.retries - 1);
+            await new Promise(resolve => setTimeout(resolve, delay));
 
-          // Retry once more inline
-          try {
-            await executor(op);
-            op.status = 'completed';
-            drained++;
-          } catch (retryErr) {
-            op.lastError = retryErr.message;
-            if (op.retries + 1 >= MAX_RETRIES) {
-              op.status = 'failed';
-              failed++;
+            // Retry once more inline
+            try {
+              await executor(op);
+              op.status = 'completed';
+              drained++;
+            } catch (retryErr) {
+              if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:drain] operation failed:', retryErr?.message || retryErr);
+              op.retries++;
+              op.lastError = retryErr.message;
+              if (op.retries >= MAX_RETRIES) {
+                op.status = 'failed';
+                failed++;
+              }
             }
           }
         }
+
+        // Persist after EACH operation to prevent data loss on crash.
+        // Without this, a crash after completing 3 of 5 operations would
+        // revert all 3 completed ops to "pending" on next load.
+        this._save();
       }
+    } finally {
+      // Clean completed entries older than retention period (default 7 days)
+      const cutoff = Date.now() - this._retentionMs;
+      this._queue = this._queue.filter(op => {
+        if (op.status === 'completed') {
+          const opTime = new Date(op.createdAt).getTime();
+          // Guard against invalid dates — keep entries we can't parse
+          if (isNaN(opTime)) return true;
+          if (opTime < cutoff) return false;
+        }
+        return true;
+      });
+
+      this._save();
+      this._draining = false;
     }
-
-    // Clean completed entries older than 24h
-    const cutoff = Date.now() - 86400000;
-    this._queue = this._queue.filter(op => {
-      if (op.status === 'completed' && new Date(op.createdAt).getTime() < cutoff) return false;
-      return true;
-    });
-
-    this._save();
-    this._draining = false;
 
     if (this._onDrained && this.pending().length === 0) {
       this._onDrained({ drained, failed });
@@ -193,12 +232,16 @@ class SyncQueue {
  * @returns {Function} Wrapped function
  */
 function withOfflineQueue(syncFn, queue, operationType) {
-  return function wrappedSync(store, options = {}) {
+  return async function wrappedSync(store, options = {}) {
     try {
-      const result = syncFn(store, options);
-      // If sync succeeded, try to drain the queue too
+      const result = await syncFn(store, options);
+      // If sync succeeded, drain the queue too — await to ensure persistence
       if (queue.pending().length > 0) {
-        queue.drain((op) => syncFn(store, op.options || {})).catch(() => {});
+        try {
+          await queue.drain((op) => syncFn(store, op.options || {}));
+        } catch (drainErr) {
+          if (process.env.ORACLE_DEBUG) console.warn('[sync-queue:drain] queue drain failed:', drainErr?.message || drainErr);
+        }
       }
       return result;
     } catch (err) {

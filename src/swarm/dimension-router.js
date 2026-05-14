@@ -77,9 +77,11 @@ function assignDimensions(agents, dimensions) {
   dimensions = dimensions || DIMENSIONS;
   const assignments = new Map();
 
-  // Initialize all agents with empty arrays
-  for (const agent of agents) {
-    assignments.set(agent.name, []);
+  // Use index-based keys to handle duplicate agent names
+  for (let i = 0; i < agents.length; i++) {
+    const key = agents[i].name + (assignments.has(agents[i].name) ? `_${i}` : '');
+    if (key !== agents[i].name) agents[i]._assignmentKey = key;
+    assignments.set(key, []);
   }
 
   if (agents.length === 0) return assignments;
@@ -87,7 +89,8 @@ function assignDimensions(agents, dimensions) {
   // Round-robin: distribute dimensions across agents
   for (let i = 0; i < dimensions.length; i++) {
     const agent = agents[i % agents.length];
-    assignments.get(agent.name).push(dimensions[i]);
+    const key = agent._assignmentKey || agent.name;
+    assignments.get(key).push(dimensions[i]);
   }
 
   // Agents without dimensions become generalists
@@ -154,7 +157,22 @@ function buildSpecialistPrompt(task, dimensions, context = {}) {
  * @returns {object} { code, explanation, confidence }
  */
 function parseAgentResponse(response) {
-  if (!response) return { code: '', explanation: '', confidence: 0.5 };
+  if (!response) {
+      const __retVal = { code: '', explanation: '', confidence: 0.5 };
+    // ── LRE field-coupling (auto-wired) ──
+    try {
+      const __lre_p1 = './../../core/field-coupling';
+      const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+      for (const __p of [__lre_p1, __lre_p2]) {
+        try {
+          const { contribute: __contribute } = require(__p);
+          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.confidence || 0)), source: 'oracle:dimension-router:parseAgentResponse' });
+          break;
+        } catch (_) { /* try next */ }
+      }
+    } catch (_) { /* best-effort */ }
+    return __retVal;
+  }
 
   // Extract code block
   const codeMatch = response.match(/```[\w]*\n([\s\S]*?)```/);

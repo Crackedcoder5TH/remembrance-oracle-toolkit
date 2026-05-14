@@ -1,80 +1,71 @@
 {
   "name": "remembrance-oracle",
   "displayName": "Remembrance Oracle",
-  "description": "AI code memory — proven patterns, debug intelligence, and smart search at your fingertips",
+  "description": "Pattern memory + code quality scoring for your codebase",
   "version": "0.1.0",
   "publisher": "remembrance-oracle",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Programming Languages", "Snippets", "Other"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Linters", "Other"],
   "license": "MIT",
-  "keywords": ["code memory", "patterns", "debug", "oracle", "ai"],
+  "keywords": ["code memory", "patterns", "coherency", "oracle", "scoring"],
   "activationEvents": ["onStartupFinished"],
-  "main": "./src/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
-      { "command": "oracle.search", "title": "Oracle: Search Patterns" },
-      { "command": "oracle.smartSearch", "title": "Oracle: Smart Search (Intent-Aware)" },
-      { "command": "oracle.submit", "title": "Oracle: Submit Selection as Pattern" },
-      { "command": "oracle.debugCapture", "title": "Oracle: Capture Error Fix" },
-      { "command": "oracle.debugSearch", "title": "Oracle: Find Fix for Error" },
-      { "command": "oracle.resolve", "title": "Oracle: Resolve (Pull/Evolve/Generate)" },
-      { "command": "oracle.stats", "title": "Oracle: Show Statistics" },
-      { "command": "oracle.refreshDiagnostics", "title": "Oracle: Refresh Diagnostics" },
-      { "command": "oracle.insertPattern", "title": "Oracle: Insert Pattern at Cursor" }
+      {
+        "command": "remembrance.scoreFile",
+        "title": "Remembrance: Score Current File"
+      },
+      {
+        "command": "remembrance.searchPattern",
+        "title": "Remembrance: Search Patterns"
+      },
+      {
+        "command": "remembrance.cascadeFile",
+        "title": "Remembrance: Cascade Resonance"
+      },
+      {
+        "command": "remembrance.resolvePattern",
+        "title": "Remembrance: Resolve Pattern"
+      }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "oracle-sidebar",
-          "title": "Remembrance Oracle",
-          "icon": "$(database)"
-        }
-      ]
-    },
-    "views": {
-      "oracle-sidebar": [
-        { "id": "oracle-patterns", "name": "Patterns" },
-        { "id": "oracle-debug", "name": "Debug Fixes" },
-        { "id": "oracle-stats", "name": "Statistics" }
-      ]
-    },
     "configuration": {
       "title": "Remembrance Oracle",
       "properties": {
-        "oracle.autoAnalyze": {
+        "remembrance.oracleUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "URL of the Remembrance Oracle API server"
+        },
+        "remembrance.voidUrl": {
+          "type": "string",
+          "default": "http://localhost:3001",
+          "description": "URL of the Void Compressor service"
+        },
+        "remembrance.autoScore": {
           "type": "boolean",
           "default": true,
-          "description": "Automatically analyze files on save for diagnostics"
+          "description": "Automatically score files on save"
         },
-        "oracle.minCoherency": {
+        "remembrance.threshold": {
           "type": "number",
-          "default": 0.7,
-          "description": "Minimum coherency score for pattern suggestions"
-        },
-        "oracle.maxDiagnostics": {
-          "type": "number",
-          "default": 20,
-          "description": "Maximum diagnostics per file"
-        },
-        "oracle.enableDebugOracle": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable debug oracle for automatic error fix suggestions"
+          "default": 0.68,
+          "description": "Minimum coherency threshold for pattern suggestions"
         }
       }
-    },
-    "languages": [
-      { "id": "javascript", "extensions": [".js", ".mjs", ".cjs"] },
-      { "id": "typescript", "extensions": [".ts", ".tsx"] },
-      { "id": "python", "extensions": [".py"] },
-      { "id": "go", "extensions": [".go"] },
-      { "id": "rust", "extensions": [".rs"] }
-    ]
+    }
   },
   "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
     "test": "node --test tests/*.test.js"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0"
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
   }
 }

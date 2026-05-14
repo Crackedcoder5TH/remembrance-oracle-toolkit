@@ -76,7 +76,7 @@ function createRunRecord(report, preSnapshot, options) {
 
   const afterCoherence = safeReport.snapshot?.avgCoherence ?? 0;
 
-  return {
+  const __retVal = {
     id: runId,
     timestamp: new Date().toISOString(),
     trigger,
@@ -110,6 +110,19 @@ function createRunRecord(report, preSnapshot, options) {
       ? (typeof safeReport.collectiveWhisper === 'object' ? safeReport.collectiveWhisper.overallHealth : 'unknown')
       : 'unknown',
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:report-history:saveRunRecord' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 /**
@@ -148,7 +161,8 @@ function readLogTail(rootDir, n = 20) {
     const content = readFileSync(logPath, 'utf-8');
     const lines = content.split('\n').filter(l => l.trim());
     return lines.slice(-n);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-history:readLogTail] returning empty array on error:', e?.message || e);
     return [];
   }
 }
@@ -174,9 +188,9 @@ function computeStats(rootDir) {
     };
   }
 
-  const coherenceValues = runs.map(r => r.coherence?.after || 0);
-  const improvements = runs.map(r => r.healing?.avgImprovement || 0);
-  const filesHealed = runs.reduce((s, r) => s + (r.healing?.filesHealed || 0), 0);
+  const coherenceValues = runs.map(r => r.coherence?.after ?? 0);
+  const improvements = runs.map(r => r.healing?.avgImprovement ?? 0);
+  const filesHealed = runs.reduce((s, r) => s + (r.healing?.filesHealed ?? 0), 0);
 
   const avgCoherence = coherenceValues.reduce((s, v) => s + v, 0) / coherenceValues.length;
   const avgImprovement = improvements.reduce((s, v) => s + v, 0) / improvements.length;

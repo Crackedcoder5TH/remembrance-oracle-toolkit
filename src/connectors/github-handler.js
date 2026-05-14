@@ -15,7 +15,7 @@
 
 const { AIConnector } = require('./connector');
 const { parseIssueCommand, formatAsComment } = require('./github-bridge');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const connector = new AIConnector({ provider: 'github', modelId: 'actions' });
 
@@ -27,7 +27,17 @@ function setActionOutput(name, value) {
   const outputFile = process.env.GITHUB_OUTPUT;
   const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
   if (outputFile) {
-    fs.appendFileSync(outputFile, `${name}=${str}\n`);
+    try {
+      if (str.includes('\n')) {
+        // Use heredoc format for multiline values (GitHub Actions requirement)
+        const delimiter = 'EOF_' + Date.now();
+        fs.appendFileSync(outputFile, `${name}<<${delimiter}\n${str}\n${delimiter}\n`);
+      } else {
+        fs.appendFileSync(outputFile, `${name}=${str}\n`);
+      }
+    } catch (err) {
+      console.error(`[github-handler] Failed to write action output "${name}":`, err.message);
+    }
   }
 }
 
@@ -57,11 +67,11 @@ function handleIssue() {
   // Post comment back to the issue
   if (process.env.GITHUB_TOKEN && repo) {
     try {
-      const escaped = comment.replace(/'/g, "'\\''");
-      execSync(
-        `gh issue comment ${issueNumber} --repo ${repo} --body '${escaped}'`,
-        { stdio: 'inherit', env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN } }
-      );
+      execFileSync('gh', [
+        'issue', 'comment', String(issueNumber),
+        '--repo', String(repo),
+        '--body', comment,
+      ], { stdio: 'inherit', env: { ...process.env, GH_TOKEN: process.env.GITHUB_TOKEN } });
       if (process.env.ORACLE_DEBUG) console.log('Comment posted successfully');
     } catch (err) {
       console.error('Failed to post comment:', err.message);

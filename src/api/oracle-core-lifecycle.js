@@ -1,6 +1,11 @@
 /**
- * Oracle Core — Lifecycle, events, and stats.
- * Inspect, prune, stats, event emitter, and auto-growth.
+ * Oracle Core — Lifecycle, Events, and Quantum Field Operations.
+ *
+ * Manages the Oracle's lifecycle including quantum field maintenance:
+ *   - Decoherence sweeps (decay unobserved patterns)
+ *   - Field statistics (quantum state distribution)
+ *   - Re-excitation (recover decohered patterns)
+ *   - Entanglement graph traversal
  */
 
 module.exports = {
@@ -26,6 +31,10 @@ module.exports = {
     return this.store.prune(minCoherency);
   },
 
+  pruneUntested() {
+    return this.store.pruneUntested();
+  },
+
   /**
    * Registers an event listener. Returns an unsubscribe function.
    */
@@ -35,7 +44,8 @@ module.exports = {
   },
 
   _emit(event) {
-    for (const listener of this._listeners) {
+    const snapshot = [...this._listeners];
+    for (const listener of snapshot) {
       try { listener(event); } catch (e) {
         if (process.env.ORACLE_DEBUG) console.warn('[oracle:emit] listener error:', e.message);
       }
@@ -90,5 +100,78 @@ module.exports = {
    */
   retirePatterns(minScore) {
     return this.patterns.retire(minScore);
+  },
+
+  // ─── Quantum Field Operations ───
+
+  /**
+   * Returns comprehensive quantum field statistics across all pattern tables.
+   * This is the quantum equivalent of stats() — shows the state of the entire field.
+   */
+  quantumFieldStats() {
+    if (!this._quantumField) {
+      return { available: false, reason: 'Quantum field not initialized' };
+    }
+    return this._quantumField.stats();
+  },
+
+  /**
+   * Run a decoherence sweep — decay unobserved patterns across all tables.
+   * Should be run periodically to maintain field integrity.
+   *
+   * @param {object} [options] - { maxDays, minAmplitude }
+   * @returns {object} Sweep report per table
+   */
+  decoherenceSweep(options = {}) {
+    if (!this._quantumField) {
+      return { available: false, reason: 'Quantum field not initialized' };
+    }
+    const report = this._quantumField.decoherenceSweep(options);
+    this._emit({ type: 'decoherence_sweep', ...report });
+    return report;
+  },
+
+  /**
+   * Re-excite decohered patterns — bring them back from decoherence.
+   * Like injecting energy into the quantum field to restore coherence.
+   *
+   * @param {string} [table] - Specific table, or null for all
+   * @param {object} [options] - { boostAmount }
+   * @returns {{ reexcited: number }}
+   */
+  reexciteField(table, options = {}) {
+    if (!this._quantumField) {
+      return { available: false, reason: 'Quantum field not initialized' };
+    }
+    const report = this._quantumField.reexcite(table, options);
+    this._emit({ type: 'field_reexcited', ...report });
+    return report;
+  },
+
+  /**
+   * Get the entanglement graph for a pattern — all patterns it's linked to.
+   *
+   * @param {string} id - Pattern ID
+   * @param {number} [depth] - Max traversal depth (default: 2)
+   * @returns {{ nodes: Array, edges: Array }}
+   */
+  getEntanglementGraph(id, depth = 2) {
+    if (!this._quantumField) {
+      return { nodes: [], edges: [] };
+    }
+    return this._quantumField.getEntanglementGraph(id, depth);
+  },
+
+  /**
+   * Manually entangle two patterns across any tables.
+   *
+   * @param {string} table - Table name (patterns, entries, candidates, debug_patterns)
+   * @param {string} idA - First pattern ID
+   * @param {string} idB - Second pattern ID
+   */
+  entangle(table, idA, idB) {
+    if (!this._quantumField) return;
+    this._quantumField.entangle(table, idA, idB);
+    this._emit({ type: 'entangled', table, idA, idB });
   },
 };

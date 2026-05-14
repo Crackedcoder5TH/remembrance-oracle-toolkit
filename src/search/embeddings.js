@@ -120,6 +120,88 @@ const CONCEPT_CLUSTERS = [
     triggers: ['state', 'store', 'global', 'context', 'redux', 'zustand', 'signal', 'reactive', 'observable'],
     concepts: ['state', 'store', 'dispatch', 'reducer', 'action', 'context', 'subscribe', 'observable', 'signal', 'reactive'],
   },
+  {
+    id: 'logging',
+    triggers: ['log', 'logger', 'logging', 'trace', 'debug', 'info', 'warn', 'audit', 'telemetry'],
+    concepts: ['log', 'logger', 'console', 'trace', 'debug', 'info', 'warn', 'error', 'format', 'level', 'transport'],
+  },
+  {
+    id: 'testing',
+    triggers: ['test', 'spec', 'assert', 'expect', 'mock', 'stub', 'fixture', 'coverage', 'unit test', 'integration test'],
+    concepts: ['test', 'describe', 'it', 'expect', 'assert', 'mock', 'stub', 'spy', 'fixture', 'beforeEach', 'afterEach'],
+  },
+  {
+    id: 'cli',
+    triggers: ['cli', 'command line', 'argument', 'flag', 'option', 'parse args', 'terminal', 'prompt'],
+    concepts: ['argv', 'args', 'flag', 'option', 'parse', 'command', 'subcommand', 'help', 'usage', 'prompt', 'readline'],
+  },
+  {
+    id: 'date-time',
+    triggers: ['date', 'time', 'timestamp', 'duration', 'format date', 'parse date', 'timezone', 'epoch'],
+    concepts: ['Date', 'timestamp', 'ISO', 'format', 'parse', 'duration', 'timezone', 'epoch', 'toISOString', 'locale'],
+  },
+  {
+    id: 'file-system',
+    triggers: ['file', 'directory', 'path', 'read file', 'write file', 'glob', 'walk', 'mkdir', 'rename'],
+    concepts: ['fs', 'readFile', 'writeFile', 'readdir', 'stat', 'path', 'join', 'resolve', 'mkdir', 'glob', 'walk'],
+  },
+  // ─── Web Development Clusters ───
+  {
+    id: 'web-server',
+    triggers: ['server', 'http', 'https', 'request', 'response', 'listen', 'port', 'express', 'koa', 'fastify', 'api', 'endpoint', 'rest'],
+    concepts: ['http', 'createServer', 'listen', 'request', 'response', 'express', 'router', 'middleware', 'handler', 'endpoint', 'REST', 'API', 'port'],
+  },
+  {
+    id: 'web-frontend',
+    triggers: ['html', 'css', 'dom', 'browser', 'frontend', 'webpage', 'website', 'layout', 'responsive', 'component', 'render', 'ui', 'interface'],
+    concepts: ['html', 'css', 'dom', 'document', 'querySelector', 'addEventListener', 'classList', 'createElement', 'innerHTML', 'style', 'render', 'component', 'template'],
+  },
+  {
+    id: 'web-routing',
+    triggers: ['route', 'router', 'routing', 'url', 'path', 'navigate', 'redirect', 'param', 'query string', 'middleware'],
+    concepts: ['router', 'route', 'get', 'post', 'put', 'delete', 'param', 'middleware', 'next', 'redirect', 'url', 'pathname', 'query'],
+  },
+  {
+    id: 'web-security',
+    triggers: ['xss', 'csrf', 'cors', 'escape', 'sanitize', 'injection', 'helmet', 'cookie', 'secure', 'content security policy'],
+    concepts: ['escapeHtml', 'sanitize', 'cors', 'csrf', 'xss', 'helmet', 'cookie', 'httpOnly', 'secure', 'sameSite', 'csp', 'encode', 'decode'],
+  },
+  {
+    id: 'web-static',
+    triggers: ['static', 'serve', 'file server', 'mime', 'content type', 'asset', 'public', 'favicon', 'image'],
+    concepts: ['static', 'serve', 'mime', 'contentType', 'readFile', 'sendFile', 'etag', 'cache-control', 'gzip', 'compress'],
+  },
+  // ─── Non-Code Content Clusters ───
+  {
+    id: 'configuration',
+    triggers: ['config', 'yaml', 'toml', 'ini', 'env', 'settings', 'options', 'environment', 'dotenv', 'json config'],
+    concepts: ['config', 'yaml', 'toml', 'ini', 'env', 'dotenv', 'settings', 'options', 'parse', 'load', 'merge', 'override'],
+  },
+  {
+    id: 'database',
+    triggers: ['database', 'sql', 'query', 'insert', 'update', 'select', 'migration', 'schema', 'orm', 'sqlite', 'postgres', 'mysql', 'mongo'],
+    concepts: ['sql', 'query', 'insert', 'update', 'delete', 'select', 'join', 'index', 'migration', 'schema', 'model', 'orm', 'transaction'],
+  },
+  {
+    id: 'devops',
+    triggers: ['docker', 'dockerfile', 'container', 'deploy', 'ci', 'cd', 'pipeline', 'kubernetes', 'nginx', 'terraform'],
+    concepts: ['docker', 'dockerfile', 'container', 'image', 'build', 'deploy', 'pipeline', 'nginx', 'proxy', 'kubernetes', 'helm', 'terraform'],
+  },
+  {
+    id: 'documentation',
+    triggers: ['readme', 'docs', 'documentation', 'markdown', 'guide', 'tutorial', 'api docs', 'jsdoc', 'comment'],
+    concepts: ['markdown', 'readme', 'documentation', 'guide', 'example', 'usage', 'api', 'reference', 'changelog', 'license'],
+  },
+  {
+    id: 'templating',
+    triggers: ['template', 'scaffold', 'boilerplate', 'skeleton', 'generator', 'ejs', 'handlebars', 'jinja', 'mustache', 'pug'],
+    concepts: ['template', 'render', 'partial', 'layout', 'block', 'extends', 'include', 'variable', 'filter', 'helper', 'scaffold'],
+  },
+  {
+    id: 'regex-patterns',
+    triggers: ['regex', 'regular expression', 'pattern match', 'capture group', 'lookahead', 'lookbehind', 'replace pattern'],
+    concepts: ['regex', 'match', 'test', 'exec', 'replace', 'capture', 'group', 'lookahead', 'lookbehind', 'quantifier', 'boundary'],
+  },
 ];
 
 // ─── N-gram Embedding ───
@@ -224,15 +306,95 @@ function identifyConcepts(text) {
  * 4. N-gram structural similarity (0.15 weight) — character-level patterns
  *
  * Returns: { similarity, vectorScore, conceptScore, keywordScore, ngramScore, matchedConcepts }
+ *
+ * @param {string} query
+ * @param {string} document
+ * @param {object} [opts] — { idf: Map<string,number> } optional IDF weights
  */
-function semanticSimilarity(query, document) {
+// Pre-resolve vectors module once at load time
+let _vectorSimilarity = null;
+try { _vectorSimilarity = require('./vectors').vectorSimilarity; } catch {}
+
+function _fastSimilarity(queryData, docFeatures, idf) {
+  // Concept overlap (pre-computed sets)
+  let conceptScore = 0;
+  const matchedConcepts = [];
+  if (queryData.conceptIds.size > 0) {
+    const intersection = [...queryData.conceptIds].filter(id => docFeatures.conceptIds.has(id));
+    const union = new Set([...queryData.conceptIds, ...docFeatures.conceptIds]);
+    conceptScore = union.size > 0 ? intersection.length / union.size : 0;
+    for (const id of intersection) {
+      const qScore = queryData.concepts.find(c => c.id === id)?.score || 0;
+      const dScore = docFeatures.concepts.find(c => c.id === id)?.score || 0;
+      conceptScore += Math.min(qScore, dScore) * 0.5;
+      matchedConcepts.push(id);
+    }
+    conceptScore = Math.min(1, conceptScore);
+  }
+  // Keyword matching (pre-computed word set)
+  let keywordScore = 0;
+  const expandedQuery = queryData.expanded;
+  if (expandedQuery.length > 0) {
+    if (idf && idf.size > 0) {
+      let idfHitSum = 0, idfTotalSum = 0;
+      for (const term of expandedQuery) {
+        const w = idf.get(term) || 1;
+        idfTotalSum += w;
+        if (docFeatures.words.has(term) || docFeatures.text.includes(term)) idfHitSum += w;
+      }
+      keywordScore = idfTotalSum > 0 ? Math.min(1, idfHitSum / idfTotalSum) : 0;
+    } else {
+      let hits = 0;
+      for (const term of expandedQuery) {
+        if (docFeatures.words.has(term) || docFeatures.text.includes(term)) hits++;
+      }
+      keywordScore = Math.min(1, hits / expandedQuery.length);
+    }
+  }
+  // N-gram similarity (pre-computed ngrams)
+  const ngramScore = cosineSim(queryData.ngrams, docFeatures.ngrams);
+  // Vector similarity
+  let vectorScore = 0;
+  try { if (_vectorSimilarity) vectorScore = _vectorSimilarity(queryData.concepts[0]?.id || '', docFeatures.text.slice(0, 200)); } catch {}
+  const similarity = conceptScore * 0.4 + keywordScore * 0.3 + ngramScore * 0.2 + vectorScore * 0.1;
+  return { similarity: Math.min(1, similarity), matchedConcepts };
+}
+
+function _fastNameSimilarity(queryData, docFeatures) {
+  if (!docFeatures.nameText) return 0;
+  let conceptScore = 0;
+  if (queryData.conceptIds.size > 0 && docFeatures.nameConceptIds.size > 0) {
+    const intersection = [...queryData.conceptIds].filter(id => docFeatures.nameConceptIds.has(id));
+    const union = new Set([...queryData.conceptIds, ...docFeatures.nameConceptIds]);
+    conceptScore = union.size > 0 ? intersection.length / union.size : 0;
+  }
+  const ngramScore = cosineSim(queryData.ngrams, docFeatures.nameNgrams);
+  return conceptScore * 0.6 + ngramScore * 0.4;
+}
+
+// Per-query cache: avoid recomputing query concepts/ngrams for every document
+let _lastQueryKey = null;
+let _lastQueryData = null;
+
+function semanticSimilarity(query, document, opts = {}) {
   const queryLower = query.toLowerCase();
   const docLower = document.toLowerCase();
 
+  // Cache query-side computation (same query, many documents)
+  if (_lastQueryKey !== queryLower) {
+    _lastQueryData = {
+      concepts: identifyConcepts(queryLower),
+      expanded: expandQuery(query),
+      ngrams: charNgrams(queryLower, 2),
+    };
+    _lastQueryData.conceptIds = new Set(_lastQueryData.concepts.map(c => c.id));
+    _lastQueryKey = queryLower;
+  }
+  const queryConcepts = _lastQueryData.concepts;
+  const queryConceptIds = _lastQueryData.conceptIds;
+
   // 1. Concept overlap
-  const queryConcepts = identifyConcepts(queryLower);
   const docConcepts = identifyConcepts(docLower);
-  const queryConceptIds = new Set(queryConcepts.map(c => c.id));
   const docConceptIds = new Set(docConcepts.map(c => c.id));
 
   let conceptScore = 0;
@@ -250,31 +412,49 @@ function semanticSimilarity(query, document) {
     conceptScore = Math.min(1, conceptScore);
   }
 
-  // 2. Expanded keyword matching
-  const expandedQuery = expandQuery(query);
+  // 2. Expanded keyword matching (IDF-weighted when available)
+  const expandedQuery = _lastQueryData.expanded;
   const docWords = docLower.split(/[^a-z0-9]+/).filter(w => w.length > 1);
   const docWordSet = new Set(docWords);
+  const idf = opts && opts.idf;
 
-  let keywordHits = 0;
-  for (const term of expandedQuery) {
-    if (docWordSet.has(term) || docLower.includes(term)) {
-      keywordHits++;
+  let keywordScore = 0;
+  if (expandedQuery.length > 0) {
+    if (idf && idf.size > 0) {
+      // IDF-weighted: rare term matches count more
+      let idfHitSum = 0;
+      let idfTotalSum = 0;
+      for (const term of expandedQuery) {
+        const w = idf.get(term) || 1;
+        idfTotalSum += w;
+        if (docWordSet.has(term) || docLower.includes(term)) {
+          idfHitSum += w;
+        }
+      }
+      keywordScore = idfTotalSum > 0 ? Math.min(1, idfHitSum / idfTotalSum) : 0;
+    } else {
+      // Uniform weighting fallback
+      let keywordHits = 0;
+      for (const term of expandedQuery) {
+        if (docWordSet.has(term) || docLower.includes(term)) {
+          keywordHits++;
+        }
+      }
+      keywordScore = Math.min(1, keywordHits / expandedQuery.length);
     }
   }
-  const keywordScore = expandedQuery.length > 0 ? Math.min(1, keywordHits / expandedQuery.length) : 0;
 
   // 3. N-gram structural similarity (use shorter n=2 for better cross-naming match)
-  const queryGrams = charNgrams(queryLower, 2);
+  const queryGrams = _lastQueryData.ngrams;
   const docGrams = charNgrams(docLower, 2);
   const ngramScore = cosineSim(queryGrams, docGrams);
 
   // 4. Word vector similarity
   let vectorScore = 0;
   try {
-    const { vectorSimilarity } = require('./vectors');
-    vectorScore = vectorSimilarity(queryLower, docLower);
-  } catch {
-    // vectors module not available — skip
+    if (_vectorSimilarity) vectorScore = _vectorSimilarity(queryLower, docLower);
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[embeddings:semanticSimilarity] silent failure:', e?.message || e);
   }
 
   // Weighted combination (4 signals)
@@ -306,7 +486,7 @@ const _QUERY_CACHE_MAX = 64;
 function semanticSearch(items, query, options = {}) {
   if (!Array.isArray(items)) return [];
   if (query == null || typeof query !== 'string') return [];
-  const { limit = 10, minScore = 0.05, language } = options;
+  const { limit = 10, minScore = 0.05, language, idf } = options;
 
   let filtered = items;
   if (language) {
@@ -317,7 +497,7 @@ function semanticSearch(items, query, options = {}) {
 
   // Pre-compute query concepts and n-grams once for reuse across all items
   const queryLower = query.toLowerCase();
-  const queryCacheKey = queryLower.slice(0, 80);
+  const queryCacheKey = queryLower.length <= 80 ? queryLower : require('crypto').createHash('md5').update(queryLower).digest('hex');
   let cachedQueryData = _querySimilarityCache.get(queryCacheKey);
   if (!cachedQueryData) {
     cachedQueryData = {
@@ -327,34 +507,47 @@ function semanticSearch(items, query, options = {}) {
       ngrams: charNgrams(queryLower, 2),
     };
     cachedQueryData.conceptIds = new Set(cachedQueryData.concepts.map(c => c.id));
-    if (_querySimilarityCache.size >= _QUERY_CACHE_MAX) {
+    // LRU eviction: evict multiple entries if cache grew beyond max (guards against
+    // concurrent insertions that may have pushed past the limit)
+    while (_querySimilarityCache.size >= _QUERY_CACHE_MAX) {
       const oldest = _querySimilarityCache.keys().next().value;
       _querySimilarityCache.delete(oldest);
     }
     _querySimilarityCache.set(queryCacheKey, cachedQueryData);
   }
 
+  // Pre-compute document features once (heavy) then reuse across queries
+  for (const item of filtered) {
+    if (!item._docFeatures) {
+      const docText = [
+        item.name || '', item.description || '', (item.tags || []).join(' '),
+        (item.code || '').slice(0, 500),  // cap code to 500 chars — name/desc/tags carry identity
+      ].join(' ').toLowerCase();
+      const nameText = (item.name || '').toLowerCase();
+      item._docFeatures = {
+        text: docText,
+        concepts: identifyConcepts(docText),
+        words: new Set(docText.split(/[^a-z0-9]+/).filter(w => w.length > 1)),
+        ngrams: charNgrams(docText, 2),
+        nameText,
+        nameConcepts: identifyConcepts(nameText),
+        nameNgrams: charNgrams(nameText, 2),
+      };
+      item._docFeatures.conceptIds = new Set(item._docFeatures.concepts.map(c => c.id));
+      item._docFeatures.nameConceptIds = new Set(item._docFeatures.nameConcepts.map(c => c.id));
+    }
+  }
+
   const results = filtered.map(item => {
-    // Build a rich text representation for matching
-    const docText = [
-      item.name || '',
-      item.description || '',
-      (item.tags || []).join(' '),
-      item.code || '',
-    ].join(' ');
-
-    const sim = semanticSimilarity(query, docText);
-
-    // Name match bonus — if query concepts appear in the name, it's very likely relevant
-    const nameText = (item.name || '').toLowerCase();
-    const nameSim = semanticSimilarity(query, nameText);
-    const nameBonus = nameSim.similarity > 0.1 ? nameSim.similarity * 0.3 : 0;
+    const df = item._docFeatures;
+    const sim = _fastSimilarity(cachedQueryData, df, idf);
+    const nameSim = _fastNameSimilarity(cachedQueryData, df);
+    const nameBonus = nameSim > 0.1 ? nameSim * 0.3 : 0;
 
     return {
       ...item,
       semanticScore: Math.min(1, sim.similarity + nameBonus),
       matchedConcepts: sim.matchedConcepts,
-      _debug: { ...sim, nameBonus },
     };
   })
   .filter(r => r.semanticScore >= minScore)
@@ -362,6 +555,90 @@ function semanticSearch(items, query, options = {}) {
   .slice(0, limit);
 
   return results;
+}
+
+// ─── TF-IDF Weighting ───
+
+/**
+ * Tokenize text into lowercase word tokens, filtering short ones.
+ * Reused by buildIDF, tokenNgramScore, and IDF-weighted concept scoring.
+ */
+function tokenize(text) {
+  return (text || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 1);
+}
+
+/**
+ * Build IDF (inverse document frequency) weights from a corpus of patterns.
+ * Returns a Map of term → IDF weight.
+ *
+ * @param {Array} patterns — Array of { name, description, tags, code }
+ * @returns {Map<string, number>} IDF weights
+ */
+function buildIDF(patterns) {
+  if (!Array.isArray(patterns) || patterns.length === 0) return new Map();
+  const df = new Map();
+  const N = patterns.length;
+  for (const p of patterns) {
+    const tokens = new Set([
+      ...tokenize(p.name || ''),
+      ...tokenize(p.description || ''),
+      ...(p.tags || []).map(t => t.toLowerCase()),
+      ...tokenize((p.code || '').slice(0, 500)),
+    ]);
+    for (const t of tokens) {
+      df.set(t, (df.get(t) || 0) + 1);
+    }
+  }
+  const idf = new Map();
+  for (const [term, freq] of df) {
+    idf.set(term, Math.log((N + 1) / (freq + 1)));
+  }
+  return idf;
+}
+
+// ─── Token N-gram Scoring ───
+
+/**
+ * Compute token-level n-gram (trigram) similarity between query and pattern text.
+ * Uses Jaccard similarity over 3-grams of tokens.
+ *
+ * @param {string} patternText — Code or document text
+ * @param {string} query — Search query
+ * @returns {number} 0-1 similarity score
+ */
+function tokenNgramScore(patternText, query) {
+  const patTokens = tokenize(patternText);
+  const qTokens = tokenize(query);
+
+  if (patTokens.length < 3 || qTokens.length < 3) {
+    // Fall back to unigram Jaccard for short texts
+    const a = new Set(patTokens);
+    const b = new Set(qTokens);
+    if (a.size === 0 && b.size === 0) return 0;
+    let inter = 0;
+    for (const t of b) { if (a.has(t)) inter++; }
+    return inter / (a.size + b.size - inter);
+  }
+
+  const makeNgrams = (tokens, n) => {
+    const grams = new Set();
+    for (let i = 0; i <= tokens.length - n; i++) {
+      grams.add(tokens.slice(i, i + n).join('|'));
+    }
+    return grams;
+  };
+
+  const patGrams = makeNgrams(patTokens, 3);
+  const qGrams = makeNgrams(qTokens, 3);
+
+  if (patGrams.size === 0 && qGrams.size === 0) return 0;
+
+  let intersection = 0;
+  for (const g of qGrams) {
+    if (patGrams.has(g)) intersection++;
+  }
+  const union = patGrams.size + qGrams.size - intersection;
+  return union > 0 ? intersection / union : 0;
 }
 
 module.exports = {
@@ -372,4 +649,7 @@ module.exports = {
   charNgrams,
   cosineSim,
   CONCEPT_CLUSTERS,
+  buildIDF,
+  tokenize,
+  tokenNgramScore,
 };

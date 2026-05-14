@@ -3,7 +3,7 @@
  * AI-enhanced operations and self-evolution capabilities.
  */
 
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { ClaudeBridge } = require('../core/claude-bridge');
 
 // ─── Shared Helpers (eliminates 6× pattern lookup + candidate storage duplication) ───
@@ -26,7 +26,7 @@ function _tryPromoteOrStore(oracle, candidate, parentId, method, report, autoPro
         tags: candidate.tags || [],
         patternType: candidate.patternType,
       });
-      if (proven) {
+      if (proven && proven.registered) {
         report.generated++;
         report.stored++;
         report.promoted++;
@@ -76,7 +76,10 @@ function _collectPatternStats(oracle) {
       minCoherency: Math.round(min * 1000) / 1000,
       belowThreshold: coherencies.filter(c => c < oracle.threshold).length,
     };
-  } catch { return { error: 'unavailable' }; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:_collectPatternStats] feature unavailable:', e?.message || e);
+    return { error: 'unavailable' };
+  }
 }
 
 function _collectHealingStatus(oracle) {
@@ -91,7 +94,10 @@ function _collectHealingStatus(oracle) {
       cascadeBoost: oracle.recycler._cascadeBoost,
       xiGlobal: oracle.recycler._xiGlobal,
     };
-  } catch { return { error: 'unavailable' }; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:_collectHealingStatus] feature unavailable:', e?.message || e);
+    return { error: 'unavailable' };
+  }
 }
 
 function _identifyWeaknesses(oracle, report) {
@@ -284,7 +290,8 @@ module.exports = {
     try {
       require('../evolution/test-synth');
       return { success: false, error: 'Claude unavailable; use synthesizeTests() for static synthesis', method: 'none' };
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:_generateTestsFor] silent failure:', e?.message || e);
       return { success: false, error: 'No test generation method available', method: 'none' };
     }
   },
@@ -528,16 +535,31 @@ module.exports = {
     if (report.optimization?.nearDuplicates?.length > 0) {
       try {
         report.consolidation = consolidateDuplicates(ctx, options);
-      } catch { /* best effort */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:fullOptimizationCycle] best effort:', e?.message || e);
+      }
     }
     if (report.optimization?.sparseTags?.length > 0) {
       try {
         report.tagConsolidation = consolidateTags(ctx, options);
-      } catch { /* best effort */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:fullOptimizationCycle] best effort:', e?.message || e);
+      }
     }
 
     if (report.evolution) whisper.recordEvolutionReport(report.evolution);
     if (report.improvement?.promoted > 0) whisper.recordPromotionReport({ promoted: report.improvement.promoted });
+
+    // Refresh coherency scores after healing to fix disconnect between
+    // reflect evaluator (which uses testPassed=true) and DB-stored scores
+    try {
+      const sqlStore = this.store?.getSQLiteStore?.();
+      if (sqlStore && typeof sqlStore.refreshAllCoherency === 'function') {
+        report.coherencyRefresh = sqlStore.refreshAllCoherency();
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:fullOptimizationCycle] coherency refresh:', e?.message || e);
+    }
 
     const whisperSummary = whisper.stop();
     return { ...report, whisperSummary };
@@ -589,7 +611,10 @@ module.exports = {
     // 1. Store health
     try {
       report.store = this.stats();
-    } catch { report.store = { error: 'unavailable' }; }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:reflect] recording error:', e?.message || e);
+      report.store = { error: 'unavailable' };
+    }
 
     // 2. Pattern library
     report.patterns = _collectPatternStats(this);
@@ -605,12 +630,18 @@ module.exports = {
         cascadeBoost: this.recycler._cascadeBoost,
         threshold: this.threshold,
       };
-    } catch { report.coherency = { error: 'unavailable' }; }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:reflect] recording error:', e?.message || e);
+      report.coherency = { error: 'unavailable' };
+    }
 
     // 5. Lifecycle status
     try {
       report.lifecycle = this.lifecycleStatus();
-    } catch { report.lifecycle = { error: 'unavailable' }; }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:reflect] recording error:', e?.message || e);
+      report.lifecycle = { error: 'unavailable' };
+    }
 
     // 6. Candidates
     try {
@@ -620,7 +651,10 @@ module.exports = {
         pending: candidates.filter(c => !c.promotedAt).length,
         promoted: candidates.filter(c => c.promotedAt).length,
       };
-    } catch { report.candidates = { error: 'unavailable' }; }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-llm:reflect] recording error:', e?.message || e);
+      report.candidates = { error: 'unavailable' };
+    }
 
     // 7+8. Weaknesses and recommendations
     const assessment = _identifyWeaknesses(this, report);

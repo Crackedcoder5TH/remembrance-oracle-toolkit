@@ -12,11 +12,12 @@
 
 /** Dimension weights must sum to 1.0. testProof is highest because passing tests is concrete proof. */
 const COHERENCY_WEIGHTS = {
-  SYNTAX_VALID: 0.25,
-  COMPLETENESS: 0.20,
-  CONSISTENCY: 0.15,
-  TEST_PROOF: 0.30,            // Highest — proven > everything
+  SYNTAX_VALID: 0.22,
+  COMPLETENESS: 0.18,
+  CONSISTENCY: 0.12,
+  TEST_PROOF: 0.28,            // Highest — proven > everything
   HISTORICAL_RELIABILITY: 0.10,
+  FRACTAL_ALIGNMENT: 0.10,     // Fractal self-similarity, boundary depth, growth cascade, stability, order
 };
 
 /** Syntax scoring — graduated scale for parsability */
@@ -47,6 +48,7 @@ const CONSISTENCY_PENALTIES = {
 const COHERENCY_DEFAULTS = {
   TEST_PROOF_FALLBACK: 0.5,            // When test status unknown
   HISTORICAL_RELIABILITY_FALLBACK: 0.5, // When no usage history
+  FRACTAL_ALIGNMENT_FALLBACK: 0.5,     // When fractal engine not available
 };
 
 /** Rounding precision for coherency scores */
@@ -54,8 +56,45 @@ const ROUNDING_FACTOR = 1000; // Math.round(x * 1000) / 1000 = 3 decimals
 
 // ─── Validation (validator.js) ───
 
-/** Minimum coherency to accept code into the store. Changing this affects ALL submissions. */
+/**
+ * Minimum coherency to accept code into the store. Changing this affects ALL submissions.
+ * NOTE: This is distinct from DECISION_THRESHOLDS.PULL (0.68), which controls whether
+ * a pattern is strong enough to use as-is. Code can be stored at 0.6 but won't be
+ * recommended for PULL until it reaches 0.68.
+ */
 const MIN_COHERENCY_THRESHOLD = 0.6;
+
+/**
+ * Domain-aware floor adjustments. Legitimate complex code in certain
+ * domains (performance, compression, data) naturally scores lower on
+ * readability/simplicity while being correct. These floors prevent
+ * false rejection of domain-appropriate code.
+ *
+ * The domain floor is always <= the default floor. Security domain
+ * NEVER gets a lower floor.
+ *
+ * The absolute minimum is 0.50 — below this, code is genuinely broken
+ * regardless of domain.
+ */
+const DOMAIN_FLOOR_ADJUSTMENTS = {
+  performance: 0.52,
+  data: 0.52,
+  compression: 0.52,
+  transform: 0.55,
+  core: 0.58,
+  utility: 0.60,
+  quality: 0.60,
+  oracle: 0.60,
+  orchestration: 0.60,
+  bridge: 0.60,
+  generation: 0.60,
+  search: 0.60,
+  security: 0.65,  // Security code gets HIGHER floor, not lower
+};
+
+function getDomainFloor(domain) {
+  return DOMAIN_FLOOR_ADJUSTMENTS[domain] || MIN_COHERENCY_THRESHOLD;
+}
 
 /** Default timeout for sandbox test execution (ms) */
 const DEFAULT_VALIDATION_TIMEOUT_MS = 10000;
@@ -138,6 +177,21 @@ const RELEVANCE_GATES = {
   FOR_EVOLVE: 0.33,            // Must be meaningfully relevant to evolve from
 };
 
+/**
+ * Two-Phase Scoring — separates "is this the right pattern?" from "is this pattern any good?"
+ *
+ * Phase 1 (Relevance Gate): Pure relevance score from keyword/semantic/structural/holo signals.
+ *   Patterns below PHASE1_GATE are skipped entirely — no amount of quality can rescue irrelevance.
+ *
+ * Phase 2 (Quality Ranking): Among patterns that pass the gate, final score blends relevance + quality.
+ *   RELEVANCE_BLEND controls how much of the final score comes from relevance vs quality.
+ */
+const TWO_PHASE_SCORING = {
+  PHASE1_GATE: 0.30,           // Minimum pure-relevance score to enter Phase 2
+  RELEVANCE_BLEND: 0.60,       // Phase 2: 60% relevance, 40% quality
+  QUALITY_BLEND: 0.40,         // Phase 2: complement (1 - RELEVANCE_BLEND)
+};
+
 /** Complexity classification thresholds */
 const COMPLEXITY_TIERS = {
   ATOMIC: { MAX_LINES: 15, MAX_NESTING: 2 },
@@ -200,8 +254,13 @@ const CANDIDATE_MIN_COHERENCY = 0.5;
 const MAX_TERNARY_NESTING = 2;
 
 // ─── Reflection Dimension Weights (reflection-scorers.js) ───
+// Note: REFLECTION_WEIGHTS is a documented alternative 5-dim calibration.
+// The active scorer uses an explicit 6-dim DIMENSION_WEIGHTS in
+// reflection-scorers.js (includes fractalAlignment). These config blocks
+// remain for the dimension scorer parameters (SIMPLICITY_CONFIG, etc.)
+// which are wired into the active scorer.
 
-/** Hybrid coherency scorer weights — fixed, sum to 1.0.
+/** Hybrid coherency scorer weights — alternate 5-dim calibration, sums to 1.0.
  *  S=Simplicity, R=Readability, N=No-Harm, U=Unity/Abundance, I=Intuitive Correctness */
 const REFLECTION_WEIGHTS = {
   simplicity: 0.25,    // S — r_eff proxy (pull strength from minimalism)
@@ -266,6 +325,38 @@ const COHERENCY_ZONES = {
   VETO: 0.75,          // < 0.75: veto and rerun
 };
 
+/** Compounding — spawn candidates when patterns succeed repeatedly */
+const COMPOUND = {
+  MIN_SUCCESSES: 2,        // Pattern must succeed at least twice before compounding
+  MIN_RELIABILITY: 0.75,   // Pattern must have ≥75% success rate
+  COMPOUND_EVERY: 2,       // Compound on every 2nd success (2nd, 4th, 6th...)
+};
+
+/** Tournament generation — competitive selection for best candidates */
+const TOURNAMENT = {
+  CANDIDATES_PER_ROUND: 3, // Generate 3 variants per round
+  ROUNDS: 3,               // Run 3 rounds of competitive selection
+  MIN_WINNER_COHERENCY: 0.6, // Winner must score ≥0.6 to advance
+  LOSER_HARVEST_FLOOR: 0.5,  // Losers above this go to candidate pool
+};
+
+// ─── Quantum Field (quantum-core.js, quantum-field.js) ───
+
+/** Quantum mechanical constants for the unified field model */
+const QUANTUM = {
+  PLANCK_AMPLITUDE: 0.2,       // Minimum observable amplitude (initial state)
+  DECOHERENCE_LAMBDA: 0.005,   // Decay rate per day (half-life ≈ 139 days)
+  TUNNELING_PROBABILITY: 0.08, // Probability of tunneling through barrier
+  ENTANGLEMENT_STRENGTH: 0.3,  // How strongly entangled states couple
+  INTERFERENCE_RADIUS: 0.15,   // Max amplitude shift from interference
+  COLLAPSE_BOOST: 0.05,        // Amplitude boost from being observed
+  PHASE_DRIFT_RATE: 0.01,      // Phase drift per day
+  PULL_THRESHOLD: 0.68,        // Amplitude threshold for PULL decision
+  EVOLVE_THRESHOLD: 0.50,      // Amplitude threshold for EVOLVE decision
+  DECOHERENCE_FLOOR: 0.05,     // Below this, pattern is decohered
+  CASCADE_THRESHOLD: 0.70,     // Above this, cascade growth triggers
+};
+
 module.exports = {
   // Coherency
   COHERENCY_WEIGHTS,
@@ -291,6 +382,7 @@ module.exports = {
   VOTE_BOOST,
   DECISION_WEIGHTS,
   RELEVANCE_GATES,
+  TWO_PHASE_SCORING,
   COMPLEXITY_TIERS,
   RETIREMENT_WEIGHTS,
   // Recycler
@@ -310,4 +402,12 @@ module.exports = {
   UNITY_CONFIG,
   INTUITIVE_CONFIG,
   COHERENCY_ZONES,
+  // Compounding + tournament
+  COMPOUND,
+  TOURNAMENT,
+  // Quantum
+  QUANTUM,
+  // Domain floors
+  DOMAIN_FLOOR_ADJUSTMENTS,
+  getDomainFloor,
 };

@@ -10,7 +10,7 @@
  * UTM params auto-captured from URL query string.
  */
 
-import { useState, useEffect, useCallback, useRef, FormEvent } from "react";
+import { useState, useCallback, useRef, FormEvent } from "react";
 import { useUtmTracking } from "@/app/protect/hooks/use-utm-tracking";
 import { trackConversion } from "@/app/lib/analytics";
 
@@ -49,36 +49,16 @@ const TRUST_SIGNALS = [
   },
 ];
 
-// ─── Validation Helpers ───
+// ─── Validation Helpers (shared from lib/validation.ts) ───
 
-function validateName(name: string): boolean {
-  const trimmed = name.trim();
-  return trimmed.length >= 2 && trimmed.length <= 100 && /^[a-zA-Z\s'.,-]+$/.test(trimmed);
-}
-
-function validateEmail(email: string): boolean {
-  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return re.test(email) && email.length <= 254;
-}
-
-function validatePhone(phone: string): boolean {
-  const digits = phone.replace(/\D/g, "");
-  return digits.length === 10 || (digits.length === 11 && digits.startsWith("1"));
-}
-
-function formatPhoneInput(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 10);
-  if (digits.length === 0) return "";
-  if (digits.length <= 3) return `(${digits}`;
-  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
-  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-}
-
-function autoCapitalizeName(value: string): string {
-  return value.replace(/(?:^|\s|[-'])([a-z])/g, (match) => match.toUpperCase());
-}
-
-const sanitize = (s: string) => s.trim().replace(/[<>]/g, "");
+import {
+  isValidName as validateName,
+  isValidEmail as validateEmail,
+  isValidPhone as validatePhone,
+  formatPhoneInput,
+  autoCapitalizeName,
+  sanitizeInput as sanitize,
+} from "@/app/lib/validation";
 
 // ─── Types ───
 
@@ -121,10 +101,7 @@ export default function VeteranLifeInsuranceLandingPage() {
   const [leadId, setLeadId] = useState("");
   const [serverError, setServerError] = useState("");
 
-  // Set document title for SEO (client-side for "use client" page)
-  useEffect(() => {
-    document.title = "Veteran Life Insurance — Free Quote in 60 Seconds | Valor Legacies";
-  }, []);
+  // Title now set via server-side metadata in layout.tsx
 
   const updateField = useCallback((field: keyof LpFormData, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));

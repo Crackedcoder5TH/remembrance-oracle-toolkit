@@ -165,7 +165,7 @@ function renderScoreChart(rankings, options = {}) {
   for (const r of rankings) {
     const name = r.agent.padEnd(maxName);
     const score = r.totalScore || 0;
-    const barLen = Math.round(score * width);
+    const barLen = Math.max(0, Math.min(width, Math.round(score * width)));
     const bar = '#'.repeat(barLen) + '.'.repeat(width - barLen);
     const marker = r === rankings[0] ? ' *' : '';
     lines.push(`  ${name} |${bar}| ${score.toFixed(3)}${marker}`);
@@ -274,7 +274,7 @@ function exportVisualizationData(result, consensus, crossScoreMatrix) {
     score: r.totalScore,
   }));
 
-  return {
+  const __retVal = {
     id: result.id,
     task: result.task,
     timestamp: result.timestamp,
@@ -290,6 +290,19 @@ function exportVisualizationData(result, consensus, crossScoreMatrix) {
       durationMs: result.totalDurationMs,
     },
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.agreement || 0)), source: 'oracle:debate-visualization:agentOutputs' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 module.exports = {

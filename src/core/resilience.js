@@ -129,6 +129,7 @@ async function resilientFetch(url, options) {
       }
       return res;
     } catch (err) {
+      if (typeof process !== 'undefined' && process.env && process.env.ORACLE_DEBUG) console.warn('[resilience:resilientFetch] silent failure:', err?.message || err);
       lastError = err;
       if (i < maxRetries) {
         var delay = err.retryAfter || Math.min(baseDelay * Math.pow(2, i), 10000);

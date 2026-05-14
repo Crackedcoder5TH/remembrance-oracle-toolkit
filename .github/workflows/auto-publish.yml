@@ -1,0 +1,36 @@
+name: Auto-Publish to Blockchain
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install (if package.json exists)
+        run: |
+          if [ -f package.json ]; then
+            npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+          fi
+      - name: Run auto-publish
+        env:
+          ECOSYSTEM_PAT: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+          ECOSYSTEM_OWNER: ${{ github.repository_owner }}
+        run: node src/core/auto-publish.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: auto-publish-log
+          path: .remembrance/published.json
+          if-no-files-found: ignore

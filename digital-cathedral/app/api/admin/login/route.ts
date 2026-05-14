@@ -4,9 +4,20 @@ import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE,
 } from "@/app/lib/admin-session";
+import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit: 5 attempts per minute per IP
+    const clientIp = getClientIp(req.headers);
+    const rateCheck = await checkRateLimit(clientIp, 5, 60_000);
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { success: false, message: "Too many login attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.retryAfterMs / 1000)) } },
+      );
+    }
+
     const body = await req.json();
     const { key } = body;
 

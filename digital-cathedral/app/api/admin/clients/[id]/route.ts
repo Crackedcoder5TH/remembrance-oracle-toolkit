@@ -8,6 +8,8 @@ import {
   hashPassword,
 } from "@/app/lib/client-database";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin Client Detail API
  *
@@ -16,7 +18,7 @@ import {
  */
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const { id } = await params;
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const { id } = await params;
@@ -66,6 +68,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     for (const field of allowedFields) {
       if (field in body) updates[field] = body[field];
+    }
+
+    // Validate numeric fields have reasonable bounds
+    const numericBounds: Record<string, { min: number; max: number }> = {
+      dailyCap: { min: 0, max: 10_000 },
+      monthlyCap: { min: 0, max: 100_000 },
+      minScore: { min: 0, max: 100 },
+      balance: { min: 0, max: 100_000_00 }, // cents
+      pricePerLead: { min: 0, max: 100_000 },
+      exclusivePrice: { min: 0, max: 100_000 },
+    };
+    for (const [field, bounds] of Object.entries(numericBounds)) {
+      if (field in updates) {
+        const val = updates[field];
+        if (typeof val !== "number" || !Number.isFinite(val) || val < bounds.min || val > bounds.max) {
+          return NextResponse.json(
+            { success: false, message: `${field} must be a number between ${bounds.min} and ${bounds.max}.` },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     // Handle JSON array fields

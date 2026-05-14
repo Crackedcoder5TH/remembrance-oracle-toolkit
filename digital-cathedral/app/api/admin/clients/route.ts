@@ -8,6 +8,8 @@ import {
 } from "@/app/lib/client-database";
 import type { ClientRecord } from "@/app/lib/client-database";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Admin Client Management API
  *
@@ -16,7 +18,7 @@ import type { ClientRecord } from "@/app/lib/client-database";
  */
 
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const params = req.nextUrl.searchParams;
@@ -38,7 +40,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   try {

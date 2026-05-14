@@ -233,7 +233,7 @@ function toPyExpr(node) {
     }
 
     default:
-      return node.value || node.name || '';
+      return node.value != null ? String(node.value) : (node.name || '');
   }
 }
 

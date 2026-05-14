@@ -1,0 +1,82 @@
+[
+  {
+    "file": "src/core/events.js",
+    "oracle": 0.652,
+    "void": 0.4322
+  },
+  {
+    "file": "src/audit/prior-promoter.js",
+    "oracle": 0.756,
+    "void": 0.3855
+  },
+  {
+    "file": "src/cli.js",
+    "oracle": 0.76,
+    "void": 0.3725
+  },
+  {
+    "file": "src/audit/bayesian-prior.js",
+    "oracle": 0.626,
+    "void": 0.4369
+  },
+  {
+    "file": "src/core/preflight.js",
+    "oracle": 0.838,
+    "void": 0.3118
+  },
+  {
+    "file": "src/core/reactions.js",
+    "oracle": 0.745,
+    "void": 0.3761
+  },
+  {
+    "file": "tests/audit-storage-tiers.test.js",
+    "oracle": 0.836,
+    "void": 0.3661
+  },
+  {
+    "file": "tests/core-ecosystem.test.js",
+    "oracle": 0.875,
+    "void": 0.329
+  },
+  {
+    "file": "src/core/storage.js",
+    "oracle": 0.669,
+    "void": 0.4482
+  },
+  {
+    "file": "src/core/covenant.js",
+    "oracle": 0.61,
+    "void": 0.3446
+  },
+  {
+    "file": "src/core/ecosystem.js",
+    "oracle": 0.757,
+    "void": 0.4073
+  },
+  {
+    "file": "src/core/compliance.js",
+    "oracle": 0.663,
+    "void": 0.4494
+  },
+  {
+    "file": "src/patterns/library.js",
+    "oracle": 0.434,
+    "void": 0.3679
+  },
+  {
+    "file": "src/cli/commands/admin.js",
+    "oracle": 0.473,
+    "void": 0.3861
+  },
+  {
+    "file": "src/cli/commands/library.js",
+    "oracle": 0.744,
+    "void": 0.354
+  },
+  {
+    "file": "src/store/sqlite.js",
+    "oracle": 0.576,
+    "void": 0.3932
+  }
+]

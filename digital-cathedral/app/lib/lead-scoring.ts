@@ -1,22 +1,27 @@
 /**
- * Lead Scoring Engine
+ * Lead Scoring — compatibility shim over the coherency-native gate.
  *
- * Weighted scoring algorithm that ranks leads by business value.
- * A veteran seeking term life in a high-population state scores higher
- * than an undecided non-military lead in a low-volume market.
+ * The actual math now lives in app/lib/valor/lead-coherency.ts. This file
+ * preserves the historical LeadScore surface so downstream consumers
+ * (admin exports, agent portal, client purchase flow, distribution) keep
+ * working unchanged while the scoring is computed from the archetype
+ * cascade instead of a hand-tuned weighted sum.
  *
- * Score range: 0–100
- *   85–100: Hot (immediate follow-up, highest quality)
- *   70–84:  Warm (same-day follow-up)
- *   55–69:  Standard (next-business-day)
- *   0–54:   Cool (batch queue)
+ * Score range: 0–100 (now a linear projection of the coherency score)
+ *   85–100: Hot      (coherency ≥ TRANSCENDENCE 0.95)
+ *   70–84:  Warm     (coherency ≥ SYNERGY 0.85)
+ *   55–69:  Standard (coherency ≥ FOUNDATION 0.70)
+ *   0–54:   Cool     (below foundation)
  *
- * Note: Score determines lead quality tier, NOT pricing.
- * Pricing is based on buyer exclusivity:
- *   Exclusive (1 buyer): $120 | Semi-Exclusive (2): $100
- *   Warm Shared (3-4): $80   | Cool Shared (5-6): $60
- * All prices depreciate over time with a $60 floor.
+ * The tier thresholds map to the Remembrance coherency thresholds so the
+ * cathedral and the oracle agree on what "hot" means.
  */
+
+import {
+  scoreLeadByCoherency,
+  legacyTierFor,
+  legacyTotalFor,
+} from "./valor/lead-coherency";
 
 export interface LeadScore {
   total: number;
@@ -29,53 +34,16 @@ export interface LeadScore {
     completeness: number;
     recency: number;
   };
+  /** Raw coherency score in [0, 1] — available for admin surfaces. */
+  coherency?: number;
+  /** Dominant archetype name from the cascade (e.g. "valor/protective-veteran"). */
+  archetype?: string;
 }
 
-// --- Coverage interest weights (max 25 points) ---
-const COVERAGE_WEIGHTS: Record<string, number> = {
-  "mortgage-protection": 23,   // → Term Life
-  "income-replacement": 23,    // → Term Life
-  "final-expense": 22,         // → Whole Life (small face)
-  "legacy": 25,                // → Whole Life
-  "retirement-savings": 21,    // → IUL
-  "guaranteed-income": 18,     // → Annuity
-  "not-sure": 8,
-};
-
-// --- Purchase intent weights (max 20 points) ---
-// Self-reported buying intent — one of the strongest conversion signals.
-const INTENT_WEIGHTS: Record<string, number> = {
-  "protect-family": 20,
-  "want-protection": 12,
-  "exploring": 5,
-};
-
-// --- Service category weights (max 18 points) ---
-// Active-duty and veterans have access to SGLI/VGLI conversion, group rates,
-// and specialized underwriting — higher value to carriers.
-// Reserve and National Guard also qualify for military-specific products.
-const VETERAN_WEIGHTS: Record<string, number> = {
-  "active-duty": 18,
-  "veteran": 18,
-  "reserve": 16,
-  "national-guard": 16,
-  "non-military": 7,
-};
-
-// --- High-volume insurance states (max 17 points) ---
-// Top states by life insurance policy density and premium volume
-const HIGH_VALUE_STATES = new Set([
-  "TX", "FL", "CA", "NY", "PA", "OH", "IL", "GA", "NC", "VA",
-  "NJ", "MI", "TN", "AZ", "IN", "MO", "MD", "WI", "SC", "AL",
-]);
-
-const MEDIUM_VALUE_STATES = new Set([
-  "CO", "MN", "LA", "KY", "OR", "OK", "CT", "IA", "MS", "AR",
-  "KS", "UT", "NV", "NE", "WV", "NM", "HI", "NH", "ME", "ID",
-]);
-
 /**
- * Score a lead based on weighted business factors.
+ * Score a lead. Backwards-compatible with the previous weighted algorithm;
+ * under the hood this delegates to the coherency cascade and projects back
+ * into the legacy LeadScore shape.
  */
 export function scoreLead(lead: {
   coverageInterest: string;
@@ -90,56 +58,40 @@ export function scoreLead(lead: {
   dateOfBirth: string;
   createdAt: string;
 }): LeadScore {
-  // Coverage factor (0–25)
-  const coverage = COVERAGE_WEIGHTS[lead.coverageInterest] || 8;
+  const coh = scoreLeadByCoherency({
+    coverageInterest: lead.coverageInterest,
+    purchaseIntent: lead.purchaseIntent,
+    veteranStatus: lead.veteranStatus,
+    militaryBranch: lead.militaryBranch,
+    state: lead.state,
+    firstName: lead.firstName,
+    lastName: lead.lastName,
+    email: lead.email,
+    phone: lead.phone,
+    dateOfBirth: lead.dateOfBirth,
+    createdAt: lead.createdAt,
+    consentTcpa: true,
+    consentPrivacy: true,
+  });
 
-  // Intent factor (0–20)
-  const intent = INTENT_WEIGHTS[lead.purchaseIntent || ""] || 5;
-
-  // Veteran factor (0–18)
-  let veteran = VETERAN_WEIGHTS[lead.veteranStatus] || 5;
-  // Bonus for specific branch identification (indicates engagement)
-  if (lead.veteranStatus !== "non-military" && lead.militaryBranch) {
-    veteran = Math.min(18, veteran + 2);
-  }
-
-  // State factor (0–17)
-  let state = 9; // default
-  if (HIGH_VALUE_STATES.has(lead.state)) state = 17;
-  else if (MEDIUM_VALUE_STATES.has(lead.state)) state = 13;
-
-  // Completeness factor (0–10)
-  // All forms are fully validated before submission — every field is required.
-  // Score reflects whether the data was actually provided (guards against API-direct submissions).
-  let completeness = 0;
-  if (lead.firstName) completeness += 2;
-  if (lead.lastName) completeness += 2;
-  if (lead.email) completeness += 2;
-  if (lead.phone) completeness += 2;
-  if (lead.dateOfBirth) completeness += 2;
-
-  // Recency factor (0–10)
-  let recency = 10;
-  const ageMs = Date.now() - new Date(lead.createdAt).getTime();
-  const ageHours = ageMs / (1000 * 60 * 60);
-  if (ageHours > 72) recency = 2;
-  else if (ageHours > 24) recency = 5;
-  else if (ageHours > 6) recency = 8;
-
-  const total = Math.min(100, coverage + intent + veteran + state + completeness + recency);
-
-  // Tier thresholds — since all forms are fully completed (completeness = 10),
-  // the effective score range for real submissions is ~40–100.
-  // Adjusted thresholds to distribute leads meaningfully across tiers.
-  let tier: LeadScore["tier"];
-  if (total >= 85) tier = "hot";
-  else if (total >= 70) tier = "warm";
-  else if (total >= 55) tier = "standard";
-  else tier = "cool";
+  // Project the 16-dimensional shape back into the six factor buckets
+  // the admin UI already knows how to render. Each legacy factor is
+  // rescaled into the historical 0–25 / 0–20 / 0–18 / 0–17 / 0–10 / 0–10 band.
+  const d = coh.dimensions;
+  const factors = {
+    coverage: Math.round(d.coverage_clarity * 25),
+    intent: Math.round(d.intent_strength * 20),
+    veteran: Math.round((d.veteran_integrity * 0.8 + d.branch_specificity * 0.2) * 18),
+    state: Math.round(d.state_market_fit * 17),
+    completeness: Math.round(d.field_completeness * 10),
+    recency: Math.round(d.recency * 10),
+  };
 
   return {
-    total,
-    tier,
-    factors: { coverage, intent, veteran, state, completeness, recency },
+    total: legacyTotalFor(coh.score),
+    tier: legacyTierFor(coh.score),
+    factors,
+    coherency: coh.score,
+    archetype: coh.dominantArchetype,
   };
 }

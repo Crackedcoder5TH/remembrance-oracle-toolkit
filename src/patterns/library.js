@@ -1,4 +1,16 @@
 /**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
+/**
  * Pattern Library — The heart of the Oracle's intelligence.
  *
  * Stores reusable code patterns categorized by:
@@ -18,8 +30,29 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 const { computeRelevance } = require('../core/relevance');
+const { parseStructuredDescription, structuralSimilarity } = require('../core/structured-description');
+const { applyDecayToScore, computeFreshnessBoost } = require('../unified/decay');
+const { validateCode } = require('../core/validator');
+const { checkSemanticConsistency } = require('../core/semantic-consistency');
+
+// Fractal-library bridge (graceful — returns neutral values if unavailable)
+// Decision-engine helpers still needed directly; mutation integration moved to FractalStore.
+let _holoDecisionBoost, _familyStabilitySignal, _familyDecayModifier;
+try {
+  ({ holoDecisionBoost: _holoDecisionBoost, familyStabilitySignal: _familyStabilitySignal, familyDecayModifier: _familyDecayModifier } = require('../compression/fractal-library-bridge'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[library:init] fractal-library bridge not available:', e?.message || e);
+}
+
+// FractalStore middleware — wraps SQLiteStore so every mutation auto-maintains fractal data.
+let FractalStore;
+try {
+  ({ FractalStore } = require('../store/fractal-store'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[library:init] FractalStore not available:', e?.message || e);
+}
 const {
   DECISION_THRESHOLDS,
   HASH_TRUNCATION_LENGTH,
@@ -30,6 +63,7 @@ const {
   RELEVANCE_GATES,
   COMPLEXITY_TIERS: COMPLEXITY_TIER_LIMITS,
   RETIREMENT_WEIGHTS,
+  TWO_PHASE_SCORING,
 } = require('../constants/thresholds');
 
 const PATTERN_FILE = 'pattern-library.json';
@@ -46,7 +80,8 @@ function syncSleep(ms) {
   try {
     const buf = new Int32Array(new SharedArrayBuffer(4));
     Atomics.wait(buf, 0, 0, ms);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:syncSleep] spin:', e?.message || e);
     const end = Date.now() + ms;
     while (Date.now() < end) { /* spin */ }
   }
@@ -66,15 +101,27 @@ function acquireLock(storeDir, label = 'pattern-library') {
       const fd = fs.openSync(lockPath, fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_WRONLY);
       fs.writeFileSync(fd, String(process.pid), 'utf-8');
       fs.closeSync(fd);
-      return () => { try { fs.unlinkSync(lockPath); } catch { /* ok */ } };
-    } catch {
+      return () => { try { fs.unlinkSync(lockPath); } catch (e) { if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e); } };
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] ok:', e?.message || e);
       try {
         const stat = fs.statSync(lockPath);
         if (Date.now() - stat.mtimeMs > STALE_LOCK_MS) {
-          try { fs.unlinkSync(lockPath); } catch { /* ok */ }
+          // Atomically claim the stale lock via rename to prevent TOCTOU race
+          const stalePath = lockPath + '.stale.' + process.pid;
+          try {
+            fs.renameSync(lockPath, stalePath);
+            fs.unlinkSync(stalePath);
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] stale cleanup:', e?.message || e);
+            // Another process may have already claimed it — that's fine
+          }
           continue;
         }
-      } catch { continue; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:acquireLock] skipping item:', e?.message || e);
+        continue;
+      }
       if (attempt < LOCK_DELAYS.length) {
         syncSleep(LOCK_DELAYS[attempt]);
       }
@@ -87,22 +134,29 @@ function acquireLock(storeDir, label = 'pattern-library') {
  * Load JSON with .bak recovery — prevents data loss on corruption.
  */
 function loadJSONSafe(filePath, fallback) {
+  if (!filePath) return fallback;
   try {
     if (fs.existsSync(filePath)) {
       const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       return parsed;
     }
-  } catch { /* primary corrupted — try backup */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] primary corrupted — try backup:', e?.message || e);
+  }
 
   const bakPath = filePath + '.bak';
   try {
     if (fs.existsSync(bakPath)) {
       const raw = fs.readFileSync(bakPath, 'utf-8');
       const parsed = JSON.parse(raw);
-      try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch { /* best effort recovery */ }
+      try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] best effort recovery:', e?.message || e);
+      }
       return parsed;
     }
-  } catch { /* backup also corrupted */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:loadJSONSafe] backup also corrupted:', e?.message || e);
+  }
 
   if (!fs.existsSync(filePath) && !fs.existsSync(bakPath)) {
     return fallback;
@@ -122,7 +176,12 @@ function atomicWriteJSON(filePath, data) {
   const tmpPath = filePath + '.tmp';
   fs.writeFileSync(tmpPath, json, 'utf-8');
   if (fs.existsSync(filePath)) {
-    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch { /* ok */ }
+    try {
+      fs.copyFileSync(filePath, filePath + '.bak');
+    } catch (e) {
+      // Backup failed — warn loudly since .bak recovery won't work if rename crashes
+      console.warn(`[library:atomicWriteJSON] WARNING — backup failed for ${path.basename(filePath)}: ${e?.message || e}. Recovery may be incomplete if write is interrupted.`);
+    }
   }
   fs.renameSync(tmpPath, filePath);
 }
@@ -213,19 +272,46 @@ function tryGetSQLite(storeDir) {
     }
     VerifiedHistoryStore._sqliteInstances.set(storeDir, instance);
     return instance;
-  } catch { /* SQLite not available — fall back to JSON */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[library:tryGetSQLite] SQLite not available — fall back to JSON:', e?.message || e);
+  }
   return null;
 }
 
 class PatternLibrary {
+  // Secondary-index caches — rebuilt lazily on first access and
+  // invalidated by every mutating method. `#` fields keep them truly
+  // private so callers can't poke at internal state.
+  #ruleIndex = null;
+  #tagIndex = null;
+
   constructor(storeDir) {
     this.storeDir = storeDir;
-    this.libraryPath = path.join(storeDir, PATTERN_FILE);
+    // Recognize both the toolkit's canonical `pattern-library.json` and the
+    // legacy/Standalone `patterns.json` shape. If either file already exists
+    // we prefer the file that's on disk so external writers don't get
+    // silently shadowed by a fresh SQLite DB.
+    const canonicalPath = path.join(storeDir, PATTERN_FILE);
+    const legacyPath = path.join(storeDir, 'patterns.json');
+    const canonicalExists = fs.existsSync(canonicalPath);
+    const legacyExists = fs.existsSync(legacyPath);
+    this.libraryPath = canonicalExists
+      ? canonicalPath
+      : (legacyExists ? legacyPath : canonicalPath);
     this._backend = 'json';
 
-    const sqlite = tryGetSQLite(storeDir);
+    // Backend selection: if a legacy/canonical JSON file already exists in
+    // the storeDir, honor it — the caller (tests, migrations, external
+    // tools) is managing persistence as JSON. Only use SQLite when no JSON
+    // file is present, so fresh stores get the fast path while existing
+    // JSON stores keep working. Closes the silent backend-mismatch where
+    // writes to `patterns.json` were invisible to a SQLite-backed reader.
+    const jsonExists = canonicalExists || legacyExists;
+    const sqlite = jsonExists ? null : tryGetSQLite(storeDir);
     if (sqlite) {
-      this._sqlite = sqlite;
+      // Wrap in FractalStore so every mutation auto-maintains embeddings & families.
+      // Falls back to raw SQLiteStore if FractalStore is unavailable.
+      this._sqlite = FractalStore ? new FractalStore(sqlite) : sqlite;
       this._backend = 'sqlite';
     } else {
       this._ensureJSON();
@@ -251,16 +337,67 @@ class PatternLibrary {
       patterns: [],
       meta: { created: new Date().toISOString(), version: 1, decisions: 0 },
     };
-    return loadJSONSafe(this.libraryPath, fallback);
+    const raw = loadJSONSafe(this.libraryPath, fallback);
+    // Tolerate the legacy "raw array" shape that StandalonePatternLibrary and
+    // external callers (tests, migrations) write. Both shapes become the
+    // wrapped { patterns, meta } object used by the rest of this class.
+    if (Array.isArray(raw)) {
+      return {
+        patterns: raw,
+        meta: { created: new Date().toISOString(), version: 1, decisions: 0 },
+      };
+    }
+    if (raw && !Array.isArray(raw.patterns)) {
+      raw.patterns = [];
+    }
+    if (raw && !raw.meta) {
+      raw.meta = { created: new Date().toISOString(), version: 1, decisions: 0 };
+    }
+    return raw;
+  }
+
+  /**
+   * Write the library, honoring the on-disk shape. If the existing file is
+   * a raw array (StandalonePatternLibrary format), write it back as an array
+   * so external callers that expect that shape keep working. Otherwise use
+   * the wrapped { patterns, meta } shape.
+   */
+  _writeJSONShapeAware(data) {
+    let shape = 'wrapped';
+    try {
+      if (fs.existsSync(this.libraryPath)) {
+        const existing = JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
+        if (Array.isArray(existing)) shape = 'array';
+      }
+    } catch { /* treat as wrapped */ }
+    const payload = shape === 'array' ? (data.patterns || []) : data;
+    this._writeJSON(payload);
   }
 
   _writeJSON(data) {
+    // Preserve the on-disk shape so legacy raw-array stores (written by
+    // StandalonePatternLibrary and external tools) don't get silently
+    // upgraded to the wrapped { patterns, meta } shape mid-session, which
+    // would break callers reading the file directly.
+    let payload = data;
+    try {
+      if (fs.existsSync(this.libraryPath)) {
+        const existing = JSON.parse(fs.readFileSync(this.libraryPath, 'utf-8'));
+        if (Array.isArray(existing) && data && Array.isArray(data.patterns)) {
+          payload = data.patterns;
+        }
+      }
+    } catch { /* treat as wrapped */ }
+
     const unlock = acquireLock(this.storeDir);
     try {
-      atomicWriteJSON(this.libraryPath, data);
+      atomicWriteJSON(this.libraryPath, payload);
     } finally {
       unlock();
     }
+    // Any write invalidates the ruleId / tag secondary indexes. Next
+    // findByRuleId / findByTag / listTags call rebuilds from getAll().
+    this.#invalidateIndexes();
   }
 
   _hash(str) {
@@ -275,6 +412,8 @@ class PatternLibrary {
    * @returns {object} The registered pattern record with id and coherency score
    */
   register(pattern) {
+    // Any register / update / merge invalidates the rule+tag indexes.
+    this.#invalidateIndexes();
     // Sanitize code before scoring — fixes known SERF transform bugs
     const sanitizedCode = sanitizePatternCode(pattern.code);
     const patternWithCleanCode = { ...pattern, code: sanitizedCode };
@@ -286,6 +425,7 @@ class PatternLibrary {
     });
 
     if (this._backend === 'sqlite') {
+      const structured = pattern.structuredDescription || parseStructuredDescription(pattern.description || '', { code: sanitizedCode, tags: pattern.tags || [] });
       const patternData = {
         name: pattern.name,
         code: sanitizedCode,
@@ -293,18 +433,23 @@ class PatternLibrary {
         patternType: pattern.patternType || classifyPattern(sanitizedCode, pattern.name),
         complexity: pattern.complexity || inferComplexity(sanitizedCode),
         description: pattern.description || '',
+        structuredDescription: structured,
         tags: pattern.tags || [],
         coherencyScore: coherency,
         variants: pattern.variants || [],
         testCode: pattern.testCode || null,
+        usageCount: pattern.usageCount ?? 0,
+        successCount: pattern.successCount ?? 0,
+        evolutionHistory: pattern.evolutionHistory || [],
       };
-      // Use dedup-safe insert: skip or update if (name, language) already exists
+      // Use dedup-safe insert: skip or update if (name, language) already exists.
+      // FractalStore.addPatternIfNotExists auto-integrates embeddings & families.
       const record = this._sqlite.addPatternIfNotExists(patternData);
       this._sqlite.incrementDecisions();
       if (!record) {
         // Duplicate with equal/higher coherency — return the existing one
         const existing = this._sqlite.getPatternByName(pattern.name);
-        return existing;
+        return existing || null;
       }
       return record;
     }
@@ -332,16 +477,40 @@ class PatternLibrary {
     }
 
     if (patterns.length === 0) {
-      return {
+      const __retVal = {
         decision: 'generate',
         pattern: null,
         confidence: 1.0,
         reasoning: 'Pattern library is empty — generation required',
         alternatives: [],
       };
+      // ── LRE field-coupling (auto-wired) ──
+      try {
+        const __lre_p1 = './../../core/field-coupling';
+        const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+        for (const __p of [__lre_p1, __lre_p2]) {
+          try {
+            const { contribute: __contribute } = require(__p);
+            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.confidence || 0)), source: 'oracle:library:decide' });
+            break;
+          } catch (_) { /* try next */ }
+        }
+      } catch (_) { /* best-effort */ }
+      return __retVal;
     }
 
+    // Parse request description into structured form for structural matching
+    const requestStructured = parseStructuredDescription(description, { tags });
+
+    // ── Two-Phase Scoring ──
+    // Phase 1 (Relevance Gate): compute pure relevance from keyword/semantic/structural/holo signals.
+    //   Patterns below the gate are skipped — no amount of quality can rescue irrelevance.
+    // Phase 2 (Quality Ranking): among passing patterns, blend relevance + quality for final score.
+
+    const store = this._sqlite || (this.store && this.store.getSQLiteStore ? this.store.getSQLiteStore() : null);
+
     const scored = patterns.map(p => {
+      // ── Phase 1: Pure relevance score ──
       const relevance = computeRelevance(
         { description, tags, language },
         {
@@ -355,35 +524,68 @@ class PatternLibrary {
       );
 
       const normalizedDesc = description.toLowerCase().replace(/[-_]/g, ' ');
-      const normalizedName = p.name.toLowerCase().replace(/[-_]/g, ' ');
+      const normalizedName = (p.name || '').toLowerCase().replace(/[-_]/g, ' ');
       const nameBonus = normalizedDesc.includes(normalizedName) || normalizedName.includes(normalizedDesc) ? DECISION_BONUSES.NAME_MATCH : 0;
-      const focusBonus = p.complexity === 'atomic' ? DECISION_BONUSES.ATOMIC_FOCUS : p.complexity === 'composite' ? DECISION_BONUSES.COMPOSITE_FOCUS : 0;
-      const coherency = p.coherencyScore?.total ?? 0;
 
-      // Enhanced reliability: usage success + bug reports + healing success + community votes
+      // Structural similarity — part of relevance, not quality
+      const patternStructured = p.structuredDescription || parseStructuredDescription(p.description || '', { code: p.code, tags: p.tags || [] });
+      const structSim = structuralSimilarity(requestStructured, patternStructured);
+      const structuralBoost = structSim > 0.5 ? structSim * 0.10 : 0;
+
+      // Holographic embedding — part of relevance, not quality
+      let holoBoost = 0;
+      if (_holoDecisionBoost) {
+        const holo = _holoDecisionBoost({ description, tags, language }, p, store);
+        holoBoost = holo.boost;
+      }
+
+      // Pure relevance: semantic match + name affinity + structural + holographic
+      // These all answer "is this the right pattern?" — no quality signals allowed here
+      const relevanceScore = Math.min(1.0, relevance.relevance + nameBonus + structuralBoost + holoBoost);
+
+      // ── Phase 1 Gate: skip patterns with insufficient relevance ──
+      if (relevanceScore < TWO_PHASE_SCORING.PHASE1_GATE) {
+        return { pattern: p, relevance: relevance.relevance, relevanceScore, coherency: 0, decayedCoherency: 0, reliability: 0, structuralSimilarity: structSim, holoBoost, qualityScore: 0, composite: 0, gated: true };
+      }
+
+      // ── Phase 2: Quality score (only for patterns that passed the gate) ──
+      const coherency = p.coherencyScore?.total ?? 0;
+      const focusBonus = p.complexity === 'atomic' ? DECISION_BONUSES.ATOMIC_FOCUS : p.complexity === 'composite' ? DECISION_BONUSES.COMPOSITE_FOCUS : 0;
+
+      // Reliability: usage success + bug reports + healing success + community votes
       const usageReliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
       const bugCount = p.bugReports || 0;
       const bugPenalty = bugCount > 0 ? Math.max(0, 1 - bugCount * BUG_PENALTY_MULTIPLIER) : 1.0;
       const healingRate = typeof this._healingRateProvider === 'function' ? this._healingRateProvider(p.id) : 1.0;
-      // Weighted vote scoring — uses reputation-weighted scores when available
       const weightedScore = p.weightedVoteScore ?? ((p.upvotes || 0) - (p.downvotes || 0));
       const voteBoost = weightedScore > 0 ? Math.min(VOTE_BOOST.MAX, weightedScore * VOTE_BOOST.MULTIPLIER) : Math.max(VOTE_BOOST.MIN, weightedScore * VOTE_BOOST.MULTIPLIER);
       const reliability = usageReliability * bugPenalty * healingRate + voteBoost;
+      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
 
-      // Evolution adjustments: penalize stale + over-evolved patterns
+      // Confidence decay — penalize stale, reward fresh
+      const decayModifier = _familyDecayModifier ? _familyDecayModifier(p.id, store) : 1.0;
+      const decayResult = applyDecayToScore(coherency, p, { halfLifeDays: 90 * decayModifier });
+      const freshnessBoost = computeFreshnessBoost(p);
+      const decayedCoherency = decayResult.adjusted + freshnessBoost;
+
+      // Evolution penalty
       let evolutionPenalty = 0;
       try {
         const { evolutionAdjustment } = require('../evolution/evolution');
         const adj = evolutionAdjustment(p);
         evolutionPenalty = adj.total;
-      } catch {
-        // Evolution module not available — no penalty
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[library:normalizedName] silent failure:', e?.message || e);
       }
 
-      const cappedReliability = Math.min(reliability, DECISION_WEIGHTS.RELIABILITY_CAP);
-      const composite = relevance.relevance * DECISION_WEIGHTS.RELEVANCE + coherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + nameBonus + focusBonus - evolutionPenalty;
+      // Quality score: coherency × reliability × decay × focus — answers "is this pattern any good?"
+      const scaledFocusBonus = focusBonus * relevanceScore;
+      const qualityScore = Math.min(1.0, Math.max(0, decayedCoherency * DECISION_WEIGHTS.COHERENCY + cappedReliability * DECISION_WEIGHTS.RELIABILITY + scaledFocusBonus - evolutionPenalty) / (DECISION_WEIGHTS.COHERENCY + DECISION_WEIGHTS.RELIABILITY));
 
-      return { pattern: p, relevance: relevance.relevance, coherency, reliability, composite };
+      // Final composite: blend relevance (60%) + quality (40%)
+      const composite = Math.min(1.0, relevanceScore * TWO_PHASE_SCORING.RELEVANCE_BLEND + qualityScore * TWO_PHASE_SCORING.QUALITY_BLEND);
+
+      return { pattern: p, relevance: relevance.relevance, relevanceScore, coherency, decayedCoherency, reliability, structuralSimilarity: structSim, holoBoost, qualityScore, composite, gated: false };
     }).sort((a, b) => b.composite - a.composite);
 
     // Guard: if all patterns were filtered out during scoring, generate
@@ -399,25 +601,78 @@ class PatternLibrary {
 
     const best = scored[0];
     const threshold = minCoherency ?? THRESHOLDS.pull;
+    const evolveThreshold = Math.min(threshold, THRESHOLDS.evolve);
+    const altMapper = s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite });
 
-    if (best.composite >= threshold && best.relevance >= RELEVANCE_GATES.FOR_PULL) {
+    if (best.composite >= threshold && best.relevanceScore >= RELEVANCE_GATES.FOR_PULL) {
+      // Hard gate 1: pattern must have test code and tests must pass to PULL
+      const testGateResult = this._verifyTestGate(best.pattern);
+      if (!testGateResult.passed) {
+        // Downgrade to EVOLVE — pattern looks good but tests don't prove it
+        if (best.composite >= evolveThreshold && best.relevanceScore >= RELEVANCE_GATES.FOR_EVOLVE) {
+          return {
+            decision: 'evolve',
+            pattern: best.pattern,
+            confidence: best.composite,
+            reasoning: `Pattern "${best.pattern.name}" scored ${best.composite.toFixed(3)} but failed test gate (${testGateResult.reason}) — downgraded to EVOLVE`,
+            alternatives: scored.slice(1, 4).map(altMapper),
+            testGate: testGateResult,
+          };
+        }
+        return {
+          decision: 'generate',
+          pattern: best.pattern,
+          confidence: 1.0 - (best.composite || 0),
+          reasoning: `Pattern "${best.pattern.name}" scored ${best.composite.toFixed(3)} but failed test gate (${testGateResult.reason}) — generation required`,
+          alternatives: scored.slice(1, 4).map(altMapper),
+          testGate: testGateResult,
+        };
+      }
+
+      // Hard gate 2: semantic consistency — name/description must match code behavior
+      const semanticResult = checkSemanticConsistency(best.pattern.name, description, best.pattern.code);
+      if (semanticResult.score < 0.4) {
+        // Severe mismatch — code does something different than what name claims
+        if (best.composite >= evolveThreshold && best.relevanceScore >= RELEVANCE_GATES.FOR_EVOLVE) {
+          return {
+            decision: 'evolve',
+            pattern: best.pattern,
+            confidence: best.composite * semanticResult.score,
+            reasoning: `Pattern "${best.pattern.name}" failed semantic check: ${semanticResult.flags.join('; ')} — downgraded to EVOLVE`,
+            alternatives: scored.slice(1, 4).map(altMapper),
+            testGate: testGateResult,
+            semanticCheck: semanticResult,
+          };
+        }
+        return {
+          decision: 'generate',
+          pattern: best.pattern,
+          confidence: 1.0 - (best.composite || 0),
+          reasoning: `Pattern "${best.pattern.name}" failed semantic check: ${semanticResult.flags.join('; ')} — generation required`,
+          alternatives: scored.slice(1, 4).map(altMapper),
+          testGate: testGateResult,
+          semanticCheck: semanticResult,
+        };
+      }
+
       return {
         decision: 'pull',
         pattern: best.pattern,
         confidence: best.composite,
-        reasoning: `Pattern "${best.pattern.name}" matches with composite score ${best.composite.toFixed(3)} (relevance=${best.relevance.toFixed(3)}, coherency=${best.coherency.toFixed(3)}, reliability=${best.reliability.toFixed(3)})`,
-        alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+        reasoning: `Pattern "${best.pattern.name}" matches with composite score ${best.composite.toFixed(3)} (relevance=${best.relevanceScore.toFixed(3)}, quality=${(best.qualityScore || 0).toFixed(3)}, coherency=${best.coherency.toFixed(3)}, reliability=${best.reliability.toFixed(3)}) — tests verified, semantics consistent`,
+        alternatives: scored.slice(1, 4).map(altMapper),
+        testGate: testGateResult,
+        semanticCheck: semanticResult,
       };
     }
 
-    const evolveThreshold = Math.min(threshold, THRESHOLDS.evolve);
-    if (best.composite >= evolveThreshold && best.relevance >= RELEVANCE_GATES.FOR_EVOLVE) {
+    if (best.composite >= evolveThreshold && best.relevanceScore >= RELEVANCE_GATES.FOR_EVOLVE) {
       return {
         decision: 'evolve',
         pattern: best.pattern,
         confidence: best.composite,
         reasoning: `Pattern "${best.pattern.name}" is a partial match (${best.composite.toFixed(3)}) — can be evolved to fit`,
-        alternatives: scored.slice(1, 4).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+        alternatives: scored.slice(1, 4).map(altMapper),
       };
     }
 
@@ -426,8 +681,41 @@ class PatternLibrary {
       pattern: scored.length > 0 ? scored[0].pattern : null,
       confidence: 1.0 - (best.composite || 0),
       reasoning: `Best match "${best.pattern.name}" scored too low (${best.composite.toFixed(3)}) — new pattern needed`,
-      alternatives: scored.slice(0, 3).map(s => ({ id: s.pattern.id, name: s.pattern.name, composite: s.composite })),
+      alternatives: scored.slice(1, 4).map(altMapper),
     };
+  }
+
+  /**
+   * Verify test gate for PULL decisions.
+   * Pattern must have test code and tests must pass in sandbox.
+   * @param {object} pattern - The pattern to verify
+   * @returns {{ passed: boolean, reason: string, testOutput?: string }}
+   */
+  _verifyTestGate(pattern) {
+    if (!pattern.testCode) {
+      // Trust the registration flag or coherency testProof if tests were validated externally
+      if (pattern.testPassed === true || pattern.coherencyScore?.breakdown?.testProof === 1.0) {
+        return { passed: true, reason: 'Test passed at registration (no inline test code)' };
+      }
+      return { passed: false, reason: 'No test code — pattern has no test proof' };
+    }
+    try {
+      const result = validateCode(pattern.code, {
+        language: pattern.language,
+        testCode: pattern.testCode,
+        threshold: 0, // We only care about test execution, not coherency here
+        // Covenant runs EVERY time — structurally unbypassable.
+        // If it already passed at registration, it will pass again (fast).
+        // If the code was modified since registration, this catches it.
+        sandbox: true,
+      });
+      if (result.testPassed === true) {
+        return { passed: true, reason: 'Tests passed in sandbox', testOutput: result.testOutput };
+      }
+      return { passed: false, reason: `Tests failed: ${result.testOutput || 'unknown error'}`, testOutput: result.testOutput };
+    } catch (err) {
+      return { passed: false, reason: `Test execution error: ${err.message}` };
+    }
   }
 
   /**
@@ -456,7 +744,9 @@ class PatternLibrary {
    * Bug reports penalize the pattern's reliability score.
    */
   reportBug(id, description) {
-    const pattern = this.getAll().find(p => p.id === id);
+    const pattern = this._backend === 'sqlite'
+      ? this._sqlite.getPattern(id)
+      : this.getAll().find(p => p.id === id);
     if (!pattern) return { success: false, reason: 'Pattern not found' };
 
     const bugCount = (pattern.bugReports || 0) + 1;
@@ -479,7 +769,9 @@ class PatternLibrary {
    * Get full reliability breakdown for a pattern.
    */
   getReliability(id) {
-    const pattern = this.getAll().find(p => p.id === id);
+    const pattern = this._backend === 'sqlite'
+      ? this._sqlite.getPattern(id)
+      : this.getAll().find(p => p.id === id);
     if (!pattern) return null;
 
     const usageReliability = pattern.usageCount > 0 ? pattern.successCount / pattern.usageCount : 0.5;
@@ -495,8 +787,8 @@ class PatternLibrary {
       patternId: id,
       patternName: pattern.name,
       usageReliability: Math.round(usageReliability * 1000) / 1000,
-      usageCount: pattern.usageCount || 0,
-      successCount: pattern.successCount || 0,
+      usageCount: pattern.usageCount ?? 0,
+      successCount: pattern.successCount ?? 0,
       bugReports: bugCount,
       bugPenalty: Math.round(bugPenalty * 1000) / 1000,
       healingRate: Math.round(healingRate * 1000) / 1000,
@@ -548,12 +840,101 @@ class PatternLibrary {
   }
 
   /**
+   * Find patterns by rule id. Looks at three places, in order of
+   * precedence:
+   *
+   *   1. p.ruleId / p.rule       — explicit association
+   *   2. p.metadata.ruleId        — namespaced metadata
+   *   3. tags that start with 'rule:'   — `rule:type/division-by-zero`
+   *
+   * Memoized per library instance. The cache is invalidated on any
+   * mutation (register, mergePatterns, update, retire).
+   *
+   * Used by `audit explain` to surface concrete library patterns that
+   * exemplify a rule's fix, and by `heal generate` to pull a proven
+   * pattern when structural auto-fix can't handle a finding.
+   */
+  findByRuleId(ruleId) {
+    if (!ruleId) return [];
+    if (!this.#ruleIndex) this.#buildSecondaryIndexes();
+    return this.#ruleIndex.get(ruleId) || [];
+  }
+
+  /**
+   * Find patterns by tag (case-insensitive). Memoized.
+   */
+  findByTag(tag) {
+    if (!tag) return [];
+    if (!this.#tagIndex) this.#buildSecondaryIndexes();
+    return this.#tagIndex.get(tag.toLowerCase()) || [];
+  }
+
+  /**
+   * List all known tags and their frequencies.
+   */
+  listTags() {
+    if (!this.#tagIndex) this.#buildSecondaryIndexes();
+    const out = [];
+    for (const [tag, patterns] of this.#tagIndex.entries()) {
+      out.push({ tag, count: patterns.length });
+    }
+    return out.sort((a, b) => b.count - a.count);
+  }
+
+  /**
+   * Rebuild the secondary indexes from scratch. Called lazily on first
+   * findByRuleId/findByTag, and invalidated by mutating methods.
+   */
+  #buildSecondaryIndexes() {
+    this.#ruleIndex = new Map();
+    this.#tagIndex = new Map();
+    for (const p of this.getAll()) {
+      // Rule id
+      const ruleIds = [];
+      if (p.ruleId) ruleIds.push(p.ruleId);
+      if (p.rule) ruleIds.push(p.rule);
+      if (p.metadata && p.metadata.ruleId) ruleIds.push(p.metadata.ruleId);
+      if (Array.isArray(p.tags)) {
+        for (const t of p.tags) {
+          if (typeof t === 'string' && t.startsWith('rule:')) {
+            ruleIds.push(t.slice(5));
+          }
+        }
+      }
+      for (const rid of ruleIds) {
+        const arr = this.#ruleIndex.get(rid) || [];
+        arr.push(p);
+        this.#ruleIndex.set(rid, arr);
+      }
+      // Tags
+      if (Array.isArray(p.tags)) {
+        for (const t of p.tags) {
+          if (typeof t !== 'string') continue;
+          const key = t.toLowerCase();
+          const arr = this.#tagIndex.get(key) || [];
+          arr.push(p);
+          this.#tagIndex.set(key, arr);
+        }
+      }
+    }
+  }
+
+  /**
+   * Invalidate the secondary indexes after a mutation.
+   */
+  #invalidateIndexes() {
+    this.#ruleIndex = null;
+    this.#tagIndex = null;
+  }
+
+  /**
    * Update a pattern's fields by ID.
    * @param {string} id - Pattern ID
    * @param {object} updates - Object with fields to update
    * @returns {object|null} Updated pattern record or null if not found
    */
   update(id, updates) {
+    this.#invalidateIndexes();
     if (this._backend === 'sqlite') {
       return this._sqlite.updatePattern(id, updates);
     }
@@ -561,9 +942,14 @@ class PatternLibrary {
     const data = this._readJSON();
     const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
-    Object.assign(pattern, updates, { updatedAt: new Date().toISOString() });
+    // Build a new object from the existing + updates so we don't mutate
+    // the shared reference before committing. Write-through still goes via
+    // _writeJSON() which handles locking + atomic persistence.
+    const merged = Object.assign({}, pattern, updates, { updatedAt: new Date().toISOString() });
+    const idx = data.patterns.indexOf(pattern);
+    data.patterns[idx] = merged;
     this._writeJSON(data);
-    return pattern;
+    return merged;
   }
 
   /**
@@ -663,10 +1049,10 @@ class PatternLibrary {
       code: cleanCode,
       language: candidate.language || 'unknown',
       patternType: candidate.patternType || 'utility',
-      complexity: candidate.complexity || inferComplexity(candidate.code),
+      complexity: candidate.complexity || inferComplexity(cleanCode || ''),
       description: candidate.description || '',
       tags: candidate.tags || [],
-      coherencyTotal: candidate.coherencyTotal ?? 0,
+      coherencyTotal: candidate.coherencyTotal ?? candidate.coherencyScore?.total ?? 0,
       coherencyScore: candidate.coherencyScore || {},
       testCode: candidate.testCode || null,
       parentPattern: candidate.parentPattern || null,
@@ -767,6 +1153,7 @@ class PatternLibrary {
       requires: resolved.map(p => p.id),
     });
 
+    if (!pattern) return { composed: false, reason: 'Registration failed — possible duplicate' };
     pattern.composedOf = resolved.map(p => ({ id: p.id, name: p.name }));
     if (this._backend === 'sqlite') {
       this._sqlite.updatePattern(pattern.id, {
@@ -872,6 +1259,7 @@ class PatternLibrary {
     }
 
     const id = this._hash(pattern.code + pattern.name + Date.now());
+    const structured = pattern.structuredDescription || parseStructuredDescription(pattern.description || '', { code: pattern.code, tags: pattern.tags || [] });
     const record = {
       id,
       name: pattern.name,
@@ -880,6 +1268,7 @@ class PatternLibrary {
       patternType: pattern.patternType || classifyPattern(pattern.code, pattern.name),
       complexity: pattern.complexity || inferComplexity(pattern.code),
       description: pattern.description || '',
+      structuredDescription: structured,
       tags: pattern.tags || [],
       coherencyScore: coherency,
       variants: pattern.variants || [],
@@ -902,8 +1291,8 @@ class PatternLibrary {
     const data = this._readJSON();
     const pattern = data.patterns.find(p => p.id === id);
     if (!pattern) return null;
-    pattern.usageCount = (pattern.usageCount || 0) + 1;
-    if (succeeded) pattern.successCount = (pattern.successCount || 0) + 1;
+    pattern.usageCount = (pattern.usageCount ?? 0) + 1;
+    if (succeeded) pattern.successCount = (pattern.successCount ?? 0) + 1;
     pattern.updatedAt = new Date().toISOString();
     this._writeJSON(data);
     return pattern;
@@ -944,13 +1333,21 @@ class PatternLibrary {
   _retireJSON(minScore = THRESHOLDS.retire) {
     const data = this._readJSON();
     const before = data.patterns.length;
+    const retired = [];
     data.patterns = data.patterns.filter(p => {
       const coherency = p.coherencyScore?.total ?? 0;
-      const reliability = p.usageCount > 0 ? p.successCount / p.usageCount : 0.5;
-      return (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
+      const reliability = (p.usageCount ?? 0) > 0 ? (p.successCount ?? 0) / p.usageCount : 0.5;
+      const keep = (coherency * RETIREMENT_WEIGHTS.COHERENCY + reliability * RETIREMENT_WEIGHTS.RELIABILITY) >= minScore;
+      if (!keep) retired.push(p);
+      return keep;
     });
+    // Archive retired patterns for potential recovery
+    if (!data.archive) data.archive = [];
+    for (const p of retired) {
+      data.archive.push({ ...p, retiredAt: new Date().toISOString() });
+    }
     this._writeJSON(data);
-    return { retired: before - data.patterns.length, remaining: data.patterns.length };
+    return { retired: retired.length, remaining: data.patterns.length };
   }
 
   _getAllJSON(filters = {}) {
@@ -1014,15 +1411,19 @@ class PatternLibrary {
     if (!Array.isArray(incoming) || incoming.length === 0) {
       return { added: 0, updated: 0 };
     }
+    this.#invalidateIndexes();
 
     if (this._backend === 'sqlite') {
-      let added = 0, updated = 0;
+      let added = 0, updated = 0, skipped = 0;
       for (const p of incoming) {
+        if (!p || !p.name) { skipped++; continue; }
+        const existing = this._sqlite.getPatternByName(p.name);
         const result = this._sqlite.addPatternIfNotExists(p);
-        if (result) added++;
-        else updated++;
+        if (result && !existing) added++;
+        else if (result && existing) updated++;
+        else skipped++;
       }
-      return { added, updated };
+      return { added, updated, skipped };
     }
 
     const data = this._readJSON();
@@ -1106,7 +1507,7 @@ class PatternLibrary {
       repaired.push(`Deduplicated ${before - data.patterns.length} patterns`);
     }
 
-    return { healthy: issues.length === 0 || repaired.length > 0, issues, repaired };
+    return { healthy: issues.length === 0 || issues.length <= repaired.length, issues, repaired };
   }
 }
 
@@ -1159,20 +1560,29 @@ function maxNestingDepth(code) {
  * Ported from Reflector Oracle's patternSync.js.
  */
 function deduplicatePatterns(patterns) {
-  const byName = new Map();
+  const byNameLang = new Map();
   for (const p of patterns) {
     if (!p.name) continue;
-    const key = p.name.toLowerCase();
-    const existing = byName.get(key);
+    // Include language in key to preserve valid cross-language variants
+    const key = `${p.name.toLowerCase()}:${(p.language || 'unknown').toLowerCase()}`;
+    const existing = byNameLang.get(key);
     if (!existing) {
-      byName.set(key, p);
+      byNameLang.set(key, p);
     } else if ((p.coherencyScore?.total ?? 0) > (existing.coherencyScore?.total ?? 0)) {
-      byName.set(key, { ...existing, ...p });
+      // Merge: take better code/scores from p, but preserve usage history from existing
+      byNameLang.set(key, {
+        ...p,
+        id: existing.id,
+        usageCount: existing.usageCount ?? p.usageCount ?? 0,
+        successCount: existing.successCount ?? p.successCount ?? 0,
+        bugReports: existing.bugReports ?? p.bugReports ?? 0,
+        createdAt: existing.createdAt || p.createdAt,
+      });
     }
   }
   // Preserve unnamed patterns too
   const unnamed = patterns.filter(p => !p.name);
-  return [...byName.values(), ...unnamed];
+  return [...byNameLang.values(), ...unnamed];
 }
 
 const { countBy } = require('../store/store-helpers');

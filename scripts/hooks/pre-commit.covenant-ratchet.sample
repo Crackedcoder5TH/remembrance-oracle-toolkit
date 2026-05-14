@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Pre-commit hook — covenant ratchet.
+#
+# Runs the cathedral diagnostic, compares to baseline, and blocks the
+# commit if quality regressed. Install by copying (or symlinking) into
+# .git/hooks/pre-commit and chmod +x.
+#
+#   ln -s ../../scripts/hooks/pre-commit.covenant-ratchet.sample \
+#         .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# Bypass once: COVENANT_SKIP=1 git commit ...
+# Bypass permanently: unlink .git/hooks/pre-commit
+
+set -euo pipefail
+
+if [ "${COVENANT_SKIP:-}" = "1" ]; then
+  echo "[covenant] skipped via COVENANT_SKIP=1"
+  exit 0
+fi
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+echo "[covenant] running cathedral diagnostic..."
+node scripts/cathedral-diagnostic.js --json-only >/dev/null
+
+echo "[covenant] enforcing ratchet..."
+if ! node scripts/covenant-ratchet.js; then
+  echo ""
+  echo "[covenant] ✗ commit BLOCKED — quality regressed."
+  echo "[covenant] inspect .remembrance/diagnostics/cathedral-latest.md"
+  echo "[covenant] or bypass once with COVENANT_SKIP=1 git commit ..."
+  exit 1
+fi
+echo "[covenant] ✓ pass"

@@ -111,7 +111,7 @@ function createGeminiAdapter(apiKey, model, timeoutMs) {
     name: 'gemini',
     model,
     async send(prompt, options = {}) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${options.model || model}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${options.model || model}:generateContent`;
       const body = {
         contents: [{ parts: [{ text: prompt }] }],
       };
@@ -121,7 +121,7 @@ function createGeminiAdapter(apiKey, model, timeoutMs) {
 
       const res = await fetchWithTimeout(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify(body),
       }, timeoutMs);
 
@@ -281,7 +281,7 @@ function spawnClaude(cliPath, args, timeoutMs) {
     const child = execFile(cliPath, args, {
       timeout: timeoutMs,
       maxBuffer: 10 * 1024 * 1024, // 10 MB
-      env: { ...process.env, CLAUDECODE: '' }, // Unset to avoid nested-session block
+      env: (() => { const e = { ...process.env }; delete e.CLAUDECODE; return e; })(), // Delete to avoid nested-session block
     }, (error, stdout, stderr) => {
       if (error) {
         if (error.killed) {
@@ -319,7 +319,8 @@ function createAgentPool(config, providerNames) {
   for (const name of providerNames) {
     try {
       agents.push(createAdapter(name, config));
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[agent-pool:createAgentPool] silent failure:', e?.message || e);
       // Skip unavailable providers silently
     }
   }
@@ -340,9 +341,9 @@ function createAgentPool(config, providerNames) {
           const start = Date.now();
           try {
             const result = await agent.send(prompt, options);
-            return { agent: agent.name, model: agent.model, ...result, durationMs: Date.now() - start };
+            return { agent: agent.name, model: agent.model, ...result, durationMs: Math.max(0, Date.now() - start) };
           } catch (err) {
-            return { agent: agent.name, model: agent.model, error: err.message, durationMs: Date.now() - start };
+            return { agent: agent.name, model: agent.model, error: err?.message || 'Unknown error', durationMs: Math.max(0, Date.now() - start) };
           }
         })
       );

@@ -52,13 +52,20 @@ class OracleClient {
             } else {
               resolve(parsed);
             }
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[oracle-client:_request] JSON parse failed:', e?.message || e);
             if (res.statusCode >= 400) {
               const err = new Error(`HTTP ${res.statusCode}`);
               err.status = res.statusCode;
               reject(err);
             } else {
-              resolve(data);
+              // 2xx but non-JSON response — wrap in an object to signal the issue
+              const contentType = res.headers['content-type'] || '';
+              if (contentType.includes('application/json')) {
+                reject(new Error(`Server returned invalid JSON with Content-Type: application/json`));
+              } else {
+                resolve({ _raw: data, _contentType: contentType });
+              }
             }
           }
         });

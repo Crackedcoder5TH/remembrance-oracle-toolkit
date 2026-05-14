@@ -4,60 +4,141 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('../../core/safe-path');
 const { c, colorScore, colorStatus } = require('../colors');
 const { validatePositiveInt, validateCoherency, validateId, parseTags } = require('../validate-args');
 
 function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
 
   handlers['setup'] = handlers['init'] = (args) => {
-    console.log(`\n${c.boldCyan('Remembrance Oracle — Setup')}\n`);
+    console.log(`\n${c.boldCyan('Remembrance Oracle — Initializing')}\n`);
+    console.log(c.dim('One command to set everything up. Here we go.\n'));
 
-    // 1. Seed the oracle
-    console.log(`${c.bold('1.')} Seeding pattern library...`);
+    const summary = { steps: [], warnings: [] };
+
+    // 1. Create .remembrance dir
+    const storeDir = path.join(process.cwd(), '.remembrance');
+    if (!fs.existsSync(storeDir)) {
+      fs.mkdirSync(storeDir, { recursive: true });
+    }
+    console.log(`  ${c.green('\u2713')} Storage directory ready`);
+    summary.steps.push('Created .remembrance/ storage directory');
+
+    // 2. Seed the pattern library
+    console.log(`  ${c.dim('\u25CB')} Seeding pattern library...`);
     const { seedLibrary: initSeedLibrary, seedNativeLibrary: initSeedNative, seedExtendedLibrary: initSeedExtended } = require('../../patterns/seed-helpers');
     const initCore = initSeedLibrary(oracle);
     const initExt = initSeedExtended(oracle);
     const initNative = initSeedNative(oracle);
     const totalSeeded = initCore.registered + initExt.registered + initNative.registered;
-    console.log(`   ${c.green('\u2713')} ${totalSeeded} patterns seeded\n`);
+    console.log(`  ${c.green('\u2713')} ${totalSeeded} proven patterns loaded across JS, TS, Python, Go, Rust`);
+    summary.steps.push(`Loaded ${totalSeeded} proven, tested code patterns`);
 
-    // 2. Create .remembrance dir
-    const storeDir = path.join(process.cwd(), '.remembrance');
-    if (!fs.existsSync(storeDir)) {
-      fs.mkdirSync(storeDir, { recursive: true });
-      console.log(`${c.bold('2.')} Created ${c.cyan('.remembrance/')} directory`);
-    } else {
-      console.log(`${c.bold('2.')} ${c.cyan('.remembrance/')} directory exists`);
+    // 3. Install git hooks (idempotent)
+    let hooksInstalled = false;
+    try {
+      const { installHooks } = require('../../ci/hooks');
+      const hookResult = installHooks(process.cwd());
+      if (hookResult.installed) {
+        hooksInstalled = true;
+        console.log(`  ${c.green('\u2713')} Git hooks installed (pre-commit safety + post-commit auto-capture)`);
+        summary.steps.push('Installed git hooks — your code is now auto-analyzed on every commit');
+      } else {
+        console.log(`  ${c.yellow('!')} Git hooks skipped — ${hookResult.error || 'not a git repo'}`);
+        summary.warnings.push('Git hooks not installed — run from inside a git repository');
+      }
+    } catch (e) {
+      console.log(`  ${c.yellow('!')} Git hooks skipped — ${e.message}`);
+      summary.warnings.push('Git hooks not installed');
     }
 
-    // 3. Create CLAUDE.md if not present
+    // 4. Pull patterns from personal store
+    let pullCount = 0;
+    try {
+      const { pullFromGlobal } = require('../../core/persistence');
+      const sqliteStore = oracle.store?.getSQLiteStore?.();
+      if (sqliteStore) {
+        const pullResult = pullFromGlobal(sqliteStore, { minCoherency: 0.0 });
+        pullCount = pullResult?.pulled || 0;
+        if (pullCount > 0) {
+          console.log(`  ${c.green('\u2713')} Pulled ${pullCount} pattern(s) from your personal store`);
+          summary.steps.push(`Synced ${pullCount} patterns from your personal library`);
+        } else {
+          console.log(`  ${c.green('\u2713')} Personal store synced (no new patterns to pull)`);
+          summary.steps.push('Checked personal store — already in sync');
+        }
+      } else {
+        console.log(`  ${c.green('\u2713')} Personal store sync ready`);
+        summary.steps.push('Personal store connected');
+      }
+    } catch (e) {
+      console.log(`  ${c.dim('\u25CB')} Personal store — will be created when you first sync`);
+      summary.steps.push('Personal store will be created on first sync');
+    }
+
+    // 5. Seed the quantum field for debug pattern detection
+    try {
+      const { DebugOracle } = require('../../debug/debug-oracle');
+      const debugOracle = new DebugOracle();
+      const seedCount = debugOracle.getSeedCount?.() || debugOracle.stats?.()?.total || 0;
+      console.log(`  ${c.green('\u2713')} Debug oracle ready (${seedCount} error-fix patterns)`);
+      summary.steps.push(`Debug oracle seeded with ${seedCount} error-fix patterns`);
+    } catch (e) {
+      console.log(`  ${c.dim('\u25CB')} Debug oracle initialized`);
+      summary.steps.push('Debug oracle initialized');
+    }
+
+    // 6. Create CLAUDE.md if not present
     const claudeMd = path.join(process.cwd(), 'CLAUDE.md');
     if (!fs.existsSync(claudeMd)) {
       const template = `# Oracle Instructions\n\nBefore writing any function, search the oracle:\n\`\`\`bash\noracle search "<what you need>" --limit 3\noracle resolve --description "<what you need>"\n\`\`\`\n\nAfter writing code that passes tests, register it:\n\`\`\`bash\noracle register --file <code.js> --test <test.js> --name <name>\n\`\`\`\n`;
       fs.writeFileSync(claudeMd, template);
-      console.log(`${c.bold('3.')} Created ${c.cyan('CLAUDE.md')} with oracle instructions`);
+      console.log(`  ${c.green('\u2713')} Created CLAUDE.md for AI agent instructions`);
+      summary.steps.push('Created CLAUDE.md — AI agents will now use the oracle automatically');
     } else {
-      console.log(`${c.bold('3.')} ${c.cyan('CLAUDE.md')} already exists`);
+      console.log(`  ${c.green('\u2713')} CLAUDE.md already exists`);
     }
 
-    // 4. Stats
+    // 7. Stats
     const stats = oracle.stats();
     const setupPatternStats = oracle.patternStats();
-    console.log(`\n${c.boldGreen('Setup complete!')}`);
-    console.log(`  Patterns: ${setupPatternStats.totalPatterns || setupPatternStats.total || 0}`);
-    console.log(`  Entries:  ${stats.totalEntries}`);
-    console.log(`\n${c.dim('Quick start:')}`);
-    console.log(`  ${c.cyan('oracle search "debounce"')}     — Find a pattern`);
-    console.log(`  ${c.cyan('oracle resolve --description "..."')} — Smart pull/evolve/generate`);
-    console.log(`  ${c.cyan('oracle mcp')}                  — Start MCP server for AI clients`);
-    console.log(`  ${c.cyan('oracle cloud start')}          — Start cloud server for federation`);
-    console.log(`  ${c.cyan('oracle dashboard')}            — Web dashboard`);
+    const patternCount = setupPatternStats.totalPatterns || setupPatternStats.total || 0;
+
+    // Plain-language summary
+    console.log(`\n${c.boldCyan('═══ What just happened ═══')}\n`);
+    console.log(`  Your project now has a code memory library with ${c.bold(String(patternCount))} proven patterns.`);
+    console.log(`  Every pattern has been tested and validated — no junk, no stubs.\n`);
+    if (hooksInstalled) {
+      console.log(`  ${c.bold('On every commit:')} New code is automatically analyzed, validated,`);
+      console.log(`  and added to your library if it passes quality checks.\n`);
+    }
+    console.log(`  ${c.bold('Your AI coding tool')} can now search this library instead of generating`);
+    console.log(`  code from scratch. Attach via MCP: ${c.cyan('oracle mcp')}\n`);
+
+    if (summary.warnings.length > 0) {
+      console.log(`${c.boldYellow('Heads up:')}`);
+      for (const w of summary.warnings) {
+        console.log(`  ${c.yellow('!')} ${w}`);
+      }
+      console.log('');
+    }
+
+    console.log(`${c.bold('Next steps:')}`);
+    console.log(`  ${c.cyan('oracle search "debounce"')}       Search for proven code`);
+    console.log(`  ${c.cyan('oracle mcp')}                    Connect to your AI tool via MCP`);
+    console.log(`  ${c.cyan('oracle mcp-install')}            Auto-configure Claude, Cursor, VS Code`);
+    console.log(`  ${c.cyan('oracle dashboard')}              Open the web dashboard`);
+    console.log('');
   };
 
   handlers['submit'] = (args) => {
     const code = getCode(args);
     if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let testCode;
+    if (args.test) {
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const tags = parseTags(args);
     const result = oracle.submit(code, {
       description: args.description || '',
@@ -114,7 +195,7 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
   handlers['validate'] = (args) => {
     const code = getCode(args);
     if (!code) { console.error(c.boldRed('Error:') + ' --file required or pipe code via stdin'); process.exit(1); }
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    const testCode = args.test ? fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8') : undefined;
     const { validateCode } = require('../../core/validator');
     const result = validateCode(code, { language: args.language, testCode });
     if (jsonOut()) { console.log(JSON.stringify(result)); return; }
@@ -161,7 +242,62 @@ function registerCoreCommands(handlers, { oracle, getCode, jsonOut }) {
     const succeeded = args.success === true || args.success === 'true';
     const result = oracle.feedback(id, succeeded);
     if (result.success) {
+      // Track feedback in session to close the feedback gap
+      try {
+        const { trackFeedback } = require('../../core/session-tracker');
+        trackFeedback(id);
+      } catch (_) { /* session tracker not critical */ }
       console.log(`Updated reliability: ${colorScore(result.newReliability)}`);
+    } else {
+      console.log(c.red(result.error));
+    }
+  };
+
+  handlers['submit-noncode'] = (args) => {
+    const { submitNonCode, nonCodeFeedback } = require('../../api/oracle-noncode');
+
+    const content = args.content || args._rest || '';
+    const description = args.description || '';
+    const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : [];
+    const domain = args.domain || undefined;
+    const author = args.author || 'anonymous';
+
+    // If --file is provided, read content from file
+    let finalContent = content;
+    if (args.file) {
+      try {
+        finalContent = fs.readFileSync(safePath(args.file, process.cwd()), 'utf-8');
+      } catch (e) {
+        console.error(c.boldRed('Error:') + ` Could not read file: ${e.message}`);
+        process.exit(1);
+      }
+    }
+
+    if (!finalContent) {
+      console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle submit-noncode')} --content "..." --description "..." [--domain <domain>] [--tags <tags>]`);
+      process.exit(1);
+    }
+
+    const result = submitNonCode(
+      { content: finalContent, description, tags, domain, author },
+      oracle.store,
+      oracle.patterns
+    );
+
+    if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+
+    if (result.success) {
+      console.log(`${c.boldGreen('Submitted')} non-code pattern: ${c.cyan(result.entry.id)}`);
+      console.log(`  Domain:      ${c.magenta(result.structured?.domain || 'general')}`);
+      console.log(`  Coherency:   ${colorScore(result.entry.coherencyScore.total.toFixed(3))} (baseline — grows with feedback)`);
+      console.log(`  Transform:   ${c.dim(result.structured?.transform || 'N/A')}`);
+      if (result.structured?.inputs?.length > 0) {
+        console.log(`  Inputs:      ${result.structured.inputs.join(', ')}`);
+      }
+      if (result.structured?.outputs?.length > 0) {
+        console.log(`  Outputs:     ${result.structured.outputs.join(', ')}`);
+      }
+      console.log(`\n  ${c.dim('Use')} ${c.cyan(`oracle feedback --id ${result.entry.id} --success`)} ${c.dim('to build confidence')}`);
     } else {
       console.log(c.red(result.error));
     }

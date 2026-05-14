@@ -143,12 +143,13 @@ class TeamManager {
       throw new Error(`Maximum members (${org.maxMembers}) reached`);
     }
 
-    if (!Object.values(TEAM_ROLES).includes(role)) {
+    const normalizedRole = typeof role === 'string' ? role.toLowerCase().trim() : role;
+    if (!Object.values(TEAM_ROLES).includes(normalizedRole)) {
       throw new Error(`Invalid role: ${role}`);
     }
 
-    members.set(targetUserId, role);
-    this._audit(userId, orgId, 'member_added', { targetUserId, role });
+    members.set(targetUserId, normalizedRole);
+    this._audit(userId, orgId, 'member_added', { targetUserId, role: normalizedRole });
     return { added: true, role };
   }
 
@@ -286,8 +287,9 @@ class TeamManager {
   validateSSOToken(orgId, ssoToken) {
     const config = this._ssoProviders.get(orgId);
     if (!config) return null;
-    // Placeholder — in production, verify JWT against IdP's JWKS
-    return { valid: true, orgId, provider: config.type };
+    // SSO validation is not yet implemented — reject all tokens by default
+    if (process.env.ORACLE_DEBUG) console.warn('[teams:validateSSOToken] SSO validation not implemented — rejecting token');
+    return null;
   }
 
   // ─── Audit Log ───

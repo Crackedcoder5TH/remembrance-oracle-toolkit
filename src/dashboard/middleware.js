@@ -20,9 +20,28 @@ function createRateLimiter(options = {}) {
   if (cleanup.unref) cleanup.unref();
 
   return function rateLimitMiddleware(req, res, next) {
-    const forwarded = req.headers?.['x-forwarded-for'];
+    // Only trust X-Forwarded-For when running behind a validated proxy.
+    // req.trustProxy must be explicitly set by the server when a known reverse
+    // proxy (nginx, ALB, etc.) is in front. Without this, clients can spoof
+    // their IP by sending an arbitrary X-Forwarded-For header.
+    const forwarded = req.trustProxy ? req.headers?.['x-forwarded-for'] : null;
     const ip = forwarded ? forwarded.split(',')[0].trim() : (req.socket.remoteAddress || '127.0.0.1');
     const now = Date.now();
+    // Cap map size to prevent memory exhaustion — evict oldest entries instead of
+    // clearing everything (which would reset legitimate rate limits)
+    if (hits.size > 10000) {
+      const toDelete = [];
+      for (const [key, timestamps] of hits) {
+        const recent = timestamps.filter(t => now - t < windowMs);
+        if (recent.length === 0) toDelete.push(key);
+      }
+      for (const key of toDelete) hits.delete(key);
+      // If still over limit after evicting stale, remove oldest half
+      if (hits.size > 10000) {
+        const keys = [...hits.keys()];
+        for (let j = 0; j < keys.length / 2; j++) hits.delete(keys[j]);
+      }
+    }
     const timestamps = (hits.get(ip) || []).filter(t => now - t < windowMs);
     timestamps.push(now);
     hits.set(ip, timestamps);
@@ -50,7 +69,8 @@ function setupAuth(oracleInstance, options) {
         authManager = new AuthManager(sqliteStore);
       }
       authMw = authMiddleware(authManager);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[middleware:setupAuth] silent failure:', e?.message || e);
       // Auth module not available
     }
   }
@@ -62,7 +82,8 @@ function setupVersionManager(oracleInstance) {
     const { VersionManager } = require('../core/versioning');
     const sqliteStore = oracleInstance.store.getSQLiteStore();
     return new VersionManager(sqliteStore);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[middleware:setupVersionManager] returning null on error:', e?.message || e);
     return null;
   }
 }

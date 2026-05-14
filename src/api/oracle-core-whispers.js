@@ -30,7 +30,7 @@ const RESOLVE_WHISPERS = {
  */
 function _generateResolveWhisper(decision, pattern, healing) {
   const pool = RESOLVE_WHISPERS[decision.decision] || RESOLVE_WHISPERS.generate;
-  const seed = pattern ? pattern.name.length + (pattern.code?.length || 0) : 0;
+  const seed = pattern ? (pattern.name || '').length + (pattern.code?.length || 0) : 0;
   const base = pool[seed % pool.length];
   if (healing && healing.reflection?.improvement > 0) {
     const pct = (healing.reflection.improvement * 100).toFixed(1);
@@ -45,7 +45,9 @@ function _generateCandidateNotes(decision) {
   const winner = decision.pattern;
   // Use the winning alternative's composite score (not decision.confidence which is the decision-type confidence)
   const winnerAlt = decision.alternatives.find(a => a.id === winner.id || a.name === winner.name);
-  const winnerScore = winnerAlt?.composite ?? decision.confidence;
+  // For 'generate' decisions, confidence = 1 - composite, so invert it back
+  const fallbackScore = decision.decision === 'generate' ? 1.0 - decision.confidence : decision.confidence;
+  const winnerScore = winnerAlt?.composite ?? fallbackScore;
   const notes = [];
   for (const alt of decision.alternatives) {
     if (alt.id === winner.id || alt.name === winner.name) continue;

@@ -2,154 +2,104 @@
 
 Get a code memory oracle running in your project in under a minute.
 
-## Install
+## Install & Initialize (One Command)
+
+```bash
+npx remembrance-oracle-toolkit init
+```
+
+That's it. This single command:
+- Loads 600+ proven, tested patterns across JavaScript, TypeScript, Python, Go, and Rust
+- Installs git hooks so new code is automatically captured on every commit
+- Syncs your personal pattern library (grows across all your projects)
+- Seeds the debug oracle with common error-fix patterns
+- Creates a CLAUDE.md so AI agents know how to use the oracle
+
+Or install globally first:
 
 ```bash
 npm install -g remembrance-oracle-toolkit
+oracle init
 ```
 
-Or use without installing:
+## Connect to Your AI Tool
+
+The oracle works best when your AI coding tool can access it directly via MCP:
 
 ```bash
-npx remembrance-oracle-toolkit help
+oracle mcp-install   # Auto-detects Claude Desktop, Cursor, VS Code, etc.
 ```
 
-## 1. Seed the library (10 seconds)
-
-```bash
-oracle seed
-```
-
-This loads 600+ proven, tested patterns across JavaScript, TypeScript, Python, Go, and Rust.
-
-## 2. Search for code (5 seconds)
-
-```bash
-oracle search "binary search"
-oracle search "rate limiting" --mode semantic
-oracle smart-search "debounce function"
-```
-
-## 3. Submit your own code (15 seconds)
-
-Your code must **prove itself** — pass the Covenant filter, tests, and coherency scoring:
-
-```bash
-oracle submit --file mycode.js --test mytest.js --tags "sort,algorithm"
-```
-
-Or pipe it:
-
-```bash
-cat mycode.js | oracle submit --language javascript --test mytest.js
-```
-
-That's it. You're running.
-
----
-
-## What happens next
-
-The oracle automatically grows. Every time you register proven code:
-
-- **Candidates spawn** — language variants (JS → TS, Python) and automated refinements
-- **Tests synthesize** — `oracle synthesize` generates tests for candidates
-- **Quality improves** — feedback tracking makes good code rise, bad code fall
-
-## Use from Node.js
-
-```javascript
-const { RemembranceOracle } = require('remembrance-oracle-toolkit');
-const oracle = new RemembranceOracle();
-
-// Submit code (must prove itself)
-const result = oracle.submit('function add(a, b) { return a + b; }', {
-  description: 'Add two numbers',
-  tags: ['math', 'utility'],
-  language: 'javascript',
-  testCode: 'if (add(2, 3) !== 5) throw new Error("FAIL");',
-});
-console.log(result.accepted); // true
-
-// Query for code
-const results = oracle.query({ description: 'math utility', limit: 5 });
-
-// Smart retrieval — pull, evolve, or generate
-const decision = oracle.resolve({
-  description: 'sorting function',
-  language: 'javascript',
-});
-// → { decision: 'PULL', pattern: { name: 'merge-sort', coherency: 0.925 } }
-```
-
-## Use with TypeScript
-
-Full type definitions included:
-
-```typescript
-import { RemembranceOracle, ValidationResult, Pattern } from 'remembrance-oracle-toolkit';
-
-const oracle = new RemembranceOracle({ threshold: 0.7 });
-const result: ValidationResult = oracle.submit(code, metadata).validation;
-```
-
-## Use as an MCP Server (for AI agents)
+Or start the MCP server manually:
 
 ```bash
 oracle mcp
 ```
 
-Auto-register in your AI editor:
+Now your AI pulls proven code from the library instead of generating from scratch.
+
+## Search for Code
 
 ```bash
-oracle mcp-install   # Detects Claude Desktop, Cursor, VS Code
+oracle search "binary search"
+oracle search "rate limiting" --mode semantic
 ```
 
-10 focused tools — search, resolve, submit, register, feedback, stats, debug, sync, harvest, maintain.
+## Smart Retrieval
 
-## Three-tier storage
+```bash
+oracle resolve --description "debounce function for React"
+```
+
+The oracle decides:
+- **PULL** (coherency >= 0.68) — use this proven code as-is
+- **EVOLVE** — adapt this similar pattern to your needs
+- **GENERATE** — no match found, write it fresh
+
+## Submit Your Own Code
+
+Your code must prove itself — pass the Covenant filter, tests, and coherency scoring:
+
+```bash
+oracle submit --file mycode.js --test mytest.js --tags "sort,algorithm"
+```
+
+## What Happens Automatically
+
+After `oracle init`, everything runs on autopilot:
+
+1. **Every commit** — git hooks analyze your code, extract new patterns, validate them
+2. **Proven code gets stored** — only code that passes tests and quality checks
+3. **Library grows** — language variants and refinements are generated automatically
+4. **Sync happens** — patterns sync to your personal store across projects
+
+## End of Session
+
+When you're done coding:
+
+```bash
+oracle auto-submit    # Catches anything the hooks missed
+oracle audit summary  # Quick health check
+```
+
+## Three-Tier Storage
 
 ```
-Local (.remembrance/)     → Project-specific, always present
-Personal (~/.remembrance/) → Private, syncs across projects
-Community                  → Shared, requires tests + coherency ≥ 0.7
+Local (.remembrance/)       → This project
+Personal (~/.remembrance/)  → All your projects (private)
+Community                   → Shared with everyone
 ```
 
 ```bash
 oracle sync push         # Local → Personal
-oracle share             # Local → Community
+oracle share             # Local → Community (requires tests + coherency ≥ 0.7)
 oracle community pull    # Community → Local
 ```
 
-## Common workflows
+## Next Steps
 
-```bash
-# Heal code with reflection
-oracle reflect --file code.js --loops 3 --target 0.9
-
-# Check code against the Covenant (15 safety principles)
-oracle covenant --file code.js
-
-# Run security scan
-oracle security-scan --file code.js
-
-# Start the web dashboard
-oracle dashboard
-
-# Start production server
-PORT=8080 oracle deploy
-
-# Debug: capture an error→fix pattern
-oracle debug capture --error "TypeError: x is not a function" --fix fix.js
-
-# Debug: search for known fixes
-oracle debug search --error "Cannot read property of undefined"
-```
-
-## Next steps
-
-- [Full CLI Reference](README.md#cli-reference) — all 60+ commands
-- [MCP Server](README.md#as-an-mcp-server-for-ai-agents) — AI agent integration
-- [VS Code Extension](README.md#vs-code-extension) — editor integration with diagnostics, hover, and completions
-- [Plugin System](README.md#plugin-system) — extend the oracle
-- [GitHub Action](README.md#as-a-github-action) — CI/CD integration
+- `oracle key` — see the full Remembrance vocabulary
+- `oracle codex` — see every element in the periodic table of code
+- [CONCEPTS.md](CONCEPTS.md) — plain-English explanation of everything
+- [ARCHITECTURE.md](ARCHITECTURE.md) — how the system fits together
+- [Full README](README.md) — all commands, MCP config, ecosystem

@@ -5,6 +5,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('../../core/safe-path');
 const { c, colorScore, colorStatus, colorDecision, colorSource } = require('../colors');
 const { validatePositiveInt, validateCoherency, validateId, parseDryRun, parseTags, parseMinCoherency } = require('../validate-args');
 
@@ -34,6 +35,14 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   };
 
   handlers['resolve'] = (args) => {
+    const { isOracleEnabled } = require('../../core/oracle-config');
+    if (!isOracleEnabled()) {
+      console.log(`Decision: ${colorDecision('generate')}`);
+      console.log(`Confidence: ${colorScore(0)}`);
+      console.log(`Reasoning: ${c.dim('Oracle is disabled (config off). Write new code.')}`);
+      console.log(c.dim('\nTip: Run `oracle config on` to enable pattern matching.'));
+      return;
+    }
     const tags = parseTags(args);
     const noHeal = args['no-heal'] || args.raw;
     const result = oracle.resolve({
@@ -71,6 +80,10 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     if (result.alternatives?.length > 0) {
       console.log(`\n${c.dim('Alternatives:')} ${result.alternatives.map(a => `${c.cyan(a.name)}(${colorScore(a.composite?.toFixed(3))})`).join(', ')}`);
     }
+    if (result.promptTag) {
+      console.log(`\n${c.boldCyan('── Oracle Prompt Tag ──')}`);
+      console.log(c.bold(result.promptTag));
+    }
     if (args.voice && result.whisper) {
       speakCLI(result.whisper);
     }
@@ -78,8 +91,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['register'] = (args) => {
     if (!args.file) { console.error(c.boldRed('Error:') + ' --file required'); process.exit(1); }
-    const code = fs.readFileSync(path.resolve(args.file), 'utf-8');
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let code, testCode;
+    try { code = fs.readFileSync(safePath(args.file, process.cwd()), 'utf-8'); }
+    catch (e) { console.error(c.boldRed('Error:') + ` Cannot read file: ${e.message}`); process.exit(1); }
+    if (args.test) {
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const tags = parseTags(args);
     const result = oracle.registerPattern({
       name: args.name || path.basename(args.file, path.extname(args.file)),
@@ -90,19 +108,58 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       testCode,
       author: args.author || process.env.USER || 'cli-user',
     });
-    if (result.registered) {
+    if (result.registered && result.pattern) {
       console.log(`${c.boldGreen('Pattern registered:')} ${c.bold(result.pattern.name)} [${c.cyan(result.pattern.id)}]`);
       console.log(`Type: ${c.magenta(result.pattern.patternType)} | Complexity: ${c.blue(result.pattern.complexity)}`);
-      console.log(`Coherency: ${colorScore(result.pattern.coherencyScore.total)}`);
+      console.log(`Coherency: ${colorScore(result.pattern.coherencyScore?.total ?? 0)}`);
+    } else if (result.registered) {
+      console.log(`${c.boldGreen('Pattern registered')}`);
     } else {
       console.log(`${colorStatus(false)}: ${c.red(result.reason)}`);
     }
   };
 
   handlers['patterns'] = (args) => {
+    // Subcommand: `oracle patterns delete <id> --reason "..."`
+    // Archives + deletes a single pattern and fires `pattern.deleted`
+    // on the event bus so reactions (indexes, analytics) stay in sync.
+    const sub = args._sub;
+    if (sub === 'delete') {
+      const id = args.id || (args._positional && args._positional[1]);
+      if (!id) {
+        console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle patterns delete <id>')} [--reason "..."]`);
+        process.exit(1);
+      }
+      const reason = args.reason || 'manual-delete';
+      const store = oracle.store.getSQLiteStore?.() || oracle.store;
+      if (typeof store.deletePatternById !== 'function') {
+        console.error(c.boldRed('Error:') + ' Delete is only supported on the SQLite store.');
+        process.exit(1);
+      }
+      const result = store.deletePatternById(id, { reason });
+      if (jsonOut()) { console.log(JSON.stringify(result)); return; }
+      if (result.deleted) {
+        console.log(`${c.boldGreen('Deleted:')} ${c.bold(result.name || result.id)} ${c.dim('(' + result.reason + ')')}`);
+        console.log(c.dim('  archived — restore with `oracle restore <name>`'));
+      } else {
+        console.log(`${c.yellow('Not deleted:')} ${result.reason}`);
+      }
+      return;
+    }
+
     const stats = oracle.patternStats();
     console.log(c.boldCyan('Pattern Library:'));
     console.log(`  Total patterns: ${c.bold(String(stats.totalPatterns))}`);
+    // Published to chain count
+    let publishedCount = 0;
+    try {
+      const sqliteStore = oracle.store?.getSQLiteStore?.() || oracle.patterns?._sqlite;
+      if (sqliteStore && sqliteStore.db) {
+        const pub = sqliteStore.db.prepare('SELECT COUNT(*) as c FROM patterns WHERE blockchain_tx IS NOT NULL').get();
+        publishedCount = pub ? pub.c : 0;
+      }
+    } catch (_) { /* non-fatal */ }
+    console.log(`  Published to chain: ${c.bold(String(publishedCount))}`);
     console.log(`  Avg coherency: ${colorScore(stats.avgCoherency)}`);
     if (Object.keys(stats.byType).length > 0) {
       console.log(`  By type: ${Object.entries(stats.byType).map(([k, v]) => `${c.magenta(k)}(${v})`).join(', ')}`);
@@ -124,6 +181,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       language: args.language,
       mode,
     });
+    // Emit a compliance signal so the session ledger records this
+    // search. `--file <f>` associates the search with a target file;
+    // otherwise we record the query term as the signal.
+    try {
+      const { getEventBus } = require('../../core/events');
+      getEventBus().emitSync('search', { file: args.file, term, mode });
+    } catch { /* ignore */ }
     if (jsonOut()) { console.log(JSON.stringify(results)); return; }
     if (results.length === 0) {
       console.log(c.yellow('No matches found.'));
@@ -204,13 +268,13 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const tags = args.tags ? args.tags.split(',').map(t => t.trim()) : undefined;
     const output = oracle.export({
       format: args.format || (args.file && args.file.endsWith('.md') ? 'markdown' : 'json'),
-      limit: parseInt(args.limit) || 20,
+      limit: parseInt(args.limit, 10) || 20,
       minCoherency: parseMinCoherency(args, 0.5),
       language: args.language,
       tags,
     });
     if (args.file) {
-      fs.writeFileSync(path.resolve(args.file), output, 'utf-8');
+      fs.writeFileSync(safePath(args.file, process.cwd()), output, 'utf-8');
       console.log(`${c.boldGreen('Exported')} to ${c.cyan(args.file)}`);
     } else {
       console.log(output);
@@ -219,7 +283,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
   handlers['import'] = (args) => {
     if (!args.file) { console.error(c.boldRed('Error:') + ` --file required. Usage: ${c.cyan('oracle import --file patterns.json [--dry-run]')}`); process.exit(1); }
-    const data = fs.readFileSync(path.resolve(args.file), 'utf-8');
+    const data = fs.readFileSync(safePath(args.file, process.cwd()), 'utf-8');
     const dryRun = parseDryRun(args);
     const result = oracle.import(data, { dryRun, author: args.author || 'cli-import' });
     if (dryRun) console.log(c.dim('(dry run — no changes written)\n'));
@@ -280,7 +344,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
 
     if (candidates.length > 0) {
       console.log(`\n${c.bold('Candidates:')}`);
-      const limit = parseInt(args.limit) || 20;
+      const limit = parseInt(args.limit, 10) || 20;
       for (const cand of candidates.slice(0, limit)) {
         const parent = cand.parentPattern ? c.dim(` ← ${cand.parentPattern}`) : '';
         console.log(`  ${c.cyan(cand.id.slice(0, 8))} ${c.bold(cand.name)} (${c.blue(cand.language)}) coherency: ${colorScore(cand.coherencyTotal)}${parent}`);
@@ -294,7 +358,7 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
   handlers['generate'] = (args) => {
     const languages = (args.languages || 'python,typescript').split(',').map(s => s.trim());
     const methods = (args.methods || 'variant,iterative-refine,approach-swap').split(',').map(s => s.trim());
-    const maxPatterns = parseInt(args['max-patterns']) || Infinity;
+    const maxPatterns = parseInt(args['max-patterns'], 10) || 999999;
     const minCoherency = parseMinCoherency(args, 0.5);
 
     console.log(c.boldCyan('Continuous Generation') + ' — proven → coherency → candidates\n');
@@ -329,6 +393,60 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     }
   };
 
+  handlers['tournament'] = (args) => {
+    const maxPatterns = parseInt(args['max-patterns'], 10) || 999999;
+    const candidatesPerRound = parseInt(args['candidates-per-round'], 10) || 3;
+    const rounds = parseInt(args['rounds'], 10) || 3;
+    const minWinnerCoherency = parseFloat(args['min-coherency']) || 0.6;
+    const loserHarvestFloor = parseFloat(args['harvest-floor']) || 0.5;
+
+    console.log(c.boldCyan('Tournament Generation') + ` — ${candidatesPerRound} contenders × ${rounds} rounds, best advances\n`);
+    oracle.recycler.verbose = true;
+
+    const report = oracle.recycler.tournamentGenerate({
+      maxPatterns, candidatesPerRound, rounds, minWinnerCoherency, loserHarvestFloor,
+    });
+
+    console.log('\n' + c.boldCyan('─'.repeat(50)));
+    console.log(`Patterns processed: ${c.bold(String(report.patternsProcessed))}`);
+    console.log(`Total generated:    ${c.bold(String(report.totalGenerated))}`);
+    console.log(`Winners stored:     ${c.boldGreen(String(report.winners.length))}`);
+    console.log(`Losers harvested:   ${c.yellow(String(report.losersHarvested))}`);
+    console.log(`Losers discarded:   ${c.dim(String(report.losersDiscarded))}`);
+    console.log(`Cascade:            ${report.cascadeBoost}x  |  ξ_global: ${report.xiGlobal}`);
+
+    if (report.winners.length > 0) {
+      console.log('\n' + c.boldGreen('Winners:'));
+      for (const w of report.winners) {
+        console.log(`  ${c.green('★')} ${c.bold(w.name)} coherency: ${colorScore(w.coherency)} ← ${c.dim(w.source)}`);
+      }
+    }
+
+    for (const rd of report.roundDetails) {
+      if (rd.rounds.length > 0) {
+        console.log(`\n${c.cyan(rd.source)}:`);
+        for (const r of rd.rounds) {
+          const loserStr = r.losers.map(l => `${l.name}(${l.coherency.toFixed(3)})`).join(', ');
+          console.log(`  Round ${r.round}: winner=${c.bold(r.winner.name)}(${colorScore(r.winner.coherency)}) losers=[${c.dim(loserStr)}]`);
+        }
+      }
+    }
+
+    const cStats = oracle.candidateStats();
+    const pStats = oracle.patternStats();
+    console.log(`\nLibrary:      ${c.bold(String(pStats.totalPatterns))} proven + ${c.bold(String(cStats.totalCandidates))} candidates`);
+    console.log(c.boldCyan('─'.repeat(50)));
+
+    // Auto-promote any tournament winners/losers that have test code
+    const promo = oracle.autoPromote();
+    if (promo.promoted > 0) {
+      console.log(`\n${c.boldGreen('Auto-promoted:')} ${promo.promoted} candidate(s) → proven`);
+      for (const d of promo.details.filter(d => d.status === 'promoted')) {
+        console.log(`  ${c.green('+')} ${c.bold(d.name)} coherency: ${colorScore(d.coherency)}`);
+      }
+    }
+  };
+
   handlers['promote'] = (args) => {
     const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle promote')} <candidate-id> [--test <test-file>]`); process.exit(1); }
@@ -337,11 +455,12 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       const result = oracle.autoPromote();
       console.log(c.boldCyan('Auto-Promote Results:\n'));
       console.log(`  Attempted: ${c.bold(String(result.attempted))}`);
-      console.log(`  Promoted:  ${c.boldGreen(String(result.promoted))}`);
+      console.log(`  Promoted:  ${c.boldGreen(String(result.promoted))}${result.healed ? ` (${result.healed} via auto-heal)` : ''}`);
       console.log(`  Failed:    ${result.failed > 0 ? c.boldRed(String(result.failed)) : c.dim('0')}`);
       for (const d of result.details) {
         const icon = d.status === 'promoted' ? c.green('+') : c.red('x');
-        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status}${d.reason ? ' (' + d.reason.slice(0, 60) + ')' : ''}`);
+        const healTag = d.healMethod ? ` [${d.healMethod}]` : '';
+        console.log(`  ${icon} ${c.bold(d.name)} — ${d.status}${healTag}${d.reason ? ' (' + d.reason.slice(0, 60) + ')' : ''}`);
       }
       return;
     }
@@ -365,20 +484,26 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
       return;
     }
 
-    const testCode = args.test ? fs.readFileSync(path.resolve(args.test), 'utf-8') : undefined;
+    let testCode;
+    if (args.test) {
+      try { testCode = fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8'); }
+      catch (e) { console.error(c.boldRed('Error:') + ` Cannot read test file: ${e.message}`); process.exit(1); }
+    }
     const result = oracle.promote(id, testCode);
 
-    if (result.promoted) {
+    if (result.promoted && result.pattern) {
       console.log(`${c.boldGreen('Promoted:')} ${c.bold(result.pattern.name)} → proven`);
       console.log(`  Coherency: ${colorScore(result.coherency)}`);
       console.log(`  ID: ${c.cyan(result.pattern.id)}`);
+    } else if (result.promoted) {
+      console.log(`${c.boldGreen('Promoted')} → proven`);
     } else {
       console.log(`${c.boldRed('Failed:')} ${result.reason}`);
     }
   };
 
   handlers['synthesize'] = (args) => {
-    const maxCandidates = parseInt(args['max-candidates']) || Infinity;
+    const maxCandidates = parseInt(args['max-candidates'], 10) || 999999;
     const dryRun = parseDryRun(args);
     const autoPromoteFlag = args['no-promote'] ? false : true;
 
@@ -411,6 +536,461 @@ function registerLibraryCommands(handlers, { oracle, getCode, readFile, speakCLI
     const pStats = oracle.patternStats();
     console.log(`\nLibrary: ${c.bold(String(pStats.totalPatterns))} proven + ${c.bold(String(cStats.totalCandidates))} candidates`);
   };
+
+  // ─── Fractal Compression & Holographic Encoding ───
+
+  handlers['compress'] = (args) => {
+    const { compressStore, getCompressionStats } = require('../../compression/index');
+    const sub = args._sub || 'run';
+
+    // Get the underlying SQLite store (compression needs direct access)
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+
+    if (sub === 'stats') {
+      const stats = getCompressionStats(store);
+      console.log(c.boldCyan('Fractal Compression Statistics:\n'));
+      console.log(`  Total patterns:      ${c.bold(String(stats.totalPatterns))}`);
+      console.log(`  Fractal families:    ${c.bold(String(stats.familyCount))}`);
+      console.log(`  Compressed patterns: ${c.bold(String(stats.compressedPatterns))} (${stats.totalPatterns > 0 ? ((stats.compressedPatterns / stats.totalPatterns) * 100).toFixed(1) : '0'}%)`);
+      console.log(`  Singleton patterns:  ${c.bold(String(stats.singletonPatterns))} (${stats.totalPatterns > 0 ? ((stats.singletonPatterns / stats.totalPatterns) * 100).toFixed(1) : '0'}%)`);
+      console.log(`  Templates stored:    ${c.bold(String(stats.templateCount))}`);
+      console.log(`  Avg family size:     ${c.bold(String(stats.avgFamilySize))}`);
+      console.log(`  Compression ratio:   ${c.bold(stats.compressionRatio + 'x')}`);
+      console.log(`  Storage saved:       ${c.bold(_formatBytes(stats.savedBytes))}`);
+
+      console.log(c.boldCyan('\nHolographic Encoding:\n'));
+      console.log(`  Pages:               ${c.bold(String(stats.pageCount))}`);
+      console.log(`  Embeddings cached:   ${c.bold(String(stats.embeddingCount))} / ${stats.totalPatterns}`);
+      console.log(`  Embedding dims:      ${c.bold(String(stats.embeddingDims))}`);
+
+      if (stats.serfReady != null) {
+        console.log(c.boldCyan('\nSERF Integration:\n'));
+        console.log(`  SERF-ready patterns: ${c.bold(String(stats.serfReady))}`);
+        console.log(`  Healing patterns:    ${c.bold(String(stats.serfHealing))}`);
+        console.log(`  Validation passed:   ${c.bold(String(stats.validationPassed))}`);
+        console.log(`  Validation failed:   ${stats.validationFailed > 0 ? c.red(String(stats.validationFailed)) : c.bold('0')}`);
+      }
+      return;
+    }
+
+    if (sub === 'families') {
+      const { detectFamilies } = require('../../compression/fractal');
+      const patterns = store.getAllPatterns ? store.getAllPatterns() : [];
+      const families = detectFamilies(patterns);
+
+      if (families.length === 0) {
+        console.log(c.dim('No fractal families detected. Run `compress` first.'));
+        return;
+      }
+
+      console.log(c.boldCyan(`Fractal Families: ${families.length}\n`));
+      const patternMap = new Map();
+      for (const p of patterns) patternMap.set(p.id, p);
+
+      for (const family of families.slice(0, 20)) {
+        const names = family.patternIds
+          .map(id => patternMap.get(id)?.name || id.slice(0, 8))
+          .slice(0, 5)
+          .join(', ');
+        const suffix = family.memberCount > 5 ? ` +${family.memberCount - 5} more` : '';
+        console.log(`  ${c.cyan('●')} ${c.bold(String(family.memberCount))} members: ${names}${suffix}`);
+      }
+      if (families.length > 20) {
+        console.log(c.dim(`  ... and ${families.length - 20} more families`));
+      }
+      return;
+    }
+
+    // Default: run full compression pipeline
+    const dryRun = args['dry-run'] || false;
+    const verbose = true;
+
+    console.log(c.boldCyan(`${dryRun ? '[DRY RUN] ' : ''}Fractal Compression + Holographic Encoding\n`));
+
+    const result = compressStore(store, { dryRun, verbose });
+
+    if (result.success) {
+      console.log(`\n${c.green('✓')} Compression complete:`);
+      console.log(`  Fractal families:  ${c.bold(String(result.familyCount))}`);
+      console.log(`  Singletons:        ${c.bold(String(result.singletonCount))}`);
+      console.log(`  Holo pages:        ${c.bold(String(result.pageCount))}`);
+      console.log(`  Embeddings:        ${c.bold(String(result.embeddingCount))}`);
+      if (result.stats.savedBytes > 0) {
+        console.log(`  Storage saved:     ${c.bold(_formatBytes(result.stats.savedBytes))}`);
+      }
+      console.log(`  Compression ratio: ${c.bold(result.stats.compressionRatio + 'x')}`);
+      if (result.serfReady != null) {
+        console.log(`  SERF ready:        ${c.bold(String(result.serfReady))}`);
+        console.log(`  SERF healing:      ${c.bold(String(result.serfHealing))}`);
+        console.log(`  Validation:        ${c.green(String(result.validationPassed) + ' passed')}${result.validationFailed > 0 ? ', ' + c.red(String(result.validationFailed) + ' failed') : ''}`);
+      }
+    } else {
+      console.log(c.red(result.message || 'Compression failed'));
+    }
+  };
+
+  handlers['cluster'] = (args) => {
+    const { clusterPatterns, findIsomorphisms } = require('../../patterns/clustering');
+    const patterns = oracle.patterns.getAll();
+    const threshold = args.threshold ? parseFloat(args.threshold) : 0.45;
+    const sub = args._sub || 'run';
+
+    if (sub === 'isomorphisms' || sub === 'iso') {
+      const isos = findIsomorphisms(patterns, { threshold });
+      if (isos.length === 0) {
+        console.log(c.dim('No cross-domain isomorphisms found.'));
+        return;
+      }
+      console.log(c.boldCyan(`Found ${isos.length} cross-domain isomorphism(s):\n`));
+      for (const iso of isos.slice(0, 20)) {
+        console.log(`  ${c.bold(iso.patternA.name)} ${c.dim(`[${iso.patternA.domain}]`)} ↔ ${c.bold(iso.patternB.name)} ${c.dim(`[${iso.patternB.domain}]`)}`);
+        console.log(`    Structural: ${colorScore(iso.similarity.structural.toFixed(3))} | Code: ${colorScore(iso.similarity.code.toFixed(3))} | Total: ${colorScore(iso.similarity.total.toFixed(3))}`);
+      }
+      return;
+    }
+
+    const clusters = clusterPatterns(patterns, { threshold });
+    const crossDomain = clusters.filter(cl => cl.crossDomain);
+    console.log(c.boldCyan(`Clustering: ${patterns.length} patterns → ${clusters.length} cluster(s)\n`));
+    console.log(`  Cross-domain clusters: ${c.bold(String(crossDomain.length))}`);
+    console.log(`  Single-domain clusters: ${c.bold(String(clusters.length - crossDomain.length))}\n`);
+
+    const toShow = args.all ? clusters : clusters.filter(cl => cl.members.length > 1).slice(0, 15);
+    for (const cl of toShow) {
+      const domainLabel = cl.crossDomain ? c.yellow(' [CROSS-DOMAIN]') : '';
+      console.log(`${c.bold(cl.id)}${domainLabel} (${cl.members.length} members, avg sim: ${colorScore(cl.avgSimilarity.toFixed(3))})`);
+      for (const m of cl.members.slice(0, 5)) {
+        console.log(`  - ${c.cyan(m.name || m.id)} ${c.dim(`[${m.language || 'unknown'}]`)}`);
+      }
+      if (cl.members.length > 5) console.log(`  ${c.dim(`  ... and ${cl.members.length - 5} more`)}`);
+      console.log('');
+    }
+  };
+
+  handlers['publish'] = (args) => {
+    const crypto = require('crypto');
+    const id = args.id || args._sub;
+    const name = args.name;
+
+    if (!id && !name) {
+      console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle publish')} --id <patternId> or --name <patternName>`);
+      process.exit(1);
+    }
+
+    // Look up the pattern by id or name
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+    let pattern = null;
+    if (id) {
+      pattern = store.getPattern ? store.getPattern(id) : null;
+    }
+    if (!pattern && name) {
+      pattern = store.getPatternByName ? store.getPatternByName(name) : null;
+    }
+    if (!pattern) {
+      console.error(c.boldRed('Error:') + ` Pattern not found: ${id || name}`);
+      process.exit(1);
+    }
+
+    // Check eligibility
+    const reasons = [];
+
+    // 1. Coherency >= 0.8
+    const coherency = pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+    if (coherency < 0.8) {
+      reasons.push(`Coherency ${coherency.toFixed(3)} below threshold 0.8`);
+    }
+
+    // 2. Covenant sealed
+    try {
+      const { covenantCheck } = require('../../core/covenant');
+      const covenant = covenantCheck(pattern.code, { description: pattern.name });
+      if (!covenant.sealed) {
+        const violations = (covenant.violations || []).map(v => v.rule || v).join(', ');
+        reasons.push(`Covenant not sealed — violations: ${violations}`);
+      }
+    } catch (_) {
+      reasons.push('Covenant check unavailable');
+    }
+
+    // 3. Must have test code
+    if (!pattern.testCode || !pattern.testCode.trim()) {
+      reasons.push('No test code — test proof required for blockchain publication');
+    }
+
+    if (reasons.length > 0) {
+      console.log(c.boldRed('Pattern NOT eligible for blockchain publication:\n'));
+      for (const reason of reasons) {
+        console.log(`  ${c.red('x')} ${reason}`);
+      }
+      return;
+    }
+
+    // Pattern is eligible — output as JSON for the REMEMBRANCE-BLOCKCHAIN publisher
+    const fullHash = crypto.createHash('sha256').update(pattern.code).digest('hex');
+    const exportPayload = {
+      id: pattern.id,
+      name: pattern.name,
+      code: pattern.code,
+      language: pattern.language,
+      patternType: pattern.patternType,
+      coherency: coherency,
+      tags: pattern.tags || [],
+      testCode: pattern.testCode,
+      hash: fullHash,
+      exportedAt: new Date().toISOString(),
+    };
+
+    console.log(c.boldGreen('Pattern eligible for blockchain publication'));
+    console.log(`  Name:      ${c.bold(pattern.name)}`);
+    console.log(`  ID:        ${c.cyan(pattern.id)}`);
+    console.log(`  Coherency: ${colorScore(coherency)}`);
+    console.log(`  Hash:      ${c.dim(fullHash.slice(0, 16))}...${c.dim(fullHash.slice(-8))}`);
+
+    // Try to publish via REMEMBRANCE-BLOCKCHAIN
+    try {
+      const { publishPattern } = require('../../blockchain/bridge');
+      publishPattern({
+        coherencyScore: { total: coherency },
+        testCode: pattern.testCode,
+        code: pattern.code,
+        name: pattern.name,
+        language: pattern.language,
+      }).then((publishResult) => {
+        if (publishResult && publishResult.published) {
+          console.log(`\n${c.boldGreen('── Published to Blockchain ──')}`);
+          if (publishResult.hash) console.log(`  Hash:      ${c.dim(publishResult.hash)}`);
+          if (publishResult.watermark) console.log(`  Watermark: ${c.dim(publishResult.watermark)}`);
+          const bridgeStatus = (publishResult.metadata && publishResult.metadata.bridgeStatus) || publishResult.bridgeStatus || 'offline';
+          console.log(`  Bridge:    ${bridgeStatus === 'confirmed' ? c.boldGreen(bridgeStatus) : c.yellow(bridgeStatus)}`);
+          if (publishResult.signature) {
+            console.log(`  Signature: ${c.cyan(publishResult.signature)}`);
+            // Record blockchain_tx in DB
+            try {
+              const { setBlockchainTx } = require('../../core/oracle-config');
+              const txResult = setBlockchainTx(pattern.id, publishResult.signature, store);
+              if (txResult.success) {
+                console.log(`  ${c.green('Recorded')} blockchain_tx in pattern DB`);
+              }
+            } catch (_) {
+              // Non-fatal — pattern published but DB update failed
+            }
+          }
+        } else {
+          // Publish returned non-success — fall back to export payload
+          console.log(`\n${c.dim('── Export Payload ──')}`);
+          console.log(JSON.stringify(exportPayload, null, 2));
+        }
+      }).catch(() => {
+        // Blockchain publish failed — fall back to export payload
+        console.log(`\n${c.dim('── Export Payload ──')}`);
+        console.log(JSON.stringify(exportPayload, null, 2));
+      });
+      return;
+    } catch (_) {
+      // Blockchain module not available — fall back to export payload
+    }
+
+    // Fallback: just print the export payload JSON
+    console.log(`\n${c.dim('── Export Payload ──')}`);
+    console.log(JSON.stringify(exportPayload, null, 2));
+  };
+
+  // ─── Verify & Publications ───
+
+  /**
+   * Publication verification logic — checks blockchain publication status.
+   * Handles --tx, --name, --id flags for on-chain verification.
+   * Exposed via handlers['_verifyPublication'] so versioning.js can delegate.
+   */
+  function _verifyPublication(args) {
+    const tx = args.tx;
+    const name = args.name;
+    const id = args.id;
+
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+
+    if (tx) {
+      // Verify a Solana transaction
+      // First check if any pattern in DB has this tx
+      let dbPattern = null;
+      if (store && store.db) {
+        try {
+          const row = store.db.prepare('SELECT * FROM patterns WHERE blockchain_tx = ?').get(tx);
+          if (row) {
+            dbPattern = store._rowToPattern ? store._rowToPattern(row) : row;
+          }
+        } catch (_) { /* non-fatal */ }
+      }
+
+      if (dbPattern) {
+        console.log(c.boldGreen('Transaction found in local DB:'));
+        console.log(`  Pattern:   ${c.bold(dbPattern.name)}`);
+        console.log(`  ID:        ${c.cyan(dbPattern.id)}`);
+        if (dbPattern.blockchainHash) console.log(`  Hash:      ${c.dim(dbPattern.blockchainHash)}`);
+        if (dbPattern.publishedAt) console.log(`  Published: ${c.blue(dbPattern.publishedAt)}`);
+        console.log(`  TX:        ${c.cyan(tx)}`);
+      }
+
+      // Try to reach blockchain verification
+      try {
+        const { getPublisher } = require('../../blockchain/bridge');
+        const publisher = getPublisher();
+        if (publisher && typeof publisher.verify === 'function') {
+          const result = publisher.verify(tx);
+          if (result && result.verified) {
+            console.log(c.boldGreen('\nOn-chain verification: CONFIRMED'));
+            if (result.slot) console.log(`  Slot:    ${result.slot}`);
+            if (result.block) console.log(`  Block:   ${result.block}`);
+          } else {
+            console.log(c.yellow('\nOn-chain verification: UNCONFIRMED'));
+          }
+          return;
+        }
+      } catch (_) { /* blockchain module not available */ }
+
+      // Offline fallback
+      if (!dbPattern) {
+        console.log(`  Signature: ${c.cyan(tx)}`);
+      }
+      console.log(c.dim('\nNetwork verification unavailable (blockchain bridge offline)'));
+      return;
+    }
+
+    // --name or --id: look up publication status
+    let pattern = null;
+    if (id) {
+      pattern = store.getPattern ? store.getPattern(id) : null;
+    }
+    if (!pattern && name) {
+      pattern = store.getPatternByName ? store.getPatternByName(name) : null;
+      // Fallback: LIKE search for partial name match
+      if (!pattern && store.db) {
+        try {
+          const likeParam = '%' + name.replace(/[%_]/g, '') + '%';
+          const row = store.db.prepare('SELECT * FROM patterns WHERE LOWER(name) LIKE LOWER(?) LIMIT 1').get(likeParam);
+          if (row) pattern = store._rowToPattern ? store._rowToPattern(row) : row;
+        } catch (_) { /* non-fatal */ }
+      }
+    }
+
+    if (!pattern) {
+      console.log(c.red('Pattern not found: ') + (id || name));
+      return;
+    }
+
+    console.log(c.boldCyan(`Publication Status: ${c.bold(pattern.name)}\n`));
+    console.log(`  ID:        ${c.cyan(pattern.id)}`);
+    const coherency = pattern.coherencyTotal ?? pattern.coherencyScore?.total ?? 0;
+    console.log(`  Coherency: ${colorScore(coherency)}`);
+
+    if (pattern.blockchainTx) {
+      console.log(`\n  Status:    ${c.boldGreen('PUBLISHED')}`);
+      console.log(`  TX:        ${c.cyan(pattern.blockchainTx)}`);
+      if (pattern.blockchainHash) console.log(`  Hash:      ${c.dim(pattern.blockchainHash)}`);
+      if (pattern.publishedAt) console.log(`  Published: ${c.blue(pattern.publishedAt)}`);
+    } else {
+      console.log(`\n  Status:    ${c.yellow('NOT PUBLISHED')}`);
+    }
+  }
+
+  // Expose as a hidden handler so versioning.js's verify handler can delegate
+  handlers['_verifyPublication'] = _verifyPublication;
+
+  handlers['publications'] = (args) => {
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : oracle.store;
+
+    if (!store || !store.db) {
+      console.log(c.red('SQLite store not available'));
+      return;
+    }
+
+    const countOnly = args.count || false;
+
+    // Count published
+    const countRow = store.db.prepare('SELECT COUNT(*) as c FROM patterns WHERE blockchain_tx IS NOT NULL').get();
+    const publishedCount = countRow ? countRow.c : 0;
+
+    if (countOnly) {
+      console.log(`Published patterns: ${c.bold(String(publishedCount))}`);
+      return;
+    }
+
+    if (publishedCount === 0) {
+      console.log(c.dim('No patterns have been published to the blockchain yet.'));
+      return;
+    }
+
+    // Fetch published patterns
+    const rows = store.db.prepare(
+      'SELECT * FROM patterns WHERE blockchain_tx IS NOT NULL ORDER BY published_at DESC'
+    ).all();
+
+    const patterns = rows.map(r => store._rowToPattern ? store._rowToPattern(r) : r);
+
+    console.log(c.boldCyan('Published Patterns:\n'));
+
+    for (const p of patterns) {
+      const coherency = p.coherencyTotal ?? p.coherencyScore?.total ?? 0;
+      const hashTrunc = p.blockchainHash ? p.blockchainHash.slice(0, 12) + '...' : c.dim('n/a');
+      const txTrunc = p.blockchainTx ? p.blockchainTx.slice(0, 16) + '...' : c.dim('n/a');
+      console.log(`  ${c.bold(p.name)} (${c.blue(p.language || '?')}) coherency: ${colorScore(coherency)}`);
+      console.log(`    Hash: ${c.dim(hashTrunc)} | TX: ${c.cyan(txTrunc)} | Published: ${c.blue(p.publishedAt || 'unknown')}`);
+    }
+
+    // Summary
+    const avgCoherency = patterns.reduce((sum, p) => sum + (p.coherencyTotal ?? p.coherencyScore?.total ?? 0), 0) / patterns.length;
+    const langBreakdown = {};
+    for (const p of patterns) {
+      const lang = p.language || 'unknown';
+      langBreakdown[lang] = (langBreakdown[lang] || 0) + 1;
+    }
+
+    console.log(`\n${c.boldCyan('Summary:')}`);
+    console.log(`  Total published: ${c.bold(String(publishedCount))}`);
+    console.log(`  Avg coherency:   ${colorScore(avgCoherency)}`);
+    console.log(`  Languages:       ${Object.entries(langBreakdown).map(([k, v]) => `${c.blue(k)}(${v})`).join(', ')}`);
+  };
+
+  handlers['audit-integration'] = (args) => {
+    const { auditIntegration } = require('../../compression/fractal-library-bridge');
+    const store = oracle.store.getSQLiteStore ? oracle.store.getSQLiteStore() : null;
+    const report = auditIntegration(store, oracle.patterns);
+
+    if (jsonOut()) { console.log(JSON.stringify(report)); return; }
+
+    console.log(c.boldCyan('Fractal ↔ Library Integration Audit\n'));
+    console.log(`  Total patterns:       ${c.bold(String(report.totalPatterns))}`);
+    console.log(`  With embeddings:      ${c.bold(String(report.withEmbeddings))} (${report.totalPatterns > 0 ? ((report.withEmbeddings / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+    console.log(`  In fractal families:  ${c.bold(String(report.withFamilies))} (${report.totalPatterns > 0 ? ((report.withFamilies / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+    console.log(`  Structured descs:     ${c.bold(String(report.withStructuredDesc))} (${report.totalPatterns > 0 ? ((report.withStructuredDesc / report.totalPatterns) * 100).toFixed(0) : '0'}%)`);
+
+    if (report.familyStats.totalFamilies > 0) {
+      console.log(`\n${c.bold('Family Statistics:')}`);
+      console.log(`  Total families:       ${c.bold(String(report.familyStats.totalFamilies))}`);
+      console.log(`  Avg family size:      ${c.bold(String(report.familyStats.avgSize))}`);
+      console.log(`  Avg family coherency: ${colorScore(String(report.familyStats.avgCoherency))}`);
+    }
+
+    if (report.gaps.length > 0) {
+      console.log(`\n${c.bold('Gaps:')}`);
+      for (const gap of report.gaps) {
+        console.log(`  ${c.yellow('⚠')} ${gap}`);
+      }
+    }
+
+    if (report.recommendations.length > 0) {
+      console.log(`\n${c.bold('Recommendations:')}`);
+      for (const rec of report.recommendations) {
+        console.log(`  ${c.cyan('→')} ${rec}`);
+      }
+    }
+  };
+}
+
+function _formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
 module.exports = { registerLibraryCommands };

@@ -56,11 +56,19 @@ function createDashboardServer(oracle, options = {}) {
 
     const proceed = () => {
       const publicPaths = ['/', '/api/health', '/api/login'];
-      if (authMw && !publicPaths.includes(pathname)) {
-        authMw(req, res, () => handleRequest(req, res, parsed, pathname));
-      } else {
+      if (publicPaths.includes(pathname)) {
         req.user = null;
         handleRequest(req, res, parsed, pathname);
+      } else if (authMw) {
+        authMw(req, res, () => handleRequest(req, res, parsed, pathname));
+      } else if (options.auth === false) {
+        // Auth explicitly disabled by config — allow unauthenticated access
+        req.user = null;
+        handleRequest(req, res, parsed, pathname);
+      } else {
+        // Auth was expected but module failed to load — fail-safe: deny access
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Authentication service unavailable' }));
       }
     };
 

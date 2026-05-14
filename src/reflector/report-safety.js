@@ -9,6 +9,7 @@
 
 const { readFileSync, writeFileSync, existsSync, copyFileSync } = require('fs');
 const { join, relative, basename } = require('path');
+const { randomBytes } = require('crypto');
 
 // ─── Lazy Require Helpers (avoid circular deps) ───
 const { scoring: _scoring, multi: _multi, github: _github } = require('./report-lazy');
@@ -74,7 +75,8 @@ function createFileCopyBackup(rootDir, filePaths, manifest) {
         original: relPath,
         backup: backupPath,
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-safety:createFileCopyBackup] silent failure:', e?.message || e);
       // Skip unreadable files
     }
   }
@@ -98,7 +100,7 @@ function createBackup(rootDir, options = {}) {
     label = '',
   } = options;
 
-  const backupId = `backup-${Date.now()}`;
+  const backupId = `backup-${Date.now()}-${randomBytes(4).toString('hex')}`;
   const timestamp = new Date().toISOString();
 
   const manifest = {
@@ -115,10 +117,10 @@ function createBackup(rootDir, options = {}) {
     const backupBranch = `remembrance/backup-${Date.now()}`;
 
     try {
-      git(`branch ${backupBranch}`, rootDir);
+      git(['branch', backupBranch], rootDir);
       manifest.branch = backupBranch;
       manifest.baseBranch = currentBranch;
-      manifest.headCommit = git('rev-parse HEAD', rootDir);
+      manifest.headCommit = git(['rev-parse', 'HEAD'], rootDir);
     } catch (err) {
       manifest.strategy = 'file-copy';
       manifest.branchError = err.message;
@@ -334,9 +336,9 @@ function rollback(rootDir, options = {}) {
 
       const currentBranch = getCurrentBranch(rootDir);
       if (backup.headCommit) {
-        git(`reset --hard ${backup.headCommit}`, rootDir);
+        git(['reset', '--hard', backup.headCommit], rootDir);
       } else {
-        git(`merge ${backup.branch} --no-commit`, rootDir);
+        git(['merge', backup.branch, '--no-commit'], rootDir);
       }
 
       result.success = true;
@@ -363,7 +365,8 @@ function rollback(rootDir, options = {}) {
           copyFileSync(file.backup, targetPath);
           result.filesRestored++;
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[report-safety:init] silent failure:', e?.message || e);
         // Skip files that can't be restored
       }
     }
@@ -400,10 +403,10 @@ function coherenceGuard(rootDir, preHealSnapshot, postHealSnapshot) {
 
   const preAvg = preHealSnapshot.aggregate
     ? preHealSnapshot.aggregate.avgCoherence
-    : preHealSnapshot.avgCoherence || 0;
+    : preHealSnapshot.avgCoherence ?? 0;
   const postAvg = postSnap.aggregate
     ? postSnap.aggregate.avgCoherence
-    : postSnap.avgCoherence || 0;
+    : postSnap.avgCoherence ?? 0;
   const delta = Math.round((postAvg - preAvg) * 1000) / 1000;
 
   const result = {

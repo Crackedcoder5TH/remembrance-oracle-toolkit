@@ -189,6 +189,8 @@ class CovenantPrincipleRegistry {
     const violations = [];
     for (const [, entry] of this._principles) {
       for (const hp of entry.harmPatterns) {
+        // Reset lastIndex to avoid stateful RegExp bugs with g/y flags
+        if (hp.pattern.lastIndex) hp.pattern.lastIndex = 0;
         if (hp.pattern.test(code)) {
           violations.push({
             principle: entry.id,
@@ -378,7 +380,8 @@ class SearchProviderRegistry {
             }
           }
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[registry:search] silent failure:', e?.message || e);
         // Provider failure is non-fatal
       }
     }

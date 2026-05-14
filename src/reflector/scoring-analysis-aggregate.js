@@ -4,7 +4,12 @@
 
 const { readFileSync } = require('fs');
 const { relative, resolve } = require('path');
-const { detectLanguage } = require('../core/coherency');
+// Lazy-load to break circular dependency (coherency → unified/coherency → reflector → coherency)
+let _detectLanguage;
+function detectLanguage(code) {
+  if (!_detectLanguage) _detectLanguage = require('../unified/coherency').detectLanguage;
+  return _detectLanguage(code);
+}
 const { observeCoherence } = require('../core/reflection');
 const { covenantCheck } = require('../core/covenant');
 const { calculateCyclomaticComplexity, analyzeCommentDensity, analyzeNestingDepth, computeQualityMetrics, extractFunctionBodies } = require('./scoring-analysis-complexity');
@@ -43,7 +48,7 @@ function deepScore(code, options = {}) {
     nesting.score * weights.nesting +
     quality.score * weights.quality;
 
-  return {
+  const __retVal = {
     language,
     aggregate: Math.round(aggregate * 1000) / 1000,
     serfCoherence: Math.round(observation.composite * 1000) / 1000,
@@ -56,6 +61,19 @@ function deepScore(code, options = {}) {
     covenantSealed: covenant.sealed,
     weights,
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:scoring-analysis-aggregate:deepScore' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 function repoScore(rootDir, config = {}) {
@@ -67,7 +85,10 @@ function repoScore(rootDir, config = {}) {
 
   for (const filePath of filePaths) {
     let code;
-    try { code = readFileSync(filePath, 'utf-8'); } catch { continue; }
+    try { code = readFileSync(filePath, 'utf-8'); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[scoring-analysis-aggregate:repoScore] skipping item:', e?.message || e);
+      continue;
+    }
     if (!code.trim()) continue;
     const relPath = relative(rootDir, filePath);
     codeCache[relPath] = code;
@@ -133,7 +154,10 @@ function crossFileAnalysis(rootDir, fileScores, codeCache) {
   const _cache = codeCache || Object.create(null);
   const _readCode = (filePath) => {
     if (_cache[filePath]) return _cache[filePath];
-    try { return readFileSync(resolve(rootDir, filePath), 'utf-8'); } catch { return null; }
+    try { return readFileSync(resolve(rootDir, filePath), 'utf-8'); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[scoring-analysis-aggregate:_readCode] returning null on error:', e?.message || e);
+      return null;
+    }
   };
   const findings = [];
 

@@ -63,7 +63,8 @@ function loadConfig(rootDir) {
       autoMerge: flat.autoMerge,
       maxFilesPerRun: flat.maxFilesPerRun,
     };
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[multi-scheduler:loadConfig] silent failure:', e?.message || e);
     // Config not available, use schedule defaults
   }
 
@@ -125,8 +126,8 @@ function runReflector(rootDir, options = {}) {
   const startTime = Date.now();
 
   const runRecord = {
-    id: `run-${Date.now()}`,
-    startedAt: new Date().toISOString(),
+    id: `run-${startTime}`,
+    startedAt: new Date(startTime).toISOString(),
     config: {
       minCoherence: config.minCoherence,
       push: config.push,
@@ -182,7 +183,8 @@ function runReflector(rootDir, options = {}) {
     const reportPath = getReportPath(rootDir);
     saveJSON(reportPath, safeResult);
     runRecord.reportPath = reportPath;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[multi-scheduler:init] silent failure:', e?.message || e);
     // Best effort
   }
 
@@ -247,7 +249,8 @@ function runReflector(rootDir, options = {}) {
       health: 'unknown',
     };
     saveRunRecord(rootDir, v2Record, { maxRuns: config.maxRunHistory || 50 });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[multi-scheduler:after] silent failure:', e?.message || e);
     // Best effort — v2 history write is supplementary
   }
 

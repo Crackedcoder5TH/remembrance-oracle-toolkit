@@ -1,6 +1,6 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { createStateMachine } = require('../seeds/state-machine');
+const { createStateMachine } = require('../seeds/code/state-machine');
 
 describe('state-machine', () => {
   function trafficLight() {

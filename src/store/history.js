@@ -46,14 +46,19 @@ class VerifiedHistoryStore {
         if (!VerifiedHistoryStore._sqliteInstances) {
           VerifiedHistoryStore._sqliteInstances = new Map();
         }
-        if (VerifiedHistoryStore._sqliteInstances.has(this.storeDir)) {
-          this._sqlite = VerifiedHistoryStore._sqliteInstances.get(this.storeDir);
-        } else {
+        const cached = VerifiedHistoryStore._sqliteInstances.get(this.storeDir);
+        // Verify cached instance is still open — a closed DB will throw on any query
+        if (cached) {
+          try { cached.db.prepare('SELECT 1').get(); this._sqlite = cached; }
+          catch { VerifiedHistoryStore._sqliteInstances.delete(this.storeDir); }
+        }
+        if (!this._sqlite) {
           this._sqlite = new SQLiteStoreClass(baseDir);
           VerifiedHistoryStore._sqliteInstances.set(this.storeDir, this._sqlite);
         }
         this._backend = 'sqlite';
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[history:constructor] silent failure:', e?.message || e);
         this._ensureJSONStore();
       }
     } else {
@@ -76,11 +81,39 @@ class VerifiedHistoryStore {
   }
 
   _readJSON() {
-    return JSON.parse(fs.readFileSync(this.historyPath, 'utf-8'));
+    const fallback = { entries: [], meta: { created: new Date().toISOString(), version: 1 } };
+    try {
+      return JSON.parse(fs.readFileSync(this.historyPath, 'utf-8'));
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[history:_readJSON] best effort:', e?.message || e);
+      // Primary file corrupted — try backup
+      const bakPath = this.historyPath + '.bak';
+      try {
+        if (fs.existsSync(bakPath)) {
+          const raw = fs.readFileSync(bakPath, 'utf-8');
+          const parsed = JSON.parse(raw);
+          try { fs.writeFileSync(this.historyPath, raw, 'utf-8'); } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[history:_readJSON] best effort:', e?.message || e);
+          }
+          return parsed;
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[history:_readJSON] backup also corrupted:', e?.message || e);
+      }
+      return fallback;
+    }
   }
 
   _writeJSON(data) {
-    fs.writeFileSync(this.historyPath, JSON.stringify(data, null, 2), 'utf-8');
+    const json = JSON.stringify(data, null, 2);
+    const tmpPath = this.historyPath + '.tmp';
+    fs.writeFileSync(tmpPath, json, 'utf-8');
+    if (fs.existsSync(this.historyPath)) {
+      try { fs.copyFileSync(this.historyPath, this.historyPath + '.bak'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[history:_writeJSON] ok:', e?.message || e);
+      }
+    }
+    fs.renameSync(tmpPath, this.historyPath);
   }
 
   _hash(code) {
@@ -110,6 +143,13 @@ class VerifiedHistoryStore {
     return this._getJSON(id);
   }
 
+  update(id, changes) {
+    if (this._backend === 'sqlite') {
+      return this._updateSQLite(id, changes);
+    }
+    return this._updateJSON(id, changes);
+  }
+
   recordUsage(id, succeeded) {
     if (this._backend === 'sqlite') {
       return this._sqlite.recordEntryUsage(id, succeeded);
@@ -122,6 +162,17 @@ class VerifiedHistoryStore {
       return this._sqlite.pruneEntries(minCoherency);
     }
     return this._pruneJSON(minCoherency);
+  }
+
+  pruneUntested() {
+    if (this._backend === 'sqlite') {
+      return this._sqlite.pruneUntested();
+    }
+    const data = this._readJSON();
+    const before = data.entries.length;
+    data.entries = data.entries.filter(e => e.test_passed);
+    this._writeJSON(data);
+    return { removed: before - data.entries.length, remaining: data.entries.length };
   }
 
   summary() {
@@ -142,7 +193,7 @@ class VerifiedHistoryStore {
 
   _addJSON(entry) {
     const data = this._readJSON();
-    const id = this._hash(entry.code + Date.now().toString());
+    const id = this._hash(entry.code + Date.now().toString() + Math.random().toString());
     const record = {
       id,
       code: entry.code,
@@ -173,14 +224,14 @@ class VerifiedHistoryStore {
     const data = this._readJSON();
     let entries = data.entries;
     if (filters.language) {
-      entries = entries.filter(e => e.language.toLowerCase() === filters.language.toLowerCase());
+      entries = entries.filter(e => (e.language || '').toLowerCase() === filters.language.toLowerCase());
     }
     if (filters.minCoherency != null) {
       entries = entries.filter(e => (e.coherencyScore?.total ?? 0) >= filters.minCoherency);
     }
     if (filters.tags && filters.tags.length > 0) {
       const filterTags = new Set(filters.tags.map(t => t.toLowerCase()));
-      entries = entries.filter(e => e.tags.some(t => filterTags.has(t.toLowerCase())));
+      entries = entries.filter(e => (e.tags || []).some(t => filterTags.has(t.toLowerCase())));
     }
     return entries;
   }
@@ -190,10 +241,48 @@ class VerifiedHistoryStore {
     return data.entries.find(e => e.id === id) || null;
   }
 
+  _updateJSON(id, changes) {
+    const data = this._readJSON();
+    const entry = data.entries.find(e => e.id === id);
+    if (!entry) return null;
+    const safeChanges = { ...changes };
+    delete safeChanges.id; // Prevent ID corruption
+    Object.assign(entry, safeChanges);
+    entry.updatedAt = safeChanges.updatedAt || new Date().toISOString();
+    this._writeJSON(data);
+    return entry;
+  }
+
+  _updateSQLite(id, changes) {
+    try {
+      const entry = this._sqlite.getEntry(id);
+      if (!entry) return null;
+      // Update coherencyScore if provided
+      if (changes.coherencyScore != null) {
+        const scoreObj = typeof changes.coherencyScore === 'number'
+          ? { total: changes.coherencyScore }
+          : changes.coherencyScore;
+        this._sqlite.db.prepare(
+          'UPDATE entries SET coherency_total = ?, coherency_json = ?, updated_at = ? WHERE id = ?'
+        ).run(
+          scoreObj.total,
+          JSON.stringify(scoreObj),
+          changes.updatedAt || new Date().toISOString(),
+          id
+        );
+      }
+      return this._sqlite.getEntry(id);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[history:_updateSQLite]', e?.message);
+      return null;
+    }
+  }
+
   _recordUsageJSON(id, succeeded) {
     const data = this._readJSON();
     const entry = data.entries.find(e => e.id === id);
     if (!entry) return null;
+    if (!entry.reliability) entry.reliability = { timesUsed: 0, timesSucceeded: 0, historicalScore: 1.0 };
     entry.reliability.timesUsed += 1;
     if (succeeded) entry.reliability.timesSucceeded += 1;
     entry.reliability.historicalScore =

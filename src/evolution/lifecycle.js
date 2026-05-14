@@ -80,10 +80,10 @@ class LifecycleEngine {
     // Resolve context methods (support both OracleContext and raw oracle)
     this._on = ctx.on || ((cb) => { if (typeof ctx.on === 'function') return ctx.on(cb); return () => {}; });
     this._emit = ctx.emit || ((event) => { if (typeof ctx._emit === 'function') ctx._emit(event); });
-    this._autoPromote = ctx.autoPromote || (() => { try { return ctx.autoPromote(); } catch { return { promoted: 0 }; } });
-    this._retagAll = ctx.retagAll || ((opts) => { try { return ctx.retagAll(opts); } catch { return { enriched: 0 }; } });
-    this._deepClean = ctx.deepClean || ((opts) => { try { return ctx.deepClean(opts); } catch { return { removed: 0 }; } });
-    this._debugGrow = ctx.debugGrow || ((opts) => { try { return ctx.debugGrow(opts); } catch { return { processed: 0, generated: 0 }; } });
+    this._autoPromote = ctx.autoPromote || (() => ({ promoted: 0 }));
+    this._retagAll = ctx.retagAll || (() => ({ enriched: 0 }));
+    this._deepClean = ctx.deepClean || (() => ({ removed: 0 }));
+    this._debugGrow = ctx.debugGrow || (() => ({ processed: 0, generated: 0 }));
     this._syncToGlobal = ctx.syncToGlobal || null;
     this._actOnInsights = ctx.actOnInsights || null;
 
@@ -92,19 +92,12 @@ class LifecycleEngine {
     this._minCycleSeparation = 30000; // 30 seconds minimum between cycles
 
     // Event counters — track events between cycles
-    this._counters = {
-      feedbacks: 0,
-      submissions: 0,
-      registrations: 0,
-      heals: 0,
-      rejections: 0,
-      debugCaptures: 0,
-      debugFeedbacks: 0,
-      cycles: 0,
-    };
+    // Restore from persistent storage if available, otherwise start fresh
+    this._counters = this._loadCounters();
 
     // Cycle history — last N cycle reports
-    this._history = [];
+    // Restore from persistent storage if available
+    this._history = this._loadHistory();
     this._maxHistory = 20;
   }
 
@@ -123,7 +116,8 @@ class LifecycleEngine {
 
       try {
         this._handleEvent(event);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:start] silent failure:', e?.message || e);
         // Lifecycle never breaks the oracle
       }
     });
@@ -185,7 +179,8 @@ class LifecycleEngine {
         ...this.config.evolutionOptions,
         maxHeals: this.config.maxHealsPerCycle,
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:runCycle] recording error:', e?.message || e);
       report.evolution = { error: 'evolution cycle failed' };
     }
 
@@ -193,7 +188,8 @@ class LifecycleEngine {
     if (this.config.autoPromoteOnCycle) {
       try {
         report.promotion = this._autoPromote();
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:runCycle] recording error:', e?.message || e);
         report.promotion = { error: 'auto-promotion failed' };
       }
     }
@@ -202,7 +198,8 @@ class LifecycleEngine {
     if (this.config.autoRetagOnCycle) {
       try {
         report.retag = this._retagAll({ minAdded: 1 });
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:runCycle] recording error:', e?.message || e);
         report.retag = { error: 'retag failed' };
       }
     }
@@ -211,7 +208,8 @@ class LifecycleEngine {
     if (this.config.autoCleanOnCycle) {
       try {
         report.clean = this._deepClean({ dryRun: false });
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:runCycle] recording error:', e?.message || e);
         report.clean = { error: 'clean failed' };
       }
     }
@@ -230,7 +228,8 @@ class LifecycleEngine {
             report.sync = { synced: true };
           }
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:init] recording error:', e?.message || e);
         report.sync = { error: 'sync failed' };
       }
     }
@@ -249,7 +248,8 @@ class LifecycleEngine {
             maxHeals: this.config.maxHealsPerCycle,
           });
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:init] recording error:', e?.message || e);
         report.insights = { error: 'insights failed' };
       }
     }
@@ -258,7 +258,8 @@ class LifecycleEngine {
     if (this._counters.debugCaptures > 0) {
       try {
         report.debugGrowth = this._tryDebugGrow();
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:init] recording error:', e?.message || e);
         report.debugGrowth = { error: 'debug growth failed' };
       }
     }
@@ -290,7 +291,9 @@ class LifecycleEngine {
           }),
         });
       }
-    } catch { /* temporal memory not available */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:init] temporal memory not available:', e?.message || e);
+    }
 
     return report;
   }
@@ -350,6 +353,13 @@ class LifecycleEngine {
         this._tryAutoPromote();
         break;
     }
+
+    // Persist counters periodically (every 5 events) to avoid excessive I/O
+    const totalEvents = this._counters.feedbacks + this._counters.submissions +
+      this._counters.registrations + this._counters.debugCaptures;
+    if (totalEvents > 0 && totalEvents % 5 === 0) {
+      this._persistCounters();
+    }
   }
 
   _triggerCycle(reason) {
@@ -367,7 +377,8 @@ class LifecycleEngine {
       const report = this.runCycle();
       report.triggeredBy = reason;
       return report;
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:_triggerCycle] returning null on error:', e?.message || e);
       return null;
     }
   }
@@ -375,7 +386,8 @@ class LifecycleEngine {
   _tryAutoPromote() {
     try {
       return this._autoPromote();
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:_tryAutoPromote] returning null on error:', e?.message || e);
       return null;
     }
   }
@@ -391,7 +403,8 @@ class LifecycleEngine {
         return result;
       }
       return null;
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:_tryAutoHeal] returning null on error:', e?.message || e);
       return null;
     }
   }
@@ -399,7 +412,8 @@ class LifecycleEngine {
   _tryDebugGrow() {
     try {
       return this._debugGrow({ minConfidence: 0.5 });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle:_tryDebugGrow] returning null on error:', e?.message || e);
       return null;
     }
   }
@@ -418,6 +432,10 @@ class LifecycleEngine {
     if (this._history.length > this._maxHistory) {
       this._history.shift();
     }
+
+    // Persist both counters and history after each cycle
+    this._persistCounters();
+    this._persistHistory();
   }
 
   getHistory() {
@@ -435,6 +453,105 @@ class LifecycleEngine {
       debugFeedbacks: 0,
       cycles: this._counters.cycles,
     };
+    this._persistCounters();
+  }
+
+  // ─── Persistent State (survives process restarts) ───
+
+  /**
+   * Get the store directory for lifecycle state files.
+   */
+  _getStoreDir() {
+    try {
+      const store = this.oracle?.store;
+      if (store?.storeDir) return store.storeDir;
+      const sqliteStore = store?.getSQLiteStore?.();
+      if (sqliteStore?.storeDir) return sqliteStore.storeDir;
+    } catch (_) { /* fall through */ }
+    return null;
+  }
+
+  /**
+   * Load persisted counters from disk. Returns default counters if none found.
+   */
+  _loadCounters() {
+    const defaults = {
+      feedbacks: 0, submissions: 0, registrations: 0,
+      heals: 0, rejections: 0, debugCaptures: 0,
+      debugFeedbacks: 0, cycles: 0,
+    };
+    try {
+      const dir = this._getStoreDir();
+      if (!dir) return defaults;
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(dir, 'lifecycle-counters.json');
+      if (fs.existsSync(filePath)) {
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        return { ...defaults, ...data };
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle] failed to load counters:', e?.message);
+    }
+    return defaults;
+  }
+
+  /**
+   * Persist counters to disk so they survive process restarts.
+   */
+  _persistCounters() {
+    try {
+      const dir = this._getStoreDir();
+      if (!dir) return;
+      const fs = require('fs');
+      const path = require('path');
+      fs.mkdirSync(dir, { recursive: true });
+      const filePath = path.join(dir, 'lifecycle-counters.json');
+      const tmpPath = filePath + '.tmp';
+      fs.writeFileSync(tmpPath, JSON.stringify(this._counters), 'utf-8');
+      fs.renameSync(tmpPath, filePath);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle] failed to persist counters:', e?.message);
+    }
+  }
+
+  /**
+   * Load persisted cycle history from disk.
+   */
+  _loadHistory() {
+    try {
+      const dir = this._getStoreDir();
+      if (!dir) return [];
+      const fs = require('fs');
+      const path = require('path');
+      const filePath = path.join(dir, 'lifecycle-history.json');
+      if (fs.existsSync(filePath)) {
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        return Array.isArray(data) ? data : [];
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle] failed to load history:', e?.message);
+    }
+    return [];
+  }
+
+  /**
+   * Persist cycle history to disk.
+   */
+  _persistHistory() {
+    try {
+      const dir = this._getStoreDir();
+      if (!dir) return;
+      const fs = require('fs');
+      const path = require('path');
+      fs.mkdirSync(dir, { recursive: true });
+      const filePath = path.join(dir, 'lifecycle-history.json');
+      const tmpPath = filePath + '.tmp';
+      fs.writeFileSync(tmpPath, JSON.stringify(this._history), 'utf-8');
+      fs.renameSync(tmpPath, filePath);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[lifecycle] failed to persist history:', e?.message);
+    }
   }
 }
 

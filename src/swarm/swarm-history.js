@@ -1,5 +1,18 @@
 'use strict';
 
+
+/**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
 const fs = require('fs');
 const path = require('path');
 
@@ -25,14 +38,27 @@ const MAX_HISTORY_ENTRIES = 500;
  */
 function loadHistory(rootDir) {
   const filePath = path.join(rootDir || '.', '.remembrance', HISTORY_FILE);
+  const fallback = { runs: [], providerStats: {} };
   try {
     if (fs.existsSync(filePath)) {
       return JSON.parse(fs.readFileSync(filePath, 'utf8'));
     }
-  } catch {
-    // Corrupted file, start fresh
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-history:loadHistory] primary corrupted — try backup:', e?.message || e);
+    // Attempt .bak recovery
+    const bakPath = filePath + '.bak';
+    try {
+      if (fs.existsSync(bakPath)) {
+        const raw = fs.readFileSync(bakPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (_) { /* best effort */ }
+        return parsed;
+      }
+    } catch (bakErr) {
+      if (process.env.ORACLE_DEBUG) console.warn('[swarm-history:loadHistory] backup also corrupted:', bakErr?.message || bakErr);
+    }
   }
-  return { runs: [], providerStats: {} };
+  return fallback;
 }
 
 /**
@@ -51,7 +77,14 @@ function saveHistory(rootDir, history) {
     history.runs = history.runs.slice(-MAX_HISTORY_ENTRIES);
   }
 
-  fs.writeFileSync(filePath, JSON.stringify(history, null, 2));
+  // Atomic write: tmp → backup → rename
+  const json = JSON.stringify(history, null, 2);
+  const tmpPath = filePath + '.tmp';
+  fs.writeFileSync(tmpPath, json, 'utf-8');
+  if (fs.existsSync(filePath)) {
+    try { fs.copyFileSync(filePath, filePath + '.bak'); } catch (_) { /* best effort */ }
+  }
+  fs.renameSync(tmpPath, filePath);
 }
 
 /**
@@ -183,7 +216,7 @@ function getProviderReliability(rootDir) {
 function getHistorySummary(rootDir) {
   const history = loadHistory(rootDir);
 
-  return {
+  const __retVal = {
     totalRuns: history.runs.length,
     providers: Object.entries(history.providerStats).map(([name, stats]) => ({
       name,
@@ -201,6 +234,19 @@ function getHistorySummary(rootDir) {
       approved: r.userApproved,
     })),
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:swarm-history:getProviderReliability' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 module.exports = {

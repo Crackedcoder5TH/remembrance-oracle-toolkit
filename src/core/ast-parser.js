@@ -13,6 +13,9 @@
  *          try/catch/finally, throw.
  */
 function parseJS(source) {
+  if (typeof source !== 'string') {
+    return { type: 'Program', body: [] };
+  }
   const tokens = tokenize(source);
   return parseProgram(tokens);
 }

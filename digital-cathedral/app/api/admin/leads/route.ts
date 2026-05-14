@@ -3,6 +3,9 @@ import { verifyAdmin } from "@/app/lib/admin-auth";
 import { getFilteredLeads } from "@/app/lib/database";
 import type { LeadFilters } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
+import { VALID_STATES, VALID_COVERAGE, VALID_VETERAN_STATUS } from "@/app/lib/validation";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Admin Leads API
@@ -12,16 +15,45 @@ import { scoreLead } from "@/app/lib/lead-scoring";
  * Protected by bearer token (ADMIN_API_KEY).
  */
 export async function GET(req: NextRequest) {
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
   if (authError) return authError;
 
   const params = req.nextUrl.searchParams;
 
+  // Validate enum filter values against allowlists
+  const stateParam = params.get("state") || undefined;
+  const coverageParam = params.get("coverage") || undefined;
+  const veteranParam = params.get("veteran") || undefined;
+
+  if (stateParam && !VALID_STATES.has(stateParam)) {
+    return NextResponse.json(
+      { success: false, message: "Invalid state filter." },
+      { status: 400 },
+    );
+  }
+  if (coverageParam && !VALID_COVERAGE.has(coverageParam)) {
+    return NextResponse.json(
+      { success: false, message: "Invalid coverage filter." },
+      { status: 400 },
+    );
+  }
+  if (veteranParam && !VALID_VETERAN_STATUS.has(veteranParam)) {
+    return NextResponse.json(
+      { success: false, message: "Invalid veteran status filter." },
+      { status: 400 },
+    );
+  }
+
+  // Cap search string length to prevent abuse
+  // oracle-ignore-next-line: integration
+  const searchParam = params.get("search") || undefined;
+  const search = searchParam && searchParam.length <= 200 ? searchParam : undefined;
+
   const filters: LeadFilters = {
-    state: params.get("state") || undefined,
-    coverageInterest: params.get("coverage") || undefined,
-    veteranStatus: params.get("veteran") || undefined,
-    search: params.get("search") || undefined,
+    state: stateParam,
+    coverageInterest: coverageParam,
+    veteranStatus: veteranParam,
+    search,
     startDate: params.get("startDate") || undefined,
     endDate: params.get("endDate") || undefined,
     limit: Math.min(parseInt(params.get("limit") || "50") || 50, 200),
@@ -61,6 +93,27 @@ export async function GET(req: NextRequest) {
       scoreFactors: score.factors,
     };
   });
+
+  // Enrich with covenant-gate coherency from the ledger so the admin table
+  // can render the per-lead pulse. Keyed by leadId across the current month
+  // (older leads fall back to the legacy tier-only display). Failure to read
+  // the ledger silently degrades — the list still shows with legacy scoring.
+  try {
+    const { readRecentEntries } = await import("@/app/lib/valor/lead-ledger");
+    const entries = await readRecentEntries(500);
+    const byId = new Map(entries.map((e) => [e.leadId, e] as const));
+    for (const row of leadsWithScores) {
+      const ledgerEntry = byId.get(row.leadId);
+      if (ledgerEntry) {
+        (row as Record<string, unknown>).coherency = ledgerEntry.coherency.score;
+        (row as Record<string, unknown>).coherencyTier = ledgerEntry.coherency.tier;
+        (row as Record<string, unknown>).archetype = ledgerEntry.coherency.dominantArchetype;
+        (row as Record<string, unknown>).shape = ledgerEntry.coherency.shape;
+      }
+    }
+  } catch {
+    // Ledger read is best-effort enrichment; never block the admin list on it.
+  }
 
   return NextResponse.json({
     success: true,

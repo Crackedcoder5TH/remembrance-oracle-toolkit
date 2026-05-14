@@ -36,6 +36,15 @@ const {
 // ─── S: Simplicity & Elegance ───
 // Formula: S = 1 - (0.5 * complexity/max_complexity + 0.5 * loc/max_loc)
 
+// Fractal alignment integration (graceful)
+let _computeFractalAlignment;
+try {
+  ({ computeFractalAlignment: _computeFractalAlignment } = require('../fractals/alignment'));
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[reflection-scorers:init] Fractal alignment not available:', e?.message || e);
+  _computeFractalAlignment = null;
+}
+
 function scoreSimplicity(code) {
   const lines = code.split('\n').filter(l => l.trim());
   const loc = lines.length;
@@ -199,7 +208,9 @@ function _scoreDocCoverage(code) {
 // Severity tiers: critical = instant 0, medium = -0.3/issue, low = -0.1/issue
 
 function scoreSecurity(code, metadata) {
-  // Pattern definition files define security patterns — they're trusted.
+  // Annotation markers are recognized whenever present in code.
+  // These markers indicate files that intentionally reference security-sensitive
+  // patterns (e.g., pattern definition files listing harmful patterns for detection).
   const isPatternDefinition = /@oracle-pattern-definitions\b/.test(code);
   if (isPatternDefinition) return 0.95;
 
@@ -207,10 +218,16 @@ function scoreSecurity(code, metadata) {
   const isInfrastructure = /@oracle-infrastructure\b/.test(code);
 
   // Covenant check — the absolute foundation
-  const covenant = covenantCheck(code, metadata);
+  const covenant = covenantCheck(code, { ...metadata });
 
-  if (!covenant.sealed && !isInfrastructure) {
-    // Covenant violation is critical severity → instant 0
+  if (!covenant.sealed) {
+    // Infrastructure files get a reduced penalty per violation instead of hard 0
+    if (isInfrastructure) {
+      let score = 0.95;
+      score -= covenant.violations.length * 0.02;
+      return Math.max(0.4, Math.min(1, score));
+    }
+    // Covenant violation in non-infrastructure code is critical severity → instant 0
     return 0;
   }
 
@@ -546,9 +563,29 @@ function _stripNonCode(code) {
   return out;
 }
 
-// ─── Dimension Weights (fixed — let library growth naturally amplify I) ───
+function scoreFractalAlignment(code, metadata = {}) {
+  if (!_computeFractalAlignment) return 0.5;
+  try {
+    const result = _computeFractalAlignment(code, metadata);
+    return result.composite;
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[reflection-scorers] Fractal alignment failed:', e?.message || e);
+    return 0.5;
+  }
+}
 
-const DIMENSION_WEIGHTS = { ...REFLECTION_WEIGHTS };
+// ─── Dimension Weights (6-dim with fractalAlignment; sums to 1.0) ───
+// Note: REFLECTION_WEIGHTS in constants/thresholds.js is the alternate 5-dim
+// calibration. The active scorer uses the explicit 6-dim weights below.
+
+const DIMENSION_WEIGHTS = {
+  simplicity: 0.13,
+  readability: 0.18,
+  security: 0.22,
+  unity: 0.13,
+  correctness: 0.22,
+  fractalAlignment: 0.12,
+};
 
 // ─── Combined Observation ───
 
@@ -561,13 +598,24 @@ function observeCoherence(code, metadata = {}) {
     security: scoreSecurity(code, metadata),
     unity: scoreUnity(code),
     correctness: scoreCorrectness(code, metadata.language, provenPatterns),
+    fractalAlignment: scoreFractalAlignment(code, metadata),
   };
 
   const composite = Object.entries(DIMENSION_WEIGHTS).reduce(
     (sum, [key, weight]) => sum + dimensions[key] * weight, 0
   );
 
-  // Classify into acceptance zones
+  // Wire each individual dimension to the LRE field — every moving
+  // number participates, not just the composite. Six contribute calls
+  // per observeCoherence, one per dimension.
+  try {
+    const { contribute } = require('./field-coupling');
+    for (const [dim, val] of Object.entries(dimensions)) {
+      contribute({ cost: 1, coherence: val, source: `reflection-scorer:${dim}` });
+    }
+  } catch (_) { /* best-effort */ }
+
+  // Classify into acceptance zones — three-tier decision
   let zone;
   if (composite >= COHERENCY_ZONES.ACCEPT) zone = 'accept';
   else if (composite >= COHERENCY_ZONES.REVIEW) zone = 'review';
@@ -586,6 +634,7 @@ module.exports = {
   scoreSecurity,
   scoreUnity,
   scoreCorrectness,
+  scoreFractalAlignment,
   DIMENSION_WEIGHTS,
   COHERENCY_ZONES,
   observeCoherence,

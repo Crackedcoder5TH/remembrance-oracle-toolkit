@@ -386,7 +386,7 @@ describe('Feature 6: Remote Oracle Federation', () => {
     const remotes = listRemotes();
     const found = remotes.find(r => r.url === 'http://example.com:3579');
     assert.equal(found.name, 'updated-remote');
-    assert.equal(found.token, 'tok123');
+    assert.ok(found.token.startsWith('enc:'), 'token should be encrypted at rest');
   });
 
   it('removeRemote removes a server', () => {

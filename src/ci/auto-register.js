@@ -17,7 +17,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
+const { safePath } = require('../core/safe-path');
 
 const { extractFunctionNames, detectLanguage } = require('./auto-seed');
 const { splitFunctions } = require('./harvest');
@@ -33,7 +34,8 @@ const CODE_EXTS = /\.(js|ts|py|go|rs|jsx|tsx)$/;
  */
 function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
   try {
-    const output = execSync(`git diff --name-only --diff-filter=ACM ${range}`, {
+    if (!/^[\w.\-~^/]+(?:\.\.\.?[\w.\-~^/]+)?$/.test(range)) throw new Error('Invalid git range');
+    const output = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACM', range], {
       cwd,
       encoding: 'utf-8',
       timeout: 5000,
@@ -41,7 +43,21 @@ function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
 
     if (!output) return [];
     return output.split('\n').filter(f => CODE_EXTS.test(f));
-  } catch {
+  } catch (e) {
+    // Fallback for initial commit: HEAD~1 doesn't exist, so diff the tree directly
+    if (range === 'HEAD~1..HEAD') {
+      try {
+        const output = execFileSync('git', ['diff-tree', '--no-commit-id', '--name-only', '-r', '--diff-filter=ACM', 'HEAD'], {
+          cwd,
+          encoding: 'utf-8',
+          timeout: 5000,
+        }).trim();
+        if (output) return output.split('\n').filter(f => CODE_EXTS.test(f));
+      } catch (fallbackErr) {
+        if (process.env.ORACLE_DEBUG) console.warn('[auto-register:getChangedFiles] fallback also failed:', fallbackErr?.message || fallbackErr);
+      }
+    }
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:getChangedFiles] returning empty array on error:', e?.message || e);
     return [];
   }
 }
@@ -57,7 +73,8 @@ function getChangedFiles(cwd, range = 'HEAD~1..HEAD') {
  */
 function getAddedCode(cwd, file, range = 'HEAD~1..HEAD') {
   try {
-    const diff = execSync(`git diff -U0 ${range} -- "${file}"`, {
+    if (!/^[\w.\-~^/]+(?:\.\.\.?[\w.\-~^/]+)?$/.test(range)) throw new Error('Invalid git range');
+    const diff = execFileSync('git', ['diff', '-U0', range, '--', file], {
       cwd,
       encoding: 'utf-8',
       timeout: 5000,
@@ -69,7 +86,8 @@ function getAddedCode(cwd, file, range = 'HEAD~1..HEAD') {
       .filter(line => line.startsWith('+') && !line.startsWith('+++'))
       .map(line => line.slice(1))
       .join('\n');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:getAddedCode] returning empty string on error:', e?.message || e);
     return '';
   }
 }
@@ -128,16 +146,21 @@ function findTestFile(sourceFile, baseDir) {
  * @param {string} name — Function or pattern name
  * @returns {boolean}
  */
+// Cache for existing pattern names — populated once per autoRegister() call
+let _registeredNamesCache = null;
+
 function isRegistered(oracle, name) {
   try {
-    if (typeof oracle.patterns?.getAll === 'function') {
-      const all = oracle.patterns.getAll();
-      return all.some(p => p.name === name);
+    // Use cached names set if available (populated in autoRegister)
+    if (_registeredNamesCache) return _registeredNamesCache.has(name);
+    // Fallback: use targeted search instead of loading all patterns
+    if (typeof oracle.patterns?._sqlite?.getPatternByName === 'function') {
+      return !!oracle.patterns._sqlite.getPatternByName(name);
     }
-    // Fallback: search the store
     const results = oracle.search(name, { limit: 5 });
     return results.some(r => r.name === name);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:isRegistered] returning false on error:', e?.message || e);
     return false;
   }
 }
@@ -168,6 +191,170 @@ function extractFunctions(code, language, newFunctionNames) {
 
     return true;
   });
+}
+
+/**
+ * Generic single-word names that don't describe reusable patterns.
+ * Used by the meaningful-name quality check.
+ */
+const GENERIC_NAMES = new Set([
+  'handle', 'run', 'init', 'exec', 'do', 'go', 'main', 'cb',
+  'fn', 'func', 'call', 'process', 'get', 'set', 'put', 'make',
+  'load', 'save', 'start', 'stop', 'setup', 'update', 'check',
+]);
+
+/**
+ * Split a camelCase or snake_case name into its constituent words.
+ *
+ * @param {string} name — Function/variable name
+ * @returns {string[]} — Array of word parts
+ */
+function splitNameParts(name) {
+  // Split on underscores first (snake_case)
+  const snakeParts = name.split('_').filter(Boolean);
+  const parts = [];
+  for (const part of snakeParts) {
+    // Split camelCase: insert boundary before uppercase letters
+    const camelParts = part.replace(/([a-z])([A-Z])/g, '$1\0$2').split('\0');
+    for (const cp of camelParts) {
+      if (cp) parts.push(cp.toLowerCase());
+    }
+  }
+  return parts;
+}
+
+/**
+ * Score a harvested function on a 0-1 quality scale.
+ *
+ * Criteria:
+ *   +0.30 — Has matching test file
+ *   +0.25 — Is exported (module.exports, export default, export function)
+ *   +0.15 — Has JSDoc or docstring comment block above definition
+ *   +0.15 — Meaningful name (3+ word parts, not a single generic word)
+ *   +0.15 — Sufficient size (5-50 lines)
+ *
+ * @param {{ name: string, code: string, language: string }} func — Extracted function
+ * @param {string} filePath — Absolute path to the source file
+ * @param {string} baseDir — Project root directory
+ * @returns {{ score: number, reasons: string[] }}
+ */
+function _qualityScore(func, filePath, baseDir) {
+  let score = 0;
+  const reasons = [];
+
+  // 1. Has tests (+0.3)
+  const testFile = findTestFile(filePath, baseDir);
+  if (testFile) {
+    score += 0.3;
+    reasons.push('has tests');
+  }
+
+  // 2. Is exported (+0.25)
+  // Read the full file to check exports — we need the whole file context,
+  // not just the extracted function body.
+  let fileContent = '';
+  try {
+    fileContent = fs.readFileSync(filePath, 'utf-8');
+  } catch (e) {
+    // If we can't read the file, skip this check
+  }
+
+  if (fileContent) {
+    const name = func.name;
+    const lang = func.language;
+
+    let isExported = false;
+    if (lang === 'javascript' || lang === 'typescript') {
+      // Check: module.exports = { ..., name, ... } or module.exports.name =
+      // or exports.name = or export function name or export default
+      // or export { name }
+      const exportPatterns = [
+        new RegExp(`module\\.exports\\s*=\\s*\\{[^}]*\\b${name}\\b`, 's'),
+        new RegExp(`module\\.exports\\.${name}\\s*=`),
+        new RegExp(`exports\\.${name}\\s*=`),
+        new RegExp(`export\\s+(?:default\\s+)?(?:async\\s+)?function\\s+${name}\\b`),
+        new RegExp(`export\\s+(?:const|let|var)\\s+${name}\\b`),
+        new RegExp(`export\\s*\\{[^}]*\\b${name}\\b`),
+      ];
+      isExported = exportPatterns.some(re => re.test(fileContent));
+    } else if (lang === 'python') {
+      // Python: if it's in __all__ or doesn't start with underscore (already filtered)
+      // Check __all__ list
+      const allMatch = fileContent.match(/__all__\s*=\s*\[([^\]]*)\]/);
+      if (allMatch) {
+        isExported = allMatch[1].includes(`'${name}'`) || allMatch[1].includes(`"${name}"`);
+      } else {
+        // In Python, non-underscore functions are implicitly public
+        isExported = !name.startsWith('_');
+      }
+    } else if (lang === 'go') {
+      // Go: exported if first letter is uppercase
+      isExported = name[0] === name[0].toUpperCase() && name[0] !== name[0].toLowerCase();
+    } else if (lang === 'rust') {
+      // Rust: exported if preceded by `pub`
+      isExported = new RegExp(`pub\\s+fn\\s+${name}\\b`).test(fileContent);
+    }
+
+    if (isExported) {
+      score += 0.25;
+      reasons.push('exported');
+    }
+  }
+
+  // 3. Has JSDoc/docstring (+0.15)
+  // Check if the function definition in the file is preceded by a doc comment
+  if (fileContent) {
+    const name = func.name;
+    const lang = func.language;
+    let hasDoc = false;
+
+    if (lang === 'javascript' || lang === 'typescript') {
+      // Look for /** ... */ immediately before the function definition
+      const docPattern = new RegExp(
+        `/\\*\\*[\\s\\S]*?\\*/\\s*(?:export\\s+)?(?:async\\s+)?(?:function\\s+${name}\\b|(?:const|let|var)\\s+${name}\\s*=)`
+      );
+      hasDoc = docPattern.test(fileContent);
+    } else if (lang === 'python') {
+      // Check for docstring (triple-quoted string right after def line)
+      const defPattern = new RegExp(
+        `def\\s+${name}\\s*\\([^)]*\\)\\s*:\\s*\\n\\s*(?:"""|\\'\\'\\')`
+      );
+      hasDoc = defPattern.test(fileContent);
+    } else if (lang === 'go') {
+      // Go: comment line(s) immediately before func
+      const commentPattern = new RegExp(`//[^\\n]*\\n\\s*func\\s+(?:\\([^)]+\\)\\s+)?${name}\\b`);
+      hasDoc = commentPattern.test(fileContent);
+    } else if (lang === 'rust') {
+      // Rust: /// doc comments before fn
+      const commentPattern = new RegExp(`///[^\\n]*\\n\\s*(?:pub\\s+)?fn\\s+${name}\\b`);
+      hasDoc = commentPattern.test(fileContent);
+    }
+
+    if (hasDoc) {
+      score += 0.15;
+      reasons.push('documented');
+    }
+  }
+
+  // 4. Meaningful name (+0.15)
+  // Name must have 3+ word parts (camelCase/snake_case), not a single generic word
+  const nameParts = splitNameParts(func.name);
+  if (nameParts.length >= 3) {
+    score += 0.15;
+    reasons.push('meaningful name');
+  }
+
+  // 5. Sufficient size (+0.15): 5-50 lines
+  const lineCount = func.code.split('\n').length;
+  if (lineCount >= 5 && lineCount <= 50) {
+    score += 0.15;
+    reasons.push('good size');
+  }
+
+  // Round to 2 decimal places to avoid floating-point noise
+  score = Math.round(score * 100) / 100;
+
+  return { score, reasons };
 }
 
 /**
@@ -206,7 +393,8 @@ function buildTags(name, filePath, language, functionNames) {
  * @param {boolean} options.dryRun — Preview without registering
  * @param {boolean} options.silent — Suppress output
  * @param {boolean} options.wholeFile — Register whole files instead of splitting functions
- * @returns {{ registered, skipped, alreadyExists, failed, patterns, files }}
+ * @param {number} options.qualityThreshold — Minimum quality score to register (default: 0.4)
+ * @returns {{ registered, skipped, alreadyExists, failed, patterns, files, discovered, belowThreshold }}
  */
 function autoRegister(oracle, cwd, options = {}) {
   const {
@@ -214,6 +402,7 @@ function autoRegister(oracle, cwd, options = {}) {
     dryRun = false,
     silent = false,
     wholeFile = false,
+    qualityThreshold = 0.4,
   } = options;
 
   const log = silent ? () => {} : (msg) => console.log(`[auto-register] ${msg}`);
@@ -223,6 +412,8 @@ function autoRegister(oracle, cwd, options = {}) {
     skipped: 0,
     alreadyExists: 0,
     failed: 0,
+    discovered: 0,
+    belowThreshold: 0,
     patterns: [],
     files: [],
   };
@@ -242,13 +433,20 @@ function autoRegister(oracle, cwd, options = {}) {
     if (typeof oracle.patterns?.getAll === 'function') {
       existingNames = new Set(oracle.patterns.getAll().map(p => p.name));
     }
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:lookups] silent failure:', e?.message || e);
     // Fallback: check per-function
   }
+  // Set module-level cache so isRegistered() uses it instead of loading all patterns
+  _registeredNamesCache = existingNames;
 
   // Step 2: Process each changed file
   for (const relFile of changedFiles) {
-    const absFile = path.resolve(cwd, relFile);
+    let absFile;
+    try { absFile = safePath(relFile, cwd); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-register:autoRegister] skipping item:', e?.message || e);
+      continue;
+    }
     if (!fs.existsSync(absFile)) continue;
 
     const language = detectLanguage(relFile);
@@ -257,7 +455,10 @@ function autoRegister(oracle, cwd, options = {}) {
     let code;
     try {
       code = fs.readFileSync(absFile, 'utf-8');
-    } catch { continue; }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[auto-register:lookups] skipping item:', e?.message || e);
+      continue;
+    }
 
     // Skip files that are too large or too small
     if (code.length > 50000 || code.length < 30) continue;
@@ -270,7 +471,9 @@ function autoRegister(oracle, cwd, options = {}) {
     const testFile = findTestFile(absFile, cwd);
     let testCode = null;
     if (testFile) {
-      try { testCode = fs.readFileSync(testFile, 'utf-8'); } catch { /* no test */ }
+      try { testCode = fs.readFileSync(testFile, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[auto-register:lookups] no test:', e?.message || e);
+      }
     }
 
     report.files.push({
@@ -313,12 +516,38 @@ function autoRegister(oracle, cwd, options = {}) {
           report.skipped++;
           report.patterns.push({ name, file: relFile, status: 'skipped', reason: reg.reason });
         }
-      } catch { report.failed++; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[auto-register:init] operation failed:', e?.message || e);
+        report.failed++;
+      }
     } else {
       // Split into individual functions and register new ones
-      const functions = extractFunctions(code, language, newFunctionNames.length > 0 ? newFunctionNames : null);
+      // Only register functions that appear in the diff; skip files where
+      // the diff touched only non-function code (whitespace, comments, etc.)
+      if (newFunctionNames.length === 0) continue;
+      const functions = extractFunctions(code, language, newFunctionNames);
 
       for (const fn of functions) {
+        report.discovered++;
+
+        // Quality scoring — skip low-quality functions
+        const quality = _qualityScore(fn, absFile, cwd);
+
+        if (quality.score < qualityThreshold) {
+          report.belowThreshold++;
+          report.patterns.push({
+            name: fn.name,
+            file: relFile,
+            status: 'below-threshold',
+            score: quality.score,
+            reasons: quality.reasons,
+          });
+          if (process.env.ORACLE_DEBUG) {
+            console.log(`[auto-register] Skipping ${fn.name} (score ${quality.score.toFixed(2)} < threshold ${qualityThreshold}) — ${quality.reasons.join(', ') || 'no quality signals'}`);
+          }
+          continue;
+        }
+
         if (existingNames.has(fn.name)) {
           report.alreadyExists++;
           continue;
@@ -327,7 +556,13 @@ function autoRegister(oracle, cwd, options = {}) {
         const tags = buildTags(fn.name, relFile, language, [fn.name]);
 
         if (dryRun) {
-          report.patterns.push({ name: fn.name, file: relFile, status: 'dry-run' });
+          report.patterns.push({
+            name: fn.name,
+            file: relFile,
+            status: 'dry-run',
+            score: quality.score,
+            reasons: quality.reasons,
+          });
           continue;
         }
 
@@ -343,13 +578,30 @@ function autoRegister(oracle, cwd, options = {}) {
           if (reg.registered) {
             report.registered++;
             existingNames.add(fn.name); // Prevent duplicates within same commit
-            report.patterns.push({ name: fn.name, id: reg.pattern?.id, file: relFile, status: 'registered' });
+            report.patterns.push({
+              name: fn.name,
+              id: reg.pattern?.id,
+              file: relFile,
+              status: 'registered',
+              score: quality.score,
+              reasons: quality.reasons,
+            });
             log(`Registered: ${fn.name} (${language})`);
           } else {
             report.skipped++;
-            report.patterns.push({ name: fn.name, file: relFile, status: 'skipped', reason: reg.reason });
+            report.patterns.push({
+              name: fn.name,
+              file: relFile,
+              status: 'skipped',
+              reason: reg.reason,
+              score: quality.score,
+              reasons: quality.reasons,
+            });
           }
-        } catch { report.failed++; }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[auto-register:from] operation failed:', e?.message || e);
+          report.failed++;
+        }
       }
     }
   }
@@ -361,14 +613,37 @@ function autoRegister(oracle, cwd, options = {}) {
       registered: report.registered,
       files: report.files.length,
     });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[auto-register:from] silent failure:', e?.message || e);
     // Best-effort
   }
 
-  if (!silent && report.registered > 0) {
-    log(`Done: ${report.registered} registered, ${report.alreadyExists} already exist, ${report.skipped} skipped`);
+  if (!silent) {
+    if (report.discovered > 0) {
+      const regCount = report.registered;
+      const disc = report.discovered;
+      const below = report.belowThreshold;
+      log(`Auto-registered ${regCount} function(s) from diff (${disc} discovered, ${below} below quality threshold)`);
+
+      for (const p of report.patterns) {
+        if (p.score !== undefined) {
+          const reasonStr = p.reasons && p.reasons.length > 0 ? p.reasons.join(', ') : 'no quality signals';
+          if (p.status === 'below-threshold') {
+            log(`  ~ ${p.name} (${p.score.toFixed(2)}) — skipped (below threshold)`);
+          } else if (p.status === 'registered' || p.status === 'dry-run') {
+            log(`  + ${p.name} (${p.score.toFixed(2)}) — ${reasonStr}`);
+          } else if (p.status === 'skipped') {
+            log(`  - ${p.name} (${p.score.toFixed(2)}) — skipped: ${p.reason || reasonStr}`);
+          }
+        }
+      }
+    } else if (report.registered > 0) {
+      log(`Done: ${report.registered} registered, ${report.alreadyExists} already exist, ${report.skipped} skipped`);
+    }
   }
 
+  // Clear module-level cache to free memory
+  _registeredNamesCache = null;
   return report;
 }
 
@@ -380,4 +655,6 @@ module.exports = {
   extractFunctions,
   isRegistered,
   buildTags,
+  _qualityScore,
+  splitNameParts,
 };

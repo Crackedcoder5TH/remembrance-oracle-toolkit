@@ -27,7 +27,7 @@ module.exports = {
     if (result.veto && patternName) {
       this._emit({
         type: 'security_veto', patternName,
-        tool: result.externalTools.length > 0 ? result.externalTools[0].tool : 'covenant',
+        tool: (result.externalTools || []).length > 0 ? result.externalTools[0].tool : 'covenant',
         findings: result.totalFindings, whisper: result.whisper,
       });
     }

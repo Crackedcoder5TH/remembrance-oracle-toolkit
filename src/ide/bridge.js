@@ -37,7 +37,7 @@ class IDEBridge {
    */
   constructor(options = {}) {
     this.oracle = options.oracle || new RemembranceOracle({ autoSeed: false });
-    this.minCoherency = options.minCoherency || 0.7;
+    this.minCoherency = options.minCoherency ?? 0.7;
     this.maxDiagnostics = options.maxDiagnostics || 20;
     this.enableDebug = options.enableDebug !== false;
   }
@@ -80,7 +80,7 @@ class IDEBridge {
 
     // 2. Coherency check
     try {
-      const { computeCoherencyScore } = require('../core/coherency');
+      const { computeCoherencyScore } = require('../unified/coherency');
       const score = computeCoherencyScore(code, { language });
       if (score.total < 0.5) {
         diagnostics.push({
@@ -204,7 +204,7 @@ class IDEBridge {
 
         for (const fix of fixes) {
           actions.push({
-            title: `Fix: ${fix.fixDescription || fix.errorClass} (confidence: ${fix.confidence.toFixed(2)})`,
+            title: `Fix: ${fix.fixDescription || fix.errorClass} (confidence: ${(fix.confidence ?? 0).toFixed(2)})`,
             kind: 'quickfix',
             source: 'oracle-debug',
             debugPatternId: fix.id,
@@ -238,7 +238,7 @@ class IDEBridge {
     // 3. Refinement: offer to heal low-coherency code
     if (code) {
       try {
-        const { computeCoherencyScore } = require('../core/coherency');
+        const { computeCoherencyScore } = require('../unified/coherency');
         const score = computeCoherencyScore(code, { language });
         if (score.total < 0.7 && score.total > 0.3) {
           actions.push({
@@ -324,7 +324,7 @@ class IDEBridge {
     const match = results.find(r => r.name === symbol);
     if (!match) return null;
 
-    return {
+    const __retVal = {
       patternId: match.id,
       name: match.name,
       language: match.language,
@@ -333,6 +333,19 @@ class IDEBridge {
       code: match.code,
       tags: match.tags,
     };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:bridge:getCompletions' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   }
 
   // ─── Find References ───
@@ -389,7 +402,7 @@ class IDEBridge {
     // Coherency score
     let coherency = null;
     try {
-      const { computeCoherencyScore } = require('../core/coherency');
+      const { computeCoherencyScore } = require('../unified/coherency');
       coherency = computeCoherencyScore(code, { language });
     } catch (err) { if (process.env.ORACLE_DEBUG) console.error('[bridge]', err.message); }
 

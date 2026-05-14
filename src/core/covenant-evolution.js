@@ -27,11 +27,25 @@ const EVOLVED_PRINCIPLES_FILE = '.remembrance/evolved-principles.json';
  */
 function loadEvolvedPrinciples(rootDir = process.cwd()) {
   const filePath = path.join(rootDir, EVOLVED_PRINCIPLES_FILE);
+  const fallback = { principles: [], violations: [], version: 1 };
   try {
     const data = fs.readFileSync(filePath, 'utf-8');
     return JSON.parse(data);
-  } catch {
-    return { principles: [], violations: [], version: 1 };
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:loadEvolvedPrinciples] primary corrupted — try backup:', e?.message || e);
+    // Attempt .bak recovery
+    const bakPath = filePath + '.bak';
+    try {
+      if (fs.existsSync(bakPath)) {
+        const raw = fs.readFileSync(bakPath, 'utf-8');
+        const parsed = JSON.parse(raw);
+        try { fs.writeFileSync(filePath, raw, 'utf-8'); } catch (_) { /* best effort */ }
+        return parsed;
+      }
+    } catch (bakErr) {
+      if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:loadEvolvedPrinciples] backup also corrupted:', bakErr?.message || bakErr);
+    }
+    return fallback;
   }
 }
 
@@ -42,7 +56,18 @@ function saveEvolvedPrinciples(data, rootDir = process.cwd()) {
   const filePath = path.join(rootDir, EVOLVED_PRINCIPLES_FILE);
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+  // Atomic write: tmp → backup → rename
+  const json = JSON.stringify(data, null, 2);
+  const tmpPath = filePath + '.tmp';
+  fs.writeFileSync(tmpPath, json, 'utf-8');
+  if (fs.existsSync(filePath)) {
+    try {
+      fs.copyFileSync(filePath, filePath + '.bak');
+    } catch (e) {
+      console.warn(`[covenant-evolution:save] WARNING — backup failed: ${e?.message || e}. Recovery may be incomplete if write is interrupted.`);
+    }
+  }
+  fs.renameSync(tmpPath, filePath);
 }
 
 /**
@@ -113,7 +138,9 @@ function discoverPrinciples(options = {}) {
       if (autoPromote && pattern && cluster.count >= minOccurrences * 2) {
         try {
           promotePrinciple(proposal, rootDir);
-        } catch { /* promotion failed — non-fatal */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:discoverPrinciples] promotion failed — non-fatal:', e?.message || e);
+        }
       }
     }
   }
@@ -129,7 +156,7 @@ function promotePrinciple(proposal, rootDir = process.cwd()) {
   const data = loadEvolvedPrinciples(rootDir);
 
   const principle = {
-    id: 100 + data.principles.length + 1, // IDs start at 101 to not conflict with core 15
+    id: Math.max(100, ...data.principles.map(p => p.id || 0)) + 1, // IDs start at 101, always unique
     name: proposal.suggestedName,
     seal: proposal.suggestedSeal,
     category: proposal.category,
@@ -169,7 +196,8 @@ function createEvolvedRegistry(rootDir = process.cwd()) {
                 reason: `Evolved principle "${p.name}" violated (category: ${p.category})`,
               });
             }
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[covenant-evolution:check] silent failure:', e?.message || e);
             // Invalid regex — skip
           }
         }
@@ -212,7 +240,8 @@ function _inferPattern(snippets) {
 }
 
 function _categoryToName(category) {
-  const words = category.replace(/[-_]/g, ' ').split(' ');
+  const words = category.replace(/[-_]/g, ' ').split(' ').filter(w => w.length > 0);
+  if (words.length === 0) return 'The Guard';
   return 'The ' + words.map(w => w[0].toUpperCase() + w.slice(1)).join(' ') + ' Guard';
 }
 

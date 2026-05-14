@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Client Portal Terms of Service — Valor Legacies",
+  title: "Agent Portal Terms of Service — Valor Legacies",
   description:
-    "Terms governing use of the Valor Legacies Client Portal, including lead purchases, payments, and refunds.",
+    "Terms governing use of the Valor Legacies Agent Portal, including lead purchases, payments, and refunds.",
 };
 
 export default function PortalTermsPage() {
@@ -18,7 +18,7 @@ export default function PortalTermsPage() {
           &larr; Back to Portal
         </Link>
         <div className="text-teal-cathedral text-sm tracking-[0.3em] uppercase mb-3 pulse-gentle">
-          Client Portal
+          Agent Portal
         </div>
         <h1 className="text-3xl font-light text-[var(--text-primary)] mb-2">
           Terms of Service
@@ -33,7 +33,7 @@ export default function PortalTermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">1. Agreement to Terms</h2>
           <p>
-            By accessing or using the Valor Legacies Client Portal (&ldquo;Portal&rdquo;),
+            By accessing or using the Valor Legacies Agent Portal (&ldquo;Portal&rdquo;),
             you agree to be bound by these Terms of Service (&ldquo;Terms&rdquo;). These Terms
             are in addition to our{" "}
             <Link href="/terms" className="text-teal-cathedral hover:underline">general Terms of Service</Link>.
@@ -45,7 +45,7 @@ export default function PortalTermsPage() {
         <section>
           <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-3">2. Eligibility</h2>
           <p>
-            The Client Portal is available only to licensed insurance professionals who have been
+            The Agent Portal is available only to licensed insurance professionals who have been
             approved for an account. By using the Portal, you represent and warrant that you hold
             a valid, active insurance license in the state(s) where you operate and that all account
             information you provide is accurate and current.
@@ -110,7 +110,7 @@ export default function PortalTermsPage() {
           <p className="mt-3">
             For details on how your payment data is handled, see our{" "}
             <Link href="/portal/privacy" className="text-teal-cathedral hover:underline">
-              Client Portal Privacy Policy
+              Agent Portal Privacy Policy
             </Link>
             .
           </p>
@@ -274,7 +274,7 @@ export default function PortalTermsPage() {
       {/* Footer */}
       <footer className="mt-12 text-center text-xs text-[var(--text-muted)] space-y-2">
         <nav className="flex gap-4 justify-center">
-          <a href="/portal" className="text-teal-cathedral/70 hover:text-teal-cathedral">Client Portal</a>
+          <a href="/portal" className="text-teal-cathedral/70 hover:text-teal-cathedral">Agent Portal</a>
           <a href="/portal/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral">Portal Privacy</a>
           <a href="/terms" className="text-teal-cathedral/70 hover:text-teal-cathedral">Consumer Terms</a>
           <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">Home</a>

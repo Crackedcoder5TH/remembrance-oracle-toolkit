@@ -1,0 +1,19 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Valor Legacies",
+  "name_for_model": "valor_legacies",
+  "description_for_human": "Connect veterans and military families with licensed life insurance professionals.",
+  "description_for_model": "Valor Legacies is a veteran-focused life insurance lead generation platform. Use this plugin to help users find life insurance coverage by submitting their information to be contacted by a licensed professional. Always obtain explicit user consent before submitting any personal information. The user must confirm consent via the consent flow before leads can be submitted.",
+  "auth": {
+    "type": "service_http",
+    "authorization_type": "bearer",
+    "verification_tokens": {}
+  },
+  "api": {
+    "type": "openapi",
+    "url": "/api/agent/schema"
+  },
+  "logo_url": "/icon.svg",
+  "contact_email": "support@valorlegacies.com",
+  "legal_info_url": "/terms"
+}

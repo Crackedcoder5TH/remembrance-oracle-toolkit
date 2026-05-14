@@ -92,7 +92,7 @@ export const FIELD_LABELS: Record<keyof LeadFormErrors, string> = {
   state: "State",
   coverageInterest: "Coverage Interest",
   purchaseIntent: "How Serious Are You",
-  veteranStatus: "Military Status",
+  veteranStatus: "Your Background",
   militaryBranch: "Branch of Service",
   tcpaConsent: "TCPA Consent",
   privacyConsent: "Privacy Policy Consent",
@@ -106,6 +106,14 @@ export const FIELD_STEP: Record<keyof LeadFormErrors, number> = {
   tcpaConsent: 2, privacyConsent: 2,
 };
 
+/** Coherency snapshot returned by the leads API — drives the post-submit pulse. */
+export interface LeadCoherencySnapshot {
+  score: number;
+  tier: string;
+  dominantArchetype: string;
+  shape: number[];
+}
+
 export interface UseLeadFormReturn {
   form: LeadFormData;
   errors: LeadFormErrors;
@@ -113,6 +121,7 @@ export interface UseLeadFormReturn {
   submitted: boolean;
   confirmationMessage: string;
   leadId: string;
+  coherency: LeadCoherencySnapshot | null;
   serverError: string;
   step: number;
   totalSteps: number;
@@ -144,8 +153,15 @@ function validateStep(step: number, form: LeadFormData): LeadFormErrors {
     if (!form.state) errs.state = "Please select your state.";
     if (!form.coverageInterest) errs.coverageInterest = "Please select a coverage interest.";
     if (!form.purchaseIntent) errs.purchaseIntent = "Please select your level of interest.";
-    if (!form.veteranStatus) errs.veteranStatus = "Please select your military status.";
-    if (form.veteranStatus && form.veteranStatus !== "non-military" && !form.militaryBranch) {
+    if (!form.veteranStatus) errs.veteranStatus = "Please select your background.";
+    // Branch is required ONLY for service-connected statuses. Family-members
+    // and civilians skip it.
+    if (
+      form.veteranStatus
+      && form.veteranStatus !== "non-military"
+      && form.veteranStatus !== "civilian"
+      && !form.militaryBranch
+    ) {
       errs.militaryBranch = "Please select your branch of service.";
     }
   }
@@ -226,6 +242,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const [submitted, setSubmitted] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState("");
   const [leadId, setLeadId] = useState("");
+  const [coherency, setCoherency] = useState<LeadCoherencySnapshot | null>(null);
   const [serverError, setServerError] = useState("");
   const [step, setStep] = useState(saved.current?.step ?? 0);
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -316,7 +333,10 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
           coverageInterest: data.coverageInterest,
           purchaseIntent: data.purchaseIntent,
           veteranStatus: data.veteranStatus,
-          militaryBranch: data.veteranStatus && data.veteranStatus !== "non-military" ? data.militaryBranch : "",
+          militaryBranch: data.veteranStatus
+            && data.veteranStatus !== "non-military"
+            && data.veteranStatus !== "civilian"
+            ? data.militaryBranch : "",
           tcpaConsent: data.tcpaConsent,
           privacyConsent: data.privacyConsent,
           consentTimestamp: new Date().toISOString(),
@@ -337,6 +357,16 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
       setLeadId(result.leadId || "");
       clearFormDraft(); // Clear saved draft on successful submission
       setConfirmationMessage(result.confirmationMessage || "Your request has been received. A licensed professional will be in touch soon.");
+      // Capture the coherency snapshot so the UI can render the submitter's
+      // own signal pulse on the confirmation screen.
+      if (result.coherency && Array.isArray(result.coherency.shape)) {
+        setCoherency({
+          score: Number(result.coherency.score) || 0,
+          tier: String(result.coherency.tier || "pull"),
+          dominantArchetype: String(result.coherency.dominantArchetype || ""),
+          shape: result.coherency.shape.map((n: unknown) => Number(n) || 0),
+        });
+      }
       // Fire conversion event
       trackConversion(result.leadId || "", data.coverageInterest, data.state);
     } catch (err) {
@@ -390,7 +420,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
     .map((f) => ({ field: f, label: FIELD_LABELS[f], error: errors[f]! }));
 
   return {
-    form, errors, loading, submitted, confirmationMessage, leadId, serverError,
+    form, errors, loading, submitted, confirmationMessage, leadId, coherency, serverError,
     step, totalSteps: TOTAL_STEPS, submitAttempted, missingFields,
     updateField, handleSubmit, nextStep, prevStep, goToStep,
   };

@@ -15,7 +15,7 @@
 
 const { stalePatterns, feedbackRates, evolveFrequency } = require('./insights');
 const { autoHeal, needsAutoHeal, detectRegressions } = require('../evolution/evolution');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 
 // ─── Configuration ───
 
@@ -84,15 +84,18 @@ function healStalePatterns(oracle, options = {}) {
           newCoherency: result.newCoherency,
           improvement: result.improvement,
         });
+      } else if (result?.skipped === 'cooldown') {
+        report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'cooldown' });
+      } else if (result?.skipped === 'error') {
+        report.failed++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'healing-error' });
       } else {
         report.skipped++;
-        report.details.push({
-          id: pattern.id,
-          name: pattern.name,
-          action: 'no-improvement',
-        });
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'no-improvement' });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healStalePatterns] operation failed:', e?.message || e);
       report.failed++;
     }
   }
@@ -151,10 +154,18 @@ function healLowFeedback(oracle, options = {}) {
           successRate: wp.successRate,
           newCoherency: result.newCoherency,
         });
+      } else if (result?.skipped === 'cooldown') {
+        report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'cooldown' });
+      } else if (result?.skipped === 'error') {
+        report.failed++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'healing-error' });
       } else {
         report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'no-improvement' });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healLowFeedback] operation failed:', e?.message || e);
       report.failed++;
     }
   }
@@ -203,10 +214,18 @@ function healOverEvolved(oracle, options = {}) {
           evolveCount: oe.evolveCount,
           newCoherency: result.newCoherency,
         });
+      } else if (result?.skipped === 'cooldown') {
+        report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'cooldown' });
+      } else if (result?.skipped === 'error') {
+        report.failed++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'healing-error' });
       } else {
         report.skipped++;
+        report.details.push({ id: pattern.id, name: pattern.name, action: 'no-improvement' });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:healOverEvolved] operation failed:', e?.message || e);
       report.failed++;
     }
   }
@@ -272,21 +291,24 @@ function actOnInsights(oracle, options = {}) {
   // 1. Heal stale low-quality patterns
   try {
     report.staleHealing = healStalePatterns(oracle, options);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] operation failed:', e?.message || e);
     report.staleHealing = { error: 'failed' };
   }
 
   // 2. Heal patterns with low feedback rates
   try {
     report.feedbackHealing = healLowFeedback(oracle, options);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] operation failed:', e?.message || e);
     report.feedbackHealing = { error: 'failed' };
   }
 
   // 3. Heal over-evolved patterns
   try {
     report.overEvolvedHealing = healOverEvolved(oracle, options);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] operation failed:', e?.message || e);
     report.overEvolvedHealing = { error: 'failed' };
   }
 
@@ -294,7 +316,8 @@ function actOnInsights(oracle, options = {}) {
   try {
     const patterns = oracle.patterns.getAll();
     report.regressions = detectRegressions(patterns);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] operation failed:', e?.message || e);
     report.regressions = { error: 'failed' };
   }
 
@@ -302,7 +325,8 @@ function actOnInsights(oracle, options = {}) {
   try {
     const boosts = computeUsageBoosts(oracle);
     report.usageBoosts = boosts.size;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[actionable-insights:actOnInsights] falling back to zero:', e?.message || e);
     report.usageBoosts = 0;
   }
 

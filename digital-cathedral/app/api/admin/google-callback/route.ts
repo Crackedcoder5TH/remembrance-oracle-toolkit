@@ -22,7 +22,7 @@ export async function GET() {
 
   if (!session?.user?.email) {
     return NextResponse.redirect(
-      new URL("/admin/login?error=NoSession", process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
+      new URL("/admin/login?error=NoSession", process.env.NEXTAUTH_URL ?? "https://valorlegacies.com"),
     );
   }
 
@@ -32,13 +32,13 @@ export async function GET() {
 
   if (!isAdmin) {
     return NextResponse.redirect(
-      new URL("/admin/login?error=AccessDenied", process.env.NEXTAUTH_URL ?? "http://localhost:3000"),
+      new URL("/admin/login?error=AccessDenied", process.env.NEXTAUTH_URL ?? "https://valorlegacies.com"),
     );
   }
 
   // Create legacy session cookie with role for backward-compatible middleware
   const token = createGoogleSessionToken(email, role);
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const baseUrl = process.env.NEXTAUTH_URL ?? "https://valorlegacies.com";
   const response = NextResponse.redirect(new URL("/admin", baseUrl));
 
   response.cookies.set(ADMIN_SESSION_COOKIE, token, {

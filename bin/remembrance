@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+# remembrance — one CLI to drive the whole ecosystem.
+#
+# Resolves everything relative to this script's install location
+# (oracle repo root via ../scripts), so symlinking or PATH-ing
+# this file works from anywhere.
+#
+# Subcommands:
+#   remembrance status        — ecosystem health + ratchet verdict
+#   remembrance audit         — run cathedral + ecosystem diagnostics
+#   remembrance fix           — auto-fix mechanical findings
+#   remembrance ratchet       — covenant + ecosystem ratchet checks
+#   remembrance baseline      — stamp current state as covenant baseline
+#   remembrance cathedral     — start the Valor Legacies dev server
+#   remembrance oracle <...>  — pass through to the oracle CLI
+#   remembrance help
+
+set -euo pipefail
+
+# Resolve the oracle repo root from this script's location.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ORACLE_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PARENT_DIR="$(cd "$ORACLE_ROOT/.." && pwd)"
+
+GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC='\033[0m'
+
+cmd="${1:-help}"; shift || true
+
+case "$cmd" in
+  status)
+    echo -e "${BLUE}Ecosystem status:${NC}"
+    echo "  Oracle root: $ORACLE_ROOT"
+    echo "  Parent dir:  $PARENT_DIR"
+    echo ""
+    cd "$ORACLE_ROOT"
+    if [ -f ".remembrance/diagnostics/cathedral-latest.json" ]; then
+      node -e "
+        const r = require('./.remembrance/diagnostics/cathedral-latest.json');
+        console.log('  Cathedral:   ' + r.summary.totalFindings + ' findings (' + (r.summary.bySeverity.high||0) + ' high) across ' + r.filesScanned + ' files');
+        console.log('  Last run:    ' + r.generatedAt);
+      "
+    else
+      echo "  Cathedral:   no diagnostic yet — run 'remembrance audit'"
+    fi
+    if [ -f ".remembrance/diagnostics/ecosystem-latest.json" ]; then
+      node -e "
+        const r = require('./.remembrance/diagnostics/ecosystem-latest.json');
+        const found = r.repos.filter(x=>x.found).length;
+        const gaps = r.repos.reduce((s,x)=>s+(x.wiringGaps?x.wiringGaps.length:0),0);
+        console.log('  Ecosystem:   ' + found + '/' + r.repos.length + ' repos, ' + gaps + ' wiring gaps');
+      "
+    else
+      echo "  Ecosystem:   no diagnostic yet — run 'remembrance audit'"
+    fi
+    echo ""
+    echo -e "${BLUE}Ratchet:${NC}"
+    node scripts/covenant-ratchet.js 2>&1 | sed 's/^/  /' || true
+    ;;
+
+  audit)
+    cd "$ORACLE_ROOT"
+    echo -e "${BLUE}Running cathedral diagnostic...${NC}"
+    node scripts/cathedral-diagnostic.js "$@"
+    echo ""
+    echo -e "${BLUE}Running ecosystem diagnostic...${NC}"
+    node scripts/ecosystem-diagnostic.js --parent "$PARENT_DIR"
+    ;;
+
+  fix)
+    cd "$ORACLE_ROOT"
+    node scripts/cathedral-diagnostic.js --fix "$@"
+    ;;
+
+  ratchet)
+    cd "$ORACLE_ROOT"
+    echo -e "${BLUE}Covenant ratchet (cathedral):${NC}"
+    node scripts/covenant-ratchet.js || exit 1
+    echo ""
+    echo -e "${BLUE}Ecosystem ratchet:${NC}"
+    node scripts/ecosystem-ratchet.js || exit 1
+    ;;
+
+  baseline)
+    cd "$ORACLE_ROOT"
+    echo -e "${BLUE}Stamping covenant baselines from current state...${NC}"
+    node scripts/cathedral-diagnostic.js --json-only
+    node scripts/covenant-ratchet.js --save-baseline
+    node scripts/ecosystem-diagnostic.js --parent "$PARENT_DIR"
+    node scripts/ecosystem-ratchet.js --save-baseline
+    echo -e "${GREEN}Baselines saved.${NC}"
+    ;;
+
+  cathedral)
+    cd "$ORACLE_ROOT/digital-cathedral"
+    if [ ! -d "node_modules" ]; then
+      echo -e "${YELLOW}Installing cathedral deps...${NC}"
+      npm install --prefer-offline --no-audit --no-fund
+    fi
+    exec npm run dev
+    ;;
+
+  oracle)
+    cd "$ORACLE_ROOT"
+    exec node src/cli.js "$@"
+    ;;
+
+  help|--help|-h)
+    cat <<'HELP'
+remembrance — unified CLI for the Remembrance ecosystem
+
+Usage: remembrance <command> [...args]
+
+Commands:
+  status       Ecosystem health + ratchet verdict (quick glance)
+  audit        Run cathedral + cross-repo diagnostics
+  fix          Auto-fix mechanical findings in the cathedral
+  ratchet      Enforce the covenant ratchet (fails on regression)
+  baseline     Stamp current state as the covenant baseline
+  cathedral    Start Valor Legacies dev server (npm run dev)
+  oracle <..>  Pass through to oracle CLI (search, audit, etc.)
+  help         Show this message
+
+Examples:
+  remembrance status
+  remembrance audit
+  remembrance fix
+  remembrance oracle search "debounce"
+  remembrance oracle audit check --file app/page.tsx
+HELP
+    ;;
+
+  *)
+    echo -e "${RED}Unknown command:${NC} $cmd"
+    echo "Run 'remembrance help' for usage."
+    exit 2
+    ;;
+esac

@@ -33,13 +33,13 @@ const ERROR_CLASSES = {
 function classifyError(error) {
   const msg = (typeof error === 'string' ? error : error?.message || '').toLowerCase();
 
-  if (msg.includes('rate') || msg.includes('429') || msg.includes('quota') || msg.includes('limit')) {
+  if (msg.includes('rate limit') || msg.includes('429') || msg.includes('quota') || msg.includes('too many requests') || msg.includes('ratelimit')) {
     return ERROR_CLASSES.RATE_LIMIT;
   }
   if (msg.includes('timeout') || msg.includes('abort') || msg.includes('timed out')) {
     return ERROR_CLASSES.TIMEOUT;
   }
-  if (msg.includes('401') || msg.includes('403') || msg.includes('auth') || msg.includes('key')) {
+  if (msg.includes('401') || msg.includes('403') || msg.includes('auth') || msg.includes('api key') || msg.includes('api_key') || msg.includes('invalid key')) {
     return ERROR_CLASSES.AUTH;
   }
   if (msg.includes('fetch') || msg.includes('econnrefused') || msg.includes('network') || msg.includes('dns')) {
@@ -149,8 +149,8 @@ async function sendWithRecovery(agent, prompt, options = {}, recoveryOpts = {}) 
         return { response: '', meta: {}, recovered: false, errors };
       }
 
-      // Exponential backoff based on strategy delay
-      const delay = strategy.delayMs * Math.pow(2, attempt);
+      // Exponential backoff based on strategy delay, capped at 60s
+      const delay = Math.min(60000, strategy.delayMs * Math.pow(2, attempt));
       await new Promise(r => setTimeout(r, delay));
     }
   }
@@ -203,7 +203,8 @@ async function dispatchWithRecovery(agents, prompt, options = {}, fallbackOpts =
               result.response = `\`\`\`\n${cached[0].code}\n\`\`\`\nCONFIDENCE: ${cached[0].coherency || 0.6}\n(Cached from oracle pattern: ${cached[0].name || 'unknown'})`;
               result.fromCache = true;
             }
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[error-recovery:onError] silent failure:', e?.message || e);
             // Oracle cache unavailable
           }
         }

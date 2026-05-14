@@ -12,7 +12,7 @@
 function countBy(items, key) {
   const counts = {};
   for (const item of items) {
-    const val = item[key] || 'unknown';
+    const val = item[key] ?? 'unknown';
     counts[val] = (counts[val] || 0) + 1;
   }
   return counts;
@@ -27,7 +27,7 @@ function countBy(items, key) {
 function getTopTags(entries, limit) {
   const counts = {};
   for (const entry of entries) {
-    for (const tag of entry.tags) {
+    for (const tag of (entry.tags || [])) {
       const normalized = tag.toLowerCase();
       counts[normalized] = (counts[normalized] || 0) + 1;
     }

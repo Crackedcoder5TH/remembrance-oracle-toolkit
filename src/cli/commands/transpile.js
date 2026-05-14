@@ -5,6 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 const { c, colorScore } = require('../colors');
+const { safePath } = require('../../core/safe-path');
 
 function registerTranspileCommands(handlers, { oracle, jsonOut }) {
 
@@ -17,7 +18,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
       console.log(`  Languages: python, typescript, go, rust`);
       return;
     }
-    const code = fs.readFileSync(filePath, 'utf-8');
+    const code = fs.readFileSync(safePath(filePath, process.cwd()), 'utf-8');
     const result = astTranspile(code, targetLang);
     if (result.success) {
       console.log(c.boldGreen(`Transpiled to ${targetLang} (AST-based):\n`));
@@ -39,8 +40,8 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
       console.log(`  Languages: go, rust`);
       return;
     }
-    const code = fs.readFileSync(filePath, 'utf-8');
-    const jsTestCode = args.test ? fs.readFileSync(args.test, 'utf-8') : null;
+    const code = fs.readFileSync(safePath(filePath, process.cwd()), 'utf-8');
+    const jsTestCode = args.test ? fs.readFileSync(safePath(args.test, process.cwd()), 'utf-8') : null;
     const result = astTranspile(code, targetLang);
     if (!result.success) { console.error(c.boldRed('Error:') + ` Transpile failed: ${result.error}`); return; }
 
@@ -72,7 +73,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
 
   handlers['context'] = (args) => {
     const format = args.format || args._sub || 'markdown';
-    const maxPatterns = parseInt(args.limit) || 50;
+    const maxPatterns = parseInt(args.limit, 10) || 50;
     const includeCode = args.code === 'true' || args.code === true;
     const output = args.output || args.file;
 
@@ -216,7 +217,7 @@ function registerTranspileCommands(handlers, { oracle, jsonOut }) {
     }
 
     if (sub === 'generate') {
-      const max = parseInt(args.max) || 10;
+      const max = parseInt(args.max, 10) || 10;
       console.log(`${c.dim('Generating LLM-enhanced candidates...')}`);
       const result = oracle.llmGenerate({ maxPatterns: max });
       console.log(`${c.boldGreen('\u2713 Generation complete')} via ${c.cyan(result.method)}`);

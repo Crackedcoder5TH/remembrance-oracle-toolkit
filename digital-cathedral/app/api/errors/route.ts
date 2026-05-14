@@ -12,7 +12,7 @@ import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
   const clientIp = getClientIp(req.headers);
-  const rateCheck = checkRateLimit(clientIp, 10, 60_000); // 10 error reports per minute per IP
+  const rateCheck = await checkRateLimit(clientIp, 10, 60_000); // 10 error reports per minute per IP
 
   if (!rateCheck.allowed) {
     return new NextResponse(null, { status: 429 });

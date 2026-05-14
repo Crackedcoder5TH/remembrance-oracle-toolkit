@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client Portal Login Page
+ * Agent Portal Login Page
  */
 
 import { useState, useEffect } from "react";
@@ -14,10 +14,10 @@ export default function ClientLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Auto-redirect if already authenticated (demo mode always succeeds)
+  // Auto-redirect if already authenticated
   useEffect(() => {
-    fetch("/api/client/profile").then((res) => {
-      if (res.ok) router.push("/portal");
+    fetch("/api/portal/session").then((res) => {
+      if (res.ok) router.push("/portal/dashboard");
     }).catch(() => {});
   }, [router]);
 
@@ -27,7 +27,7 @@ export default function ClientLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/client/login", {
+      const res = await fetch("/api/portal/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -35,10 +35,10 @@ export default function ClientLoginPage() {
 
       const data = await res.json();
 
-      if (data.success) {
-        router.push("/portal");
+      if (data.success || res.ok) {
+        router.push("/portal/dashboard");
       } else {
-        setError(data.message || "Login failed.");
+        setError(data.error || data.message || "Login failed.");
       }
     } catch {
       setError("Network error. Please try again.");
@@ -52,7 +52,7 @@ export default function ClientLoginPage() {
       <div className="cathedral-surface max-w-sm w-full p-8 rounded-xl">
         <div className="text-center mb-8">
           <div className="text-teal-cathedral text-xs tracking-[0.3em] uppercase pulse-gentle mb-2">
-            Client Portal
+            Agent Portal
           </div>
           <h1 className="text-2xl font-light text-[var(--text-primary)]">Sign In</h1>
           <p className="text-sm text-[var(--text-muted)] mt-2">Access your lead purchase dashboard</p>

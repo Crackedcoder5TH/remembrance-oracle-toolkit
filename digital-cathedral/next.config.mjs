@@ -1,7 +1,17 @@
+import { CSP_HEADER_WITH_UPGRADE } from "./csp-directives.mjs";
+
 // Sanitize env vars that must be single URLs before Next.js or NextAuth reads them
 if (process.env.NEXTAUTH_URL?.includes(",")) {
   process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.split(",")[0].trim();
 }
+
+// ─── Multi-Domain: collect all allowed domains for CORS / image optimization ───
+const leadsDomains = (process.env.LEADS_DOMAINS || "")
+  .split(",")
+  .map((d) => d.trim())
+  .filter(Boolean);
+const portalDomain = (process.env.PORTAL_DOMAIN || "").trim();
+const allDomains = [...leadsDomains, portalDomain].filter(Boolean);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -10,7 +20,11 @@ const nextConfig = {
   // Exclude native addons from serverless bundles (better-sqlite3 is optional/dev-only)
   experimental: {
     serverComponentsExternalPackages: ["better-sqlite3"],
-    instrumentationHook: true,
+  },
+
+  // ─── Multi-Domain: Allow CORS for cross-domain API calls between leads and portal ───
+  async rewrites() {
+    return [];
   },
 
   // ─── Security Headers (HTTPS everywhere) ───
@@ -35,22 +49,10 @@ const nextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), interest-cohort=()",
           },
-          // CSP — allow self, inline styles (Tailwind), Google OAuth, and specific external sources
+          // CSP — shared with middleware.ts via csp-directives.mjs
           {
             key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' www.googletagmanager.com connect.facebook.net js.stripe.com https://accounts.google.com",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https: www.googletagmanager.com www.facebook.com lh3.googleusercontent.com *.stripe.com https://*.googleusercontent.com",
-              "font-src 'self' fonts.gstatic.com",
-              "connect-src 'self' www.google-analytics.com analytics.google.com www.facebook.com api.stripe.com https://accounts.google.com https://oauth2.googleapis.com",
-              "frame-src 'self' js.stripe.com hooks.stripe.com",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self' https://accounts.google.com",
-              "upgrade-insecure-requests",
-            ].join("; "),
+            value: CSP_HEADER_WITH_UPGRADE,
           },
         ],
       },

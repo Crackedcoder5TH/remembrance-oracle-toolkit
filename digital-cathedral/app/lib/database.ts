@@ -85,6 +85,8 @@ interface DbAdapter {
   getLeadStats(): Promise<Result<LeadStats, string>>;
   deleteLeadByEmail(email: string): Promise<Result<{ deleted: number }, string>>;
   deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>>;
+  getSiteContent(key: string): Promise<Result<string | null, string>>;
+  setSiteContent(key: string, value: string): Promise<Result<void, string>>;
 }
 
 // =============================================================================
@@ -126,26 +128,36 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
 
 class PostgresAdapter implements DbAdapter {
   private pool: import("pg").Pool | null = null;
+  // Memoize the in-flight init promise so concurrent callers wait on the
+  // same Pool construction rather than each racing to create their own.
+  private poolInit: Promise<import("pg").Pool> | null = null;
   private initialized = false;
 
-  private async getPool(): Promise<import("pg").Pool> {
-    if (this.pool) return this.pool;
+  private getPool(): Promise<import("pg").Pool> {
+    if (this.pool) return Promise.resolve(this.pool);
+    if (this.poolInit) return this.poolInit;
 
-    // Dynamic import so pg is only loaded when DATABASE_URL is set
-    const { Pool } = await import("pg");
-    this.pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
-      ssl: process.env.DATABASE_URL?.includes("sslmode=require")
-        || process.env.DATABASE_SSL === "true"
-        || process.env.NODE_ENV === "production"
-        ? { rejectUnauthorized: false }
-        : undefined,
-    });
-
-    return this.pool;
+    this.poolInit = (async () => {
+      // Dynamic import so pg is only loaded when DATABASE_URL is set
+      const { Pool } = await import("pg");
+      const created = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: 10,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000,
+        ssl: process.env.DATABASE_URL?.includes("sslmode=require")
+          || process.env.DATABASE_SSL === "true"
+          || process.env.NODE_ENV === "production"
+          ? { rejectUnauthorized: false }
+          : undefined,
+      });
+      this.pool = created;
+      return created;
+    })();
+    // If construction fails, clear the memoized promise so the next
+    // caller gets a fresh attempt instead of a permanently-poisoned init.
+    this.poolInit.catch(() => { this.poolInit = null; });
+    return this.poolInit;
   }
 
   async initialize(): Promise<void> {
@@ -209,6 +221,15 @@ class PostgresAdapter implements DbAdapter {
     if (!columnNames.has("military_branch")) {
       await pool.query("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
     }
+
+    // Site content key-value table (persists admin-editable content)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS site_content (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
 
     this.initialized = true;
   }
@@ -440,6 +461,38 @@ class PostgresAdapter implements DbAdapter {
       return Err(message);
     }
   }
+
+  async getSiteContent(key: string): Promise<Result<string | null, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "SELECT value FROM site_content WHERE key = $1",
+        [key],
+      );
+      return Ok(result.rows.length > 0 ? result.rows[0].value : null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to read site content";
+      return Err(message);
+    }
+  }
+
+  async setSiteContent(key: string, value: string): Promise<Result<void, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      await pool.query(
+        `INSERT INTO site_content (key, value, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+        [key, value],
+      );
+      return Ok(undefined);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save site content";
+      return Err(message);
+    }
+  }
 }
 
 // =============================================================================
@@ -529,6 +582,15 @@ class SqliteAdapter implements DbAdapter {
     if (!columnNames.has("military_branch")) {
       db.exec("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
     }
+
+    // Site content key-value table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS site_content (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
   }
 
   async insertLead(lead: LeadRecord): Promise<Result<{ id: number; leadId: string }, string>> {
@@ -727,6 +789,34 @@ class SqliteAdapter implements DbAdapter {
       return Err(message);
     }
   }
+
+  async getSiteContent(key: string): Promise<Result<string | null, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const row = db.prepare("SELECT value FROM site_content WHERE key = ?").get(key) as { value: string } | undefined;
+      return Ok(row ? row.value : null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to read site content";
+      return Err(message);
+    }
+  }
+
+  async setSiteContent(key: string, value: string): Promise<Result<void, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      db.prepare(
+        `INSERT INTO site_content (key, value, updated_at)
+         VALUES (?, ?, datetime('now'))
+         ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+      ).run(key, value);
+      return Ok(undefined);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to save site content";
+      return Err(message);
+    }
+  }
 }
 
 // =============================================================================
@@ -798,6 +888,14 @@ class NoopAdapter implements DbAdapter {
   deleteLeadById(): Promise<Result<{ deleted: number }, string>> {
     return Promise.resolve(Ok({ deleted: 0 }));
   }
+
+  async getSiteContent(): Promise<Result<string | null, string>> {
+    return Ok(null);
+  }
+
+  async setSiteContent(): Promise<Result<void, string>> {
+    return Ok(undefined);
+  }
 }
 
 // =============================================================================
@@ -863,4 +961,81 @@ export async function deleteLeadByEmail(email: string): Promise<Result<{ deleted
 
 export async function deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>> {
   return getAdapter().deleteLeadById(leadId);
+}
+
+export async function getDbSiteContent(key: string): Promise<Result<string | null, string>> {
+  return getAdapter().getSiteContent(key);
+}
+
+export async function setDbSiteContent(key: string, value: string): Promise<Result<void, string>> {
+  return getAdapter().setSiteContent(key, value);
+}
+
+// =============================================================================
+// Portal helpers — client-facing views of lead data
+// =============================================================================
+
+/** Get leads associated with a client email (for portal dashboard). */
+export async function getClientLeads(email: string): Promise<Result<LeadRecord[], string>> {
+  return getAdapter().getLeadsByEmail(email);
+}
+
+/** Client message record (portal messaging). */
+export interface ClientMessage {
+  id: number;
+  clientId: number;
+  direction: "inbound" | "outbound";
+  subject: string;
+  body: string;
+  read: boolean;
+  createdAt: string;
+}
+
+/** Create a client message (portal → admin). */
+export async function createClientMessage(msg: {
+  clientId: number;
+  direction: "inbound" | "outbound";
+  subject: string;
+  body: string;
+}): Promise<Result<{ id: number }, string>> {
+  // Messages table not yet implemented — return a stub ID
+  // TODO: Add client_messages table to adapters
+  console.log(`[PORTAL] Message from client ${msg.clientId}: ${msg.subject}`);
+  return { ok: true, value: { id: Date.now() } };
+}
+
+/** Mark a message as read. */
+export async function markMessageRead(
+  messageId: string,
+  clientId: number,
+): Promise<Result<{ updated: boolean }, string>> {
+  // Messages table not yet implemented
+  console.log(`[PORTAL] Message ${messageId} marked read by client ${clientId}`);
+  return { ok: true, value: { updated: true } };
+}
+
+/** Get messages for a client (portal inbox). */
+export async function getClientMessages(
+  clientId: number,
+): Promise<Result<ClientMessage[], string>> {
+  // Messages table not yet implemented — return empty
+  return { ok: true, value: [] };
+}
+
+/** Client document record (portal documents). */
+export interface ClientDocument {
+  id: number;
+  clientId: number;
+  name: string;
+  url: string;
+  type: string;
+  createdAt: string;
+}
+
+/** Get documents for a client (portal documents tab). */
+export async function getClientDocuments(
+  clientId: number,
+): Promise<Result<ClientDocument[], string>> {
+  // Documents table not yet implemented — return empty
+  return { ok: true, value: [] };
 }

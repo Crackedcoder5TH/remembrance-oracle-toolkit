@@ -41,12 +41,20 @@ function verifyToken(token, secret) {
   if (parts.length !== 3) return null;
   const [header, body, sig] = parts;
   const expected = crypto.createHmac('sha256', secret).update(`${header}.${body}`).digest('base64url');
-  if (sig !== expected) return null;
+  // Constant-time comparison to prevent timing attacks on signature
+  const sigBuf = Buffer.from(sig);
+  const expectedBuf = Buffer.from(expected);
+  if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) return null;
+    // Require exp claim — tokens without expiry are rejected
+    if (!payload.exp) return null;
+    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;
-  } catch { return null; }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[server:verifyToken] returning null on error:', e?.message || e);
+    return null;
+  }
 }
 
 // ─── Password Hashing (scrypt, no dependencies) ───
@@ -58,11 +66,17 @@ function hashPassword(password) {
 }
 
 function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return false;
   const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
   const check = crypto.scryptSync(password, salt, 64).toString('hex');
   // Constant-time comparison to prevent timing attacks
-  if (check.length !== hash.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(check, 'hex'), Buffer.from(hash, 'hex'));
+  try {
+    return crypto.timingSafeEqual(Buffer.from(check, 'hex'), Buffer.from(hash, 'hex'));
+  } catch (_) {
+    // Buffer length mismatch (corrupted stored hash)
+    return false;
+  }
 }
 
 // ─── Cloud Sync Server ───
@@ -80,6 +94,7 @@ class CloudSyncServer {
     this.secret = options.secret || crypto.randomBytes(32).toString('hex');
     this.port = options.port || 3579;
     this.rateLimit = options.rateLimit || 120;
+    this.allowedOrigins = options.allowedOrigins || null; // null = same-origin only
     this.server = null;
     this.wsClients = new Set();
     this._users = new Map(); // In-memory user store (swap for DB in production)
@@ -107,7 +122,9 @@ class CloudSyncServer {
   stop() {
     return new Promise((resolve) => {
       for (const ws of this.wsClients) {
-        try { ws.close(); } catch { /* ignore */ }
+        try { ws.close(); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[server:stop] ignore:', e?.message || e);
+        }
       }
       this.wsClients.clear();
       if (this.server) {
@@ -124,8 +141,15 @@ class CloudSyncServer {
   // ─── HTTP Request Handler ───
 
   async _handleRequest(req, res) {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // CORS — restrict to configured origins (no wildcard by default)
+    const origin = req.headers.origin;
+    if (this.allowedOrigins && origin) {
+      const allowed = Array.isArray(this.allowedOrigins) ? this.allowedOrigins : [this.allowedOrigins];
+      if (allowed.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Vary', 'Origin');
+      }
+    }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
@@ -150,11 +174,11 @@ class CloudSyncServer {
         return await this._handleLogin(req, res);
       }
       if (path === '/api/health' && method === 'GET') {
-        const patterns = this.oracle.patterns ? this.oracle.patterns.getAll().length : 0;
+        const patternCount = this.oracle.patternStats ? (this.oracle.patternStats()?.totalPatterns ?? 0) : 0;
         return this._json(res, 200, {
           status: 'ok',
           version: '1.0.0',
-          patterns,
+          patterns: patternCount,
           uptime: process.uptime(),
           wsClients: this.wsClients.size,
         });
@@ -174,11 +198,17 @@ class CloudSyncServer {
         return await this._handleUploadPatterns(req, res, user);
       }
       if (path.startsWith('/api/patterns/') && method === 'GET') {
-        const id = path.slice('/api/patterns/'.length);
+        const id = decodeURIComponent(path.slice('/api/patterns/'.length));
+        if (!id || id.includes('/') || id.includes('..') || id.length > 128) {
+          return this._json(res, 400, { error: 'Invalid pattern ID' });
+        }
         return this._handleGetPattern(res, id);
       }
       if (path.startsWith('/api/patterns/') && method === 'DELETE') {
-        const id = path.slice('/api/patterns/'.length);
+        const id = decodeURIComponent(path.slice('/api/patterns/'.length));
+        if (!id || id.includes('/') || id.includes('..') || id.length > 128) {
+          return this._json(res, 400, { error: 'Invalid pattern ID' });
+        }
         return this._handleDeletePattern(res, id, user);
       }
 
@@ -189,7 +219,7 @@ class CloudSyncServer {
       if (path === '/api/search' && method === 'GET') {
         const q = url.searchParams.get('q') || url.searchParams.get('query') || '';
         if (!q) return this._json(res, 200, { results: [] });
-        const limit = parseInt(url.searchParams.get('limit')) || 20;
+        const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit'), 10) || 20, 1), 200);
         const results = this.oracle.search(q, { limit });
         return this._json(res, 200, { results });
       }
@@ -285,7 +315,8 @@ class CloudSyncServer {
       if (path === '/api/candidates' && method === 'GET') {
         try {
           return this._json(res, 200, this.oracle.getCandidates());
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[server:init] silent failure:', e?.message || e);
           return this._json(res, 200, { candidates: [] });
         }
       }
@@ -300,7 +331,7 @@ class CloudSyncServer {
         return await this._handleSyncPush(req, res, user);
       }
       if (path === '/api/sync/pull' && method === 'POST') {
-        return await this._handleSyncPull(req, res, url);
+        return await this._handleSyncPull(req, res, url, user);
       }
 
       // Debug
@@ -324,6 +355,16 @@ class CloudSyncServer {
     const { username, password, email } = body;
     if (!username || !password) {
       return this._json(res, 400, { error: 'Username and password required' });
+    }
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return this._json(res, 400, { error: 'Username and password must be strings' });
+    }
+    if (username.length > 128 || password.length > 1024) {
+      return this._json(res, 400, { error: 'Username or password too long' });
+    }
+    // Cap total users to prevent resource exhaustion via open registration
+    if (this._users.size >= 10000) {
+      return this._json(res, 503, { error: 'User registration limit reached' });
     }
     if (this._users.has(username)) {
       return this._json(res, 409, { error: 'Username already exists' });
@@ -443,13 +484,9 @@ class CloudSyncServer {
   _handleStats(res) {
     const stats = this.oracle.stats();
     const patternStats = this.oracle.patternStats();
-    const total = this.oracle.patterns ? this.oracle.patterns.getAll().length : 0;
-    const byLanguage = {};
-    if (this.oracle.patterns) {
-      for (const p of this.oracle.patterns.getAll()) {
-        byLanguage[p.language] = (byLanguage[p.language] || 0) + 1;
-      }
-    }
+    // Use patternStats for count/language breakdown instead of loading all patterns
+    const total = patternStats?.totalPatterns ?? (this.oracle.patterns ? this.oracle.patterns.getAll().length : 0);
+    const byLanguage = patternStats?.byLanguage ?? {};
     this._json(res, 200, {
       version: '1.0.0',
       patterns: total,
@@ -478,17 +515,20 @@ class CloudSyncServer {
           testCode: p.testCode,
         });
         if (result.stored) synced++;
-      } catch { /* skip failed */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[server:_handleSyncPush] skip failed:', e?.message || e);
+      }
     }
 
     this._broadcast({ type: 'sync_push', user: user.username, count: synced });
     this._json(res, 200, { synced, total: patterns.length });
   }
 
-  async _handleSyncPull(req, res, url) {
-    const since = url.searchParams.get('since');
-    const language = url.searchParams.get('language');
-    const limit = parseInt(url.searchParams.get('limit')) || 100;
+  async _handleSyncPull(req, res, url, user) {
+    const body = await this._readBody(req);
+    const since = body.since || url.searchParams.get('since');
+    const language = body.language || url.searchParams.get('language');
+    const limit = parseInt(body.limit || url.searchParams.get('limit')) || 100;
 
     const store = this.oracle.store;
     let entries = store.list ? store.list() : [];
@@ -497,16 +537,23 @@ class CloudSyncServer {
       entries = entries.filter(e => e.language === language);
     }
 
-    const results = entries.slice(0, limit).map(e => ({
-      id: e.id,
-      name: e.name,
-      code: e.code,
-      testCode: e.testCode,
-      language: e.language,
-      tags: e.tags,
-      description: e.description,
-      coherency: e.coherencyScore?.total ?? e.coherency ?? 0,
-    }));
+    // Role-based response: viewers only see metadata, not full code
+    const canSeeCode = user && (user.role === 'admin' || user.role === 'contributor');
+    const results = entries.slice(0, limit).map(e => {
+      const base = {
+        id: e.id,
+        name: e.name,
+        language: e.language,
+        tags: e.tags,
+        description: e.description,
+        coherency: e.coherencyScore?.total ?? e.coherency ?? 0,
+      };
+      if (canSeeCode) {
+        base.code = e.code;
+        base.testCode = e.testCode;
+      }
+      return base;
+    });
 
     this._json(res, 200, { patterns: results, total: entries.length });
   }
@@ -564,12 +611,25 @@ class CloudSyncServer {
       '', '',
     ].join('\r\n'));
 
-    const ws = { socket, user, alive: true };
+    const ws = { socket, user, alive: true, lastActivity: Date.now() };
     this.wsClients.add(ws);
 
-    socket.on('data', (data) => this._handleWsMessage(ws, data));
-    socket.on('close', () => this.wsClients.delete(ws));
-    socket.on('error', () => this.wsClients.delete(ws));
+    // Idle timeout: close WebSocket connections inactive for 5 minutes
+    const WS_IDLE_TIMEOUT = 5 * 60 * 1000;
+    const idleCheck = setInterval(() => {
+      if (Date.now() - ws.lastActivity > WS_IDLE_TIMEOUT) {
+        clearInterval(idleCheck);
+        this.wsClients.delete(ws);
+        try { ws.socket.end(); } catch (_) {}
+      }
+    }, 60000);
+
+    socket.on('data', (data) => {
+      ws.lastActivity = Date.now();
+      this._handleWsMessage(ws, data);
+    });
+    socket.on('close', () => { clearInterval(idleCheck); this.wsClients.delete(ws); });
+    socket.on('error', () => { clearInterval(idleCheck); this.wsClients.delete(ws); });
 
     // Send welcome
     this._wsSend(ws, { type: 'connected', user: user.username });
@@ -599,7 +659,10 @@ class CloudSyncServer {
         offset = 4;
       } else if (length === 127) {
         if (data.length < 10) return;
+        const high = data.readUInt32BE(2);
+        if (high !== 0) return; // Reject frames > 4 GB (upper 32 bits must be 0)
         length = Number(data.readBigUInt64BE(2));
+        if (length > 16 * 1024 * 1024) return; // Cap at 16 MB
         offset = 10;
       }
 
@@ -627,16 +690,27 @@ class CloudSyncServer {
       } else if (msg.type === 'ping') {
         this._wsSend(ws, { type: 'pong' });
       }
-    } catch { /* ignore malformed messages */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[server:masked] ignore malformed messages:', e?.message || e);
+    }
   }
 
   _wsSend(ws, data) {
     try {
       const payload = Buffer.from(JSON.stringify(data));
-      const frame = Buffer.alloc(2 + (payload.length > 125 ? 2 : 0) + payload.length);
+      let headerSize = 2;
+      if (payload.length > 65535) headerSize = 10;
+      else if (payload.length > 125) headerSize = 4;
+      const frame = Buffer.alloc(headerSize + payload.length);
       frame[0] = 0x81; // Text frame, final
       let offset = 1;
-      if (payload.length > 125) {
+      if (payload.length > 65535) {
+        frame[offset++] = 127;
+        // Write 8-byte extended length (upper 4 bytes are 0 for lengths < 2^32)
+        frame.writeUInt32BE(0, offset);
+        frame.writeUInt32BE(payload.length, offset + 4);
+        offset += 8;
+      } else if (payload.length > 125) {
         frame[offset++] = 126;
         frame.writeUInt16BE(payload.length, offset);
         offset += 2;
@@ -644,8 +718,11 @@ class CloudSyncServer {
         frame[offset++] = payload.length;
       }
       payload.copy(frame, offset);
+      if (ws.socket.destroyed) return;
       ws.socket.write(frame);
-    } catch { /* ignore write errors */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[server:_wsSend] ignore write errors:', e?.message || e);
+    }
   }
 
   _broadcast(data) {
@@ -671,15 +748,52 @@ class CloudSyncServer {
       this._rateLimits.set(ip, entry);
     }
     entry.count++;
+
+    // Evict stale entries to prevent unbounded map growth
+    if (this._rateLimits.size > 1000) {
+      for (const [key, val] of this._rateLimits) {
+        if (now - val.start > window) this._rateLimits.delete(key);
+      }
+    }
+
     return entry.count <= this.rateLimit;
   }
 
   async _readBody(req) {
-    return new Promise((resolve) => {
+    const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
+    return new Promise((resolve, reject) => {
       let body = '';
-      req.on('data', chunk => { body += chunk; });
+      let byteCount = 0;
+      let aborted = false;
+
+      const timeout = setTimeout(() => {
+        if (!aborted) {
+          aborted = true;
+          req.destroy();
+          reject(new Error('Request body read timed out'));
+        }
+      }, 30000);
+
+      req.on('data', chunk => {
+        byteCount += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
+        body += chunk;
+        if (byteCount > MAX_BODY_SIZE) {
+          aborted = true;
+          clearTimeout(timeout);
+          req.destroy();
+          reject(new Error('Request body too large'));
+        }
+      });
       req.on('end', () => {
-        resolve(safeJsonParse(body, {}));
+        clearTimeout(timeout);
+        if (!aborted) resolve(safeJsonParse(body, {}));
+      });
+      req.on('error', () => {
+        clearTimeout(timeout);
+        if (!aborted) {
+          aborted = true;
+          reject(new Error('Request body read failed'));
+        }
       });
     });
   }

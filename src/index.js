@@ -16,7 +16,7 @@
  */
 
 const { RemembranceOracle } = require('./api/oracle');
-const { computeCoherencyScore, detectLanguage } = require('./core/coherency');
+const { computeCoherencyScore, detectLanguage } = require('./unified/coherency');
 const { validateCode } = require('./core/validator');
 const { rankEntries, computeRelevance } = require('./core/relevance');
 const { VerifiedHistoryStore } = require('./store/history');
@@ -25,7 +25,7 @@ const { AIConnector } = require('./connectors/connector');
 const providers = require('./connectors/providers');
 const githubBridge = require('./connectors/github-bridge');
 const { PatternLibrary, classifyPattern, inferComplexity, THRESHOLDS } = require('./patterns/library');
-const { parseCode, astCoherencyBoost } = require('./core/parsers/ast');
+const { parseCode, astCoherencyBoost } = require('./core/parsers/code-validator');
 const { sandboxExecute, sandboxGo, sandboxRust } = require('./core/sandbox');
 const { semanticSearch, semanticSimilarity, expandQuery, identifyConcepts } = require('./search/embeddings');
 const { vectorSimilarity, embedDocument, nearestTerms } = require('./search/vectors');
@@ -52,8 +52,27 @@ const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } =
 const { createOracleContext, evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS, LifecycleEngine, LIFECYCLE_DEFAULTS, HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS, selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, iterativePolish, OPTIMIZE_DEFAULTS } = require('./evolution');
 const { retryWithBackoff, isRetryableError, withRetry, resilientFetchSource } = require('./core/resilience');
 
+// Fractal system
+const fractals = require('./fractals');
+
+// Unified infrastructure — shared engines replacing duplicated implementations
+const unified = require('./unified');
+
 // Plugin system for opt-in subsystems
 const { loadBuiltinPlugin, loadAllBuiltins, listBuiltins } = require('./plugins/builtins');
+
+// Auto-Workflow — ON BY DEFAULT (disable with REMEMBRANCE_AUTO_WORKFLOW=false)
+const { AutoWorkflow, initAutoWorkflow, loadWorkflowConfig, saveWorkflowConfig, DEFAULT_CONFIG: AUTO_WORKFLOW_DEFAULTS } = require('./core/auto-workflow');
+
+// Agent Integration — wraps ANY AI with the full auto-workflow
+const { wrapAgent, buildRememberedSystemPrompt, getWorkflowMcpTools } = require('./agent-integration');
+
+// Auth & SSO
+const { authMiddleware, authenticate, authorize, generateApiKey, validateApiKey, revokeApiKey, listApiKeys, createJwt, verifyJwt, auditLog, readAuditLog, ensureAdminKey, checkRateLimit, ROLES } = require('./core/auth');
+const { loadSsoConfig, buildAuthUrl, exchangeCode, getUserInfo, ssoStatus } = require('./core/sso');
+
+// Pattern Generator
+const { generate: generateFromPattern, searchPatterns: searchPatternsForGen, decideStrategy, adaptPattern, healCode, cascadeCode, DECISION_THRESHOLDS } = require('./api/pattern-generator');
 
 module.exports = {
   // Core
@@ -418,4 +437,53 @@ module.exports = {
   withRetry,
   resilientFetchSource,
 
+  // Fractal System
+  ...fractals,
+
+  // Unified Infrastructure (shared engines)
+  unified,
+
+  // Auto-Workflow (ON by default — the full search→decide→score→heal→cascade→register loop)
+  AutoWorkflow,
+  initAutoWorkflow,
+  loadWorkflowConfig,
+  saveWorkflowConfig,
+  AUTO_WORKFLOW_DEFAULTS,
+
+  // Auth & Security
+  authMiddleware,
+  authenticate,
+  authorize,
+  generateApiKey,
+  validateApiKey,
+  revokeApiKey,
+  listApiKeys,
+  createJwt,
+  verifyJwt,
+  auditLog,
+  readAuditLog,
+  ensureAdminKey,
+  checkRateLimit,
+  ROLES,
+
+  // SSO / OIDC
+  loadSsoConfig,
+  buildAuthUrl: buildAuthUrl,
+  exchangeCode: exchangeCode,
+  getUserInfo: getUserInfo,
+  ssoStatus,
+
+  // Pattern Generator (PULL/EVOLVE/GENERATE)
+  generateFromPattern,
+  searchPatternsForGen,
+  decideStrategy,
+  adaptPattern,
+  healCode,
+  cascadeCode,
+  DECISION_THRESHOLDS,
+
+  // Agent Integration (wraps ANY AI with auto-workflow)
+  wrapAgent,
+  buildRememberedSystemPrompt,
+  getWorkflowMcpTools,
 };

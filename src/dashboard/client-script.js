@@ -441,7 +441,7 @@ function getDashboardScript(resilientFetchSource) {
           var matchScore = result.matchScore || result.semanticScore || 0;
           var concepts = (result.matchedConcepts && result.matchedConcepts.length)
             ? '<div style="font-size:0.75em;color:var(--fg3);margin-top:4px">Concepts: ' +
-              result.matchedConcepts.join(', ') + '</div>' : '';
+              result.matchedConcepts.map(function(c) { return escapeHtml(c); }).join(', ') + '</div>' : '';
           return '<div class="code-card">' +
             '<div class="code-card-header" onclick="this.parentElement.classList.toggle(\'expanded\')">' +
             '<span class="code-card-expand">&#9654;</span>' +
@@ -904,13 +904,15 @@ function getDashboardScript(resilientFetchSource) {
     if (!svg) return;
     var keys = Object.keys(langs);
     if (keys.length === 0) { svg.innerHTML = '<text x="200" y="130" fill="var(--fg3)" text-anchor="middle" font-size="14">No language data</text>'; return; }
-    var total = keys.reduce(function(s, k) { return s + langs[k]; }, 0);
+    function langCount(v) { return typeof v === 'object' && v !== null ? (v.count || 0) : (v || 0); }
+    var total = keys.reduce(function(s, k) { return s + langCount(langs[k]); }, 0);
+    if (total === 0) total = 1;
     var colors = ['var(--accent)', 'var(--green)', 'var(--purple)', 'var(--yellow)', 'var(--cyan)', 'var(--red)', 'var(--orange)'];
     var html = '';
     var cx = 130, cy = 130, r = 100;
     var startAngle = 0;
     keys.forEach(function(lang, i) {
-      var pct = langs[lang] / total;
+      var pct = langCount(langs[lang]) / total;
       var angle = pct * Math.PI * 2;
       var endAngle = startAngle + angle;
       var x1 = cx + r * Math.cos(startAngle);
@@ -921,7 +923,7 @@ function getDashboardScript(resilientFetchSource) {
       html += '<path d="M' + cx + ',' + cy + ' L' + x1 + ',' + y1 + ' A' + r + ',' + r + ' 0 ' + largeArc + ' 1 ' + x2 + ',' + y2 + ' Z" fill="' + colors[i % colors.length] + '" opacity="0.85"/>';
       // Legend
       html += '<rect x="260" y="' + (20 + i * 22) + '" width="14" height="14" fill="' + colors[i % colors.length] + '" rx="3"/>';
-      html += '<text x="280" y="' + (32 + i * 22) + '" fill="var(--fg2)" font-size="11">' + lang + ' (' + langs[lang] + ')</text>';
+      html += '<text x="280" y="' + (32 + i * 22) + '" fill="var(--fg2)" font-size="11">' + escapeHtml(lang) + ' (' + langCount(langs[lang]) + ')</text>';
       startAngle = endAngle;
     });
     svg.innerHTML = html;

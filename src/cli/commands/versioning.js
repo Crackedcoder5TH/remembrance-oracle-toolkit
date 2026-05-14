@@ -32,7 +32,7 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
   handlers['rollback'] = (args) => {
     const id = args.id || args._sub;
     if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle rollback')} <pattern-id> [--version <n>]`); process.exit(1); }
-    const version = parseInt(args.version) || undefined;
+    const version = args.version != null ? parseInt(args.version, 10) : undefined;
     const result = oracle.rollback(id, version);
     if (result.success) {
       console.log(`${c.boldGreen('Rolled back:')} ${c.bold(result.patternName)} \u2192 v${result.restoredVersion}`);
@@ -44,8 +44,18 @@ function registerVersioningCommands(handlers, { oracle, jsonOut }) {
   };
 
   handlers['verify'] = (args) => {
+    // Delegate to publication verification when --tx or --name flags are present
+    if (args.tx || args.name) {
+      if (typeof handlers['_verifyPublication'] === 'function') {
+        return handlers['_verifyPublication'](args);
+      }
+    }
     const id = args.id || args._sub;
-    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle verify')} <pattern-id>`); process.exit(1); }
+    if (!id) { console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle verify')} <pattern-id>\n  ${c.cyan('oracle verify')} --tx <signature>\n  ${c.cyan('oracle verify')} --name <pattern>`); process.exit(1); }
+    // If --id was explicitly passed (not positional _sub), check for publication verification
+    if (args.id && typeof handlers['_verifyPublication'] === 'function') {
+      return handlers['_verifyPublication'](args);
+    }
     const result = oracle.verifyOrRollback(id);
     if (result.passed) {
       console.log(`${c.boldGreen('Verified:')} ${c.bold(result.patternName || id)} \u2014 tests pass`);

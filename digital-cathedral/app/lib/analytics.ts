@@ -12,10 +12,17 @@
  * their global (gtag, fbq) is present on the window.
  */
 
-/** Check if user has accepted analytics cookies */
+/** Check if user has accepted analytics cookies (stored in localStorage by cookie-consent component) */
 function hasAnalyticsConsent(): boolean {
-  if (typeof document === "undefined") return false;
-  return document.cookie.includes("cookie-consent=accepted");
+  if (typeof window === "undefined") return false;
+  try {
+    const stored = localStorage.getItem("dc_cookie_consent");
+    if (!stored) return false;
+    const parsed = JSON.parse(stored);
+    return parsed.choice === "accepted";
+  } catch {
+    return false;
+  }
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

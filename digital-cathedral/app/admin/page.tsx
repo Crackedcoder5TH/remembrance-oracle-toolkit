@@ -12,11 +12,13 @@
  *  - CSV export
  *  - Pagination
  *  - Real-time SSE notifications
+ *  - Editable homepage veteran story message
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { US_STATES } from "../../packages/shared/src/validate-state";
+import { CoherencyPulse } from "../components/coherency-pulse";
 
 // --- Debounce hook ---
 function useDebounce<T>(value: T, delay: number): T {
@@ -46,6 +48,11 @@ interface LeadRow {
   score: number;
   tier: "hot" | "warm" | "standard" | "cool";
   scoreFactors: Record<string, number>;
+  /** Covenant-gate coherency. Present for leads admitted via the new path. */
+  coherency?: number;
+  coherencyTier?: string;
+  archetype?: string;
+  shape?: number[];
 }
 
 interface Stats {
@@ -191,19 +198,69 @@ export default function AdminDashboard() {
     }
   }
 
+  // --- Editable veteran story message ---
+  const [veteranStory, setVeteranStory] = useState("");
+  const [storyLoading, setStoryLoading] = useState(false);
+  const [storySaving, setStorySaving] = useState(false);
+  const [storyMessage, setStoryMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
+  useEffect(() => {
+    setStoryLoading(true);
+    fetch("/api/admin/site-content")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.content?.veteranStory) {
+          setVeteranStory(data.content.veteranStory);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setStoryLoading(false));
+  }, []);
+
+  async function handleSaveStory() {
+    setStorySaving(true);
+    setStoryMessage(null);
+    try {
+      const res = await fetch("/api/admin/site-content", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ veteranStory }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setStoryMessage({ text: body?.error || "Save failed", type: "error" });
+        return;
+      }
+      setStoryMessage({ text: "Message updated successfully!", type: "success" });
+      setTimeout(() => setStoryMessage(null), 4000);
+    } catch {
+      setStoryMessage({ text: "Save failed. Please try again.", type: "error" });
+    } finally {
+      setStorySaving(false);
+    }
+  }
+
   // --- Real-time notifications via SSE ---
+  // The stream must open ONCE per mount. If we depend on fetchStats/fetchLeads
+  // (which rebuild every time filters change), we'd close and re-open the
+  // EventSource on every keystroke — a reconnect storm. We stash the latest
+  // callbacks in a ref and read them inside the handler instead.
   const [newLeadFlash, setNewLeadFlash] = useState<string | null>(null);
+  const sseHandlersRef = useRef({ fetchStats, fetchLeads });
+  useEffect(() => { sseHandlersRef.current = { fetchStats, fetchLeads }; }, [fetchStats, fetchLeads]);
+
   useEffect(() => {
     // SSE uses cookies automatically — no query param token needed
     const es = new EventSource("/api/admin/events");
 
     es.addEventListener("lead.created", (e) => {
       try {
-        const data = JSON.parse(e.data);
+        const data = JSON.parse((e as MessageEvent).data);
         setNewLeadFlash(`New lead: ${data.firstName} from ${data.state} (${data.tier})`);
         setTimeout(() => setNewLeadFlash(null), 5000);
-        fetchStats();
-        fetchLeads();
+        sseHandlersRef.current.fetchStats();
+        sseHandlersRef.current.fetchLeads();
       } catch {
         // Ignore parse errors
       }
@@ -214,7 +271,7 @@ export default function AdminDashboard() {
     };
 
     return () => es.close();
-  }, [fetchStats, fetchLeads]);
+  }, []);
 
   // Reset page when debounced search changes
   useEffect(() => {
@@ -259,6 +316,12 @@ export default function AdminDashboard() {
             className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >
             Pricing
+          </button>
+          <button
+            onClick={() => router.push("/admin/ai-agents")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-indigo-600 text-white hover:bg-indigo-500"
+          >
+            AI Agents
           </button>
           <button
             onClick={handleExport}
@@ -360,6 +423,47 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Editable Veteran Story Message */}
+      <div className="cathedral-surface p-6 mb-8" role="region" aria-label="Homepage message editor">
+        <h2 className="text-lg font-light text-[var(--text-primary)] mb-1">Homepage Message</h2>
+        <p className="text-xs text-[var(--text-muted)] mb-4">
+          Edit the veteran story displayed on the homepage. Use blank lines to separate paragraphs.
+        </p>
+
+        {storyMessage && (
+          <div className={`mb-4 px-4 py-2 rounded-lg text-sm ${storyMessage.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+            {storyMessage.text}
+          </div>
+        )}
+
+        {storyLoading ? (
+          <div className="text-sm text-[var(--text-muted)] py-8 text-center">Loading message...</div>
+        ) : (
+          <>
+            <textarea
+              value={veteranStory}
+              onChange={(e) => setVeteranStory(e.target.value)}
+              rows={12}
+              maxLength={5000}
+              className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/40 resize-y font-sans leading-relaxed"
+              placeholder="Enter the veteran story message..."
+            />
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-[var(--text-muted)]">
+                {veteranStory.length}/5000 characters
+              </p>
+              <button
+                onClick={handleSaveStory}
+                disabled={storySaving}
+                className="px-6 py-2 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-50"
+              >
+                {storySaving ? "Saving..." : "Save Message"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Veteran + Coverage Breakdown */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -445,7 +549,8 @@ export default function AdminDashboard() {
 
       {/* Lead Table */}
       <div className="cathedral-surface overflow-x-auto" role="region" aria-label="Leads table">
-        <table className="w-full text-sm" aria-label="Lead records">
+        <table className="w-full text-sm">
+          <caption className="sr-only">Insurance leads with scores, contact details, and state information</caption>
           <thead>
             <tr className="text-left text-xs uppercase tracking-wider border-b border-indigo-cathedral/10 metallic-gold">
               <th className="px-4 py-3" scope="col">Score</th>
@@ -478,10 +583,19 @@ export default function AdminDashboard() {
                   className="border-b border-indigo-cathedral/5 hover:bg-[var(--bg-surface)]/50 transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[lead.tier]}`}>
-                      {lead.score}
-                      <span className="opacity-70">{lead.tier}</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[lead.tier]}`}>
+                        {lead.score}
+                        <span className="opacity-70">{lead.tier}</span>
+                      </span>
+                      {lead.shape && lead.shape.length >= 4 ? (
+                        <CoherencyPulse
+                          shape={lead.shape}
+                          score={lead.coherency ?? lead.score / 100}
+                          size="sm"
+                        />
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-[var(--text-primary)]">
                     {lead.firstName} {lead.lastName}

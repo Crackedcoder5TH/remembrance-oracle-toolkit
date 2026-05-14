@@ -8,7 +8,7 @@
 const { readFileSync, existsSync } = require('fs');
 const { join, extname, basename, relative } = require('path');
 const { PatternLibrary } = require('../patterns/library');
-const { detectLanguage } = require('../core/coherency');
+const { detectLanguage } = require('../unified/coherency');
 
 // ─── Lazy Require Helper (avoid circular deps with scoring) ───
 const { scoring: _scoring } = require('./report-lazy');
@@ -83,7 +83,8 @@ function queryPatternsForFile(code, filePath, options = {}) {
   try {
     const dir = storeDir || join(process.cwd(), '.remembrance');
     library = new PatternLibrary(dir);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-pattern-hook:queryPatternsForFile] silent failure:', e?.message || e);
     return { matches: [], decision: 'generate', bestMatch: null, query: hints };
   }
 
@@ -96,7 +97,8 @@ function queryPatternsForFile(code, filePath, options = {}) {
   let allPatterns;
   try {
     allPatterns = library.getAll();
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-pattern-hook:queryPatternsForFile] falling back to empty array:', e?.message || e);
     allPatterns = [];
   }
 
@@ -115,7 +117,20 @@ function queryPatternsForFile(code, filePath, options = {}) {
         coherencyScore: p.coherencyScore,
       }
     );
-    return { pattern: p, relevance: rel.relevance, coherency: p.coherencyScore?.total ?? 0 };
+    const __retVal = { pattern: p, relevance: rel.relevance, coherency: p.coherencyScore?.total ?? 0 };
+    // ── LRE field-coupling (auto-wired) ──
+    try {
+      const __lre_p1 = './../../core/field-coupling';
+      const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+      for (const __p of [__lre_p1, __lre_p2]) {
+        try {
+          const { contribute: __contribute } = require(__p);
+          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:report-pattern-hook:queryPatternsForFile' });
+          break;
+        } catch (_) { /* try next */ }
+      }
+    } catch (_) { /* best-effort */ }
+    return __retVal;
   })
     .filter(s => s.relevance >= minScore)
     .sort((a, b) => b.relevance - a.relevance)
@@ -197,7 +212,8 @@ function hookBeforeHeal(filePath, options = {}) {
   let code;
   try {
     code = readFileSync(filePath, 'utf-8');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-pattern-hook:hookBeforeHeal] silent failure:', e?.message || e);
     return {
       filePath,
       query: null,
@@ -274,9 +290,9 @@ function recordPatternHookUsage(rootDir, entry, oracle) {
         sqliteStore.recordHealingAttempt({
           patternId: entry.patternId,
           succeeded: entry.succeeded !== false,
-          coherencyBefore: entry.coherencyBefore || null,
-          coherencyAfter: entry.coherencyAfter || null,
-          healingLoops: entry.healingLoops || 0,
+          coherencyBefore: entry.coherencyBefore ?? null,
+          coherencyAfter: entry.coherencyAfter ?? null,
+          healingLoops: entry.healingLoops ?? 0,
         });
       }
       // Store healed variant if improvement was positive
@@ -284,13 +300,15 @@ function recordPatternHookUsage(rootDir, entry, oracle) {
         sqliteStore.addHealedVariant({
           parentPatternId: entry.patternId,
           healedCode: entry.healedCode,
-          originalCoherency: entry.coherencyBefore || 0,
-          healedCoherency: entry.coherencyAfter || 0,
-          healingLoops: entry.healingLoops || 0,
+          originalCoherency: entry.coherencyBefore ?? 0,
+          healedCoherency: entry.coherencyAfter ?? 0,
+          healingLoops: entry.healingLoops ?? 0,
           healingStrategy: entry.patternGuided ? 'pattern-guided' : 'reflector',
         });
       }
-    } catch { /* best effort — never break the reflector */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-pattern-hook:recordPatternHookUsage] best effort — never break the reflector:', e?.message || e);
+    }
   }
 }
 

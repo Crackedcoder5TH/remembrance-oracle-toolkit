@@ -22,13 +22,13 @@
  */
 function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
   const weights = config.weights || { coherency: 0.4, selfConfidence: 0.2, peerScore: 0.4 };
-  const threshold = config.consensusThreshold || 0.7;
+  const threshold = config.consensusThreshold ?? 0.7;
 
   // Build rankings
   const rankings = agentOutputs
     .filter(o => o.code) // Only rank agents that produced code
     .map(output => {
-      const coherency = coherencyScores.get(output.agent)?.total || 0;
+      const coherency = coherencyScores.get(output.agent)?.total ?? 0;
       const self = output.confidence || 0.5;
       const peer = peerScores.get(output.agent) || 0.5;
 
@@ -37,7 +37,7 @@ function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
         (self * weights.selfConfidence) +
         (peer * weights.peerScore);
 
-      return {
+      const __retVal = {
         agent: output.agent,
         totalScore: Math.round(totalScore * 1000) / 1000,
         breakdown: {
@@ -49,6 +49,19 @@ function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
         explanation: output.explanation,
         dimensions: output.dimensions,
       };
+      // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:consensus:buildConsensus' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+      return __retVal;
     })
     .sort((a, b) => b.totalScore - a.totalScore);
 
@@ -63,13 +76,14 @@ function buildConsensus(agentOutputs, coherencyScores, peerScores, config) {
 
   const winner = rankings[0];
 
-  // Agreement: how many agents are within threshold of the winner
-  const agreeing = rankings.filter(
-    r => winner.totalScore - r.totalScore < (1 - threshold) * winner.totalScore
+  // Agreement: how many non-winner agents are within threshold of the winner
+  const others = rankings.filter(r => r.agent !== winner.agent);
+  const agreeing = others.filter(
+    r => r.totalScore >= winner.totalScore * threshold
   );
-  const agreement = rankings.length > 1
-    ? Math.round((agreeing.length / rankings.length) * 1000) / 1000
-    : 1.0;
+  const agreement = others.length > 0
+    ? Math.round((agreeing.length / others.length) * 1000) / 1000
+    : 1.0; // Single agent = trivial consensus (no disagreement possible)
 
   // Dissent: agents significantly below the winner
   const dissent = rankings

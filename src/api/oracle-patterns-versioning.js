@@ -4,6 +4,9 @@
 
 module.exports = {
   rollback(patternId, targetVersion) {
+    if (!this.patterns._sqlite) {
+      return { success: false, reason: 'Version history requires SQLite backend' };
+    }
     const { VersionManager } = require('../core/versioning');
     const vm = new VersionManager(this.patterns._sqlite);
 
@@ -43,7 +46,9 @@ module.exports = {
         this._trackHealingSuccess(patternId, true);
         return { passed: true, patternId, patternName: pattern.name };
       }
-    } catch (_) { /* fall through to rollback */ }
+    } catch (_) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle-patterns-versioning:verifyOrRollback] fall through to rollback:', _?.message || _);
+    }
 
     this._trackHealingSuccess(patternId, false);
     const rollbackResult = this.rollback(patternId);
@@ -61,8 +66,8 @@ module.exports = {
       sqliteStore.recordHealingAttempt({
         patternId,
         succeeded,
-        coherencyBefore: context.coherencyBefore || null,
-        coherencyAfter: context.coherencyAfter || null,
+        coherencyBefore: context.coherencyBefore ?? null,
+        coherencyAfter: context.coherencyAfter ?? null,
         healingLoops: context.healingLoops || 0,
       });
     }
@@ -101,7 +106,7 @@ module.exports = {
     const sqliteStore = this.patterns._sqlite;
     if (sqliteStore && typeof sqliteStore.getAllHealingStats === 'function') {
       const dbStats = sqliteStore.getAllHealingStats();
-      return {
+      const __retVal = {
         patterns: dbStats.patterns,
         totalAttempts: dbStats.totalAttempts,
         totalSuccesses: dbStats.totalSuccesses,
@@ -118,6 +123,19 @@ module.exports = {
           peakCoherency: d.peakCoherency,
         })),
       };
+      // ── LRE field-coupling (auto-wired) ──
+      try {
+        const __lre_p1 = './../../core/field-coupling';
+        const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+        for (const __p of [__lre_p1, __lre_p2]) {
+          try {
+            const { contribute: __contribute } = require(__p);
+            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.rate || 0)), source: 'oracle:oracle-patterns-versioning:healingStats' });
+            break;
+          } catch (_) { /* try next */ }
+        }
+      } catch (_) { /* best-effort */ }
+      return __retVal;
     }
 
     // Fallback to in-memory

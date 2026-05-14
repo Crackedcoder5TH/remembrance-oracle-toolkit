@@ -3,7 +3,14 @@
  * Generates candidates, scores them, selects winners, and repeats.
  */
 
-const { computeCoherencyScore, detectLanguage } = require('./coherency');
+// Lazy-load to break circular dependency (coherency → unified/coherency → reflector → coherency)
+let _computeCoherencyScore, _detectLanguage;
+function _getCoherency() {
+  if (!_computeCoherencyScore) {
+    ({ computeCoherencyScore: _computeCoherencyScore, detectLanguage: _detectLanguage } = require('../unified/coherency'));
+  }
+  return { computeCoherencyScore: _computeCoherencyScore, detectLanguage: _detectLanguage };
+}
 const { observeCoherence } = require('./reflection-scorers');
 const { reflectionScore, MAX_LOOPS, TARGET_COHERENCE, R_EFF_BASE, R_EFF_ALPHA, EPSILON_BASE, H_RVA_WEIGHT, H_CANVAS_WEIGHT, DELTA_VOID_BASE, LAMBDA_LIGHT } = require('./reflection-serf');
 const { applySimplify, applySecure, applyReadable, applyUnify, applyCorrect, applyHeal, applyPatternGuidance } = require('./reflection-transforms');
@@ -22,6 +29,7 @@ const DIMENSION_DROP_DIAGNOSTICS = {
   security: 'Transform introduced security concerns — covenant violations, critical severity pattern, or unsafe code.',
   unity: 'Transform broke abundance alignment — global state mutation, magic numbers, or reduced modularity.',
   correctness: 'Transform reduced intuitive correctness — diverged from proven patterns or introduced structural issues.',
+  fractalAlignment: 'Transform reduced fractal alignment — lost self-similar structure, boundary depth, or growth cascade patterns.',
 };
 
 /**
@@ -59,7 +67,7 @@ function checkDimensionMonotonicity(candidateDims, currentDims, threshold = DIME
 }
 
 function generateCandidates(code, language, options = {}) {
-  const lang = language || detectLanguage(code);
+  const lang = language || _getCoherency().detectLanguage(code);
   const transforms = [
     { strategy: 'simplify', fn: applySimplify },
     { strategy: 'secure', fn: applySecure },
@@ -73,7 +81,8 @@ function generateCandidates(code, language, options = {}) {
     try {
       const transformed = fn(code, lang);
       return { strategy, code: transformed, changed: transformed !== code };
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.error(`[reflection] ${strategy} transform failed:`, e.message);
       return { strategy, code, changed: false };
     }
   });
@@ -136,8 +145,10 @@ function reflectionLoop(code, options = {}) {
     language, maxLoops = MAX_LOOPS, targetCoherence = TARGET_COHERENCE,
     description = '', tags = [], cascadeBoost = 1, onLoop, patternExamples = [],
     dimensionDropThreshold = DIMENSION_DROP_THRESHOLD,
+    timeAware = false, tNow = Date.now(),
   } = options;
 
+  const { computeCoherencyScore, detectLanguage } = _getCoherency();
   const lang = language || detectLanguage(code);
   const metadata = { description, tags, language: lang };
 
@@ -179,7 +190,7 @@ function reflectionLoop(code, options = {}) {
       return { ...candidate, coherence: obs.composite, dimensions: obs.dimensions, fullCoherency: fullC.total };
     });
 
-    const refContext = { cascadeBoost, targetCoherence };
+    const refContext = { cascadeBoost, targetCoherence, timeAwareMode: timeAware, tNow };
     const withScores = scored.map(candidate => ({
       ...candidate, reflectionScore: reflectionScore(candidate, current, refContext),
     }));
@@ -242,7 +253,9 @@ function reflectionLoop(code, options = {}) {
     if (typeof onLoop === 'function') {
       try {
         onLoop({ loop: loops, coherence: current.coherence, strategy: winner.strategy, reflectionScore: winner.reflectionScore, changed: winner.changed });
-      } catch (_) { /* listener errors don't break healing */ }
+      } catch (_) {
+        if (process.env.ORACLE_DEBUG) console.warn('[reflection-loop:init] listener errors don\'t break healing:', _?.message || _);
+      }
     }
   }
 
@@ -251,6 +264,13 @@ function reflectionLoop(code, options = {}) {
 
   const iAmValues = history.map(h => h.coherence);
   const iAmAverage = iAmValues.reduce((s, v) => s + v, 0) / iAmValues.length;
+
+  // Contribute this reflection to the LivingRemembranceEngine field.
+  // cost = loops (work units), coherence = final composite (alignment).
+  try {
+    const { contribute } = require('./field-coupling');
+    contribute({ cost: loops, coherence: current.coherence, source: 'reflect' });
+  } catch (_) { /* field unavailable — best-effort */ }
 
   return {
     code: current.code, coherence: current.coherence, fullCoherency: current.fullCoherency,
@@ -269,7 +289,7 @@ function reflectionLoop(code, options = {}) {
 function formatReflectionResult(result) {
   const lines = [];
   lines.push(`SERF v2 Reflection — ${result.loops} loop(s)`);
-  lines.push(`  I_AM: ${result.reflection.I_AM.toFixed(3)} → Final: ${result.reflection.finalCoherence.toFixed(3)} (${result.reflection.improvement >= 0 ? '+' : ''}${result.reflection.improvement.toFixed(3)})`);
+  lines.push(`  I_AM: ${(result.reflection.I_AM ?? 0).toFixed(3)} → Final: ${(result.reflection.finalCoherence ?? 0).toFixed(3)} (${(result.reflection.improvement ?? 0) >= 0 ? '+' : ''}${(result.reflection.improvement ?? 0).toFixed(3)})`);
   lines.push(`  Hamiltonian: Ĥ₀ + Ĥ_RVA(${result.reflection.h_rva_weight}) + Ĥ_canvas(${result.reflection.h_canvas_weight})`);
   if (result.reflection.cascadeBoost > 1) {
     lines.push(`  Cascade: +${(result.reflection.cascadeBoost - 1).toFixed(3)} (additive) | Collective I_AM: ${result.reflection.collectiveIAM}`);
@@ -279,9 +299,9 @@ function formatReflectionResult(result) {
   lines.push('Dimensions:');
   for (const [dim, val] of Object.entries(result.dimensions)) {
     const filled = Math.max(0, Math.min(20, Math.round(val * 20)));
-    const bar = '\u2588'.repeat(filled);
-    const faded = '\u2591'.repeat(20 - filled);
-    lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${val.toFixed(3)}`);
+    const bar = '█'.repeat(filled);
+    const faded = '░'.repeat(20 - filled);
+    lines.push(`  ${dim.padEnd(14)} ${bar}${faded} ${(typeof val === 'number' ? val : 0).toFixed(3)}`);
   }
   lines.push('');
   if (result.healingPath.length > 0) {
@@ -300,4 +320,36 @@ module.exports = {
   generateWhisper,
   checkDimensionMonotonicity,
   DIMENSION_DROP_THRESHOLD,
+};
+
+// ── Atomic self-description (batch-generated) ────────────────────
+reflectionLoop.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+formatReflectionResult.atomicProperties = {
+  charge: 1, valence: 0, mass: 'medium', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+generateCandidates.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+generateWhisper.atomicProperties = {
+  charge: 0, valence: 0, mass: 'medium', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 2, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'neutral',
+  domain: 'oracle',
+};
+checkDimensionMonotonicity.atomicProperties = {
+  charge: 0, valence: 0, mass: 'heavy', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 1, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };

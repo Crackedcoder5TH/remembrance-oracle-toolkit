@@ -51,7 +51,9 @@ function trackEvent(oracle, event) {
       CREATE INDEX IF NOT EXISTS idx_insights_type ON insights_events(event_type);
       CREATE INDEX IF NOT EXISTS idx_insights_ts ON insights_events(timestamp);
     `);
-  } catch { /* table already exists */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:trackEvent] table already exists:', e?.message || e);
+  }
 
   try {
     db.prepare(`
@@ -66,7 +68,8 @@ function trackEvent(oracle, event) {
       event.outcome || null,
     );
     return true;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:trackEvent] returning false on error:', e?.message || e);
     return false;
   }
 }
@@ -110,7 +113,8 @@ function mostPulledPatterns(oracle, limit = 20) {
       successRate: r.usage_count > 0 ? Math.round(r.success_count / r.usage_count * 100) : 0,
       coherency: r.coherency_total,
     }));
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:mostPulledPatterns] returning empty array on error:', e?.message || e);
     return [];
   }
 }
@@ -212,7 +216,7 @@ function stalePatterns(oracle, maxDays = 90, limit = 20) {
       const created = new Date(p.timestamp || p.createdAt || 0).getTime();
       const lastUsed = p.lastUsed ? new Date(p.lastUsed).getTime() : created;
       const daysSinceUse = Math.floor((now - lastUsed) / 86400000);
-      return {
+      const __retVal = {
         id: p.id,
         name: p.name,
         language: p.language,
@@ -221,6 +225,19 @@ function stalePatterns(oracle, maxDays = 90, limit = 20) {
         usageCount: p.usageCount || 0,
         isStale: daysSinceUse >= maxDays,
       };
+      // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:insights:stalePatterns' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+      return __retVal;
     })
     .filter(p => p.isStale)
     .sort((a, b) => b.daysSinceUse - a.daysSinceUse)
@@ -272,7 +289,8 @@ function searchAnalytics(oracle, limit = 20) {
       topQueries: topQueries.map(r => ({ query: r.query, count: r.count, foundRate: r.count > 0 ? Math.round(r.found_count / r.count * 100) : 0 })),
       zeroResults: zeroResults.map(r => ({ query: r.query, count: r.count })),
     };
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:searchAnalytics] silent failure:', e?.message || e);
     return { topQueries: [], zeroResults: [] };
   }
 }
@@ -309,7 +327,8 @@ function growthMetrics(oracle) {
         avgCoherency: Math.round((r.avg_coherency || 0) * 1000) / 1000,
       })),
     };
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[insights:growthMetrics] silent failure:', e?.message || e);
     return { totalPatterns: oracle.patterns.getAll().length, periods: [] };
   }
 }

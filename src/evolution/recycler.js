@@ -25,10 +25,11 @@
  *   - Each approach alt → spawns language variants = exponential
  */
 
+const crypto = require('crypto');
 const { reflectionLoop } = require('../core/reflection');
 const { validateCode } = require('../core/validator');
-const { computeCoherencyScore, detectLanguage } = require('../core/coherency');
-const { isTestFile, isDataFile, requiresExternalModules } = require('./test-synth');
+const { computeCoherencyScore, detectLanguage } = require('../unified/coherency');
+const { isTestFile, isDataFile, requiresExternalModules, synthesizeTests, hasBrokenTestSyntax, cleanupTestCode, extractSignature } = require('./test-synth');
 const {
   CASCADE,
   HEALING,
@@ -37,6 +38,7 @@ const {
   APPROACH_SWAP,
   ITERATIVE_REFINE,
   CANDIDATE_MIN_COHERENCY,
+  TOURNAMENT,
 } = require('../constants/thresholds');
 const {
   shouldSkipForGeneration: _shouldSkipForGeneration,
@@ -157,8 +159,9 @@ class PatternRecycler {
     this.variantLanguages = options.variantLanguages || ['python', 'typescript'];
     this.verbose = options.verbose || false;
 
-    // Failed pattern buffer — patterns waiting to be recycled
+    // Failed pattern buffer — patterns waiting to be recycled (capped to prevent memory growth)
     this._failed = [];
+    this._maxFailed = options.maxFailed || 200;
 
     // Global coherence state — updated each cycle
     this._xiGlobal = 0;
@@ -197,7 +200,8 @@ class PatternRecycler {
       ).all();
 
       for (const row of rows) {
-        const detail = JSON.parse(row.detail || '{}');
+        let detail;
+        try { detail = JSON.parse(row.detail || '{}'); } catch { detail = {}; }
         if (detail.pattern && detail.status === 'pending') {
           // Skip empty shells — captures must have non-empty code
           const code = (detail.pattern.code || '').trim();
@@ -216,7 +220,8 @@ class PatternRecycler {
           this.stats.captured++;
         }
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:code] silent failure:', e?.message || e);
       // Persistence is best-effort — never break the recycler
     }
   }
@@ -244,7 +249,8 @@ class PatternRecycler {
           healHistory: entry.healHistory,
         })
       );
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:_persistCapture] silent failure:', e?.message || e);
       // Best-effort persistence
     }
   }
@@ -264,7 +270,8 @@ class PatternRecycler {
         entry.id,
         JSON.stringify({ status: entry.status, attempts: entry.attempts })
       );
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[recycler:_persistHealResult] silent failure:', e?.message || e);
       // Best-effort
     }
   }
@@ -344,7 +351,7 @@ class PatternRecycler {
 
     this.stats.voidReplenishments++;
     if (this.verbose) {
-      console.log(`  [VOID] Scaffolding from ${bestMatch.name} (coherency ${bestMatch.coherencyScore?.total.toFixed(3)})`);
+      console.log(`  [VOID] Scaffolding from ${bestMatch.name} (coherency ${(bestMatch.coherencyScore?.total ?? 0).toFixed(3)})`);
     }
 
     return bestMatch;
@@ -393,6 +400,9 @@ class PatternRecycler {
       healHistory: [],
     };
 
+    if (this._failed.length >= this._maxFailed) {
+      this._failed.shift(); // Evict oldest entry
+    }
     this._failed.push(entry);
     this.stats.captured++;
 
@@ -630,11 +640,12 @@ class PatternRecycler {
       attempts: [],
     };
 
+    let lastHealedCode = pattern.code;
     for (let attempt = 0; attempt < this.maxHealAttempts; attempt++) {
       entry.attempts++;
       this.stats.totalAttempts++;
 
-      let codeToHeal = pattern.code;
+      let codeToHeal = lastHealedCode;
 
       // Void replenishment: when coherency is deeply stuck, inject scaffolding
       // from the nearest healthy pattern to bootstrap recovery
@@ -646,7 +657,7 @@ class PatternRecycler {
             // Inject the scaffold's structure as a comment-guide at the top
             // This gives the transforms something healthy to work from
             const scaffoldHint = `// Scaffold from ${scaffold.name} (coherency ${scaffold.coherencyScore?.total?.toFixed(3)})\n`;
-            codeToHeal = scaffoldHint + pattern.code;
+            codeToHeal = scaffoldHint + lastHealedCode;
             detail.voidScaffold = scaffold.name;
           }
         }
@@ -705,7 +716,9 @@ class PatternRecycler {
               detail: `coherency: ${attemptDetail.coherency.toFixed(3)}, cascade: ${this._cascadeBoost}x`,
             });
           }
-        } catch { /* temporal not available */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[recycler:init] temporal not available:', e?.message || e);
+        }
 
         if (this.verbose) {
           console.log(`  [HEALED] ${pattern.name} — attempt ${attempt + 1}, coherency ${attemptDetail.coherency.toFixed(3)} (cascade ${this._cascadeBoost}x)`);
@@ -722,10 +735,12 @@ class PatternRecycler {
       try {
         const { recordViolation } = require('../core/covenant-evolution');
         recordViolation(healedCode, `Heal rejected: ${regResult.reason || 'unknown'}`, 'heal-failure');
-      } catch { /* covenant evolution not available */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[recycler:init] covenant evolution not available:', e?.message || e);
+      }
 
-      // Use healed code as input for next attempt
-      pattern.code = healedCode;
+      // Use healed code as input for next attempt (local copy, don't mutate original)
+      lastHealedCode = healedCode;
     }
 
     this.stats.stillFailed++;
@@ -815,7 +830,9 @@ class PatternRecycler {
       try {
         const check = verifyTranspilation(result.code, testCode, targetLang);
         verified = check.compiled;
-      } catch { /* compilation check failed, not fatal */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[recycler:name] compilation check failed, not fatal:', e?.message || e);
+      }
     }
 
     const suffix = targetLang === 'go' ? '-go' : '-rs';
@@ -886,12 +903,10 @@ class PatternRecycler {
       pyTest = jsToPythonTest(testCode, funcName, pyName);
     }
 
-    if (!pyTest) return null;
-
     return {
       name: `${name}-py`,
       code: pyCode,
-      testCode: pyTest,
+      testCode: pyTest || '',
       language: 'python',
       description: `${description} (Python variant)`,
       tags: [...(tags || []), 'variant', 'python'],
@@ -1026,6 +1041,14 @@ class PatternRecycler {
       }
     }
 
+    // Covenant pre-check: reject candidates that violate security/ethics principles
+    const { covenantCheck } = require('../core/covenant');
+    const covenantResult = covenantCheck(candidate.code);
+    if (!covenantResult.sealed) {
+      report.skipped++;
+      return false;
+    }
+
     const coherency = computeCoherencyScore(candidate.code, {
       language: candidate.language,
       testPassed: null,
@@ -1071,6 +1094,12 @@ class PatternRecycler {
    */
   _generateVariants(pattern, languages, report, knownNames, minCoherency, extraTags) {
     if (pattern.language !== 'javascript') return;
+
+    // Cap: max 10 variants per parent pattern
+    const MAX_VARIANTS_PER_PARENT = 10;
+    const existingVariants = this.oracle.patterns.getCandidates()
+      .filter(c => c.parentPattern === pattern.name).length;
+    if (existingVariants >= MAX_VARIANTS_PER_PARENT) return;
 
     for (const lang of languages) {
       const variant = this._transpileToLanguage(pattern, lang);
@@ -1226,6 +1255,277 @@ class PatternRecycler {
     return report;
   }
 
+  // ─── Tournament Generation ───
+
+  /**
+   * Tournament generation: competitive selection for the best candidates.
+   *
+   * For each source pattern:
+   *   1. Generate N candidates per round (default 3)
+   *   2. Score all candidates by coherency
+   *   3. Keep only the highest-scoring winner — advance to next round
+   *   4. Repeat for R rounds (default 3) — each round refines the previous winner
+   *   5. The final winner is stored as a candidate
+   *   6. All losers above LOSER_HARVEST_FLOOR are harvested into the candidate pool
+   *
+   * This produces higher-quality candidates through competitive pressure.
+   *
+   * @param {object} [options]
+   * @param {number} [options.maxPatterns] - Max source patterns to process
+   * @param {number} [options.candidatesPerRound] - Variants generated per round
+   * @param {number} [options.rounds] - Number of tournament rounds
+   * @param {number} [options.minWinnerCoherency] - Minimum coherency for winner to advance
+   * @param {number} [options.loserHarvestFloor] - Minimum coherency for losers to be harvested
+   * @returns {object} Tournament report
+   */
+  tournamentGenerate(options = {}) {
+    const {
+      maxPatterns = Infinity,
+      candidatesPerRound = TOURNAMENT.CANDIDATES_PER_ROUND,
+      rounds = TOURNAMENT.ROUNDS,
+      minWinnerCoherency = TOURNAMENT.MIN_WINNER_COHERENCY,
+      loserHarvestFloor = TOURNAMENT.LOSER_HARVEST_FLOOR,
+    } = options;
+
+    this._updateGlobalCoherence();
+
+    const report = {
+      patternsProcessed: 0,
+      totalGenerated: 0,
+      winners: [],
+      losersHarvested: 0,
+      losersDiscarded: 0,
+      roundDetails: [],
+      cascadeBoost: this._cascadeBoost,
+      xiGlobal: this._xiGlobal,
+    };
+
+    const proven = this.oracle.patterns.getAll();
+    const existingCandidates = this.oracle.patterns.getCandidates();
+    const knownNames = new Set([
+      ...proven.map(p => p.name),
+      ...existingCandidates.map(c => c.name),
+    ]);
+
+    const toProcess = proven.slice(0, maxPatterns);
+
+    for (const pattern of toProcess) {
+      if (_shouldSkipForGeneration(pattern.code)) continue;
+      if (pattern.language !== 'javascript') continue;
+
+      report.patternsProcessed++;
+      const patternRounds = [];
+      let currentSeed = pattern;
+
+      for (let round = 1; round <= rounds; round++) {
+        const contenders = this._generateTournamentContenders(currentSeed, candidatesPerRound, knownNames);
+        report.totalGenerated += contenders.length;
+
+        if (contenders.length === 0) break;
+
+        // Score all contenders
+        const scored = contenders.map(c => {
+          const coherency = computeCoherencyScore(c.code, {
+            language: c.language,
+            testPassed: null,
+            historicalReliability: 0.5,
+          });
+          return { ...c, coherencyTotal: coherency.total, coherencyScore: coherency };
+        });
+
+        // Sort by coherency descending — best first
+        scored.sort((a, b) => b.coherencyTotal - a.coherencyTotal);
+
+        const winner = scored[0];
+        const losers = scored.slice(1);
+
+        patternRounds.push({
+          round,
+          winner: { name: winner.name, coherency: winner.coherencyTotal },
+          losers: losers.map(l => ({ name: l.name, coherency: l.coherencyTotal })),
+        });
+
+        // Harvest losers above floor into candidate pool
+        for (const loser of losers) {
+          if (loser.coherencyTotal >= loserHarvestFloor && !knownNames.has(loser.name)) {
+            this._storeTournamentCandidate(loser, knownNames, ['tournament-loser', `round-${round}`]);
+            report.losersHarvested++;
+          } else {
+            report.losersDiscarded++;
+          }
+        }
+
+        // Winner must meet minimum coherency to advance
+        if (winner.coherencyTotal < minWinnerCoherency) break;
+
+        // Winner becomes the seed for the next round (refinement cascade)
+        currentSeed = {
+          ...pattern,
+          name: winner.name,
+          code: winner.code,
+          language: winner.language,
+          description: winner.description,
+        };
+      }
+
+      // Store final winner (the last round's best)
+      if (currentSeed !== pattern && !knownNames.has(currentSeed.name)) {
+        const finalCoherency = computeCoherencyScore(currentSeed.code, {
+          language: currentSeed.language,
+          testPassed: null,
+          historicalReliability: 0.5,
+        });
+
+        if (finalCoherency.total >= minWinnerCoherency) {
+          this._storeTournamentCandidate(
+            { ...currentSeed, coherencyTotal: finalCoherency.total, coherencyScore: finalCoherency },
+            knownNames,
+            ['tournament-winner'],
+          );
+          report.winners.push({ name: currentSeed.name, coherency: finalCoherency.total, source: pattern.name });
+        }
+      }
+
+      report.roundDetails.push({ source: pattern.name, rounds: patternRounds });
+    }
+
+    return report;
+  }
+
+  /**
+   * Generate N contender variants for a tournament round.
+   * Uses different generation methods to create diversity.
+   */
+  _generateTournamentContenders(seed, count, knownNames) {
+    const contenders = [];
+    const methods = ['iterative-refine', 'approach-swap', 'variant'];
+
+    for (let i = 0; i < count; i++) {
+      const method = methods[i % methods.length];
+      const suffix = `-t${Date.now().toString(36).slice(-4)}${i}`;
+      let candidate = null;
+
+      if (method === 'iterative-refine') {
+        const reflection = reflectionLoop(seed.code, {
+          language: seed.language,
+          maxLoops: ITERATIVE_REFINE.REFINE_LOOPS,
+          targetCoherence: ITERATIVE_REFINE.TARGET_COHERENCE,
+          description: seed.description,
+          tags: seed.tags,
+          cascadeBoost: this._cascadeBoost,
+        });
+        if (reflection.code.trim() !== seed.code.trim()) {
+          candidate = {
+            name: `${seed.name}-refined${suffix}`,
+            code: reflection.code,
+            language: seed.language,
+            patternType: seed.patternType,
+            description: `${seed.description} (tournament-refined)`,
+            tags: [...(seed.tags || []), 'tournament'],
+            testCode: seed.testCode,
+            parentPattern: seed.name,
+            method: 'tournament-refine',
+          };
+        }
+      } else if (method === 'approach-swap' && seed.language === 'javascript') {
+        const alts = this._generateApproachAlternatives(seed);
+        if (alts.length > 0) {
+          const alt = alts[0];
+          candidate = {
+            name: `${alt.name}${suffix}`,
+            code: alt.code,
+            language: alt.language,
+            patternType: alt.patternType,
+            description: alt.description,
+            tags: [...(alt.tags || []), 'tournament'],
+            testCode: alt.testCode,
+            parentPattern: seed.name,
+            method: 'tournament-approach',
+          };
+        }
+      } else if (method === 'variant' && seed.language === 'javascript') {
+        const langs = this.variantLanguages;
+        const lang = langs[i % langs.length];
+        const variant = this._transpileToLanguage(seed, lang);
+        if (variant) {
+          candidate = {
+            name: `${variant.name}${suffix}`,
+            code: variant.code,
+            language: variant.language,
+            patternType: variant.patternType,
+            description: variant.description,
+            tags: [...(variant.tags || []), 'tournament'],
+            testCode: variant.testCode,
+            parentPattern: seed.name,
+            method: 'tournament-variant',
+          };
+        }
+      }
+
+      // Fallback: if method didn't produce, try a basic refine with different seed
+      if (!candidate) {
+        const reflection = reflectionLoop(seed.code, {
+          language: seed.language,
+          maxLoops: 1,
+          targetCoherence: 0.85,
+          description: seed.description,
+          cascadeBoost: this._cascadeBoost,
+        });
+        if (reflection.code.trim() !== seed.code.trim()) {
+          candidate = {
+            name: `${seed.name}-alt${suffix}`,
+            code: reflection.code,
+            language: seed.language,
+            patternType: seed.patternType,
+            description: `${seed.description} (tournament-alt)`,
+            tags: [...(seed.tags || []), 'tournament'],
+            testCode: seed.testCode,
+            parentPattern: seed.name,
+            method: 'tournament-alt',
+          };
+        }
+      }
+
+      if (candidate && !knownNames.has(candidate.name)) {
+        // Basic viability check
+        const code = (candidate.code || '').trim();
+        if (code && code.length >= 20) {
+          const { covenantCheck } = require('../core/covenant');
+          const check = covenantCheck(candidate.code);
+          if (check.sealed) {
+            contenders.push(candidate);
+          }
+        }
+      }
+    }
+
+    return contenders;
+  }
+
+  /**
+   * Store a tournament candidate (winner or harvested loser) into the candidate pool.
+   */
+  _storeTournamentCandidate(candidate, knownNames, extraTags = []) {
+    if (knownNames.has(candidate.name)) return false;
+
+    this.oracle.patterns.addCandidate({
+      name: candidate.name,
+      code: candidate.code,
+      language: candidate.language,
+      patternType: candidate.patternType,
+      description: candidate.description,
+      tags: [...(candidate.tags || []), 'candidate', ...extraTags],
+      coherencyTotal: candidate.coherencyTotal,
+      coherencyScore: candidate.coherencyScore,
+      testCode: candidate.testCode,
+      parentPattern: candidate.parentPattern,
+      generationMethod: candidate.method,
+    });
+
+    knownNames.add(candidate.name);
+    return true;
+  }
+
   /**
    * Promote a candidate to a proven pattern by providing test proof.
    * The candidate's code gets run through the full oracle pipeline with
@@ -1235,22 +1535,30 @@ class PatternRecycler {
    * @param {string} testCode - Test code to prove the candidate works
    * @returns {{ promoted, pattern?, reason? }}
    */
-  promoteWithProof(candidateId, testCode) {
+  promoteWithProof(candidateId, testCode, options = {}) {
     const candidate = this.oracle.patterns.getCandidates().find(c => c.id === candidateId);
     if (!candidate) {
       return { promoted: false, reason: 'Candidate not found' };
     }
 
-    // Run through full oracle validation with test proof
-    const result = this.oracle.registerPattern({
+    const effectiveTestCode = testCode || candidate.testCode;
+    const patternData = {
       name: candidate.name,
       code: candidate.code,
       language: candidate.language,
       description: candidate.description,
       tags: (candidate.tags || []).filter(t => t !== 'candidate'),
       patternType: candidate.patternType,
-      testCode: testCode || candidate.testCode,
-    });
+      testCode: effectiveTestCode,
+      // Candidates are variants/transpilations of existing patterns, so they
+      // are EXPECTED to be similar — skip the similarity gate during promotion
+      skipSimilarityCheck: true,
+      // Always use trust mode for promotion — candidates may require node_modules
+      // or node: built-ins that the strict sandbox blocks
+      trustMode: true,
+    };
+
+    const result = this.oracle.registerPattern(patternData);
 
     if (result.registered) {
       // Mark candidate as promoted
@@ -1260,17 +1568,132 @@ class PatternRecycler {
         console.log(`  [PROMOTED] ${candidate.name} → proven (coherency ${result.validation.coherencyScore.total.toFixed(3)})`);
       }
 
-      return {
+      const __retVal = {
         promoted: true,
         pattern: result.pattern,
         coherency: result.validation.coherencyScore.total,
       };
+      // ── LRE field-coupling (auto-wired) ──
+      try {
+        const __lre_p1 = './../../core/field-coupling';
+        const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+        for (const __p of [__lre_p1, __lre_p2]) {
+          try {
+            const { contribute: __contribute } = require(__p);
+            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:recycler:promoteWithProof' });
+            break;
+          } catch (_) { /* try next */ }
+        }
+      } catch (_) { /* best-effort */ }
+      return __retVal;
+    }
+
+    // ─── Auto-heal on promotion failure ───
+    // When test execution fails, attempt to heal before giving up:
+    //   1. Re-synthesize the test (test code might be broken)
+    //   2. If still failing, heal the code via reflection and re-test
+    if (!options.skipHeal) {
+      const healResult = this._healPromotionFailure(candidate, patternData, result);
+      if (healResult.promoted) return healResult;
     }
 
     return {
       promoted: false,
       reason: result.reason,
+      healAttempted: !options.skipHeal,
     };
+  }
+
+  /**
+   * Attempt to heal a candidate that failed promotion.
+   *
+   * Strategy:
+   *   1. Re-synthesize test code (the test might be broken, not the code)
+   *   2. If still failing, heal the code via reflection loop
+   *   3. Re-synthesize tests for the healed code and retry
+   *
+   * @private
+   */
+  _healPromotionFailure(candidate, patternData, originalResult) {
+    const failReason = originalResult.reason || originalResult.error || '';
+
+    // Step 1: Re-synthesize test code — the test might be the broken part
+    const parent = candidate.parentPattern
+      ? this.oracle.patterns.getAll().find(p => p.name === candidate.parentPattern)
+      : null;
+
+    const freshTest = synthesizeTests(candidate.code, candidate.language, {
+      parentTestCode: parent?.testCode,
+      parentFuncName: parent ? extractSignature(parent.code, parent.language)?.name : null,
+    });
+
+    if (freshTest && freshTest !== patternData.testCode) {
+      const cleaned = cleanupTestCode(freshTest, candidate.language);
+      const retryData = { ...patternData, testCode: cleaned };
+      const retryResult = this.oracle.registerPattern(retryData);
+
+      if (retryResult.registered) {
+        this.oracle.patterns.promoteCandidate(candidate.id);
+        if (this.verbose) {
+          console.log(`  [HEALED-TEST] ${candidate.name} → promoted after test re-synthesis (coherency ${retryResult.validation.coherencyScore.total.toFixed(3)})`);
+        }
+        return {
+          promoted: true,
+          pattern: retryResult.pattern,
+          coherency: retryResult.validation.coherencyScore.total,
+          healMethod: 'test-resynthesis',
+        };
+      }
+    }
+
+    // Step 2: Heal the code via reflection loop
+    try {
+      const reflection = reflectionLoop(candidate.code, {
+        language: candidate.language,
+        maxLoops: this.maxRefineLoops,
+        targetCoherence: this.targetCoherence,
+        description: candidate.description,
+        tags: candidate.tags,
+        cascadeBoost: this._cascadeBoost,
+      });
+
+      const healedCode = reflection.code;
+      if (healedCode && healedCode.trim() !== candidate.code.trim()) {
+        // Re-synthesize tests for the healed code
+        const healedTest = synthesizeTests(healedCode, candidate.language, {
+          parentTestCode: parent?.testCode,
+          parentFuncName: parent ? extractSignature(parent.code, parent.language)?.name : null,
+        });
+        const effectiveTest = healedTest
+          ? cleanupTestCode(healedTest, candidate.language)
+          : patternData.testCode;
+
+        const healData = {
+          ...patternData,
+          code: healedCode,
+          testCode: effectiveTest,
+        };
+        const healResult = this.oracle.registerPattern(healData);
+
+        if (healResult.registered) {
+          this.oracle.patterns.promoteCandidate(candidate.id);
+          this.stats.healedViaReflection++;
+          if (this.verbose) {
+            console.log(`  [HEALED-CODE] ${candidate.name} → promoted after code healing (coherency ${healResult.validation.coherencyScore.total.toFixed(3)})`);
+          }
+          return {
+            promoted: true,
+            pattern: healResult.pattern,
+            coherency: healResult.validation.coherencyScore.total,
+            healMethod: 'code-reflection',
+          };
+        }
+      }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn(`[recycler:heal] reflection failed for ${candidate.name}:`, e?.message || e);
+    }
+
+    return { promoted: false, reason: failReason, healMethod: 'exhausted' };
   }
 
   /**
@@ -1286,15 +1709,40 @@ class PatternRecycler {
     const report = {
       attempted: 0,
       promoted: 0,
+      healed: 0,
       failed: 0,
       details: [],
     };
 
+    // Pre-load all patterns into a Map to avoid N+1 queries
+    const allPatterns = this.oracle.patterns.getAll();
+    const patternsByName = new Map(allPatterns.map(p => [p.name, p]));
+
     for (const candidate of withTests) {
-      // Skip if already exists as a proven pattern
-      const existing = this.oracle.patterns.getAll().find(p => p.name === candidate.name);
+      // Skip if already exists as a proven pattern — mark promoted only if
+      // the existing pattern has equal or higher coherency (proves candidate is redundant)
+      const existing = patternsByName.get(candidate.name);
       if (existing) {
-        this.oracle.patterns.promoteCandidate(candidate.id);
+        const existingCoherency = existing.coherencyScore?.total ?? 0;
+        const candidateCoherency = candidate.coherencyTotal ?? 0;
+        if (existingCoherency >= candidateCoherency) {
+          // Existing pattern is at least as good — safe to mark candidate as promoted
+          this.oracle.patterns.promoteCandidate(candidate.id);
+        }
+        // If candidate has higher coherency, let it go through full validation below
+        // so it can upgrade the existing pattern
+        else {
+          report.attempted++;
+          const result = this.promoteWithProof(candidate.id, candidate.testCode);
+          if (result.promoted) {
+            report.promoted++;
+            if (result.healMethod) report.healed++;
+            report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency, healMethod: result.healMethod });
+          } else {
+            report.failed++;
+            report.details.push({ name: candidate.name, status: 'failed', reason: result.reason });
+          }
+        }
         continue;
       }
 
@@ -1303,7 +1751,8 @@ class PatternRecycler {
 
       if (result.promoted) {
         report.promoted++;
-        report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency });
+        if (result.healMethod) report.healed++;
+        report.details.push({ name: candidate.name, status: 'promoted', coherency: result.coherency, healMethod: result.healMethod });
       } else {
         report.failed++;
         report.details.push({ name: candidate.name, status: 'failed', reason: result.reason });

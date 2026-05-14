@@ -201,14 +201,22 @@ module.exports = {
       results.errors.push({ remote: 'all', error: err.message });
     }
 
-    // Merge and deduplicate
+    // Merge and deduplicate. Prefer (name:language) over id because each
+    // tier's store generates its own id hash — the same logical pattern
+    // has different ids across local, remote, and cross-repo tiers, so an
+    // id-keyed set lets duplicates slip through. The dedup key matches the
+    // caller-visible invariant: result[i].name + language is unique.
     const seen = new Set();
     const merged = [];
     for (const list of [results.local, results.repos, results.remote]) {
       for (const p of list) {
-        const key = `${p.name}:${p.language}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
+        if (!p) continue;
+        const nameKey = p.name ? `${p.name}:${p.language || 'unknown'}` : null;
+        const idKey = p.id ? `id:${p.id}` : null;
+        if (nameKey && seen.has(nameKey)) continue;
+        if (idKey && seen.has(idKey)) continue;
+        if (nameKey) seen.add(nameKey);
+        if (idKey) seen.add(idKey);
         merged.push(p);
       }
     }
@@ -413,5 +421,77 @@ module.exports = {
   debugGlobalStats() {
     const { debugGlobalStats } = require('../core/persistence');
     return debugGlobalStats();
+  },
+
+  /**
+   * Run a decoherence sweep — decay unobserved patterns over time.
+   * Patterns that haven't been observed lose amplitude exponentially.
+   */
+  debugDecohereSweep(options = {}) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { swept: 0, decohered: 0, error: 'No SQLite store available' };
+    return debug.decoherenceSweep(options);
+  },
+
+  /**
+   * Re-excite a decohered pattern — restore it to |superposition⟩.
+   * Injects energy back into the pattern to restore coherence.
+   */
+  debugReexcite(id) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { success: false, error: 'No SQLite store available' };
+    return debug.reexcite(id);
+  },
+
+  /**
+   * Bulk re-excite all decohered patterns — restore the quantum field.
+   */
+  debugReexciteAll(options = {}) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { reexcited: 0, total: 0, error: 'No SQLite store available' };
+    return debug.reexciteAll(options);
+  },
+
+  /**
+   * Get the entanglement graph for a pattern — all linked patterns.
+   */
+  debugEntanglementGraph(id, depth = 2) {
+    const debug = this._getDebugOracle();
+    if (!debug) return { nodes: [], edges: [] };
+    return debug.getEntanglementGraph(id, depth);
+  },
+
+  // ─── Debug Bridge — connects debug and main pattern systems ───
+
+  /**
+   * Promote high-amplitude debug fixes to the main pattern library.
+   */
+  bridgePromoteDebug(options = {}) {
+    const { promoteDebugToPatterns } = require('../unified/debug-bridge');
+    return promoteDebugToPatterns(this, options);
+  },
+
+  /**
+   * Capture repeatedly-failing main patterns as debug entries.
+   */
+  bridgeCaptureFailures(options = {}) {
+    const { captureFailingPatterns } = require('../unified/debug-bridge');
+    return captureFailingPatterns(this, options);
+  },
+
+  /**
+   * Search across both main patterns and debug patterns.
+   */
+  bridgeSearch(query, options = {}) {
+    const { federatedSearch } = require('../unified/debug-bridge');
+    return federatedSearch(this, query, options);
+  },
+
+  /**
+   * Full bridge sync: promote ready debug fixes + capture failing patterns.
+   */
+  bridgeSync(options = {}) {
+    const { bridgeSync } = require('../unified/debug-bridge');
+    return bridgeSync(this, options);
   },
 };

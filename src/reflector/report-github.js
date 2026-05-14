@@ -5,7 +5,7 @@
  * Uses lazy require for ./multi to avoid circular deps.
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const { join } = require('path');
 const { existsSync, writeFileSync } = require('fs');
 
@@ -16,6 +16,18 @@ const { TIMEOUTS } = require('./scoring-utils');
 // =====================================================================
 // GitHub — Git/GitHub Operations
 // =====================================================================
+
+/**
+ * Validate a git branch name — reject shell metacharacters.
+ */
+function sanitizeBranchName(name) {
+  if (!name || typeof name !== 'string') throw new Error('Invalid branch name');
+  // Only allow alphanumeric, dash, underscore, slash, dot
+  if (!/^[a-zA-Z0-9._\/-]+$/.test(name)) {
+    throw new Error(`Unsafe branch name: ${name}`);
+  }
+  return name;
+}
 
 /**
  * Generate a unique healing branch name.
@@ -30,12 +42,18 @@ function generateBranchName() {
 }
 
 /**
- * Execute a git command in the given directory.
+ * Execute a git command in the given directory using execFileSync to prevent shell injection.
+ * @param {string[]} args - Array of git arguments (NOT a shell string)
  * Returns stdout as a string.
  */
-function git(command, cwd) {
+function git(args, cwd) {
+  if (typeof args === 'string') {
+    // Backwards-compat: split simple commands, but warn in debug mode
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:git] string command deprecated — use array args');
+    args = args.split(/\s+/);
+  }
   try {
-    return execSync(`git ${command}`, {
+    return execFileSync('git', args, {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -43,16 +61,21 @@ function git(command, cwd) {
     }).trim();
   } catch (err) {
     const stderr = err.stderr ? err.stderr.toString().trim() : '';
-    throw new Error(`git ${command} failed: ${stderr || err.message}`);
+    throw new Error(`git ${args.join(' ')} failed: ${stderr || err.message}`);
   }
 }
 
 /**
- * Execute a gh CLI command.
+ * Execute a gh CLI command using execFileSync to prevent shell injection.
+ * @param {string[]} args - Array of gh arguments (NOT a shell string)
  */
-function gh(command, cwd) {
+function gh(args, cwd) {
+  if (typeof args === 'string') {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:gh] string command deprecated — use array args');
+    args = args.split(/\s+/);
+  }
   try {
-    return execSync(`gh ${command}`, {
+    return execFileSync('gh', args, {
       cwd,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -61,7 +84,7 @@ function gh(command, cwd) {
     }).trim();
   } catch (err) {
     const stderr = err.stderr ? err.stderr.toString().trim() : '';
-    throw new Error(`gh ${command} failed: ${stderr || err.message}`);
+    throw new Error(`gh ${args.join(' ')} failed: ${stderr || err.message}`);
   }
 }
 
@@ -70,9 +93,10 @@ function gh(command, cwd) {
  */
 function isGhAvailable(cwd) {
   try {
-    gh('auth status', cwd);
+    gh(['auth', 'status'], cwd);
     return true;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:isGhAvailable] returning false on error:', e?.message || e);
     return false;
   }
 }
@@ -81,7 +105,7 @@ function isGhAvailable(cwd) {
  * Get the current git branch name.
  */
 function getCurrentBranch(cwd) {
-  return git('rev-parse --abbrev-ref HEAD', cwd);
+  return git(['rev-parse', '--abbrev-ref', 'HEAD'], cwd);
 }
 
 /**
@@ -89,20 +113,23 @@ function getCurrentBranch(cwd) {
  */
 function getDefaultBranch(cwd) {
   try {
-    const remote = git('remote show origin', cwd);
+    const remote = git(['remote', 'show', 'origin'], cwd);
     const match = remote.match(/HEAD branch:\s*(\S+)/);
     if (match) return match[1];
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
     // Fallback
   }
   try {
-    git('rev-parse --verify main', cwd);
+    git(['rev-parse', '--verify', 'main'], cwd);
     return 'main';
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
     try {
-      git('rev-parse --verify master', cwd);
+      git(['rev-parse', '--verify', 'master'], cwd);
       return 'master';
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-github:getDefaultBranch] silent failure:', e?.message || e);
       return 'main';
     }
   }
@@ -112,7 +139,7 @@ function getDefaultBranch(cwd) {
  * Check if the working tree is clean (no uncommitted changes).
  */
 function isCleanWorkingTree(cwd) {
-  const status = git('status --porcelain', cwd);
+  const status = git(['status', '--porcelain'], cwd);
   return status === '';
 }
 
@@ -138,23 +165,23 @@ function createHealingBranch(report, options = {}) {
   }
 
   const currentBranch = getCurrentBranch(cwd);
-  const base = baseBranch || currentBranch;
-  const branch = branchName || generateBranchName();
+  const base = sanitizeBranchName(baseBranch || currentBranch);
+  const branch = sanitizeBranchName(branchName || generateBranchName());
   const result = { branch, baseBranch: base, commits: 0, files: [] };
 
   let stashed = false;
   if (!isCleanWorkingTree(cwd)) {
-    git('stash push -m "reflector: stash before healing"', cwd);
+    git(['stash', 'push', '-m', 'reflector: stash before healing'], cwd);
     stashed = true;
   }
 
   try {
-    git(`checkout -b ${branch}`, cwd);
+    git(['checkout', '-b', branch], cwd);
 
     for (const file of report.healedFiles) {
       const absPath = file.absolutePath || join(cwd, file.path);
       writeFileSync(absPath, file.code, 'utf-8');
-      git(`add "${file.path}"`, cwd);
+      git(['add', file.path], cwd);
       result.files.push(file.path);
     }
 
@@ -162,12 +189,11 @@ function createHealingBranch(report, options = {}) {
     const commitMsg = `Remembrance Pull: Healed ${healingCount} file(s)\n\n${report.collectiveWhisper?.message ?? ''}\n\nAvg improvement: +${(report.summary?.avgImprovement ?? 0).toFixed(3)}\nOverall health: ${report.collectiveWhisper?.overallHealth ?? 'unknown'}`;
 
     try {
-      execSync('git commit -m "$REMEMBRANCE_COMMIT_MSG"', {
+      execFileSync('git', ['commit', '-m', commitMsg], {
         cwd,
         encoding: 'utf-8',
         stdio: ['pipe', 'pipe', 'pipe'],
         timeout: TIMEOUTS.GIT_LOCAL,
-        env: { ...process.env, REMEMBRANCE_COMMIT_MSG: commitMsg },
       });
     } catch (err) {
       const stderr = err.stderr ? err.stderr.toString().trim() : '';
@@ -176,7 +202,7 @@ function createHealingBranch(report, options = {}) {
     result.commits = 1;
 
     if (push) {
-      git(`push -u origin ${branch}`, cwd);
+      git(['push', '-u', 'origin', branch], cwd);
       result.pushed = true;
     }
 
@@ -192,15 +218,17 @@ function createHealingBranch(report, options = {}) {
     }
   } finally {
     try {
-      git(`checkout ${currentBranch}`, cwd);
-    } catch {
+      git(['checkout', currentBranch], cwd);
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[report-github:init] silent failure:', e?.message || e);
       // Best effort
     }
 
     if (stashed) {
       try {
-        git('stash pop', cwd);
-      } catch {
+        git(['stash', 'pop'], cwd);
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[report-github:init] silent failure:', e?.message || e);
         // Best effort
       }
     }
@@ -234,13 +262,21 @@ function openHealingPR(report, options = {}) {
   const title = `Remembrance Pull: Healed Refinement (+${(report.summary?.avgImprovement ?? 0).toFixed(3)})`;
   const labels = 'remembrance,auto-heal';
 
-  const escapedBody = body.replace(/'/g, "'\\''");
-
   try {
-    const output = gh(
-      `pr create --title '${title}' --body '${escapedBody}' --base ${baseBranch} --head ${branch} --label '${labels}'`,
-      cwd
-    );
+    const output = execFileSync('gh', [
+      'pr', 'create',
+      '--title', title,
+      '--body', body,
+      '--base', baseBranch,
+      '--head', branch,
+      '--label', labels,
+    ], {
+      cwd,
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: TIMEOUTS.GIT_REMOTE,
+      env: { ...process.env },
+    }).trim();
 
     const urlMatch = output.match(/https:\/\/github\.com\/[^\s]+/);
     const numberMatch = output.match(/\/pull\/(\d+)/);
@@ -252,9 +288,10 @@ function openHealingPR(report, options = {}) {
 
     if (autoMerge && report.summary?.autoMergeRecommended && prResult.number) {
       try {
-        gh(`pr merge ${prResult.number} --auto --squash`, cwd);
+        gh(['pr', 'merge', String(prResult.number), '--auto', '--squash'], cwd);
         prResult.autoMergeEnabled = true;
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[report-github:openHealingPR] silent failure:', e?.message || e);
         prResult.autoMergeEnabled = false;
       }
     }
@@ -275,10 +312,11 @@ function findExistingReflectorPR(cwd) {
   if (!isGhAvailable(cwd)) return null;
 
   try {
-    const output = gh('pr list --label remembrance --state open --json number,title,url', cwd);
+    const output = gh(['pr', 'list', '--label', 'remembrance', '--state', 'open', '--json', 'number,title,url'], cwd);
     const prs = JSON.parse(output);
     return prs.length > 0 ? prs[0] : null;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[report-github:findExistingReflectorPR] returning null on error:', e?.message || e);
     return null;
   }
 }

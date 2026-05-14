@@ -6,13 +6,20 @@ const { readFileSync } = require('fs');
 const path = require('path');
 
 function loadJSON(filename) {
-  return JSON.parse(readFileSync(path.join(__dirname, filename), 'utf-8'));
+  const filePath = path.join(__dirname, filename);
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf-8'));
+  } catch (e) {
+    console.error(`[seed-helpers:loadJSON] CRITICAL — failed to load ${filename}: ${e.message}`);
+    return []; // Return empty array so oracle can still initialise with partial seeds
+  }
 }
 
 // ─── Data loaders (lazy, cached) ───
 
 let _seeds, _extendedSeeds, _productionSeeds, _productionSeeds2,
-    _productionSeeds3, _productionSeeds4, _pythonSeeds, _goSeeds, _rustSeeds;
+    _productionSeeds3, _productionSeeds4, _pythonSeeds, _goSeeds, _rustSeeds,
+    _curatedSeeds;
 
 function getSeeds() {
   if (!_seeds) _seeds = loadJSON('seeds.json');
@@ -59,6 +66,11 @@ function getRustSeeds() {
   return _rustSeeds;
 }
 
+function getCuratedSeeds() {
+  if (!_curatedSeeds) _curatedSeeds = loadJSON('seeds-curated.json');
+  return _curatedSeeds;
+}
+
 // ─── Seeding functions ───
 
 /**
@@ -99,9 +111,15 @@ function seedNativeLibrary(oracle, options = {}) {
   const existingNames = new Set(existing.map(p => p.name));
 
   let allSeeds = [];
-  try { allSeeds.push(...getPythonSeeds()); } catch { /* no python seeds */ }
-  try { allSeeds.push(...getGoSeeds()); } catch { /* no go seeds */ }
-  try { allSeeds.push(...getRustSeeds()); } catch { /* no rust seeds */ }
+  try { allSeeds.push(...getPythonSeeds()); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[seed-helpers:seedNativeLibrary] no python seeds:', e?.message || e);
+  }
+  try { allSeeds.push(...getGoSeeds()); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[seed-helpers:seedNativeLibrary] no go seeds:', e?.message || e);
+  }
+  try { allSeeds.push(...getRustSeeds()); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[seed-helpers:seedNativeLibrary] no rust seeds:', e?.message || e);
+  }
 
   let registered = 0, skipped = 0, failed = 0;
 
@@ -218,6 +236,36 @@ function seedProductionLibrary4(oracle, options) {
   return { registered: registered, skipped: skipped, failed: failed, total: seeds.length };
 }
 
+/**
+ * Seed the curated starter pack — the best cross-language patterns
+ * for immediate value. This is the recommended first seed for new users.
+ */
+function seedCuratedLibrary(oracle, options = {}) {
+  const seeds = getCuratedSeeds();
+  const existing = oracle.patterns.getAll();
+  const existingNames = new Set(existing.map(p => p.name));
+
+  let registered = 0, skipped = 0, failed = 0;
+
+  for (const seed of seeds) {
+    if (existingNames.has(seed.name)) {
+      skipped++;
+      continue;
+    }
+
+    const result = oracle.registerPattern(seed);
+    if (result.registered) {
+      registered++;
+      if (options.verbose) console.log(`  [OK] ${seed.name} (${seed.language})`);
+    } else {
+      failed++;
+      if (options.verbose) console.log(`  [FAIL] ${seed.name}: ${result.reason}`);
+    }
+  }
+
+  return { registered, skipped, failed, total: seeds.length };
+}
+
 module.exports = {
   // Data accessors
   getSeeds,
@@ -229,12 +277,14 @@ module.exports = {
   getPythonSeeds,
   getGoSeeds,
   getRustSeeds,
+  getCuratedSeeds,
   // Seeding functions
   seedLibrary,
   seedNativeLibrary,
   seedExtendedLibrary,
   seedProductionLibrary3,
   seedProductionLibrary4,
+  seedCuratedLibrary,
 };
 
 // ─── Backward-compatible named exports (must come AFTER module.exports assignment) ───
@@ -244,3 +294,4 @@ Object.defineProperty(module.exports, 'EXTENDED_SEEDS', { get: getExtendedSeeds,
 Object.defineProperty(module.exports, 'PYTHON_SEEDS', { get: getPythonSeeds, enumerable: true });
 Object.defineProperty(module.exports, 'GO_SEEDS', { get: getGoSeeds, enumerable: true });
 Object.defineProperty(module.exports, 'RUST_SEEDS', { get: getRustSeeds, enumerable: true });
+Object.defineProperty(module.exports, 'CURATED_SEEDS', { get: getCuratedSeeds, enumerable: true });

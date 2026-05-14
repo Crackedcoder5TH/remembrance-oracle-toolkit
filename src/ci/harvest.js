@@ -16,6 +16,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { safePath } = require('../core/safe-path');
 const { discoverPatterns, extractFunctionNames, detectLanguage } = require('./auto-seed');
 
 const SKIP_DIRS = new Set([
@@ -35,7 +36,8 @@ function cloneRepo(repoUrl, options = {}) {
   args.push(repoUrl, tmpDir);
 
   try {
-    execSync(args.join(' '), { timeout: 60000, stdio: 'pipe', encoding: 'utf-8' });
+    const { execFileSync } = require('child_process');
+    execFileSync(args[0], args.slice(1), { timeout: 60000, stdio: 'pipe', encoding: 'utf-8' });
     return tmpDir;
   } catch (err) {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -49,7 +51,7 @@ function cloneRepo(repoUrl, options = {}) {
  * source file with extractable functions.
  */
 function harvestFunctions(baseDir, options = {}) {
-  const { language: langFilter, maxFileSize = 50000, minFunctions = 1 } = options;
+  const { language: langFilter, maxFileSize = 50000, minFunctions = 1, maxFiles = 2000 } = options;
   const results = [];
   const seen = new Set();
 
@@ -57,7 +59,9 @@ function harvestFunctions(baseDir, options = {}) {
     if (!fs.existsSync(dir)) return;
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
+      if (results.length >= maxFiles) return; // Cap total files to prevent unbounded growth
       if (SKIP_DIRS.has(entry.name) || entry.name.startsWith('.')) continue;
+      if (entry.isSymbolicLink()) continue; // Skip symlinks to prevent traversal/loops
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(fullPath);
@@ -105,7 +109,7 @@ function splitFunctions(code, language) {
 
   if (language === 'javascript' || language === 'typescript') {
     // Match function declarations and arrow functions
-    const re = /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)\s*\{|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^=])\s*=>\s*(?:\{|[^{]))/g;
+    const re = /(?:(?:export\s+)?(?:async\s+)?function\s+(\w+)\s*\([^)]*\)\s*\{|(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[^=\s]+)\s*=>\s*(?:\{|[^{]))/g;
     let match;
     while ((match = re.exec(code)) !== null) {
       const name = match[1] || match[2];
@@ -164,12 +168,53 @@ function extractBody(code, start) {
   if (braceStart === -1) return null;
 
   let depth = 0;
-  for (let i = braceStart; i < code.length; i++) {
-    if (code[i] === '{') depth++;
-    if (code[i] === '}') depth--;
+  let i = braceStart;
+  while (i < code.length) {
+    const ch = code[i];
+    // Skip string literals
+    if (ch === "'" || ch === '"' || ch === '`') {
+      i++;
+      if (ch === '`') {
+        // Template literal — handle ${...} nesting
+        while (i < code.length && code[i] !== '`') {
+          if (code[i] === '\\') { i += 2; continue; }
+          if (code[i] === '$' && code[i + 1] === '{') {
+            let td = 1; i += 2;
+            while (i < code.length && td > 0) {
+              if (code[i] === '{') td++;
+              else if (code[i] === '}') td--;
+              if (td > 0) i++;
+            }
+          }
+          i++;
+        }
+        i++; continue;
+      }
+      while (i < code.length) {
+        if (code[i] === '\\') { i += 2; continue; }
+        if (code[i] === ch) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+    // Skip single-line comments
+    if (ch === '/' && code[i + 1] === '/') {
+      const nl = code.indexOf('\n', i + 2);
+      i = nl === -1 ? code.length : nl + 1;
+      continue;
+    }
+    // Skip block comments
+    if (ch === '/' && code[i + 1] === '*') {
+      const end = code.indexOf('*/', i + 2);
+      i = end === -1 ? code.length : end + 2;
+      continue;
+    }
+    if (ch === '{') depth++;
+    if (ch === '}') depth--;
     if (depth === 0) {
       return code.slice(start, i + 1);
     }
+    i++;
   }
   return null;
 }
@@ -249,8 +294,21 @@ function harvest(oracle, source, options = {}) {
       return result;
     }
 
+    // Pre-fetch existing pattern names once to avoid N×M similarity checks
+    const existingNames = new Set();
+    try {
+      const allPatterns = oracle.patterns?.getAll?.() || [];
+      for (const p of allPatterns) existingNames.add(p.name);
+    } catch (_) { /* patterns API may not exist */ }
+
     // Register test-backed patterns first (higher value)
     for (const d of discovered) {
+      // Skip already-registered patterns by name to avoid expensive similarity checks
+      if (existingNames.has(d.name)) {
+        result.skipped++;
+        result.patterns.push({ name: d.name, status: 'skipped', reason: 'already registered' });
+        continue;
+      }
       try {
         const reg = oracle.registerPattern({
           name: d.name,
@@ -262,12 +320,16 @@ function harvest(oracle, source, options = {}) {
         });
         if (reg.registered) {
           result.registered++;
+          existingNames.add(d.name);
           result.patterns.push({ name: d.name, status: 'registered', hasTests: true });
         } else {
           result.skipped++;
           result.patterns.push({ name: d.name, status: 'skipped', reason: reg.reason });
         }
-      } catch { result.failed++; }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[harvest:init] operation failed:', e?.message || e);
+        result.failed++;
+      }
     }
 
     // Register standalone patterns (split by function or file)
@@ -275,6 +337,7 @@ function harvest(oracle, source, options = {}) {
       if (splitMode === 'function') {
         const fns = splitFunctions(s.code, s.language);
         for (const fn of fns) {
+          if (existingNames.has(fn.name)) { result.skipped++; continue; }
           try {
             const reg = oracle.registerPattern({
               name: fn.name,
@@ -285,14 +348,23 @@ function harvest(oracle, source, options = {}) {
             });
             if (reg.registered) {
               result.registered++;
+              existingNames.add(fn.name);
               result.patterns.push({ name: fn.name, status: 'registered', hasTests: false });
             } else {
               result.skipped++;
             }
-          } catch { result.failed++; }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] operation failed:', e?.message || e);
+            result.failed++;
+          }
         }
       } else {
         const name = path.basename(s.file, path.extname(s.file));
+        if (existingNames.has(name)) {
+          result.skipped++;
+          result.patterns.push({ name, status: 'skipped', reason: 'already registered' });
+          continue;
+        }
         try {
           const reg = oracle.registerPattern({
             name,
@@ -303,16 +375,32 @@ function harvest(oracle, source, options = {}) {
           });
           if (reg.registered) {
             result.registered++;
+            existingNames.add(name);
             result.patterns.push({ name, status: 'registered', hasTests: false });
           } else {
             result.skipped++;
             result.patterns.push({ name, status: 'skipped', reason: reg.reason });
           }
-        } catch { result.failed++; }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] operation failed:', e?.message || e);
+          result.failed++;
+        }
       }
     }
 
-    oracle._emit({ type: 'harvest_complete', source, registered: result.registered });
+    try { oracle._emit({ type: 'harvest_complete', source, registered: result.registered }); } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[harvest:from] best effort:', e?.message || e);
+    }
+
+    // Contribute harvest outcome to the LRE field. cost = harvested
+    // (functions found), coherence = registered/harvested (how many
+    // passed covenant + coherency to make it in).
+    try {
+      const coh = result.harvested > 0 ? result.registered / result.harvested : 0;
+      const { contribute } = require('../core/field-coupling');
+      contribute({ cost: Math.max(1, result.harvested), coherence: Math.max(0, Math.min(1, coh)), source: 'harvest' });
+    } catch (_) { /* best-effort */ }
+
     return result;
   } finally {
     if (isTemp && repoDir) {

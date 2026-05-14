@@ -12,7 +12,7 @@
 
 const { readFileSync } = require('fs');
 const { join, basename, relative } = require('path');
-const { detectLanguage } = require('../core/coherency');
+const { detectLanguage } = require('../unified/coherency');
 
 // ─── Cross-Repo Snapshot ───
 
@@ -295,7 +295,10 @@ function detectDrift(repoPaths, config = {}) {
   function extractFromFiles(files, rootDir, funcMap) {
     for (const filePath of files) {
       let code;
-      try { code = readFileSync(filePath, 'utf-8'); } catch { continue; }
+      try { code = readFileSync(filePath, 'utf-8'); } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[multi-analysis:extractFromFiles] skipping item:', e?.message || e);
+        continue;
+      }
       const lang = detectLanguage(code);
       const fns = extractFunctionSignatures(code, lang);
       for (const fn of fns) {

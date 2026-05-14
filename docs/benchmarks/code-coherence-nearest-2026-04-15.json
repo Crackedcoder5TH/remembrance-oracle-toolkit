@@ -1,0 +1,146 @@
+{
+  "rows": [
+    {
+      "file": "seeds/code/async-mutex.js",
+      "findings": 0,
+      "nearestScore": 1,
+      "nearestPattern": "async-mutex",
+      "nearestType": "transformation"
+    },
+    {
+      "file": "seeds/code/priority-queue.js",
+      "findings": 0,
+      "nearestScore": 1,
+      "nearestPattern": "priority-queue",
+      "nearestType": "algorithm"
+    },
+    {
+      "file": "seeds/code/circuit-breaker.js",
+      "findings": 0,
+      "nearestScore": 0.28770851805217906,
+      "nearestPattern": "stripe",
+      "nearestType": "design_pattern"
+    },
+    {
+      "file": "seeds/code/promise-pool.js",
+      "findings": 0,
+      "nearestScore": 1,
+      "nearestPattern": "promise-pool",
+      "nearestType": "data_structure"
+    },
+    {
+      "file": "seeds/code/state-machine.js",
+      "findings": 2,
+      "nearestScore": 1,
+      "nearestPattern": "state-machine",
+      "nearestType": "validation"
+    },
+    {
+      "file": "src/core/events.js",
+      "findings": 0,
+      "nearestScore": 0.25332371287535865,
+      "nearestPattern": "memoize-py",
+      "nearestType": "utility"
+    },
+    {
+      "file": "src/core/preflight.js",
+      "findings": 0,
+      "nearestScore": 0.2600756228848338,
+      "nearestPattern": "pattern-state-machine",
+      "nearestType": "algorithm"
+    },
+    {
+      "file": "src/core/resilience.js",
+      "findings": 0,
+      "nearestScore": 0.3490450829978923,
+      "nearestPattern": "validate-state",
+      "nearestType": "validation"
+    },
+    {
+      "file": "src/core/reactions.js",
+      "findings": 0,
+      "nearestScore": 0.3159220341148781,
+      "nearestPattern": "throttle",
+      "nearestType": "utility"
+    },
+    {
+      "file": "src/core/compliance.js",
+      "findings": 4,
+      "nearestScore": 0.28404855082464336,
+      "nearestPattern": "lead-depreciation",
+      "nearestType": "algorithm"
+    },
+    {
+      "file": "src/core/ecosystem.js",
+      "findings": 0,
+      "nearestScore": 0.24139210082711532,
+      "nearestPattern": "sum",
+      "nearestType": "transformation"
+    },
+    {
+      "file": "src/core/covenant.js",
+      "findings": 0,
+      "nearestScore": 0.24270054155431514,
+      "nearestPattern": "history-refined-ts",
+      "nearestType": "data_structure"
+    },
+    {
+      "file": "src/core/storage.js",
+      "findings": 0,
+      "nearestScore": 0.2510664159120593,
+      "nearestPattern": "history-refined",
+      "nearestType": "data_structure"
+    },
+    {
+      "file": "src/patterns/library.js",
+      "findings": 2,
+      "nearestScore": 0.2027305613367483,
+      "nearestPattern": "pricing-config",
+      "nearestType": "validation"
+    },
+    {
+      "file": "src/cli/commands/library.js",
+      "findings": 0,
+      "nearestScore": 0.23467921683626866,
+      "nearestPattern": "setupListeners",
+      "nearestType": "utility"
+    },
+    {
+      "file": "dashboard/public/app.js",
+      "findings": 8,
+      "nearestScore": 0.28804152877028777,
+      "nearestPattern": "breadth-first-search",
+      "nearestType": "algorithm"
+    },
+    {
+      "file": "seeds/code/bloom-filter.js",
+      "findings": 3,
+      "nearestScore": 1,
+      "nearestPattern": "bloom-filter",
+      "nearestType": "transformation"
+    },
+    {
+      "file": ".remembrance/debug-fixes/debug-fix-negotiation-sort-mutation.js",
+      "findings": 4,
+      "nearestScore": 0.30297962884884316,
+      "nearestPattern": "scoring-analysis-aggregate",
+      "nearestType": "algorithm"
+    },
+    {
+      "file": "digital-cathedral/patterns/batch4/sorted-array.js",
+      "findings": 4,
+      "nearestScore": 0.2563636645047999,
+      "nearestPattern": "history-refined-ts",
+      "nearestType": "data_structure"
+    },
+    {
+      "file": "digital-cathedral/tests/lead-distribution.test.js",
+      "findings": 4,
+      "nearestScore": 0.335654810397694,
+      "nearestPattern": "memoize-with-ttl.test",
+      "nearestType": "utility"
+    }
+  ],
+  "correlation": 0.0714285714285714,
+  "ts": "2026-04-15T00:34:23.304Z"
+}

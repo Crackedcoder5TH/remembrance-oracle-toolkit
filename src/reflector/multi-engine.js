@@ -12,7 +12,7 @@
 const { readFileSync, readdirSync, statSync } = require('fs');
 const { join, extname, relative } = require('path');
 const { observeCoherence, reflectionLoop } = require('../core/reflection');
-const { detectLanguage } = require('../core/coherency');
+const { detectLanguage } = require('../unified/coherency');
 const { covenantCheck } = require('../core/covenant');
 
 // ─── Configuration Defaults ───
@@ -48,7 +48,8 @@ function scanDirectory(rootDir, config = {}) {
     let entries;
     try {
       entries = readdirSync(dir);
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[multi-engine:walk] returning on error:', e?.message || e);
       return; // Skip unreadable directories
     }
 
@@ -59,7 +60,8 @@ function scanDirectory(rootDir, config = {}) {
       let stat;
       try {
         stat = statSync(fullPath);
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[multi-engine:walk] skipping item:', e?.message || e);
         continue; // Skip unreadable files
       }
 
@@ -95,7 +97,20 @@ function evaluateFile(filePath, config = {}) {
   try {
     code = readFileSync(filePath, 'utf-8');
   } catch (err) {
-    return { path: filePath, error: `Read failed: ${err.message}`, coherence: 0 };
+    const __retVal = { path: filePath, error: `Read failed: ${err.message}`, coherence: 0 };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:multi-engine:evaluateFile' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   }
 
   if (!code.trim()) {
@@ -280,7 +295,8 @@ function reflect(rootDir, config = {}) {
     if (opts.usePatternHook !== false) {
       try {
         patternContext = hookBeforeHeal(file.path, { rootDir });
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[multi-engine:reflect] silent failure:', e?.message || e);
         // Pattern hook failure is non-fatal
       }
     }
@@ -304,7 +320,8 @@ function reflect(rootDir, config = {}) {
             patternName: patternContext.bestMatch?.name || null,
             improvement: healing.improvement,
           });
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[multi-engine:reflect] silent failure:', e?.message || e);
           // Recording failure is non-fatal
         }
       }

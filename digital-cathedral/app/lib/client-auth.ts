@@ -5,9 +5,11 @@
  * Cookie format: <payload>.<signature>
  * Payload: base64url(JSON.stringify({ clientId, email, exp }))
  *
- * Oracle debug fix: in demo mode (no DATABASE_URL), auth is bypassed
- * entirely — NoopAdapter returns demo data, verifyClient returns the
- * demo client without requiring a signing secret or cookie.
+ * Special cases:
+ *  - Admin owner (client_admin_owner) — always trusted if token is valid,
+ *    no DB lookup required. Lets the admin inspect the portal even if the
+ *    clients table is empty or unreachable.
+ *  - Demo mode (no DATABASE_URL) — auth bypassed entirely.
  */
 
 import { createHmac } from "crypto";
@@ -17,14 +19,20 @@ import { getClientById } from "./client-database";
 const COOKIE_NAME = "__client_session";
 const SESSION_DURATION_S = 30 * 24 * 60 * 60; // 30 days
 
-/** True when no real database is configured — graceful degradation to demo client. */
+/** The synthetic client ID used by admin master-key login. */
+const ADMIN_CLIENT_ID = "client_admin_owner";
+
+/** True when no real database is configured AND not in production — graceful degradation to demo client. */
 function isDemoMode(): boolean {
-  return !process.env.DATABASE_URL;
+  return !process.env.DATABASE_URL && process.env.NODE_ENV !== "production";
 }
 
 function getSecret(): string {
   const key = process.env.CLIENT_SESSION_SECRET || process.env.ADMIN_API_KEY;
   if (!key) throw new Error("CLIENT_SESSION_SECRET or ADMIN_API_KEY is not set");
+  if (!process.env.CLIENT_SESSION_SECRET && process.env.NODE_ENV === "production") {
+    console.warn("[AUTH] CLIENT_SESSION_SECRET not set — falling back to ADMIN_API_KEY. Set a dedicated secret for production.");
+  }
   return key;
 }
 
@@ -65,6 +73,22 @@ export function verifyClientSessionToken(token: string): { clientId: string; ema
 }
 
 /**
+ * Verify a parsed session against the database (or trust admin client directly).
+ * Returns the clientId if valid, or null if the session should be rejected.
+ */
+async function verifySession(session: { clientId: string; email: string }): Promise<string | null> {
+  // Admin owner — always trusted (no DB row required)
+  if (session.clientId === ADMIN_CLIENT_ID) return session.clientId;
+
+  // Regular client — verify row exists and is active
+  const clientResult = await getClientById(session.clientId);
+  if (clientResult.ok && clientResult.value && clientResult.value.status === "active") {
+    return session.clientId;
+  }
+  return null;
+}
+
+/**
  * Verify client authentication from request.
  * Returns the client ID if authenticated, or a 401 response.
  *
@@ -72,7 +96,7 @@ export function verifyClientSessionToken(token: string): { clientId: string; ema
  * no cookie, no signing secret, no credentials required.
  */
 export async function verifyClient(req: NextRequest): Promise<{ clientId: string } | NextResponse> {
-  // Oracle fix: demo mode — bypass auth, return demo client directly
+  // Demo mode — bypass auth, return demo client directly
   if (isDemoMode()) {
     const { DEMO_CLIENT } = await import("./demo-client");
     return { clientId: DEMO_CLIENT.clientId };
@@ -83,11 +107,8 @@ export async function verifyClient(req: NextRequest): Promise<{ clientId: string
   if (sessionCookie) {
     const session = verifyClientSessionToken(sessionCookie);
     if (session) {
-      // Verify client still exists and is active
-      const clientResult = await getClientById(session.clientId);
-      if (clientResult.ok && clientResult.value && clientResult.value.status === "active") {
-        return { clientId: session.clientId };
-      }
+      const clientId = await verifySession(session);
+      if (clientId) return { clientId };
     }
   }
 
@@ -98,17 +119,15 @@ export async function verifyClient(req: NextRequest): Promise<{ clientId: string
     if (scheme === "Bearer" && token) {
       const session = verifyClientSessionToken(token);
       if (session) {
-        const clientResult = await getClientById(session.clientId);
-        if (clientResult.ok && clientResult.value && clientResult.value.status === "active") {
-          return { clientId: session.clientId };
-        }
+        const clientId = await verifySession(session);
+        if (clientId) return { clientId };
       }
     }
   }
 
   return NextResponse.json(
     { success: false, message: "Authentication required." },
-    { status: 401 }
+    { status: 401 },
   );
 }
 

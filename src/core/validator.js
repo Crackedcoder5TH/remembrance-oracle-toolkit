@@ -8,10 +8,11 @@
  */
 
 const { execSync, execFileSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { computeCoherencyScore } = require('./coherency');
+const { computeCoherencyScore, contentTypeForLanguage } = require('../unified/coherency');
 const { sandboxExecute } = require('./sandbox');
 const { covenantCheck } = require('./covenant');
 const { actionableFeedback, formatFeedback } = require('./feedback');
@@ -29,7 +30,6 @@ const {
  * @param {string} [options.testCode] - Test code to execute against the source code
  * @param {number} [options.threshold] - Minimum coherency threshold (default: MIN_COHERENCY_THRESHOLD)
  * @param {number} [options.timeout] - Test execution timeout in milliseconds (default: DEFAULT_VALIDATION_TIMEOUT_MS)
- * @param {boolean} [options.skipCovenant] - Skip covenant check if true
  * @param {string} [options.description] - Code description for covenant context
  * @param {string[]} [options.tags] - Code tags for covenant context
  * @param {boolean} [options.sandbox] - Use sandboxed execution if true (default: true)
@@ -44,7 +44,6 @@ function validateCode(code, options = {}) {
     testCode,
     threshold = MIN_COHERENCY_THRESHOLD,
     timeout = DEFAULT_VALIDATION_TIMEOUT_MS,
-    skipCovenant = false,
   } = options;
 
   const result = {
@@ -57,8 +56,13 @@ function validateCode(code, options = {}) {
     feedback: null,
   };
 
-  // Step 0: Covenant check — the seal above all code
-  if (!skipCovenant) {
+  // Determine content type — non-code content skips test execution but NOT the covenant
+  const contentType = options.contentType || contentTypeForLanguage(language);
+  const isNonCode = contentType !== 'code';
+
+  // Step 0: Covenant check — STRUCTURAL, UNBYPASSABLE
+  // The covenant runs INSIDE validation. No parameter can disable it.
+  {
     const covenant = covenantCheck(code, {
       description: options.description,
       tags: options.tags,
@@ -76,9 +80,14 @@ function validateCode(code, options = {}) {
   }
 
   // Step 1: Run test if provided (sandboxed by default)
-  if (testCode) {
+  // Trust mode: allows sandbox to access node_modules and node: built-ins
+  // Used during candidate promotion where patterns may require project dependencies
+  // Non-code content types skip test execution entirely
+  if (testCode && !isNonCode) {
+    const sandboxOpts = { timeout };
+    if (options.trustMode) sandboxOpts.trustMode = true;
     const testResult = options.sandbox !== false
-      ? sandboxExecute(code, testCode, language, { timeout })
+      ? sandboxExecute(code, testCode, language, sandboxOpts)
       : executeTest(code, testCode, language, timeout);
     result.testPassed = testResult.passed;
     result.testOutput = testResult.output;
@@ -91,7 +100,8 @@ function validateCode(code, options = {}) {
   // Step 2: Compute coherency
   const coherency = computeCoherencyScore(code, {
     language,
-    testPassed: result.testPassed,
+    contentType,
+    testPassed: isNonCode ? null : result.testPassed,
   });
   result.coherencyScore = coherency;
 
@@ -103,6 +113,34 @@ function validateCode(code, options = {}) {
   }
 
   result.valid = result.errors.length === 0;
+
+  // ─── Atomic auto-registration ─────────────────────────────────
+  // When code passes validation, extract its atomic properties and
+  // register it in the periodic table. This is the auto-registration
+  // wire: every pattern that enters the oracle pipeline automatically
+  // becomes an element in the periodic table, growing the table from
+  // normal usage without any explicit atomic commands.
+  if (result.valid && code) {
+    try {
+      const { extractAtomicProperties } = require('../atomic/property-extractor');
+      const { PeriodicTable, encodeSignature } = require('../atomic/periodic-table');
+      const path = require('path');
+      const tablePath = path.join(process.cwd(), '.remembrance', 'atomic-table.json');
+      const table = new PeriodicTable({ storagePath: tablePath });
+      const props = extractAtomicProperties(code);
+      const sig = encodeSignature(props);
+      if (!table.getElement(sig)) {
+        table.addElement(props, {
+          name: options.name || options.description || sig,
+          source: 'auto-validation',
+        });
+      } else {
+        table.recordUsage(sig);
+      }
+      result.atomicSignature = sig;
+      result.atomicProperties = props;
+    } catch { /* atomic module not available — no-op */ }
+  }
 
   // Generate actionable feedback for any failures
   if (!result.valid) {
@@ -123,38 +161,60 @@ function validateCode(code, options = {}) {
  */
 function executeTest(code, testCode, language, timeout) {
   const lang = language || 'javascript';
-  const tmpFile = path.join(os.tmpdir(), `oracle-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'oracle-test-'));
+  const tmpFile = path.join(tmpDir, `test-${crypto.randomBytes(8).toString('hex')}`);
 
   try {
     if (lang === 'javascript' || lang === 'js') {
-      const combined = `${code}\n;\n${testCode}`;
-      const file = tmpFile + '.js';
-      fs.writeFileSync(file, combined, 'utf-8');
+      // Write code to separate module to avoid const/let redeclaration conflicts
+      const codeFile = tmpFile + '-code.js';
+      const testFile = tmpFile + '.js';
+      fs.writeFileSync(codeFile, code, 'utf-8');
+      const hasRequire = /require\s*\(\s*['"][^'"]+['"]\s*\)/.test(testCode);
+      const testContent = hasRequire
+        ? testCode.replace(/require\s*\(\s*['"](?:\.\.?\/[^'"]+)['"]\s*\)/g, `require('${codeFile}')`)
+        : `${code}\n;\n${testCode}`;
+      fs.writeFileSync(testFile, testContent, 'utf-8');
       try {
-        execFileSync('node', [file], {
+        execFileSync('node', [testFile], {
           timeout,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
         return { passed: true, output: 'All assertions passed' };
       } finally {
-        try { fs.unlinkSync(file); } catch {}
+        try { fs.unlinkSync(testFile); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
+        }
+        try { fs.unlinkSync(codeFile); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
+        }
       }
     }
 
     if (lang === 'python' || lang === 'py') {
-      const combined = `${code}\n${testCode}`;
-      const file = tmpFile + '.py';
-      fs.writeFileSync(file, combined, 'utf-8');
+      const codeFile = tmpFile + '_code.py';
+      const testFile = tmpFile + '.py';
+      fs.writeFileSync(codeFile, code, 'utf-8');
+      const hasImport = /(?:from\s+\S+\s+import|import\s+\S+)/.test(testCode);
+      const testContent = hasImport
+        ? testCode.replace(/from\s+\S+\s+import\s+/g, `from ${path.basename(codeFile, '.py')} import `)
+        : `${code}\n${testCode}`;
+      fs.writeFileSync(testFile, testContent, 'utf-8');
       try {
-        const output = execFileSync('python3', [file], {
+        const output = execFileSync('python3', [testFile], {
           timeout,
           encoding: 'utf-8',
           stdio: ['pipe', 'pipe', 'pipe'],
         });
         return { passed: true, output: output || 'All assertions passed' };
       } finally {
-        try { fs.unlinkSync(file); } catch {}
+        try { fs.unlinkSync(testFile); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
+        }
+        try { fs.unlinkSync(codeFile); } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[validator:executeTest] silent failure:', e?.message || e);
+        }
       }
     }
 
@@ -171,4 +231,18 @@ module.exports = {
   validateCode,
   executeTest,
   MIN_COHERENCY_THRESHOLD,
+};
+
+// ── Atomic self-description (batch-generated) ────────────────────
+validateCode.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
+};
+executeTest.atomicProperties = {
+  charge: 0, valence: 2, mass: 'heavy', spin: 'odd', phase: 'gas',
+  reactivity: 'high', electronegativity: 1, group: 3, period: 4,
+  harmPotential: 'moderate', alignment: 'neutral', intention: 'neutral',
+  domain: 'oracle',
 };

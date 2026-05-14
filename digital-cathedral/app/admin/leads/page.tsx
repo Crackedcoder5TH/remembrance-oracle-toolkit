@@ -60,7 +60,7 @@ export default function AdminLeadManagement() {
     setSeedMessage("");
     setSeedDemoMode(false);
     try {
-      const res = await fetch("/api/admin/seed-lead", { method: "POST" });
+      const res = await fetch("/api/admin/seed-lead", { method: "POST", headers: { "Content-Type": "application/json" } });
       const data = await res.json();
       if (data.success) {
         setSeedResults(data.leads);
@@ -80,7 +80,7 @@ export default function AdminLeadManagement() {
     setClientError("");
     setClientResult(null);
     try {
-      const res = await fetch("/api/admin/seed-client", { method: "POST" });
+      const res = await fetch("/api/admin/seed-client", { method: "POST", headers: { "Content-Type": "application/json" } });
       const data = await res.json();
       if (data.success) {
         setClientResult(data);
@@ -130,7 +130,7 @@ export default function AdminLeadManagement() {
           </h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">
             Insert 5 realistic test leads spanning all score tiers — hot, warm, standard, and cool.
-            Leads appear instantly in the dashboard and client portal.
+            Leads appear instantly in the dashboard and agent portal.
           </p>
           <button
             onClick={handleSeedLeads}
@@ -150,7 +150,7 @@ export default function AdminLeadManagement() {
             Seed Test Client
           </h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">
-            Create a test buyer client account for the client portal.
+            Create a test buyer client account for the agent portal.
             Includes $500 balance and licenses for 10 states.
           </p>
           <button
@@ -213,7 +213,7 @@ export default function AdminLeadManagement() {
             </button>
             {" "}or test the{" "}
             <button onClick={() => window.open("/portal", "_blank")} className="text-teal-cathedral underline">
-              Client Portal
+              Agent Portal
             </button>.
           </p>
         </div>
@@ -248,7 +248,7 @@ export default function AdminLeadManagement() {
                     <span className="text-emerald-600">{clientResult.details.balance}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--text-muted)]">Price/Lead</span>
+                    <span className="text-[var(--text-muted)]">(Lead === 0 ? 0 : Price / Lead)</span>
                     <span className="text-[var(--text-primary)]">{clientResult.details.pricePerLead}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -262,7 +262,7 @@ export default function AdminLeadManagement() {
           <p className="mt-4 text-xs text-[var(--text-muted)]">
             Log in at the{" "}
             <button onClick={() => window.open("/portal", "_blank")} className="text-teal-cathedral underline">
-              Client Portal
+              Agent Portal
             </button>
             {" "}with these credentials to browse and purchase leads.
           </p>

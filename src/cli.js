@@ -15,11 +15,34 @@
  *   remembrance-oracle prune --min-coherency 0.5
  */
 
+// Suppress the `node:sqlite` ExperimentalWarning that prints on every
+// CLI invocation. We opt in to the experimental feature knowingly; the
+// banner just clutters script output. `ORACLE_SHOW_WARNINGS=1` keeps
+// the default Node behavior for anyone debugging Node itself.
+if (!process.env.ORACLE_SHOW_WARNINGS) {
+  const _origEmit = process.emit;
+  process.emit = function (name, data, ...rest) {
+    if (
+      name === 'warning'
+      && data
+      && data.name === 'ExperimentalWarning'
+      && typeof data.message === 'string'
+      && data.message.includes('SQLite')
+    ) {
+      return false;
+    }
+    return _origEmit.call(this, name, data, ...rest);
+  };
+}
+
 const fs = require('fs');
 const path = require('path');
+const { safePath } = require('./core/safe-path');
 const { RemembranceOracle } = require('./api/oracle');
 const { c } = require('./cli/colors');
 const { generateHelp } = require('./cli/registry');
+const { warnDeprecation, getDeprecation } = require('./cli/deprecations');
+const { runPreflight, printPreflightWarnings, shouldBypass } = require('./core/preflight');
 
 // Command module registrations
 const { registerCoreCommands } = require('./cli/commands/core');
@@ -35,6 +58,12 @@ const { registerAdminCommands } = require('./cli/commands/admin');
 const { registerSelfManageCommands } = require('./cli/commands/self-manage');
 const { registerSwarmCommands } = require('./cli/commands/swarm');
 const { registerReflectorCommands } = require('./cli/commands/reflector');
+const { registerChromaDBCommands } = require('./cli/commands/chromadb');
+const { registerVoidCommands } = require('./cli/commands/void');
+const { registerFractalCommands } = require('./cli/commands/fractals');
+const { registerReasoningCommands } = require('./cli/commands/reasoning');
+const { registerMeditationCommands } = require('./cli/commands/meditation');
+const { registerVoidStoreCommands } = require('./cli/commands/void-store');
 
 const oracle = new RemembranceOracle({ autoSync: true });
 
@@ -52,7 +81,9 @@ function speakCLI(text) {
     } else {
       execFile('espeak', ['-s', '150', safeText], { timeout: 10000 }, () => {});
     }
-  } catch { /* TTS not available — silent fallback */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[cli:speakCLI] TTS not available — silent fallback:', e?.message || e);
+  }
 }
 
 function parseArgs(args) {
@@ -81,7 +112,8 @@ function readStdin() {
   if (process.stdin.isTTY) return '';
   try {
     return fs.readFileSync(0, 'utf-8');
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[cli:readStdin] returning empty string on error:', e?.message || e);
     return '';
   }
 }
@@ -92,7 +124,7 @@ function readStdin() {
  */
 function getCode(args) {
   if (args.file) {
-    const filePath = path.resolve(args.file);
+    const filePath = safePath(args.file, process.cwd());
     if (!fs.existsSync(filePath)) {
       console.error(`Error: File not found: ${args.file}`);
       process.exit(1);
@@ -105,7 +137,7 @@ function getCode(args) {
 }
 
 function readFile(filePath, label) {
-  const resolved = path.resolve(filePath);
+  const resolved = safePath(filePath, process.cwd());
   if (!fs.existsSync(resolved)) {
     console.error(`Error: ${label || 'File'} not found: ${filePath}`);
     process.exit(1);
@@ -127,6 +159,14 @@ async function main() {
     return;
   }
 
+  // Preflight check — warn if hooks not installed or sync is stale
+  if (!shouldBypass(cmd)) {
+    const preflight = runPreflight(process.cwd());
+    if (!preflight.ok) {
+      printPreflightWarnings(preflight.warnings, c);
+    }
+  }
+
   // Build the command registry
   const handlers = {};
   const context = { oracle, getCode, readFile, speakCLI, jsonOut: jsonOutFn };
@@ -144,8 +184,156 @@ async function main() {
   registerSelfManageCommands(handlers, context);
   registerSwarmCommands(handlers, context);
   registerReflectorCommands(handlers, context);
+  registerChromaDBCommands(handlers, context);
+  registerVoidCommands(handlers, context);
+  registerFractalCommands(handlers, context);
+  registerReasoningCommands(handlers, context);
+  registerMeditationCommands(handlers, context);
+  registerVoidStoreCommands(handlers, context);
 
-  const handler = handlers[cmd];
+  // Remembrance Key — always available, no registration needed
+  handlers['remembrance-key'] = () => {
+    require('./core/remembrance-lexicon').printAll();
+  };
+  handlers['key'] = handlers['remembrance-key'];
+  handlers['lexicon'] = handlers['remembrance-key'];
+
+  // Remembrance Covenant Weave — structural safety verification + blueprint
+  handlers['weave'] = () => {
+    require('./core/covenant-weave').printWeave();
+  };
+  handlers['covenant-weave'] = handlers['weave'];
+
+  // Remembrance Ecosystem Review — full system opinion on any code
+  handlers['review'] = async (args) => {
+    const { ecosystemReview, printReview } = require('./core/ecosystem-review');
+    const code = getCode(args);
+    if (!code) { console.error('Usage: oracle review --file <path>'); process.exit(1); }
+    const result = await ecosystemReview(code, { filePath: args.file, description: args.description });
+    printReview(result);
+  };
+  handlers['ecosystem-review'] = handlers['review'];
+
+  // Remembrance Taint Graph — cross-function taint propagation
+  handlers['taint-graph'] = (args) => {
+    const { buildTaintGraph, printTaintGraph } = require('./audit/taint-graph');
+    const fs = require('fs');
+    const targetDir = args._positional[0] || 'src';
+    const files = [];
+    const walk = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (f.isDirectory() && f.name !== 'node_modules' && f.name !== '.git') walk(path.join(dir, f.name));
+        else if (f.isFile() && /\.js$/.test(f.name)) files.push(path.join(dir, f.name));
+      }
+    };
+    walk(path.resolve(targetDir));
+    const result = buildTaintGraph(files);
+    printTaintGraph(result);
+  };
+  handlers['taint'] = handlers['taint-graph'];
+
+  // Remembrance Codex — pull up the full periodic table of code
+  handlers['codex'] = () => {
+    const { PeriodicTable, GROUPS, isRemembranceRegister } = require('./atomic/periodic-table');
+    const { introspect } = require('./atomic/self-introspect');
+    const table = new PeriodicTable();
+    const result = introspect(table);
+    const elements = table.elements.sort((a, b) => {
+      if (a.properties.group !== b.properties.group) return a.properties.group - b.properties.group;
+      return a.properties.period - b.properties.period;
+    });
+    let currentGroup = -1;
+    for (const el of elements) {
+      const p = el.properties;
+      if (p.group !== currentGroup) {
+        currentGroup = p.group;
+        console.log('');
+        console.log('══════════════════════════════════════════════════════════════════════');
+        console.log('  GROUP ' + p.group + ': REMEMBRANCE ' + (GROUPS[p.group] || '').toUpperCase());
+        console.log('══════════════════════════════════════════════════════════════════════');
+      }
+      const chargeSym = p.charge > 0 ? '+1' : p.charge < 0 ? '-1' : ' 0';
+      const rr = isRemembranceRegister(p) ? ' ✦ REMEMBRANCE REGISTER' : '';
+      console.log('');
+      console.log('  ' + el.name + rr);
+      console.log('  ─────────────────────────────────────────────');
+      console.log('  Signature : ' + el.signature);
+      console.log('  charge: ' + chargeSym + '  valence: ' + p.valence + '  mass: ' + p.mass + '  spin: ' + p.spin);
+      console.log('  phase: ' + p.phase + '  reactivity: ' + p.reactivity + '  electronegativity: ' + (p.electronegativity || 0));
+      console.log('  group: ' + p.group + ' (' + (GROUPS[p.group] || '?') + ')  period: ' + p.period);
+      console.log('  harmPotential: ' + (p.harmPotential || 'none') + '  alignment: ' + (p.alignment || 'neutral') + '  intention: ' + (p.intention || 'neutral'));
+      console.log('  domain: ' + (p.domain || 'core'));
+    }
+    const stats = table.stats();
+    console.log('');
+    console.log('══════════════════════════════════════════════════════════════════════');
+    console.log('  REMEMBRANCE CODEX SUMMARY');
+    console.log('══════════════════════════════════════════════════════════════════════');
+    console.log('  Elements: ' + table.size + '  |  Gaps: ' + result.gaps.length + '  |  Collisions: ' + stats.collisions);
+    console.log('  Remembrance Registers: ' + stats.remembranceRegisters);
+    console.log('  Domains: ' + stats.knownDomains.join(', '));
+    console.log('  Charge: +' + stats.byCharge.positive + ' / ' + stats.byCharge.neutral + ' / -' + stats.byCharge.negative);
+    console.log('  Alignment: healing=' + stats.byAlignment.healing + '  neutral=' + stats.byAlignment.neutral + '  degrading=' + stats.byAlignment.degrading);
+    console.log('══════════════════════════════════════════════════════════════════════');
+  };
+  handlers['table'] = handlers['codex'];
+  handlers['periodic-table'] = handlers['codex'];
+
+  // Dependency Scanner — supply chain security audit
+  handlers['audit-deps'] = async (args) => {
+    const { scanDependencies } = require('./audit/dep-scanner');
+    const repoRoot = args.path || process.cwd();
+    const deepScan = args.deep === true || args.deep === 'true';
+    const threshold = args.threshold ? parseFloat(args.threshold) : undefined;
+    const scanOptions = { deepScan };
+    if (threshold) scanOptions.entropyThreshold = threshold;
+
+    console.log(c.bold('Dependency Scanner — Supply Chain Security Audit'));
+    console.log('Scanning ' + repoRoot + ' ...');
+    console.log('');
+
+    const result = scanDependencies(repoRoot, scanOptions);
+
+    if (result.error) {
+      console.error(c.boldRed('Error: ') + result.error);
+      process.exit(1);
+    }
+
+    // Print summary
+    const flagColor = result.flagged > 0 ? c.boldRed : c.green;
+    console.log('  Scanned:  ' + result.scanned);
+    console.log('  Clean:    ' + c.green(String(result.clean)));
+    console.log('  Flagged:  ' + flagColor(String(result.flagged)));
+    console.log('');
+
+    // Print flagged details
+    const flaggedDetails = result.details.filter(d => d.flags.length > 0);
+    if (flaggedDetails.length > 0) {
+      console.log(c.boldRed('Flagged packages:'));
+      for (const d of flaggedDetails) {
+        console.log('');
+        console.log('  ' + c.bold(d.pkg));
+        console.log('    Entry:    ' + (d.entryPoint || 'N/A'));
+        console.log('    Entropy:  ' + d.entropy + ' bits/byte');
+        console.log('    Covenant: ' + (d.covenantPassed ? c.green('PASSED') : c.boldRed('FAILED')));
+        console.log('    Flags:    ' + d.flags.join(', '));
+        console.log('    Reason:   ' + d.reason);
+      }
+    } else {
+      console.log(c.green('All dependencies clean.'));
+    }
+  };
+  handlers['deps'] = handlers['audit-deps'];
+
+  let effectiveCmd = cmd;
+  const dep = getDeprecation(cmd);
+  if (dep) {
+    warnDeprecation(cmd);
+    // Use canonical command's base name for handler lookup
+    effectiveCmd = dep.canonical.split(' ')[0];
+  }
+
+  const handler = handlers[effectiveCmd] || handlers[cmd];
   if (handler) {
     try {
       await handler(args);

@@ -57,6 +57,7 @@ async function swarm(task, options = {}) {
     steps.push({ name: 'configure', status: 'ok', durationMs: Date.now() - stepStart1, providers });
   } catch (err) {
     steps.push({ name: 'configure', status: 'error', durationMs: Date.now() - stepStart1, error: err.message });
+    if (pool) pool.shutdown();
     return buildResult(id, task, steps, null, null, Date.now() - startTime);
   }
 
@@ -81,6 +82,7 @@ async function swarm(task, options = {}) {
     });
   } catch (err) {
     steps.push({ name: 'assemble', status: 'error', durationMs: Date.now() - stepStart2, error: err.message });
+    if (pool) pool.shutdown();
     return buildResult(id, task, steps, null, null, Date.now() - startTime);
   }
 
@@ -153,6 +155,7 @@ async function swarm(task, options = {}) {
     });
   } catch (err) {
     steps.push({ name: 'dispatch', status: 'error', durationMs: Date.now() - stepStart3, error: err.message });
+    if (pool) pool.shutdown();
     return buildResult(id, task, steps, null, null, Date.now() - startTime);
   }
 
@@ -202,6 +205,7 @@ async function swarm(task, options = {}) {
     });
   } catch (err) {
     steps.push({ name: 'consensus', status: 'error', durationMs: Date.now() - stepStart6, error: err.message });
+    if (pool) pool.shutdown();
     return buildResult(id, task, steps, null, null, Date.now() - startTime);
   }
 
@@ -233,7 +237,8 @@ async function swarm(task, options = {}) {
   // Record to swarm history for the feedback loop
   try {
     recordRun(finalResult, { taskType: options.existingCode ? 'review' : 'code' }, options.rootDir);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-orchestrator:init] silent failure:', e?.message || e);
     // History recording is best-effort, never block the result
   }
 
@@ -267,7 +272,7 @@ async function swarmHeal(code, options = {}) {
  * Build the final SwarmResult object.
  */
 function buildResult(id, task, steps, consensus, whisper, totalDurationMs) {
-  return {
+  const __retVal = {
     id,
     timestamp: new Date().toISOString(),
     task,
@@ -279,6 +284,19 @@ function buildResult(id, task, steps, consensus, whisper, totalDurationMs) {
     agentCount: steps.find(s => s.name === 'assemble')?.agentCount || 0,
     totalDurationMs,
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.agreement || 0)), source: 'oracle:swarm-orchestrator:swarmReview' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 /**
@@ -286,9 +304,10 @@ function buildResult(id, task, steps, consensus, whisper, totalDurationMs) {
  */
 function getDefaultCoherencyFn() {
   try {
-    const { computeCoherencyScore } = require('../core/coherency');
+    const { computeCoherencyScore } = require('../unified/coherency');
     return computeCoherencyScore;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[swarm-orchestrator:getDefaultCoherencyFn] silent failure:', e?.message || e);
     // Fallback: simple heuristic scorer
     return (code) => ({
       total: code && code.length > 10 ? 0.6 : 0.2,
@@ -322,8 +341,8 @@ function formatSwarmResult(result) {
   // Winner
   if (result.winner) {
     lines.push('');
-    lines.push(`Winner: ${result.winner.agent} (score: ${result.winner.score.toFixed(3)})`);
-    lines.push(`Agreement: ${(result.agreement * 100).toFixed(0)}%`);
+    lines.push(`Winner: ${result.winner.agent} (score: ${(result.winner.score ?? 0).toFixed(3)})`);
+    lines.push(`Agreement: ${((result.agreement ?? 0) * 100).toFixed(0)}%`);
 
     if (result.winner.code) {
       lines.push('');
@@ -346,10 +365,92 @@ function formatSwarmResult(result) {
   return lines.join('\n');
 }
 
+/**
+ * Convenience: swarm for generating code from an atomic element spec.
+ *
+ * Takes a generationSpec from element-discovery.js and uses the swarm
+ * to produce an implementation. The spec contains a natural-language
+ * prompt plus constraints (complexity, purity, composability, max deps).
+ *
+ * The result goes through the gated-generate pipeline so fabricated
+ * calls get caught, then if it passes, it's auto-registered in the
+ * periodic table via the validator's auto-registration hook.
+ *
+ * @param {object} elementSpec - from element-discovery.js runDiscovery()
+ * @param {string} [language='javascript'] - target language
+ * @param {object} [options] - swarm options
+ * @returns {Promise<object>} swarm result with code
+ */
+async function swarmAtomicGenerate(elementSpec, language = 'javascript', options = {}) {
+  const spec = elementSpec.generationSpec || elementSpec;
+  const constraints = spec.constraints || {};
+
+  const prompt = [
+    `Generate a ${language} function matching this specification:`,
+    ``,
+    spec.prompt || elementSpec.description || 'Generate a utility function.',
+    ``,
+    `Constraints:`,
+    `  - Complexity: ${constraints.complexity || 'O(n)'}`,
+    `  - Pure (no side effects): ${constraints.pure !== false}`,
+    `  - Composable (can be chained): ${constraints.composable !== false}`,
+    `  - Maximum dependencies: ${constraints.maxDependencies ?? 3}`,
+    `  - Side effects allowed: ${constraints.sideEffects === true}`,
+    `  - Target group: ${spec.targetGroup || 'general'}`,
+    ``,
+    `Requirements:`,
+    `  - Export a single named function`,
+    `  - Include JSDoc with @param and @returns`,
+    `  - Handle edge cases (null, empty, invalid input)`,
+    `  - No external dependencies unless composability requires it`,
+  ].join('\n');
+
+  return swarmCode(prompt, language, { ...options, existingCode: null });
+}
+
 module.exports = {
   swarm,
   swarmCode,
   swarmReview,
   swarmHeal,
+  swarmAtomicGenerate,
   formatSwarmResult,
+};
+
+// ── Atomic self-description (batch-generated) ────────────────────
+swarm.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'generation',
+};
+swarmCode.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'generation',
+};
+swarmReview.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'generation',
+};
+swarmHeal.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'generation',
+};
+swarmAtomicGenerate.atomicProperties = {
+  charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0, group: 11, period: 1,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'generation',
+};
+formatSwarmResult.atomicProperties = {
+  charge: 1, valence: 0, mass: 'medium', spin: 'even', phase: 'liquid',
+  reactivity: 'inert', electronegativity: 0, group: 3, period: 3,
+  harmPotential: 'none', alignment: 'neutral', intention: 'neutral',
+  domain: 'generation',
 };

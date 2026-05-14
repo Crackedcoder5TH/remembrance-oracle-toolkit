@@ -187,23 +187,23 @@ describe('autoHeal', () => {
       language: 'javascript',
     });
     const result = autoHeal(p, { maxLoops: 1 });
-    // Result may be null (no improvement) or an object with code
-    if (result) {
+    // Result may be a sentinel (has .skipped) or an object with code
+    if (result && !result.skipped) {
       assert.ok(typeof result.code === 'string');
       assert.ok(typeof result.newCoherency === 'number');
       assert.ok(typeof result.loops === 'number');
     }
   });
 
-  it('returns null for patterns that cannot be improved', () => {
+  it('returns sentinel for patterns that cannot be improved', () => {
     const p = makePattern({
       code: 'function add(a, b) {\n  return a + b;\n}',
       language: 'javascript',
       coherencyScore: { total: 1.0 },
     });
     const result = autoHeal(p, { maxLoops: 1 });
-    // Already perfect — healing should return null or no improvement
-    if (result) {
+    // Already perfect — healing should return a sentinel or no improvement
+    if (result && !result.skipped) {
       assert.ok(result.improvement <= 0 || result.code === p.code);
     }
   });

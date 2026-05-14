@@ -28,6 +28,7 @@ function readBody(req, callback) {
   }, 30000);
 
   req.on('data', chunk => {
+    if (aborted) return;
     body += chunk;
     if (body.length > MAX_BODY_SIZE) {
       aborted = true;
@@ -130,7 +131,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       if (pathname === '/api/search') {
         const query = parsed.query.q || '';
         const mode = parsed.query.mode || 'hybrid';
-        const limit = parseInt(parsed.query.limit) || 10;
+        const limit = Math.min(Math.max(parseInt(parsed.query.limit, 10) || 10, 1), 200);
         if (!query) { sendJSON(res, []); return; }
         sendJSON(res, oracleInstance.search(query, { mode, limit }));
         return;
@@ -143,7 +144,8 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         try {
           const { nearestTerms } = require('../search/vectors');
           sendJSON(res, nearestTerms(query, 15));
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
           sendJSON(res, []);
         }
         return;
@@ -258,7 +260,8 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
           if (!sqliteStore) { sendJSON(res, []); return; }
           const debugOracle = new DebugOracle(sqliteStore);
           sendJSON(res, debugOracle.search({ errorMessage: query, limit: parseInt(parsed.query.limit) || 10 }));
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
           sendJSON(res, []);
         }
         return;
@@ -271,20 +274,24 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
           const sqliteStore = oracleInstance.store.getSQLiteStore();
           if (!sqliteStore) { sendJSON(res, { totalPatterns: 0 }); return; }
           sendJSON(res, new DebugOracle(sqliteStore).stats());
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
           sendJSON(res, { totalPatterns: 0, avgConfidence: 0, byCategory: {}, byLanguage: {} });
         }
         return;
       }
 
-      // ─── Healing stats ───
+      // ─── Healing stats (requires authenticated user) ───
       if (pathname === '/api/healing/stats') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         try {
           const sqliteStore = oracleInstance.store.getSQLiteStore();
           if (!sqliteStore) { sendJSON(res, { tracked: 0, totalAttempts: 0, totalSuccesses: 0, rate: 0, patterns: [] }); return; }
           try {
             sqliteStore.db.exec('CREATE TABLE IF NOT EXISTS healing_memory (id TEXT PRIMARY KEY, pattern_id TEXT, pattern_name TEXT, attempts INTEGER DEFAULT 0, successes INTEGER DEFAULT 0, best_coherency REAL DEFAULT 0, last_attempt TEXT, last_strategy TEXT)');
-          } catch { /* table might exist */ }
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[routes:init] table might exist:', e?.message || e);
+          }
           const rows = sqliteStore.db.prepare('SELECT * FROM healing_memory ORDER BY last_attempt DESC LIMIT 50').all();
           const totalAttempts = rows.reduce((s, r) => s + (r.attempts || 0), 0);
           const totalSuccesses = rows.reduce((s, r) => s + (r.successes || 0), 0);
@@ -317,7 +324,8 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
             return { ...t, memberCount: members?.count || 0 };
           });
           sendJSON(res, enriched);
-        } catch {
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
           sendJSON(res, []);
         }
         return;
@@ -347,13 +355,23 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       // ─── Team members ───
       const teamMembersMatch = pathname.match(/^\/api\/teams\/([^/]+)\/members$/);
       if (teamMembersMatch && req.method === 'POST') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         const teamId = teamMembersMatch[1];
         const sqliteStore = oracleInstance.store.getSQLiteStore();
         if (!sqliteStore) { sendJSON(res, { error: 'Storage not available' }, 501); return; }
         safeReadBody(req, res, (body) => {
+          // Verify requesting user is a team admin
+          const userId = req.user?.id || 'anonymous';
+          const membership = sqliteStore.db.prepare('SELECT role FROM team_members WHERE team_id = ? AND user_id = ?').get(teamId, userId);
+          if (!membership || membership.role === 'member' || membership.role === 'viewer') {
+            sendJSON(res, { error: 'Only team admins can add members' }, 403); return;
+          }
+          const role = body.role || 'member';
+          // Prevent non-owners from assigning owner role
+          if (role === 'owner') { sendJSON(res, { error: 'Owner role cannot be assigned via this endpoint' }, 403); return; }
           const now = new Date().toISOString();
-          sqliteStore.db.prepare('INSERT OR REPLACE INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)').run(teamId, body.userId || body.user_id || '', body.role || 'member', now);
-          sendJSON(res, { team_id: teamId, user_id: body.userId || body.user_id || '', role: body.role || 'member', joined_at: now });
+          sqliteStore.db.prepare('INSERT OR REPLACE INTO team_members (team_id, user_id, role, joined_at) VALUES (?, ?, ?, ?)').run(teamId, body.userId || body.user_id || '', role, now);
+          sendJSON(res, { team_id: teamId, user_id: body.userId || body.user_id || '', role, joined_at: now });
         });
         return;
       }
@@ -361,16 +379,25 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       // ─── Team invites ───
       const teamInviteMatch = pathname.match(/^\/api\/teams\/([^/]+)\/invite$/);
       if (teamInviteMatch && req.method === 'POST') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         const teamId = teamInviteMatch[1];
         const sqliteStore = oracleInstance.store.getSQLiteStore();
         if (!sqliteStore) { sendJSON(res, { error: 'Storage not available' }, 501); return; }
         safeReadBody(req, res, (body) => {
+          // Verify requesting user is a team admin
+          const userId = req.user?.id || 'anonymous';
+          const membership = sqliteStore.db.prepare('SELECT role FROM team_members WHERE team_id = ? AND user_id = ?').get(teamId, userId);
+          if (!membership || membership.role === 'member' || membership.role === 'viewer') {
+            sendJSON(res, { error: 'Only team admins can create invites' }, 403); return;
+          }
           sqliteStore.db.exec(`CREATE TABLE IF NOT EXISTS team_invites (id TEXT PRIMARY KEY, team_id TEXT NOT NULL, code TEXT NOT NULL UNIQUE, role TEXT DEFAULT 'member', uses_remaining INTEGER DEFAULT 1, created_at TEXT NOT NULL, expires_at TEXT);`);
           const crypto = require('crypto');
           const id = crypto.randomUUID();
           const code = crypto.randomBytes(16).toString('hex');
           const now = new Date().toISOString();
           const role = body.role || 'member';
+          // Prevent invite creation with owner role
+          if (role === 'owner') { sendJSON(res, { error: 'Cannot create invites with owner role' }, 403); return; }
           const usesRemaining = body.uses || 1;
           const expiresAt = body.expiresAt || null;
           sqliteStore.db.prepare('INSERT INTO team_invites (id, team_id, code, role, uses_remaining, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(id, teamId, code, role, usesRemaining, now, expiresAt);
@@ -379,8 +406,9 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         return;
       }
 
-      // ─── Insights ───
+      // ─── Insights (requires authenticated user) ───
       if (pathname === '/api/insights') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         try {
           const { generateInsights } = require('../analytics/insights');
           sendJSON(res, generateInsights(oracleInstance, parsed.query));
@@ -389,6 +417,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       }
 
       if (pathname === '/api/insights/act' && req.method === 'POST') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         try {
           const { actOnInsights } = require('../analytics/actionable-insights');
           sendJSON(res, actOnInsights(oracleInstance));
@@ -397,6 +426,7 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
       }
 
       if (pathname === '/api/insights/boosts') {
+        if (authManager && !req.user) { sendJSON(res, { error: 'Unauthorized' }, 401); return; }
         try {
           const { computeUsageBoosts } = require('../analytics/actionable-insights');
           const boosts = computeUsageBoosts(oracleInstance);
@@ -405,25 +435,43 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         return;
       }
 
-      // ─── Lifecycle ───
+      // ─── Lifecycle (requires admin) ───
       if (pathname === '/api/lifecycle') { sendJSON(res, oracleInstance.lifecycleStatus()); return; }
       if (pathname === '/api/lifecycle/start' && req.method === 'POST') {
+        if (authManager) { const { canManageUsers } = require('../auth/auth'); if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; } }
         safeReadBody(req, res, (body) => { sendJSON(res, oracleInstance.startLifecycle(body || {})); });
         return;
       }
-      if (pathname === '/api/lifecycle/stop' && req.method === 'POST') { sendJSON(res, oracleInstance.stopLifecycle()); return; }
-      if (pathname === '/api/lifecycle/run' && req.method === 'POST') { sendJSON(res, oracleInstance.getLifecycle().runCycle()); return; }
+      if (pathname === '/api/lifecycle/stop' && req.method === 'POST') {
+        if (authManager) { const { canManageUsers } = require('../auth/auth'); if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; } }
+        sendJSON(res, oracleInstance.stopLifecycle()); return;
+      }
+      if (pathname === '/api/lifecycle/run' && req.method === 'POST') {
+        if (authManager) { const { canManageUsers } = require('../auth/auth'); if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; } }
+        sendJSON(res, oracleInstance.getLifecycle().runCycle()); return;
+      }
       if (pathname === '/api/lifecycle/history') { sendJSON(res, oracleInstance.getLifecycle().getHistory()); return; }
 
-      // ─── Debug grow/patterns ───
+      // ─── Debug grow/patterns (requires admin) ───
       if (pathname === '/api/debug/grow' && req.method === 'POST') {
+        if (authManager) {
+          const { canManageUsers } = require('../auth/auth');
+          if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        }
         try { sendJSON(res, oracleInstance.debugGrow(parsed.query || {})); }
         catch (err) { sendJSON(res, { error: err.message }, 500); }
         return;
       }
       if (pathname === '/api/debug/patterns') {
+        if (authManager) {
+          const { canManageUsers } = require('../auth/auth');
+          if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; }
+        }
         try { sendJSON(res, oracleInstance.debugPatterns(parsed.query || {})); }
-        catch { sendJSON(res, []); }
+        catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[routes:init] silent failure:', e?.message || e);
+          sendJSON(res, []);
+        }
         return;
       }
 
@@ -442,16 +490,19 @@ function createRouteHandler(oracleInstance, { authManager, versionManager, wsSer
         return;
       }
 
-      // ─── Self-management ───
+      // ─── Self-management (requires admin) ───
       if (pathname === '/api/self-improve' && req.method === 'POST') {
+        if (authManager) { const { canManageUsers } = require('../auth/auth'); if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; } }
         try { sendJSON(res, oracleInstance.selfImprove()); } catch (err) { sendJSON(res, { error: err.message }, 500); }
         return;
       }
       if (pathname === '/api/self-optimize' && req.method === 'POST') {
+        if (authManager) { const { canManageUsers } = require('../auth/auth'); if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; } }
         try { sendJSON(res, oracleInstance.selfOptimize()); } catch (err) { sendJSON(res, { error: err.message }, 500); }
         return;
       }
       if (pathname === '/api/full-cycle' && req.method === 'POST') {
+        if (authManager) { const { canManageUsers } = require('../auth/auth'); if (!canManageUsers(req.user)) { sendJSON(res, { error: 'Forbidden' }, 403); return; } }
         try { sendJSON(res, oracleInstance.fullOptimizationCycle()); } catch (err) { sendJSON(res, { error: err.message }, 500); }
         return;
       }

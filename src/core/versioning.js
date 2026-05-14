@@ -13,7 +13,8 @@
 let DatabaseSync;
 try {
   ({ DatabaseSync } = require('node:sqlite'));
-} catch {
+} catch (e) {
+  if (process.env.ORACLE_DEBUG) console.warn('[versioning:init] silent failure:', e?.message || e);
   DatabaseSync = null;
 }
 
@@ -33,7 +34,8 @@ class VersionManager {
         this._db = sqliteStore.db;
         this._initSchema();
         this._useSQLite = true;
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[versioning:constructor] silent failure:', e?.message || e);
         // Fall back to in-memory if schema init fails
       }
     }
@@ -106,7 +108,7 @@ class VersionManager {
         patternId: r.pattern_id,
         code: r.code,
         timestamp: r.timestamp,
-        metadata: JSON.parse(r.metadata || '{}'),
+        metadata: (() => { try { return JSON.parse(r.metadata || '{}'); } catch { return {}; } })(),
       }));
     }
 
@@ -132,7 +134,7 @@ class VersionManager {
         patternId: row.pattern_id,
         code: row.code,
         timestamp: row.timestamp,
-        metadata: JSON.parse(row.metadata || '{}'),
+        metadata: (() => { try { return JSON.parse(row.metadata || '{}'); } catch { return {}; } })(),
       };
     }
 
@@ -423,6 +425,10 @@ function extractRustFunctions(code) {
  */
 function buildLCS(a, b) {
   const m = a.length, n = b.length;
+  // Guard against OOM: if the DP matrix would exceed ~10M cells, return empty
+  if (m * n > 10_000_000) {
+    return [];
+  }
   const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {

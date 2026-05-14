@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { verifyAdmin } from "@/app/lib/admin-auth";
 import { subscribe, type LeadEvent } from "@/app/lib/lead-events";
 
+export const dynamic = "force-dynamic";
+
 /**
  * SSE endpoint for real-time admin notifications.
  *
@@ -13,7 +15,7 @@ import { subscribe, type LeadEvent } from "@/app/lib/lead-events";
  */
 export async function GET(req: NextRequest) {
   // Method 1: Session cookie (EventSource sends cookies automatically)
-  const authError = await verifyAdmin(req);
+  const authError = verifyAdmin(req);
 
   // Method 2: Query param fallback (for programmatic access)
   if (authError) {

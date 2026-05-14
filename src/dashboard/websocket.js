@@ -14,12 +14,14 @@ function setupWebSocket(server, oracleInstance) {
     const { WebSocketServer } = require('../core/websocket');
     wsServer = new WebSocketServer(server);
 
-    wsServer.on('connection', () => {
+    wsServer.on('connection', (ws) => {
       wsServer.broadcast({ type: 'clients', count: wsServer.clients.size });
-    });
-
-    wsServer.on('close', () => {
-      wsServer.broadcast({ type: 'clients', count: wsServer.clients.size });
+      // Listen for close on each individual connection to update client count
+      if (ws && typeof ws.on === 'function') {
+        ws.on('close', () => {
+          wsServer.broadcast({ type: 'clients', count: wsServer.clients.size });
+        });
+      }
     });
 
     wsServer.on('message', (msg) => {
@@ -27,7 +29,8 @@ function setupWebSocket(server, oracleInstance) {
         const data = safeJsonParse(msg, null);
         if (!data) return;
         // subscribe is a no-op acknowledgement
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[websocket:setupWebSocket] silent failure:', e?.message || e);
         // Ignore malformed messages
       }
     });
@@ -37,7 +40,8 @@ function setupWebSocket(server, oracleInstance) {
         console.error('[dashboard] WebSocket error:', err.message);
       }
     });
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[websocket:setupWebSocket] silent failure:', e?.message || e);
     // WebSocket module not available — dashboard works without it
   }
 

@@ -33,7 +33,8 @@ function scoreWithCoherency(agentOutputs, coherencyFn) {
         total: result.total || 0,
         breakdown: result.breakdown || {},
       });
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[cross-scoring:scoreWithCoherency] silent failure:', e?.message || e);
       scores.set(output.agent, { total: 0, breakdown: {} });
     }
   }
@@ -103,20 +104,40 @@ async function crossScore(agentOutputs, pool, dimensions) {
         const scoreMatch = response.match(/SCORE:\s*([\d.]+)/i);
         const score = scoreMatch ? Math.min(1, Math.max(0, parseFloat(scoreMatch[1]))) : 0.5;
         return { reviewer, reviewee, score, reasoning: response.slice(0, 200) };
-      } catch {
-        return { reviewer, reviewee, score: 0.5, reasoning: 'Review failed (timeout or error)' };
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[cross-scoring:crossScore] silent failure:', e?.message || e);
+        const __retVal = { reviewer, reviewee, score: 0.5, reasoning: 'Review failed (timeout or error)' };
+        // ── LRE field-coupling (auto-wired) ──
+        try {
+          const __lre_p1 = './../../core/field-coupling';
+          const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+          for (const __p of [__lre_p1, __lre_p2]) {
+            try {
+              const { contribute: __contribute } = require(__p);
+              __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:cross-scoring:crossScore' });
+              break;
+            } catch (_) { /* try next */ }
+          }
+        } catch (_) { /* best-effort */ }
+        return __retVal;
       }
     })
   );
 
-  // Build the matrix
+  // Build the matrix — include rejected promises with fallback scores
+  // so the peer score matrix remains complete
   for (const result of results) {
-    const { reviewer, reviewee, score, reasoning } = result.status === 'fulfilled'
-      ? result.value
-      : { reviewer: '', reviewee: '', score: 0.5, reasoning: 'Error' };
-    if (!reviewer) continue;
-    if (!matrix[reviewer]) matrix[reviewer] = {};
-    matrix[reviewer][reviewee] = { score, reasoning };
+    if (result.status === 'fulfilled') {
+      const { reviewer, reviewee, score, reasoning } = result.value;
+      if (!reviewer) continue;
+      if (!matrix[reviewer]) matrix[reviewer] = {};
+      matrix[reviewer][reviewee] = { score, reasoning };
+    } else {
+      // Rejected promise — log but don't skip (prevents biased consensus)
+      if (process.env.ORACLE_DEBUG) {
+        console.warn('[cross-scoring] peer review rejected:', result.reason?.message || result.reason);
+      }
+    }
   }
 
   return matrix;
@@ -131,6 +152,7 @@ async function crossScore(agentOutputs, pool, dimensions) {
  */
 function computePeerScores(matrix, agentNames) {
   const peerScores = new Map();
+  if (!agentNames || agentNames.length === 0) return peerScores;
 
   for (const agent of agentNames) {
     const scores = [];

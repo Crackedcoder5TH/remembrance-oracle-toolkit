@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Products — Remembrance</title>
+  <meta name="description" content="Explore the Remembrance ecosystem: Pattern Memory, Code Analyzer, Self-Healing CI, Multi-Agent Review, Dashboard, VS Code Extension, and Integration Hub.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a href="#main" class="skip-link">Skip to main content</a>
+
+  <!-- Navigation -->
+  <header class="site-header">
+    <div class="container">
+      <div class="header-inner">
+        <a href="index.html" class="logo">
+          <span class="logo-mark"></span>
+          Remembrance
+        </a>
+        <button class="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+          <span class="nav-toggle-bar"></span>
+        </button>
+        <nav class="site-nav" aria-label="Main navigation">
+          <ul class="nav-list">
+            <li><a href="products.html" class="nav-link active">Products</a></li>
+            <li><a href="pricing.html" class="nav-link">Pricing</a></li>
+            <li><a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="nav-link">Docs</a></li>
+            <li><a href="legal.html" class="nav-link">Legal</a></li>
+            <li><a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="nav-link">GitHub</a></li>
+            <li><a href="pricing.html" class="nav-cta">Get Started</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="container">
+      <span class="section-label">Products</span>
+      <h1 class="section-title">The Remembrance ecosystem</h1>
+      <p class="section-subtitle">Seven products that work together. Search patterns, analyze code, heal CI, review with AI agents, and visualize everything.</p>
+    </div>
+  </div>
+
+  <main id="main">
+
+    <!-- Oracle Toolkit (Pattern Memory) -->
+    <section id="oracle" class="product-section">
+      <div class="container">
+        <div class="product-header">
+          <div class="product-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <div>
+            <h2 class="product-name">Oracle Toolkit</h2>
+            <p class="product-tagline">Pattern Memory &mdash; Remembers code that worked and finds it when you need it</p>
+          </div>
+        </div>
+        <p class="card-text">The core of the ecosystem. The Oracle stores only code that has passed tests, passed security checks, and scored above a quality threshold. When your AI needs a pattern, it pulls proven code instead of guessing. The library grows automatically with every commit.</p>
+        <div class="product-features">
+          <div class="product-feature">PULL / EVOLVE / GENERATE smart retrieval decisions</div>
+          <div class="product-feature">302+ built-in patterns across 10 languages</div>
+          <div class="product-feature">7-dimension quality scoring (0&ndash;1.000)</div>
+          <div class="product-feature">15-principle Covenant safety filter</div>
+          <div class="product-feature">Three-tier storage: local, personal, community</div>
+          <div class="product-feature">Semantic and keyword search modes</div>
+          <div class="product-feature">Git hooks for automatic pattern capture</div>
+          <div class="product-feature">MCP server with 12 focused tools</div>
+        </div>
+        <div class="product-code">
+<code><span class="keyword">const</span> { RemembranceOracle } = <span class="function">require</span>(<span class="string">'remembrance-oracle-toolkit'</span>);
+<span class="keyword">const</span> oracle = <span class="keyword">new</span> <span class="function">RemembranceOracle</span>();
+
+<span class="comment">// Search for proven patterns</span>
+<span class="keyword">const</span> results = oracle.<span class="function">search</span>(<span class="string">'rate limiter'</span>, { mode: <span class="string">'semantic'</span>, limit: 5 });
+
+<span class="comment">// Smart retrieval — pull, evolve, or generate</span>
+<span class="keyword">const</span> decision = oracle.<span class="function">resolve</span>({
+  description: <span class="string">'debounce function for React'</span>,
+  language: <span class="string">'javascript'</span>,
+});
+<span class="comment">// { decision: 'PULL', pattern: { name: 'debounce', coherency: 0.925 } }</span>
+
+<span class="comment">// Submit code — it must prove itself</span>
+oracle.<span class="function">submit</span>(code, {
+  description: <span class="string">'Merge sort implementation'</span>,
+  tags: [<span class="string">'sort'</span>, <span class="string">'algorithm'</span>],
+  testCode: testSuite,
+});</code>
+        </div>
+        <div class="product-actions">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="btn btn-primary btn-sm">View on GitHub</a>
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/blob/main/QUICKSTART.md" class="btn btn-outline btn-sm">Quickstart</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Void Data Compressor (Code Analyzer) -->
+    <section id="void" class="product-section" style="background: var(--bg-secondary);">
+      <div class="container">
+        <div class="product-header">
+          <div class="product-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div>
+            <h2 class="product-name">Void Data Compressor</h2>
+            <p class="product-tagline">Code Analyzer &mdash; Compresses and analyzes code structure beyond linting</p>
+          </div>
+        </div>
+        <p class="card-text">Void goes deeper than any linter. It compresses your code into waveform signatures, detects fractal alignment across your codebase, and maps cascade resonance between modules. The result is a structural understanding that catches architectural problems, not just syntax issues.</p>
+        <div class="product-features">
+          <div class="product-feature">Waveform signature compression for pattern matching</div>
+          <div class="product-feature">5 fractal engines: Sierpinski, Cantor, Mandelbrot, Logistic, Stability</div>
+          <div class="product-feature">Cascade resonance mapping between modules</div>
+          <div class="product-feature">Structural consistency detection</div>
+          <div class="product-feature">Substrate library with 38,338+ entries</div>
+          <div class="product-feature">Multi-language analysis (JS, TS, Python, Rust, Go, and more)</div>
+        </div>
+        <div class="product-code">
+<code><span class="comment"># Analyze code structure</span>
+$ oracle audit summary
+
+<span class="comment"># Check fractal alignment</span>
+$ oracle audit cascade --from HEAD
+
+<span class="comment"># Static analysis with 6 bug-class detectors</span>
+$ oracle audit check --file src/api/handler.js
+
+<span class="comment"># Semantic diff between two patterns</span>
+$ oracle sdiff --a pattern-1 --b pattern-2</code>
+        </div>
+        <div class="product-actions">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="btn btn-primary btn-sm">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reflector (Self-Healing CI) -->
+    <section id="reflector" class="product-section">
+      <div class="container">
+        <div class="product-header">
+          <div class="product-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <h2 class="product-name">Reflector</h2>
+            <p class="product-tagline">Self-Healing CI &mdash; Scans PRs and auto-fixes weak code in seconds</p>
+          </div>
+        </div>
+        <p class="card-text">Every pull request gets scored automatically. Code below the quality threshold is iteratively healed &mdash; the Reflector runs the SERF reflection loop up to 3 times, improving the code until it meets standards. No more "fix lint warnings" follow-up PRs.</p>
+        <div class="product-features">
+          <div class="product-feature">Automatic PR scoring on every push</div>
+          <div class="product-feature">SERF reflection loop (up to 3 iterations)</div>
+          <div class="product-feature">Covenant safety filter blocks harmful code</div>
+          <div class="product-feature">Multi-repo snapshot and comparison</div>
+          <div class="product-feature">GitHub Action ready</div>
+          <div class="product-feature">Coherency gate: rejects code below 0.6 threshold</div>
+        </div>
+        <div class="product-code">
+<code><span class="comment"># As a GitHub Action</span>
+- uses: Crackedcoder5TH/remembrance-oracle-toolkit@main
+  with:
+    command: submit
+    file: src/mycode.js
+    test-file: tests/mycode.test.js
+    description: <span class="string">"Sorting algorithm"</span>
+
+<span class="comment"># CLI usage</span>
+$ oracle reflector run
+$ oracle reflector multi    <span class="comment"># Multi-repo scan</span>
+$ oracle reflect            <span class="comment"># Reflection loop on current code</span></code>
+        </div>
+        <div class="product-actions">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="btn btn-primary btn-sm">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Agent Swarm (Multi-Agent Review) -->
+    <section id="swarm" class="product-section" style="background: var(--bg-secondary);">
+      <div class="container">
+        <div class="product-header">
+          <div class="product-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/><line x1="12" y1="12" x2="5" y2="15"/><line x1="12" y1="12" x2="19" y2="15"/></svg>
+          </div>
+          <div>
+            <h2 class="product-name">Agent Swarm</h2>
+            <p class="product-tagline">Multi-Agent Review &mdash; Multiple AI models review code and vote on the best version</p>
+          </div>
+        </div>
+        <p class="card-text">Instead of relying on one AI model, Swarm orchestrates up to 7 different AI agents to review, score, and improve your code independently. They vote on the best version using consensus. The result is more robust than any single reviewer.</p>
+        <div class="product-features">
+          <div class="product-feature">Up to 7 AI agents review simultaneously</div>
+          <div class="product-feature">Consensus voting on best version</div>
+          <div class="product-feature">Swarm code review via CLI or MCP</div>
+          <div class="product-feature">Swarm healing for complex refactors</div>
+          <div class="product-feature">Configurable providers and models</div>
+          <div class="product-feature">Detailed review breakdown per agent</div>
+        </div>
+        <div class="product-code">
+<code><span class="comment"># Multi-agent code review</span>
+$ oracle swarm review --file src/api/handler.js
+
+<span class="comment"># Heal code via swarm consensus</span>
+$ oracle swarm heal --file src/utils.js
+
+<span class="comment"># Check swarm status and providers</span>
+$ oracle swarm status
+$ oracle swarm providers</code>
+        </div>
+        <div class="product-actions">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="btn btn-primary btn-sm">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard (Visual Interface) -->
+    <section id="dashboard" class="product-section">
+      <div class="container">
+        <div class="product-header">
+          <div class="product-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          </div>
+          <div>
+            <h2 class="product-name">Dashboard</h2>
+            <p class="product-tagline">Visual Interface &mdash; Browse, search, and monitor your pattern library</p>
+          </div>
+        </div>
+        <p class="card-text">A real-time web dashboard for your pattern library. Browse patterns, run searches, view semantic vector visualizations, track coherency trends over time, and review audit logs. Ships as a Docker container or runs directly from the CLI.</p>
+        <div class="product-features">
+          <div class="product-feature">Pattern browsing with search and filters</div>
+          <div class="product-feature">Coherency charts and trend tracking</div>
+          <div class="product-feature">Semantic vector visualization</div>
+          <div class="product-feature">Audit log viewer</div>
+          <div class="product-feature">Docker-ready deployment</div>
+          <div class="product-feature">Real-time updates via WebSocket</div>
+        </div>
+        <div class="product-code">
+<code><span class="comment"># Launch the dashboard</span>
+$ oracle dashboard --port 3333
+
+<span class="comment"># Or via Docker</span>
+$ docker-compose up dashboard
+
+<span class="comment"># Access at http://localhost:3333</span></code>
+        </div>
+        <div class="product-actions">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="btn btn-primary btn-sm">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- VS Code Extension -->
+    <section id="vscode" class="product-section" style="background: var(--bg-secondary);">
+      <div class="container">
+        <div class="product-header">
+          <div class="product-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+          </div>
+          <div>
+            <h2 class="product-name">VS Code Extension</h2>
+            <p class="product-tagline">Editor Integration &mdash; Pattern memory inside your editor</p>
+          </div>
+        </div>
+        <p class="card-text">Bring the oracle into your editor. 9 commands, inline diagnostics for Covenant violations, hover info with coherency scores, code action quick-fixes from the debug oracle, context-aware pattern completions, and 3 sidebar views for patterns, fixes, and statistics.</p>
+        <div class="product-features">
+          <div class="product-feature">9 commands: search, submit, resolve, capture fix, and more</div>
+          <div class="product-feature">Inline diagnostics for covenant violations</div>
+          <div class="product-feature">Hover info with coherency scores on functions</div>
+          <div class="product-feature">Code action quick-fixes from debug oracle</div>
+          <div class="product-feature">Context-aware pattern completions as you type</div>
+          <div class="product-feature">Status bar indicator with one-click smart search</div>
+          <div class="product-feature">3 sidebar views: patterns, debug fixes, statistics</div>
+          <div class="product-feature">Works with VS Code, Cursor, and compatible editors</div>
+        </div>
+        <div class="product-code">
+<code><span class="comment">// Install from source</span>
+$ cd vscode-extension &amp;&amp; npm install &amp;&amp; npm run build
+
+<span class="comment">// Commands available in Command Palette:</span>
+<span class="comment">//   Remembrance: Search Patterns</span>
+<span class="comment">//   Remembrance: Submit Current File</span>
+<span class="comment">//   Remembrance: Smart Resolve</span>
+<span class="comment">//   Remembrance: Capture Error Fix</span>
+<span class="comment">//   Remembrance: Find Fix for Error</span></code>
+        </div>
+        <div class="product-actions">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/tree/main/vscode-extension" class="btn btn-primary btn-sm">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dialer (Integration Hub) -->
+    <section id="dialer" class="product-section">
+      <div class="container">
+        <div class="product-header">
+          <div class="product-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </div>
+          <div>
+            <h2 class="product-name">Dialer</h2>
+            <p class="product-tagline">Integration Hub &mdash; Connects to GitHub, Slack, LLMs, and CI systems</p>
+          </div>
+        </div>
+        <p class="card-text">Dialer is the integration layer. It connects the oracle to your existing tools &mdash; GitHub for PR analysis, Slack for notifications, LLM providers for the agent swarm, and CI systems for automated quality gates. One config, all connections.</p>
+        <div class="product-features">
+          <div class="product-feature">GitHub integration for PR scoring and comments</div>
+          <div class="product-feature">Slack notifications for quality events</div>
+          <div class="product-feature">LLM provider management for swarm agents</div>
+          <div class="product-feature">CI system hooks for automated gating</div>
+          <div class="product-feature">OAuth auto-configuration</div>
+          <div class="product-feature">Weave protocol for pattern federation between orgs</div>
+        </div>
+        <div class="product-code">
+<code><span class="comment"># Auto-configure OAuth for connected services</span>
+$ oracle mcp-install
+
+<span class="comment"># Manage remote oracle connections</span>
+$ oracle remote add team https://oracle.example.com
+$ oracle cross-search <span class="string">"rate limiter"</span>
+
+<span class="comment"># Share patterns across orgs via Weave protocol</span>
+$ oracle share --scope community</code>
+        </div>
+        <div class="product-actions">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="btn btn-primary btn-sm">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-banner section-alt">
+      <div class="container">
+        <h2>Start with one product, grow into the ecosystem</h2>
+        <p>Everything works standalone. Everything works better together.</p>
+        <div class="hero-actions">
+          <a href="pricing.html" class="btn btn-primary btn-lg">Get Started Free</a>
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" class="btn btn-secondary btn-lg">View on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <a href="index.html" class="logo">
+            <span class="logo-mark"></span>
+            Remembrance
+          </a>
+          <p>Your codebase remembers what works. Proven patterns, quality scoring, and self-healing CI for every developer.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="products.html#oracle">Pattern Memory</a></li>
+            <li><a href="products.html#void">Code Analyzer</a></li>
+            <li><a href="products.html#reflector">Self-Healing CI</a></li>
+            <li><a href="products.html#swarm">Multi-Agent Review</a></li>
+            <li><a href="products.html#dashboard">Dashboard</a></li>
+            <li><a href="products.html#vscode">VS Code Extension</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit">Documentation</a></li>
+            <li><a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit">GitHub</a></li>
+            <li><a href="pricing.html">Pricing</a></li>
+            <li><a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit/blob/main/QUICKSTART.md">Quickstart</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Legal</h4>
+          <ul>
+            <li><a href="legal.html">Overview</a></li>
+            <li><a href="legal.html#terms">Terms of Service</a></li>
+            <li><a href="legal.html#privacy">Privacy Policy</a></li>
+            <li><a href="legal.html#acceptable-use">Acceptable Use</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Remembrance. MIT License (code) &mdash; Proprietary (substrate data).</p>
+        <div class="footer-social">
+          <a href="https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit" aria-label="GitHub">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile nav toggle
+    document.querySelector('.nav-toggle').addEventListener('click', function() {
+      const nav = document.querySelector('.site-nav');
+      const expanded = this.getAttribute('aria-expanded') === 'true';
+      this.setAttribute('aria-expanded', !expanded);
+      nav.classList.toggle('open');
+    });
+  </script>
+</body>
+</html>

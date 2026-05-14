@@ -25,7 +25,9 @@ function generateManifest(oracle) {
 
   // Include temporal health in manifest for richer negotiation
   let temporal = null;
-  try { temporal = oracle.getTemporalMemory?.(); } catch { /* unavailable */ }
+  try { temporal = oracle.getTemporalMemory?.(); } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[negotiation:generateManifest] unavailable:', e?.message || e);
+  }
 
   return patterns.map(p => {
     let health = null;
@@ -33,9 +35,11 @@ function generateManifest(oracle) {
       try {
         const h = temporal.analyzeHealth(p.id);
         health = { status: h.status, successRate: h.successRate };
-      } catch { /* skip */ }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[negotiation:generateManifest] skip:', e?.message || e);
+      }
     }
-    return {
+    const __retVal = {
       id: p.id,
       name: p.name,
       language: p.language,
@@ -46,6 +50,19 @@ function generateManifest(oracle) {
       codeHash: _quickHash(p.code || ''),
       health,
     };
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:negotiation:generateManifest' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+    return __retVal;
   });
 }
 
@@ -153,7 +170,9 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
           blindSpotDomains.add(spot.domain);
         }
       }
-    } catch { /* coverage map unavailable */ }
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[negotiation:init] coverage map unavailable:', e?.message || e);
+    }
 
     // Step 3: REQUEST — ask for superior patterns
     if (pullSuperior && opportunities.peerSuperior.length > 0) {
@@ -181,7 +200,8 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
               });
               if (submitResult.stored) result.pulled++;
               else result.skipped++;
-            } catch {
+            } catch (e) {
+              if (process.env.ORACLE_DEBUG) console.warn('[negotiation:init] silent failure:', e?.message || e);
               result.skipped++;
             }
           }
@@ -222,7 +242,8 @@ async function negotiate(oracle, remoteUrl, token, options = {}) {
               });
               if (submitResult.stored) result.pulled++;
               else result.skipped++;
-            } catch {
+            } catch (e) {
+              if (process.env.ORACLE_DEBUG) console.warn('[negotiation:bInBlindSpot] silent failure:', e?.message || e);
               result.skipped++;
             }
           }
@@ -327,11 +348,10 @@ function addNegotiationEndpoints(server) {
 // ─── Helpers ───
 
 function _quickHash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
-  }
-  return h.toString(36);
+  if (!str) return '0';
+  // Use crypto hash for collision resistance (Meta-Pattern 14 fix)
+  const crypto = require('crypto');
+  return crypto.createHash('sha256').update(str).digest('hex').slice(0, 12);
 }
 
 function _fetchJson(url, options = {}) {
@@ -342,7 +362,8 @@ function _fetchJson(url, options = {}) {
     if (options.token) headers['Authorization'] = `Bearer ${options.token}`;
     if (body) headers['Content-Length'] = Buffer.byteLength(body);
 
-    const req = http.request({
+    const transport = urlObj.protocol === 'https:' ? require('https') : http;
+    const req = transport.request({
       hostname: urlObj.hostname,
       port: urlObj.port,
       path: urlObj.pathname,
@@ -354,7 +375,10 @@ function _fetchJson(url, options = {}) {
       res.on('data', chunk => { data += chunk; });
       res.on('end', () => {
         try { resolve(JSON.parse(data)); }
-        catch { resolve(null); }
+        catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[negotiation:_fetchJson] resolving null on error:', e?.message || e);
+          resolve(null);
+        }
       });
     });
     req.on('error', () => resolve(null));
@@ -388,22 +412,23 @@ function resolveConflict(candidates, strategy = CONFLICT_STRATEGIES.HIGHEST_COHE
   if (candidates.length === 0) return null;
   if (candidates.length === 1) return { ...candidates[0], reason: 'only-candidate' };
 
-  let sorted;
+  // Copy before sorting — never mutate the caller's array (Meta-Pattern 6 fix)
+  const sorted = [...candidates];
   switch (strategy) {
     case CONFLICT_STRATEGIES.MOST_TESTED:
-      sorted = candidates.sort((a, b) => (b.pattern.hasTests ? 1 : 0) - (a.pattern.hasTests ? 1 : 0)
+      sorted.sort((a, b) => (b.pattern.hasTests ? 1 : 0) - (a.pattern.hasTests ? 1 : 0)
         || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
       break;
     case CONFLICT_STRATEGIES.MOST_USED:
-      sorted = candidates.sort((a, b) => (b.pattern.usageCount || 0) - (a.pattern.usageCount || 0)
+      sorted.sort((a, b) => (b.pattern.usageCount || 0) - (a.pattern.usageCount || 0)
         || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
       break;
     case CONFLICT_STRATEGIES.NEWEST:
-      sorted = candidates.sort((a, b) => (b.pattern.codeHash || '').localeCompare(a.pattern.codeHash || '')
+      sorted.sort((a, b) => (b.pattern.codeHash || '').localeCompare(a.pattern.codeHash || '')
         || (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
       break;
     default: // HIGHEST_COHERENCY
-      sorted = candidates.sort((a, b) => (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
+      sorted.sort((a, b) => (b.pattern.coherency || 0) - (a.pattern.coherency || 0));
   }
 
   return { remote: sorted[0].remote, pattern: sorted[0].pattern, reason: strategy };
@@ -536,7 +561,8 @@ async function negotiateMulti(oracle, remotes, options = {}) {
             });
             if (submitResult.stored) result.pulled++;
             else result.skipped++;
-          } catch {
+          } catch (e) {
+            if (process.env.ORACLE_DEBUG) console.warn('[negotiation:init] silent failure:', e?.message || e);
             result.skipped++;
           }
         }

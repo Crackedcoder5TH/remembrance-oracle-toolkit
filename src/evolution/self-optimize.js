@@ -27,7 +27,7 @@
  */
 
 const { evolve, autoHeal, needsAutoHeal } = require('./evolution');
-const { computeCoherencyScore } = require('../core/coherency');
+const { computeCoherencyScore } = require('../unified/coherency');
 
 // ─── Configuration ───
 
@@ -66,10 +66,10 @@ function selfImprove(ctx, options = {}) {
   const getPatterns = ctx.getPatterns || (() => ctx.patterns.getAll());
   const updatePattern = ctx.updatePattern || ((id, updates) => ctx.patterns.update(id, updates));
   const emit = ctx.emit || ((event) => { if (typeof ctx._emit === 'function') ctx._emit(event); });
-  const doAutoPromote = ctx.autoPromote || (() => { try { return ctx.autoPromote(); } catch { return { promoted: 0 }; } });
-  const doDeepClean = ctx.deepClean || ((opts) => { try { return ctx.deepClean(opts); } catch { return { removed: 0 }; } });
-  const doRetagAll = ctx.retagAll || ((opts) => { try { return ctx.retagAll(opts); } catch { return { enriched: 0 }; } });
-  const doRecycle = ctx.recycle || ((opts) => { try { return ctx.recycle(opts); } catch { return { healed: 0 }; } });
+  const doAutoPromote = ctx.autoPromote || (() => ({ promoted: 0 }));
+  const doDeepClean = ctx.deepClean || (() => ({ removed: 0 }));
+  const doRetagAll = ctx.retagAll || (() => ({ enriched: 0 }));
+  const doRecycle = ctx.recycle || (() => ({ healed: 0 }));
 
   const config = { ...OPTIMIZE_DEFAULTS, ...options };
   const startTime = Date.now();
@@ -123,13 +123,17 @@ function selfImprove(ctx, options = {}) {
 
         report.totalCoherencyGained += result.improvement;
       } else {
+        const reason = result?.skipped === 'cooldown' ? 'cooldown'
+          : result?.skipped === 'error' ? 'healing failed'
+          : 'no improvement';
         report.healFailed.push({
           id: pattern.id,
           name: pattern.name,
-          reason: result ? 'no improvement' : 'healing failed',
+          reason,
         });
       }
-    } catch {
+    } catch (e) {
+      if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
       report.healFailed.push({
         id: pattern.id,
         name: pattern.name,
@@ -142,15 +146,17 @@ function selfImprove(ctx, options = {}) {
   try {
     const promotion = doAutoPromote();
     report.promoted = promotion?.promoted || 0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
     // Best effort
   }
 
-  // Step 3: Deep clean (remove duplicates, stubs)
+  // Step 3: Deep clean (remove duplicates, stubs) — capped to prevent mass deletion
   try {
-    const cleanResult = doDeepClean({ dryRun: false });
+    const cleanResult = doDeepClean({ dryRun: false, maxRemovals: 20 });
     report.cleaned = cleanResult?.removed || 0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
     // Best effort
   }
 
@@ -158,7 +164,8 @@ function selfImprove(ctx, options = {}) {
   try {
     const retagResult = doRetagAll({ minAdded: 1 });
     report.retagged = retagResult?.enriched || 0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
     // Best effort
   }
 
@@ -166,7 +173,8 @@ function selfImprove(ctx, options = {}) {
   try {
     const recycleResult = doRecycle({ maxAttempts: 5 });
     report.recovered = recycleResult?.healed || 0;
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
     // Best effort
   }
 
@@ -286,7 +294,8 @@ function selfOptimize(ctx, options = {}) {
           updatePattern(p.id, { coherencyScore: newScore });
           refreshed++;
         }
-      } catch {
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] silent failure:', e?.message || e);
         // Skip
       }
     }
@@ -337,7 +346,8 @@ function fullCycle(ctx, options = {}) {
   let evolutionReport = null;
   try {
     evolutionReport = evolve(ctx, options);
-  } catch {
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:fullCycle] recording error:', e?.message || e);
     evolutionReport = { error: 'evolution failed' };
   }
 
@@ -620,8 +630,12 @@ function consolidateDuplicates(ctx, options = {}) {
     const loser = keeper === existing ? duplicate : existing;
 
     if (isLangVariant) {
+      // SAFETY: Never delete language variants — they are valuable typed/ported code.
+      // Instead, cross-link them via tags so they can be discovered together.
       const variantTag = `has-${loser.language}-variant`;
       const keeperTags = new Set(keeper.tags || []);
+      const loserTag = `has-${keeper.language}-variant`;
+      const loserTags = new Set(loser.tags || []);
 
       if (!keeperTags.has(variantTag)) {
         keeperTags.add(variantTag);
@@ -629,30 +643,38 @@ function consolidateDuplicates(ctx, options = {}) {
           updatePattern(keeper.id, { tags: [...keeperTags] });
         }
       }
-
-      if (!dryRun) {
-        deletePattern(loser.id);
+      if (!loserTags.has(loserTag)) {
+        loserTags.add(loserTag);
+        if (!dryRun) {
+          updatePattern(loser.id, { tags: [...loserTags] });
+        }
       }
 
+      // SAFETY: Do NOT delete — language variants are cross-linked, not removed.
       report.linked.push({
         kept: { id: keeper.id, name: keeper.name, language: keeper.language, coherency: existingCoherency >= duplicateCoherency ? existingCoherency : duplicateCoherency },
-        removed: { id: loser.id, name: loser.name, language: loser.language, coherency: existingCoherency >= duplicateCoherency ? duplicateCoherency : existingCoherency },
+        linked: { id: loser.id, name: loser.name, language: loser.language, coherency: existingCoherency >= duplicateCoherency ? duplicateCoherency : existingCoherency },
         similarity: Math.round(similarity * 1000) / 1000,
         variantTag,
       });
     } else {
-      if (!dryRun) {
-        deletePattern(loser.id);
+      // Same-language exact duplicates: only delete if similarity is extremely high (>= 0.98)
+      // and the loser has low coherency. Never delete patterns with coherency >= 0.7.
+      const loserCoherency = loser.coherencyScore?.total ?? 0;
+      if (similarity >= 0.98 && loserCoherency <= 0.7) {
+        if (!dryRun) {
+          deletePattern(loser.id);
+        }
+        report.removed.push({ id: loser.id, name: loser.name, reason: 'same-language-duplicate' });
       }
 
       report.merged.push({
         kept: { id: keeper.id, name: keeper.name, coherency: Math.max(existingCoherency, duplicateCoherency) },
         removed: { id: loser.id, name: loser.name, coherency: Math.min(existingCoherency, duplicateCoherency) },
         similarity: Math.round(similarity * 1000) / 1000,
+        deleted: similarity >= 0.98 && loserCoherency <= 0.7,
       });
     }
-
-    report.removed.push({ id: loser.id, name: loser.name, reason: isLangVariant ? 'language-variant' : 'same-language-duplicate' });
   }
 
   report.durationMs = Date.now() - startTime;
@@ -707,6 +729,66 @@ function consolidateTags(ctx, options = {}) {
     'needs-test', 'needs-review',
   ]);
 
+  // Synonym groups — first entry is the canonical form
+  const SYNONYM_GROUPS = [
+    ['array', 'arrays', 'list', 'lists'],
+    ['string', 'strings', 'text', 'str'],
+    ['object', 'objects', 'obj', 'dict', 'dictionary'],
+    ['function', 'functions', 'func', 'fn'],
+    ['number', 'numbers', 'numeric', 'num', 'integer', 'int'],
+    ['boolean', 'booleans', 'bool'],
+    ['error-handling', 'error', 'errors', 'error-handler'],
+    ['validation', 'validate', 'validator', 'validators'],
+    ['async', 'asynchronous', 'async-await', 'promise', 'promises'],
+    ['utility', 'util', 'utils', 'utilities', 'helper', 'helpers'],
+    ['testing', 'test', 'tests', 'test-utils'],
+    ['security', 'secure', 'sanitize', 'sanitization'],
+    ['crypto', 'cryptography', 'encryption', 'hash', 'hashing'],
+    ['math', 'maths', 'mathematics', 'arithmetic'],
+    ['sorting', 'sort', 'sorted'],
+    ['searching', 'search', 'find', 'lookup'],
+    ['formatting', 'format', 'formatter'],
+    ['parsing', 'parse', 'parser'],
+    ['logging', 'log', 'logger'],
+    ['caching', 'cache', 'memoize', 'memoization'],
+    ['concurrency', 'concurrent', 'parallel', 'threading'],
+    ['iteration', 'iterate', 'iterator', 'loop', 'loops'],
+    ['mapping', 'map', 'transform', 'transformation'],
+    ['filtering', 'filter', 'predicate'],
+    ['reducer', 'reduce', 'fold', 'accumulate'],
+    ['debounce', 'debouncing', 'throttle', 'throttling', 'rate-limit', 'rate-limiting'],
+    ['date', 'dates', 'time', 'datetime', 'timestamp'],
+    ['http', 'request', 'fetch', 'api-call'],
+    ['dom', 'html', 'browser', 'web'],
+    ['file-io', 'file', 'files', 'filesystem', 'fs'],
+    ['database', 'db', 'sql', 'sqlite', 'storage'],
+    ['config', 'configuration', 'settings', 'options'],
+    ['middleware', 'interceptor'],
+    ['encoding', 'encode', 'decode', 'decoding'],
+    ['compression', 'compress', 'decompress'],
+    ['serialization', 'serialize', 'deserialize', 'json'],
+    ['cloning', 'clone', 'copy', 'deep-copy', 'deep-clone'],
+    ['comparison', 'compare', 'diff', 'equal', 'equality'],
+    ['conversion', 'convert', 'converter', 'cast', 'coerce'],
+    ['truncation', 'truncate', 'trim', 'trimming'],
+    ['splitting', 'split', 'chunk', 'chunking', 'partition'],
+    ['merging', 'merge', 'combine', 'concat', 'concatenate'],
+    ['flattening', 'flatten', 'flat'],
+    ['deduplication', 'deduplicate', 'dedupe', 'dedup', 'unique', 'distinct'],
+    ['grouping', 'group', 'group-by', 'groupby', 'categorize'],
+    ['pattern', 'patterns', 'design-pattern'],
+    ['type-check', 'type-checking', 'type-guard', 'typeguard'],
+    ['null-check', 'null-safe', 'nullable', 'optional'],
+  ];
+
+  const synonymMap = new Map();
+  for (const group of SYNONYM_GROUPS) {
+    const canonical = group[0];
+    for (const synonym of group) {
+      synonymMap.set(synonym.toLowerCase(), canonical);
+    }
+  }
+
   const tagCounts = new Map();
   for (const p of patterns) {
     for (const tag of (p.tags || [])) {
@@ -729,23 +811,51 @@ function consolidateTags(ctx, options = {}) {
     patternsAnalyzed: patterns.length,
     totalTagsBefore: tagCounts.size,
     tagsRemoved: [],
+    synonymsMerged: [],
     patternsUpdated: 0,
     noiseTagsStripped: 0,
     orphanTagsRemoved: 0,
+    synonymsNormalized: 0,
     dryRun,
     durationMs: 0,
   };
 
+  // Track synonym merges for reporting
+  const synonymMerges = new Map(); // old tag → canonical
+
   for (const p of patterns) {
     const oldTags = p.tags || [];
-    const newTags = oldTags.filter(t => !tagsToRemove.has(t));
 
-    if (newTags.length < oldTags.length) {
+    // Step 1: normalize synonyms
+    const normalizedTags = oldTags.map(t => {
+      const canonical = synonymMap.get(t.toLowerCase());
+      if (canonical && canonical !== t) {
+        if (!synonymMerges.has(t)) synonymMerges.set(t, canonical);
+        return canonical;
+      }
+      return t;
+    });
+
+    // Step 2: deduplicate (synonym normalization may create dupes)
+    const uniqueTags = [...new Set(normalizedTags)];
+
+    // Step 3: remove noise/orphan tags
+    const newTags = uniqueTags.filter(t => !tagsToRemove.has(t));
+
+    const changed = newTags.length !== oldTags.length ||
+      newTags.some((t, i) => t !== oldTags[i]);
+
+    if (changed) {
       if (!dryRun) {
         updatePattern(p.id, { tags: newTags });
       }
       report.patternsUpdated++;
     }
+  }
+
+  report.synonymsNormalized = synonymMerges.size;
+  for (const [oldTag, canonical] of synonymMerges) {
+    report.synonymsMerged.push({ from: oldTag, to: canonical });
   }
 
   for (const tag of tagsToRemove) {
@@ -839,7 +949,9 @@ function pruneStuckCandidates(ctx, options = {}) {
           } else if (sqliteStore && typeof sqliteStore.deleteCandidate === 'function') {
             sqliteStore.deleteCandidate(p.id);
           }
-        } catch { /* best effort */ }
+        } catch (e) {
+          if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:init] best effort:', e?.message || e);
+        }
       }
     }
   }
@@ -1060,7 +1172,7 @@ function iterativePolish(ctx, options = {}) {
     durationMs: totalDurationMs,
   });
 
-  return {
+  const __retVal = {
     timestamp: new Date().toISOString(),
     phase: 'iterative-polish',
     converged,
@@ -1079,6 +1191,19 @@ function iterativePolish(ctx, options = {}) {
     whisper: whisperLines.join('\n'),
     durationMs: totalDurationMs,
   };
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_p1 = './../../core/field-coupling';
+    const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+    for (const __p of [__lre_p1, __lre_p2]) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:self-optimize:iterativePolish' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 /**
@@ -1088,9 +1213,51 @@ function _deletePatternFallback(oracle, id) {
   try {
     const db = oracle.patterns?._sqlite?.db || oracle.store?.db;
     if (db) {
+      // Archive before delete for recovery safety
+      const row = db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
+      if (!row) return; // Nothing to delete
+      // SAFETY: Refuse to delete high-coherency patterns or those with tests
+      const coherency = row.coherency_total || 0;
+      if (coherency >= 0.7) {
+        if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] BLOCKED deletion of high-coherency pattern ${id} (${coherency})`);
+        return;
+      }
+      if (row.test_code && row.test_code.trim().length > 20) {
+        if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] BLOCKED deletion of tested pattern ${id}`);
+        return;
+      }
+      const now = new Date().toISOString();
+      try {
+        const archiveResult = db.prepare(`
+          INSERT OR IGNORE INTO pattern_archive
+            (id, name, code, language, pattern_type, coherency_total, coherency_json,
+             test_code, tags, deleted_reason, deleted_at, original_created_at, full_row_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          row.id, row.name, row.code, row.language || 'unknown',
+          row.pattern_type || 'utility', row.coherency_total || 0,
+          row.coherency_json || '{}', row.test_code || null,
+          row.tags || '[]', 'evolution-delete', now, row.created_at || null,
+          JSON.stringify(row)
+        );
+        // Verify archive succeeded before deleting
+        if (archiveResult.changes === 0) {
+          const exists = db.prepare('SELECT 1 FROM pattern_archive WHERE id = ?').get(row.id);
+          if (!exists) {
+            if (process.env.ORACLE_DEBUG) console.warn(`[self-optimize:_deletePatternFallback] ABORT — archive failed for ${id}`);
+            return;
+          }
+        }
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:_deletePatternFallback] archive table may not exist in all stores:', e?.message || e);
+        // Archive failed — abort deletion to prevent data loss
+        return;
+      }
       db.prepare('DELETE FROM patterns WHERE id = ?').run(id);
     }
-  } catch { /* skip if delete not supported */ }
+  } catch (e) {
+    if (process.env.ORACLE_DEBUG) console.warn('[self-optimize:_deletePatternFallback] skip if delete not supported:', e?.message || e);
+  }
 }
 
 module.exports = {

@@ -18,13 +18,26 @@
  */
 function synthesizeWhisper(consensus, agentOutputs, task) {
   if (!consensus.winner) {
-    return {
+    const __retVal = {
       message: 'The swarm could not reach consensus. No agent produced valid code for this task.',
       dimensions: {},
       agreement: 0,
       dissent: [],
       recommendation: 'GENERATE',
     };
+    // ── LRE field-coupling (auto-wired) ──
+    try {
+      const __lre_p1 = './../../core/field-coupling';
+      const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+      for (const __p of [__lre_p1, __lre_p2]) {
+        try {
+          const { contribute: __contribute } = require(__p);
+          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.agreement || 0)), source: 'oracle:whisper-synthesis:synthesizeWhisper' });
+          break;
+        } catch (_) { /* try next */ }
+      }
+    } catch (_) { /* best-effort */ }
+    return __retVal;
   }
 
   const { winner, rankings, agreement, dissent } = consensus;
@@ -89,8 +102,8 @@ function buildNarrative(winner, rankings, agreement, dissent, task) {
   // Score breakdown
   lines.push('');
   lines.push('Score breakdown:');
-  const b = winner.breakdown;
-  lines.push(`  Coherency: ${b.coherency.toFixed(3)} | Self-confidence: ${b.selfConfidence.toFixed(3)} | Peer score: ${b.peerScore.toFixed(3)}`);
+  const b = winner.breakdown || {};
+  lines.push(`  Coherency: ${(b.coherency || 0).toFixed(3)} | Self-confidence: ${(b.selfConfidence || 0).toFixed(3)} | Peer score: ${(b.peerScore || 0).toFixed(3)}`);
 
   // Ranking summary
   if (rankings.length > 1) {
@@ -108,7 +121,7 @@ function buildNarrative(winner, rankings, agreement, dissent, task) {
     lines.push('');
     lines.push('Dissenting voices:');
     for (const d of dissent.slice(0, 3)) {
-      lines.push(`  ${d.agent} (${d.totalScore.toFixed(3)}): ${truncate(d.reasoning, 80)}`);
+      lines.push(`  ${d.agent} (${(d.totalScore || 0).toFixed(3)}): ${truncate(d.reasoning, 80)}`);
     }
   }
 

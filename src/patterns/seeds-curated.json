@@ -1,0 +1,272 @@
+[
+  {
+    "name": "debounce",
+    "code": "function debounce(fn, ms) {\n  let timer;\n  return function(...args) {\n    clearTimeout(timer);\n    timer = setTimeout(() => fn.apply(this, args), ms);\n  };\n}",
+    "testCode": "let count = 0;\nconst fn = debounce(() => count++, 50);\nfn(); fn(); fn();\nawait new Promise(r => setTimeout(r, 100));\nif (count !== 1) throw new Error('should fire once: ' + count);",
+    "language": "javascript",
+    "description": "Debounce — delay execution until calls stop for ms",
+    "tags": ["timing", "rate-limit", "debounce", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "throttle",
+    "code": "function throttle(fn, ms) {\n  let last = 0;\n  return function(...args) {\n    const now = Date.now();\n    if (now - last >= ms) {\n      last = now;\n      return fn.apply(this, args);\n    }\n  };\n}",
+    "testCode": "let count = 0;\nconst fn = throttle(() => count++, 50);\nfn(); fn(); fn();\nif (count !== 1) throw new Error('should fire once immediately: ' + count);",
+    "language": "javascript",
+    "description": "Throttle — limit function calls to once per ms",
+    "tags": ["timing", "rate-limit", "throttle", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "deep-clone",
+    "code": "function deepClone(obj) {\n  if (obj === null || typeof obj !== 'object') return obj;\n  if (obj instanceof Date) return new Date(obj.getTime());\n  if (obj instanceof RegExp) return new RegExp(obj.source, obj.flags);\n  if (Array.isArray(obj)) return obj.map(deepClone);\n  const clone = {};\n  for (const key of Object.keys(obj)) {\n    clone[key] = deepClone(obj[key]);\n  }\n  return clone;\n}",
+    "testCode": "const orig = { a: 1, b: { c: [1,2,3], d: new Date() } };\nconst clone = deepClone(orig);\nif (clone === orig) throw new Error('same ref');\nif (clone.b === orig.b) throw new Error('shallow');\nclone.b.c.push(4);\nif (orig.b.c.length !== 3) throw new Error('mutated original');",
+    "language": "javascript",
+    "description": "Deep clone — recursively copy objects, arrays, dates, regexps",
+    "tags": ["clone", "deep-copy", "utility", "immutable"],
+    "patternType": "utility"
+  },
+  {
+    "name": "retry-with-backoff",
+    "code": "async function retry(fn, { maxAttempts = 3, baseDelay = 1000, factor = 2 } = {}) {\n  let lastError;\n  for (let attempt = 0; attempt < maxAttempts; attempt++) {\n    try {\n      return await fn(attempt);\n    } catch (err) {\n      lastError = err;\n      if (attempt < maxAttempts - 1) {\n        await new Promise(r => setTimeout(r, baseDelay * Math.pow(factor, attempt)));\n      }\n    }\n  }\n  throw lastError;\n}",
+    "testCode": "let attempts = 0;\nconst result = await retry(async (n) => {\n  attempts++;\n  if (n < 2) throw new Error('not yet');\n  return 'ok';\n}, { maxAttempts: 3, baseDelay: 10 });\nif (result !== 'ok') throw new Error('wrong result');\nif (attempts !== 3) throw new Error('wrong attempts: ' + attempts);",
+    "language": "javascript",
+    "description": "Retry with exponential backoff for transient failures",
+    "tags": ["async", "retry", "backoff", "error-handling", "resilience"],
+    "patternType": "utility"
+  },
+  {
+    "name": "group-by",
+    "code": "function groupBy(arr, keyFn) {\n  const groups = {};\n  for (const item of arr) {\n    const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];\n    (groups[key] = groups[key] || []).push(item);\n  }\n  return groups;\n}",
+    "testCode": "const r = groupBy([{a:1,b:'x'},{a:2,b:'x'},{a:3,b:'y'}], 'b');\nif (r.x.length !== 2) throw new Error('x group');\nif (r.y.length !== 1) throw new Error('y group');\nconst r2 = groupBy([1,2,3,4,5], n => n % 2 === 0 ? 'even' : 'odd');\nif (r2.even.length !== 2) throw new Error('even');",
+    "language": "javascript",
+    "description": "Group array items by key or key function",
+    "tags": ["array", "group", "transform", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "chunk-array",
+    "code": "function chunk(arr, size) {\n  if (size < 1) throw new Error('chunk size must be >= 1');\n  const result = [];\n  for (let i = 0; i < arr.length; i += size) {\n    result.push(arr.slice(i, i + size));\n  }\n  return result;\n}",
+    "testCode": "const r = chunk([1,2,3,4,5], 2);\nif (r.length !== 3) throw new Error('count: ' + r.length);\nif (r[2].length !== 1) throw new Error('last chunk');\nif (chunk([], 3).length !== 0) throw new Error('empty');",
+    "language": "javascript",
+    "description": "Split array into chunks of specified size",
+    "tags": ["array", "chunk", "batch", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "flatten-deep",
+    "code": "function flattenDeep(arr) {\n  const result = [];\n  const stack = [...arr];\n  while (stack.length > 0) {\n    const item = stack.pop();\n    if (Array.isArray(item)) {\n      stack.push(...item);\n    } else {\n      result.unshift(item);\n    }\n  }\n  return result;\n}",
+    "testCode": "const r = flattenDeep([1, [2, [3, [4]], 5]]);\nif (JSON.stringify(r) !== '[1,2,3,4,5]') throw new Error('flat: ' + JSON.stringify(r));\nif (flattenDeep([]).length !== 0) throw new Error('empty');",
+    "language": "javascript",
+    "description": "Recursively flatten nested arrays (iterative, no stack overflow)",
+    "tags": ["array", "flatten", "deep", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "pipe",
+    "code": "function pipe(...fns) {\n  return (x) => fns.reduce((v, fn) => fn(v), x);\n}",
+    "testCode": "const double = x => x * 2;\nconst inc = x => x + 1;\nconst transform = pipe(double, inc);\nif (transform(3) !== 7) throw new Error('pipe(3) should be 7');\nif (pipe()(5) !== 5) throw new Error('empty pipe');",
+    "language": "javascript",
+    "description": "Function composition — pipe values through a chain of functions",
+    "tags": ["functional", "compose", "pipe", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "memoize",
+    "code": "function memoize(fn, keyFn) {\n  const cache = new Map();\n  return function(...args) {\n    const key = keyFn ? keyFn(...args) : JSON.stringify(args);\n    if (cache.has(key)) return cache.get(key);\n    const result = fn.apply(this, args);\n    cache.set(key, result);\n    return result;\n  };\n}",
+    "testCode": "let calls = 0;\nconst expensive = memoize((n) => { calls++; return n * 2; });\nif (expensive(5) !== 10) throw new Error('first call');\nif (expensive(5) !== 10) throw new Error('cached call');\nif (calls !== 1) throw new Error('should cache: ' + calls);",
+    "language": "javascript",
+    "description": "Memoize — cache function results by arguments",
+    "tags": ["cache", "memoize", "performance", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "event-emitter",
+    "code": "class EventEmitter {\n  constructor() { this._events = {}; }\n  on(event, fn) {\n    (this._events[event] = this._events[event] || []).push(fn);\n    return this;\n  }\n  off(event, fn) {\n    const list = this._events[event];\n    if (list) this._events[event] = list.filter(f => f !== fn);\n    return this;\n  }\n  emit(event, ...args) {\n    for (const fn of (this._events[event] || [])) fn(...args);\n  }\n  once(event, fn) {\n    const wrapper = (...args) => { this.off(event, wrapper); fn(...args); };\n    return this.on(event, wrapper);\n  }\n}",
+    "testCode": "const ee = new EventEmitter();\nlet count = 0;\nee.on('test', () => count++);\nee.emit('test'); ee.emit('test');\nif (count !== 2) throw new Error('on: ' + count);\nlet once = 0;\nee.once('x', () => once++);\nee.emit('x'); ee.emit('x');\nif (once !== 1) throw new Error('once: ' + once);",
+    "language": "javascript",
+    "description": "Minimal event emitter — on, off, emit, once",
+    "tags": ["events", "pubsub", "observer", "pattern"],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "lru-cache",
+    "code": "class LRUCache {\n  constructor(capacity) {\n    this._capacity = capacity;\n    this._cache = new Map();\n  }\n  get(key) {\n    if (!this._cache.has(key)) return undefined;\n    const value = this._cache.get(key);\n    this._cache.delete(key);\n    this._cache.set(key, value);\n    return value;\n  }\n  set(key, value) {\n    if (this._cache.has(key)) this._cache.delete(key);\n    else if (this._cache.size >= this._capacity) {\n      this._cache.delete(this._cache.keys().next().value);\n    }\n    this._cache.set(key, value);\n  }\n  get size() { return this._cache.size; }\n}",
+    "testCode": "const cache = new LRUCache(2);\ncache.set('a', 1); cache.set('b', 2);\nif (cache.get('a') !== 1) throw new Error('get a');\ncache.set('c', 3);\nif (cache.get('b') !== undefined) throw new Error('b should be evicted');\nif (cache.get('c') !== 3) throw new Error('get c');",
+    "language": "javascript",
+    "description": "LRU cache with O(1) get/set using Map ordering",
+    "tags": ["cache", "lru", "data-structure", "performance"],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "promise-pool",
+    "code": "async function promisePool(tasks, concurrency) {\n  const results = [];\n  const executing = new Set();\n  for (const [i, task] of tasks.entries()) {\n    const p = Promise.resolve().then(() => task()).then(r => { results[i] = r; });\n    executing.add(p);\n    p.finally(() => executing.delete(p));\n    if (executing.size >= concurrency) {\n      await Promise.race(executing);\n    }\n  }\n  await Promise.all(executing);\n  return results;\n}",
+    "testCode": "let max = 0, current = 0;\nconst tasks = Array.from({length: 6}, (_, i) => () => new Promise(r => {\n  current++; max = Math.max(max, current);\n  setTimeout(() => { current--; r(i); }, 10);\n}));\nconst results = await promisePool(tasks, 2);\nif (max > 2) throw new Error('exceeded concurrency: ' + max);\nif (results.length !== 6) throw new Error('wrong count');",
+    "language": "javascript",
+    "description": "Run async tasks with limited concurrency",
+    "tags": ["async", "concurrency", "pool", "promise"],
+    "patternType": "concurrency"
+  },
+  {
+    "name": "safe-json-parse",
+    "code": "function safeJsonParse(str, fallback = null) {\n  try {\n    return JSON.parse(str);\n  } catch {\n    return fallback;\n  }\n}",
+    "testCode": "if (safeJsonParse('{\"a\":1}').a !== 1) throw new Error('valid json');\nif (safeJsonParse('not json') !== null) throw new Error('invalid should return null');\nif (safeJsonParse('bad', 42) !== 42) throw new Error('custom fallback');",
+    "language": "javascript",
+    "description": "Parse JSON safely with fallback on error",
+    "tags": ["json", "parse", "safe", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "unique-by",
+    "code": "function uniqueBy(arr, keyFn) {\n  const seen = new Set();\n  return arr.filter(item => {\n    const key = typeof keyFn === 'function' ? keyFn(item) : item[keyFn];\n    if (seen.has(key)) return false;\n    seen.add(key);\n    return true;\n  });\n}",
+    "testCode": "const r = uniqueBy([{id:1,n:'a'},{id:2,n:'b'},{id:1,n:'c'}], 'id');\nif (r.length !== 2) throw new Error('count: ' + r.length);\nconst r2 = uniqueBy([1,2,2,3,3,3], x => x);\nif (r2.length !== 3) throw new Error('primitives');",
+    "language": "javascript",
+    "description": "Deduplicate array by key or key function",
+    "tags": ["array", "unique", "deduplicate", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "sleep",
+    "code": "function sleep(ms) {\n  return new Promise(resolve => setTimeout(resolve, ms));\n}",
+    "testCode": "const start = Date.now();\nawait sleep(50);\nconst elapsed = Date.now() - start;\nif (elapsed < 40) throw new Error('too fast: ' + elapsed);",
+    "language": "javascript",
+    "description": "Promise-based sleep/delay",
+    "tags": ["async", "sleep", "delay", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "clamp",
+    "code": "function clamp(value, min, max) {\n  return Math.min(Math.max(value, min), max);\n}",
+    "testCode": "if (clamp(5, 0, 10) !== 5) throw new Error('in range');\nif (clamp(-1, 0, 10) !== 0) throw new Error('below min');\nif (clamp(15, 0, 10) !== 10) throw new Error('above max');",
+    "language": "javascript",
+    "description": "Clamp a number to a min/max range",
+    "tags": ["math", "clamp", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "omit-keys",
+    "code": "function omit(obj, keys) {\n  const result = {};\n  const exclude = new Set(keys);\n  for (const key of Object.keys(obj)) {\n    if (!exclude.has(key)) result[key] = obj[key];\n  }\n  return result;\n}",
+    "testCode": "const r = omit({a:1,b:2,c:3}, ['b','c']);\nif (r.a !== 1) throw new Error('keep a');\nif ('b' in r) throw new Error('should omit b');\nif (Object.keys(omit({}, ['x'])).length !== 0) throw new Error('empty');",
+    "language": "javascript",
+    "description": "Create object with specified keys omitted",
+    "tags": ["object", "omit", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "pick-keys",
+    "code": "function pick(obj, keys) {\n  const result = {};\n  for (const key of keys) {\n    if (key in obj) result[key] = obj[key];\n  }\n  return result;\n}",
+    "testCode": "const r = pick({a:1,b:2,c:3}, ['a','c']);\nif (r.a !== 1 || r.c !== 3) throw new Error('pick');\nif ('b' in r) throw new Error('should not include b');\nif (Object.keys(pick({}, ['x'])).length !== 0) throw new Error('empty');",
+    "language": "javascript",
+    "description": "Create object with only specified keys",
+    "tags": ["object", "pick", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "is-plain-object",
+    "code": "function isPlainObject(value) {\n  if (value === null || typeof value !== 'object') return false;\n  const proto = Object.getPrototypeOf(value);\n  return proto === Object.prototype || proto === null;\n}",
+    "testCode": "if (!isPlainObject({})) throw new Error('empty obj');\nif (!isPlainObject({a:1})) throw new Error('simple obj');\nif (isPlainObject([])) throw new Error('array');\nif (isPlainObject(null)) throw new Error('null');\nif (isPlainObject(new Date())) throw new Error('date');",
+    "language": "javascript",
+    "description": "Check if value is a plain object (not array, date, etc.)",
+    "tags": ["type-check", "object", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "once-fn",
+    "code": "function once(fn) {\n  let called = false, result;\n  return function(...args) {\n    if (called) return result;\n    called = true;\n    result = fn.apply(this, args);\n    return result;\n  };\n}",
+    "testCode": "let count = 0;\nconst fn = once(() => ++count);\nif (fn() !== 1) throw new Error('first call');\nif (fn() !== 1) throw new Error('second call should return cached');\nif (count !== 1) throw new Error('called twice');",
+    "language": "javascript",
+    "description": "Wrap function to execute only once, cache result",
+    "tags": ["function", "once", "cache", "utility"],
+    "patternType": "utility"
+  },
+  {
+    "name": "py-retry-decorator",
+    "code": "import time\nimport functools\n\ndef retry(max_attempts=3, base_delay=1.0, factor=2.0):\n    def decorator(fn):\n        @functools.wraps(fn)\n        def wrapper(*args, **kwargs):\n            last_error = None\n            for attempt in range(max_attempts):\n                try:\n                    return fn(*args, **kwargs)\n                except Exception as e:\n                    last_error = e\n                    if attempt < max_attempts - 1:\n                        time.sleep(base_delay * (factor ** attempt))\n            raise last_error\n        return wrapper\n    return decorator",
+    "testCode": "attempts = 0\n@retry(max_attempts=3, base_delay=0.01)\ndef flaky():\n    global attempts\n    attempts += 1\n    if attempts < 3:\n        raise ValueError('not yet')\n    return 'ok'\nassert flaky() == 'ok'\nassert attempts == 3",
+    "language": "python",
+    "description": "Python retry decorator with exponential backoff",
+    "tags": ["retry", "decorator", "error-handling", "python"],
+    "patternType": "utility"
+  },
+  {
+    "name": "py-lru-cache",
+    "code": "from collections import OrderedDict\n\nclass LRUCache:\n    def __init__(self, capacity: int):\n        self._capacity = capacity\n        self._cache = OrderedDict()\n\n    def get(self, key):\n        if key not in self._cache:\n            return None\n        self._cache.move_to_end(key)\n        return self._cache[key]\n\n    def put(self, key, value):\n        if key in self._cache:\n            self._cache.move_to_end(key)\n        self._cache[key] = value\n        if len(self._cache) > self._capacity:\n            self._cache.popitem(last=False)\n\n    def __len__(self):\n        return len(self._cache)",
+    "testCode": "cache = LRUCache(2)\ncache.put('a', 1)\ncache.put('b', 2)\nassert cache.get('a') == 1\ncache.put('c', 3)\nassert cache.get('b') is None\nassert cache.get('c') == 3\nassert len(cache) == 2",
+    "language": "python",
+    "description": "Python LRU cache using OrderedDict",
+    "tags": ["cache", "lru", "data-structure", "python"],
+    "patternType": "data-structure"
+  },
+  {
+    "name": "py-group-by",
+    "code": "from collections import defaultdict\nfrom typing import Callable, TypeVar, List, Dict\n\nT = TypeVar('T')\n\ndef group_by(items: List[T], key_fn: Callable[[T], str]) -> Dict[str, List[T]]:\n    groups = defaultdict(list)\n    for item in items:\n        groups[key_fn(item)].append(item)\n    return dict(groups)",
+    "testCode": "result = group_by([1, 2, 3, 4, 5], lambda x: 'even' if x % 2 == 0 else 'odd')\nassert len(result['even']) == 2\nassert len(result['odd']) == 3\nassert group_by([], lambda x: x) == {}",
+    "language": "python",
+    "description": "Group list items by key function",
+    "tags": ["collection", "group", "transform", "python"],
+    "patternType": "utility"
+  },
+  {
+    "name": "py-deep-merge",
+    "code": "def deep_merge(base: dict, override: dict) -> dict:\n    result = base.copy()\n    for key, value in override.items():\n        if key in result and isinstance(result[key], dict) and isinstance(value, dict):\n            result[key] = deep_merge(result[key], value)\n        else:\n            result[key] = value\n    return result",
+    "testCode": "a = {'x': 1, 'nested': {'a': 1, 'b': 2}}\nb = {'y': 2, 'nested': {'b': 3, 'c': 4}}\nr = deep_merge(a, b)\nassert r['x'] == 1\nassert r['y'] == 2\nassert r['nested'] == {'a': 1, 'b': 3, 'c': 4}\nassert a['nested']['b'] == 2  # original unchanged",
+    "language": "python",
+    "description": "Deep merge two dictionaries recursively",
+    "tags": ["dict", "merge", "deep", "python"],
+    "patternType": "utility"
+  },
+  {
+    "name": "go-retry",
+    "code": "package utils\n\nimport (\n\t\"fmt\"\n\t\"time\"\n)\n\nfunc Retry(maxAttempts int, baseDelay time.Duration, fn func() error) error {\n\tvar lastErr error\n\tfor i := 0; i < maxAttempts; i++ {\n\t\tif err := fn(); err != nil {\n\t\t\tlastErr = err\n\t\t\tif i < maxAttempts-1 {\n\t\t\t\ttime.Sleep(baseDelay * time.Duration(1<<uint(i)))\n\t\t\t}\n\t\t\tcontinue\n\t\t}\n\t\treturn nil\n\t}\n\treturn fmt.Errorf(\"failed after %d attempts: %w\", maxAttempts, lastErr)\n}",
+    "testCode": "attempts := 0\nerr := Retry(3, time.Millisecond, func() error {\n\tattempts++\n\tif attempts < 3 { return fmt.Errorf(\"not yet\") }\n\treturn nil\n})\nif err != nil { t.Fatal(err) }\nif attempts != 3 { t.Fatalf(\"expected 3 attempts, got %d\", attempts) }",
+    "language": "go",
+    "description": "Go retry with exponential backoff",
+    "tags": ["retry", "error-handling", "go", "resilience"],
+    "patternType": "utility"
+  },
+  {
+    "name": "go-worker-pool",
+    "code": "package utils\n\nimport \"sync\"\n\nfunc WorkerPool(numWorkers int, tasks []func()) {\n\tch := make(chan func(), len(tasks))\n\tvar wg sync.WaitGroup\n\n\tfor i := 0; i < numWorkers; i++ {\n\t\twg.Add(1)\n\t\tgo func() {\n\t\t\tdefer wg.Done()\n\t\t\tfor task := range ch {\n\t\t\t\ttask()\n\t\t\t}\n\t\t}()\n\t}\n\n\tfor _, task := range tasks {\n\t\tch <- task\n\t}\n\tclose(ch)\n\twg.Wait()\n}",
+    "testCode": "var mu sync.Mutex\ncount := 0\ntasks := make([]func(), 10)\nfor i := range tasks {\n\ttasks[i] = func() { mu.Lock(); count++; mu.Unlock() }\n}\nWorkerPool(3, tasks)\nif count != 10 { t.Fatalf(\"expected 10, got %d\", count) }",
+    "language": "go",
+    "description": "Go worker pool with goroutines and channels",
+    "tags": ["concurrency", "goroutine", "worker-pool", "go"],
+    "patternType": "concurrency"
+  },
+  {
+    "name": "rust-retry",
+    "code": "use std::thread;\nuse std::time::Duration;\n\npub fn retry<F, T, E>(max_attempts: usize, base_delay: Duration, mut f: F) -> Result<T, E>\nwhere\n    F: FnMut() -> Result<T, E>,\n{\n    let mut last_err = None;\n    for attempt in 0..max_attempts {\n        match f() {\n            Ok(val) => return Ok(val),\n            Err(e) => {\n                last_err = Some(e);\n                if attempt < max_attempts - 1 {\n                    thread::sleep(base_delay * 2u32.pow(attempt as u32));\n                }\n            }\n        }\n    }\n    Err(last_err.unwrap())\n}",
+    "testCode": "let mut attempts = 0;\nlet result = retry(3, Duration::from_millis(1), || {\n    attempts += 1;\n    if attempts < 3 { Err(\"not yet\") } else { Ok(\"ok\") }\n});\nassert_eq!(result, Ok(\"ok\"));\nassert_eq!(attempts, 3);",
+    "language": "rust",
+    "description": "Rust retry with exponential backoff using generics",
+    "tags": ["retry", "error-handling", "rust", "generics"],
+    "patternType": "utility"
+  },
+  {
+    "name": "ts-result-type",
+    "code": "type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };\n\nfunction ok<T>(value: T): Result<T, never> {\n  return { ok: true, value };\n}\n\nfunction err<E>(error: E): Result<never, E> {\n  return { ok: false, error };\n}\n\nfunction unwrap<T, E>(result: Result<T, E>): T {\n  if (result.ok) return result.value;\n  throw result.error;\n}",
+    "testCode": "const success = ok(42);\nif (!success.ok || success.value !== 42) throw new Error('ok');\nconst failure = err('oops');\nif (failure.ok) throw new Error('should be err');\nif (unwrap(ok('hi')) !== 'hi') throw new Error('unwrap');\ntry { unwrap(err(new Error('x'))); throw new Error('should throw'); } catch (e) { if (e.message !== 'x') throw e; }",
+    "language": "typescript",
+    "description": "TypeScript Result type — ok/err pattern for error handling without exceptions",
+    "tags": ["typescript", "result", "error-handling", "type-safety"],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "ts-typed-event-emitter",
+    "code": "type EventMap = Record<string, any[]>;\n\nclass TypedEmitter<T extends EventMap> {\n  private handlers: { [K in keyof T]?: Array<(...args: T[K]) => void> } = {};\n\n  on<K extends keyof T>(event: K, handler: (...args: T[K]) => void): void {\n    (this.handlers[event] = this.handlers[event] || []).push(handler);\n  }\n\n  off<K extends keyof T>(event: K, handler: (...args: T[K]) => void): void {\n    const list = this.handlers[event];\n    if (list) this.handlers[event] = list.filter(h => h !== handler) as any;\n  }\n\n  emit<K extends keyof T>(event: K, ...args: T[K]): void {\n    for (const handler of this.handlers[event] || []) handler(...args);\n  }\n}",
+    "testCode": "const ee = new TypedEmitter();\nlet received = '';\nee.on('greet', (name) => { received = name; });\nee.emit('greet', 'world');\nif (received !== 'world') throw new Error('emit: ' + received);",
+    "language": "typescript",
+    "description": "Type-safe event emitter with generic event map",
+    "tags": ["typescript", "events", "type-safety", "generics"],
+    "patternType": "design-pattern"
+  },
+  {
+    "name": "intersection-observer-hook",
+    "code": "function useIntersectionObserver(ref, options = {}) {\n  const [isIntersecting, setIsIntersecting] = React.useState(false);\n  React.useEffect(() => {\n    if (!ref.current) return;\n    const observer = new IntersectionObserver(([entry]) => {\n      setIsIntersecting(entry.isIntersecting);\n    }, options);\n    observer.observe(ref.current);\n    return () => observer.disconnect();\n  }, [ref, options.threshold, options.rootMargin]);\n  return isIntersecting;\n}",
+    "testCode": "// Structural test — verifies the hook shape\nif (typeof useIntersectionObserver !== 'function') throw new Error('not a function');\nif (useIntersectionObserver.length < 1) throw new Error('needs ref arg');",
+    "language": "jsx",
+    "description": "React hook for IntersectionObserver — lazy loading, infinite scroll",
+    "tags": ["react", "hook", "intersection-observer", "lazy-load"],
+    "patternType": "utility"
+  }
+]

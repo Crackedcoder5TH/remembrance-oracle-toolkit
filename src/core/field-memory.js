@@ -33,7 +33,7 @@
  */
 
 const path = require('path');
-const { codeToWaveform, waveformCosine } = require('./code-to-waveform');
+const { codeToWaveform, waveformCosine, digestWaveform } = require('./code-to-waveform');
 
 // Cosine ≥ this ⇒ the shape is already in the library; the compressor
 // drops it. Tuned so same-source/same-coherence-bucket repeats collapse
@@ -116,18 +116,8 @@ function _toWaveform(input) {
 }
 
 
-/** FNV-1a over a waveform's 4-decimal string form — a stable short digest. */
-function _digest(wf) {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < wf.length; i++) {
-    const s = wf[i].toFixed(4);
-    for (let j = 0; j < s.length; j++) {
-      h ^= s.charCodeAt(j);
-      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
-    }
-  }
-  return h.toString(16).padStart(8, '0');
-}
+/** Stable short digest of a waveform — the canonical substrate id op. */
+const _digest = digestWaveform;
 
 /**
  * Record one field observation. Encodes it, runs the similarity gate,
@@ -356,13 +346,18 @@ function within(input, opts = {}) {
 
 /**
  * query — the Library-of-Alexandria call. Encode a question, retrieve
- * the most relevant compressed patterns from the field, optionally
- * filtered to a domain. Searches the full field library (events +
- * snapshots) and returns ranked metadata.
+ * the most relevant compressed patterns, optionally filtered to a
+ * domain.
+ *
+ * scope:
+ *   'field' (default) — only the field's own record (events + snapshots)
+ *   'all'             — every pattern in the unified library that has
+ *                       been encoded into the substrate (run
+ *                       field-ingest first to backfill code patterns).
  *
  * @param {string} text - the query
- * @param {object} [opts] - { k, tag, patternType }
- * @returns {Array<{id, name, patternType, tags, similarity}>}
+ * @param {object} [opts] - { k, tag, patternType, scope }
+ * @returns {Array<{id, name, patternType, tags, language, similarity}>}
  */
 function query(text, opts = {}) {
   const k = opts.k || 10;
@@ -371,9 +366,14 @@ function query(text, opts = {}) {
   const wf = _toWaveform(text);
   if (!wf) return [];
   try {
-    let sql = "SELECT id, name, pattern_type, tags, coherency_json FROM patterns WHERE language = 'field'";
+    const scopeAll = opts.scope === 'all';
+    let sql = 'SELECT id, name, language, pattern_type, tags, coherency_json FROM patterns';
     const params = [];
-    if (opts.patternType) { sql += ' AND pattern_type = ?'; params.push(opts.patternType); }
+    if (!scopeAll) sql += " WHERE language = 'field'";
+    if (opts.patternType) {
+      sql += (scopeAll ? ' WHERE' : ' AND') + ' pattern_type = ?';
+      params.push(opts.patternType);
+    }
     const rows = store.db.prepare(sql).all(...params);
     const ranked = [];
     for (const r of rows) {
@@ -386,6 +386,7 @@ function query(text, opts = {}) {
       ranked.push({
         id: r.id,
         name: r.name,
+        language: r.language,
         patternType: r.pattern_type,
         tags,
         similarity: Math.round(waveformCosine(wf, parsed.waveform) * 10000) / 10000,

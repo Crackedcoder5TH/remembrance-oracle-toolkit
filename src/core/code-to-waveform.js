@@ -74,7 +74,31 @@ function codeToWaveform(code) {
   return wf;
 }
 
-module.exports = { codeToWaveform, waveformCosine, TARGET_LEN };
+module.exports = { codeToWaveform, waveformCosine, digestWaveform, TARGET_LEN };
+
+/**
+ * digestWaveform — a stable short fingerprint of a waveform.
+ *
+ * FNV-1a over the waveform's 4-decimal string form. Deterministic,
+ * dependency-free, 8 hex chars. Not cryptographic — its job is to
+ * give every encoded waveform a stable id for dedup and reference.
+ * The third canonical substrate operation: encode (codeToWaveform),
+ * compare (waveformCosine), identify (digestWaveform).
+ *
+ * @param {ArrayLike<number>} wf
+ * @returns {string} 8-hex-char digest
+ */
+function digestWaveform(wf) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < wf.length; i++) {
+    const s = wf[i].toFixed(4);
+    for (let j = 0; j < s.length; j++) {
+      h ^= s.charCodeAt(j);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+  }
+  return h.toString(16).padStart(8, '0');
+}
 
 /**
  * waveformCosine — canonical cosine similarity between two waveforms.

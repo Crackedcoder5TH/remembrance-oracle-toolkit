@@ -35,7 +35,7 @@ function extractAtomicProperties(code, options = {}) {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.alignment || 0)), source: 'oracle:property-extractor:extractAtomicProperties' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, (__retVal.alignment === 'healing' ? 0.9 : __retVal.alignment === 'harmful' ? 0.1 : 0.5))), source: 'oracle:property-extractor:extractAtomicProperties' });
         break;
       } catch (_) { /* try next */ }
     }

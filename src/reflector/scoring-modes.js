@@ -117,42 +117,44 @@ function resolveConfig(rootDir, options = {}) {
 }
 
 function shouldAutoCreatePR(report, config) {
+  let __retVal;
   if (!report) {
-      const __retVal = { shouldOpenPR: false, reason: 'No report provided.', coherence: 0, threshold: 0.7 };
-    // ── LRE field-coupling (auto-wired) ──
-    try {
-      const __lre_p1 = '../core/field-coupling';
-      const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
-      for (const __p of [__lre_p1, __lre_p2]) {
-        try {
-          const { contribute: __contribute } = require(__p);
-          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:scoring-modes:shouldAutoCreatePR' });
-          break;
-        } catch (_) { /* try next */ }
-      }
-    } catch (_) { /* best-effort */ }
-    return __retVal;
-  }
-  config = config || {};
-  const threshold = config.thresholds?.minCoherenceForAutoPR
-    ?? config.thresholds?.minCoherence
-    ?? 0.7;
-  const coherence = report.coherence?.after
-    ?? report.safety?.coherenceGuard?.postCoherence
-    ?? report.report?.avgImprovement
-    ?? 0;
-  const filesHealed = report.report?.filesHealed
-    ?? report.healing?.filesHealed
-    ?? report.changes?.length
-    ?? 0;
+    __retVal = { shouldOpenPR: false, reason: 'No report provided.', coherence: 0, threshold: 0.7 };
+  } else {
+    config = config || {};
+    const threshold = config.thresholds?.minCoherenceForAutoPR
+      ?? config.thresholds?.minCoherence
+      ?? 0.7;
+    const coherence = report.coherence?.after
+      ?? report.safety?.coherenceGuard?.postCoherence
+      ?? report.report?.avgImprovement
+      ?? 0;
+    const filesHealed = report.report?.filesHealed
+      ?? report.healing?.filesHealed
+      ?? report.changes?.length
+      ?? 0;
 
-  if (filesHealed === 0) {
-    return { shouldOpenPR: false, reason: 'No files were healed — nothing to PR.', coherence, threshold };
+    if (filesHealed === 0) {
+      __retVal = { shouldOpenPR: false, reason: 'No files were healed — nothing to PR.', coherence, threshold };
+    } else if (coherence >= threshold) {
+      __retVal = { shouldOpenPR: true, reason: `Post-heal coherence ${coherence.toFixed(3)} meets threshold ${threshold}. PR recommended.`, coherence, threshold };
+    } else {
+      __retVal = { shouldOpenPR: false, reason: `Post-heal coherence ${coherence.toFixed(3)} is below threshold ${threshold}. Manual review needed.`, coherence, threshold };
+    }
   }
-  if (coherence >= threshold) {
-    return { shouldOpenPR: true, reason: `Post-heal coherence ${coherence.toFixed(3)} meets threshold ${threshold}. PR recommended.`, coherence, threshold };
-  }
-  return { shouldOpenPR: false, reason: `Post-heal coherence ${coherence.toFixed(3)} is below threshold ${threshold}. Manual review needed.`, coherence, threshold };
+  // ── LRE field-coupling (hand-wired — auto-wire put this inside the !report early-return; moved to single exit) ──
+  try {
+    const __lre_p1 = '../core/field-coupling';
+    const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
+    for (const __p of [__lre_p1, __lre_p2]) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:scoring-modes:shouldAutoCreatePR' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 function getModeInfo(modeName) {

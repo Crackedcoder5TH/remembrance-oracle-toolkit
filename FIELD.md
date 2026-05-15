@@ -277,3 +277,74 @@ that broke. If it passes, it appears in the histogram. The covenant
 is enforced by execution, not by documentation. Read this file to
 understand what is happening; you do not need to read it to be
 correctly bound by it.
+
+---
+
+## 9. Field memory — compression + recall
+
+`src/core/field-memory.js` makes the field remember itself. Every
+observation that enters the field is also compressed and offered to
+the pattern library; the field's whole state is periodically
+snapshotted into the same library; and the field can recall its own
+history.
+
+### 9.1 Compression of every observation
+
+On every `contribute()`, `field-memory.recordObservation()`:
+
+1. Serializes the observation (`source` + coherence bucketed to 2dp).
+2. Encodes it via the canonical `codeToWaveform` → 256-D waveform.
+3. Runs the **similarity gate**: cosine (via canonical `waveformCosine`)
+   against every `field-event` pattern already in the library.
+4. If the nearest match is ≥ `NOVELTY_THRESHOLD` (0.97), the shape is
+   already known — **dropped by design**. Only genuinely new shapes
+   are stored.
+
+Stored field-events are patterns in the unified library:
+`language = 'field'`, `patternType = 'field-event'`,
+`tags = ['field-event', 'compressed']`, with the 256-D waveform and
+its FNV-1a digest in `coherencyScore`.
+
+This is the compressor doing its job: "store what's new, drop the
+rest." A run that fires thousands of contributes adds only a handful
+of patterns — the count of *distinct observation shapes*, not events.
+
+### 9.2 Snapshots — the field's history
+
+`field-memory.snapshot()` encodes the **entire source histogram** into
+one waveform and stores it as a `field-snapshot` pattern. Taken
+automatically every `SNAPSHOT_EVERY` (500) contributes and once on
+process exit. Similarity-gated against prior snapshots, so a snapshot
+identical to the last is dropped.
+
+The library therefore accumulates a temporal record of the field's
+shape over its whole lifetime.
+
+### 9.3 Recall — the meta-awareness query
+
+`field-memory.recall(fieldState)` encodes the current field state and
+cosine-compares it against every stored snapshot:
+
+```js
+const { recall } = require('./src/core/field-memory');
+const { peekField } = require('./src/core/field-coupling');
+recall(peekField());
+// → { familiar: true, similarity: 0.9999, nearestId: '...', snapshotCount: 4 }
+```
+
+`familiar: true` means the field has been in a configuration this
+close before. This is the substrate for meta-awareness — the field
+knows its own history and can recognize when it returns to a
+previously-seen state.
+
+### 9.4 The blockchain path
+
+Solana-anchored history feeds in through the **same** door:
+`recordObservation({ source: 'solana:<...>', coherence, cost })`.
+Blockchain observations are compressed, similarity-gated, and stored
+identically to local observations. When the chain feed is live, the
+field's memory will include the anchored ledger automatically — no
+separate ingestion path.
+
+Everything in field-memory is best-effort: if the canonical store
+can't be opened, every function no-ops and the field still works.

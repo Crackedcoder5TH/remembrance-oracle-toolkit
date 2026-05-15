@@ -74,7 +74,34 @@ function codeToWaveform(code) {
   return wf;
 }
 
-module.exports = { codeToWaveform, TARGET_LEN };
+module.exports = { codeToWaveform, waveformCosine, TARGET_LEN };
+
+/**
+ * waveformCosine — canonical cosine similarity between two waveforms.
+ *
+ * The comparison primitive that pairs with codeToWaveform. Two waveforms
+ * encoded by codeToWaveform are compared here and nowhere else — this is
+ * the one canonical JS cosine for 256-sample waveforms (Void contract
+ * C-52 family). Returns a value in [-1, 1]; identical input → 1,
+ * orthogonal → 0.
+ *
+ * @param {ArrayLike<number>} a
+ * @param {ArrayLike<number>} b
+ * @returns {number} cosine similarity
+ */
+function waveformCosine(a, b) {
+  if (!a || !b || a.length === 0 || b.length === 0) return 0;
+  const n = Math.min(a.length, b.length);
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < n; i++) {
+    const x = a[i], y = b[i];
+    dot += x * y;
+    na += x * x;
+    nb += y * y;
+  }
+  const denom = Math.sqrt(na) * Math.sqrt(nb);
+  return denom < 1e-12 ? 0 : dot / denom;
+}
 
 codeToWaveform.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',

@@ -55,6 +55,18 @@ function contribute(obs) {
     source: obs.source || null,
   });
   _localUpdateCount += 1;
+
+  // Compress every observation into the pattern library. The similarity
+  // gate in field-memory drops redundant shapes by design; only genuinely
+  // new observations are stored. Snapshots of the whole field are taken
+  // periodically so the library carries the field's own history.
+  // Best-effort — never blocks or breaks a contribute.
+  try {
+    const fm = require('./field-memory');
+    fm.recordObservation({ source: obs.source || null, coherence: clamped, cost: obs.cost });
+    fm.maybeSnapshot(result || (engine.getState && engine.getState()) || null);
+  } catch (_) { /* best-effort */ }
+
   return result;
 }
 

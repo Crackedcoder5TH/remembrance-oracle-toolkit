@@ -109,8 +109,8 @@ async function crossScore(agentOutputs, pool, dimensions) {
         const __retVal = { reviewer, reviewee, score: 0.5, reasoning: 'Review failed (timeout or error)' };
         // ── LRE field-coupling (auto-wired) ──
         try {
-          const __lre_p1 = './../../core/field-coupling';
-          const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+          const __lre_p1 = '../core/field-coupling';
+          const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
           for (const __p of [__lre_p1, __lre_p2]) {
             try {
               const { contribute: __contribute } = require(__p);

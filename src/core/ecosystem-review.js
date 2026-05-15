@@ -261,8 +261,8 @@ async function ecosystemReview(code, options = {}) {
   };
   // ── LRE field-coupling (auto-wired) ──
   try {
-    const __lre_p1 = './../../core/field-coupling';
-    const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+    const __lre_p1 = './field-coupling';
+    const __lre_p2 = require('path').join(__dirname, 'field-coupling');
     for (const __p of [__lre_p1, __lre_p2]) {
       try {
         const { contribute: __contribute } = require(__p);

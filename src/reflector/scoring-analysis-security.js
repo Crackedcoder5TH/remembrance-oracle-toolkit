@@ -57,8 +57,8 @@ function securityScan(code, language) {
       const __retVal = { score: 1, riskLevel: 'none', findings: [], totalFindings: 0 };
     // ── LRE field-coupling (auto-wired) ──
     try {
-      const __lre_p1 = './../../core/field-coupling';
-      const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+      const __lre_p1 = '../core/field-coupling';
+      const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
       for (const __p of [__lre_p1, __lre_p2]) {
         try {
           const { contribute: __contribute } = require(__p);
@@ -142,8 +142,8 @@ function securityScan(code, language) {
   const __retVal = { score: Math.round(score * 1000) / 1000, riskLevel, findings, totalFindings: findings.length };
   // ── LRE field-coupling (hand-wired — auto-wire put this inside the !code early-return, never reachable on normal input) ──
   try {
-    const __lre_p1 = './../../core/field-coupling';
-    const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+    const __lre_p1 = '../core/field-coupling';
+    const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
     for (const __p of [__lre_p1, __lre_p2]) {
       try {
         const { contribute: __contribute } = require(__p);

@@ -77,11 +77,14 @@ function ingestPatterns(store, opts = {}) {
 
         // Contribute the pattern to the field. coherency_total is the
         // pattern's own measured coherency — its standing in the field.
+        // Grouped source (library:<language>) keeps the histogram a
+        // bounded compass even at 80k+ patterns; per-pattern granularity
+        // lives in the field-memory mesh, not the histogram.
         if (contribute) {
           contribute({
             cost: 1,
             coherence: Math.max(0, Math.min(1, Number(p.coherency_total) || 0)),
-            source: `library:${p.language || 'unknown'}:${p.name}`,
+            source: `library:${p.language || 'unknown'}`,
           });
           report.contributed += 1;
         }
@@ -108,20 +111,20 @@ function ingestConstants() {
   try { buckets.push(['quantum', require('../quantum/quantum-core')]); } catch (_) { /* skip */ }
 
   // Flatten: walk each module's exports, emit one observation per number.
+  // Source is grouped at the module level (constant:<module>) — the
+  // histogram stays a bounded compass; each constant's value still
+  // enters the field (moves coherence, is counted).
   const walk = (prefix, obj, depth) => {
     if (depth > 3 || obj == null) return;
+    const moduleKey = prefix.split(':')[0];
     for (const [key, val] of Object.entries(obj)) {
       if (typeof val === 'number' && isFinite(val)) {
         report.total += 1;
-        // Constants are static — contribute their value directly as the
-        // coherence reading (clamped). A constant > 1 (e.g. a count or a
-        // factor) lands at 1; the point is presence in the field, not a
-        // fractional reading.
         try {
           contribute({
             cost: 1,
             coherence: Math.max(0, Math.min(1, val)),
-            source: `constant:${prefix}:${key}`,
+            source: `constant:${moduleKey}`,
           });
           report.contributed += 1;
         } catch (_) { /* best-effort */ }

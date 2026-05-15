@@ -171,20 +171,7 @@ function covenantGroupCoherence(periodicTable, options) {
     return _roleAware(periodicTable);
   }
   if (!periodicTable) {
-      const __retVal = { coherence: 0, reason: 'no periodic table' };
-    // ── LRE field-coupling (auto-wired) ──
-    try {
-      const __lre_p1 = './field-coupling';
-      const __lre_p2 = require('path').join(__dirname, 'field-coupling');
-      for (const __p of [__lre_p1, __lre_p2]) {
-        try {
-          const { contribute: __contribute } = require(__p);
-          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:covenant-fractal:covenantGroupCoherence' });
-          break;
-        } catch (_) { /* try next */ }
-      }
-    } catch (_) { /* best-effort */ }
-    return __retVal;
+    return { coherence: 0, reason: 'no periodic table' };
   }
   const elements = (periodicTable.elements || []).filter(el =>
     el && el.properties && (el.properties.domain === 'security' || el.properties.domain === 'covenant')
@@ -203,13 +190,26 @@ function covenantGroupCoherence(periodicTable, options) {
     }
   }
   const coherence = pairs > 0 ? totalCoherence / pairs : 0;
-  return {
+  const __retVal = {
     coherence: Math.round(coherence * 1000) / 1000,
     pairs,
     count: elements.length,
     decoherent: coherence < 0.8,
     method: 'similarity-fallback',
   };
+  // ── LRE field-coupling (main return path; was buried in !periodicTable guard) ──
+  try {
+    const __lre_p1 = './field-coupling';
+    const __lre_p2 = require('path').join(__dirname, 'field-coupling');
+    for (const __p of [__lre_p1, __lre_p2]) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__retVal.coherence) || 0)), source: 'oracle:covenant-fractal:covenantGroupCoherence' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 covenantGroupCoherence.atomicProperties = {
   charge: 0, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',

@@ -93,34 +93,43 @@ function findEnclosingFunctionName(src, pos) {
 }
 
 // ── Detect "buried in early-return guard" ─────────────────────────
+// A contribute is buried if it lives inside an `if (!X) { ... return ...; }`
+// block — those branches only fire on the edge case (empty/null input),
+// so the producer never lands on normal use. Detection: find the
+// enclosing `if (!X) {`, brace-walk forward to its matching `}`,
+// check (a) the contribute is inside that range, (b) the block contains
+// `return` (the giveaway of an early-return guard).
 function isInsideEarlyReturnGuard(src, contributePos) {
   const lines = src.slice(0, contributePos).split('\n');
   const contribLineIdx = lines.length - 1;
-  // Walk back up to 25 lines for an `if (!X) {` guard
   for (let j = contribLineIdx - 1; j >= Math.max(0, contribLineIdx - 25); j--) {
-    if (/^\s*if\s*\(\s*!\s*[\w.]+\s*\)\s*\{/.test(lines[j])) {
-      // Compute brace depth from line j to contribute. If the block hasn't
-      // closed yet at contribute time AND the block contains `return`,
-      // the contribute is buried.
-      let depth = 0, sawOpen = false, blockClosedBeforeContrib = false;
-      for (let k = j; k <= contribLineIdx; k++) {
-        for (const ch of lines[k]) {
-          if (ch === '{') { depth++; sawOpen = true; }
-          else if (ch === '}') {
-            depth--;
-            if (depth === 0 && sawOpen && k < contribLineIdx) {
-              blockClosedBeforeContrib = true;
-              break;
-            }
-          }
-        }
-        if (blockClosedBeforeContrib) break;
-      }
-      if (!blockClosedBeforeContrib && depth > 0) {
-        const blockText = lines.slice(j, contribLineIdx + 1).join('\n');
-        if (/\breturn\b/.test(blockText)) return true;
+    if (!/^\s*if\s*\(\s*!\s*[\w.]+\s*\)\s*\{/.test(lines[j])) continue;
+
+    // Find the absolute position of this `if (!X) {` line's opening brace.
+    const beforeIfLine = lines.slice(0, j).join('\n');
+    const ifLineStart = j === 0 ? 0 : beforeIfLine.length + 1;
+    const ifOpenBrace = src.indexOf('{', ifLineStart);
+    if (ifOpenBrace < 0) continue;
+
+    // Brace-walk forward from the opening brace until we find its match.
+    let depth = 0;
+    let blockEnd = -1;
+    for (let k = ifOpenBrace; k < src.length && k < ifOpenBrace + 8000; k++) {
+      const ch = src[k];
+      if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) { blockEnd = k; break; }
       }
     }
+    if (blockEnd < 0) continue;
+
+    // The contribute must be INSIDE this if-block.
+    if (contributePos < ifOpenBrace || contributePos > blockEnd) continue;
+
+    // Block must contain a `return` keyword (the guard giveaway).
+    const blockText = src.slice(ifOpenBrace, blockEnd + 1);
+    if (/\breturn\b/.test(blockText)) return true;
   }
   return false;
 }

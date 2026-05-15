@@ -35,7 +35,17 @@ function extractAtomicProperties(code, options = {}) {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, (__retVal.alignment === 'healing' ? 0.9 : __retVal.alignment === 'harmful' ? 0.1 : 0.5))), source: 'oracle:property-extractor:extractAtomicProperties' });
+        // Continuous coherence — was quantized to 3 bins (healing/harmful/neutral
+        // → 0.9/0.1/0.5), throwing away the rich 13-field atomic profile and
+        // averaging to ~0.51 across runs. The field signaled this as the heaviest
+        // drag. Now: weighted blend of (a) alignment direction (healing→1, harmful→0,
+        // neutral→0.5), (b) harm-potential safety, (c) inertness from electronegativity.
+        // Each in [0, 1]; weights sum to 1.
+        const __pe_align = __retVal.alignment === 'healing' ? 1.0 : __retVal.alignment === 'harmful' ? 0.0 : 0.5;
+        const __pe_harm = ({ none: 1.0, low: 0.75, medium: 0.4, high: 0.0 })[__retVal.harmPotential] ?? 0.5;
+        const __pe_inert = 1 - Math.max(0, Math.min(1, Number(__retVal.electronegativity) || 0));
+        const __pe_coh = 0.5 * __pe_align + 0.3 * __pe_harm + 0.2 * __pe_inert;
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __pe_coh)), source: 'oracle:property-extractor:extractAtomicProperties' });
         break;
       } catch (_) { /* try next */ }
     }

@@ -270,20 +270,7 @@ function compactPayload(p) {
  */
 function scoreCompliance(session) {
   if (!session) {
-    const __retVal = { score: 0, status: 'no-session', violations: ['no active session — run `oracle session start`'] };
-    // ── LRE field-coupling (auto-wired) ──
-  try {
-    const __lre_enginePaths = ['./../core/field-coupling',
-      require('path').join(__dirname, '../core/field-coupling')];
-    for (const __p of __lre_enginePaths) {
-      try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:compliance:scoreCompliance' });
-        break;
-      } catch (_) { /* try next */ }
-    }
-  } catch (_) { /* best-effort */ }
-    return __retVal;
+    return { score: 0, status: 'no-session', violations: ['no active session — run `oracle session start`'] };
   }
 
   const violations = [];
@@ -389,7 +376,7 @@ function scoreCompliance(session) {
     });
   }
 
-  return {
+  const __retVal = {
     score: Math.round(score * 100) / 100,
     status: score >= 0.9 ? 'compliant' : score >= 0.5 ? 'partial' : 'non-compliant',
     violations,
@@ -404,6 +391,19 @@ function scoreCompliance(session) {
       todosTotal: todos.length,
     },
   };
+  // ── LRE field-coupling (main return path; was buried in !session guard) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__retVal.score) || 0)), source: 'oracle:compliance:scoreCompliance' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 
 // ─── Wiring from the event bus ─────────────────────────────────────────────

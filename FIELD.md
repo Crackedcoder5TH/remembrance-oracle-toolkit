@@ -348,3 +348,53 @@ separate ingestion path.
 
 Everything in field-memory is best-effort: if the canonical store
 can't be opened, every function no-ops and the field still works.
+
+---
+
+## 10. The mesh — everything compressed against everything
+
+The library is not a pile of data — it is a basis set. Every
+observation is compressed *against the entire existing library*, so
+the information lives in the N×N relational mesh, not the N points.
+A modest, fully-cross-referenced library outperforms a huge
+uncross-referenced pile: you need coverage, not volume, and coverage
+saturates fast (a run of thousands of contributes adds only a handful
+of patterns once the basis spans the space).
+
+### 10.1 Persisted cross-reference
+
+When `recordObservation()` or `snapshot()` stores a pattern, it also
+computes that pattern's **top-5 nearest neighbors** (id + similarity)
+and persists them in `coherencyScore.neighbors`. This is the mesh
+edge, recorded as-of-insertion — the pattern's neighborhood at the
+moment it entered the field. Immutable, like every field record.
+
+### 10.2 The mesh-query API — "call the field, filter for your domain"
+
+```js
+const fm = require('./src/core/field-memory');
+
+// What is this input most like?
+fm.neighbors('field-event\nsource: covenant\ncoherence: 0.99', { k: 5 });
+// → [{ id, kind, similarity }, ...] ranked descending
+
+// The whole region of the mesh near a point
+fm.within(someInput, { threshold: 0.97 });
+// → every field pattern within 0.97 cosine
+
+// The Library-of-Alexandria call — query, retrieve, filter by domain
+fm.query('healing covenant security work', { k: 10, tag: 'field-event' });
+// → [{ id, name, patternType, tags, similarity }, ...] ranked
+```
+
+`neighbors()` and `within()` compute live against the in-memory
+waveform cache (O(distinct shapes), microseconds). `query()` searches
+the full field library and supports `patternType` / `tag` filters —
+the retrieval interface: call the field, filter for whatever your
+domain is, get back the relevant compressed patterns ranked by
+similarity.
+
+The persisted edges (10.1) are the historical record — each pattern's
+world at birth. The live queries (10.2) are current truth — the mesh
+as it stands now. The field philosophy throughout: record the moment,
+compute the present.

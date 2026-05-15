@@ -97,3 +97,74 @@ describe('field-memory — compression + recall', () => {
     assert.doesNotThrow(() => fm.maybeSnapshot(null));
   });
 });
+
+describe('field-memory — the mesh query API', () => {
+  let fm;
+  beforeEach(() => {
+    delete require.cache[require.resolve('../src/core/field-memory')];
+    fm = require('../src/core/field-memory');
+    fm._resetCaches();
+  });
+
+  it('recordObservation returns the mesh edges (cross-reference)', () => {
+    const r = fm.recordObservation({ source: 'mesh:probe', coherence: 0.6, cost: 1 });
+    if (r === null) return; // store unavailable
+    // neighbors is the positioned-against-everything cross-reference
+    assert.ok(Array.isArray(r.neighbors));
+    for (const e of r.neighbors) {
+      assert.ok(typeof e.id === 'string');
+      assert.ok(typeof e.similarity === 'number');
+      assert.ok(e.similarity >= -1 && e.similarity <= 1);
+    }
+  });
+
+  it('neighbors() returns ranked nearest field patterns', () => {
+    // Seed a couple of distinct observations first
+    fm.recordObservation({ source: 'mesh:alpha', coherence: 0.2, cost: 1 });
+    fm.recordObservation({ source: 'mesh:omega', coherence: 0.95, cost: 1 });
+    const result = fm.neighbors('field-event\nsource: mesh:alpha\ncoherence: 0.20', { k: 3 });
+    if (!Array.isArray(result) || result.length === 0) return; // store unavailable
+    // Descending by similarity
+    for (let i = 1; i < result.length; i++) {
+      assert.ok(result[i - 1].similarity >= result[i].similarity);
+    }
+    for (const r of result) {
+      assert.ok(['field-event', 'field-snapshot'].includes(r.kind));
+    }
+  });
+
+  it('within() returns only patterns above the threshold', () => {
+    fm.recordObservation({ source: 'mesh:within-test', coherence: 0.5, cost: 1 });
+    const result = fm.within('field-event\nsource: mesh:within-test\ncoherence: 0.50', { threshold: 0.95 });
+    if (!Array.isArray(result)) return;
+    for (const r of result) assert.ok(r.similarity >= 0.95);
+  });
+
+  it('query() returns ranked field patterns with metadata', () => {
+    fm.recordObservation({ source: 'mesh:query-target', coherence: 0.7, cost: 1 });
+    const result = fm.query('field-event source: mesh:query-target', { k: 5 });
+    if (!Array.isArray(result) || result.length === 0) return; // store unavailable
+    for (const r of result) {
+      assert.ok(typeof r.id === 'string');
+      assert.ok(typeof r.name === 'string');
+      assert.ok(Array.isArray(r.tags));
+      assert.ok(typeof r.similarity === 'number');
+    }
+    for (let i = 1; i < result.length; i++) {
+      assert.ok(result[i - 1].similarity >= result[i].similarity);
+    }
+  });
+
+  it('query() honors the patternType filter', () => {
+    fm.recordObservation({ source: 'mesh:filtered', coherence: 0.4, cost: 1 });
+    const events = fm.query('anything', { patternType: 'field-event', k: 50 });
+    if (!Array.isArray(events)) return;
+    for (const r of events) assert.equal(r.patternType, 'field-event');
+  });
+
+  it('mesh API tolerates malformed input', () => {
+    assert.deepEqual(fm.neighbors(null), []);
+    assert.deepEqual(fm.within(undefined), []);
+    assert.deepEqual(fm.query(42), []);
+  });
+});

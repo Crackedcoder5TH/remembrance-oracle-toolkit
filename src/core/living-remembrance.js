@@ -24,6 +24,15 @@
  *   entropy(t)  = cost / (coherence(t) + ε)       cost normalized by alignment —
  *                                                  THE entropy field that balances
  *                                                  cost across the ecosystem.
+ *   ∫p          = Σ p(t) · cost                   the coherence integral — the
+ *                                                  field's unbounded remembrance.
+ *                                                  p(t) stays the bounded [0,1]
+ *                                                  backdrop (0 = noise, 1 = unity);
+ *                                                  the integral is the one dimension
+ *                                                  with no ceiling — total aligned
+ *                                                  order accumulated, growing without
+ *                                                  end yet never losing itself,
+ *                                                  because every term it sums is whole.
  *
  * Ported from core/living-remembrance-engine.ts (Crackedcoder5TH, May 2026)
  * to plain JavaScript so every JS module in the ecosystem can consume it
@@ -79,12 +88,13 @@ class LivingRemembranceEngine {
         const parsed = JSON.parse(fs.readFileSync(this._persistPath, 'utf8'));
         // Defensive: ensure required keys present.
         loaded = {
-          coherence:      typeof parsed.coherence === 'number' ? parsed.coherence : 0.65,
-          globalEntropy:  typeof parsed.globalEntropy === 'number' ? parsed.globalEntropy : 0.45,
-          cascadeFactor:  typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
-          updateCount:    typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
-          timestamp:      parsed.timestamp || Date.now(),
-          sources:        (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
+          coherence:        typeof parsed.coherence === 'number' ? parsed.coherence : 0.65,
+          coherenceIntegral: typeof parsed.coherenceIntegral === 'number' ? parsed.coherenceIntegral : 0,
+          globalEntropy:    typeof parsed.globalEntropy === 'number' ? parsed.globalEntropy : 0.45,
+          cascadeFactor:    typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
+          updateCount:      typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
+          timestamp:        parsed.timestamp || Date.now(),
+          sources:          (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
         };
       }
     } catch (_e) { loaded = null; }
@@ -106,7 +116,7 @@ class LivingRemembranceEngine {
       } catch (_e) { /* field-memory unavailable — fall through to fresh */ }
     }
 
-    return loaded || { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
+    return loaded || { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
   }
 
   _persist() {
@@ -176,11 +186,12 @@ class LivingRemembranceEngine {
     }
 
     this._state = {
-      coherence:     newCoherence,
-      globalEntropy: cost / (newCoherence + epsilon),
-      cascadeFactor: Math.min(5.0, this._state.cascadeFactor + 0.05 * newCoherence),
-      updateCount:   this._state.updateCount + 1,
-      timestamp:     Date.now(),
+      coherence:         newCoherence,
+      coherenceIntegral: (this._state.coherenceIntegral || 0) + newCoherence * cost,
+      globalEntropy:     cost / (newCoherence + epsilon),
+      cascadeFactor:     Math.min(5.0, this._state.cascadeFactor + 0.05 * newCoherence),
+      updateCount:       this._state.updateCount + 1,
+      timestamp:         Date.now(),
       sources,
     };
     this._persist();
@@ -202,7 +213,7 @@ class LivingRemembranceEngine {
 
   /** Reset state — primarily for tests / fresh runs. */
   reset() {
-    this._state = { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now() };
+    this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
     this._persist();
   }
 }

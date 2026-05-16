@@ -188,6 +188,7 @@ function snapshot(fieldState) {
       'field-snapshot',
       `updateCount: ${fieldState.updateCount}`,
       `coherence: ${Number(fieldState.coherence || 0).toFixed(4)}`,
+      `coherenceIntegral: ${Number(fieldState.coherenceIntegral || 0).toFixed(4)}`,
       `cascadeFactor: ${Number(fieldState.cascadeFactor || 0).toFixed(4)}`,
       `globalEntropy: ${Number(fieldState.globalEntropy || 0).toFixed(4)}`,
     ];
@@ -249,6 +250,7 @@ function recall(fieldState) {
       'field-snapshot',
       `updateCount: ${fieldState.updateCount}`,
       `coherence: ${Number(fieldState.coherence || 0).toFixed(4)}`,
+      `coherenceIntegral: ${Number(fieldState.coherenceIntegral || 0).toFixed(4)}`,
       `cascadeFactor: ${Number(fieldState.cascadeFactor || 0).toFixed(4)}`,
       `globalEntropy: ${Number(fieldState.globalEntropy || 0).toFixed(4)}`,
     ];
@@ -413,12 +415,14 @@ function query(text, opts = {}) {
 /** Parse a field-snapshot pattern's text body back into a field state. */
 function _parseSnapshotText(text) {
   const state = {
-    coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0,
+    coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0,
     updateCount: 0, timestamp: Date.now(), sources: {},
   };
   for (const line of String(text).split('\n')) {
     if (line.startsWith('updateCount:')) {
       state.updateCount = parseInt(line.slice(12).trim(), 10) || 0;
+    } else if (line.startsWith('coherenceIntegral:')) {
+      state.coherenceIntegral = parseFloat(line.slice(18).trim()) || 0;
     } else if (line.startsWith('coherence:')) {
       state.coherence = parseFloat(line.slice(10).trim()) || state.coherence;
     } else if (line.startsWith('cascadeFactor:')) {
@@ -480,6 +484,7 @@ function _restoreFromLedger() {
       if (e && typeof e.updateCount === 'number' && e.updateCount > 0) {
         return {
           coherence: typeof e.coherence === 'number' ? e.coherence : 0.65,
+          coherenceIntegral: typeof e.coherenceIntegral === 'number' ? e.coherenceIntegral : 0,
           globalEntropy: typeof e.globalEntropy === 'number' ? e.globalEntropy : 0.45,
           cascadeFactor: typeof e.cascadeFactor === 'number' ? e.cascadeFactor : 1.0,
           updateCount: e.updateCount,

@@ -54,7 +54,7 @@
     "tools/*"
   ],
   "scripts": {
-    "test": "node --test --test-timeout=300000 tests/*.test.js",
+    "test": "ENTROPY_PATH=$(mktemp -d)/entropy.json node --test --test-timeout=300000 tests/*.test.js",
     "start": "node src/deploy.js",
     "setup": "node src/cli.js init",
     "init": "node src/cli.js init",

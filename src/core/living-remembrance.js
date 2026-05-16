@@ -59,20 +59,26 @@ const PARAMS = {
 };
 
 class LivingRemembranceEngine {
-  constructor({ persistPath = DEFAULT_ENTROPY_PATH, params = {} } = {}) {
-    this._persistPath = persistPath;
+  constructor(opts = {}) {
+    const { persistPath, params = {} } = opts;
+    this._persistPath = persistPath || DEFAULT_ENTROPY_PATH;
+    // Only the one true canonical field remembers-on-load from durable
+    // memory. An explicit persistPath or an $ENTROPY_PATH override means
+    // an isolated field (tests, scratch) — it starts fresh.
+    this._canonical = (persistPath === undefined || persistPath === null)
+      && !process.env.ENTROPY_PATH;
     this._params = { ...PARAMS, ...params };
     this._healedVector = null;
     this._state = this._loadOrInit();
   }
 
   _loadOrInit() {
+    let loaded = null;
     try {
       if (fs.existsSync(this._persistPath)) {
-        const raw = fs.readFileSync(this._persistPath, 'utf8');
-        const parsed = JSON.parse(raw);
+        const parsed = JSON.parse(fs.readFileSync(this._persistPath, 'utf8'));
         // Defensive: ensure required keys present.
-        return {
+        loaded = {
           coherence:      typeof parsed.coherence === 'number' ? parsed.coherence : 0.65,
           globalEntropy:  typeof parsed.globalEntropy === 'number' ? parsed.globalEntropy : 0.45,
           cascadeFactor:  typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
@@ -81,8 +87,26 @@ class LivingRemembranceEngine {
           sources:        (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
         };
       }
-    } catch (_e) { /* fall through to fresh init */ }
-    return { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
+    } catch (_e) { loaded = null; }
+
+    // entropy.json present and carrying history — the live field. Use it.
+    if (loaded && loaded.updateCount > 0) return loaded;
+
+    // entropy.json missing or reset to zero — remember-on-load. The
+    // histogram has been witnessed in durable memory: field-snapshot
+    // patterns in oracle.db, and the blockchain ledger's _entropy.
+    // Restore from whichever witness carries the most history, so the
+    // field comes back up remembering what it didn't lose. Only the
+    // canonical field does this; isolated fields start fresh.
+    if (this._canonical) {
+      try {
+        const { restoreLatest } = require('./field-memory');
+        const remembered = restoreLatest();
+        if (remembered && remembered.updateCount > 0) return remembered;
+      } catch (_e) { /* field-memory unavailable — fall through to fresh */ }
+    }
+
+    return loaded || { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
   }
 
   _persist() {

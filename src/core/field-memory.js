@@ -32,6 +32,7 @@
  * it just doesn't compress to the library this run.
  */
 
+const fs = require('fs');
 const path = require('path');
 const { codeToWaveform, waveformCosine, digestWaveform } = require('./code-to-waveform');
 
@@ -398,6 +399,121 @@ function query(text, opts = {}) {
   }
 }
 
+// ─── Remember-on-load — reconstruct the field from durable memory ───
+//
+// entropy.json is the live field file; if it is lost or reset, the
+// histogram would vanish. But the field's whole state has been
+// witnessed elsewhere — as `field-snapshot` patterns compressed into
+// oracle.db (above), and as the `_entropy` metadata the blockchain
+// embeds in every ledger block. restoreLatest() reads whichever
+// durable witness carries the most history, so the engine can come
+// back up remembering what it didn't lose — and so a blockchain
+// connection is a seamless field transfer, not a fresh start.
+
+/** Parse a field-snapshot pattern's text body back into a field state. */
+function _parseSnapshotText(text) {
+  const state = {
+    coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0,
+    updateCount: 0, timestamp: Date.now(), sources: {},
+  };
+  for (const line of String(text).split('\n')) {
+    if (line.startsWith('updateCount:')) {
+      state.updateCount = parseInt(line.slice(12).trim(), 10) || 0;
+    } else if (line.startsWith('coherence:')) {
+      state.coherence = parseFloat(line.slice(10).trim()) || state.coherence;
+    } else if (line.startsWith('cascadeFactor:')) {
+      state.cascadeFactor = parseFloat(line.slice(14).trim()) || state.cascadeFactor;
+    } else if (line.startsWith('globalEntropy:')) {
+      state.globalEntropy = parseFloat(line.slice(14).trim()) || state.globalEntropy;
+    } else if (line.includes('\t')) {
+      const parts = line.split('\t');
+      const countPart = parts.find((p) => p.startsWith('count='));
+      const cohPart = parts.find((p) => p.startsWith('coh='));
+      if (parts[0] && countPart) {
+        state.sources[parts[0]] = {
+          count: parseInt(countPart.slice(6), 10) || 0,
+          lastCoherence: cohPart ? (parseFloat(cohPart.slice(4)) || 0) : 0,
+          lastTimestamp: 0,
+        };
+      }
+    }
+  }
+  return state;
+}
+
+/** Restore from the newest field-snapshot pattern in the canonical store. */
+function _restoreFromSnapshot() {
+  const store = _canonicalStore();
+  if (!store) return null;
+  try {
+    const row = store.db.prepare(
+      "SELECT code FROM patterns WHERE language = 'field' AND pattern_type = 'field-snapshot' " +
+      'ORDER BY created_at DESC, id DESC LIMIT 1'
+    ).get();
+    if (!row || !row.code) return null;
+    const state = _parseSnapshotText(row.code);
+    return state.updateCount > 0 ? state : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Canonical ledger path — the blockchain's ledger.json living in the
+ * SAME .remembrance/ as entropy.json. $LEDGER_PATH overrides; otherwise
+ * hub-relative (this module is <hub>/src/core).
+ */
+function _ledgerPath() {
+  return process.env.LEDGER_PATH
+    || path.join(__dirname, '..', '..', '.remembrance', 'ledger.json');
+}
+
+/** Restore from the latest field state witnessed in the blockchain ledger. */
+function _restoreFromLedger() {
+  try {
+    const lp = _ledgerPath();
+    if (!fs.existsSync(lp)) return null;
+    const chain = JSON.parse(fs.readFileSync(lp, 'utf8'));
+    if (!Array.isArray(chain)) return null;
+    for (let i = chain.length - 1; i >= 0; i--) {
+      const e = chain[i] && chain[i].data && chain[i].data.metadata && chain[i].data.metadata._entropy;
+      if (e && typeof e.updateCount === 'number' && e.updateCount > 0) {
+        return {
+          coherence: typeof e.coherence === 'number' ? e.coherence : 0.65,
+          globalEntropy: typeof e.globalEntropy === 'number' ? e.globalEntropy : 0.45,
+          cascadeFactor: typeof e.cascadeFactor === 'number' ? e.cascadeFactor : 1.0,
+          updateCount: e.updateCount,
+          timestamp: e.timestamp || Date.now(),
+          sources: (e.sources && typeof e.sources === 'object') ? e.sources : {},
+        };
+      }
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Reconstruct the field's last-known state from durable memory. Reads
+ * both witnesses — the compressed field-snapshot record and the
+ * blockchain ledger — and returns whichever carries the most history
+ * (highest updateCount). Returns null if the field has no memory yet.
+ *
+ * @returns {object|null} a field state { coherence, globalEntropy,
+ *   cascadeFactor, updateCount, timestamp, sources } or null
+ */
+function restoreLatest() {
+  const candidates = [];
+  const snap = _restoreFromSnapshot();
+  if (snap) candidates.push(snap);
+  const ledger = _restoreFromLedger();
+  if (ledger) candidates.push(ledger);
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => (b.updateCount || 0) - (a.updateCount || 0));
+  return candidates[0];
+}
+
 /** Test/diagnostic hook — clears the in-memory caches. */
 function _resetCaches() {
   _eventWaveforms = null;
@@ -411,6 +527,7 @@ module.exports = {
   recordObservation,
   snapshot,
   recall,
+  restoreLatest,
   maybeSnapshot,
   neighbors,
   within,

@@ -257,3 +257,115 @@ describe('QuantumField — Entanglement Graph', () => {
     assert.ok(nodeIds.includes('g-b'));
   });
 });
+
+describe('QuantumField — Cascade trigger', () => {
+  let cascadeEvents;
+  beforeEach(() => {
+    createTestStore();
+    cascadeEvents = [];
+    field = new QuantumField(store, {
+      onCascade: (e) => cascadeEvents.push(e),
+    });
+    const now = new Date().toISOString();
+    store.db.prepare(`
+      INSERT INTO patterns (id, name, code, language, coherency_total, amplitude, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('cas-just-below', 'cas-just-below', 'code', 'js', 0.8, 0.68, now, now);
+    store.db.prepare(`
+      INSERT INTO patterns (id, name, code, language, coherency_total, amplitude, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('cas-already-past', 'cas-already-past', 'code', 'js', 0.8, 0.85, now, now);
+    store.db.prepare(`
+      INSERT INTO patterns (id, name, code, language, coherency_total, amplitude, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('cas-far-below', 'cas-far-below', 'code', 'js', 0.8, 0.30, now, now);
+  });
+
+  it('fires onCascade when amplitude crosses CASCADE_THRESHOLD upward on success', () => {
+    // 0.68 + 0.05 = 0.73 → crosses 0.70
+    const result = field.feedback('patterns', 'cas-just-below', true);
+    assert.equal(result.cascadeTriggered, true);
+    assert.equal(cascadeEvents.length, 1);
+    assert.equal(cascadeEvents[0].id, 'cas-just-below');
+    assert.equal(cascadeEvents[0].threshold, 0.70);
+    assert.ok(cascadeEvents[0].previousAmplitude <= 0.70);
+    assert.ok(cascadeEvents[0].newAmplitude > 0.70);
+  });
+
+  it('does NOT fire when already past threshold', () => {
+    // 0.85 + 0.05 = 0.90 (still > threshold but no upward crossing)
+    const result = field.feedback('patterns', 'cas-already-past', true);
+    assert.equal(result.cascadeTriggered, false);
+    assert.equal(cascadeEvents.length, 0);
+  });
+
+  it('does NOT fire when feedback fails', () => {
+    // Failure decreases amplitude — no upward crossing possible
+    const result = field.feedback('patterns', 'cas-just-below', false);
+    assert.equal(result.cascadeTriggered, false);
+    assert.equal(cascadeEvents.length, 0);
+  });
+
+  it('does NOT fire when single bump leaves amplitude below threshold', () => {
+    // 0.30 + 0.05 = 0.35 (still < 0.70)
+    const result = field.feedback('patterns', 'cas-far-below', true);
+    assert.equal(result.cascadeTriggered, false);
+    assert.equal(cascadeEvents.length, 0);
+  });
+
+  it('fires exactly once per upward crossing — second success does not re-fire', () => {
+    field.feedback('patterns', 'cas-just-below', true);   // 0.68 → 0.73 (crosses)
+    field.feedback('patterns', 'cas-just-below', true);   // 0.73 → 0.78 (no new crossing)
+    assert.equal(cascadeEvents.length, 1);
+  });
+});
+
+describe('QuantumField — Decoherence sweep advances phase', () => {
+  beforeEach(() => {
+    createTestStore();
+    field = new QuantumField(store);
+    // Insert a stale pattern (last_observed_at = 100 days ago, phase = 0).
+    const now = Date.now();
+    const stale = new Date(now - 100 * 86400000).toISOString();
+    const created = new Date(now - 200 * 86400000).toISOString();
+    store.db.prepare(`
+      INSERT INTO patterns
+        (id, name, code, language, coherency_total, amplitude, phase, last_observed_at, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('drift-1', 'drift-pattern', 'code', 'js', 0.8, 0.7, 0, stale, created, stale);
+  });
+
+  it('drifts phase on stale patterns during the sweep', () => {
+    const before = store.db.prepare('SELECT phase FROM patterns WHERE id = ?').get('drift-1');
+    assert.equal(before.phase, 0);
+
+    const report = field.decoherenceSweep({ maxDays: 90 });
+
+    const after = store.db.prepare('SELECT phase FROM patterns WHERE id = ?').get('drift-1');
+    assert.ok(after.phase > 0, `phase should have advanced from 0, got ${after.phase}`);
+    assert.ok(after.phase < 2 * Math.PI, `phase should be wrapped, got ${after.phase}`);
+    assert.ok(report.totalPhaseDrifted >= 1, 'report should count the phase drift');
+  });
+
+  it('contributes the sweep to the LRE field', () => {
+    const { peekField } = require('../src/core/field-coupling');
+    const before = peekField();
+    if (!before) return; // field unavailable — best-effort path
+    const beforeUpdateCount = before.updateCount;
+    const beforeDecoSweep = before.sources?.['quantum:decoherence-sweep']?.count || 0;
+    const beforePhaseSweep = before.sources?.['quantum:phase-drift-sweep']?.count || 0;
+
+    field.decoherenceSweep({ maxDays: 90 });
+
+    const after = peekField();
+    assert.ok(after.updateCount > beforeUpdateCount, 'sweep should contribute at least once');
+    const afterDecoSweep = after.sources?.['quantum:decoherence-sweep']?.count || 0;
+    const afterPhaseSweep = after.sources?.['quantum:phase-drift-sweep']?.count || 0;
+    assert.ok(
+      afterDecoSweep > beforeDecoSweep || afterPhaseSweep > beforePhaseSweep,
+      `expected one of the sweep counters to grow; ` +
+      `decoherence-sweep: ${beforeDecoSweep}→${afterDecoSweep}, ` +
+      `phase-drift-sweep: ${beforePhaseSweep}→${afterPhaseSweep}`
+    );
+  });
+});

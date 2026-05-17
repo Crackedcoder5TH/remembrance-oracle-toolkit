@@ -55,14 +55,39 @@ function contribute(obs) {
     source: obs.source || null,
   });
   _localUpdateCount += 1;
+
+  // Compress every observation into the pattern library. The similarity
+  // gate in field-memory drops redundant shapes by design; only genuinely
+  // new observations are stored. Snapshots of the whole field are taken
+  // periodically so the library carries the field's own history.
+  // Best-effort — never blocks or breaks a contribute.
+  try {
+    const fm = require('./field-memory');
+    fm.recordObservation({ source: obs.source || null, coherence: clamped, cost: obs.cost });
+    fm.maybeSnapshot(result || (engine.getState && engine.getState()) || null);
+  } catch (_) { /* best-effort */ }
+
   return result;
 }
 
-/** Read current field state without contributing. */
+/**
+ * Read the current field state. Reading the field also records it:
+ * every call routes the current state through field-memory's snapshot
+ * machinery, which is counter-throttled (a durable snapshot lands every
+ * SNAPSHOT_EVERY calls) and similarity-gated (only genuinely-new field
+ * configurations are stored) — so this is cheap, and the field cannot
+ * be observed without witnessing itself. To call the field is to leave
+ * it remembered. Best-effort: a memory failure never breaks a read.
+ * Does not contribute — the LRE state is unchanged.
+ */
 function peekField() {
   const engine = _loadEngine();
   if (!engine) return null;
-  return engine.getState();
+  const state = engine.getState();
+  try {
+    require('./field-memory').maybeSnapshot(state);
+  } catch (_) { /* best-effort — never break a field read */ }
+  return state;
 }
 
 /**

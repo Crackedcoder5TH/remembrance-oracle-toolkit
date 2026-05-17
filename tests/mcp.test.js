@@ -108,12 +108,12 @@ describe('MCPServer', () => {
     assert.ok(data.section.includes('remembrance-oracle-toolkit'));
   });
 
-  it('handles field_state via MCP', async () => {
+  it('handles field action=state via MCP', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 300,
       method: 'tools/call',
-      params: { name: 'field_state', arguments: { includeSources: false } },
+      params: { name: 'field', arguments: { action: 'state', includeSources: false } },
     });
     assert.ok(res.result.content, 'field_state should return content');
     const data = JSON.parse(res.result.content[0].text);
@@ -123,12 +123,12 @@ describe('MCPServer', () => {
     assert.equal(typeof data.updateCount, 'number');
   });
 
-  it('handles field_contribute via MCP', async () => {
+  it('handles field action=contribute via MCP', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 301,
       method: 'tools/call',
-      params: { name: 'field_contribute', arguments: { cost: 1, coherence: 0.85, source: 'mcp-test-contribute' } },
+      params: { name: 'field', arguments: { action: 'contribute', cost: 1, coherence: 0.85, source: 'mcp-test-contribute' } },
     });
     assert.ok(res.result.content);
     const data = JSON.parse(res.result.content[0].text);
@@ -137,24 +137,24 @@ describe('MCPServer', () => {
     assert.equal(data.source, 'mcp-test-contribute');
   });
 
-  it('handles field_pressure via MCP', async () => {
+  it('handles field action=pressure via MCP', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 302,
       method: 'tools/call',
-      params: { name: 'field_pressure', arguments: {} },
+      params: { name: 'field', arguments: { action: 'pressure' } },
     });
     assert.ok(res.result.content);
     const data = JSON.parse(res.result.content[0].text);
     assert.equal(typeof data.hot, 'boolean');
   });
 
-  it('handles field_introspect via MCP', async () => {
+  it('handles field action=introspect via MCP', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 303,
       method: 'tools/call',
-      params: { name: 'field_introspect', arguments: { topN: 5 } },
+      params: { name: 'field', arguments: { action: 'introspect', topN: 5 } },
     });
     assert.ok(res.result.content);
     const data = JSON.parse(res.result.content[0].text);
@@ -162,12 +162,12 @@ describe('MCPServer', () => {
     assert.ok(Array.isArray(data.topSources));
   });
 
-  it('handles field_sources_diff via MCP', async () => {
+  it('handles field action=sources-diff via MCP', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({
       id: 304,
       method: 'tools/call',
-      params: { name: 'field_sources_diff', arguments: { expected: ['mcp-test-contribute', 'definitely-not-firing'] } },
+      params: { name: 'field', arguments: { action: 'sources-diff', expected: ['mcp-test-contribute', 'definitely-not-firing'] } },
     });
     assert.ok(res.result.content);
     const data = JSON.parse(res.result.content[0].text);

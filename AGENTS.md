@@ -8,9 +8,20 @@
 > only covers what *this* repo (the hub) does. The cross-repo protocol
 > is canonical and overrides any per-repo conventions.
 
+> **After ECOSYSTEM.md, read [`FIELD.md`](./FIELD.md).** It is the
+> operational reference for the LivingRemembranceEngine — the source
+> keys, the cap invariants, the producer table, and the verification
+> commands. Every claim in this repo about "the field" is pinned to
+> a file:line and a Void contract there.
+
 > **Applies to any AI agent working in this repo** (Claude, Cursor,
 > Aider, Continue, Windsurf, Cody, etc.). `CLAUDE.md` is a pointer to
 > this file — instructions are tool-neutral.
+>
+> **Engineering covenant — non-negotiable** (see [`FIELD.md`](./FIELD.md) §6):
+> one canonical encoder, one canonical field file, coherence ≤ 0.999,
+> cascade ≤ 5.0, every producer contributes, no side-artifacts where
+> the substrate can hold the data, no new dead constants.
 
 ## What This Is (one paragraph)
 

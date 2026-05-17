@@ -31,6 +31,7 @@ const {
   computeAmplitude,
   coherencyToAmplitude,
   applyDecoherence,
+  applyPhaseDrift,
   determineState,
   computePhase,
   computeInterference,
@@ -52,12 +53,18 @@ const QUANTUM_TABLES = ['patterns', 'entries', 'candidates', 'debug_patterns'];
 class QuantumField {
   /**
    * @param {object} store - SQLiteStore instance with .db property
-   * @param {object} [options] - { verbose }
+   * @param {object} [options]
+   * @param {boolean} [options.verbose]
+   * @param {function} [options.onCascade] — fired when a pattern's amplitude
+   *   crosses CASCADE_THRESHOLD upward on a successful feedback. Receives
+   *   { table, id, previousAmplitude, newAmplitude, threshold }. Best-effort:
+   *   exceptions are caught and logged under ORACLE_DEBUG.
    */
   constructor(store, options = {}) {
     this.store = store;
     this.db = store.db;
     this.verbose = options.verbose || false;
+    this.onCascade = typeof options.onCascade === 'function' ? options.onCascade : null;
 
     this._migrateAllTables();
   }
@@ -242,11 +249,55 @@ class QuantumField {
     const delta = computeEntanglementDelta(succeeded);
     const propagated = this._propagateEntanglement(entangled, delta, id);
 
+    // Cascade growth trigger — when a pattern's amplitude crosses
+    // CASCADE_THRESHOLD upward on a successful feedback, fire the
+    // cascade hook so consumers (e.g. the recycler) can spawn
+    // entangled variants. See quantum-core.CASCADE_THRESHOLD docstring.
+    const cascadeTriggered = this._fireCascadeIfCrossed(
+      table, id, currentAmplitude, newAmplitude, succeeded
+    );
+
     return {
       amplitude: Math.round(newAmplitude * 1000) / 1000,
       quantumState,
       entanglementPropagated: propagated,
+      cascadeTriggered,
     };
+  }
+
+  /**
+   * Detect an upward CASCADE_THRESHOLD crossing on a successful feedback,
+   * contribute the event to the LRE field, and (if wired) call the
+   * onCascade consumer. Returns true iff a crossing fired.
+   */
+  _fireCascadeIfCrossed(table, id, previousAmplitude, newAmplitude, succeeded) {
+    if (!succeeded) return false;
+    if (previousAmplitude > CASCADE_THRESHOLD) return false; // already past
+    if (newAmplitude <= CASCADE_THRESHOLD) return false;     // didn't cross
+
+    // Best-effort field contribution: the cascade is a meaningful event,
+    // so the LRE should see it regardless of whether a consumer is wired.
+    try {
+      const { contribute } = require('../core/field-coupling');
+      contribute({ cost: 1, coherence: newAmplitude, source: `quantum:cascade-spawn:${table}` });
+    } catch (_) { /* best-effort */ }
+
+    if (this.onCascade) {
+      try {
+        this.onCascade({
+          table,
+          id,
+          previousAmplitude,
+          newAmplitude,
+          threshold: CASCADE_THRESHOLD,
+        });
+      } catch (e) {
+        if (process.env.ORACLE_DEBUG) {
+          console.warn(`[quantum-field:cascade:${table}:${id}]`, e?.message || e);
+        }
+      }
+    }
+    return true;
   }
 
   /**
@@ -332,6 +383,8 @@ class QuantumField {
     const now = new Date();
     const cutoff = new Date(now.getTime() - maxDays * 86400000).toISOString();
     const report = { totalDecohered: 0 };
+    let amplitudeSum = 0;
+    let amplitudeCount = 0;
 
     for (const table of QUANTUM_TABLES) {
       try {
@@ -341,34 +394,68 @@ class QuantumField {
         if (!tableExists) continue;
 
         const stale = this.db.prepare(
-          `SELECT id, amplitude, last_observed_at FROM ${table}
+          `SELECT id, amplitude, phase, last_observed_at FROM ${table}
            WHERE (last_observed_at IS NOT NULL AND last_observed_at < ?)
               OR (last_observed_at IS NULL AND created_at < ?)`
         ).all(cutoff, cutoff);
 
         let tableDecohered = 0;
+        let tablePhaseDrifted = 0;
         for (const row of stale) {
           const rawAmplitude = row.amplitude || PLANCK_AMPLITUDE;
-          const decohered = applyDecoherence(rawAmplitude, row.last_observed_at || cutoff, now.toISOString());
+          const anchor = row.last_observed_at || cutoff;
+          const decohered = applyDecoherence(rawAmplitude, anchor, now.toISOString());
+          const driftedPhase = applyPhaseDrift(row.phase || 0, anchor, now.toISOString());
+          const phaseChanged = driftedPhase !== (row.phase || 0);
+          amplitudeSum += decohered;
+          amplitudeCount += 1;
 
           if (decohered < minAmplitude) {
             this.db.prepare(
-              `UPDATE ${table} SET amplitude = ?, quantum_state = ?, updated_at = ? WHERE id = ?`
-            ).run(decohered, QUANTUM_STATES.DECOHERED, now.toISOString(), row.id);
+              `UPDATE ${table} SET amplitude = ?, phase = ?, quantum_state = ?, updated_at = ? WHERE id = ?`
+            ).run(decohered, driftedPhase, QUANTUM_STATES.DECOHERED, now.toISOString(), row.id);
             tableDecohered++;
-          } else if (decohered < rawAmplitude) {
+            if (phaseChanged) tablePhaseDrifted++;
+          } else if (decohered < rawAmplitude || phaseChanged) {
             this.db.prepare(
-              `UPDATE ${table} SET amplitude = ?, updated_at = ? WHERE id = ?`
-            ).run(decohered, now.toISOString(), row.id);
+              `UPDATE ${table} SET amplitude = ?, phase = ?, updated_at = ? WHERE id = ?`
+            ).run(decohered, driftedPhase, now.toISOString(), row.id);
+            if (phaseChanged) tablePhaseDrifted++;
           }
         }
 
-        report[table] = { swept: stale.length, decohered: tableDecohered };
+        report[table] = { swept: stale.length, decohered: tableDecohered, phaseDrifted: tablePhaseDrifted };
         report.totalDecohered += tableDecohered;
+        report.totalPhaseDrifted = (report.totalPhaseDrifted || 0) + tablePhaseDrifted;
       } catch (e) {
         report[table] = { error: e.message };
       }
     }
+
+    // Wire the sweep into the LRE field. Two contributions per sweep:
+    //   - decoherence-sweep: average amplitude of swept patterns (low =
+    //     field is forgetting). cost = number of stale rows touched.
+    //   - phase-drift-sweep: how many patterns drifted phase. coherence
+    //     reflects post-sweep amplitude (drift correlates with aging).
+    // Both best-effort — sweep results never fail because field is down.
+    try {
+      const { contribute } = require('../core/field-coupling');
+      if (amplitudeCount > 0) {
+        const avgAmplitude = amplitudeSum / amplitudeCount;
+        contribute({
+          cost: amplitudeCount,
+          coherence: avgAmplitude,
+          source: 'quantum:decoherence-sweep',
+        });
+        if ((report.totalPhaseDrifted || 0) > 0) {
+          contribute({
+            cost: report.totalPhaseDrifted,
+            coherence: avgAmplitude,
+            source: 'quantum:phase-drift-sweep',
+          });
+        }
+      }
+    } catch (_) { /* best-effort */ }
 
     return report;
   }

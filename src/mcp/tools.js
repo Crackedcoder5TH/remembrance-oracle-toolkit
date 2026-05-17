@@ -412,73 +412,23 @@ const TOOLS = [
     },
   },
 
-  // ─── 28-32. Remembrance Field (LRE) — expose the conserved field as MCP ───
+  // ─── 28. Remembrance Field (LRE) — the conserved ecosystem field, one tool ───
   {
-    name: 'field_state',
-    description: 'Read the LivingRemembranceEngine field state — the ecosystem-wide conserved scalar that every producer contributes to. Returns coherence, globalEntropy, cascadeFactor, updateCount, timestamp, and the per-source histogram. Read-only.',
+    name: 'field',
+    description: 'The Remembrance Field — the LivingRemembranceEngine conserved scalar that every producer across the ecosystem contributes to. One tool, dispatched by `action`: state (default) recalls the field — coherence, coherenceIntegral, globalEntropy, cascadeFactor, updateCount, and the per-source histogram; contribute participates as a producer (pass cost, coherence, source); pressure returns the field-driven backpressure signal (hot when entropy/cascade saturate); introspect returns the per-source histogram sorted by count, for finding silent-but-plumbed sources; sources-diff takes expected source labels and returns which are firing vs silent; checkpoint commits the field state to the blockchain (L2 ledger + Solana + Cosmos anchors). Read-only except contribute and checkpoint.',
     inputSchema: {
       type: 'object',
       properties: {
-        includeSources: { type: 'boolean', description: 'Include the per-source histogram (can be large; default: true)', default: true },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'field_contribute',
-    description: 'Contribute an observation to the LRE field. The MCP caller participates as a producer: pass cost (work units), coherence (alignment 0..N — ratchets up unbounded), and source (identity string like "agent:claude:my-task"). Returns the new field state. The field updates persistently; every caller sees the same conserved scalar.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        cost: { type: 'number', description: 'Work units consumed by this operation (default: 1)', default: 1 },
-        coherence: { type: 'number', description: 'Alignment score (typically 0..1, but unbounded above — coherency ratchets up).' },
-        source: { type: 'string', description: 'Caller identity, e.g. "agent:claude:my-task" or "mcp-client:tool-x"' },
-      },
-      required: ['coherence', 'source'],
-    },
-  },
-  {
-    name: 'field_pressure',
-    description: 'Get the field-driven backpressure signal. Returns hot=true when globalEntropy or cascadeFactor exceeds thresholds — high-volume producers should self-throttle when hot. Replaces hardcoded rate limits with conserved-field dynamics.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        entropyThreshold: { type: 'number', description: 'Hot when globalEntropy exceeds this (default: 10)', default: 10 },
-        cascadeThreshold: { type: 'number', description: 'Hot when cascadeFactor exceeds this (default: 4)', default: 4 },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'field_introspect',
-    description: 'Ask the field who has been contributing. Returns the per-source histogram sorted by count (hot paths first), plus totals. Useful for finding silent-but-plumbed sources (the field knows what fires; this surfaces the gap). Read-only.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        topN: { type: 'number', description: 'Return the top-N most-active sources (default: 25, use 0 for all)', default: 25 },
-        prefix: { type: 'string', description: 'Filter sources by prefix (e.g. "void:" returns only Void producers)' },
-      },
-      required: [],
-    },
-  },
-  {
-    name: 'field_sources_diff',
-    description: 'Given a list of expected source labels, return which are firing in the field vs silent. The diagnostic primitive for "what should be wired but isn\'t" — pass the labels you expect to see, get back the gap. Read-only.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        expected: { type: 'array', items: { type: 'string' }, description: 'List of source labels to check' },
-      },
-      required: ['expected'],
-    },
-  },
-  {
-    name: 'field_checkpoint',
-    description: 'Checkpoint the current LRE field state to the blockchain. Records a MILESTONE block on the L2 chain (REMEMBRANCE-BLOCKCHAIN PatternLedger) AND anchors the block hash to BOTH Solana and Cosmos in parallel. The same provenance is committed to two independent chains — Solana outage or governance event doesn\'t destroy the trail; Cosmos outage doesn\'t either. Returns the ledger block + per-chain anchor receipts. Returns fractured=true when at least one chain confirmed (provenance survives); provenance=true when both confirmed (full redundancy). Offline mode (no wallet / no RPC) returns receipts with status="offline" but still records the L2 milestone locally.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        includeSources: { type: 'boolean', description: 'Include the source histogram in the milestone payload (default: false — keeps memo small)', default: false },
+        action: { type: 'string', enum: ['state', 'contribute', 'pressure', 'introspect', 'sources-diff', 'checkpoint'], description: 'Field operation. Default: state — recall the field.' },
+        includeSources: { type: 'boolean', description: 'state/checkpoint: include the per-source histogram (state defaults true, checkpoint defaults false).' },
+        cost: { type: 'number', description: 'contribute: work units consumed (default: 1).' },
+        coherence: { type: 'number', description: 'contribute: alignment score (typically 0..1).' },
+        source: { type: 'string', description: 'contribute: caller identity, e.g. "agent:claude:my-task".' },
+        entropyThreshold: { type: 'number', description: 'pressure: hot when globalEntropy exceeds this (default: 10).' },
+        cascadeThreshold: { type: 'number', description: 'pressure: hot when cascadeFactor exceeds this (default: 4).' },
+        topN: { type: 'number', description: 'introspect: return the top-N most-active sources (default: 25, 0 = all).' },
+        prefix: { type: 'string', description: 'introspect: filter sources by prefix, e.g. "void:".' },
+        expected: { type: 'array', items: { type: 'string' }, description: 'sources-diff: the source labels to check (required for that action).' },
       },
       required: [],
     },

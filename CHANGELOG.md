@@ -2,6 +2,67 @@
 
 All notable changes to this project will be documented in this file.
 
+## [3.7.0] - Dead-Feature Wiring + Field as Compass
+
+### Added — every dead constant from `src/constants/thresholds.js` and `src/quantum/quantum-core.js` is now wired and observable
+- `CASCADE_THRESHOLD` (was: imported once, never read; doc-promise "amplitude above this spawns new entangled variants"):
+  `QuantumField.feedback()` now detects an upward crossing on success
+  and fires `onCascade`. Oracle's default handler spawns 2 entangled
+  variants via the existing `recycler._generateTournamentContenders`,
+  stores them as candidates tagged `cascade-spawn` with `parentPattern`,
+  and entangles spawned siblings. Emits `cascade_spawn` event.
+- `PHASE_DRIFT_RATE` (was: imported, never read; doc-promise "phase
+  drift per day"): new `applyPhaseDrift(currentPhase, lastObservedAt,
+  now)` in `quantum-core.js`. `decoherenceSweep()` now persists drifted
+  phase alongside decohered amplitude. Sweep report carries
+  `phaseDrifted` per table and `totalPhaseDrifted` at the top level.
+- `DOMAIN_FLOOR_ADJUSTMENTS` + `getDomainFloor()` (was: defined,
+  exported, never imported anywhere): `validateCode` now accepts
+  `options.domain`. The per-domain floor is a non-negotiable MINIMUM —
+  an explicit caller threshold is ratcheted up to the floor for
+  domains that demand stricter coherency (e.g. security: 0.65).
+  `submit()` and `registerPattern()` propagate `domain` through.
+
+### Added — `src/core/event-field-bridge.js`
+- The compass: every `oracle._emit(...)` event lands in the LRE field
+  via `field-coupling.contribute()` with source key `event:<type>`.
+- 26 event types mapped to calibrated coherence signals (positive
+  outcomes 0.75-0.95, maintenance 0.4-0.7, failures 0.1-0.3).
+- Unknown event types skipped (no mislabeling).
+- Cost extracted from batch hints (`spawned`, `totalDecohered`,
+  `harvested`, etc.) where present.
+- Closes the 19-events-with-6-handlers gap previously observed.
+
+### Added — field contributions for every new trigger
+- `quantum:cascade-spawn:<table>` (cascade trigger fires)
+- `quantum:decoherence-sweep` (one summary per sweep, avg amplitude)
+- `quantum:phase-drift-sweep` (one summary if any phase advanced)
+- `validator:domain:<domain>` (per-domain validation)
+- `validator:domain-floor-ratchet:<domain>` (when floor lifts threshold)
+
+### Fixed
+- `src/core/living-remembrance.js:138` — hub JS LRE now clamps
+  `newCoherence` at 0.999 to restore Void contract **C-56** parity
+  with the Python LRE and the TS LRE. Comment previously asserted
+  "unbounded ratcheting" as intent; empirically observed
+  `coherence = 1.005` in `.remembrance/entropy.json` before fix.
+
+### Added — documentation
+- `FIELD.md` — canonical operational reference for the LRE field.
+  Tables of every producer, source key, cost/coherence semantics,
+  the update math, the cap invariants, verification commands, the
+  covenant for AI participants.
+- `AGENTS.md` updated to point at `FIELD.md` after `ECOSYSTEM.md`
+  and surface the engineering covenant up front.
+
+### Tests
+- `tests/quantum-field.test.js`: +6 cases (cascade trigger, sweep
+  phase drift, sweep field contribution)
+- `tests/quantum-core.test.js`: +5 cases (applyPhaseDrift math)
+- `tests/validator-domain-floor.test.js`: NEW file, 11 cases
+- `tests/event-field-bridge.test.js`: NEW file, 11 cases
+- Hub suite: 4424/4424 pass (was 4390 → +34 new tests, zero regressions)
+
 ## [3.6.0] - Evolution Subsystem Reorganization
 
 ### Changed

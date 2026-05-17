@@ -24,6 +24,15 @@
  *   entropy(t)  = cost / (coherence(t) + ε)       cost normalized by alignment —
  *                                                  THE entropy field that balances
  *                                                  cost across the ecosystem.
+ *   ∫p          = Σ p(t) · cost                   the coherence integral — the
+ *                                                  field's unbounded remembrance.
+ *                                                  p(t) stays the bounded [0,1]
+ *                                                  backdrop (0 = noise, 1 = unity);
+ *                                                  the integral is the one dimension
+ *                                                  with no ceiling — total aligned
+ *                                                  order accumulated, growing without
+ *                                                  end yet never losing itself,
+ *                                                  because every term it sums is whole.
  *
  * Ported from core/living-remembrance-engine.ts (Crackedcoder5TH, May 2026)
  * to plain JavaScript so every JS module in the ecosystem can consume it
@@ -59,30 +68,55 @@ const PARAMS = {
 };
 
 class LivingRemembranceEngine {
-  constructor({ persistPath = DEFAULT_ENTROPY_PATH, params = {} } = {}) {
-    this._persistPath = persistPath;
+  constructor(opts = {}) {
+    const { persistPath, params = {} } = opts;
+    this._persistPath = persistPath || DEFAULT_ENTROPY_PATH;
+    // Only the one true canonical field remembers-on-load from durable
+    // memory. An explicit persistPath or an $ENTROPY_PATH override means
+    // an isolated field (tests, scratch) — it starts fresh.
+    this._canonical = (persistPath === undefined || persistPath === null)
+      && !process.env.ENTROPY_PATH;
     this._params = { ...PARAMS, ...params };
     this._healedVector = null;
     this._state = this._loadOrInit();
   }
 
   _loadOrInit() {
+    let loaded = null;
     try {
       if (fs.existsSync(this._persistPath)) {
-        const raw = fs.readFileSync(this._persistPath, 'utf8');
-        const parsed = JSON.parse(raw);
+        const parsed = JSON.parse(fs.readFileSync(this._persistPath, 'utf8'));
         // Defensive: ensure required keys present.
-        return {
-          coherence:      typeof parsed.coherence === 'number' ? parsed.coherence : 0.65,
-          globalEntropy:  typeof parsed.globalEntropy === 'number' ? parsed.globalEntropy : 0.45,
-          cascadeFactor:  typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
-          updateCount:    typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
-          timestamp:      parsed.timestamp || Date.now(),
-          sources:        (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
+        loaded = {
+          coherence:        typeof parsed.coherence === 'number' ? parsed.coherence : 0.65,
+          coherenceIntegral: typeof parsed.coherenceIntegral === 'number' ? parsed.coherenceIntegral : 0,
+          globalEntropy:    typeof parsed.globalEntropy === 'number' ? parsed.globalEntropy : 0.45,
+          cascadeFactor:    typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
+          updateCount:      typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
+          timestamp:        parsed.timestamp || Date.now(),
+          sources:          (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
         };
       }
-    } catch (_e) { /* fall through to fresh init */ }
-    return { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
+    } catch (_e) { loaded = null; }
+
+    // entropy.json present and carrying history — the live field. Use it.
+    if (loaded && loaded.updateCount > 0) return loaded;
+
+    // entropy.json missing or reset to zero — remember-on-load. The
+    // histogram has been witnessed in durable memory: field-snapshot
+    // patterns in oracle.db, and the blockchain ledger's _entropy.
+    // Restore from whichever witness carries the most history, so the
+    // field comes back up remembering what it didn't lose. Only the
+    // canonical field does this; isolated fields start fresh.
+    if (this._canonical) {
+      try {
+        const { restoreLatest } = require('./field-memory');
+        const remembered = restoreLatest();
+        if (remembered && remembered.updateCount > 0) return remembered;
+      } catch (_e) { /* field-memory unavailable — fall through to fresh */ }
+    }
+
+    return loaded || { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
   }
 
   _persist() {
@@ -133,9 +167,11 @@ class LivingRemembranceEngine {
     const delta_void = delta0 * Math.max(0, 1 - p);
     const gamma      = Math.exp(beta * this._state.cascadeFactor);
 
-    // Coherency ratchets up unbounded. No ceiling — once you're aligned,
-    // you stay aligned and can keep accumulating.
-    const newCoherence = Math.max(0, p + r_eff * 0.1 + delta_void * 0.15);
+    // Coherence cap at 0.999 — Void contract C-56. The Python LRE
+    // (living_remembrance.py) and the TS LRE (core/living-remembrance-
+    // engine.ts) both enforce this. The hub JS LRE had drifted from
+    // that invariant; one-line fix restores parity.
+    const newCoherence = Math.max(0, Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15));
 
     // Per-source histogram — the field tracks who's contributing so it
     // can answer "what's wired" and "what's missing" introspectively.
@@ -150,11 +186,12 @@ class LivingRemembranceEngine {
     }
 
     this._state = {
-      coherence:     newCoherence,
-      globalEntropy: cost / (newCoherence + epsilon),
-      cascadeFactor: Math.min(5.0, this._state.cascadeFactor + 0.05 * newCoherence),
-      updateCount:   this._state.updateCount + 1,
-      timestamp:     Date.now(),
+      coherence:         newCoherence,
+      coherenceIntegral: (this._state.coherenceIntegral || 0) + newCoherence * cost,
+      globalEntropy:     cost / (newCoherence + epsilon),
+      cascadeFactor:     Math.min(5.0, this._state.cascadeFactor + 0.05 * newCoherence),
+      updateCount:       this._state.updateCount + 1,
+      timestamp:         Date.now(),
       sources,
     };
     this._persist();
@@ -176,7 +213,7 @@ class LivingRemembranceEngine {
 
   /** Reset state — primarily for tests / fresh runs. */
   reset() {
-    this._state = { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now() };
+    this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
     this._persist();
   }
 }

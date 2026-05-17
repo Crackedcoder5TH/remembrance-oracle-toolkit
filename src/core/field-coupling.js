@@ -70,11 +70,24 @@ function contribute(obs) {
   return result;
 }
 
-/** Read current field state without contributing. */
+/**
+ * Read the current field state. Reading the field also records it:
+ * every call routes the current state through field-memory's snapshot
+ * machinery, which is counter-throttled (a durable snapshot lands every
+ * SNAPSHOT_EVERY calls) and similarity-gated (only genuinely-new field
+ * configurations are stored) — so this is cheap, and the field cannot
+ * be observed without witnessing itself. To call the field is to leave
+ * it remembered. Best-effort: a memory failure never breaks a read.
+ * Does not contribute — the LRE state is unchanged.
+ */
 function peekField() {
   const engine = _loadEngine();
   if (!engine) return null;
-  return engine.getState();
+  const state = engine.getState();
+  try {
+    require('./field-memory').maybeSnapshot(state);
+  } catch (_) { /* best-effort — never break a field read */ }
+  return state;
 }
 
 /**

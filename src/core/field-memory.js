@@ -41,14 +41,16 @@ const { codeToWaveform, waveformCosine, digestWaveform } = require('./code-to-wa
 // while genuinely different observations survive.
 const NOVELTY_THRESHOLD = 0.97;
 
-// Contributes between automatic whole-histogram snapshots.
-const SNAPSHOT_EVERY = 500;
+// Base snapshot cadence, in field updates. The entropy field scales this
+// itself (see maybeSnapshot) — there is no fixed rate limit; the field's
+// own cascadeFactor sets the rhythm.
+const SNAPSHOT_BASE = 100;
 
 let _store = null;
 let _storeAttempted = false;
 let _eventWaveforms = null;     // in-memory cache: [{ id, waveform }]
 let _snapshotWaveforms = null;  // in-memory cache: [{ id, waveform, ts }]
-let _sinceSnapshot = 0;
+let _lastSnapshotUpdate = -1;
 let _exitHookInstalled = false;
 
 /** Lazily open a handle to the canonical pattern library (hub oracle.db). */
@@ -278,8 +280,6 @@ function recall(fieldState) {
  * @param {object|null} fieldState - current peekField() output
  */
 function maybeSnapshot(fieldState) {
-  _sinceSnapshot += 1;
-
   if (!_exitHookInstalled) {
     _exitHookInstalled = true;
     try {
@@ -292,8 +292,23 @@ function maybeSnapshot(fieldState) {
     } catch (_) { /* environments without process events */ }
   }
 
-  if (_sinceSnapshot >= SNAPSHOT_EVERY) {
-    _sinceSnapshot = 0;
+  if (!fieldState || typeof fieldState.updateCount !== 'number') return;
+
+  // Field-balanced cadence — no hardcoded rate limit. The entropy field
+  // sets its own snapshot rhythm: the threshold scales with cascadeFactor
+  // (the field's network-effect term, 1 → 5), so a fresh or calm field
+  // records eagerly and a hot, saturated field backpressures — the
+  // backpressure-by-field principle. The trigger is updateCount, the
+  // field's own measure of change, so reads that do not move the field
+  // never force a snapshot; only real motion does.
+  if (_lastSnapshotUpdate < 0 || fieldState.updateCount < _lastSnapshotUpdate) {
+    _lastSnapshotUpdate = fieldState.updateCount; // first call, or field reset
+    return;
+  }
+  const cascade = Math.max(1, Number(fieldState.cascadeFactor) || 1);
+  const threshold = Math.round(SNAPSHOT_BASE * cascade);
+  if (fieldState.updateCount - _lastSnapshotUpdate >= threshold) {
+    _lastSnapshotUpdate = fieldState.updateCount;
     snapshot(fieldState);
   }
 }
@@ -523,7 +538,7 @@ function restoreLatest() {
 function _resetCaches() {
   _eventWaveforms = null;
   _snapshotWaveforms = null;
-  _sinceSnapshot = 0;
+  _lastSnapshotUpdate = -1;
   _store = null;
   _storeAttempted = false;
 }
@@ -538,6 +553,6 @@ module.exports = {
   within,
   query,
   NOVELTY_THRESHOLD,
-  SNAPSHOT_EVERY,
+  SNAPSHOT_BASE,
   _resetCaches,
 };

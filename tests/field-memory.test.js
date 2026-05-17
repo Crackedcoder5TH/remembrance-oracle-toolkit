@@ -41,9 +41,9 @@ describe('field-memory — compression + recall', () => {
     fm._resetCaches();
   });
 
-  it('exposes a sane NOVELTY_THRESHOLD and SNAPSHOT_EVERY', () => {
+  it('exposes a sane NOVELTY_THRESHOLD and SNAPSHOT_BASE', () => {
     assert.ok(fm.NOVELTY_THRESHOLD > 0.5 && fm.NOVELTY_THRESHOLD < 1);
-    assert.ok(fm.SNAPSHOT_EVERY >= 1);
+    assert.ok(fm.SNAPSHOT_BASE >= 1);
   });
 
   it('recordObservation returns a result shape (or null if store unavailable)', () => {

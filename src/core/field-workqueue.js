@@ -286,6 +286,31 @@ function flush() {
   return { flushed: _flushToChain(_load()) };
 }
 
+/**
+ * Offload a unit of work: post it, nudge the local poller, then wait
+ * (bounded) for the coherency-judged result. If the local field is
+ * cool the local poller computes it at once; if the field is hot the
+ * entropy gate sends it to a node with surplus instead. Returns the
+ * collect() verdict, or { status: 'timeout', id } if none arrives.
+ */
+async function offload(kind, payload, opts = {}) {
+  const timeoutMs = (typeof opts.timeoutMs === 'number' && opts.timeoutMs > 0) ? opts.timeoutMs : 30000;
+  const id = post(kind, payload);
+
+  // Nudge the local poller — a cool node claims it at once; a hot
+  // node's claim is entropy-gated, so the work flows to the pool.
+  try { await require('./field-workqueue-poller')._tick(); } catch (_) { /* poller optional */ }
+
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const got = collect(id);
+    if (got.status === 'done') return got;
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+  const final = collect(id);
+  return final.status === 'done' ? final : { status: 'timeout', id };
+}
+
 /** Queue statistics. */
 function stats() {
   const store = _load();
@@ -297,4 +322,4 @@ function stats() {
   };
 }
 
-module.exports = { post, claim, submitResult, collect, flush, stats, STORE_PATH, _merge };
+module.exports = { post, claim, submitResult, collect, offload, flush, stats, STORE_PATH, _merge };

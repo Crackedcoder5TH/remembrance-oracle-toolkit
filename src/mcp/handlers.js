@@ -1304,8 +1304,18 @@ const HANDLERS = {
         return { error: `field action "direct": no .js zones found under "${scanDir}"` };
       }
 
+      // ── offload a unit of work to the shared queue; coherency-judged ──
+      case 'offload': {
+        const kind = (typeof args?.kind === 'string' && args.kind) ? args.kind : null;
+        if (!kind) throw new Error('field action "offload" requires "kind" (string)');
+        const wq = require('../core/field-workqueue');
+        return await wq.offload(kind, args?.payload, {
+          timeoutMs: typeof args?.timeoutMs === 'number' ? args.timeoutMs : undefined,
+        });
+      }
+
       default:
-        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint, audit, direct.`);
+        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint, audit, direct, offload.`);
     }
   },
 

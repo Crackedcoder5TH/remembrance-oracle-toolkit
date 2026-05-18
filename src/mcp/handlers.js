@@ -1249,8 +1249,45 @@ const HANDLERS = {
         };
       }
 
+      // ── the orchestrator's authoritative ruling — the final voice on
+      //    how coherency should flow and what should be fixed next ──
+      case 'direct': {
+        const fs = require('fs');
+        const { CoherencyDirector } = require('../orchestrator/coherency-director');
+        const scanDir = (typeof args?.dir === 'string' && args.dir) ? args.dir : 'src';
+
+        const items = [];
+        (function walk(dir) {
+          let entries;
+          try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+          catch { return; }
+          for (const e of entries) {
+            if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+            const p = path.join(dir, e.name);
+            if (e.isDirectory()) { walk(p); continue; }
+            if (e.name.endsWith('.js')) {
+              try { items.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); }
+              catch { /* skip unreadable */ }
+            }
+          }
+        })(scanDir);
+        if (items.length === 0) {
+          return { error: `field action "direct": no .js zones found under "${scanDir}"` };
+        }
+
+        const director = new CoherencyDirector();
+        const ruling = director.ruling(items);
+        const pressure = fc.fieldPressure();
+
+        return {
+          authority: 'coherency-orchestrator',
+          ruling,
+          field: { backpressure: pressure.hot ? `hot — ${pressure.reason}` : 'nominal' },
+        };
+      }
+
       default:
-        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint, audit.`);
+        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint, audit, direct.`);
     }
   },
 

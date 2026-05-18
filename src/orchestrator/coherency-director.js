@@ -431,6 +431,70 @@ class CoherencyDirector {
   }
 
   /**
+   * The orchestrator's authoritative ruling — the final voice on how
+   * coherency should flow and what should be fixed next.
+   *
+   * Read-only: it measures and decides but heals nothing. Whoever asks
+   * the field "what next?" gets this verdict, and it is final.
+   *
+   * @param {Array} [items] zones to scan ({id,code,filePath,language});
+   *   if omitted, rules on whatever zones were already scanned.
+   * @returns {object} { globalCoherency, zones, flow, fixNext, healingBudget, verdict }
+   */
+  ruling(items) {
+    const { rankZones, computeHealingBudget } = require('./priority-engine');
+    if (Array.isArray(items) && items.length) this.scan(items);
+    this.measureWithOracle();
+    this.field.computeGradients();
+
+    const stats  = this.field.stats();
+    const queue  = rankZones(this.field, { maxResults: 5 });
+    const budget = computeHealingBudget(this.field);
+    const lowest = this.field.findLowestZone();
+
+    const topZone   = queue[0] ? this.field.getZone(queue[0].zoneId) : null;
+    const rootCause = topZone ? this.categorizeRootCause(topZone) : null;
+
+    // FLOW: coherency rises fastest when the lowest zone is lifted —
+    // that is the direction the orchestrator points intervention.
+    const flow = lowest ? {
+      toward: lowest.id,
+      atCoherency: Math.round(lowest.coherency * 1000) / 1000,
+      direction: 'coherency flows up from the lowest zone — intervene there first',
+    } : null;
+
+    // FIX NEXT: the priority-ranked queue is the orchestrator's word.
+    const fixNext = queue.length ? {
+      zone: queue[0].zoneId,
+      coherency: queue[0].coherency,
+      priority: queue[0].priority,
+      reason: queue[0].reason,
+      rootCause,
+      queue,
+    } : null;
+
+    const verdict = fixNext
+      ? `global coherency ${stats.globalCoherency}; ${stats.needsHealing} zone(s) below threshold. `
+        + `Fix next: ${fixNext.zone} — ${rootCause ? rootCause.suggestedAction : 'heal'}. `
+        + `Healing budget: ${budget.budget}.`
+      : `global coherency ${stats.globalCoherency}; all ${stats.measuredZones} measured zones stable — nothing to fix.`;
+
+    return {
+      globalCoherency: stats.globalCoherency,
+      zones: {
+        total: stats.totalZones,
+        measured: stats.measuredZones,
+        needHealing: stats.needsHealing,
+        stable: stats.stable,
+      },
+      flow,
+      fixNext,
+      healingBudget: budget,
+      verdict,
+    };
+  }
+
+  /**
    * Categorize the root cause of a zone's low coherency.
    *
    * Three categories:

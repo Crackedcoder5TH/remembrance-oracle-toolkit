@@ -452,35 +452,60 @@ class CoherencyDirector {
     const budget = computeHealingBudget(this.field);
     const lowest = this.field.findLowestZone();
 
+    // Community baseline — the Remembrance Field's collective coherence,
+    // the coherence the whole producer community has settled on. Every
+    // item the orchestrator reports is scored against it: at or above
+    // the baseline = the community backs it (1.0), far below = low.
+    let baseline = 1.0;
+    try {
+      const fieldState = require('../core/field-coupling').peekField();
+      if (fieldState && typeof fieldState.coherence === 'number' && fieldState.coherence > 0) {
+        baseline = fieldState.coherence;
+      }
+    } catch (_) { /* field unreachable — baseline stays 1.0 */ }
+    const community = (c) => (typeof c === 'number' && baseline > 0)
+      ? Math.round(Math.min(1, c / baseline) * 1000) / 1000
+      : null;
+
     const topZone   = queue[0] ? this.field.getZone(queue[0].zoneId) : null;
     const rootCause = topZone ? this.categorizeRootCause(topZone) : null;
+
+    // Every fix-next zone carries its community score — coherency
+    // measured against the field's collective baseline.
+    const rankedQueue = queue.map(z => ({ ...z, communityScore: community(z.coherency) }));
 
     // FLOW: coherency rises fastest when the lowest zone is lifted —
     // that is the direction the orchestrator points intervention.
     const flow = lowest ? {
       toward: lowest.id,
       atCoherency: Math.round(lowest.coherency * 1000) / 1000,
+      communityScore: community(lowest.coherency),
       direction: 'coherency flows up from the lowest zone — intervene there first',
     } : null;
 
     // FIX NEXT: the priority-ranked queue is the orchestrator's word.
-    const fixNext = queue.length ? {
-      zone: queue[0].zoneId,
-      coherency: queue[0].coherency,
-      priority: queue[0].priority,
-      reason: queue[0].reason,
+    const fixNext = rankedQueue.length ? {
+      zone: rankedQueue[0].zoneId,
+      coherency: rankedQueue[0].coherency,
+      priority: rankedQueue[0].priority,
+      communityScore: rankedQueue[0].communityScore,
+      reason: rankedQueue[0].reason,
       rootCause,
-      queue,
+      queue: rankedQueue,
     } : null;
 
     const verdict = fixNext
-      ? `global coherency ${stats.globalCoherency}; ${stats.needsHealing} zone(s) below threshold. `
+      ? `global coherency ${stats.globalCoherency} (community ${community(stats.globalCoherency)}); `
+        + `${stats.needsHealing} zone(s) below threshold. `
         + `Fix next: ${fixNext.zone} — ${rootCause ? rootCause.suggestedAction : 'heal'}. `
         + `Healing budget: ${budget.budget}.`
-      : `global coherency ${stats.globalCoherency}; all ${stats.measuredZones} measured zones stable — nothing to fix.`;
+      : `global coherency ${stats.globalCoherency} (community ${community(stats.globalCoherency)}); `
+        + `all ${stats.measuredZones} measured zones stable — nothing to fix.`;
 
     return {
       globalCoherency: stats.globalCoherency,
+      communityScore: community(stats.globalCoherency),
+      communityBaseline: Math.round(baseline * 1000) / 1000,
       zones: {
         total: stats.totalZones,
         measured: stats.measuredZones,

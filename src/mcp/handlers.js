@@ -64,6 +64,31 @@ function _searchEnforcementNotice() {
   return null;
 }
 
+/**
+ * Walk a directory tree and collect every .js file as a coherency
+ * zone item ({id, code, filePath, language}) — the input the
+ * CoherencyDirector scans. Skips node_modules and dotfiles.
+ */
+function _scanJsZones(dir) {
+  const fs = require('fs');
+  const items = [];
+  (function walk(d) {
+    let entries;
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); }
+    catch { return; }
+    for (const e of entries) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (e.name.endsWith('.js')) {
+        try { items.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); }
+        catch { /* skip unreadable */ }
+      }
+    }
+  })(dir);
+  return items;
+}
+
 const HANDLERS = {
   // ─── 1. Search (unified) ───
   oracle_search(oracle, args) {
@@ -1216,6 +1241,17 @@ const HANDLERS = {
           workUnits += 1;
         } catch (_) { /* risk is best-effort */ }
 
+        // The orchestrator has the final word on what to fix next —
+        // every per-file audit ends with its ruling for the directory
+        // tree the audited file lives in.
+        if (filePath) {
+          try {
+            const { CoherencyDirector } = require('../orchestrator/coherency-director');
+            const zones = _scanJsZones(path.dirname(filePath));
+            if (zones && zones.length) verdict.orchestrator = new CoherencyDirector().ruling(zones);
+          } catch (_) { /* orchestrator deferral is best-effort */ }
+        }
+
         // Balance the audit's cost into the entropy field — globalEntropy
         // = cost / coherence, so a full audit's larger cost raises entropy
         // more, and the field's backpressure signals callers to ease off.
@@ -1252,38 +1288,20 @@ const HANDLERS = {
       // ── the orchestrator's authoritative ruling — the final voice on
       //    how coherency should flow and what should be fixed next ──
       case 'direct': {
-        const fs = require('fs');
         const { CoherencyDirector } = require('../orchestrator/coherency-director');
         const scanDir = (typeof args?.dir === 'string' && args.dir) ? args.dir : 'src';
+        const items = _scanJsZones(scanDir);
 
-        const items = [];
-        (function walk(dir) {
-          let entries;
-          try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
-          catch { return; }
-          for (const e of entries) {
-            if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
-            const p = path.join(dir, e.name);
-            if (e.isDirectory()) { walk(p); continue; }
-            if (e.name.endsWith('.js')) {
-              try { items.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); }
-              catch { /* skip unreadable */ }
-            }
-          }
-        })(scanDir);
-        if (items.length === 0) {
-          return { error: `field action "direct": no .js zones found under "${scanDir}"` };
+        if (items && items.length) {
+          const ruling = new CoherencyDirector().ruling(items);
+          const pressure = fc.fieldPressure();
+          return {
+            authority: 'coherency-orchestrator',
+            ruling,
+            field: { backpressure: pressure.hot ? `hot — ${pressure.reason}` : 'nominal' },
+          };
         }
-
-        const director = new CoherencyDirector();
-        const ruling = director.ruling(items);
-        const pressure = fc.fieldPressure();
-
-        return {
-          authority: 'coherency-orchestrator',
-          ruling,
-          field: { backpressure: pressure.hot ? `hot — ${pressure.reason}` : 'nominal' },
-        };
+        return { error: `field action "direct": no .js zones found under "${scanDir}"` };
       }
 
       default:

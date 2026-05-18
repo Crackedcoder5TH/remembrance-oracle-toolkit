@@ -183,7 +183,10 @@ class LivingRemembranceEngine {
     // fieldPressure "hot" signal forever.
     const now = Date.now();
     const dt  = Math.max(0, now - (this._state.timestamp || now));
-    const cascadeRelaxed = 1.0 + (this._state.cascadeFactor - 1.0) * Math.exp(-dt / cascadeTau);
+    // cascadeTau > 0 guards the division — a non-positive time constant
+    // means "instant decay", so the field fully relaxes to baseline.
+    const cascadeDecay   = cascadeTau > 0 ? Math.exp(-dt / cascadeTau) : 0;
+    const cascadeRelaxed = 1.0 + (this._state.cascadeFactor - 1.0) * cascadeDecay;
     const cascadeFactor  = Math.min(5.0, Math.max(1.0, cascadeRelaxed + 0.05 * newCoherence));
 
     // Per-source histogram — the field tracks who's contributing so it

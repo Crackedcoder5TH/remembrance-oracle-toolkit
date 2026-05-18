@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyClient } from "@/app/lib/client-auth";
 import { getPurchasesByClient, updatePurchaseStatus } from "@/app/lib/client-database";
+import { validateCsrfToken } from "@/app/lib/csrf";
 
 /**
  * Client Returns API
@@ -10,6 +11,13 @@ import { getPurchasesByClient, updatePurchaseStatus } from "@/app/lib/client-dat
 export async function POST(req: NextRequest) {
   const auth = await verifyClient(req);
   if (auth instanceof NextResponse) return auth;
+
+  if (!validateCsrfToken(req)) {
+    return NextResponse.json(
+      { success: false, message: "Security validation failed. Please refresh the page and try again." },
+      { status: 403 }
+    );
+  }
 
   try {
     const body = await req.json();

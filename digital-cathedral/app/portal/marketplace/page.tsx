@@ -222,9 +222,11 @@ export default function AgentPortal() {
 
   const handlePurchase = async (leadId: string, tierIndex: number) => {
     setMessage("");
+    const csrfRes = await fetch("/api/csrf");
+    const csrfData = csrfRes.ok ? await csrfRes.json() : { token: "" };
     const res = await fetch("/api/client/purchase", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfData.token },
       body: JSON.stringify({ leadId, tierIndex }),
     });
     const data = await res.json();
@@ -239,9 +241,11 @@ export default function AgentPortal() {
     const reason = prompt("Reason for return (e.g., wrong number, fake info):");
     if (!reason) return;
 
+    const csrfRes = await fetch("/api/csrf");
+    const csrfData = csrfRes.ok ? await csrfRes.json() : { token: "" };
     const res = await fetch("/api/client/returns", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfData.token },
       body: JSON.stringify({ purchaseId, reason }),
     });
     const data = await res.json();

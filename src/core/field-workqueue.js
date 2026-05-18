@@ -5,20 +5,24 @@
  * computation across entangled nodes.
  *
  * A node with heavy work posts a work item; any entangled node claims
- * it; the node computes and submits a result. Claiming is entropy-gated
- * — a node whose field is hot does not claim, so work spreads to nodes
- * with surplus. Every result is run through the compressor
- * (codeToWaveform -> 256-D waveform) and scored for coherency before it
- * is recorded; collect() returns the highest-coherency result, because
+ * it (claiming is entropy-gated, so a hot node idles); the node
+ * computes and submits a result. Every result is run through the
+ * compressor (codeToWaveform -> 256-D waveform) and scored for
+ * coherency; collect() returns the highest-coherency result, because
  * coherency is the ecosystem's final tiebreaker.
  *
- * Every post / claim / result contributes its cost to the Remembrance
- * Field, so the queue is balanced and throttled by the same entropy
- * dynamics as everything else. The LivingRemembranceEngine core is
- * untouched — the queue lives above the contribute() boundary.
+ * The queue is SHARED. It rides the same blockchain ledger the field
+ * uses: _load() restores the latest queue snapshot witnessed in the
+ * ledger and merges it with the local cache; _save() checkpoints the
+ * queue back to the ledger periodically. The merge follows coherency —
+ * it never drops a result, so collect()'s highest-coherency pick stays
+ * the final word and a claim race across nodes degrades into free
+ * swarm redundancy rather than a conflict.
  *
- * This is slice 1: the primitives. The node poller, swarm replica
- * cross-check, and server-farm overflow build on top of these.
+ * Every post / claim / result also contributes its cost to the
+ * Remembrance Field, so the queue is balanced and throttled by the
+ * same entropy dynamics as everything else. The LivingRemembranceEngine
+ * core is untouched — the queue lives above the contribute() boundary.
  */
 
 const fs = require('fs');
@@ -28,11 +32,18 @@ const crypto = require('crypto');
 const STORE_PATH = process.env.WORKQUEUE_PATH
   || path.join(__dirname, '..', '..', '.remembrance', 'workqueue.json');
 
-// A claimed-but-unfinished item is re-offered after this window, so a
-// node that dies mid-work does not strand the item.
+// A claimed-but-unfinished item is re-offered after this window.
 const CLAIM_LEASE_MS = 5 * 60 * 1000;
+// Checkpoint the queue to the shared ledger every N local saves.
+const FLUSH_EVERY = 20;
+// Re-read the ledger at most this often — bounds the chain-verify cost.
+const CHAIN_TTL_MS = 3000;
 
-function _load() {
+let _saveCount = 0;
+let _chainCache = { at: 0, value: null };
+
+// ── local cache ──────────────────────────────────────────────────────
+function _loadLocal() {
   try {
     if (fs.existsSync(STORE_PATH)) {
       const parsed = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
@@ -42,7 +53,7 @@ function _load() {
   return { items: [] };
 }
 
-function _save(store) {
+function _writeLocal(store) {
   try {
     const dir = path.dirname(STORE_PATH);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -50,6 +61,112 @@ function _save(store) {
     fs.writeFileSync(tmp, JSON.stringify(store, null, 2));
     fs.renameSync(tmp, STORE_PATH);
   } catch (_) { /* best-effort */ }
+}
+
+// ── shared store: the blockchain ledger, the same one the field uses ─
+function _ledgerPath() {
+  return process.env.LEDGER_PATH
+    || path.join(__dirname, '..', '..', '.remembrance', 'ledger.json');
+}
+
+function _blockchainLedger() {
+  const candidates = [
+    'remembrance-blockchain/src/index',
+    path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'src', 'index'),
+  ];
+  for (const p of candidates) {
+    try { return require(p).PatternLedger; } catch (_) { /* try next */ }
+  }
+  return null;
+}
+
+/** Restore the latest queue snapshot witnessed in the shared ledger. */
+function _loadFromChain() {
+  if (Date.now() - _chainCache.at < CHAIN_TTL_MS) return _chainCache.value;
+  let found = null;
+  try {
+    const PatternLedger = _blockchainLedger();
+    if (PatternLedger) {
+      const ledger = PatternLedger.load(_ledgerPath());
+      for (let i = ledger.chain.length - 1; i >= 0; i--) {
+        const b = ledger.chain[i];
+        const m = b && b.data && b.data.metadata;
+        if (b && b.data && b.data.type === 'CHECKPOINT'
+            && typeof b.data.patternId === 'string' && b.data.patternId.startsWith('workqueue-')
+            && m && m.workqueue && Array.isArray(m.workqueue.items)) {
+          found = m.workqueue;
+          break;
+        }
+      }
+    }
+  } catch (_) { /* ledger unavailable — local only */ }
+  _chainCache = { at: Date.now(), value: found };
+  return found;
+}
+
+/** Checkpoint the queue into the shared ledger. */
+function _flushToChain(store) {
+  try {
+    const PatternLedger = _blockchainLedger();
+    if (!PatternLedger) return false;
+    const lp = _ledgerPath();
+    const ledger = PatternLedger.load(lp);
+    ledger.recordEvent('CHECKPOINT', `workqueue-${new Date().toISOString()}`, { workqueue: store });
+    ledger.save(lp);
+    _chainCache = { at: 0, value: null }; // our snapshot just changed — refresh next read
+    return true;
+  } catch (_) { return false; }
+}
+
+// ── coherency-following merge ────────────────────────────────────────
+function _mergeResults(ra, rb) {
+  const seen = new Set();
+  const out = [];
+  for (const r of [...(ra || []), ...(rb || [])]) {
+    if (!r) continue;
+    const key = `${r.node}|${r.at}|${r.coherency}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(r);
+  }
+  return out;
+}
+
+/**
+ * Merge two views of the queue — a union of items, and per item a union
+ * of results. No result is dropped, so collect()'s highest-coherency
+ * pick stays the final word: a claim race across nodes becomes free
+ * swarm redundancy, adjudicated by coherency, not a lost-update bug.
+ */
+function _merge(a, b) {
+  const byId = new Map();
+  for (const it of ((a && a.items) || [])) byId.set(it.id, it);
+  for (const it of ((b && b.items) || [])) {
+    const cur = byId.get(it.id);
+    if (!cur) { byId.set(it.id, it); continue; }
+    const results = _mergeResults(cur.results, it.results);
+    byId.set(it.id, {
+      ...cur,
+      results,
+      done: !!(cur.done || it.done),
+      claimedBy: cur.claimedBy || it.claimedBy || null,
+      claimedAt: Math.max(cur.claimedAt || 0, it.claimedAt || 0) || null,
+    });
+  }
+  return { items: Array.from(byId.values()) };
+}
+
+// ── the shared load / save the operations use ────────────────────────
+function _load() {
+  const local = _loadLocal();
+  const chain = _loadFromChain();
+  return chain ? _merge(local, chain) : local;
+}
+
+function _save(store) {
+  _writeLocal(store);
+  _saveCount += 1;
+  if (_saveCount % FLUSH_EVERY === 0) _flushToChain(store);
 }
 
 function _field() {
@@ -164,6 +281,11 @@ function collect(id) {
   };
 }
 
+/** Force-checkpoint the queue to the shared ledger. */
+function flush() {
+  return { flushed: _flushToChain(_load()) };
+}
+
 /** Queue statistics. */
 function stats() {
   const store = _load();
@@ -175,4 +297,4 @@ function stats() {
   };
 }
 
-module.exports = { post, claim, submitResult, collect, stats, STORE_PATH };
+module.exports = { post, claim, submitResult, collect, flush, stats, STORE_PATH, _merge };

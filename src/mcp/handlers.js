@@ -1055,7 +1055,6 @@ const HANDLERS = {
           derived: {
             r_eff: result.r_eff,
             delta_void: result.delta_void,
-            gamma_cascade: result.gamma_cascade,
             p: result.p,
           },
           delta: before ? {

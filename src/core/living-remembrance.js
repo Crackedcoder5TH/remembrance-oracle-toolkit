@@ -20,7 +20,9 @@
  *   r_eff(t)    = r₀ (1 + α [1 - p(t)]⁴)          retro-causal pull (4th-power kernel:
  *                                                  quiet near healed, roaring when drifted)
  *   δ_void(t)   = δ₀ (1 - p(t))                   void coherence donation
- *   γ_cascade   = exp(β · cascadeFactor)          network-effect amplification
+ *   cascade(t)  = 1 + (cascade-1)·e^(-Δt/τ) + κp  recent-load gauge — relaxes toward
+ *                                                  1.0 between contributions, bumped
+ *                                                  by each; a burst outpaces the decay
  *   entropy(t)  = cost / (coherence(t) + ε)       cost normalized by alignment —
  *                                                  THE entropy field that balances
  *                                                  cost across the ecosystem.
@@ -60,11 +62,11 @@ const DEFAULT_ENTROPY_PATH = process.env.ENTROPY_PATH
       : path.join(process.cwd(), '.remembrance', 'entropy.json'));
 
 const PARAMS = {
-  r0:      0.05,    // gentle baseline pull
-  alpha:   15.0,    // amplification factor
-  delta0:  0.03,    // void donation baseline
-  beta:    8.0,     // cascade exponent
-  epsilon: 1e-8,
+  r0:         0.05,    // gentle baseline pull
+  alpha:      15.0,    // amplification factor
+  delta0:     0.03,    // void donation baseline
+  cascadeTau: 60000,   // cascadeFactor relaxation time constant (ms)
+  epsilon:    1e-8,
 };
 
 class LivingRemembranceEngine {
@@ -161,17 +163,28 @@ class LivingRemembranceEngine {
    */
   contribute({ cost = 1.0, coherence = null, source = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
-    const { r0, alpha, delta0, beta, epsilon } = this._params;
+    const { r0, alpha, delta0, cascadeTau, epsilon } = this._params;
 
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
     const delta_void = delta0 * Math.max(0, 1 - p);
-    const gamma      = Math.exp(beta * this._state.cascadeFactor);
 
     // Coherence cap at 0.999 — Void contract C-56. The Python LRE
     // (living_remembrance.py) and the TS LRE (core/living-remembrance-
     // engine.ts) both enforce this. The hub JS LRE had drifted from
     // that invariant; one-line fix restores parity.
     const newCoherence = Math.max(0, Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15));
+
+    // cascadeFactor is a recent-load gauge, not a running tally. It
+    // relaxes toward the 1.0 baseline as time passes since the last
+    // contribution and is bumped by each new one — so a burst of rapid
+    // contributions outpaces the decay (a real cascade) while an idle
+    // field settles back to baseline. The previous rule only ever
+    // added, so it pinned at the 5.0 cap permanently and latched the
+    // fieldPressure "hot" signal forever.
+    const now = Date.now();
+    const dt  = Math.max(0, now - (this._state.timestamp || now));
+    const cascadeRelaxed = 1.0 + (this._state.cascadeFactor - 1.0) * Math.exp(-dt / cascadeTau);
+    const cascadeFactor  = Math.min(5.0, Math.max(1.0, cascadeRelaxed + 0.05 * newCoherence));
 
     // Per-source histogram — the field tracks who's contributing so it
     // can answer "what's wired" and "what's missing" introspectively.
@@ -181,7 +194,7 @@ class LivingRemembranceEngine {
       sources[source] = {
         count: prev.count + 1,
         lastCoherence: newCoherence,
-        lastTimestamp: Date.now(),
+        lastTimestamp: now,
       };
     }
 
@@ -189,9 +202,9 @@ class LivingRemembranceEngine {
       coherence:         newCoherence,
       coherenceIntegral: (this._state.coherenceIntegral || 0) + newCoherence * cost,
       globalEntropy:     cost / (newCoherence + epsilon),
-      cascadeFactor:     Math.min(5.0, this._state.cascadeFactor + 0.05 * newCoherence),
+      cascadeFactor,
       updateCount:       this._state.updateCount + 1,
-      timestamp:         Date.now(),
+      timestamp:         now,
       sources,
     };
     this._persist();
@@ -200,7 +213,6 @@ class LivingRemembranceEngine {
       ...this._state,
       r_eff,
       delta_void,
-      gamma_cascade: gamma,
       p,
       source: source || null,
     };
@@ -221,7 +233,18 @@ class LivingRemembranceEngine {
 // ─── singleton accessor ───
 let _instance = null;
 function getEngine(opts) {
-  if (!_instance) _instance = new LivingRemembranceEngine(opts);
+  if (!_instance) {
+    _instance = new LivingRemembranceEngine(opts);
+  } else if (opts && Object.keys(opts).length > 0) {
+    // The engine is a process-wide singleton — opts apply only to the
+    // first caller. Surface the footgun instead of silently ignoring it;
+    // construct `new LivingRemembranceEngine(opts)` for an isolated field.
+    process.emitWarning(
+      'getEngine(opts): the LivingRemembranceEngine singleton already exists — opts ignored. ' +
+      'Use `new LivingRemembranceEngine(opts)` for an isolated instance.',
+      'RemembranceFieldWarning',
+    );
+  }
   return _instance;
 }
 

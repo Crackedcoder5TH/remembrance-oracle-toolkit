@@ -200,7 +200,9 @@ class LivingRemembranceEngine {
 
     this._state = {
       coherence:         newCoherence,
-      coherenceIntegral: (this._state.coherenceIntegral || 0) + newCoherence * cost,
+      // ∫p accumulates the input coherence p(t) per the master equation,
+      // not the post-update newCoherence.
+      coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost,
       globalEntropy:     cost / (newCoherence + epsilon),
       cascadeFactor,
       updateCount:       this._state.updateCount + 1,

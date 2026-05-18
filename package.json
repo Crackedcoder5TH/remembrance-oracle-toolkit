@@ -37,7 +37,8 @@
   "bin": {
     "remembrance-oracle": "src/cli.js",
     "oracle": "src/cli.js",
-    "reflector": "bin/reflector"
+    "reflector": "bin/reflector",
+    "remembrance-oracle-toolkit": "src/cli.js"
   },
   "files": [
     "src/",

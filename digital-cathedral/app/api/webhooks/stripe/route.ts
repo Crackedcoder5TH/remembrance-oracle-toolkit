@@ -79,11 +79,10 @@ export async function POST(req: NextRequest) {
       // Verify clientId exists and is active before crediting
       const clientResult = await getClientById(clientId);
       if (!clientResult.ok || !clientResult.value || clientResult.value.status !== "active") {
-        log.error("Webhook references invalid or inactive client", { clientId, paymentIntentId: paymentIntent.id });
-        return NextResponse.json(
-          { error: "Invalid client reference in payment metadata" },
-          { status: 400 }
-        );
+        // Not retryable — bad metadata will never resolve to a valid
+        // client. Acknowledge with 200 so Stripe stops redelivering.
+        log.warn("Webhook references invalid or inactive client — acknowledged without action", { clientId, paymentIntentId: paymentIntent.id });
+        return NextResponse.json({ received: true, ignored: "invalid client reference" });
       }
 
       const amount = paymentIntent.amount;

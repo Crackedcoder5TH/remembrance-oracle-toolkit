@@ -136,10 +136,11 @@ export const blobAdapter: LedgerAdapter = {
 
   async readRecent(limit): Promise<LedgerEntry[]> {
     try {
-      const currentMonth = monthOf(new Date());
-      const blobs = await listAll(`${prefix()}/${currentMonth}/`);
-      // Pathnames start with writtenAt ISO — reverse-sort gives newest first.
-      // Sort a copy so the array from listAll stays untouched.
+      // List the whole ledger, not just the current month. Pathnames are
+      // {prefix}/{YYYY-MM}/{writtenAt ISO}-{id}.json, so a global reverse
+      // lexicographic sort is chronological newest-first across every
+      // month — a trailing window must not be truncated at a month boundary.
+      const blobs = await listAll(prefix() + "/");
       const sorted = [...blobs].sort((a, b) => b.pathname.localeCompare(a.pathname));
       const slice = sorted.slice(0, limit);
       const entries = await Promise.all(slice.map((b) => fetchEntry(b.url)));

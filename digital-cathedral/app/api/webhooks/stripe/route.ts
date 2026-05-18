@@ -3,7 +3,7 @@ import { stripe } from "@/app/lib/stripe";
 import {
   updateClientBalance,
   createBilling,
-  generateBillingId,
+  getBillingById,
   getClientById,
 } from "@/app/lib/client-database";
 import { createRequestLogger } from "@/app/lib/logger";
@@ -60,6 +60,22 @@ export async function POST(req: NextRequest) {
     const type = metadata.type;
 
     if (type === "add_funds" && clientId) {
+      // Idempotency. Stripe delivers webhooks at-least-once and retries on
+      // any timeout or non-2xx, so the same payment_intent.succeeded can
+      // arrive more than once. The billing row's id is derived from the
+      // payment intent and client_billing.billing_id is UNIQUE — so a
+      // replayed delivery can never credit the balance twice.
+      const billingId = `billing_${paymentIntent.id}`;
+
+      const alreadyProcessed = await getBillingById(billingId);
+      if (alreadyProcessed.ok && alreadyProcessed.value) {
+        log.info("Duplicate Stripe webhook ignored — already processed", {
+          eventId: event.id,
+          paymentIntentId: paymentIntent.id,
+        });
+        return NextResponse.json({ received: true, duplicate: true });
+      }
+
       // Verify clientId exists and is active before crediting
       const clientResult = await getClientById(clientId);
       if (!clientResult.ok || !clientResult.value || clientResult.value.status !== "active") {
@@ -71,21 +87,13 @@ export async function POST(req: NextRequest) {
       }
 
       const amount = paymentIntent.amount;
-
-      // Credit the client's balance
-      const balanceResult = await updateClientBalance(clientId, amount);
-      if (!balanceResult.ok) {
-        log.error("Failed to credit client balance", { clientId, amount });
-        return NextResponse.json(
-          { error: "Balance update failed" },
-          { status: 500 }
-        );
-      }
-
-      // Create a billing record
       const now = new Date().toISOString();
-      await createBilling({
-        billingId: generateBillingId(),
+
+      // Record the billing row FIRST. The UNIQUE billing_id is the dedup
+      // gate: only the delivery whose insert wins proceeds to credit, so
+      // a concurrent duplicate cannot also credit the balance.
+      const billingResult = await createBilling({
+        billingId,
         clientId,
         periodStart: now,
         periodEnd: now,
@@ -95,8 +103,36 @@ export async function POST(req: NextRequest) {
         invoiceUrl: "",
         createdAt: now,
       });
+      if (!billingResult.ok) {
+        // Insert failed. If the row exists now, a concurrent delivery won
+        // the race — acknowledge as a duplicate. Otherwise it's a real
+        // failure: return 500 so Stripe retries.
+        const raced = await getBillingById(billingId);
+        if (raced.ok && raced.value) {
+          log.info("Duplicate Stripe webhook ignored — concurrent delivery", {
+            eventId: event.id,
+            paymentIntentId: paymentIntent.id,
+          });
+          return NextResponse.json({ received: true, duplicate: true });
+        }
+        log.error("Failed to record billing", { clientId, billingId, detail: billingResult.error });
+        return NextResponse.json(
+          { error: "Billing record failed" },
+          { status: 500 }
+        );
+      }
 
-      log.info("Client balance credited", { clientId, amount });
+      // The billing insert won — this is the first delivery. Credit now.
+      const balanceResult = await updateClientBalance(clientId, amount);
+      if (!balanceResult.ok) {
+        log.error("Failed to credit client balance", { clientId, amount });
+        return NextResponse.json(
+          { error: "Balance update failed" },
+          { status: 500 }
+        );
+      }
+
+      log.info("Client balance credited", { clientId, amount, billingId });
     }
   }
 

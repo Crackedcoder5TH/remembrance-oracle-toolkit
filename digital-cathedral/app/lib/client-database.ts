@@ -232,6 +232,7 @@ interface ClientDbAdapter {
   // Billing
   insertBilling(billing: ClientBilling): Promise<Result<{ billingId: string }, string>>;
   getBillingByClient(clientId: string, limit?: number): Promise<Result<ClientBilling[], string>>;
+  getBillingById(billingId: string): Promise<Result<ClientBilling | null, string>>;
   updateBillingStatus(billingId: string, status: ClientBilling["paymentStatus"]): Promise<Result<{ updated: boolean }, string>>;
 
   // Stats
@@ -614,6 +615,17 @@ class PostgresClientAdapter implements ClientDbAdapter {
         [clientId, limit]
       );
       return Ok(r.rows.map(rowToBilling));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
+  async getBillingById(billingId: string): Promise<Result<ClientBilling | null, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const r = await pool.query("SELECT * FROM client_billing WHERE billing_id = $1", [billingId]);
+      return Ok(r.rows.length > 0 ? rowToBilling(r.rows[0]) : null);
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Query failed");
     }
@@ -1034,6 +1046,17 @@ class SqliteClientAdapter implements ClientDbAdapter {
     }
   }
 
+  async getBillingById(billingId: string): Promise<Result<ClientBilling | null, string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      const row = db.prepare("SELECT * FROM client_billing WHERE billing_id = ?").get(billingId) as Record<string, unknown> | undefined;
+      return Ok(row ? rowToBilling(row) : null);
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Query failed");
+    }
+  }
+
   async updateBillingStatus(billingId: string, status: ClientBilling["paymentStatus"]): Promise<Result<{ updated: boolean }, string>> {
     try {
       const db = this.getDb();
@@ -1167,6 +1190,10 @@ class NoopClientAdapter implements ClientDbAdapter {
     return Ok([]);
   }
 
+  async getBillingById(): Promise<Result<ClientBilling | null, string>> {
+    return Ok(null);
+  }
+
   updateBillingStatus(): Promise<Result<{ updated: boolean }, string>> {
     return Promise.resolve(Ok({ updated: true }));
   }
@@ -1232,6 +1259,7 @@ export async function getClientDailyPurchaseCount(clientId: string) { return get
 export async function getClientMonthlyPurchaseCount(clientId: string) { return getClientAdapter().getClientMonthlyPurchaseCount(clientId); }
 export async function createBilling(billing: ClientBilling) { return getClientAdapter().insertBilling(billing); }
 export async function getBillingByClient(clientId: string, limit?: number) { return getClientAdapter().getBillingByClient(clientId, limit); }
+export async function getBillingById(billingId: string) { return getClientAdapter().getBillingById(billingId); }
 export async function updateBillingStatus(billingId: string, status: ClientBilling["paymentStatus"]) { return getClientAdapter().updateBillingStatus(billingId, status); }
 export async function getClientStats() { return getClientAdapter().getClientStats(); }
 export async function getRevenueByClient() { return getClientAdapter().getRevenueByClient(); }

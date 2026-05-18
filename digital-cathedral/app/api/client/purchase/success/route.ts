@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyClient } from "@/app/lib/client-auth";
-import {
-  createPurchase,
-  generatePurchaseId,
-} from "@/app/lib/client-database";
 import { getLeadById } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { stripe } from "@/app/lib/stripe";
+import { fulfillCheckoutSession } from "@/app/lib/purchase-fulfillment";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +12,10 @@ export const dynamic = "force-dynamic";
  *
  * GET /api/client/purchase/success?session_id=cs_xxx
  *
- * Called after Stripe Checkout completes. Verifies payment and fulfills the lead purchase.
+ * Called after Stripe Checkout completes, to show the buyer the lead they
+ * just bought. Fulfillment is idempotent (shared with the Stripe webhook),
+ * so loading this page never creates a duplicate purchase — and the webhook
+ * still fulfils the purchase even if the buyer never lands here.
  */
 export async function GET(req: NextRequest) {
   const auth = await verifyClient(req);
@@ -27,58 +27,32 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Retrieve the Stripe Checkout Session
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-    if (session.payment_status !== "paid") {
-      return NextResponse.json({ success: false, message: "Payment not completed." }, { status: 402 });
-    }
-
-    const { clientId, leadId, exclusive, price } = session.metadata || {};
-
-    // Verify the session belongs to the authenticated client
-    if (clientId !== auth.clientId) {
+    // The session must belong to the authenticated client.
+    if ((session.metadata?.clientId ?? null) !== auth.clientId) {
       return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 403 });
     }
 
-    if (!leadId || !price) {
-      return NextResponse.json({ success: false, message: "Invalid session metadata." }, { status: 400 });
+    // Fulfil idempotently — the webhook may already have recorded this purchase.
+    const fulfillment = await fulfillCheckoutSession(session);
+    if (!fulfillment.ok) {
+      const status = fulfillment.error === "Payment not completed." ? 402 : 500;
+      return NextResponse.json({ success: false, message: fulfillment.error }, { status });
     }
+    const purchase = fulfillment.purchase;
 
-    const isExclusive = exclusive === "true";
-    const pricePaid = parseInt(price, 10);
-
-    // Get lead data for the response
-    const leadResult = await getLeadById(leadId);
+    // Lead data for the response
+    const leadResult = await getLeadById(purchase.leadId);
     if (!leadResult.ok || !leadResult.value) {
       return NextResponse.json({ success: false, message: "Lead not found." }, { status: 404 });
     }
     const lead = leadResult.value;
     const score = scoreLead(lead);
 
-    // Create the purchase record
-    const returnDeadline = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
-    const purchaseId = generatePurchaseId();
-
-    const purchaseResult = await createPurchase({
-      purchaseId,
-      leadId,
-      clientId: auth.clientId,
-      pricePaid,
-      purchasedAt: new Date().toISOString(),
-      status: "delivered",
-      exclusive: isExclusive,
-      returnReason: "",
-      returnDeadline,
-    });
-
-    if (!purchaseResult.ok) {
-      return NextResponse.json({ success: false, message: "Failed to record purchase." }, { status: 500 });
-    }
-
     return NextResponse.json({
       success: true,
-      purchaseId,
+      purchaseId: purchase.purchaseId,
       lead: {
         leadId: lead.leadId,
         firstName: lead.firstName,
@@ -94,9 +68,9 @@ export async function GET(req: NextRequest) {
         tier: score.tier,
         createdAt: lead.createdAt,
       },
-      pricePaid,
-      exclusive: isExclusive,
-      returnDeadline,
+      pricePaid: purchase.pricePaid,
+      exclusive: purchase.exclusive,
+      returnDeadline: purchase.returnDeadline,
     });
   } catch {
     return NextResponse.json({ success: false, message: "Failed to verify payment." }, { status: 500 });

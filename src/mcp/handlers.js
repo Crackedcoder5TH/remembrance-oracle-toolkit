@@ -1055,7 +1055,6 @@ const HANDLERS = {
           derived: {
             r_eff: result.r_eff,
             delta_void: result.delta_void,
-            gamma_cascade: result.gamma_cascade,
             p: result.p,
           },
           delta: before ? {
@@ -1155,8 +1154,103 @@ const HANDLERS = {
         return await publisher.publishFieldCheckpoint(checkpointInput);
       }
 
+      // ── coherence-gated ecosystem audit; cost balanced into the field ──
+      // The field's own coherence picks the audit depth: a low-coherence
+      // field (< 0.65) earns a full audit, a coherent one a fast scan. The
+      // audit's work-cost is then contributed back, so heavy audits raise
+      // globalEntropy and the field's backpressure throttles repeats.
+      case 'audit': {
+        const COHERENCE_GATE = 0.65;
+        const fs = require('fs');
+
+        let source = null;
+        let filePath = null;
+        if (typeof args?.file === 'string' && args.file) {
+          filePath = args.file;
+          try {
+            source = fs.readFileSync(args.file, 'utf-8');
+          } catch (e) {
+            return { error: `field action "audit": cannot read file "${args.file}" — ${e.message}` };
+          }
+        } else if (typeof args?.code === 'string' && args.code) {
+          source = args.code;
+        } else {
+          throw new Error('field action "audit" requires "file" or "code"');
+        }
+
+        const before = fc.peekField();
+        const fieldCoherence = before ? before.coherence : null;
+        const mode = (fieldCoherence !== null && fieldCoherence < COHERENCE_GATE) ? 'full' : 'fast';
+
+        const { analyze } = require('../core/analyze');
+        const env = analyze(source, filePath, { language: args?.language });
+
+        // Fast scan touches only the cheap envelope getters; the full
+        // audit computes every signal and runs a reflection heal pass.
+        const verdict = { coherency: env.coherency, meta: env.meta };
+        let workUnits = 1; // coherency
+        if (mode === 'full') {
+          verdict.audit       = env.audit;
+          verdict.lint        = env.lint;
+          verdict.smell       = env.smell;
+          verdict.covenant    = { sealed: env.covenant.sealed, violations: env.covenant.violations || [] };
+          verdict.allFindings = env.allFindings;
+          workUnits += 4; // audit + lint + smell + covenant
+          try {
+            const { reflectionLoop } = require('../core/reflection');
+            const refl = reflectionLoop(source, { language: env.language });
+            verdict.reflect = {
+              loops: refl.loops,
+              fullCoherency: refl.fullCoherency,
+              healingPath: refl.healingPath,
+              whisper: refl.whisper,
+            };
+            workUnits += refl.loops; // reflection loops are the heavy cost
+          } catch (_) { /* reflection is best-effort */ }
+        }
+
+        try {
+          const { computeBugProbability } = require('../quality/risk-score');
+          const risk = computeBugProbability(source, { filePath });
+          verdict.risk = { probability: risk.probability, riskLevel: risk.riskLevel };
+          workUnits += 1;
+        } catch (_) { /* risk is best-effort */ }
+
+        // Balance the audit's cost into the entropy field — globalEntropy
+        // = cost / coherence, so a full audit's larger cost raises entropy
+        // more, and the field's backpressure signals callers to ease off.
+        const auditCoherence = Math.max(0, Math.min(1, (env.coherency && env.coherency.total) || 0));
+        const contributed = fc.contribute({
+          cost: workUnits,
+          coherence: auditCoherence,
+          source: `ecosystem-audit:${mode}`,
+        });
+        const pressure = fc.fieldPressure();
+
+        return {
+          mode,
+          gate: {
+            fieldCoherence,
+            threshold: COHERENCE_GATE,
+            decision: mode === 'full'
+              ? `field coherence ${fieldCoherence.toFixed(3)} < ${COHERENCE_GATE} → full audit`
+              : `field coherence ${fieldCoherence === null ? 'unknown' : fieldCoherence.toFixed(3)} >= ${COHERENCE_GATE} → fast scan`,
+          },
+          target: filePath || '(inline code)',
+          verdict,
+          cost: {
+            workUnits,
+            balancedInto: 'entropy-field',
+            source: `ecosystem-audit:${mode}`,
+            globalEntropy: contributed ? contributed.globalEntropy : null,
+            cascadeFactor: contributed ? contributed.cascadeFactor : null,
+            backpressure: pressure.hot ? `hot — ${pressure.reason}` : 'nominal',
+          },
+        };
+      }
+
       default:
-        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint.`);
+        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint, audit.`);
     }
   },
 

@@ -27,7 +27,7 @@ function _loadEngine() {
   if (_engineLoadAttempted) return _engineRef;
   _engineLoadAttempted = true;
   try {
-    const { getEngine } = require('../core/living-remembrance');
+    const { getEngine } = require('./living-remembrance');
     _engineRef = getEngine();
   } catch (_e) {
     _engineRef = null;
@@ -49,11 +49,11 @@ function contribute(obs) {
   if (!engine) return null;
   if (typeof obs?.coherence !== 'number' || !isFinite(obs.coherence)) return null;
   const clamped = Math.max(0, Math.min(1, obs.coherence));
-  const result = engine.contribute({
-    cost: typeof obs.cost === 'number' && isFinite(obs.cost) ? Math.max(0, obs.cost) : 1.0,
-    coherence: clamped,
-    source: obs.source || null,
-  });
+  // Sanitize cost once, then hand the same value to both the engine and
+  // the memory layer — previously the engine received a sanitized cost
+  // while field-memory got the raw, unchecked obs.cost.
+  const cost = (typeof obs.cost === 'number' && isFinite(obs.cost)) ? Math.max(0, obs.cost) : 1.0;
+  const result = engine.contribute({ cost, coherence: clamped, source: obs.source || null });
   _localUpdateCount += 1;
 
   // Compress every observation into the pattern library. The similarity
@@ -63,7 +63,7 @@ function contribute(obs) {
   // Best-effort — never blocks or breaks a contribute.
   try {
     const fm = require('./field-memory');
-    fm.recordObservation({ source: obs.source || null, coherence: clamped, cost: obs.cost });
+    fm.recordObservation({ source: obs.source || null, coherence: clamped, cost });
     fm.maybeSnapshot(result || (engine.getState && engine.getState()) || null);
   } catch (_) { /* best-effort */ }
 

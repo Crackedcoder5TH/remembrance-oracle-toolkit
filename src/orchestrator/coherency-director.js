@@ -264,6 +264,16 @@ class CoherencyDirector {
       } catch { /* skip unmeasurable zones */ }
     }
     this.field._updateGlobal();
+    // One measurement pass = one producer event: feed the orchestrator's
+    // final global coherency into the Remembrance Field, the same way
+    // audit / lint / reflect / covenant feed theirs.
+    try {
+      require('../core/field-coupling').contribute({
+        cost: this.field.size || 1,
+        coherence: this.field.globalCoherency,
+        source: 'orchestrate',
+      });
+    } catch (_) { /* best-effort — never break a measurement pass */ }
   }
 
   /**

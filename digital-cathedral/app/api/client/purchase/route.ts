@@ -127,6 +127,7 @@ export async function POST(req: NextRequest) {
         leadId,
         exclusive: isExclusive ? "true" : "false",
         tierName: selectedTier.name,
+        maxBuyers: String(selectedTier.maxBuyers),
         price: String(price),
       },
       success_url: `${baseUrl}/portal?tab=purchases&payment=success&session_id={CHECKOUT_SESSION_ID}`,

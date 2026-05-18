@@ -37,7 +37,10 @@ export async function GET(req: NextRequest) {
     // Fulfil idempotently — the webhook may already have recorded this purchase.
     const fulfillment = await fulfillCheckoutSession(session);
     if (!fulfillment.ok) {
-      const status = fulfillment.error === "Payment not completed." ? 402 : 500;
+      const status =
+        fulfillment.reason === "unpaid" ? 402 :
+        fulfillment.reason === "sold_out" ? 409 :
+        fulfillment.reason === "invalid" ? 400 : 500;
       return NextResponse.json({ success: false, message: fulfillment.error }, { status });
     }
     const purchase = fulfillment.purchase;

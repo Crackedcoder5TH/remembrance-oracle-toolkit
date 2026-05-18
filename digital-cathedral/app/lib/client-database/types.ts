@@ -82,6 +82,16 @@ export interface ClientStats {
   disputesOpen: number;
 }
 
+/**
+ * Outcome of a capacity-guarded purchase insert. `sold_out` means the lead's
+ * exclusivity rule or buyer cap was already reached when the insert ran, so
+ * no row was written.
+ */
+export type GuardedPurchaseOutcome =
+  | { outcome: "inserted"; purchase: LeadPurchase }
+  | { outcome: "duplicate"; purchase: LeadPurchase }
+  | { outcome: "sold_out" };
+
 export interface ClientDbAdapter {
   initialize(): Promise<void>;
 
@@ -98,6 +108,11 @@ export interface ClientDbAdapter {
 
   // Lead Purchases
   insertPurchase(purchase: LeadPurchase): Promise<Result<{ purchaseId: string }, string>>;
+  /**
+   * Insert a purchase only if the lead still has capacity, checked and
+   * committed atomically so concurrent checkouts cannot both pass the cap.
+   */
+  insertPurchaseGuarded(purchase: LeadPurchase, maxBuyers: number): Promise<Result<GuardedPurchaseOutcome, string>>;
   getPurchasesByClient(clientId: string, limit?: number, offset?: number): Promise<Result<{ purchases: LeadPurchase[]; total: number }, string>>;
   getPurchasesByLead(leadId: string): Promise<Result<LeadPurchase[], string>>;
   updatePurchaseStatus(purchaseId: string, status: LeadPurchase["status"], returnReason?: string): Promise<Result<{ updated: boolean }, string>>;

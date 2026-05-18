@@ -14,6 +14,7 @@ import type {
   ClientListFilters,
   ClientStats,
   ClientDbAdapter,
+  GuardedPurchaseOutcome,
   Result,
 } from "./types";
 import { Ok, Err } from "./types";
@@ -257,6 +258,36 @@ export class SqliteClientAdapter implements ClientDbAdapter {
          VALUES (?,?,?,?,?,?,?,?,?)`
       ).run(purchase.purchaseId, purchase.leadId, purchase.clientId, purchase.pricePaid, purchase.purchasedAt, purchase.status, purchase.exclusive ? 1 : 0, purchase.returnReason, purchase.returnDeadline);
       return Ok({ purchaseId: purchase.purchaseId });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Insert failed");
+    }
+  }
+
+  async insertPurchaseGuarded(purchase: LeadPurchase, maxBuyers: number): Promise<Result<GuardedPurchaseOutcome, string>> {
+    try {
+      const db = this.getDb();
+      await this.initialize();
+      // BEGIN IMMEDIATE takes the write lock up front, so the capacity read
+      // and the insert are one atomic step — a concurrent fulfillment for the
+      // same lead waits here rather than racing the check.
+      const txn = db.transaction((): GuardedPurchaseOutcome => {
+        const dup = db.prepare("SELECT * FROM lead_purchases WHERE purchase_id = ?").get(purchase.purchaseId) as Record<string, unknown> | undefined;
+        if (dup) return { outcome: "duplicate", purchase: rowToPurchase(dup) };
+
+        const delivered = db.prepare("SELECT exclusive FROM lead_purchases WHERE lead_id = ? AND status = 'delivered'").all(purchase.leadId) as Array<{ exclusive: number }>;
+        const exclusiveHeld = delivered.some((r) => r.exclusive === 1);
+        const blocked = purchase.exclusive
+          ? delivered.length > 0
+          : exclusiveHeld || delivered.length >= maxBuyers;
+        if (blocked) return { outcome: "sold_out" };
+
+        db.prepare(
+          `INSERT INTO lead_purchases (purchase_id, lead_id, client_id, price_paid, purchased_at, status, exclusive, return_reason, return_deadline)
+           VALUES (?,?,?,?,?,?,?,?,?)`
+        ).run(purchase.purchaseId, purchase.leadId, purchase.clientId, purchase.pricePaid, purchase.purchasedAt, purchase.status, purchase.exclusive ? 1 : 0, purchase.returnReason, purchase.returnDeadline);
+        return { outcome: "inserted", purchase };
+      });
+      return Ok(txn.immediate());
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Insert failed");
     }

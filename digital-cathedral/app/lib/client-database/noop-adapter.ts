@@ -12,6 +12,7 @@ import type {
   ClientBilling,
   ClientStats,
   ClientDbAdapter,
+  GuardedPurchaseOutcome,
   Result,
 } from "./types";
 import { Ok } from "./types";
@@ -53,6 +54,10 @@ export class NoopClientAdapter implements ClientDbAdapter {
 
   insertPurchase(): Promise<Result<{ purchaseId: string }, string>> {
     return Promise.resolve(Ok({ purchaseId: "purchase_demo_001" }));
+  }
+
+  insertPurchaseGuarded(purchase: LeadPurchase): Promise<Result<GuardedPurchaseOutcome, string>> {
+    return Promise.resolve(Ok({ outcome: "inserted", purchase }));
   }
 
   async getPurchasesByClient(): Promise<Result<{ purchases: LeadPurchase[]; total: number }, string>> {

@@ -13,6 +13,7 @@ import type {
   ClientListFilters,
   ClientStats,
   ClientDbAdapter,
+  GuardedPurchaseOutcome,
   Result,
 } from "./types";
 import { Ok, Err } from "./types";
@@ -270,6 +271,53 @@ export class PostgresClientAdapter implements ClientDbAdapter {
         [purchase.purchaseId, purchase.leadId, purchase.clientId, purchase.pricePaid, purchase.purchasedAt, purchase.status, purchase.exclusive, purchase.returnReason, purchase.returnDeadline]
       );
       return Ok({ purchaseId: purchase.purchaseId });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Insert failed");
+    }
+  }
+
+  async insertPurchaseGuarded(purchase: LeadPurchase, maxBuyers: number): Promise<Result<GuardedPurchaseOutcome, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        // Serialize fulfillment per lead: concurrent transactions for the same
+        // lead queue on this advisory lock (released at COMMIT/ROLLBACK), so
+        // the capacity check and insert below cannot interleave. Different
+        // leads hash to different keys and never block each other.
+        await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [purchase.leadId]);
+
+        const dup = await client.query("SELECT * FROM lead_purchases WHERE purchase_id = $1", [purchase.purchaseId]);
+        if (dup.rows.length > 0) {
+          await client.query("COMMIT");
+          return Ok({ outcome: "duplicate", purchase: rowToPurchase(dup.rows[0]) });
+        }
+
+        const delivered = await client.query("SELECT exclusive FROM lead_purchases WHERE lead_id = $1 AND status = 'delivered'", [purchase.leadId]);
+        const exclusiveHeld = delivered.rows.some((r: { exclusive: boolean }) => r.exclusive);
+        const blocked = purchase.exclusive
+          ? delivered.rows.length > 0
+          : exclusiveHeld || delivered.rows.length >= maxBuyers;
+        if (blocked) {
+          await client.query("COMMIT");
+          return Ok({ outcome: "sold_out" });
+        }
+
+        await client.query(
+          `INSERT INTO lead_purchases (purchase_id, lead_id, client_id, price_paid, purchased_at, status, exclusive, return_reason, return_deadline)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [purchase.purchaseId, purchase.leadId, purchase.clientId, purchase.pricePaid, purchase.purchasedAt, purchase.status, purchase.exclusive, purchase.returnReason, purchase.returnDeadline]
+        );
+        await client.query("COMMIT");
+        return Ok({ outcome: "inserted", purchase });
+      } catch (err) {
+        await client.query("ROLLBACK").catch(() => {});
+        return Err(err instanceof Error ? err.message : "Insert failed");
+      } finally {
+        client.release();
+      }
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Insert failed");
     }

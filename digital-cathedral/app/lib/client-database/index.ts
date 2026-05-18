@@ -31,6 +31,7 @@ export type {
   ClientListFilters,
   ClientStats,
   ClientDbAdapter,
+  GuardedPurchaseOutcome,
 } from "./types";
 export {
   generateClientId,
@@ -74,6 +75,7 @@ export async function getFilteredClients(filters: ClientListFilters) { return ge
 export async function getClientFilters(clientId: string) { return getClientAdapter().getClientFilters(clientId); }
 export async function upsertClientFilters(filters: ClientFilters) { return getClientAdapter().upsertClientFilters(filters); }
 export async function createPurchase(purchase: LeadPurchase) { return getClientAdapter().insertPurchase(purchase); }
+export async function createPurchaseGuarded(purchase: LeadPurchase, maxBuyers: number) { return getClientAdapter().insertPurchaseGuarded(purchase, maxBuyers); }
 export async function getPurchasesByClient(clientId: string, limit?: number, offset?: number) { return getClientAdapter().getPurchasesByClient(clientId, limit, offset); }
 export async function getPurchasesByLead(leadId: string) { return getClientAdapter().getPurchasesByLead(leadId); }
 export async function updatePurchaseStatus(purchaseId: string, status: LeadPurchase["status"], returnReason?: string) { return getClientAdapter().updatePurchaseStatus(purchaseId, status, returnReason); }

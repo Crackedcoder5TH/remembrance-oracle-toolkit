@@ -325,3 +325,46 @@ describe("rowToBilling", () => {
     assert.equal(billing.invoiceUrl, "");
   });
 });
+
+// --- Guarded purchase capacity rule ---
+//
+// Mirrors the `blocked` check inside insertPurchaseGuarded (sqlite/postgres
+// adapters). The adapters run this against the lead's already-delivered
+// purchases inside a transaction; the rule itself is pure and tested here.
+// `delivered` is the list of existing delivered purchases for the lead.
+
+function isPurchaseBlocked(purchase, delivered, maxBuyers) {
+  const exclusiveHeld = delivered.some((p) => p.exclusive);
+  return purchase.exclusive
+    ? delivered.length > 0
+    : exclusiveHeld || delivered.length >= maxBuyers;
+}
+
+describe("guarded purchase capacity rule", () => {
+  const shared = { exclusive: false };
+  const exclusive = { exclusive: true };
+
+  it("allows an exclusive purchase when the lead has no buyers", () => {
+    assert.equal(isPurchaseBlocked(exclusive, [], 1), false);
+  });
+
+  it("blocks an exclusive purchase when the lead already has any buyer", () => {
+    assert.equal(isPurchaseBlocked(exclusive, [{ exclusive: false }], 1), true);
+    assert.equal(isPurchaseBlocked(exclusive, [{ exclusive: true }], 1), true);
+  });
+
+  it("blocks a shared purchase when the lead is held exclusively", () => {
+    assert.equal(isPurchaseBlocked(shared, [{ exclusive: true }], 4), true);
+  });
+
+  it("allows a shared purchase while under the buyer cap", () => {
+    assert.equal(isPurchaseBlocked(shared, [{ exclusive: false }], 4), false);
+    assert.equal(isPurchaseBlocked(shared, [{ exclusive: false }, { exclusive: false }, { exclusive: false }], 4), false);
+  });
+
+  it("blocks a shared purchase once the buyer cap is reached", () => {
+    const four = [{ exclusive: false }, { exclusive: false }, { exclusive: false }, { exclusive: false }];
+    assert.equal(isPurchaseBlocked(shared, four, 4), true);
+    assert.equal(isPurchaseBlocked(shared, four, 2), true);
+  });
+});

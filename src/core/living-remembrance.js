@@ -84,6 +84,11 @@ class LivingRemembranceEngine {
   }
 
   _loadOrInit() {
+    const FRESH = {
+      coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45,
+      cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {},
+    };
+
     let loaded = null;
     try {
       if (fs.existsSync(this._persistPath)) {
@@ -101,24 +106,33 @@ class LivingRemembranceEngine {
       }
     } catch (_e) { loaded = null; }
 
-    // entropy.json present and carrying history — the live field. Use it.
-    if (loaded && loaded.updateCount > 0) return loaded;
-
-    // entropy.json missing or reset to zero — remember-on-load. The
-    // histogram has been witnessed in durable memory: field-snapshot
-    // patterns in oracle.db, and the blockchain ledger's _entropy.
-    // Restore from whichever witness carries the most history, so the
-    // field comes back up remembering what it didn't lose. Only the
-    // canonical field does this; isolated fields start fresh.
-    if (this._canonical) {
-      try {
-        const { restoreLatest } = require('./field-memory');
-        const remembered = restoreLatest();
-        if (remembered && remembered.updateCount > 0) return remembered;
-      } catch (_e) { /* field-memory unavailable — fall through to fresh */ }
+    // Isolated fields (explicit persistPath / $ENTROPY_PATH — tests,
+    // scratch) stay purely local; they never reach for the shared chain.
+    if (!this._canonical) {
+      return (loaded && loaded.updateCount > 0) ? loaded : (loaded || FRESH);
     }
 
-    return loaded || { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
+    // The canonical field treats the blockchain as the primary, shared
+    // source of truth. Gather every witness — the local entropy.json
+    // cache and durable memory (the blockchain ledger + field-snapshot
+    // patterns) — and load from whichever carries the most history. The
+    // local cache only wins when it is genuinely ahead of the chain
+    // (live contributions since the last checkpoint); a node that is
+    // behind, or fresh, comes back up holding the chain's field.
+    const witnesses = [];
+    if (loaded && loaded.updateCount > 0) witnesses.push(loaded);
+    try {
+      const { restoreLatest } = require('./field-memory');
+      const remembered = restoreLatest();
+      if (remembered && remembered.updateCount > 0) witnesses.push(remembered);
+    } catch (_e) { /* field-memory unavailable — fall through */ }
+
+    if (witnesses.length > 0) {
+      // Load from the witness with the most history (no in-place sort).
+      return witnesses.reduce((best, w) =>
+        ((w.updateCount || 0) > (best.updateCount || 0)) ? w : best);
+    }
+    return loaded || FRESH;
   }
 
   _persist() {

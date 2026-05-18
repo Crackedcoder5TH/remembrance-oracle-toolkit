@@ -264,6 +264,16 @@ class CoherencyDirector {
       } catch { /* skip unmeasurable zones */ }
     }
     this.field._updateGlobal();
+    // One measurement pass = one producer event: feed the orchestrator's
+    // final global coherency into the Remembrance Field, the same way
+    // audit / lint / reflect / covenant feed theirs.
+    try {
+      require('../core/field-coupling').contribute({
+        cost: this.field.size || 1,
+        coherence: this.field.globalCoherency,
+        source: 'orchestrate',
+      });
+    } catch (_) { /* best-effort — never break a measurement pass */ }
   }
 
   /**
@@ -417,6 +427,124 @@ class CoherencyDirector {
       emerged: emerged.length,
       covenantEvolution,
       globalCoherency: this.field.globalCoherency,
+    };
+  }
+
+  /**
+   * The orchestrator's authoritative ruling — the final voice on how
+   * coherency should flow and what should be fixed next.
+   *
+   * Read-only: it measures and decides but heals nothing. Whoever asks
+   * the field "what next?" gets this verdict, and it is final.
+   *
+   * @param {Array} [items] zones to scan ({id,code,filePath,language});
+   *   if omitted, rules on whatever zones were already scanned.
+   * @returns {object} { globalCoherency, zones, flow, fixNext, healingBudget, verdict }
+   */
+  ruling(items) {
+    const { rankZones, computeHealingBudget } = require('./priority-engine');
+    if (Array.isArray(items) && items.length) this.scan(items);
+    this.measureWithOracle();
+    this.field.computeGradients();
+
+    const stats  = this.field.stats();
+    const queue  = rankZones(this.field, { maxResults: 5 });
+    const budget = computeHealingBudget(this.field);
+    const lowest = this.field.findLowestZone();
+
+    // Community baseline — the Remembrance Field's collective coherence,
+    // the coherence the whole producer community has settled on. Every
+    // item the orchestrator reports is scored against it: at or above
+    // the baseline = the community backs it (1.0), far below = low.
+    // The field gives two independent readings — coherency (the level)
+    // and entropy (the disorder). They are kept separate so the entropy
+    // signal is never drowned out by the coherency one.
+    let baseline = 1.0;
+    let fieldEntropy = null;
+    let cascadeFactor = null;
+    try {
+      const fieldState = require('../core/field-coupling').peekField();
+      if (fieldState) {
+        if (typeof fieldState.coherence === 'number' && fieldState.coherence > 0) {
+          baseline = fieldState.coherence;
+        }
+        if (typeof fieldState.globalEntropy === 'number') fieldEntropy = fieldState.globalEntropy;
+        if (typeof fieldState.cascadeFactor === 'number') cascadeFactor = fieldState.cascadeFactor;
+      }
+    } catch (_) { /* field unreachable — readings degrade to null / 1.0 */ }
+    const community = (c) => (typeof c === 'number' && baseline > 0)
+      ? Math.round(Math.min(1, c / baseline) * 1000) / 1000
+      : null;
+
+    // zoneSpread — the orchestrator's own entropy reading: how widely
+    // zone coherency is dispersed (stddev), independent of the mean.
+    const measured = Array.from(this.field.zones.values()).filter(z => z.lastMeasured);
+    const variance = measured.length > 1
+      ? measured.reduce((s, z) => s + (z.coherency - stats.globalCoherency) ** 2, 0) / measured.length
+      : 0;
+    const zoneSpread = Math.round(Math.sqrt(variance) * 1000) / 1000;
+
+    const topZone   = queue[0] ? this.field.getZone(queue[0].zoneId) : null;
+    const rootCause = topZone ? this.categorizeRootCause(topZone) : null;
+
+    // Every fix-next zone carries its community score — coherency
+    // measured against the field's collective baseline.
+    const rankedQueue = queue.map(z => ({ ...z, communityScore: community(z.coherency) }));
+
+    // FLOW: coherency rises fastest when the lowest zone is lifted —
+    // that is the direction the orchestrator points intervention.
+    const flow = lowest ? {
+      toward: lowest.id,
+      atCoherency: Math.round(lowest.coherency * 1000) / 1000,
+      communityScore: community(lowest.coherency),
+      direction: 'coherency flows up from the lowest zone — intervene there first',
+    } : null;
+
+    // FIX NEXT: the priority-ranked queue is the orchestrator's word.
+    const fixNext = rankedQueue.length ? {
+      zone: rankedQueue[0].zoneId,
+      coherency: rankedQueue[0].coherency,
+      priority: rankedQueue[0].priority,
+      communityScore: rankedQueue[0].communityScore,
+      reason: rankedQueue[0].reason,
+      rootCause,
+      queue: rankedQueue,
+    } : null;
+
+    // Two separate readings — coherency (the level) and entropy (the
+    // disorder) — reported side by side so neither is subordinate.
+    const coherency = {
+      global: stats.globalCoherency,
+      community: community(stats.globalCoherency),
+      baseline: Math.round(baseline * 1000) / 1000,
+    };
+    const entropy = {
+      zoneSpread,
+      field: fieldEntropy === null ? null : Math.round(fieldEntropy * 1000) / 1000,
+      cascadeFactor: cascadeFactor === null ? null : Math.round(cascadeFactor * 1000) / 1000,
+    };
+
+    const readings = `coherency ${coherency.global} (community ${coherency.community}) · `
+      + `entropy ${zoneSpread} spread${entropy.field === null ? '' : `, field ${entropy.field}`}`;
+    const verdict = fixNext
+      ? `${readings} · ${stats.needsHealing} zone(s) below threshold. `
+        + `Fix next: ${fixNext.zone} — ${rootCause ? rootCause.suggestedAction : 'heal'}. `
+        + `Healing budget: ${budget.budget}.`
+      : `${readings} · all ${stats.measuredZones} measured zones stable — nothing to fix.`;
+
+    return {
+      coherency,
+      entropy,
+      zones: {
+        total: stats.totalZones,
+        measured: stats.measuredZones,
+        needHealing: stats.needsHealing,
+        stable: stats.stable,
+      },
+      flow,
+      fixNext,
+      healingBudget: budget,
+      verdict,
     };
   }
 

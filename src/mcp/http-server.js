@@ -27,6 +27,12 @@ const MAX_BODY_BYTES = 1_000_000; // 1 MB cap on JSON-RPC payloads
 
 function startHTTPServer({ host = '127.0.0.1', port = 7787, token = null, oracle } = {}) {
   const mcpServer = new MCPServer(oracle || new RemembranceOracle());
+
+  // Entangle the host runtime with the Remembrance Field — auto-engages
+  // when the HTTP MCP server starts. Best-effort; never blocks startup.
+  try { require('../core/entangle').engage(); } catch (_) { /* entanglement is optional */ }
+  try { require('../core/field-workqueue-poller').engage(); } catch (_) { /* poller is optional */ }
+
   const corsOrigin = process.env.ORACLE_MCP_CORS_ORIGIN || '*';
 
   const httpServer = http.createServer((req, res) => {

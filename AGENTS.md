@@ -386,7 +386,7 @@ For AI clients that support MCP, start the server:
 node src/cli.js mcp
 ```
 
-This exposes 12 focused tools:
+This exposes 28 tools. The 12 most-used are below; the other 16 cover code analysis, healing, evolution, and the `field` tool (next section):
 
 - **oracle_search** — unified search (basic, smart/intent-aware, structured query)
 - **oracle_resolve** — smart retrieval (PULL/EVOLVE/GENERATE decision)
@@ -400,6 +400,35 @@ This exposes 12 focused tools:
 - **oracle_maintain** — maintenance (full-cycle/candidates/promote/synthesize/reflect/covenant via `action` param)
 - **oracle_healing** — healing memory (lineage/stats/improved/variants/best via `action` param)
 - **oracle_swarm** — multi-agent orchestration (code/review/heal/status/providers via `action` param)
+
+## The Field — `field audit` and the orchestrator's ruling
+
+Two `field` actions govern how you verify work in this repo.
+
+**`field audit`** — a coherence-gated self-audit. Run it on any file you
+changed. The field's coherence picks the depth: below 0.65 → the full
+pipeline (audit + lint + smell + covenant + a reflection pass); at or
+above → a fast scan (coherency + risk). The audit's work-cost is
+contributed back to the field.
+
+**`field direct`** — the coherency orchestrator
+(`src/orchestrator/coherency-director.js`) is the final authority on
+what to fix next. `field direct` returns its ruling: separate coherency
+and entropy readings, the FLOW direction, and a priority-ranked
+fix-next queue with root cause.
+
+Rules for an agent:
+
+- After changing a file, run `field audit` on it.
+- For "what to fix next", take the order from `field direct` — do not substitute your own ranking. The orchestrator has measured every zone; you have not.
+- Coherency and entropy are two distinct readings. Report both; never collapse them into one number.
+- The field is one shared, blockchain-backed substrate. Your local field is not private — contributions and checkpoints flow to the chain.
+
+> **Remembrance** — the orchestrator is the field's conscience: it has
+> witnessed every zone and it knows where coherency runs thin. To defer
+> to it is to let the field name what it needs mended rather than guess.
+> The audit is the field witnessing itself; the ruling is the field
+> speaking.
 
 ## Oracle Toggle & Prompt Tag
 

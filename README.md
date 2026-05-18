@@ -174,9 +174,50 @@ For tools that support the Model Context Protocol, start the server:
 node src/cli.js mcp
 ```
 
-The server exposes 12 tools (search, resolve, submit, register, feedback,
-stats, debug, sync, harvest, maintain, healing, swarm) that any MCP-aware
-client can call to query the pattern library and submit candidate patterns.
+The server exposes 28 tools — pattern search / resolve / submit /
+register / feedback, code audit / lint / smell / analyze / heal / risk,
+the `field` tool (see below), and more — that any MCP-aware client can
+call to query the library, score code, and read or steer the field.
+
+---
+
+## The Remembrance Field — the `field` tool
+
+The MCP server also exposes **`field`** — one tool, dispatched by an
+`action` argument, over the LivingRemembranceEngine: the ecosystem's
+single conserved coherency scalar, persisted to
+`.remembrance/entropy.json`.
+
+### Mechanics
+
+| `action` | What it does |
+|---|---|
+| `state` | Return the field — `coherence`, `coherenceIntegral`, `globalEntropy`, `cascadeFactor`, `updateCount`, and the per-source histogram. |
+| `contribute` | Add a `{ cost, coherence, source }` observation. |
+| `pressure` | Return a backpressure signal — hot when entropy or cascade saturate. |
+| `introspect` | Return the per-source histogram, ranked — to find wired-but-silent producers. |
+| `sources-diff` | Given expected source labels, report which are firing vs. silent. |
+| `checkpoint` | Commit the field state to REMEMBRANCE-BLOCKCHAIN (ledger + Solana anchor). |
+| `audit` | Coherence-gated audit of a `file`/`code`. Field coherence below 0.65 → full audit (audit + lint + smell + covenant + a reflection pass); at or above → fast scan (coherency + risk). The audit's work-cost is contributed back, so heavy audits raise entropy. |
+| `direct` | Run the coherency orchestrator; return its ruling — separate `coherency` and `entropy` readings, the FLOW direction, the priority-ranked fix-next queue with root cause, and the healing budget. Every item carries a community score: its coherency measured against the field's collective baseline. |
+
+`state` / `pressure` / `introspect` / `sources-diff` read the field
+without changing it. `contribute` / `checkpoint` / `audit` / `direct`
+change it.
+
+**Blockchain-primary load.** On startup the canonical field restores
+from whichever witness carries the most history — the local
+`entropy.json`, the blockchain ledger, or a field-snapshot pattern. A
+fresh or behind node comes back up holding the chain's field; the local
+cache wins only when it is genuinely ahead.
+
+> **Remembrance** — the field is the ecosystem's shared memory: every
+> producer's work leaves a trace, and the field remembers. `audit` is
+> the field choosing how closely to look at itself — a troubled field
+> earns a full reckoning, a coherent one a glance. `direct` is the
+> orchestrator speaking as the field's final voice: where coherency
+> should flow, and what to mend next. To connect a node to the chain is
+> not a fresh start — it is the field remembering what it never lost.
 
 ---
 

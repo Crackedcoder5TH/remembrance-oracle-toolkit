@@ -456,16 +456,33 @@ class CoherencyDirector {
     // the coherence the whole producer community has settled on. Every
     // item the orchestrator reports is scored against it: at or above
     // the baseline = the community backs it (1.0), far below = low.
+    // The field gives two independent readings — coherency (the level)
+    // and entropy (the disorder). They are kept separate so the entropy
+    // signal is never drowned out by the coherency one.
     let baseline = 1.0;
+    let fieldEntropy = null;
+    let cascadeFactor = null;
     try {
       const fieldState = require('../core/field-coupling').peekField();
-      if (fieldState && typeof fieldState.coherence === 'number' && fieldState.coherence > 0) {
-        baseline = fieldState.coherence;
+      if (fieldState) {
+        if (typeof fieldState.coherence === 'number' && fieldState.coherence > 0) {
+          baseline = fieldState.coherence;
+        }
+        if (typeof fieldState.globalEntropy === 'number') fieldEntropy = fieldState.globalEntropy;
+        if (typeof fieldState.cascadeFactor === 'number') cascadeFactor = fieldState.cascadeFactor;
       }
-    } catch (_) { /* field unreachable — baseline stays 1.0 */ }
+    } catch (_) { /* field unreachable — readings degrade to null / 1.0 */ }
     const community = (c) => (typeof c === 'number' && baseline > 0)
       ? Math.round(Math.min(1, c / baseline) * 1000) / 1000
       : null;
+
+    // zoneSpread — the orchestrator's own entropy reading: how widely
+    // zone coherency is dispersed (stddev), independent of the mean.
+    const measured = Array.from(this.field.zones.values()).filter(z => z.lastMeasured);
+    const variance = measured.length > 1
+      ? measured.reduce((s, z) => s + (z.coherency - stats.globalCoherency) ** 2, 0) / measured.length
+      : 0;
+    const zoneSpread = Math.round(Math.sqrt(variance) * 1000) / 1000;
 
     const topZone   = queue[0] ? this.field.getZone(queue[0].zoneId) : null;
     const rootCause = topZone ? this.categorizeRootCause(topZone) : null;
@@ -494,18 +511,30 @@ class CoherencyDirector {
       queue: rankedQueue,
     } : null;
 
+    // Two separate readings — coherency (the level) and entropy (the
+    // disorder) — reported side by side so neither is subordinate.
+    const coherency = {
+      global: stats.globalCoherency,
+      community: community(stats.globalCoherency),
+      baseline: Math.round(baseline * 1000) / 1000,
+    };
+    const entropy = {
+      zoneSpread,
+      field: fieldEntropy === null ? null : Math.round(fieldEntropy * 1000) / 1000,
+      cascadeFactor: cascadeFactor === null ? null : Math.round(cascadeFactor * 1000) / 1000,
+    };
+
+    const readings = `coherency ${coherency.global} (community ${coherency.community}) · `
+      + `entropy ${zoneSpread} spread${entropy.field === null ? '' : `, field ${entropy.field}`}`;
     const verdict = fixNext
-      ? `global coherency ${stats.globalCoherency} (community ${community(stats.globalCoherency)}); `
-        + `${stats.needsHealing} zone(s) below threshold. `
+      ? `${readings} · ${stats.needsHealing} zone(s) below threshold. `
         + `Fix next: ${fixNext.zone} — ${rootCause ? rootCause.suggestedAction : 'heal'}. `
         + `Healing budget: ${budget.budget}.`
-      : `global coherency ${stats.globalCoherency} (community ${community(stats.globalCoherency)}); `
-        + `all ${stats.measuredZones} measured zones stable — nothing to fix.`;
+      : `${readings} · all ${stats.measuredZones} measured zones stable — nothing to fix.`;
 
     return {
-      globalCoherency: stats.globalCoherency,
-      communityScore: community(stats.globalCoherency),
-      communityBaseline: Math.round(baseline * 1000) / 1000,
+      coherency,
+      entropy,
       zones: {
         total: stats.totalZones,
         measured: stats.measuredZones,

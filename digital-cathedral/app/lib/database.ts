@@ -91,6 +91,8 @@ interface DbAdapter {
   getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>>;
   markMessageRead(messageId: number, clientId: number): Promise<Result<{ updated: boolean }, string>>;
   getAllClientMessages(limit: number, offset: number): Promise<Result<{ messages: ClientMessage[]; total: number }, string>>;
+  insertClientDocument(doc: ClientDocumentInput): Promise<Result<{ id: number }, string>>;
+  getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>>;
 }
 
 // =============================================================================
@@ -134,6 +136,17 @@ function rowToClientMessage(row: Record<string, unknown>): ClientMessage {
     subject: (row.subject as string) || "",
     body: row.body as string,
     read: row.read === 1 || row.read === true,
+    createdAt: row.created_at as string,
+  };
+}
+
+function rowToClientDocument(row: Record<string, unknown>): ClientDocument {
+  return {
+    id: Number(row.id),
+    clientId: Number(row.client_id),
+    name: row.name as string,
+    url: row.url as string,
+    type: (row.type as string) || "",
     createdAt: row.created_at as string,
   };
 }
@@ -260,6 +273,19 @@ class PostgresAdapter implements DbAdapter {
       )
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_client ON client_messages(client_id)`);
+
+    // Client policy documents (admin-attached, downloaded from the portal)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_documents (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_documents_client ON client_documents(client_id)`);
 
     this.initialized = true;
   }
@@ -581,6 +607,35 @@ class PostgresAdapter implements DbAdapter {
       return Err(err instanceof Error ? err.message : "Failed to read messages");
     }
   }
+
+  async insertClientDocument(doc: ClientDocumentInput): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        `INSERT INTO client_documents (client_id, name, url, type)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [doc.clientId, doc.name, doc.url, doc.type],
+      );
+      return Ok({ id: result.rows[0].id as number });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to save document");
+    }
+  }
+
+  async getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "SELECT * FROM client_documents WHERE client_id = $1 ORDER BY created_at DESC",
+        [clientId],
+      );
+      return Ok(result.rows.map(rowToClientDocument));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read documents");
+    }
+  }
 }
 
 // =============================================================================
@@ -693,6 +748,20 @@ class SqliteAdapter implements DbAdapter {
       );
 
       CREATE INDEX IF NOT EXISTS idx_messages_client ON client_messages(client_id);
+    `);
+
+    // Client policy documents (admin-attached, downloaded from the portal)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS client_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_documents_client ON client_documents(client_id);
     `);
   }
 
@@ -974,6 +1043,32 @@ class SqliteAdapter implements DbAdapter {
       return Err(err instanceof Error ? err.message : "Failed to read messages");
     }
   }
+
+  async insertClientDocument(doc: ClientDocumentInput): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const info = db.prepare(
+        "INSERT INTO client_documents (client_id, name, url, type) VALUES (?, ?, ?, ?)",
+      ).run(doc.clientId, doc.name, doc.url, doc.type);
+      return Ok({ id: Number(info.lastInsertRowid) });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to save document");
+    }
+  }
+
+  async getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const rows = db.prepare(
+        "SELECT * FROM client_documents WHERE client_id = ? ORDER BY created_at DESC",
+      ).all(clientId) as Record<string, unknown>[];
+      return Ok(rows.map(rowToClientDocument));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read documents");
+    }
+  }
 }
 
 // =============================================================================
@@ -1068,6 +1163,14 @@ class NoopAdapter implements DbAdapter {
 
   async getAllClientMessages(): Promise<Result<{ messages: ClientMessage[]; total: number }, string>> {
     return Ok({ messages: [], total: 0 });
+  }
+
+  insertClientDocument(): Promise<Result<{ id: number }, string>> {
+    return Promise.resolve(Ok({ id: 0 }));
+  }
+
+  async getClientDocuments(): Promise<Result<ClientDocument[], string>> {
+    return Ok([]);
   }
 }
 
@@ -1204,10 +1307,19 @@ export interface ClientDocument {
   createdAt: string;
 }
 
+/** Fields supplied when attaching a document — id and createdAt are assigned by the database. */
+export type ClientDocumentInput = Pick<ClientDocument, "clientId" | "name" | "url" | "type">;
+
+/** Attach a document to a client (admin → portal). */
+export async function createClientDocument(
+  doc: ClientDocumentInput,
+): Promise<Result<{ id: number }, string>> {
+  return getAdapter().insertClientDocument(doc);
+}
+
 /** Get documents for a client (portal documents tab). */
 export async function getClientDocuments(
   clientId: number,
 ): Promise<Result<ClientDocument[], string>> {
-  // Documents table not yet implemented — return empty
-  return { ok: true, value: [] };
+  return getAdapter().getClientDocuments(clientId);
 }

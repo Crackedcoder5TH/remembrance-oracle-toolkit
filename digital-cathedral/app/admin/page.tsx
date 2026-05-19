@@ -324,6 +324,12 @@ export default function AdminDashboard() {
             Messages
           </button>
           <button
+            onClick={() => router.push("/admin/documents")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+          >
+            Documents
+          </button>
+          <button
             onClick={() => router.push("/admin/ai-agents")}
             className="px-4 py-2 rounded-lg text-sm transition-all bg-indigo-600 text-white hover:bg-indigo-500"
           >

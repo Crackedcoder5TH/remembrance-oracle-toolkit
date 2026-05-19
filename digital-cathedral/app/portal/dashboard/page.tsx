@@ -34,7 +34,7 @@ interface Document {
   name: string;
   type: string;
   url: string;
-  uploadedAt: string;
+  createdAt: string;
 }
 
 type Tab = "quotes" | "documents" | "messages";
@@ -243,7 +243,7 @@ export default function PortalDashboardPage() {
                       <div>
                         <div className="text-sm font-medium text-[var(--text-primary)]">{doc.name}</div>
                         <div className="text-xs text-[var(--text-muted)]">
-                          {doc.type} · Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}
+                          {doc.type} · Uploaded {new Date(doc.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>

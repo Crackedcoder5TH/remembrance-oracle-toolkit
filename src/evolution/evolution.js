@@ -367,6 +367,28 @@ function evolve(ctx, options = {}) {
     stale: report.staleCount,
   });
 
+  // ── LRE field-coupling (auto-wired) ──
+  try {
+    let __c = 0, __n = 0;
+    for (const __h of (report.healed || [])) {
+      if (typeof __h.newCoherency === 'number') { __c += __h.newCoherency; __n++; }
+    }
+    for (const __u of (report.coherencyUpdates || [])) {
+      if (typeof __u.coherencyScore === 'number') { __c += __u.coherencyScore; __n++; }
+    }
+    if (__n > 0) {
+      const __lre_enginePaths = ['./../core/field-coupling',
+        require('path').join(__dirname, '../core/field-coupling')];
+      for (const __p of __lre_enginePaths) {
+        try {
+          const { contribute: __contribute } = require(__p);
+          __contribute({ cost: __n, coherence: Math.max(0, Math.min(1, __c / __n)), source: 'oracle:evolution:evolve' });
+          break;
+        } catch (_) { /* try next */ }
+      }
+    }
+  } catch (_) { /* best-effort */ }
+
   return report;
 }
 

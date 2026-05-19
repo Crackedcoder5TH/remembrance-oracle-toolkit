@@ -130,8 +130,8 @@ export async function POST(req: NextRequest) {
         maxBuyers: String(selectedTier.maxBuyers),
         price: String(price),
       },
-      success_url: `${baseUrl}/portal?tab=purchases&payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/portal?tab=leads&payment=cancelled`,
+      success_url: `${baseUrl}/portal/marketplace?tab=purchases&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/portal/marketplace?tab=leads&payment=cancelled`,
     });
 
     return NextResponse.json({

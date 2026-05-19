@@ -120,7 +120,7 @@ export default function AgentPortal() {
 
   const fetchProfile = useCallback(async () => {
     const res = await fetch("/api/client/profile");
-    if (res.status === 401) { router.push("/portal/login"); return; }
+    if (res.status === 401) { router.push("/portal"); return; }
     if (res.ok) {
       const data = await res.json();
       setProfile(data.client);
@@ -213,10 +213,10 @@ export default function AgentPortal() {
         })
         .catch(() => setMessage("Could not verify payment — contact support."));
       // Clean URL params
-      window.history.replaceState({}, "", "/portal");
+      window.history.replaceState({}, "", "/portal/marketplace");
     } else if (payment === "cancelled") {
       setMessage("Payment cancelled. You have not been charged.");
-      window.history.replaceState({}, "", "/portal");
+      window.history.replaceState({}, "", "/portal/marketplace");
     }
   }, []);
 
@@ -265,7 +265,7 @@ export default function AgentPortal() {
 
   const handleLogout = async () => {
     await fetch("/api/client/logout", { method: "POST" });
-    router.push("/portal/login");
+    router.push("/portal");
   };
 
   const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;

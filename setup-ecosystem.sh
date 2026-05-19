@@ -123,7 +123,23 @@ if [ ! -f "remembrance-oracle-toolkit/digital-cathedral/.env" ] \
   ok "  created digital-cathedral/.env (edit to add API keys)"
 fi
 
-# ─── Step 5: Stamp covenant baselines ─────────────────────────────────
+# ─── Step 5: Claude Code session hooks ───────────────────────────────
+step "Wiring Claude Code session hooks..."
+if [ -d "remembrance-oracle-toolkit" ] && command -v jq >/dev/null 2>&1; then
+  (cd "remembrance-oracle-toolkit" && {
+    mkdir -p .claude
+    HOOK_SETTINGS=".claude/settings.local.json"
+    [ -s "$HOOK_SETTINGS" ] || echo '{}' > "$HOOK_SETTINGS"
+    HOOK_MSG="At session start, before other work: use the GitHub MCP tools (mcp__github__*) to check the remembrance-oracle-toolkit repo — list open pull requests and report their CI status — then surface anything that needs attention before continuing."
+    jq --arg msg "$HOOK_MSG" '.hooks.SessionStart = [{"hooks":[{"type":"command","command":("echo " + ({hookSpecificOutput:{hookEventName:"SessionStart",additionalContext:$msg}}|tojson|@sh))}]}]' "$HOOK_SETTINGS" > "$HOOK_SETTINGS.tmp" \
+      && mv "$HOOK_SETTINGS.tmp" "$HOOK_SETTINGS"
+  }) && ok "  SessionStart GitHub-check hook installed" \
+    || warn "  SessionStart hook install skipped"
+else
+  warn "  jq not found — skipping SessionStart hook install"
+fi
+
+# ─── Step 6: Stamp covenant baselines ─────────────────────────────────
 if [ "${SKIP_BASELINE:-0}" = "1" ]; then
   warn "SKIP_BASELINE=1 — skipping initial diagnostic"
 else
@@ -139,7 +155,7 @@ else
   fi
 fi
 
-# ─── Step 6: Install the unified `remembrance` CLI ─────────────────────
+# ─── Step 7: Install the unified `remembrance` CLI ─────────────────────
 step "Installing unified CLI..."
 BIN_PATH="remembrance-oracle-toolkit/bin/remembrance"
 if [ -f "$BIN_PATH" ]; then
@@ -148,7 +164,7 @@ if [ -f "$BIN_PATH" ]; then
   echo "  Add to PATH:  export PATH=\"\$PATH:$(pwd)/remembrance-oracle-toolkit/bin\""
 fi
 
-# ─── Step 7: Verification ──────────────────────────────────────────────
+# ─── Step 8: Verification ──────────────────────────────────────────────
 step "Verifying ecosystem..."
 MISSING=0
 for repo in "${ALL_REPOS[@]}"; do

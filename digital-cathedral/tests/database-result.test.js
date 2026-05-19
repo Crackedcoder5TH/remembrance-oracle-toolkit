@@ -1,7 +1,7 @@
 /**
  * Tests for database Result type pattern and row mapper logic.
  *
- * Covers: Ok/Err constructors, rowToLead mapper, LeadRecord shape.
+ * Covers: Ok/Err constructors, rowToLead + rowToClientMessage mappers, LeadRecord shape.
  */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -44,6 +44,18 @@ function rowToLead(row) {
     utmTerm: row.utm_term || null,
     utmContent: row.utm_content || null,
     createdAt: row.created_at || "",
+  };
+}
+
+function rowToClientMessage(row) {
+  return {
+    id: Number(row.id),
+    clientId: Number(row.client_id),
+    direction: row.direction,
+    subject: row.subject || "",
+    body: row.body,
+    read: row.read === 1 || row.read === true,
+    createdAt: row.created_at,
   };
 }
 
@@ -182,6 +194,34 @@ describe("rowToLead", () => {
     const without = rowToLead({ lead_id: "x", first_name: "A", last_name: "B", email: "a@b.com", phone: "1", state: "TX", coverage_interest: "term", veteran_status: "veteran", consent_tcpa: 0, consent_privacy: false });
     assert.equal(without.consentTcpa, false);
     assert.equal(without.consentPrivacy, false);
+  });
+});
+
+describe("rowToClientMessage", () => {
+  it("maps a snake_case row to a ClientMessage", () => {
+    const msg = rowToClientMessage({
+      id: 7, client_id: 42, direction: "inbound",
+      subject: "Question about my lead", body: "Is this still active?",
+      read: 0, created_at: "2026-05-18T10:00:00Z",
+    });
+    assert.equal(msg.id, 7);
+    assert.equal(msg.clientId, 42);
+    assert.equal(msg.direction, "inbound");
+    assert.equal(msg.subject, "Question about my lead");
+    assert.equal(msg.body, "Is this still active?");
+    assert.equal(msg.read, false);
+    assert.equal(msg.createdAt, "2026-05-18T10:00:00Z");
+  });
+
+  it("coerces the read flag from SQLite integers and Postgres booleans", () => {
+    assert.equal(rowToClientMessage({ id: 1, client_id: 1, read: 1 }).read, true);
+    assert.equal(rowToClientMessage({ id: 1, client_id: 1, read: true }).read, true);
+    assert.equal(rowToClientMessage({ id: 1, client_id: 1, read: 0 }).read, false);
+    assert.equal(rowToClientMessage({ id: 1, client_id: 1, read: false }).read, false);
+  });
+
+  it("defaults an empty subject", () => {
+    assert.equal(rowToClientMessage({ id: 1, client_id: 1, subject: null, read: 0 }).subject, "");
   });
 });
 

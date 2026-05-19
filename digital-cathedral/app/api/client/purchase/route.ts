@@ -10,6 +10,7 @@ import { getLeadById } from "@/app/lib/database";
 import { scoreLead } from "@/app/lib/lead-scoring";
 import { getLeadPrice, PURCHASE_TIERS, getTierByIndex } from "@/app/lib/lead-depreciation";
 import { stripe } from "@/app/lib/stripe";
+import { validateCsrfToken } from "@/app/lib/csrf";
 
 /**
  * Client Purchase API
@@ -23,6 +24,13 @@ import { stripe } from "@/app/lib/stripe";
 export async function POST(req: NextRequest) {
   const auth = await verifyClient(req);
   if (auth instanceof NextResponse) return auth;
+
+  if (!validateCsrfToken(req)) {
+    return NextResponse.json(
+      { success: false, message: "Security validation failed. Please refresh the page and try again." },
+      { status: 403 }
+    );
+  }
 
   try {
     const body = await req.json();
@@ -119,10 +127,11 @@ export async function POST(req: NextRequest) {
         leadId,
         exclusive: isExclusive ? "true" : "false",
         tierName: selectedTier.name,
+        maxBuyers: String(selectedTier.maxBuyers),
         price: String(price),
       },
-      success_url: `${baseUrl}/portal?tab=purchases&payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/portal?tab=leads&payment=cancelled`,
+      success_url: `${baseUrl}/portal/marketplace?tab=purchases&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/portal/marketplace?tab=leads&payment=cancelled`,
     });
 
     return NextResponse.json({

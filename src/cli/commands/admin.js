@@ -2141,7 +2141,7 @@ ${c.bold('Related commands:')}
   // instead of test-time.
   handlers['ground'] = (args) => {
     const { groundFile } = require('../../audit/ground');
-    const targetFile = args.file || args._positional[1];
+    const targetFile = args.file || args._positional[0];
     if (!targetFile) {
       console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle ground <file>')} [--json]`);
       process.exit(1);
@@ -2186,7 +2186,7 @@ ${c.bold('Related commands:')}
   };
 
   handlers['void-scan'] = async (args) => {
-    const targetFile = args.file || args._positional[1];
+    const targetFile = args.file || args._positional[0];
     if (!targetFile) {
       console.error(c.boldRed('Error:') + ` Usage: ${c.cyan('oracle void-scan <file>')} [--window 20] [--stride 5] [--top 5]`);
       process.exit(1);

@@ -120,7 +120,7 @@ export default function AgentPortal() {
 
   const fetchProfile = useCallback(async () => {
     const res = await fetch("/api/client/profile");
-    if (res.status === 401) { router.push("/portal/login"); return; }
+    if (res.status === 401) { router.push("/portal"); return; }
     if (res.ok) {
       const data = await res.json();
       setProfile(data.client);
@@ -213,18 +213,20 @@ export default function AgentPortal() {
         })
         .catch(() => setMessage("Could not verify payment — contact support."));
       // Clean URL params
-      window.history.replaceState({}, "", "/portal");
+      window.history.replaceState({}, "", "/portal/marketplace");
     } else if (payment === "cancelled") {
       setMessage("Payment cancelled. You have not been charged.");
-      window.history.replaceState({}, "", "/portal");
+      window.history.replaceState({}, "", "/portal/marketplace");
     }
   }, []);
 
   const handlePurchase = async (leadId: string, tierIndex: number) => {
     setMessage("");
+    const csrfRes = await fetch("/api/csrf");
+    const csrfData = csrfRes.ok ? await csrfRes.json() : { token: "" };
     const res = await fetch("/api/client/purchase", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfData.token },
       body: JSON.stringify({ leadId, tierIndex }),
     });
     const data = await res.json();
@@ -239,9 +241,11 @@ export default function AgentPortal() {
     const reason = prompt("Reason for return (e.g., wrong number, fake info):");
     if (!reason) return;
 
+    const csrfRes = await fetch("/api/csrf");
+    const csrfData = csrfRes.ok ? await csrfRes.json() : { token: "" };
     const res = await fetch("/api/client/returns", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfData.token },
       body: JSON.stringify({ purchaseId, reason }),
     });
     const data = await res.json();
@@ -261,7 +265,7 @@ export default function AgentPortal() {
 
   const handleLogout = async () => {
     await fetch("/api/client/logout", { method: "POST" });
-    router.push("/portal/login");
+    router.push("/portal");
   };
 
   const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;

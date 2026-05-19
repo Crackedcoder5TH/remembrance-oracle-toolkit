@@ -264,6 +264,23 @@ class CoherencyDirector {
       } catch { /* skip unmeasurable zones */ }
     }
     this.field._updateGlobal();
+
+    // ── LRE field-coupling (auto-wired) ──
+  try {
+    const __lre_enginePaths = ['./../core/field-coupling',
+      require('path').join(__dirname, '../core/field-coupling')];
+    let __c = 0, __n = 0;
+    for (const __z of this.field.zones.values()) {
+      if (typeof __z.coherency === 'number') { __c += __z.coherency; __n++; }
+    }
+    for (const __p of __lre_enginePaths) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: __n || 1, coherence: __n ? Math.max(0, Math.min(1, __c / __n)) : 0, source: 'oracle:coherency-director:measureWithOracle' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
   }
 
   /**

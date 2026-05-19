@@ -32,6 +32,16 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"SessionStart\",\"additionalContext\":\"At session start, before other work: use the GitHub MCP tools (mcp__github__*) to check the remembrance-oracle-toolkit repo — list open pull requests and report their CI status — then surface anything that needs attention before continuing.\"}}'"
+          }
+        ]
+      }
     ]
   }
 }

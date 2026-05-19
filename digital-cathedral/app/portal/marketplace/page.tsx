@@ -80,15 +80,6 @@ interface Purchase {
   returnDeadline: string;
 }
 
-interface BillingRecord {
-  billingId: string;
-  periodStart: string;
-  periodEnd: string;
-  leadsPurchased: number;
-  totalAmount: number;
-  paymentStatus: string;
-}
-
 interface Filters {
   states: string[];
   coverageTypes: string[];
@@ -106,7 +97,6 @@ export default function AgentPortal() {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [leads, setLeads] = useState<AvailableLead[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [billing, setBilling] = useState<BillingRecord[]>([]);
   const [filters, setFilters] = useState<Filters>({
     states: [], coverageTypes: [], veteranOnly: false, minScore: 0, maxLeadAge: 72, distributionMode: "shared",
   });
@@ -150,14 +140,6 @@ export default function AgentPortal() {
     }
   }, []);
 
-  const fetchBilling = useCallback(async () => {
-    const res = await fetch("/api/client/billing");
-    if (res.ok) {
-      const data = await res.json();
-      setBilling(data.billing || []);
-    }
-  }, []);
-
   const fetchFilters = useCallback(async () => {
     const res = await fetch("/api/client/filters");
     if (res.ok) {
@@ -187,9 +169,8 @@ export default function AgentPortal() {
   useEffect(() => {
     if (tab === "leads") fetchLeads();
     else if (tab === "purchases") fetchPurchases();
-    else if (tab === "billing") fetchBilling();
     else if (tab === "filters") fetchFilters();
-  }, [tab, fetchLeads, fetchPurchases, fetchBilling, fetchFilters]);
+  }, [tab, fetchLeads, fetchPurchases, fetchFilters]);
 
   // Handle payment return from Stripe Checkout
   useEffect(() => {
@@ -657,44 +638,6 @@ export default function AgentPortal() {
             </div>
           </div>
 
-          {/* Transaction History */}
-          <div className="cathedral-surface overflow-x-auto">
-            <div className="px-4 py-3 border-b border-indigo-cathedral/10">
-              <h3 className="text-sm metallic-gold uppercase tracking-wider">Transaction History</h3>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wider border-b border-indigo-cathedral/10 text-[var(--text-muted)]">
-                  <th className="px-4 py-3">Period</th>
-                  <th className="px-4 py-3">Leads</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {billing.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)]">No transactions yet. Purchase a lead to get started.</td></tr>
-                ) : (
-                  billing.map((b) => (
-                    <tr key={b.billingId} className="border-b border-indigo-cathedral/5">
-                      <td className="px-4 py-3 text-[var(--text-primary)] text-xs">
-                        {new Date(b.periodStart).toLocaleDateString()} — {new Date(b.periodEnd).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-[var(--text-muted)]">{b.leadsPurchased}</td>
-                      <td className="px-4 py-3 text-[var(--text-primary)]">{formatCents(b.totalAmount)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs border ${
-                          b.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                          b.paymentStatus === "overdue" ? "bg-red-50 text-red-700 border-red-200" :
-                          "bg-amber-50 text-amber-700 border-amber-200"
-                        }`}>{b.paymentStatus}</span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 

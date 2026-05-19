@@ -9,7 +9,6 @@ import type {
   ClientRecord,
   ClientFilters,
   LeadPurchase,
-  ClientBilling,
   ClientListFilters,
   ClientStats,
   ClientDbAdapter,
@@ -17,7 +16,7 @@ import type {
   Result,
 } from "./types";
 import { Ok, Err } from "./types";
-import { rowToClient, rowToFilters, rowToPurchase, rowToBilling } from "./helpers";
+import { rowToClient, rowToFilters, rowToPurchase } from "./helpers";
 
 export class PostgresClientAdapter implements ClientDbAdapter {
   private pool: import("pg").Pool | null = null;
@@ -105,27 +104,11 @@ export class PostgresClientAdapter implements ClientDbAdapter {
       )
     `);
 
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS client_billing (
-        id SERIAL PRIMARY KEY,
-        billing_id TEXT UNIQUE NOT NULL,
-        client_id TEXT NOT NULL REFERENCES clients(client_id),
-        period_start TEXT NOT NULL,
-        period_end TEXT NOT NULL,
-        leads_purchased INTEGER NOT NULL DEFAULT 0,
-        total_amount INTEGER NOT NULL DEFAULT 0,
-        payment_status TEXT NOT NULL DEFAULT 'pending',
-        invoice_url TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
-      )
-    `);
-
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_purchases_client ON lead_purchases(client_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_purchases_lead ON lead_purchases(lead_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_purchases_status ON lead_purchases(status)`);
-    await pool.query(`CREATE INDEX IF NOT EXISTS idx_billing_client ON client_billing(client_id)`);
 
     this.initialized = true;
   }
@@ -410,57 +393,6 @@ export class PostgresClientAdapter implements ClientDbAdapter {
     }
   }
 
-  async insertBilling(billing: ClientBilling): Promise<Result<{ billingId: string }, string>> {
-    try {
-      await this.initialize();
-      const pool = await this.getPool();
-      await pool.query(
-        `INSERT INTO client_billing (billing_id, client_id, period_start, period_end, leads_purchased, total_amount, payment_status, invoice_url, created_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-        [billing.billingId, billing.clientId, billing.periodStart, billing.periodEnd, billing.leadsPurchased, billing.totalAmount, billing.paymentStatus, billing.invoiceUrl, billing.createdAt]
-      );
-      return Ok({ billingId: billing.billingId });
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Insert failed");
-    }
-  }
-
-  async getBillingByClient(clientId: string, limit = 12): Promise<Result<ClientBilling[], string>> {
-    try {
-      await this.initialize();
-      const pool = await this.getPool();
-      const r = await pool.query(
-        "SELECT * FROM client_billing WHERE client_id = $1 ORDER BY created_at DESC LIMIT $2",
-        [clientId, limit]
-      );
-      return Ok(r.rows.map(rowToBilling));
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Query failed");
-    }
-  }
-
-  async getBillingById(billingId: string): Promise<Result<ClientBilling | null, string>> {
-    try {
-      await this.initialize();
-      const pool = await this.getPool();
-      const r = await pool.query("SELECT * FROM client_billing WHERE billing_id = $1", [billingId]);
-      return Ok(r.rows.length > 0 ? rowToBilling(r.rows[0]) : null);
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Query failed");
-    }
-  }
-
-  async updateBillingStatus(billingId: string, status: ClientBilling["paymentStatus"]): Promise<Result<{ updated: boolean }, string>> {
-    try {
-      await this.initialize();
-      const pool = await this.getPool();
-      await pool.query("UPDATE client_billing SET payment_status = $1 WHERE billing_id = $2", [status, billingId]);
-      return Ok({ updated: true });
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Update failed");
-    }
-  }
-
   async getClientStats(): Promise<Result<ClientStats, string>> {
     try {
       await this.initialize();
@@ -503,18 +435,4 @@ export class PostgresClientAdapter implements ClientDbAdapter {
     }
   }
 
-  async updateClientBalance(clientId: string, amount: number): Promise<Result<{ newBalance: number }, string>> {
-    try {
-      await this.initialize();
-      const pool = await this.getPool();
-      const r = await pool.query(
-        "UPDATE clients SET balance = balance + $1, updated_at = $2 WHERE client_id = $3 RETURNING balance",
-        [amount, new Date().toISOString(), clientId]
-      );
-      if (r.rows.length === 0) return Err("Client not found");
-      return Ok({ newBalance: parseInt(r.rows[0].balance, 10) });
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Update failed");
-    }
-  }
 }

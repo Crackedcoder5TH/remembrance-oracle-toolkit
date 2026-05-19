@@ -22,12 +22,6 @@ function generatePurchaseId() {
   return `purchase_${ts}_${rand}`;
 }
 
-function generateBillingId() {
-  const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `billing_${ts}_${rand}`;
-}
-
 function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
   const hash = createHmac("sha256", salt).update(password).digest("hex");
@@ -97,20 +91,6 @@ function rowToPurchase(row) {
   };
 }
 
-function rowToBilling(row) {
-  return {
-    billingId: row.billing_id,
-    clientId: row.client_id,
-    periodStart: row.period_start,
-    periodEnd: row.period_end,
-    leadsPurchased: Number(row.leads_purchased),
-    totalAmount: Number(row.total_amount),
-    paymentStatus: row.payment_status,
-    invoiceUrl: row.invoice_url || "",
-    createdAt: row.created_at,
-  };
-}
-
 // --- Tests ---
 
 describe("generateClientId", () => {
@@ -136,12 +116,6 @@ describe("generatePurchaseId", () => {
   it("generates unique IDs", () => {
     const ids = new Set(Array.from({ length: 50 }, () => generatePurchaseId()));
     assert.equal(ids.size, 50);
-  });
-});
-
-describe("generateBillingId", () => {
-  it("starts with 'billing_' prefix", () => {
-    assert.ok(generateBillingId().startsWith("billing_"));
   });
 });
 
@@ -296,33 +270,6 @@ describe("rowToPurchase", () => {
   it("defaults empty returnReason", () => {
     const purchase = rowToPurchase({ purchase_id: "p", lead_id: "l", client_id: "c", price_paid: 0, purchased_at: "", status: "returned", exclusive: 0, return_reason: null });
     assert.equal(purchase.returnReason, "");
-  });
-});
-
-describe("rowToBilling", () => {
-  it("maps row to ClientBilling", () => {
-    const row = {
-      billing_id: "billing_1",
-      client_id: "client_1",
-      period_start: "2026-03-01",
-      period_end: "2026-03-31",
-      leads_purchased: 42,
-      total_amount: 252000,
-      payment_status: "paid",
-      invoice_url: "https://stripe.com/inv_123",
-      created_at: "2026-03-01",
-    };
-    const billing = rowToBilling(row);
-    assert.equal(billing.billingId, "billing_1");
-    assert.equal(billing.leadsPurchased, 42);
-    assert.equal(billing.totalAmount, 252000);
-    assert.equal(billing.paymentStatus, "paid");
-    assert.equal(billing.invoiceUrl, "https://stripe.com/inv_123");
-  });
-
-  it("defaults empty invoiceUrl", () => {
-    const billing = rowToBilling({ billing_id: "b", client_id: "c", period_start: "", period_end: "", leads_purchased: 0, total_amount: 0, payment_status: "pending", invoice_url: null, created_at: "" });
-    assert.equal(billing.invoiceUrl, "");
   });
 });
 

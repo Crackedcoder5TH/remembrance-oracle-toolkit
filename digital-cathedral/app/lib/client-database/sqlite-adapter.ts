@@ -10,7 +10,6 @@ import type {
   ClientRecord,
   ClientFilters,
   LeadPurchase,
-  ClientBilling,
   ClientListFilters,
   ClientStats,
   ClientDbAdapter,
@@ -18,7 +17,7 @@ import type {
   Result,
 } from "./types";
 import { Ok, Err } from "./types";
-import { rowToClient, rowToFilters, rowToPurchase, rowToBilling } from "./helpers";
+import { rowToClient, rowToFilters, rowToPurchase } from "./helpers";
 
 export class SqliteClientAdapter implements ClientDbAdapter {
   private db: import("better-sqlite3").Database | null = null;
@@ -88,25 +87,11 @@ export class SqliteClientAdapter implements ClientDbAdapter {
         return_deadline TEXT NOT NULL DEFAULT ''
       );
 
-      CREATE TABLE IF NOT EXISTS client_billing (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        billing_id TEXT UNIQUE NOT NULL,
-        client_id TEXT NOT NULL REFERENCES clients(client_id),
-        period_start TEXT NOT NULL,
-        period_end TEXT NOT NULL,
-        leads_purchased INTEGER NOT NULL DEFAULT 0,
-        total_amount INTEGER NOT NULL DEFAULT 0,
-        payment_status TEXT NOT NULL DEFAULT 'pending',
-        invoice_url TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-
       CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
       CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);
       CREATE INDEX IF NOT EXISTS idx_purchases_client ON lead_purchases(client_id);
       CREATE INDEX IF NOT EXISTS idx_purchases_lead ON lead_purchases(lead_id);
       CREATE INDEX IF NOT EXISTS idx_purchases_status ON lead_purchases(status);
-      CREATE INDEX IF NOT EXISTS idx_billing_client ON client_billing(client_id);
     `);
 
     // Seed demo client if table is empty (local dev without DATABASE_URL)
@@ -367,53 +352,6 @@ export class SqliteClientAdapter implements ClientDbAdapter {
     }
   }
 
-  async insertBilling(billing: ClientBilling): Promise<Result<{ billingId: string }, string>> {
-    try {
-      const db = this.getDb();
-      await this.initialize();
-      db.prepare(
-        `INSERT INTO client_billing (billing_id, client_id, period_start, period_end, leads_purchased, total_amount, payment_status, invoice_url, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?)`
-      ).run(billing.billingId, billing.clientId, billing.periodStart, billing.periodEnd, billing.leadsPurchased, billing.totalAmount, billing.paymentStatus, billing.invoiceUrl, billing.createdAt);
-      return Ok({ billingId: billing.billingId });
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Insert failed");
-    }
-  }
-
-  async getBillingByClient(clientId: string, limit = 12): Promise<Result<ClientBilling[], string>> {
-    try {
-      const db = this.getDb();
-      await this.initialize();
-      const rows = db.prepare("SELECT * FROM client_billing WHERE client_id = ? ORDER BY created_at DESC LIMIT ?").all(clientId, limit) as Record<string, unknown>[];
-      return Ok(rows.map(rowToBilling));
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Query failed");
-    }
-  }
-
-  async getBillingById(billingId: string): Promise<Result<ClientBilling | null, string>> {
-    try {
-      const db = this.getDb();
-      await this.initialize();
-      const row = db.prepare("SELECT * FROM client_billing WHERE billing_id = ?").get(billingId) as Record<string, unknown> | undefined;
-      return Ok(row ? rowToBilling(row) : null);
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Query failed");
-    }
-  }
-
-  async updateBillingStatus(billingId: string, status: ClientBilling["paymentStatus"]): Promise<Result<{ updated: boolean }, string>> {
-    try {
-      const db = this.getDb();
-      await this.initialize();
-      db.prepare("UPDATE client_billing SET payment_status = ? WHERE billing_id = ?").run(status, billingId);
-      return Ok({ updated: true });
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Update failed");
-    }
-  }
-
   async getClientStats(): Promise<Result<ClientStats, string>> {
     try {
       const db = this.getDb();
@@ -452,16 +390,4 @@ export class SqliteClientAdapter implements ClientDbAdapter {
     }
   }
 
-  async updateClientBalance(clientId: string, amount: number): Promise<Result<{ newBalance: number }, string>> {
-    try {
-      const db = this.getDb();
-      await this.initialize();
-      db.prepare("UPDATE clients SET balance = balance + ?, updated_at = ? WHERE client_id = ?").run(amount, new Date().toISOString(), clientId);
-      const row = db.prepare("SELECT balance FROM clients WHERE client_id = ?").get(clientId) as { balance: number } | undefined;
-      if (!row) return Err("Client not found");
-      return Ok({ newBalance: row.balance });
-    } catch (err) {
-      return Err(err instanceof Error ? err.message : "Update failed");
-    }
-  }
 }

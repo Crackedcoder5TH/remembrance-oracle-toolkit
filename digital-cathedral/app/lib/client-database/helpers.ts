@@ -3,7 +3,7 @@
  */
 
 import { createHmac, randomBytes } from "crypto";
-import type { ClientRecord, ClientFilters, LeadPurchase, ClientBilling } from "./types";
+import type { ClientRecord, ClientFilters, LeadPurchase } from "./types";
 
 export function generateClientId(): string {
   const ts = Date.now().toString(36);
@@ -15,12 +15,6 @@ export function generatePurchaseId(): string {
   const ts = Date.now().toString(36);
   const rand = Math.random().toString(36).slice(2, 8);
   return `purchase_${ts}_${rand}`;
-}
-
-export function generateBillingId(): string {
-  const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `billing_${ts}_${rand}`;
 }
 
 export function hashPassword(password: string): string {
@@ -87,19 +81,5 @@ export function rowToPurchase(row: Record<string, unknown>): LeadPurchase {
     exclusive: row.exclusive === 1 || row.exclusive === true,
     returnReason: (row.return_reason as string) || "",
     returnDeadline: (row.return_deadline as string) || "",
-  };
-}
-
-export function rowToBilling(row: Record<string, unknown>): ClientBilling {
-  return {
-    billingId: row.billing_id as string,
-    clientId: row.client_id as string,
-    periodStart: row.period_start as string,
-    periodEnd: row.period_end as string,
-    leadsPurchased: Number(row.leads_purchased),
-    totalAmount: Number(row.total_amount),
-    paymentStatus: row.payment_status as ClientBilling["paymentStatus"],
-    invoiceUrl: (row.invoice_url as string) || "",
-    createdAt: row.created_at as string,
   };
 }

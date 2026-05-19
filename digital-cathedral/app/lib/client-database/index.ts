@@ -2,12 +2,12 @@
  * Client Database — Lead Buyer Management Layer.
  *
  * Dual-mode persistence (PostgreSQL / SQLite, with a no-op fallback) for
- * client accounts, lead purchases, billing, and delivery filters. This
+ * client accounts, lead purchases, and delivery filters. This
  * barrel keeps the public `@/app/lib/client-database` API stable: types
  * and helpers are re-exported, and every operation is dispatched to the
  * active adapter resolved by getClientAdapter().
  *
- * Tables: clients, client_filters, lead_purchases, client_billing.
+ * Tables: clients, client_filters, lead_purchases.
  */
 
 import type {
@@ -15,7 +15,6 @@ import type {
   ClientFilters,
   ClientListFilters,
   LeadPurchase,
-  ClientBilling,
   ClientDbAdapter,
 } from "./types";
 import { PostgresClientAdapter } from "./postgres-adapter";
@@ -27,7 +26,6 @@ export type {
   ClientRecord,
   ClientFilters,
   LeadPurchase,
-  ClientBilling,
   ClientListFilters,
   ClientStats,
   ClientDbAdapter,
@@ -36,7 +34,6 @@ export type {
 export {
   generateClientId,
   generatePurchaseId,
-  generateBillingId,
   hashPassword,
   verifyPassword,
 } from "./helpers";
@@ -82,10 +79,5 @@ export async function updatePurchaseStatus(purchaseId: string, status: LeadPurch
 export async function getAllPurchases(limit?: number, offset?: number, status?: string) { return getClientAdapter().getAllPurchases(limit, offset, status); }
 export async function getClientDailyPurchaseCount(clientId: string) { return getClientAdapter().getClientDailyPurchaseCount(clientId); }
 export async function getClientMonthlyPurchaseCount(clientId: string) { return getClientAdapter().getClientMonthlyPurchaseCount(clientId); }
-export async function createBilling(billing: ClientBilling) { return getClientAdapter().insertBilling(billing); }
-export async function getBillingByClient(clientId: string, limit?: number) { return getClientAdapter().getBillingByClient(clientId, limit); }
-export async function getBillingById(billingId: string) { return getClientAdapter().getBillingById(billingId); }
-export async function updateBillingStatus(billingId: string, status: ClientBilling["paymentStatus"]) { return getClientAdapter().updateBillingStatus(billingId, status); }
 export async function getClientStats() { return getClientAdapter().getClientStats(); }
 export async function getRevenueByClient() { return getClientAdapter().getRevenueByClient(); }
-export async function updateClientBalance(clientId: string, amount: number) { return getClientAdapter().updateClientBalance(clientId, amount); }

@@ -545,7 +545,7 @@ export default function AgentPortal() {
               <div className="rounded-lg p-5 border border-indigo-cathedral/10 bg-[var(--bg-surface)] opacity-75">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                  <p className="text-sm font-semibold text-[var(--text-muted)]">(Shared === 0 ? 0 : Typical Aged / Shared) Lead Vendors</p>
+                  <p className="text-sm font-semibold text-[var(--text-muted)]">Typical Aged / Shared Lead Vendors</p>
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
@@ -603,7 +603,7 @@ export default function AgentPortal() {
                     <path d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                   </svg>
                   <div>
-                    <p className="text-sm text-[var(--text-primary)] font-medium">(Debit === 0 ? 0 : Credit / Debit) Card</p>
+                    <p className="text-sm text-[var(--text-primary)] font-medium">Credit / Debit Card</p>
                     <p className="text-xs text-[var(--text-muted)]">Visa, Mastercard, Amex</p>
                   </div>
                 </div>

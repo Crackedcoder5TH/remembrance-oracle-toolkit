@@ -40,7 +40,7 @@ export const DEMO_CLIENT: ClientRecord = {
 };
 
 export const DEMO_CLIENT_FILTERS: ClientFilters = {
-  clientId: "client_demo_001",
+  clientId: "client_demo_admin",
   states: JSON.stringify([]),
   coverageTypes: JSON.stringify([]),
   veteranOnly: false,

@@ -90,6 +90,7 @@ interface DbAdapter {
   insertClientMessage(msg: ClientMessageInput): Promise<Result<{ id: number }, string>>;
   getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>>;
   markMessageRead(messageId: number, clientId: number): Promise<Result<{ updated: boolean }, string>>;
+  getAllClientMessages(limit: number, offset: number): Promise<Result<{ messages: ClientMessage[]; total: number }, string>>;
 }
 
 // =============================================================================
@@ -565,6 +566,21 @@ class PostgresAdapter implements DbAdapter {
       return Err(err instanceof Error ? err.message : "Failed to update message");
     }
   }
+
+  async getAllClientMessages(limit: number, offset: number): Promise<Result<{ messages: ClientMessage[]; total: number }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const countR = await pool.query("SELECT COUNT(*) as count FROM client_messages");
+      const dataR = await pool.query(
+        "SELECT * FROM client_messages ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        [limit, offset],
+      );
+      return Ok({ messages: dataR.rows.map(rowToClientMessage), total: parseInt(countR.rows[0].count, 10) });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read messages");
+    }
+  }
 }
 
 // =============================================================================
@@ -944,6 +960,20 @@ class SqliteAdapter implements DbAdapter {
       return Err(err instanceof Error ? err.message : "Failed to update message");
     }
   }
+
+  async getAllClientMessages(limit: number, offset: number): Promise<Result<{ messages: ClientMessage[]; total: number }, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const countRow = db.prepare("SELECT COUNT(*) as count FROM client_messages").get() as { count: number };
+      const rows = db.prepare(
+        "SELECT * FROM client_messages ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      ).all(limit, offset) as Record<string, unknown>[];
+      return Ok({ messages: rows.map(rowToClientMessage), total: countRow.count });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read messages");
+    }
+  }
 }
 
 // =============================================================================
@@ -1034,6 +1064,10 @@ class NoopAdapter implements DbAdapter {
 
   markMessageRead(): Promise<Result<{ updated: boolean }, string>> {
     return Promise.resolve(Ok({ updated: true }));
+  }
+
+  async getAllClientMessages(): Promise<Result<{ messages: ClientMessage[]; total: number }, string>> {
+    return Ok({ messages: [], total: 0 });
   }
 }
 
@@ -1153,6 +1187,11 @@ export async function getClientMessages(
   clientId: number,
 ): Promise<Result<ClientMessage[], string>> {
   return getAdapter().getClientMessages(clientId);
+}
+
+/** Get recent messages across all clients (admin inbox). */
+export async function getAllClientMessages(limit = 200, offset = 0) {
+  return getAdapter().getAllClientMessages(limit, offset);
 }
 
 /** Client document record (portal documents). */

@@ -43,7 +43,6 @@ const NAV_LINKS = [
 
 const PORTAL_NAV_LINKS = [
   { href: "/portal", label: "Home" },
-  { href: "/portal/dashboard", label: "Dashboard" },
   { href: "/portal/marketplace", label: "Leads Marketplace" },
   { href: "/portal/terms", label: "Terms of Service" },
   { href: "/portal/privacy", label: "Privacy Policy" },
@@ -227,7 +226,7 @@ export function Navbar() {
             )}
             {isPortalDomain && (
               <Link
-                href="/portal/login"
+                href="/portal"
                 className="flex items-center gap-fib-5 px-fib-13 py-fib-5 text-xs font-medium rounded-fib bg-teal-cathedral text-white hover:bg-teal-cathedral/90 transition-all"
               >
                 <svg

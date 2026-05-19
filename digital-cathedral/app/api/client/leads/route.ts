@@ -7,6 +7,9 @@ import { getAllTierPrices } from "@/app/lib/lead-depreciation";
 
 export const dynamic = "force-dynamic";
 
+/** Admin owner identity — the admin master-key login that has no client DB row. */
+const ADMIN_CLIENT_ID = "client_admin_owner";
+
 /**
  * Client Leads API
  *
@@ -17,11 +20,12 @@ export async function GET(req: NextRequest) {
   if (auth instanceof NextResponse) return auth;
 
   const clientResult = await getClientById(auth.clientId);
-  if (!clientResult.ok || !clientResult.value) {
+  if ((!clientResult.ok || !clientResult.value) && auth.clientId !== ADMIN_CLIENT_ID) {
     return NextResponse.json({ success: false, message: "Client not found." }, { status: 404 });
   }
 
-  const client = clientResult.value;
+  // Admin owner has no client DB row — default to minScore 0 so the owner sees every lead.
+  const minScore = clientResult.ok && clientResult.value ? clientResult.value.minScore : 0;
   const params = req.nextUrl.searchParams;
 
   const result = await getFilteredLeads({
@@ -96,7 +100,7 @@ export async function GET(req: NextRequest) {
         tier: score.tier,
         createdAt: lead.createdAt,
         purchased: false,
-        available: score.total >= client.minScore,
+        available: score.total >= minScore,
         buyerCount: activeBuyerCount,
         ageInDays: Math.round(ageInDays * 10) / 10,
         tierPrices: tierPrices.map((tp) => ({

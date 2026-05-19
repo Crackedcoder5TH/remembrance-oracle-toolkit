@@ -10,7 +10,7 @@
  */
 
 import { createHmac } from "crypto";
-import type { ClientRecord, ClientFilters, LeadPurchase, ClientBilling, ClientStats } from "./client-database";
+import type { ClientRecord, ClientFilters, LeadPurchase, ClientStats } from "./client-database";
 
 // Pre-compute a deterministic hash so we don't need randomBytes at import time
 const DEMO_SALT = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
@@ -62,4 +62,3 @@ export function getDemoClientStats(): ClientStats {
 }
 
 export const DEMO_PURCHASES: LeadPurchase[] = [];
-export const DEMO_BILLING: ClientBilling[] = [];

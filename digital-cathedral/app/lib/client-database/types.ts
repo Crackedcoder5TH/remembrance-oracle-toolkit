@@ -53,18 +53,6 @@ export interface LeadPurchase {
   returnDeadline: string;
 }
 
-export interface ClientBilling {
-  billingId: string;
-  clientId: string;
-  periodStart: string;
-  periodEnd: string;
-  leadsPurchased: number;
-  totalAmount: number; // cents
-  paymentStatus: "pending" | "paid" | "overdue";
-  invoiceUrl: string;
-  createdAt: string;
-}
-
 export interface ClientListFilters {
   status?: string;
   search?: string;
@@ -120,16 +108,7 @@ export interface ClientDbAdapter {
   getClientDailyPurchaseCount(clientId: string): Promise<Result<number, string>>;
   getClientMonthlyPurchaseCount(clientId: string): Promise<Result<number, string>>;
 
-  // Billing
-  insertBilling(billing: ClientBilling): Promise<Result<{ billingId: string }, string>>;
-  getBillingByClient(clientId: string, limit?: number): Promise<Result<ClientBilling[], string>>;
-  getBillingById(billingId: string): Promise<Result<ClientBilling | null, string>>;
-  updateBillingStatus(billingId: string, status: ClientBilling["paymentStatus"]): Promise<Result<{ updated: boolean }, string>>;
-
   // Stats
   getClientStats(): Promise<Result<ClientStats, string>>;
   getRevenueByClient(): Promise<Result<Array<{ clientId: string; companyName: string; totalRevenue: number; totalPurchases: number }>, string>>;
-
-  // Balance
-  updateClientBalance(clientId: string, amount: number): Promise<Result<{ newBalance: number }, string>>;
 }

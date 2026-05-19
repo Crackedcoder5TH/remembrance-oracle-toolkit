@@ -9,7 +9,6 @@ import type {
   ClientRecord,
   ClientFilters,
   LeadPurchase,
-  ClientBilling,
   ClientStats,
   ClientDbAdapter,
   GuardedPurchaseOutcome,
@@ -79,22 +78,6 @@ export class NoopClientAdapter implements ClientDbAdapter {
   getClientDailyPurchaseCount(): Promise<Result<number, string>> { return Promise.resolve(Ok(0)); }
   getClientMonthlyPurchaseCount(): Promise<Result<number, string>> { return Promise.resolve(Ok(0)); }
 
-  insertBilling(): Promise<Result<{ billingId: string }, string>> {
-    return Promise.resolve(Ok({ billingId: "billing_demo_001" }));
-  }
-
-  async getBillingByClient(): Promise<Result<ClientBilling[], string>> {
-    return Ok([]);
-  }
-
-  async getBillingById(): Promise<Result<ClientBilling | null, string>> {
-    return Ok(null);
-  }
-
-  updateBillingStatus(): Promise<Result<{ updated: boolean }, string>> {
-    return Promise.resolve(Ok({ updated: true }));
-  }
-
   async getClientStats(): Promise<Result<ClientStats, string>> {
     const { getDemoClientStats } = await import("../demo-client");
     return Ok(getDemoClientStats());
@@ -105,7 +88,4 @@ export class NoopClientAdapter implements ClientDbAdapter {
     return Ok([{ clientId: DEMO_CLIENT.clientId, companyName: DEMO_CLIENT.companyName, totalRevenue: 0, totalPurchases: 0 }]);
   }
 
-  updateClientBalance(): Promise<Result<{ newBalance: number }, string>> {
-    return Promise.resolve(Ok({ newBalance: 50000 }));
-  }
 }

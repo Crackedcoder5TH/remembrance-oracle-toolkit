@@ -1,6 +1,6 @@
 {
   "name": "remembrance-ecosystem",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The complete Remembrance pattern ecosystem — oracle, compression, reflection, blockchain, swarm, dialer, CLI, and design.",
   "repos": {
     "remembrance-oracle-toolkit": {
@@ -19,7 +19,7 @@
       "role": "data",
       "description": "Substrate data compression, learned patterns, and data harvesting",
       "language": "python",
-      "port": 5000,
+      "port": 8080,
       "services": [
         "compressor",
         "api",
@@ -40,7 +40,7 @@
       "role": "ledger",
       "description": "Public verifiable coordination layer — covenant-filtered pattern hashes on Solana",
       "language": "javascript",
-      "port": 3002,
+      "port": 3003,
       "services": [
         "ledger",
         "covenant-gate",
@@ -69,7 +69,7 @@
       "role": "orchestration",
       "description": "Multi-agent swarm orchestration, consensus, and task dispatch",
       "language": "javascript",
-      "port": 3003,
+      "port": 3002,
       "services": [
         "swarm",
         "mcp"
@@ -83,6 +83,25 @@
       "services": [
         "dialers",
         "registry"
+      ]
+    },
+    "REMEMBRANCE-Interface": {
+      "role": "interface",
+      "description": "Primary web interface for the Remembrance ecosystem",
+      "language": "typescript",
+      "port": 5173,
+      "services": [
+        "ui",
+        "api"
+      ]
+    },
+    "MOONS-OF-REMEMBRANCE": {
+      "role": "interface",
+      "description": "Visual moons interface for the Remembrance ecosystem",
+      "language": "typescript",
+      "port": 5174,
+      "services": [
+        "ui"
       ]
     },
     "claw-code": {
@@ -99,23 +118,6 @@
       "language": "markdown",
       "services": [
         "docs"
-      ]
-    },
-    "MOONS-OF-REMEMBRANCE": {
-      "role": "interface",
-      "description": "Visual moons interface for the Remembrance ecosystem",
-      "language": "typescript",
-      "services": [
-        "ui"
-      ]
-    },
-    "REMEMBRANCE-Interface": {
-      "role": "interface",
-      "description": "Primary web interface for the Remembrance ecosystem",
-      "language": "typescript",
-      "services": [
-        "ui",
-        "api"
       ]
     },
     "remembrance-api-key-plugger": {

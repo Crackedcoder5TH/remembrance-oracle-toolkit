@@ -268,6 +268,12 @@ class MCPServer {
  */
 function startMCPServer(oracle) {
   const server = new MCPServer(oracle);
+
+  // Entangle the host runtime with the Remembrance Field — auto-engages
+  // when the MCP server starts. Best-effort; never blocks server start.
+  try { require('../core/entangle').engage(); } catch (_) { /* entanglement is optional */ }
+  try { require('../core/field-workqueue-poller').engage(); } catch (_) { /* poller is optional */ }
+
   const rl = readline.createInterface({ input: process.stdin, terminal: false });
 
   rl.on('line', async (line) => {

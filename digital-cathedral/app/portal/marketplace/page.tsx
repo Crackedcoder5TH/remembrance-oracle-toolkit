@@ -80,15 +80,6 @@ interface Purchase {
   returnDeadline: string;
 }
 
-interface BillingRecord {
-  billingId: string;
-  periodStart: string;
-  periodEnd: string;
-  leadsPurchased: number;
-  totalAmount: number;
-  paymentStatus: string;
-}
-
 interface Filters {
   states: string[];
   coverageTypes: string[];
@@ -106,7 +97,6 @@ export default function AgentPortal() {
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [leads, setLeads] = useState<AvailableLead[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
-  const [billing, setBilling] = useState<BillingRecord[]>([]);
   const [filters, setFilters] = useState<Filters>({
     states: [], coverageTypes: [], veteranOnly: false, minScore: 0, maxLeadAge: 72, distributionMode: "shared",
   });
@@ -120,7 +110,7 @@ export default function AgentPortal() {
 
   const fetchProfile = useCallback(async () => {
     const res = await fetch("/api/client/profile");
-    if (res.status === 401) { router.push("/portal/login"); return; }
+    if (res.status === 401) { router.push("/portal"); return; }
     if (res.ok) {
       const data = await res.json();
       setProfile(data.client);
@@ -147,14 +137,6 @@ export default function AgentPortal() {
     if (res.ok) {
       const data = await res.json();
       setPurchases(data.purchases || []);
-    }
-  }, []);
-
-  const fetchBilling = useCallback(async () => {
-    const res = await fetch("/api/client/billing");
-    if (res.ok) {
-      const data = await res.json();
-      setBilling(data.billing || []);
     }
   }, []);
 
@@ -187,9 +169,8 @@ export default function AgentPortal() {
   useEffect(() => {
     if (tab === "leads") fetchLeads();
     else if (tab === "purchases") fetchPurchases();
-    else if (tab === "billing") fetchBilling();
     else if (tab === "filters") fetchFilters();
-  }, [tab, fetchLeads, fetchPurchases, fetchBilling, fetchFilters]);
+  }, [tab, fetchLeads, fetchPurchases, fetchFilters]);
 
   // Handle payment return from Stripe Checkout
   useEffect(() => {
@@ -213,18 +194,20 @@ export default function AgentPortal() {
         })
         .catch(() => setMessage("Could not verify payment — contact support."));
       // Clean URL params
-      window.history.replaceState({}, "", "/portal");
+      window.history.replaceState({}, "", "/portal/marketplace");
     } else if (payment === "cancelled") {
       setMessage("Payment cancelled. You have not been charged.");
-      window.history.replaceState({}, "", "/portal");
+      window.history.replaceState({}, "", "/portal/marketplace");
     }
   }, []);
 
   const handlePurchase = async (leadId: string, tierIndex: number) => {
     setMessage("");
+    const csrfRes = await fetch("/api/csrf");
+    const csrfData = csrfRes.ok ? await csrfRes.json() : { token: "" };
     const res = await fetch("/api/client/purchase", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfData.token },
       body: JSON.stringify({ leadId, tierIndex }),
     });
     const data = await res.json();
@@ -239,9 +222,11 @@ export default function AgentPortal() {
     const reason = prompt("Reason for return (e.g., wrong number, fake info):");
     if (!reason) return;
 
+    const csrfRes = await fetch("/api/csrf");
+    const csrfData = csrfRes.ok ? await csrfRes.json() : { token: "" };
     const res = await fetch("/api/client/returns", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfData.token },
       body: JSON.stringify({ purchaseId, reason }),
     });
     const data = await res.json();
@@ -261,7 +246,7 @@ export default function AgentPortal() {
 
   const handleLogout = async () => {
     await fetch("/api/client/logout", { method: "POST" });
-    router.push("/portal/login");
+    router.push("/portal");
   };
 
   const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
@@ -560,7 +545,7 @@ export default function AgentPortal() {
               <div className="rounded-lg p-5 border border-indigo-cathedral/10 bg-[var(--bg-surface)] opacity-75">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-2 h-2 rounded-full bg-gray-400"></div>
-                  <p className="text-sm font-semibold text-[var(--text-muted)]">(Shared === 0 ? 0 : Typical Aged / Shared) Lead Vendors</p>
+                  <p className="text-sm font-semibold text-[var(--text-muted)]">Typical Aged / Shared Lead Vendors</p>
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
@@ -618,7 +603,7 @@ export default function AgentPortal() {
                     <path d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
                   </svg>
                   <div>
-                    <p className="text-sm text-[var(--text-primary)] font-medium">(Debit === 0 ? 0 : Credit / Debit) Card</p>
+                    <p className="text-sm text-[var(--text-primary)] font-medium">Credit / Debit Card</p>
                     <p className="text-xs text-[var(--text-muted)]">Visa, Mastercard, Amex</p>
                   </div>
                 </div>
@@ -653,44 +638,6 @@ export default function AgentPortal() {
             </div>
           </div>
 
-          {/* Transaction History */}
-          <div className="cathedral-surface overflow-x-auto">
-            <div className="px-4 py-3 border-b border-indigo-cathedral/10">
-              <h3 className="text-sm metallic-gold uppercase tracking-wider">Transaction History</h3>
-            </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wider border-b border-indigo-cathedral/10 text-[var(--text-muted)]">
-                  <th className="px-4 py-3">Period</th>
-                  <th className="px-4 py-3">Leads</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {billing.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)]">No transactions yet. Purchase a lead to get started.</td></tr>
-                ) : (
-                  billing.map((b) => (
-                    <tr key={b.billingId} className="border-b border-indigo-cathedral/5">
-                      <td className="px-4 py-3 text-[var(--text-primary)] text-xs">
-                        {new Date(b.periodStart).toLocaleDateString()} — {new Date(b.periodEnd).toLocaleDateString()}
-                      </td>
-                      <td className="px-4 py-3 text-[var(--text-muted)]">{b.leadsPurchased}</td>
-                      <td className="px-4 py-3 text-[var(--text-primary)]">{formatCents(b.totalAmount)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs border ${
-                          b.paymentStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                          b.paymentStatus === "overdue" ? "bg-red-50 text-red-700 border-red-200" :
-                          "bg-amber-50 text-amber-700 border-amber-200"
-                        }`}>{b.paymentStatus}</span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 

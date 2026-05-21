@@ -54,15 +54,24 @@ async function ledgerFileStats(dir, month) {
   }
 }
 
+// Mirrors file-adapter.ts readRecent: walk every monthly file newest-first
+// so a trailing window isn't truncated at a calendar boundary.
 async function readRecentEntries(dir, limit) {
   try {
-    const filePath = path.join(dir, ledgerFileFor(new Date()));
-    const text = await readFile(filePath, "utf8");
-    const lines = text.split("\n").filter((l) => l.trim().length > 0);
-    const recent = lines.slice(-limit).reverse();
-    return recent.map((l) => {
-      try { return JSON.parse(l); } catch { return null; }
-    }).filter((e) => e !== null);
+    const files = (await readdir(dir))
+      .filter((n) => /^ledger-\d{4}-\d{2}\.jsonl$/.test(n))
+      .sort()
+      .reverse();
+    const out = [];
+    for (const name of files) {
+      if (out.length >= limit) break;
+      const text = await readFile(path.join(dir, name), "utf8");
+      const lines = text.split("\n").filter((l) => l.trim().length > 0);
+      for (let i = lines.length - 1; i >= 0 && out.length < limit; i--) {
+        try { out.push(JSON.parse(lines[i])); } catch { /* skip */ }
+      }
+    }
+    return out;
   } catch {
     return [];
   }
@@ -202,5 +211,39 @@ describe("lead ledger — append-only JSONL", () => {
     for (const e of entries) {
       assert.ok(typeof e.leadId === "string");
     }
+  });
+});
+
+describe("lead ledger — readRecent spans calendar months", () => {
+  let tmpDir;
+
+  before(async () => {
+    tmpDir = await import("node:fs/promises").then((fs) =>
+      fs.mkdtemp(path.join(os.tmpdir(), "valor-ledger-months-")));
+  });
+
+  after(async () => {
+    if (tmpDir) await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  // Regression: readRecent once read only the current calendar month, so a
+  // trailing window was truncated at month boundaries. These entries land in
+  // two non-current months — the old behavior would return none of them.
+  it("returns entries from older months, newest-first across the boundary", async () => {
+    await appendLedgerEntry(tmpDir, sampleEntry({ leadId: "mar_a", writtenAt: "2026-03-10T12:00:00.000Z" }));
+    await appendLedgerEntry(tmpDir, sampleEntry({ leadId: "mar_b", writtenAt: "2026-03-20T12:00:00.000Z" }));
+    await appendLedgerEntry(tmpDir, sampleEntry({ leadId: "apr_a", writtenAt: "2026-04-10T12:00:00.000Z" }));
+    await appendLedgerEntry(tmpDir, sampleEntry({ leadId: "apr_b", writtenAt: "2026-04-20T12:00:00.000Z" }));
+
+    assert.equal((await listLedgerFiles(tmpDir)).length, 2);
+
+    const all = await readRecentEntries(tmpDir, 100);
+    const ids = all.map((e) => e.leadId);
+    assert.deepEqual(ids, ["apr_b", "apr_a", "mar_b", "mar_a"], `got ${ids.join(",")}`);
+  });
+
+  it("respects the limit while still crossing into an older month", async () => {
+    const three = await readRecentEntries(tmpDir, 3);
+    assert.deepEqual(three.map((e) => e.leadId), ["apr_b", "apr_a", "mar_b"]);
   });
 });

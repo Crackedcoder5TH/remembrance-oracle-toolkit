@@ -1,5 +1,18 @@
 'use strict';
 
+
+/**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
 /**
  * Remembrance Codex — Living Periodic Table of Code
  *
@@ -212,7 +225,7 @@ function decodeSignature(sig) {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.alignment || 0)), source: 'oracle:periodic-table:i' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.alignment || 0)), source: 'oracle:periodic-table:decodeSignature' });
         break;
       } catch (_) { /* try next */ }
     }

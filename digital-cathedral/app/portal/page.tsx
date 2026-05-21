@@ -23,7 +23,7 @@ export default function PortalWelcomePage() {
   useEffect(() => {
     fetch("/api/client/profile")
       .then((res) => {
-        if (res.ok) router.push("/portal/dashboard");
+        if (res.ok) router.push("/portal/marketplace");
       })
       .catch(() => {})
       .finally(() => setCheckingAuth(false));
@@ -44,7 +44,7 @@ export default function PortalWelcomePage() {
       const data = await res.json();
 
       if (data.success) {
-        router.push("/portal/dashboard");
+        router.push("/portal/marketplace");
       } else {
         setError(data.message || "Login failed.");
       }

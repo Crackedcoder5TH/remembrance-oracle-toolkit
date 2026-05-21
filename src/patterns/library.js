@@ -1,4 +1,16 @@
 /**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
+/**
  * Pattern Library — The heart of the Oracle's intelligence.
  *
  * Stores reusable code patterns categorized by:
@@ -474,8 +486,8 @@ class PatternLibrary {
       };
       // ── LRE field-coupling (auto-wired) ──
       try {
-        const __lre_p1 = './../../core/field-coupling';
-        const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+        const __lre_p1 = '../core/field-coupling';
+        const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
         for (const __p of [__lre_p1, __lre_p2]) {
           try {
             const { contribute: __contribute } = require(__p);

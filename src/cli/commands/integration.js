@@ -8,7 +8,44 @@ const { validatePort } = require('../validate-args');
 
 function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
 
-  handlers['mcp'] = () => {
+  handlers['mcp'] = (args = {}) => {
+    const sub = args._sub;
+
+    // `oracle mcp tools-json` → emit OpenAI function-calling schema for
+    // clients that don't speak MCP (Grok API, custom GPTs, OpenRouter).
+    if (sub === 'tools-json') {
+      const { toOpenAITools } = require('../../mcp/openai-schema');
+      process.stdout.write(JSON.stringify(toOpenAITools(), null, 2) + '\n');
+      return;
+    }
+
+    // `oracle mcp --http[=HOST:PORT] [--token TOKEN]` → HTTP transport.
+    // Defaults: 127.0.0.1:7787, no auth. `--http=0.0.0.0:7787 --token X`
+    // for remote / tunneled access (Grok API, web agents).
+    if (args.http) {
+      const { startHTTPServer } = require('../../mcp/http-server');
+      let host = '127.0.0.1';
+      let port = 7787;
+      if (typeof args.http === 'string') {
+        const [h, p] = args.http.split(':');
+        if (h) host = h;
+        if (p) {
+          const parsed = parseInt(p, 10);
+          if (Number.isFinite(parsed) && parsed > 0 && parsed < 65536) port = parsed;
+        }
+      }
+      const token = (typeof args.token === 'string' ? args.token : null)
+        || process.env.ORACLE_MCP_TOKEN
+        || null;
+      if (host !== '127.0.0.1' && host !== 'localhost' && !token) {
+        console.error(c.boldYellow('!') + ' Binding to ' + host + ' without --token — anyone reachable on this network can call the field.');
+        console.error('  Set ' + c.cyan('--token <secret>') + ' or ' + c.cyan('ORACLE_MCP_TOKEN=<secret>') + ' to require auth.');
+      }
+      startHTTPServer({ host, port, token, oracle });
+      return;
+    }
+
+    // Default: stdio transport (Claude Desktop, Cursor, Cline, etc.)
     const { startMCPServer } = require('../../mcp/server');
     startMCPServer(oracle);
   };
@@ -16,6 +53,16 @@ function registerIntegrationCommands(handlers, { oracle, jsonOut }) {
   handlers['mcp-install'] = (args) => {
     const { installAll, uninstallAll, checkInstallation, installTo, uninstallFrom } = require('../../ide/mcp-install');
     const sub = args._sub;
+
+    // `oracle mcp-install print [--npx]` → emit the JSON config snippet
+    // to stdout for copy-paste into any MCP client we don't auto-register.
+    if (sub === 'print' || sub === 'snippet' || sub === 'show') {
+      const { getServerConfig, SERVER_NAME } = require('../../ide/mcp-install');
+      const useNpx = args.npx || false;
+      const cfg = getServerConfig(useNpx ? { command: 'npx' } : {});
+      process.stdout.write(JSON.stringify({ mcpServers: { [SERVER_NAME]: cfg } }, null, 2) + '\n');
+      return;
+    }
 
     if (sub === 'status' || sub === 'check') {
       const status = checkInstallation();

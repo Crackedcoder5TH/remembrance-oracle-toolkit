@@ -74,7 +74,58 @@ function codeToWaveform(code) {
   return wf;
 }
 
-module.exports = { codeToWaveform, TARGET_LEN };
+module.exports = { codeToWaveform, waveformCosine, digestWaveform, TARGET_LEN };
+
+/**
+ * digestWaveform — a stable short fingerprint of a waveform.
+ *
+ * FNV-1a over the waveform's 4-decimal string form. Deterministic,
+ * dependency-free, 8 hex chars. Not cryptographic — its job is to
+ * give every encoded waveform a stable id for dedup and reference.
+ * The third canonical substrate operation: encode (codeToWaveform),
+ * compare (waveformCosine), identify (digestWaveform).
+ *
+ * @param {ArrayLike<number>} wf
+ * @returns {string} 8-hex-char digest
+ */
+function digestWaveform(wf) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < wf.length; i++) {
+    const s = wf[i].toFixed(4);
+    for (let j = 0; j < s.length; j++) {
+      h ^= s.charCodeAt(j);
+      h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
+    }
+  }
+  return h.toString(16).padStart(8, '0');
+}
+
+/**
+ * waveformCosine — canonical cosine similarity between two waveforms.
+ *
+ * The comparison primitive that pairs with codeToWaveform. Two waveforms
+ * encoded by codeToWaveform are compared here and nowhere else — this is
+ * the one canonical JS cosine for 256-sample waveforms (Void contract
+ * C-52 family). Returns a value in [-1, 1]; identical input → 1,
+ * orthogonal → 0.
+ *
+ * @param {ArrayLike<number>} a
+ * @param {ArrayLike<number>} b
+ * @returns {number} cosine similarity
+ */
+function waveformCosine(a, b) {
+  if (!a || !b || a.length === 0 || b.length === 0) return 0;
+  const n = Math.min(a.length, b.length);
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < n; i++) {
+    const x = a[i], y = b[i];
+    dot += x * y;
+    na += x * x;
+    nb += y * y;
+  }
+  const denom = Math.sqrt(na) * Math.sqrt(nb);
+  return denom < 1e-12 ? 0 : dot / denom;
+}
 
 codeToWaveform.atomicProperties = {
   charge: 0, valence: 0, mass: 'light', spin: 'even', phase: 'gas',

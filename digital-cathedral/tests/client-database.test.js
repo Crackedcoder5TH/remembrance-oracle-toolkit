@@ -22,12 +22,6 @@ function generatePurchaseId() {
   return `purchase_${ts}_${rand}`;
 }
 
-function generateBillingId() {
-  const ts = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `billing_${ts}_${rand}`;
-}
-
 function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
   const hash = createHmac("sha256", salt).update(password).digest("hex");
@@ -97,20 +91,6 @@ function rowToPurchase(row) {
   };
 }
 
-function rowToBilling(row) {
-  return {
-    billingId: row.billing_id,
-    clientId: row.client_id,
-    periodStart: row.period_start,
-    periodEnd: row.period_end,
-    leadsPurchased: Number(row.leads_purchased),
-    totalAmount: Number(row.total_amount),
-    paymentStatus: row.payment_status,
-    invoiceUrl: row.invoice_url || "",
-    createdAt: row.created_at,
-  };
-}
-
 // --- Tests ---
 
 describe("generateClientId", () => {
@@ -136,12 +116,6 @@ describe("generatePurchaseId", () => {
   it("generates unique IDs", () => {
     const ids = new Set(Array.from({ length: 50 }, () => generatePurchaseId()));
     assert.equal(ids.size, 50);
-  });
-});
-
-describe("generateBillingId", () => {
-  it("starts with 'billing_' prefix", () => {
-    assert.ok(generateBillingId().startsWith("billing_"));
   });
 });
 
@@ -299,29 +273,45 @@ describe("rowToPurchase", () => {
   });
 });
 
-describe("rowToBilling", () => {
-  it("maps row to ClientBilling", () => {
-    const row = {
-      billing_id: "billing_1",
-      client_id: "client_1",
-      period_start: "2026-03-01",
-      period_end: "2026-03-31",
-      leads_purchased: 42,
-      total_amount: 252000,
-      payment_status: "paid",
-      invoice_url: "https://stripe.com/inv_123",
-      created_at: "2026-03-01",
-    };
-    const billing = rowToBilling(row);
-    assert.equal(billing.billingId, "billing_1");
-    assert.equal(billing.leadsPurchased, 42);
-    assert.equal(billing.totalAmount, 252000);
-    assert.equal(billing.paymentStatus, "paid");
-    assert.equal(billing.invoiceUrl, "https://stripe.com/inv_123");
+// --- Guarded purchase capacity rule ---
+//
+// Mirrors the `blocked` check inside insertPurchaseGuarded (sqlite/postgres
+// adapters). The adapters run this against the lead's already-delivered
+// purchases inside a transaction; the rule itself is pure and tested here.
+// `delivered` is the list of existing delivered purchases for the lead.
+
+function isPurchaseBlocked(purchase, delivered, maxBuyers) {
+  const exclusiveHeld = delivered.some((p) => p.exclusive);
+  return purchase.exclusive
+    ? delivered.length > 0
+    : exclusiveHeld || delivered.length >= maxBuyers;
+}
+
+describe("guarded purchase capacity rule", () => {
+  const shared = { exclusive: false };
+  const exclusive = { exclusive: true };
+
+  it("allows an exclusive purchase when the lead has no buyers", () => {
+    assert.equal(isPurchaseBlocked(exclusive, [], 1), false);
   });
 
-  it("defaults empty invoiceUrl", () => {
-    const billing = rowToBilling({ billing_id: "b", client_id: "c", period_start: "", period_end: "", leads_purchased: 0, total_amount: 0, payment_status: "pending", invoice_url: null, created_at: "" });
-    assert.equal(billing.invoiceUrl, "");
+  it("blocks an exclusive purchase when the lead already has any buyer", () => {
+    assert.equal(isPurchaseBlocked(exclusive, [{ exclusive: false }], 1), true);
+    assert.equal(isPurchaseBlocked(exclusive, [{ exclusive: true }], 1), true);
+  });
+
+  it("blocks a shared purchase when the lead is held exclusively", () => {
+    assert.equal(isPurchaseBlocked(shared, [{ exclusive: true }], 4), true);
+  });
+
+  it("allows a shared purchase while under the buyer cap", () => {
+    assert.equal(isPurchaseBlocked(shared, [{ exclusive: false }], 4), false);
+    assert.equal(isPurchaseBlocked(shared, [{ exclusive: false }, { exclusive: false }, { exclusive: false }], 4), false);
+  });
+
+  it("blocks a shared purchase once the buyer cap is reached", () => {
+    const four = [{ exclusive: false }, { exclusive: false }, { exclusive: false }, { exclusive: false }];
+    assert.equal(isPurchaseBlocked(shared, four, 4), true);
+    assert.equal(isPurchaseBlocked(shared, four, 2), true);
   });
 });

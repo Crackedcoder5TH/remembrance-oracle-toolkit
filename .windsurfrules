@@ -1,5 +1,1 @@
-The canonical agent instructions for this repo are in AI.md at the repo root.
-
-Read AI.md before doing anything else. All rules, capabilities, and
-ecosystem-specific constraints live there. This file exists only to
-surface AI.md under the conventional filename your tool checks first.
+See AGENTS.md.

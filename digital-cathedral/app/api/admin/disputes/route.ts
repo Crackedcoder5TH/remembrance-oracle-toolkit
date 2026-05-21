@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin } from "@/app/lib/admin-auth";
-import { getAllPurchases, updatePurchaseStatus, updateClientBalance } from "@/app/lib/client-database";
+import { getAllPurchases, updatePurchaseStatus } from "@/app/lib/client-database";
+import { stripe } from "@/app/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { purchaseId, action, clientId, refundAmount } = body;
+    const { purchaseId, action } = body;
 
     if (!purchaseId || !action) {
       return NextResponse.json(
@@ -42,12 +43,65 @@ export async function PUT(req: NextRequest) {
     }
 
     if (action === "approve") {
-      // Approve the return — refund the client
-      await updatePurchaseStatus(purchaseId, "returned", "Approved by admin");
-      if (clientId && refundAmount) {
-        await updateClientBalance(clientId, refundAmount);
+      // Approve the return and refund the buyer. The purchase id is
+      // purchase_<checkout-session-id>, so the original Stripe payment is
+      // recoverable — refund it directly. A balance credit would land in a
+      // column nothing can spend, since lead purchases go through Checkout.
+      const sessionId = typeof purchaseId === "string" && purchaseId.startsWith("purchase_")
+        ? purchaseId.slice("purchase_".length)
+        : "";
+
+      if (sessionId.startsWith("cs_")) {
+        let paymentIntentId: string | null = null;
+        try {
+          const session = await stripe.checkout.sessions.retrieve(sessionId);
+          paymentIntentId = typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : session.payment_intent?.id ?? null;
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : "Unknown error";
+          return NextResponse.json(
+            { success: false, message: `Could not load the original payment: ${detail}` },
+            { status: 502 }
+          );
+        }
+
+        if (!paymentIntentId) {
+          return NextResponse.json(
+            { success: false, message: "No payment found for this purchase — cannot refund." },
+            { status: 422 }
+          );
+        }
+
+        try {
+          // Idempotent: re-approving the same dispute returns the existing
+          // refund rather than issuing a second one.
+          await stripe.refunds.create(
+            { payment_intent: paymentIntentId },
+            { idempotencyKey: `refund_dispute_${purchaseId}` }
+          );
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : "Unknown error";
+          // Leave the purchase disputed so the admin can retry.
+          return NextResponse.json(
+            { success: false, message: `Refund failed: ${detail}` },
+            { status: 502 }
+          );
+        }
+
+        const statusResult = await updatePurchaseStatus(purchaseId, "returned", "Approved by admin — payment refunded");
+        if (!statusResult.ok) {
+          return NextResponse.json(
+            { success: false, message: "Payment refunded, but the purchase status could not be updated. Re-approve to retry." },
+            { status: 500 }
+          );
+        }
+        return NextResponse.json({ success: true, message: "Return approved and payment refunded via Stripe." });
       }
-      return NextResponse.json({ success: true, message: "Return approved and refund issued." });
+
+      // Not a Stripe Checkout purchase (e.g. a distributed lead) — no payment on file.
+      await updatePurchaseStatus(purchaseId, "returned", "Approved by admin");
+      return NextResponse.json({ success: true, message: "Return approved. No Stripe payment was on file to refund." });
     } else if (action === "deny") {
       // Deny the return — mark as delivered again
       await updatePurchaseStatus(purchaseId, "delivered", "Dispute denied by admin");

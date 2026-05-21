@@ -87,6 +87,12 @@ interface DbAdapter {
   deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>>;
   getSiteContent(key: string): Promise<Result<string | null, string>>;
   setSiteContent(key: string, value: string): Promise<Result<void, string>>;
+  insertClientMessage(msg: ClientMessageInput): Promise<Result<{ id: number }, string>>;
+  getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>>;
+  markMessageRead(messageId: number, clientId: number): Promise<Result<{ updated: boolean }, string>>;
+  getAllClientMessages(limit: number, offset: number): Promise<Result<{ messages: ClientMessage[]; total: number }, string>>;
+  insertClientDocument(doc: ClientDocumentInput): Promise<Result<{ id: number }, string>>;
+  getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>>;
 }
 
 // =============================================================================
@@ -118,6 +124,29 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
     utmCampaign: (row.utm_campaign as string) || null,
     utmTerm: (row.utm_term as string) || null,
     utmContent: (row.utm_content as string) || null,
+    createdAt: row.created_at as string,
+  };
+}
+
+function rowToClientMessage(row: Record<string, unknown>): ClientMessage {
+  return {
+    id: Number(row.id),
+    clientId: Number(row.client_id),
+    direction: row.direction as "inbound" | "outbound",
+    subject: (row.subject as string) || "",
+    body: row.body as string,
+    read: row.read === 1 || row.read === true,
+    createdAt: row.created_at as string,
+  };
+}
+
+function rowToClientDocument(row: Record<string, unknown>): ClientDocument {
+  return {
+    id: Number(row.id),
+    clientId: Number(row.client_id),
+    name: row.name as string,
+    url: row.url as string,
+    type: (row.type as string) || "",
     createdAt: row.created_at as string,
   };
 }
@@ -230,6 +259,33 @@ class PostgresAdapter implements DbAdapter {
         updated_at TIMESTAMP DEFAULT NOW()
       )
     `);
+
+    // Portal messaging between a client and admin
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_messages (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL,
+        direction TEXT NOT NULL DEFAULT 'inbound',
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL,
+        read BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_messages_client ON client_messages(client_id)`);
+
+    // Client policy documents (admin-attached, downloaded from the portal)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS client_documents (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
+      )
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_documents_client ON client_documents(client_id)`);
 
     this.initialized = true;
   }
@@ -493,6 +549,93 @@ class PostgresAdapter implements DbAdapter {
       return Err(message);
     }
   }
+
+  async insertClientMessage(msg: ClientMessageInput): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        `INSERT INTO client_messages (client_id, direction, subject, body)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [msg.clientId, msg.direction, msg.subject, msg.body],
+      );
+      return Ok({ id: result.rows[0].id as number });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to save message");
+    }
+  }
+
+  async getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "SELECT * FROM client_messages WHERE client_id = $1 ORDER BY created_at DESC",
+        [clientId],
+      );
+      return Ok(result.rows.map(rowToClientMessage));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read messages");
+    }
+  }
+
+  async markMessageRead(messageId: number, clientId: number): Promise<Result<{ updated: boolean }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "UPDATE client_messages SET read = TRUE WHERE id = $1 AND client_id = $2",
+        [messageId, clientId],
+      );
+      return Ok({ updated: (result.rowCount ?? 0) > 0 });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to update message");
+    }
+  }
+
+  async getAllClientMessages(limit: number, offset: number): Promise<Result<{ messages: ClientMessage[]; total: number }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const countR = await pool.query("SELECT COUNT(*) as count FROM client_messages");
+      const dataR = await pool.query(
+        "SELECT * FROM client_messages ORDER BY created_at DESC LIMIT $1 OFFSET $2",
+        [limit, offset],
+      );
+      return Ok({ messages: dataR.rows.map(rowToClientMessage), total: parseInt(countR.rows[0].count, 10) });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read messages");
+    }
+  }
+
+  async insertClientDocument(doc: ClientDocumentInput): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        `INSERT INTO client_documents (client_id, name, url, type)
+         VALUES ($1, $2, $3, $4) RETURNING id`,
+        [doc.clientId, doc.name, doc.url, doc.type],
+      );
+      return Ok({ id: result.rows[0].id as number });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to save document");
+    }
+  }
+
+  async getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>> {
+    try {
+      await this.initialize();
+      const pool = await this.getPool();
+      const result = await pool.query(
+        "SELECT * FROM client_documents WHERE client_id = $1 ORDER BY created_at DESC",
+        [clientId],
+      );
+      return Ok(result.rows.map(rowToClientDocument));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read documents");
+    }
+  }
 }
 
 // =============================================================================
@@ -590,6 +733,35 @@ class SqliteAdapter implements DbAdapter {
         value TEXT NOT NULL,
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
+    `);
+
+    // Portal messaging between a client and admin
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS client_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL,
+        direction TEXT NOT NULL DEFAULT 'inbound',
+        subject TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL,
+        read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_messages_client ON client_messages(client_id);
+    `);
+
+    // Client policy documents (admin-attached, downloaded from the portal)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS client_documents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_documents_client ON client_documents(client_id);
     `);
   }
 
@@ -817,6 +989,86 @@ class SqliteAdapter implements DbAdapter {
       return Err(message);
     }
   }
+
+  async insertClientMessage(msg: ClientMessageInput): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const info = db.prepare(
+        `INSERT INTO client_messages (client_id, direction, subject, body)
+         VALUES (?, ?, ?, ?)`,
+      ).run(msg.clientId, msg.direction, msg.subject, msg.body);
+      return Ok({ id: Number(info.lastInsertRowid) });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to save message");
+    }
+  }
+
+  async getClientMessages(clientId: number): Promise<Result<ClientMessage[], string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const rows = db.prepare(
+        "SELECT * FROM client_messages WHERE client_id = ? ORDER BY created_at DESC",
+      ).all(clientId) as Record<string, unknown>[];
+      return Ok(rows.map(rowToClientMessage));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read messages");
+    }
+  }
+
+  async markMessageRead(messageId: number, clientId: number): Promise<Result<{ updated: boolean }, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const info = db.prepare(
+        "UPDATE client_messages SET read = 1 WHERE id = ? AND client_id = ?",
+      ).run(messageId, clientId);
+      return Ok({ updated: info.changes > 0 });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to update message");
+    }
+  }
+
+  async getAllClientMessages(limit: number, offset: number): Promise<Result<{ messages: ClientMessage[]; total: number }, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const countRow = db.prepare("SELECT COUNT(*) as count FROM client_messages").get() as { count: number };
+      const rows = db.prepare(
+        "SELECT * FROM client_messages ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      ).all(limit, offset) as Record<string, unknown>[];
+      return Ok({ messages: rows.map(rowToClientMessage), total: countRow.count });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read messages");
+    }
+  }
+
+  async insertClientDocument(doc: ClientDocumentInput): Promise<Result<{ id: number }, string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const info = db.prepare(
+        "INSERT INTO client_documents (client_id, name, url, type) VALUES (?, ?, ?, ?)",
+      ).run(doc.clientId, doc.name, doc.url, doc.type);
+      return Ok({ id: Number(info.lastInsertRowid) });
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to save document");
+    }
+  }
+
+  async getClientDocuments(clientId: number): Promise<Result<ClientDocument[], string>> {
+    try {
+      await this.initialize();
+      const db = this.getDb();
+      const rows = db.prepare(
+        "SELECT * FROM client_documents WHERE client_id = ? ORDER BY created_at DESC",
+      ).all(clientId) as Record<string, unknown>[];
+      return Ok(rows.map(rowToClientDocument));
+    } catch (err) {
+      return Err(err instanceof Error ? err.message : "Failed to read documents");
+    }
+  }
 }
 
 // =============================================================================
@@ -895,6 +1147,30 @@ class NoopAdapter implements DbAdapter {
 
   async setSiteContent(): Promise<Result<void, string>> {
     return Ok(undefined);
+  }
+
+  insertClientMessage(): Promise<Result<{ id: number }, string>> {
+    return Promise.resolve(Ok({ id: 0 }));
+  }
+
+  async getClientMessages(): Promise<Result<ClientMessage[], string>> {
+    return Ok([]);
+  }
+
+  markMessageRead(): Promise<Result<{ updated: boolean }, string>> {
+    return Promise.resolve(Ok({ updated: true }));
+  }
+
+  async getAllClientMessages(): Promise<Result<{ messages: ClientMessage[]; total: number }, string>> {
+    return Ok({ messages: [], total: 0 });
+  }
+
+  insertClientDocument(): Promise<Result<{ id: number }, string>> {
+    return Promise.resolve(Ok({ id: 0 }));
+  }
+
+  async getClientDocuments(): Promise<Result<ClientDocument[], string>> {
+    return Ok([]);
   }
 }
 
@@ -991,35 +1267,34 @@ export interface ClientMessage {
   createdAt: string;
 }
 
+/** Fields supplied when creating a message — id, read and createdAt are assigned by the database. */
+export type ClientMessageInput = Pick<ClientMessage, "clientId" | "direction" | "subject" | "body">;
+
 /** Create a client message (portal → admin). */
-export async function createClientMessage(msg: {
-  clientId: number;
-  direction: "inbound" | "outbound";
-  subject: string;
-  body: string;
-}): Promise<Result<{ id: number }, string>> {
-  // Messages table not yet implemented — return a stub ID
-  // TODO: Add client_messages table to adapters
-  console.log(`[PORTAL] Message from client ${msg.clientId}: ${msg.subject}`);
-  return { ok: true, value: { id: Date.now() } };
+export async function createClientMessage(
+  msg: ClientMessageInput,
+): Promise<Result<{ id: number }, string>> {
+  return getAdapter().insertClientMessage(msg);
 }
 
-/** Mark a message as read. */
+/** Mark a message as read — scoped to the owning client. */
 export async function markMessageRead(
-  messageId: string,
+  messageId: number,
   clientId: number,
 ): Promise<Result<{ updated: boolean }, string>> {
-  // Messages table not yet implemented
-  console.log(`[PORTAL] Message ${messageId} marked read by client ${clientId}`);
-  return { ok: true, value: { updated: true } };
+  return getAdapter().markMessageRead(messageId, clientId);
 }
 
 /** Get messages for a client (portal inbox). */
 export async function getClientMessages(
   clientId: number,
 ): Promise<Result<ClientMessage[], string>> {
-  // Messages table not yet implemented — return empty
-  return { ok: true, value: [] };
+  return getAdapter().getClientMessages(clientId);
+}
+
+/** Get recent messages across all clients (admin inbox). */
+export async function getAllClientMessages(limit = 200, offset = 0) {
+  return getAdapter().getAllClientMessages(limit, offset);
 }
 
 /** Client document record (portal documents). */
@@ -1032,10 +1307,19 @@ export interface ClientDocument {
   createdAt: string;
 }
 
+/** Fields supplied when attaching a document — id and createdAt are assigned by the database. */
+export type ClientDocumentInput = Pick<ClientDocument, "clientId" | "name" | "url" | "type">;
+
+/** Attach a document to a client (admin → portal). */
+export async function createClientDocument(
+  doc: ClientDocumentInput,
+): Promise<Result<{ id: number }, string>> {
+  return getAdapter().insertClientDocument(doc);
+}
+
 /** Get documents for a client (portal documents tab). */
 export async function getClientDocuments(
   clientId: number,
 ): Promise<Result<ClientDocument[], string>> {
-  // Documents table not yet implemented — return empty
-  return { ok: true, value: [] };
+  return getAdapter().getClientDocuments(clientId);
 }

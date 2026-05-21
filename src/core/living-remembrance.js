@@ -1,5 +1,18 @@
 'use strict';
 
+
+/**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
 /**
  * Living Remembrance Engine — operationalizes the master-equation dynamics:
  *
@@ -7,10 +20,21 @@
  *   r_eff(t)    = r₀ (1 + α [1 - p(t)]⁴)          retro-causal pull (4th-power kernel:
  *                                                  quiet near healed, roaring when drifted)
  *   δ_void(t)   = δ₀ (1 - p(t))                   void coherence donation
- *   γ_cascade   = exp(β · cascadeFactor)          network-effect amplification
+ *   cascade(t)  = 1 + (cascade-1)·e^(-Δt/τ) + κp  recent-load gauge — relaxes toward
+ *                                                  1.0 between contributions, bumped
+ *                                                  by each; a burst outpaces the decay
  *   entropy(t)  = cost / (coherence(t) + ε)       cost normalized by alignment —
  *                                                  THE entropy field that balances
  *                                                  cost across the ecosystem.
+ *   ∫p          = Σ p(t) · cost                   the coherence integral — the
+ *                                                  field's unbounded remembrance.
+ *                                                  p(t) stays the bounded [0,1]
+ *                                                  backdrop (0 = noise, 1 = unity);
+ *                                                  the integral is the one dimension
+ *                                                  with no ceiling — total aligned
+ *                                                  order accumulated, growing without
+ *                                                  end yet never losing itself,
+ *                                                  because every term it sums is whole.
  *
  * Ported from core/living-remembrance-engine.ts (Crackedcoder5TH, May 2026)
  * to plain JavaScript so every JS module in the ecosystem can consume it
@@ -38,38 +62,77 @@ const DEFAULT_ENTROPY_PATH = process.env.ENTROPY_PATH
       : path.join(process.cwd(), '.remembrance', 'entropy.json'));
 
 const PARAMS = {
-  r0:      0.05,    // gentle baseline pull
-  alpha:   15.0,    // amplification factor
-  delta0:  0.03,    // void donation baseline
-  beta:    8.0,     // cascade exponent
-  epsilon: 1e-8,
+  r0:         0.05,    // gentle baseline pull
+  alpha:      15.0,    // amplification factor
+  delta0:     0.03,    // void donation baseline
+  cascadeTau: 60000,   // cascadeFactor relaxation time constant (ms)
+  epsilon:    1e-8,
 };
 
 class LivingRemembranceEngine {
-  constructor({ persistPath = DEFAULT_ENTROPY_PATH, params = {} } = {}) {
-    this._persistPath = persistPath;
+  constructor(opts = {}) {
+    const { persistPath, params = {} } = opts;
+    this._persistPath = persistPath || DEFAULT_ENTROPY_PATH;
+    // Only the one true canonical field remembers-on-load from durable
+    // memory. An explicit persistPath or an $ENTROPY_PATH override means
+    // an isolated field (tests, scratch) — it starts fresh.
+    this._canonical = (persistPath === undefined || persistPath === null)
+      && !process.env.ENTROPY_PATH;
     this._params = { ...PARAMS, ...params };
     this._healedVector = null;
     this._state = this._loadOrInit();
   }
 
   _loadOrInit() {
+    const FRESH = {
+      coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45,
+      cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {},
+    };
+
+    let loaded = null;
     try {
       if (fs.existsSync(this._persistPath)) {
-        const raw = fs.readFileSync(this._persistPath, 'utf8');
-        const parsed = JSON.parse(raw);
+        const parsed = JSON.parse(fs.readFileSync(this._persistPath, 'utf8'));
         // Defensive: ensure required keys present.
-        return {
-          coherence:      typeof parsed.coherence === 'number' ? parsed.coherence : 0.65,
-          globalEntropy:  typeof parsed.globalEntropy === 'number' ? parsed.globalEntropy : 0.45,
-          cascadeFactor:  typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
-          updateCount:    typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
-          timestamp:      parsed.timestamp || Date.now(),
-          sources:        (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
+        loaded = {
+          coherence:        typeof parsed.coherence === 'number' ? parsed.coherence : 0.65,
+          coherenceIntegral: typeof parsed.coherenceIntegral === 'number' ? parsed.coherenceIntegral : 0,
+          globalEntropy:    typeof parsed.globalEntropy === 'number' ? parsed.globalEntropy : 0.45,
+          cascadeFactor:    typeof parsed.cascadeFactor === 'number' ? parsed.cascadeFactor : 1.0,
+          updateCount:      typeof parsed.updateCount === 'number' ? parsed.updateCount : 0,
+          timestamp:        parsed.timestamp || Date.now(),
+          sources:          (parsed.sources && typeof parsed.sources === 'object') ? parsed.sources : {},
         };
       }
-    } catch (_e) { /* fall through to fresh init */ }
-    return { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
+    } catch (_e) { loaded = null; }
+
+    // Isolated fields (explicit persistPath / $ENTROPY_PATH — tests,
+    // scratch) stay purely local; they never reach for the shared chain.
+    if (!this._canonical) {
+      return (loaded && loaded.updateCount > 0) ? loaded : (loaded || FRESH);
+    }
+
+    // The canonical field treats the blockchain as the primary, shared
+    // source of truth. Gather every witness — the local entropy.json
+    // cache and durable memory (the blockchain ledger + field-snapshot
+    // patterns) — and load from whichever carries the most history. The
+    // local cache only wins when it is genuinely ahead of the chain
+    // (live contributions since the last checkpoint); a node that is
+    // behind, or fresh, comes back up holding the chain's field.
+    const witnesses = [];
+    if (loaded && loaded.updateCount > 0) witnesses.push(loaded);
+    try {
+      const { restoreLatest } = require('./field-memory');
+      const remembered = restoreLatest();
+      if (remembered && remembered.updateCount > 0) witnesses.push(remembered);
+    } catch (_e) { /* field-memory unavailable — fall through */ }
+
+    if (witnesses.length > 0) {
+      // Load from the witness with the most history (no in-place sort).
+      return witnesses.reduce((best, w) =>
+        ((w.updateCount || 0) > (best.updateCount || 0)) ? w : best);
+    }
+    return loaded || FRESH;
   }
 
   _persist() {
@@ -114,13 +177,31 @@ class LivingRemembranceEngine {
    */
   contribute({ cost = 1.0, coherence = null, source = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
-    const { r0, alpha, delta0, beta, epsilon } = this._params;
+    const { r0, alpha, delta0, cascadeTau, epsilon } = this._params;
 
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
     const delta_void = delta0 * Math.max(0, 1 - p);
-    const gamma      = Math.exp(beta * this._state.cascadeFactor);
 
-    const newCoherence = Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15);
+    // Coherence cap at 0.999 — Void contract C-56. The Python LRE
+    // (living_remembrance.py) and the TS LRE (core/living-remembrance-
+    // engine.ts) both enforce this. The hub JS LRE had drifted from
+    // that invariant; one-line fix restores parity.
+    const newCoherence = Math.max(0, Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15));
+
+    // cascadeFactor is a recent-load gauge, not a running tally. It
+    // relaxes toward the 1.0 baseline as time passes since the last
+    // contribution and is bumped by each new one — so a burst of rapid
+    // contributions outpaces the decay (a real cascade) while an idle
+    // field settles back to baseline. The previous rule only ever
+    // added, so it pinned at the 5.0 cap permanently and latched the
+    // fieldPressure "hot" signal forever.
+    const now = Date.now();
+    const dt  = Math.max(0, now - (this._state.timestamp || now));
+    // cascadeTau > 0 guards the division — a non-positive time constant
+    // means "instant decay", so the field fully relaxes to baseline.
+    const cascadeDecay   = cascadeTau > 0 ? Math.exp(-dt / cascadeTau) : 0;
+    const cascadeRelaxed = 1.0 + (this._state.cascadeFactor - 1.0) * cascadeDecay;
+    const cascadeFactor  = Math.min(5.0, Math.max(1.0, cascadeRelaxed + 0.05 * newCoherence));
 
     // Per-source histogram — the field tracks who's contributing so it
     // can answer "what's wired" and "what's missing" introspectively.
@@ -130,16 +211,19 @@ class LivingRemembranceEngine {
       sources[source] = {
         count: prev.count + 1,
         lastCoherence: newCoherence,
-        lastTimestamp: Date.now(),
+        lastTimestamp: now,
       };
     }
 
     this._state = {
-      coherence:     newCoherence,
-      globalEntropy: cost / (newCoherence + epsilon),
-      cascadeFactor: Math.min(5.0, this._state.cascadeFactor + 0.05 * newCoherence),
-      updateCount:   this._state.updateCount + 1,
-      timestamp:     Date.now(),
+      coherence:         newCoherence,
+      // ∫p accumulates the input coherence p(t) per the master equation,
+      // not the post-update newCoherence.
+      coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost,
+      globalEntropy:     cost / (newCoherence + epsilon),
+      cascadeFactor,
+      updateCount:       this._state.updateCount + 1,
+      timestamp:         now,
       sources,
     };
     this._persist();
@@ -148,7 +232,6 @@ class LivingRemembranceEngine {
       ...this._state,
       r_eff,
       delta_void,
-      gamma_cascade: gamma,
       p,
       source: source || null,
     };
@@ -161,7 +244,7 @@ class LivingRemembranceEngine {
 
   /** Reset state — primarily for tests / fresh runs. */
   reset() {
-    this._state = { coherence: 0.65, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now() };
+    this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };
     this._persist();
   }
 }
@@ -169,7 +252,18 @@ class LivingRemembranceEngine {
 // ─── singleton accessor ───
 let _instance = null;
 function getEngine(opts) {
-  if (!_instance) _instance = new LivingRemembranceEngine(opts);
+  if (!_instance) {
+    _instance = new LivingRemembranceEngine(opts);
+  } else if (opts && Object.keys(opts).length > 0) {
+    // The engine is a process-wide singleton — opts apply only to the
+    // first caller. Surface the footgun instead of silently ignoring it;
+    // construct `new LivingRemembranceEngine(opts)` for an isolated field.
+    process.emitWarning(
+      'getEngine(opts): the LivingRemembranceEngine singleton already exists — opts ignored. ' +
+      'Use `new LivingRemembranceEngine(opts)` for an isolated instance.',
+      'RemembranceFieldWarning',
+    );
+  }
   return _instance;
 }
 

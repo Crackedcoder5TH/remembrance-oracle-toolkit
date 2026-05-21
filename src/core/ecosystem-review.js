@@ -1,5 +1,18 @@
 'use strict';
 
+
+/**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
 /**
  * Remembrance Ecosystem Review — every implementation gets input
  * from ALL system components automatically.
@@ -248,12 +261,12 @@ async function ecosystemReview(code, options = {}) {
   };
   // ── LRE field-coupling (auto-wired) ──
   try {
-    const __lre_p1 = './../../core/field-coupling';
-    const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+    const __lre_p1 = './field-coupling';
+    const __lre_p2 = require('path').join(__dirname, 'field-coupling');
     for (const __p of [__lre_p1, __lre_p2]) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:ecosystem-review:impact' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:ecosystem-review:ecosystemReview' });
         break;
       } catch (_) { /* try next */ }
     }

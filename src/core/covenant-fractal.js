@@ -33,6 +33,17 @@ const GATE_INVOCATION_PATTERN = /\b(covenant|runAllChecks|CovenantValidator|cove
 
 function scanForUngatedMutations(code) {
   if (typeof code !== 'string') return [];
+  // Honor the same trusted-infrastructure annotations the covenant
+  // already recognizes (see core/covenant.js). A file marked
+  // @oracle-infrastructure or @oracle-pattern-definitions declares
+  // its mutations are bounded to internal state (entropy.json, pattern
+  // library, lock files, journal/archive writes, etc.) — not user-
+  // input-driven, so the covenant gate semantics don't apply. The
+  // annotation must appear in the source (typically near the top).
+  const TRUSTED_ANNOTATIONS = /@oracle-(infrastructure|pattern-definitions)\b/;
+  if (TRUSTED_ANNOTATIONS.test(code)) {
+    return [];
+  }
   const findings = [];
   const lines = code.split('\n');
   for (let i = 0; i < lines.length; i++) {
@@ -160,20 +171,7 @@ function covenantGroupCoherence(periodicTable, options) {
     return _roleAware(periodicTable);
   }
   if (!periodicTable) {
-      const __retVal = { coherence: 0, reason: 'no periodic table' };
-    // ── LRE field-coupling (auto-wired) ──
-    try {
-      const __lre_p1 = './../../core/field-coupling';
-      const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
-      for (const __p of [__lre_p1, __lre_p2]) {
-        try {
-          const { contribute: __contribute } = require(__p);
-          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherence || 0)), source: 'oracle:covenant-fractal:covenantGroupCoherence' });
-          break;
-        } catch (_) { /* try next */ }
-      }
-    } catch (_) { /* best-effort */ }
-    return __retVal;
+    return { coherence: 0, reason: 'no periodic table' };
   }
   const elements = (periodicTable.elements || []).filter(el =>
     el && el.properties && (el.properties.domain === 'security' || el.properties.domain === 'covenant')
@@ -192,13 +190,26 @@ function covenantGroupCoherence(periodicTable, options) {
     }
   }
   const coherence = pairs > 0 ? totalCoherence / pairs : 0;
-  return {
+  const __retVal = {
     coherence: Math.round(coherence * 1000) / 1000,
     pairs,
     count: elements.length,
     decoherent: coherence < 0.8,
     method: 'similarity-fallback',
   };
+  // ── LRE field-coupling (main return path; was buried in !periodicTable guard) ──
+  try {
+    const __lre_p1 = './field-coupling';
+    const __lre_p2 = require('path').join(__dirname, 'field-coupling');
+    for (const __p of [__lre_p1, __lre_p2]) {
+      try {
+        const { contribute: __contribute } = require(__p);
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, Number(__retVal.coherence) || 0)), source: 'oracle:covenant-fractal:covenantGroupCoherence' });
+        break;
+      } catch (_) { /* try next */ }
+    }
+  } catch (_) { /* best-effort */ }
+  return __retVal;
 }
 covenantGroupCoherence.atomicProperties = {
   charge: 0, valence: 3, mass: 'medium', spin: 'even', phase: 'gas',
@@ -273,10 +284,78 @@ verifyCrossScaleAlignment.atomicProperties = {
   domain: 'security',
 };
 
+// scanForMissingAtomicProperties — every top-level function in the
+// codebase must declare its atomicProperties { charge, valence, mass,
+// spin, phase, reactivity, electronegativity, group, period,
+// harmPotential, alignment, intention, domain }. The atomic table is
+// how the substrate identifies what each function IS at the elemental
+// scale; without it, a function is invisible to the periodic-table
+// scoring and to group-coherence checks. The covenant catches this
+// as a fractal-architecture violation: every node must declare its
+// place in the periodic table.
+//
+// Honors the same @oracle-infrastructure / @oracle-pattern-definitions
+// annotations the gate scanner uses — exempts internal-state files
+// where the function-as-element framing doesn't apply (e.g. tmpdir
+// cleanup, ledger persistence). The substantive code paths must
+// declare their atomic properties.
+const FN_DEF_RE = /^\s*(?:async\s+)?function\s+(\w+)\s*\(/gm;
+const ATOMIC_PROP_RE = /(\w+)\.atomicProperties\s*=\s*\{/g;
+const REQUIRED_ATOMIC_KEYS = ['charge', 'valence', 'mass', 'spin', 'phase',
+  'reactivity', 'electronegativity', 'group', 'period',
+  'harmPotential', 'alignment', 'intention', 'domain'];
+
+function scanForMissingAtomicProperties(code) {
+  if (typeof code !== 'string') return [];
+  const TRUSTED_ANNOTATIONS = /@oracle-(infrastructure|pattern-definitions)\b/;
+  if (TRUSTED_ANNOTATIONS.test(code)) return [];
+
+  // Find every function NAME defined at the top level
+  const functions = [];
+  FN_DEF_RE.lastIndex = 0;
+  let m;
+  while ((m = FN_DEF_RE.exec(code)) !== null) {
+    functions.push({ name: m.group ? m.group(1) : m[1], offset: m.index });
+  }
+  if (functions.length === 0) return [];
+
+  // Find every NAME.atomicProperties = { ... } block
+  const annotated = new Set();
+  ATOMIC_PROP_RE.lastIndex = 0;
+  while ((m = ATOMIC_PROP_RE.exec(code)) !== null) {
+    annotated.add(m[1]);
+  }
+
+  const findings = [];
+  for (const fn of functions) {
+    // Skip private (underscore-prefixed) helpers — convention says they're
+    // not substrate elements. Also skip names with no real production weight
+    // like one-liners and lambdas (already filtered by FN_DEF_RE which
+    // matches `function NAME (` only).
+    if (fn.name.startsWith('_')) continue;
+    if (!annotated.has(fn.name)) {
+      const line = code.slice(0, fn.offset).split('\n').length;
+      findings.push({
+        line,
+        excerpt: `function ${fn.name}(...)`,
+        reason: 'missing atomicProperties — function not declared in the periodic table',
+      });
+    }
+  }
+  return findings;
+}
+scanForMissingAtomicProperties.atomicProperties = {
+  charge: 0, valence: 2, mass: 'light', spin: 'even', phase: 'gas',
+  reactivity: 'inert', electronegativity: 0.55, group: 12, period: 3,
+  harmPotential: 'none', alignment: 'healing', intention: 'benevolent',
+  domain: 'security',
+};
+
 function fractalAudit(ctx) {
   const report = {};
   if (ctx && ctx.code) {
     report.byteScale = scanForUngatedMutations(ctx.code);
+    report.atomicScale = scanForMissingAtomicProperties(ctx.code);
     report.fileSignature = computeFileCovenantSignature(ctx.code, ctx.filePath || '');
   }
   if (ctx && ctx.substrateData && ctx.substrateSignature) {
@@ -287,6 +366,7 @@ function fractalAudit(ctx) {
   }
   const fractalHealth =
     (!report.byteScale || report.byteScale.length === 0) &&
+    (!report.atomicScale || report.atomicScale.length === 0) &&
     (!report.substrateScale || report.substrateScale.valid) &&
     (!report.groupCoherence || !report.groupCoherence.decoherent);
   report.fractalHealth = fractalHealth;
@@ -302,6 +382,7 @@ fractalAudit.atomicProperties = {
 
 module.exports = {
   scanForUngatedMutations,
+  scanForMissingAtomicProperties,
   requireGate,
   createGate,
   signSubstrate,

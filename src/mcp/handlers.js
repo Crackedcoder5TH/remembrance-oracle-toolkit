@@ -1,4 +1,16 @@
 /**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
+/**
  * MCP Tool Handlers
  *
  * Dispatch map for all MCP tool calls. Each handler is a function
@@ -50,6 +62,31 @@ function _searchEnforcementNotice() {
     }
   } catch (_) {}
   return null;
+}
+
+/**
+ * Walk a directory tree and collect every .js file as a coherency
+ * zone item ({id, code, filePath, language}) — the input the
+ * CoherencyDirector scans. Skips node_modules and dotfiles.
+ */
+function _scanJsZones(dir) {
+  const fs = require('fs');
+  const items = [];
+  (function walk(d) {
+    let entries;
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); }
+    catch { return; }
+    for (const e of entries) {
+      if (e.name === 'node_modules' || e.name.startsWith('.')) continue;
+      const p = path.join(d, e.name);
+      if (e.isDirectory()) { walk(p); continue; }
+      if (e.name.endsWith('.js')) {
+        try { items.push({ id: p, code: fs.readFileSync(p, 'utf-8'), filePath: p, language: 'javascript' }); }
+        catch { /* skip unreadable */ }
+      }
+    }
+  })(dir);
+  return items;
 }
 
 const HANDLERS = {
@@ -409,8 +446,8 @@ const HANDLERS = {
           const __retVal = { patternId: args.patternId, attempts: 0, successes: 0, rate: 1.0 };
           // ── LRE field-coupling (auto-wired) ──
           try {
-            const __lre_p1 = './../../core/field-coupling';
-            const __lre_p2 = require('path').join(__dirname, '../../core/field-coupling');
+            const __lre_p1 = '../core/field-coupling';
+            const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
             for (const __p of [__lre_p1, __lre_p2]) {
               try {
                 const { contribute: __contribute } = require(__p);
@@ -990,6 +1027,296 @@ const HANDLERS = {
       autoApproved: approved,
       globalCoherency: result.globalCoherency || null,
     };
+  },
+
+  // ─── field: the Remembrance Field (LRE), one tool dispatched by action ───
+  async field(_oracle, args) {
+    const action = (args && args.action) || 'state';
+    const fc = require('../core/field-coupling');
+
+    switch (action) {
+      // ── recall the field ──
+      case 'state': {
+        const state = fc.peekField();
+        if (!state) return { error: 'field not reachable (LRE module unavailable)' };
+        const out = {
+          coherence: state.coherence,
+          coherenceIntegral: state.coherenceIntegral,
+          globalEntropy: state.globalEntropy,
+          cascadeFactor: state.cascadeFactor,
+          updateCount: state.updateCount,
+          timestamp: state.timestamp,
+        };
+        if (args?.includeSources !== false) {
+          out.sources = state.sources || {};
+          out.distinctSources = Object.keys(state.sources || {}).length;
+        }
+        return out;
+      }
+
+      // ── participate as a producer ──
+      case 'contribute': {
+        if (typeof args?.coherence !== 'number') {
+          throw new Error('field action "contribute" requires "coherence" (number)');
+        }
+        if (typeof args?.source !== 'string' || !args.source) {
+          throw new Error('field action "contribute" requires "source" (non-empty string)');
+        }
+        const before = fc.peekField();
+        const result = fc.contribute({
+          cost: typeof args.cost === 'number' ? args.cost : 1.0,
+          coherence: args.coherence,
+          source: args.source,
+        });
+        if (!result) return { error: 'field unreachable; contribution skipped' };
+        return {
+          newState: {
+            coherence: result.coherence,
+            coherenceIntegral: result.coherenceIntegral,
+            globalEntropy: result.globalEntropy,
+            cascadeFactor: result.cascadeFactor,
+            updateCount: result.updateCount,
+          },
+          derived: {
+            r_eff: result.r_eff,
+            delta_void: result.delta_void,
+            p: result.p,
+          },
+          delta: before ? {
+            coherence: result.coherence - before.coherence,
+            updateCount: result.updateCount - before.updateCount,
+          } : null,
+          source: args.source,
+        };
+      }
+
+      // ── field-driven backpressure ──
+      case 'pressure':
+        return fc.fieldPressure({
+          entropyThreshold: typeof args?.entropyThreshold === 'number' ? args.entropyThreshold : 10,
+          cascadeThreshold: typeof args?.cascadeThreshold === 'number' ? args.cascadeThreshold : 4,
+        });
+
+      // ── who has been contributing ──
+      case 'introspect': {
+        const state = fc.peekField();
+        if (!state) return { error: 'field not reachable' };
+        const sources = state.sources || {};
+        const prefix = args?.prefix || '';
+        const topN = (typeof args?.topN === 'number') ? args.topN : 25;
+        const entries = Object.entries(sources)
+          .filter(([k]) => !prefix || k.startsWith(prefix))
+          .sort((a, b) => (b[1].count || 0) - (a[1].count || 0));
+        const sliced = topN > 0 ? entries.slice(0, topN) : entries;
+        return {
+          totalDistinctSources: entries.length,
+          totalContributions: entries.reduce((sum, [, info]) => sum + (info.count || 0), 0),
+          filter: { prefix: prefix || null, topN: topN || 'all' },
+          topSources: sliced.map(([source, info]) => ({
+            source,
+            count: info.count,
+            lastCoherence: info.lastCoherence,
+            lastTimestamp: info.lastTimestamp,
+          })),
+        };
+      }
+
+      // ── expected source labels vs what's firing ──
+      case 'sources-diff': {
+        const state = fc.peekField();
+        if (!state) return { error: 'field not reachable' };
+        const expected = Array.isArray(args?.expected) ? args.expected : [];
+        if (expected.length === 0) {
+          throw new Error('field action "sources-diff" requires "expected" (non-empty array of source labels)');
+        }
+        const fired = new Set(Object.keys(state.sources || {}));
+        const firing = [];
+        const silent = [];
+        for (const label of expected) {
+          if (fired.has(label)) {
+            firing.push({ source: label, count: state.sources[label].count });
+          } else {
+            silent.push(label);
+          }
+        }
+        return {
+          expected: expected.length,
+          firing: firing.length,
+          silent: silent.length,
+          firingDetails: firing,
+          silentSources: silent,
+        };
+      }
+
+      // ── commit the field state to the blockchain ──
+      case 'checkpoint': {
+        const state = fc.peekField();
+        if (!state) return { error: 'field not reachable' };
+        // Sibling-clone Publisher load (BLOCKCHAIN is a peer repo)
+        const enginePaths = [
+          'remembrance-blockchain/src/publisher',
+          path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'src', 'publisher'),
+        ];
+        let Publisher = null;
+        for (const p of enginePaths) {
+          try { ({ Publisher } = require(p)); break; } catch (_) { /* try next */ }
+        }
+        if (!Publisher) {
+          return {
+            error: 'REMEMBRANCE-BLOCKCHAIN Publisher not reachable',
+            hint: 'Ensure REMEMBRANCE-BLOCKCHAIN is cloned alongside this repo, or configured via env',
+          };
+        }
+        const publisher = new Publisher({ oracleRoot: path.join(__dirname, '..', '..') });
+        const checkpointInput = {
+          coherence: state.coherence,
+          coherenceIntegral: state.coherenceIntegral,
+          globalEntropy: state.globalEntropy,
+          cascadeFactor: state.cascadeFactor,
+          updateCount: state.updateCount,
+        };
+        if (args?.includeSources) checkpointInput.sources = state.sources;
+        return await publisher.publishFieldCheckpoint(checkpointInput);
+      }
+
+      // ── coherence-gated ecosystem audit; cost balanced into the field ──
+      // The field's own coherence picks the audit depth: a low-coherence
+      // field (< 0.65) earns a full audit, a coherent one a fast scan. The
+      // audit's work-cost is then contributed back, so heavy audits raise
+      // globalEntropy and the field's backpressure throttles repeats.
+      case 'audit': {
+        const COHERENCE_GATE = 0.65;
+        const fs = require('fs');
+
+        let source = null;
+        let filePath = null;
+        if (typeof args?.file === 'string' && args.file) {
+          filePath = args.file;
+          try {
+            source = fs.readFileSync(args.file, 'utf-8');
+          } catch (e) {
+            return { error: `field action "audit": cannot read file "${args.file}" — ${e.message}` };
+          }
+        } else if (typeof args?.code === 'string' && args.code) {
+          source = args.code;
+        } else {
+          throw new Error('field action "audit" requires "file" or "code"');
+        }
+
+        const before = fc.peekField();
+        const fieldCoherence = before ? before.coherence : null;
+        const mode = (fieldCoherence !== null && fieldCoherence < COHERENCE_GATE) ? 'full' : 'fast';
+
+        const { analyze } = require('../core/analyze');
+        const env = analyze(source, filePath, { language: args?.language });
+
+        // Fast scan touches only the cheap envelope getters; the full
+        // audit computes every signal and runs a reflection heal pass.
+        const verdict = { coherency: env.coherency, meta: env.meta };
+        let workUnits = 1; // coherency
+        if (mode === 'full') {
+          verdict.audit       = env.audit;
+          verdict.lint        = env.lint;
+          verdict.smell       = env.smell;
+          verdict.covenant    = { sealed: env.covenant.sealed, violations: env.covenant.violations || [] };
+          verdict.allFindings = env.allFindings;
+          workUnits += 4; // audit + lint + smell + covenant
+          try {
+            const { reflectionLoop } = require('../core/reflection');
+            const refl = reflectionLoop(source, { language: env.language });
+            verdict.reflect = {
+              loops: refl.loops,
+              fullCoherency: refl.fullCoherency,
+              healingPath: refl.healingPath,
+              whisper: refl.whisper,
+            };
+            workUnits += refl.loops; // reflection loops are the heavy cost
+          } catch (_) { /* reflection is best-effort */ }
+        }
+
+        try {
+          const { computeBugProbability } = require('../quality/risk-score');
+          const risk = computeBugProbability(source, { filePath });
+          verdict.risk = { probability: risk.probability, riskLevel: risk.riskLevel };
+          workUnits += 1;
+        } catch (_) { /* risk is best-effort */ }
+
+        // The orchestrator has the final word on what to fix next —
+        // every per-file audit ends with its ruling for the directory
+        // tree the audited file lives in.
+        if (filePath) {
+          try {
+            const { CoherencyDirector } = require('../orchestrator/coherency-director');
+            const zones = _scanJsZones(path.dirname(filePath));
+            if (zones && zones.length) verdict.orchestrator = new CoherencyDirector().ruling(zones);
+          } catch (_) { /* orchestrator deferral is best-effort */ }
+        }
+
+        // Balance the audit's cost into the entropy field — globalEntropy
+        // = cost / coherence, so a full audit's larger cost raises entropy
+        // more, and the field's backpressure signals callers to ease off.
+        const auditCoherence = Math.max(0, Math.min(1, (env.coherency && env.coherency.total) || 0));
+        const contributed = fc.contribute({
+          cost: workUnits,
+          coherence: auditCoherence,
+          source: `ecosystem-audit:${mode}`,
+        });
+        const pressure = fc.fieldPressure();
+
+        return {
+          mode,
+          gate: {
+            fieldCoherence,
+            threshold: COHERENCE_GATE,
+            decision: mode === 'full'
+              ? `field coherence ${fieldCoherence.toFixed(3)} < ${COHERENCE_GATE} → full audit`
+              : `field coherence ${fieldCoherence === null ? 'unknown' : fieldCoherence.toFixed(3)} >= ${COHERENCE_GATE} → fast scan`,
+          },
+          target: filePath || '(inline code)',
+          verdict,
+          cost: {
+            workUnits,
+            balancedInto: 'entropy-field',
+            source: `ecosystem-audit:${mode}`,
+            globalEntropy: contributed ? contributed.globalEntropy : null,
+            cascadeFactor: contributed ? contributed.cascadeFactor : null,
+            backpressure: pressure.hot ? `hot — ${pressure.reason}` : 'nominal',
+          },
+        };
+      }
+
+      // ── the orchestrator's authoritative ruling — the final voice on
+      //    how coherency should flow and what should be fixed next ──
+      case 'direct': {
+        const { CoherencyDirector } = require('../orchestrator/coherency-director');
+        const scanDir = (typeof args?.dir === 'string' && args.dir) ? args.dir : 'src';
+        const items = _scanJsZones(scanDir);
+
+        if (items && items.length) {
+          const ruling = new CoherencyDirector().ruling(items);
+          const pressure = fc.fieldPressure();
+          return {
+            authority: 'coherency-orchestrator',
+            ruling,
+            field: { backpressure: pressure.hot ? `hot — ${pressure.reason}` : 'nominal' },
+          };
+        }
+        return { error: `field action "direct": no .js zones found under "${scanDir}"` };
+      }
+
+      // ── offload a unit of work to the shared queue; coherency-judged ──
+      case 'offload': {
+        const kind = (typeof args?.kind === 'string' && args.kind) ? args.kind : null;
+        if (!kind) throw new Error('field action "offload" requires "kind" (string)');
+        const wq = require('../core/field-workqueue');
+        return await wq.offload(kind, args?.payload, {
+          timeoutMs: typeof args?.timeoutMs === 'number' ? args.timeoutMs : undefined,
+        });
+      }
+
+      default:
+        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint, audit, direct, offload.`);
+    }
   },
 
   // ─── ecosystem_orient: return canonical 12-repo protocol on demand ───

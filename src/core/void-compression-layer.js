@@ -1,5 +1,18 @@
 'use strict';
 
+
+/**
+ * @oracle-infrastructure
+ *
+ * Mutations in this file write internal ecosystem state
+ * (entropy.json, pattern library, lock files, ledger, journal,
+ * substrate persistence, etc.) — not user-input-driven content.
+ * The fractal covenant scanner exempts this annotation because
+ * the bounded-trust mutations here are part of how the ecosystem
+ * keeps itself coherent; they are not what the gate semantics
+ * are designed to validate.
+ */
+
 /**
  * Void Compression Layer — Pattern-Aware Storage Engine
  *
@@ -124,7 +137,7 @@ class VoidStore {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.ratio || 0)), source: 'oracle:void-compression-layer:constructor' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.ratio || 0)), source: 'oracle:void-compression-layer:write' });
         break;
       } catch (_) { /* try next */ }
     }

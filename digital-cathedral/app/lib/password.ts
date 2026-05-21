@@ -28,6 +28,9 @@ export function verifyPassword(password: string, stored: string): Promise<boolea
     scrypt(password, salt, KEY_LENGTH, (err, derivedKey) => {
       if (err) return reject(err);
       const storedBuffer = Buffer.from(hash, "hex");
+      // timingSafeEqual throws on a length mismatch — a corrupt or
+      // wrong-length stored hash must fail closed, not throw.
+      if (storedBuffer.length !== derivedKey.length) return resolve(false);
       resolve(timingSafeEqual(storedBuffer, derivedKey));
     });
   });

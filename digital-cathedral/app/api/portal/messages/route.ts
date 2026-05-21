@@ -40,10 +40,10 @@ export async function PATCH(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { messageId } = body;
+  const messageId = Number(body.messageId);
 
-  if (!messageId) {
-    return NextResponse.json({ error: "messageId is required." }, { status: 400 });
+  if (!Number.isInteger(messageId) || messageId <= 0) {
+    return NextResponse.json({ error: "A valid messageId is required." }, { status: 400 });
   }
 
   const result = await markMessageRead(messageId, session.id);

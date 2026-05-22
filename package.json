@@ -55,6 +55,10 @@
     "tools/*"
   ],
   "scripts": {
+    "gaps": "node scripts/ecosystem-diagnostic.js --parent \"$(cd .. && pwd)\"",
+    "field": "node -e \"console.log(JSON.stringify(require('./src/core/field-coupling').peekField(),null,1))\"",
+    "sweep": "bash scripts/ecosystem-sweep.sh",
+    "unwired": "grep -rL 'field-coupling' --include='*.js' src || true",
     "test": "ENTROPY_PATH=$(mktemp -d)/entropy.json node --test --test-timeout=300000 tests/*.test.js",
     "start": "node src/deploy.js",
     "setup": "node src/cli.js init",

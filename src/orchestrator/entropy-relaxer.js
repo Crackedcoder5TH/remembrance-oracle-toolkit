@@ -83,10 +83,20 @@ async function relaxIfHot(opts = {}) {
     //    timeout; ANY failure → void-unreachable, never throws.
     let resp;
     {
+      let detectorUrl;
+      try {
+        detectorUrl = new URL(voidUrl);
+        if (detectorUrl.protocol !== 'http:' && detectorUrl.protocol !== 'https:') {
+          return { triggered: false, reason: 'void-unreachable', error: 'invalid url scheme' };
+        }
+        detectorUrl.searchParams.set('top', String(topK));
+      } catch {
+        return { triggered: false, reason: 'void-unreachable', error: 'invalid url' };
+      }
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const res = await fetch(`${voidUrl}?top=${topK}`, { signal: controller.signal });
+        const res = await fetch(detectorUrl, { signal: controller.signal });
         if (!res || !res.ok) {
           return { triggered: false, reason: 'void-unreachable', error: `status ${res ? res.status : 'none'}` };
         }
@@ -115,8 +125,11 @@ async function relaxIfHot(opts = {}) {
     contribute({ cost: 1, coherence: discovered, source: 'orchestrator:entropy-relax' });
     lastFiredAt = Date.now();
 
+    const post = fieldPressure({ entropyThreshold, cascadeThreshold });
     return {
       triggered: true,
+      relaxed: !post.hot,
+      stillHot: post.hot ? post.reason : null,
       reason,
       discovered,
       topBridge: top[0],

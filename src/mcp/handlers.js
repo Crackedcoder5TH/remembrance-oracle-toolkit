@@ -1314,8 +1314,14 @@ const HANDLERS = {
         });
       }
 
+      // ── throttle-up entropy relaxation when the field is hot ──
+      case 'relax': {
+        const { relaxIfHot } = require('../orchestrator/entropy-relaxer');
+        return await relaxIfHot(args);
+      }
+
       default:
-        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint, audit, direct, offload.`);
+        throw new Error(`Unknown field action: "${action}". Use: state, contribute, pressure, introspect, sources-diff, checkpoint, audit, direct, offload, relax.`);
     }
   },
 

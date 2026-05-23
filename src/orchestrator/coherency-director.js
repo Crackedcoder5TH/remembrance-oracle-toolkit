@@ -381,7 +381,22 @@ class CoherencyDirector {
    *   4. Check if emergence thresholds are crossed
    *   5. Return the field state
    */
+  /**
+   * Closed-loop entropy relaxation. Delegates to the entropy-relaxer
+   * module: when the shared Remembrance Field is hot, it runs the
+   * resonance detector and injects the discovered coherence to relax
+   * globalEntropy. Best-effort and never-throw.
+   */
+  async relaxIfHot(opts) {
+    const { relaxIfHot } = require('./entropy-relaxer');
+    return relaxIfHot(opts);
+  }
+
   async runCycle() {
+    // 0. Throttle up if the field is hot — auto-relax the shared field
+    //    before doing more work. Best-effort; never breaks the cycle.
+    await this.relaxIfHot().catch(() => {});
+
     // 1. Measure
     this.measureWithOracle();
     this.measureWithVoid();

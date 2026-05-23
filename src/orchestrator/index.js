@@ -14,6 +14,7 @@ const { signalToCharge, analyzeChargeFlow, analyzeFieldCharge, analyzeCodebaseCh
 const { computeZonePriority, rankZones, computeHealingBudget } = require('./priority-engine');
 const { synthesizeTestStubs, extractExportedFunctions } = require('./test-synthesizer');
 const { CoherencyGenerator, GENERATOR_STATES } = require('./coherency-generator');
+const { relaxIfHot } = require('./entropy-relaxer');
 
 module.exports = {
   CoherencyDirector, CoherencyField, CoherencyZone,
@@ -21,4 +22,5 @@ module.exports = {
   computeZonePriority, rankZones, computeHealingBudget,
   synthesizeTestStubs, extractExportedFunctions,
   CoherencyGenerator, GENERATOR_STATES,
+  relaxIfHot,
 };

@@ -6,10 +6,8 @@
       "Bash(npm run *)",
       "Bash(node scripts/*)",
       "Bash(node --check *)",
-      "Bash(node -e *)",
       "Bash(grep *)",
-      "Bash(ls *)",
-      "Bash(find *)"
+      "Bash(ls *)"
     ],
     "deny": [
       "Bash(git reset --hard*)",

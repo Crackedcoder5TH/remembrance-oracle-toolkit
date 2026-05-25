@@ -1317,7 +1317,13 @@ const HANDLERS = {
       // ── throttle-up entropy relaxation when the field is hot ──
       case 'relax': {
         const { relaxIfHot } = require('../orchestrator/entropy-relaxer');
-        return await relaxIfHot(args);
+        return await relaxIfHot({
+          entropyThreshold: args?.entropyThreshold,
+          cascadeThreshold: args?.cascadeThreshold,
+          cooldownMs: args?.cooldownMs,
+          topK: args?.topK,
+          timeoutMs: args?.timeoutMs,
+        });
       }
 
       default:

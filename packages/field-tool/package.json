@@ -1,9 +1,12 @@
 {
-  "name": "remembrance-field",
-  "version": "0.1.0",
-  "description": "The Remembrance Field tool — canonical 256-D waveform encoder + cosine coherency + a best-effort client for the shared Remembrance Field. Zero dependencies.",
+  "name": "@crackedcoder5th/remembrance-field",
+  "version": "0.2.0",
+  "description": "The Remembrance Field tool — canonical 256-D waveform encoder + cosine coherency, standalone, with an optional connection to your Void compressor for substrate-backed scoring and consent-gated pattern contribution. Zero dependencies.",
   "type": "commonjs",
   "main": "src/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "remembrance-field": "bin/cli.js"
   },

@@ -1,0 +1,30 @@
+{
+  "name": "remembrance-field",
+  "version": "0.1.0",
+  "description": "The Remembrance Field tool — canonical 256-D waveform encoder + cosine coherency + a best-effort client for the shared Remembrance Field. Zero dependencies.",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "bin": {
+    "remembrance-field": "bin/cli.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "remembrance",
+    "coherency",
+    "waveform",
+    "field",
+    "encoder",
+    "cosine"
+  ],
+  "license": "MIT"
+}

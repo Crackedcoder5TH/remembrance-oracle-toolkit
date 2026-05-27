@@ -66,6 +66,7 @@
     "dashboard": "node src/cli.js dashboard",
     "cloud": "node src/cli.js cloud start",
     "mcp": "node src/cli.js mcp",
+    "field-server": "node scripts/field-server.js",
     "seed": "node src/cli.js seed",
     "analytics": "node src/cli.js analytics --json",
     "postinstall": "node -e \"try{require('fs').mkdirSync('.remembrance',{recursive:true})}catch{}\"",

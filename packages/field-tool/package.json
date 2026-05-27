@@ -13,7 +13,8 @@
   "files": [
     "src",
     "bin",
-    "README.md"
+    "README.md",
+    ".env.example"
   ],
   "scripts": {
     "test": "node --test test/*.test.js"

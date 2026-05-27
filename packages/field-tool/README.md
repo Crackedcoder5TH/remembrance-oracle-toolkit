@@ -80,6 +80,30 @@ const { Field } = require('@crackedcoder5th/remembrance-field');
 await new Field().contribute({ coherence: 0.91, source: 'my-app' }); // best-effort, never throws
 ```
 
+## Connect to your ecosystem
+
+By default everything runs against `localhost`. To use **your** hosted services
+(e.g. the field on Railway, your Void compressor), set these where the tool runs
+— your app's `.env`, your shell, or CI secrets. Copy [`.env.example`](./.env.example)
+to `.env` and fill in:
+
+```bash
+# Hosted Living Remembrance Engine (the oracle field-server)
+REMEMBRANCE_FIELD_URL=https://<your-host>/mcp
+REMEMBRANCE_FIELD_TOKEN=<your FIELD_TOKEN>
+# Your Void compressor / data hub
+REMEMBRANCE_VOID_URL=https://<your-void-host>
+REMEMBRANCE_AGENT_ID=<your-stable-agent-id>     # only needed to submit patterns
+```
+
+What each unlocks:
+- **`REMEMBRANCE_FIELD_URL` (+ `_TOKEN`)** → `Field.contribute()` / `contribute` feed your shared field.
+- **`REMEMBRANCE_VOID_URL`** → `score` / `VoidClient.coherence()` use your collected substrate (real resonance, not a bare cosine).
+- **`REMEMBRANCE_AGENT_ID`** → stamped on `submit` (consent-gated pattern contributions).
+
+`encode` / `coherency` / `coherencyOf` always work **offline** regardless — the
+connection only adds the substrate-backed and field features.
+
 ## Environment
 
 | Var | Purpose | Default |

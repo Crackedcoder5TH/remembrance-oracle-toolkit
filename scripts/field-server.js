@@ -2,20 +2,28 @@
 'use strict';
 
 /**
- * Remembrance Field — hostable MCP server (+ webhook + health).
+ * Remembrance Field — hostable server for any caller (MCP, REST, browser, human).
  *
  * Starts ONLY the Living Remembrance Engine field surface — no full-oracle
  * bootstrap, no autoSync — so it's reliable to host (Railway / Fly / a VPS).
  * Binds 0.0.0.0:$PORT, persists to $ENTROPY_PATH (point at a volume), optional
  * bearer auth via $FIELD_TOKEN.
  *
- * Three faces on one endpoint (POST /mcp):
- *   1. MCP (Streamable HTTP, JSON-RPC 2.0): `initialize`, `tools/list`,
- *      `tools/call` for tools  field_contribute · field_read · coherency.
+ * Faces:
+ *   1. MCP (Streamable HTTP, JSON-RPC 2.0) at POST /mcp: `initialize`,
+ *      `tools/list`, `tools/call` for field_contribute · field_read · coherency.
  *      Register the URL in Claude Desktop / Cursor / the API MCP connector.
- *   2. Legacy webhook: `tools/call` with name "field" + {action:"contribute"}
- *      — what Void's field_contribute.py and the swarm field bridge already post.
- *   3. GET /  — health/peek JSON (open in a browser to confirm it's live).
+ *   2. Plain REST (for agents/humans that don't speak MCP):
+ *        GET  /field           -> field state
+ *        POST /coherency       {a,b} -> {coherency}
+ *        POST /contribute      {coherence,source,cost} -> field state  (write)
+ *   3. GET /  — health/peek JSON.  GET /.well-known/mcp — discovery manifest.
+ *   4. Legacy webhook: tools/call name "field" + {action:"contribute"}.
+ *
+ * Auth model: reads (field_read/coherency/GET) are OPEN; writes
+ * (field_contribute / POST /contribute) require Bearer $FIELD_TOKEN when one is
+ * set. CORS is enabled so browsers and web agents can call it directly.
+ * Per-IP rate limit via $RATE_LIMIT_PER_MIN (default 120; 0 disables).
  */
 
 const http = require('node:http');
@@ -26,6 +34,7 @@ const PORT = parseInt(process.env.PORT, 10) || 7787;
 const HOST = process.env.HOST || '0.0.0.0';
 const TOKEN = (process.env.FIELD_TOKEN || process.env.REMEMBRANCE_FIELD_TOKEN || '').trim();
 const DEFAULT_PROTOCOL = '2025-06-18';
+const RATE_LIMIT_PER_MIN = (() => { const n = parseInt(process.env.RATE_LIMIT_PER_MIN, 10); return Number.isFinite(n) ? n : 120; })();
 
 const TOOLS = [
   {
@@ -65,11 +74,16 @@ function cosine(x, y) {
   return (da < 1e-12 || db < 1e-12) ? 0 : dot / (da * db);
 }
 
+// Is this tool call a WRITE (mutates the field)? Writes are token-gated.
+function isWriteTool(name, action) {
+  return name === 'field_contribute' || (name === 'field' && (action || 'contribute') === 'contribute');
+}
+
 // Dispatch a tool call. Accepts the new tool names AND the legacy "field"
 // tool (with an `action` argument) so existing webhook producers keep working.
 function callTool(name, args = {}) {
   const action = args.action;
-  if (name === 'field_contribute' || (name === 'field' && (action || 'contribute') === 'contribute')) {
+  if (isWriteTool(name, action)) {
     const coherence = Number(args.coherence);
     const source = typeof args.source === 'string' ? args.source.trim() : '';
     if (!Number.isFinite(coherence) || !source) throw new Error('coherence (number) and source (non-empty string) are required');
@@ -87,32 +101,75 @@ function callTool(name, args = {}) {
   throw new Error('unknown tool: ' + name);
 }
 
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, OPTIONS',
+  'access-control-allow-headers': 'content-type, authorization',
+  'access-control-max-age': '86400',
+};
+
 function send(res, code, obj) {
   const body = obj === null ? '' : JSON.stringify(obj);
-  res.writeHead(code, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
+  res.writeHead(code, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body), ...CORS });
   res.end(body);
 }
 const ok = (id, result) => ({ jsonrpc: '2.0', id, result });
 const err = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
-function handleRpc(msg, res) {
+// Reads are open; writes require the bearer token when one is configured.
+function isAuthed(req) {
+  if (!TOKEN) return true;
+  return (req.headers['authorization'] || '') === 'Bearer ' + TOKEN;
+}
+
+// ── Per-IP fixed-window rate limit (in-memory, best-effort). ──
+const _hits = new Map();
+function rateLimited(req) {
+  if (RATE_LIMIT_PER_MIN <= 0) return false;
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || 'unknown';
+  const win = Math.floor(Date.now() / 60000);
+  let e = _hits.get(ip);
+  if (!e || e.win !== win) { e = { win, n: 0 }; _hits.set(ip, e); }
+  e.n++;
+  if (_hits.size > 5000) { for (const [k, v] of _hits) if (v.win !== win) _hits.delete(k); } // prune stale windows
+  return e.n > RATE_LIMIT_PER_MIN;
+}
+
+function manifest() {
+  return {
+    service: 'remembrance-field',
+    version: '0.2.0',
+    description: 'Shared conserved-scalar Remembrance field + offline coherency. Callable via MCP or plain REST.',
+    mcp: { endpoint: '/mcp', transport: 'streamable-http (JSON-RPC 2.0)', protocolVersion: DEFAULT_PROTOCOL, tools: TOOLS },
+    rest: {
+      'GET /': 'health + field peek',
+      'GET /field': 'read current field state',
+      'POST /coherency': '{ a, b } -> { coherency }  (open)',
+      'POST /contribute': '{ coherence, source, cost? } -> field state  (write — bearer token if configured)',
+    },
+    auth: TOKEN
+      ? 'public reads; writes (field_contribute / POST /contribute) require Authorization: Bearer <FIELD_TOKEN>'
+      : 'open (no FIELD_TOKEN set — anyone can read and write)',
+    cors: 'enabled (*)',
+  };
+}
+
+function handleRpc(msg, res, authed) {
   const { id, method, params } = msg || {};
-  // JSON-RPC notifications (no id) get no response body.
-  if (id === undefined || id === null) return send(res, 202, null);
+  if (id === undefined || id === null) return send(res, 202, null); // notification
   try {
     if (method === 'initialize') {
       const pv = (params && params.protocolVersion) || DEFAULT_PROTOCOL;
-      return send(res, 200, ok(id, {
-        protocolVersion: pv,
-        capabilities: { tools: {} },
-        serverInfo: { name: 'remembrance-field', version: '0.2.0' },
-      }));
+      return send(res, 200, ok(id, { protocolVersion: pv, capabilities: { tools: {} }, serverInfo: { name: 'remembrance-field', version: '0.2.0' } }));
     }
     if (method === 'ping') return send(res, 200, ok(id, {}));
     if (method === 'tools/list') return send(res, 200, ok(id, { tools: TOOLS }));
     if (method === 'tools/call') {
       const name = params && params.name;
       const args = (params && params.arguments) || {};
+      if (isWriteTool(name, args.action) && !authed) {
+        return send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: unauthorized — a bearer token is required to write to the field' }], isError: true }));
+      }
       try {
         const out = callTool(name, args);
         return send(res, 200, ok(id, { content: [{ type: 'text', text: JSON.stringify(out) }] }));
@@ -126,36 +183,62 @@ function handleRpc(msg, res) {
   }
 }
 
+function readBody(req, cb) {
+  let raw = '';
+  req.on('data', (c) => { raw += c; if (raw.length > 2e6) req.destroy(); });
+  req.on('end', () => cb(raw));
+}
+
 const server = http.createServer((req, res) => {
   const path = (req.url || '/').split('?')[0];
 
+  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
+  if (rateLimited(req)) return send(res, 429, { error: 'rate limit exceeded — try again shortly' });
+
   if (req.method === 'GET') {
     if (path === '/mcp') return send(res, 405, { error: 'MCP endpoint — POST JSON-RPC here' });
+    if (path === '/.well-known/mcp' || path === '/manifest') return send(res, 200, manifest());
     let field = null; try { field = peekField(); } catch (_e) { /* best-effort */ }
-    return send(res, 200, { ok: true, service: 'remembrance-field', mcp: '/mcp', tools: TOOLS.map((t) => t.name), field });
+    if (path === '/field') return send(res, 200, { ok: true, field });
+    return send(res, 200, { ok: true, service: 'remembrance-field', mcp: '/mcp', manifest: '/.well-known/mcp', tools: TOOLS.map((t) => t.name), field });
   }
-  if (req.method !== 'POST') return send(res, 405, { error: 'use POST (MCP/JSON-RPC) or GET (health)' });
+  if (req.method !== 'POST') return send(res, 405, { error: 'use POST (MCP/REST) or GET (health)' });
 
-  if (TOKEN && (req.headers['authorization'] || '') !== 'Bearer ' + TOKEN) {
-    return send(res, 401, { error: 'unauthorized' });
+  const authed = isAuthed(req);
+
+  // ── Plain-REST shim (no JSON-RPC envelope) ──
+  if (path === '/coherency') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('coherency', { a: p.a, b: p.b })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/contribute') {
+    if (!authed) return send(res, 401, { error: 'unauthorized — bearer token required to write' });
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('field_contribute', { coherence: p.coherence, source: p.source, cost: p.cost })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
   }
 
-  let raw = '';
-  req.on('data', (c) => { raw += c; if (raw.length > 2e6) req.destroy(); });
-  req.on('end', () => {
+  // ── MCP / JSON-RPC (POST /mcp or root) ──
+  readBody(req, (raw) => {
     let msg;
     try { msg = JSON.parse(raw || '{}'); } catch { return send(res, 400, err(null, -32700, 'parse error')); }
-    if (Array.isArray(msg)) { // JSON-RPC batch
-      const out = msg.filter((m) => m && m.id != null).map((m) => new Promise((r) => handleRpc(m, { writeHead() {}, end(b) { r(b ? JSON.parse(b) : null); } })));
+    if (Array.isArray(msg)) {
+      const out = msg.filter((m) => m && m.id != null).map((m) => new Promise((r) => handleRpc(m, { writeHead() {}, end(b) { r(b ? JSON.parse(b) : null); } }, authed)));
       return Promise.all(out).then((arr) => send(res, 200, arr.filter(Boolean)));
     }
-    return handleRpc(msg, res);
+    return handleRpc(msg, res, authed);
   });
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[field-server] Remembrance Field MCP server on ${HOST}:${PORT}` +
-    (TOKEN ? ' (bearer auth on)' : ' (no auth — set FIELD_TOKEN)') +
-    ` | tools: ${TOOLS.map((t) => t.name).join(', ')}` +
+  console.log(`[field-server] Remembrance Field on ${HOST}:${PORT}` +
+    (TOKEN ? ' (public read; bearer write)' : ' (open — set FIELD_TOKEN to gate writes)') +
+    ` | MCP: /mcp · REST: /coherency,/contribute,/field · manifest: /.well-known/mcp` +
+    ` | rate: ${RATE_LIMIT_PER_MIN > 0 ? RATE_LIMIT_PER_MIN + '/min/ip' : 'off'}` +
     ` | persist: ${process.env.ENTROPY_PATH || '.remembrance/entropy.json (ephemeral without a volume)'}`);
 });

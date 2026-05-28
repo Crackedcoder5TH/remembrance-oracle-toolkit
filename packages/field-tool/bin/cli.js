@@ -21,8 +21,14 @@ Connected to your Void compressor (REMEMBRANCE_VOID_URL, default http://127.0.0.
 
 Field (shared conserved scalar):
   remembrance-field contribute --coherence <0..1> --source <label> [--cost <n>] [--url <u>] [--token <t>]
+      Contribute to the field. With a queue configured, a failed send is saved locally.
+  remembrance-field contribute ... --offline
+      Skip the network and queue the contribution locally (work offline).
+  remembrance-field sync [--queue <path>] [--url <u>] [--token <t>] [--max <n>]
+      Flush the local offline queue to the field — sync up when you have internet.
 
-Env: REMEMBRANCE_FIELD_URL, REMEMBRANCE_FIELD_TOKEN, REMEMBRANCE_VOID_URL, REMEMBRANCE_AGENT_ID.
+Env: REMEMBRANCE_FIELD_URL, REMEMBRANCE_FIELD_TOKEN, REMEMBRANCE_FIELD_QUEUE (offline queue path),
+     REMEMBRANCE_VOID_URL, REMEMBRANCE_AGENT_ID.
 Inputs: a literal string, or @path to read a file.
 `;
 
@@ -113,10 +119,26 @@ async function main() {
   }
 
   if (cmd === 'contribute') {
-    const field = new Field({ url: typeof flags.url === 'string' ? flags.url : undefined, token: typeof flags.token === 'string' ? flags.token : undefined });
-    const res = await field.contribute({ coherence: Number(flags.coherence), source: flags.source, cost: flags.cost != null ? Number(flags.cost) : 1.0 });
+    const field = new Field({
+      url: typeof flags.url === 'string' ? flags.url : undefined,
+      token: typeof flags.token === 'string' ? flags.token : undefined,
+      queuePath: typeof flags.queue === 'string' ? flags.queue : undefined,
+    });
+    const obs = { coherence: Number(flags.coherence), source: flags.source, cost: flags.cost != null ? Number(flags.cost) : 1.0 };
+    const res = flags.offline ? field.queue(obs) : await field.contribute(obs);
     process.stdout.write(JSON.stringify(res) + '\n');
-    process.exit(res.ok ? 0 : 1);
+    process.exit(res.ok || res.queued ? 0 : 1);
+  }
+
+  if (cmd === 'sync') {
+    const field = new Field({
+      url: typeof flags.url === 'string' ? flags.url : undefined,
+      token: typeof flags.token === 'string' ? flags.token : undefined,
+      queuePath: typeof flags.queue === 'string' ? flags.queue : undefined,
+    });
+    const r = await field.sync({ max: flags.max != null ? Number(flags.max) : undefined });
+    process.stdout.write(`synced ${r.synced}, remaining ${r.remaining}` + (r.error ? ` (${r.error})` : '') + '\n');
+    process.exit(r.ok ? 0 : 1);
   }
 
   process.stderr.write(`unknown command: ${cmd}\n\n` + HELP);

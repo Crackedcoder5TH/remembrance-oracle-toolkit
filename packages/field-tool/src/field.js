@@ -17,17 +17,25 @@
 
 const DEFAULT_FIELD_URL = 'http://127.0.0.1:7787/mcp';
 
+const fs = require('node:fs');
+const path = require('node:path');
+
 class Field {
   /**
    * @param {object} [opts]
    * @param {string} [opts.url]   field endpoint (env REMEMBRANCE_FIELD_URL)
    * @param {string} [opts.token] bearer token (env REMEMBRANCE_FIELD_TOKEN)
    * @param {number} [opts.timeoutMs=1500]
+   * @param {string} [opts.queuePath] local offline queue file (env
+   *        REMEMBRANCE_FIELD_QUEUE). When set, contributions that can't reach
+   *        the field are saved here and flushed later via sync() — so anyone
+   *        can work offline and sync up when they have internet, if they choose.
    */
-  constructor({ url, token, timeoutMs = 1500 } = {}) {
+  constructor({ url, token, timeoutMs = 1500, queuePath } = {}) {
     this.url = url || process.env.REMEMBRANCE_FIELD_URL || DEFAULT_FIELD_URL;
     this.token = (token || process.env.REMEMBRANCE_FIELD_TOKEN || '').trim();
     this.timeoutMs = timeoutMs;
+    this.queuePath = (queuePath || process.env.REMEMBRANCE_FIELD_QUEUE || '').trim() || null;
   }
 
   /** Low-level: call the field tool with any action. Never throws. */
@@ -59,20 +67,80 @@ class Field {
     }
   }
 
+  /** Normalize an observation to {coherence, source, cost} or return an error. */
+  _normObs({ coherence, source, cost = 1.0 } = {}) {
+    if (typeof source !== 'string' || !source) return { error: 'source (non-empty string) is required' };
+    let c = Number(coherence); if (!Number.isFinite(c)) c = 0; c = Math.max(0, Math.min(1, c));
+    let k = Number(cost); if (!Number.isFinite(k)) k = 1.0;
+    return { coherence: c, source, cost: k };
+  }
+
+  /** Append an observation to the local offline queue. Returns true on success. */
+  _enqueue(obs) {
+    if (!this.queuePath) return false;
+    try {
+      fs.mkdirSync(path.dirname(this.queuePath), { recursive: true });
+      fs.appendFileSync(this.queuePath, JSON.stringify({ ...obs, ts: Date.now() }) + '\n');
+      return true;
+    } catch { return false; }
+  }
+
   /**
-   * Contribute one observation to the field. Best-effort; never throws.
+   * Contribute one observation to the field. Best-effort; never throws. When a
+   * queuePath is configured and the field is unreachable, the observation is
+   * saved locally (queued:true) to be flushed later by sync().
    * @param {{coherence:number, source:string, cost?:number}} obs
    */
-  contribute({ coherence, source, cost = 1.0 } = {}) {
-    if (typeof source !== 'string' || !source) {
-      return Promise.resolve({ ok: false, error: 'source (non-empty string) is required' });
+  async contribute(obs = {}) {
+    const n = this._normObs(obs);
+    if (n.error) return { ok: false, error: n.error };
+    const res = await this.call('contribute', n);
+    if (!res.ok && this.queuePath) return { ...res, queued: this._enqueue(n) };
+    return res;
+  }
+
+  /**
+   * Queue an observation locally WITHOUT contacting the field (explicit offline
+   * mode). Flush later with sync(). Requires a queuePath.
+   * @param {{coherence:number, source:string, cost?:number}} obs
+   */
+  queue(obs = {}) {
+    const n = this._normObs(obs);
+    if (n.error) return { ok: false, error: n.error };
+    if (!this.queuePath) return { ok: false, error: 'no queue path (set REMEMBRANCE_FIELD_QUEUE or pass queuePath)' };
+    return this._enqueue(n) ? { ok: true, queued: true } : { ok: false, error: 'failed to write queue' };
+  }
+
+  /**
+   * Flush the local offline queue to the field. Each observation is sent; those
+   * that succeed are removed, those that fail stay queued for the next sync.
+   * Best-effort; never throws. Requires a queuePath.
+   * @param {{max?:number}} [opts]
+   * @returns {Promise<{ok:boolean, synced:number, remaining:number, error?:string}>}
+   */
+  async sync({ max = Infinity } = {}) {
+    if (!this.queuePath) return { ok: false, synced: 0, remaining: 0, error: 'no queue path configured' };
+    let lines;
+    try {
+      lines = fs.readFileSync(this.queuePath, 'utf8').split('\n').filter((l) => l.trim());
+    } catch (e) {
+      if (e && e.code === 'ENOENT') return { ok: true, synced: 0, remaining: 0 };
+      return { ok: false, synced: 0, remaining: 0, error: String((e && e.message) || e) };
     }
-    let c = Number(coherence);
-    if (!Number.isFinite(c)) c = 0;
-    c = Math.max(0, Math.min(1, c));
-    let k = Number(cost);
-    if (!Number.isFinite(k)) k = 1.0;
-    return this.call('contribute', { coherence: c, source, cost: k });
+    let synced = 0;
+    const keep = [];
+    for (const line of lines) {
+      let obs; try { obs = JSON.parse(line); } catch { continue; } // drop corrupt lines
+      if (synced >= max) { keep.push(line); continue; }
+      const res = await this.call('contribute', { coherence: obs.coherence, source: obs.source, cost: obs.cost });
+      if (res.ok) synced++; else keep.push(line);
+    }
+    try {
+      fs.writeFileSync(this.queuePath, keep.length ? keep.join('\n') + '\n' : '');
+    } catch (e) {
+      return { ok: false, synced, remaining: keep.length, error: 'queue rewrite failed: ' + String((e && e.message) || e) };
+    }
+    return { ok: true, synced, remaining: keep.length };
   }
 }
 

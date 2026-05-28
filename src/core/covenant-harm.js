@@ -27,7 +27,12 @@ function buildCmdInjectionPattern() {
 
 function buildCmdConcatPattern() {
   const cp = 'child' + '_process';
-  return new RegExp(cp + '.*exec\\s*\\(\\s*\\w+\\s*\\+', 'i');
+  // A shell command built from a variable: exec/execSync/execFile( <ident> + ...)
+  // OR exec( '<literal>' + <ident> ...). The \w after + on the literal form
+  // avoids flagging safe literal+literal concatenation. child_process must
+  // appear on the same line, which keeps the covenant gate's false-positive
+  // rate low (the per-call coherency scanner catches the cross-line forms).
+  return new RegExp(cp + '.*exec\\w*\\s*\\(\\s*(?:[\'"`][^\'"`]*[\'"`]\\s*\\+\\s*\\w|\\w+\\s*\\+)', 'i');
 }
 
 function buildEvalChildProcessPattern() {

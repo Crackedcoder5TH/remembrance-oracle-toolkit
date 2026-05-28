@@ -1,0 +1,127 @@
+name: Harvest Ecosystem → Library
+
+# Capture coding patterns from the owned ecosystem repos and fold them into the
+# canonical library (patterns.json). That library is what the agent swarm grounds
+# in (RAG) and scores against (the resonance hallucination filter) — the more
+# proven code it holds, the better both work, and the data compounds over time.
+#
+# The library only ever grows: existing patterns are merged verbatim and only
+# genuinely new harvests above the coherency floor are appended (see
+# scripts/harvest-ecosystem.js). If nothing new clears the floor, nothing is
+# committed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      min_coherency:
+        description: 'Coherency floor for NEW harvested patterns'
+        required: false
+        default: '0.5'
+  schedule:
+    # Weekly, Sunday 06:00 UTC.
+    - cron: '0 6 * * 0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: harvest-backfill
+  cancel-in-progress: false
+
+jobs:
+  harvest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout oracle (library lives here)
+        uses: actions/checkout@v4
+
+      # Owned ecosystem repos — harvested for code. Forks (supabase, claw-code)
+      # and the docs repo (awesome-design-md) are intentionally excluded.
+      - name: Checkout Void-Data-Compressor
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository_owner }}/Void-Data-Compressor
+          path: repos/void-data-compressor
+          token: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+      - name: Checkout MOONS-OF-REMEMBRANCE
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository_owner }}/MOONS-OF-REMEMBRANCE
+          path: repos/moons-of-remembrance
+          token: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+      - name: Checkout REMEMBRANCE-AGENT-Swarm-
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository_owner }}/REMEMBRANCE-AGENT-Swarm-
+          path: repos/remembrance-agent-swarm
+          token: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+      - name: Checkout REMEMBRANCE-Interface
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository_owner }}/REMEMBRANCE-Interface
+          path: repos/remembrance-interface
+          token: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+      - name: Checkout REMEMBRANCE-BLOCKCHAIN
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository_owner }}/REMEMBRANCE-BLOCKCHAIN
+          path: repos/remembrance-blockchain
+          token: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+      - name: Checkout Reflector-oracle-
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository_owner }}/Reflector-oracle-
+          path: repos/reflector-oracle
+          token: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+      - name: Checkout Remembrance-dialer
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository_owner }}/Remembrance-dialer
+          path: repos/remembrance-dialer
+          token: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+      - name: Checkout REMEMBRANCE-API-Key-Plugger
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          repository: ${{ github.repository_owner }}/REMEMBRANCE-API-Key-Plugger
+          path: repos/remembrance-api-key-plugger
+          token: ${{ secrets.ECOSYSTEM_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Harvest ecosystem into the library
+        env:
+          MIN_COHERENCY: ${{ github.event.inputs.min_coherency || '0.5' }}
+        run: |
+          DIRS="./src"
+          for d in repos/*/; do
+            [ -d "$d" ] && DIRS="$DIRS $d"
+          done
+          echo "Harvesting: $DIRS"
+          node scripts/harvest-ecosystem.js $DIRS
+
+      - name: Commit updated library
+        run: |
+          if git diff --quiet -- patterns.json; then
+            echo "No library changes — nothing to commit."
+            exit 0
+          fi
+          git config user.name "remembrance-oracle[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add patterns.json
+          git commit -m "chore(library): harvest ecosystem coding patterns into the canonical library [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}

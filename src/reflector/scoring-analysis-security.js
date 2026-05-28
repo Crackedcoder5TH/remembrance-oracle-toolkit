@@ -116,6 +116,48 @@ function securityScan(code, language) {
     }
   }
 
+  // ── Deeper injection detection (scans RAW code) ──
+  // The language blocks above gate SQL/command checks on a fixed set of
+  // user-input variable names (req/args/param/...) AND run against stripped
+  // code — but stripStringsAndComments replaces the very string literal the
+  // SQL keyword lives in with "", so real injections with ordinary parameter
+  // names never fire. These run on the ORIGINAL code and recognize ANY
+  // identifier or ${} interpolation flowing into a query or shell sink.
+  // Keyword fragments are split (via _k) so this definitions file does not
+  // match its own patterns when scanned.
+  const _q = '[\'"`]';            // a string-delimiter: ' " or `
+  const _qn = '[^\'"`]';          // a non-delimiter char
+  const _sqlKw = _k('(?:SEL', 'ECT|INS', 'ERT|UPD', 'ATE|DEL', 'ETE|DR', 'OP)');
+  const _sink = _k('\\b(?:ex', 'ecSync|ex', 'ec|spa', 'wnSync|spa', 'wn)');
+  const _sqlInjection = new RegExp(_q + _qn + '*' + _sqlKw + '\\b[\\s\\S]*?(?:' + _q + '\\s*\\+|\\$\\{)', 'i');
+  const _cmdInjection = new RegExp(_sink + '\\s*\\(\\s*(?:' + _q + _qn + '*' + _q + '\\s*\\+|\\w+\\s*\\+|[^)]*\\$\\{)', 'i');
+  const _flagged = (kw) => findings.some(f => f.message && f.message.toLowerCase().includes(kw));
+  if (_sqlInjection.test(code) && !_flagged(_k('sql inj', 'ection'))) {
+    findings.push({ severity: 'high', message: _k('Possible SQL inj', 'ection — untrusted value concatenated or interpolated into a query'), count: 1 });
+  }
+  if (_cmdInjection.test(code) && !_flagged(_k('command inj', 'ection')) && !_flagged('shell command')) {
+    findings.push({ severity: 'high', message: _k('Possible command inj', 'ection — untrusted value in a shell command'), count: 1 });
+  }
+
+  // ── Ecosystem deep-security patterns (covenant-deep-security) ──
+  // Prototype pollution, weak crypto (MD5/SHA1), disabled TLS, dynamic
+  // Function/setTimeout-string, etc. Best-effort: skipped if the module isn't
+  // reachable. Deduped against findings already raised above.
+  try {
+    const { DEEP_SECURITY_PATTERNS } = require('../core/covenant-deep-security');
+    const langKey = (lang === 'js') ? 'javascript' : (lang === 'ts') ? 'typescript' : (lang === 'py') ? 'python' : lang;
+    const deep = (langKey && DEEP_SECURITY_PATTERNS[langKey]) || [];
+    for (const { pattern, reason, severity } of deep) {
+      if (!pattern) continue;
+      if (pattern.global) pattern.lastIndex = 0; // module-cached regex — never trust lastIndex
+      // Run on RAW code: several deep patterns key on string contents (e.g. the
+      // hash name in createHash('md5')) which stripping would erase.
+      if (pattern.test(code) && !findings.some(f => f.message === reason)) {
+        findings.push({ severity: severity || 'medium', message: reason, count: 1 });
+      }
+    }
+  } catch (_e) { /* ecosystem module not reachable — best-effort */ }
+
   let score = 1.0;
   for (const finding of findings) {
     if (finding.severity === 'critical') score -= 0.3;

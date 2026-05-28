@@ -13,7 +13,7 @@ function stripStringsAndComments(code) {
     .replace(/\/\/[^\n]*/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/#[^\n]*/g, '')
-    .replace(/`(?:\\[\s\S]|[^`])*`/g, '')
+    .replace(/`(?:\\.|[^`\\])*`/g, '')
     .replace(/"(?:\\.|[^"\\])*"/g, '""')
     .replace(/'(?:\\.|[^'\\])*'/g, "''");
 }

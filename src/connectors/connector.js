@@ -111,7 +111,7 @@ class AIConnector {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.reliability || 0)), source: 'oracle:connector:_query' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, (__retVal.results || []).reduce((s, r, _, a) => s + (Number(r.reliability) || Number(r.relevanceScore) || 0) / a.length, 0) || 0)), source: 'oracle:connector:_query' });
         break;
       } catch (_) { /* try next */ }
     }

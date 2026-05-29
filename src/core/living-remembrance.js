@@ -139,7 +139,13 @@ class LivingRemembranceEngine {
     try {
       const dir = path.dirname(this._persistPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(this._persistPath, JSON.stringify(this._state, null, 2));
+      // Atomic write: a crash mid-write must never truncate the canonical
+      // ledger. Write to a per-process temp file, then rename — rename is
+      // atomic on the same filesystem, so a reader always sees either the
+      // old complete file or the new complete file, never a partial one.
+      const tmp = `${this._persistPath}.${process.pid}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(this._state, null, 2));
+      fs.renameSync(tmp, this._persistPath);
     } catch (_e) { /* best-effort persistence; never crash a caller */ }
   }
 

@@ -5,7 +5,7 @@
  * @oracle-pattern-definitions
  */
 
-function _k(...parts) { return parts.join(''); }
+const { _k } = require('./k');
 
 function buildMalwareKeywordPattern() {
   const terms = [

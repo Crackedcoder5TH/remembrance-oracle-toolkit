@@ -24,8 +24,8 @@ function findPatternLocation(code, pattern) {
   return null;
 }
 
-// Build keys dynamically to prevent scanner from flagging documentation strings
-function _k(...parts) { return parts.join(''); }
+// Anti-self-match key helper — definition in src/core/k.js
+const { _k } = require('./k');
 
 function buildFixSuggestions() {
   const s = {};

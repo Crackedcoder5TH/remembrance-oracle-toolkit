@@ -5,7 +5,7 @@
  * @oracle-pattern-definitions
  */
 
-function _k(...parts) { return parts.join(''); }
+const { _k } = require('./k');
 
 function buildCredentialPattern(assignOp) {
   // Only exempt values that are CLEARLY test fixtures (not generic words like 'test'

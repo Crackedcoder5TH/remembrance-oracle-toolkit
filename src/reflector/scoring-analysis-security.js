@@ -5,7 +5,7 @@
  * @oracle-pattern-definitions
  */
 
-function _k(...parts) { return parts.join(''); }
+const { _k } = require('../core/k');
 
 function stripStringsAndComments(code) {
   if (!code) return '';

@@ -421,6 +421,7 @@ class PatternLibrary {
     const coherency = computeCoherencyScore(sanitizedCode, {
       language: pattern.language,
       testPassed: pattern.testPassed,
+      testCode: pattern.testCode,
       historicalReliability: pattern.reliability ?? 0.5,
     });
 

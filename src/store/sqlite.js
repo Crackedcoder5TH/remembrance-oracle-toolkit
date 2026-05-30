@@ -1087,6 +1087,7 @@ class SQLiteStore {
     const newCoherency = computeCoherencyScore(row.code, {
       language: row.language,
       testPassed,
+      testCode: row.test_code,
       historicalReliability,
     });
 
@@ -1143,6 +1144,7 @@ class SQLiteStore {
         const newCoherency = computeCoherencyScore(row.code, {
           language: row.language,
           testPassed,
+          testCode: row.test_code,
           historicalReliability,
         });
         if (newCoherency.total !== row.coherency_total) {
@@ -1194,6 +1196,7 @@ class SQLiteStore {
           const newCoherency = computeCoherencyScore(row.code, {
             language: row.language,
             testPassed: true,
+            testCode,
             historicalReliability,
           });
           update.run(testCode, newCoherency.total, JSON.stringify(newCoherency), now, row.id);
@@ -1263,6 +1266,7 @@ class SQLiteStore {
           const newCoherency = computeCoherencyScore(row.code, {
             language: row.language,
             testPassed: true,
+            testCode: row.test_code,
             historicalReliability,
           });
           update.run(usageCount, successCount, newCoherency.total, JSON.stringify(newCoherency), now, row.id);
@@ -1275,6 +1279,7 @@ class SQLiteStore {
           const newCoherency = computeCoherencyScore(row.code, {
             language: row.language,
             testPassed: true,
+            testCode: row.test_code,
             historicalReliability,
           });
           if (newCoherency.total > row.coherency_total) {
@@ -1367,6 +1372,7 @@ class SQLiteStore {
         const newCoherency = computeCoherencyScore(code, {
           language: lang,
           testPassed: true,
+          testCode,
           historicalReliability,
         });
 
@@ -1456,6 +1462,7 @@ class SQLiteStore {
           const newCoherency = computeCoherencyScore(code, {
             language: row.language,
             testPassed,
+            testCode: row.test_code,
             historicalReliability,
           });
           if (newCoherency.total >= row.coherency_total) {

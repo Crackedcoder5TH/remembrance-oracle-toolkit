@@ -349,6 +349,7 @@ class TestForge {
       const newCoherency = computeCoherencyScore(pattern.code, {
         language: pattern.language,
         testPassed: true, // test code just passed
+        testCode: pattern.testCode,
         historicalReliability,
       });
 

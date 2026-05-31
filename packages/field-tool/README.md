@@ -5,9 +5,18 @@ The **Remembrance Field tool** as a tiny, zero-dependency npm package. It works
 collected substrate (the 77k+ pattern library) to score with real resonance
 and to (with your consent) contribute new patterns to the canonical library.
 
-The encoder is byte-identical to Void's `to_waveform.py` and the oracle
-toolkit's `code-to-waveform.js` (parity contracts C-49/C-50), so a string
-encodes to the same waveform in Python, JS, and here.
+The canonical encoder is the **fractal waveform** — a 29-D structural
+vector in the ecosystem's fractal language (atomic properties +
+structural histograms + structurality), and a `coherency` cosine gated
+by structurality agreement so code-vs-prose is correctly damped.
+Algorithm spec: `docs/FRACTAL_WAVEFORM_SPEC.md` in the oracle toolkit;
+parity blueprint for Void's `to_fractal_waveform.py` is the proposed
+contract C-71.
+
+The legacy 256-D byte-stretch encoder is still exported under
+`byteToWaveform`/`byteCoherency` for binary or non-text inputs, and
+remains byte-identical to Void's `to_waveform.py` (contracts C-49/C-50)
+for cross-language callers that need raw-byte parity.
 
 ## Install
 
@@ -22,14 +31,22 @@ Requires Node >= 18 (built-in `fetch`). No other dependencies.
 ## Standalone — works with no network
 
 ```js
-const { toWaveform, coherency, coherencyOf } = require('@crackedcoder5th/remembrance-field');
+const { toWaveform, coherency, coherencyOf, DIM } = require('@crackedcoder5th/remembrance-field');
 
-toWaveform('function add(a, b) { return a + b; }');     // Float64Array(256), [0,1]
-coherencyOf('function add(a,b){return a+b}', 'def add(a, b): return a + b'); // cosine in [0,1]
+toWaveform('function add(a, b) { return a + b; }');     // Float64Array(DIM=29), [0,1]
+coherencyOf('function add(a,b){return a+b}', 'def add(a, b): return a + b'); // ~0.91 — fractal sees structural kinship across languages
+
+// Diagnostic — inspect the named dimensions:
+const { inspectFractalWaveform } = require('@crackedcoder5th/remembrance-field');
+inspectFractalWaveform('function add(a,b){return a+b}').structurality;  // ≈ 1 (code)
+
+// Legacy byte-stretch (binary / non-text inputs only):
+const { byteToWaveform, byteCoherency } = require('@crackedcoder5th/remembrance-field');
+byteToWaveform(buffer.toString('utf8'));                // Float64Array(256), [0,1]
 ```
 
 ```bash
-remembrance-field encode "some text"      # dim=256 mean=… energy=…
+remembrance-field encode "some text"      # dim=29 mean=… energy=…
 remembrance-field coherency "a" "b"       # 0.xxxxxx   (inputs may be @file)
 ```
 

@@ -6,15 +6,21 @@ const { toWaveform, coherency, coherencyOf, Field, VoidClient, confirm, DIM } = 
 
 const HELP = `remembrance-field — the Remembrance Field tool
 
-Standalone (no network):
+Standalone (no network, offline structural reading):
   remembrance-field encode <text|@file> [--json]
-      Encode input into the 256-D waveform. Summary by default; --json = full array.
+      Encode input into the fractal waveform — a 29-D structural vector
+      whose dimensions are the ecosystem's fractal language (atomic
+      properties + structural histograms + structurality). Summary by
+      default; --json = full array. Spec: docs/FRACTAL_WAVEFORM_SPEC.md.
   remembrance-field coherency <a|@file> <b|@file>
-      Cosine coherency in [0,1] between two inputs.
+      Fractal coherency in [-1,1] (typically [0,1]) — cosine over the
+      fractal vector, gated by structurality agreement so code-vs-prose
+      is correctly damped.
 
 Connected to your Void compressor (REMEMBRANCE_VOID_URL, default http://127.0.0.1:8080):
   remembrance-field score <text|@file>
-      Score input against your collected substrate (real resonance, not a bare cosine).
+      Score input against your collected substrate (real resonance via
+      Void's byte-stretch encoder, not the offline fractal cosine).
   remembrance-field submit <code|@file> --name <name> [--language <l>] [--tags a,b] [--description <d>]
       Score the pattern, then ASK whether to add it to the canonical pattern library.
       --yes / --no skip the prompt; otherwise you are prompted (defaults to NO).

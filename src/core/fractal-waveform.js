@@ -161,8 +161,19 @@ function _structuralDims(code) {
   const identFrac = (code.match(IDENT) || []).reduce((s, t) => s + t.length, 0) / total;
 
   const norm = (n) => Math.min(1, n / lineCount * 10);
-  const branches = norm(_countAny(code, [/\bif\s*[\(:]/g, /\belse\b/g, /\bswitch\s*\(/g, /\bmatch\s+/g, /\?\s*[^:]+\s*:/g]));
-  const loops = norm(_countAny(code, [/\bfor\s*[\(:]/g, /\bwhile\s*[\(:]/g, /\.forEach\b/g, /\.map\b/g, /\bloop\s*\{/g]));
+  // Branches & loops match BOTH the JS form (`if (...)`, `while (...)`) and
+  // the Python form (`if not x:`, `for x in items:`) by also accepting
+  // line-anchored keywords. The earlier `\bif\s*[\(:]` form missed Python
+  // entirely because Python `if x:` has neither `(` nor `:` directly after
+  // `if`. Line-anchoring avoids matching the English word "if" in prose.
+  const branches = norm(_countAny(code, [
+    /\bif\s*\(/g, /^[ \t]*if\b/gm, /^[ \t]*elif\b/gm, /\belse\b/g,
+    /\bswitch\s*\(/g, /\bmatch\s+/g, /\?\s*[^:]+\s*:/g,
+  ]));
+  const loops = norm(_countAny(code, [
+    /\bfor\s*\(/g, /^[ \t]*for\b/gm, /\bwhile\s*\(/g, /^[ \t]*while\b/gm,
+    /\.forEach\b/g, /\.map\b/g, /\bloop\s*\{/g,
+  ]));
   const functions = norm(_countAny(code, [/\bfunction\s+\w|\bfunction\s*\(/g, /=>/g, /\bdef\s+\w/g, /\bfn\s+\w/g, /\bfunc\s+\w/g]));
   const returns = norm(_countAny(code, [/\breturn\b/g, /\byield\b/g]));
   const errs = norm(_countAny(code, [/\btry\s*\{/g, /\bcatch\b/g, /\bthrow\b/g, /\braise\b/g, /\bexcept\b/g]));

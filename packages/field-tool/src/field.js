@@ -38,8 +38,26 @@ class Field {
     this.queuePath = (queuePath || process.env.REMEMBRANCE_FIELD_QUEUE || '').trim() || null;
   }
 
-  /** Low-level: call the field tool with any action. Never throws. */
+  /** Low-level: call the legacy `field` tool with an action. Kept for the
+   * existing contribute/queue/sync flow. Never throws. */
   async call(action, args = {}) {
+    return this._rpc({ name: 'field', arguments: { action, ...args } });
+  }
+
+  /** Call any field-server MCP tool by name. Unwraps the MCP envelope
+   * ({ result: { content: [{ text: '<json>' }] } }) into a plain result
+   * object when present. Never throws.
+   *
+   * @param {string} name - MCP tool name (e.g. 'pattern_resonance', 'safety_check')
+   * @param {object} args - tool arguments
+   * @returns {Promise<{ok:boolean, result?:any, error?:string, status?:number, body?:any}>}
+   */
+  async callTool(name, args = {}) {
+    return this._rpc({ name, arguments: args }, { unwrap: true });
+  }
+
+  /** Shared HTTP/JSON-RPC plumbing. Returns { ok, result|body, status, error }. */
+  async _rpc(params, opts = {}) {
     let u;
     try { u = new URL(this.url); } catch { return { ok: false, error: 'invalid field url' }; }
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return { ok: false, error: 'field url must be http(s)' };
@@ -48,10 +66,7 @@ class Field {
     const loopback = ['127.0.0.1', 'localhost', '::1'].includes(u.hostname);
     if (this.token && (u.protocol === 'https:' || loopback)) headers.authorization = 'Bearer ' + this.token;
 
-    const body = JSON.stringify({
-      jsonrpc: '2.0', id: 1, method: 'tools/call',
-      params: { name: 'field', arguments: { action, ...args } },
-    });
+    const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params });
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
@@ -59,12 +74,61 @@ class Field {
       const res = await fetch(this.url, { method: 'POST', headers, body, signal: ctrl.signal });
       const text = await res.text();
       let json = null; try { json = JSON.parse(text); } catch { /* non-json */ }
+      if (opts.unwrap && json && json.result && Array.isArray(json.result.content)
+          && json.result.content[0] && typeof json.result.content[0].text === 'string') {
+        const isErr = !!json.result.isError;
+        let result;
+        try { result = JSON.parse(json.result.content[0].text); }
+        catch { result = json.result.content[0].text; }
+        return { ok: res.ok && !isErr, result, status: res.status };
+      }
       return { ok: res.ok, status: res.status, body: json != null ? json : text };
     } catch (e) {
       return { ok: false, error: String((e && e.message) || e) };
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  /** Score `code` by lexical TF-IDF resonance against the proven pattern
+   * library on the field-server. High score = code reuses real proven
+   * vocabulary; low score = invented identifiers (a hallucination tell).
+   * Returns the tool's result object or { ok:false, error } on transport
+   * failure. Best-effort; never throws.
+   *
+   * @param {string} code
+   * @param {object} [opts]
+   * @param {string} [opts.language] - preferred language filter
+   * @param {number} [opts.k] - top-K patterns to average (default 5, max 20)
+   */
+  async resonance(code, opts = {}) {
+    const r = await this.callTool('pattern_resonance', {
+      code: String(code || ''),
+      language: opts.language,
+      k: opts.k,
+    });
+    return r.ok ? r.result : r;
+  }
+
+  /** Run the combined safety check (covenant principles + security pattern
+   * scanner) on the field-server. sealed:true only when both layers pass.
+   * Returns the tool's result object or { ok:false, error } on transport
+   * failure. Best-effort; never throws.
+   *
+   * @param {string} code
+   * @param {object} [opts]
+   * @param {string} [opts.language]
+   * @param {string} [opts.description]
+   * @param {string[]} [opts.tags]
+   */
+  async safety(code, opts = {}) {
+    const r = await this.callTool('safety_check', {
+      code: String(code || ''),
+      language: opts.language,
+      description: opts.description,
+      tags: opts.tags,
+    });
+    return r.ok ? r.result : r;
   }
 
   /** Normalize an observation to {coherence, source, cost} or return an error. */

@@ -25,6 +25,17 @@ Connected to your Void compressor (REMEMBRANCE_VOID_URL, default http://127.0.0.
       Score the pattern, then ASK whether to add it to the canonical pattern library.
       --yes / --no skip the prompt; otherwise you are prompted (defaults to NO).
 
+Connected to your field-server (REMEMBRANCE_FIELD_URL, default http://127.0.0.1:7787/mcp):
+  remembrance-field resonance <code|@file> [--language <l>] [--k <n>] [--json]
+      Lexical TF-IDF resonance of code against the proven pattern library.
+      Real code finds family members; hallucinated code with invented
+      identifiers does not. The anti-hallucination signal that fractal
+      coherency cannot provide (fractal sees structure, not vocabulary).
+  remembrance-field safety <code|@file> [--language <l>] [--description <d>] [--tags a,b] [--json]
+      Combined safety check: covenant principles + security pattern scanner.
+      Exits 0 if SEALED, 1 if UNSEALED. Flags eval, shell injection,
+      hardcoded secrets, prototype pollution, SQL injection, etc.
+
 Field (shared conserved scalar):
   remembrance-field contribute --coherence <0..1> --source <label> [--cost <n>] [--url <u>] [--token <t>]
       Contribute to the field. With a queue configured, a failed send is saved locally.
@@ -122,6 +133,54 @@ async function main() {
     if (res.ok === false) { process.stderr.write('Submission failed: ' + (res.error || JSON.stringify(res.body)) + '\n'); process.exit(1); }
     process.stdout.write('Submitted: ' + JSON.stringify(res.body) + '\n');
     return;
+  }
+
+  if (cmd === 'resonance') {
+    const code = readInput(pos[0]);
+    if (!code) { process.stderr.write('resonance needs <code|@file>\n'); process.exit(2); }
+    const field = new Field({
+      url: typeof flags.url === 'string' ? flags.url : undefined,
+      token: typeof flags.token === 'string' ? flags.token : undefined,
+    });
+    const r = await field.resonance(code, {
+      language: typeof flags.language === 'string' ? flags.language : undefined,
+      k: flags.k != null ? Number(flags.k) : undefined,
+    });
+    if (flags.json) { process.stdout.write(JSON.stringify(r, null, 2) + '\n'); return; }
+    if (!r || r.ok === false) { process.stderr.write('resonance unavailable: ' + (r && r.error || 'no result') + '\n'); process.exit(1); }
+    if (r.score == null) {
+      process.stdout.write(`resonance unavailable — library: ${JSON.stringify(r.library)}\n`);
+      return;
+    }
+    process.stdout.write(`resonance ${r.score.toFixed(4)}  (bestMatch ${r.bestMatch.toFixed(4)}, meanTopK ${r.meanTopK.toFixed(4)}, k=${r.k})\n`);
+    if (Array.isArray(r.topMatches)) {
+      for (const m of r.topMatches.slice(0, 5)) process.stdout.write(`  ${m.similarity.toFixed(4)}  ${m.name}\n`);
+    }
+    return;
+  }
+
+  if (cmd === 'safety') {
+    const code = readInput(pos[0]);
+    if (!code) { process.stderr.write('safety needs <code|@file>\n'); process.exit(2); }
+    const field = new Field({
+      url: typeof flags.url === 'string' ? flags.url : undefined,
+      token: typeof flags.token === 'string' ? flags.token : undefined,
+    });
+    const r = await field.safety(code, {
+      language: typeof flags.language === 'string' ? flags.language : undefined,
+      description: typeof flags.description === 'string' ? flags.description : undefined,
+      tags: typeof flags.tags === 'string' ? flags.tags.split(',').map((t) => t.trim()).filter(Boolean) : undefined,
+    });
+    if (flags.json) { process.stdout.write(JSON.stringify(r, null, 2) + '\n'); return; }
+    if (!r || r.ok === false) { process.stderr.write('safety unavailable: ' + (r && r.error || 'no result') + '\n'); process.exit(1); }
+    process.stdout.write(`safety ${r.sealed ? 'SEALED' : 'UNSEALED'}  (covenant ${r.covenant.principlesPassed}/${r.covenant.totalPrinciples}, security ${r.security.riskLevel})\n`);
+    if (r.covenant.violations && r.covenant.violations.length) {
+      for (const v of r.covenant.violations) process.stdout.write(`  covenant: ${v.principle || v.reason || JSON.stringify(v)}\n`);
+    }
+    if (r.security.findings && r.security.findings.length) {
+      for (const f of r.security.findings) process.stdout.write(`  security ${f.severity}: ${f.message}\n`);
+    }
+    process.exit(r.sealed ? 0 : 1);
   }
 
   if (cmd === 'contribute') {

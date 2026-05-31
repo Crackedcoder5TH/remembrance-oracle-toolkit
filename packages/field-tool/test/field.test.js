@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const { toWaveform, coherency, coherencyOf, Field, DIM } = require('../src/index');
 
-test('toWaveform returns a 256-D vector in [0,1]', () => {
+test('toWaveform returns a fractal vector (DIM dims, values in [0,1])', () => {
   const wf = toWaveform('hello world');
   assert.strictEqual(wf.length, DIM);
   for (const v of wf) assert.ok(v >= 0 && v <= 1);

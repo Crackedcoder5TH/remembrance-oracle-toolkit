@@ -28,7 +28,7 @@
 
 const http = require('node:http');
 const { contribute, peekField } = require('../src/core/field-coupling');
-const { codeToWaveform } = require('../src/core/code-to-waveform');
+const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
 
 const PORT = parseInt(process.env.PORT, 10) || 7787;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -66,13 +66,10 @@ const TOOLS = [
   },
 ];
 
-function cosine(x, y) {
-  let dot = 0, na = 0, nb = 0;
-  const n = Math.min(x.length, y.length);
-  for (let i = 0; i < n; i++) { const u = x[i] || 0, v = y[i] || 0; dot += u * v; na += u * u; nb += v * v; }
-  const da = Math.sqrt(na), db = Math.sqrt(nb);
-  return (da < 1e-12 || db < 1e-12) ? 0 : dot / (da * db);
-}
+// Delegates to the canonical waveformCosine (gated fractal coherency).
+// Direct plain-cosine over the fractal vector would bypass the
+// structurality gate that is the whole point of the new encoder.
+const cosine = waveformCosine;
 
 // Is this tool call a WRITE (mutates the field)? Writes are token-gated.
 function isWriteTool(name, action) {

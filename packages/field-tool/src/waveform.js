@@ -1,20 +1,36 @@
 'use strict';
 
 /**
- * waveform.js — the canonical Remembrance encoder, self-contained.
+ * waveform.js — canonical Remembrance encoder.
  *
- * Byte-identical to Void's `to_waveform.py` and the oracle toolkit's
- * `src/core/code-to-waveform.js` (cross-language parity contracts C-49/C-50):
- *   1. UTF-8 encode the input to bytes
- *   2. Linear-interpolate (np.interp) to exactly 256 samples
- *   3. Min-max normalize to [0, 1]; degenerate input -> flat 0.5
+ * As of fractal-waveform v0.1, the canonical `toWaveform` / `coherency`
+ * are the STRUCTURAL encoder (see ./fractal-waveform.js and
+ * docs/FRACTAL_WAVEFORM_SPEC.md). The legacy byte-stretch encoder is
+ * preserved under `byteToWaveform` / `byteCoherency` for callers that
+ * genuinely want raw-byte similarity (binary blobs, non-text inputs).
  *
- * Pure, deterministic, side-effect-free. No dependencies.
+ * The byte version cannot discriminate code from prose (a JS source file
+ * vs a markdown README scored 0.86, higher than several real code-vs-code
+ * pairings). The fractal version encodes the ecosystem's existing
+ * structural vocabulary (atomic properties + structural histograms +
+ * structurality), then gates the cosine by structurality agreement.
+ *
+ * Cross-language note: Void's `to_waveform.py` is still the byte-stretch
+ * (contracts C-49/C-50). Until Void mirrors fractal-waveform (proposed
+ * C-71, see spec), JS↔Python parity holds only for the byte encoder.
  */
 
-const DIM = 256;
+const {
+  FRACTAL_DIM,
+  toFractalWaveform,
+  fractalCoherency,
+  fractalCoherencyOf,
+} = require('./fractal-waveform');
 
-/** np.interp for xp = [0..n-1], x = linspace(0, n-1, targetLen). */
+// ─── Legacy byte-stretch (preserved for binary / non-text inputs) ────────
+
+const BYTE_DIM = 256;
+
 function _linearInterp(fp, targetLen) {
   const n = fp.length;
   const out = new Float64Array(targetLen);
@@ -30,39 +46,26 @@ function _linearInterp(fp, targetLen) {
   return out;
 }
 
-/**
- * Encode arbitrary text into the native 256-D float64 waveform (values in
- * [0, 1]). Empty input -> all zeros. Flat/constant input -> all 0.5.
- * @param {string} text
- * @returns {Float64Array} length 256
- */
-function toWaveform(text) {
-  if (typeof text !== 'string' || text.length === 0) return new Float64Array(DIM);
+function byteToWaveform(text) {
+  if (typeof text !== 'string' || text.length === 0) return new Float64Array(BYTE_DIM);
   const bytes = Buffer.from(text, 'utf8');
   const fp = new Float64Array(bytes.length);
   for (let i = 0; i < bytes.length; i++) fp[i] = bytes[i];
-
-  const wf = _linearInterp(fp, DIM);
+  const wf = _linearInterp(fp, BYTE_DIM);
   let lo = wf[0], hi = wf[0];
-  for (let i = 1; i < DIM; i++) { if (wf[i] < lo) lo = wf[i]; if (wf[i] > hi) hi = wf[i]; }
-  if (hi - lo < 1e-10) { const flat = new Float64Array(DIM); flat.fill(0.5); return flat; }
-  const norm = new Float64Array(DIM);
-  for (let i = 0; i < DIM; i++) norm[i] = (wf[i] - lo) / (hi - lo);
+  for (let i = 1; i < BYTE_DIM; i++) { if (wf[i] < lo) lo = wf[i]; if (wf[i] > hi) hi = wf[i]; }
+  if (hi - lo < 1e-10) { const flat = new Float64Array(BYTE_DIM); flat.fill(0.5); return flat; }
+  const norm = new Float64Array(BYTE_DIM);
+  for (let i = 0; i < BYTE_DIM; i++) norm[i] = (wf[i] - lo) / (hi - lo);
   return norm;
 }
 
-/**
- * Cosine similarity of two waveforms — the universal "do these mean the same
- * thing?" primitive. Returns a scalar in [-1, 1] (typically [0, 1]); 0 when
- * either vector has no magnitude.
- * @param {ArrayLike<number>} a
- * @param {ArrayLike<number>} b
- * @returns {number}
- */
-function coherency(a, b) {
-  const n = Math.min(a.length, b.length);
+/** Cosine over two byte waveforms. Length-mismatch returns 0 — never
+ * silently compare vectors from different encoders. */
+function byteCoherency(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
   let dot = 0, na = 0, nb = 0;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < a.length; i++) {
     const x = a[i] || 0, y = b[i] || 0;
     dot += x * y; na += x * x; nb += y * y;
   }
@@ -71,9 +74,21 @@ function coherency(a, b) {
   return dot / (da * db);
 }
 
-/** Convenience: cosine coherency between two raw texts. */
-function coherencyOf(textA, textB) {
-  return coherency(toWaveform(textA), toWaveform(textB));
+function byteCoherencyOf(textA, textB) {
+  return byteCoherency(byteToWaveform(textA), byteToWaveform(textB));
 }
 
-module.exports = { DIM, toWaveform, coherency, coherencyOf };
+// ─── Canonical exports ───────────────────────────────────────────────────
+
+module.exports = {
+  // Canonical: structural fractal encoder.
+  DIM: FRACTAL_DIM,
+  toWaveform: toFractalWaveform,
+  coherency: fractalCoherency,
+  coherencyOf: fractalCoherencyOf,
+  // Legacy byte-stretch, preserved for binary / non-text inputs.
+  BYTE_DIM,
+  byteToWaveform,
+  byteCoherency,
+  byteCoherencyOf,
+};

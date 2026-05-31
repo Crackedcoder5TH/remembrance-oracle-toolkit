@@ -38,7 +38,8 @@ describe('field-ingest — pattern library → field', () => {
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) { /* noop */ }
   });
 
-  it('backfills a 256-D waveform onto every code pattern', () => {
+  it('backfills a canonical-dim waveform onto every code pattern', () => {
+    const { TARGET_LEN } = require('../src/core/code-to-waveform');
     const report = ingestPatterns(store);
     assert.equal(report.total, 3);
     assert.equal(report.encoded, 3, 'all 3 patterns should be encoded');
@@ -47,7 +48,7 @@ describe('field-ingest — pattern library → field', () => {
     for (const r of rows) {
       const cj = JSON.parse(r.coherency_json);
       assert.ok(Array.isArray(cj.waveform), 'waveform must be backfilled');
-      assert.equal(cj.waveform.length, 256);
+      assert.equal(cj.waveform.length, TARGET_LEN);
       assert.ok(typeof cj.digest === 'string' && cj.digest.length === 8);
     }
   });

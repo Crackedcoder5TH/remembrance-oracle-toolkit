@@ -130,13 +130,32 @@ function securityScan(code, language) {
   const _sqlKw = _k('(?:SEL', 'ECT|INS', 'ERT|UPD', 'ATE|DEL', 'ETE|DR', 'OP)');
   const _sink = _k('\\b(?:ex', 'ecSync|ex', 'ec|spa', 'wnSync|spa', 'wn)');
   const _sqlInjection = new RegExp(_q + _qn + '*' + _sqlKw + '\\b[\\s\\S]*?(?:' + _q + '\\s*\\+|\\$\\{)', 'i');
-  const _cmdInjection = new RegExp(_sink + '\\s*\\(\\s*(?:' + _q + _qn + '*' + _q + '\\s*\\+|\\w+\\s*\\+|[^)]*\\$\\{)', 'i');
+  // Strong signal: exec/execSync/spawn/spawnSync with concatenation or
+  // template interpolation. Fires regardless of context — these shapes
+  // mean untrusted input is being assembled into a shell command.
+  const _cmdInjection = new RegExp(
+    _sink + '\\s*\\(\\s*(?:' +
+      _q + _qn + '*' + _q + '\\s*\\+' +    // "lit" + something
+      '|\\w+\\s*\\+' +                      // word + something
+      '|[^)]*\\$\\{' +                      // template interpolation
+    ')', 'i');
+  // Bare-identifier signal: exec(varName), exec(req.body.cmd), spawn(fn()).
+  // Gated behind a child_process / subprocess import so plain regex.exec(input)
+  // and similar non-shell .exec calls don't false-fire. When `child_process`
+  // is present anywhere in the file, a bare non-literal arg to exec/spawn is
+  // the canonical command-injection shape and worth flagging.
+  const _cpContext = /\bchild_process\b|\bnode:child_process\b|\bsubprocess\b/;
+  const _cmdInjectionBareArg = new RegExp(
+    _sink + '\\s*\\(\\s*[A-Za-z_$][\\w$.]*\\s*[\\(,\\)]', 'i');
   const _flagged = (kw) => findings.some(f => f.message && f.message.toLowerCase().includes(kw));
   if (_sqlInjection.test(code) && !_flagged(_k('sql inj', 'ection'))) {
     findings.push({ severity: 'high', message: _k('Possible SQL inj', 'ection — untrusted value concatenated or interpolated into a query'), count: 1 });
   }
   if (_cmdInjection.test(code) && !_flagged(_k('command inj', 'ection')) && !_flagged('shell command')) {
     findings.push({ severity: 'high', message: _k('Possible command inj', 'ection — untrusted value in a shell command'), count: 1 });
+  } else if (_cpContext.test(code) && _cmdInjectionBareArg.test(code)
+             && !_flagged(_k('command inj', 'ection')) && !_flagged('shell command')) {
+    findings.push({ severity: 'high', message: _k('Possible command inj', 'ection — non-literal argument passed to a shell sink in a child_process context'), count: 1 });
   }
 
   // ── Ecosystem deep-security patterns (covenant-deep-security) ──

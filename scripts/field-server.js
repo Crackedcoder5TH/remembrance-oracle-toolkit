@@ -29,6 +29,9 @@
 const http = require('node:http');
 const { contribute, peekField } = require('../src/core/field-coupling');
 const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
+const { scoreResonance, libraryStatus } = require('../src/scoring/pattern-resonance');
+const { covenantCheck } = require('../src/core/covenant');
+const { securityScan } = require('../src/reflector/scoring-analysis-security');
 
 const PORT = parseInt(process.env.PORT, 10) || 7787;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -64,6 +67,33 @@ const TOOLS = [
       required: ['a', 'b'],
     },
   },
+  {
+    name: 'pattern_resonance',
+    description: 'Lexical TF-IDF resonance of code against the proven pattern library. High = code reuses real proven vocabulary; low = code reaches for invented identifiers (a hallucination tell). Offline, no field write.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to score' },
+        language: { type: 'string', description: 'optional language filter' },
+        k: { type: 'number', description: 'top-K patterns to average (default 5, max 20)' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'safety_check',
+    description: 'Combined safety scan: covenant principles (15 ethical/integrity rules) + security pattern scanner (eval, shell injection, hardcoded secrets, SQL injection, prototype pollution, etc.). Returns sealed:true only if BOTH layers pass. Offline, no field write.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to check' },
+        language: { type: 'string', description: 'optional language hint (improves security pattern matching)' },
+        description: { type: 'string', description: 'optional pattern description (improves accuracy)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'optional tags' },
+      },
+      required: ['code'],
+    },
+  },
 ];
 
 // Delegates to the canonical waveformCosine (gated fractal coherency).
@@ -94,6 +124,45 @@ function callTool(name, args = {}) {
     const a = args.a == null ? '' : String(args.a);
     const b = args.b == null ? '' : String(args.b);
     return { coherency: cosine(codeToWaveform(a), codeToWaveform(b)) };
+  }
+  if (name === 'pattern_resonance') {
+    const code = args.code == null ? '' : String(args.code);
+    const result = scoreResonance(code, {
+      language: typeof args.language === 'string' ? args.language : undefined,
+      k: Number(args.k) || undefined,
+    });
+    if (result == null) return { score: null, library: libraryStatus() };
+    return { ...result, library: libraryStatus() };
+  }
+  if (name === 'safety_check' || name === 'covenant_check' /* legacy alias */) {
+    const code = args.code == null ? '' : String(args.code);
+    const meta = {
+      language: args.language,
+      description: args.description,
+      tags: Array.isArray(args.tags) ? args.tags : undefined,
+    };
+    const cov = covenantCheck(code, meta);
+    const sec = securityScan(code, args.language);
+    // The security findings are heterogeneous {severity, message, count}; the
+    // covenant violations are {principle, reason}. Carry both layers so the
+    // caller sees which layer flagged what; aggregate to one `sealed` verdict.
+    const securityHasHighOrCrit = (sec.findings || []).some(
+      (f) => f.severity === 'high' || f.severity === 'critical');
+    return {
+      sealed: cov.sealed && !securityHasHighOrCrit,
+      covenant: {
+        sealed: cov.sealed,
+        violations: cov.violations,
+        principlesPassed: cov.principlesPassed,
+        totalPrinciples: cov.totalPrinciples,
+      },
+      security: {
+        score: sec.score,
+        riskLevel: sec.riskLevel,
+        findings: sec.findings,
+        totalFindings: sec.totalFindings,
+      },
+    };
   }
   throw new Error('unknown tool: ' + name);
 }
@@ -142,6 +211,8 @@ function manifest() {
       'GET /': 'health + field peek',
       'GET /field': 'read current field state',
       'POST /coherency': '{ a, b } -> { coherency }  (open)',
+      'POST /resonance': '{ code, language?, k? } -> { score, bestMatch, topMatches, library }  (open — anti-hallucination signal)',
+      'POST /safety': '{ code, language?, description?, tags? } -> { sealed, covenant:{...}, security:{...} }  (open — covenant principles + pattern scanner combined)',
       'POST /contribute': '{ coherence, source, cost? } -> field state  (write — bearer token if configured)',
     },
     auth: TOKEN
@@ -208,6 +279,20 @@ const server = http.createServer((req, res) => {
     return readBody(req, (raw) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
       try { return send(res, 200, callTool('coherency', { a: p.a, b: p.b })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/resonance') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('pattern_resonance', { code: p.code, language: p.language, k: p.k })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/safety' || path === '/covenant' /* legacy alias */) {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('safety_check', { code: p.code, language: p.language, description: p.description, tags: p.tags })); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
   }

@@ -36,6 +36,14 @@ Connected to your field-server (REMEMBRANCE_FIELD_URL, default http://127.0.0.1:
       Exits 0 if SEALED, 1 if UNSEALED. Flags eval, shell injection,
       hardcoded secrets, prototype pollution, SQL injection, etc.
 
+Unified observation-driven evaluation:
+  remembrance-field evaluate <text|@file> [--language <l>] [--execute --test <code|@file>]
+      Look at the input, pick the right signals (safety always; resonance
+      only for code-shaped input; exec_verify only with --execute AND
+      supported language AND safety sealed), compose a verdict. The single
+      call for "is this anti-hallucination-safe to use?". Exits 1 on
+      verdict low.
+
 Code verification (requires bearer token — server runs code in a sandbox):
   remembrance-field verify <code|@file> --language <js|python> [--test <code|@file>] [--timeout <ms>]
       Run code in a temp dir with hard timeout; report status (pass /
@@ -189,6 +197,35 @@ async function main() {
       for (const f of r.security.findings) process.stdout.write(`  security ${f.severity}: ${f.message}\n`);
     }
     process.exit(r.sealed ? 0 : 1);
+  }
+
+  if (cmd === 'evaluate') {
+    const input = readInput(pos[0]);
+    if (!input) { process.stderr.write('evaluate needs <text|@file>\n'); process.exit(2); }
+    const language = typeof flags.language === 'string' ? flags.language : undefined;
+    const execute = flags.execute === true;
+    const testCode = typeof flags.test === 'string' ? readInput(flags.test) : undefined;
+    const field = new Field({
+      url: typeof flags.url === 'string' ? flags.url : undefined,
+      token: typeof flags.token === 'string' ? flags.token : undefined,
+    });
+    const r = await field.evaluate(input, {
+      language, execute, testCode,
+      timeoutMs: flags.timeout != null ? Number(flags.timeout) : undefined,
+      description: typeof flags.description === 'string' ? flags.description : undefined,
+    });
+    if (flags.json) { process.stdout.write(JSON.stringify(r, null, 2) + '\n'); return; }
+    if (!r || r.ok === false) { process.stderr.write('evaluate unavailable: ' + (r && r.error || 'no result') + '\n'); process.exit(1); }
+    const o = r.observation || {};
+    const v = r.verdict || {};
+    process.stdout.write(`observed: structurality=${(o.structurality||0).toFixed(3)}  ${o.looksLikeCode?'code':o.looksLikeProse?'prose':'mixed'}\n`);
+    process.stdout.write(`tools run: ${(r.toolsRun||[]).join(', ') || '(none)'}\n`);
+    process.stdout.write(`verdict: ${v.trust}  score=${v.score}  ${v.reason||''}\n`);
+    if (v.breakdown) {
+      const parts = Object.entries(v.breakdown).map(([k,vv]) => `${k}=${typeof vv==='number'?vv.toFixed(3):vv}`);
+      if (parts.length) process.stdout.write(`  breakdown: ${parts.join(', ')}\n`);
+    }
+    process.exit(v.trust === 'low' ? 1 : 0);
   }
 
   if (cmd === 'verify') {

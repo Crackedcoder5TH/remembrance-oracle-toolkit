@@ -188,11 +188,20 @@ function _structuralDims(code) {
   ];
 }
 
+// Density-based, with brace/semi tokens weighted heavily and keyword
+// loanwords weighted lightly. Technical prose CAN say "function" or "for"
+// without being code; it CANNOT contain `{`, `}`, or `;` outside quoted
+// samples. Brace/semi density alone separates code from prose; keyword
+// density acts as a secondary signal for brace-light languages.
+//   structurality = clamp(braceDensity * 1.0 + keywordDensity * 0.25, 0, 1)
 function _structurality(code) {
   if (!code || code.length < 4) return 0;
-  const STRUCT = /[{};]|\b(?:function|const|let|var|class|if|else|for|while|return|throw|try|catch|async|await|def|fn|impl|pub|struct|enum|match|use|func|package|interface|import|require)\b/g;
-  const matches = code.match(STRUCT) || [];
-  return Math.min(1, matches.length / Math.max(1, code.length / 50));
+  const BRACES = /[{};]/g;
+  const KEYWORDS = /\b(?:function|const|let|var|class|if|else|for|while|return|throw|try|catch|async|await|def|fn|impl|pub|struct|enum|match|use|func|package|interface|import|require)\b/g;
+  const braceCount = (code.match(BRACES) || []).length;
+  const kwCount = (code.match(KEYWORDS) || []).length;
+  const windows = Math.max(1, code.length / 50);
+  return Math.min(1, (braceCount / windows) + (kwCount / windows) * 0.25);
 }
 
 function toFractalWaveform(text, _opts = {}) {

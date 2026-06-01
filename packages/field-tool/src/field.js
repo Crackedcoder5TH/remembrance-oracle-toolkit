@@ -156,6 +156,34 @@ class Field {
     return r.ok ? r.result : r;
   }
 
+  /** Observation-driven evaluation. Picks the right tools for the input
+   * (safety always; resonance only for code-shaped input; exec_verify only
+   * if requested AND supported AND safety sealed). Returns the composed
+   * verdict plus per-signal results. The server contributes the verdict
+   * back to the field — the "vice versa" loop. Best-effort; never throws.
+   *
+   * @param {string} input - text or code to evaluate
+   * @param {object} [opts]
+   * @param {string} [opts.language]
+   * @param {boolean} [opts.execute] - if true AND code-shaped AND lang OK AND safety sealed, run exec_verify (server requires bearer token)
+   * @param {string} [opts.testCode]
+   * @param {number} [opts.timeoutMs]
+   * @param {string} [opts.description]
+   * @param {string[]} [opts.tags]
+   */
+  async evaluate(input, opts = {}) {
+    const r = await this.callTool('evaluate', {
+      input: String(input || ''),
+      language: opts.language,
+      execute: opts.execute === true ? true : undefined,
+      testCode: opts.testCode,
+      timeoutMs: opts.timeoutMs,
+      description: opts.description,
+      tags: opts.tags,
+    });
+    return r.ok ? r.result : r;
+  }
+
   /** Normalize an observation to {coherence, source, cost} or return an error. */
   _normObs({ coherence, source, cost = 1.0 } = {}) {
     if (typeof source !== 'string' || !source) return { error: 'source (non-empty string) is required' };

@@ -33,6 +33,7 @@ const { scoreResonance, libraryStatus } = require('../src/scoring/pattern-resona
 const { covenantCheck } = require('../src/core/covenant');
 const { securityScan } = require('../src/reflector/scoring-analysis-security');
 const { verifyExecution } = require('../src/scoring/exec-verify');
+const { evaluate: evaluateInput } = require('../src/scoring/evaluate');
 
 const PORT = parseInt(process.env.PORT, 10) || 7787;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -79,6 +80,23 @@ const TOOLS = [
         k: { type: 'number', description: 'top-K patterns to average (default 5, max 20)' },
       },
       required: ['code'],
+    },
+  },
+  {
+    name: 'evaluate',
+    description: 'Observation-driven anti-hallucination dispatcher. Looks at the input first (structurality, atomic signature, language hint), looks at the current field state, then decides which signals to run: safety_check always on non-trivial input, pattern_resonance only on code-shaped input, exec_verify only if requested AND code-shaped AND a supported language AND safety sealed. Returns observation, tools run, results, and a composed verdict. Contributes the verdict back to the field (the "vice versa" loop). exec_verify execution requires the bearer token; everything else is open.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        input: { type: 'string', description: 'the text or code to evaluate' },
+        language: { type: 'string', description: 'optional language hint (improves resonance + enables exec_verify routing)' },
+        execute: { type: 'boolean', description: 'if true AND code-shaped AND supported language AND safety sealed, run exec_verify' },
+        testCode: { type: 'string', description: 'optional test code when execute=true' },
+        timeoutMs: { type: 'number', description: 'exec_verify timeout, clamped 500..30000' },
+        description: { type: 'string', description: 'optional description, improves safety scoring' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['input'],
     },
   },
   {
@@ -131,7 +149,16 @@ function isContributeTool(name, action) {
   return false;
 }
 function isPrivilegedTool(name, action) {
-  return isContributeTool(name, action) || name === 'exec_verify';
+  // evaluate is open at the tool level — it gates exec_verify internally
+  // based on opts.execute and only the execution path requires privilege.
+  // For the HTTP boundary we check that here too: if evaluate carries
+  // execute:true, treat it as privileged.
+  if (isContributeTool(name, action)) return true;
+  if (name === 'exec_verify') return true;
+  return false;
+}
+function isPrivilegedEvaluate(args) {
+  return args && args.execute === true;
 }
 
 // Dispatch a tool call. Accepts the new tool names AND the legacy "field"
@@ -161,6 +188,17 @@ function callTool(name, args = {}) {
     });
     if (result == null) return { score: null, library: libraryStatus() };
     return { ...result, library: libraryStatus() };
+  }
+  if (name === 'evaluate') {
+    const input = args.input == null ? '' : String(args.input);
+    return evaluateInput(input, {
+      language: typeof args.language === 'string' ? args.language : undefined,
+      execute: args.execute === true,
+      testCode: typeof args.testCode === 'string' ? args.testCode : undefined,
+      timeoutMs: Number(args.timeoutMs) || undefined,
+      description: typeof args.description === 'string' ? args.description : undefined,
+      tags: Array.isArray(args.tags) ? args.tags : undefined,
+    });
   }
   if (name === 'exec_verify') {
     const code = args.code == null ? '' : String(args.code);
@@ -251,6 +289,7 @@ function manifest() {
       'POST /resonance': '{ code, language?, k? } -> { score, bestMatch, topMatches, library }  (open — anti-hallucination signal)',
       'POST /safety': '{ code, language?, description?, tags? } -> { sealed, covenant:{...}, security:{...} }  (open — covenant principles + pattern scanner combined)',
       'POST /verify': '{ code, language, testCode?, timeoutMs? } -> { status, signal, detail }  (write — bearer token required: runs code in a sandbox)',
+      'POST /evaluate': '{ input, language?, execute?, testCode?, ... } -> { observation, toolsRun, results, verdict }  (open by default, bearer token required when execute:true — observation-driven dispatcher; runs only the signals that make sense for the input)',
       'POST /contribute': '{ coherence, source, cost? } -> field state  (write — bearer token if configured)',
     },
     auth: TOKEN
@@ -273,7 +312,8 @@ function handleRpc(msg, res, authed) {
     if (method === 'tools/call') {
       const name = params && params.name;
       const args = (params && params.arguments) || {};
-      if (isPrivilegedTool(name, args.action) && !authed) {
+      const evalNeedsAuth = name === 'evaluate' && isPrivilegedEvaluate(args);
+      if ((isPrivilegedTool(name, args.action) || evalNeedsAuth) && !authed) {
         return send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: unauthorized — a bearer token is required to write to the field' }], isError: true }));
       }
       // callTool may return a value OR a Promise (exec_verify is async).
@@ -333,6 +373,22 @@ const server = http.createServer((req, res) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
       try { return send(res, 200, callTool('safety_check', { code: p.code, language: p.language, description: p.description, tags: p.tags })); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/evaluate') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      if (p.execute === true && !authed) {
+        return send(res, 401, { error: 'unauthorized — bearer token required for execute:true' });
+      }
+      Promise.resolve()
+        .then(() => callTool('evaluate', {
+          input: p.input, language: p.language, execute: p.execute,
+          testCode: p.testCode, timeoutMs: p.timeoutMs,
+          description: p.description, tags: p.tags,
+        }))
+        .then((out) => send(res, 200, out))
+        .catch((e) => send(res, 400, { error: String((e && e.message) || e) }));
     });
   }
   if (path === '/verify') {

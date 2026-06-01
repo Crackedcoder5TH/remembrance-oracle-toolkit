@@ -220,20 +220,29 @@ function _structuralDims(code) {
 
 // ─── Structurality score (1 dim) ─────────────────────────────────────────
 
-/** Fraction of input that is real code (vs prose/noise). Density-based — counts
- * occurrences of structural tokens per ~50 characters of input, capped at 1.0.
+/** Fraction of input that is real code (vs prose/noise). Density-based, but
+ * with brace/semi tokens weighted heavily and keyword loanwords weighted
+ * lightly. Technical prose CAN say "function" or "for" without being code;
+ * it CANNOT contain `{`, `}`, or `;` outside of quoted code samples. So the
+ * brace/semi density alone reliably separates code from prose, with the
+ * keyword density acting as a secondary signal for brace-light languages.
  *
- * Density beats per-line counting because (a) one-line prose containing one
- * stray keyword shouldn't claim 100% structurality, and (b) code minified
- * onto fewer lines shouldn't claim less. We restrict the token set to braces,
- * semicolons, and language keywords — `(`, `)`, `=` are dropped because they
- * appear in prose (`[link](url)`, `x = y`), creating false positives. The
- * brace/semicolon/keyword set is robustly code-specific. */
+ *   structurality = clamp(braceDensity * 1.0 + keywordDensity * 0.25, 0, 1)
+ *
+ * Where each density is `matches / (chars / 50)`. A code file lights up
+ * via braces (densities easily ≥1.0); prose with keyword loanwords gets a
+ * small contribution capped well below the threshold the dispatcher uses
+ * for "code-shaped" routing (0.6). */
 function _structurality(code) {
   if (!code || code.length < 4) return 0;
-  const STRUCT = /[{};]|\b(?:function|const|let|var|class|if|else|for|while|return|throw|try|catch|async|await|def|fn|impl|pub|struct|enum|match|use|func|package|interface|import|require)\b/g;
-  const matches = code.match(STRUCT) || [];
-  return Math.min(1, matches.length / Math.max(1, code.length / 50));
+  const BRACES = /[{};]/g;
+  const KEYWORDS = /\b(?:function|const|let|var|class|if|else|for|while|return|throw|try|catch|async|await|def|fn|impl|pub|struct|enum|match|use|func|package|interface|import|require)\b/g;
+  const braceCount = (code.match(BRACES) || []).length;
+  const kwCount = (code.match(KEYWORDS) || []).length;
+  const windows = Math.max(1, code.length / 50);
+  const braceDensity = braceCount / windows;
+  const kwDensity = kwCount / windows;
+  return Math.min(1, braceDensity * 1.0 + kwDensity * 0.25);
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────

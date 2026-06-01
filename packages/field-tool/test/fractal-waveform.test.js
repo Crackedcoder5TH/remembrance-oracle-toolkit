@@ -73,9 +73,10 @@ test('empty input → all zeros', () => {
   assert.ok(wf.every((v) => v === 0));
 });
 
-test('self-coherency is exactly 1.0 for any non-empty input', () => {
+test('self-coherency is 1.0 (within fp precision) for any non-empty input', () => {
   for (const text of [richCode, otherRichCode, prose, 'short snippet']) {
-    assert.strictEqual(fractalCoherencyOf(text, text), 1);
+    assert.ok(Math.abs(fractalCoherencyOf(text, text) - 1) < 1e-12,
+      `self-coherency should be 1.0 for ${JSON.stringify(text.slice(0, 30))}`);
   }
 });
 
@@ -108,6 +109,7 @@ test('encoder is deterministic — same input, same vector', () => {
 });
 
 test('fractalCoherency gate preserves identity even for low-structurality input', () => {
-  // Identity must always be 1.0 — the structurality-agreement gate is 1 when Δ=0.
-  assert.strictEqual(fractalCoherencyOf(prose, prose), 1);
+  // Identity must be 1.0 — the structurality-agreement gate is 1 when Δ=0.
+  // Tolerance handles fp rounding in the cosine numerator/denominator.
+  assert.ok(Math.abs(fractalCoherencyOf(prose, prose) - 1) < 1e-12);
 });

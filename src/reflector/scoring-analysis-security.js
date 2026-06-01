@@ -156,22 +156,37 @@ function securityScan(code, language) {
   // is present anywhere in the file, a bare non-literal arg to exec/spawn is
   // the canonical command-injection shape and worth flagging.
   const _cpContext = /\bchild_process\b|\bnode:child_process\b|\bsubprocess\b/;
-  // Exemption — process.execPath and process.argv0 are Node's hardcoded
-  // references to its own binary; they cannot be user-controlled, and the
-  // common shape `spawnSync(process.execPath, scriptArgs, ...)` is the
-  // canonical safe way to fork a sibling Node script. Negative lookahead
-  // excludes both from the bare-arg flag.
+  // No regex-level exemptions here. The covenant decides what is trusted.
+  // After this regex matches, we extract the first-arg expression and
+  // ask src/core/covenant-trust.isTrustedSource() — the covenant is the
+  // single source of trust classification. To exempt a new safe pattern,
+  // extend the covenant's trust registry, not this regex.
   const _cmdInjectionBareArg = new RegExp(
-    _sink + '\\s*\\(\\s*(?!process\\.(?:execPath|argv0)\\b)[A-Za-z_$][\\w$.]*\\s*[\\(,\\)]', 'i');
+    _sink + '\\s*\\(\\s*([A-Za-z_$][\\w$.]*)\\s*[\\(,\\)]', 'i');
   const _flagged = (kw) => findings.some(f => f.message && f.message.toLowerCase().includes(kw));
   if (_sqlInjection.test(code) && !_flagged(_k('sql inj', 'ection'))) {
     findings.push({ severity: 'high', message: _k('Possible SQL inj', 'ection — untrusted value concatenated or interpolated into a query'), count: 1 });
   }
   if (_cmdInjection.test(code) && !_flagged(_k('command inj', 'ection')) && !_flagged('shell command')) {
     findings.push({ severity: 'high', message: _k('Possible command inj', 'ection — untrusted value in a shell command'), count: 1 });
-  } else if (_cpContext.test(code) && _cmdInjectionBareArg.test(code)
+  } else if (_cpContext.test(code)
              && !_flagged(_k('command inj', 'ection')) && !_flagged('shell command')) {
-    findings.push({ severity: 'high', message: _k('Possible command inj', 'ection — non-literal argument passed to a shell sink in a child_process context'), count: 1 });
+    // Bare-arg case: extract the first-arg expression and ask the covenant
+    // whether it's a trusted source. Trusted → no flag. The covenant is
+    // the only place that knows what's trusted; this file knows nothing.
+    let trusted = false;
+    let firstArg = null;
+    const m = _cmdInjectionBareArg.exec(code);
+    if (m && m[1]) {
+      firstArg = m[1];
+      try {
+        const { isTrustedSource } = require('../core/covenant-trust');
+        trusted = isTrustedSource(firstArg);
+      } catch (_) { trusted = false; }
+    }
+    if (m && !trusted) {
+      findings.push({ severity: 'high', message: _k('Possible command inj', 'ection — non-literal argument passed to a shell sink in a child_process context'), count: 1 });
+    }
   }
 
   // ── Ecosystem deep-security patterns (covenant-deep-security) ──

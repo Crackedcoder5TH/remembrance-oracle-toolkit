@@ -23,3 +23,6 @@ sync-queue.json.tmp
 .cathedral/
 __pycache__/
 patterns.json
+
+# regenerated CI artifact (codex-ingest.yml)
+ingest-result.json

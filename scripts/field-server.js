@@ -2,30 +2,44 @@
 'use strict';
 
 /**
- * Remembrance Field — hostable MCP server (+ webhook + health).
+ * Remembrance Field — hostable server for any caller (MCP, REST, browser, human).
  *
  * Starts ONLY the Living Remembrance Engine field surface — no full-oracle
  * bootstrap, no autoSync — so it's reliable to host (Railway / Fly / a VPS).
  * Binds 0.0.0.0:$PORT, persists to $ENTROPY_PATH (point at a volume), optional
  * bearer auth via $FIELD_TOKEN.
  *
- * Three faces on one endpoint (POST /mcp):
- *   1. MCP (Streamable HTTP, JSON-RPC 2.0): `initialize`, `tools/list`,
- *      `tools/call` for tools  field_contribute · field_read · coherency.
+ * Faces:
+ *   1. MCP (Streamable HTTP, JSON-RPC 2.0) at POST /mcp: `initialize`,
+ *      `tools/list`, `tools/call` for field_contribute · field_read · coherency.
  *      Register the URL in Claude Desktop / Cursor / the API MCP connector.
- *   2. Legacy webhook: `tools/call` with name "field" + {action:"contribute"}
- *      — what Void's field_contribute.py and the swarm field bridge already post.
- *   3. GET /  — health/peek JSON (open in a browser to confirm it's live).
+ *   2. Plain REST (for agents/humans that don't speak MCP):
+ *        GET  /field           -> field state
+ *        POST /coherency       {a,b} -> {coherency}
+ *        POST /contribute      {coherence,source,cost} -> field state  (write)
+ *   3. GET /  — health/peek JSON.  GET /.well-known/mcp — discovery manifest.
+ *   4. Legacy webhook: tools/call name "field" + {action:"contribute"}.
+ *
+ * Auth model: reads (field_read/coherency/GET) are OPEN; writes
+ * (field_contribute / POST /contribute) require Bearer $FIELD_TOKEN when one is
+ * set. CORS is enabled so browsers and web agents can call it directly.
+ * Per-IP rate limit via $RATE_LIMIT_PER_MIN (default 120; 0 disables).
  */
 
 const http = require('node:http');
 const { contribute, peekField } = require('../src/core/field-coupling');
-const { codeToWaveform } = require('../src/core/code-to-waveform');
+const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
+const { scoreResonance, libraryStatus } = require('../src/scoring/pattern-resonance');
+const { covenantCheck } = require('../src/core/covenant');
+const { securityScan } = require('../src/reflector/scoring-analysis-security');
+const { verifyExecution } = require('../src/scoring/exec-verify');
+const { evaluate: evaluateInput } = require('../src/scoring/evaluate');
 
 const PORT = parseInt(process.env.PORT, 10) || 7787;
 const HOST = process.env.HOST || '0.0.0.0';
 const TOKEN = (process.env.FIELD_TOKEN || process.env.REMEMBRANCE_FIELD_TOKEN || '').trim();
 const DEFAULT_PROTOCOL = '2025-06-18';
+const RATE_LIMIT_PER_MIN = (() => { const n = parseInt(process.env.RATE_LIMIT_PER_MIN, 10); return Number.isFinite(n) ? n : 120; })();
 
 const TOOLS = [
   {
@@ -55,21 +69,103 @@ const TOOLS = [
       required: ['a', 'b'],
     },
   },
+  {
+    name: 'pattern_resonance',
+    description: 'Lexical TF-IDF resonance of code against the proven pattern library. High = code reuses real proven vocabulary; low = code reaches for invented identifiers (a hallucination tell). Offline, no field write.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to score' },
+        language: { type: 'string', description: 'optional language filter' },
+        k: { type: 'number', description: 'top-K patterns to average (default 5, max 20)' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'evaluate',
+    description: 'Observation-driven anti-hallucination dispatcher. Looks at the input first (structurality, atomic signature, language hint), looks at the current field state, then decides which signals to run: safety_check always on non-trivial input, pattern_resonance only on code-shaped input, exec_verify only if requested AND code-shaped AND a supported language AND safety sealed. Returns observation, tools run, results, and a composed verdict. Contributes the verdict back to the field (the "vice versa" loop). exec_verify execution requires the bearer token; everything else is open.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        input: { type: 'string', description: 'the text or code to evaluate' },
+        language: { type: 'string', description: 'optional language hint (improves resonance + enables exec_verify routing)' },
+        execute: { type: 'boolean', description: 'if true AND code-shaped AND supported language AND safety sealed, run exec_verify' },
+        testCode: { type: 'string', description: 'optional test code when execute=true' },
+        timeoutMs: { type: 'number', description: 'exec_verify timeout, clamped 500..30000' },
+        description: { type: 'string', description: 'optional description, improves safety scoring' },
+        tags: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['input'],
+    },
+  },
+  {
+    name: 'exec_verify',
+    description: 'Run code in a sandboxed temp dir with a hard timeout and report whether it executes correctly. Harm-screened first via covenant-harm patterns (never runs anything that trips it). Status: pass (test ran, exit 0), smoke-pass (no test, ran clean), fail, timeout, blocked, skipped. JS and Python supported. Compose safety_check BEFORE this for full anti-hallucination coverage. Token-gated (writes nothing, but executes untrusted code).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to execute' },
+        language: { type: 'string', description: 'javascript|js|python|py (others abstain)' },
+        testCode: { type: 'string', description: 'optional test that references the code\'s symbols' },
+        timeoutMs: { type: 'number', description: 'hard timeout, clamped 500..30000 (default 5000)' },
+      },
+      required: ['code', 'language'],
+    },
+  },
+  {
+    name: 'safety_check',
+    description: 'Combined safety scan: covenant principles (15 ethical/integrity rules) + security pattern scanner (eval, shell injection, hardcoded secrets, SQL injection, prototype pollution, etc.). Returns sealed:true only if BOTH layers pass. Offline, no field write.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to check' },
+        language: { type: 'string', description: 'optional language hint (improves security pattern matching)' },
+        description: { type: 'string', description: 'optional pattern description (improves accuracy)' },
+        tags: { type: 'array', items: { type: 'string' }, description: 'optional tags' },
+      },
+      required: ['code'],
+    },
+  },
 ];
 
-function cosine(x, y) {
-  let dot = 0, na = 0, nb = 0;
-  const n = Math.min(x.length, y.length);
-  for (let i = 0; i < n; i++) { const u = x[i] || 0, v = y[i] || 0; dot += u * v; na += u * u; nb += v * v; }
-  const da = Math.sqrt(na), db = Math.sqrt(nb);
-  return (da < 1e-12 || db < 1e-12) ? 0 : dot / (da * db);
+// Delegates to the canonical waveformCosine (gated fractal coherency).
+// Direct plain-cosine over the fractal vector would bypass the
+// structurality gate that is the whole point of the new encoder.
+const cosine = waveformCosine;
+
+// Is this tool call a WRITE (mutates the field)? Writes are token-gated.
+// Two distinct checks:
+//   isContributeTool — dispatch within callTool to the contribute action
+//   isPrivilegedTool — gate access at the HTTP boundary (token required)
+//
+// Privileged is the broader set: contribute (mutates the field) PLUS
+// exec_verify (doesn't mutate field but DOES run untrusted code with real
+// resource cost and harm-screen-escape risk). Same threat surface, same
+// gating.
+function isContributeTool(name, action) {
+  if (name === 'field_contribute') return true;
+  if (name === 'field' && (action || 'contribute') === 'contribute') return true;
+  return false;
+}
+function isPrivilegedTool(name, action) {
+  // evaluate is open at the tool level — it gates exec_verify internally
+  // based on opts.execute and only the execution path requires privilege.
+  // For the HTTP boundary we check that here too: if evaluate carries
+  // execute:true, treat it as privileged.
+  if (isContributeTool(name, action)) return true;
+  if (name === 'exec_verify') return true;
+  return false;
+}
+function isPrivilegedEvaluate(args) {
+  return args && args.execute === true;
 }
 
 // Dispatch a tool call. Accepts the new tool names AND the legacy "field"
 // tool (with an `action` argument) so existing webhook producers keep working.
 function callTool(name, args = {}) {
   const action = args.action;
-  if (name === 'field_contribute' || (name === 'field' && (action || 'contribute') === 'contribute')) {
+  if (isContributeTool(name, action)) {
     const coherence = Number(args.coherence);
     const source = typeof args.source === 'string' ? args.source.trim() : '';
     if (!Number.isFinite(coherence) || !source) throw new Error('coherence (number) and source (non-empty string) are required');
@@ -84,41 +180,149 @@ function callTool(name, args = {}) {
     const b = args.b == null ? '' : String(args.b);
     return { coherency: cosine(codeToWaveform(a), codeToWaveform(b)) };
   }
+  if (name === 'pattern_resonance') {
+    const code = args.code == null ? '' : String(args.code);
+    const result = scoreResonance(code, {
+      language: typeof args.language === 'string' ? args.language : undefined,
+      k: Number(args.k) || undefined,
+    });
+    if (result == null) return { score: null, library: libraryStatus() };
+    return { ...result, library: libraryStatus() };
+  }
+  if (name === 'evaluate') {
+    const input = args.input == null ? '' : String(args.input);
+    return evaluateInput(input, {
+      language: typeof args.language === 'string' ? args.language : undefined,
+      execute: args.execute === true,
+      testCode: typeof args.testCode === 'string' ? args.testCode : undefined,
+      timeoutMs: Number(args.timeoutMs) || undefined,
+      description: typeof args.description === 'string' ? args.description : undefined,
+      tags: Array.isArray(args.tags) ? args.tags : undefined,
+    });
+  }
+  if (name === 'exec_verify') {
+    const code = args.code == null ? '' : String(args.code);
+    const language = typeof args.language === 'string' ? args.language : undefined;
+    const testCode = typeof args.testCode === 'string' ? args.testCode : undefined;
+    const timeoutMs = Number(args.timeoutMs) || undefined;
+    // Async: we return the promise; the JSON-RPC handler awaits it via the
+    // dispatcher path which already supports async tool results.
+    return verifyExecution(code, { language, testCode, timeoutMs });
+  }
+  if (name === 'safety_check' || name === 'covenant_check' /* legacy alias */) {
+    const code = args.code == null ? '' : String(args.code);
+    const meta = {
+      language: args.language,
+      description: args.description,
+      tags: Array.isArray(args.tags) ? args.tags : undefined,
+    };
+    const cov = covenantCheck(code, meta);
+    const sec = securityScan(code, args.language);
+    // The security findings are heterogeneous {severity, message, count}; the
+    // covenant violations are {principle, reason}. Carry both layers so the
+    // caller sees which layer flagged what; aggregate to one `sealed` verdict.
+    const securityHasHighOrCrit = (sec.findings || []).some(
+      (f) => f.severity === 'high' || f.severity === 'critical');
+    return {
+      sealed: cov.sealed && !securityHasHighOrCrit,
+      covenant: {
+        sealed: cov.sealed,
+        violations: cov.violations,
+        principlesPassed: cov.principlesPassed,
+        totalPrinciples: cov.totalPrinciples,
+      },
+      security: {
+        score: sec.score,
+        riskLevel: sec.riskLevel,
+        findings: sec.findings,
+        totalFindings: sec.totalFindings,
+      },
+    };
+  }
   throw new Error('unknown tool: ' + name);
 }
 
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, OPTIONS',
+  'access-control-allow-headers': 'content-type, authorization',
+  'access-control-max-age': '86400',
+};
+
 function send(res, code, obj) {
   const body = obj === null ? '' : JSON.stringify(obj);
-  res.writeHead(code, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body) });
+  res.writeHead(code, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(body), ...CORS });
   res.end(body);
 }
 const ok = (id, result) => ({ jsonrpc: '2.0', id, result });
 const err = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
 
-function handleRpc(msg, res) {
+// Reads are open; writes require the bearer token when one is configured.
+function isAuthed(req) {
+  if (!TOKEN) return true;
+  return (req.headers['authorization'] || '') === 'Bearer ' + TOKEN;
+}
+
+// ── Per-IP fixed-window rate limit (in-memory, best-effort). ──
+const _hits = new Map();
+function rateLimited(req) {
+  if (RATE_LIMIT_PER_MIN <= 0) return false;
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || (req.socket && req.socket.remoteAddress) || 'unknown';
+  const win = Math.floor(Date.now() / 60000);
+  let e = _hits.get(ip);
+  if (!e || e.win !== win) { e = { win, n: 0 }; _hits.set(ip, e); }
+  e.n++;
+  if (_hits.size > 5000) { for (const [k, v] of _hits) if (v.win !== win) _hits.delete(k); } // prune stale windows
+  return e.n > RATE_LIMIT_PER_MIN;
+}
+
+function manifest() {
+  return {
+    service: 'remembrance-field',
+    version: '0.2.0',
+    description: 'Shared conserved-scalar Remembrance field + offline coherency. Callable via MCP or plain REST.',
+    mcp: { endpoint: '/mcp', transport: 'streamable-http (JSON-RPC 2.0)', protocolVersion: DEFAULT_PROTOCOL, tools: TOOLS },
+    rest: {
+      'GET /': 'health + field peek',
+      'GET /field': 'read current field state',
+      'POST /coherency': '{ a, b } -> { coherency }  (open)',
+      'POST /resonance': '{ code, language?, k? } -> { score, bestMatch, topMatches, library }  (open — anti-hallucination signal)',
+      'POST /safety': '{ code, language?, description?, tags? } -> { sealed, covenant:{...}, security:{...} }  (open — covenant principles + pattern scanner combined)',
+      'POST /verify': '{ code, language, testCode?, timeoutMs? } -> { status, signal, detail }  (write — bearer token required: runs code in a sandbox)',
+      'POST /evaluate': '{ input, language?, execute?, testCode?, ... } -> { observation, toolsRun, results, verdict }  (open by default, bearer token required when execute:true — observation-driven dispatcher; runs only the signals that make sense for the input)',
+      'POST /contribute': '{ coherence, source, cost? } -> field state  (write — bearer token if configured)',
+    },
+    auth: TOKEN
+      ? 'public reads; writes (field_contribute / POST /contribute) require Authorization: Bearer <FIELD_TOKEN>'
+      : 'open (no FIELD_TOKEN set — anyone can read and write)',
+    cors: 'enabled (*)',
+  };
+}
+
+function handleRpc(msg, res, authed) {
   const { id, method, params } = msg || {};
-  // JSON-RPC notifications (no id) get no response body.
-  if (id === undefined || id === null) return send(res, 202, null);
+  if (id === undefined || id === null) return send(res, 202, null); // notification
   try {
     if (method === 'initialize') {
       const pv = (params && params.protocolVersion) || DEFAULT_PROTOCOL;
-      return send(res, 200, ok(id, {
-        protocolVersion: pv,
-        capabilities: { tools: {} },
-        serverInfo: { name: 'remembrance-field', version: '0.2.0' },
-      }));
+      return send(res, 200, ok(id, { protocolVersion: pv, capabilities: { tools: {} }, serverInfo: { name: 'remembrance-field', version: '0.2.0' } }));
     }
     if (method === 'ping') return send(res, 200, ok(id, {}));
     if (method === 'tools/list') return send(res, 200, ok(id, { tools: TOOLS }));
     if (method === 'tools/call') {
       const name = params && params.name;
       const args = (params && params.arguments) || {};
-      try {
-        const out = callTool(name, args);
-        return send(res, 200, ok(id, { content: [{ type: 'text', text: JSON.stringify(out) }] }));
-      } catch (e) {
-        return send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: ' + ((e && e.message) || e) }], isError: true }));
+      const evalNeedsAuth = name === 'evaluate' && isPrivilegedEvaluate(args);
+      if ((isPrivilegedTool(name, args.action) || evalNeedsAuth) && !authed) {
+        return send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: unauthorized — a bearer token is required to write to the field' }], isError: true }));
       }
+      // callTool may return a value OR a Promise (exec_verify is async).
+      // Promise.resolve handles both uniformly without changing existing
+      // sync tool semantics.
+      return Promise.resolve()
+        .then(() => callTool(name, args))
+        .then((out) => send(res, 200, ok(id, { content: [{ type: 'text', text: JSON.stringify(out) }] })))
+        .catch((e) => send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: ' + ((e && e.message) || e) }], isError: true })));
     }
     return send(res, 200, err(id, -32601, 'method not found: ' + method));
   } catch (e) {
@@ -126,36 +330,102 @@ function handleRpc(msg, res) {
   }
 }
 
+function readBody(req, cb) {
+  let raw = '';
+  req.on('data', (c) => { raw += c; if (raw.length > 2e6) req.destroy(); });
+  req.on('end', () => cb(raw));
+}
+
 const server = http.createServer((req, res) => {
   const path = (req.url || '/').split('?')[0];
 
+  if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
+  if (rateLimited(req)) return send(res, 429, { error: 'rate limit exceeded — try again shortly' });
+
   if (req.method === 'GET') {
     if (path === '/mcp') return send(res, 405, { error: 'MCP endpoint — POST JSON-RPC here' });
+    if (path === '/.well-known/mcp' || path === '/manifest') return send(res, 200, manifest());
     let field = null; try { field = peekField(); } catch (_e) { /* best-effort */ }
-    return send(res, 200, { ok: true, service: 'remembrance-field', mcp: '/mcp', tools: TOOLS.map((t) => t.name), field });
+    if (path === '/field') return send(res, 200, { ok: true, field });
+    return send(res, 200, { ok: true, service: 'remembrance-field', mcp: '/mcp', manifest: '/.well-known/mcp', tools: TOOLS.map((t) => t.name), field });
   }
-  if (req.method !== 'POST') return send(res, 405, { error: 'use POST (MCP/JSON-RPC) or GET (health)' });
+  if (req.method !== 'POST') return send(res, 405, { error: 'use POST (MCP/REST) or GET (health)' });
 
-  if (TOKEN && (req.headers['authorization'] || '') !== 'Bearer ' + TOKEN) {
-    return send(res, 401, { error: 'unauthorized' });
+  const authed = isAuthed(req);
+
+  // ── Plain-REST shim (no JSON-RPC envelope) ──
+  if (path === '/coherency') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('coherency', { a: p.a, b: p.b })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/resonance') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('pattern_resonance', { code: p.code, language: p.language, k: p.k })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/safety' || path === '/covenant' /* legacy alias */) {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('safety_check', { code: p.code, language: p.language, description: p.description, tags: p.tags })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/evaluate') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      if (p.execute === true && !authed) {
+        return send(res, 401, { error: 'unauthorized — bearer token required for execute:true' });
+      }
+      Promise.resolve()
+        .then(() => callTool('evaluate', {
+          input: p.input, language: p.language, execute: p.execute,
+          testCode: p.testCode, timeoutMs: p.timeoutMs,
+          description: p.description, tags: p.tags,
+        }))
+        .then((out) => send(res, 200, out))
+        .catch((e) => send(res, 400, { error: String((e && e.message) || e) }));
+    });
+  }
+  if (path === '/verify') {
+    if (!authed) return send(res, 401, { error: 'unauthorized — bearer token required to execute code' });
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      Promise.resolve()
+        .then(() => callTool('exec_verify', { code: p.code, language: p.language, testCode: p.testCode, timeoutMs: p.timeoutMs }))
+        .then((out) => send(res, 200, out))
+        .catch((e) => send(res, 400, { error: String((e && e.message) || e) }));
+    });
+  }
+  if (path === '/contribute') {
+    if (!authed) return send(res, 401, { error: 'unauthorized — bearer token required to write' });
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('field_contribute', { coherence: p.coherence, source: p.source, cost: p.cost })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
   }
 
-  let raw = '';
-  req.on('data', (c) => { raw += c; if (raw.length > 2e6) req.destroy(); });
-  req.on('end', () => {
+  // ── MCP / JSON-RPC (POST /mcp or root) ──
+  readBody(req, (raw) => {
     let msg;
     try { msg = JSON.parse(raw || '{}'); } catch { return send(res, 400, err(null, -32700, 'parse error')); }
-    if (Array.isArray(msg)) { // JSON-RPC batch
-      const out = msg.filter((m) => m && m.id != null).map((m) => new Promise((r) => handleRpc(m, { writeHead() {}, end(b) { r(b ? JSON.parse(b) : null); } })));
+    if (Array.isArray(msg)) {
+      const out = msg.filter((m) => m && m.id != null).map((m) => new Promise((r) => handleRpc(m, { writeHead() {}, end(b) { r(b ? JSON.parse(b) : null); } }, authed)));
       return Promise.all(out).then((arr) => send(res, 200, arr.filter(Boolean)));
     }
-    return handleRpc(msg, res);
+    return handleRpc(msg, res, authed);
   });
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[field-server] Remembrance Field MCP server on ${HOST}:${PORT}` +
-    (TOKEN ? ' (bearer auth on)' : ' (no auth — set FIELD_TOKEN)') +
-    ` | tools: ${TOOLS.map((t) => t.name).join(', ')}` +
+  console.log(`[field-server] Remembrance Field on ${HOST}:${PORT}` +
+    (TOKEN ? ' (public read; bearer write)' : ' (open — set FIELD_TOKEN to gate writes)') +
+    ` | MCP: /mcp · REST: /coherency,/contribute,/field · manifest: /.well-known/mcp` +
+    ` | rate: ${RATE_LIMIT_PER_MIN > 0 ? RATE_LIMIT_PER_MIN + '/min/ip' : 'off'}` +
     ` | persist: ${process.env.ENTROPY_PATH || '.remembrance/entropy.json (ephemeral without a volume)'}`);
 });

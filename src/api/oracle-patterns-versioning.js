@@ -130,7 +130,7 @@ module.exports = {
         for (const __p of [__lre_p1, __lre_p2]) {
           try {
             const { contribute: __contribute } = require(__p);
-            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.rate || 0)), source: 'oracle:oracle-patterns-versioning:healingStats' });
+            __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.overallRate || 0)), source: 'oracle:oracle-patterns-versioning:healingStats' });
             break;
           } catch (_) { /* try next */ }
         }

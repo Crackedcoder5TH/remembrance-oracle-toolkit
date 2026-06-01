@@ -18,13 +18,26 @@
  *   await new Field().contribute({ coherence: score, source: 'my-app' });
  */
 
-const { DIM, toWaveform, coherency, coherencyOf } = require('./waveform');
+const { DIM, toWaveform, coherency, coherencyOf,
+        BYTE_DIM, byteToWaveform, byteCoherency, byteCoherencyOf } = require('./waveform');
+const {
+  FRACTAL_DIM, toFractalWaveform, inspectFractalWaveform,
+  fractalCoherency, fractalCoherencyOf,
+} = require('./fractal-waveform');
 const { Field, DEFAULT_FIELD_URL } = require('./field');
 const { VoidClient, DEFAULT_VOID_URL } = require('./void');
 const { confirm } = require('./prompt');
 
 module.exports = {
+  // Canonical encoder is the structural fractal version (DIM = 29).
+  // `toWaveform`/`coherency`/`coherencyOf` now ARE the fractal versions.
   DIM, toWaveform, coherency, coherencyOf,
+  // Explicit fractal aliases for callers who want to be unambiguous.
+  FRACTAL_DIM, toFractalWaveform, inspectFractalWaveform,
+  fractalCoherency, fractalCoherencyOf,
+  // Legacy byte-stretch for binary / non-text inputs.
+  BYTE_DIM, byteToWaveform, byteCoherency, byteCoherencyOf,
+  // Field client + remote helpers.
   Field, DEFAULT_FIELD_URL,
   VoidClient, DEFAULT_VOID_URL,
   confirm,

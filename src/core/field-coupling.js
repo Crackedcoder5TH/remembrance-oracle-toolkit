@@ -120,9 +120,28 @@ function localUpdateCount() {
   return _localUpdateCount;
 }
 
+/**
+ * Project the field's response to a candidate contribution without
+ * committing it. Returns { current, projected, delta } where delta = the
+ * change in global coherency the contribution would cause. Used by the
+ * covenant to decide whether to absorb a new pattern: positive/zero delta
+ * = field accepts (covenant grows), negative delta = field rejects.
+ */
+function projectContribution(obs) {
+  const engine = _loadEngine();
+  if (!engine || typeof engine.peekProjection !== 'function') return null;
+  if (typeof obs?.coherence !== 'number' || !isFinite(obs.coherence)) return null;
+  const current = engine.getState().coherence;
+  const clamped = Math.max(0, Math.min(1, obs.coherence));
+  const cost = (typeof obs.cost === 'number' && isFinite(obs.cost)) ? Math.max(0, obs.cost) : 1.0;
+  const projected = engine.peekProjection({ cost, coherence: clamped });
+  return { current, projected, delta: projected - current };
+}
+
 module.exports = {
   contribute,
   peekField,
   fieldPressure,
   localUpdateCount,
+  projectContribution,
 };

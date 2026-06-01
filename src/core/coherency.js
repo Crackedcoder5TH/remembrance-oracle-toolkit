@@ -305,24 +305,10 @@ function computeCoherencyScore(code, metadata = {}) {
  * @param {string} code - The code to analyze
  * @returns {string} Detected language (rust, go, java, python, javascript, jsx, html, or unknown)
  */
-function detectLanguage(code) {
-  // Language detection patterns are built dynamically to prevent
-  // self-referential false positives (e.g. this file containing "fn"
-  // in a regex literal being detected as Rust)
-  const rustRe = new RegExp('\\b' + 'fn' + '\\b.*->|let ' + 'mut |' + 'impl' + '\\b');
-  if (rustRe.test(code)) return 'rust';
-  const goRe = new RegExp('\\b' + 'func' + '\\b.*\\{|' + 'package' + '\\b|fmt\\.');
-  if (goRe.test(code)) return 'go';
-  if (/\bpublic\b.*\bclass\b|\bSystem\.out/.test(code)) return 'java';
-  // Check JS before Python to avoid misclassifying JS files that contain
-  // Python keywords in string literals (e.g. template literals with "import os")
-  if (/\bfunction\b.*\{|const |let |=>\s*\{|require\(|import .* from/.test(code)) return 'javascript';
-  // Anchor Python patterns to start of line to avoid matching keywords inside strings
-  if (/^\s*def\b.*:/m.test(code) || /^\s*import\s+\w/m.test(code) || /^\s*print\s*\(/m.test(code)) return 'python';
-  if (/<\/?[a-z][\s\S]*>/i.test(code) && /className|onClick|useState/.test(code)) return 'jsx';
-  if (/<\/?[a-z][\s\S]*>/i.test(code)) return 'html';
-  return 'unknown';
-}
+// Canonical detector lives in src/unified/coherency.js (13+ languages including
+// YAML/TOML/Markdown/Dockerfile/SQL). This module previously shipped its own
+// narrower copy (8 languages); re-exporting prevents the two from drifting.
+const { detectLanguage } = require('../unified/coherency');
 
 module.exports = {
   computeCoherencyScore,

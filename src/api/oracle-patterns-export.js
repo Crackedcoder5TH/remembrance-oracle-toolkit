@@ -39,7 +39,7 @@ module.exports = {
     for (const __p of __lre_enginePaths) {
       try {
         const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.coherency || 0)), source: 'oracle:oracle-patterns-export:diff' });
+        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, (Number(__retVal.b && __retVal.b.coherency)) || 0)), source: 'oracle:oracle-patterns-export:diff' });
         break;
       } catch (_) { /* try next */ }
     }
@@ -50,6 +50,30 @@ module.exports = {
   export(options = {}) {
     const { format = 'json', limit = 20, minCoherency = 0.5, language, tags } = options;
     let patterns = this.patterns.getAll({ language, minCoherency });
+
+    // Union in proven submitted entries that carry a test. Submitted code lives
+    // in the `entries` table (not the `patterns` table that getAll reads), so a
+    // proven entry's auto-generated testCode would otherwise never reach the
+    // export. Only entries with an actual testCode are included, and only when
+    // no exported pattern already covers the same code — so this travels the
+    // proven test into patterns.json without duplicating registered patterns.
+    try {
+      const seenCode = new Set(patterns.map(p => p.code));
+      const entries = (this.store.getAll ? this.store.getAll({ language, minCoherency }) : [])
+        .filter(e => typeof e.testCode === 'string' && e.testCode.trim() && !seenCode.has(e.code));
+      for (const e of entries) {
+        patterns.push({
+          id: e.id, name: e.description || e.id, code: e.code, testCode: e.testCode,
+          language: e.language, description: e.description, tags: e.tags || [],
+          coherencyScore: e.coherencyScore,
+          usageCount: e.reliability?.timesUsed ?? 0, successCount: e.reliability?.timesSucceeded ?? 0,
+          createdAt: e.createdAt, updatedAt: e.updatedAt,
+        });
+      }
+    } catch (err) {
+      if (process.env.ORACLE_DEBUG) console.warn('[oracle:export] entry union failed:', err?.message || err);
+    }
+
     if (tags && tags.length > 0) {
       const filterTags = new Set(tags.map(t => t.toLowerCase()));
       patterns = patterns.filter(p => (p.tags || []).some(t => filterTags.has(t.toLowerCase())));

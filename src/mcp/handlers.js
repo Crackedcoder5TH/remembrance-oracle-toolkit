@@ -122,6 +122,19 @@ const HANDLERS = {
       const { trackSearch } = require('../core/session-tracker');
       trackSearch(args.query || args.description || '', result, { mode, language: args.language });
     } catch (_) { /* non-fatal */ }
+    // Lifecycle: increment pull_count on every pattern that was retrieved.
+    // Distinct from usage_count — pulling means "an outside caller saw this",
+    // using means "they applied it." Best-effort; never blocks the result.
+    try {
+      const items = Array.isArray(result) ? result
+                  : Array.isArray(result && result.results) ? result.results
+                  : Array.isArray(result && result.patterns) ? result.patterns
+                  : [];
+      const ids = items.map((p) => p && p.id).filter(Boolean);
+      if (ids.length && oracle.patterns && typeof oracle.patterns.recordPulls === 'function') {
+        oracle.patterns.recordPulls(ids);
+      }
+    } catch (_) { /* non-fatal — counters are observational, not transactional */ }
     return result;
   },
 

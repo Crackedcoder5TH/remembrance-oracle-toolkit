@@ -116,6 +116,20 @@ function securityScan(code, language) {
     }
   }
 
+  // ── Self-match gate ──
+  // Files annotated @oracle-pattern-definitions BUILD detector regexes from
+  // literal fragments (`_k('SEL','ECT')` → "SELECT"). The deep raw-code
+  // scanners below would otherwise classify those literal fragments as
+  // findings — the scanner detecting itself. The covenant knows this file
+  // class; ask it before running the self-matching detectors. The primary
+  // language-specific checks above DO NOT self-match (they use `_k` to
+  // split their own messages), so they keep running regardless.
+  let _isPatternDefs = false;
+  try {
+    const { isPatternDefinitionFile } = require('../core/covenant-trust');
+    _isPatternDefs = isPatternDefinitionFile(code);
+  } catch (_) { /* covenant-trust unavailable — fall back to running all detectors */ }
+
   // ── Deeper injection detection (scans RAW code) ──
   // The language blocks above gate SQL/command checks on a fixed set of
   // user-input variable names (req/args/param/...) AND run against stripped
@@ -164,12 +178,12 @@ function securityScan(code, language) {
   const _cmdInjectionBareArg = new RegExp(
     _sink + '\\s*\\(\\s*([A-Za-z_$][\\w$.]*)\\s*[\\(,\\)]', 'i');
   const _flagged = (kw) => findings.some(f => f.message && f.message.toLowerCase().includes(kw));
-  if (_sqlInjection.test(code) && !_flagged(_k('sql inj', 'ection'))) {
+  if (!_isPatternDefs && _sqlInjection.test(code) && !_flagged(_k('sql inj', 'ection'))) {
     findings.push({ severity: 'high', message: _k('Possible SQL inj', 'ection — untrusted value concatenated or interpolated into a query'), count: 1 });
   }
-  if (_cmdInjection.test(code) && !_flagged(_k('command inj', 'ection')) && !_flagged('shell command')) {
+  if (!_isPatternDefs && _cmdInjection.test(code) && !_flagged(_k('command inj', 'ection')) && !_flagged('shell command')) {
     findings.push({ severity: 'high', message: _k('Possible command inj', 'ection — untrusted value in a shell command'), count: 1 });
-  } else if (_cpContext.test(code)
+  } else if (!_isPatternDefs && _cpContext.test(code)
              && !_flagged(_k('command inj', 'ection')) && !_flagged('shell command')) {
     // Bare-arg case: extract the first-arg expression and ask the covenant
     // whether it's a trusted source. Trusted → no flag. The covenant is
@@ -193,7 +207,11 @@ function securityScan(code, language) {
   // Prototype pollution, weak crypto (MD5/SHA1), disabled TLS, dynamic
   // Function/setTimeout-string, etc. Best-effort: skipped if the module isn't
   // reachable. Deduped against findings already raised above.
+  // Skipped on pattern-definition files — those build detector regexes from
+  // literal fragments mentioning MD5, "rejectUnauthorized: false", etc., and
+  // the deep scanner would otherwise classify those fragments as findings.
   try {
+    if (_isPatternDefs) throw new Error('pattern-definition file — deep scanners would self-match');
     const { DEEP_SECURITY_PATTERNS } = require('../core/covenant-deep-security');
     const langKey = (lang === 'js') ? 'javascript' : (lang === 'ts') ? 'typescript' : (lang === 'py') ? 'python' : lang;
     const deep = (langKey && DEEP_SECURITY_PATTERNS[langKey]) || [];

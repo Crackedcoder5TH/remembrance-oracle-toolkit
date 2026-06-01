@@ -187,6 +187,19 @@ class SQLiteStore {
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN last_used_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] last_used_at column:', e.message); }
     try { this.db.exec(`ALTER TABLE entries ADD COLUMN last_used_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] entries.last_used_at column:', e.message); }
 
+    // Schema migration: pattern lifecycle counters beyond used/success.
+    //   pull_count    = times the pattern has been retrieved from the library
+    //                   (oracle_search hit / library lookup). Distinct from
+    //                   usage_count, which counts successful applications.
+    //   verified_count = times the pattern's own code+testCode was run through
+    //                   exec_verify and passed — independent proof of correctness.
+    // Together with usage/success they tell the lifecycle:
+    //   created → pulled (interest) → used (applied) → verified (proven).
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN pull_count INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] pull_count column:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN last_pulled_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] last_pulled_at column:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN verified_count INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] verified_count column:', e.message); }
+    try { this.db.exec(`ALTER TABLE patterns ADD COLUMN last_verified_at TEXT`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] last_verified_at column:', e.message); }
+
     // Schema migration: add bug reports column for reliability tracking
     try { this.db.exec(`ALTER TABLE patterns ADD COLUMN bug_reports INTEGER DEFAULT 0`); } catch (e) { if (process.env.ORACLE_DEBUG) console.log('[sqlite:migration] bug_reports column:', e.message); }
 
@@ -1067,8 +1080,7 @@ class SQLiteStore {
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
   }
 
-  recordPatternUsage(id, succeeded, _retryCount = 0) {
-    const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
+  recordPatternUsage(id, succeeded, _retryCount = 0) {    const row = this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id);
     if (!row) return null;
 
     const usageCount = row.usage_count + 1;
@@ -1111,6 +1123,66 @@ class SQLiteStore {
 
     this._audit('usage', 'patterns', id, { succeeded, usageCount, successCount, coherency: newCoherency.total });
     return this._rowToPattern(this.db.prepare('SELECT * FROM patterns WHERE id = ?').get(id));
+  }
+
+  /**
+   * Record that a pattern was pulled (retrieved from the library). Distinct
+   * from usage — pulling means "an outside caller saw this pattern", using
+   * means "an outside caller applied it." Best-effort: a write failure
+   * doesn't throw (counters are observational, not transactional).
+   */
+  recordPatternPull(id) {
+    if (!id) return null;
+    const now = new Date().toISOString();
+    try {
+      const r = this.db.prepare(
+        'UPDATE patterns SET pull_count = COALESCE(pull_count, 0) + 1, last_pulled_at = ? WHERE id = ?'
+      ).run(now, id);
+      return r.changes > 0 ? { id, pulled: true, at: now } : null;
+    } catch (_e) { return null; }
+  }
+
+  /** Bulk pull for search results — one transaction, N updates. */
+  recordPatternPulls(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return { recorded: 0 };
+    const now = new Date().toISOString();
+    const stmt = this.db.prepare(
+      'UPDATE patterns SET pull_count = COALESCE(pull_count, 0) + 1, last_pulled_at = ? WHERE id = ?'
+    );
+    let recorded = 0;
+    this.db.exec('BEGIN');
+    try {
+      for (const id of ids) {
+        if (!id) continue;
+        const r = stmt.run(now, id);
+        if (r.changes > 0) recorded++;
+      }
+      this.db.exec('COMMIT');
+    } catch (_e) { this.db.exec('ROLLBACK'); }
+    return { recorded };
+  }
+
+  /**
+   * Record an independent verification of a pattern. `passed=true` increments
+   * verified_count; false leaves the counter alone but updates last_verified_at
+   * so the caller can see the attempt happened (and the pattern is known-not-
+   * verifiable until something changes). Best-effort.
+   */
+  recordPatternVerified(id, passed) {
+    if (!id) return null;
+    const now = new Date().toISOString();
+    try {
+      if (passed) {
+        const r = this.db.prepare(
+          'UPDATE patterns SET verified_count = COALESCE(verified_count, 0) + 1, last_verified_at = ? WHERE id = ?'
+        ).run(now, id);
+        return r.changes > 0 ? { id, verified: true, at: now } : null;
+      }
+      const r = this.db.prepare(
+        'UPDATE patterns SET last_verified_at = ? WHERE id = ?'
+      ).run(now, id);
+      return r.changes > 0 ? { id, verified: false, at: now } : null;
+    } catch (_e) { return null; }
   }
 
   /**
@@ -1783,6 +1855,10 @@ class SQLiteStore {
       upvotes: row.upvotes || 0,
       downvotes: row.downvotes || 0,
       voteScore: (row.upvotes || 0) - (row.downvotes || 0),
+      pullCount: row.pull_count || 0,
+      verifiedCount: row.verified_count || 0,
+      lastPulled: row.last_pulled_at || null,
+      lastVerified: row.last_verified_at || null,
       sourceUrl: row.source_url || null,
       sourceRepo: row.source_repo || null,
       sourceLicense: row.source_license || null,

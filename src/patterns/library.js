@@ -740,6 +740,62 @@ class PatternLibrary {
     return this._recordUsageJSON(id, succeeded);
   }
 
+  /** Increment a pattern's pull_count (retrieved from the library, not yet
+   * applied). Best-effort; JSON backend silently no-ops. */
+  recordPull(id) {
+    if (this._backend === 'sqlite') return this._sqlite.recordPatternPull(id);
+    return null;
+  }
+
+  /** Bulk pull — wire into search-result paths so every retrieval logs once. */
+  recordPulls(ids) {
+    if (this._backend === 'sqlite') return this._sqlite.recordPatternPulls(ids);
+    return { recorded: 0 };
+  }
+
+  /** Record an independent verification of a pattern. `passed=true` increments
+   * verified_count; false records the attempt without incrementing. */
+  recordVerified(id, passed) {
+    if (this._backend === 'sqlite') return this._sqlite.recordPatternVerified(id, passed);
+    return null;
+  }
+
+  /**
+   * Verify a pattern by running its stored code + testCode through the
+   * exec-verify sandbox. On `status === 'pass'`, increments verified_count.
+   * Returns { id, status, signal, detail, verifiedCount, pulled? } or null
+   * if the pattern is missing / has no testCode / language unsupported.
+   *
+   * This is what turns "stored testCode" into a count that ratchets up over
+   * time — the third lifecycle axis the user asked for.
+   */
+  async verifyPattern(id, opts = {}) {
+    const pattern = this._backend === 'sqlite'
+      ? this._sqlite.getPattern(id)
+      : this.getAll().find((p) => p.id === id);
+    if (!pattern) return null;
+    if (!pattern.testCode || !String(pattern.testCode).trim()) {
+      return { id, status: 'skipped', signal: null, detail: 'no testCode stored', verifiedCount: pattern.verifiedCount || 0 };
+    }
+    let verifyExecution;
+    try { ({ verifyExecution } = require('../scoring/exec-verify')); }
+    catch (_e) { return { id, status: 'skipped', signal: null, detail: 'exec-verify unavailable', verifiedCount: pattern.verifiedCount || 0 }; }
+    const result = await verifyExecution(pattern.code, {
+      language: pattern.language,
+      testCode: pattern.testCode,
+      timeoutMs: opts.timeoutMs,
+    });
+    if (!result) {
+      return { id, status: 'skipped', signal: null, detail: 'language unsupported or empty', verifiedCount: pattern.verifiedCount || 0 };
+    }
+    this.recordVerified(id, result.status === 'pass');
+    const after = this._backend === 'sqlite' ? this._sqlite.getPattern(id) : pattern;
+    return {
+      id, status: result.status, signal: result.signal, detail: result.detail,
+      verifiedCount: (after && after.verifiedCount) || 0,
+    };
+  }
+
   /**
    * Report a bug against a pattern. Increments bugReports counter.
    * Bug reports penalize the pattern's reliability score.

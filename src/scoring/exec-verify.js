@@ -132,8 +132,8 @@ async function verifyExecution(code, opts = {}) {
 
   // 1) Safety screen — fail-safe.
   const harm = _harmScreen(code);
-  if (harm === null) return { status: 'skipped', signal: null, detail: 'harm screen unavailable — not executed' };
-  if (harm) return { status: 'blocked', signal: null, detail: 'covenant: ' + harm };
+  if (harm === null) { const r = { status: 'skipped', signal: null, detail: 'harm screen unavailable — not executed' }; _contributeExec(r); return r; }
+  if (harm) { const r = { status: 'blocked', signal: null, detail: 'covenant: ' + harm }; _contributeExec(r); return r; }
 
   // 2) Sandboxed execution.
   const timeoutMs = Math.max(500, Math.min(30000, opts.timeoutMs || 5000));
@@ -142,12 +142,33 @@ async function verifyExecution(code, opts = {}) {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'field-exec-'));
     const hasTest = typeof opts.testCode === 'string' && opts.testCode.trim().length > 0;
     const body = hasTest ? code + _sep(lang) + opts.testCode : code;
-    return await _runBody(lang, body, hasTest, dir, timeoutMs);
+    const result = await _runBody(lang, body, hasTest, dir, timeoutMs);
+    _contributeExec(result);
+    return result;
   } catch (e) {
-    return { status: 'error', signal: null, detail: String((e && e.message) || e) };
+    const r = { status: 'error', signal: null, detail: String((e && e.message) || e) };
+    _contributeExec(r);
+    return r;
   } finally {
     if (dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { /* best-effort */ } }
   }
+}
+
+/** Contribute the exec_verify signal to the field. Non-numeric signals
+ * (null — abstain on skipped/blocked/error) do not contribute; the field
+ * sees only the runnable verdicts (pass/smoke-pass/fail/timeout). The
+ * source tag distinguishes outcomes so the per-source histogram tells
+ * the operator how often each one fires. */
+function _contributeExec(result) {
+  if (!result || typeof result.signal !== 'number' || !isFinite(result.signal)) return;
+  try {
+    const { contribute } = require('../core/field-coupling');
+    contribute({
+      cost: 1,
+      coherence: Math.max(0, Math.min(1, result.signal)),
+      source: 'oracle:exec-verify:' + (result.status || 'unknown'),
+    });
+  } catch (_) { /* best-effort */ }
 }
 
 /**

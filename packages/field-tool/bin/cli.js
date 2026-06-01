@@ -36,6 +36,14 @@ Connected to your field-server (REMEMBRANCE_FIELD_URL, default http://127.0.0.1:
       Exits 0 if SEALED, 1 if UNSEALED. Flags eval, shell injection,
       hardcoded secrets, prototype pollution, SQL injection, etc.
 
+Code verification (requires bearer token — server runs code in a sandbox):
+  remembrance-field verify <code|@file> --language <js|python> [--test <code|@file>] [--timeout <ms>]
+      Run code in a temp dir with hard timeout; report status (pass /
+      smoke-pass / fail / timeout / blocked / skipped) and signal [0..1].
+      Harm-screened before execution. Compose with `safety` for full
+      anti-hallucination coverage: safety first (static), verify after
+      (dynamic). Exit 0 pass, 1 fail/timeout/blocked, 2 skipped/error.
+
 Field (shared conserved scalar):
   remembrance-field contribute --coherence <0..1> --source <label> [--cost <n>] [--url <u>] [--token <t>]
       Contribute to the field. With a queue configured, a failed send is saved locally.
@@ -181,6 +189,30 @@ async function main() {
       for (const f of r.security.findings) process.stdout.write(`  security ${f.severity}: ${f.message}\n`);
     }
     process.exit(r.sealed ? 0 : 1);
+  }
+
+  if (cmd === 'verify') {
+    const code = readInput(pos[0]);
+    if (!code) { process.stderr.write('verify needs <code|@file>\n'); process.exit(2); }
+    const language = typeof flags.language === 'string' ? flags.language : undefined;
+    if (!language) { process.stderr.write('verify needs --language (javascript|python)\n'); process.exit(2); }
+    const testCode = typeof flags.test === 'string' ? readInput(flags.test) : undefined;
+    const field = new Field({
+      url: typeof flags.url === 'string' ? flags.url : undefined,
+      token: typeof flags.token === 'string' ? flags.token : undefined,
+    });
+    const r = await field.verify(code, {
+      language,
+      testCode,
+      timeoutMs: flags.timeout != null ? Number(flags.timeout) : undefined,
+    });
+    if (flags.json) { process.stdout.write(JSON.stringify(r, null, 2) + '\n'); return; }
+    if (!r || r.ok === false) { process.stderr.write('verify unavailable: ' + (r && r.error || 'no result') + '\n'); process.exit(1); }
+    process.stdout.write(`${r.status}  signal=${r.signal == null ? 'null' : r.signal}  (${r.detail})\n`);
+    // exit 0 on pass/smoke-pass; 1 on fail/timeout/blocked; 2 on skipped/error
+    if (r.status === 'pass' || r.status === 'smoke-pass') process.exit(0);
+    if (r.status === 'fail' || r.status === 'timeout' || r.status === 'blocked') process.exit(1);
+    process.exit(2);
   }
 
   if (cmd === 'contribute') {

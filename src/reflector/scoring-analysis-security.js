@@ -129,7 +129,18 @@ function securityScan(code, language) {
   const _qn = '[^\'"`]';          // a non-delimiter char
   const _sqlKw = _k('(?:SEL', 'ECT|INS', 'ERT|UPD', 'ATE|DEL', 'ETE|DR', 'OP)');
   const _sink = _k('\\b(?:ex', 'ecSync|ex', 'ec|spa', 'wnSync|spa', 'wn)');
-  const _sqlInjection = new RegExp(_q + _qn + '*' + _sqlKw + '\\b[\\s\\S]*?(?:' + _q + '\\s*\\+|\\$\\{)', 'i');
+  // SQL injection: a string literal that contains a SQL keyword and is
+  // followed on the SAME line (within ~120 chars) by string concatenation
+  // or template-literal interpolation. Same-line anchoring is essential —
+  // the previous form used `[\\s\\S]*?` which crossed newlines and produced
+  // false positives on any source file that mentioned UPDATE / DELETE /
+  // SELECT in a string anywhere near a later `+` or `${` (e.g. the field
+  // server's "tools/call" wiring, or the LRE's "update field" doc strings).
+  // Real SQL injection always has the keyword and the concat in proximity.
+  const _sqlInjection = new RegExp(
+    _q + _qn + '*' + _sqlKw + '\\b[^\\n]{0,120}?(?:' + _q + '\\s*\\+|\\$\\{)',
+    'i'
+  );
   // Strong signal: exec/execSync/spawn/spawnSync with concatenation or
   // template interpolation. Fires regardless of context — these shapes
   // mean untrusted input is being assembled into a shell command.

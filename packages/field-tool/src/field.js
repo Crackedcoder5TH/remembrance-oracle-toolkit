@@ -131,6 +131,31 @@ class Field {
     return r.ok ? r.result : r;
   }
 
+  /** Execute code in the server's sandbox and report whether it works.
+   * Requires the bearer token (server runs untrusted code). Returns
+   * { status, signal, detail } or { ok:false, error } on transport failure.
+   * status ∈ {pass, smoke-pass, fail, timeout, blocked, skipped, error}.
+   *
+   * Compose `safety()` before `verify()` — safety screens by static patterns,
+   * verify proves execution. A code blob that passes both is far harder to
+   * hallucinate than one that passes either alone.
+   *
+   * @param {string} code
+   * @param {object} [opts]
+   * @param {string} [opts.language] - 'javascript'|'js'|'python'|'py'
+   * @param {string} [opts.testCode]  - optional test referencing the code's symbols
+   * @param {number} [opts.timeoutMs] - hard timeout (server clamps 500..30000)
+   */
+  async verify(code, opts = {}) {
+    const r = await this.callTool('exec_verify', {
+      code: String(code || ''),
+      language: opts.language,
+      testCode: opts.testCode,
+      timeoutMs: opts.timeoutMs,
+    });
+    return r.ok ? r.result : r;
+  }
+
   /** Normalize an observation to {coherence, source, cost} or return an error. */
   _normObs({ coherence, source, cost = 1.0 } = {}) {
     if (typeof source !== 'string' || !source) return { error: 'source (non-empty string) is required' };

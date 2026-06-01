@@ -32,6 +32,7 @@ const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform
 const { scoreResonance, libraryStatus } = require('../src/scoring/pattern-resonance');
 const { covenantCheck } = require('../src/core/covenant');
 const { securityScan } = require('../src/reflector/scoring-analysis-security');
+const { verifyExecution } = require('../src/scoring/exec-verify');
 
 const PORT = parseInt(process.env.PORT, 10) || 7787;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -81,6 +82,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'exec_verify',
+    description: 'Run code in a sandboxed temp dir with a hard timeout and report whether it executes correctly. Harm-screened first via covenant-harm patterns (never runs anything that trips it). Status: pass (test ran, exit 0), smoke-pass (no test, ran clean), fail, timeout, blocked, skipped. JS and Python supported. Compose safety_check BEFORE this for full anti-hallucination coverage. Token-gated (writes nothing, but executes untrusted code).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to execute' },
+        language: { type: 'string', description: 'javascript|js|python|py (others abstain)' },
+        testCode: { type: 'string', description: 'optional test that references the code\'s symbols' },
+        timeoutMs: { type: 'number', description: 'hard timeout, clamped 500..30000 (default 5000)' },
+      },
+      required: ['code', 'language'],
+    },
+  },
+  {
     name: 'safety_check',
     description: 'Combined safety scan: covenant principles (15 ethical/integrity rules) + security pattern scanner (eval, shell injection, hardcoded secrets, SQL injection, prototype pollution, etc.). Returns sealed:true only if BOTH layers pass. Offline, no field write.',
     inputSchema: {
@@ -102,15 +117,28 @@ const TOOLS = [
 const cosine = waveformCosine;
 
 // Is this tool call a WRITE (mutates the field)? Writes are token-gated.
-function isWriteTool(name, action) {
-  return name === 'field_contribute' || (name === 'field' && (action || 'contribute') === 'contribute');
+// Two distinct checks:
+//   isContributeTool — dispatch within callTool to the contribute action
+//   isPrivilegedTool — gate access at the HTTP boundary (token required)
+//
+// Privileged is the broader set: contribute (mutates the field) PLUS
+// exec_verify (doesn't mutate field but DOES run untrusted code with real
+// resource cost and harm-screen-escape risk). Same threat surface, same
+// gating.
+function isContributeTool(name, action) {
+  if (name === 'field_contribute') return true;
+  if (name === 'field' && (action || 'contribute') === 'contribute') return true;
+  return false;
+}
+function isPrivilegedTool(name, action) {
+  return isContributeTool(name, action) || name === 'exec_verify';
 }
 
 // Dispatch a tool call. Accepts the new tool names AND the legacy "field"
 // tool (with an `action` argument) so existing webhook producers keep working.
 function callTool(name, args = {}) {
   const action = args.action;
-  if (isWriteTool(name, action)) {
+  if (isContributeTool(name, action)) {
     const coherence = Number(args.coherence);
     const source = typeof args.source === 'string' ? args.source.trim() : '';
     if (!Number.isFinite(coherence) || !source) throw new Error('coherence (number) and source (non-empty string) are required');
@@ -133,6 +161,15 @@ function callTool(name, args = {}) {
     });
     if (result == null) return { score: null, library: libraryStatus() };
     return { ...result, library: libraryStatus() };
+  }
+  if (name === 'exec_verify') {
+    const code = args.code == null ? '' : String(args.code);
+    const language = typeof args.language === 'string' ? args.language : undefined;
+    const testCode = typeof args.testCode === 'string' ? args.testCode : undefined;
+    const timeoutMs = Number(args.timeoutMs) || undefined;
+    // Async: we return the promise; the JSON-RPC handler awaits it via the
+    // dispatcher path which already supports async tool results.
+    return verifyExecution(code, { language, testCode, timeoutMs });
   }
   if (name === 'safety_check' || name === 'covenant_check' /* legacy alias */) {
     const code = args.code == null ? '' : String(args.code);
@@ -213,6 +250,7 @@ function manifest() {
       'POST /coherency': '{ a, b } -> { coherency }  (open)',
       'POST /resonance': '{ code, language?, k? } -> { score, bestMatch, topMatches, library }  (open — anti-hallucination signal)',
       'POST /safety': '{ code, language?, description?, tags? } -> { sealed, covenant:{...}, security:{...} }  (open — covenant principles + pattern scanner combined)',
+      'POST /verify': '{ code, language, testCode?, timeoutMs? } -> { status, signal, detail }  (write — bearer token required: runs code in a sandbox)',
       'POST /contribute': '{ coherence, source, cost? } -> field state  (write — bearer token if configured)',
     },
     auth: TOKEN
@@ -235,15 +273,16 @@ function handleRpc(msg, res, authed) {
     if (method === 'tools/call') {
       const name = params && params.name;
       const args = (params && params.arguments) || {};
-      if (isWriteTool(name, args.action) && !authed) {
+      if (isPrivilegedTool(name, args.action) && !authed) {
         return send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: unauthorized — a bearer token is required to write to the field' }], isError: true }));
       }
-      try {
-        const out = callTool(name, args);
-        return send(res, 200, ok(id, { content: [{ type: 'text', text: JSON.stringify(out) }] }));
-      } catch (e) {
-        return send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: ' + ((e && e.message) || e) }], isError: true }));
-      }
+      // callTool may return a value OR a Promise (exec_verify is async).
+      // Promise.resolve handles both uniformly without changing existing
+      // sync tool semantics.
+      return Promise.resolve()
+        .then(() => callTool(name, args))
+        .then((out) => send(res, 200, ok(id, { content: [{ type: 'text', text: JSON.stringify(out) }] })))
+        .catch((e) => send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: ' + ((e && e.message) || e) }], isError: true })));
     }
     return send(res, 200, err(id, -32601, 'method not found: ' + method));
   } catch (e) {
@@ -294,6 +333,16 @@ const server = http.createServer((req, res) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
       try { return send(res, 200, callTool('safety_check', { code: p.code, language: p.language, description: p.description, tags: p.tags })); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/verify') {
+    if (!authed) return send(res, 401, { error: 'unauthorized — bearer token required to execute code' });
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      Promise.resolve()
+        .then(() => callTool('exec_verify', { code: p.code, language: p.language, testCode: p.testCode, timeoutMs: p.timeoutMs }))
+        .then((out) => send(res, 200, out))
+        .catch((e) => send(res, 400, { error: String((e && e.message) || e) }));
     });
   }
   if (path === '/contribute') {

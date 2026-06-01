@@ -156,8 +156,13 @@ function securityScan(code, language) {
   // is present anywhere in the file, a bare non-literal arg to exec/spawn is
   // the canonical command-injection shape and worth flagging.
   const _cpContext = /\bchild_process\b|\bnode:child_process\b|\bsubprocess\b/;
+  // Exemption — process.execPath and process.argv0 are Node's hardcoded
+  // references to its own binary; they cannot be user-controlled, and the
+  // common shape `spawnSync(process.execPath, scriptArgs, ...)` is the
+  // canonical safe way to fork a sibling Node script. Negative lookahead
+  // excludes both from the bare-arg flag.
   const _cmdInjectionBareArg = new RegExp(
-    _sink + '\\s*\\(\\s*[A-Za-z_$][\\w$.]*\\s*[\\(,\\)]', 'i');
+    _sink + '\\s*\\(\\s*(?!process\\.(?:execPath|argv0)\\b)[A-Za-z_$][\\w$.]*\\s*[\\(,\\)]', 'i');
   const _flagged = (kw) => findings.some(f => f.message && f.message.toLowerCase().includes(kw));
   if (_sqlInjection.test(code) && !_flagged(_k('sql inj', 'ection'))) {
     findings.push({ severity: 'high', message: _k('Possible SQL inj', 'ection — untrusted value concatenated or interpolated into a query'), count: 1 });

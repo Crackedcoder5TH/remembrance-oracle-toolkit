@@ -133,6 +133,120 @@ function recordFalsePositive(snippet, _reason) {
   return { learned: false, expression: null };
 }
 
+// ─── Field-validated growth: covenant absorbs patterns that raise coherency ──
+
+/**
+ * Recognized patterns — the covenant's growing vocabulary of patterns that
+ * have been validated by the field. A pattern lands in this registry only
+ * if adding it to the field raises (or at least maintains) global coherency.
+ *   name → { name, language, score, absorbedAt, preCoherence,
+ *            projectedCoherence, delta, source }
+ */
+const _RECOGNIZED_PATTERNS = new Map();
+
+function _growthLogPath() {
+  const path = require('node:path');
+  return path.join(__dirname, '..', '..', '.remembrance', 'covenant-growth.jsonl');
+}
+
+function _persistGrowth(record) {
+  try {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const file = _growthLogPath();
+    const dir = path.dirname(file);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(file, JSON.stringify(record) + '\n');
+    return true;
+  } catch (_) { return false; }
+}
+
+/**
+ * Field-validated covenant growth. The covenant absorbs a new pattern only
+ * when the field SAYS YES — adding the pattern's coherency to the field
+ * must raise (or at least maintain, within ε) the global coherency. If the
+ * pattern would drag the field down, the covenant refuses to absorb it.
+ *
+ * This closes the loop: the covenant doesn't grow by fiat, it grows by
+ * field-validated evidence. A pattern earns its way into the covenant by
+ * being coherent with everything already there.
+ *
+ * @param {object} pattern - { name, code?, language?, coherencyScore? }
+ * @param {object} [opts]
+ * @param {number} [opts.score] - explicit intrinsic coherency in [0,1]
+ *                                (overrides pattern.coherencyScore.total)
+ * @param {number} [opts.epsilon=1e-6] - tolerance for "maintain"
+ * @param {string} [opts.source='submit'] - tag for the audit log
+ * @param {boolean} [opts.persist=true] - append to growth log
+ * @returns {{ absorbed:boolean, name?:string, delta?:number, reason?:string,
+ *             preCoherence?:number, projectedCoherence?:number,
+ *             score?:number, absorbedAt?:string }}
+ */
+function maybeAbsorbPattern(pattern, opts = {}) {
+  if (!pattern || typeof pattern.name !== 'string' || !pattern.name.trim()) {
+    return { absorbed: false, reason: 'pattern missing name' };
+  }
+  if (_RECOGNIZED_PATTERNS.has(pattern.name)) {
+    return { absorbed: false, reason: 'already recognized', existing: _RECOGNIZED_PATTERNS.get(pattern.name) };
+  }
+  const score = typeof opts.score === 'number' ? opts.score
+              : (pattern.coherencyScore && typeof pattern.coherencyScore.total === 'number') ? pattern.coherencyScore.total
+              : null;
+  if (score === null) {
+    return { absorbed: false, reason: 'no coherency score available — provide opts.score or pattern.coherencyScore.total' };
+  }
+
+  // Ask the field: would adding this pattern's coherency raise the global?
+  let projection;
+  try {
+    const { projectContribution } = require('./field-coupling');
+    projection = projectContribution({ cost: 1, coherence: score });
+  } catch (_) { projection = null; }
+  if (!projection) {
+    return { absorbed: false, reason: 'field unavailable — cannot validate growth' };
+  }
+
+  const epsilon = typeof opts.epsilon === 'number' ? opts.epsilon : 1e-6;
+  if (projection.delta < -epsilon) {
+    return {
+      absorbed: false,
+      reason: 'pattern drags global coherency',
+      delta: projection.delta,
+      preCoherence: projection.current,
+      projectedCoherence: projection.projected,
+      score,
+    };
+  }
+
+  // Field said yes — covenant absorbs.
+  const record = {
+    name: pattern.name,
+    language: pattern.language || 'unknown',
+    score,
+    absorbedAt: new Date().toISOString(),
+    preCoherence: projection.current,
+    projectedCoherence: projection.projected,
+    delta: projection.delta,
+    source: opts.source || 'submit',
+  };
+  _RECOGNIZED_PATTERNS.set(pattern.name, record);
+  if (opts.persist !== false) _persistGrowth(record);
+  return { absorbed: true, ...record };
+}
+
+/** Is this pattern name in the covenant's recognized-pattern registry? */
+function isRecognizedPattern(name) {
+  return typeof name === 'string' && _RECOGNIZED_PATTERNS.has(name);
+}
+
+/** Read-only snapshot of the recognized-pattern registry. */
+function recognizedPatterns() {
+  return [..._RECOGNIZED_PATTERNS.values()];
+}
+
+/** Test-only: drop the in-memory registry. Does NOT touch the growth log. */
+function _resetGrowth() { _RECOGNIZED_PATTERNS.clear(); }
+
 module.exports = {
   isTrustedSource,
   addTrustedSource,
@@ -140,4 +254,9 @@ module.exports = {
   isPatternDefinitionFile,
   isInfrastructureFile,
   recordFalsePositive,
+  // Field-validated growth:
+  maybeAbsorbPattern,
+  isRecognizedPattern,
+  recognizedPatterns,
+  _resetGrowth,
 };

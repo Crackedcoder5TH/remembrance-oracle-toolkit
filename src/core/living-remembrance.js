@@ -248,6 +248,31 @@ class LivingRemembranceEngine {
     return { ...this._state };
   }
 
+  /**
+   * Project what `contribute({ cost, coherence })` would produce WITHOUT
+   * mutating state. The same math the actual contribute() runs, but
+   * functional and side-effect-free — used to predict the field's response
+   * to a candidate pattern before committing. Returns just the next
+   * coherence value (the most important projection); call shape:
+   *
+   *   const before = engine.getState().coherence;
+   *   const after  = engine.peekProjection({ cost: 1, coherence: x });
+   *   const delta  = after - before;
+   *
+   * Positive delta = the pattern raises global coherency → field accepts.
+   * Negative delta = the pattern drags the field → field rejects.
+   *
+   * @param {{cost?:number, coherence:number}} obs
+   * @returns {number} projected coherence
+   */
+  peekProjection({ cost = 1.0, coherence = null } = {}) {
+    const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
+    const { r0, alpha, delta0 } = this._params;
+    const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
+    const delta_void = delta0 * Math.max(0, 1 - p);
+    return Math.max(0, Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15));
+  }
+
   /** Reset state — primarily for tests / fresh runs. */
   reset() {
     this._state = { coherence: 0.65, coherenceIntegral: 0, globalEntropy: 0.45, cascadeFactor: 1.0, updateCount: 0, timestamp: Date.now(), sources: {} };

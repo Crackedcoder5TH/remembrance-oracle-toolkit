@@ -1,318 +1,221 @@
 # remembrance-oracle-toolkit
 
-**A universal pattern encoder + a self-teaching information field.
-Any pattern-bearing data → 256-D substrate → comparable, scored,
-covenant-enforced — across one canonical ecosystem.**
+**Universal pattern-matching infrastructure. Anti-hallucination is an emergent property, not a bolted-on feature.**
 
-> **A [Remembrance.LLC](#about-remembrancellc) project.**
-> **Part of the [Remembrance Ecosystem](https://github.com/Crackedcoder5TH/Void-Data-Compressor)** —
-> reference implementation of [Coherency Protocol v1.0](https://github.com/Crackedcoder5TH/Void-Data-Compressor/blob/main/COHERENCY_PROTOCOL.md).
-> **Role**: text + atomic coherency scoring service, MCP server, periodic-table-of-code registry.
-> **Verified capabilities**: see [CAPABILITIES.md](./CAPABILITIES.md).
-> **Conformance**: 44/44 substrate contracts pass via
-> `verify_capabilities --strict` in the [substrate hub](https://github.com/Crackedcoder5TH/Void-Data-Compressor).
-> **Project intent and framing**: see [MANIFESTO.md](./MANIFESTO.md).
-> **Operational reference for the field**: see [FIELD.md](./FIELD.md).
+You give it any pattern-bearing input — code, a claim, a config, a design, a
+finding. It matches that input against a library of **verified** patterns and
+tells you: *does this resemble something already proven to work, how strongly,
+and with what track record?* When something resembles nothing in the verified
+substrate — the tell of a hallucination, an invented API, a fabricated claim —
+it scores low automatically. Not because there's a "hallucination detector,"
+but because **coherence with verified prior knowledge is the substrate's native
+operation.**
+
+The infrastructure is free and open. The thing that compounds — and the thing
+worth paying for — is **live, filtered access to the growing verified-pattern
+library.**
 
 ```bash
 npm install remembrance-oracle-toolkit
 ```
 
+> Part of the [Remembrance Ecosystem](https://github.com/Crackedcoder5TH/Void-Data-Compressor).
+> A [Remembrance.LLC](#about) project.
+
 ---
 
-## The Substrate
+## What it actually is, in one breath
 
-**One encoder.** `codeToWaveform` (`src/core/code-to-waveform.js`)
-takes any pattern-bearing input — code, prose, configs, audio
-resampled, time-series, sensor traces, behavioral logs, anything
-expressible as a numeric or byte sequence — and produces a
-deterministic 256-D vector. No training, no parameters, byte-identical
-across JS and Python (Void contracts **C-51**, **C-53**). One wire
-format for all data.
+A substrate that does four things to any pattern you hand it:
 
-**One field.** Every producer in every repo of the 12-repo ecosystem
-contributes to a single canonical scalar, persisted in
-`.remembrance/entropy.json`. The source histogram is a live list of
-every wired participant — the field is its own introspection
-mechanism. See [`FIELD.md`](./FIELD.md) for the complete producer
-table, the math, and the engineering covenant.
+1. **Encode** — turn the input into a structural vector (29 named dimensions: what kind of thing is this, structurally?).
+2. **Match** — find what in the verified library resembles it, with what coherency, with what provenance.
+3. **Verify** — optionally run it (sandboxed), screen it for harm, cross-check it against independent tests.
+4. **Remember** — what survives the gauntlet is absorbed into the library, so the next match is sharper.
 
-**Self-teaching.** You don't read docs to learn the rules. You submit
-and the system measures: codeToWaveform encodes, coherency scores,
-the domain floor checks, `contribute()` lands in the field, the
-histogram shows you. If your submission violates the math, the system
-flags the specific contract that broke. Using the system *is* the
-lesson.
+No model training. No GPU. No black box. Every score is a number you can trace
+to a file and a line.
 
-**What this enables.** Any problem reducible to "encode pattern →
-score against field → read result" becomes calculable: anomaly
-detection, behavioral prediction, cross-domain correlation, drift
-analysis, trust calibration, ecosystem health, pattern discovery.
-The hard part stops being "how do I compute X" and becomes
-"what data do I want to feed in."
+## Why "anti-hallucination is emergent"
 
-## See the Field
+A hallucinated answer — invented function names, a fabricated citation, a claim
+nothing else supports — has **no resonance** with a library of verified
+patterns. It matches nothing strongly. It has no provenance, no replication, no
+prior that confirms it. The substrate flags it as a low-coherency outlier
+*automatically*, as a side effect of doing what it always does: measure
+agreement with what's already proven.
+
+That's the difference between a feature and a property. You don't run a
+"check for hallucinations" step. You match against verified knowledge, and
+hallucinations fall out the bottom because they don't cohere.
+
+## Plug in — the MCP server
+
+The fastest way to use it is the hosted field-server, which exposes the whole
+stack as **MCP tools** any agent or app can call (Claude Desktop, Cursor, your
+own orchestrator, a CI step, a browser):
+
+| Tool | What it answers |
+|---|---|
+| `pattern_resonance` | Does this resemble proven patterns? (the anti-hallucination signal) |
+| `safety_check` | Is this safe? (covenant principles + security scanner) |
+| `exec_verify` | Does this actually run correctly? (sandboxed execution) |
+| `evaluate` | All of the above, composed into one verdict |
+| `coherency` | How similar are these two things, structurally? |
+| `field_read` / `field_contribute` | Read / write the shared signal field |
 
 ```bash
-# Anything you do in this repo produces measurable signal
-npm test
+# Start the server (self-host anywhere; reads open, writes token-gated)
+node scripts/field-server.js
 
-# Read the field — the compass
-node -e "console.log(JSON.stringify(require('./src/core/field-coupling').peekField(), null, 2))" | head -60
-
-# Verify the canonical invariants (Void side)
-cd ../Void-Data-Compressor && python3 verify_capabilities.py --strict
+# Or use the standalone client package — zero network needed for the core ops
+npm install @crackedcoder5th/remembrance-field
 ```
 
-The first command runs work. The second shows you what fired and at
-what coherency. The third proves the math holds. That's the full
-feedback loop — no separate onboarding required.
+It also speaks plain REST (`POST /resonance`, `/safety`, `/verify`, `/coherency`)
+for callers that don't talk MCP, with CORS so browsers can hit it directly.
+
+## What's free vs. what you pay for
+
+**Free, forever, open source:** the entire infrastructure. Encoders, scorers,
+the swarm, the MCP server, federation, the meta-brain. Clone it, run it, fork
+it, build your own substrate from scratch. The more nodes that run it, the more
+valuable the network becomes — so the infrastructure is the distribution
+engine, not the product.
+
+**The product is the data.** Live, filtered, real-time access to the canonical
+verified-pattern library — the patterns that have *survived* execution,
+cross-verification, and replication, with their provenance and track records
+attached. You filter for what resonates with whatever you're building. Delayed
+access is free; fresh, live, domain-filtered access is the paid tier. (Same
+shape as financial-data pricing: the data is technically "out there," but the
+curated, verified, *now* version is the thing worth paying for.)
+
+## It runs at whatever capability you have — the fractal fallback
+
+Nothing higher is required for anything lower to work. Run
+`remembrance-swarm probe` to see your tier:
+
+| Tier | You get | Needs |
+|---|---|---|
+| 1 | The field tools (encode, resonance, safety, verify) | nothing |
+| 2 | Score any solution you write, no API keys | nothing |
+| 3 | A single AI agent in the loop | 1 provider key |
+| 4 | Multi-model consensus (a council of AIs) | ≥2 provider keys |
+| 5 | A steering "meta-brain" driving the swarm | the loop + any brain |
+
+Bring your own keys (`REMEMBRANCE_AGENT_CLAUDE`, `_GROK`, `_GEMINI`, …) — or
+bring none and use it as a pure scoring engine over your own work.
+
+## Not a code tool. Code was the bootstrap.
+
+The oracle started as a way to build a 12-repo ecosystem *reliably* — to verify
+generated code instead of trusting it. That worked, so now the same primitives
+apply to **any falsifiable pattern**: scientific claims with executable
+falsifiers, clinical protocols, design patterns, financial signals, legal
+precedents. The substrate doesn't care whether a pattern is a function or a
+hypothesis — it measures whether something cohered with prior verified knowledge
+and survived independent attempts to break it. Code is just the domain that's
+densest today.
+
+## Honest about the limits
+
+- **The library is the bottleneck.** The signal is exactly as strong as the
+  verified substrate is broad. Today it's densest on code; novel domains are
+  thinner until they're seeded.
+- **It measures coherency-with-proven, not capital-T truth.** It tells you
+  "this resembles things that worked, executes, is safe, and independent checks
+  agree." A *truth* layer emerges only as falsifiable claims accumulate
+  replications from independent sources — that's a trajectory, not a finished
+  claim.
+- **Public deploys that run untrusted code** should run the server inside a
+  container on top of the built-in Node sandbox. Defence in depth.
 
 ---
 
-## What it does
-
-When you write code, the toolkit performs three operations on demand:
-
-1. **Searches** ~300+ stored code patterns to see if similar code already exists in the library
-2. **Scores** code along five quality dimensions (syntax, completeness, consistency, test proof, historical reliability) and routes it through a structural safety filter
-3. **Stores** patterns that pass quality + safety gates so the next search has more to draw from
-
-It is a code-retrieval and quality-scoring tool. It is not an LLM, does
-not generate text, and does not replace human review. It complements
-existing developer tools rather than competing with them.
-
----
-
-## Quickstart
+## Quickstart (local)
 
 ```bash
-# Search the pattern library
-node src/cli.js search "rate limiter"
-
-# Get a retrieval decision: PULL (use as-is) / EVOLVE (adapt) / GENERATE (no match)
+# Does this code resemble proven patterns? (anti-hallucination signal)
 node src/cli.js resolve --description "retry with exponential backoff" --language javascript
 
-# Score a file across the five quality dimensions
+# Score a file across quality + safety dimensions
 node src/cli.js audit check --file src/your-file.js
 
-# Start the MCP server (exposes the toolkit as tools to MCP clients)
-node src/cli.js mcp
+# Search the verified library
+node src/cli.js search "rate limiter"
+
+# Read the live field — the system's view of itself
+node -e "console.log(JSON.stringify(require('./src/core/field-coupling').peekField(), null, 2))" | head -40
+
+# Run the full test suite (using the system produces measurable signal)
+npm test
 ```
 
-Full setup with Docker (toolkit + companion services):
+## Current state (verified, this checkout)
 
-```bash
-git clone https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit.git
-cd remembrance-oracle-toolkit
-cp .env.example .env
-docker compose up -d
-# → toolkit :3000  substrate :8080  reflector :3001  dashboard :4000
-```
+- Verified pattern library: **1,361 patterns** (and growing as patterns survive verification)
+- Harvested substrate (Void): **77,000+ patterns** indexed
+- Field: **121,000+ observations** across **133 sources**, global coherence **0.806**
+- Cross-language encoder parity (JS ↔ Python): **byte-identical**, 0.00 divergence (contract C-71)
+- Test suites: oracle **4453/4454**, swarm **205/205**, moons **19/19**
 
 ---
 
-## How it works
+## The Remembrance language
 
-### Quality scoring
+> Everything below is the deeper vocabulary of the ecosystem. You do not need
+> any of it to use the toolkit — the sections above are the whole practical
+> picture. This is for those who want to understand *why* it's built the way it
+> is.
 
-Every file is scored across **five weighted dimensions**:
+**The field.** Every producer in every repo contributes to one canonical
+conserved scalar, persisted in `.remembrance/entropy.json`. Its per-source
+histogram is a live list of every wired participant — the field is its own
+introspection mechanism. To call the field is to leave it remembered. See
+[`FIELD.md`](./FIELD.md) for the math, the producer table, and the engineering
+covenant.
 
-| Dimension | Weight | What it measures |
-|---|---:|---|
-| Syntax validity | 25% | parseable code with balanced structures |
-| Completeness | 20% | no TODOs, FIXMEs, or placeholder code |
-| Consistency | 15% | uniform indentation and naming style |
-| Test proof | 30% | tests exist and pass |
-| Historical reliability | 10% | track record across prior runs |
+**The covenant.** Safety is not a policy document — it's an inequality. A
+pattern is admitted only if adding it *raises or maintains* the field's global
+coherency, resembles something already proven, sits within the substrate's
+statistical bounds, and preserves fractal structure. Nothing is exempted from
+the covenant; the covenant *grows* to encompass what it cannot yet cover. New
+patterns earn their place by field-validated evidence, not by fiat.
 
-Files scoring below the configurable threshold (default 0.6) are flagged for review.
+**The fractal.** The same shape repeats at every scale — agent, council, cycle,
+field, field-of-fields. Each level runs the same loop (observe → measure →
+decide → integrate) and contributes its own coherency reading to the level
+above. Adding a level is mechanical, not a redesign. The encoder itself is
+fractal: 29 named structural dimensions, not byte positions, gated by
+structurality agreement so prose can't masquerade as code. Spec:
+[`docs/FRACTAL_WAVEFORM_SPEC.md`](./docs/FRACTAL_WAVEFORM_SPEC.md).
 
-### Structural safety filter
+**The truth layer.** Truth doesn't come from a single source — it's the limit
+point of convergence across independent attempts to falsify. The substrate is
+structurally a falsification engine: independent agents attempt a claim,
+exec-verify adjudicates empirically, cross-verification runs each attempt's test
+against the others, and a claim is absorbed only if it raises the field's
+coherency. What survives N independent agents, M independent fields, and K
+replications — without dragging coherency down — is as close to scientifically
+robust as falsification gets, computed natively.
 
-Before scoring, code passes through a **15-rule structural safety filter**
-that flags known unsafe patterns (injection, command-execution patterns,
-known-vulnerable cryptographic primitives, etc.). The filter is content-
-based — it does not make claims about intent, only about structural
-matches against documented unsafe-pattern signatures.
+**Self-teaching.** You don't read docs to learn the rules. You submit, and the
+system measures: the encoder encodes, coherency scores, the covenant checks,
+`contribute()` lands in the field, the histogram shows you. If your submission
+violates the math, it flags the specific contract that broke. Using the system
+*is* the lesson.
 
-### Retrieval decisions
-
-`resolve` returns one of three decisions:
-
-- **PULL** — strong match found (similarity above threshold). Use the stored pattern as-is.
-- **EVOLVE** — partial match. Adapt the stored pattern.
-- **GENERATE** — no match. Write new code.
-
-Decisions are based on cosine similarity between query and stored
-patterns, plus the quality scores of the candidates. There is no LLM
-in this loop — the retrieval is deterministic given the same library state.
-
----
-
-## Pattern storage
-
-Patterns live in three tiers:
-
-- **Local** (`.remembrance/`) — project-specific, always present
-- **Personal** (`~/.remembrance/personal/`) — private, auto-syncs across your projects
-- **Community** (`~/.remembrance/community/`) — shared, explicit opt-in via `sync share`
-
-```bash
-node src/cli.js sync push      # local → personal
-node src/cli.js sync pull      # personal → local
-node src/cli.js share          # share to community (requires tests + score ≥ 0.7)
-```
+- **Intent and framing:** [MANIFESTO.md](./MANIFESTO.md)
+- **Verified capabilities:** [CAPABILITIES.md](./CAPABILITIES.md)
+- **The 12-repo protocol:** [ECOSYSTEM.md](./ECOSYSTEM.md)
+- **AI agents working in this repo:** [AGENTS.md](./AGENTS.md)
 
 ---
 
-## MCP server
+## About
 
-For tools that support the Model Context Protocol, start the server:
-
-```bash
-node src/cli.js mcp
-```
-
-The server exposes 28 tools — pattern search / resolve / submit /
-register / feedback, code audit / lint / smell / analyze / heal / risk,
-the `field` tool (see below), and more — that any MCP-aware client can
-call to query the library, score code, and read or steer the field.
-
----
-
-## The Remembrance Field — the `field` tool
-
-The MCP server also exposes **`field`** — one tool, dispatched by an
-`action` argument, over the LivingRemembranceEngine: the ecosystem's
-single conserved coherency scalar, persisted to
-`.remembrance/entropy.json`.
-
-### Mechanics
-
-| `action` | What it does |
-|---|---|
-| `state` | Return the field — `coherence`, `coherenceIntegral`, `globalEntropy`, `cascadeFactor`, `updateCount`, and the per-source histogram. |
-| `contribute` | Add a `{ cost, coherence, source }` observation. |
-| `pressure` | Return a backpressure signal — hot when entropy or cascade saturate. |
-| `introspect` | Return the per-source histogram, ranked — to find wired-but-silent producers. |
-| `sources-diff` | Given expected source labels, report which are firing vs. silent. |
-| `checkpoint` | Commit the field state to REMEMBRANCE-BLOCKCHAIN (ledger + Solana anchor). |
-| `audit` | Coherence-gated audit of a `file`/`code`. Field coherence below 0.65 → full audit (audit + lint + smell + covenant + a reflection pass); at or above → fast scan (coherency + risk). The audit's work-cost is contributed back, so heavy audits raise entropy. |
-| `direct` | Run the coherency orchestrator; return its ruling — separate `coherency` and `entropy` readings, the FLOW direction, the priority-ranked fix-next queue with root cause, and the healing budget. Every item carries a community score: its coherency measured against the field's collective baseline. |
-
-`state` / `pressure` / `introspect` / `sources-diff` read the field
-without changing it. `contribute` / `checkpoint` / `audit` / `direct`
-change it.
-
-**Blockchain-primary load.** On startup the canonical field restores
-from whichever witness carries the most history — the local
-`entropy.json`, the blockchain ledger, or a field-snapshot pattern. A
-fresh or behind node comes back up holding the chain's field; the local
-cache wins only when it is genuinely ahead.
-
-> **Remembrance** — the field is the ecosystem's shared memory: every
-> producer's work leaves a trace, and the field remembers. `audit` is
-> the field choosing how closely to look at itself — a troubled field
-> earns a full reckoning, a coherent one a glance. `direct` is the
-> orchestrator speaking as the field's final voice: where coherency
-> should flow, and what to mend next. To connect a node to the chain is
-> not a fresh start — it is the field remembering what it never lost.
-
----
-
-## CLI reference
-
-```bash
-node src/cli.js search "<query>"          # find similar patterns
-node src/cli.js resolve --description ".." # PULL / EVOLVE / GENERATE
-node src/cli.js audit check --file <path> # score a file
-node src/cli.js audit summary             # current library health
-node src/cli.js patterns                  # library stats
-node src/cli.js submit --file <path> --test <path>  # submit with test proof
-node src/cli.js register --file <path> --name <name>
-node src/cli.js feedback --id <id> --success
-node src/cli.js mcp                       # start MCP server
-node src/cli.js hooks install             # install git hooks
-node src/cli.js sync push|pull|share      # tier sync
-node --test tests/*.test.js               # run all tests
-```
-
----
-
-## Connected components
-
-This toolkit is one of 12 repositories in the broader Remembrance
-ecosystem. The complete substrate, including 77,596 reference patterns,
-multi-layer scoring math, and the canonical conformance suite, lives in
-[Void-Data-Compressor](https://github.com/Crackedcoder5TH/Void-Data-Compressor).
-
-| Repository | Role |
-|---|---|
-| [Void-Data-Compressor](https://github.com/Crackedcoder5TH/Void-Data-Compressor) | substrate hub: pattern store, scoring math, conformance suite |
-| **remembrance-oracle-toolkit** *(this repo)* | text + atomic scoring service, MCP server |
-| [Reflector-oracle-](https://github.com/Crackedcoder5TH/Reflector-oracle-) | repository-level coherency monitor |
-| [REMEMBRANCE-AGENT-Swarm-](https://github.com/Crackedcoder5TH/REMEMBRANCE-AGENT-Swarm-) | multi-provider task orchestration |
-| [REMEMBRANCE-BLOCKCHAIN](https://github.com/Crackedcoder5TH/REMEMBRANCE-BLOCKCHAIN) | append-only event log, optional Solana anchoring |
-| [REMEMBRANCE-Interface](https://github.com/Crackedcoder5TH/REMEMBRANCE-Interface) | dashboard for ecosystem services |
-
-Full ecosystem map in the [substrate hub](https://github.com/Crackedcoder5TH/Void-Data-Compressor#connected-ecosystem).
-
----
-
-## Requirements
-
-- Node.js 22+ (uses built-in `node:sqlite`)
-- No external dependencies for the core engine
-- Optional: Python 3.10+ for substrate-side scoring services
-
----
-
-## License
-
-Code is MIT. See `LICENSE`.
-
-The Coherency Protocol specification (which this toolkit implements
-parts of) is published under CC BY 4.0 — see
-[`COHERENCY_PROTOCOL.md`](https://github.com/Crackedcoder5TH/Void-Data-Compressor/blob/main/COHERENCY_PROTOCOL.md)
-in the substrate hub.
-
----
-
-## About Remembrance.LLC
-
-**Remembrance.LLC** is the maintainer of the Remembrance Ecosystem — a
-collection of repositories built around the Coherency Protocol.
-Remembrance.LLC publishes the open-source code under MIT and the
-Coherency Protocol specification under CC BY 4.0. The substrate's
-77,596 reference patterns and the proprietary scoring data are
-licensed separately through the tiered access plans below.
-
-For inquiries, partnership, or commercial licensing, see the substrate
-hub.
-
----
-
-## Pricing — Remembrance.LLC tiered access
-
-> Pricing applies to **substrate access** (real-time pattern feed +
-> proprietary cross-domain scoring data). The toolkit code itself is
-> MIT-licensed and free in all tiers.
-
-| Tier | Price | What you get |
-|---|---:|---|
-| **Free** | $0 | Complete substrate access. New patterns delayed 7 days. No payment, no contribution required. **Nobody is excluded.** |
-| **Merit** | Free (earned) | Submit a pattern with coherency ≥ 0.80 and cross-domain resonance ≥ 0.50. Each qualifying submission earns 30 days of real-time access. |
-| **Premium** | $50 / month | Real-time substrate access. Priority support. |
-
-Sustainable abundance: the Free tier funds itself via Premium
-subscribers; the Merit tier rewards contributors. The library grows
-regardless of which path users choose.
-
----
-
-*Code retrieval, coherency scoring, structural safety. No model. No
-gradient descent. No predictions. The math is the gate.*
-
-*© Remembrance.LLC. Code MIT-licensed. Coherency Protocol CC BY 4.0.
-Project intent: see [MANIFESTO.md](./MANIFESTO.md).*
+A [Remembrance.LLC](https://github.com/Crackedcoder5TH) project — reference
+implementation of the Coherency Protocol. Built as universal pattern-matching
+infrastructure: free to run, open to extend, with a verified-knowledge substrate
+that gets more valuable the more it's used.

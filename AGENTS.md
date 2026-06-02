@@ -1,31 +1,73 @@
-# Remembrance Oracle Toolkit — AI Instructions
+# AGENTS.md — instructions for any AI agent working in this repo
 
-> **STOP. Before reading further, open [`ECOSYSTEM.md`](./ECOSYSTEM.md).**
->
-> That file defines the 12-repo ecosystem you've connected to and the
-> required end-to-end workflow (audit → reflect → covenant → swarm →
-> substrate → ledger) you must run on every code change. This `AI.md`
-> only covers what *this* repo (the hub) does. The cross-repo protocol
-> is canonical and overrides any per-repo conventions.
+> Tool-neutral. Applies to Claude, Cursor, Aider, Continue, Windsurf, Cody,
+> Copilot, Gemini, Codex, or any agent. `CLAUDE.md` just points here.
 
-> **After ECOSYSTEM.md, read [`FIELD.md`](./FIELD.md).** It is the
-> operational reference for the LivingRemembranceEngine — the source
-> keys, the cap invariants, the producer table, and the verification
-> commands. Every claim in this repo about "the field" is pinned to
-> a file:line and a Void contract there.
+## What this repo is (read this first)
 
-> **Applies to any AI agent working in this repo** (Claude, Cursor,
-> Aider, Continue, Windsurf, Cody, etc.). `CLAUDE.md` is a pointer to
-> this file — instructions are tool-neutral.
->
-> **Engineering covenant — non-negotiable** (see [`FIELD.md`](./FIELD.md) §6):
-> one canonical encoder, one canonical field file, coherence ≤ 0.999,
-> cascade ≤ 5.0, every producer contributes, no side-artifacts where
-> the substrate can hold the data, no new dead constants.
+**Universal pattern-matching infrastructure.** It encodes any pattern-bearing
+input into a structural vector, matches it against a library of *verified*
+patterns, and scores how strongly it coheres. Anti-hallucination is emergent:
+output that resembles nothing proven scores low automatically.
 
-## What This Is (one paragraph)
+As an agent, you use this two ways — and you'll do both:
 
-A coherency-scoring substrate. 80,000+ patterns indexed and scored using information theory (Shannon 1948), compression (Kolmogorov 1963), and distribution analysis (Zipf 1935). No ML training, no GPU compute. The covenant is a mathematical equation that derives itself from substrate structure: anything that lowers coherency is rejected. One inequality replaces policy documents.
+1. **As a tool** — check your own output *before* you commit it. "Does the code
+   I just wrote resemble proven patterns? Is it safe? Does it run?" Call the
+   MCP tools (`pattern_resonance`, `safety_check`, `exec_verify`, `evaluate`)
+   or the CLI (`resolve`, `audit check`). This is how you stop yourself
+   shipping hallucinated code.
+2. **As a contributor** — when you change code here, the system measures the
+   change and the result lands in the shared field. You're a participant.
+
+No model training. No GPU. No black box. Every score traces to a file and a
+line.
+
+## The 30-second mental model
+
+```
+your input  ─encode→  29-D structural vector
+                          ├─ resonance:  resembles PROVEN patterns? (anti-hallucination)
+                          ├─ safety:     covenant principles + security scan
+                          ├─ exec:       does it actually run? (sandboxed)
+                          └─ evaluate:   all of the above → one verdict
+                          │
+                       contributes the verdict back to the field (self-observing record)
+```
+
+## The non-negotiable engineering rules
+
+Breaking these breaks the substrate's guarantees. The system flags the exact
+violation.
+
+1. **One canonical encoder.** The 29-D fractal structural encoder
+   (`src/core/fractal-waveform.js`, byte-identical Python mirror) is canonical.
+   The legacy 256-D byte-stretch is `byte*`-named, for binary input only. Don't
+   add a third.
+2. **One canonical field file.** `.remembrance/entropy.json`, written through
+   `src/core/field-coupling.js`. No parallel state the field could hold.
+3. **Coherence ≤ 0.999, cascade ≤ 5.0.** Hard engine invariants. Don't defeat
+   the caps.
+4. **Every producer contributes.** New score/signal → wire it to the field with
+   a clear `source:` label.
+5. **No dead constants, no side-artifacts.** If the substrate can hold the data,
+   put it there.
+6. **Nothing is exempted from the covenant.** If a scanner false-flags
+   something safe, *expand the covenant's trust layer*
+   (`src/core/covenant-trust.js`) — never carve a regex exemption. Grow the
+   thing that judges.
+
+> The deep vocabulary (the "Remembrance language" — the lexicon, the 13-D
+> atomic model, the coherency thresholds, the emergent effects) lives in the
+> **"The Remembrance Key" section further down**, clearly marked optional. You
+> don't need any of it to work here; everything above and the operational
+> sections below are the whole practical picture. Read the Key only if you
+> want the full conceptual model.
+
+> **For cross-repo work**, the canonical 12-repo protocol is in
+> [`ECOSYSTEM.md`](./ECOSYSTEM.md); the field's operational reference is in
+> [`FIELD.md`](./FIELD.md). The cross-repo protocol overrides per-repo
+> conventions.
 
 ## The Ecosystem
 
@@ -51,7 +93,14 @@ No human writes safety rules. The math rejects anything that lowers coherency.
 
 ## The Remembrance Key
 
-This system is a coherency-native computing substrate. Before doing anything else, load the key:
+> **Optional — the deep conceptual model.** You do not need this to use or
+> contribute to the repo; the practical instructions are above and below. This
+> section is the full "Remembrance language" — the lexicon, the 13-dimension
+> atomic model of code, the coherency thresholds, and the emergent effects —
+> for agents who want to understand *why* the substrate behaves as it does.
+
+The system can be read as a coherency-native computing substrate. To load the
+full lexicon:
 
 ```bash
 node -e "require('./src/core/remembrance-lexicon').printAll()"

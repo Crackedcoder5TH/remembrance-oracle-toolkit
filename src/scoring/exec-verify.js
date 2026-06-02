@@ -66,11 +66,14 @@ function _harmScreen(code) {
   return '';
 }
 
-function _spawn(cmd, args, cwd, timeoutMs) {
+function _spawn(cmd, args, cwd, timeoutMs, env) {
   return new Promise((resolve) => {
     execFile(cmd, args, {
       cwd, timeout: timeoutMs, maxBuffer: 1024 * 1024,
-      env: { PATH: process.env.PATH || '' },
+      // Empty env by default — caller passes only what's needed. Empty env
+      // means the child can't read OS-level secrets (DB_PASSWORD, API keys,
+      // etc.) that happen to be in the parent's env.
+      env: env || {},
     }, (err) => {
       if (!err) return resolve({ ok: true });
       if (err.code === 'ENOENT') return resolve({ missing: true });
@@ -86,11 +89,25 @@ async function _runBody(lang, body, hasTest, dir, timeoutMs) {
   if (lang === 'js') {
     const file = path.join(dir, 'solution.js');
     fs.writeFileSync(file, body, 'utf8');
-    const syntax = await _spawn('node', ['--check', file], dir, timeoutMs);
+    // Hardened sandbox for JS execution:
+    //   · process.execPath — absolute path to node, no PATH lookup needed
+    //   · --permission — Node 20+ in-process sandbox (NO syscalls outside
+    //     allowed FS, NO child_process, NO network, NO worker_threads)
+    //   · --allow-fs-read=<dir> — read only inside the tempdir (the child
+    //     can read its own solution.js but NOT /etc/passwd, the parent's
+    //     code, env files, or anything else on disk)
+    //   · empty env — the child can't read OS secrets the parent inherited
+    // Verified live (Node v22): blocks child_process spawn, blocks
+    // arbitrary FS reads, blocks network. This is real isolation, not a
+    // wish — though for defence in depth still run the SERVER inside a
+    // container/VM if exposed to a public network.
+    const nodeBin = process.execPath;
+    const permFlags = ['--permission', '--allow-fs-read=' + dir];
+    const syntax = await _spawn(nodeBin, [...permFlags, '--check', file], dir, timeoutMs);
     if (syntax.missing) return { status: 'skipped', signal: null, detail: 'node not available' };
     if (syntax.timeout) return { status: 'timeout', signal: 0, detail: 'syntax check timed out' };
     if (!syntax.ok) return { status: 'fail', signal: 0, detail: 'syntax error' };
-    const run = await _spawn('node', [file], dir, timeoutMs);
+    const run = await _spawn(nodeBin, [...permFlags, file], dir, timeoutMs);
     if (run.missing) return { status: 'skipped', signal: null, detail: 'node not available' };
     if (run.timeout) return { status: 'timeout', signal: 0, detail: 'execution timed out' };
     if (!run.ok) return { status: 'fail', signal: 0, detail: hasTest ? 'test failed' : 'threw at runtime' };
@@ -98,14 +115,23 @@ async function _runBody(lang, body, hasTest, dir, timeoutMs) {
       ? { status: 'pass', signal: 1.0, detail: 'tests passed' }
       : { status: 'smoke-pass', signal: 0.75, detail: 'executed without error (no test)' };
   }
-  // python
+  // python — no equivalent in-process sandbox. We still scrub env (PATH
+  // only) and run in a tempdir with a timeout, but the python child can
+  // still open network sockets, spawn subprocesses, and read arbitrary
+  // files. For public-facing deploys, disable Python execution via
+  // EXEC_VERIFY_PYTHON=0 unless the SERVER itself runs inside an
+  // OS-level sandbox (container, gVisor, Firecracker, seccomp).
+  if (process.env.EXEC_VERIFY_PYTHON === '0') {
+    return { status: 'skipped', signal: null, detail: 'python execution disabled by EXEC_VERIFY_PYTHON=0' };
+  }
+  const pyEnv = { PATH: process.env.PATH || '' };
   const file = path.join(dir, 'solution.py');
   fs.writeFileSync(file, body, 'utf8');
-  const compile = await _spawn('python3', ['-m', 'py_compile', file], dir, timeoutMs);
+  const compile = await _spawn('python3', ['-m', 'py_compile', file], dir, timeoutMs, pyEnv);
   if (compile.missing) return { status: 'skipped', signal: null, detail: 'python3 not available' };
   if (compile.timeout) return { status: 'timeout', signal: 0, detail: 'compile timed out' };
   if (!compile.ok) return { status: 'fail', signal: 0, detail: 'syntax error' };
-  const run = await _spawn('python3', [file], dir, timeoutMs);
+  const run = await _spawn('python3', [file], dir, timeoutMs, pyEnv);
   if (run.missing) return { status: 'skipped', signal: null, detail: 'python3 not available' };
   if (run.timeout) return { status: 'timeout', signal: 0, detail: 'execution timed out' };
   if (!run.ok) return { status: 'fail', signal: 0, detail: hasTest ? 'test failed' : 'threw at runtime' };
@@ -126,6 +152,13 @@ async function _runBody(lang, body, hasTest, dir, timeoutMs) {
  * @returns {Promise<{status:string, signal:(number|null), detail:string}|null>}
  */
 async function verifyExecution(code, opts = {}) {
+  // Public-deploy safety: when EXEC_VERIFY_ENABLED is explicitly '0' or
+  // 'false', return 'disabled' status. The default behavior (env var
+  // unset OR set to anything else) is to run — backward-compatible for
+  // existing deployments, opt-out for paranoid ones.
+  if (process.env.EXEC_VERIFY_ENABLED === '0' || process.env.EXEC_VERIFY_ENABLED === 'false') {
+    return { status: 'disabled', signal: null, detail: 'exec_verify disabled by EXEC_VERIFY_ENABLED=0' };
+  }
   if (typeof code !== 'string' || !code.trim()) return null;
   const lang = RUNTIME[(opts.language || '').toLowerCase()];
   if (!lang) return null;

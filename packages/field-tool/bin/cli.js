@@ -60,6 +60,14 @@ Field (shared conserved scalar):
   remembrance-field sync [--queue <path>] [--url <u>] [--token <t>] [--max <n>]
       Flush the local offline queue to the field — sync up when you have internet.
 
+Field-of-fields (federation):
+  remembrance-field federate --from <source-url> [--as <label>] [--cost <n>] [--url <my-url>] [--token <my-token>]
+      Pull a remote field's aggregate coherency and absorb it into THIS field
+      as one observation. Pull-model: the target field decides what to
+      absorb; the source can't spam. Compose across N source fields to build
+      a field-of-fields whose global coherency emerges from many independent
+      ecosystems' aggregates.
+
 Env: REMEMBRANCE_FIELD_URL, REMEMBRANCE_FIELD_TOKEN, REMEMBRANCE_FIELD_QUEUE (offline queue path),
      REMEMBRANCE_VOID_URL, REMEMBRANCE_AGENT_ID.
 Inputs: a literal string, or @path to read a file.
@@ -273,6 +281,31 @@ async function main() {
     const r = await field.sync({ max: flags.max != null ? Number(flags.max) : undefined });
     process.stdout.write(`synced ${r.synced}, remaining ${r.remaining}` + (r.error ? ` (${r.error})` : '') + '\n');
     process.exit(r.ok ? 0 : 1);
+  }
+
+  if (cmd === 'federate') {
+    const from = typeof flags.from === 'string' ? flags.from : null;
+    if (!from) { process.stderr.write('federate needs --from <source-field-url>\n'); process.exit(2); }
+    const field = new Field({
+      url: typeof flags.url === 'string' ? flags.url : undefined,
+      token: typeof flags.token === 'string' ? flags.token : undefined,
+    });
+    const r = await field.federateFrom(from, {
+      sourceName: typeof flags.as === 'string' ? flags.as : undefined,
+      cost: flags.cost != null ? Number(flags.cost) : undefined,
+    });
+    if (flags.json) { process.stdout.write(JSON.stringify(r, null, 2) + '\n'); process.exit(r.ok ? 0 : 1); }
+    if (!r.ok) {
+      process.stderr.write(`federate failed: ${r.error || 'unknown error'}\n`);
+      process.exit(1);
+    }
+    process.stdout.write(
+      `federated from ${r.sourceUrl}\n` +
+      `  source coherence: ${(r.sourceCoherency != null ? r.sourceCoherency.toFixed(4) : 'n/a')}\n` +
+      `  source updates:   ${r.sourceUpdateCount || 0}\n` +
+      `  contributed as:   ${r.contributedAs}\n`
+    );
+    process.exit(0);
   }
 
   process.stderr.write(`unknown command: ${cmd}\n\n` + HELP);

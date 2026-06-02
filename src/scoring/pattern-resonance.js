@@ -171,6 +171,20 @@ function scoreResonance(text, opts = {}) {
   // separates real-from-bad ~2x on held-out tests.
   const score = Math.max(0, Math.min(1, 0.5 * meanTopK + 0.5 * bestMatch));
 
+  // ─── Field-coupling — resonance is a real coherency reading ─────
+  // The score reflects how much the input's vocabulary overlaps with
+  // the proven library. High = real-token code; low = invented identifiers
+  // (a hallucination tell). Feeding it back into the field gives the
+  // per-source histogram a "what we've been resonating against" signal.
+  try {
+    const { contribute } = require('../core/field-coupling');
+    contribute({
+      cost: 1,
+      coherence: score,
+      source: 'oracle:pattern-resonance:score',
+    });
+  } catch (_) { /* best-effort */ }
+
   return {
     score: Math.round(score * 10000) / 10000,
     meanTopK: Math.round(meanTopK * 10000) / 10000,

@@ -259,6 +259,84 @@ class Field {
     }
     return { ok: true, synced, remaining: keep.length };
   }
+
+  /**
+   * Federation — pull a source field's aggregate coherency and contribute
+   * it to THIS field as one observation. The same `contribute()` primitive
+   * the rest of the ecosystem uses, but with one field treating another
+   * field as a source. Repeated `federateFrom` calls across a network of
+   * fields build the next fractal level: a field-of-fields whose global
+   * coherency emerges from many independent fields' aggregates.
+   *
+   * Pull model by design — the target (this field) decides what to absorb.
+   * The receiving field's covenant remains in control; a source field can
+   * be ignored or weighted (via the cost parameter) without the source
+   * being able to spam the target.
+   *
+   * Best-effort, never throws.
+   *
+   * @param {string} sourceUrl - base URL of the source field server
+   *   (the GET /field endpoint is appended; or pass it explicitly)
+   * @param {object} [opts]
+   * @param {string} [opts.sourceName] - human-readable label for the source
+   *   used in the source: tag. Defaults to the URL's hostname.
+   * @param {number} [opts.cost=1] - relative weight of this federation reading
+   * @param {number} [opts.timeoutMs] - per-call timeout, defaults to instance
+   * @returns {Promise<{ok:boolean, sourceUrl, sourceCoherency, sourceUpdateCount,
+   *           contributedAs, contribution, error?}>}
+   */
+  async federateFrom(sourceUrl, opts = {}) {
+    if (typeof sourceUrl !== 'string' || !sourceUrl) {
+      return { ok: false, error: 'sourceUrl required' };
+    }
+    const cost = (typeof opts.cost === 'number' && isFinite(opts.cost)) ? Math.max(0, opts.cost) : 1;
+    const timeoutMs = (typeof opts.timeoutMs === 'number' && isFinite(opts.timeoutMs))
+      ? opts.timeoutMs : this.timeoutMs;
+    let sourceName = opts.sourceName;
+    if (!sourceName) {
+      try { sourceName = new URL(sourceUrl).hostname || sourceUrl; }
+      catch { sourceName = sourceUrl; }
+    }
+    // GET /field on the source — works against the field-server's REST face.
+    const url = sourceUrl.endsWith('/field')
+      ? sourceUrl
+      : sourceUrl.replace(/\/$/, '') + '/field';
+    let sourceState;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { method: 'GET', signal: ctrl.signal });
+      const text = await res.text();
+      if (!res.ok) return { ok: false, error: 'source returned ' + res.status, sourceUrl };
+      const body = JSON.parse(text);
+      sourceState = body && (body.field || body);
+      if (!sourceState || typeof sourceState.coherence !== 'number') {
+        return { ok: false, error: 'source did not return a valid field state', sourceUrl };
+      }
+    } catch (e) {
+      return { ok: false, error: 'source unreachable: ' + String((e && e.message) || e), sourceUrl };
+    } finally {
+      clearTimeout(timer);
+    }
+    // Compress to one observation: the source field's global coherency IS
+    // its aggregate reading — the engine has already integrated everything
+    // into that one number. Pass it through to THIS field as one obs.
+    const coherency = Math.max(0, Math.min(1, sourceState.coherence));
+    const contribution = await this.contribute({
+      cost,
+      coherence: coherency,
+      source: 'federation:' + sourceName,
+    });
+    return {
+      ok: contribution && contribution.ok !== false,
+      sourceUrl,
+      sourceCoherency: sourceState.coherence,
+      sourceUpdateCount: sourceState.updateCount,
+      sourceCascade: sourceState.cascadeFactor,
+      contributedAs: 'federation:' + sourceName,
+      contribution,
+    };
+  }
 }
 
 module.exports = { Field, DEFAULT_FIELD_URL };

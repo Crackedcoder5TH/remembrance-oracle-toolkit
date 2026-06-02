@@ -33,6 +33,7 @@ const { scoreResonance, libraryStatus } = require('../src/scoring/pattern-resona
 const { covenantCheck } = require('../src/core/covenant');
 const { securityScan } = require('../src/reflector/scoring-analysis-security');
 const { verifyExecution } = require('../src/scoring/exec-verify');
+const { recordOperation } = require('../src/scoring/operational-signal');
 const { evaluate: evaluateInput } = require('../src/scoring/evaluate');
 
 const PORT = parseInt(process.env.PORT, 10) || 7787;
@@ -316,13 +317,35 @@ function handleRpc(msg, res, authed) {
       if ((isPrivilegedTool(name, args.action) || evalNeedsAuth) && !authed) {
         return send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: unauthorized — a bearer token is required to write to the field' }], isError: true }));
       }
+      // Per-tool operational tracking — source `op:server:mcp:<tool>` so
+      // the per-source histogram tells you which tool is hot, slow, or
+      // failing. Budgets: exec_verify gets a long budget (sandbox), the
+      // rest default to 200ms (MCP roundtrip).
+      const _toolStart = Date.now();
+      const _toolBudget = name === 'exec_verify' ? 5000 : 200;
       // callTool may return a value OR a Promise (exec_verify is async).
       // Promise.resolve handles both uniformly without changing existing
       // sync tool semantics.
       return Promise.resolve()
         .then(() => callTool(name, args))
-        .then((out) => send(res, 200, ok(id, { content: [{ type: 'text', text: JSON.stringify(out) }] })))
-        .catch((e) => send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: ' + ((e && e.message) || e) }], isError: true })));
+        .then((out) => {
+          recordOperation({
+            source: 'op:server:mcp:' + (name || 'unknown'),
+            durationMs: Date.now() - _toolStart,
+            expectedMs: _toolBudget,
+            ok: true,
+          });
+          return send(res, 200, ok(id, { content: [{ type: 'text', text: JSON.stringify(out) }] }));
+        })
+        .catch((e) => {
+          recordOperation({
+            source: 'op:server:mcp:' + (name || 'unknown'),
+            durationMs: Date.now() - _toolStart,
+            expectedMs: _toolBudget,
+            ok: false,
+          });
+          return send(res, 200, ok(id, { content: [{ type: 'text', text: 'Error: ' + ((e && e.message) || e) }], isError: true }));
+        });
     }
     return send(res, 200, err(id, -32601, 'method not found: ' + method));
   } catch (e) {
@@ -336,8 +359,43 @@ function readBody(req, cb) {
   req.on('end', () => cb(raw));
 }
 
+// Operational-budget table — per-endpoint expected latency. The signal
+// `latencyCoherence(actual, expected)` smooths from 1.0 at 0ms to 0.5
+// at the budget to ~0 at 10× the budget. These are realistic working
+// expectations for a locally-hosted field server; tune as the field
+// itself tells you what's normal.
+const OP_BUDGETS = {
+  '/':              50,
+  '/mcp':          200,
+  '/.well-known/mcp': 30,
+  '/manifest':      30,
+  '/field':         30,
+  '/coherency':    100,
+  '/resonance':    200,
+  '/safety':       150,
+  '/verify':      5000,   // sandboxed execution — long budget
+  '/contribute':    50,
+};
+
 const server = http.createServer((req, res) => {
   const path = (req.url || '/').split('?')[0];
+
+  // Operational tracking — every served request contributes one
+  // observation to the field's per-source histogram with source
+  // `op:server:http:<METHOD>:<path>`. Latency = response time, ok =
+  // status < 400. Best-effort; failures here never block the response.
+  const _opStart = Date.now();
+  res.once('finish', () => {
+    try {
+      const code = res.statusCode || 200;
+      recordOperation({
+        source: 'op:server:http:' + (req.method || 'UNK') + ':' + path,
+        durationMs: Date.now() - _opStart,
+        expectedMs: OP_BUDGETS[path] != null ? OP_BUDGETS[path] : 100,
+        ok: code < 400,
+      });
+    } catch (_) { /* best-effort */ }
+  });
 
   if (req.method === 'OPTIONS') { res.writeHead(204, CORS); return res.end(); }
   if (rateLimited(req)) return send(res, 429, { error: 'rate limit exceeded — try again shortly' });

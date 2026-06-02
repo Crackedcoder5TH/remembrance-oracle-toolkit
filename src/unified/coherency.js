@@ -498,8 +498,24 @@ function computeCoherencyScore(code, metadata = {}) {
   // fires the generator which handles both. This avoids test
   // interference from the scoring function creating persistent state.
 
+  const __retVal_total = Math.round(emergentTotal * ROUNDING_FACTOR) / ROUNDING_FACTOR;
+  // ─── Field-coupling — the master scorer is now wired ─────────────
+  // computeCoherencyScore is the canonical coherency reading for the
+  // entire ecosystem. Every score read SHOULD reach the field — this
+  // is what makes the field's per-source histogram reflect what's
+  // actually being scored, vs. only the producers that already
+  // remembered to contribute.
+  try {
+    const { contribute } = require('../core/field-coupling');
+    contribute({
+      cost: 1,
+      coherence: Math.max(0, Math.min(1, __retVal_total || 0)),
+      source: 'oracle:coherency:computeCoherencyScore',
+    });
+  } catch (_) { /* best-effort */ }
+
   return {
-    total: Math.round(emergentTotal * ROUNDING_FACTOR) / ROUNDING_FACTOR,
+    total: __retVal_total,
     breakdown: emergentBreakdown,
     // Legacy breakdown preserved for consumers that read specific dimensions
     legacyBreakdown: scores,

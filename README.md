@@ -24,45 +24,57 @@ npm install remembrance-oracle-toolkit
 
 ---
 
-## What it actually is, in one breath
+## The whole thing, in one line
 
-A substrate that does four things to any pattern you hand it:
+**Show it something. It tells you what that resembles in everything already proven. What coheres, it keeps. What it keeps makes the next answer truer.**
 
-1. **Encode** — turn the input into a structural vector (29 named dimensions: what kind of thing is this, structurally?).
-2. **Match** — find what in the verified library resembles it, with what coherency, with what provenance.
-3. **Verify** — optionally run it (sandboxed), screen it for harm, cross-check it against independent tests.
-4. **Remember** — what survives the gauntlet is absorbed into the library, so the next match is sharper.
+That sentence is the entire system. Everything below is the same sentence, zoomed in. If you only read this line, you understand it.
 
-No model training. No GPU. No black box. Every score is a number you can trace
-to a file and a line.
+## The same shape at every scale
 
-## Why "anti-hallucination is emergent"
+The system is fractal: one loop repeats at every level, and the meaning is in the repetition. The loop has four beats —
 
-A hallucinated answer — invented function names, a fabricated citation, a claim
-nothing else supports — has **no resonance** with a library of verified
-patterns. It matches nothing strongly. It has no provenance, no replication, no
-prior that confirms it. The substrate flags it as a low-coherency outlier
-*automatically*, as a side effect of doing what it always does: measure
-agreement with what's already proven.
+> **encounter → match against what's proven → does it cohere? → what survives is remembered**
 
-That's the difference between a feature and a property. You don't run a
-"check for hallucinations" step. You match against verified knowledge, and
-hallucinations fall out the bottom because they don't cohere.
+Watch it recur. Each row is the same four beats, one zoom level out:
+
+| Scale | encounter | match against proven | cohere? | what survives is remembered |
+|---|---|---|---|---|
+| **A pattern** | a snippet arrives | encode it, compare to the verified library | resonance score | if it runs + passes, it joins the library |
+| **An agent** | proposes a solution | scored against proven patterns | coherency + safety + execution | strong proposals become patterns |
+| **A council** | many agents answer | cross-checked against each other's tests | consensus + agreement | the winner can teach the covenant |
+| **The field** | every reading flows in | integrated into one conserved scalar | global coherency rises or thins | what's measured reshapes what's trusted |
+| **A field-of-fields** | many fields federate | each absorbs the others' aggregate | the network coheres | truth converges across independent sources |
+
+Read top-to-bottom and a meaning emerges that no single row states: *trust is not declared, it is earned by surviving — and the same test of survival applies whether you are one line of code or an entire ecosystem of them.* Nothing is trusted because it was asserted. Everything is trusted because it cohered with what came before and outlived the attempts to break it.
+
+That is why **anti-hallucination is emergent, not a feature.** A hallucination — an invented function, a fabricated citation, a claim nothing supports — fails the *same* test at *every* scale: it resembles nothing proven, so it doesn't cohere, so it isn't kept. You never run a "detect hallucination" step. You run the loop, and what can't survive it falls out the bottom on its own. The defense against fabrication is identical to the definition of the system.
+
+## What it does to any pattern you hand it
+
+Concretely, the four beats are four operations — and you can call any of them on their own:
+
+1. **Encode** — turn input into a 29-dimension structural vector. Each dimension *means* something (is this expansive or contractive? safe or harmful? deeply nested or flat?), so two things are similar only when they're structurally similar — prose can't masquerade as code.
+2. **Match** — find what in the verified library resembles it, with what coherency, with what provenance, with what track record.
+3. **Verify** — run it sandboxed, screen it for harm, cross-check it against independent tests.
+4. **Remember** — what survives is absorbed, so the next match is sharper. The library teaches itself.
+
+No model training. No GPU. No black box. Every score traces to a file and a line — and every score is the same coherence question asked at a different zoom.
 
 ## Plug in — the MCP server
 
-The fastest way to use it is the hosted field-server, which exposes the whole
-stack as **MCP tools** any agent or app can call (Claude Desktop, Cursor, your
-own orchestrator, a CI step, a browser):
+The fastest way to use it is the hosted field-server, which exposes each beat of
+the loop as an **MCP tool** any agent or app can call (Claude Desktop, Cursor,
+your own orchestrator, a CI step, a browser):
 
-| Tool | What it answers |
-|---|---|
-| `pattern_resonance` | Does this resemble proven patterns? (the anti-hallucination signal) |
-| `safety_check` | Is this safe? (covenant principles + security scanner) |
-| `exec_verify` | Does this actually run correctly? (sandboxed execution) |
-| `evaluate` | All of the above, composed into one verdict |
-| `coherency` | How similar are these two things, structurally? |
-| `field_read` / `field_contribute` | Read / write the shared signal field |
+| Tool | The beat it is | What it answers |
+|---|---|---|
+| `pattern_resonance` | match | Does this resemble proven patterns? (the anti-hallucination signal) |
+| `safety_check` | verify | Is this safe? (covenant principles + security scanner) |
+| `exec_verify` | verify | Does this actually run correctly? (sandboxed execution) |
+| `evaluate` | the whole loop | encounter → match → verify → verdict, composed |
+| `coherency` | encode + match | How similar are these two things, structurally? |
+| `field_read` / `field_contribute` | remember | Read / write the shared signal field |
 
 ```bash
 # Start the server (self-host anywhere; reads open, writes token-gated)

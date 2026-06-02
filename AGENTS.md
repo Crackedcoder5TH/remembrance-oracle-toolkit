@@ -25,6 +25,19 @@ line.
 
 ## The 30-second mental model
 
+**The whole system in one line:** *show it something; it tells you what that
+resembles in everything already proven; what coheres, it keeps; what it keeps
+makes the next answer truer.*
+
+That one loop — **encounter → match against proven → cohere? → what survives is
+remembered** — repeats at every scale (a pattern, an agent, a council, the
+field, a field-of-fields). The meaning is in the repetition: trust is never
+declared, it is *earned by surviving*. A hallucination fails the same test at
+every scale — it resembles nothing proven, so it doesn't cohere, so it isn't
+kept. Anti-hallucination isn't a step you run; it's what the loop does.
+
+At the level you work — a single change — the loop is four operations:
+
 ```
 your input  ─encode→  29-D structural vector
                           ├─ resonance:  resembles PROVEN patterns? (anti-hallucination)

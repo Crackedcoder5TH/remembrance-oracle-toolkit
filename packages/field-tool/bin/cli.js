@@ -48,7 +48,7 @@ Code verification (requires bearer token — server runs code in a sandbox):
   remembrance-field verify <code|@file> --language <js|python> [--test <code|@file>] [--timeout <ms>]
       Run code in a temp dir with hard timeout; report status (pass /
       smoke-pass / fail / timeout / blocked / skipped) and signal [0..1].
-      Harm-screened before execution. Compose with `safety` for full
+      Harm-screened before execution. Compose with \`safety\` for full
       anti-hallucination coverage: safety first (static), verify after
       (dynamic). Exit 0 pass, 1 fail/timeout/blocked, 2 skipped/error.
 

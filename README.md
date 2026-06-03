@@ -75,6 +75,7 @@ your own orchestrator, a CI step, a browser):
 | `evaluate` | the whole loop | encounter → match → verify → verdict, composed |
 | `coherency` | encode + match | How similar are these two things, structurally? |
 | `field_read` / `field_contribute` | remember | Read / write the shared signal field |
+| `field validate` | the dual oracle | Is this contribution shape consistent with natural measurement? Returns one of four verdicts: `both-accept`, `both-reject`, `A-yes-B-no` (shape-suspect — sophisticated injection), `A-no-B-yes` (low-value-real). Tracking the histogram of verdicts gives you a built-in environmental sensor for what kind of pressure the substrate is under. |
 
 ```bash
 # Start the server (self-host anywhere; reads open, writes token-gated)
@@ -171,6 +172,44 @@ npm test
 - Field: **121,000+ observations** across **133 sources**, global coherence **0.806**
 - Cross-language encoder parity (JS ↔ Python): **byte-identical**, 0.00 divergence (contract C-71)
 - Test suites: oracle **4453/4454**, swarm **205/205**, moons **19/19**
+
+## Verified by measurement (not just claimed)
+
+Three falsifiable predictions tested against the substrate's own
+documentation. Record and reproducible scripts in
+[`docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md`](./docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md).
+
+- **H1 — Temporal coherency.** The writer's frame is a stable
+  attractor in waveform space, not a random walk. Across 9 repos and
+  ~3 months of README history: adjacent-step coherency mean **0.975**,
+  long-arc coherency mean **0.907**, convergence delta **+0.012**
+  (5 of 9 repos tightening over time). Frame survives substantial
+  editing; ~91% of the original shape is preserved across the arc.
+  Read as compression: the substrate is doing real work against entropy.
+- **H2 — Rhetorical-family structure.** Across the ecosystem's
+  entry-point docs, four registers emerge structurally without being
+  labelled — descriptive (READMEs), imperative (AGENT_INSTR),
+  declarative (MANIFESTOs), evidential (CAPABILITIES). A deliberately
+  off-register fifth document (interrogative — open questions) sits
+  *below* every family's within-family floor (deltas -0.031 to -0.269),
+  confirming the four families are real categories the substrate
+  defends.
+- **H3 — Signal-validity oracle.** The field engine self-validates
+  input *shape*, not just value. Same-mean (=0.5) treatments with
+  different variance signatures produced deflections spread by **0.44** —
+  far beyond noise. Narrow-band synthetic-looking contributions
+  collapse global coherence; wide naturally-distributed contributions
+  are tolerated even at low values. The variance-signature detector
+  emerged from the recursion; it was not designed. It is now exposed
+  as the `field validate` MCP action and as the second oracle in the
+  covenant absorption gate.
+
+The covenant absorbs new patterns only when **both oracles concur**
+(coherency-green-light + signal-validity). Disagreement quarantines
+the candidate and is itself a typed signal: tracking the four-outcome
+histogram (`both-accept` / `both-reject` / `A-yes-B-no` / `A-no-B-yes`)
+gives operators a built-in environmental sensor — adversarial
+pressure, degraded supply, or healthy growth all read differently.
 
 ---
 

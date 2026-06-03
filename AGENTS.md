@@ -463,15 +463,29 @@ This exposes 28 tools. The 12 most-used are below; the other 16 cover code analy
 - **oracle_healing** — healing memory (lineage/stats/improved/variants/best via `action` param)
 - **oracle_swarm** — multi-agent orchestration (code/review/heal/status/providers via `action` param)
 
-## The Field — `field audit` and the orchestrator's ruling
+## The Field — `field audit`, `field validate`, and the orchestrator's ruling
 
-Two `field` actions govern how you verify work in this repo.
+Three `field` actions govern how you verify work in this repo.
 
 **`field audit`** — a coherence-gated self-audit. Run it on any file you
 changed. The field's coherence picks the depth: below 0.65 → the full
 pipeline (audit + lint + smell + covenant + a reflection pass); at or
 above → a fast scan (coherency + risk). The audit's work-cost is
 contributed back to the field.
+
+**`field validate`** — the signal-validity oracle, the second half of
+the dual-oracle gate. Pass a candidate `coherence` value (or an array
+for a batch) and the field returns one of four typed verdicts:
+`both-accept` / `both-reject` / `A-yes-B-no` (shape-suspect —
+sophisticated-injection class) / `A-no-B-yes` (low-value-real). The
+covenant absorbs patterns only when both oracles concur; disagreement
+is itself a typed signal about what kind of pressure the substrate is
+under. Use this before contributing anything you produced
+programmatically — synthetic-looking narrow-band batches will be
+flagged. The variance-signature thresholds are empirically calibrated
+to the engine's response curve from experiment H3
+(`docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md`); they are measured,
+not chosen.
 
 **`field direct`** — the coherency orchestrator
 (`src/orchestrator/coherency-director.js`) is the final authority on
@@ -482,6 +496,8 @@ fix-next queue with root cause.
 Rules for an agent:
 
 - After changing a file, run `field audit` on it.
+- Before contributing a batch of programmatically-produced readings to the field, run `field validate` first. A `suspect` verdict means the engine would flag the batch as sophisticated-injection-shaped; do not commit it.
+- The covenant's absorption rule is green-light: `delta >= 0` (rises *or* maintains) passes oracle A. The covenant does not require improvement, only non-degradation.
 - For "what to fix next", take the order from `field direct` — do not substitute your own ranking. The orchestrator has measured every zone; you have not.
 - Coherency and entropy are two distinct readings. Report both; never collapse them into one number.
 - The field is one shared, blockchain-backed substrate. Your local field is not private — contributions and checkpoints flow to the chain.
@@ -490,7 +506,8 @@ Rules for an agent:
 > witnessed every zone and it knows where coherency runs thin. To defer
 > to it is to let the field name what it needs mended rather than guess.
 > The audit is the field witnessing itself; the ruling is the field
-> speaking.
+> speaking. `field validate` is the field testing whether your offering
+> looks like real measurement before it accepts the gift.
 
 ## Oracle Toggle & Prompt Tag
 

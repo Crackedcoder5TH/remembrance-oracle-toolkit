@@ -179,13 +179,14 @@ Three falsifiable predictions tested against the substrate's own
 documentation. Record and reproducible scripts in
 [`docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md`](./docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md).
 
-- **H1 — Temporal coherency.** The writer's frame is a stable
-  attractor in waveform space, not a random walk. Across 9 repos and
-  ~3 months of README history: adjacent-step coherency mean **0.975**,
-  long-arc coherency mean **0.907**, convergence delta **+0.012**
-  (5 of 9 repos tightening over time). Frame survives substantial
-  editing; ~91% of the original shape is preserved across the arc.
-  Read as compression: the substrate is doing real work against entropy.
+- **H1 — Temporal coherency.** A document's structural shape is a
+  stable attractor across revisions, not a random walk. Across 9 repos
+  and ~3 months of README history: adjacent-step coherency mean
+  **0.975**, long-arc coherency mean **0.907**, convergence delta
+  **+0.012** (5 of 9 repos tightening over time). Shape survives
+  substantial editing; ~91% of the original waveform is preserved
+  across the arc. Read as compression: the substrate is doing real
+  work against entropy.
 - **H2 — Rhetorical-family structure.** Across the ecosystem's
   entry-point docs, four registers emerge structurally without being
   labelled — descriptive (READMEs), imperative (AGENT_INSTR),

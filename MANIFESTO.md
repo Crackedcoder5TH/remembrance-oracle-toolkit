@@ -94,15 +94,30 @@ keeps the engine's own response to inputs flowing back as further
 input. Compression gave the channel its shape; coherency made the
 channel measurable; reflection made the channel watch itself.
 
-The operational consequence: any contributor can use the engine's own
-deflection response as a free input-validation layer. Fabrication —
-which often shows up as narrow-band synthetic readings — is flagged
-by the variance-signature detector even when the values look
-plausible in isolation. Anti-fabrication is therefore not a feature
-added to the substrate; it is what the substrate *does* when the
-three laws operate at once.
+**Consensus, not cascade.** The two oracles are not layered — they fire
+independently and are pitted against each other. The covenant absorbs a
+candidate pattern only when *both* concur:
 
-The experimental record establishing this is in
+- **Both accept** → absorb. The pattern earns its place by surviving
+  independent attempts to reject it.
+- **Both reject** → refuse. No further consideration; the pattern does
+  not belong.
+- **Coherency yes, shape no** → quarantine (sophisticated-injection
+  class). The candidate would raise global coherence but its
+  contribution-shape is inconsistent with natural measurement. A signal
+  that the value check was gamed but the shape check held.
+- **Coherency no, shape yes** → quarantine (low-value-real class). The
+  candidate's shape looks like real observation but its value would
+  drag the field down. Not malicious, just not good enough.
+
+This is the falsification engine applied to the absorption step: the
+truth-layer principle from the README enforced at the gate. A pattern
+joins the kingdom only when independent oracles, looking at different
+aspects of the same candidate, both say yes.
+
+Operationally, the consensus gate lives in
+[`src/core/covenant-trust.js::maybeAbsorbPattern`](./src/core/covenant-trust.js).
+The experimental record establishing the dual oracle is in
 [`docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md`](./docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md).
 
 ## The Covenant

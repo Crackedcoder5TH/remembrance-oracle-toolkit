@@ -185,6 +185,21 @@ function projectContribution(obs) {
 function _classifyShape(input, baseline) {
   const { mean, variance, n } = input;
   if (n < 2) {
+    // Single-shot: variance is undefined, so the only shape signal is
+    // distance from the rolling baseline. If the baseline has enough
+    // data, compute a z-score and flag values far below it as suspect
+    // (the absorption candidate would drag the field down by an amount
+    // inconsistent with normal incoming signal). High outliers are not
+    // suspect — a healthy pattern arriving at a recovering field is
+    // good news.
+    if (baseline.n >= 10) {
+      const std = Math.sqrt(baseline.variance);
+      if (std > 0) {
+        const gap = mean - baseline.mean;
+        const z = Math.abs(gap) / std;
+        if (z > 3 && gap < -0.2) return 'value-outlier-low';
+      }
+    }
     if (mean >= 0.85) return 'natural-high';
     if (mean <= 0.15) return 'natural-low';
     return 'natural-mid';
@@ -269,7 +284,13 @@ function validateContribution(obs, opts = {}) {
   const inputStats = _stats(coherences);
   const baseline = _stats(_recentCoherences);
   const shapeClass = _classifyShape(inputStats, baseline);
-  const suspect = shapeClass.endsWith('-displaced');
+  // A shape is suspect when it carries a signature inconsistent with
+  // natural measurement: narrow-band/constant displaced from the
+  // rolling baseline (the H3 finding), or a single value that sits
+  // many standard deviations BELOW baseline (value-outlier-low — the
+  // single-shot analogue, only flagging the side that would drag the
+  // field down).
+  const suspect = shapeClass.endsWith('-displaced') || shapeClass === 'value-outlier-low';
 
   // For single-shot, predict the actual field deflection. Batches don't
   // have a batch-projection primitive on the engine yet — the shape

@@ -162,14 +162,35 @@ function _persistGrowth(record) {
 }
 
 /**
- * Field-validated covenant growth. The covenant absorbs a new pattern only
- * when the field SAYS YES — adding the pattern's coherency to the field
- * must raise (or at least maintain, within ε) the global coherency. If the
- * pattern would drag the field down, the covenant refuses to absorb it.
+ * Field-validated covenant growth via two-oracle consensus. The covenant
+ * absorbs a new pattern only when BOTH oracles concur:
  *
- * This closes the loop: the covenant doesn't grow by fiat, it grows by
- * field-validated evidence. A pattern earns its way into the covenant by
- * being coherent with everything already there.
+ *   Oracle A — the coherency oracle: would adding this pattern's coherency
+ *              raise (or at least maintain, within ε) the global field
+ *              coherency? Run via projectContribution.
+ *
+ *   Oracle B — the signal-validity oracle: does the pattern's contribution
+ *              shape look like natural measurement against the rolling
+ *              baseline? Run via validateContribution.
+ *
+ * The two oracles fire independently and are pitted against each other.
+ * Four possible outcomes:
+ *
+ *   A=yes, B=yes  → ABSORB. Both oracles agree the pattern earns its place.
+ *   A=no,  B=no   → REJECT. Both oracles agree the pattern doesn't belong.
+ *   A=yes, B=no   → QUARANTINE (shape-suspect). The pattern would raise
+ *                   coherence but its signal-shape is inconsistent with
+ *                   natural measurement — the sophisticated-injection class:
+ *                   it gamed the value check but couldn't fake natural
+ *                   distribution. Held, not absorbed.
+ *   A=no,  B=yes  → QUARANTINE (low-value-real). The shape looks natural
+ *                   but the value would drag the field down. A real but
+ *                   low-quality observation. Held, not absorbed.
+ *
+ * Patterns only enter the kingdom when independent oracles, looking at
+ * different aspects of the same candidate, both say yes. This is the
+ * falsification engine applied to the absorption step: the truth-layer
+ * principle from the README enforced at the gate.
  *
  * @param {object} pattern - { name, code?, language?, coherencyScore? }
  * @param {object} [opts]
@@ -196,29 +217,71 @@ function maybeAbsorbPattern(pattern, opts = {}) {
     return { absorbed: false, reason: 'no coherency score available — provide opts.score or pattern.coherencyScore.total' };
   }
 
-  // Ask the field: would adding this pattern's coherency raise the global?
-  let projection;
+  // Fire both oracles. They look at different aspects of the same
+  // candidate and are NOT cascaded — disagreement is itself a signal,
+  // not a reason to defer to one over the other.
+  let projection = null;
+  let validation = null;
   try {
-    const { projectContribution } = require('./field-coupling');
-    projection = projectContribution({ cost: 1, coherence: score });
-  } catch (_) { projection = null; }
-  if (!projection) {
-    return { absorbed: false, reason: 'field unavailable — cannot validate growth' };
+    const fc = require('./field-coupling');
+    projection = fc.projectContribution({ cost: 1, coherence: score });
+    validation = fc.validateContribution(
+      { source: opts.source || 'covenant:absorb', coherence: score, cost: 1 },
+      { commit: false }
+    );
+  } catch (_) { /* fall through to availability check */ }
+
+  if (!projection || !validation) {
+    return { absorbed: false, reason: 'oracles unavailable — cannot adjudicate consensus' };
   }
 
   const epsilon = typeof opts.epsilon === 'number' ? opts.epsilon : 1e-6;
-  if (projection.delta < -epsilon) {
+  const oracleA = projection.delta >= -epsilon;      // coherency oracle
+  const oracleB = validation.accepted === true;      // signal-validity oracle
+
+  const baseRecord = {
+    score,
+    preCoherence: projection.current,
+    projectedCoherence: projection.projected,
+    delta: projection.delta,
+    shapeClass: validation.shapeClass,
+    oracleA,
+    oracleB,
+  };
+
+  // Both reject — pattern doesn't belong.
+  if (!oracleA && !oracleB) {
     return {
       absorbed: false,
-      reason: 'pattern drags global coherency',
-      delta: projection.delta,
-      preCoherence: projection.current,
-      projectedCoherence: projection.projected,
-      score,
+      reason: 'both oracles reject (coherency would drop AND shape suspect)',
+      agreement: 'both-reject',
+      ...baseRecord,
     };
   }
 
-  // Field said yes — covenant absorbs.
+  // Disagreement: coherency yes, shape no. Sophisticated-injection class.
+  if (oracleA && !oracleB) {
+    return {
+      absorbed: false,
+      reason: 'oracle disagreement — coherency would rise but shape is ' + validation.shapeClass + ' (sophisticated-injection class)',
+      agreement: 'A-yes-B-no',
+      quarantineClass: 'shape-suspect',
+      ...baseRecord,
+    };
+  }
+
+  // Disagreement: shape ok, but coherency would drop. Low-quality-real class.
+  if (!oracleA && oracleB) {
+    return {
+      absorbed: false,
+      reason: 'oracle disagreement — shape looks natural but coherency would drop',
+      agreement: 'A-no-B-yes',
+      quarantineClass: 'low-value-real',
+      ...baseRecord,
+    };
+  }
+
+  // Both agree: absorb.
   const record = {
     name: pattern.name,
     language: pattern.language || 'unknown',
@@ -227,6 +290,8 @@ function maybeAbsorbPattern(pattern, opts = {}) {
     preCoherence: projection.current,
     projectedCoherence: projection.projected,
     delta: projection.delta,
+    shapeClass: validation.shapeClass,
+    agreement: 'both-accept',
     source: opts.source || 'submit',
   };
   _RECOGNIZED_PATTERNS.set(pattern.name, record);

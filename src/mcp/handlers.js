@@ -1161,6 +1161,36 @@ const HANDLERS = {
         };
       }
 
+      // ── the signal-validity oracle ──
+      // Classify a candidate contribution (or batch) against the field's
+      // expected input shape without committing. The empirical basis for
+      // the variance-signature thresholds is in
+      // docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md (H3).
+      case 'validate': {
+        const hasArray = Array.isArray(args?.coherence);
+        const hasNumber = typeof args?.coherence === 'number';
+        if (!hasArray && !hasNumber) {
+          throw new Error('field action "validate" requires "coherence" (number or number[])');
+        }
+        const obs = {
+          source: args.source || 'mcp:field:validate',
+          coherence: args.coherence,
+          cost: typeof args.cost === 'number' ? args.cost : 1.0,
+        };
+        const result = fc.validateContribution(obs, { commit: args.commit === true });
+        return {
+          accepted: result.accepted,
+          shapeClass: result.shapeClass,
+          suspect: result.suspect,
+          reason: result.reason,
+          inputStats: result.inputStats,
+          baseline: result.baseline,
+          projected: result.projected,
+          committed: result.committed,
+          source: obs.source,
+        };
+      }
+
       // ── commit the field state to the blockchain ──
       case 'checkpoint': {
         const state = fc.peekField();

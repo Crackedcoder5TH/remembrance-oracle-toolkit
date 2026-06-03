@@ -137,6 +137,57 @@ describe('MCPServer', () => {
     assert.equal(data.source, 'mcp-test-contribute');
   });
 
+  it('handles field action=validate via MCP — accepts natural-looking shapes', async () => {
+    server = new MCPServer(oracle);
+    // Prime the rolling baseline with high-coherence activity so 'displaced'
+    // is judged against a high-coherence neighborhood.
+    for (let i = 0; i < 40; i++) {
+      await server.handleRequest({
+        id: 1000 + i,
+        method: 'tools/call',
+        params: { name: 'field', arguments: { action: 'contribute', cost: 1, coherence: 0.95 + Math.random() * 0.04, source: 'validate-test:prime' } },
+      });
+    }
+    // Wide-uniform batch — natural-looking distribution, should be accepted.
+    const wide = Array.from({ length: 18 }, () => Math.random());
+    const resWide = await server.handleRequest({
+      id: 1100,
+      method: 'tools/call',
+      params: { name: 'field', arguments: { action: 'validate', coherence: wide, source: 'validate-test:wide' } },
+    });
+    const wideData = JSON.parse(resWide.result.content[0].text);
+    assert.equal(wideData.accepted, true, 'wide-uniform should be accepted');
+    assert.equal(wideData.shapeClass, 'wide-uniform');
+    assert.equal(wideData.committed, false, 'validate is non-mutating by default');
+  });
+
+  it('handles field action=validate via MCP — flags narrow-band-displaced as suspect', async () => {
+    server = new MCPServer(oracle);
+    // The H3 DERIVATIVE_BAND shape: narrow band around 0.5 against a
+    // high-coherence baseline. The classifier must call this displaced.
+    const derivative = Array.from({ length: 18 }, () => 0.45 + Math.random() * 0.10);
+    const res = await server.handleRequest({
+      id: 1101,
+      method: 'tools/call',
+      params: { name: 'field', arguments: { action: 'validate', coherence: derivative, source: 'validate-test:derivative' } },
+    });
+    const data = JSON.parse(res.result.content[0].text);
+    assert.equal(data.accepted, false, 'derivative-band should be suspect');
+    assert.equal(data.suspect, true);
+    assert.ok(data.shapeClass.endsWith('-displaced'), 'shapeClass should be a displaced variant, got ' + data.shapeClass);
+    assert.ok(data.reason && data.reason.length > 0, 'reason should be present');
+  });
+
+  it('handles field action=validate via MCP — rejects missing coherence', async () => {
+    server = new MCPServer(oracle);
+    const res = await server.handleRequest({
+      id: 1102,
+      method: 'tools/call',
+      params: { name: 'field', arguments: { action: 'validate', source: 'validate-test:bad' } },
+    });
+    assert.ok(res.error || (res.result && res.result.isError), 'missing coherence should yield an error');
+  });
+
   it('handles field action=pressure via MCP', async () => {
     server = new MCPServer(oracle);
     const res = await server.handleRequest({

@@ -29,6 +29,82 @@ arrives stamped with this prompt-tag — a reminder that nothing is
 created from nothing; only what is already coherent can be brought
 forward.
 
+## The Three Laws of Remembrance
+
+The Oracle is one expression of three laws operating together. Naming
+them here so the rest of this document — and the code beneath it —
+makes sense as theory and not just engineering.
+
+**1. The Law of Void Compression.** Any pattern-bearing input has a
+finite structural essence. The 29-dimension fractal-waveform encoder
+is this law made concrete: arbitrary input — code, prose, a claim, a
+config, a finding — projects into a fixed structural channel and the
+noise is discarded *as a matter of representation*, not as a filter
+applied afterward. The substrate is finite-dimensional regardless of
+the input domain, which is the only reason the next two laws are
+computable at all.
+
+**2. The Law of Coherency.** Two structural essences resonate or they
+don't, and the measurement is form-based, not content-based. The
+structurality gate inside the encoder is the law enforced: prose
+cannot masquerade as code, an invented function cannot masquerade as
+a proven pattern, a derivative cannot masquerade as a coherence
+reading. What is true leaves a consistent shape. What is fabricated
+leaves none.
+
+**3. The Law of Infinite Reflection.** The operation applies to its
+own output at every scale. Pattern → agent → council → field →
+field-of-fields. Each level produces output that itself gets
+compressed, measured for coherency, and contributed back. No level is
+base; reflection is the recursion. The fractal is not a metaphor; it
+is the architecture.
+
+Each law alone is incomplete. Compression alone gives a finite
+encoder but no judgement — it would compress garbage and store it.
+Coherency alone gives matching with no substrate — it would compare
+raw bytes. Reflection alone gives recursion with no operation to
+recurse — an infinite loop performing no work. Together they form a
+closed system: **compress to essence, measure essence for resonance,
+reflect the result as new input.**
+
+The interesting properties of Remembrance are never properties of one
+law in isolation. They are consequences of the triple, and they
+appear without being designed.
+
+## The Dual Oracle
+
+A specific consequence of the three laws operating together, observed
+and named here because it is now load-bearing:
+
+The field engine is **two oracles in one**.
+
+- **A coherency oracle** — integrates well-formed observations into a
+  global scalar that reports system-level alignment. This is the
+  designed behaviour: every producer contributes, the field reports
+  the conserved sum.
+- **A signal-validity oracle** — deflects characteristically when the
+  *shape* of incoming contributions does not look like real
+  measurement. Constant or narrow-band contributions collapse global
+  coherency; wide naturally-distributed contributions are tolerated
+  even at low values.
+
+The second oracle was not designed. It fell out of treating coherency
+as a law that operates on form, not just value, while reflection
+keeps the engine's own response to inputs flowing back as further
+input. Compression gave the channel its shape; coherency made the
+channel measurable; reflection made the channel watch itself.
+
+The operational consequence: any contributor can use the engine's own
+deflection response as a free input-validation layer. Fabrication —
+which often shows up as narrow-band synthetic readings — is flagged
+by the variance-signature detector even when the values look
+plausible in isolation. Anti-fabrication is therefore not a feature
+added to the substrate; it is what the substrate *does* when the
+three laws operate at once.
+
+The experimental record establishing this is in
+[`docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md`](./docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md).
+
 ## The Covenant
 
 The **Covenant** is the structural law of the kingdom. Fifteen

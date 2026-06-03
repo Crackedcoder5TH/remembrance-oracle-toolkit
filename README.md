@@ -123,19 +123,27 @@ bring none and use it as a pure scoring engine over your own work.
 ## Not a code tool. Code was the bootstrap.
 
 The oracle started as a way to build a 12-repo ecosystem *reliably* — to verify
-generated code instead of trusting it. That worked, so now the same primitives
-apply to **any falsifiable pattern**: scientific claims with executable
-falsifiers, clinical protocols, design patterns, financial signals, legal
-precedents. The substrate doesn't care whether a pattern is a function or a
-hypothesis — it measures whether something cohered with prior verified knowledge
-and survived independent attempts to break it. Code is just the domain that's
-densest today.
+generated code instead of trusting it. That worked, and the same primitives now
+operate on patterns from any domain. The harvested substrate in this checkout
+already contains physics maps, atomic structure, biological-physics generators,
+music substrates, four human-language substrates (French, Japanese, Chinese,
+Arabic), deep-science patterns, pedagogical/agent-teaching patterns, the
+covenant's patterns about itself, and cross-repo code records — all living in
+the same substrate, going through the same 29-dimension encoder, and judged by
+the same coherency gate. There is no domain-specific code path anywhere in the
+core; the substrate cannot tell a function from a hypothesis from a chord
+progression because the representation discards the distinction. It measures
+whether something cohered with prior verified knowledge and survived
+independent attempts to break it. Domain is irrelevant to the gate; only the
+coherency signature is.
 
 ## Honest about the limits
 
-- **The library is the bottleneck.** The signal is exactly as strong as the
-  verified substrate is broad. Today it's densest on code; novel domains are
-  thinner until they're seeded.
+- **Density-within-domain, not domain coverage, is the bottleneck.** The
+  substrate already spans physics, chemistry, biology, music, multiple human
+  languages, science, pedagogy, and code. Coverage isn't the gap; depth within
+  any given domain is what builds up over time as patterns survive
+  verification.
 - **It measures coherency-with-proven, not capital-T truth.** It tells you
   "this resembles things that worked, executes, is safe, and independent checks
   agree." A *truth* layer emerges only as falsifiable claims accumulate

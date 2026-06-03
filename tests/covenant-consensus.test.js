@@ -22,6 +22,7 @@ process.env.ENTROPY_PATH = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cons
 
 const fc = require('../src/core/field-coupling');
 const { maybeAbsorbPattern, maybeAbsorbBatch } = require('../src/core/covenant-trust');
+const { validateContribution, recognizedShapeSignatures, _resetLearnedShapes } = require('../src/core/field-coupling');
 
 function primeAt(target, spread = 0.05, n = 60) {
   for (let i = 0; i < n; i++) {
@@ -220,5 +221,96 @@ describe('covenant absorption — batch consensus', () => {
     if (result.batch.agreement === 'both-accept') {
       assert.ok(result.batch.projection.delta >= -0.005, 'maintains-within-eps must count as green');
     }
+  });
+});
+
+describe('variance gate — growth alongside the covenant', () => {
+
+  beforeEach(() => {
+    _resetLearnedShapes();
+  });
+
+  function mkBatch(prefix, scores) {
+    return scores.map((s, i) => ({
+      name: prefix + '-' + i + '-' + Date.now() + '-' + Math.random().toString(36).slice(2,6),
+      language: 'js',
+      score: s,
+    }));
+  }
+
+  it('learned shape registry starts empty and accepts entries only after consensus absorption', () => {
+    const before = recognizedShapeSignatures();
+    assert.equal(before.length, 0, 'learned registry must start empty after reset');
+
+    primeAt(0.65, 0.12);
+    const batch = mkBatch('vargate-seed', [0.62, 0.72, 0.78, 0.82, 0.85, 0.88, 0.91, 0.94, 0.96, 0.98]);
+    const result = maybeAbsorbBatch(batch, { persist: false, source: 'test:vargate:seed' });
+    assert.equal(result.batch.accepted, true, 'expected both-accept; got ' + result.batch.agreement);
+
+    const after = recognizedShapeSignatures();
+    assert.equal(after.length, 1, 'one shape signature should have been learned');
+    assert.ok(Math.abs(after[0].mean - result.batch.batchMean) < 1e-9, 'learned mean should match batch mean');
+    assert.ok(Math.abs(after[0].variance - result.batch.batchVariance) < 1e-9, 'learned variance should match batch variance');
+    assert.equal(after[0].n, batch.length);
+  });
+
+  it('a structurally similar batch classifies as learned-natural after the gate has grown', () => {
+    primeAt(0.65, 0.12);
+
+    // First batch — passes both gates, signature gets learned.
+    const seedBatch = mkBatch('vargate-grow-seed', [0.62, 0.72, 0.78, 0.82, 0.85, 0.88, 0.91, 0.94, 0.96, 0.98]);
+    const seedResult = maybeAbsorbBatch(seedBatch, { persist: false });
+    assert.equal(seedResult.batch.accepted, true);
+    assert.equal(recognizedShapeSignatures().length, 1);
+
+    // Second batch with a STRUCTURALLY SIMILAR shape signature (same
+    // approximate mean, variance, n). Without the growth mechanism this
+    // would re-classify from scratch via the H3 thresholds. With growth,
+    // the learned-signature check fires first and labels it learned-natural.
+    const followBatch = mkBatch('vargate-grow-follow', [0.64, 0.74, 0.80, 0.83, 0.86, 0.89, 0.92, 0.94, 0.96, 0.97]);
+    const followScores = followBatch.map(b => b.score);
+    const validation = validateContribution(
+      { source: 'test:vargate:follow', coherence: followScores },
+      { commit: false }
+    );
+    assert.equal(validation.shapeClass, 'learned-natural', 'similar shape should be recognised as learned-natural; got ' + validation.shapeClass);
+    assert.equal(validation.accepted, true);
+    assert.equal(validation.suspect, false);
+  });
+
+  it('a structurally different batch still falls back to the H3 default thresholds', () => {
+    primeAt(0.65, 0.12);
+
+    // Learn one shape.
+    const seedBatch = mkBatch('vargate-dist-seed', [0.62, 0.72, 0.78, 0.82, 0.85, 0.88, 0.91, 0.94, 0.96, 0.98]);
+    const seedResult = maybeAbsorbBatch(seedBatch, { persist: false });
+    assert.equal(seedResult.batch.accepted, true);
+
+    // A clearly DIFFERENT shape (much higher variance — bimodal extreme).
+    // The learned signature should not match, and the default classifier
+    // should label it bimodal.
+    const bimodalScores = [0.05, 0.06, 0.05, 0.07, 0.95, 0.96, 0.94, 0.95, 0.05, 0.95];
+    const validation = validateContribution(
+      { source: 'test:vargate:distinct', coherence: bimodalScores },
+      { commit: false }
+    );
+    assert.notEqual(validation.shapeClass, 'learned-natural', 'distinct shape must not match a learned signature');
+    assert.equal(validation.shapeClass, 'bimodal');
+  });
+
+  it('duplicate-equivalent learned shapes are not double-recorded', () => {
+    primeAt(0.65, 0.12);
+
+    // Absorb one batch.
+    const seedBatch = mkBatch('vargate-dup-1', [0.62, 0.72, 0.78, 0.82, 0.85, 0.88, 0.91, 0.94, 0.96, 0.98]);
+    maybeAbsorbBatch(seedBatch, { persist: false });
+    assert.equal(recognizedShapeSignatures().length, 1);
+
+    // Absorb a second batch with a structurally equivalent shape.
+    // The learned registry should not grow — the existing signature
+    // already covers it.
+    const dupBatch = mkBatch('vargate-dup-2', [0.63, 0.71, 0.79, 0.81, 0.86, 0.87, 0.92, 0.93, 0.96, 0.99]);
+    maybeAbsorbBatch(dupBatch, { persist: false });
+    assert.equal(recognizedShapeSignatures().length, 1, 'duplicate shape should not be re-recorded');
   });
 });

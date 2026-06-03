@@ -485,7 +485,12 @@ programmatically — synthetic-looking narrow-band batches will be
 flagged. The variance-signature thresholds are empirically calibrated
 to the engine's response curve from experiment H3
 (`docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md`); they are measured,
-not chosen.
+not chosen. The gate also *grows*: every contribution whose shape
+passes both oracles and gets absorbed by the covenant records its
+(mean, variance, n) signature as `learned-natural`. Future
+structurally-similar batches then classify as `learned-natural` and
+bypass the H3-default rejection. Same ratchet as the covenant — only
+verified material teaches.
 
 **`field direct`** — the coherency orchestrator
 (`src/orchestrator/coherency-director.js`) is the final authority on

@@ -304,6 +304,25 @@ function maybeAbsorbPattern(pattern, opts = {}) {
   };
   _RECOGNIZED_PATTERNS.set(pattern.name, record);
   if (opts.persist !== false) _persistGrowth(record);
+
+  // Variance-gate growth: the gates have verified coherency, so the
+  // shape signature this contribution arrived in is now recognised as
+  // natural. Future contributions with structurally similar signatures
+  // will classify as 'learned-natural'. Same discipline as the
+  // covenant ratchet — what coherency accepted, the variance gate
+  // remembers. Best-effort; never breaks an absorption.
+  try {
+    const fc = require('./field-coupling');
+    if (typeof fc.recordLearnedShape === 'function') {
+      fc.recordLearnedShape({
+        mean: validation.inputStats.mean,
+        variance: validation.inputStats.variance,
+        n: validation.inputStats.n,
+        source: opts.source || 'covenant:absorb',
+      });
+    }
+  } catch (_) { /* best-effort */ }
+
   return { absorbed: true, ...record };
 }
 
@@ -483,6 +502,26 @@ function maybeAbsorbBatch(patterns, opts = {}) {
     if (opts.persist !== false) _persistGrowth(record);
     perPattern.push({ name: c.name, absorbed: true, score: c.score });
   }
+
+  // Variance-gate growth at batch granularity — this is where the
+  // variance signature has its real content. The whole batch's
+  // (mean, variance, n) becomes a learned-natural signature now that
+  // both oracles have verified the coherency. Future batches with
+  // structurally similar signatures will classify as 'learned-natural'
+  // — the variance gate has expanded to include this domain's shape.
+  // Best-effort; never breaks a batch absorption.
+  try {
+    const fc = require('./field-coupling');
+    if (typeof fc.recordLearnedShape === 'function') {
+      fc.recordLearnedShape({
+        mean: batchMean,
+        variance: batchVariance,
+        n: candidates.length,
+        source: opts.source || 'covenant:absorb-batch',
+      });
+    }
+  } catch (_) { /* best-effort */ }
+
   return { batch: batchInfo, perPattern };
 }
 

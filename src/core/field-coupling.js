@@ -263,6 +263,191 @@ function localUpdateCount() {
   return _localUpdateCount;
 }
 
+// ── Cascade-pressure release detection ────────────────────────────────────
+//
+// Throughout this work we noticed that the field's cascadeFactor and
+// globalEntropy often spike above their saturation thresholds and then
+// release sharply on a well-shaped contribution. Twice in the development
+// session that produced this code the cascade went from ~4 (saturated)
+// down to ~1 (relaxed) on a single edit that re-aligned the docs with
+// reality. That release event is operationally meaningful — it tells
+// you when the substrate was holding tension and your contribution
+// relieved it. We name it as a first-class signal here.
+
+const _CASCADE_RELEASE_HISTORY_MAX = 50;
+const _RELEASE_CASCADE_DROP_MIN = 0.5;   // minimum absolute cascade drop to count
+const _RELEASE_CASCADE_FROM_MIN = 2.0;   // must have been at least mildly saturated
+const _cascadeHistory = [];              // rolling history of release events
+let _lastCascadeReading = null;
+let _lastEntropyReading = null;
+
+/**
+ * Take a pressure snapshot and detect whether a release event just
+ * occurred since the previous snapshot. Updates module-local state so
+ * subsequent calls measure deltas against this one.
+ *
+ * @returns {object|null} { cascade, entropy, release } or null if field unavailable.
+ *   `release` is null when no release event detected; otherwise:
+ *   { released: true, fromCascade, toCascade, cascadeDrop, fromEntropy,
+ *     toEntropy, entropyDrop, magnitude, ts }
+ */
+function pressureSnapshot() {
+  const state = peekField();
+  if (!state) return null;
+  const cascade = typeof state.cascadeFactor === 'number' ? state.cascadeFactor : 0;
+  const entropy = typeof state.globalEntropy === 'number' ? state.globalEntropy : 0;
+
+  let release = null;
+  if (_lastCascadeReading !== null) {
+    const cascadeDrop = _lastCascadeReading - cascade;       // positive = dropped
+    const entropyDrop = _lastEntropyReading - entropy;
+    if (cascadeDrop >= _RELEASE_CASCADE_DROP_MIN && _lastCascadeReading >= _RELEASE_CASCADE_FROM_MIN) {
+      release = {
+        released: true,
+        fromCascade: _lastCascadeReading,
+        toCascade: cascade,
+        cascadeDrop,
+        fromEntropy: _lastEntropyReading,
+        toEntropy: entropy,
+        entropyDrop,
+        magnitude: cascadeDrop,
+        ts: new Date().toISOString(),
+      };
+      _cascadeHistory.push(release);
+      if (_cascadeHistory.length > _CASCADE_RELEASE_HISTORY_MAX) _cascadeHistory.shift();
+    }
+  }
+  _lastCascadeReading = cascade;
+  _lastEntropyReading = entropy;
+  return { cascade, entropy, release };
+}
+
+/**
+ * Recent cascade-release events observed since process start (or since
+ * the last reset). Most recent last. Bounded to the last 50.
+ */
+function cascadeReleaseHistory() {
+  return _cascadeHistory.slice();
+}
+
+// ── Cost / coherency separation (explicit convention) ────────────────────
+//
+// The engine's master equation already auto-balances cost and coherence:
+//   entropy(t) = cost / (coherence(t) + ε)
+// Cost raises entropy; coherence lowers it. Cost-side contributions
+// without a coherency benefit drive the substrate toward saturation;
+// coherency-side contributions release that pressure. The two are
+// thermodynamic conjugates.
+//
+// `recordCost` and `recordBenefit` are explicit-convention wrappers that
+// make the intent of a contribution visible at the call site. Use them
+// instead of raw `contribute()` whenever you can:
+//
+//   recordCost({ units, source, kind })
+//     — register pure work that consumed resources: compute time,
+//       money, energy, a swarm run, an audit pass. Raises entropy
+//       without claiming a coherency benefit. The substrate "feels"
+//       this as load.
+//
+//   recordBenefit({ coherence, source, cost })
+//     — register a coherency-positive outcome: a verified pattern,
+//       a healed file, a passed audit, an accepted contribution.
+//       Raises the coherence integral while incurring a (typically
+//       small) cost.
+//
+// The pair is auto-balanced: a swarm run that produces a verified
+// pattern can call both — recordCost for the compute spend,
+// recordBenefit for the outcome — and the engine integrates them
+// against each other. The covenant aim — always raise coherency net —
+// is enforced by the consensus gate and the field's own dynamics.
+
+/**
+ * Register a pure cost contribution. Drives entropy up without
+ * claiming a coherency benefit.
+ *
+ * @param {object} obs
+ * @param {number} obs.units — work units spent (compute time, dollars, kWh, swarm runs)
+ * @param {string} obs.source — caller identity, e.g. 'swarm:run' or 'compute:gpt-4'
+ * @param {string} [obs.kind='work'] — optional kind tag for the source label
+ * @returns {object|null} engine result or null
+ */
+function recordCost({ units, source, kind = 'work' } = {}) {
+  const u = (typeof units === 'number' && isFinite(units)) ? Math.max(0, units) : 1.0;
+  const current = peekField();
+  const passthroughCoherence = current ? current.coherence : 0.65;
+  const label = (typeof source === 'string' && source) ? source : ('cost:' + kind);
+  return contribute({ cost: u, coherence: passthroughCoherence, source: label });
+}
+
+/**
+ * Register a coherency-positive outcome. Drives the coherence integral
+ * up. Pair with recordCost when there was associated work — they
+ * auto-balance against each other in the engine's master equation.
+ *
+ * @param {object} obs
+ * @param {number} obs.coherence — coherency reading in [0, 1]
+ * @param {string} obs.source — caller identity, e.g. 'swarm:winner' or 'audit:passed'
+ * @param {number} [obs.cost=1.0] — associated work cost (default 1.0)
+ * @returns {object|null} engine result or null
+ */
+function recordBenefit({ coherence, source, cost = 1.0 } = {}) {
+  if (typeof coherence !== 'number' || !isFinite(coherence)) return null;
+  const label = (typeof source === 'string' && source) ? source : 'benefit:unspecified';
+  return contribute({ cost, coherence, source: label });
+}
+
+// ── Meta-observation as a first-class contribution type ──────────────────
+
+/**
+ * Record a meta-observation: aggregate a trajectory of edit/measurement
+ * scores, classify its shape via the dual oracle, and contribute the
+ * classification back to the field as a structured observation. This
+ * makes "the substrate measured my work" a normal recorded type of
+ * contribution rather than an ad-hoc end-of-session ritual.
+ *
+ * The substrate ends up containing a permanent record of its own
+ * observation of being observed — the law of infinite reflection
+ * with a write-through to the field histogram.
+ *
+ * @param {object} obs
+ * @param {number[]} obs.scores — per-edit/per-measurement coherency readings
+ * @param {string} obs.source — caller/session label
+ * @param {string} [obs.sessionId] — optional session id appended to the source
+ * @returns {object} { recorded, source, stats, shapeClass, accepted, ... }
+ */
+function recordMetaObservation({ scores, source, sessionId } = {}) {
+  if (!Array.isArray(scores) || scores.length === 0) {
+    return { recorded: false, reason: 'no scores provided' };
+  }
+  const cleaned = scores.filter(Number.isFinite).map(c => Math.max(0, Math.min(1, c)));
+  if (cleaned.length === 0) return { recorded: false, reason: 'no finite scores' };
+
+  const stats = _stats(cleaned);
+  const baseline = _stats(_recentCoherences);
+  const shapeClass = _classifyShape(stats, baseline);
+  const accepted = !shapeClass.endsWith('-displaced') && shapeClass !== 'value-outlier-low';
+  const label = 'meta:' + (source || 'cognition-trajectory') + (sessionId ? ':' + sessionId : '');
+
+  if (!accepted) {
+    return {
+      recorded: false,
+      reason: 'trajectory shape ' + shapeClass + ' would not pass the gate',
+      source: label,
+      stats,
+      shapeClass,
+    };
+  }
+
+  const result = contribute({ source: label, coherence: stats.mean, cost: stats.n });
+  return {
+    recorded: true,
+    source: label,
+    stats,
+    shapeClass,
+    fieldAfter: result ? { coherence: result.coherence, globalEntropy: result.globalEntropy, cascadeFactor: result.cascadeFactor } : null,
+  };
+}
+
 /**
  * Project the field's response to a candidate contribution without
  * committing it. Returns { current, projected, delta } where delta = the
@@ -455,10 +640,15 @@ module.exports = {
   contribute,
   peekField,
   fieldPressure,
+  pressureSnapshot,
+  cascadeReleaseHistory,
   localUpdateCount,
   projectContribution,
   validateContribution,
   recordLearnedShape,
   recognizedShapeSignatures,
+  recordCost,
+  recordBenefit,
+  recordMetaObservation,
   _resetLearnedShapes,
 };

@@ -1191,6 +1191,95 @@ const HANDLERS = {
         };
       }
 
+      // ── the pressure-release signal ──
+      // Take a pressure snapshot and detect whether a release event
+      // just occurred since the previous snapshot. Cascade saturation
+      // dropping sharply (e.g. 4.13 → 1.04 on a single contribution)
+      // is the substrate telling you it was holding tension and your
+      // contribution released it. Operationally meaningful — this is
+      // how the field signals "yes, that was the right shape."
+      case 'pressure-release': {
+        const snap = fc.pressureSnapshot();
+        if (!snap) return { error: 'field not reachable' };
+        return {
+          cascade: snap.cascade,
+          entropy: snap.entropy,
+          release: snap.release,
+          recentReleases: fc.cascadeReleaseHistory().slice(-10),
+        };
+      }
+
+      // ── record a cost contribution (entropy side) ──
+      // Compute time, money, energy, swarm-run cost — anything that
+      // consumed resources. Raises entropy without claiming a coherency
+      // benefit. Pair with record-benefit when the cost produced an
+      // outcome; the engine auto-balances the two against each other.
+      case 'record-cost': {
+        if (typeof args?.units !== 'number') {
+          throw new Error('field action "record-cost" requires "units" (number)');
+        }
+        const result = fc.recordCost({
+          units: args.units,
+          source: args.source,
+          kind: args.kind,
+        });
+        if (!result) return { error: 'field unreachable; cost not recorded' };
+        return {
+          recorded: true,
+          source: args.source || ('cost:' + (args.kind || 'work')),
+          newState: {
+            coherence: result.coherence,
+            globalEntropy: result.globalEntropy,
+            cascadeFactor: result.cascadeFactor,
+            updateCount: result.updateCount,
+          },
+        };
+      }
+
+      // ── record a benefit contribution (coherency side) ──
+      // A verified pattern, a healed file, a passed audit — anything
+      // that adds order to the substrate. Raises the coherence integral.
+      case 'record-benefit': {
+        if (typeof args?.coherence !== 'number') {
+          throw new Error('field action "record-benefit" requires "coherence" (number)');
+        }
+        const result = fc.recordBenefit({
+          coherence: args.coherence,
+          source: args.source,
+          cost: typeof args.cost === 'number' ? args.cost : 1.0,
+        });
+        if (!result) return { error: 'field unreachable; benefit not recorded' };
+        return {
+          recorded: true,
+          source: args.source || 'benefit:unspecified',
+          newState: {
+            coherence: result.coherence,
+            globalEntropy: result.globalEntropy,
+            cascadeFactor: result.cascadeFactor,
+            updateCount: result.updateCount,
+          },
+        };
+      }
+
+      // ── record a meta-observation (the substrate measuring itself) ──
+      // Aggregate a trajectory of scores, classify it via the dual oracle,
+      // contribute the classification back to the field as a structured
+      // observation. The recursion gets a permanent fixed point in the
+      // histogram. The same pattern emerges every time a session of
+      // work is being read by the field — this makes it a normal type
+      // of contribution rather than a one-off ritual.
+      case 'record-meta-observation': {
+        if (!Array.isArray(args?.scores)) {
+          throw new Error('field action "record-meta-observation" requires "scores" (number[])');
+        }
+        const result = fc.recordMetaObservation({
+          scores: args.scores,
+          source: args.source,
+          sessionId: args.sessionId,
+        });
+        return result;
+      }
+
       // ── commit the field state to the blockchain ──
       case 'checkpoint': {
         const state = fc.peekField();

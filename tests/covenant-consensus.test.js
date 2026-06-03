@@ -44,7 +44,7 @@ describe('covenant absorption — two-oracle consensus', () => {
     // non-negative within floating-point tolerance, not strictly positive.
     assert.ok(result.delta >= -1e-6, 'delta should be non-negative (green-light) when absorbing, got ' + result.delta);
     assert.equal(typeof result.shapeClass, 'string');
-    assert.ok(['natural-high', 'natural-mid', 'wide-uniform'].includes(result.shapeClass));
+    assert.ok(['natural-high', 'natural-mid', 'wide-uniform', 'learned-natural'].includes(result.shapeClass), 'unexpected shape class: ' + result.shapeClass);
   });
 
   it('both-reject holds a very low pattern at a high-baseline field', () => {

@@ -15,6 +15,13 @@ const { computeZonePriority, rankZones, computeHealingBudget } = require('./prio
 const { synthesizeTestStubs, extractExportedFunctions } = require('./test-synthesizer');
 const { CoherencyGenerator, GENERATOR_STATES } = require('./coherency-generator');
 const { relaxIfHot } = require('./entropy-relaxer');
+const {
+  fireReflexes,
+  tightenIfAdversarial,
+  restoreIfQuietened,
+  warnIfCognitionDrifting,
+  relaxIfDegrading,
+} = require('./reflex-engine');
 
 module.exports = {
   CoherencyDirector, CoherencyField, CoherencyZone,
@@ -23,4 +30,9 @@ module.exports = {
   synthesizeTestStubs, extractExportedFunctions,
   CoherencyGenerator, GENERATOR_STATES,
   relaxIfHot,
+  fireReflexes,
+  tightenIfAdversarial,
+  restoreIfQuietened,
+  warnIfCognitionDrifting,
+  relaxIfDegrading,
 };

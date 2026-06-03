@@ -522,8 +522,13 @@ function _classifyShape(input, baseline) {
   const meanGap = Math.abs(mean - baseline.mean);
   const isConstant = variance <= 0.0005;
   const isNarrow = variance <= 0.005;
-  if (isConstant && meanGap > 0.15) return 'constant-displaced';
-  if (isNarrow && meanGap > 0.15) return 'narrow-band-displaced';
+  // Displacement threshold is dynamic: the reflex engine can tighten
+  // it (default 0.15 → tightened 0.10) when consensusHistogram shows
+  // adversarial pressure rising. The gate becomes stricter under
+  // pressure and relaxes again when the threat subsides.
+  const displaceT = _displacementThreshold;
+  if (isConstant && meanGap > displaceT) return 'constant-displaced';
+  if (isNarrow && meanGap > displaceT) return 'narrow-band-displaced';
   if (isConstant) return 'constant-aligned';
   if (isNarrow) return 'narrow-band-aligned';
   if (variance >= 0.15) return 'bimodal';
@@ -531,6 +536,41 @@ function _classifyShape(input, baseline) {
   if (mean >= 0.85) return 'natural-high';
   if (mean <= 0.15) return 'natural-low';
   return 'natural-mid';
+}
+
+// ── Variance-gate mode (set by the reflex engine when under pressure) ────
+// The displacement threshold defaults to 0.15 (the H3-derived natural
+// neighbourhood width). The reflex engine can tighten it to 0.10 when
+// adversarial pressure is detected, and relax it back when the pressure
+// subsides. This is the actor side: the substrate adjusts its own gate
+// in response to its own environmental sensor.
+const _VARIANCE_GATE_MODES = {
+  default: 0.15,
+  tightened: 0.10,
+  relaxed: 0.20,
+};
+let _displacementThreshold = _VARIANCE_GATE_MODES.default;
+let _currentVarianceGateMode = 'default';
+
+/**
+ * Set the variance gate's displacement-threshold mode. Called by the
+ * reflex engine in response to consensus-histogram drift.
+ *
+ * @param {'default'|'tightened'|'relaxed'} mode
+ * @returns {{ mode:string, displacementThreshold:number }}
+ */
+function setVarianceGateMode(mode) {
+  if (!_VARIANCE_GATE_MODES.hasOwnProperty(mode)) {
+    return { mode: _currentVarianceGateMode, displacementThreshold: _displacementThreshold, error: 'unknown mode' };
+  }
+  _currentVarianceGateMode = mode;
+  _displacementThreshold = _VARIANCE_GATE_MODES[mode];
+  return { mode, displacementThreshold: _displacementThreshold };
+}
+
+/** Read the current variance-gate mode (default | tightened | relaxed). */
+function getVarianceGateMode() {
+  return { mode: _currentVarianceGateMode, displacementThreshold: _displacementThreshold };
 }
 
 /**
@@ -857,5 +897,7 @@ module.exports = {
   learnedShapesByDomain,
   fieldDirection,
   recordTemporalSnapshot,
+  setVarianceGateMode,
+  getVarianceGateMode,
   _resetLearnedShapes,
 };

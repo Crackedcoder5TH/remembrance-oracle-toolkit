@@ -1329,6 +1329,24 @@ const HANDLERS = {
         });
       }
 
+      // ── fire the reflex engine (the actor side) ──
+      // Run all reflexes once and return their structured verdicts. The
+      // substrate stops being a pure observer here — it tightens or
+      // restores the variance gate in response to consensusHistogram drift,
+      // warns when cognitionTrajectory variance rises, and relaxes the
+      // field when direction reports degrading. Each reflex is independent,
+      // cooldown-managed, and best-effort: failures return structured
+      // {triggered:false} verdicts and never raise.
+      case 'reflexes': {
+        const { fireReflexes } = require('../orchestrator/reflex-engine');
+        return await fireReflexes(args || {});
+      }
+
+      // ── read the current variance-gate mode (set by the reflex engine) ──
+      case 'gate-mode': {
+        return fc.getVarianceGateMode();
+      }
+
       // ── commit the field state to the blockchain ──
       case 'checkpoint': {
         const state = fc.peekField();

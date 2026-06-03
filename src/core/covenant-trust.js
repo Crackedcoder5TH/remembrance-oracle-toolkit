@@ -236,7 +236,15 @@ function maybeAbsorbPattern(pattern, opts = {}) {
   }
 
   const epsilon = typeof opts.epsilon === 'number' ? opts.epsilon : 1e-6;
-  const oracleA = projection.delta >= -epsilon;      // coherency oracle
+  // Green-light rule: a non-degrading contribution passes oracle A. The
+  // covenant does not require improvement; it requires non-degradation.
+  // delta >= 0     → rises  (green)
+  // delta == 0     → maintains (green)
+  // delta == -eps  → maintains within floating-point tolerance (green)
+  // delta <  -eps  → degrades (red)
+  // The covenant grows from non-degradation. Demanding strict
+  // improvement would make the gate impossible to pass at the ceiling.
+  const oracleA = projection.delta >= -epsilon;      // coherency oracle (green-light)
   const oracleB = validation.accepted === true;      // signal-validity oracle
 
   const baseRecord = {
@@ -299,6 +307,185 @@ function maybeAbsorbPattern(pattern, opts = {}) {
   return { absorbed: true, ...record };
 }
 
+/**
+ * Batch absorption via two-oracle consensus at batch granularity.
+ *
+ * Where maybeAbsorbPattern judges one pattern at a time (and the
+ * signal-validity oracle is mostly a value sanity check at n=1), this
+ * judges a batch *as a unit*. The variance signature of the batch is
+ * the real B-oracle signal: a batch of patterns with natural
+ * distributional spread looks like real measurement; a batch with
+ * narrow-band shape against a healthy baseline does not, and the
+ * substrate flags it as the sophisticated-injection class.
+ *
+ * Atomicity: the batch is the decision unit. Both oracles agreeing
+ * absorbs every valid pattern in the batch. Either rejecting holds
+ * every pattern. There is no per-pattern split inside a batch — if
+ * you want per-pattern decisions, call maybeAbsorbPattern in a loop.
+ *
+ * Oracle A (coherency, green-light): would absorbing this batch raise
+ *   or at least maintain the global field coherency? Modelled as one
+ *   heavy contribution at the batch mean with cost = batch size. This
+ *   is conservative — the engine integrates contributions one at a
+ *   time so the true impact depends on order, but the mean-with-cost
+ *   projection is the right summary for a batch decision.
+ *
+ * Oracle B (signal-validity): does the batch's variance signature
+ *   match natural measurement? The H3 finding is direct: narrow-band
+ *   contributions displaced from the rolling baseline collapse global
+ *   coherence in a characteristic way. validateContribution names
+ *   that shape directly.
+ *
+ * Four outcomes, identical to maybeAbsorbPattern:
+ *
+ *   both-accept  → absorb every valid pattern in the batch
+ *   both-reject  → hold every pattern
+ *   A-yes-B-no   → hold (shape-suspect class — adversarial signature)
+ *   A-no-B-yes   → hold (low-value-real class — natural but harmful)
+ *
+ * @param {Array<object>} patterns - each item: { name, score?, language?, coherencyScore? }
+ * @param {object} [opts]
+ * @param {number} [opts.epsilon=1e-6] - tolerance for "maintain"
+ * @param {string} [opts.source='batch'] - tag for the audit log
+ * @param {boolean} [opts.persist=true] - append absorbed patterns to growth log
+ * @returns {{ batch: {accepted, agreement, shapeClass, inputStats, baseline,
+ *                     projection, quarantineClass?, reason}, perPattern: object[] }}
+ */
+function maybeAbsorbBatch(patterns, opts = {}) {
+  if (!Array.isArray(patterns) || patterns.length === 0) {
+    return {
+      batch: { accepted: false, agreement: null, reason: 'no patterns provided' },
+      perPattern: [],
+    };
+  }
+
+  // Normalise each input: extract a usable score and surface
+  // already-recognised / unscorable items as per-pattern skips. Only
+  // valid, novel patterns participate in the batch shape.
+  const perPattern = [];
+  const candidates = [];
+  for (const p of patterns) {
+    if (!p || typeof p.name !== 'string' || !p.name.trim()) {
+      perPattern.push({ name: p && p.name, absorbed: false, reason: 'missing name', skipped: true });
+      continue;
+    }
+    if (_RECOGNIZED_PATTERNS.has(p.name)) {
+      perPattern.push({ name: p.name, absorbed: false, reason: 'already recognized', skipped: true });
+      continue;
+    }
+    const score = typeof p.score === 'number' ? p.score
+                : (p.coherencyScore && typeof p.coherencyScore.total === 'number') ? p.coherencyScore.total
+                : null;
+    if (score === null || !Number.isFinite(score)) {
+      perPattern.push({ name: p.name, absorbed: false, reason: 'no coherency score', skipped: true });
+      continue;
+    }
+    const clamped = Math.max(0, Math.min(1, score));
+    candidates.push({ name: p.name, language: p.language || 'unknown', score: clamped });
+  }
+
+  if (candidates.length === 0) {
+    return {
+      batch: { accepted: false, agreement: null, reason: 'no valid candidates in batch' },
+      perPattern,
+    };
+  }
+
+  const scores = candidates.map(c => c.score);
+  const batchMean = scores.reduce((s, x) => s + x, 0) / scores.length;
+  const batchVariance = scores.reduce((s, x) => s + (x - batchMean) ** 2, 0) / scores.length;
+
+  // Fire both oracles at batch granularity.
+  let projection = null;
+  let validation = null;
+  try {
+    const fc = require('./field-coupling');
+    // Oracle A: one heavy contribution at the batch mean, cost = batch size.
+    projection = fc.projectContribution({ cost: candidates.length, coherence: batchMean });
+    // Oracle B: pass the raw array — validateContribution computes the
+    // variance signature itself.
+    validation = fc.validateContribution(
+      { source: opts.source || 'covenant:absorb-batch', coherence: scores, cost: 1 },
+      { commit: false }
+    );
+  } catch (_) { /* fall through */ }
+
+  if (!projection || !validation) {
+    return {
+      batch: { accepted: false, agreement: null, reason: 'oracles unavailable — cannot adjudicate consensus' },
+      perPattern,
+    };
+  }
+
+  const epsilon = typeof opts.epsilon === 'number' ? opts.epsilon : 1e-6;
+  // Green-light rule applies at batch scale too: maintains-or-rises is green.
+  const oracleA = projection.delta >= -epsilon;
+  const oracleB = validation.accepted === true;
+
+  const batchInfo = {
+    accepted: false,
+    agreement: null,
+    shapeClass: validation.shapeClass,
+    inputStats: validation.inputStats,
+    baseline: validation.baseline,
+    projection: {
+      preCoherence: projection.current,
+      projectedCoherence: projection.projected,
+      delta: projection.delta,
+    },
+    n: candidates.length,
+    batchMean,
+    batchVariance,
+    oracleA,
+    oracleB,
+  };
+
+  if (!oracleA && !oracleB) {
+    batchInfo.agreement = 'both-reject';
+    batchInfo.reason = 'both oracles reject (coherency would drop AND shape suspect)';
+    for (const c of candidates) perPattern.push({ name: c.name, absorbed: false, reason: 'batch rejected by both oracles' });
+    return { batch: batchInfo, perPattern };
+  }
+  if (oracleA && !oracleB) {
+    batchInfo.agreement = 'A-yes-B-no';
+    batchInfo.quarantineClass = 'shape-suspect';
+    batchInfo.reason = 'batch coherency would rise but shape is ' + validation.shapeClass + ' (sophisticated-injection class)';
+    for (const c of candidates) perPattern.push({ name: c.name, absorbed: false, reason: 'batch quarantined: shape-suspect' });
+    return { batch: batchInfo, perPattern };
+  }
+  if (!oracleA && oracleB) {
+    batchInfo.agreement = 'A-no-B-yes';
+    batchInfo.quarantineClass = 'low-value-real';
+    batchInfo.reason = 'batch shape looks natural but coherency would drop';
+    for (const c of candidates) perPattern.push({ name: c.name, absorbed: false, reason: 'batch quarantined: low-value-real' });
+    return { batch: batchInfo, perPattern };
+  }
+
+  // Both agree → absorb every valid candidate in the batch.
+  batchInfo.accepted = true;
+  batchInfo.agreement = 'both-accept';
+  const absorbedAt = new Date().toISOString();
+  for (const c of candidates) {
+    const record = {
+      name: c.name,
+      language: c.language,
+      score: c.score,
+      absorbedAt,
+      preCoherence: projection.current,
+      projectedCoherence: projection.projected,
+      delta: projection.delta,
+      shapeClass: validation.shapeClass,
+      agreement: 'both-accept',
+      batch: true,
+      source: opts.source || 'submit-batch',
+    };
+    _RECOGNIZED_PATTERNS.set(c.name, record);
+    if (opts.persist !== false) _persistGrowth(record);
+    perPattern.push({ name: c.name, absorbed: true, score: c.score });
+  }
+  return { batch: batchInfo, perPattern };
+}
+
 /** Is this pattern name in the covenant's recognized-pattern registry? */
 function isRecognizedPattern(name) {
   return typeof name === 'string' && _RECOGNIZED_PATTERNS.has(name);
@@ -321,6 +508,7 @@ module.exports = {
   recordFalsePositive,
   // Field-validated growth:
   maybeAbsorbPattern,
+  maybeAbsorbBatch,
   isRecognizedPattern,
   recognizedPatterns,
   _resetGrowth,

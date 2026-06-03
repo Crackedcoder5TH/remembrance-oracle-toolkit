@@ -144,6 +144,70 @@ function recordFalsePositive(snippet, _reason) {
  */
 const _RECOGNIZED_PATTERNS = new Map();
 
+// ── Consensus-histogram rolling buffer ──────────────────────────────────
+//
+// Every absorption decision — accept, reject, or quarantine — produces one
+// of four agreement codes from the dual-oracle consensus:
+//   both-accept | both-reject | A-yes-B-no | A-no-B-yes
+//
+// The recognized-patterns registry only carries the accepts. The other
+// three classes vanish back to the caller and were never aggregated. But
+// the histogram of all four is the substrate's environmental sensor:
+//
+//   both-accept rising      → healthy growth
+//   A-yes-B-no rising       → adversarial / synthetic-injection pressure
+//   A-no-B-yes rising       → incoming supply quality degrading
+//   both-reject rising      → noise spike or wrong-substrate pressure
+//
+// We capture every decision in a rolling buffer so consensusHistogram()
+// can return live counts.
+const _CONSENSUS_HISTORY_MAX = 500;
+const _consensusHistory = [];
+function _recordConsensusDecision(agreement, source) {
+  if (!agreement) return;
+  _consensusHistory.push({ agreement, source: source || null, ts: Date.now() });
+  if (_consensusHistory.length > _CONSENSUS_HISTORY_MAX) _consensusHistory.shift();
+}
+
+/**
+ * Return histogram of the four consensus outcomes over the last `windowN`
+ * decisions (or all of them if windowN is unspecified or >= buffer size).
+ * Useful as a continuous environmental sensor — adversarial pressure,
+ * degraded supply, or healthy growth read differently.
+ *
+ * @param {number} [windowN] optional window size
+ * @returns {{ window:number, total:number, counts:object, ratios:object, recent:Array }}
+ */
+function consensusHistogram(windowN) {
+  const all = _consensusHistory;
+  const window = (typeof windowN === 'number' && windowN > 0)
+    ? all.slice(-windowN) : all.slice();
+  const counts = {
+    'both-accept': 0,
+    'both-reject': 0,
+    'A-yes-B-no': 0,
+    'A-no-B-yes': 0,
+  };
+  for (const d of window) {
+    if (counts[d.agreement] != null) counts[d.agreement] += 1;
+  }
+  const total = window.length;
+  const ratios = {};
+  for (const k of Object.keys(counts)) {
+    ratios[k] = total > 0 ? counts[k] / total : 0;
+  }
+  return {
+    window: window.length,
+    total,
+    counts,
+    ratios,
+    recent: window.slice(-10),
+  };
+}
+
+/** Test-only: drop the in-memory consensus history. */
+function _resetConsensusHistory() { _consensusHistory.length = 0; }
+
 function _growthLogPath() {
   const path = require('node:path');
   return path.join(__dirname, '..', '..', '.remembrance', 'covenant-growth.jsonl');
@@ -259,6 +323,7 @@ function maybeAbsorbPattern(pattern, opts = {}) {
 
   // Both reject — pattern doesn't belong.
   if (!oracleA && !oracleB) {
+    _recordConsensusDecision('both-reject', opts.source);
     return {
       absorbed: false,
       reason: 'both oracles reject (coherency would drop AND shape suspect)',
@@ -269,6 +334,7 @@ function maybeAbsorbPattern(pattern, opts = {}) {
 
   // Disagreement: coherency yes, shape no. Sophisticated-injection class.
   if (oracleA && !oracleB) {
+    _recordConsensusDecision('A-yes-B-no', opts.source);
     return {
       absorbed: false,
       reason: 'oracle disagreement — coherency would rise but shape is ' + validation.shapeClass + ' (sophisticated-injection class)',
@@ -280,6 +346,7 @@ function maybeAbsorbPattern(pattern, opts = {}) {
 
   // Disagreement: shape ok, but coherency would drop. Low-quality-real class.
   if (!oracleA && oracleB) {
+    _recordConsensusDecision('A-no-B-yes', opts.source);
     return {
       absorbed: false,
       reason: 'oracle disagreement — shape looks natural but coherency would drop',
@@ -290,6 +357,7 @@ function maybeAbsorbPattern(pattern, opts = {}) {
   }
 
   // Both agree: absorb.
+  _recordConsensusDecision('both-accept', opts.source);
   const record = {
     name: pattern.name,
     language: pattern.language || 'unknown',
@@ -460,12 +528,14 @@ function maybeAbsorbBatch(patterns, opts = {}) {
   };
 
   if (!oracleA && !oracleB) {
+    _recordConsensusDecision('both-reject', opts.source);
     batchInfo.agreement = 'both-reject';
     batchInfo.reason = 'both oracles reject (coherency would drop AND shape suspect)';
     for (const c of candidates) perPattern.push({ name: c.name, absorbed: false, reason: 'batch rejected by both oracles' });
     return { batch: batchInfo, perPattern };
   }
   if (oracleA && !oracleB) {
+    _recordConsensusDecision('A-yes-B-no', opts.source);
     batchInfo.agreement = 'A-yes-B-no';
     batchInfo.quarantineClass = 'shape-suspect';
     batchInfo.reason = 'batch coherency would rise but shape is ' + validation.shapeClass + ' (sophisticated-injection class)';
@@ -473,6 +543,7 @@ function maybeAbsorbBatch(patterns, opts = {}) {
     return { batch: batchInfo, perPattern };
   }
   if (!oracleA && oracleB) {
+    _recordConsensusDecision('A-no-B-yes', opts.source);
     batchInfo.agreement = 'A-no-B-yes';
     batchInfo.quarantineClass = 'low-value-real';
     batchInfo.reason = 'batch shape looks natural but coherency would drop';
@@ -481,6 +552,7 @@ function maybeAbsorbBatch(patterns, opts = {}) {
   }
 
   // Both agree → absorb every valid candidate in the batch.
+  _recordConsensusDecision('both-accept', opts.source);
   batchInfo.accepted = true;
   batchInfo.agreement = 'both-accept';
   const absorbedAt = new Date().toISOString();
@@ -548,6 +620,8 @@ module.exports = {
   // Field-validated growth:
   maybeAbsorbPattern,
   maybeAbsorbBatch,
+  consensusHistogram,
+  _resetConsensusHistory,
   isRecognizedPattern,
   recognizedPatterns,
   _resetGrowth,

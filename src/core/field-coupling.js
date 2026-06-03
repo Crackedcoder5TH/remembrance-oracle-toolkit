@@ -636,6 +636,209 @@ function validateContribution(obs, opts = {}) {
   return result;
 }
 
+// ── Cognition trajectory (read goggles state programmatically) ───────────
+//
+// The field-goggles PostToolUse hook persists a rolling buffer of recent
+// edit scores at ~/.claude/.field-goggles-state.json. The buffer is the
+// substrate's measurement of the working agent's session — the cognition
+// trajectory. Reading it lets any caller ask "what is this session's
+// signature so far?" without needing to re-derive from raw edits.
+
+const _GOGGLES_STATE_DEFAULT = (function () {
+  try {
+    const path = require('node:path');
+    const home = process.env.HOME || process.env.USERPROFILE || '';
+    return home ? path.join(home, '.claude', '.field-goggles-state.json') : null;
+  } catch (_) { return null; }
+})();
+
+/**
+ * Read the field-goggles cognition buffer and return the current session
+ * trajectory: per-edit scores plus aggregated stats and shape class.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.statePath] override default ~/.claude/.field-goggles-state.json
+ * @returns {object|null} { n, mean, variance, shapeClass, scores, files, statePath } or null
+ */
+function cognitionTrajectory(opts = {}) {
+  const fs = require('node:fs');
+  const statePath = opts.statePath || _GOGGLES_STATE_DEFAULT;
+  if (!statePath) return null;
+  try {
+    if (!fs.existsSync(statePath)) return { n: 0, mean: null, variance: null, shapeClass: null, scores: [], files: [], statePath };
+    const raw = fs.readFileSync(statePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    const scores = Array.isArray(parsed.scores) ? parsed.scores.filter(Number.isFinite) : [];
+    const files = Array.isArray(parsed.files) ? parsed.files : [];
+    if (scores.length === 0) return { n: 0, mean: null, variance: null, shapeClass: null, scores: [], files, statePath };
+    const stats = _stats(scores);
+    const baseline = _stats(_recentCoherences);
+    const shapeClass = _classifyShape(stats, baseline);
+    return { n: stats.n, mean: stats.mean, variance: stats.variance, shapeClass, scores, files, statePath };
+  } catch (_) {
+    return null;
+  }
+}
+
+// ── Learned shapes grouped by source-prefix domain ───────────────────────
+
+/**
+ * Group recognised shape signatures by source-prefix domain (e.g.
+ * 'void:', 'agent:', 'meta:', 'covenant:'). Tells you which domains
+ * have taught the variance gate what natural shapes look like.
+ *
+ * @returns {object} { 'void': [...], 'agent': [...], ... }
+ */
+function learnedShapesByDomain() {
+  _loadLearnedShapes();
+  const out = {};
+  for (const sig of _LEARNED_SHAPES) {
+    const src = sig.source || 'unknown';
+    const domain = src.includes(':') ? src.split(':')[0] : src;
+    if (!out[domain]) out[domain] = [];
+    out[domain].push(sig);
+  }
+  return out;
+}
+
+// ── Field-direction readout (the substrate's flow vector) ────────────────
+//
+// A small history of field snapshots lets us compute the direction of
+// flow: coherence delta, entropy delta, cascade delta over the recent
+// window. The combined vector tells you whether the field is healing
+// (coherence up, entropy down), degrading (coherence down, entropy up),
+// saturating (cascade up), or relaxing (cascade down).
+
+const _DIRECTION_HISTORY_MAX = 30;
+const _directionHistory = [];   // [{ ts, coherence, entropy, cascade }]
+
+function _captureDirectionSnapshot(state) {
+  if (!state) return;
+  _directionHistory.push({
+    ts: Date.now(),
+    coherence: state.coherence,
+    entropy: state.globalEntropy,
+    cascade: state.cascadeFactor,
+  });
+  if (_directionHistory.length > _DIRECTION_HISTORY_MAX) _directionHistory.shift();
+}
+
+/**
+ * Compute the field's direction-of-flow over a recent window. Returns
+ * the delta in (coherence, entropy, cascade) plus a human-readable
+ * verdict: healing / degrading / saturating / relaxing / steady.
+ *
+ * @param {number} [windowN=5] how many recent snapshots to compare against current
+ * @returns {object} { verdict, coherenceDelta, entropyDelta, cascadeDelta, windowN, snapshots }
+ */
+function fieldDirection(windowN = 5) {
+  const current = peekField();
+  if (!current) return null;
+  _captureDirectionSnapshot(current);
+  if (_directionHistory.length < 2) {
+    return { verdict: 'insufficient-history', coherenceDelta: 0, entropyDelta: 0, cascadeDelta: 0, windowN: 0 };
+  }
+  const window = _directionHistory.slice(-Math.max(2, windowN + 1));
+  const first = window[0];
+  const last = window[window.length - 1];
+  const coherenceDelta = last.coherence - first.coherence;
+  const entropyDelta = last.entropy - first.entropy;
+  const cascadeDelta = last.cascade - first.cascade;
+  let verdict;
+  const COH_T = 0.005, ENT_T = 0.5, CAS_T = 0.3;
+  if (coherenceDelta > COH_T && entropyDelta < -ENT_T) verdict = 'healing';
+  else if (coherenceDelta < -COH_T && entropyDelta > ENT_T) verdict = 'degrading';
+  else if (cascadeDelta > CAS_T) verdict = 'saturating';
+  else if (cascadeDelta < -CAS_T) verdict = 'relaxing';
+  else if (Math.abs(coherenceDelta) <= COH_T && Math.abs(entropyDelta) <= ENT_T) verdict = 'steady';
+  else if (coherenceDelta > COH_T) verdict = 'gaining-coherence';
+  else if (coherenceDelta < -COH_T) verdict = 'losing-coherence';
+  else verdict = 'mixed';
+  return {
+    verdict,
+    coherenceDelta,
+    entropyDelta,
+    cascadeDelta,
+    windowN: window.length,
+    fromTs: first.ts,
+    toTs: last.ts,
+    snapshots: window,
+  };
+}
+
+// ── Temporal snapshot recording (auto temporal-coherency measurement) ────
+//
+// Walk a file's git history, compute adjacent-step + long-arc fractal
+// coherency, and contribute the readings as temporal:* sources. This
+// is what we did by hand for H1 (the temporal experiment); making it
+// callable lets the substrate continuously self-measure its own
+// temporal stability across the ecosystem.
+
+/**
+ * Walk the git history of a file and contribute adjacent + arc readings
+ * to the field as temporal:<repo>:<file>:adjacent and ...:arc sources.
+ *
+ * @param {object} opts
+ * @param {string} opts.repoDir absolute path to the git repo
+ * @param {string} opts.filePath path to the file relative to repoDir
+ * @param {number} [opts.maxVersions=12] cap on history depth
+ * @returns {object} { recorded, meanAdjacent, arc, versions, source }
+ */
+function recordTemporalSnapshot({ repoDir, filePath, maxVersions = 12 } = {}) {
+  if (!repoDir || !filePath) return { recorded: false, reason: 'repoDir and filePath required' };
+  let execSync, path, fs, fractalCoherencyOf;
+  try {
+    execSync = require('node:child_process').execSync;
+    path = require('node:path');
+    fs = require('node:fs');
+    ({ fractalCoherencyOf } = require('./fractal-waveform.js'));
+  } catch (e) {
+    return { recorded: false, reason: 'deps unavailable: ' + e.message };
+  }
+  const full = path.join(repoDir, filePath);
+  if (!fs.existsSync(full)) return { recorded: false, reason: 'file not found: ' + full };
+  const sh = (cmd) => {
+    try { return execSync(cmd, { cwd: repoDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }); }
+    catch (_) { return null; }
+  };
+  const log = sh('git log --reverse --pretty=format:"%H|%ai" -- ' + JSON.stringify(filePath));
+  if (!log) return { recorded: false, reason: 'no git history for ' + filePath };
+  const commits = log.trim().split('\n').filter(Boolean).map(l => {
+    const [hash, date] = l.split('|'); return { hash, date };
+  });
+  if (commits.length < 3) return { recorded: false, reason: 'fewer than 3 commits in history' };
+  const step = commits.length / Math.min(commits.length, maxVersions);
+  const sampled = [];
+  for (let i = 0; i < Math.min(commits.length, maxVersions); i++) sampled.push(commits[Math.floor(i * step)]);
+  sampled.push(commits[commits.length - 1]);
+  const versions = [];
+  for (const c of sampled) {
+    const content = sh('git show ' + c.hash + ':' + JSON.stringify(filePath));
+    if (content && content.split('\n').length >= 10) versions.push({ ...c, content });
+  }
+  if (versions.length < 3) return { recorded: false, reason: 'fewer than 3 usable versions' };
+  const adj = [];
+  for (let i = 0; i < versions.length - 1; i++) {
+    adj.push(fractalCoherencyOf(versions[i].content, versions[i + 1].content));
+  }
+  const meanAdjacent = adj.reduce((s, x) => s + x, 0) / adj.length;
+  const arc = fractalCoherencyOf(versions[0].content, versions[versions.length - 1].content);
+  const repoName = path.basename(repoDir);
+  const cleanFile = filePath.replace(/[^a-zA-Z0-9_\-.]/g, '_');
+  const adjSource = 'temporal:' + repoName + ':' + cleanFile + ':adjacent';
+  const arcSource = 'temporal:' + repoName + ':' + cleanFile + ':arc';
+  contribute({ source: adjSource, coherence: meanAdjacent, cost: 1 });
+  contribute({ source: arcSource, coherence: arc, cost: 1 });
+  return {
+    recorded: true,
+    meanAdjacent,
+    arc,
+    versions: versions.length,
+    span: { from: versions[0].date, to: versions[versions.length - 1].date },
+    sources: [adjSource, arcSource],
+  };
+}
+
 module.exports = {
   contribute,
   peekField,
@@ -650,5 +853,9 @@ module.exports = {
   recordCost,
   recordBenefit,
   recordMetaObservation,
+  cognitionTrajectory,
+  learnedShapesByDomain,
+  fieldDirection,
+  recordTemporalSnapshot,
   _resetLearnedShapes,
 };

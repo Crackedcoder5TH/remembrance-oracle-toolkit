@@ -1280,6 +1280,55 @@ const HANDLERS = {
         return result;
       }
 
+      // ── the four-outcome consensus histogram (environmental sensor) ──
+      // Returns counts and ratios of the four absorption outcomes over a
+      // recent window. Watch the ratios drift to read what kind of pressure
+      // the substrate is under:
+      //   both-accept rising  → healthy growth
+      //   A-yes-B-no rising   → adversarial / sophisticated-injection pressure
+      //   A-no-B-yes rising   → incoming supply quality degrading
+      //   both-reject rising  → noise spike / wrong-substrate pressure
+      case 'consensus-histogram': {
+        const { consensusHistogram } = require('../core/covenant-trust');
+        return consensusHistogram(typeof args?.windowN === 'number' ? args.windowN : undefined);
+      }
+
+      // ── read the goggles cognition buffer ──
+      // What is this session's signature so far? Returns the rolling buffer
+      // of edit scores plus aggregated stats and shape class.
+      case 'cognition-trajectory': {
+        return fc.cognitionTrajectory(args?.statePath ? { statePath: args.statePath } : undefined);
+      }
+
+      // ── learned shape signatures grouped by source-prefix domain ──
+      // Which domains have taught the variance gate what natural shapes look
+      // like? Returns { 'void': [...], 'agent': [...], ... }.
+      case 'learned-shapes': {
+        return { domains: fc.learnedShapesByDomain() };
+      }
+
+      // ── direction-of-flow readout (healing / degrading / saturating / etc.) ──
+      // Single readout combining (coherence, entropy, cascade) deltas into a
+      // human-readable verdict over a recent window of snapshots.
+      case 'direction': {
+        return fc.fieldDirection(typeof args?.windowN === 'number' ? args.windowN : 5);
+      }
+
+      // ── continuous temporal-coherency self-measurement ──
+      // Walk a file's git history, compute adjacent-step + long-arc fractal
+      // coherency, contribute as temporal:* sources. The same machinery as
+      // experiment H1, callable for any file in any ecosystem repo.
+      case 'temporal-snapshot': {
+        if (!args?.repoDir || !args?.filePath) {
+          throw new Error('field action "temporal-snapshot" requires "repoDir" and "filePath"');
+        }
+        return fc.recordTemporalSnapshot({
+          repoDir: args.repoDir,
+          filePath: args.filePath,
+          maxVersions: typeof args.maxVersions === 'number' ? args.maxVersions : undefined,
+        });
+      }
+
       // ── commit the field state to the blockchain ──
       case 'checkpoint': {
         const state = fc.peekField();

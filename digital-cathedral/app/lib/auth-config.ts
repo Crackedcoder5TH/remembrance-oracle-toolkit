@@ -12,6 +12,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { getRoleForEmail } from "./admin-emails";
 
+// @ts-expect-error next-auth module not resolvable in this env
 declare module "next-auth" {
   interface Session {
     user: {
@@ -24,19 +25,29 @@ declare module "next-auth" {
   }
 }
 
+// @ts-expect-error next-auth/jwt module not resolvable in this env
 declare module "next-auth/jwt" {
   interface JWT {
     role?: "admin" | "user";
   }
 }
 
+// H3 fix: only register Google provider when both env vars are present.
+// NextAuth v5 evaluates the providers array at module-load. Previously
+// the `!` non-null assertions passed `undefined` to the provider in
+// missing-env environments, which crashed at /api/auth/session — and
+// AuthProvider in app/layout.tsx calls that endpoint on every page load,
+// so the entire app surface 500'd on first render when Google wasn't
+// configured. Now an unconfigured Google deploy degrades to "API-key
+// admin login only" instead of crashing the whole site.
+const googleClientId = process.env.GOOGLE_CLIENT_ID;
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+const googleProvider = googleClientId && googleClientSecret
+  ? [Google({ clientId: googleClientId, clientSecret: googleClientSecret })]
+  : [];
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
+  providers: googleProvider,
   pages: {
     signIn: "/admin/login",
     error: "/admin/login",

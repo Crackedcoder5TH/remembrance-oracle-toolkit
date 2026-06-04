@@ -113,6 +113,7 @@ export default function BlogPostPage({
   const post = getPostBySlug(params.slug);
   if (!post) {
     notFound();
+    return null;
   }
 
   const related = getRelatedPosts(params.slug, 3);

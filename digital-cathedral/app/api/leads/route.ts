@@ -137,8 +137,9 @@ export async function POST(req: NextRequest) {
       email: validated.email,
       phone: validated.phone,
       dateOfBirth: validated.dateOfBirth,
-      consentTcpa: true,
-      consentPrivacy: true,
+      // H7 fix part 1 of 2: covenant-gate input now reflects validated input.
+      consentTcpa: validated.tcpaConsent,
+      consentPrivacy: validated.privacyConsent,
       consentText: validated.consentText,
       consentTimestamp: validated.consentTimestamp,
       utmSource: validated.utmSource,
@@ -198,8 +199,9 @@ export async function POST(req: NextRequest) {
       purchaseIntent: validated.purchaseIntent,
       veteranStatus: validated.veteranStatus,
       militaryBranch: validated.militaryBranch,
-      consentTcpa: true,
-      consentPrivacy: true,
+      // H7 fix part 2 of 2: persisted record-of-consent reflects validated input.
+      consentTcpa: validated.tcpaConsent,
+      consentPrivacy: validated.privacyConsent,
       consentTimestamp: validated.consentTimestamp,
       consentText: validated.consentText,
       consentIp: req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "unknown",
@@ -387,11 +389,17 @@ export async function POST(req: NextRequest) {
         shape: covenant.coherency.shape,
       },
     });
-  } catch {
-    finish(400);
+  } catch (err) {
+    // H1 fix: previously caught silently and 400'd, losing every internal
+    // failure (covenant gate, DB, KV outage, ledger throw) without a log
+    // breadcrumb. For a lead-gen site this is money-and-trust on day one.
+    // Now: log the error and 500 so it surfaces in observability and the
+    // client knows to retry instead of treating it as a malformed request.
+    logger.error("Lead submission threw", { error: err instanceof Error ? err.message : String(err) });
+    finish(500);
     return NextResponse.json(
-      { success: false, message: "Invalid request. Please try again." },
-      { status: 400 },
+      { success: false, message: "Something went wrong. Please try again in a moment." },
+      { status: 500 },
     );
   }
 }

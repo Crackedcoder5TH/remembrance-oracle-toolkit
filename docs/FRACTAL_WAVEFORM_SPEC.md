@@ -123,8 +123,19 @@ A `verify_capabilities.py` test SHOULD pin three reference vectors:
 - [x] `packages/field-tool/src/fractal-waveform.js` (JS reference)
 - [x] `packages/field-tool/test/fractal-waveform.test.js` (discrimination tests pass)
 - [x] Exposed via `packages/field-tool/src/index.js` (additive)
-- [ ] `Void-Data-Compressor/to_fractal_waveform.py` (Python mirror)
-- [ ] `Void-Data-Compressor/verify_capabilities.py` adds C-71 (parity test)
+- [x] `Void-Data-Compressor/to_fractal_waveform.py` (Python mirror — **byte-identical parity verified**)
+- [x] `Void-Data-Compressor/verify_fractal_parity.py` (C-71 parity test — 0.00e+00 divergence across 12 cases)
 - [ ] Field tool CLI: `remembrance-field fractal-encode <text|@file>` and
       `remembrance-field fractal-coherency <a> <b>` subcommands (opt-in,
       doesn't change the existing `encode`/`coherency` semantics)
+
+## Contract C-71 — VERIFIED
+
+`Void-Data-Compressor/to_fractal_waveform.py` and the JS reference
+(`src/core/fractal-waveform.js`) produce **byte-identical 29-element
+vectors** for the same input. Verified by `verify_fractal_parity.py`:
+max per-dimension divergence **0.00e+00** across 12 cases spanning JS,
+Python, Rust, Go code, prose, dangerous code, mixed markdown, and
+comment-heavy input. Run `ORACLE_ROOT=<path> python3 verify_fractal_parity.py`
+in the Void repo to re-verify after any encoder change — keep the two
+implementations in lockstep.

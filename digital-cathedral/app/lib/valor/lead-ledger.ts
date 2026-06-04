@@ -18,6 +18,7 @@
 
 import { blobAdapter } from "./ledger/blob-adapter";
 import { fileAdapter } from "./ledger/file-adapter";
+import { recordBenefit, recordCost } from "./remembrance-bridge";
 import type {
   AppendResult,
   LedgerAdapter,
@@ -50,7 +51,25 @@ export function ledgerLocation(): string {
 }
 
 export async function appendLedgerEntry(entry: LedgerEntry): Promise<AppendResult> {
-  return resolveAdapter().append(entry);
+  const result = await resolveAdapter().append(entry);
+  // Bridge 1: every successful append contributes to the Remembrance field.
+  // Admissions register as coherency-positive events (the lead's own score);
+  // rejections register as entropy cost keyed by reject kind. Fire-and-forget —
+  // the bridge swallows its own errors, so a downed oracle never blocks a write.
+  if (result.ok) {
+    const verdict = entry.covenant.verdict;
+    const coherency = entry.coherency.score;
+    if (verdict === "admit" || verdict === "admit-low-coherency") {
+      void recordBenefit(coherency, "valor:lead-admit:" + verdict, 1).catch(() => {});
+    } else if (verdict === "silent-reject-bot") {
+      void recordCost(1, "valor:lead-reject", "bot").catch(() => {});
+    } else if (verdict === "silent-reject-fraud") {
+      void recordCost(1, "valor:lead-reject", "fraud").catch(() => {});
+    } else if (verdict === "soft-reject-low") {
+      void recordCost(1, "valor:lead-reject", "low-coherency").catch(() => {});
+    }
+  }
+  return result;
 }
 
 export async function listLedgerFiles(): Promise<string[]> {

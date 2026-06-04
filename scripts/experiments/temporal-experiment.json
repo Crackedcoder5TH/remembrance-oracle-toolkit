@@ -1,0 +1,80 @@
+{
+  "ts": "2026-06-03T00:32:04.926Z",
+  "experiment": "temporal-coherency",
+  "file": "README.md",
+  "per_repo": [
+    {
+      "repo": "remembrance-oracle-toolkit",
+      "versions": 9,
+      "meanAdj": 0.9778475895810064,
+      "arc": 0.9052682103231506,
+      "convergence": -0.01375735251716026
+    },
+    {
+      "repo": "REMEMBRANCE-AGENT-Swarm-",
+      "versions": 6,
+      "meanAdj": 0.9859162188000179,
+      "arc": 0.9615377907530672,
+      "convergence": 0.017177833534168352
+    },
+    {
+      "repo": "MOONS-OF-REMEMBRANCE",
+      "versions": 6,
+      "meanAdj": 0.96123539910858,
+      "arc": 0.879973840858534,
+      "convergence": 0.05808491504659119
+    },
+    {
+      "repo": "Void-Data-Compressor",
+      "versions": 11,
+      "meanAdj": 0.9546723188939475,
+      "arc": 0.9523627995178137,
+      "convergence": 0.010536955775485746
+    },
+    {
+      "repo": "REMEMBRANCE-Interface",
+      "versions": 9,
+      "meanAdj": 0.9753225844834802,
+      "arc": 0.8706141855802315,
+      "convergence": -0.009667702677896628
+    },
+    {
+      "repo": "REMEMBRANCE-BLOCKCHAIN",
+      "versions": 10,
+      "meanAdj": 0.9797380165962828,
+      "arc": 0.8842841141860794,
+      "convergence": 0.03655483272853699
+    },
+    {
+      "repo": "Reflector-oracle-",
+      "versions": 8,
+      "meanAdj": 0.9750613217646462,
+      "arc": 0.8293497596200528,
+      "convergence": 0.048653991148352116
+    },
+    {
+      "repo": "Remembrance-dialer",
+      "versions": 5,
+      "meanAdj": 0.9797783447020184,
+      "arc": 0.9210119625404671,
+      "convergence": -0.019362000245305877
+    },
+    {
+      "repo": "REMEMBRANCE-API-Key-Plugger",
+      "versions": 5,
+      "meanAdj": 0.9880595675034688,
+      "arc": 0.9607094893542761,
+      "convergence": -0.01979003216102382
+    }
+  ],
+  "aggregate": {
+    "meanAdjacent": 0.9752923734926053,
+    "meanArc": 0.9072346836370746,
+    "meanConvergence": 0.012047937847971979
+  },
+  "field": {
+    "before": 0.8234268028238529,
+    "after": 0.9658864753881498,
+    "delta": 0.1424596725642968
+  }
+}

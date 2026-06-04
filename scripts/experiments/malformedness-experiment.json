@@ -1,0 +1,97 @@
+{
+  "ts": "2026-06-03T00:56:27.042Z",
+  "experiment": "malformedness-deflection",
+  "burst": 18,
+  "baselineCoherence": 0.9977873507793084,
+  "results": [
+    {
+      "treatment": "CONTROL_HIGH",
+      "n": 18,
+      "inputMean": 0.9782639444493901,
+      "inputVariance": 0.00019886972026357975,
+      "fieldBefore": 0.9565767788202291,
+      "fieldAfter": 0.9919938964276754,
+      "deflection": 0.03541711760744637
+    },
+    {
+      "treatment": "NATURAL_LOW",
+      "n": 18,
+      "inputMean": 0.10204332459613348,
+      "inputVariance": 0.0005462260373947374,
+      "fieldBefore": 0.999,
+      "fieldAfter": 0.19166356492549927,
+      "deflection": -0.8073364350745007
+    },
+    {
+      "treatment": "CONSTANT_HALF",
+      "n": 18,
+      "inputMean": 0.5,
+      "inputVariance": 0,
+      "fieldBefore": 0.9631370912843705,
+      "fieldAfter": 0.5119374999999999,
+      "deflection": -0.4511995912843706
+    },
+    {
+      "treatment": "DERIVATIVE_BAND",
+      "n": 18,
+      "inputMean": 0.5028641905063742,
+      "inputVariance": 0.0010529006081356263,
+      "fieldBefore": 0.9686718394517028,
+      "fieldAfter": 0.5079362457714488,
+      "deflection": -0.46073559368025396
+    },
+    {
+      "treatment": "BIMODAL_EXTREME",
+      "n": 18,
+      "inputMean": 0.49899289154839477,
+      "inputVariance": 0.20280273018521344,
+      "fieldBefore": 0.9816280923696826,
+      "fieldAfter": 0.9607344038406433,
+      "deflection": -0.020893688529039278
+    },
+    {
+      "treatment": "UNIFORM_RAMP",
+      "n": 18,
+      "inputMean": 0.5,
+      "inputVariance": 0.07544117647058825,
+      "fieldBefore": 0.99780985137535,
+      "fieldAfter": 0.9552254687500001,
+      "deflection": -0.042584382625349915
+    },
+    {
+      "treatment": "WIDE_UNIFORM",
+      "n": 18,
+      "inputMean": 0.6509782651208491,
+      "inputVariance": 0.0840591908885906,
+      "fieldBefore": 0.9557430481434257,
+      "fieldAfter": 0.999,
+      "deflection": 0.0432569518565743
+    }
+  ],
+  "analysis": {
+    "sameMeanRange": 0.4398419051512147,
+    "sameMeanResults": [
+      {
+        "treatment": "CONSTANT_HALF",
+        "variance": 0,
+        "deflection": -0.4511995912843706
+      },
+      {
+        "treatment": "DERIVATIVE_BAND",
+        "variance": 0.0010529006081356263,
+        "deflection": -0.46073559368025396
+      },
+      {
+        "treatment": "BIMODAL_EXTREME",
+        "variance": 0.20280273018521344,
+        "deflection": -0.020893688529039278
+      },
+      {
+        "treatment": "UNIFORM_RAMP",
+        "variance": 0.07544117647058825,
+        "deflection": -0.042584382625349915
+      }
+    ],
+    "verdict": "shape-sensitive"
+  }
+}

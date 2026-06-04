@@ -116,7 +116,7 @@ export default function OpsPage() {
     );
   }
 
-  const style = READINESS_STYLE[data.readiness];
+  const style = READINESS_STYLE[data.readiness as Readiness];
   const diag = data.diagnostic;
   const hasDiagnostic = typeof diag.totalFindings === "number";
 
@@ -191,7 +191,7 @@ export default function OpsPage() {
             <div>
               <h3 className="uppercase tracking-[0.2em] text-[var(--text-muted)] mb-2">Critical</h3>
               <ul className="space-y-1 font-mono">
-                {data.environment.critical.map((e) => (
+                {data.environment.critical.map((e: { key: string; set: boolean }) => (
                   <li key={e.key} className="flex items-center justify-between">
                     <span>{e.key}</span>
                     <span className={e.set ? "text-teal-cathedral" : "text-red-400"}>{e.set ? "set" : "MISSING"}</span>
@@ -202,7 +202,7 @@ export default function OpsPage() {
             <div>
               <h3 className="uppercase tracking-[0.2em] text-[var(--text-muted)] mb-2">Features</h3>
               <ul className="space-y-1 font-mono">
-                {data.environment.features.map((e) => (
+                {data.environment.features.map((e: { key: string; set: boolean }) => (
                   <li key={e.key} className="flex items-center justify-between">
                     <span>{e.key}</span>
                     <span className={e.set ? "text-teal-cathedral" : "text-[var(--text-muted)]"}>{e.set ? "set" : "unset"}</span>

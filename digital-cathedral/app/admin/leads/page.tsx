@@ -181,7 +181,7 @@ export default function AdminLeadManagement() {
             Test Leads
           </h3>
           <div className="space-y-3">
-            {seedResults.map((r, i) => (
+            {seedResults.map((r: SeedResult, i: number) => (
               <div
                 key={i}
                 className="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--bg-surface)]"

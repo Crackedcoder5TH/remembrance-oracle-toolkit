@@ -3,8 +3,9 @@
  *
  * 1. Sanitizes environment variables
  * 2. Validates critical env vars in production (fail-fast)
+ * 3. Starts the Sun heartbeat (node runtime only) so reflexes fire on a timer
  */
-export function register() {
+export async function register() {
   // NEXTAUTH_URL must be a single URL — NextAuth passes it to new URL() internally
   if (process.env.NEXTAUTH_URL?.includes(",")) {
     process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL.split(",")[0].trim();
@@ -42,6 +43,19 @@ export function register() {
         `[STARTUP] Missing optional environment variables:\n` +
         warnings.map((v) => `  - ${v}`).join("\n")
       );
+    }
+  }
+
+  // --- Sun heartbeat ---
+  // Node runtime only — edge runtime has no setInterval/.unref and no
+  // long-lived server process anyway. Import is best-effort: a failure
+  // here must not prevent the cathedral from booting.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    try {
+      const sun = await import("./app/lib/valor/sun");
+      sun.startSun();
+    } catch {
+      // swallow — cathedral boots whether or not the Sun starts
     }
   }
 }

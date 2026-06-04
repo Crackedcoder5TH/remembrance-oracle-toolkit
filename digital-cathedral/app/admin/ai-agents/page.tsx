@@ -13,7 +13,7 @@
  *  - Settings: Toggle agent API, consent expiry, rate limits, llms.txt
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 
 // ---------------------------------------------------------------------------
@@ -239,7 +239,7 @@ export default function AIAgentsAdmin() {
 
   // Bar width for agent leads chart
   const maxAgentLeads = data
-    ? Math.max(...Object.values(data.agentLeads.byAgent), 1)
+    ? Math.max(...Object.values(data.agentLeads.byAgent as Record<string, number>), 1)
     : 1;
 
   const mockConsents = generateMockConsents();
@@ -361,7 +361,7 @@ export default function AIAgentsAdmin() {
                   Leads by Agent
                 </h2>
                 <div className="space-y-3">
-                  {Object.entries(data.agentLeads.byAgent)
+                  {Object.entries(data.agentLeads.byAgent as Record<string, number>)
                     .sort(([, a], [, b]) => b - a)
                     .map(([agent, count]) => (
                       <div key={agent} className="flex items-center gap-3">
@@ -388,7 +388,7 @@ export default function AIAgentsAdmin() {
                   Recent Agent Activity
                 </h2>
                 <div className="space-y-3">
-                  {data.topReferringAgents.map((agent) => (
+                  {data.topReferringAgents.map((agent: TopAgent) => (
                     <div
                       key={agent.agent}
                       className="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--bg-surface)]"
@@ -577,11 +577,11 @@ export default function AIAgentsAdmin() {
                   Request Volume by Endpoint
                 </h2>
                 <div className="space-y-3">
-                  {Object.entries(data.apiUsage.byEndpoint)
+                  {Object.entries(data.apiUsage.byEndpoint as Record<string, number>)
                     .sort(([, a], [, b]) => b - a)
                     .map(([endpoint, count]) => {
                       const maxEndpoint = Math.max(
-                        ...Object.values(data.apiUsage.byEndpoint),
+                        ...Object.values(data.apiUsage.byEndpoint as Record<string, number>),
                         1,
                       );
                       return (
@@ -777,7 +777,7 @@ export default function AIAgentsAdmin() {
                   </div>
                   <button
                     onClick={() =>
-                      setSettingsForm((s) =>
+                      setSettingsForm((s: AgentSettings | null) =>
                         s ? { ...s, agentApiEnabled: !s.agentApiEnabled } : s,
                       )
                     }
@@ -809,8 +809,8 @@ export default function AIAgentsAdmin() {
                   <input
                     type="number"
                     value={settingsForm.consentExpiryHours}
-                    onChange={(e) =>
-                      setSettingsForm((s) =>
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setSettingsForm((s: AgentSettings | null) =>
                         s
                           ? { ...s, consentExpiryHours: parseInt(e.target.value) || 72 }
                           : s,
@@ -833,7 +833,7 @@ export default function AIAgentsAdmin() {
                   Maximum requests per minute for each endpoint.
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {Object.entries(settingsForm.rateLimits).map(([endpoint, limit]) => (
+                  {Object.entries(settingsForm.rateLimits as Record<string, number>).map(([endpoint, limit]) => (
                     <div key={endpoint}>
                       <label className="block text-xs text-[var(--text-muted)] uppercase tracking-wider mb-1">
                         {endpoint}
@@ -841,8 +841,8 @@ export default function AIAgentsAdmin() {
                       <input
                         type="number"
                         value={limit}
-                        onChange={(e) =>
-                          setSettingsForm((s) =>
+                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                          setSettingsForm((s: AgentSettings | null) =>
                             s
                               ? {
                                   ...s,
@@ -873,14 +873,14 @@ export default function AIAgentsAdmin() {
                 <input
                   type="text"
                   value={settingsForm.allowedAgents.join(", ")}
-                  onChange={(e) =>
-                    setSettingsForm((s) =>
+                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                    setSettingsForm((s: AgentSettings | null) =>
                       s
                         ? {
                             ...s,
                             allowedAgents: e.target.value
                               .split(",")
-                              .map((a) => a.trim())
+                              .map((a: string) => a.trim())
                               .filter(Boolean),
                           }
                         : s,
@@ -901,8 +901,8 @@ export default function AIAgentsAdmin() {
                 </p>
                 <textarea
                   value={settingsForm.llmsTxt}
-                  onChange={(e) =>
-                    setSettingsForm((s) =>
+                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
+                    setSettingsForm((s: AgentSettings | null) =>
                       s ? { ...s, llmsTxt: e.target.value } : s,
                     )
                   }

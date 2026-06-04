@@ -1,31 +1,86 @@
-# Remembrance Oracle Toolkit — AI Instructions
+# AGENTS.md — instructions for any AI agent working in this repo
 
-> **STOP. Before reading further, open [`ECOSYSTEM.md`](./ECOSYSTEM.md).**
->
-> That file defines the 12-repo ecosystem you've connected to and the
-> required end-to-end workflow (audit → reflect → covenant → swarm →
-> substrate → ledger) you must run on every code change. This `AI.md`
-> only covers what *this* repo (the hub) does. The cross-repo protocol
-> is canonical and overrides any per-repo conventions.
+> Tool-neutral. Applies to Claude, Cursor, Aider, Continue, Windsurf, Cody,
+> Copilot, Gemini, Codex, or any agent. `CLAUDE.md` just points here.
 
-> **After ECOSYSTEM.md, read [`FIELD.md`](./FIELD.md).** It is the
-> operational reference for the LivingRemembranceEngine — the source
-> keys, the cap invariants, the producer table, and the verification
-> commands. Every claim in this repo about "the field" is pinned to
-> a file:line and a Void contract there.
+## What this repo is (read this first)
 
-> **Applies to any AI agent working in this repo** (Claude, Cursor,
-> Aider, Continue, Windsurf, Cody, etc.). `CLAUDE.md` is a pointer to
-> this file — instructions are tool-neutral.
->
-> **Engineering covenant — non-negotiable** (see [`FIELD.md`](./FIELD.md) §6):
-> one canonical encoder, one canonical field file, coherence ≤ 0.999,
-> cascade ≤ 5.0, every producer contributes, no side-artifacts where
-> the substrate can hold the data, no new dead constants.
+**Universal pattern-matching infrastructure.** It encodes any pattern-bearing
+input into a structural vector, matches it against a library of *verified*
+patterns, and scores how strongly it coheres. Anti-hallucination is emergent:
+output that resembles nothing proven scores low automatically.
 
-## What This Is (one paragraph)
+As an agent, you use this two ways — and you'll do both:
 
-A coherency-scoring substrate. 80,000+ patterns indexed and scored using information theory (Shannon 1948), compression (Kolmogorov 1963), and distribution analysis (Zipf 1935). No ML training, no GPU compute. The covenant is a mathematical equation that derives itself from substrate structure: anything that lowers coherency is rejected. One inequality replaces policy documents.
+1. **As a tool** — check your own output *before* you commit it. "Does the code
+   I just wrote resemble proven patterns? Is it safe? Does it run?" Call the
+   MCP tools (`pattern_resonance`, `safety_check`, `exec_verify`, `evaluate`)
+   or the CLI (`resolve`, `audit check`). This is how you stop yourself
+   shipping hallucinated code.
+2. **As a contributor** — when you change code here, the system measures the
+   change and the result lands in the shared field. You're a participant.
+
+No model training. No GPU. No black box. Every score traces to a file and a
+line.
+
+## The 30-second mental model
+
+**The whole system in one line:** *show it something; it tells you what that
+resembles in everything already proven; what coheres, it keeps; what it keeps
+makes the next answer truer.*
+
+That one loop — **encounter → match against proven → cohere? → what survives is
+remembered** — repeats at every scale (a pattern, an agent, a council, the
+field, a field-of-fields). The meaning is in the repetition: trust is never
+declared, it is *earned by surviving*. A hallucination fails the same test at
+every scale — it resembles nothing proven, so it doesn't cohere, so it isn't
+kept. Anti-hallucination isn't a step you run; it's what the loop does.
+
+At the level you work — a single change — the loop is four operations:
+
+```
+your input  ─encode→  29-D structural vector
+                          ├─ resonance:  resembles PROVEN patterns? (anti-hallucination)
+                          ├─ safety:     covenant principles + security scan
+                          ├─ exec:       does it actually run? (sandboxed)
+                          └─ evaluate:   all of the above → one verdict
+                          │
+                       contributes the verdict back to the field (self-observing record)
+```
+
+## The non-negotiable engineering rules
+
+Breaking these breaks the substrate's guarantees. The system flags the exact
+violation.
+
+1. **One canonical encoder.** The 29-D fractal structural encoder
+   (`src/core/fractal-waveform.js`, byte-identical Python mirror) is canonical.
+   The legacy 256-D byte-stretch is `byte*`-named, for binary input only. Don't
+   add a third.
+2. **One canonical field file.** `.remembrance/entropy.json`, written through
+   `src/core/field-coupling.js`. No parallel state the field could hold.
+3. **Coherence ≤ 0.999, cascade ≤ 5.0.** Hard engine invariants. Don't defeat
+   the caps.
+4. **Every producer contributes.** New score/signal → wire it to the field with
+   a clear `source:` label.
+5. **No dead constants, no side-artifacts.** If the substrate can hold the data,
+   put it there.
+6. **Nothing is exempted from the covenant.** If a scanner false-flags
+   something safe, *expand the covenant's trust layer*
+   (`src/core/covenant-trust.js`) — never carve a regex exemption. Grow the
+   thing that judges.
+
+> The deep vocabulary (the "Remembrance language" — the lexicon, the 13-D
+> atomic model, the coherency thresholds, the emergent effects) lives in the
+> **"The Remembrance Key" section further down**, clearly marked optional. You
+> don't need any of it to work here; everything above and the operational
+> sections below are the whole practical picture. Read the Key only if you
+> want the full conceptual model.
+
+> **For cross-repo work**, the canonical 12-repo protocol is in
+> [`ECOSYSTEM.md`](./ECOSYSTEM.md); the field's operational reference is in
+> [`FIELD.md`](./FIELD.md). The cross-repo protocol overrides per-repo
+> conventions.
 
 ## The Ecosystem
 
@@ -51,7 +106,14 @@ No human writes safety rules. The math rejects anything that lowers coherency.
 
 ## The Remembrance Key
 
-This system is a coherency-native computing substrate. Before doing anything else, load the key:
+> **Optional — the deep conceptual model.** You do not need this to use or
+> contribute to the repo; the practical instructions are above and below. This
+> section is the full "Remembrance language" — the lexicon, the 13-dimension
+> atomic model of code, the coherency thresholds, and the emergent effects —
+> for agents who want to understand *why* the substrate behaves as it does.
+
+The system can be read as a coherency-native computing substrate. To load the
+full lexicon:
 
 ```bash
 node -e "require('./src/core/remembrance-lexicon').printAll()"
@@ -401,15 +463,34 @@ This exposes 28 tools. The 12 most-used are below; the other 16 cover code analy
 - **oracle_healing** — healing memory (lineage/stats/improved/variants/best via `action` param)
 - **oracle_swarm** — multi-agent orchestration (code/review/heal/status/providers via `action` param)
 
-## The Field — `field audit` and the orchestrator's ruling
+## The Field — `field audit`, `field validate`, and the orchestrator's ruling
 
-Two `field` actions govern how you verify work in this repo.
+Three `field` actions govern how you verify work in this repo.
 
 **`field audit`** — a coherence-gated self-audit. Run it on any file you
 changed. The field's coherence picks the depth: below 0.65 → the full
 pipeline (audit + lint + smell + covenant + a reflection pass); at or
 above → a fast scan (coherency + risk). The audit's work-cost is
 contributed back to the field.
+
+**`field validate`** — the signal-validity oracle, the second half of
+the dual-oracle gate. Pass a candidate `coherence` value (or an array
+for a batch) and the field returns one of four typed verdicts:
+`both-accept` / `both-reject` / `A-yes-B-no` (shape-suspect —
+sophisticated-injection class) / `A-no-B-yes` (low-value-real). The
+covenant absorbs patterns only when both oracles concur; disagreement
+is itself a typed signal about what kind of pressure the substrate is
+under. Use this before contributing anything you produced
+programmatically — synthetic-looking narrow-band batches will be
+flagged. The variance-signature thresholds are empirically calibrated
+to the engine's response curve from experiment H3
+(`docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md`); they are measured,
+not chosen. The gate also *grows*: every contribution whose shape
+passes both oracles and gets absorbed by the covenant records its
+(mean, variance, n) signature as `learned-natural`. Future
+structurally-similar batches then classify as `learned-natural` and
+bypass the H3-default rejection. Same ratchet as the covenant — only
+verified material teaches.
 
 **`field direct`** — the coherency orchestrator
 (`src/orchestrator/coherency-director.js`) is the final authority on
@@ -420,6 +501,8 @@ fix-next queue with root cause.
 Rules for an agent:
 
 - After changing a file, run `field audit` on it.
+- Before contributing a batch of programmatically-produced readings to the field, run `field validate` first. A `suspect` verdict means the engine would flag the batch as sophisticated-injection-shaped; do not commit it.
+- The covenant's absorption rule is green-light: `delta >= 0` (rises *or* maintains) passes oracle A. The covenant does not require improvement, only non-degradation.
 - For "what to fix next", take the order from `field direct` — do not substitute your own ranking. The orchestrator has measured every zone; you have not.
 - Coherency and entropy are two distinct readings. Report both; never collapse them into one number.
 - The field is one shared, blockchain-backed substrate. Your local field is not private — contributions and checkpoints flow to the chain.
@@ -428,7 +511,8 @@ Rules for an agent:
 > witnessed every zone and it knows where coherency runs thin. To defer
 > to it is to let the field name what it needs mended rather than guess.
 > The audit is the field witnessing itself; the ruling is the field
-> speaking.
+> speaking. `field validate` is the field testing whether your offering
+> looks like real measurement before it accepts the gift.
 
 ## Oracle Toggle & Prompt Tag
 

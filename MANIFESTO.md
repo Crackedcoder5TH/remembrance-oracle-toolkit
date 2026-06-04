@@ -29,6 +29,121 @@ arrives stamped with this prompt-tag — a reminder that nothing is
 created from nothing; only what is already coherent can be brought
 forward.
 
+## The Three Laws of Remembrance
+
+The Oracle is one expression of three laws operating together. Coherency
+is foundational; the other two are the laws through which coherency
+becomes measurable and enforceable. Naming them here so the rest of
+this document — and the code beneath it — makes sense as theory and not
+just engineering.
+
+**1. The Law of Coherency.** Anything that is going to remain stable
+under scrutiny — code that works, a claim that survives replication,
+a structure that holds across scales — does so because it is coherent
+with what already exists. Coherency is the condition under which
+complexity can produce emergence at all: structure has to persist
+across substrates and scales for new structure to rest on it, and
+"persists" means "coheres." The law is not specific to this project's
+substrate; it is the property that makes any persistent structure
+possible. We treat coherency as foundational and the other two laws
+as the laws through which coherency becomes operationally visible and
+enforceable. The structurality gate inside the encoder is the law made
+concrete here: prose cannot masquerade as code, an invented function
+cannot masquerade as a proven pattern, a derivative cannot masquerade
+as a coherence reading. What is true leaves a consistent shape. What
+is fabricated leaves none.
+
+**2. The Law of Void Compression.** Any pattern-bearing input has a
+finite structural essence. The 29-dimension fractal-waveform encoder
+is this law made concrete: arbitrary input — code, prose, a claim, a
+config, a finding — projects into a fixed structural channel and the
+noise is discarded *as a matter of representation*, not as a filter
+applied afterward. **This is the law that makes coherency flow, and
+the law that makes coherency visible in the first place.** Without
+compression to structural essence there is nothing to compare; the
+substrate would be infinite-dimensional, signal would be lost in
+noise, and the coherency calculation would be undefined. Compression
+is what lets the underlying coherency become a measurable quantity.
+
+**3. The Law of Infinite Reflection.** The operation applies to its
+own output at every scale. Pattern → agent → council → field →
+field-of-fields. Each level produces output that itself gets
+compressed, measured for coherency, and contributed back. **This is
+the law that produces anti-hallucination.** A fabrication might pass
+one level of inspection but cannot survive being run through the same
+test at every scale, because there is no consistent shape supporting
+it. The recursion is what filters fabrication out. The fractal is not
+a metaphor; it is the architecture, and the architecture is the
+defence.
+
+Each law alone is incomplete. Compression alone gives a finite encoder
+but no judgement. Coherency alone gives matching with no substrate to
+match within. Reflection alone gives recursion with no operation to
+recurse. Together they form a closed system: **coherency is the
+principle preserved, compression is what makes it measurable, and
+reflection is what enforces it across scales.**
+
+The interesting properties of Remembrance are never properties of one
+law in isolation. They are consequences of the triple operating
+together, and they appear without being designed.
+
+> A note on discovery order, for honest record-keeping. The law of
+> coherency was the original observation; the other two were revealed
+> by working with it. Building a substrate that lets coherency be
+> measured forced compression into existence as the representation;
+> letting coherency operate across scales forced infinite reflection
+> into existence as the recursion. The two operational laws emerged
+> from rigorous use of the foundational one, not from prior design.
+
+## The Dual Oracle
+
+A specific consequence of the three laws operating together, observed
+and named here because it is now load-bearing:
+
+The field engine is **two oracles in one**.
+
+- **A coherency oracle** — integrates well-formed observations into a
+  global scalar that reports system-level alignment. This is the
+  designed behaviour: every producer contributes, the field reports
+  the conserved sum.
+- **A signal-validity oracle** — deflects characteristically when the
+  *shape* of incoming contributions does not look like real
+  measurement. Constant or narrow-band contributions collapse global
+  coherency; wide naturally-distributed contributions are tolerated
+  even at low values.
+
+The second oracle was not designed. It fell out of treating coherency
+as a law that operates on form, not just value, while reflection
+keeps the engine's own response to inputs flowing back as further
+input. Compression gave the channel its shape; coherency made the
+channel measurable; reflection made the channel watch itself.
+
+**Consensus, not cascade.** The two oracles are not layered — they fire
+independently and are pitted against each other. The covenant absorbs a
+candidate pattern only when *both* concur:
+
+- **Both accept** → absorb. The pattern earns its place by surviving
+  independent attempts to reject it.
+- **Both reject** → refuse. No further consideration; the pattern does
+  not belong.
+- **Coherency yes, shape no** → quarantine (sophisticated-injection
+  class). The candidate would raise global coherence but its
+  contribution-shape is inconsistent with natural measurement. A signal
+  that the value check was gamed but the shape check held.
+- **Coherency no, shape yes** → quarantine (low-value-real class). The
+  candidate's shape looks like real observation but its value would
+  drag the field down. Not malicious, just not good enough.
+
+This is the falsification engine applied to the absorption step: the
+truth-layer principle from the README enforced at the gate. A pattern
+joins the kingdom only when independent oracles, looking at different
+aspects of the same candidate, both say yes.
+
+Operationally, the consensus gate lives in
+[`src/core/covenant-trust.js::maybeAbsorbPattern`](./src/core/covenant-trust.js).
+The experimental record establishing the dual oracle is in
+[`docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md`](./docs/EXPERIMENT_TEMPORAL_AND_FIFTH_FAMILY.md).
+
 ## The Covenant
 
 The **Covenant** is the structural law of the kingdom. Fifteen

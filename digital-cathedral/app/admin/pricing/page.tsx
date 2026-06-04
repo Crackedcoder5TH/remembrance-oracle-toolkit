@@ -7,6 +7,7 @@
  * price floor, and max price — all changes take effect immediately.
  */
 
+import * as React from "react";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -95,7 +96,7 @@ export default function AdminPricing() {
 
   const removeTier = (index: number) => {
     if (!config || config.tiers.length <= 1) return;
-    const tiers = config.tiers.filter((_, i) => i !== index);
+    const tiers = config.tiers.filter((_: TierConfig, i: number) => i !== index);
     setConfig({ ...config, tiers });
   };
 
@@ -157,7 +158,7 @@ export default function AdminPricing() {
               <input
                 type="number"
                 value={config.maxPrice}
-                onChange={(e) => setConfig({ ...config, maxPrice: parseInt(e.target.value) || 0 })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, maxPrice: parseInt(e.target.value) || 0 })}
                 min={100}
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 w-36"
               />
@@ -170,7 +171,7 @@ export default function AdminPricing() {
               <input
                 type="number"
                 value={config.priceFloor}
-                onChange={(e) => setConfig({ ...config, priceFloor: parseInt(e.target.value) || 0 })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfig({ ...config, priceFloor: parseInt(e.target.value) || 0 })}
                 min={0}
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 w-36"
               />
@@ -191,7 +192,7 @@ export default function AdminPricing() {
         </div>
 
         <div className="space-y-4">
-          {config.tiers.map((tier, idx) => (
+          {config.tiers.map((tier: TierConfig, idx: number) => (
             <div key={idx} className="rounded-lg border border-indigo-cathedral/10 p-4 bg-[var(--bg-surface)]">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-[var(--text-primary)]">Tier {idx + 1}</span>
@@ -204,19 +205,19 @@ export default function AdminPricing() {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div>
                   <label className="block text-[10px] uppercase text-[var(--text-muted)] mb-1">Name</label>
-                  <input type="text" value={tier.name} onChange={(e) => updateTier(idx, "name", e.target.value)}
+                  <input type="text" value={tier.name} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTier(idx, "name", e.target.value)}
                     className="w-full bg-[var(--bg-primary)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase text-[var(--text-muted)] mb-1">Max Buyers</label>
-                  <input type="number" value={tier.maxBuyers} onChange={(e) => updateTier(idx, "maxBuyers", e.target.value)}
+                  <input type="number" value={tier.maxBuyers} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTier(idx, "maxBuyers", e.target.value)}
                     min={1} max={100}
                     className="w-full bg-[var(--bg-primary)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase text-[var(--text-muted)] mb-1">Base Price <span className="opacity-50">(cents)</span></label>
                   <div className="flex items-center gap-1">
-                    <input type="number" value={tier.basePrice} onChange={(e) => updateTier(idx, "basePrice", e.target.value)}
+                    <input type="number" value={tier.basePrice} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTier(idx, "basePrice", e.target.value)}
                       min={0}
                       className="w-full bg-[var(--bg-primary)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                     <span className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">{formatCents(tier.basePrice)}</span>
@@ -224,14 +225,14 @@ export default function AdminPricing() {
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase text-[var(--text-muted)] mb-1">Hold Days</label>
-                  <input type="number" value={tier.holdDays} onChange={(e) => updateTier(idx, "holdDays", e.target.value)}
+                  <input type="number" value={tier.holdDays} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTier(idx, "holdDays", e.target.value)}
                     min={0} max={30}
                     className="w-full bg-[var(--bg-primary)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase text-[var(--text-muted)] mb-1">Drop Amount <span className="opacity-50">(cents)</span></label>
                   <div className="flex items-center gap-1">
-                    <input type="number" value={tier.dropAmount} onChange={(e) => updateTier(idx, "dropAmount", e.target.value)}
+                    <input type="number" value={tier.dropAmount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTier(idx, "dropAmount", e.target.value)}
                       min={0}
                       className="w-full bg-[var(--bg-primary)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                     <span className="text-[10px] text-[var(--text-muted)] whitespace-nowrap">{formatCents(tier.dropAmount)}</span>
@@ -239,7 +240,7 @@ export default function AdminPricing() {
                 </div>
                 <div>
                   <label className="block text-[10px] uppercase text-[var(--text-muted)] mb-1">Drop Interval <span className="opacity-50">(days)</span></label>
-                  <input type="number" value={tier.dropInterval} onChange={(e) => updateTier(idx, "dropInterval", e.target.value)}
+                  <input type="number" value={tier.dropInterval} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateTier(idx, "dropInterval", e.target.value)}
                     min={1} max={30}
                     className="w-full bg-[var(--bg-primary)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
@@ -262,7 +263,7 @@ export default function AdminPricing() {
             <span className="text-sm text-[var(--text-primary)] font-mono">Day {simulateDay}</span>
           </div>
           <input type="range" min={0} max={30} value={simulateDay}
-            onChange={(e) => setSimulateDay(parseInt(e.target.value))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSimulateDay(parseInt(e.target.value))}
             className="w-full accent-teal-cathedral" />
           <div className="flex justify-between text-[10px] text-[var(--text-muted)] mt-1">
             <span>Day 0 (new)</span><span>Day 30</span>
@@ -270,7 +271,7 @@ export default function AdminPricing() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {config.tiers.map((tier, idx) => {
+          {config.tiers.map((tier: TierConfig, idx: number) => {
             const t = simulateDay;
             const holding = t <= tier.holdDays;
             const steps = holding ? 0 : Math.floor((t - tier.holdDays) / (tier.dropInterval || 1));

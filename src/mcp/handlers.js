@@ -1347,6 +1347,28 @@ const HANDLERS = {
         return fc.getVarianceGateMode();
       }
 
+      // ── orchestrator self-introspection ──
+      // What can the orchestrator do? The method registry lists every
+      // tool with its triggers, effect, cost, reversibility. The
+      // 'methods' action returns the catalog; 'respond' returns the
+      // tools whose triggers match the live field state — the
+      // orchestrator's "given how I feel right now, what should I do?"
+      // call.
+      case 'methods': {
+        const reg = require('../orchestrator/method-registry');
+        if (args?.name) {
+          const desc = reg.describeMethod(args.name);
+          if (!desc) return { error: 'unknown method', name: args.name, available: reg.listMethods() };
+          return desc;
+        }
+        return { methods: reg.listMethods().map(n => reg.describeMethod(n)) };
+      }
+
+      case 'respond': {
+        const { selectResponseFor } = require('../orchestrator/method-registry');
+        return selectResponseFor();
+      }
+
       // ── commit the field state to the blockchain ──
       case 'checkpoint': {
         const state = fc.peekField();

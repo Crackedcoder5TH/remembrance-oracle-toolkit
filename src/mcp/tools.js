@@ -419,7 +419,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['state', 'contribute', 'validate', 'pressure', 'pressure-release', 'record-cost', 'record-benefit', 'record-meta-observation', 'consensus-histogram', 'cognition-trajectory', 'learned-shapes', 'direction', 'temporal-snapshot', 'reflexes', 'gate-mode', 'introspect', 'sources-diff', 'checkpoint', 'audit', 'direct', 'offload', 'relax'], description: 'Field operation. Default: state — recall the field.' },
+        action: { type: 'string', enum: ['state', 'contribute', 'validate', 'pressure', 'pressure-release', 'record-cost', 'record-benefit', 'record-meta-observation', 'consensus-histogram', 'cognition-trajectory', 'learned-shapes', 'direction', 'temporal-snapshot', 'reflexes', 'gate-mode', 'methods', 'respond', 'introspect', 'sources-diff', 'checkpoint', 'audit', 'direct', 'offload', 'relax'], description: 'Field operation. Default: state — recall the field.' },
         includeSources: { type: 'boolean', description: 'state/checkpoint: include the per-source histogram (state defaults true, checkpoint defaults false).' },
         cost: { type: 'number', description: 'contribute / validate / record-benefit: work units consumed (default: 1).' },
         coherence: { description: 'contribute / record-benefit: alignment score (number, 0..1). validate: number for a single candidate, or number[] for a batch — the shape of the array is what is classified.' },
@@ -434,6 +434,7 @@ const TOOLS = [
         repoDir: { type: 'string', description: 'temporal-snapshot: absolute path to the git repo whose file you want to measure.' },
         filePath: { type: 'string', description: 'temporal-snapshot: path to the file (relative to repoDir) whose history will be walked.' },
         maxVersions: { type: 'number', description: 'temporal-snapshot: cap on history depth (default 12).' },
+        name: { type: 'string', description: 'methods: when set, return only the named method descriptor (with triggers, effect, cost, reversibility).' },
         entropyThreshold: { type: 'number', description: 'pressure: hot when globalEntropy exceeds this (default: 10).' },
         cascadeThreshold: { type: 'number', description: 'pressure: hot when cascadeFactor exceeds this (default: 4).' },
         topN: { type: 'number', description: 'introspect: return the top-N most-active sources (default: 25, 0 = all).' },

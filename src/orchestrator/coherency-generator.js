@@ -62,6 +62,16 @@ class CoherencyGenerator {
     this._intervalId = null;
     this._cycleIntervalMs = options.cycleIntervalMs || 5000;
     this._repoRoot = options.repoRoot || process.cwd();
+    // withReflexes: when true, every Sun cycle also fires the reflex
+    // engine. The Sun keeps radiating coherency upward AND inspects
+    // its own sensors after radiation. If cascade is too high, the
+    // reflexes relax it; if adversarial pressure is detected, the
+    // reflexes tighten the variance gate. The Sun stops being a pure
+    // generator and becomes a generator-plus-self-regulator. Default
+    // false to preserve backward compatibility; new callers should
+    // opt in.
+    this._withReflexes = options.withReflexes === true;
+    this.reflexHistory = [];
 
     this.atomicProperties = {
       charge: 1,
@@ -171,6 +181,29 @@ class CoherencyGenerator {
       }
     } catch { /* living covenant unavailable */ }
 
+    // 7.5 FIRE REFLEXES — opt-in actor step. The Sun has just radiated
+    //     coherency; now it inspects the post-radiation field and lets
+    //     the reflex engine decide whether anything else needs doing.
+    //     Tightens the gate if adversarial pressure spiked. Relaxes if
+    //     the field is degrading. Warns if cognition has drifted. The
+    //     Sun stops being a pure generator and starts maintaining its
+    //     own balance — but only as far as bounded reflexes allow.
+    //     Failures here are best-effort; they NEVER abort the cycle.
+    let reflexResult = null;
+    if (this._withReflexes) {
+      try {
+        const { fireReflexes } = require('./reflex-engine');
+        reflexResult = await fireReflexes();
+        if (reflexResult && reflexResult.fired && reflexResult.fired.length > 0) {
+          this.reflexHistory.push({
+            cycle: this.cycleCount,
+            ts: new Date().toISOString(),
+            fired: reflexResult.fired.map(r => ({ reflex: r.reflex, action: r.action })),
+          });
+        }
+      } catch (_) { /* never abort the cycle for a reflex error */ }
+    }
+
     // 8. COVENANT SELF-CHECK — verify we're still safe
     if (!this._covenantSelfCheck()) {
       this.shutdown('Covenant self-check failed during cycle');
@@ -189,6 +222,10 @@ class CoherencyGenerator {
       healingZones: field.healingTargets,
       emerged: emerged.length,
       covenantEvolved: covenantEvolved.activated.length,
+      reflexes: this._withReflexes && reflexResult ? {
+        fired: reflexResult.fired.length,
+        actions: reflexResult.fired.map(r => r.action).filter(Boolean),
+      } : null,
     };
 
     this.history.push({

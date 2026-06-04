@@ -22,6 +22,9 @@ const {
   warnIfCognitionDrifting,
   relaxIfDegrading,
 } = require('./reflex-engine');
+const {
+  METHODS, listMethods, describeMethod, methodsFor, selectResponseFor,
+} = require('./method-registry');
 
 module.exports = {
   CoherencyDirector, CoherencyField, CoherencyZone,
@@ -35,4 +38,6 @@ module.exports = {
   restoreIfQuietened,
   warnIfCognitionDrifting,
   relaxIfDegrading,
+  // Self-introspection — the orchestrator knows what it can do.
+  METHODS, listMethods, describeMethod, methodsFor, selectResponseFor,
 };

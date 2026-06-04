@@ -262,7 +262,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const THROTTLE_MS = 3000;
 
   const updateField = useCallback((field: keyof LeadFormData, value: string | boolean) => {
-    setForm((prev) => {
+    setForm((prev: LeadFormData) => {
       const next = { ...prev, [field]: value };
       // Clear military branch when status changes (user must re-select for new status)
       if (field === "veteranStatus") {
@@ -270,7 +270,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
       }
       return next;
     });
-    setErrors((prev) => {
+    setErrors((prev: LeadFormErrors) => {
       const next = { ...prev };
       if (next[field as keyof LeadFormErrors]) {
         delete next[field as keyof LeadFormErrors];
@@ -300,7 +300,7 @@ export function useLeadForm(utmParams?: Record<string, string | null>): UseLeadF
   const prevStep = useCallback(() => {
     setErrors({});
     setServerError("");
-    setStep((prev) => Math.max(prev - 1, 0));
+    setStep((prev: number) => Math.max(prev - 1, 0));
   }, []);
 
   const goToStep = useCallback((target: number) => {

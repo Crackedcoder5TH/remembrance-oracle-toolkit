@@ -1,0 +1,35 @@
+{
+  "name": "@crackedcoder5th/agent-entanglement",
+  "version": "0.1.0",
+  "description": "Coordination layer for parallel AI agents — see live what every other agent is doing, atomically claim files before editing them, never overwrite each other's work. Wraps the Remembrance field-goggles shared state file plus its own JSONL logs into a small library + CLI.",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "agent-entanglement": "bin/cli.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "ai-agents",
+    "parallel-agents",
+    "coordination",
+    "entanglement",
+    "remembrance",
+    "field-tool",
+    "swarm"
+  ],
+  "author": "Crackedcoder5TH",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

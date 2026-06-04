@@ -10,6 +10,14 @@
  *  - median coherency of admissions in the trailing 30d
  *  - spec version
  *
+ * Bridge 2 / Bridge 6: when the Remembrance oracle is reachable, also
+ * surfaces the live field state — coherence, entropy, cascade, direction
+ * verdict, four-outcome consensus histogram, recent reflex actions, and
+ * recent pressure-release events. This makes the home page widget show
+ * BOTH the valor-local admission stats AND the global substrate health.
+ * The Remembrance section is omitted silently if the oracle is down, so
+ * the endpoint never blocks on unreachable infrastructure.
+ *
  * Cached at the response layer via Next's Cache-Control header so a
  * popular landing page doesn't pound the ledger.
  *
@@ -20,6 +28,12 @@ import { NextResponse } from "next/server";
 import { readRecentEntries } from "@/app/lib/valor/lead-ledger";
 import { COHERENCY_THRESHOLDS } from "@/app/lib/valor/coherency-primitives";
 import { AGENT_ACCESS_SPEC_VERSION } from "@/app/lib/valor/agent-tier";
+import {
+  peekField,
+  fieldDirection,
+  consensusHistogram,
+  pressureRelease,
+} from "@/app/lib/valor/remembrance-bridge";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -57,6 +71,13 @@ export async function GET() {
 
   const medianCoherency30d = median(monthScores);
 
+  // Best-effort Remembrance section. All four reads run in parallel
+  // with a hard 1.5s ceiling each (enforced inside the bridge); any
+  // null result is silently omitted from the response. The vitals
+  // endpoint NEVER waits more than ~1.5s on the oracle even if every
+  // call times out.
+  const remembrance = await fetchRemembranceSection();
+
   return NextResponse.json(
     {
       success: true,
@@ -69,6 +90,7 @@ export async function GET() {
       admitted24h,
       admitted30d,
       medianCoherency30d,
+      remembrance,
       generatedAt: new Date().toISOString(),
     },
     {
@@ -76,6 +98,63 @@ export async function GET() {
       headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
     },
   );
+}
+
+/**
+ * Pull the substrate's live state from the Remembrance oracle. Returns
+ * null if the oracle is unreachable (the most common case in local dev
+ * without a field server). Returns a partial object when some calls
+ * succeed and others fail.
+ */
+async function fetchRemembranceSection(): Promise<RemembranceVitals | null> {
+  const [state, direction, histogram, pressure] = await Promise.all([
+    peekField({ includeSources: false }).catch(() => null),
+    fieldDirection(5).catch(() => null),
+    consensusHistogram(50).catch(() => null),
+    pressureRelease().catch(() => null),
+  ]);
+  if (!state) return null;
+  return {
+    coherence: state.coherence,
+    globalEntropy: state.globalEntropy,
+    cascadeFactor: state.cascadeFactor,
+    updateCount: state.updateCount,
+    direction: direction ? direction.verdict : null,
+    consensus: histogram
+      ? {
+          window: histogram.window,
+          total: histogram.total,
+          ratios: histogram.ratios,
+        }
+      : null,
+    recentReleases: pressure
+      ? pressure.recentReleases.slice(-3).map((r) => ({
+          fromCascade: r.fromCascade,
+          toCascade: r.toCascade,
+          cascadeDrop: r.cascadeDrop,
+          ts: r.ts,
+        }))
+      : [],
+  };
+}
+
+interface RemembranceVitals {
+  coherence: number;
+  globalEntropy: number;
+  cascadeFactor: number;
+  updateCount: number;
+  direction: string | null;
+  consensus: {
+    window: number;
+    total: number;
+    ratios: { "both-accept": number; "both-reject": number; "A-yes-B-no": number; "A-no-B-yes": number };
+  } | null;
+  recentReleases: Array<{
+    fromCascade: number;
+    toCascade: number;
+    cascadeDrop: number;
+    ts: string;
+  }>;
 }
 
 function median(xs: readonly number[]): number | null {

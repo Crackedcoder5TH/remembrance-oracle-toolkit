@@ -17,6 +17,7 @@
 import { readRecentEntries, type LedgerEntry } from "./lead-ledger";
 import { COHERENCY_THRESHOLDS } from "./coherency-primitives";
 import { isHost } from "./host-registry";
+import { validateContribution } from "./remembrance-bridge";
 
 export const AGENT_ACCESS_SPEC_VERSION = "1.1.0";
 
@@ -211,5 +212,203 @@ function buildPromotion(currentTier: AgentTier, stats: AgentStats): PromotionReq
       highCoherency: stats.highCoherencyCount30d,
       rejections: stats.rejections30d,
     },
+  };
+}
+
+// ── Per-agent consensus tracking ────────────────────────────────────
+//
+// Bridge 4: mirror the global four-outcome consensus histogram on a
+// per-agent basis so adversarial-pressure pile-ups on a single agent
+// trigger automatic tier-downgrade without operator intervention. The
+// dual-oracle verdict from `validateContribution` is mapped into the
+// same {both-accept, both-reject, A-yes-B-no, A-no-B-yes} alphabet the
+// Remembrance covenant uses, then bucketed per `agentId`. Counters
+// soft-decay by halving once any agent's total exceeds 200, so an
+// agent that stops misbehaving will recover over time without
+// erasing history outright.
+
+type AgreementKey = "both-accept" | "both-reject" | "A-yes-B-no" | "A-no-B-yes";
+
+interface AgentHistogramBucket {
+  "both-accept": number;
+  "both-reject": number;
+  "A-yes-B-no": number;
+  "A-no-B-yes": number;
+  lastUpdated: number;
+}
+
+const _AGENT_HISTOGRAM_CAP = 200;
+const _ADVERSARIAL_DOWNGRADE_RATIO = 0.15;
+const _ADVERSARIAL_DOWNGRADE_MIN = 10;
+const _ADVERSARIAL_RESTORE_RATIO = 0.05;
+const _ADVERSARIAL_RESTORE_MIN = 20;
+
+const _agentHistograms = new Map<string, AgentHistogramBucket>();
+
+function _emptyBucket(): AgentHistogramBucket {
+  return {
+    "both-accept": 0,
+    "both-reject": 0,
+    "A-yes-B-no": 0,
+    "A-no-B-yes": 0,
+    lastUpdated: 0,
+  };
+}
+
+function _bucketTotal(b: AgentHistogramBucket): number {
+  return b["both-accept"] + b["both-reject"] + b["A-yes-B-no"] + b["A-no-B-yes"];
+}
+
+function _recordAgentDecision(agentId: string, agreement: string): void {
+  if (
+    agreement !== "both-accept"
+    && agreement !== "both-reject"
+    && agreement !== "A-yes-B-no"
+    && agreement !== "A-no-B-yes"
+  ) {
+    return;
+  }
+  let bucket = _agentHistograms.get(agentId);
+  if (!bucket) {
+    bucket = _emptyBucket();
+    _agentHistograms.set(agentId, bucket);
+  }
+  bucket[agreement as AgreementKey] += 1;
+  bucket.lastUpdated = Date.now();
+
+  if (_bucketTotal(bucket) > _AGENT_HISTOGRAM_CAP) {
+    // Halve all counters — keeps shape, drops oldest pressure.
+    bucket["both-accept"] = Math.floor(bucket["both-accept"] / 2);
+    bucket["both-reject"] = Math.floor(bucket["both-reject"] / 2);
+    bucket["A-yes-B-no"] = Math.floor(bucket["A-yes-B-no"] / 2);
+    bucket["A-no-B-yes"] = Math.floor(bucket["A-no-B-yes"] / 2);
+  }
+}
+
+function _agentRatios(agentId: string): {
+  "both-accept": number;
+  "both-reject": number;
+  "A-yes-B-no": number;
+  "A-no-B-yes": number;
+  total: number;
+} | null {
+  const bucket = _agentHistograms.get(agentId);
+  if (!bucket) return null;
+  const total = _bucketTotal(bucket);
+  if (total === 0) return null;
+  return {
+    "both-accept": bucket["both-accept"] / total,
+    "both-reject": bucket["both-reject"] / total,
+    "A-yes-B-no": bucket["A-yes-B-no"] / total,
+    "A-no-B-yes": bucket["A-no-B-yes"] / total,
+    total,
+  };
+}
+
+/**
+ * Inspect the per-agent consensus histogram. Returns a defensive copy
+ * (or null if we've never seen this agent). For the admin UI.
+ */
+export function getAgentHistogram(agentId: string): AgentHistogramBucket | null {
+  const bucket = _agentHistograms.get(agentId);
+  if (!bucket) return null;
+  return { ...bucket };
+}
+
+export interface AgentTrustEvaluation {
+  tier: string;
+  reason: string;
+  agreement: string;
+  adversarialRatio: number | null;
+}
+
+/**
+ * Evaluate per-agent trust by running the dual-oracle on a fresh
+ * coherency reading and rolling the result into the agent's local
+ * histogram. Returns a tier decision derived from the agent's own
+ * adversarial-pressure ratio — mirrors the global threshold that the
+ * Remembrance covenant uses to tighten admission.
+ *
+ * Tier strings returned:
+ *   - "basic"  — adversarial ratio above the downgrade threshold
+ *                with enough samples to be statistically meaningful
+ *   - "merit"  — adversarial ratio at/below the restore threshold
+ *                with a clear sample size
+ *   - "hold"   — between thresholds, or not enough data, or oracle
+ *                was unreachable; caller should keep the prior tier
+ */
+export async function evaluateAgentTrust(
+  agentId: string,
+  recentCoherency: number,
+): Promise<AgentTrustEvaluation> {
+  const validation = await validateContribution(
+    `agent:${agentId}`,
+    recentCoherency,
+    { commit: false },
+  );
+
+  let agreement: string;
+  if (validation === null) {
+    // Oracle unreachable — do not record, do not move the tier.
+    const ratios = _agentRatios(agentId);
+    return {
+      tier: "hold",
+      reason: "oracle-unreachable",
+      agreement: "unknown",
+      adversarialRatio: ratios ? ratios["A-yes-B-no"] : null,
+    };
+  } else if (
+    validation.accepted === true
+    && (validation.shapeClass.startsWith("natural") || validation.shapeClass === "learned-natural")
+  ) {
+    agreement = "both-accept";
+  } else if (validation.accepted === false && validation.suspect === true) {
+    agreement = "A-yes-B-no";
+  } else {
+    // Graceful default — covers the both-reject and split-other shapes
+    // the oracle may return that we don't otherwise classify here.
+    agreement = "both-accept";
+  }
+
+  _recordAgentDecision(agentId, agreement);
+
+  const ratios = _agentRatios(agentId);
+  const adversarialRatio = ratios ? ratios["A-yes-B-no"] : null;
+  const total = ratios ? ratios.total : 0;
+
+  if (
+    adversarialRatio !== null
+    && adversarialRatio > _ADVERSARIAL_DOWNGRADE_RATIO
+    && total >= _ADVERSARIAL_DOWNGRADE_MIN
+  ) {
+    return {
+      tier: "basic",
+      reason: `adversarial-pressure ${adversarialRatio.toFixed(3)} > ${_ADVERSARIAL_DOWNGRADE_RATIO} (n=${total})`,
+      agreement,
+      adversarialRatio,
+    };
+  }
+
+  if (
+    adversarialRatio !== null
+    && adversarialRatio < _ADVERSARIAL_RESTORE_RATIO
+    && total >= _ADVERSARIAL_RESTORE_MIN
+  ) {
+    return {
+      tier: "merit",
+      reason: `adversarial-pressure ${adversarialRatio.toFixed(3)} < ${_ADVERSARIAL_RESTORE_RATIO} (n=${total})`,
+      agreement,
+      adversarialRatio,
+    };
+  }
+
+  return {
+    tier: "hold",
+    reason:
+      adversarialRatio === null
+        ? "no-history"
+        : `inconclusive (ratio=${adversarialRatio.toFixed(3)}, n=${total})`,
+    agreement,
+    adversarialRatio,
   };
 }

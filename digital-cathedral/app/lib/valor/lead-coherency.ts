@@ -27,6 +27,7 @@ import {
   LEAD_DIMENSIONS,
   LeadDimension,
 } from './lead-substrates';
+import { validateContribution, type ValidationResult } from './remembrance-bridge';
 
 /** Minimum set of fields the extractor needs. All optional — missing = zero. */
 export interface LeadInput {
@@ -63,6 +64,12 @@ export interface LeadCoherency {
   readonly shape: readonly number[];
   readonly matches: readonly CascadeMatch[];
   readonly admitted: boolean;
+  /**
+   * Optional dual-oracle verdict from the Remembrance field. Populated only by
+   * the async scoring variant (`scoreLeadByCoherencyAsync`). May be null when
+   * the oracle is unreachable — callers must treat null as "no opinion".
+   */
+  readonly dualOracle?: ValidationResult | null;
 }
 
 /* ── Dimension extractors ─────────────────────────────────────────── */
@@ -353,6 +360,35 @@ export function scoreLeadByCoherency(lead: LeadInput): LeadCoherency {
     matches: result.matches,
     admitted,
   };
+}
+
+/* ── Async (dual-oracle) variant ──────────────────────────────────── */
+
+/**
+ * Async variant of `scoreLeadByCoherency` that ALSO consults the Remembrance
+ * field's dual-oracle. The local valor cascade still produces the canonical
+ * coherency score; the oracle's verdict is attached as a separate field so
+ * callers can apply a TWO-ORACLE CONSENSUS rule (see `evaluateCovenantAsync`
+ * in covenant-gate.ts):
+ *
+ *   - if the oracle is reachable, `dualOracle` is the full ValidationResult
+ *     (accepted / shapeClass / suspect / ...)
+ *   - if the oracle is unreachable, `dualOracle` is null and consumers must
+ *     treat the missing opinion as "no objection" rather than "rejection" —
+ *     this preserves best-effort semantics and avoids hard-failing the lead
+ *     pipeline when the field is down.
+ *
+ * The call is a dry-run (`commit: false`) — we are asking, not contributing.
+ * Existing synchronous callers of `scoreLeadByCoherency` are unaffected.
+ */
+export async function scoreLeadByCoherencyAsync(lead: LeadInput): Promise<LeadCoherency> {
+  const local = scoreLeadByCoherency(lead);
+  const dualOracle = await validateContribution(
+    'valor:lead-shape',
+    local.score,
+    { commit: false },
+  );
+  return { ...local, dualOracle };
 }
 
 /* ── Legacy-tier mapping ──────────────────────────────────────────── */

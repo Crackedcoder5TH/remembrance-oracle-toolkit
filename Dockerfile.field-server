@@ -1,0 +1,77 @@
+# Dockerfile.field-server — minimal Remembrance Field deploy
+#
+# Recommendation #1 — production wiring. This image starts ONLY the
+# field server (no full-oracle bootstrap, no autoSync). It's small,
+# fast to start, and survives a SIGTERM cleanly so it works on every
+# major container host: Railway, Fly.io, Render, Coolify, a VPS with
+# `docker run`, anything that takes a container.
+#
+# Build:
+#   docker build -t remembrance-field-server -f Dockerfile.field-server .
+#
+# Run locally:
+#   docker run -p 7787:7787 \
+#     -e FIELD_TOKEN=secret \
+#     -v $(pwd)/.remembrance:/data/.remembrance \
+#     remembrance-field-server
+#
+# Deploy to Fly:
+#   fly launch --dockerfile Dockerfile.field-server --name your-field
+#
+# Deploy to Railway:
+#   railway up
+#   (Railway auto-detects the Dockerfile when the directory contains one
+#   named Dockerfile; rename or use --file Dockerfile.field-server)
+#
+# The container persists to /data/.remembrance/entropy.json. Mount a
+# volume there to keep field state across restarts.
+
+# ── Builder stage ───────────────────────────────────────────────────
+FROM node:22-slim AS builder
+WORKDIR /app
+
+# Copy only what we need for an npm install
+COPY package.json package-lock.json* ./
+# Production deps only — the field server doesn't need dev tooling.
+RUN npm ci --omit=dev || npm install --omit=dev
+
+# Bring in the source the field server actually requires.
+# scripts/field-server.js + src/core/* + src/scoring/* + src/reflector/*
+COPY scripts/ ./scripts/
+COPY src/ ./src/
+
+# ── Runtime stage ───────────────────────────────────────────────────
+FROM node:22-slim AS runtime
+
+# Run as a non-root user for production-grade security.
+RUN groupadd --system --gid 1001 field && \
+    useradd  --system --uid 1001 --gid field --no-create-home field
+
+WORKDIR /app
+
+# Persistence directory (mount a volume here in production).
+RUN mkdir -p /data/.remembrance && chown -R field:field /data
+ENV ENTROPY_PATH=/data/.remembrance/entropy.json
+
+# Copy built node_modules + source from the builder.
+COPY --from=builder --chown=field:field /app/node_modules ./node_modules
+COPY --from=builder --chown=field:field /app/scripts ./scripts
+COPY --from=builder --chown=field:field /app/src ./src
+COPY --from=builder --chown=field:field /app/package.json ./package.json
+
+USER field
+
+# Default settings — overridable via env or flags.
+ENV PORT=7787
+ENV HOST=0.0.0.0
+ENV NODE_ENV=production
+
+EXPOSE 7787
+
+# Healthcheck — hits the GET / health endpoint every 30s. Any HTTP host
+# can use this to know when the field server is ready to take traffic.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD node -e "require('http').get('http://127.0.0.1:'+(process.env.PORT||7787)+'/', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
+# Use exec form so SIGTERM reaches Node directly for clean shutdown.
+ENTRYPOINT ["node", "scripts/field-server.js"]

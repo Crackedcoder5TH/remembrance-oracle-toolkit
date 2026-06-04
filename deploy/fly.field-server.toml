@@ -1,0 +1,42 @@
+# fly.field-server.toml — Fly.io config for the Remembrance Field server.
+#
+# Deploy:
+#   fly launch --copy-config --config deploy/fly.field-server.toml \
+#              --dockerfile Dockerfile.field-server --name your-field
+#   fly volumes create field_data --region iad --size 1
+#   fly secrets set FIELD_TOKEN=$(openssl rand -hex 16)
+#   fly deploy --config deploy/fly.field-server.toml
+#
+# Once deployed, the field is reachable at https://your-field.fly.dev .
+# Set REMEMBRANCE_FIELD_URL on the cathedral's Vercel to that URL +/mcp .
+
+app   = "your-field"     # change this to your Fly app name
+primary_region = "iad"   # close to Vercel's iad1 region
+
+[build]
+  dockerfile = "../Dockerfile.field-server"
+
+[env]
+  PORT      = "8080"
+  HOST      = "0.0.0.0"
+  NODE_ENV  = "production"
+
+[http_service]
+  internal_port       = 8080
+  force_https         = true
+  auto_stop_machines  = "off"   # field state should always be reachable
+  auto_start_machines = true
+  min_machines_running = 1
+  processes           = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval     = "30s"
+    method       = "get"
+    path         = "/"
+    protocol     = "http"
+    timeout      = "5s"
+
+[[mounts]]
+  source      = "field_data"
+  destination = "/data"

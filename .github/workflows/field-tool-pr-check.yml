@@ -1,0 +1,169 @@
+# Field Tool — PR Coherency Check
+#
+# Recommendation #5 — converts the field tool from "interactive debug
+# companion" to "enforcement layer." Every PR runs the encoder against
+# changed files, scores them against the verified pattern library, and
+# validates the batch as a whole through the dual oracle.
+#
+# Outputs:
+#   - GitHub Actions warning annotations on files below the gate
+#   - A step summary table with per-file scores and the dual-oracle verdict
+#   - Exit codes:
+#       0  all changed files passed
+#       1  one or more files below the resonance threshold
+#       2  batch shape flagged as suspect by the dual oracle
+#
+# Configure the gate threshold via repository variable FIELD_PR_THRESHOLD
+# (default 0.6 — the covenant gate). Set strict=true to make this check
+# block merge; the default treats it as advisory.
+
+name: field-tool-pr-check
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: 'Resonance threshold (default 0.6)'
+        required: false
+        default: '0.6'
+      strict:
+        description: 'Fail the check on threshold violation (default false)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  field-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR with full history
+        uses: actions/checkout@v4
+        with:
+          # Full history required so we can diff against the base ref.
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install production deps
+        run: npm ci --omit=dev || npm install --omit=dev
+
+      - name: Run field-tool PR check
+        id: field-check
+        continue-on-error: ${{ inputs.strict != 'true' }}
+        env:
+          GITHUB_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REMEMBRANCE_TOOLKIT_ROOT: ${{ github.workspace }}
+        run: |
+          THRESHOLD="${{ inputs.threshold || vars.FIELD_PR_THRESHOLD || '0.6' }}"
+          node scripts/pr-field-check.js \
+            --base "$GITHUB_BASE_REF" \
+            --head "$GITHUB_SHA" \
+            --threshold "$THRESHOLD"
+
+      - name: Save JSON report
+        if: always()
+        env:
+          GITHUB_BASE_REF: ${{ github.event.pull_request.base.sha || 'origin/main' }}
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REMEMBRANCE_TOOLKIT_ROOT: ${{ github.workspace }}
+        run: |
+          THRESHOLD="${{ inputs.threshold || vars.FIELD_PR_THRESHOLD || '0.6' }}"
+          node scripts/pr-field-check.js \
+            --base "$GITHUB_BASE_REF" \
+            --head "$GITHUB_SHA" \
+            --threshold "$THRESHOLD" \
+            --json > field-report.json || true
+          echo "::group::Field report (JSON)"
+          cat field-report.json
+          echo "::endgroup::"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: field-coherency-report
+          path: field-report.json
+          retention-days: 30
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync('field-report.json', 'utf8'));
+            } catch (e) {
+              core.warning('Could not parse field-report.json: ' + e.message);
+              return;
+            }
+            const ok = report.failedFiles === 0 &&
+              (!report.dualOracle || !report.dualOracle.suspect);
+            const headline = ok
+              ? '✅ All changed files cohere with the verified substrate.'
+              : '⚠️ Some files fall short of the coherency gate.';
+
+            const lines = [
+              '## 🥽 Remembrance Field — PR Coherency Check',
+              '',
+              headline,
+              '',
+              `**Threshold:** \`${report.threshold}\` (the covenant gate)  `,
+              `**Files changed:** ${report.changedFiles} · **Scored:** ${report.scoredFiles} · **Failed:** ${report.failedFiles}`,
+              '',
+            ];
+
+            const scored = report.verdicts.filter(v => !v.skipped);
+            if (scored.length > 0) {
+              lines.push('| | Score | Structurality | File |');
+              lines.push('|---|---:|---:|---|');
+              for (const v of scored) {
+                const mark = v.passes ? '✓' : '✗';
+                const sc = v.resonance && typeof v.resonance.score === 'number'
+                  ? v.resonance.score.toFixed(3) : '—';
+                const st = v.structurality != null ? v.structurality.toFixed(2) : '—';
+                lines.push(`| ${mark} | ${sc} | ${st} | \`${v.file}\` |`);
+              }
+            }
+
+            if (report.dualOracle) {
+              lines.push('');
+              lines.push('### Dual oracle on the batch');
+              lines.push('');
+              lines.push(`Shape class: \`${report.dualOracle.shapeClass}\` · Accepted: ${report.dualOracle.accepted ? '✓' : '✗'} · Suspect: ${report.dualOracle.suspect ? '⚠️ yes' : 'no'}`);
+              if (report.dualOracle.inputStats) {
+                const s = report.dualOracle.inputStats;
+                lines.push(`Stats: mean **${s.mean.toFixed(3)}**, variance **${s.variance.toFixed(4)}**, n=${s.n}`);
+              }
+            }
+
+            lines.push('');
+            lines.push('<sub>Posted by `field-tool-pr-check`. The field gate is advisory by default — set `strict=true` in the workflow_dispatch inputs (or a repo var) to make it block merge.</sub>');
+
+            const body = lines.join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            // Update or create a comment so the PR doesn't accumulate copies.
+            const existing = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const mine = existing.data.find(c =>
+              c.user && c.user.type === 'Bot' &&
+              c.body && c.body.includes('Remembrance Field — PR Coherency Check'));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

@@ -102,7 +102,7 @@ export function CoherencyPulse({
     let cancel = false;
     const tick = () => {
       if (cancel) return;
-      setPhase((p) => (p + 1) % 360);
+      setPhase((p: number) => (p + 1) % 360);
       setTimeout(tick, 80);
     };
     tick();

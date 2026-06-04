@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientByEmail, verifyPassword } from "@/app/lib/client-database";
+import { getClientByEmail } from "@/app/lib/client-database";
+// Bug fix: register/route.ts hashes with scrypt (app/lib/password.ts) but this
+// route previously imported the HMAC verifyPassword from client-database, so
+// any account created via /api/portal/register could never log in. Use the
+// matching scrypt verifier instead.
+import { verifyPassword } from "@/app/lib/password";
 import {
   createPortalSessionToken,
   PORTAL_SESSION_COOKIE,

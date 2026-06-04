@@ -14,7 +14,7 @@
 /** Parse comma-separated domain list from env, lowercased and trimmed. */
 const LEADS_DOMAINS: string[] = (process.env.LEADS_DOMAINS ?? "")
   .split(",")
-  .map((d) => d.trim().toLowerCase())
+  .map((d: string) => d.trim().toLowerCase())
   .filter(Boolean);
 
 /** The single portal domain (admin + client). */

@@ -142,7 +142,7 @@ export function InsuranceProductSchema({ slug }: { slug?: string }) {
           category: "Life Insurance",
         };
 
-        return <JsonLd key={coverage.slug} data={data} />;
+        return <JsonLd {...{ key: coverage.slug, data }} />;
       })}
     </>
   );

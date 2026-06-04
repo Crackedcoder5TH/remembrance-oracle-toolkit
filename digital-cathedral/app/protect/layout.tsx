@@ -5,6 +5,7 @@
  * This server layout provides the metadata for SEO and Open Graph.
  */
 
+import * as React from "react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

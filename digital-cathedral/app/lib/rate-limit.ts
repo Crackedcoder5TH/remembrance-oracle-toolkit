@@ -178,4 +178,4 @@ function cleanup(): void {
   }
 }
 
-setInterval(cleanup, CLEANUP_INTERVAL).unref();
+(setInterval(cleanup, CLEANUP_INTERVAL) as unknown as { unref?: () => void }).unref?.();

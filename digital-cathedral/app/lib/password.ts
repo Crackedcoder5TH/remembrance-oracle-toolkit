@@ -12,7 +12,7 @@ const KEY_LENGTH = 64;
 export function hashPassword(password: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const salt = randomBytes(SALT_LENGTH).toString("hex");
-    scrypt(password, salt, KEY_LENGTH, (err, derivedKey) => {
+    scrypt(password, salt, KEY_LENGTH, (err: Error | null, derivedKey: Buffer) => {
       if (err) return reject(err);
       resolve(`${salt}:${derivedKey.toString("hex")}`);
     });
@@ -25,7 +25,7 @@ export function verifyPassword(password: string, stored: string): Promise<boolea
     const [salt, hash] = stored.split(":");
     if (!salt || !hash) return resolve(false);
 
-    scrypt(password, salt, KEY_LENGTH, (err, derivedKey) => {
+    scrypt(password, salt, KEY_LENGTH, (err: Error | null, derivedKey: Buffer) => {
       if (err) return reject(err);
       const storedBuffer = Buffer.from(hash, "hex");
       // timingSafeEqual throws on a length mismatch — a corrupt or

@@ -8,6 +8,7 @@
  * reply box. Opening a conversation marks its inbound messages read.
  */
 
+import * as React from "react";
 import { useState, useEffect, useMemo, useCallback, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
@@ -80,7 +81,7 @@ export default function AdminMessagesPage() {
     );
   }, [messages]);
 
-  const selected = conversations.find((c) => c.clientId === selectedClientId) ?? null;
+  const selected = conversations.find((c: Conversation) => c.clientId === selectedClientId) ?? null;
 
   const handleSelect = useCallback(
     async (clientId: number) => {
@@ -88,11 +89,11 @@ export default function AdminMessagesPage() {
       setReplySubject("");
       setReplyBody("");
       const unread = messages.filter(
-        (m) => m.clientId === clientId && m.direction === "inbound" && !m.read,
+        (m: Msg) => m.clientId === clientId && m.direction === "inbound" && !m.read,
       );
       if (unread.length > 0) {
         await Promise.all(
-          unread.map((m) =>
+          unread.map((m: Msg) =>
             fetch("/api/admin/messages", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
@@ -144,7 +145,7 @@ export default function AdminMessagesPage() {
     );
   }
 
-  const totalUnread = conversations.reduce((n, c) => n + c.unread, 0);
+  const totalUnread = conversations.reduce((n: number, c: Conversation) => n + c.unread, 0);
 
   return (
     <main className="min-h-screen px-4 py-8">
@@ -179,7 +180,7 @@ export default function AdminMessagesPage() {
           <div className="grid md:grid-cols-3 gap-6">
             {/* Conversation list */}
             <div className="space-y-2">
-              {conversations.map((c) => (
+              {conversations.map((c: Conversation) => (
                 <button
                   key={c.clientId}
                   onClick={() => handleSelect(c.clientId)}
@@ -209,7 +210,7 @@ export default function AdminMessagesPage() {
               {selected ? (
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    {selected.items.map((m) => (
+                    {selected.items.map((m: Msg) => (
                       <div
                         key={m.id}
                         className={`cathedral-surface p-4 ${
@@ -240,13 +241,13 @@ export default function AdminMessagesPage() {
                       type="text"
                       placeholder="Subject (optional)"
                       value={replySubject}
-                      onChange={(e) => setReplySubject(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setReplySubject(e.target.value)}
                       className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--bg-deep)] text-[var(--text-primary)] border border-indigo-cathedral/10 focus:border-teal-cathedral/50 focus:outline-none transition-colors"
                     />
                     <textarea
                       placeholder="Type your reply..."
                       value={replyBody}
-                      onChange={(e) => setReplyBody(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReplyBody(e.target.value)}
                       required
                       rows={3}
                       className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--bg-deep)] text-[var(--text-primary)] border border-indigo-cathedral/10 focus:border-teal-cathedral/50 focus:outline-none transition-colors resize-none"

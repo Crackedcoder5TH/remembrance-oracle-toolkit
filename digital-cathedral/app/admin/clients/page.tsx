@@ -12,6 +12,7 @@
  *  - Dispute management
  */
 
+import * as React from "react";
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { US_STATES } from "../../../packages/shared/src/validate-state";
@@ -321,12 +322,12 @@ export default function AdminClientsPage() {
                 type="text"
                 placeholder="Search company, name, or email..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setPage(0); }}
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 col-span-2"
               />
               <select
                 value={filterStatus}
-                onChange={(e) => { setFilterStatus(e.target.value); setPage(0); }}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterStatus(e.target.value); setPage(0); }}
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
               >
                 <option value="">All Status</option>
@@ -414,7 +415,7 @@ export default function AdminClientsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {clientPurchases.map((p) => (
+                        {clientPurchases.map((p: Purchase) => (
                           <tr key={p.purchaseId} className="border-b border-indigo-cathedral/5">
                             <td className="px-3 py-2 text-[var(--text-primary)] text-xs font-mono">{p.leadId.slice(0, 16)}...</td>
                             <td className="px-3 py-2 text-[var(--text-primary)]">{formatCents(p.pricePaid)}</td>
@@ -454,7 +455,7 @@ export default function AdminClientsPage() {
                 ) : clients.length === 0 ? (
                   <tr><td colSpan={8} className="px-4 py-8 text-center text-[var(--text-muted)]">No clients found.</td></tr>
                 ) : (
-                  clients.map((c) => (
+                  clients.map((c: ClientRow) => (
                     <tr
                       key={c.clientId}
                       onClick={() => fetchClientDetail(c.clientId)}
@@ -528,7 +529,7 @@ export default function AdminClientsPage() {
               {revenueData.length === 0 ? (
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)]">No revenue data yet.</td></tr>
               ) : (
-                revenueData.map((r) => (
+                revenueData.map((r: RevenueEntry) => (
                   <tr key={r.clientId} className="border-b border-indigo-cathedral/5">
                     <td className="px-4 py-3 text-[var(--text-primary)] font-medium">{r.companyName}</td>
                     <td className="px-4 py-3 text-[var(--text-primary)]">{formatCents(r.totalRevenue)}</td>
@@ -560,7 +561,7 @@ export default function AdminClientsPage() {
               {disputes.length === 0 ? (
                 <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">No open disputes.</td></tr>
               ) : (
-                disputes.map((d) => (
+                disputes.map((d: Purchase) => (
                   <tr key={d.purchaseId} className="border-b border-indigo-cathedral/5">
                     <td className="px-4 py-3 text-[var(--text-primary)] text-xs font-mono">{d.purchaseId.slice(0, 20)}...</td>
                     <td className="px-4 py-3 text-[var(--text-muted)] text-xs font-mono">{d.leadId.slice(0, 16)}...</td>
@@ -606,12 +607,12 @@ export default function AdminClientsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Company Name *</label>
-                  <input type="text" value={createForm.companyName} onChange={(e) => setCreateForm({ ...createForm, companyName: e.target.value })}
+                  <input type="text" value={createForm.companyName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, companyName: e.target.value })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Contact Name *</label>
-                  <input type="text" value={createForm.contactName} onChange={(e) => setCreateForm({ ...createForm, contactName: e.target.value })}
+                  <input type="text" value={createForm.contactName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, contactName: e.target.value })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
               </div>
@@ -619,26 +620,26 @@ export default function AdminClientsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Email *</label>
-                  <input type="email" value={createForm.email} onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  <input type="email" value={createForm.email} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, email: e.target.value })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Phone</label>
-                  <input type="tel" value={createForm.phone} onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+                  <input type="tel" value={createForm.phone} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, phone: e.target.value })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs text-[var(--text-muted)] mb-1">Password *</label>
-                <input type="password" value={createForm.password} onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                <input type="password" value={createForm.password} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, password: e.target.value })}
                   className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Pricing Tier</label>
-                  <select value={createForm.pricingTier} onChange={(e) => setCreateForm({ ...createForm, pricingTier: e.target.value })}
+                  <select value={createForm.pricingTier} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCreateForm({ ...createForm, pricingTier: e.target.value })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none">
                     <option value="standard">Standard</option>
                     <option value="premium">Premium</option>
@@ -647,12 +648,12 @@ export default function AdminClientsPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">(Lead === 0 ? 0 : Price / Lead) (cents)</label>
-                  <input type="number" value={createForm.pricePerLead} onChange={(e) => setCreateForm({ ...createForm, pricePerLead: parseInt(e.target.value) || 0 })}
+                  <input type="number" value={createForm.pricePerLead} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, pricePerLead: parseInt(e.target.value) || 0 })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Exclusive Price (cents)</label>
-                  <input type="number" value={createForm.exclusivePrice} onChange={(e) => setCreateForm({ ...createForm, exclusivePrice: parseInt(e.target.value) || 0 })}
+                  <input type="number" value={createForm.exclusivePrice} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, exclusivePrice: parseInt(e.target.value) || 0 })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
               </div>
@@ -660,24 +661,24 @@ export default function AdminClientsPage() {
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Daily Cap</label>
-                  <input type="number" value={createForm.dailyCap} onChange={(e) => setCreateForm({ ...createForm, dailyCap: parseInt(e.target.value) || 0 })}
+                  <input type="number" value={createForm.dailyCap} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, dailyCap: parseInt(e.target.value) || 0 })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Monthly Cap</label>
-                  <input type="number" value={createForm.monthlyCap} onChange={(e) => setCreateForm({ ...createForm, monthlyCap: parseInt(e.target.value) || 0 })}
+                  <input type="number" value={createForm.monthlyCap} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, monthlyCap: parseInt(e.target.value) || 0 })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
                 <div>
                   <label className="block text-xs text-[var(--text-muted)] mb-1">Min Score</label>
-                  <input type="number" value={createForm.minScore} onChange={(e) => setCreateForm({ ...createForm, minScore: parseInt(e.target.value) || 0 })}
+                  <input type="number" value={createForm.minScore} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, minScore: parseInt(e.target.value) || 0 })}
                     className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs text-[var(--text-muted)] mb-1">Initial Balance (cents)</label>
-                <input type="number" value={createForm.balance} onChange={(e) => setCreateForm({ ...createForm, balance: parseInt(e.target.value) || 0 })}
+                <input type="number" value={createForm.balance} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCreateForm({ ...createForm, balance: parseInt(e.target.value) || 0 })}
                   className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25" />
               </div>
 

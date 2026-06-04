@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -141,7 +142,7 @@ function LoginContent() {
                   type="password"
                   autoComplete="current-password"
                   value={key}
-                  onChange={(e) => setKey(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setKey(e.target.value)}
                   required
                   className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--bg-deep)] text-[var(--text-primary)] border border-indigo-cathedral/10 focus:border-teal-cathedral/50 focus:outline-none transition-colors"
                   placeholder="Enter admin API key"

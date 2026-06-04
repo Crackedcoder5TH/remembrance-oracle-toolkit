@@ -209,6 +209,106 @@ export async function fireReflexes(): Promise<ReflexBundle | null> {
   return mcpCall<ReflexBundle>("reflexes", {});
 }
 
+// ── Variance-gate mode (operator-adjustable) ─────────────────────────
+
+export interface VarianceGateMode {
+  mode: "default" | "tightened" | "relaxed";
+  displacementThreshold: number;
+}
+
+/** Read the current variance-gate mode (default | tightened | relaxed). */
+export async function getVarianceGateMode(): Promise<VarianceGateMode | null> {
+  return mcpCall<VarianceGateMode>("gate-mode", {});
+}
+
+// ── Learned shape signatures (read-only introspection) ───────────────
+
+export interface LearnedShapeSignature {
+  mean: number;
+  variance: number;
+  n: number;
+  source: string;
+  learnedAt: string;
+}
+
+export async function learnedShapesByDomain(): Promise<Record<string, LearnedShapeSignature[]> | null> {
+  const result = await mcpCall<{ domains: Record<string, LearnedShapeSignature[]> }>("learned-shapes", {});
+  return result ? result.domains : null;
+}
+
+// ── Method-registry self-introspection ───────────────────────────────
+
+export interface MethodDescriptor {
+  name: string;
+  module: string;
+  fn: string;
+  effect: string;
+  triggers: string[];
+  triggerMode: "all" | "any";
+  reversibility: string;
+  cost: string;
+  sideEffects: string[];
+  cooldownMs: number;
+}
+
+export async function listMethods(): Promise<MethodDescriptor[] | null> {
+  const result = await mcpCall<{ methods: MethodDescriptor[] }>("methods", {});
+  return result ? result.methods : null;
+}
+
+export interface ResponseSelection {
+  state: {
+    cascade: number | null;
+    entropy: number | null;
+    coherence: number | null;
+    adversarialRatio: number | null;
+    cognitionVariance: number | null;
+    direction: string | null;
+  };
+  applicable: MethodDescriptor[];
+  specific: MethodDescriptor[];
+  universal: MethodDescriptor[];
+}
+
+export async function selectResponseFor(): Promise<ResponseSelection | null> {
+  return mcpCall<ResponseSelection>("respond", {});
+}
+
+// ── Manual relax trigger ─────────────────────────────────────────────
+
+export interface RelaxResult {
+  triggered: boolean;
+  relaxed?: boolean;
+  reason?: string;
+  discovered?: number;
+  before?: { globalEntropy: number; cascadeFactor: number };
+  after?: { globalEntropy: number; cascadeFactor: number; coherence: number };
+}
+
+export async function triggerRelax(): Promise<RelaxResult | null> {
+  return mcpCall<RelaxResult>("relax", {});
+}
+
+// ── Manual temporal snapshot trigger ─────────────────────────────────
+
+export interface TemporalSnapshot {
+  recorded: boolean;
+  reason?: string;
+  meanAdjacent?: number;
+  arc?: number;
+  versions?: number;
+  span?: { from: string; to: string };
+  sources?: string[];
+}
+
+export async function recordTemporalSnapshot(
+  repoDir: string,
+  filePath: string,
+  maxVersions = 12,
+): Promise<TemporalSnapshot | null> {
+  return mcpCall<TemporalSnapshot>("temporal-snapshot", { repoDir, filePath, maxVersions });
+}
+
 // ── Health probe ─────────────────────────────────────────────────────
 
 /**

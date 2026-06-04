@@ -7,6 +7,7 @@
  * a client already has. Clients see and download these from their portal.
  */
 
+import * as React from "react";
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
@@ -119,7 +120,7 @@ export default function AdminDocumentsPage() {
             <input
               type="number"
               value={clientIdInput}
-              onChange={(e) => setClientIdInput(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setClientIdInput(e.target.value)}
               placeholder="e.g. 42"
               className={inputClass}
             />
@@ -145,7 +146,7 @@ export default function AdminDocumentsPage() {
               <input
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
                 placeholder="Document name (e.g. Policy Summary)"
                 required
                 className={inputClass}
@@ -153,7 +154,7 @@ export default function AdminDocumentsPage() {
               <input
                 type="url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
                 placeholder="https://... document URL"
                 required
                 className={inputClass}
@@ -161,7 +162,7 @@ export default function AdminDocumentsPage() {
               <input
                 type="text"
                 value={docType}
-                onChange={(e) => setDocType(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDocType(e.target.value)}
                 placeholder="Type (optional, e.g. PDF)"
                 className={inputClass}
               />
@@ -180,7 +181,7 @@ export default function AdminDocumentsPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {documents.map((doc) => (
+                {documents.map((doc: Doc) => (
                   <div key={doc.id} className="cathedral-surface p-4 flex items-center justify-between">
                     <div>
                       <div className="text-sm font-medium text-[var(--text-primary)]">{doc.name}</div>

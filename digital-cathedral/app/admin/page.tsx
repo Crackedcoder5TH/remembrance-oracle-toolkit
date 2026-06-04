@@ -15,7 +15,7 @@
  *  - Editable homepage veteran story message
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { US_STATES } from "../../packages/shared/src/validate-state";
 import { CoherencyPulse } from "../components/coherency-pulse";
@@ -164,11 +164,11 @@ export default function AdminDashboard() {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    imageSlots.forEach(({ slot }) => {
+    imageSlots.forEach(({ slot }: { slot: string }) => {
       fetch(`/api/upload?slot=${encodeURIComponent(slot)}`)
         .then((res) => res.json())
         .then((data) => {
-          if (data.url) setImageUrls((prev) => ({ ...prev, [slot]: data.url }));
+          if (data.url) setImageUrls((prev: Record<string, string | null>) => ({ ...prev, [slot]: data.url }));
         })
         .catch(() => {});
     });
@@ -188,7 +188,7 @@ export default function AdminDashboard() {
         return;
       }
       const { url } = await res.json();
-      setImageUrls((prev) => ({ ...prev, [slot]: url }));
+      setImageUrls((prev: Record<string, string | null>) => ({ ...prev, [slot]: url }));
       setUploadMessage({ text: `${slot} image uploaded successfully!`, type: "success" });
       setTimeout(() => setUploadMessage(null), 4000);
     } catch {
@@ -336,6 +336,13 @@ export default function AdminDashboard() {
             AI Agents
           </button>
           <button
+            onClick={() => router.push("/admin/substrate")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
+            title="Live coherency readings + adjustable substrate controls"
+          >
+            Substrate Console
+          </button>
+          <button
             onClick={handleExport}
             className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-teal-cathedral/70 border border-teal-cathedral/20 hover:border-teal-cathedral/40 hover:text-teal-cathedral"
           >
@@ -395,7 +402,7 @@ export default function AdminDashboard() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {imageSlots.map(({ slot, label, description }) => (
+          {imageSlots.map(({ slot, label, description }: { slot: string; label: string; description: string }) => (
             <div key={slot} className="border border-indigo-cathedral/10 rounded-lg p-4">
               <h3 className="text-sm font-medium text-[var(--text-primary)] mb-1">{label}</h3>
               <p className="text-xs text-[var(--text-muted)] mb-3">{description}</p>
@@ -413,10 +420,10 @@ export default function AdminDashboard() {
               )}
 
               <input
-                ref={(el) => { fileInputRefs.current[slot] = el; }}
+                ref={(el: HTMLInputElement | null) => { fileInputRefs.current[slot] = el; }}
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/svg+xml,image/gif"
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   const file = e.target.files?.[0];
                   if (file) handleImageUpload(slot, file);
                   e.target.value = "";
@@ -454,7 +461,7 @@ export default function AdminDashboard() {
           <>
             <textarea
               value={veteranStory}
-              onChange={(e) => setVeteranStory(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setVeteranStory(e.target.value)}
               rows={12}
               maxLength={5000}
               className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-teal-cathedral/40 resize-y font-sans leading-relaxed"
@@ -511,13 +518,13 @@ export default function AdminDashboard() {
             type="text"
             placeholder="Search name or email..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); }}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); }}
             aria-label="Search leads by name or email"
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 col-span-2 md:col-span-1"
           />
           <select
             value={filterState}
-            onChange={(e) => { setFilterState(e.target.value); setPage(0); }}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterState(e.target.value); setPage(0); }}
             aria-label="Filter by state"
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
@@ -528,7 +535,7 @@ export default function AdminDashboard() {
           </select>
           <select
             value={filterCoverage}
-            onChange={(e) => { setFilterCoverage(e.target.value); setPage(0); }}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterCoverage(e.target.value); setPage(0); }}
             aria-label="Filter by coverage type"
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
@@ -539,7 +546,7 @@ export default function AdminDashboard() {
           </select>
           <select
             value={filterVeteran}
-            onChange={(e) => { setFilterVeteran(e.target.value); setPage(0); }}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => { setFilterVeteran(e.target.value); setPage(0); }}
             aria-label="Filter by service category"
             className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
           >
@@ -589,7 +596,7 @@ export default function AdminDashboard() {
                 </td>
               </tr>
             ) : (
-              leads.map((lead) => (
+              leads.map((lead: LeadRow) => (
                 <tr
                   key={lead.leadId}
                   className="border-b border-indigo-cathedral/5 hover:bg-[var(--bg-surface)]/50 transition-colors"

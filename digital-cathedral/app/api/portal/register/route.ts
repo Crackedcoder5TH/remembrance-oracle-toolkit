@@ -7,6 +7,17 @@ import {
   PORTAL_SESSION_COOKIE,
   PORTAL_SESSION_MAX_AGE,
 } from "@/app/lib/portal-session";
+// BUG FIX (agent-R-register): two parallel auth systems coexist —
+// /api/portal/* uses __portal_session, while /api/client/* (used by the
+// /portal welcome page and /portal/marketplace) uses __client_session.
+// A user who registers but only gets __portal_session appears anonymous
+// on any /api/client/* surface. Mint BOTH cookies on register so the
+// newly-created account is recognized everywhere.
+import {
+  createClientSessionToken,
+  CLIENT_SESSION_COOKIE,
+  CLIENT_SESSION_MAX_AGE,
+} from "@/app/lib/client-auth";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -95,6 +106,20 @@ export async function POST(req: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: PORTAL_SESSION_MAX_AGE,
+      path: "/",
+    });
+
+    // BUG FIX (agent-R-register): also mint the __client_session cookie so
+    // the freshly-registered account is recognized by /api/client/profile
+    // (used by /portal welcome auto-redirect and /portal/marketplace).
+    // Without this, a registered user navigating to /portal would be
+    // treated as anonymous despite holding a valid __portal_session.
+    const clientToken = createClientSessionToken(clientId, clientRecord.email);
+    res.cookies.set(CLIENT_SESSION_COOKIE, clientToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: CLIENT_SESSION_MAX_AGE,
       path: "/",
     });
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientByEmail, verifyPassword } from "@/app/lib/client-database";
+import { getClientByEmail, verifyPassword as verifyPasswordHmac } from "@/app/lib/client-database";
+import { verifyPassword as verifyPasswordScrypt } from "@/app/lib/password";
 import { createClientSessionToken, CLIENT_SESSION_COOKIE, CLIENT_SESSION_MAX_AGE } from "@/app/lib/client-auth";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
@@ -14,7 +15,31 @@ import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
  *     Bypasses the database entirely.
  *  2. Database lookup — email + password verified against clients table.
  *  3. Demo mode (no DATABASE_URL, dev only) — demo client credentials.
+ *
+ * Password verification: this route was previously calling the HMAC
+ * verifier from client-database, but accounts created via
+ * /api/portal/register are scrypt-hashed (see app/lib/password.ts). To
+ * accept both legacy HMAC rows AND new scrypt rows we dispatch on the
+ * stored hash format (scrypt hashes have a 64-hex-char salt; HMAC use 32).
+ * This mirrors the fix already applied in /api/portal/login/route.ts.
  */
+
+/**
+ * Verify a password against a stored hash, supporting both the scrypt
+ * format used by /api/portal/register (app/lib/password.ts) and the legacy
+ * HMAC format used by client-database/helpers.ts. Returns false for any
+ * malformed input — fail closed.
+ */
+async function verifyClientPassword(password: string, stored: string): Promise<boolean> {
+  if (!stored || typeof stored !== "string") return false;
+  const [salt] = stored.split(":");
+  if (!salt) return false;
+  // scrypt salt is 32 random bytes → 64 hex chars; HMAC salt is 16 bytes → 32 hex chars.
+  if (salt.length === 64) {
+    return verifyPasswordScrypt(password, stored);
+  }
+  return verifyPasswordHmac(password, stored);
+}
 
 const ADMIN_CLIENT_ID = "client_admin_owner";
 const ADMIN_CLIENT_EMAIL = "admin@valorlegacies.xyz";
@@ -89,7 +114,7 @@ export async function POST(req: NextRequest) {
     if (!process.env.DATABASE_URL && process.env.NODE_ENV !== "production") {
       const { DEMO_CLIENT } = await import("@/app/lib/demo-client");
       const emailMatch = normalizedEmail === DEMO_CLIENT.email.toLowerCase();
-      const pwMatch = verifyPassword(password, DEMO_CLIENT.passwordHash);
+      const pwMatch = await verifyClientPassword(password, DEMO_CLIENT.passwordHash);
       if (!emailMatch || !pwMatch) {
         return NextResponse.json(
           { success: false, message: "Invalid credentials." },
@@ -146,7 +171,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!verifyPassword(password, client.passwordHash)) {
+    if (!(await verifyClientPassword(password, client.passwordHash))) {
       return NextResponse.json(
         { success: false, message: "Invalid credentials." },
         { status: 401 },

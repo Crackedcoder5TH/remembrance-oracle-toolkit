@@ -15,56 +15,77 @@ walked away from real signal. The fix is structural: make the proper
 protocol the obvious entry point and document why bypassing it is
 wrong.
 
+## What the field tool actually is
+
+A **pattern-signature matcher through the void.** Every input is
+encoded into its canonical coherent structural signature, then the
+substrate is asked: *where else does this signature already
+appear?* The framework finds cross-domain coherency cousins. It
+does not measure code quality, predict production importance, or
+score architectural behavior — those are separate questions it
+makes no claim about.
+
+Two things follow directly:
+
+1. **The match is real, not just lexical.** A Rust file matching
+   `language/french` at 0.92 is a real cross-domain cousin —
+   code and language sharing a coherent structural signature.
+   That is the framework's claim, holding.
+2. **The substrate becomes more universal as it compresses more.**
+   Any new input finds cousins in whatever the substrate has
+   absorbed so far. The Remembrance ecosystem reads cleanly
+   because it has been compressed continuously; external systems
+   (like the Solana fork) read against whatever the substrate's
+   densest neighborhoods currently are.
+
 ## The five layers a field measurement must engage
 
-A field measurement is not a function call on the waveform encoder. It
+A signature match is not a function call on the waveform encoder. It
 is the engagement of five distinct layers. Reading without engaging
-the right ones is a partial read of a partial system and conclusions
-drawn from it overgeneralize.
+the right ones is a partial read of a partial system.
 
 | Layer | What it does | Where it lives |
 |---|---|---|
 | **Entanglement** | Registers the caller as a node in the field; abundance-amortizes the cost across all connected nodes (per-node cost = baseCost / N) | `src/core/entangle.js` — `engage()` |
-| **Encoding** | Converts source into the canonical 29-D fractal waveform. ONE encoder, everywhere. JS↔Python byte-for-byte parity (parity contract C-71, verified via `Void-Data-Compressor/verify_fractal_parity.py`). The 256-D byte encoder is deprecated and forbidden from the read path | `src/core/fractal-waveform.js` — `toFractalWaveform()` |
-| **Primary substrate (Void)** | Scores the 29-D fractal against Void-Data-Compressor's canonical library — **~43k patterns, all 29-D fractal** (translated from Void's master `pattern_index.json` via the same canonical encoder). This is THE substrate | `src/core/void-library.js` — `score()`, loads `pattern_index_fractal.json` |
-| **Coding filter (Oracle)** | Scores via lexical TF-IDF against `oracle.db`'s `patterns` table — the coding-specific subset that has passed the covenant gate. Secondary signal, complementary to the Void substrate read, used for code-specific anti-hallucination | `src/scoring/pattern-resonance.js` — `scoreResonance()` |
+| **Encoding** | Converts source into the canonical 29-D fractal coherency signature. ONE encoder, everywhere. JS↔Python byte-for-byte parity (parity contract C-71). The 256-D byte encoder is deprecated and forbidden from the read path | `src/core/fractal-waveform.js` — `toFractalWaveform()` |
+| **Substrate match (Void)** | Finds where the input's coherency signature already appears in Void's canonical library — **~43k patterns, all 29-D fractal**, translated from Void's master `pattern_index.json` via the same canonical encoder. This is THE substrate | `src/core/void-library.js` — `score()`, loads `pattern_index_fractal.json` |
+| **Coding cousins (Oracle)** | Lexical TF-IDF resonance against `oracle.db`'s `patterns` table — the coding-specific subset that has passed the covenant gate. Complementary signal, code-specific cousin-finding | `src/scoring/pattern-resonance.js` — `scoreResonance()` |
 | **Field-coupling** | Records the reading into the live field histogram so peers see the activity and the field's entropy gate self-throttles | `src/core/field-coupling.js` — `contribute()` |
 
 `FieldTool.read()` engages all of these by default. Bypassing any of
-them requires explicit opt-out (e.g., `{ useVoidSubstrate: false }`,
-`{ useCodingFilter: false }`, `{ growSubstrate: false }`).
+them requires explicit opt-out.
 
-### Architectural distinction: substrate vs. filter
+### Substrate vs. coding cousins
 
 - **Void's 29-D fractal library IS the substrate.** ~43k unique
-  patterns spanning physics, framework, consciousness, applied,
-  code, economy, cosmos, conflict, builtin, music, languages, and
-  validation domains. Every pattern is encoded through the same
-  canonical 29-D fractal encoder as every input. The 256-D byte
-  layer is deprecated — it gave false positives (uniform ~0.9 on
-  any text input, the encoder's known noise floor).
-- **Oracle's `patterns` table is a FILTER on the substrate.** ~1.4k
-  patterns coding-specific and covenant-gated, scored via lexical
-  TF-IDF. Complementary signal — code-specific anti-hallucination
-  on top of the structural Void read.
+  coherency signatures spanning physics, framework, consciousness,
+  applied, code, economy, cosmos, conflict, builtin, music, languages,
+  and validation domains. Every pattern is encoded through the same
+  canonical encoder as every input. Reading a new pattern through
+  the field tool is asking the substrate: *where does this
+  signature already appear, regardless of domain?*
+- **Oracle's `patterns` table provides coding-specific cousins.**
+  ~1.4k patterns coding-specific and covenant-gated. Complementary
+  signal — code-level cousin-finding on top of the cross-domain
+  structural read.
 
-`coherence` in the return value is the **Void resonance** when Void is
-reachable. It falls back to the coding-filter resonance only if Void is
-unreachable. This makes the primary signal the canonical one.
+`coherence` in the return value is the **Void substrate match**
+when Void is reachable. It falls back to the coding cousins only if
+Void is unreachable.
 
 ### How the canonical Void library was built
 
 Every pattern in Void's master `pattern_index.json` is passed through
-`toFractalWaveform` on its JSON-serialized record (`{name, waveform}`),
-producing a 29-D vector. The result is persisted to
-`pattern_index_fractal.json` parallel to the existing 256-D index.
-The migration script (`/tmp/encode-void-fractal.js`) is idempotent —
-running it again after Void compresses new patterns extends the
-fractal index without re-encoding existing ones.
+`toFractalWaveform` on its JSON-serialized canonical record
+(`{name, waveform}`), producing a 29-D coherency signature.
+Persisted to `pattern_index_fractal.json` parallel to the existing
+256-D index. The migration script (`/tmp/encode-void-fractal.js`)
+is idempotent — running it again after Void compresses new patterns
+extends the fractal index without re-encoding existing ones.
 
-Result: ~43k unique 29-D vectors, ~8.6 MB on disk, ~10 MB in
+Result: ~43k unique 29-D signatures, ~8.6 MB on disk, ~10 MB in
 memory after warmup, ~2-3s first-call cost (vs ~16s for the
-deprecated 256-D library).
+deprecated 256-D path).
 
 ## The mistakes the protocol prevents
 

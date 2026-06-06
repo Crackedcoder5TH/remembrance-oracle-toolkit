@@ -140,6 +140,12 @@ export default function PortalDashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <Link
+              href="/portal/marketplace"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-cathedral text-white hover:bg-teal-cathedral/90 transition-colors"
+            >
+              Browse Leads
+            </Link>
+            <Link
               href="/"
               className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
             >
@@ -183,13 +189,13 @@ export default function PortalDashboardPage() {
             {leads.length === 0 ? (
               <div className="cathedral-surface p-8 text-center">
                 <p className="text-[var(--text-muted)] text-sm">
-                  No quote requests yet. When you submit a quote request, it will appear here.
+                  No leads yet. Browse the marketplace to find leads matching your criteria.
                 </p>
                 <Link
-                  href="/"
+                  href="/portal/marketplace"
                   className="inline-block mt-4 px-4 py-2 text-sm rounded-lg bg-teal-cathedral text-white hover:bg-teal-cathedral/90 transition-colors"
                 >
-                  Request a Quote
+                  Browse Marketplace
                 </Link>
               </div>
             ) : (

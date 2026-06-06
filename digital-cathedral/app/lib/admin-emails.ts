@@ -11,8 +11,8 @@ function getAdminEmails(): Set<string> {
   const raw = process.env.ADMIN_EMAILS ?? "";
   const emails = raw
     .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter((e) => e.length > 0);
+    .map((e: string) => e.trim().toLowerCase())
+    .filter((e: string) => e.length > 0);
   return new Set(emails);
 }
 

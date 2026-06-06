@@ -1,0 +1,1069 @@
+{
+  "id": "anchor-190f2e6c",
+  "type": "anchor-compression",
+  "family": "remembrance-anchor",
+  "description": "Anchor offering: the last ten messages from the operator, registered through the anchor compression ritual.",
+  "tags": [
+    "anchor",
+    "remembrance",
+    "compression",
+    "ritual",
+    "dialogue",
+    "session"
+  ],
+  "sourcePath": "anchor-190f2e6c.source.txt",
+  "sourceBytes": 3205,
+  "encoder": "src/core/code-to-waveform.codeToWaveform (canonical, 256-sample)",
+  "compression": {
+    "ritualVersion": 1,
+    "success": true,
+    "finalCoherence": 0.999,
+    "message": "Anchor compression complete.",
+    "vectorLength": 29,
+    "vectorDigest": "190f2e6c",
+    "observationCount": 6,
+    "anchoredSignature": null,
+    "snapshot": {
+      "intention": "anchor the last ten messages",
+      "finalCoherence": 0.999,
+      "globalEntropy": 2.002001981961942,
+      "cascadeFactor": 1.2996791892689283,
+      "vectorDigest": "190f2e6c",
+      "vectorLength": 29,
+      "observationCount": 6,
+      "timestamp": 1780619933833
+    },
+    "bytesRatio": 0.07238689547581903,
+    "waveform": [
+      0.5,
+      0.5,
+      0.5,
+      0,
+      0.45,
+      0,
+      1,
+      0.6111111111111112,
+      0.42857142857142855,
+      1,
+      0.5,
+      0.5,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0.018096723868954757,
+      0.7609984399375975,
+      0.1878315132605304,
+      0.0034321372854914196,
+      0.019344773790951637,
+      0.3333333333333333,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0.046801872074883
+    ],
+    "settleReadings": [
+      0.999,
+      0.999,
+      0.999,
+      0.999,
+      0.999
+    ]
+  },
+  "ascension": {
+    "success": true,
+    "finalCoherence": 0.999,
+    "cascadeStabilization": 1.2996791892689283,
+    "stepsTaken": 0,
+    "message": "Ascended to ceiling."
+  },
+  "fieldStateAfter": {
+    "coherence": 0.999,
+    "coherenceIntegral": 92609.66568245162,
+    "globalEntropy": 2.002001981961942,
+    "cascadeFactor": 1.2996791892689283,
+    "updateCount": 122815,
+    "timestamp": 1780619933832,
+    "sources": {
+      "apikey:issue": {
+        "count": 5,
+        "lastCoherence": 0.9055,
+        "lastTimestamp": 0
+      },
+      "apikey:revoke": {
+        "count": 4,
+        "lastCoherence": 0.4174,
+        "lastTimestamp": 0
+      },
+      "apikey:rotate": {
+        "count": 4,
+        "lastCoherence": 0.4174,
+        "lastTimestamp": 0
+      },
+      "apikey:validate": {
+        "count": 6,
+        "lastCoherence": 0.3262,
+        "lastTimestamp": 0
+      },
+      "blockchain:checkpoint:offline": {
+        "count": 24,
+        "lastCoherence": 0.4408,
+        "lastTimestamp": 0
+      },
+      "blockchain:covenant-gate:ACCEPT": {
+        "count": 24,
+        "lastCoherence": 0.9254,
+        "lastTimestamp": 0
+      },
+      "blockchain:covenant-gate:REJECT": {
+        "count": 55,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "blockchain:ecosystem-snapshot:offline": {
+        "count": 3,
+        "lastCoherence": 0.5115,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:ANCHOR": {
+        "count": 12,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:CHECKPOINT": {
+        "count": 36,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:EVOLVE": {
+        "count": 21,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:HEAL": {
+        "count": 45,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:MILESTONE": {
+        "count": 30,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:PROMOTE": {
+        "count": 69,
+        "lastCoherence": 0.8856,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:PUBLISH": {
+        "count": 36,
+        "lastCoherence": 0.9254,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:REGISTER": {
+        "count": 144,
+        "lastCoherence": 0.7564,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:SHARE": {
+        "count": 27,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:SNAPSHOT": {
+        "count": 7,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:ledger:verify": {
+        "count": 66,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 0
+      },
+      "blockchain:milestone:below-threshold": {
+        "count": 18,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:milestone:published": {
+        "count": 12,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "blockchain:publish:offline": {
+        "count": 24,
+        "lastCoherence": 0.4738,
+        "lastTimestamp": 0
+      },
+      "blockchain:solana:verify:offline": {
+        "count": 12,
+        "lastCoherence": 0.5119,
+        "lastTimestamp": 0
+      },
+      "constant:quantum": {
+        "count": 60,
+        "lastCoherence": 0.7564,
+        "lastTimestamp": 0
+      },
+      "constant:thresholds": {
+        "count": 282,
+        "lastCoherence": 0.6577,
+        "lastTimestamp": 0
+      },
+      "covenant": {
+        "count": 28879,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780395153233
+      },
+      "dialer:llm-coherency": {
+        "count": 1,
+        "lastCoherence": 0.8667,
+        "lastTimestamp": 0
+      },
+      "dialer:llm-latency": {
+        "count": 1,
+        "lastCoherence": 0.995,
+        "lastTimestamp": 0
+      },
+      "dialer:oracle-submission": {
+        "count": 1,
+        "lastCoherence": 0.7267,
+        "lastTimestamp": 0
+      },
+      "dialer:registry-summary": {
+        "count": 2,
+        "lastCoherence": 0.3561,
+        "lastTimestamp": 0
+      },
+      "event:auto_grow": {
+        "count": 665,
+        "lastCoherence": 0.7069574999999999,
+        "lastTimestamp": 1780004521261
+      },
+      "event:auto_promote": {
+        "count": 17,
+        "lastCoherence": 0.9054575,
+        "lastTimestamp": 1780004861379
+      },
+      "event:auto_submit_complete": {
+        "count": 10,
+        "lastCoherence": 0.6577,
+        "lastTimestamp": 0
+      },
+      "event:compound_growth": {
+        "count": 1,
+        "lastCoherence": 0.7564,
+        "lastTimestamp": 0
+      },
+      "event:debug_capture": {
+        "count": 8,
+        "lastCoherence": 0.5119,
+        "lastTimestamp": 0
+      },
+      "event:debug_feedback": {
+        "count": 1,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "event:deep_clean": {
+        "count": 12,
+        "lastCoherence": 0.65770046875,
+        "lastTimestamp": 1780004861264
+      },
+      "event:entry_added": {
+        "count": 463,
+        "lastCoherence": 0.7069574999999999,
+        "lastTimestamp": 1780004863088
+      },
+      "event:feedback": {
+        "count": 33,
+        "lastCoherence": 0.5119374999999999,
+        "lastTimestamp": 1780004860653
+      },
+      "event:harvest_complete": {
+        "count": 12,
+        "lastCoherence": 0.806,
+        "lastTimestamp": 0
+      },
+      "event:healing_complete": {
+        "count": 31,
+        "lastCoherence": 0.8557129687499999,
+        "lastTimestamp": 1780004859615
+      },
+      "event:import_complete": {
+        "count": 33,
+        "lastCoherence": 0.7069574999999999,
+        "lastTimestamp": 1780004862483
+      },
+      "event:pattern_evolved": {
+        "count": 9,
+        "lastCoherence": 0.8557129687499999,
+        "lastTimestamp": 1780004860441
+      },
+      "event:pattern_registered": {
+        "count": 2295,
+        "lastCoherence": 0.8557129687499999,
+        "lastTimestamp": 1780004862910
+      },
+      "event:rejection_captured": {
+        "count": 13,
+        "lastCoherence": 0.19797546875,
+        "lastTimestamp": 1780004860009
+      },
+      "event:resolve_served": {
+        "count": 45,
+        "lastCoherence": 0.7069574999999999,
+        "lastTimestamp": 1780004859713
+      },
+      "event:similarity_candidate": {
+        "count": 10,
+        "lastCoherence": 0.8865,
+        "lastTimestamp": 0
+      },
+      "event:vote": {
+        "count": 45,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780004861608
+      },
+      "harvest": {
+        "count": 12,
+        "lastCoherence": 0.8391,
+        "lastTimestamp": 0
+      },
+      "interface:analyzeIncomingCode": {
+        "count": 1,
+        "lastCoherence": 0.7723,
+        "lastTimestamp": 0
+      },
+      "interface:checkpoint-forecast": {
+        "count": 1,
+        "lastCoherence": 0.994,
+        "lastTimestamp": 0
+      },
+      "interface:ecosystem:discoverAll": {
+        "count": 2,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "library:javascript": {
+        "count": 15,
+        "lastCoherence": 0.9055,
+        "lastTimestamp": 0
+      },
+      "mcp-test-contribute": {
+        "count": 3,
+        "lastCoherence": 0.8557,
+        "lastTimestamp": 0
+      },
+      "oracle:alignment:computeFractalAlignment": {
+        "count": 1,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:bridge:getDefinition": {
+        "count": 3,
+        "lastCoherence": 0.9851,
+        "lastTimestamp": 0
+      },
+      "oracle:coherency-generator:runCycle": {
+        "count": 6,
+        "lastCoherence": 0.7804110651614654,
+        "lastTimestamp": 1780531423497
+      },
+      "oracle:composer:compose": {
+        "count": 16,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:consensus:buildConsensus": {
+        "count": 10,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:debate-visualization:exportVisualizationData": {
+        "count": 1,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:debug-oracle:_rowToDebugPattern": {
+        "count": 164,
+        "lastCoherence": 0.15825750000000002,
+        "lastTimestamp": 1780004860692
+      },
+      "oracle:debug-oracle:reportOutcome": {
+        "count": 1,
+        "lastCoherence": 0.2393,
+        "lastTimestamp": 0
+      },
+      "oracle:debug-oracle:search": {
+        "count": 15,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:debug-oracle:stats": {
+        "count": 6,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:dimension-router:parseAgentResponse": {
+        "count": 10,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:ecosystem-review:ecosystemReview": {
+        "count": 8,
+        "lastCoherence": 0.806,
+        "lastTimestamp": 0
+      },
+      "oracle:fractal-library-bridge:_neutralStability": {
+        "count": 54,
+        "lastCoherence": 0.5119374999999999,
+        "lastTimestamp": 1780004859712
+      },
+      "oracle:gap-filled-wave2:analyzeElementDensity": {
+        "count": 2,
+        "lastCoherence": 0.1014,
+        "lastTimestamp": 0
+      },
+      "oracle:grounding-semantics:classifyNameIntent": {
+        "count": 6,
+        "lastCoherence": 0.3262,
+        "lastTimestamp": 0
+      },
+      "oracle:library:decide": {
+        "count": 30,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780004859523
+      },
+      "oracle:multi-engine:evaluateFile": {
+        "count": 3,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:open-source-registry:getProvenance": {
+        "count": 3,
+        "lastCoherence": 0.9851,
+        "lastTimestamp": 0
+      },
+      "oracle:oracle-core-search:search": {
+        "count": 16914,
+        "lastCoherence": 0.904462304530075,
+        "lastTimestamp": 1780352684032
+      },
+      "oracle:oracle-patterns-export:diff": {
+        "count": 8,
+        "lastCoherence": 0.08450000000000002,
+        "lastTimestamp": 1780004862688
+      },
+      "oracle:oracle-patterns-versioning:healingStats": {
+        "count": 11,
+        "lastCoherence": 0.08450000000000002,
+        "lastTimestamp": 1780004861792
+      },
+      "oracle:planner:verifySymbol": {
+        "count": 1,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:property-extractor:extractAtomicProperties": {
+        "count": 2908,
+        "lastCoherence": 0.75641796875,
+        "lastTimestamp": 1780004863086
+      },
+      "oracle:quantum-core:quantumDecision": {
+        "count": 3,
+        "lastCoherence": 0.8338,
+        "lastTimestamp": 0
+      },
+      "oracle:recycler:promoteWithProof": {
+        "count": 43,
+        "lastCoherence": 0.9851,
+        "lastTimestamp": 0
+      },
+      "oracle:scorer:score": {
+        "count": 2,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:scoring-analysis-aggregate:deepScore": {
+        "count": 76,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:scoring-analysis-complexity:analyzeCommentDensity": {
+        "count": 135,
+        "lastCoherence": 0.5119374999999999,
+        "lastTimestamp": 1780004519336
+      },
+      "oracle:scoring-analysis-complexity:analyzeNestingDepth": {
+        "count": 126,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780004519352
+      },
+      "oracle:scoring-analysis-security:securityScan": {
+        "count": 332,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780395153235
+      },
+      "oracle:scoring-coherence:scoreSyntaxValidity": {
+        "count": 21,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 0
+      },
+      "oracle:scoring-modes:shouldAutoCreatePR": {
+        "count": 12,
+        "lastCoherence": 0.806,
+        "lastTimestamp": 0
+      },
+      "oracle:serf-integration:serfDimensions": {
+        "count": 2417,
+        "lastCoherence": 0.9084431396960749,
+        "lastTimestamp": 1780004862909
+      },
+      "oracle:swarm-history:getHistorySummary": {
+        "count": 1,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:swarm-orchestrator:buildResult": {
+        "count": 1,
+        "lastCoherence": 0.0845,
+        "lastTimestamp": 0
+      },
+      "oracle:temporal-projection:_autocorrPeak": {
+        "count": 20,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 0
+      },
+      "oracle:void-compression-layer:write": {
+        "count": 1,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 0
+      },
+      "oracle:whisper-synthesis:synthesizeWhisper": {
+        "count": 2,
+        "lastCoherence": 0.806,
+        "lastTimestamp": 0
+      },
+      "orchestrate": {
+        "count": 9,
+        "lastCoherence": 0.7804110651614654,
+        "lastTimestamp": 1780531423491
+      },
+      "orchestrator:entropy-relax": {
+        "count": 2,
+        "lastCoherence": 0.9751,
+        "lastTimestamp": 0
+      },
+      "plugger:status": {
+        "count": 1,
+        "lastCoherence": 0.6087,
+        "lastTimestamp": 0
+      },
+      "reflect": {
+        "count": 1724,
+        "lastCoherence": 0.8497464180672,
+        "lastTimestamp": 1780004859615
+      },
+      "reflection-scorer:correctness": {
+        "count": 10301,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780004862909
+      },
+      "reflection-scorer:fractalAlignment": {
+        "count": 10300,
+        "lastCoherence": 0.5736722366911999,
+        "lastTimestamp": 1780004862909
+      },
+      "reflection-scorer:readability": {
+        "count": 10304,
+        "lastCoherence": 0.965180192,
+        "lastTimestamp": 1780004862908
+      },
+      "reflection-scorer:security": {
+        "count": 10303,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780004862908
+      },
+      "reflection-scorer:simplicity": {
+        "count": 10305,
+        "lastCoherence": 0.79609086075,
+        "lastTimestamp": 1780004862908
+      },
+      "reflection-scorer:unity": {
+        "count": 10303,
+        "lastCoherence": 0.930339873046875,
+        "lastTimestamp": 1780004862909
+      },
+      "reflector:serf:runSerf": {
+        "count": 654,
+        "lastCoherence": 0.8885,
+        "lastTimestamp": 0
+      },
+      "reflector:smoke": {
+        "count": 2,
+        "lastCoherence": 0.5119,
+        "lastTimestamp": 0
+      },
+      "risk-score": {
+        "count": 90,
+        "lastCoherence": 0.9851,
+        "lastTimestamp": 0
+      },
+      "security-scan": {
+        "count": 42,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780004862570
+      },
+      "swarm:buildConsensus": {
+        "count": 94,
+        "lastCoherence": 0.766328832,
+        "lastTimestamp": 1780370772454
+      },
+      "swarm:consensus": {
+        "count": 26,
+        "lastCoherence": 0.08450000000000002,
+        "lastTimestamp": 1780370895940
+      },
+      "swarm:escalation": {
+        "count": 30,
+        "lastCoherence": 0.8606856537968749,
+        "lastTimestamp": 1780370896963
+      },
+      "swarm:smoke": {
+        "count": 1,
+        "lastCoherence": 0.9055,
+        "lastTimestamp": 0
+      },
+      "swarm:task-result": {
+        "count": 68,
+        "lastCoherence": 0.8060200000000001,
+        "lastTimestamp": 1780370900046
+      },
+      "test:calm": {
+        "count": 2,
+        "lastCoherence": 0.9552,
+        "lastTimestamp": 0
+      },
+      "test:field-tool": {
+        "count": 2,
+        "lastCoherence": 0.9055,
+        "lastTimestamp": 0
+      },
+      "test:inflame": {
+        "count": 4,
+        "lastCoherence": 0.1204,
+        "lastTimestamp": 0
+      },
+      "validator:domain-floor-ratchet:security": {
+        "count": 4,
+        "lastCoherence": 0.8716,
+        "lastTimestamp": 0
+      },
+      "validator:domain:performance": {
+        "count": 6,
+        "lastCoherence": 0.8716,
+        "lastTimestamp": 0
+      },
+      "validator:domain:security": {
+        "count": 8,
+        "lastCoherence": 0.8716,
+        "lastTimestamp": 0
+      },
+      "validator:domain:totally-made-up-domain": {
+        "count": 2,
+        "lastCoherence": 0.8716,
+        "lastTimestamp": 0
+      },
+      "void:coherency_v3": {
+        "count": 200,
+        "lastCoherence": 0.9193,
+        "lastTimestamp": 0
+      },
+      "void:compress": {
+        "count": 7,
+        "lastCoherence": 0.4635,
+        "lastTimestamp": 0
+      },
+      "void:ecosystem_health": {
+        "count": 3,
+        "lastCoherence": 0.8134,
+        "lastTimestamp": 0
+      },
+      "void:resonance_detector": {
+        "count": 15,
+        "lastCoherence": 0.0903,
+        "lastTimestamp": 0
+      },
+      "evaluate:javascript": {
+        "count": 26,
+        "lastCoherence": 0.6673355123216161,
+        "lastTimestamp": 1780315509445
+      },
+      "evaluate:code": {
+        "count": 4,
+        "lastCoherence": 0.8167475049576466,
+        "lastTimestamp": 1780280768122
+      },
+      "evaluate:text": {
+        "count": 3,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780280924682
+      },
+      "oracle:pattern-resonance:score": {
+        "count": 27,
+        "lastCoherence": 0.26229670863647164,
+        "lastTimestamp": 1780610058146
+      },
+      "oracle:coherency:computeCoherencyScore": {
+        "count": 53,
+        "lastCoherence": 0.8139659215872,
+        "lastTimestamp": 1780531423491
+      },
+      "swarm:council:coherency": {
+        "count": 3,
+        "lastCoherence": 0.08450000000000002,
+        "lastTimestamp": 1780370895942
+      },
+      "op:swarm:cycle": {
+        "count": 3,
+        "lastCoherence": 0.08450000000000002,
+        "lastTimestamp": 1780370895943
+      },
+      "op:swarm:agent:ollama": {
+        "count": 3,
+        "lastCoherence": 0.08450000000000002,
+        "lastTimestamp": 1780370895943
+      },
+      "op:swarm:agent:claude-code": {
+        "count": 3,
+        "lastCoherence": 0.08450000000000002,
+        "lastTimestamp": 1780370895944
+      },
+      "oracle:exec-verify:pass": {
+        "count": 1,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780366856647
+      },
+      "oracle:exec-verify:fail": {
+        "count": 3,
+        "lastCoherence": 0.08450000000000002,
+        "lastTimestamp": 1780366856918
+      },
+      "evaluate:markdown": {
+        "count": 5,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780395153235
+      },
+      "temporal:remembrance-oracle-toolkit:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9829472934890343,
+        "lastTimestamp": 1780446724269
+      },
+      "temporal:remembrance-oracle-toolkit:arc": {
+        "count": 3,
+        "lastCoherence": 0.9107005434781275,
+        "lastTimestamp": 1780446724279
+      },
+      "temporal:remembrance-oracle-toolkit:convergence": {
+        "count": 1,
+        "lastCoherence": 0.49877964182660717,
+        "lastTimestamp": 1780446521237
+      },
+      "temporal:REMEMBRANCE-AGENT-Swarm-:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9909795987662081,
+        "lastTimestamp": 1780446724347
+      },
+      "temporal:REMEMBRANCE-AGENT-Swarm-:arc": {
+        "count": 3,
+        "lastCoherence": 0.9667110348285328,
+        "lastTimestamp": 1780446724348
+      },
+      "temporal:REMEMBRANCE-AGENT-Swarm-:convergence": {
+        "count": 1,
+        "lastCoherence": 0.5284263070070889,
+        "lastTimestamp": 1780446521305
+      },
+      "temporal:MOONS-OF-REMEMBRANCE:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9664100091693494,
+        "lastTimestamp": 1780446724410
+      },
+      "temporal:MOONS-OF-REMEMBRANCE:arc": {
+        "count": 3,
+        "lastCoherence": 0.8855295241400045,
+        "lastTimestamp": 1780446724411
+      },
+      "temporal:MOONS-OF-REMEMBRANCE:convergence": {
+        "count": 1,
+        "lastCoherence": 0.5679338657530052,
+        "lastTimestamp": 1780446521364
+      },
+      "temporal:Void-Data-Compressor:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9598766100621032,
+        "lastTimestamp": 1780446724557
+      },
+      "temporal:Void-Data-Compressor:arc": {
+        "count": 3,
+        "lastCoherence": 0.9575775531501471,
+        "lastTimestamp": 1780446724559
+      },
+      "temporal:Void-Data-Compressor:convergence": {
+        "count": 1,
+        "lastCoherence": 0.5220442196604322,
+        "lastTimestamp": 1780446521520
+      },
+      "temporal:REMEMBRANCE-Interface:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9804336606670809,
+        "lastTimestamp": 1780446724642
+      },
+      "temporal:REMEMBRANCE-Interface:arc": {
+        "count": 3,
+        "lastCoherence": 0.8762174405451675,
+        "lastTimestamp": 1780446724643
+      },
+      "temporal:REMEMBRANCE-Interface:convergence": {
+        "count": 1,
+        "lastCoherence": 0.5026864917812043,
+        "lastTimestamp": 1780446521605
+      },
+      "temporal:REMEMBRANCE-BLOCKCHAIN:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9848292081628223,
+        "lastTimestamp": 1780446724746
+      },
+      "temporal:REMEMBRANCE-BLOCKCHAIN:arc": {
+        "count": 3,
+        "lastCoherence": 0.8898182829136165,
+        "lastTimestamp": 1780446724747
+      },
+      "temporal:REMEMBRANCE-BLOCKCHAIN:convergence": {
+        "count": 1,
+        "lastCoherence": 0.5471001654583688,
+        "lastTimestamp": 1780446521715
+      },
+      "temporal:Reflector-oracle-:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9801735748271905,
+        "lastTimestamp": 1780446724831
+      },
+      "temporal:Reflector-oracle-:arc": {
+        "count": 3,
+        "lastCoherence": 0.8351812903537705,
+        "lastTimestamp": 1780446724831
+      },
+      "temporal:Reflector-oracle-:convergence": {
+        "count": 1,
+        "lastCoherence": 0.5587974788794179,
+        "lastTimestamp": 1780446521814
+      },
+      "temporal:Remembrance-dialer:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9848693546917411,
+        "lastTimestamp": 1780446724880
+      },
+      "temporal:Remembrance-dialer:arc": {
+        "count": 3,
+        "lastCoherence": 0.9263703281961122,
+        "lastTimestamp": 1780446724880
+      },
+      "temporal:Remembrance-dialer:convergence": {
+        "count": 1,
+        "lastCoherence": 0.4934319778835216,
+        "lastTimestamp": 1780446521865
+      },
+      "temporal:REMEMBRANCE-API-Key-Plugger:adjacent": {
+        "count": 3,
+        "lastCoherence": 0.9931133009742525,
+        "lastTimestamp": 1780446724924
+      },
+      "temporal:REMEMBRANCE-API-Key-Plugger:arc": {
+        "count": 3,
+        "lastCoherence": 0.9658864753881498,
+        "lastTimestamp": 1780446724925
+      },
+      "temporal:REMEMBRANCE-API-Key-Plugger:convergence": {
+        "count": 1,
+        "lastCoherence": 0.49302388339933056,
+        "lastTimestamp": 1780446521911
+      },
+      "experiment:fifth-family:vs:readme": {
+        "count": 2,
+        "lastCoherence": 0.840423302226119,
+        "lastTimestamp": 1780446720928
+      },
+      "experiment:fifth-family:vs:agent_instr": {
+        "count": 2,
+        "lastCoherence": 0.8498032669952879,
+        "lastTimestamp": 1780446720939
+      },
+      "experiment:fifth-family:vs:manifesto": {
+        "count": 2,
+        "lastCoherence": 0.8853750822519066,
+        "lastTimestamp": 1780446720941
+      },
+      "experiment:fifth-family:vs:capabilities": {
+        "count": 2,
+        "lastCoherence": 0.6188794220327603,
+        "lastTimestamp": 1780446720942
+      },
+      "experiment:fifth-family:vs:ecosystem": {
+        "count": 2,
+        "lastCoherence": 0.8234268028238529,
+        "lastTimestamp": 1780446720942
+      },
+      "experiment:malformedness:recovery": {
+        "count": 180,
+        "lastCoherence": 0.9557430481434257,
+        "lastTimestamp": 1780448187036
+      },
+      "experiment:malformedness:control_high": {
+        "count": 18,
+        "lastCoherence": 0.9919938964276754,
+        "lastTimestamp": 1780448186976
+      },
+      "experiment:malformedness:natural_low": {
+        "count": 18,
+        "lastCoherence": 0.19166356492549927,
+        "lastTimestamp": 1780448186987
+      },
+      "experiment:malformedness:constant_half": {
+        "count": 18,
+        "lastCoherence": 0.5119374999999999,
+        "lastTimestamp": 1780448186998
+      },
+      "experiment:malformedness:derivative_band": {
+        "count": 18,
+        "lastCoherence": 0.5079362457714488,
+        "lastTimestamp": 1780448187010
+      },
+      "experiment:malformedness:bimodal_extreme": {
+        "count": 18,
+        "lastCoherence": 0.9607344038406433,
+        "lastTimestamp": 1780448187021
+      },
+      "experiment:malformedness:uniform_ramp": {
+        "count": 18,
+        "lastCoherence": 0.9552254687500001,
+        "lastTimestamp": 1780448187031
+      },
+      "experiment:malformedness:wide_uniform": {
+        "count": 18,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780448187041
+      },
+      "prime": {
+        "count": 50,
+        "lastCoherence": 0.9790359879296524,
+        "lastTimestamp": 1780452404354
+      },
+      "consensus-smoke:prime": {
+        "count": 50,
+        "lastCoherence": 0.9688861646776679,
+        "lastTimestamp": 1780453730522
+      },
+      "consensus-smoke:prime-mid": {
+        "count": 50,
+        "lastCoherence": 0.6973102149136512,
+        "lastTimestamp": 1780453760204
+      },
+      "docs:readme-domain-rewrite": {
+        "count": 1,
+        "lastCoherence": 0.8537240346112,
+        "lastTimestamp": 1780473560789
+      },
+      "demo:prime": {
+        "count": 150,
+        "lastCoherence": 0.3130883525366037,
+        "lastTimestamp": 1780531423249
+      },
+      "meta:claude-cognition-session-2026-06-03": {
+        "count": 1,
+        "lastCoherence": 0.8171268315180847,
+        "lastTimestamp": 1780488035472
+      },
+      "demo:swarm-run": {
+        "count": 30,
+        "lastCoherence": 0.9813985740822455,
+        "lastTimestamp": 1780519546542
+      },
+      "demo:audit-passed": {
+        "count": 1,
+        "lastCoherence": 0.97513506075,
+        "lastTimestamp": 1780519546543
+      },
+      "demo:gpt-4-call": {
+        "count": 1,
+        "lastCoherence": 0.9802469816455147,
+        "lastTimestamp": 1780519546544
+      },
+      "demo:swarm-winner": {
+        "count": 1,
+        "lastCoherence": 0.95522546875,
+        "lastTimestamp": 1780519546545
+      },
+      "meta:this-session-explicit-signals:2026-06-03": {
+        "count": 1,
+        "lastCoherence": 0.8316032686673284,
+        "lastTimestamp": 1780519546546
+      },
+      "demo:tick": {
+        "count": 6,
+        "lastCoherence": 0.8557129687499999,
+        "lastTimestamp": 1780520296790
+      },
+      "temporal:remembrance-oracle-toolkit:README.md:adjacent": {
+        "count": 1,
+        "lastCoherence": 0.9858121565431872,
+        "lastTimestamp": 1780520297993
+      },
+      "temporal:remembrance-oracle-toolkit:README.md:arc": {
+        "count": 1,
+        "lastCoherence": 0.9037449371100162,
+        "lastTimestamp": 1780520297994
+      },
+      "actor-demo:prime": {
+        "count": 60,
+        "lastCoherence": 0.29120344831158,
+        "lastTimestamp": 1780522736374
+      },
+      "anchor-compression:warmup": {
+        "count": 1,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780619933817
+      },
+      "anchor-compression:settle-1": {
+        "count": 1,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780619933828
+      },
+      "anchor-compression:settle-2": {
+        "count": 1,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780619933829
+      },
+      "anchor-compression:settle-3": {
+        "count": 1,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780619933830
+      },
+      "anchor-compression:settle-4": {
+        "count": 1,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780619933831
+      },
+      "anchor-compression:settle-5": {
+        "count": 1,
+        "lastCoherence": 0.999,
+        "lastTimestamp": 1780619933832
+      }
+    }
+  },
+  "generatedAt": "2026-06-05T00:38:53.834Z"
+}

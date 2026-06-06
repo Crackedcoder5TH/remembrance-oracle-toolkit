@@ -28,26 +28,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const adminKey = process.env.ADMIN_API_KEY;
-    if (!adminKey) {
+    const adminKeysRaw = process.env.ADMIN_API_KEY;
+    if (!adminKeysRaw) {
       return NextResponse.json(
         { success: false, message: "Admin access is not configured." },
         { status: 503 },
       );
     }
 
-    // Constant-time comparison
-    if (key.length !== adminKey.length) {
-      return NextResponse.json(
-        { success: false, message: "Invalid credentials." },
-        { status: 403 },
-      );
+    // Bug fix: previously compared against the raw env value, which broke during key
+    // rotation when ADMIN_API_KEY is set to "current-key,previous-key" — login would
+    // try to match the whole comma-joined string. Now split and check each key.
+    const adminKeys = adminKeysRaw.split(",").map((k) => k.trim()).filter(Boolean);
+    let matched = false;
+    for (const adminKey of adminKeys) {
+      if (key.length !== adminKey.length) continue;
+      let mismatch = 0;
+      for (let i = 0; i < key.length; i++) {
+        mismatch |= key.charCodeAt(i) ^ adminKey.charCodeAt(i);
+      }
+      if (mismatch === 0) {
+        matched = true;
+        // Don't break — keep iterating to preserve constant-time behavior across keys.
+      }
     }
-    let mismatch = 0;
-    for (let i = 0; i < key.length; i++) {
-      mismatch |= key.charCodeAt(i) ^ adminKey.charCodeAt(i);
-    }
-    if (mismatch !== 0) {
+    if (!matched) {
       return NextResponse.json(
         { success: false, message: "Invalid credentials." },
         { status: 403 },

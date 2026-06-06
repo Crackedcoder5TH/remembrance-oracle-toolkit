@@ -1,0 +1,15 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "../Dockerfile.field-server"
+  },
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 5,
+    "healthcheckPath": "/",
+    "healthcheckTimeout": 10
+  },
+  "_notes": "Railway deploy config for the Remembrance Field server. After importing this repo on railway.app, set FIELD_TOKEN secret in the dashboard, attach a volume mounted at /data, and Railway will hand you a https://your-field.up.railway.app URL. Point the cathedral's REMEMBRANCE_FIELD_URL at that URL + /mcp."
+}

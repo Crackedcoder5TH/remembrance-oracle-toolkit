@@ -38,10 +38,13 @@
     "remembrance-oracle": "src/cli.js",
     "oracle": "src/cli.js",
     "reflector": "bin/reflector",
-    "remembrance-oracle-toolkit": "src/cli.js"
+    "remembrance-oracle-toolkit": "src/cli.js",
+    "remembrance-field-server": "scripts/field-server.js",
+    "remembrance-field": "scripts/field-server.js"
   },
   "files": [
     "src/",
+    "scripts/field-server.js",
     "types/",
     "seeds/",
     "bin/",
@@ -60,6 +63,7 @@
     "sweep": "bash scripts/ecosystem-sweep.sh",
     "unwired": "grep -rL 'field-coupling' --include='*.js' src || true",
     "test": "ENTROPY_PATH=$(mktemp -d)/entropy.json node --test --test-timeout=300000 tests/*.test.js",
+    "test:field": "ENTROPY_PATH=$(mktemp -d)/entropy.json node --test --test-timeout=300000 --test-reporter=./scripts/field-test-reporter.js tests/*.test.js",
     "start": "node src/deploy.js",
     "setup": "node src/cli.js init",
     "init": "node src/cli.js init",

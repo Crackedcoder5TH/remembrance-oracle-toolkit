@@ -37,6 +37,28 @@ export async function register() {
     if (!process.env.EMAIL_FROM || process.env.EMAIL_FROM === "noreply@example.com") {
       warnings.push("EMAIL_FROM (defaulting to noreply@example.com)");
     }
+    // H5 fix: Stripe webhook secret missing causes infinite retry from Stripe
+    // — every successful checkout returns 500 forever. Already in warnings,
+    // but elevate when STRIPE_SECRET_KEY IS set because that means real
+    // checkouts will run.
+    if (process.env.STRIPE_SECRET_KEY && !process.env.STRIPE_WEBHOOK_SECRET) {
+      console.error(
+        `[STARTUP] CRITICAL: STRIPE_SECRET_KEY is set but STRIPE_WEBHOOK_SECRET is not.\n` +
+        `  Every Stripe webhook delivery will return 500 and Stripe will retry indefinitely.\n` +
+        `  Get the secret from https://dashboard.stripe.com/webhooks → your endpoint → "Signing secret".`
+      );
+    }
+    // H9 fix: on Vercel without BLOB_READ_WRITE_TOKEN, the lead-ledger
+    // falls back to /tmp/.cathedral which is ephemeral — every covenant
+    // record is lost on Lambda recycle, silently breaking the audit trail.
+    if (process.env.VERCEL && !process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error(
+        `[STARTUP] CRITICAL: Running on Vercel without BLOB_READ_WRITE_TOKEN.\n` +
+        `  The lead-ledger will write to ephemeral disk and lose every covenant\n` +
+        `  record on Lambda recycle. The "append-only audit trail" guarantee is\n` +
+        `  void in this configuration. Provision Vercel Blob and set the token.`
+      );
+    }
 
     if (warnings.length > 0) {
       console.warn(

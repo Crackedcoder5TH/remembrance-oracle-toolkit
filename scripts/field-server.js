@@ -36,6 +36,89 @@ const { verifyExecution } = require('../src/scoring/exec-verify');
 const { recordOperation } = require('../src/scoring/operational-signal');
 const { evaluate: evaluateInput } = require('../src/scoring/evaluate');
 
+// ── CLI argument parsing ─────────────────────────────────────────────
+// Recommendation #3 — lower activation energy. Anyone can now run
+//   npx remembrance-field-server --port 7787 --token <secret>
+// and have a working field server in 30 seconds, no clone required.
+// Flags override env vars; env vars stay supported for deploy configs
+// (Vercel, Railway, Fly, systemd) where flags are awkward.
+function parseCliArgs(argv) {
+  const args = { help: false, version: false };
+  for (let i = 2; i < argv.length; i++) {
+    const a = argv[i];
+    const next = () => argv[++i];
+    switch (a) {
+      case '--help': case '-h':       args.help = true; break;
+      case '--version': case '-v':    args.version = true; break;
+      case '--port': case '-p':       args.port = parseInt(next(), 10); break;
+      case '--host': case '-H':       args.host = next(); break;
+      case '--token': case '-t':      args.token = next(); break;
+      case '--entropy-path': case '-e': args.entropyPath = next(); break;
+      case '--rate-limit': case '-r':  args.rateLimit = parseInt(next(), 10); break;
+      default:
+        if (a.startsWith('--')) {
+          console.error(`field-server: unknown flag ${a}. Try --help.`);
+          process.exit(2);
+        }
+    }
+  }
+  return args;
+}
+
+const CLI = parseCliArgs(process.argv);
+
+if (CLI.help) {
+  console.log(`remembrance-field-server — hostable Remembrance Field
+
+Starts the Living Remembrance Engine field surface as an HTTP/MCP/REST
+server. Persists to .remembrance/entropy.json (or --entropy-path) and
+exposes the field to any agent, MCP client, or browser.
+
+Usage:
+  npx remembrance-field-server [options]
+
+Options:
+  -p, --port <n>            TCP port (default 7787, or $PORT)
+  -H, --host <addr>         Bind address (default 0.0.0.0, or $HOST)
+  -t, --token <secret>      Bearer token required for writes (default $FIELD_TOKEN)
+  -e, --entropy-path <p>    Persistence file (default .remembrance/entropy.json, or $ENTROPY_PATH)
+  -r, --rate-limit <n>      Requests per minute per IP (default 120, 0 = off)
+  -v, --version             Print version and exit
+  -h, --help                Show this message
+
+Endpoints (once running):
+  POST /mcp                 JSON-RPC 2.0 MCP surface (Claude Desktop, Cursor)
+  POST /contribute          REST write: {coherence, source, cost}
+  POST /coherency           REST: {a, b} -> {coherency}
+  GET  /field               REST read: full field state
+  GET  /                    Health peek
+  GET  /.well-known/mcp     MCP discovery manifest
+
+Auth: reads are open; writes require the bearer token when one is set.
+CORS is enabled so browsers and web agents can call this directly.
+
+Examples:
+  npx remembrance-field-server
+  npx remembrance-field-server --port 8080 --token \$(openssl rand -hex 16)
+  PORT=7787 FIELD_TOKEN=secret npx remembrance-field-server`);
+  process.exit(0);
+}
+
+if (CLI.version) {
+  try {
+    const pkg = require('../package.json');
+    console.log(pkg.version);
+  } catch { console.log('unknown'); }
+  process.exit(0);
+}
+
+// Apply CLI overrides to env so the downstream code keeps reading process.env.
+if (CLI.port != null && Number.isFinite(CLI.port)) process.env.PORT = String(CLI.port);
+if (CLI.host) process.env.HOST = CLI.host;
+if (CLI.token) process.env.FIELD_TOKEN = CLI.token;
+if (CLI.entropyPath) process.env.ENTROPY_PATH = CLI.entropyPath;
+if (CLI.rateLimit != null && Number.isFinite(CLI.rateLimit)) process.env.RATE_LIMIT_PER_MIN = String(CLI.rateLimit);
+
 const PORT = parseInt(process.env.PORT, 10) || 7787;
 const HOST = process.env.HOST || '0.0.0.0';
 const TOKEN = (process.env.FIELD_TOKEN || process.env.REMEMBRANCE_FIELD_TOKEN || '').trim();

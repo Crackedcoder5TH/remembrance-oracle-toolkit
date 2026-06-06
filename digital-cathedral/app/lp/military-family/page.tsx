@@ -10,7 +10,7 @@
  * UTM params auto-captured from URL query string.
  */
 
-import { useState, useCallback, useRef, FormEvent } from "react";
+import { useState, useCallback, useRef, FormEvent, ChangeEvent } from "react";
 import { useUtmTracking } from "@/app/protect/hooks/use-utm-tracking";
 import { trackConversion } from "@/app/lib/analytics";
 
@@ -100,8 +100,8 @@ export default function MilitaryFamilyLandingPage() {
   // Title now set via server-side metadata in layout.tsx
 
   const updateField = useCallback((field: keyof LpFormData, value: string | boolean) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => {
+    setForm((prev: LpFormData) => ({ ...prev, [field]: value }));
+    setErrors((prev: LpFormErrors) => {
       const next = { ...prev };
       delete next[field as keyof LpFormErrors];
       return next;
@@ -289,7 +289,7 @@ export default function MilitaryFamilyLandingPage() {
               name="website"
               type="text"
               value={form._hp_website}
-              onChange={(e) => updateField("_hp_website", e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("_hp_website", e.target.value)}
               tabIndex={-1}
               autoComplete="off"
             />
@@ -308,7 +308,7 @@ export default function MilitaryFamilyLandingPage() {
               id="fullName"
               type="text"
               value={form.fullName}
-              onChange={(e) => updateField("fullName", autoCapitalizeName(e.target.value))}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("fullName", autoCapitalizeName(e.target.value))}
               placeholder="John Doe"
               autoComplete="name"
               aria-required="true"
@@ -328,7 +328,7 @@ export default function MilitaryFamilyLandingPage() {
               id="phone"
               type="tel"
               value={form.phone}
-              onChange={(e) => updateField("phone", formatPhoneInput(e.target.value))}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("phone", formatPhoneInput(e.target.value))}
               placeholder="(555) 123-4567"
               autoComplete="tel"
               aria-required="true"
@@ -348,7 +348,7 @@ export default function MilitaryFamilyLandingPage() {
               id="email"
               type="email"
               value={form.email}
-              onChange={(e) => updateField("email", e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("email", e.target.value)}
               placeholder="john.doe@example.com"
               autoComplete="email"
               aria-required="true"
@@ -366,7 +366,7 @@ export default function MilitaryFamilyLandingPage() {
                 id="tcpaConsent"
                 type="checkbox"
                 checked={form.tcpaConsent}
-                onChange={(e) => updateField("tcpaConsent", e.target.checked)}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("tcpaConsent", e.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-[var(--indigo-light)] bg-[var(--bg-deep)] text-[var(--teal)] focus:ring-[var(--teal)]/50 shrink-0"
               />
               <label htmlFor="tcpaConsent" className="text-xs text-[var(--text-muted)] leading-relaxed">

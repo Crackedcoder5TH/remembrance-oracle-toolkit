@@ -1,3 +1,5 @@
+import * as React from "react";
+
 /**
  * TcpaConsent — TCPA-compliant consent checkboxes.
  *
@@ -37,7 +39,7 @@ export function TcpaConsent({
             id="tcpaConsent"
             type="checkbox"
             checked={tcpaChecked}
-            onChange={(e) => onTcpaChange(e.target.checked)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onTcpaChange(e.target.checked)}
             className={CHECKBOX_CLASS}
           />
           <label htmlFor="tcpaConsent" className="text-xs text-gray-600 leading-relaxed">
@@ -60,7 +62,7 @@ export function TcpaConsent({
             id="privacyConsent"
             type="checkbox"
             checked={privacyChecked}
-            onChange={(e) => onPrivacyChange(e.target.checked)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onPrivacyChange(e.target.checked)}
             className={CHECKBOX_CLASS}
           />
           <label htmlFor="privacyConsent" className="text-xs text-gray-600 leading-relaxed">

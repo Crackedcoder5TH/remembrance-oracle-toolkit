@@ -149,7 +149,7 @@ function RotatingTestimonials() {
   const rotate = useCallback(() => {
     setFading(true);
     setTimeout(() => {
-      setActiveIndex((prev) => (prev + 1) % TESTIMONIALS.length);
+      setActiveIndex((prev: number) => (prev + 1) % TESTIMONIALS.length);
       setFading(false);
     }, 300); // Match the CSS transition duration
   }, []);

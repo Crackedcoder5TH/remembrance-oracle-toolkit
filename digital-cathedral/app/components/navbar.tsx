@@ -92,7 +92,7 @@ export function Navbar() {
         <div className="relative">
           <button
             ref={buttonRef}
-            onClick={() => setMenuOpen((v) => !v)}
+            onClick={() => setMenuOpen((v: boolean) => !v)}
             aria-expanded={menuOpen}
             aria-haspopup="true"
             className="flex items-center gap-fib-8 text-sm font-medium tracking-wide hover:text-[var(--teal)] transition-colors"

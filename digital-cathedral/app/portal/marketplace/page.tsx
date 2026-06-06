@@ -102,6 +102,9 @@ export default function AgentPortal() {
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  // Track whether the initial profile fetch failed (network error, 5xx) so
+  // the marketplace doesn't get stuck on "Loading..." forever with no recovery path.
+  const [profileError, setProfileError] = useState("");
 
 
   // Lead filters
@@ -109,11 +112,19 @@ export default function AgentPortal() {
   const [filterCoverage, setFilterCoverage] = useState("");
 
   const fetchProfile = useCallback(async () => {
-    const res = await fetch("/api/client/profile");
-    if (res.status === 401) { router.push("/portal"); return; }
-    if (res.ok) {
-      const data = await res.json();
-      setProfile(data.client);
+    try {
+      const res = await fetch("/api/client/profile");
+      if (res.status === 401) { router.push("/portal"); return; }
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data.client);
+        setProfileError("");
+        return;
+      }
+      // 4xx/5xx that isn't 401 — surface to user instead of spinning forever
+      setProfileError("Could not load your account. Please try again.");
+    } catch {
+      setProfileError("Network error loading your account. Check your connection and retry.");
     }
   }, [router]);
 
@@ -252,6 +263,29 @@ export default function AgentPortal() {
   const formatCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
   if (!profile) {
+    if (profileError) {
+      return (
+        <main className="min-h-screen flex items-center justify-center px-4">
+          <div className="cathedral-surface p-8 max-w-sm w-full text-center rounded-xl space-y-4">
+            <p className="text-sm text-[var(--text-primary)]">{profileError}</p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => { setProfileError(""); fetchProfile(); }}
+                className="px-4 py-2 rounded-lg text-sm bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+              >
+                Retry
+              </button>
+              <button
+                onClick={() => router.push("/portal")}
+                className="px-4 py-2 rounded-lg text-sm border border-indigo-cathedral/20 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              >
+                Back to Sign In
+              </button>
+            </div>
+          </div>
+        </main>
+      );
+    }
     return (
       <main className="min-h-screen flex items-center justify-center">
         <p className="text-[var(--text-muted)]">Loading...</p>
@@ -268,7 +302,13 @@ export default function AgentPortal() {
           <h1 className="text-2xl font-light text-[var(--text-primary)]">{profile.companyName}</h1>
           <p className="text-sm text-[var(--text-muted)]">{profile.contactName}</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <a
+            href="/portal/dashboard"
+            className="px-4 py-2 rounded-lg text-sm text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25"
+          >
+            My Account
+          </a>
           <button onClick={handleLogout} className="px-4 py-2 rounded-lg text-sm text-[var(--text-muted)] border border-indigo-cathedral/10 hover:border-indigo-cathedral/25">Logout</button>
         </div>
       </header>

@@ -4,6 +4,7 @@
  * Agent Portal Login Page
  */
 
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -96,6 +97,13 @@ export default function ClientLoginPage() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-xs text-[var(--text-muted)]">
+          New buyer?{" "}
+          <Link href="/portal/register" className="text-teal-cathedral hover:underline">
+            Create an account
+          </Link>
+        </p>
       </div>
     </main>
   );

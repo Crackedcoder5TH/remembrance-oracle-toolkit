@@ -56,21 +56,30 @@ export function verifyAdmin(req: NextRequest): NextResponse | null {
 
   // Method 3: Bearer token (for programmatic access)
   // Supports comma-separated keys for rotation: "current-key,previous-key"
-  const adminKeysRaw = process.env.ADMIN_API_KEY;
-
-  if (!adminKeysRaw) {
-    logger.error("ADMIN_API_KEY environment variable is not set");
-    return NextResponse.json(
-      { success: false, message: "Admin access is not configured." },
-      { status: 503 },
-    );
-  }
-
+  //
+  // H2 fix: previously short-circuited with a 503 "Admin access is not
+  // configured" whenever ADMIN_API_KEY was unset — even when a Google-
+  // OAuth admin had ALREADY authenticated via Method 1 and just had a
+  // missing/expired cookie. That broke the Google-only deployment path
+  // entirely. Now: if there's no Authorization header AND the session
+  // cookie failed, return 401 ("Authentication required") regardless of
+  // whether ADMIN_API_KEY exists. The 503 only applies when the caller
+  // is genuinely trying bearer-token auth (has the header) but the env
+  // var to validate against isn't set.
   const authHeader = req.headers.get("authorization");
   if (!authHeader) {
     return NextResponse.json(
       { success: false, message: "Authentication required." },
       { status: 401 },
+    );
+  }
+
+  const adminKeysRaw = process.env.ADMIN_API_KEY;
+  if (!adminKeysRaw) {
+    logger.error("ADMIN_API_KEY environment variable is not set (bearer-token path attempted)");
+    return NextResponse.json(
+      { success: false, message: "Bearer-token admin access is not configured. Sign in with Google instead." },
+      { status: 503 },
     );
   }
 

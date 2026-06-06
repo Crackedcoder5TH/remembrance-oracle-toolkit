@@ -1,3 +1,4 @@
+import * as React from "react";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { CookieConsent } from "./components/cookie-consent";

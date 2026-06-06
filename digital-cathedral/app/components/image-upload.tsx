@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState, useRef, useEffect, ReactNode } from "react";
 
 interface ImageUploadProps {
@@ -100,7 +101,7 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
       role="button"
       tabIndex={0}
       aria-label={`Upload ${slot} image`}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
+      onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick(); } }}
     >
       {showImage ? (
         <img src={imageUrl} alt={alt} className={imgClassName} onError={() => setImgError(true)} />
@@ -117,7 +118,7 @@ export function ImageUpload({ slot, fallback, className = "", imgClassName = "",
         >
           <span>{notification}</span>
           <button
-            onClick={(e) => { e.stopPropagation(); setNotification(null); }}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => { e.stopPropagation(); setNotification(null); }}
             aria-label="Dismiss notification"
             className="text-red-300 hover:text-white shrink-0"
           >

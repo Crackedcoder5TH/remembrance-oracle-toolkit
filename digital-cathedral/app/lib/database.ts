@@ -1079,7 +1079,18 @@ class NoopAdapter implements DbAdapter {
   async initialize(): Promise<void> {}
 
   insertLead(lead: LeadRecord): Promise<Result<{ id: number; leadId: string }, string>> {
-    // In demo mode, report success so the seed UI shows results
+    // H6 fix: previously returned Ok({...}) unconditionally so the seed UI
+    // would render, but in production this caused silent data loss — the
+    // form returned "success" to the user, fired the confirmation email,
+    // and nothing persisted. Now production NEVER fakes success; the
+    // submission must surface as 500 so the user knows to retry and the
+    // operator sees the failure in logs. Demo / dev / preview retain the
+    // legacy behaviour for seed-UI compatibility.
+    if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+      return Promise.resolve(
+        Err("DATABASE_URL is not configured — lead cannot be persisted in production. Set DATABASE_URL and redeploy."),
+      );
+    }
     return Promise.resolve(Ok({ id: 0, leadId: lead.leadId }));
   }
 

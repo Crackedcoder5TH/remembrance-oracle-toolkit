@@ -70,7 +70,7 @@ function getWebhookUrls(): string[] {
   if (!urls) return [];
   return urls
     .split(",")
-    .map((u) => u.trim())
+    .map((u: string) => u.trim())
     .filter(Boolean);
 }
 

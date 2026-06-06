@@ -54,16 +54,27 @@ let entangle = null;
 try { entangle = require('./entangle'); } catch (_) { /* optional */ }
 
 const { toFractalWaveform } = require('./fractal-waveform');
+const { byteCodeToWaveform } = require('./code-to-waveform');
+
+// Void's library is the canonical substrate (~43k unique waveforms,
+// 256-D byte-encoded). The pattern-resonance scorer over oracle.db is
+// the coding-specific FILTER on top of that — narrower, lexical, used
+// for anti-hallucination on code specifically. Every read scores
+// against Void by default; code-language reads also pull the filter.
+let _voidLib = null;
+try {
+  _voidLib = require('./void-library');
+} catch (_) { /* void library unreachable — Oracle filter still available */ }
 
 let _scoreResonance = null;
 try {
   _scoreResonance = require('../scoring/pattern-resonance').scoreResonance;
-} catch (_) { /* resonance scorer unreachable — read still records */ }
+} catch (_) { /* coding filter unreachable — Void substrate still available */ }
 
 let _SQLiteStore = null;
 try {
   _SQLiteStore = require('../store/sqlite').SQLiteStore;
-} catch (_) { /* substrate growth degrades to a no-op */ }
+} catch (_) { /* substrate capture degrades to a no-op */ }
 
 const DEFAULT_SOURCE = 'field-tool:read';
 
@@ -82,6 +93,8 @@ class FieldTool {
     this.opts = {
       autoEntangle: opts.autoEntangle !== false,
       growSubstrate: opts.growSubstrate !== false,
+      useVoidSubstrate: opts.useVoidSubstrate !== false,  // primary: Void's 79k library
+      useCodingFilter: opts.useCodingFilter !== false,    // secondary: Oracle's coding-specific subset
       agentSource: opts.agentSource || DEFAULT_SOURCE,
       language: opts.language || null,        // null = infer per-call
       topK: Number.isFinite(opts.topK) ? opts.topK : 5,
@@ -114,7 +127,8 @@ class FieldTool {
 
     const layers = {
       entangled: false,
-      scored: false,
+      voidScored: false,       // primary substrate (Void's ~43k library)
+      codingFiltered: false,   // secondary filter (Oracle's coding subset)
       grew: false,
       contributed: false,
     };
@@ -124,35 +138,59 @@ class FieldTool {
       layers.entangled = this._ensureEngaged();
     }
 
-    // 2. Encode
-    const waveform = Array.from(toFractalWaveform(content));
+    // 2. Encode for both substrates:
+    //    fractal (29-D structural) — used downstream for waveform return
+    //    byte (256-D)              — used to score against Void's library
+    const fractalWaveform = Array.from(toFractalWaveform(content));
+    let byteWaveform = null;
+    if (merged.useVoidSubstrate && _voidLib) {
+      byteWaveform = Array.from(byteCodeToWaveform(content));
+    }
 
-    // 3. Grow the substrate BEFORE scoring? No — score first against the
-    //    current library (so we measure the pattern's resonance with what
-    //    was already known), then grow. Order matters: it's how novelty
+    // 3. Primary substrate read: score against Void's library.
+    //    Score against existing library BEFORE growing — that way novelty
     //    gets honest credit instead of self-matching.
-    let resonance = null;
-    if (_scoreResonance) {
+    let voidResonance = null;
+    if (merged.useVoidSubstrate && _voidLib && byteWaveform) {
       try {
-        resonance = _scoreResonance(content, {
-          k: merged.topK,
-          language: language || undefined,
-        });
-        layers.scored = resonance != null;
+        voidResonance = _voidLib.score(byteWaveform, { k: merged.topK });
+        layers.voidScored = voidResonance != null;
       } catch (_) { /* keep null */ }
     }
 
-    // 4. Grow the substrate
+    // 4. Secondary filter: Oracle's coding subset. Honest signal for
+    //    code patterns specifically (lexical anti-hallucination), but
+    //    narrower than Void's library and not the primary read.
+    let codeResonance = null;
+    if (merged.useCodingFilter && _scoreResonance) {
+      try {
+        codeResonance = _scoreResonance(content, {
+          k: merged.topK,
+          language: language || undefined,
+        });
+        layers.codingFiltered = codeResonance != null;
+      } catch (_) { /* keep null */ }
+    }
+
+    // 5. Grow the substrate (Oracle coding filter; Void library grows
+    //    via its own compress pipeline)
     let grew = { ok: false, reason: 'disabled' };
     if (merged.growSubstrate) {
       grew = this._growSubstrate({ content, name, language, id });
       layers.grew = grew.ok === true;
     }
 
-    // 5. Contribute the reading to the field
-    const coherence = (resonance && Number.isFinite(resonance.meanTopK))
-      ? resonance.meanTopK
-      : (resonance && Number.isFinite(resonance.score) ? resonance.score : 0);
+    // 6. Coherence is the PRIMARY substrate signal (Void). If Void
+    //    is unreachable, fall back to the coding filter; if both
+    //    fail, the read is 0 and honestly reported as such via layers.
+    let coherence = 0;
+    if (voidResonance && Number.isFinite(voidResonance.meanTopK)) {
+      coherence = voidResonance.meanTopK;
+    } else if (codeResonance && Number.isFinite(codeResonance.meanTopK)) {
+      coherence = codeResonance.meanTopK;
+    }
+
+    // 7. Contribute the reading to the field
     try {
       fc.contribute({
         cost: 1.0,
@@ -163,8 +201,9 @@ class FieldTool {
     } catch (_) { /* field unreachable */ }
 
     return {
-      waveform,
-      resonance,
+      waveform: fractalWaveform,
+      voidResonance,
+      codeResonance,
       coherence,
       grew,
       fieldStateAfter: this._safePeek(),

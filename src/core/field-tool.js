@@ -59,20 +59,23 @@ try { entangle = require('./entangle'); } catch (_) { /* optional */ }
 // discriminate code from prose. We pull the fractal encoder only.
 const { toFractalWaveform } = require('./fractal-waveform');
 
-// Substrate read: Oracle's pattern library (oracle.db patterns table)
-// via lexical TF-IDF resonance. This is the fractal-spirit text
-// comparison that pairs natively with the 29-D fractal encoder.
-// Void's 79k canonical library is at the 256-D layer; bridging
-// requires the to_fractal_waveform.py migration on Void's source
-// patterns — tracked as a separate piece of work. Until that lands,
-// the substrate the FieldTool reads against is Oracle's filtered
-// patterns. The substrate gracefully handles this — the dual oracle
-// and variance gate moderate any reading whose source falls outside
-// the expected band.
+// Canonical substrate: Void's 29-D fractal library (~43k patterns,
+// translated from the master pattern_index.json via the same
+// canonical encoder). This is THE substrate. Every measurement
+// scores against it.
+let _voidLib = null;
+try {
+  _voidLib = require('./void-library');
+} catch (_) { /* substrate unreachable — read still records */ }
+
+// Coding-specific filter: Oracle's pattern library (oracle.db
+// patterns table) via lexical TF-IDF resonance. Narrower than Void
+// — only patterns that have passed the covenant gate as code.
+// Secondary signal, used for code-specific anti-hallucination.
 let _scoreResonance = null;
 try {
   _scoreResonance = require('../scoring/pattern-resonance').scoreResonance;
-} catch (_) { /* substrate scorer unreachable — read still records */ }
+} catch (_) { /* coding filter unreachable */ }
 
 let _SQLiteStore = null;
 try {
@@ -96,6 +99,8 @@ class FieldTool {
     this.opts = {
       autoEntangle: opts.autoEntangle !== false,
       growSubstrate: opts.growSubstrate !== false,
+      useVoidSubstrate: opts.useVoidSubstrate !== false,  // primary: Void's 29-D library
+      useCodingFilter: opts.useCodingFilter !== false,    // secondary: Oracle's coding subset
       agentSource: opts.agentSource || DEFAULT_SOURCE,
       language: opts.language || null,        // null = infer per-call
       topK: Number.isFinite(opts.topK) ? opts.topK : 5,
@@ -128,9 +133,10 @@ class FieldTool {
 
     const layers = {
       entangled: false,
-      scored: false,      // substrate read via the lexical resonance scorer
-      grew: false,        // substrate grew (input captured into the library)
-      contributed: false, // field histogram updated
+      voidScored: false,      // primary substrate: Void's 29-D library
+      codingFiltered: false,  // secondary: Oracle's coding-specific filter
+      grew: false,            // input captured into Oracle's table
+      contributed: false,     // field histogram updated
     };
 
     // 1. Engage entanglement
@@ -138,43 +144,60 @@ class FieldTool {
       layers.entangled = this._ensureEngaged();
     }
 
-    // 2. Encode via the canonical 29-D fractal encoder.
-    //    This is the discriminating encoder — JS↔Python byte-parity,
-    //    distinguishes code from prose. The legacy 256-D byte encoder
-    //    is intentionally NOT used here; reaching for it to bridge
-    //    against the still-256-D Void library reintroduces the noise
-    //    floor the fractal encoder was built to escape.
+    // 2. Encode via the canonical 29-D fractal encoder. ONE encoder,
+    //    everywhere. JS↔Python parity. The legacy 256-D byte encoder
+    //    is not invoked from this read path under any circumstance —
+    //    it gave false positives (any text input scored ~0.9 against
+    //    any text-derived library, the encoder's known noise floor)
+    //    and has been deprecated.
     const waveform = Array.from(toFractalWaveform(content));
 
-    // 3. Substrate read: lexical TF-IDF resonance against Oracle's
-    //    pattern library (oracle.db's patterns table). This is the
-    //    fractal-spirit comparison that pairs with the 29-D encoder.
-    //    Score against existing library BEFORE growing so novelty
-    //    earns honest credit rather than self-matching.
-    let resonance = null;
-    if (_scoreResonance) {
+    // 3. Primary substrate read: score the 29-D fractal against
+    //    Void's 29-D canonical library (~43k patterns translated
+    //    from Void's master pattern_index via the same encoder).
+    let voidResonance = null;
+    if (merged.useVoidSubstrate && _voidLib) {
       try {
-        resonance = _scoreResonance(content, {
-          k: merged.topK,
-          language: language || undefined,
-        });
-        layers.scored = resonance != null;
+        voidResonance = _voidLib.score(waveform, { k: merged.topK });
+        layers.voidScored = voidResonance != null;
       } catch (_) { /* keep null */ }
     }
 
-    // 4. Grow the substrate
+    // 4. Secondary filter: lexical TF-IDF resonance against Oracle's
+    //    pattern library (oracle.db patterns table). Code-specific
+    //    anti-hallucination signal — distinct from but complementary
+    //    to the Void substrate read.
+    let codeResonance = null;
+    if (merged.useCodingFilter && _scoreResonance) {
+      try {
+        codeResonance = _scoreResonance(content, {
+          k: merged.topK,
+          language: language || undefined,
+        });
+        layers.codingFiltered = codeResonance != null;
+      } catch (_) { /* keep null */ }
+    }
+
+    // 5. Grow the substrate (Oracle's coding-specific filter; Void's
+    //    library grows via re-running the migration script after Void
+    //    compresses new patterns)
     let grew = { ok: false, reason: 'disabled' };
     if (merged.growSubstrate) {
       grew = this._growSubstrate({ content, name, language, id });
       layers.grew = grew.ok === true;
     }
 
-    // 5. Coherence is the substrate signal.
-    const coherence = (resonance && Number.isFinite(resonance.meanTopK))
-      ? resonance.meanTopK
-      : (resonance && Number.isFinite(resonance.score) ? resonance.score : 0);
+    // 6. Coherence is the PRIMARY substrate signal (Void). Falls back
+    //    to the coding filter only if Void is unreachable. Both fail =
+    //    0, honestly reported via the layers tracking.
+    let coherence = 0;
+    if (voidResonance && Number.isFinite(voidResonance.meanTopK)) {
+      coherence = voidResonance.meanTopK;
+    } else if (codeResonance && Number.isFinite(codeResonance.meanTopK)) {
+      coherence = codeResonance.meanTopK;
+    }
 
-    // 6. Contribute the reading to the field
+    // 7. Contribute the reading to the field
     try {
       fc.contribute({
         cost: 1.0,
@@ -186,7 +209,8 @@ class FieldTool {
 
     return {
       waveform,         // 29-D fractal
-      resonance,        // lexical resonance against oracle.db patterns
+      voidResonance,    // Void's 29-D canonical library
+      codeResonance,    // Oracle's coding-specific filter
       coherence,
       grew,
       fieldStateAfter: this._safePeek(),

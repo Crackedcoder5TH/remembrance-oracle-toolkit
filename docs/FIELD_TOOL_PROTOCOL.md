@@ -15,49 +15,56 @@ walked away from real signal. The fix is structural: make the proper
 protocol the obvious entry point and document why bypassing it is
 wrong.
 
-## The four layers a field measurement must engage
+## The five layers a field measurement must engage
 
 A field measurement is not a function call on the waveform encoder. It
-is the engagement of four distinct layers. Reading without all four
-is a partial read of a partial system and conclusions drawn from it
-overgeneralize.
+is the engagement of five distinct layers. Reading without engaging
+the right ones is a partial read of a partial system and conclusions
+drawn from it overgeneralize.
 
 | Layer | What it does | Where it lives |
 |---|---|---|
 | **Entanglement** | Registers the caller as a node in the field; abundance-amortizes the cost across all connected nodes (per-node cost = baseCost / N) | `src/core/entangle.js` — `engage()` |
-| **Encoding** | Converts source into the canonical 29-D fractal waveform. JS↔Python byte-for-byte parity (parity contract C-71, verified via `Void-Data-Compressor/verify_fractal_parity.py`). Replaces the legacy 256-D byte encoder, which could not discriminate code from prose | `src/core/fractal-waveform.js` — `toFractalWaveform()` |
-| **Substrate** | Compares the encoded pattern via lexical TF-IDF against `oracle.db`'s `patterns` table — the live, growing library of patterns the field tool has captured. This is the fractal-spirit text comparison that pairs natively with the 29-D encoder | `src/scoring/pattern-resonance.js` — `scoreResonance()` |
+| **Encoding** | Converts source into the canonical 29-D fractal waveform. ONE encoder, everywhere. JS↔Python byte-for-byte parity (parity contract C-71, verified via `Void-Data-Compressor/verify_fractal_parity.py`). The 256-D byte encoder is deprecated and forbidden from the read path | `src/core/fractal-waveform.js` — `toFractalWaveform()` |
+| **Primary substrate (Void)** | Scores the 29-D fractal against Void-Data-Compressor's canonical library — **~43k patterns, all 29-D fractal** (translated from Void's master `pattern_index.json` via the same canonical encoder). This is THE substrate | `src/core/void-library.js` — `score()`, loads `pattern_index_fractal.json` |
+| **Coding filter (Oracle)** | Scores via lexical TF-IDF against `oracle.db`'s `patterns` table — the coding-specific subset that has passed the covenant gate. Secondary signal, complementary to the Void substrate read, used for code-specific anti-hallucination | `src/scoring/pattern-resonance.js` — `scoreResonance()` |
 | **Field-coupling** | Records the reading into the live field histogram so peers see the activity and the field's entropy gate self-throttles | `src/core/field-coupling.js` — `contribute()` |
 
-`FieldTool.read()` engages all four. Every call. By default. Bypassing
-any of them requires explicit opt-out (e.g., `{ growSubstrate: false }`).
+`FieldTool.read()` engages all of these by default. Bypassing any of
+them requires explicit opt-out (e.g., `{ useVoidSubstrate: false }`,
+`{ useCodingFilter: false }`, `{ growSubstrate: false }`).
 
-### Note on Void's 256-D canonical library
+### Architectural distinction: substrate vs. filter
 
-Void-Data-Compressor's `pattern_index.json` references ~43k unique
-256-D waveforms (~79k total entries) — the framework's accumulated
-substrate at the byte-encoder layer. The 29-D fractal encoder
-deprecates the byte encoder because the byte encoder's noise floor
-(a JS file and a Markdown README scoring ~0.86 cosine) was too high
-for honest discrimination.
+- **Void's 29-D fractal library IS the substrate.** ~43k unique
+  patterns spanning physics, framework, consciousness, applied,
+  code, economy, cosmos, conflict, builtin, music, languages, and
+  validation domains. Every pattern is encoded through the same
+  canonical 29-D fractal encoder as every input. The 256-D byte
+  layer is deprecated — it gave false positives (uniform ~0.9 on
+  any text input, the encoder's known noise floor).
+- **Oracle's `patterns` table is a FILTER on the substrate.** ~1.4k
+  patterns coding-specific and covenant-gated, scored via lexical
+  TF-IDF. Complementary signal — code-specific anti-hallucination
+  on top of the structural Void read.
 
-The Void library has not yet been migrated to the 29-D fractal
-layer. The mirror encoder (`Void-Data-Compressor/to_fractal_waveform.py`)
-exists with verified JS↔Python parity, but Void's stored patterns
-predate the migration and the source text needed to re-encode them
-lives in the originating repos (referenced by each pattern's
-`source_path` field). Building the 29-D fractal Void library is
-tracked as a separate piece of work.
+`coherence` in the return value is the **Void resonance** when Void is
+reachable. It falls back to the coding-filter resonance only if Void is
+unreachable. This makes the primary signal the canonical one.
 
-Until that migration lands, the FieldTool reads against the Oracle
-substrate (which IS at the fractal-compatible layer). Reaching for
-the 256-D byte encoder to bridge against Void's 256-D library
-reintroduces the noise floor the 29-D encoder was built to escape;
-the protocol forbids this path by not exposing the byte encoder in
-`read()`. `src/core/void-library.js` remains available as a
-utility module for 256-D-direct comparisons in cases where the
-underlying signals (not code) are genuinely byte-encodable, but
-it is not part of the field-tool read path.
+### How the canonical Void library was built
+
+Every pattern in Void's master `pattern_index.json` is passed through
+`toFractalWaveform` on its JSON-serialized record (`{name, waveform}`),
+producing a 29-D vector. The result is persisted to
+`pattern_index_fractal.json` parallel to the existing 256-D index.
+The migration script (`/tmp/encode-void-fractal.js`) is idempotent —
+running it again after Void compresses new patterns extends the
+fractal index without re-encoding existing ones.
+
+Result: ~43k unique 29-D vectors, ~8.6 MB on disk, ~10 MB in
+memory after warmup, ~2-3s first-call cost (vs ~16s for the
+deprecated 256-D library).
 
 ## The mistakes the protocol prevents
 
@@ -137,23 +144,31 @@ input: string                                   // source code
      | { content, name?, language?, id? }       // structured form
 
 opts: {
-  source?:         string,        // default 'field-tool:read'
-  growSubstrate?:  boolean,       // default true
-  language?:       string,        // overrides input.language
-  topK?:           number,        // default 5
-  name?:           string,        // default null
-  id?:             string,        // default sha256(content)[:16]
+  source?:            string,     // default 'field-tool:read'
+  growSubstrate?:     boolean,    // default true
+  useVoidSubstrate?:  boolean,    // default true (Void's 29-D primary)
+  useCodingFilter?:   boolean,    // default true (Oracle's coding filter)
+  language?:          string,     // overrides input.language
+  topK?:              number,     // default 5
+  name?:              string,     // default null
+  id?:                string,     // default sha256(content)[:16]
 }
 
 returns: {
-  waveform:        number[],              // 29-D fractal (length 29, values in [0,1])
-  resonance:       {score, meanTopK, bestMatch, topMatches} | null,
-  coherence:       number,                // resonance.meanTopK or 0
+  waveform:        number[],   // 29-D fractal (length 29, values in [0,1])
+  voidResonance:   {score, meanTopK, bestMatch, topMatches, librarySize, filteredSize} | null,
+  codeResonance:   {score, meanTopK, bestMatch, topMatches} | null,
+  coherence:       number,     // voidResonance.meanTopK (primary) or codeResonance fallback
   grew:            {ok, reason, id?, library_size_after?},
-  fieldStateAfter: object | null,         // peekField() snapshot
-  layers:          {entangled, scored, grew, contributed},
+  fieldStateAfter: object | null,     // peekField() snapshot
+  layers:          {entangled, voidScored, codingFiltered, grew, contributed},
 }
 ```
+
+**First Void read costs ~2-3 seconds** (29-D library load, much
+faster than the deprecated 256-D path). Subsequent reads are fast.
+Tests that don't need the Void substrate can pass `{ useVoidSubstrate: false }`
+to skip warmup.
 
 ### `scan(target, opts)`
 

@@ -55,9 +55,12 @@ interface ControlRequest {
 }
 
 export async function POST(req: NextRequest) {
-  if (!verifyAdmin(req)) {
-    return NextResponse.json({ success: false, error: "unauthorized" }, { status: 401 });
-  }
+  // verifyAdmin returns null on success and a NextResponse error on failure.
+  // The previous `if (!verifyAdmin(req))` inverted that contract — see the
+  // sibling substrate/state/route.ts fix and the canonical pattern in
+  // api/admin/clients/route.ts.
+  const authError = verifyAdmin(req);
+  if (authError) return authError;
 
   let body: ControlRequest;
   try {

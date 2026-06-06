@@ -60,9 +60,13 @@ interface SubstrateStateResponse {
 }
 
 export async function GET(req: NextRequest) {
-  if (!verifyAdmin(req)) {
-    return NextResponse.json({ success: false, error: "unauthorized" }, { status: 401 });
-  }
+  // verifyAdmin returns null on success and a NextResponse error on failure.
+  // The previous `if (!verifyAdmin(req))` inverted that contract and
+  // effectively returned 401 to authenticated admins while letting
+  // unauthenticated callers through. See the rest of api/admin/* for the
+  // canonical pattern.
+  const authError = verifyAdmin(req);
+  if (authError) return authError;
 
   const reachable = await isReachable();
   if (!reachable) {

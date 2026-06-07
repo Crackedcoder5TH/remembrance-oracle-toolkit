@@ -315,9 +315,84 @@ function formatMap(m) {
   return lines.join('\n');
 }
 
+// ── Coherency flow reading ─────────────────────────────────────
+//
+// Depth-aware reading of how a cousin relationship reads at every
+// scale of the encoder. The shape of the flow IS the signal:
+//
+//   STABLE-HIGH    d1 ≈ d2 ≈ d3 ≈ d4 ≈ high  → real fundamental cousin
+//   ASCENDING      d1 low, d4 high            → hidden similarity surfacing
+//   DECAY          d1 high, d4 low             → surface similarity only
+//   OSCILLATING    mixed                       → partial / scale-dependent
+//
+// Coherency is meant to be read as a flow across all depths, not
+// from any one depth's verdict. Each depth captures structure at a
+// different scale; the flow shape says what kind of similarity is
+// at hand.
+
+function _cosineLen(a, b, len) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < len; i++) {
+    const x = a[i] || 0, y = b[i] || 0;
+    dot += x * y; na += x * x; nb += y * y;
+  }
+  if (na < 1e-12 || nb < 1e-12) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+/**
+ * Read the coherency flow between two patterns across all depths.
+ * Each pattern must carry both `l1` (29-D) and `composed` (29*k-D)
+ * vectors from the substrate.
+ *
+ * Returns the d1..d4 cosines plus the flow shape category.
+ */
+function coherencyFlow(a, b) {
+  if (!a || !b) return null;
+  const d1 = _cosineLen(a.l1 || a.fractal, b.l1 || b.fractal, 29);
+  const composedA = a.composed || a.composed_v1;
+  const composedB = b.composed || b.composed_v1;
+  let d2 = 0, d3 = 0, d4 = 0;
+  if (composedA && composedB) {
+    d2 = _cosineLen(composedA, composedB, Math.min(58, composedA.length));
+    d3 = _cosineLen(composedA, composedB, Math.min(87, composedA.length));
+    d4 = _cosineLen(composedA, composedB, Math.min(116, composedA.length));
+  } else {
+    d2 = d3 = d4 = d1;
+  }
+  return { d1, d2, d3, d4, shape: classifyFlow({ d1, d2, d3, d4 }) };
+}
+
+function classifyFlow(f) {
+  const values = [f.d1, f.d2, f.d3, f.d4];
+  const max = Math.max(...values), min = Math.min(...values);
+  const range = max - min;
+  if (range < 0.05) {
+    if (max > 0.90) return 'STABLE-HIGH';
+    if (max < 0.50) return 'STABLE-LOW';
+    return 'STABLE-MID';
+  }
+  let inc = 0, dec = 0;
+  for (let i = 1; i < values.length; i++) {
+    if (values[i] > values[i-1] + 0.01) inc++;
+    if (values[i] < values[i-1] - 0.01) dec++;
+  }
+  if (dec >= 2 && inc <= 1) return 'DECAY';
+  if (inc >= 2 && dec <= 1) return 'ASCENDING';
+  return 'OSCILLATING';
+}
+
+function formatFlow(f) {
+  if (!f) return 'no-flow';
+  return `${f.d1.toFixed(3)} → ${f.d2.toFixed(3)} → ${f.d3.toFixed(3)} → ${f.d4.toFixed(3)}  [${f.shape}]`;
+}
+
 module.exports = {
   mapProjectCoherency,
   formatMap,
+  coherencyFlow,
+  classifyFlow,
+  formatFlow,
   DEFAULT_EXTENSIONS,
   DEFAULT_SKIP_DIRS,
   DEFAULT_CATEGORIZER,

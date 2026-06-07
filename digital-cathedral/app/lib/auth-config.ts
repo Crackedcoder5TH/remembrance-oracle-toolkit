@@ -10,7 +10,7 @@
 
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { getRoleForEmail } from "./admin-emails";
+import { getRoleForEmail } from "./admin-auth";
 
 // @ts-expect-error next-auth module not resolvable in this env
 declare module "next-auth" {

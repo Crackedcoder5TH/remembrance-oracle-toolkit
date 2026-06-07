@@ -17,6 +17,10 @@ export interface UtmParams {
   utmContent: string | null;
   referrer: string | null;
   landingPage: string | null;
+  /** Viral-lattice node that funneled the visitor (host of the .xyz they hit). */
+  latticeSrc: string | null;
+  /** Original path on the lattice node before the middleware collapsed to /. */
+  latticeFrom: string | null;
 }
 
 const STORAGE_KEY = "dc_utm";
@@ -27,6 +31,8 @@ const UTM_KEYS = [
   ["utm_campaign", "utmCampaign"],
   ["utm_term", "utmTerm"],
   ["utm_content", "utmContent"],
+  ["src", "latticeSrc"],
+  ["from", "latticeFrom"],
 ] as const;
 
 function captureFromUrl(): UtmParams {
@@ -39,6 +45,8 @@ function captureFromUrl(): UtmParams {
     utmContent: null,
     referrer: document.referrer || null,
     landingPage: window.location.href,
+    latticeSrc: null,
+    latticeFrom: null,
   };
 
   for (const [urlKey, stateKey] of UTM_KEYS) {
@@ -77,6 +85,8 @@ export function useUtmTracking(): UtmParams {
     utmContent: null,
     referrer: null,
     landingPage: null,
+    latticeSrc: null,
+    latticeFrom: null,
   });
 
   useEffect(() => {

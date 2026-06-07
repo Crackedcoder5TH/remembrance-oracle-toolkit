@@ -22,9 +22,39 @@ import { CSP_HEADER } from "./csp-directives.mjs";
 const ADMIN_SESSION_COOKIE = "__admin_session";
 
 // ─── Multi-Domain Configuration ───
-// Leads domains serve only public/marketing pages — no admin or portal access.
-// Portal domain serves admin + agent portal.
+//
+// Architecture:
+//   PRIMARY     www.valorlegacies.com — canonical home; receives most traffic;
+//               serves marketing + lead capture + login + portal/admin.
+//   VIRAL       *.xyz domains — viral-lattice entry points. Every inbound
+//               request, no matter what path was clicked, redirects to the
+//               primary home so the visitor must log in (become a lead)
+//               before reaching anything else. After login they land on the
+//               primary main page.
+//   LEADS       additional marketing TLDs (.net/.info/.store/.shop) — serve
+//               the same public site as the primary; portal-only paths bounce
+//               to the primary.
+//
+// Anything not matched above is treated as VIRAL (catch-all funnel) so any
+// new lattice domain you point at the deployment auto-routes into the funnel
+// without code changes.
+const PRIMARY_DOMAIN: string =
+  (process.env.PRIMARY_DOMAIN ?? "valorlegacies.com").trim().toLowerCase();
+const PRIMARY_BASE_URL: string =
+  (process.env.NEXT_PUBLIC_SITE_URL ?? `https://www.${PRIMARY_DOMAIN}`)
+    .split(",")[0]
+    .trim()
+    .replace(/\/$/, "");
 const LEADS_DOMAINS: string[] = (process.env.LEADS_DOMAINS ?? "")
+  .split(",")
+  .map((d) => d.trim().toLowerCase())
+  .filter(Boolean);
+/**
+ * Explicit viral-lattice domain list. Optional — any host not in PRIMARY or
+ * LEADS lists is treated as viral by default. List them here only when you
+ * want a name that wouldn't otherwise be recognized (e.g. a non-.xyz TLD).
+ */
+const VIRAL_LATTICE_DOMAINS: string[] = (process.env.VIRAL_LATTICE_DOMAINS ?? "")
   .split(",")
   .map((d) => d.trim().toLowerCase())
   .filter(Boolean);
@@ -32,12 +62,22 @@ const PORTAL_DOMAIN: string = (process.env.PORTAL_DOMAIN ?? "").trim().toLowerCa
 /** Canonical portal URL with protocol + www, used for redirects from leads domains. */
 const PORTAL_BASE_URL: string = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").trim().replace(/\/$/, "");
 
-type DomainType = "leads" | "portal" | "unknown";
+type DomainType = "primary" | "leads" | "portal" | "viral" | "unknown";
+
+function stripHost(hostname: string): string {
+  return hostname.toLowerCase().split(":")[0].replace(/^www\./, "");
+}
 
 function getDomainType(hostname: string): DomainType {
-  const host = hostname.toLowerCase().split(":")[0].replace(/^www\./, "");
+  const host = stripHost(hostname);
+  if (!host) return "unknown";
+  if (host === PRIMARY_DOMAIN) return "primary";
+  if (VIRAL_LATTICE_DOMAINS.includes(host)) return "viral";
   if (PORTAL_DOMAIN && host === PORTAL_DOMAIN) return "portal";
-  if (LEADS_DOMAINS.length > 0 && LEADS_DOMAINS.includes(host)) return "leads";
+  if (LEADS_DOMAINS.includes(host)) return "leads";
+  // Catch-all: any .xyz domain (or any host we don't otherwise recognize)
+  // funnels into the viral lattice path so newly-pointed domains auto-route.
+  if (host.endsWith(".xyz")) return "viral";
   return "unknown";
 }
 
@@ -117,6 +157,34 @@ export async function middleware(request: NextRequest) {
   // Block portal routes on leads domains; redirect to portal domain instead.
   // On portal domain, redirect marketing pages to the agent portal.
   const domainType = getDomainType(hostname);
+
+  // ─── Viral-Lattice Funnel ───
+  // On any viral-lattice domain (e.g. *.xyz), every inbound request — no
+  // matter what link was clicked — collapses to the primary home page where
+  // the visitor must log in (becoming a lead). Once they log in they stay on
+  // the primary main page.
+  //
+  // Excluded so they keep functioning if a webhook/auth callback ever points
+  // at a lattice host: NextAuth (/api/auth) — already passed through above —
+  // plus inbound webhooks (/api/webhooks/*) and the discovery .well-known/*
+  // tree. Static assets are already excluded by the matcher.
+  if (domainType === "viral") {
+    const isInfraPath =
+      pathname.startsWith("/api/webhooks/") ||
+      pathname.startsWith("/.well-known/");
+    if (!isInfraPath) {
+      const target = new URL("/", PRIMARY_BASE_URL);
+      // Attribution: which lattice node referred this visitor + the path they
+      // tried to reach, so the lead capture form can credit the funnel.
+      target.searchParams.set("src", stripHost(hostname));
+      if (pathname && pathname !== "/") {
+        target.searchParams.set("from", pathname);
+      }
+      const ref = request.nextUrl.searchParams.get("ref");
+      if (ref) target.searchParams.set("ref", ref);
+      return NextResponse.redirect(target.toString(), 302);
+    }
+  }
 
   if (domainType === "leads") {
     const isPortalRoute = PORTAL_ONLY_PREFIXES.some((p) => pathname.startsWith(p));

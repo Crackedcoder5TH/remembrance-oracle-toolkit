@@ -456,15 +456,72 @@ function fractalCoherencyMultiScale(textA, textB, opts) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
+// ── Composed L1 + L2 encoding ───────────────────────────────────
+//
+// Per the architectural principle: don't change the original encoder,
+// add another one on top that picks up what the first missed.
+//
+// L1 (toFractalWaveform, this module) captures structural shape —
+// atomic properties, depth, density of constructs.
+// L2 (toLexicalWaveform, src/core/lexical-waveform.js) captures
+// lexical character — naming conventions, vocabulary entropy,
+// formatting, stylistic markers, content type.
+//
+// The composer concatenates them into a 58-D vector that resolves
+// nuance L1 alone misses without disturbing L1's structurality gate.
+
+let _toLexicalWaveform = null;
+try {
+  _toLexicalWaveform = require('./lexical-waveform').toLexicalWaveform;
+} catch (_) { /* L2 unavailable — composed falls back to L1 only */ }
+
+/**
+ * Concatenate the L1 structural fractal (29-D) with the L2 lexical
+ * fractal (29-D) into a single 58-D signature. If L2 is unreachable,
+ * returns just the 29-D L1 vector.
+ *
+ * @param {string} text
+ * @returns {Float64Array}    — 58-D when L2 available, 29-D otherwise
+ */
+function toComposedWaveform(text) {
+  const l1 = toFractalWaveform(text);
+  if (!_toLexicalWaveform) return l1;
+  const l2 = _toLexicalWaveform(text);
+  const out = new Float64Array(l1.length + l2.length);
+  for (let i = 0; i < l1.length; i++) out[i] = l1[i];
+  for (let i = 0; i < l2.length; i++) out[l1.length + i] = l2[i];
+  return out;
+}
+
+/**
+ * Cosine between two composed (L1 + L2) signatures.
+ */
+function composedCoherency(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i];
+  }
+  if (na < 1e-12 || nb < 1e-12) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+function composedCoherencyOf(textA, textB) {
+  return composedCoherency(toComposedWaveform(textA), toComposedWaveform(textB));
+}
+
 module.exports = {
   FRACTAL_DIM,
   toFractalWaveform,
   toFractalWaveformRecursive,
   toFractalLadder,
   toFractalMultiScale,
+  toComposedWaveform,
   inspectFractalWaveform,
   fractalCoherency,
   fractalCoherencyOf,
   fractalCoherencyOfRecursive,
   fractalCoherencyMultiScale,
+  composedCoherency,
+  composedCoherencyOf,
 };

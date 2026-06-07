@@ -27,6 +27,7 @@
 const { toFractalWaveform } = require('./fractal-waveform');
 const { toLexicalWaveform } = require('./lexical-waveform');
 const { toNumericalWaveform } = require('./numerical-waveform');
+const { toSpectralWaveform } = require('./spectral-waveform');
 
 const DEFAULT_DEPTH = 2;
 
@@ -62,7 +63,14 @@ const _registry = [
     seed: 'residual L1+L2 missed: numeric statistics, sequence dynamics (autocorr, slope, monotonicity), distribution shape (tail heaviness, log-scale), structural sequence (char entropy, periodic patterns), domain markers (timestamp/ratio/coordinate). Designed from the residual monitor surfacing cascade/*+validation/* collapse on JSON-serialized number arrays.',
     active: true,
   },
-  // L4+ slots reserved.
+  {
+    id: 'L4-spectral',
+    dims: 29,
+    encode: toSpectralWaveform,
+    seed: 'residual L1+L2+L3 missed: WITHIN-numerical-domain confusion (cascade/* weather, crypto, econ all read as one signature at L3 because L3 captures shape statistics not frequency content). L4 extracts FFT-derived energy distribution across 8 log-frequency bins, spectral shape (centroid, spread, flatness, roll-off), multi-lag autocorrelation (lags 2,4,8,16,32), non-stationarity (variance ratio, trend strength, detrended residual, piecewise heterogeneity, largest gap), and spectral domain markers (1/f-noise-likeness, white-noise-likeness, daily and weekly period spikes). Designed to distinguish weather oscillation from crypto random-walk from economic drift from analytical curves.',
+    active: true,
+  },
+  // L5+ slots reserved.
 ];
 
 function currentDepth() {

@@ -158,23 +158,50 @@ function mapProjectCoherency(projectPath, opts = {}) {
       const cn = m.name.slice(namespace.length + 1);
       return categorize(cn) === category;
     });
-    const duplicates = sameProject.filter(m => m.score >= duplicateAt);
+
+    // Flow-aware classification: a match is a cousin only when its
+    // flow shape is STABLE-HIGH. A match is a duplicate only when
+    // it's STABLE-HIGH AND the minimum cosine across all four depths
+    // is at-or-above the duplicate threshold. Surface similarity at
+    // L1 alone (DECAY shape) doesn't qualify as cousinship under
+    // flow-aware reading.
+    function _isStableHigh(m) {
+      return m.shape === 'STABLE-HIGH' || (m.d1 === undefined && m.score > 0.90);
+    }
+    function _minDepth(m) {
+      if (m.d1 === undefined) return m.score;
+      return Math.min(m.d1, m.d2, m.d3, m.d4);
+    }
+    const stableHighSameProject = sameProject.filter(_isStableHigh);
+    const stableHighSameCategory = sameCategory.filter(_isStableHigh);
+    const duplicates = sameProject.filter(m => _isStableHigh(m) && _minDepth(m) >= duplicateAt);
     const topExternal = others.find(m => !m.name.startsWith(namespace + '/')) || null;
 
+    const flowShapeDist = {};
+    for (const m of others) {
+      const sh = m.shape || (m.score > 0.90 ? 'STABLE-HIGH' : 'STABLE-MID');
+      flowShapeDist[sh] = (flowShapeDist[sh] || 0) + 1;
+    }
+
     const flags = [];
-    if (sameProject.length === 0) flags.push('ORPHAN');
+    if (stableHighSameProject.length === 0) flags.push('ORPHAN');
     if (duplicates.length > 0) flags.push('DUPLICATE');
-    if (category.startsWith('api/') && sameCategory.length === 0 && sameProject.length > 0) flags.push('INCONSISTENT');
-    if (sameProject.length >= 3 && sameCategory.length >= 1) flags.push('WELL-FORMED');
+    if (category.startsWith('api/') && stableHighSameCategory.length === 0 && stableHighSameProject.length > 0) flags.push('INCONSISTENT');
+    if (stableHighSameProject.length >= 3 && stableHighSameCategory.length >= 1) flags.push('WELL-FORMED');
 
     results.push({
       rel, category, flags,
       coherence: r.coherence,
       sameProject: sameProject.length,
       sameCategory: sameCategory.length,
+      stableHighSameProject: stableHighSameProject.length,
+      stableHighSameCategory: stableHighSameCategory.length,
+      flowShapeDist,
       duplicates: duplicates.map(d => ({
         name: d.name.slice(namespace.length + 1),
-        score: d.score,
+        score: d.d4 !== undefined ? d.d4 : d.score,
+        minDepth: _minDepth(d),
+        shape: d.shape || 'STABLE-HIGH',
       })),
       topCousin: others[0] || null,
       topExternal,

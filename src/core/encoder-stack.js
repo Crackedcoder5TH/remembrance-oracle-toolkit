@@ -26,6 +26,7 @@
 
 const { toFractalWaveform } = require('./fractal-waveform');
 const { toLexicalWaveform } = require('./lexical-waveform');
+const { toNumericalWaveform } = require('./numerical-waveform');
 
 const DEFAULT_DEPTH = 2;
 
@@ -54,12 +55,14 @@ const _registry = [
     seed: 'residual L1 missed: naming conventions, vocabulary entropy, formatting, stylistic markers, content type',
     active: true,
   },
-  // L3+ slots reserved — registered by future encoder designs as the
-  // residual monitor identifies new dimensions of explanation needed.
-  // Example future seeds:
-  //   - L3: semantic relationships (call graph density, variable reuse)
-  //   - L4: temporal/sequential patterns
-  //   - L5: domain vocabulary signatures
+  {
+    id: 'L3-numerical',
+    dims: 29,
+    encode: toNumericalWaveform,
+    seed: 'residual L1+L2 missed: numeric statistics, sequence dynamics (autocorr, slope, monotonicity), distribution shape (tail heaviness, log-scale), structural sequence (char entropy, periodic patterns), domain markers (timestamp/ratio/coordinate). Designed from the residual monitor surfacing cascade/*+validation/* collapse on JSON-serialized number arrays.',
+    active: true,
+  },
+  // L4+ slots reserved.
 ];
 
 function currentDepth() {

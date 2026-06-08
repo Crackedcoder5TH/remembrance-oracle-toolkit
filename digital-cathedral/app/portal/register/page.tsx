@@ -62,6 +62,7 @@ export default function PortalRegisterPage() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [retryAfter, setRetryAfter] = useState(0);
 
   // Auto-redirect if already authenticated.
   useEffect(() => {
@@ -71,6 +72,15 @@ export default function PortalRegisterPage() {
       })
       .catch(() => {});
   }, [router]);
+
+  // Tick down the rate-limit countdown each second.
+  useEffect(() => {
+    if (retryAfter <= 0) return;
+    const id = setInterval(() => {
+      setRetryAfter((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [retryAfter]);
 
   function clientValidate(): string | null {
     if (firstName.trim().length < 1) return "First name is required.";
@@ -103,6 +113,16 @@ export default function PortalRegisterPage() {
           state: stateCode || undefined,
         }),
       });
+      if (res.status === 429) {
+        // Honour Retry-After so the user sees a real countdown.
+        const header = res.headers.get("Retry-After");
+        const seconds = header ? Math.max(1, parseInt(header, 10) || 1) : 60;
+        setRetryAfter(seconds);
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || data.message || "Too many registration attempts.");
+        return;
+      }
+
       const data = await res.json().catch(() => ({}));
       if (res.ok && (data.success === true || data.success === undefined)) {
         // The register API mints the portal session cookie on success,
@@ -110,8 +130,6 @@ export default function PortalRegisterPage() {
         router.push("/portal/dashboard");
       } else if (res.status === 409) {
         setError("An account with this email already exists. Please sign in instead.");
-      } else if (res.status === 429) {
-        setError("Too many registration attempts. Please wait a moment and try again.");
       } else {
         setError(data.error || data.message || "Registration failed. Please try again.");
       }
@@ -121,6 +139,14 @@ export default function PortalRegisterPage() {
       setLoading(false);
     }
   };
+
+  const rateLimited = retryAfter > 0;
+  const submitDisabled = loading || rateLimited;
+  const submitLabel = loading
+    ? "Creating account..."
+    : rateLimited
+      ? `Try again in ${retryAfter}s`
+      : "Create account";
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -294,10 +320,10 @@ export default function PortalRegisterPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitDisabled}
             className="w-full px-4 py-3 rounded-lg text-sm font-medium transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90 disabled:opacity-50"
           >
-            {loading ? "Creating account..." : "Create account"}
+            {submitLabel}
           </button>
         </form>
 

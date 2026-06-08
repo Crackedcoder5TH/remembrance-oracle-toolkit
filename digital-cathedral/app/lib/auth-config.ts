@@ -12,7 +12,6 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { getRoleForEmail } from "./admin-auth";
 
-// @ts-expect-error next-auth module not resolvable in this env
 declare module "next-auth" {
   interface Session {
     user: {
@@ -25,7 +24,6 @@ declare module "next-auth" {
   }
 }
 
-// @ts-expect-error next-auth/jwt module not resolvable in this env
 declare module "next-auth/jwt" {
   interface JWT {
     role?: "admin" | "user";
@@ -57,17 +55,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     maxAge: 8 * 60 * 60, // 8 hours — matches existing session duration
   },
   callbacks: {
-    /** Inject role into the JWT on first sign-in and on every refresh. */
-    async jwt({ token }: { token: Record<string, unknown> & { email?: string; role?: "admin" | "user" }; account?: unknown }) {
-      // Bug fix: `account` was destructured but never used — strict TS/ESLint builds
-      // (no-unused-vars) would fail. Role is re-derived from email on every refresh.
+    /** Inject role into the JWT on first sign-in and on every refresh.
+     *  Param types are inferred from the JWT module augmentation above. */
+    async jwt({ token }) {
       if (token.email) {
         token.role = getRoleForEmail(token.email);
       }
       return token;
     },
     /** Expose role in the client-accessible session object. */
-    async session({ session, token }: { session: { user?: { role?: "admin" | "user" } & Record<string, unknown> } & Record<string, unknown>; token: { role?: "admin" | "user" } & Record<string, unknown> }) {
+    async session({ session, token }) {
       if (session.user) {
         session.user.role = (token.role as "admin" | "user") ?? "user";
       }

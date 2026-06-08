@@ -17,7 +17,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { CSP_HEADER } from "./csp-directives.mjs";
+import { CSP_HEADER_WITH_UPGRADE } from "./csp-directives.mjs";
 
 const ADMIN_SESSION_COOKIE = "__admin_session";
 
@@ -409,8 +409,10 @@ export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const headers = response.headers;
 
-  // Content-Security-Policy — shared with next.config.mjs via csp-directives.mjs
-  headers.set("Content-Security-Policy", CSP_HEADER);
+  // Content-Security-Policy — shared with next.config.mjs via csp-directives.mjs.
+  // Both runtimes emit the *with-upgrade* variant so browsers see a single
+  // consistent policy (and upgrade-insecure-requests is actually enforced).
+  headers.set("Content-Security-Policy", CSP_HEADER_WITH_UPGRADE);
 
   // HSTS — enforce HTTPS for 1 year, include subdomains
   headers.set(

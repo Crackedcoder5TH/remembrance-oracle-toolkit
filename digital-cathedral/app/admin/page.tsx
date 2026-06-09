@@ -63,6 +63,7 @@ interface Stats {
   byState: Record<string, number>;
   byCoverage: Record<string, number>;
   byVeteranStatus: Record<string, number>;
+  bySource?: { human: number; agent: number; lattice: number };
 }
 
 const TIER_STYLES: Record<string, string> = {
@@ -509,6 +510,38 @@ export default function AdminDashboard() {
                   <span className="text-teal-cathedral">{count}</span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Source Breakdown — human vs AI agent vs viral-lattice funnel.
+          The lattice number can overlap human/agent (it's a separate cut),
+          so the percentages are shown against the total, not summed. */}
+      {stats?.bySource && (
+        <div className="cathedral-surface p-4 mb-8" role="region" aria-label="Submission source breakdown">
+          <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium mb-3">Submission Source</p>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.human}</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">Human</p>
+              <p className="text-[10px] text-[var(--text-muted)]">
+                {stats.total > 0 ? Math.round((100 * stats.bySource.human) / stats.total) : 0}% of total
+              </p>
+            </div>
+            <div>
+              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.agent}</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">AI Agent</p>
+              <p className="text-[10px] text-[var(--text-muted)]">
+                {stats.total > 0 ? Math.round((100 * stats.bySource.agent) / stats.total) : 0}% of total
+              </p>
+            </div>
+            <div>
+              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.lattice}</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">Viral Lattice</p>
+              <p className="text-[10px] text-[var(--text-muted)]">
+                {stats.total > 0 ? Math.round((100 * stats.bySource.lattice) / stats.total) : 0}% of total
+              </p>
             </div>
           </div>
         </div>

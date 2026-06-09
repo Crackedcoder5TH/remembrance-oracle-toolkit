@@ -79,6 +79,10 @@ export interface LeadStats {
   byState: Record<string, number>;
   byCoverage: Record<string, number>;
   byVeteranStatus: Record<string, number>;
+  /** Submission-source counts. The three buckets overlap because every lead
+   *  is either human or agent, and lattice is a sub-cut of human/agent for
+   *  leads that came in via a viral-lattice domain redirect. */
+  bySource: { human: number; agent: number; lattice: number };
 }
 
 // =============================================================================
@@ -508,6 +512,19 @@ class PostgresAdapter implements DbAdapter {
       const vetRows = (await pool.query("SELECT veteran_status, COUNT(*) as c FROM leads GROUP BY veteran_status ORDER BY c DESC")).rows;
       for (const r of vetRows) byVeteranStatus[r.veteran_status] = parseInt(r.c, 10);
 
+      // Submission-source counts. agent and human are mutually exclusive
+      // (every lead is one or the other); lattice can overlap either,
+      // tracked independently so operators see the funnel volume.
+      const agentRow = (await pool.query(
+        `SELECT COUNT(*) as c FROM leads WHERE consent_user_agent LIKE 'AI-Agent/%'`,
+      )).rows[0];
+      const latticeRow = (await pool.query(
+        `SELECT COUNT(*) as c FROM leads WHERE lattice_src IS NOT NULL`,
+      )).rows[0];
+      const agent = parseInt(agentRow.c, 10);
+      const lattice = parseInt(latticeRow.c, 10);
+      const human = parseInt(total, 10) - agent;
+
       return Ok({
         total: parseInt(total, 10),
         today: parseInt(today, 10),
@@ -516,6 +533,7 @@ class PostgresAdapter implements DbAdapter {
         byState,
         byCoverage,
         byVeteranStatus,
+        bySource: { human, agent, lattice },
       });
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Query failed");
@@ -985,7 +1003,19 @@ class SqliteAdapter implements DbAdapter {
       const vetRows = db.prepare("SELECT veteran_status, COUNT(*) as c FROM leads GROUP BY veteran_status ORDER BY c DESC").all() as Array<{ veteran_status: string; c: number }>;
       for (const r of vetRows) byVeteranStatus[r.veteran_status] = r.c;
 
-      return Ok({ total, today, thisWeek, thisMonth, byState, byCoverage, byVeteranStatus });
+      const agent = (db.prepare(
+        "SELECT COUNT(*) as c FROM leads WHERE consent_user_agent LIKE 'AI-Agent/%'",
+      ).get() as { c: number }).c;
+      const lattice = (db.prepare(
+        "SELECT COUNT(*) as c FROM leads WHERE lattice_src IS NOT NULL",
+      ).get() as { c: number }).c;
+      const human = total - agent;
+
+      return Ok({
+        total, today, thisWeek, thisMonth,
+        byState, byCoverage, byVeteranStatus,
+        bySource: { human, agent, lattice },
+      });
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Query failed");
     }

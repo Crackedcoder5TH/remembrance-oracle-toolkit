@@ -19,6 +19,8 @@ import {
   CLIENT_SESSION_MAX_AGE,
 } from "@/app/lib/client-auth";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
+import { sendAdminPendingBuyerEmail } from "@/app/lib/email";
+import { logger } from "@/app/lib/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -96,6 +98,24 @@ export async function POST(req: NextRequest) {
     if (!result.ok) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
+
+    // Fire-and-forget admin notification — symmetric to the approval email
+    // the admin sends to the buyer. ADMIN_EMAIL gates this internally; if
+    // it isn't set the email lib no-ops. Email failure can't roll back the
+    // registration (the row already exists, the buyer is signing in).
+    sendAdminPendingBuyerEmail({
+      contactName: clientRecord.contactName,
+      companyName: clientRecord.companyName,
+      email: clientRecord.email,
+      phone: clientRecord.phone,
+      clientId: clientRecord.clientId,
+      stateLicenses: clientRecord.stateLicenses,
+    }).catch((err) => {
+      logger.error("Admin pending-buyer email failed", {
+        clientId: clientRecord.clientId,
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    });
 
     // Create session and set cookie
     const token = createPortalSessionToken({

@@ -19,6 +19,14 @@ export async function GET(req: NextRequest) {
 
   const params = req.nextUrl.searchParams;
 
+  // Submission-origin filter — whitelisted against a fixed enum (same rule
+  // as /api/admin/leads) before reaching the DB layer.
+  const sourceParam = params.get("source");
+  const ALLOWED_SOURCES = ["human", "agent", "lattice"] as const;
+  const source = (ALLOWED_SOURCES as readonly string[]).includes(sourceParam || "")
+    ? (sourceParam as "human" | "agent" | "lattice")
+    : undefined;
+
   const filters: LeadFilters = {
     state: params.get("state") || undefined,
     coverageInterest: params.get("coverage") || undefined,
@@ -26,6 +34,7 @@ export async function GET(req: NextRequest) {
     search: params.get("search") || undefined,
     startDate: params.get("startDate") || undefined,
     endDate: params.get("endDate") || undefined,
+    source,
     limit: 10000, // Export up to 10k records
     offset: 0,
   };
@@ -42,12 +51,21 @@ export async function GET(req: NextRequest) {
   const headers = [
     "Lead ID", "First Name", "Last Name", "Email", "Phone", "DOB",
     "State", "Coverage", "Purchase Intent", "Veteran Status", "Military Branch",
-    "Score", "Tier", "UTM Source", "UTM Medium", "UTM Campaign",
+    "Score", "Tier",
+    "Source", "Lattice Src", "Lattice From",
+    "UTM Source", "UTM Medium", "UTM Campaign",
     "Created At",
   ];
 
   const rows = result.value.leads.map((lead) => {
     const score = scoreLead(lead);
+    // Source classification mirrors the LeadFilters.source enum:
+    //   "agent" when the consent UA was minted by /api/agent/leads,
+    //   "human" otherwise. Lattice attribution is an independent cut
+    //   so it's reported as separate columns rather than collapsed in.
+    const submissionSource = (lead.consentUserAgent || "").startsWith("AI-Agent/")
+      ? "agent"
+      : "human";
     return [
       lead.leadId,
       lead.firstName,
@@ -62,6 +80,9 @@ export async function GET(req: NextRequest) {
       lead.militaryBranch,
       String(score.total),
       score.tier,
+      submissionSource,
+      lead.latticeSrc || "",
+      lead.latticeFrom || "",
       lead.utmSource || "",
       lead.utmMedium || "",
       lead.utmCampaign || "",

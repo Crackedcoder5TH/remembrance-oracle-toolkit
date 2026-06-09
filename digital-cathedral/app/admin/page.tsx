@@ -93,6 +93,7 @@ export default function AdminDashboard() {
   const [filterState, setFilterState] = useState("");
   const [filterCoverage, setFilterCoverage] = useState("");
   const [filterVeteran, setFilterVeteran] = useState("");
+  const [filterSource, setFilterSource] = useState<"" | "human" | "agent" | "lattice">("");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 350);
   const [page, setPage] = useState(0);
@@ -116,6 +117,7 @@ export default function AdminDashboard() {
     if (filterState) params.set("state", filterState);
     if (filterCoverage) params.set("coverage", filterCoverage);
     if (filterVeteran) params.set("veteran", filterVeteran);
+    if (filterSource) params.set("source", filterSource);
     if (debouncedSearch) params.set("search", debouncedSearch);
     params.set("limit", String(LIMIT));
     params.set("offset", String(page * LIMIT));
@@ -127,13 +129,14 @@ export default function AdminDashboard() {
       setTotal(data.total);
     }
     setLoading(false);
-  }, [filterState, filterCoverage, filterVeteran, debouncedSearch, page]);
+  }, [filterState, filterCoverage, filterVeteran, filterSource, debouncedSearch, page]);
 
   const handleExport = () => {
     const params = new URLSearchParams();
     if (filterState) params.set("state", filterState);
     if (filterCoverage) params.set("coverage", filterCoverage);
     if (filterVeteran) params.set("veteran", filterVeteran);
+    if (filterSource) params.set("source", filterSource);
     if (search) params.set("search", search);
 
     fetch(`/api/admin/export?${params}`)
@@ -300,10 +303,10 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => router.push("/admin/leads")}
+            onClick={() => router.push("/admin/seed")}
             className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >
-            Lead Management
+            Seed Test Data
           </button>
           <button
             onClick={() => router.push("/admin/clients")}
@@ -557,8 +560,22 @@ export default function AdminDashboard() {
             <option value="veteran">Veteran</option>
             <option value="non-military">Non-Military</option>
           </select>
+          <select
+            value={filterSource}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+              setFilterSource(e.target.value as "" | "human" | "agent" | "lattice");
+              setPage(0);
+            }}
+            aria-label="Filter by submission source"
+            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
+          >
+            <option value="">All Sources</option>
+            <option value="human">Human-submitted</option>
+            <option value="agent">AI-Agent-submitted</option>
+            <option value="lattice">From viral lattice</option>
+          </select>
           <button
-            onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setSearch(""); setPage(0); }}
+            onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setFilterSource(""); setSearch(""); setPage(0); }}
             className="text-sm text-teal-cathedral underline py-2"
           >
             Clear Filters

@@ -49,6 +49,14 @@ export async function GET(req: NextRequest) {
   const searchParam = params.get("search") || undefined;
   const search = searchParam && searchParam.length <= 200 ? searchParam : undefined;
 
+  // Submission-origin filter — whitelisted to a fixed enum so it can be
+  // dropped straight into a SQL fragment that hard-codes the LIKE pattern.
+  const sourceParam = params.get("source");
+  const ALLOWED_SOURCES = ["human", "agent", "lattice"] as const;
+  const source = (ALLOWED_SOURCES as readonly string[]).includes(sourceParam || "")
+    ? (sourceParam as "human" | "agent" | "lattice")
+    : undefined;
+
   const filters: LeadFilters = {
     state: stateParam,
     coverageInterest: coverageParam,
@@ -56,6 +64,7 @@ export async function GET(req: NextRequest) {
     search,
     startDate: params.get("startDate") || undefined,
     endDate: params.get("endDate") || undefined,
+    source,
     limit: Math.min(parseInt(params.get("limit") || "50") || 50, 200),
     offset: parseInt(params.get("offset") || "0") || 0,
   };

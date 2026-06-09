@@ -212,6 +212,8 @@ export async function POST(req: NextRequest) {
       utmCampaign: validated.utmCampaign || null,
       utmTerm: validated.utmTerm || null,
       utmContent: validated.utmContent || null,
+      latticeSrc: validated.latticeSrc || null,
+      latticeFrom: validated.latticeFrom || null,
       createdAt: new Date().toISOString(),
     };
 

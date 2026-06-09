@@ -157,7 +157,10 @@ export default function PortalRegisterPage() {
           </div>
           <h1 className="text-2xl font-light text-[var(--text-primary)]">Create your account</h1>
           <p className="text-sm text-[var(--text-muted)] mt-2">
-            Licensed insurance professionals only. We&apos;ll verify your license before activating your account.
+            Licensed insurance professionals only. You can sign in right away;
+            your account stays in pending review until our team verifies your
+            license — typically one business day. You&apos;ll receive an email
+            the moment marketplace access unlocks.
           </p>
         </div>
 

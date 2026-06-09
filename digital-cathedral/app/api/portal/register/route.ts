@@ -73,7 +73,12 @@ export async function POST(req: NextRequest) {
       email: email.trim().toLowerCase(),
       phone: (phone || "").trim(),
       passwordHash,
-      status: "active",
+      // New accounts start "pending" — admin license verification gate.
+      // verifyClient (app/lib/client-auth.ts) only authorizes "active" rows,
+      // so /api/client/* calls 401 until admin approves on /admin/clients.
+      // Session cookies are still minted below so the buyer can sign in and
+      // see the "awaiting verification" state on /portal/dashboard.
+      status: "pending",
       pricingTier: "standard",
       pricePerLead: 2500,
       exclusivePrice: 5000,

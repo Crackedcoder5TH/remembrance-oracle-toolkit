@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyPortalSessionToken, PORTAL_SESSION_COOKIE } from "@/app/lib/portal-session";
 import { getClientLeads, getClientMessages, getClientDocuments } from "@/app/lib/database";
+import { getClientByEmail } from "@/app/lib/client-database";
 
 export async function GET(req: NextRequest) {
   const cookie = req.cookies.get(PORTAL_SESSION_COOKIE)?.value;
@@ -13,11 +14,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
-  // Fetch client data in parallel
-  const [leadsResult, messagesResult, documentsResult] = await Promise.all([
+  // Fetch client data + the buyer's verification status in parallel.
+  // Status drives the pending-verification banner on /portal/dashboard.
+  const [leadsResult, messagesResult, documentsResult, clientResult] = await Promise.all([
     getClientLeads(session.email),
     getClientMessages(session.id),
     getClientDocuments(session.id),
+    getClientByEmail(session.email),
   ]);
 
   // If all queries failed, the database is likely down
@@ -28,6 +31,10 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const clientStatus = clientResult.ok && clientResult.value
+    ? clientResult.value.status
+    : null;
+
   return NextResponse.json({
     authenticated: true,
     user: {
@@ -36,6 +43,10 @@ export async function GET(req: NextRequest) {
       firstName: session.firstName,
       lastName: session.lastName,
     },
+    /** Buyer's license-verification status. Drives the dashboard gating —
+     *  null means there's no client row (admin owner, demo mode, or the
+     *  client-database service is down). */
+    clientStatus,
     leads: leadsResult.ok ? leadsResult.value : [],
     messages: messagesResult.ok ? messagesResult.value : [],
     documents: documentsResult.ok ? documentsResult.value : [],

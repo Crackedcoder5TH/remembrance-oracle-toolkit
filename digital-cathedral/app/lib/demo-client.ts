@@ -53,6 +53,7 @@ export function getDemoClientStats(): ClientStats {
   return {
     totalClients: 1,
     activeClients: 1,
+    pendingClients: 0,
     totalPurchases: 0,
     totalRevenue: 0,
     revenueThisMonth: 0,

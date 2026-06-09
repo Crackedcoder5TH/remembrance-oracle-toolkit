@@ -399,6 +399,7 @@ export class PostgresClientAdapter implements ClientDbAdapter {
       const pool = await this.getPool();
       const totalClients = parseInt((await pool.query("SELECT COUNT(*) as c FROM clients")).rows[0].c, 10);
       const activeClients = parseInt((await pool.query("SELECT COUNT(*) as c FROM clients WHERE status = 'active'")).rows[0].c, 10);
+      const pendingClients = parseInt((await pool.query("SELECT COUNT(*) as c FROM clients WHERE status = 'pending'")).rows[0].c, 10);
       const totalPurchases = parseInt((await pool.query("SELECT COUNT(*) as c FROM lead_purchases")).rows[0].c, 10);
       const totalRevR = await pool.query("SELECT COALESCE(SUM(price_paid),0) as s FROM lead_purchases WHERE status != 'returned'");
       const totalRevenue = parseInt(totalRevR.rows[0].s, 10);
@@ -409,7 +410,7 @@ export class PostgresClientAdapter implements ClientDbAdapter {
       const disputesR = await pool.query("SELECT COUNT(*) as c FROM lead_purchases WHERE status = 'disputed'");
       const disputesOpen = parseInt(disputesR.rows[0].c, 10);
 
-      return Ok({ totalClients, activeClients, totalPurchases, totalRevenue, revenueThisMonth, purchasesThisMonth, disputesOpen });
+      return Ok({ totalClients, activeClients, pendingClients, totalPurchases, totalRevenue, revenueThisMonth, purchasesThisMonth, disputesOpen });
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Stats failed");
     }

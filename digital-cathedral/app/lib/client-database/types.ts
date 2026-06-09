@@ -70,6 +70,9 @@ export interface ClientListFilters {
 export interface ClientStats {
   totalClients: number;
   activeClients: number;
+  /** Buyers self-registered + awaiting admin license verification.
+   *  Surfaced as a count badge on /admin so operators see the queue. */
+  pendingClients: number;
   totalPurchases: number;
   totalRevenue: number;
   revenueThisMonth: number;

@@ -86,6 +86,9 @@ const COVERAGE_LABELS: Record<string, string> = {
 export default function AdminDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
+  /** Buyers awaiting license review — surfaced as a badge on the
+   *  Client Management button so operators see the queue. */
+  const [pendingClients, setPendingClients] = useState(0);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -101,14 +104,24 @@ export default function AdminDashboard() {
   const LIMIT = 25;
 
   const fetchStats = useCallback(async () => {
-    const res = await fetch("/api/admin/stats");
-    if (res.status === 401 || res.status === 403) {
+    // Lead stats + client stats fetched in parallel so the dashboard hydrates
+    // in one round-trip. /api/admin/revenue carries the pending-client count
+    // (see ClientStats.pendingClients).
+    const [leadRes, clientRes] = await Promise.all([
+      fetch("/api/admin/stats"),
+      fetch("/api/admin/revenue").catch(() => null),
+    ]);
+    if (leadRes.status === 401 || leadRes.status === 403) {
       router.push("/admin/login");
       return;
     }
-    if (res.ok) {
-      const data = await res.json();
+    if (leadRes.ok) {
+      const data = await leadRes.json();
       setStats(data.stats);
+    }
+    if (clientRes && clientRes.ok) {
+      const data = await clientRes.json();
+      setPendingClients(data?.stats?.pendingClients ?? 0);
     }
   }, [router]);
 
@@ -310,10 +323,21 @@ export default function AdminDashboard() {
             Seed Test Data
           </button>
           <button
-            onClick={() => router.push("/admin/clients")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+            onClick={() => router.push("/admin/clients?status=pending")}
+            className="relative px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+            title={pendingClients > 0
+              ? `${pendingClients} buyer${pendingClients === 1 ? "" : "s"} awaiting license verification`
+              : undefined}
           >
             Client Management
+            {pendingClients > 0 && (
+              <span
+                aria-label={`${pendingClients} pending verification`}
+                className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-400 text-amber-900 text-[10px] font-semibold flex items-center justify-center border border-amber-500"
+              >
+                {pendingClients > 99 ? "99+" : pendingClients}
+              </span>
+            )}
           </button>
           <button
             onClick={() => router.push("/admin/pricing")}

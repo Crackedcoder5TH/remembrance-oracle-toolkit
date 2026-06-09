@@ -317,6 +317,13 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-3">
           <button
+            onClick={() => router.push("/admin/field")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-indigo-cathedral text-white hover:bg-indigo-cathedral/90"
+            title="Fractal field — every operational number for the website in one view"
+          >
+            Field
+          </button>
+          <button
             onClick={() => router.push("/admin/seed")}
             className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >

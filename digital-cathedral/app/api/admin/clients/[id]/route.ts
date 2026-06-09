@@ -7,6 +7,8 @@ import {
   getClientFilters,
   hashPassword,
 } from "@/app/lib/client-database";
+import { sendBuyerApprovedEmail } from "@/app/lib/email";
+import { logger } from "@/app/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -98,9 +100,38 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // Handle password change
     if (body.password) updates.passwordHash = hashPassword(body.password);
 
+    // Look up the prior state so we can detect a pending → active transition
+    // and fire the approval email. Done before updateClient so we read the
+    // row as it existed pre-update.
+    let priorClient: import("@/app/lib/client-database").ClientRecord | null = null;
+    const flippingToActive = "status" in updates && updates.status === "active";
+    if (flippingToActive) {
+      const priorRead = await getClientById(id);
+      if (priorRead.ok && priorRead.value?.status === "pending") {
+        priorClient = priorRead.value;
+      }
+    }
+
     const result = await updateClient(id, updates);
     if (!result.ok) {
       return NextResponse.json({ success: false, message: result.error }, { status: 500 });
+    }
+
+    // License-verified → marketplace unlocks. Fire-and-forget; email failure
+    // doesn't roll back the status change. The email lib already degrades to
+    // console.log when SMTP isn't configured, so this is safe on every env.
+    if (priorClient) {
+      const c = priorClient;
+      sendBuyerApprovedEmail({
+        contactName: c.contactName || c.companyName,
+        email: c.email,
+        clientId: c.clientId,
+      }).catch((err) => {
+        logger.error("Buyer approval email failed", {
+          clientId: c.clientId,
+          detail: err instanceof Error ? err.message : String(err),
+        });
+      });
     }
 
     return NextResponse.json({ success: true, updated: result.value.updated });

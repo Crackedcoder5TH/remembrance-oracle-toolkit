@@ -26,6 +26,11 @@ export const FEATURE_ENV = [
   "TWILIO_ACCOUNT_SID",
   "TWILIO_AUTH_TOKEN",
   "STRIPE_SECRET_KEY",
+  // The webhook secret is environment-scoped on Stripe's side (test vs live
+  // have different values) and the most common deployment mistake is shipping
+  // the test-mode secret to production. Surface it on the ops dashboard so
+  // operators can verify both halves of the Stripe pair are set.
+  "STRIPE_WEBHOOK_SECRET",
   "NEXT_PUBLIC_SENTRY_DSN",
   "CRM_PROVIDER",
   "WEBHOOK_URLS",

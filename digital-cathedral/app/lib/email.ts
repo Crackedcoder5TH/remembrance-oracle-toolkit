@@ -355,3 +355,167 @@ export async function sendAdminNotificationEmail(lead: {
     }
   }
 }
+
+/**
+ * Notify a buyer that their license has been verified and the marketplace
+ * has unlocked. Fired by the admin when status flips pending → active.
+ * Falls back to console.log when SMTP isn't configured (existing pattern).
+ */
+export async function sendBuyerApprovedEmail(client: {
+  contactName: string;
+  email: string;
+  clientId: string;
+}): Promise<void> {
+  const companyName = getCompanyName();
+  const fromAddress = getFromAddress();
+  const siteUrl = getSiteUrl();
+
+  const subject = `${companyName} — Your buyer account is approved`;
+
+  const text = [
+    `Hi ${client.contactName},`,
+    ``,
+    `Good news — your license has been verified and your buyer account is active.`,
+    `You can now sign in and browse leads on the marketplace.`,
+    ``,
+    `Sign in:     ${siteUrl}/portal/login`,
+    `Marketplace: ${siteUrl}/portal/marketplace`,
+    ``,
+    `Your account reference: ${client.clientId}`,
+    ``,
+    `If you have any questions, just reply to this email.`,
+    ``,
+    `Best regards,`,
+    `The ${companyName} Team`,
+  ].join("\n");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; color: #1A1A2E; background-color: #FAFBFC;">
+  <div style="background-color: #1B2D4F; padding: 24px 32px;">
+    <h1 style="font-size: 20px; font-weight: 600; color: #FFFFFF; margin: 0;">${companyName}</h1>
+    <p style="font-size: 12px; color: #6BA3D6; margin: 4px 0 0 0; letter-spacing: 0.1em;">BUYER PORTAL</p>
+  </div>
+  <div style="padding: 32px; background-color: #FFFFFF;">
+    <p style="font-size: 16px; margin-top: 0;">Hi <strong>${client.contactName}</strong>,</p>
+    <p>Good news — your license has been verified and your buyer account is now <strong>active</strong>. The marketplace and lead purchase have unlocked.</p>
+    <div style="margin: 24px 0;">
+      <a href="${siteUrl}/portal/marketplace" style="display: inline-block; background-color: #2D8659; color: #FFFFFF; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Browse leads</a>
+      &nbsp;
+      <a href="${siteUrl}/portal/login" style="display: inline-block; background-color: #F0F2F5; color: #1B2D4F; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Sign in</a>
+    </div>
+    <div style="background: #F0F2F5; padding: 12px 16px; border-radius: 6px; display: inline-block; margin: 8px 0 16px 0;">
+      <span style="font-size: 11px; color: #5A6377; text-transform: uppercase; letter-spacing: 0.05em;">Account reference</span><br>
+      <span style="font-family: monospace; font-size: 14px; color: #1A1A2E;">${client.clientId}</span>
+    </div>
+    <p style="font-size: 13px; color: #5A6377;">If you have any questions, just reply to this email and our team will help.</p>
+  </div>
+  <div style="background-color: #F0F2F5; padding: 20px 32px; border-top: 1px solid #E0E4EA;">
+    <p style="margin: 0 0 8px 0; font-size: 13px; color: #5A6377;">Best regards,<br>The ${companyName} Team</p>
+  </div>
+</body>
+</html>`.trim();
+
+  try {
+    await withCircuitBreaker(
+      () => sendEmail({ to: client.email, from: fromAddress, subject, text, html }),
+      { name: "email-buyer-approved", failureThreshold: 5, resetTimeout: 60_000 },
+    );
+    console.log(`[EMAIL] Approval sent to ${client.email} for client ${client.clientId}`);
+  } catch (err) {
+    if (err instanceof CircuitOpenError) {
+      console.warn(`[EMAIL] Circuit open — skipping approval email for ${client.clientId}. ${err.message}`);
+    } else {
+      throw err;
+    }
+  }
+}
+
+/**
+ * Notify the admin that a new buyer has registered and is awaiting
+ * license verification. Symmetric to sendBuyerApprovedEmail — fired by
+ * /api/portal/register right after the client row is created. Sends to
+ * ADMIN_EMAIL (the env var the admin-lead-notification email also uses).
+ * Falls back to console.log when SMTP or ADMIN_EMAIL is missing.
+ */
+export async function sendAdminPendingBuyerEmail(client: {
+  contactName: string;
+  companyName: string;
+  email: string;
+  phone: string;
+  clientId: string;
+  stateLicenses?: string;
+}): Promise<void> {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) return; // No admin email configured — skip silently
+
+  const companyName = getCompanyName();
+  const fromAddress = getFromAddress();
+  const siteUrl = getSiteUrl();
+
+  // stateLicenses comes in as a JSON-stringified array of state codes.
+  // Best-effort parse — render the raw string if parse fails.
+  let licenseStates = "(none provided)";
+  try {
+    const arr = client.stateLicenses ? (JSON.parse(client.stateLicenses) as string[]) : [];
+    licenseStates = arr.length > 0 ? arr.join(", ") : "(none provided)";
+  } catch {
+    licenseStates = client.stateLicenses || "(unparseable)";
+  }
+
+  const subject = `${companyName} — New buyer awaiting license verification`;
+
+  const text = [
+    `A new buyer has registered and is waiting for license verification.`,
+    ``,
+    `Name:     ${client.contactName}`,
+    `Email:    ${client.email}`,
+    `Phone:    ${client.phone || "(not provided)"}`,
+    `License:  ${licenseStates}`,
+    `Account:  ${client.clientId}`,
+    ``,
+    `Review and approve: ${siteUrl}/admin/clients?status=pending`,
+  ].join("\n");
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 0; color: #1A1A2E; background-color: #FAFBFC;">
+  <div style="background-color: #1B2D4F; padding: 24px 32px;">
+    <h1 style="font-size: 20px; font-weight: 600; color: #FFFFFF; margin: 0;">${companyName} — Admin</h1>
+    <p style="font-size: 12px; color: #6BA3D6; margin: 4px 0 0 0; letter-spacing: 0.1em;">BUYER VERIFICATION QUEUE</p>
+  </div>
+  <div style="padding: 32px; background-color: #FFFFFF;">
+    <p style="font-size: 15px; margin-top: 0;">A new buyer has registered and is awaiting license verification.</p>
+    <table style="width: 100%; margin: 16px 0; font-size: 14px; border-collapse: collapse;">
+      <tr><td style="padding: 6px 0; color: #5A6377; width: 110px;">Name</td><td style="padding: 6px 0; color: #1A1A2E;"><strong>${client.contactName}</strong></td></tr>
+      <tr><td style="padding: 6px 0; color: #5A6377;">Email</td><td style="padding: 6px 0;"><a href="mailto:${client.email}" style="color: #2D8659;">${client.email}</a></td></tr>
+      <tr><td style="padding: 6px 0; color: #5A6377;">Phone</td><td style="padding: 6px 0; color: #1A1A2E;">${client.phone || "(not provided)"}</td></tr>
+      <tr><td style="padding: 6px 0; color: #5A6377;">License states</td><td style="padding: 6px 0; color: #1A1A2E;">${licenseStates}</td></tr>
+      <tr><td style="padding: 6px 0; color: #5A6377;">Account ID</td><td style="padding: 6px 0; color: #1A1A2E; font-family: monospace; font-size: 12px;">${client.clientId}</td></tr>
+    </table>
+    <div style="margin: 24px 0;">
+      <a href="${siteUrl}/admin/clients?status=pending" style="display: inline-block; background-color: #2D8659; color: #FFFFFF; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">Review pending queue</a>
+    </div>
+    <p style="font-size: 13px; color: #5A6377;">The buyer has been told their account will be active within one business day. Approving them automatically sends them a confirmation email + unlocks the marketplace.</p>
+  </div>
+</body>
+</html>`.trim();
+
+  try {
+    await withCircuitBreaker(
+      () => sendEmail({ to: adminEmail, from: fromAddress, subject, text, html }),
+      { name: "email-admin-pending-buyer", failureThreshold: 5, resetTimeout: 60_000 },
+    );
+    console.log(`[EMAIL] Admin pending-buyer notification sent for ${client.clientId}`);
+  } catch (err) {
+    if (err instanceof CircuitOpenError) {
+      console.warn(`[EMAIL] Circuit open — skipping admin pending-buyer email for ${client.clientId}. ${err.message}`);
+    } else {
+      throw err;
+    }
+  }
+}

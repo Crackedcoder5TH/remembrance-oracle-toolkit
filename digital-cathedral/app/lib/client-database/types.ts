@@ -17,7 +17,14 @@ export interface ClientRecord {
   email: string;
   phone: string;
   passwordHash: string;
-  status: "active" | "suspended" | "closed";
+  /** Lifecycle:
+   *   "pending"   — self-registered, awaiting admin license verification.
+   *                 Can sign in to see the pending state, but verifyClient
+   *                 rejects any /api/client/* call until promoted to active.
+   *   "active"    — license verified by admin; full marketplace access.
+   *   "suspended" — temporarily blocked (compliance issue / refund dispute).
+   *   "closed"    — terminal state, account never returns. */
+  status: "pending" | "active" | "suspended" | "closed";
   pricingTier: string; // e.g. "standard", "premium", "enterprise"
   pricePerLead: number; // cents
   exclusivePrice: number; // cents — price for exclusive leads
@@ -63,6 +70,9 @@ export interface ClientListFilters {
 export interface ClientStats {
   totalClients: number;
   activeClients: number;
+  /** Buyers self-registered + awaiting admin license verification.
+   *  Surfaced as a count badge on /admin so operators see the queue. */
+  pendingClients: number;
   totalPurchases: number;
   totalRevenue: number;
   revenueThisMonth: number;

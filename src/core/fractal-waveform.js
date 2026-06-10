@@ -258,10 +258,270 @@ function fractalCoherencyOf(textA, textB) {
   return fractalCoherency(toFractalWaveform(textA), toFractalWaveform(textB));
 }
 
+// ── Fractal recursion ────────────────────────────────────────────────
+//
+// The encoder applied to its own output. Same 29-D function at every
+// level; each level resolves the structure of the previous level's
+// vector. Mirrors the cascade architecture: when one layer's
+// resolution is exhausted, recurse to the next zoom.
+//
+//   F^0(text) = toFractalWaveform(text)                    — 29-D shape
+//   F^1(text) = F(stringify(F^0(text)))                    — shape of shape
+//   F^k(text) = F^1 applied k times                        — structure at depth k
+//
+// Cost: linear in k (each level is one fractal encode of ~250-char
+// JSON serialization). Resolution: compounds across levels because
+// each level's input is itself a structured representation.
+//
+// Use case: hard-to-discriminate patterns where F^0 returns near-equal
+// signatures for distinct inputs. F^k surfaces the fine-grained
+// structural differences that F^0 collapses.
+
+// Dim names track the encoder's atomic + structural dimensions.
+// Used by _structuredFractalString to emit code-like tokens whose
+// density mirrors each dim's value, so the next-level encoder reads
+// structural variation rather than a flat number list.
+const _DIM_NAMES = [
+  'charge', 'valence', 'mass', 'spin', 'phase', 'reactivity', 'electronegativity',
+  'group', 'period', 'safety', 'alignment', 'intention',
+  'd0', 'd1', 'd2', 'd3', 'd4', 'keywords', 'identifiers', 'strings', 'numbers', 'operators',
+  'branches', 'loops', 'functions', 'returns', 'errors', 'comments', 'structurality',
+];
+
+function _stringifyFractal(v) {
+  // Emit code-like tokens whose density per-dim reflects each dim's
+  // value. The naïve `JSON.stringify(v)` collapses — the encoder
+  // counts `function`, `return`, branches, etc., which a flat number
+  // list does not contain. This serialization emits those constructs
+  // in counts proportional to the dim values, so the next recursion
+  // discriminates rather than smooths.
+  const parts = [];
+  for (let i = 0; i < v.length; i++) {
+    const val = Math.max(0, Math.min(1, Number(v[i]) || 0));
+    const count = Math.round(val * 10);   // 0..10 emissions per dim
+    if (count === 0) continue;
+    const name = _DIM_NAMES[i] || ('d' + i);
+    for (let j = 0; j < count; j++) {
+      // Vary the emitted construct per index so the encoder reads
+      // different dims via different circuits:
+      //   keyword dims  → function declarations + returns
+      //   branch dims   → if/else blocks
+      //   loop dims     → for/while constructs
+      //   error dims    → try/catch + throw
+      //   side dims     → console.log / push
+      const idxKind = i % 6;
+      if (idxKind === 0) parts.push(`function ${name}_${j}() { return ${val.toFixed(3)}; }`);
+      else if (idxKind === 1) parts.push(`const ${name}_${j} = require('./${name}');`);
+      else if (idxKind === 2) parts.push(`if (${name} > ${val.toFixed(3)}) { return ${name}.push(${j}); }`);
+      else if (idxKind === 3) parts.push(`for (let ${name}_${j} = 0; ${name}_${j} < ${count}; ${name}_${j}++) { ${name}.map(x => x + ${val.toFixed(3)}); }`);
+      else if (idxKind === 4) parts.push(`try { throw new Error('${name}_${j}'); } catch (e) { console.log(e); }`);
+      else                   parts.push(`class ${name}_${j} { constructor() { this.value = ${val.toFixed(3)}; } }`);
+    }
+  }
+  return parts.join('\n');
+}
+
+/**
+ * Encode `text` through `depth` recursive applications of
+ * toFractalWaveform. depth=0 returns the standard fractal vector;
+ * depth=k applies the encoder k+1 times total.
+ *
+ * @param {string} text
+ * @param {number} [depth=0]   — recursion depth (0 = standard encoder)
+ * @returns {Float64Array}     — 29-D vector at the requested depth
+ */
+function toFractalWaveformRecursive(text, depth = 0) {
+  let v = toFractalWaveform(text);
+  for (let i = 0; i < depth; i++) {
+    v = toFractalWaveform(_stringifyFractal(v));
+  }
+  return v;
+}
+
+/**
+ * Cosine between two patterns at fractal depth `depth`. Both inputs
+ * encoded through the same number of recursions, then compared.
+ */
+function fractalCoherencyOfRecursive(textA, textB, depth = 0) {
+  return fractalCoherency(
+    toFractalWaveformRecursive(textA, depth),
+    toFractalWaveformRecursive(textB, depth),
+  );
+}
+
+/**
+ * Encode through depths 0..maxDepth, returning the full ladder.
+ * Useful for diagnostic queries where you want to see how a pattern's
+ * signature evolves across recursion levels.
+ *
+ * Note: pure recursion of the encoder against its own output saturates
+ * quickly because the encoder's 29-D output space projects re-encoded
+ * inputs into a smaller subspace at each level. The honestly-useful
+ * fractal property is `toFractalMultiScale` below.
+ */
+function toFractalLadder(text, maxDepth = 3) {
+  const out = [];
+  let v = toFractalWaveform(text);
+  out.push(v);
+  for (let i = 0; i < maxDepth; i++) {
+    v = toFractalWaveform(_stringifyFractal(v));
+    out.push(v);
+  }
+  return out;
+}
+
+// ── Multi-scale fractal encoding ─────────────────────────────────
+//
+// The structurally-honest "fractal" property of the encoder: apply it
+// at different scales (chunk sizes) of the input, not recursively
+// against its own output. Each scale captures nuance the others miss.
+// Whole-text encoding sees overall shape; line-level sees local
+// structure; token-level sees micro-grammar. Concatenated vectors
+// preserve all scales' signatures.
+//
+// This is the fractal recursion the framework's "self-similar at every
+// scale" principle implies: same function applied at multiple zooms of
+// the same artifact, not the same function iterated against its own
+// output.
+
+/**
+ * Encode `text` at multiple scales and concatenate into a single
+ * vector. Default scales: `[whole, halves, quarters, lines]`. Each
+ * scale contributes 29 dims, so default output is 4 * 29 = 116-D.
+ *
+ * @param {string} text
+ * @param {object} [opts]
+ *   scales?: ('whole'|'halves'|'quarters'|'lines'|'sentences')[]
+ *            default ['whole', 'halves', 'quarters', 'lines']
+ * @returns {Float64Array}     — 29 * scales.length dimensions
+ */
+function toFractalMultiScale(text, opts = {}) {
+  const scales = opts.scales || ['whole', 'halves', 'quarters', 'lines'];
+  const parts = [];
+  for (const scale of scales) {
+    parts.push(_encodeAtScale(text, scale));
+  }
+  const out = new Float64Array(parts.length * FRACTAL_DIM);
+  for (let i = 0; i < parts.length; i++) {
+    for (let j = 0; j < FRACTAL_DIM; j++) {
+      out[i * FRACTAL_DIM + j] = parts[i][j];
+    }
+  }
+  return out;
+}
+
+function _encodeAtScale(text, scale) {
+  if (scale === 'whole') return toFractalWaveform(text);
+  if (scale === 'halves') return _meanAcross(_chunks(text, 2));
+  if (scale === 'quarters') return _meanAcross(_chunks(text, 4));
+  if (scale === 'lines') return _meanAcross(text.split('\n').filter(s => s.trim().length > 0));
+  if (scale === 'sentences') return _meanAcross(text.split(/[.!?]\s+/).filter(s => s.trim().length > 0));
+  return toFractalWaveform(text);
+}
+
+function _chunks(text, n) {
+  if (n <= 1) return [text];
+  const size = Math.max(1, Math.ceil(text.length / n));
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const start = i * size;
+    if (start >= text.length) break;
+    out.push(text.slice(start, start + size));
+  }
+  return out;
+}
+
+function _meanAcross(chunks) {
+  if (!chunks.length) return new Float64Array(FRACTAL_DIM);
+  const vectors = chunks.map(c => toFractalWaveform(c));
+  const out = new Float64Array(FRACTAL_DIM);
+  for (const v of vectors) {
+    for (let i = 0; i < FRACTAL_DIM; i++) out[i] += v[i];
+  }
+  for (let i = 0; i < FRACTAL_DIM; i++) out[i] /= vectors.length;
+  return out;
+}
+
+/**
+ * Cosine between two patterns at the multi-scale fractal encoding.
+ */
+function fractalCoherencyMultiScale(textA, textB, opts) {
+  const a = toFractalMultiScale(textA, opts);
+  const b = toFractalMultiScale(textB, opts);
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i];
+  }
+  if (na < 1e-12 || nb < 1e-12) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+// ── Composed L1 + L2 encoding ───────────────────────────────────
+//
+// Per the architectural principle: don't change the original encoder,
+// add another one on top that picks up what the first missed.
+//
+// L1 (toFractalWaveform, this module) captures structural shape —
+// atomic properties, depth, density of constructs.
+// L2 (toLexicalWaveform, src/core/lexical-waveform.js) captures
+// lexical character — naming conventions, vocabulary entropy,
+// formatting, stylistic markers, content type.
+//
+// The composer concatenates them into a 58-D vector that resolves
+// nuance L1 alone misses without disturbing L1's structurality gate.
+
+let _toLexicalWaveform = null;
+try {
+  _toLexicalWaveform = require('./lexical-waveform').toLexicalWaveform;
+} catch (_) { /* L2 unavailable — composed falls back to L1 only */ }
+
+/**
+ * Concatenate the L1 structural fractal (29-D) with the L2 lexical
+ * fractal (29-D) into a single 58-D signature. If L2 is unreachable,
+ * returns just the 29-D L1 vector.
+ *
+ * @param {string} text
+ * @returns {Float64Array}    — 58-D when L2 available, 29-D otherwise
+ */
+function toComposedWaveform(text) {
+  const l1 = toFractalWaveform(text);
+  if (!_toLexicalWaveform) return l1;
+  const l2 = _toLexicalWaveform(text);
+  const out = new Float64Array(l1.length + l2.length);
+  for (let i = 0; i < l1.length; i++) out[i] = l1[i];
+  for (let i = 0; i < l2.length; i++) out[l1.length + i] = l2[i];
+  return out;
+}
+
+/**
+ * Cosine between two composed (L1 + L2) signatures.
+ */
+function composedCoherency(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i];
+  }
+  if (na < 1e-12 || nb < 1e-12) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+function composedCoherencyOf(textA, textB) {
+  return composedCoherency(toComposedWaveform(textA), toComposedWaveform(textB));
+}
+
 module.exports = {
   FRACTAL_DIM,
   toFractalWaveform,
+  toFractalWaveformRecursive,
+  toFractalLadder,
+  toFractalMultiScale,
+  toComposedWaveform,
   inspectFractalWaveform,
   fractalCoherency,
   fractalCoherencyOf,
+  fractalCoherencyOfRecursive,
+  fractalCoherencyMultiScale,
+  composedCoherency,
+  composedCoherencyOf,
 };

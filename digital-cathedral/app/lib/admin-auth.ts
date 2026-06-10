@@ -22,11 +22,27 @@ import {
 } from "./admin-session";
 import { logger } from "./logger";
 
-/** Comma-separated list of admin emails (case-insensitive). */
-const ADMIN_EMAILS = (process.env.ADMIN_EMAILS ?? "")
-  .split(",")
-  .map((e) => e.trim().toLowerCase())
-  .filter(Boolean);
+/** Comma-separated list of admin emails (case-insensitive). Re-read on every
+ *  check so env-var rotation takes effect without a restart. */
+function getAdminEmails(): Set<string> {
+  return new Set(
+    (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+/** Check if an email address is in the admin allowlist. */
+export function isAdminEmail(email: string): boolean {
+  if (!email || typeof email !== "string") return false;
+  return getAdminEmails().has(email.trim().toLowerCase());
+}
+
+/** Role lookup used by the OAuth callback to stamp the session payload. */
+export function getRoleForEmail(email: string): "admin" | "user" {
+  return isAdminEmail(email) ? "admin" : "user";
+}
 
 /**
  * Verify admin authentication from Google session, legacy session, or bearer token.

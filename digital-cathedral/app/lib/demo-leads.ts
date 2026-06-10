@@ -180,5 +180,8 @@ export function getDemoStats(): LeadStats {
     byState,
     byCoverage,
     byVeteranStatus,
+    // Demo data is all human-submitted, none from the viral lattice — that's
+    // accurate for seeded preview data, the real numbers come from the live DB.
+    bySource: { human: DEMO_LEADS.length, agent: 0, lattice: 0 },
   };
 }

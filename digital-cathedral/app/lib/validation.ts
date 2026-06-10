@@ -105,6 +105,10 @@ export interface ValidatedLeadPayload {
   utmCampaign?: string;
   utmTerm?: string;
   utmContent?: string;
+  /** Viral-lattice node that funneled the visitor (hostname of the .xyz they hit). */
+  latticeSrc?: string;
+  /** Original path on the lattice node before middleware collapsed to /. */
+  latticeFrom?: string;
 }
 
 export type ValidationResult =
@@ -210,6 +214,8 @@ export function validateLeadPayload(body: unknown): ValidationResult {
       ...(isString(b.utmCampaign) && b.utmCampaign ? { utmCampaign: b.utmCampaign } : {}),
       ...(isString(b.utmTerm) && b.utmTerm ? { utmTerm: b.utmTerm } : {}),
       ...(isString(b.utmContent) && b.utmContent ? { utmContent: b.utmContent } : {}),
+      ...(isString(b.latticeSrc) && b.latticeSrc ? { latticeSrc: b.latticeSrc.slice(0, 253) } : {}),
+      ...(isString(b.latticeFrom) && b.latticeFrom ? { latticeFrom: b.latticeFrom.slice(0, 512) } : {}),
     },
   };
 }

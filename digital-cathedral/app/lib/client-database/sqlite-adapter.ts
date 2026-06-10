@@ -358,13 +358,14 @@ export class SqliteClientAdapter implements ClientDbAdapter {
       await this.initialize();
       const totalClients = (db.prepare("SELECT COUNT(*) as c FROM clients").get() as { c: number }).c;
       const activeClients = (db.prepare("SELECT COUNT(*) as c FROM clients WHERE status = 'active'").get() as { c: number }).c;
+      const pendingClients = (db.prepare("SELECT COUNT(*) as c FROM clients WHERE status = 'pending'").get() as { c: number }).c;
       const totalPurchases = (db.prepare("SELECT COUNT(*) as c FROM lead_purchases").get() as { c: number }).c;
       const totalRevenue = (db.prepare("SELECT COALESCE(SUM(price_paid),0) as s FROM lead_purchases WHERE status != 'returned'").get() as { s: number }).s;
       const revenueThisMonth = (db.prepare("SELECT COALESCE(SUM(price_paid),0) as s FROM lead_purchases WHERE status != 'returned' AND purchased_at >= date('now', '-30 days')").get() as { s: number }).s;
       const purchasesThisMonth = (db.prepare("SELECT COUNT(*) as c FROM lead_purchases WHERE purchased_at >= date('now', '-30 days')").get() as { c: number }).c;
       const disputesOpen = (db.prepare("SELECT COUNT(*) as c FROM lead_purchases WHERE status = 'disputed'").get() as { c: number }).c;
 
-      return Ok({ totalClients, activeClients, totalPurchases, totalRevenue, revenueThisMonth, purchasesThisMonth, disputesOpen });
+      return Ok({ totalClients, activeClients, pendingClients, totalPurchases, totalRevenue, revenueThisMonth, purchasesThisMonth, disputesOpen });
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Stats failed");
     }

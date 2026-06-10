@@ -45,6 +45,10 @@ export interface LeadRecord {
   utmCampaign: string | null;
   utmTerm: string | null;
   utmContent: string | null;
+  /** Viral-lattice node that funneled the visitor (host of the .xyz they hit). */
+  latticeSrc?: string | null;
+  /** Original path on the lattice node before middleware collapsed to /. */
+  latticeFrom?: string | null;
   createdAt: string;
 }
 
@@ -56,6 +60,13 @@ export interface LeadFilters {
   search?: string; // search firstName, lastName, or email
   startDate?: string;
   endDate?: string;
+  /** Submission origin filter:
+   *   "human"   — consent_user_agent does NOT begin with "AI-Agent/"
+   *   "agent"   — consent_user_agent BEGINS WITH "AI-Agent/" (an AI agent
+   *               submitted on behalf of a consenting user)
+   *   "lattice" — lattice_src IS NOT NULL (visitor came in via a viral
+   *               lattice host and got funneled to the primary form) */
+  source?: "human" | "agent" | "lattice";
   limit?: number;
   offset?: number;
 }
@@ -68,6 +79,10 @@ export interface LeadStats {
   byState: Record<string, number>;
   byCoverage: Record<string, number>;
   byVeteranStatus: Record<string, number>;
+  /** Submission-source counts. The three buckets overlap because every lead
+   *  is either human or agent, and lattice is a sub-cut of human/agent for
+   *  leads that came in via a viral-lattice domain redirect. */
+  bySource: { human: number; agent: number; lattice: number };
 }
 
 // =============================================================================
@@ -124,6 +139,8 @@ function rowToLead(row: Record<string, unknown>): LeadRecord {
     utmCampaign: (row.utm_campaign as string) || null,
     utmTerm: (row.utm_term as string) || null,
     utmContent: (row.utm_content as string) || null,
+    latticeSrc: (row.lattice_src as string) || null,
+    latticeFrom: (row.lattice_from as string) || null,
     createdAt: row.created_at as string,
   };
 }
@@ -219,6 +236,8 @@ class PostgresAdapter implements DbAdapter {
         utm_campaign TEXT,
         utm_term TEXT,
         utm_content TEXT,
+        lattice_src TEXT,
+        lattice_from TEXT,
         created_at TEXT NOT NULL DEFAULT (NOW()::TEXT),
         updated_at TEXT NOT NULL DEFAULT (NOW()::TEXT)
       )
@@ -230,6 +249,8 @@ class PostgresAdapter implements DbAdapter {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_state ON leads(state)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id)`);
+    // Index lattice_src so the admin "by source" cut is cheap on big tables.
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_leads_lattice_src ON leads(lattice_src)`);
 
     // Migration: add columns if they don't exist
     const colCheck = await pool.query(`
@@ -249,6 +270,13 @@ class PostgresAdapter implements DbAdapter {
     }
     if (!columnNames.has("military_branch")) {
       await pool.query("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
+    }
+    // Backfill the lattice attribution columns on tables that pre-date them.
+    if (!columnNames.has("lattice_src")) {
+      await pool.query("ALTER TABLE leads ADD COLUMN lattice_src TEXT");
+    }
+    if (!columnNames.has("lattice_from")) {
+      await pool.query("ALTER TABLE leads ADD COLUMN lattice_from TEXT");
     }
 
     // Site content key-value table (persists admin-editable content)
@@ -315,6 +343,7 @@ class PostgresAdapter implements DbAdapter {
           consent_timestamp, consent_text, consent_ip,
           consent_user_agent, consent_page_url,
           utm_source, utm_medium, utm_campaign, utm_term, utm_content,
+          lattice_src, lattice_from,
           created_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7,
@@ -323,7 +352,8 @@ class PostgresAdapter implements DbAdapter {
           $14, $15, $16,
           $17, $18,
           $19, $20, $21, $22, $23,
-          $24
+          $24, $25,
+          $26
         ) RETURNING id`,
         [
           lead.leadId, lead.firstName, lead.lastName, lead.dateOfBirth,
@@ -333,6 +363,7 @@ class PostgresAdapter implements DbAdapter {
           lead.consentTimestamp, lead.consentText, lead.consentIp,
           lead.consentUserAgent, lead.consentPageUrl,
           lead.utmSource, lead.utmMedium, lead.utmCampaign, lead.utmTerm, lead.utmContent,
+          lead.latticeSrc ?? null, lead.latticeFrom ?? null,
           lead.createdAt,
         ],
       );
@@ -428,6 +459,13 @@ class PostgresAdapter implements DbAdapter {
         conditions.push(`created_at <= $${paramIndex++}`);
         params.push(filters.endDate);
       }
+      if (filters.source === "agent") {
+        conditions.push(`consent_user_agent LIKE 'AI-Agent/%'`);
+      } else if (filters.source === "human") {
+        conditions.push(`(consent_user_agent IS NULL OR consent_user_agent NOT LIKE 'AI-Agent/%')`);
+      } else if (filters.source === "lattice") {
+        conditions.push(`lattice_src IS NOT NULL`);
+      }
 
       const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
       const limit = filters.limit || 50;
@@ -474,6 +512,19 @@ class PostgresAdapter implements DbAdapter {
       const vetRows = (await pool.query("SELECT veteran_status, COUNT(*) as c FROM leads GROUP BY veteran_status ORDER BY c DESC")).rows;
       for (const r of vetRows) byVeteranStatus[r.veteran_status] = parseInt(r.c, 10);
 
+      // Submission-source counts. agent and human are mutually exclusive
+      // (every lead is one or the other); lattice can overlap either,
+      // tracked independently so operators see the funnel volume.
+      const agentRow = (await pool.query(
+        `SELECT COUNT(*) as c FROM leads WHERE consent_user_agent LIKE 'AI-Agent/%'`,
+      )).rows[0];
+      const latticeRow = (await pool.query(
+        `SELECT COUNT(*) as c FROM leads WHERE lattice_src IS NOT NULL`,
+      )).rows[0];
+      const agent = parseInt(agentRow.c, 10);
+      const lattice = parseInt(latticeRow.c, 10);
+      const human = parseInt(total, 10) - agent;
+
       return Ok({
         total: parseInt(total, 10),
         today: parseInt(today, 10),
@@ -482,6 +533,7 @@ class PostgresAdapter implements DbAdapter {
         byState,
         byCoverage,
         byVeteranStatus,
+        bySource: { human, agent, lattice },
       });
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Query failed");
@@ -698,6 +750,8 @@ class SqliteAdapter implements DbAdapter {
         utm_campaign TEXT,
         utm_term TEXT,
         utm_content TEXT,
+        lattice_src TEXT,
+        lattice_from TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
@@ -707,6 +761,7 @@ class SqliteAdapter implements DbAdapter {
       CREATE INDEX IF NOT EXISTS idx_leads_state ON leads(state);
       CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at);
       CREATE INDEX IF NOT EXISTS idx_leads_lead_id ON leads(lead_id);
+      CREATE INDEX IF NOT EXISTS idx_leads_lattice_src ON leads(lattice_src);
     `);
 
     // Migration: add columns to existing databases that lack them
@@ -724,6 +779,12 @@ class SqliteAdapter implements DbAdapter {
     }
     if (!columnNames.has("military_branch")) {
       db.exec("ALTER TABLE leads ADD COLUMN military_branch TEXT NOT NULL DEFAULT ''");
+    }
+    if (!columnNames.has("lattice_src")) {
+      db.exec("ALTER TABLE leads ADD COLUMN lattice_src TEXT");
+    }
+    if (!columnNames.has("lattice_from")) {
+      db.exec("ALTER TABLE leads ADD COLUMN lattice_from TEXT");
     }
 
     // Site content key-value table
@@ -789,6 +850,7 @@ class SqliteAdapter implements DbAdapter {
           consent_timestamp, consent_text, consent_ip,
           consent_user_agent, consent_page_url,
           utm_source, utm_medium, utm_campaign, utm_term, utm_content,
+          lattice_src, lattice_from,
           created_at
         ) VALUES (
           ?, ?, ?, ?, ?, ?, ?,
@@ -797,6 +859,7 @@ class SqliteAdapter implements DbAdapter {
           ?, ?, ?,
           ?, ?,
           ?, ?, ?, ?, ?,
+          ?, ?,
           ?
         )
       `);
@@ -809,6 +872,7 @@ class SqliteAdapter implements DbAdapter {
         lead.consentTimestamp, lead.consentText, lead.consentIp,
         lead.consentUserAgent, lead.consentPageUrl,
         lead.utmSource, lead.utmMedium, lead.utmCampaign, lead.utmTerm, lead.utmContent,
+        lead.latticeSrc ?? null, lead.latticeFrom ?? null,
         lead.createdAt,
       );
 
@@ -896,6 +960,13 @@ class SqliteAdapter implements DbAdapter {
         conditions.push("created_at <= ?");
         params.push(filters.endDate);
       }
+      if (filters.source === "agent") {
+        conditions.push("consent_user_agent LIKE 'AI-Agent/%'");
+      } else if (filters.source === "human") {
+        conditions.push("(consent_user_agent IS NULL OR consent_user_agent NOT LIKE 'AI-Agent/%')");
+      } else if (filters.source === "lattice") {
+        conditions.push("lattice_src IS NOT NULL");
+      }
 
       const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
       const limit = filters.limit || 50;
@@ -932,7 +1003,19 @@ class SqliteAdapter implements DbAdapter {
       const vetRows = db.prepare("SELECT veteran_status, COUNT(*) as c FROM leads GROUP BY veteran_status ORDER BY c DESC").all() as Array<{ veteran_status: string; c: number }>;
       for (const r of vetRows) byVeteranStatus[r.veteran_status] = r.c;
 
-      return Ok({ total, today, thisWeek, thisMonth, byState, byCoverage, byVeteranStatus });
+      const agent = (db.prepare(
+        "SELECT COUNT(*) as c FROM leads WHERE consent_user_agent LIKE 'AI-Agent/%'",
+      ).get() as { c: number }).c;
+      const lattice = (db.prepare(
+        "SELECT COUNT(*) as c FROM leads WHERE lattice_src IS NOT NULL",
+      ).get() as { c: number }).c;
+      const human = total - agent;
+
+      return Ok({
+        total, today, thisWeek, thisMonth,
+        byState, byCoverage, byVeteranStatus,
+        bySource: { human, agent, lattice },
+      });
     } catch (err) {
       return Err(err instanceof Error ? err.message : "Query failed");
     }

@@ -28,6 +28,7 @@ const COVERAGE_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
+  pending: "bg-sky-50 text-sky-700 border-sky-200",
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
   suspended: "bg-amber-50 text-amber-700 border-amber-200",
   closed: "bg-red-50 text-red-700 border-red-200",
@@ -331,6 +332,7 @@ export default function AdminClientsPage() {
                 className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
               >
                 <option value="">All Status</option>
+                <option value="pending">Pending Verification</option>
                 <option value="active">Active</option>
                 <option value="suspended">Suspended</option>
                 <option value="closed">Closed</option>
@@ -387,6 +389,15 @@ export default function AdminClientsPage() {
 
                 {/* Quick Actions */}
                 <div className="flex gap-2 mb-6">
+                  {selectedClient.status === "pending" && (
+                    <button
+                      onClick={() => handleUpdateClient(selectedClient.clientId, { status: "active" })}
+                      className="px-3 py-1.5 rounded text-xs bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                      title="License verified — promote to active and unlock marketplace + purchase."
+                    >
+                      Approve (verify license)
+                    </button>
+                  )}
                   {selectedClient.status === "active" && (
                     <button onClick={() => handleUpdateClient(selectedClient.clientId, { status: "suspended" })} className="px-3 py-1.5 rounded text-xs bg-amber-100 text-amber-700 hover:bg-amber-200">Suspend</button>
                   )}

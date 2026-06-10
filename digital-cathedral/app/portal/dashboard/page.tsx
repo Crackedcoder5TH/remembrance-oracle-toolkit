@@ -39,11 +39,14 @@ interface Document {
 
 type Tab = "quotes" | "documents" | "messages";
 
+type ClientStatus = "pending" | "active" | "suspended" | "closed" | null;
+
 export default function PortalDashboardPage() {
   const [user, setUser] = useState<PortalUser | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [clientStatus, setClientStatus] = useState<ClientStatus>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("quotes");
   const router = useRouter();
@@ -65,6 +68,7 @@ export default function PortalDashboardPage() {
         setLeads(data.leads || []);
         setMessages(data.messages || []);
         setDocuments(data.documents || []);
+        setClientStatus(data.clientStatus ?? null);
       })
       .catch(() => {
         router.replace("/portal/login");
@@ -139,12 +143,14 @@ export default function PortalDashboardPage() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <Link
-              href="/portal/marketplace"
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-cathedral text-white hover:bg-teal-cathedral/90 transition-colors"
-            >
-              Browse Leads
-            </Link>
+            {clientStatus === "active" && (
+              <Link
+                href="/portal/marketplace"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-teal-cathedral text-white hover:bg-teal-cathedral/90 transition-colors"
+              >
+                Browse Leads
+              </Link>
+            )}
             <Link
               href="/"
               className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
@@ -159,6 +165,48 @@ export default function PortalDashboardPage() {
             </button>
           </div>
         </div>
+
+        {/* License-verification banner — surfaces the current account state
+            so the buyer knows why marketplace + purchase actions are gated.
+            Hidden when clientStatus is "active" or null (admin/demo/no row). */}
+        {clientStatus === "pending" && (
+          <div
+            role="status"
+            className="px-4 py-3 rounded-lg text-sm bg-amber-50 text-amber-800 border border-amber-200"
+          >
+            <strong className="block mb-0.5">Awaiting license verification.</strong>
+            <span>
+              We&apos;re reviewing your insurance license. You&apos;ll get an email once
+              your account is activated — typical turnaround is one business day.
+              The marketplace and lead purchase will unlock automatically when
+              that happens.
+            </span>
+          </div>
+        )}
+        {clientStatus === "suspended" && (
+          <div
+            role="alert"
+            className="px-4 py-3 rounded-lg text-sm bg-amber-50 text-amber-800 border border-amber-200"
+          >
+            <strong className="block mb-0.5">Account temporarily suspended.</strong>
+            <span>
+              Your account is on hold pending review. Reach out to support and
+              we&apos;ll resolve it as quickly as we can.
+            </span>
+          </div>
+        )}
+        {clientStatus === "closed" && (
+          <div
+            role="alert"
+            className="px-4 py-3 rounded-lg text-sm bg-red-50 text-red-700 border border-red-200"
+          >
+            <strong className="block mb-0.5">Account closed.</strong>
+            <span>
+              This account is no longer active. Contact support if you believe
+              this is in error.
+            </span>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 border-b border-[var(--text-muted)]/10">

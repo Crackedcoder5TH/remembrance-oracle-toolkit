@@ -1,0 +1,2444 @@
+{
+  "project": "website",
+  "projectPath": "/home/user/remembrance-oracle-toolkit/digital-cathedral",
+  "timestamp": "2026-06-07T10:19:18.585Z",
+  "durationMs": 22704,
+  "filesAudited": 462,
+  "substrateSize": "~46k+ (per FieldTool)",
+  "perCategory": {
+    "docs": {
+      "n": 2,
+      "wellFormed": 0,
+      "orphan": 2,
+      "inconsistent": 0,
+      "duplicate": 0
+    },
+    "other": {
+      "n": 119,
+      "wellFormed": 110,
+      "orphan": 3,
+      "inconsistent": 0,
+      "duplicate": 16
+    },
+    "config": {
+      "n": 20,
+      "wellFormed": 7,
+      "orphan": 4,
+      "inconsistent": 0,
+      "duplicate": 2
+    },
+    "tests": {
+      "n": 136,
+      "wellFormed": 126,
+      "orphan": 1,
+      "inconsistent": 0,
+      "duplicate": 68
+    },
+    "public": {
+      "n": 5,
+      "wellFormed": 0,
+      "orphan": 1,
+      "inconsistent": 0,
+      "duplicate": 0
+    },
+    "page/marketing": {
+      "n": 34,
+      "wellFormed": 23,
+      "orphan": 0,
+      "inconsistent": 0,
+      "duplicate": 1
+    },
+    "components": {
+      "n": 17,
+      "wellFormed": 4,
+      "orphan": 3,
+      "inconsistent": 0,
+      "duplicate": 0
+    },
+    "page/portal": {
+      "n": 8,
+      "wellFormed": 5,
+      "orphan": 0,
+      "inconsistent": 0,
+      "duplicate": 0
+    },
+    "lib": {
+      "n": 56,
+      "wellFormed": 24,
+      "orphan": 8,
+      "inconsistent": 0,
+      "duplicate": 0
+    },
+    "api/payment": {
+      "n": 1,
+      "wellFormed": 0,
+      "orphan": 0,
+      "inconsistent": 1,
+      "duplicate": 0
+    },
+    "api/other": {
+      "n": 13,
+      "wellFormed": 6,
+      "orphan": 2,
+      "inconsistent": 3,
+      "duplicate": 0
+    },
+    "api/portal": {
+      "n": 14,
+      "wellFormed": 13,
+      "orphan": 0,
+      "inconsistent": 0,
+      "duplicate": 1
+    },
+    "api/leads": {
+      "n": 3,
+      "wellFormed": 0,
+      "orphan": 0,
+      "inconsistent": 1,
+      "duplicate": 0
+    },
+    "api/admin": {
+      "n": 24,
+      "wellFormed": 20,
+      "orphan": 0,
+      "inconsistent": 3,
+      "duplicate": 1
+    },
+    "page/admin": {
+      "n": 10,
+      "wellFormed": 9,
+      "orphan": 0,
+      "inconsistent": 0,
+      "duplicate": 0
+    }
+  },
+  "buckets": {
+    "A_components_incoherent": [
+      {
+        "rel": "app/protect/components/step-progress.tsx",
+        "category": "components",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9706867463251327,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/.github/workflows/dependabot-pr.yml",
+          "score": 0.9740261313081195
+        },
+        "topExternal": {
+          "name": "solana/.github/workflows/dependabot-pr.yml",
+          "score": 0.9740261313081195
+        }
+      },
+      {
+        "rel": "app/protect/components/tcpa-consent.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9726802630967079,
+        "sameProject": 1,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/compute-budget/src/compute_budget_limits.rs",
+          "score": 0.9796417254081734
+        },
+        "topExternal": {
+          "name": "solana/compute-budget/src/compute_budget_limits.rs",
+          "score": 0.9796417254081734
+        }
+      },
+      {
+        "rel": "app/protect/components/trust-signals.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9724096881133916,
+        "sameProject": 2,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/tests/database-result.test.js",
+          "score": 0.9746114655179553
+        },
+        "topExternal": {
+          "name": "oracle/tests/state-machine.test.js",
+          "score": 0.9736203157088887
+        }
+      },
+      {
+        "rel": "app/components/aeo-schema.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9479168546425856,
+        "sameProject": 1,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/components/schema-markup.tsx",
+          "score": 0.9617697605056355
+        },
+        "topExternal": {
+          "name": "solana/net/scripts/colo-utils.sh",
+          "score": 0.9483550362932349
+        }
+      },
+      {
+        "rel": "app/components/animated-text.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9628012562798578,
+        "sameProject": 2,
+        "sameCategory": 2,
+        "duplicates": [],
+        "topCousin": {
+          "name": "moons/src/Gallery.jsx",
+          "score": 0.9643396083709505
+        },
+        "topExternal": {
+          "name": "moons/src/Gallery.jsx",
+          "score": 0.9643396083709505
+        }
+      },
+      {
+        "rel": "app/components/auth-provider.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9846692487449493,
+        "sameProject": 1,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "claw/src/interactiveHelpers.py",
+          "score": 0.9956601271727189
+        },
+        "topExternal": {
+          "name": "claw/src/interactiveHelpers.py",
+          "score": 0.9956601271727189
+        }
+      },
+      {
+        "rel": "app/components/coherency-pulse.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9711813701233375,
+        "sameProject": 1,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/xdp/src/lpm.rs",
+          "score": 0.9728992795452189
+        },
+        "topExternal": {
+          "name": "solana/xdp/src/lpm.rs",
+          "score": 0.9728992795452189
+        }
+      },
+      {
+        "rel": "app/components/coherency-vitals.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9700297354512177,
+        "sameProject": 2,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "rmb-interface/src/app/substrate-chat/page.tsx",
+          "score": 0.9792771703192857
+        },
+        "topExternal": {
+          "name": "rmb-interface/src/app/substrate-chat/page.tsx",
+          "score": 0.9792771703192857
+        }
+      },
+      {
+        "rel": "app/components/cookie-consent.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9717156596423295,
+        "sameProject": 3,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "claw/rust/crates/tools/src/lane_completion.rs",
+          "score": 0.9788189173213525
+        },
+        "topExternal": {
+          "name": "claw/rust/crates/tools/src/lane_completion.rs",
+          "score": 0.9788189173213525
+        }
+      },
+      {
+        "rel": "app/components/image-upload.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9669146852057574,
+        "sameProject": 3,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/admin/ops/page.tsx",
+          "score": 0.9678949284635591
+        },
+        "topExternal": {
+          "name": "oracle/tests/api-layer.test.js",
+          "score": 0.9663681202191338
+        }
+      },
+      {
+        "rel": "app/components/patriotic-emblem.tsx",
+        "category": "components",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9730990659059214,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/perf/benches/reset.rs",
+          "score": 0.9741861607957388
+        },
+        "topExternal": {
+          "name": "solana/perf/benches/reset.rs",
+          "score": 0.9741861607957388
+        }
+      },
+      {
+        "rel": "app/components/sacred-geometry-bg.tsx",
+        "category": "components",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9665901845123548,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/cost-model/benches/cost_tracker.rs",
+          "score": 0.9763755692869747
+        },
+        "topExternal": {
+          "name": "solana/cost-model/benches/cost_tracker.rs",
+          "score": 0.9763755692869747
+        }
+      },
+      {
+        "rel": "app/components/schema-markup.tsx",
+        "category": "components",
+        "flags": [],
+        "coherence": 0.9576169086433927,
+        "sameProject": 2,
+        "sameCategory": 2,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/poh/benches/poh.rs",
+          "score": 0.9619074300023759
+        },
+        "topExternal": {
+          "name": "solana/poh/benches/poh.rs",
+          "score": 0.9619074300023759
+        }
+      }
+    ],
+    "B_api_inconsistent": [
+      {
+        "rel": "app/api/webhooks/stripe/route.ts",
+        "category": "api/payment",
+        "flags": [
+          "INCONSISTENT"
+        ],
+        "coherence": 0.9840405163620485,
+        "sameProject": 9,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/api/admin/clients/route.ts",
+          "score": 0.9894317241592773
+        },
+        "topExternal": null
+      },
+      {
+        "rel": "app/api/image/route.ts",
+        "category": "api/other",
+        "flags": [
+          "INCONSISTENT"
+        ],
+        "coherence": 0.9599763771036404,
+        "sameProject": 2,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/auth/teams.js",
+          "score": 0.9645365739686169
+        },
+        "topExternal": {
+          "name": "oracle/src/auth/teams.js",
+          "score": 0.9645365739686169
+        }
+      },
+      {
+        "rel": "app/api/csrf/route.ts",
+        "category": "api/other",
+        "flags": [
+          "INCONSISTENT"
+        ],
+        "coherence": 0.9787304255431215,
+        "sameProject": 6,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "rmb-interface/src/app/layout.tsx",
+          "score": 0.98426385199908
+        },
+        "topExternal": {
+          "name": "rmb-interface/src/app/layout.tsx",
+          "score": 0.98426385199908
+        }
+      },
+      {
+        "rel": "app/api/agent/schema/route.ts",
+        "category": "api/other",
+        "flags": [
+          "INCONSISTENT"
+        ],
+        "coherence": 0.9614537401820726,
+        "sameProject": 1,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/transaction-status/src/parse_accounts.rs",
+          "score": 0.965332509861587
+        },
+        "topExternal": {
+          "name": "solana/transaction-status/src/parse_accounts.rs",
+          "score": 0.965332509861587
+        }
+      },
+      {
+        "rel": "app/api/admin/substrate/state/route.ts",
+        "category": "api/admin",
+        "flags": [
+          "INCONSISTENT"
+        ],
+        "coherence": 0.9540883824527222,
+        "sameProject": 3,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/core/covenant-checks.js",
+          "score": 0.9667652742298588
+        },
+        "topExternal": {
+          "name": "oracle/src/core/covenant-checks.js",
+          "score": 0.9667652742298588
+        }
+      },
+      {
+        "rel": "app/api/admin/logout/route.ts",
+        "category": "api/admin",
+        "flags": [
+          "INCONSISTENT"
+        ],
+        "coherence": 0.9754293294106586,
+        "sameProject": 6,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/api/portal/logout/route.ts",
+          "score": 0.9964154604786968
+        },
+        "topExternal": {
+          "name": "rmb-interface/src/app/layout.tsx",
+          "score": 0.9738880181876837
+        }
+      },
+      {
+        "rel": "app/api/admin/leads/route.ts",
+        "category": "api/leads",
+        "flags": [
+          "INCONSISTENT"
+        ],
+        "coherence": 0.9788847808832616,
+        "sameProject": 2,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/core/pattern-uri-lookup.js",
+          "score": 0.9824364074533923
+        },
+        "topExternal": {
+          "name": "oracle/src/core/pattern-uri-lookup.js",
+          "score": 0.9824364074533923
+        }
+      },
+      {
+        "rel": "app/api/admin/events/route.ts",
+        "category": "api/admin",
+        "flags": [
+          "INCONSISTENT"
+        ],
+        "coherence": 0.9423630903481921,
+        "sameProject": 5,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/core/field-ingest.js",
+          "score": 0.942355373072257
+        },
+        "topExternal": {
+          "name": "oracle/src/core/field-ingest.js",
+          "score": 0.942355373072257
+        }
+      }
+    ],
+    "C_lib_drift": [
+      {
+        "rel": "app/lib/admin-auth.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9677571601969334,
+        "sameProject": 8,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/api/admin/clients/route.ts",
+          "score": 0.9694437882317216
+        },
+        "topExternal": {
+          "name": "rmb-interface/src/middleware.ts",
+          "score": 0.9595765216187869
+        }
+      },
+      {
+        "rel": "app/lib/auth-config.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9653912825418812,
+        "sameProject": 4,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/robots.ts",
+          "score": 0.9732470945191354
+        },
+        "topExternal": {
+          "name": "rmb-swarm/mcp/server.js",
+          "score": 0.9628833403203922
+        }
+      },
+      {
+        "rel": "app/lib/blog-posts.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9775280021846265,
+        "sameProject": 1,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/docs/src/clusters/available.md",
+          "score": 0.9866297207330443
+        },
+        "topExternal": {
+          "name": "solana/docs/src/clusters/available.md",
+          "score": 0.9866297207330443
+        }
+      },
+      {
+        "rel": "app/lib/crm.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9525282534638817,
+        "sameProject": 1,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/lib/webhooks.ts",
+          "score": 0.9587969872941938
+        },
+        "topExternal": {
+          "name": "oracle/src/core/covenant-evolution.js",
+          "score": 0.9549626018604318
+        }
+      },
+      {
+        "rel": "app/lib/database.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9521284702740639,
+        "sameProject": 3,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "reflector/src/reflector/modes.js",
+          "score": 0.96169027739365
+        },
+        "topExternal": {
+          "name": "reflector/src/reflector/modes.js",
+          "score": 0.96169027739365
+        }
+      },
+      {
+        "rel": "app/lib/demo-leads.ts",
+        "category": "lib",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9429299984165702,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/votor/src/root_utils.rs",
+          "score": 0.9488043319252781
+        },
+        "topExternal": {
+          "name": "solana/votor/src/root_utils.rs",
+          "score": 0.9488043319252781
+        }
+      },
+      {
+        "rel": "app/lib/email.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9732487104851012,
+        "sameProject": 2,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/api/admin/agent-analytics/route.ts",
+          "score": 0.9868822587134629
+        },
+        "topExternal": {
+          "name": "oracle/src/mcp/http-server.js",
+          "score": 0.9749799176181271
+        }
+      },
+      {
+        "rel": "app/lib/lead-distribution.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9742246382185804,
+        "sameProject": 1,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/vscode-extension/src/diagnostics.js",
+          "score": 0.9794930027326284
+        },
+        "topExternal": {
+          "name": "oracle/vscode-extension/src/diagnostics.js",
+          "score": 0.9794930027326284
+        }
+      },
+      {
+        "rel": "app/lib/lead-events.ts",
+        "category": "lib",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.960876336804246,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/tests/pattern-tests/self-referential-prevention.js",
+          "score": 0.9708621974269546
+        },
+        "topExternal": {
+          "name": "oracle/tests/pattern-tests/self-referential-prevention.js",
+          "score": 0.9708621974269546
+        }
+      },
+      {
+        "rel": "app/lib/logger.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9593347967655456,
+        "sameProject": 2,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/validator/src/lib.rs",
+          "score": 0.9630788549823023
+        },
+        "topExternal": {
+          "name": "solana/validator/src/lib.rs",
+          "score": 0.9630788549823023
+        }
+      },
+      {
+        "rel": "app/lib/purchase-fulfillment.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.97615246503755,
+        "sameProject": 2,
+        "sameCategory": 2,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/api/oracle-noncode.js",
+          "score": 0.9830790001897711
+        },
+        "topExternal": {
+          "name": "oracle/src/api/oracle-noncode.js",
+          "score": 0.9830790001897711
+        }
+      },
+      {
+        "rel": "app/lib/site-content.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9576711576481556,
+        "sameProject": 5,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/patterns/form-validation.ts",
+          "score": 0.9602370436404868
+        },
+        "topExternal": {
+          "name": "rmb-interface/src/lib/platforms.ts",
+          "score": 0.9568136745764697
+        }
+      },
+      {
+        "rel": "app/lib/sms.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9527311469185007,
+        "sameProject": 2,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "rmb-interface/src/lib/github.ts",
+          "score": 0.9658412898329835
+        },
+        "topExternal": {
+          "name": "rmb-interface/src/lib/github.ts",
+          "score": 0.9658412898329835
+        }
+      },
+      {
+        "rel": "app/lib/use-experiment.tsx",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9728331472574503,
+        "sameProject": 3,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/app/lp/layout.tsx",
+          "score": 0.9734039915038205
+        },
+        "topExternal": {
+          "name": "oracle/src/core/reflection.js",
+          "score": 0.9723582346803582
+        }
+      },
+      {
+        "rel": "app/lib/validation.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9599274671395494,
+        "sameProject": 2,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "rmb-blockchain/src/coherency-rate.js",
+          "score": 0.9683365998660795
+        },
+        "topExternal": {
+          "name": "rmb-blockchain/src/coherency-rate.js",
+          "score": 0.9683365998660795
+        }
+      },
+      {
+        "rel": "app/lib/webhooks.ts",
+        "category": "lib",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9716157711637343,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/core/events.js",
+          "score": 0.9759159298098055
+        },
+        "topExternal": {
+          "name": "oracle/src/core/events.js",
+          "score": 0.9759159298098055
+        }
+      },
+      {
+        "rel": "app/lib/valor/agent-diagnostic.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.95981543409538,
+        "sameProject": 2,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/scoring/evaluate.js",
+          "score": 0.9640333267015686
+        },
+        "topExternal": {
+          "name": "oracle/src/scoring/evaluate.js",
+          "score": 0.9640333267015686
+        }
+      },
+      {
+        "rel": "app/lib/valor/agent-routing.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9479493143861332,
+        "sameProject": 1,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/swarm/env-loader.js",
+          "score": 0.9565722058409067
+        },
+        "topExternal": {
+          "name": "oracle/src/swarm/env-loader.js",
+          "score": 0.9565722058409067
+        }
+      },
+      {
+        "rel": "app/lib/valor/agent-tier.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9712437457830685,
+        "sameProject": 2,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/api/oracle-noncode.js",
+          "score": 0.9743715349707341
+        },
+        "topExternal": {
+          "name": "oracle/src/api/oracle-noncode.js",
+          "score": 0.9743715349707341
+        }
+      },
+      {
+        "rel": "app/lib/valor/coherency-primitives.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9714200355883454,
+        "sameProject": 4,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/patterns/batch1/deep-clone.js",
+          "score": 0.9748099424999067
+        },
+        "topExternal": {
+          "name": "oracle/src/reflector/report-pr.js",
+          "score": 0.9731735533141355
+        }
+      },
+      {
+        "rel": "app/lib/valor/covenant-gate.ts",
+        "category": "lib",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9752539182169973,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "rmb-swarm/src/swarm/escalation.js",
+          "score": 0.9825551477578653
+        },
+        "topExternal": {
+          "name": "rmb-swarm/src/swarm/escalation.js",
+          "score": 0.9825551477578653
+        }
+      },
+      {
+        "rel": "app/lib/valor/host-registry.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9526890859917657,
+        "sameProject": 2,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "website/tests/host-registry.test.js",
+          "score": 0.9583905743150468
+        },
+        "topExternal": {
+          "name": "rmb-plugger/src/detect.js",
+          "score": 0.9545946682802241
+        }
+      },
+      {
+        "rel": "app/lib/valor/lead-coherency.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9615803280319583,
+        "sameProject": 1,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/core/coherency.js",
+          "score": 0.9720875905135047
+        },
+        "topExternal": {
+          "name": "oracle/src/core/coherency.js",
+          "score": 0.9720875905135047
+        }
+      },
+      {
+        "rel": "app/lib/valor/lead-substrates.ts",
+        "category": "lib",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9519983186764941,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/docs/src/implemented-proposals/repair-service.md",
+          "score": 0.9556285578756213
+        },
+        "topExternal": {
+          "name": "solana/docs/src/implemented-proposals/repair-service.md",
+          "score": 0.9556285578756213
+        }
+      },
+      {
+        "rel": "app/lib/valor/lexicon.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9569473909565731,
+        "sameProject": 2,
+        "sameCategory": 1,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/action.yml",
+          "score": 0.964961537716076
+        },
+        "topExternal": {
+          "name": "oracle/action.yml",
+          "score": 0.964961537716076
+        }
+      },
+      {
+        "rel": "app/lib/valor/ledger/blob-adapter.ts",
+        "category": "lib",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9676594206675195,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/core/fractal-waveform.js",
+          "score": 0.9725588327068984
+        },
+        "topExternal": {
+          "name": "oracle/src/core/fractal-waveform.js",
+          "score": 0.9725588327068984
+        }
+      },
+      {
+        "rel": "app/lib/valor/ledger/file-adapter.ts",
+        "category": "lib",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9370708582048846,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "rmb-swarm/src/swarm/pattern-grounding.js",
+          "score": 0.9576748921482454
+        },
+        "topExternal": {
+          "name": "rmb-swarm/src/swarm/pattern-grounding.js",
+          "score": 0.9576748921482454
+        }
+      },
+      {
+        "rel": "app/lib/client-database/noop-adapter.ts",
+        "category": "lib",
+        "flags": [],
+        "coherence": 0.9551026887089223,
+        "sameProject": 6,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/api/oracle-patterns-voting.js",
+          "score": 0.9608486514821794
+        },
+        "topExternal": {
+          "name": "oracle/src/api/oracle-patterns-voting.js",
+          "score": 0.9608486514821794
+        }
+      },
+      {
+        "rel": "app/lib/client-database/sqlite-adapter.ts",
+        "category": "lib",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9735741362679148,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/src/reflector/report-autocommit.js",
+          "score": 0.9767088590858581
+        },
+        "topExternal": {
+          "name": "oracle/src/reflector/report-autocommit.js",
+          "score": 0.9767088590858581
+        }
+      }
+    ],
+    "D_duplicate_pairs": [
+      {
+        "a": "patterns/api-helpers.test.js",
+        "b": "patterns/trust/security-headers.test.js",
+        "score": 0.9996157307113677
+      },
+      {
+        "a": "patterns/api-helpers.test.js",
+        "b": "patterns/breadcrumb-nav.test.js",
+        "score": 0.9995879916208604
+      },
+      {
+        "a": "patterns/api-helpers.test.js",
+        "b": "patterns/localstorage-persistence.test.js",
+        "score": 0.9994083672821741
+      },
+      {
+        "a": "patterns/api-helpers.test.js",
+        "b": "patterns/qol/voice-input.test.js",
+        "score": 0.9992122346726454
+      },
+      {
+        "a": "patterns/api-helpers.test.js",
+        "b": "patterns/solana-status.test.js",
+        "score": 0.9990818763959088
+      },
+      {
+        "a": "patterns/back-to-top.test.js",
+        "b": "patterns/breadcrumb-nav.test.js",
+        "score": 0.9996175850305435
+      },
+      {
+        "a": "patterns/back-to-top.test.js",
+        "b": "patterns/trust/cookie-consent.test.js",
+        "score": 0.9995359631133508
+      },
+      {
+        "a": "patterns/back-to-top.test.js",
+        "b": "patterns/localstorage-persistence.test.js",
+        "score": 0.9994716257111533
+      },
+      {
+        "a": "patterns/back-to-top.test.js",
+        "b": "patterns/solana-status.test.js",
+        "score": 0.9990369645368735
+      },
+      {
+        "a": "patterns/breadcrumb-nav.test.js",
+        "b": "patterns/localstorage-persistence.test.js",
+        "score": 0.9998407174366706
+      },
+      {
+        "a": "patterns/breadcrumb-nav.test.js",
+        "b": "patterns/trust/cookie-consent.test.js",
+        "score": 0.9994713840537585
+      },
+      {
+        "a": "patterns/breadcrumb-nav.test.js",
+        "b": "patterns/solana-status.test.js",
+        "score": 0.9994247905916346
+      },
+      {
+        "a": "patterns/localstorage-persistence.test.js",
+        "b": "patterns/skeleton-loader.test.js",
+        "score": 0.9994360213782404
+      },
+      {
+        "a": "patterns/localstorage-persistence.test.js",
+        "b": "patterns/solana-status.test.js",
+        "score": 0.9990563561419599
+      },
+      {
+        "a": "patterns/solana-status.test.js",
+        "b": "patterns/trust/cookie-consent.test.js",
+        "score": 0.9992291520837852
+      },
+      {
+        "a": "patterns/batch6/build-query-string.js",
+        "b": "patterns/batch6/is-ipv4.js",
+        "score": 0.9990261237337299
+      },
+      {
+        "a": "patterns/batch6/build-query-string.test.js",
+        "b": "patterns/batch5/binary-search.test.js",
+        "score": 0.9992242061270316
+      },
+      {
+        "a": "patterns/batch6/is-base64.test.js",
+        "b": "patterns/batch6/validate-phone.test.js",
+        "score": 0.9993089526459439
+      },
+      {
+        "a": "patterns/batch6/is-base64.test.js",
+        "b": "patterns/batch6/is-hex-color.test.js",
+        "score": 0.9991642944065953
+      },
+      {
+        "a": "patterns/batch6/is-credit-card.test.js",
+        "b": "patterns/batch6/validate-phone.test.js",
+        "score": 0.9998801648073019
+      },
+      {
+        "a": "patterns/batch6/is-credit-card.test.js",
+        "b": "patterns/batch6/is-ipv6.test.js",
+        "score": 0.9994685480095117
+      },
+      {
+        "a": "patterns/batch6/is-credit-card.test.js",
+        "b": "patterns/batch6/is-ipv4.test.js",
+        "score": 0.9991951656879846
+      },
+      {
+        "a": "patterns/batch6/is-credit-card.test.js",
+        "b": "patterns/batch5/combinations.test.js",
+        "score": 0.9990310694017197
+      },
+      {
+        "a": "patterns/batch6/is-ipv4.test.js",
+        "b": "patterns/batch6/is-ipv6.test.js",
+        "score": 0.9996624569106534
+      },
+      {
+        "a": "patterns/batch6/is-ipv4.test.js",
+        "b": "patterns/batch6/is-semver.test.js",
+        "score": 0.999529376880903
+      },
+      {
+        "a": "patterns/batch6/is-ipv4.test.js",
+        "b": "patterns/batch6/validate-phone.test.js",
+        "score": 0.9994159681397614
+      },
+      {
+        "a": "patterns/batch6/is-ipv4.test.js",
+        "b": "patterns/batch6/is-json.test.js",
+        "score": 0.9991630696999703
+      },
+      {
+        "a": "patterns/batch6/is-ipv4.test.js",
+        "b": "patterns/batch5/power-set.test.js",
+        "score": 0.9990393108693557
+      },
+      {
+        "a": "patterns/batch6/is-ipv6.test.js",
+        "b": "patterns/batch6/validate-phone.test.js",
+        "score": 0.9995707831104301
+      },
+      {
+        "a": "patterns/batch6/is-ipv6.test.js",
+        "b": "patterns/batch6/is-semver.test.js",
+        "score": 0.9991029382974524
+      },
+      {
+        "a": "patterns/batch6/is-json.test.js",
+        "b": "patterns/batch6/is-semver.test.js",
+        "score": 0.9998699391394203
+      },
+      {
+        "a": "patterns/batch6/is-semver.test.js",
+        "b": "patterns/batch6/validate-phone.test.js",
+        "score": 0.9990969226268712
+      },
+      {
+        "a": "patterns/batch6/validate-phone.test.js",
+        "b": "patterns/batch5/power-set.test.js",
+        "score": 0.9990597116251942
+      },
+      {
+        "a": "patterns/batch5/bubble-sort.test.js",
+        "b": "patterns/batch5/insertion-sort.test.js",
+        "score": 0.999989287997853
+      },
+      {
+        "a": "patterns/batch5/bubble-sort.test.js",
+        "b": "patterns/batch5/selection-sort.test.js",
+        "score": 0.9999869369468962
+      },
+      {
+        "a": "patterns/batch5/bubble-sort.test.js",
+        "b": "patterns/batch5/quick-sort.test.js",
+        "score": 0.9998134944859878
+      },
+      {
+        "a": "patterns/batch5/bubble-sort.test.js",
+        "b": "patterns/batch5/merge-sort.test.js",
+        "score": 0.9994476744104756
+      },
+      {
+        "a": "patterns/batch5/combinations.test.js",
+        "b": "patterns/batch5/power-set.test.js",
+        "score": 0.9993519913386245
+      },
+      {
+        "a": "patterns/batch5/insertion-sort.test.js",
+        "b": "patterns/batch5/selection-sort.test.js",
+        "score": 0.9999925764179447
+      },
+      {
+        "a": "patterns/batch5/insertion-sort.test.js",
+        "b": "patterns/batch5/quick-sort.test.js",
+        "score": 0.9997904106264955
+      },
+      {
+        "a": "patterns/batch5/insertion-sort.test.js",
+        "b": "patterns/batch5/merge-sort.test.js",
+        "score": 0.9994247982953688
+      },
+      {
+        "a": "patterns/batch5/merge-sort.test.js",
+        "b": "patterns/batch5/quick-sort.test.js",
+        "score": 0.9998873235184328
+      },
+      {
+        "a": "patterns/batch5/merge-sort.test.js",
+        "b": "patterns/batch5/selection-sort.test.js",
+        "score": 0.9994258979599527
+      },
+      {
+        "a": "patterns/batch5/permutations.test.js",
+        "b": "patterns/batch5/power-set.test.js",
+        "score": 0.999703414795359
+      },
+      {
+        "a": "patterns/batch5/quick-sort.test.js",
+        "b": "patterns/batch5/selection-sort.test.js",
+        "score": 0.999776867750515
+      },
+      {
+        "a": "patterns/batch4/bi-map.test.js",
+        "b": "patterns/batch4/lru-cache.test.js",
+        "score": 0.9999408435891983
+      },
+      {
+        "a": "patterns/batch4/graph.test.js",
+        "b": "patterns/batch4/queue.test.js",
+        "score": 0.9997043243949993
+      },
+      {
+        "a": "patterns/batch4/graph.test.js",
+        "b": "patterns/batch4/stack.test.js",
+        "score": 0.9996598714751798
+      },
+      {
+        "a": "patterns/batch4/graph.test.js",
+        "b": "patterns/batch4/heap.test.js",
+        "score": 0.9994598563370629
+      },
+      {
+        "a": "patterns/batch4/heap.js",
+        "b": "patterns/batch4/priority-queue.js",
+        "score": 0.9999314270613778
+      },
+      {
+        "a": "patterns/batch4/heap.test.js",
+        "b": "patterns/batch4/stack.test.js",
+        "score": 0.9998526703790753
+      },
+      {
+        "a": "patterns/batch4/heap.test.js",
+        "b": "patterns/batch4/queue.test.js",
+        "score": 0.9996883964077857
+      },
+      {
+        "a": "patterns/batch4/queue.test.js",
+        "b": "patterns/batch4/stack.test.js",
+        "score": 0.9997745884371644
+      },
+      {
+        "a": "patterns/batch4/sorted-array.test.js",
+        "b": "patterns/batch1/deep-clone.test.js",
+        "score": 0.9992562104944656
+      },
+      {
+        "a": "patterns/batch3/after.js",
+        "b": "patterns/batch3/once.js",
+        "score": 0.9994093278038008
+      },
+      {
+        "a": "patterns/batch3/before.test.js",
+        "b": "patterns/batch3/throttle.test.js",
+        "score": 0.9998901100161053
+      },
+      {
+        "a": "patterns/batch3/compose.js",
+        "b": "patterns/batch3/pipe.js",
+        "score": 0.9999913913861328
+      },
+      {
+        "a": "patterns/batch3/compose.test.js",
+        "b": "patterns/batch3/curry.test.js",
+        "score": 0.9995324343063587
+      },
+      {
+        "a": "patterns/batch3/compose.test.js",
+        "b": "patterns/batch3/pipe.test.js",
+        "score": 0.9991766057714172
+      },
+      {
+        "a": "patterns/batch3/curry.test.js",
+        "b": "patterns/batch3/pipe.test.js",
+        "score": 0.9994112766840121
+      },
+      {
+        "a": "patterns/batch3/negate.test.js",
+        "b": "patterns/batch1/deep-clone.test.js",
+        "score": 0.9994099441064419
+      },
+      {
+        "a": "patterns/batch3/negate.test.js",
+        "b": "patterns/batch3/partial.test.js",
+        "score": 0.999324855433383
+      },
+      {
+        "a": "patterns/batch2/capitalize.js",
+        "b": "patterns/batch2/reverse-string.js",
+        "score": 0.9999404200977593
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9999903859388296
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/count-occurrences.test.js",
+        "score": 0.9999657874118077
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9999239562393204
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/reverse-string.test.js",
+        "score": 0.999901013459291
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/is-palindrome.test.js",
+        "score": 0.9998414178332254
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.9998349144480579
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/kebab-to-camel.test.js",
+        "score": 0.9998276599982052
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/escape-html.test.js",
+        "score": 0.9998122931561281
+      },
+      {
+        "a": "patterns/batch2/capitalize.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9998061470944613
+      },
+      {
+        "a": "patterns/batch2/count-occurrences.test.js",
+        "b": "patterns/batch2/reverse-string.test.js",
+        "score": 0.9999658332384149
+      },
+      {
+        "a": "patterns/batch2/count-occurrences.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9999618499065883
+      },
+      {
+        "a": "patterns/batch2/count-occurrences.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9999287150458597
+      },
+      {
+        "a": "patterns/batch2/count-occurrences.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.9997997873249747
+      },
+      {
+        "a": "patterns/batch2/count-occurrences.test.js",
+        "b": "patterns/batch2/is-palindrome.test.js",
+        "score": 0.9997798116737925
+      },
+      {
+        "a": "patterns/batch2/count-occurrences.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9997640043740251
+      },
+      {
+        "a": "patterns/batch2/count-occurrences.test.js",
+        "b": "patterns/batch2/kebab-to-camel.test.js",
+        "score": 0.9997149797049257
+      },
+      {
+        "a": "patterns/batch2/count-occurrences.test.js",
+        "b": "patterns/batch2/escape-html.test.js",
+        "score": 0.9996842265205438
+      },
+      {
+        "a": "patterns/batch2/escape-html.js",
+        "b": "patterns/batch2/unescape-html.js",
+        "score": 0.999488775736996
+      },
+      {
+        "a": "patterns/batch2/escape-html.test.js",
+        "b": "patterns/batch2/unescape-html.test.js",
+        "score": 0.9999165708074921
+      },
+      {
+        "a": "patterns/batch2/escape-html.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.9998400286914453
+      },
+      {
+        "a": "patterns/batch2/escape-html.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9998382076492007
+      },
+      {
+        "a": "patterns/batch2/escape-html.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9998363659289651
+      },
+      {
+        "a": "patterns/batch2/escape-html.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9997926855288569
+      },
+      {
+        "a": "patterns/batch2/escape-html.test.js",
+        "b": "patterns/batch2/wrap-text.test.js",
+        "score": 0.9997828082705125
+      },
+      {
+        "a": "patterns/batch2/escape-html.test.js",
+        "b": "patterns/batch2/mask-string.test.js",
+        "score": 0.9997612328845932
+      },
+      {
+        "a": "patterns/batch2/escape-html.test.js",
+        "b": "patterns/batch2/kebab-to-camel.test.js",
+        "score": 0.9996907894588954
+      },
+      {
+        "a": "patterns/batch2/is-palindrome.js",
+        "b": "patterns/batch2/word-count.js",
+        "score": 0.9994789576819789
+      },
+      {
+        "a": "patterns/batch2/is-palindrome.test.js",
+        "b": "patterns/batch2/kebab-to-camel.test.js",
+        "score": 0.9999617381861725
+      },
+      {
+        "a": "patterns/batch2/is-palindrome.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9997837512005768
+      },
+      {
+        "a": "patterns/batch2/is-palindrome.test.js",
+        "b": "patterns/batch1/camel-to-kebab.test.js",
+        "score": 0.9997570092883565
+      },
+      {
+        "a": "patterns/batch2/is-palindrome.test.js",
+        "b": "patterns/batch2/wrap-text.test.js",
+        "score": 0.9997433982845592
+      },
+      {
+        "a": "patterns/batch2/is-palindrome.test.js",
+        "b": "patterns/batch2/slugify.test.js",
+        "score": 0.9996999135202537
+      },
+      {
+        "a": "patterns/batch2/is-palindrome.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.999606519466788
+      },
+      {
+        "a": "patterns/batch2/is-palindrome.test.js",
+        "b": "patterns/batch2/reverse-string.test.js",
+        "score": 0.9995978024139097
+      },
+      {
+        "a": "patterns/batch2/kebab-to-camel.test.js",
+        "b": "patterns/batch1/camel-to-kebab.test.js",
+        "score": 0.9998633312673464
+      },
+      {
+        "a": "patterns/batch2/kebab-to-camel.test.js",
+        "b": "patterns/batch2/wrap-text.test.js",
+        "score": 0.9998608756749712
+      },
+      {
+        "a": "patterns/batch2/kebab-to-camel.test.js",
+        "b": "patterns/batch2/slugify.test.js",
+        "score": 0.9998540017039472
+      },
+      {
+        "a": "patterns/batch2/kebab-to-camel.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9997661211036688
+      },
+      {
+        "a": "patterns/batch2/kebab-to-camel.test.js",
+        "b": "patterns/batch2/unescape-html.test.js",
+        "score": 0.9995961821933901
+      },
+      {
+        "a": "patterns/batch2/mask-string.test.js",
+        "b": "patterns/batch2/unescape-html.test.js",
+        "score": 0.9996453722768
+      },
+      {
+        "a": "patterns/batch2/mask-string.test.js",
+        "b": "patterns/batch2/wrap-text.test.js",
+        "score": 0.999605946972432
+      },
+      {
+        "a": "patterns/batch2/mask-string.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9995897385834731
+      },
+      {
+        "a": "patterns/batch2/mask-string.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.9995711001197235
+      },
+      {
+        "a": "patterns/batch2/mask-string.test.js",
+        "b": "patterns/batch2/slugify.test.js",
+        "score": 0.9994817990934547
+      },
+      {
+        "a": "patterns/batch2/mask-string.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9993588632136765
+      },
+      {
+        "a": "patterns/batch2/mask-string.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9993579321818379
+      },
+      {
+        "a": "patterns/batch2/mask-string.test.js",
+        "b": "patterns/batch2/capitalize.test.js",
+        "score": 0.999292650883155
+      },
+      {
+        "a": "patterns/batch2/pad-end.js",
+        "b": "patterns/batch2/pad-start.js",
+        "score": 0.999998133815057
+      },
+      {
+        "a": "patterns/batch2/pad-end.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.9999985033297987
+      },
+      {
+        "a": "patterns/batch2/pad-end.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9999398926737317
+      },
+      {
+        "a": "patterns/batch2/pad-end.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9998746003408202
+      },
+      {
+        "a": "patterns/batch2/pad-end.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9997719326935927
+      },
+      {
+        "a": "patterns/batch2/pad-end.test.js",
+        "b": "patterns/batch2/reverse-string.test.js",
+        "score": 0.9997715153447689
+      },
+      {
+        "a": "patterns/batch2/pad-end.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9997243604830034
+      },
+      {
+        "a": "patterns/batch2/pad-start.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9999557783663927
+      },
+      {
+        "a": "patterns/batch2/pad-start.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9998977299458698
+      },
+      {
+        "a": "patterns/batch2/pad-start.test.js",
+        "b": "patterns/batch2/reverse-string.test.js",
+        "score": 0.9998036452405603
+      },
+      {
+        "a": "patterns/batch2/pad-start.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9997586376403217
+      },
+      {
+        "a": "patterns/batch2/pad-start.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9997036655906063
+      },
+      {
+        "a": "patterns/batch2/reverse-string.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.999939526559577
+      },
+      {
+        "a": "patterns/batch2/reverse-string.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9999199314557567
+      },
+      {
+        "a": "patterns/batch2/reverse-string.test.js",
+        "b": "patterns/batch2/escape-html.test.js",
+        "score": 0.9995994942403614
+      },
+      {
+        "a": "patterns/batch2/reverse-string.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9995376302597268
+      },
+      {
+        "a": "patterns/batch2/slugify.test.js",
+        "b": "patterns/batch2/wrap-text.test.js",
+        "score": 0.9999553788510301
+      },
+      {
+        "a": "patterns/batch2/slugify.test.js",
+        "b": "patterns/batch1/camel-to-kebab.test.js",
+        "score": 0.9999238459650279
+      },
+      {
+        "a": "patterns/batch2/slugify.test.js",
+        "b": "patterns/batch2/escape-html.test.js",
+        "score": 0.9996777956203677
+      },
+      {
+        "a": "patterns/batch2/slugify.test.js",
+        "b": "patterns/batch2/unescape-html.test.js",
+        "score": 0.9995554565106605
+      },
+      {
+        "a": "patterns/batch2/slugify.test.js",
+        "b": "patterns/batch2/capitalize.test.js",
+        "score": 0.9995525518383421
+      },
+      {
+        "a": "patterns/batch2/slugify.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9995033988072922
+      },
+      {
+        "a": "patterns/batch2/title-case.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9999662520912768
+      },
+      {
+        "a": "patterns/batch2/unescape-html.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9996680740009871
+      },
+      {
+        "a": "patterns/batch2/unescape-html.test.js",
+        "b": "patterns/batch2/capitalize.test.js",
+        "score": 0.9996598968954161
+      },
+      {
+        "a": "patterns/batch2/unescape-html.test.js",
+        "b": "patterns/batch2/wrap-text.test.js",
+        "score": 0.9996415057693889
+      },
+      {
+        "a": "patterns/batch2/unescape-html.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.999611194906334
+      },
+      {
+        "a": "patterns/batch2/unescape-html.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9996004618597893
+      },
+      {
+        "a": "patterns/batch2/unescape-html.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.999592861884003
+      },
+      {
+        "a": "patterns/batch2/word-count.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9996802444396633
+      },
+      {
+        "a": "patterns/batch2/wrap-text.test.js",
+        "b": "patterns/batch1/camel-to-kebab.test.js",
+        "score": 0.9998752680934128
+      },
+      {
+        "a": "patterns/batch2/wrap-text.test.js",
+        "b": "patterns/batch2/capitalize.test.js",
+        "score": 0.9996928976012213
+      },
+      {
+        "a": "patterns/batch2/wrap-text.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9996653491557824
+      },
+      {
+        "a": "patterns/batch1/camel-to-kebab.test.js",
+        "b": "patterns/batch2/escape-html.test.js",
+        "score": 0.9995275869417624
+      },
+      {
+        "a": "patterns/batch1/camel-to-kebab.test.js",
+        "b": "patterns/batch2/capitalize.test.js",
+        "score": 0.9995115220287075
+      },
+      {
+        "a": "patterns/batch1/camel-to-kebab.test.js",
+        "b": "patterns/batch2/title-case.test.js",
+        "score": 0.9994413617025314
+      },
+      {
+        "a": "patterns/batch1/camel-to-kebab.test.js",
+        "b": "patterns/batch2/unescape-html.test.js",
+        "score": 0.9994363411702073
+      },
+      {
+        "a": "patterns/batch1/camel-to-kebab.test.js",
+        "b": "patterns/batch2/count-occurrences.test.js",
+        "score": 0.9993031207173315
+      },
+      {
+        "a": "patterns/batch1/chunk.test.js",
+        "b": "patterns/batch1/sum.test.js",
+        "score": 0.9998152529050773
+      },
+      {
+        "a": "patterns/batch1/chunk.test.js",
+        "b": "patterns/batch1/omit.test.js",
+        "score": 0.9997712944529853
+      },
+      {
+        "a": "patterns/batch1/chunk.test.js",
+        "b": "patterns/batch1/pick.test.js",
+        "score": 0.9997294424940615
+      },
+      {
+        "a": "patterns/batch1/chunk.test.js",
+        "b": "patterns/batch1/zip.test.js",
+        "score": 0.9996568772656449
+      },
+      {
+        "a": "patterns/batch1/chunk.test.js",
+        "b": "patterns/batch1/uniq.test.js",
+        "score": 0.9995879787066388
+      },
+      {
+        "a": "patterns/batch1/chunk.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9994051045995024
+      },
+      {
+        "a": "patterns/batch1/chunk.test.js",
+        "b": "patterns/batch1/clamp.test.js",
+        "score": 0.9993923640616047
+      },
+      {
+        "a": "patterns/batch1/chunk.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9993314305685749
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9999976238145516
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9999166888473889
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch1/uniq.test.js",
+        "score": 0.9999032088386409
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch1/zip.test.js",
+        "score": 0.9997781339911099
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch1/sum.test.js",
+        "score": 0.9997223999632386
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9996791895930585
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.9996569663503777
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9995069475966329
+      },
+      {
+        "a": "patterns/batch1/clamp.test.js",
+        "b": "patterns/batch1/median.test.js",
+        "score": 0.9994974978845858
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch1/median.test.js",
+        "score": 0.9994556134634394
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9993573050403168
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch1/clamp.test.js",
+        "score": 0.999344497322248
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch2/reverse-string.test.js",
+        "score": 0.9993283461521809
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9993110984755071
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9992685404208765
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.999151892282841
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch2/count-occurrences.test.js",
+        "score": 0.9991390793623955
+      },
+      {
+        "a": "patterns/batch1/is-empty.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9991349164019331
+      },
+      {
+        "a": "patterns/batch1/mean.test.js",
+        "b": "patterns/batch1/uniq.test.js",
+        "score": 0.999926716865547
+      },
+      {
+        "a": "patterns/batch1/mean.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9999171584278288
+      },
+      {
+        "a": "patterns/batch1/mean.test.js",
+        "b": "patterns/batch1/zip.test.js",
+        "score": 0.9997905448558511
+      },
+      {
+        "a": "patterns/batch1/mean.test.js",
+        "b": "patterns/batch1/sum.test.js",
+        "score": 0.9997575061161165
+      },
+      {
+        "a": "patterns/batch1/mean.test.js",
+        "b": "patterns/batch1/median.test.js",
+        "score": 0.9995494432809481
+      },
+      {
+        "a": "patterns/batch1/median.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9995575882568435
+      },
+      {
+        "a": "patterns/batch1/median.test.js",
+        "b": "patterns/batch2/pad-start.test.js",
+        "score": 0.9995575809163372
+      },
+      {
+        "a": "patterns/batch1/median.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9995387192986043
+      },
+      {
+        "a": "patterns/batch1/median.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9995201956924638
+      },
+      {
+        "a": "patterns/batch1/median.test.js",
+        "b": "patterns/batch1/pick.test.js",
+        "score": 0.9994838533659736
+      },
+      {
+        "a": "patterns/batch1/median.test.js",
+        "b": "patterns/batch2/reverse-string.test.js",
+        "score": 0.9994163583796798
+      },
+      {
+        "a": "patterns/batch1/omit.test.js",
+        "b": "patterns/batch1/pick.test.js",
+        "score": 0.9999864954487458
+      },
+      {
+        "a": "patterns/batch1/omit.test.js",
+        "b": "patterns/batch1/sum.test.js",
+        "score": 0.9996116800069431
+      },
+      {
+        "a": "patterns/batch1/omit.test.js",
+        "b": "patterns/batch1/zip.test.js",
+        "score": 0.9995675077047923
+      },
+      {
+        "a": "patterns/batch1/omit.test.js",
+        "b": "patterns/batch1/uniq.test.js",
+        "score": 0.999516921286163
+      },
+      {
+        "a": "patterns/batch1/omit.test.js",
+        "b": "patterns/batch1/clamp.test.js",
+        "score": 0.9994073309930326
+      },
+      {
+        "a": "patterns/batch1/omit.test.js",
+        "b": "patterns/batch1/median.test.js",
+        "score": 0.9993847459300785
+      },
+      {
+        "a": "patterns/batch1/omit.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9993697860670909
+      },
+      {
+        "a": "patterns/batch1/omit.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9993692633530956
+      },
+      {
+        "a": "patterns/batch1/pick.test.js",
+        "b": "patterns/batch1/sum.test.js",
+        "score": 0.9995936389621425
+      },
+      {
+        "a": "patterns/batch1/pick.test.js",
+        "b": "patterns/batch1/zip.test.js",
+        "score": 0.9995617542762523
+      },
+      {
+        "a": "patterns/batch1/pick.test.js",
+        "b": "patterns/batch1/uniq.test.js",
+        "score": 0.9995323277515752
+      },
+      {
+        "a": "patterns/batch1/pick.test.js",
+        "b": "patterns/batch1/clamp.test.js",
+        "score": 0.9994264899227595
+      },
+      {
+        "a": "patterns/batch1/pick.test.js",
+        "b": "patterns/batch1/mean.test.js",
+        "score": 0.9994176753215015
+      },
+      {
+        "a": "patterns/batch1/pick.test.js",
+        "b": "patterns/batch1/range.test.js",
+        "score": 0.9993925810454383
+      },
+      {
+        "a": "patterns/batch1/range.test.js",
+        "b": "patterns/batch1/uniq.test.js",
+        "score": 0.9998880549692964
+      },
+      {
+        "a": "patterns/batch1/range.test.js",
+        "b": "patterns/batch1/zip.test.js",
+        "score": 0.9997534791609738
+      },
+      {
+        "a": "patterns/batch1/range.test.js",
+        "b": "patterns/batch1/sum.test.js",
+        "score": 0.9996800894873072
+      },
+      {
+        "a": "patterns/batch1/range.test.js",
+        "b": "patterns/batch2/word-count.test.js",
+        "score": 0.9995581495049607
+      },
+      {
+        "a": "patterns/batch1/sum.test.js",
+        "b": "patterns/batch1/zip.test.js",
+        "score": 0.9999259549528702
+      },
+      {
+        "a": "patterns/batch1/sum.test.js",
+        "b": "patterns/batch1/uniq.test.js",
+        "score": 0.9998994708034249
+      },
+      {
+        "a": "patterns/batch1/sum.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9990901508657528
+      },
+      {
+        "a": "patterns/batch1/uniq.test.js",
+        "b": "patterns/batch1/zip.test.js",
+        "score": 0.9999571437344562
+      },
+      {
+        "a": "patterns/batch1/uniq.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9995381563165175
+      },
+      {
+        "a": "patterns/batch1/zip.test.js",
+        "b": "patterns/batch2/pad-end.test.js",
+        "score": 0.9992797766981588
+      },
+      {
+        "a": "packages/shared/src/normalize-phone.ts",
+        "b": "packages/shared/src/validate.ts",
+        "score": 0.9993980098175334
+      },
+      {
+        "a": "app/privacy/page.tsx",
+        "b": "app/portal/terms/page.tsx",
+        "score": 0.9992089565456158
+      },
+      {
+        "a": "app/api/client/purchases/route.ts",
+        "b": "app/api/admin/purchases/route.ts",
+        "score": 0.9999103092090607
+      }
+    ],
+    "E_other_orphans": [
+      {
+        "rel": "README.md",
+        "category": "docs",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9907598336276354,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/docs/src/proposals/block-confirmation.md",
+          "score": 0.9933367176975622
+        },
+        "topExternal": {
+          "name": "solana/docs/src/proposals/block-confirmation.md",
+          "score": 0.9933367176975622
+        }
+      },
+      {
+        "rel": "csp-directives.mjs",
+        "category": "other",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9576129208484525,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/multinode-demo/faucet.sh",
+          "score": 0.9566276066223492
+        },
+        "topExternal": {
+          "name": "solana/multinode-demo/faucet.sh",
+          "score": 0.9566276066223492
+        }
+      },
+      {
+        "rel": "next-env.d.ts",
+        "category": "config",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9886762119679275,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "rmb-interface/next-env.d.ts",
+          "score": 0.9999227831682109
+        },
+        "topExternal": {
+          "name": "rmb-interface/next-env.d.ts",
+          "score": 0.9999227831682109
+        }
+      },
+      {
+        "rel": "tailwind.config.js",
+        "category": "config",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9793935278896478,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/docs/sidebars.js",
+          "score": 0.9884159168349017
+        },
+        "topExternal": {
+          "name": "solana/docs/sidebars.js",
+          "score": 0.9884159168349017
+        }
+      },
+      {
+        "rel": "tools/bots/index.js",
+        "category": "other",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9880077954481996,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "claw/rust/crates/telemetry/Cargo.toml",
+          "score": 0.9955650574919044
+        },
+        "topExternal": {
+          "name": "claw/rust/crates/telemetry/Cargo.toml",
+          "score": 0.9955650574919044
+        }
+      },
+      {
+        "rel": "public/.well-known/mcp.json",
+        "category": "public",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9813865062118039,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/vscode-extension/package.json",
+          "score": 0.9921633577022895
+        },
+        "topExternal": {
+          "name": "oracle/vscode-extension/package.json",
+          "score": 0.9921633577022895
+        }
+      },
+      {
+        "rel": "patterns/TEST_TEMPLATE_AUDIT.md",
+        "category": "docs",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9770286970677391,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "moons/README.md",
+          "score": 0.9795104812651875
+        },
+        "topExternal": {
+          "name": "moons/README.md",
+          "score": 0.9795104812651875
+        }
+      },
+      {
+        "rel": "patterns/trust/security-headers.js",
+        "category": "other",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9681095472547563,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "solana/clap-v3-utils/src/fee_payer.rs",
+          "score": 0.9706172611861491
+        },
+        "topExternal": {
+          "name": "solana/clap-v3-utils/src/fee_payer.rs",
+          "score": 0.9706172611861491
+        }
+      },
+      {
+        "rel": "patterns/batch3/event-emitter.test.js",
+        "category": "tests",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.9666057985915559,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/tests/auto-tagger.test.js",
+          "score": 0.9799475313258238
+        },
+        "topExternal": {
+          "name": "oracle/tests/auto-tagger.test.js",
+          "score": 0.9799475313258238
+        }
+      },
+      {
+        "rel": "packages/shared/src/index.ts",
+        "category": "config",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.979935983761113,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "claw/rust/crates/compat-harness/Cargo.toml",
+          "score": 0.9793437662056681
+        },
+        "topExternal": {
+          "name": "claw/rust/crates/compat-harness/Cargo.toml",
+          "score": 0.9793437662056681
+        }
+      },
+      {
+        "rel": "packages/shared/src/palette.ts",
+        "category": "config",
+        "flags": [
+          "ORPHAN"
+        ],
+        "coherence": 0.977777653065151,
+        "sameProject": 0,
+        "sameCategory": 0,
+        "duplicates": [],
+        "topCousin": {
+          "name": "oracle/packages/shared/src/palette.ts",
+          "score": 0.9998419416205876
+        },
+        "topExternal": {
+          "name": "oracle/packages/shared/src/palette.ts",
+          "score": 0.9998419416205876
+        }
+      }
+    ]
+  },
+  "crossSystemBridges": [
+    {
+      "from": "packages/shared/package.json",
+      "to": "oracle/packages/shared/package.json",
+      "score": 0.9999999999999392
+    },
+    {
+      "from": "packages/shared/tsconfig.json",
+      "to": "oracle/packages/shared/tsconfig.json",
+      "score": 0.9999999999998876
+    },
+    {
+      "from": "next-env.d.ts",
+      "to": "rmb-interface/next-env.d.ts",
+      "score": 0.9999227831682109
+    },
+    {
+      "from": "packages/shared/src/palette.ts",
+      "to": "oracle/packages/shared/src/palette.ts",
+      "score": 0.9998419416205876
+    },
+    {
+      "from": "tools/bots/package.json",
+      "to": "oracle/tools/bots/package.json",
+      "score": 0.9998001860199989
+    },
+    {
+      "from": "tsconfig.json",
+      "to": "rmb-interface/tsconfig.json",
+      "score": 0.9994847602161401
+    },
+    {
+      "from": "packages/shared/src/validate-name.ts",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9990574623299875
+    },
+    {
+      "from": "packages/shared/src/normalize-phone.ts",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.998744377039412
+    },
+    {
+      "from": "packages/shared/src/validate.ts",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9978325409357034
+    },
+    {
+      "from": "patterns/batch4/sorted-array.js",
+      "to": "oracle/seeds/code/priority-queue.js",
+      "score": 0.9972633904853109
+    },
+    {
+      "from": "package.json",
+      "to": "rmb-interface/package.json",
+      "score": 0.9969921029844209
+    },
+    {
+      "from": "patterns/batch2/title-case.js",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9969222544088922
+    },
+    {
+      "from": "vercel.json",
+      "to": "oracle/dashboard/package.json",
+      "score": 0.996731308183064
+    },
+    {
+      "from": "patterns/batch4/ring-buffer.test.js",
+      "to": "reflector/tests/index.test.js",
+      "score": 0.9967004085487938
+    },
+    {
+      "from": "patterns/batch2/capitalize.js",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9964120223867013
+    },
+    {
+      "from": "patterns/batch2/reverse-string.js",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9963648242177849
+    },
+    {
+      "from": "patterns/batch2/unescape-html.js",
+      "to": "oracle/site/escape-html-standalone.js",
+      "score": 0.9959557927139288
+    },
+    {
+      "from": "app/components/auth-provider.tsx",
+      "to": "claw/src/interactiveHelpers.py",
+      "score": 0.9956601271727189
+    },
+    {
+      "from": "app/api/client/purchases/route.ts",
+      "to": "rmb-interface/src/middleware.ts",
+      "score": 0.9955863366304298
+    },
+    {
+      "from": "app/api/admin/purchases/route.ts",
+      "to": "rmb-interface/src/middleware.ts",
+      "score": 0.9955710407125613
+    },
+    {
+      "from": "tools/bots/index.js",
+      "to": "claw/rust/crates/telemetry/Cargo.toml",
+      "score": 0.9955650574919044
+    },
+    {
+      "from": "patterns/batch2/word-count.js",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9954970875568218
+    },
+    {
+      "from": "patterns/batch4/linked-list.test.js",
+      "to": "reflector/tests/index.test.js",
+      "score": 0.9950145098651035
+    },
+    {
+      "from": "public/.well-known/agent.json",
+      "to": "rmb-swarm/package.json",
+      "score": 0.9940495757078801
+    },
+    {
+      "from": "patterns/batch3/timeout-promise.test.js",
+      "to": "oracle/tests/promise-pool.test.js",
+      "score": 0.9940476505607131
+    },
+    {
+      "from": "patterns/batch4/trie.js",
+      "to": "oracle/seeds/code/pub-sub.js",
+      "score": 0.9940350978198036
+    },
+    {
+      "from": "packages/shared/src/validate-phone.ts",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9937156431158237
+    },
+    {
+      "from": "patterns/batch1/mean.js",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9936426636079738
+    },
+    {
+      "from": "patterns/batch2/is-palindrome.js",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9934703798958461
+    },
+    {
+      "from": "patterns/batch2/kebab-to-camel.js",
+      "to": "oracle/packages/shared/src/validate.ts",
+      "score": 0.9934672824226842
+    }
+  ],
+  "fieldStateBefore": {
+    "coherence": 0.41922329983680523,
+    "updateCount": 126330,
+    "sources": 1752
+  },
+  "fieldStateAfter": {
+    "coherence": 0.9054575,
+    "updateCount": 127276,
+    "sources": 1775
+  },
+  "contributionsCount": 21
+}

@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/lib/auth-config";
-import { isAdminEmail } from "@/app/lib/admin-emails";
+import { isAdminEmail } from "@/app/lib/admin-auth";
 import {
   createGoogleSessionToken,
   ADMIN_SESSION_COOKIE,

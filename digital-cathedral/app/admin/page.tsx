@@ -63,6 +63,7 @@ interface Stats {
   byState: Record<string, number>;
   byCoverage: Record<string, number>;
   byVeteranStatus: Record<string, number>;
+  bySource?: { human: number; agent: number; lattice: number };
 }
 
 const TIER_STYLES: Record<string, string> = {
@@ -85,6 +86,9 @@ const COVERAGE_LABELS: Record<string, string> = {
 export default function AdminDashboard() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
+  /** Buyers awaiting license review — surfaced as a badge on the
+   *  Client Management button so operators see the queue. */
+  const [pendingClients, setPendingClients] = useState(0);
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -93,20 +97,31 @@ export default function AdminDashboard() {
   const [filterState, setFilterState] = useState("");
   const [filterCoverage, setFilterCoverage] = useState("");
   const [filterVeteran, setFilterVeteran] = useState("");
+  const [filterSource, setFilterSource] = useState<"" | "human" | "agent" | "lattice">("");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 350);
   const [page, setPage] = useState(0);
   const LIMIT = 25;
 
   const fetchStats = useCallback(async () => {
-    const res = await fetch("/api/admin/stats");
-    if (res.status === 401 || res.status === 403) {
+    // Lead stats + client stats fetched in parallel so the dashboard hydrates
+    // in one round-trip. /api/admin/revenue carries the pending-client count
+    // (see ClientStats.pendingClients).
+    const [leadRes, clientRes] = await Promise.all([
+      fetch("/api/admin/stats"),
+      fetch("/api/admin/revenue").catch(() => null),
+    ]);
+    if (leadRes.status === 401 || leadRes.status === 403) {
       router.push("/admin/login");
       return;
     }
-    if (res.ok) {
-      const data = await res.json();
+    if (leadRes.ok) {
+      const data = await leadRes.json();
       setStats(data.stats);
+    }
+    if (clientRes && clientRes.ok) {
+      const data = await clientRes.json();
+      setPendingClients(data?.stats?.pendingClients ?? 0);
     }
   }, [router]);
 
@@ -116,6 +131,7 @@ export default function AdminDashboard() {
     if (filterState) params.set("state", filterState);
     if (filterCoverage) params.set("coverage", filterCoverage);
     if (filterVeteran) params.set("veteran", filterVeteran);
+    if (filterSource) params.set("source", filterSource);
     if (debouncedSearch) params.set("search", debouncedSearch);
     params.set("limit", String(LIMIT));
     params.set("offset", String(page * LIMIT));
@@ -127,13 +143,14 @@ export default function AdminDashboard() {
       setTotal(data.total);
     }
     setLoading(false);
-  }, [filterState, filterCoverage, filterVeteran, debouncedSearch, page]);
+  }, [filterState, filterCoverage, filterVeteran, filterSource, debouncedSearch, page]);
 
   const handleExport = () => {
     const params = new URLSearchParams();
     if (filterState) params.set("state", filterState);
     if (filterCoverage) params.set("coverage", filterCoverage);
     if (filterVeteran) params.set("veteran", filterVeteran);
+    if (filterSource) params.set("source", filterSource);
     if (search) params.set("search", search);
 
     fetch(`/api/admin/export?${params}`)
@@ -300,16 +317,34 @@ export default function AdminDashboard() {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => router.push("/admin/leads")}
-            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+            onClick={() => router.push("/admin/field")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-indigo-cathedral text-white hover:bg-indigo-cathedral/90"
+            title="Fractal field — every operational number for the website in one view"
           >
-            Lead Management
+            Field
           </button>
           <button
-            onClick={() => router.push("/admin/clients")}
+            onClick={() => router.push("/admin/seed")}
             className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
           >
+            Seed Test Data
+          </button>
+          <button
+            onClick={() => router.push("/admin/clients?status=pending")}
+            className="relative px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+            title={pendingClients > 0
+              ? `${pendingClients} buyer${pendingClients === 1 ? "" : "s"} awaiting license verification`
+              : undefined}
+          >
             Client Management
+            {pendingClients > 0 && (
+              <span
+                aria-label={`${pendingClients} pending verification`}
+                className="absolute -top-2 -right-2 min-w-[1.25rem] h-5 px-1 rounded-full bg-amber-400 text-amber-900 text-[10px] font-semibold flex items-center justify-center border border-amber-500"
+              >
+                {pendingClients > 99 ? "99+" : pendingClients}
+              </span>
+            )}
           </button>
           <button
             onClick={() => router.push("/admin/pricing")}
@@ -511,6 +546,38 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Source Breakdown — human vs AI agent vs viral-lattice funnel.
+          The lattice number can overlap human/agent (it's a separate cut),
+          so the percentages are shown against the total, not summed. */}
+      {stats?.bySource && (
+        <div className="cathedral-surface p-4 mb-8" role="region" aria-label="Submission source breakdown">
+          <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium mb-3">Submission Source</p>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div>
+              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.human}</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">Human</p>
+              <p className="text-[10px] text-[var(--text-muted)]">
+                {stats.total > 0 ? Math.round((100 * stats.bySource.human) / stats.total) : 0}% of total
+              </p>
+            </div>
+            <div>
+              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.agent}</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">AI Agent</p>
+              <p className="text-[10px] text-[var(--text-muted)]">
+                {stats.total > 0 ? Math.round((100 * stats.bySource.agent) / stats.total) : 0}% of total
+              </p>
+            </div>
+            <div>
+              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.lattice}</p>
+              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">Viral Lattice</p>
+              <p className="text-[10px] text-[var(--text-muted)]">
+                {stats.total > 0 ? Math.round((100 * stats.bySource.lattice) / stats.total) : 0}% of total
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="cathedral-surface p-4 mb-6" role="search" aria-label="Filter leads">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -557,8 +624,22 @@ export default function AdminDashboard() {
             <option value="veteran">Veteran</option>
             <option value="non-military">Non-Military</option>
           </select>
+          <select
+            value={filterSource}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+              setFilterSource(e.target.value as "" | "human" | "agent" | "lattice");
+              setPage(0);
+            }}
+            aria-label="Filter by submission source"
+            className="bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25 appearance-none"
+          >
+            <option value="">All Sources</option>
+            <option value="human">Human-submitted</option>
+            <option value="agent">AI-Agent-submitted</option>
+            <option value="lattice">From viral lattice</option>
+          </select>
           <button
-            onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setSearch(""); setPage(0); }}
+            onClick={() => { setFilterState(""); setFilterCoverage(""); setFilterVeteran(""); setFilterSource(""); setSearch(""); setPage(0); }}
             className="text-sm text-teal-cathedral underline py-2"
           >
             Clear Filters

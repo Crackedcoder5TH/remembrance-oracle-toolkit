@@ -59,10 +59,18 @@ try { entangle = require('./entangle'); } catch (_) { /* optional */ }
 // discriminate code from prose. We pull the fractal encoder only.
 const { toFractalWaveform } = require('./fractal-waveform');
 
-// Canonical substrate: Void's 29-D fractal library (~43k patterns,
+// Encoder stack for depth-aware composed encoding (L1+L2+L3+L4 = 116-D)
+// — used so every read produces both the L1 vector and the composed
+// vector, enabling flow-aware scoring against the substrate.
+let _encoderStack = null;
+try {
+  _encoderStack = require('./encoder-stack');
+} catch (_) { /* stack unreachable — read falls back to L1 only */ }
+
+// Canonical substrate: Void's fractal library (~43k+ patterns,
 // translated from the master pattern_index.json via the same
-// canonical encoder). This is THE substrate. Every measurement
-// scores against it.
+// canonical encoder). Now holds both L1 (29-D) and composed_v1
+// (116-D) vectors so reads can return the full coherency flow.
 let _voidLib = null;
 try {
   _voidLib = require('./void-library');
@@ -144,22 +152,47 @@ class FieldTool {
       layers.entangled = this._ensureEngaged();
     }
 
-    // 2. Encode via the canonical 29-D fractal encoder. ONE encoder,
-    //    everywhere. JS↔Python parity. The legacy 256-D byte encoder
-    //    is not invoked from this read path under any circumstance —
-    //    it gave false positives (any text input scored ~0.9 against
-    //    any text-derived library, the encoder's known noise floor)
-    //    and has been deprecated.
+    // 2. Encode at BOTH the L1 canonical fractal (29-D) AND the
+    //    composed depth-4 layer (116-D = L1+L2+L3+L4). Reading the
+    //    coherency flow across all four depths is the default; a
+    //    single-depth verdict can mislead because each layer captures
+    //    structure at a different scale and the shape of the flow IS
+    //    the signal.
     const waveform = Array.from(toFractalWaveform(content));
+    let composed = null;
+    if (_encoderStack) {
+      try {
+        composed = Array.from(_encoderStack.composedAtDepth(content, 4));
+      } catch (_) { /* fall back to L1-only resonance */ }
+    }
 
-    // 3. Primary substrate read: score the 29-D fractal against
-    //    Void's 29-D canonical library (~43k patterns translated
-    //    from Void's master pattern_index via the same encoder).
+    // 3. Primary substrate read: FLOW-AWARE score across all four
+    //    depths. Returns per-match {d1, d2, d3, d4, shape} so the
+    //    caller reads each cousinship as a depth-flow, not a verdict.
+    //    Falls back to L1-only score when the encoder stack or
+    //    composed substrate vectors are unavailable.
     let voidResonance = null;
     if (merged.useVoidSubstrate && _voidLib) {
       try {
-        voidResonance = _voidLib.score(waveform, { k: merged.topK });
-        layers.voidScored = voidResonance != null;
+        if (composed && _voidLib.scoreWithFlow) {
+          const flowResult = _voidLib.scoreWithFlow(waveform, composed, { k: merged.topK });
+          if (flowResult) {
+            // Backward-compat fields populated alongside the flow data
+            // so existing consumers (.score, .meanTopK, .bestMatch) work.
+            voidResonance = {
+              ...flowResult,
+              score: flowResult.meanTopK,
+              bestMatch: flowResult.bestMatch ? flowResult.bestMatch.d4 : 0,
+              flowAware: true,
+            };
+            layers.voidScored = true;
+          }
+        }
+        if (!voidResonance) {
+          voidResonance = _voidLib.score(waveform, { k: merged.topK });
+          if (voidResonance) voidResonance.flowAware = false;
+          layers.voidScored = voidResonance != null;
+        }
       } catch (_) { /* keep null */ }
     }
 

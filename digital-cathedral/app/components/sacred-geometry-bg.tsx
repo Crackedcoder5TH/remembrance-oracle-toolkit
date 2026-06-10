@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Sacred Geometry Background — The Centerpiece
  *

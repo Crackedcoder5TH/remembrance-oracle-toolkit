@@ -11,6 +11,7 @@ import { scoreLead } from "@/app/lib/lead-scoring";
 import { getLeadPrice, PURCHASE_TIERS, getTierByIndex } from "@/app/lib/lead-depreciation";
 import { stripe } from "@/app/lib/stripe";
 import { validateCsrfToken } from "@/app/lib/csrf";
+import { logger } from "@/app/lib/logger";
 
 /**
  * Client Purchase API
@@ -138,7 +139,35 @@ export async function POST(req: NextRequest) {
       success: true,
       checkoutUrl: session.url,
     });
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+
+    // Missing key — clearer 503 than a generic 400 so the operator knows it's
+    // an env-var problem, not a client mistake.
+    if (message.includes("STRIPE_SECRET_KEY is not set")) {
+      logger.error("Stripe not configured — purchase request rejected", { detail: message });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Payments are temporarily unavailable. Our team has been notified — please try again shortly.",
+        },
+        { status: 503 },
+      );
+    }
+
+    // Stripe accepted the request but returned an API error — surface the
+    // Stripe-side message to the operator log and a generic 502 to the buyer
+    // (don't leak Stripe internals to the client).
+    if (message.includes("StripeInvalidRequestError") || (err as { type?: string })?.type?.startsWith?.("Stripe")) {
+      logger.error("Stripe API error during checkout session create", { detail: message });
+      return NextResponse.json(
+        { success: false, message: "We couldn't open the payment page. Please try again." },
+        { status: 502 },
+      );
+    }
+
+    // Genuinely malformed body / unknown failure — preserve the original 400.
+    logger.warn("Purchase request rejected", { detail: message });
     return NextResponse.json({ success: false, message: "Invalid request." }, { status: 400 });
   }
 }

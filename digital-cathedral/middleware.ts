@@ -220,7 +220,9 @@ export async function middleware(request: NextRequest) {
 
   if (domainType === "portal") {
     // On the portal domain, only serve portal/admin routes and their APIs.
-    // Redirect everything else (homepage, blog, about, etc.) to /portal.
+    // Redirect everything else (homepage, blog, about, etc.) to /admin —
+    // the operator surface is the default landing on the operator host.
+    // Buyers still reach the marketplace via explicit /portal/* URLs.
     const isPortalRoute =
       pathname === "/portal" ||
       pathname.startsWith("/portal/") ||
@@ -230,8 +232,28 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/.well-known") ||
       pathname.includes(".");
     if (!isPortalRoute) {
-      const portalUrl = new URL("/portal", request.url);
-      return NextResponse.redirect(portalUrl, 301);
+      const adminUrl = new URL("/admin", request.url);
+      return NextResponse.redirect(adminUrl, 301);
+    }
+  }
+
+  // ─── Primary domain — bounce operator surfaces to portal host ───
+  // /admin/* and /portal/* must live on the portal (.xyz) host. If someone
+  // lands on those paths on the primary (.com) marketing host, redirect to
+  // the portal so the two surfaces stay fully separated. The lead form on
+  // /.com keeps its identity; the operator never visually leaks into it.
+  if (domainType === "primary") {
+    const isOperatorSurface =
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/portal") ||
+      pathname.startsWith("/api/admin") ||
+      pathname.startsWith("/api/portal") ||
+      pathname.startsWith("/api/client");
+    if (isOperatorSurface && (PORTAL_BASE_URL || PORTAL_DOMAIN)) {
+      const base = PORTAL_BASE_URL || `https://www.${PORTAL_DOMAIN}`;
+      const portalUrl = new URL(pathname, base);
+      portalUrl.search = request.nextUrl.search;
+      return NextResponse.redirect(portalUrl.toString(), 301);
     }
   }
 

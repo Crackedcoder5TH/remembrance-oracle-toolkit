@@ -33,9 +33,14 @@ export interface LoginContentProps {
    *  the Google button is hidden, the API-key panel defaults open, and a
    *  one-line operator notice explains why. */
   googleEnabled: boolean;
+  /** Absolute URL of the public marketing site (the .com lead-form host),
+   *  resolved by the server component from PRIMARY_DOMAIN/NEXT_PUBLIC_SITE_URL.
+   *  Used by the "View public site" sublink so the operator can reach the
+   *  public surface from the login page without it being the default home. */
+  publicSiteUrl: string;
 }
 
-export default function LoginContent({ googleEnabled }: LoginContentProps) {
+export default function LoginContent({ googleEnabled, publicSiteUrl }: LoginContentProps) {
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -209,8 +214,12 @@ export default function LoginContent({ googleEnabled }: LoginContentProps) {
         </div>
 
         <p className="text-center text-xs text-[var(--text-muted)]">
-          <a href="/" className="text-teal-cathedral/70 hover:text-teal-cathedral">
-            &larr; Back home
+          <a
+            href={publicSiteUrl}
+            className="text-teal-cathedral/70 hover:text-teal-cathedral"
+            rel="noopener"
+          >
+            View public site &rarr;
           </a>
         </p>
       </div>

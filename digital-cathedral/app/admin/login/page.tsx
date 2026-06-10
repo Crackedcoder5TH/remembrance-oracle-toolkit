@@ -18,6 +18,19 @@ export default function AdminLoginPage() {
     process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim(),
   );
 
+  // Public-site URL — the .com lead-form host. Resolved here so the
+  // "View public site" sublink on the login page points at the actual
+  // marketing surface, not whatever "/" happens to be on the current
+  // host. Without this, the back-link would route through middleware
+  // and end up at /admin (the default landing on .xyz) — a loop.
+  const primaryDomain = (process.env.PRIMARY_DOMAIN ?? "valorlegacies.com")
+    .trim()
+    .toLowerCase();
+  const publicSiteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? `https://www.${primaryDomain}`)
+    .split(",")[0]
+    .trim()
+    .replace(/\/$/, "");
+
   return (
     <Suspense
       fallback={
@@ -26,7 +39,7 @@ export default function AdminLoginPage() {
         </main>
       }
     >
-      <LoginContent googleEnabled={googleEnabled} />
+      <LoginContent googleEnabled={googleEnabled} publicSiteUrl={publicSiteUrl} />
     </Suspense>
   );
 }

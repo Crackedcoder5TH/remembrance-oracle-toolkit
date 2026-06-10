@@ -58,9 +58,19 @@ const VIRAL_LATTICE_DOMAINS: string[] = (process.env.VIRAL_LATTICE_DOMAINS ?? ""
   .split(",")
   .map((d) => d.trim().toLowerCase())
   .filter(Boolean);
-const PORTAL_DOMAIN: string = (process.env.PORTAL_DOMAIN ?? "").trim().toLowerCase();
+// PORTAL_DOMAIN defaults to the .xyz twin of PRIMARY_DOMAIN so routing works
+// out-of-the-box on the canonical pair (valorlegacies.com / valorlegacies.xyz)
+// even when the env var isn't explicitly set on the deploy. Without this
+// default, an unset PORTAL_DOMAIN lets the .xyz catch-all in getDomainType
+// classify the portal host as "viral" and redirect admin/portal traffic to
+// the lead form on .com — exactly the bug the operator hit in production.
+const PORTAL_DOMAIN: string = ((process.env.PORTAL_DOMAIN ?? "").trim().toLowerCase())
+  || (PRIMARY_DOMAIN.endsWith(".com")
+    ? `${PRIMARY_DOMAIN.slice(0, -4)}.xyz`
+    : "");
 /** Canonical portal URL with protocol + www, used for redirects from leads domains. */
-const PORTAL_BASE_URL: string = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").trim().replace(/\/$/, "");
+const PORTAL_BASE_URL: string = ((process.env.NEXT_PUBLIC_PORTAL_URL ?? "").trim().replace(/\/$/, ""))
+  || (PORTAL_DOMAIN ? `https://www.${PORTAL_DOMAIN}` : "");
 
 type DomainType = "primary" | "leads" | "portal" | "viral" | "unknown";
 
@@ -72,8 +82,13 @@ function getDomainType(hostname: string): DomainType {
   const host = stripHost(hostname);
   if (!host) return "unknown";
   if (host === PRIMARY_DOMAIN) return "primary";
-  if (VIRAL_LATTICE_DOMAINS.includes(host)) return "viral";
+  // PORTAL is checked BEFORE VIRAL_LATTICE_DOMAINS and the .xyz catch-all
+  // so the operator host always wins routing, even if it's accidentally
+  // listed in VIRAL_LATTICE_DOMAINS or PORTAL_DOMAIN is misconfigured.
+  // Without this ordering, admin/portal traffic would funnel to the lead
+  // form on .com — silently breaking the only path operators use to log in.
   if (PORTAL_DOMAIN && host === PORTAL_DOMAIN) return "portal";
+  if (VIRAL_LATTICE_DOMAINS.includes(host)) return "viral";
   if (LEADS_DOMAINS.includes(host)) return "leads";
   // Catch-all: any .xyz domain (or any host we don't otherwise recognize)
   // funnels into the viral lattice path so newly-pointed domains auto-route.

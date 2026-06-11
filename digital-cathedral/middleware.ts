@@ -58,9 +58,19 @@ const VIRAL_LATTICE_DOMAINS: string[] = (process.env.VIRAL_LATTICE_DOMAINS ?? ""
   .split(",")
   .map((d) => d.trim().toLowerCase())
   .filter(Boolean);
-const PORTAL_DOMAIN: string = (process.env.PORTAL_DOMAIN ?? "").trim().toLowerCase();
+// PORTAL_DOMAIN defaults to the .xyz twin of PRIMARY_DOMAIN so routing works
+// out-of-the-box on the canonical pair (valorlegacies.com / valorlegacies.xyz)
+// even when the env var isn't explicitly set on the deploy. Without this
+// default, an unset PORTAL_DOMAIN lets the .xyz catch-all in getDomainType
+// classify the portal host as "viral" and redirect admin/portal traffic to
+// the lead form on .com — exactly the bug the operator hit in production.
+const PORTAL_DOMAIN: string = ((process.env.PORTAL_DOMAIN ?? "").trim().toLowerCase())
+  || (PRIMARY_DOMAIN.endsWith(".com")
+    ? `${PRIMARY_DOMAIN.slice(0, -4)}.xyz`
+    : "");
 /** Canonical portal URL with protocol + www, used for redirects from leads domains. */
-const PORTAL_BASE_URL: string = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "").trim().replace(/\/$/, "");
+const PORTAL_BASE_URL: string = ((process.env.NEXT_PUBLIC_PORTAL_URL ?? "").trim().replace(/\/$/, ""))
+  || (PORTAL_DOMAIN ? `https://www.${PORTAL_DOMAIN}` : "");
 
 type DomainType = "primary" | "leads" | "portal" | "viral" | "unknown";
 
@@ -72,8 +82,13 @@ function getDomainType(hostname: string): DomainType {
   const host = stripHost(hostname);
   if (!host) return "unknown";
   if (host === PRIMARY_DOMAIN) return "primary";
-  if (VIRAL_LATTICE_DOMAINS.includes(host)) return "viral";
+  // PORTAL is checked BEFORE VIRAL_LATTICE_DOMAINS and the .xyz catch-all
+  // so the operator host always wins routing, even if it's accidentally
+  // listed in VIRAL_LATTICE_DOMAINS or PORTAL_DOMAIN is misconfigured.
+  // Without this ordering, admin/portal traffic would funnel to the lead
+  // form on .com — silently breaking the only path operators use to log in.
   if (PORTAL_DOMAIN && host === PORTAL_DOMAIN) return "portal";
+  if (VIRAL_LATTICE_DOMAINS.includes(host)) return "viral";
   if (LEADS_DOMAINS.includes(host)) return "leads";
   // Catch-all: any .xyz domain (or any host we don't otherwise recognize)
   // funnels into the viral lattice path so newly-pointed domains auto-route.
@@ -205,7 +220,9 @@ export async function middleware(request: NextRequest) {
 
   if (domainType === "portal") {
     // On the portal domain, only serve portal/admin routes and their APIs.
-    // Redirect everything else (homepage, blog, about, etc.) to /portal.
+    // Redirect everything else (homepage, blog, about, etc.) to /admin —
+    // the operator surface is the default landing on the operator host.
+    // Buyers still reach the marketplace via explicit /portal/* URLs.
     const isPortalRoute =
       pathname === "/portal" ||
       pathname.startsWith("/portal/") ||
@@ -215,8 +232,28 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/.well-known") ||
       pathname.includes(".");
     if (!isPortalRoute) {
-      const portalUrl = new URL("/portal", request.url);
-      return NextResponse.redirect(portalUrl, 301);
+      const adminUrl = new URL("/admin", request.url);
+      return NextResponse.redirect(adminUrl, 301);
+    }
+  }
+
+  // ─── Primary domain — bounce operator surfaces to portal host ───
+  // /admin/* and /portal/* must live on the portal (.xyz) host. If someone
+  // lands on those paths on the primary (.com) marketing host, redirect to
+  // the portal so the two surfaces stay fully separated. The lead form on
+  // /.com keeps its identity; the operator never visually leaks into it.
+  if (domainType === "primary") {
+    const isOperatorSurface =
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/portal") ||
+      pathname.startsWith("/api/admin") ||
+      pathname.startsWith("/api/portal") ||
+      pathname.startsWith("/api/client");
+    if (isOperatorSurface && (PORTAL_BASE_URL || PORTAL_DOMAIN)) {
+      const base = PORTAL_BASE_URL || `https://www.${PORTAL_DOMAIN}`;
+      const portalUrl = new URL(pathname, base);
+      portalUrl.search = request.nextUrl.search;
+      return NextResponse.redirect(portalUrl.toString(), 301);
     }
   }
 

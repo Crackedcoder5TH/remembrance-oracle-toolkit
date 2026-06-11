@@ -143,10 +143,10 @@ export default function PortalRegisterPage() {
   const rateLimited = retryAfter > 0;
   const submitDisabled = loading || rateLimited;
   const submitLabel = loading
-    ? "Creating account..."
+    ? "Submitting application..."
     : rateLimited
       ? `Try again in ${retryAfter}s`
-      : "Create account";
+      : "Submit application";
 
   return (
     <main className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -155,7 +155,7 @@ export default function PortalRegisterPage() {
           <div className="text-teal-cathedral text-xs tracking-[0.3em] uppercase pulse-gentle mb-2">
             Agent Portal
           </div>
-          <h1 className="text-2xl font-light text-[var(--text-primary)]">Create your account</h1>
+          <h1 className="text-2xl font-light text-[var(--text-primary)]">Become a partner agent</h1>
           <p className="text-sm text-[var(--text-muted)] mt-2">
             Licensed insurance professionals only. You can sign in right away;
             your account stays in pending review until our team verifies your

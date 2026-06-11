@@ -58,6 +58,11 @@ export default function PortalDashboardPage() {
   const [msgSuccess, setMsgSuccess] = useState("");
 
   useEffect(() => {
+    // Contextual tab title — the layout default is "Agent Portal | Valor
+    // Legacies"; this overrides for the dashboard specifically so an open
+    // tab is identifiable at a glance.
+    document.title = "Agent Dashboard | Valor Legacies";
+
     fetch("/api/portal/session")
       .then((res) => {
         if (!res.ok) throw new Error("Not authenticated");
@@ -139,8 +144,11 @@ export default function PortalDashboardPage() {
               Agent Portal
             </div>
             <h1 className="text-2xl font-light text-[var(--text-primary)]">
-              Welcome, {user.firstName}
+              Welcome back, {user.firstName}
             </h1>
+            <p className="text-xs text-[var(--text-muted)] mt-1">
+              Your agent dashboard
+            </p>
           </div>
           <div className="flex items-center gap-3">
             {clientStatus === "active" && (
@@ -152,7 +160,7 @@ export default function PortalDashboardPage() {
               </Link>
             )}
             <Link
-              href="/"
+              href="/portal"
               className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
             >
               Home

@@ -51,6 +51,7 @@ const { PluginManager, HookEmitter, VALID_HOOKS } = require('./plugins/manager')
 const { health: healthCheck, metrics: metricsSnapshot, coherencyDistribution } = require('./health/monitor');
 const { createOracleContext, evolve: selfEvolve, stalenessPenalty, evolvePenalty, evolutionAdjustment, needsAutoHeal, autoHeal, captureRejection, detectRegressions, recheckCoherency, EVOLUTION_DEFAULTS, LifecycleEngine, LIFECYCLE_DEFAULTS, HealingWhisper, WHISPER_INTROS, WHISPER_DETAILS, selfImprove, selfOptimize, fullCycle: fullOptimizationCycle, consolidateDuplicates, consolidateTags, pruneStuckCandidates, polishCycle, iterativePolish, OPTIMIZE_DEFAULTS } = require('./evolution');
 const { retryWithBackoff, isRetryableError, withRetry, resilientFetchSource } = require('./core/resilience');
+const { classifyAlignment, classifySignature, inspectAlignmentMarkers, EXTRACTION_WEIGHTS, ABUNDANCE_WEIGHTS } = require('./core/abundance-classifier');
 
 // Fractal system
 const fractals = require('./fractals');
@@ -436,6 +437,13 @@ module.exports = {
   isRetryableError,
   withRetry,
   resilientFetchSource,
+
+  // Abundance Classifier (extraction vs abundance over the 116-D signature)
+  classifyAlignment,
+  classifySignature,
+  inspectAlignmentMarkers,
+  EXTRACTION_WEIGHTS,
+  ABUNDANCE_WEIGHTS,
 
   // Fractal System
   ...fractals,

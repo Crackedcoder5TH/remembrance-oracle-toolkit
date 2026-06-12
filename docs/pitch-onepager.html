@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Remembrance — Pattern Coherency Engine</title>
+<style>
+  @page { size: letter; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #1a1f2e;
+    background: #fdfcf9;
+    width: 8.5in; min-height: 11in;
+    padding: 0.55in 0.65in;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .tag { font-family: Helvetica, Arial, sans-serif; font-size: 9px; letter-spacing: 3.5px; text-transform: uppercase; color: #0e7c7b; margin-bottom: 6px; }
+  h1 { font-size: 27px; font-weight: normal; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .sub { font-size: 12.5px; color: #555f6e; font-style: italic; margin-bottom: 18px; }
+  .rule { border: none; border-top: 1px solid #d8d2c4; margin: 14px 0; }
+  h2 { font-family: Helvetica, Arial, sans-serif; font-size: 10.5px; letter-spacing: 2.5px; text-transform: uppercase; color: #0e7c7b; margin: 14px 0 7px; }
+  p, li { font-size: 11.5px; line-height: 1.5; }
+  ul { list-style: none; }
+  li { padding-left: 14px; position: relative; margin-bottom: 4px; }
+  li::before { content: "◆"; position: absolute; left: 0; font-size: 7px; top: 4px; color: #0e7c7b; }
+  .cols { display: flex; gap: 26px; }
+  .col { flex: 1; }
+  .stack { font-family: 'Courier New', monospace; font-size: 10px; background: #14192b; color: #c8d4e8; border-radius: 6px; padding: 12px 14px; line-height: 1.65; margin: 8px 0; }
+  .stack b { color: #5fd3c4; font-weight: normal; }
+  .verdict { display: flex; gap: 14px; margin: 8px 0; }
+  .vcard { flex: 1; border: 1px solid #d8d2c4; border-radius: 6px; padding: 9px 12px; font-size: 10.5px; line-height: 1.5; }
+  .vcard .lbl { font-family: Helvetica, Arial, sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .ex .lbl { color: #a04545; } .ab .lbl { color: #0e7c7b; }
+  .vcard code { font-family: 'Courier New', monospace; font-size: 9.5px; }
+  .offer { background: #f2efe6; border-radius: 6px; padding: 11px 14px; margin-top: 4px; }
+  .offer p { font-size: 11px; }
+  .foot { margin-top: 16px; padding-top: 10px; border-top: 1px solid #d8d2c4; display: flex; justify-content: space-between; font-family: Helvetica, Arial, sans-serif; font-size: 9.5px; color: #555f6e; }
+  .big { font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="tag">Remembrance Protocol · Pattern Coherency Engine</div>
+<h1>Every pattern has a fingerprint.<br>We measure whether it extracts or regenerates.</h1>
+<p class="sub">A deterministic 116-dimensional signature for any pattern — code, contracts, tokenomics, time-series, prose — with a built-in verdict: does flow concentrate, or does it circulate?</p>
+
+<hr class="rule">
+
+<div class="cols">
+  <div class="col">
+    <h2>The Problem</h2>
+    <p>Extractive systems and regenerative systems describe themselves with the same words. Whitepapers say "community." Contracts say "fair." Codebases say "open." Vocabulary is cheap — <b>structure is not</b>. Today there is no instrument that reads the structure underneath the language and says which one it actually is.</p>
+
+    <h2>The Instrument</h2>
+    <p>A four-layer fractal encoder. Each layer was designed from the measured blind spot of the layers before it — the stack grows where it cannot yet see.</p>
+    <div class="stack">
+<b>L1 structural</b>  29-D  shape, depth, reactivity, intent<br>
+<b>L2 lexical</b>     29-D  naming, vocabulary, style<br>
+<b>L3 numerical</b>   29-D  sequence dynamics, tail mass<br>
+<b>L4 spectral</b>    29-D  FFT frequency character, 1/f<br>
+─────────────────────────────────────<br>
+<b>composed</b>      116-D  deterministic · pure · auditable</div>
+    <p>Same input, same signature, every time. No model weights, no API calls, no black box. Every score traces to a named dimension.</p>
+  </div>
+
+  <div class="col">
+    <h2>The Verdict Layer</h2>
+    <p>Extraction and abundance occupy <b>different regions of signature space</b> — measurably:</p>
+    <div class="verdict">
+      <div class="vcard ex">
+        <div class="lbl">Extraction signature</div>
+        Mass concentrates in the top 5% · monotonic accumulation · one-way flow · narrow-band spectral peak<br>
+        <code>compounding hoard → −0.18</code>
+      </div>
+      <div class="vcard ab">
+        <div class="lbl">Abundance signature</div>
+        Flow crosses back over the mean · high value diversity · 1/f spectra of living systems<br>
+        <code>bounded circulation → +0.18</code>
+      </div>
+    </div>
+    <p>Vocabulary can nudge the score by at most ±0.15. Dressing extractive structure in regenerative language <b>cannot fool the geometry</b> — and there is a test in the suite proving that bound.</p>
+
+    <h2>What You Can Buy</h2>
+    <ul>
+      <li><b>Pattern audit</b> — contract, codebase, or token model in; alignment verdict with named evidence out.</li>
+      <li><b>Drift watch</b> — re-fingerprint any living system on a schedule; alert when coherence degrades.</li>
+      <li><b>On-chain attestation</b> — the signature is deterministic, so audits can be minted as verifiable provenance.</li>
+    </ul>
+
+    <div class="offer">
+      <p class="big"><b>Pilot offer:</b> we audit one artifact of your choice — free. You see the evidence table before you pay for anything.</p>
+    </div>
+  </div>
+</div>
+
+<div class="foot">
+  <span>Remembrance Oracle Toolkit · 12-repo open ecosystem</span>
+  <span>ajanichisolm@gmail.com</span>
+</div>
+
+</body>
+</html>

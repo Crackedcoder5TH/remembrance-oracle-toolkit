@@ -181,6 +181,32 @@ class RemembranceOracle {
       }
     }
 
+    // Fractal signature index — native in-memory search backend over
+    // the 116-D composed encoder. Built best-effort: any failure here
+    // (encoder import, store iteration) leaves oracle functional with
+    // the legacy description+tag query path still wired.
+    this._fractalIndex = null;
+    if (options.fractalIndex !== false) {
+      try {
+        const { FractalIndex } = require('../core/fractal-index');
+        this._fractalIndex = new FractalIndex();
+        const existing = this.store.getAll ? this.store.getAll() : [];
+        if (existing.length > 0) {
+          this._fractalIndex.rebuild(
+            existing
+              .filter(e => e && e.id != null && typeof e.code === 'string')
+              .map(e => ({ id: String(e.id), text: e.code }))
+          );
+        }
+        if (process.env.ORACLE_DEBUG) {
+          console.log(`[oracle] fractal index ready (${this._fractalIndex.size()} patterns)`);
+        }
+      } catch (e) {
+        this._fractalIndex = null;
+        if (process.env.ORACLE_DEBUG) console.warn('[oracle] fractal index init failed:', e.message);
+      }
+    }
+
     // Register process exit handler to flush critical in-memory state.
     // This is the last-chance safety net before the process dies.
     this._exitHandlerInstalled = false;

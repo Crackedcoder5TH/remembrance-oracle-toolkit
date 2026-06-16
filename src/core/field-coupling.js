@@ -758,21 +758,35 @@ const _directionHistory = [];   // [{ ts, coherence, entropy, cascade }]
 // as ONE continuous line across the ecosystem, so it must persist.
 const _DIRECTION_PATH = process.env.FIELD_DIRECTION_PATH
   || path.join(__dirname, '..', '..', '.remembrance', 'field-direction.jsonl');
+// Committed durable copy in the blockchain repo's data/ — survives a container
+// reclaim (the .remembrance/ working file is gitignored and does not).
+const _DIRECTION_SEED = process.env.FIELD_DIRECTION_SEED
+  || path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'data', 'field-direction.seed.jsonl');
 let _directionLoaded = false;
+
+function _readDirectionLines(p) {
+  try {
+    const raw = fs.readFileSync(p, 'utf8').trim();
+    if (!raw) return [];
+    const out = [];
+    for (const ln of raw.split('\n').slice(-_DIRECTION_HISTORY_MAX)) {
+      try {
+        const s = JSON.parse(ln);
+        if (s && typeof s.coherence === 'number') out.push(s);
+      } catch (_) { /* skip malformed line */ }
+    }
+    return out;
+  } catch (_) { return []; }
+}
 
 function _loadDirectionHistory() {
   if (_directionLoaded) return;
   _directionLoaded = true;
-  try {
-    const raw = fs.readFileSync(_DIRECTION_PATH, 'utf8').trim();
-    if (!raw) return;
-    for (const ln of raw.split('\n').slice(-_DIRECTION_HISTORY_MAX)) {
-      try {
-        const s = JSON.parse(ln);
-        if (s && typeof s.coherence === 'number') _directionHistory.push(s);
-      } catch (_) { /* skip malformed line */ }
-    }
-  } catch (_) { /* no history yet */ }
+  // Prefer the live working file; fall back to the committed durable seed so a
+  // fresh container restores the flow line instead of starting blind.
+  let lines = _readDirectionLines(_DIRECTION_PATH);
+  if (lines.length === 0) lines = _readDirectionLines(_DIRECTION_SEED);
+  for (const s of lines) _directionHistory.push(s);
 }
 
 function _captureDirectionSnapshot(state) {

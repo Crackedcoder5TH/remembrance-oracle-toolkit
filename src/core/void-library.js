@@ -35,6 +35,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { FractalIndex } = require('./fractal-index');
 
 const DEFAULT_VOID_ROOT = process.env.VOID_ROOT
   || '/home/user/Void-Data-Compressor';
@@ -45,6 +46,7 @@ class VoidLibrary {
     this.indexPath = path.join(this.voidRoot, 'pattern_index_fractal.json');
     this._fractals = null;     // Map<name, Float64Array(29)>
     this._composed = null;     // Map<name, Float64Array(116)> (composed_v1 when present)
+    this._fractalIndex = null; // FractalIndex over the composed vectors (the search engine)
     this._loadError = null;
     this._loadAttempted = false;
     this._meta = null;
@@ -129,10 +131,31 @@ class VoidLibrary {
     if (!m || m.size === 0) return null;
     if (!inputL1 || inputL1.length !== 29) return null;
 
-    const composed = this._composed;
     const k = Math.max(1, opts.k || 5);
     const filter = typeof opts.filter === 'function' ? opts.filter : null;
 
+    // Primary path — the field-tool default carries a composed query vector.
+    // Serve it from the FractalIndex (precomputed-norm engine), so the whole
+    // substrate runs ONE search engine instead of a second per-comparison loop
+    // here. Identical cosines (composed[:29] == the L1 fractal), just without
+    // recomputing both norms on every comparison.
+    const fi = (inputComposed && inputComposed.length >= 116) ? this._ensureFractalIndex() : null;
+    if (fi && fi.size() > 0) {
+      const raw = fi.searchFlow(inputComposed, { k, filter });
+      if (raw.length === 0) {
+        return { bestMatch: null, meanTopK: 0, topMatches: [], librarySize: m.size, composedCoverage: 0 };
+      }
+      const top = raw.map((r) => ({
+        name: r.id, d1: r.d1, d2: r.d2, d3: r.d3, d4: r.d4,
+        shape: _classifyFlow(r), score: r.d4,
+      }));
+      const meanTopK = top.reduce((s, mt) => s + mt.d4, 0) / top.length;
+      const composedCoverage = this._composed ? this._composed.size / m.size : 0;
+      return { bestMatch: top[0], meanTopK, topMatches: top, librarySize: m.size, composedCoverage };
+    }
+
+    // Fallback — no composed query vector (L1-only callers): single cosine at L1.
+    const composed = this._composed;
     const scored = [];
     let composedHits = 0, composedMisses = 0;
     for (const [name, l1Vec] of m) {
@@ -226,6 +249,35 @@ class VoidLibrary {
       this._loadError = err && err.message ? err.message : 'unknown';
       return null;
     }
+  }
+
+  /**
+   * Lazily build the FractalIndex over the composed (116-D) vectors and
+   * cache it for the process lifetime. This is the same precomputed-norm
+   * search engine oracle's substrate uses — wiring the field-tool library
+   * onto it means the WHOLE instrument runs one search engine, not two
+   * parallel implementations that can drift.
+   *
+   * The vectors are already encoded (loaded from pattern_index_fractal.json),
+   * so we hand them to FractalIndex pre-encoded via `vec` — no re-encode,
+   * no encoder dependency, byte-identical to what scoreWithFlow read before.
+   * The 5 L1-only entries that carry no composed_v1 are simply absent from
+   * the index (46,529 of 46,534 have composed); they were never reachable by
+   * the composed flow path anyway.
+   *
+   * Returns null when there is nothing composed to index, so the caller
+   * falls back to the L1-only loop.
+   */
+  _ensureFractalIndex() {
+    if (this._fractalIndex) return this._fractalIndex;
+    this._ensureLoaded();
+    if (!this._composed || this._composed.size === 0) return null;
+    const fi = new FractalIndex();
+    const items = [];
+    for (const [name, vec] of this._composed) items.push({ id: name, vec });
+    fi.rebuild(items);
+    this._fractalIndex = fi;
+    return fi;
   }
 }
 

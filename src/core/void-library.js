@@ -2,29 +2,32 @@
 
 /**
  * void-library.js — reader for Void-Data-Compressor's canonical
- * pattern library at the 29-D fractal layer.
+ * pattern library at the composed fractal layer.
  *
  * The 256-D byte-stretch layer is deprecated. It gave false positives
  * (any text input scored ~0.9 against any text-derived library, the
- * encoder's known noise floor). The canonical encoder is the 29-D
- * fractal one. The library is the 29-D translation:
- * pattern_index_fractal.json, produced by passing each Void pattern's
- * canonical record through toFractalWaveform (parity contract C-71,
- * verified against to_fractal_waveform.py).
+ * encoder's known noise floor). The canonical encoder is the composed
+ * fractal stack: 116-D = L1-structural + L2-lexical + L3-numerical +
+ * L4-spectral (4 × 29-D depths; see encoder-stack.js). The 29-D L1
+ * fractal is the base layer and the JS↔Python parity anchor (contract
+ * C-71, verified against to_fractal_waveform.py). The index
+ * (pattern_index_fractal.json) stores BOTH per pattern: `fractal`
+ * (29-D L1) and `composed_v1` (116-D).
  *
  * What this module does:
- *   - Load the 29-D fractal index lazily on first scoring call
- *   - Score a pre-encoded 29-D input vector against the library via
- *     cosine top-K with optional name-filter
+ *   - Load both the 29-D L1 map and the 116-D composed map lazily on
+ *     the first scoring call
+ *   - scoreWithFlow(): the default — cosine FLOW across all four depths
+ *     (d1=29, d2=58, d3=87, d4=116) per match, plus a shape label
+ *   - score(): backward-compat single-cosine at L1 (29-D) only
  *
  * What this module does NOT do:
  *   - Read the deprecated 256-D byte library at all
- *   - Encode inputs (callers pre-encode via toFractalWaveform)
- *   - Mutate the library (growth happens by re-running the migration
- *     after Void compresses new patterns)
+ *   - Encode inputs (callers pre-encode via the encoder stack)
+ *   - Mutate the library (growth happens when Void compresses new
+ *     patterns and the fractal index is re-encoded)
  *
- * Memory: ~10MB after warmup (42k vectors × 29 floats with overhead).
- * Lazy-loaded on first scoring call, cached for process lifetime.
+ * Memory: ~10MB after warmup. Lazy-loaded, cached for process lifetime.
  *
  * Pointing at a non-default Void path: set VOID_ROOT in the environment
  * or pass `voidRoot` to the constructor.

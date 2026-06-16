@@ -158,7 +158,7 @@ investment in structural consistency would pay off.
 
 ## Method
 
-- Substrate: 46,845 patterns (29-D fractal, canonical encoder)
+- Substrate: 46,845 patterns (scored at 29-D L1; the 116-D composed read postdates this audit)
 - Website files scored against the full substrate
 - Categories assigned by path: `api/portal`, `api/admin`,
   `api/payment`, `api/leads`, `api/other`, `page/portal`,

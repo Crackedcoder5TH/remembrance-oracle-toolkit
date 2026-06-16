@@ -5,13 +5,20 @@ The **Remembrance Field tool** as a tiny, zero-dependency npm package. It works
 collected substrate (the 77k+ pattern library) to score with real resonance
 and to (with your consent) contribute new patterns to the canonical library.
 
-The canonical encoder is the **fractal waveform** — a 29-D structural
-vector in the ecosystem's fractal language (atomic properties +
-structural histograms + structurality), and a `coherency` cosine gated
-by structurality agreement so code-vs-prose is correctly damped.
-Algorithm spec: `docs/FRACTAL_WAVEFORM_SPEC.md` in the oracle toolkit;
-parity blueprint for Void's `to_fractal_waveform.py` is the proposed
-contract C-71.
+This package ships the **L1 structural encoder** — `toWaveform` produces a
+29-D structural vector in the ecosystem's fractal language (atomic
+properties + structural histograms + structurality), the JS↔Python parity
+anchor (contract C-71, blueprint for Void's `to_fractal_waveform.py`), with
+a `coherency` cosine gated by structurality agreement so code-vs-prose is
+correctly damped. Algorithm spec: `docs/FRACTAL_WAVEFORM_SPEC.md` in the
+oracle toolkit.
+
+The **canonical read** in the full system is the **116-D composed stack** —
+L1-structural + L2-lexical + L3-numerical + L4-spectral (4 × 29-D depths),
+scored flow-aware across depths. This package bundles only L1; its index
+(`fractal-index.js`) accepts 116-D composed vectors for full-depth queries,
+but the L2/L3/L4 encoders live in the oracle core
+(`src/core/encoder-stack.js`), not here.
 
 The legacy 256-D byte-stretch encoder is still exported under
 `byteToWaveform`/`byteCoherency` for binary or non-text inputs, and

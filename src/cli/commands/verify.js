@@ -96,18 +96,25 @@ async function fieldEngine() {
 
 function falsificationEngine() {
   try {
-    const p = path.join(VOID_ROOT, 'coherence_falsification_report.json');
+    const v2 = path.join(VOID_ROOT, 'coherence_falsification_v2_report.json');
+    const v1 = path.join(VOID_ROOT, 'coherence_falsification_report.json');
+    const p = fs.existsSync(v2) ? v2 : v1;             // prefer the recalibrated v2
     const d = JSON.parse(fs.readFileSync(p, 'utf8'));
     const pin = d._pinned || {};
-    const rate = typeof pin.survival_rate === 'number' ? pin.survival_rate : null;
+    const dp = pin.domain_pair || pin;                 // v2 nests under domain_pair; v1 is flat
+    const verdict = dp.verdict || pin.verdict;
+    const rate = typeof dp.survival_rate_phase === 'number' ? dp.survival_rate_phase
+      : (typeof pin.survival_rate === 'number' ? pin.survival_rate : null);
+    const surv = dp['survivors_phase_p<0.01'] != null ? dp['survivors_phase_p<0.01'] : pin['survivors_phase_p<0.01'];
+    const total = dp.pairs != null ? dp.pairs : pin.pairs_total;
     return branch('falsification', [
-      leaf('pinned durable report present', !!d._pinned,
-        pin.generated_at ? `run ${pin.generated_at}, seed ${pin.seed}, n=${pin.n_permutations}` : ''),
-      leaf(`coherence verdict: ${pin.verdict || '?'}`, !!pin.verdict,
-        rate != null ? `${Math.round(rate * 100)}% bridges survive the phase null (${pin['survivors_phase_p<0.01']}/${pin.pairs_total})` : ''),
+      leaf('pinned durable report present', !!pin.generated_at,
+        pin.generated_at ? `${path.basename(p)} — run ${pin.generated_at}, seed ${pin.seed}, n=${pin.n_permutations}` : ''),
+      leaf(`coherence verdict: ${verdict || '?'}`, !!verdict,
+        rate != null ? `${(rate * 100).toFixed(2)}% beat the phase null (${surv}/${total})` : ''),
     ]);
   } catch (_e) {
-    return branch('falsification', [leaf('pinned coherence report', null, 'not found — run coherence_falsification.py')]);
+    return branch('falsification', [leaf('pinned coherence report', null, 'not found — run coherence_falsification_v2.py')]);
   }
 }
 
@@ -171,14 +178,27 @@ function registerVerifyCommands(handlers, _context) {
       : c.green('every executable claim holds against the durable record'))
       + c.dim('   (~ = honest partial, · = engine not run here)'));
 
-    // Route the verdict into the LRE — the one conserved scalar everything
-    // folds into (and the Railway field-server serves). Best-effort: a down
-    // field never blocks the verdict.
+    // Route every moving number through the LRE, classified by kind, then
+    // read the whole ecosystem back as ONE coherency flow:
+    //   coherency-based number -> recordBenefit (the coherence path)
+    //   entropy-based number   -> recordCost    (raises entropy)
+    // Best-effort: a down field never blocks the verdict.
     try {
+      const fcm = require('../../core/field-coupling');
       const root = branch('ecosystem', engines);
-      const coh = root.total ? root.passed / root.total : 0;
-      require('../../core/field-coupling').contribute({ cost: engines.length, coherence: coh, source: 'verify:ecosystem' });
-      console.log(c.dim(`  routed to LRE: verify:ecosystem coherence=${coh.toFixed(4)}`));
+      const coherency = root.total ? root.passed / root.total : 0;          // coherency-based
+      const incompleteness = engines.filter((e) => e.status !== 'pass').length; // entropy-based
+      fcm.recordBenefit({ coherence: coherency, source: 'verify:ecosystem:coherency' });
+      if (incompleteness > 0) {
+        fcm.recordCost({ units: incompleteness, source: 'verify:ecosystem:entropy', kind: 'incompleteness' });
+      }
+      console.log(c.dim(`  routed to LRE — coherency ${coherency.toFixed(4)} (benefit) · incompleteness ${incompleteness} (cost)`));
+      const flow = fcm.fieldDirection();
+      if (flow && flow.verdict) {
+        const sgn = (x, d) => (x >= 0 ? '+' : '') + x.toFixed(d);
+        console.log('  ' + c.bold('ecosystem flow: ') + c.cyan(flow.verdict)
+          + c.dim(`  (Δcoherence ${sgn(flow.coherenceDelta, 4)} · Δentropy ${sgn(flow.entropyDelta, 2)} · Δcascade ${sgn(flow.cascadeDelta, 2)})`));
+      }
     } catch (_) { /* field unreachable */ }
     console.log('');
 

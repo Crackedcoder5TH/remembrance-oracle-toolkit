@@ -169,8 +169,13 @@ function _distributionShape(nums, st) {
   const median = sorted[Math.floor(n / 2)];
   const meanAbs = Math.max(1e-9, Math.abs(st.mean));
   const medRatio = Math.abs(median) / meanAbs;
-  // Log-scale character: average log10(|x|+1) / log10(max+1)
-  const maxAbs = Math.max(1e-9, ...nums.map(v => Math.abs(v)));
+  // Log-scale character: average log10(|x|+1) / log10(max+1).
+  // Loop rather than spread — spread blows the stack on large arrays.
+  let maxAbs = 1e-9;
+  for (let i = 0; i < n; i++) {
+    const a = Math.abs(nums[i]);
+    if (a > maxAbs) maxAbs = a;
+  }
   let logSum = 0;
   for (const v of nums) logSum += Math.log10(Math.abs(v) + 1);
   const logScale = logSum / n / Math.log10(maxAbs + 1);

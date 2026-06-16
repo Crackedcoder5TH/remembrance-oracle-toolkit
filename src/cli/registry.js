@@ -10,6 +10,7 @@ const CATEGORIES = [
     name: 'Essential',
     commands: [
       { name: 'onboard', description: 'Verified front door: prints protocol + conformance-checks every command/dimension/example + runs a live 116-D field read' },
+      { name: 'verify', description: 'Ecosystem truth-spine: folds encoder + field + falsification + contracts + covenant + commands into one fractal verdict (CI definition of complete)' },
       { name: 'init', description: 'Set up everything: patterns, hooks, sync, debug oracle', alias: 'setup' },
       { name: 'search', description: 'Find proven patterns by keyword or intent' },
       { name: 'resolve', description: 'Smart retrieval \u2014 PULL, EVOLVE, or GENERATE decision' },

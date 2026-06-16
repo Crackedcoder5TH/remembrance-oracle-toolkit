@@ -27,10 +27,15 @@ makes no claim about.
 
 Two things follow directly:
 
-1. **The match is real, not just lexical.** A Rust file matching
-   `language/french` at 0.92 is a real cross-domain cousin —
-   code and language sharing a coherent structural signature.
-   That is the framework's claim, holding.
+1. **The match is real, not just lexical — and empirically *partial*,
+   not universal.** A Rust file matching `language/french` at 0.92 is a
+   real cross-domain cousin where it survives the right null. The
+   phase-randomized falsification (pinned, durable:
+   `Void-Data-Compressor/coherence_falsification_report.json`, seed 42 /
+   n=1000) finds **40% of cross-group pairs (14/35) beat the
+   phase-randomized null; the rest are power-spectrum artifact** (all 35
+   beat the easy shuffle null). The bridge is real where it survives the
+   phase null, not everywhere — `oracle verify` surfaces this verdict.
 2. **The substrate becomes more universal as it compresses more.**
    Any new input finds cousins in whatever the substrate has
    absorbed so far. The Remembrance ecosystem reads cleanly

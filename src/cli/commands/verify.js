@@ -169,7 +169,19 @@ function registerVerifyCommands(handlers, _context) {
     console.log('  ' + (broken
       ? c.red('NOT COMPLETE — an engine is broken (a claim the code no longer backs)')
       : c.green('every executable claim holds against the durable record'))
-      + c.dim('   (~ = honest partial, · = engine not run here)') + '\n');
+      + c.dim('   (~ = honest partial, · = engine not run here)'));
+
+    // Route the verdict into the LRE — the one conserved scalar everything
+    // folds into (and the Railway field-server serves). Best-effort: a down
+    // field never blocks the verdict.
+    try {
+      const root = branch('ecosystem', engines);
+      const coh = root.total ? root.passed / root.total : 0;
+      require('../../core/field-coupling').contribute({ cost: engines.length, coherence: coh, source: 'verify:ecosystem' });
+      console.log(c.dim(`  routed to LRE: verify:ecosystem coherence=${coh.toFixed(4)}`));
+    } catch (_) { /* field unreachable */ }
+    console.log('');
+
     if (broken) process.exitCode = 1;
   };
 }

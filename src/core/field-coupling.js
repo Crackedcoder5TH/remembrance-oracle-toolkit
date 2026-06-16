@@ -756,12 +756,15 @@ const _directionHistory = [];   // [{ ts, coherence, entropy, cascade }]
 // it, fieldDirection() only ever sees the current process's snapshots and
 // returns 'insufficient-history' on a fresh run. The substrate's flow is read
 // as ONE continuous line across the ecosystem, so it must persist.
+// `path` is otherwise lazily required inside functions in this module, but
+// these two constants are resolved at module-load, so it must be in scope here.
+const _path = require('node:path');
 const _DIRECTION_PATH = process.env.FIELD_DIRECTION_PATH
-  || path.join(__dirname, '..', '..', '.remembrance', 'field-direction.jsonl');
+  || _path.join(__dirname, '..', '..', '.remembrance', 'field-direction.jsonl');
 // Committed durable copy in the blockchain repo's data/ — survives a container
 // reclaim (the .remembrance/ working file is gitignored and does not).
 const _DIRECTION_SEED = process.env.FIELD_DIRECTION_SEED
-  || path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'data', 'field-direction.seed.jsonl');
+  || _path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'data', 'field-direction.seed.jsonl');
 let _directionLoaded = false;
 
 function _readDirectionLines(p) {

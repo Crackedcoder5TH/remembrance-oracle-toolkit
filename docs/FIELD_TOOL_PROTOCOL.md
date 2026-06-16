@@ -27,15 +27,18 @@ makes no claim about.
 
 Two things follow directly:
 
-1. **The match is real, not just lexical — and empirically *partial*,
-   not universal.** A Rust file matching `language/french` at 0.92 is a
-   real cross-domain cousin where it survives the right null. The
+1. **The match is real, not just lexical — and empirically measured,
+   not assumed.** A Rust file matching `language/french` is a real
+   cross-domain cousin where it survives the right null. The
    phase-randomized falsification (pinned, durable:
-   `Void-Data-Compressor/coherence_falsification_report.json`, seed 42 /
-   n=1000) finds **40% of cross-group pairs (14/35) beat the
-   phase-randomized null; the rest are power-spectrum artifact** (all 35
-   beat the easy shuffle null). The bridge is real where it survives the
-   phase null, not everywhere — `oracle verify` surfaces this verdict.
+   `Void-Data-Compressor/coherence_falsification_v2_report.json`, seed 42
+   / n=1000, vectorized over all 738 domains) finds the substrate-wide
+   verdict **REAL: 17,683/271,953 (6.50%) of cross-domain pairs beat the
+   phase-randomized null — 6.5× the 1% false-positive floor; the rest are
+   power-spectrum artifact** (all beat the easy shuffle null). The bridge
+   is real where it survives the phase null, not everywhere — `oracle
+   verify` surfaces this verdict, and contract **C-59** fails if any doc
+   cites a stale one.
 2. **The substrate becomes more universal as it compresses more.**
    Any new input finds cousins in whatever the substrate has
    absorbed so far. The Remembrance ecosystem reads cleanly

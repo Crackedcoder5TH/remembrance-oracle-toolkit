@@ -96,9 +96,13 @@ async function fieldEngine() {
 
 function falsificationEngine() {
   try {
+    // Prefer the toolkit's OWN bundled, self-contained report (runnable here via
+    // `python3 falsification/run.py`) so the kill-test is reachable in the public
+    // repo with no private engine. Fall back to the Void run when present.
+    const local = path.join(__dirname, '..', '..', '..', 'falsification', 'coherence_falsification_v2_report.json');
     const v2 = path.join(VOID_ROOT, 'coherence_falsification_v2_report.json');
     const v1 = path.join(VOID_ROOT, 'coherence_falsification_report.json');
-    const p = fs.existsSync(v2) ? v2 : v1;             // prefer the recalibrated v2
+    const p = fs.existsSync(local) ? local : fs.existsSync(v2) ? v2 : v1;
     const d = JSON.parse(fs.readFileSync(p, 'utf8'));
     const pin = d._pinned || {};
     const dp = pin.domain_pair || pin;                 // v2 nests under domain_pair; v1 is flat

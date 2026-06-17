@@ -1,0 +1,20 @@
+{
+  "_pinned": {
+    "generated_at": "2026-06-17",
+    "seed": 42,
+    "n_permutations": 1000,
+    "n_domains": 738,
+    "waveform_dim": 128,
+    "null_method": "phase-randomized surrogate (Theiler et al. 1992)",
+    "note": "self-contained: run with `python3 run.py` against the bundled dataset",
+    "domain_pair": {
+      "verdict": "REAL",
+      "pairs": 271953,
+      "survivors_phase_p<0.01": 17683,
+      "survivors_shuffle_p<0.01": 36573,
+      "survival_rate_phase": 0.06502226487665148,
+      "false_positive_floor": 0.01,
+      "enrichment_over_chance": 6.5022264876651485
+    }
+  }
+}

@@ -1,8 +1,9 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { insertLead, deleteLeadByEmail } from "@/app/lib/database";
 import type { LeadRecord } from "@/app/lib/database";
 import { notifyLeadCreated } from "@/app/lib/webhooks";
-import { sendLeadConfirmationEmail, sendAdminNotificationEmail } from "@/app/lib/email";
+import { sendLeadConfirmationEmail, sendAdminNotificationEmail, sendEmail } from "@/app/lib/email";
 import { sendLeadSms, sendAdminSms } from "@/app/lib/sms";
 import { pushLeadToCrm } from "@/app/lib/crm";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
@@ -413,6 +414,54 @@ export async function POST(req: NextRequest) {
  * Deletes all lead records associated with that email address.
  * Rate-limited to prevent abuse.
  */
+// CCPA deletion requires proof the requester controls the email. A request
+// without a valid token emails a confirmation link to that address; only the
+// inbox owner can complete the deletion. Token = HMAC(email|expiry).
+const DELETE_SECRET = () => process.env.PROVENANCE_SECRET || process.env.NEXTAUTH_SECRET || "";
+function makeDeleteToken(email: string): string {
+  const exp = Date.now() + 24 * 60 * 60 * 1000;
+  const mac = crypto.createHmac("sha256", DELETE_SECRET()).update(`${email.toLowerCase()}|${exp}`).digest("hex");
+  return `${exp}.${mac}`;
+}
+function verifyDeleteToken(email: string, token: string | null): boolean {
+  const secret = DELETE_SECRET();
+  if (!secret || !token) return false;
+  const dot = token.indexOf(".");
+  if (dot < 0) return false;
+  const exp = Number(token.slice(0, dot));
+  const mac = token.slice(dot + 1);
+  if (!exp || Date.now() > exp || !mac) return false;
+  const expected = crypto.createHmac("sha256", secret).update(`${email.toLowerCase()}|${exp}`).digest("hex");
+  try {
+    return crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected));
+  } catch {
+    return false;
+  }
+}
+
+// GET /api/leads?action=confirm-delete&email=&token= — the emailed link lands
+// here and completes the deletion only when the token verifies.
+export async function GET(req: NextRequest) {
+  const url = new URL(req.url);
+  if (url.searchParams.get("action") !== "confirm-delete") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const email = url.searchParams.get("email") || "";
+  const token = url.searchParams.get("token");
+  const htmlHeaders = { "content-type": "text/html; charset=utf-8" };
+  if (!isValidEmail(email) || !verifyDeleteToken(email, token)) {
+    return new NextResponse("This deletion link is invalid or has expired.", { status: 400, headers: htmlHeaders });
+  }
+  const result = await deleteLeadByEmail(email);
+  if (!result.ok) {
+    return new NextResponse("Something went wrong. Please try again later.", { status: 500, headers: htmlHeaders });
+  }
+  return new NextResponse(
+    "Your data has been deleted. Any records associated with your email have been removed. You may close this page.",
+    { status: 200, headers: htmlHeaders },
+  );
+}
+
 export async function DELETE(req: NextRequest) {
   const { logger, finish } = startRequestTimer("DELETE", "/api/leads");
 
@@ -440,25 +489,33 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const result = await deleteLeadByEmail(email);
+    // Do NOT delete on an unauthenticated request. Email a confirmation link so
+    // only the inbox owner can complete it (prevents a third party purging
+    // someone else's records). Always return success — never reveal existence.
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
+      || `https://${process.env.PRIMARY_DOMAIN || "localhost:3000"}`;
+    const confirmUrl =
+      `${siteUrl}/api/leads?action=confirm-delete&email=${encodeURIComponent(email)}&token=${makeDeleteToken(email)}`;
+    sendEmail({
+      to: email,
+      from: process.env.EMAIL_FROM || "noreply@valorlegacies.com",
+      subject: "Confirm your data deletion request",
+      text:
+        `We received a request to delete the data associated with this email address. ` +
+        `If this was you, confirm by opening this link (expires in 24 hours): ${confirmUrl} ` +
+        `If not, ignore this email — nothing will be deleted.`,
+      html:
+        `<p>We received a request to delete the data associated with this email address.</p>` +
+        `<p>If this was you, confirm below. If not, ignore this email — nothing will be deleted.</p>` +
+        `<p><a href="${confirmUrl}">Confirm data deletion</a></p>` +
+        `<p>This link expires in 24 hours.</p>`,
+    }).catch((err) => logger.error("CCPA confirm email failed", { error: String(err), clientIp }));
 
-    if (!result.ok) {
-      logger.error("CCPA delete failed", { error: result.error, clientIp });
-      finish(500);
-      return NextResponse.json(
-        { success: false, message: "Something went wrong processing your request." },
-        { status: 500 },
-      );
-    }
-
-    logger.info("CCPA delete completed", { deleted: result.value.deleted, clientIp });
-    finish(200, { deleted: result.value.deleted });
-
-    // Always return success even if no records found (privacy — don't reveal existence)
+    logger.info("CCPA delete confirmation sent", { clientIp });
+    finish(200);
     return NextResponse.json({
       success: true,
-      message: "Your data deletion request has been processed. Any records associated with your email have been removed.",
-      deleted: result.value.deleted,
+      message: "If records exist for this email, a confirmation link has been sent. Click it to complete deletion.",
     });
   } catch {
     finish(400);

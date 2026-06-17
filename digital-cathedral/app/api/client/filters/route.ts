@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyClient } from "@/app/lib/client-auth";
+import { validateCsrfToken } from "@/app/lib/csrf";
 import { getClientFilters, upsertClientFilters } from "@/app/lib/client-database";
 import type { ClientFilters } from "@/app/lib/client-database";
 
@@ -35,6 +36,12 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const auth = await verifyClient(req);
   if (auth instanceof NextResponse) return auth;
+  if (!validateCsrfToken(req)) {
+    return NextResponse.json(
+      { error: "Security validation failed. Please refresh the page and try again." },
+      { status: 403 },
+    );
+  }
 
   try {
     const body = await req.json();

@@ -311,13 +311,17 @@ function lintFiles(files, options = {}) {
     }
   }
 
-  // Contribute lint outcome to the LRE field.
-  // cost = filesScanned (work units), coherence = 1 - (findings/files).
+  // Contribute lint outcome to the LRE field, classified by kind.
+  //   coherency side: cleanliness ratio (1 - findings/files)
+  //   entropy side:   the findings themselves are disorder — routed as cost
+  //                   so a finding-heavy scan raises globalEntropy, not just
+  //                   lowers coherence.
   try {
     const filesScanned = files ? files.length : 0;
     const coh = Math.max(0, Math.min(1, 1 - (totalFindings / Math.max(1, filesScanned))));
-    const { contribute } = require('../core/field-coupling');
+    const { contribute, recordCost } = require('../core/field-coupling');
     contribute({ cost: Math.max(1, filesScanned), coherence: coh, source: 'lint' });
+    if (totalFindings > 0) recordCost({ units: totalFindings, source: 'lint:findings', kind: 'disorder' });
   } catch (_) { /* best-effort */ }
 
   return {

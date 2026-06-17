@@ -480,35 +480,101 @@ function _restoreFromSnapshot() {
 /**
  * Canonical ledger path — the blockchain's ledger.json living in the
  * SAME .remembrance/ as entropy.json. $LEDGER_PATH overrides; otherwise
- * hub-relative (this module is <hub>/src/core).
+ * hub-relative (this module is <hub>/src/core). This is the *live*
+ * working ledger a running session writes to; it is gitignored and does
+ * not survive a fresh container.
  */
 function _ledgerPath() {
   return process.env.LEDGER_PATH
     || path.join(__dirname, '..', '..', '.remembrance', 'ledger.json');
 }
 
-/** Restore from the latest field state witnessed in the blockchain ledger. */
-function _restoreFromLedger() {
+/**
+ * Locate a committed durable artifact inside the sibling
+ * REMEMBRANCE-BLOCKCHAIN repo's data/ directory. Unlike the live
+ * .remembrance/ working copies (gitignored, ephemeral), data/ is
+ * tracked in git, so these files survive a fresh container clone — they
+ * are how the field remembers across sessions with zero external
+ * storage. Best-effort: returns the canonical path even if absent so
+ * callers can existence-check.
+ */
+function _committedBlockchainData(file) {
+  const candidates = [
+    path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'data', file),
+    path.join(__dirname, '..', '..', '..', 'remembrance-blockchain', 'data', file),
+  ];
+  for (const c of candidates) { try { if (fs.existsSync(c)) return c; } catch (_) { /* ignore */ } }
+  return candidates[0];
+}
+
+/** Committed durable ledger (the blockchain's append-only chain, in git). */
+function _committedLedgerPath() {
+  return process.env.COMMITTED_LEDGER_PATH || _committedBlockchainData('ledger.json');
+}
+
+/** Committed durable bootstrap snapshot (fast cold-start, in git). */
+function _seedPath() {
+  return process.env.FIELD_SEED_PATH || _committedBlockchainData('field-histogram.seed.json');
+}
+
+/** Coerce any raw field-state-shaped object into a defensive, complete state. */
+function _coerceFieldState(e) {
+  if (!e || typeof e !== 'object' || typeof e.updateCount !== 'number' || e.updateCount <= 0) return null;
+  return {
+    coherence: typeof e.coherence === 'number' ? e.coherence : 0.65,
+    coherenceIntegral: typeof e.coherenceIntegral === 'number' ? e.coherenceIntegral : 0,
+    globalEntropy: typeof e.globalEntropy === 'number' ? e.globalEntropy : 0.45,
+    cascadeFactor: typeof e.cascadeFactor === 'number' ? e.cascadeFactor : 1.0,
+    updateCount: e.updateCount,
+    timestamp: e.timestamp || Date.now(),
+    sources: (e.sources && typeof e.sources === 'object') ? e.sources : {},
+  };
+}
+
+/** Restore the newest field state witnessed in one ledger file (chain JSON). */
+function _restoreFromLedgerFile(lp) {
   try {
-    const lp = _ledgerPath();
-    if (!fs.existsSync(lp)) return null;
+    if (!lp || !fs.existsSync(lp)) return null;
     const chain = JSON.parse(fs.readFileSync(lp, 'utf8'));
     if (!Array.isArray(chain)) return null;
     for (let i = chain.length - 1; i >= 0; i--) {
       const e = chain[i] && chain[i].data && chain[i].data.metadata && chain[i].data.metadata._entropy;
-      if (e && typeof e.updateCount === 'number' && e.updateCount > 0) {
-        return {
-          coherence: typeof e.coherence === 'number' ? e.coherence : 0.65,
-          coherenceIntegral: typeof e.coherenceIntegral === 'number' ? e.coherenceIntegral : 0,
-          globalEntropy: typeof e.globalEntropy === 'number' ? e.globalEntropy : 0.45,
-          cascadeFactor: typeof e.cascadeFactor === 'number' ? e.cascadeFactor : 1.0,
-          updateCount: e.updateCount,
-          timestamp: e.timestamp || Date.now(),
-          sources: (e.sources && typeof e.sources === 'object') ? e.sources : {},
-        };
-      }
+      const state = _coerceFieldState(e);
+      if (state) return state;
     }
     return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Restore from the blockchain ledger — checking BOTH the live working
+ * ledger (.remembrance/ledger.json, this session's writes) and the
+ * committed durable chain (REMEMBRANCE-BLOCKCHAIN/data/ledger.json,
+ * carried across containers in git). Returns whichever witnesses more
+ * history, so a fresh container comes up holding the committed chain and
+ * a live session keeps its own ahead-of-checkpoint progress.
+ */
+function _restoreFromLedger() {
+  const local = _restoreFromLedgerFile(_ledgerPath());
+  const committed = _restoreFromLedgerFile(_committedLedgerPath());
+  if (!local) return committed;
+  if (!committed) return local;
+  return (committed.updateCount > local.updateCount) ? committed : local;
+}
+
+/**
+ * Restore from the committed bootstrap snapshot — the field histogram
+ * the blockchain repo keeps in git (data/field-histogram.seed.json).
+ * This is the fast cold-start witness: even with no ledger and no
+ * oracle.db, a fresh container remembers the last committed field.
+ */
+function _restoreFromSeed() {
+  try {
+    const sp = _seedPath();
+    if (!sp || !fs.existsSync(sp)) return null;
+    return _coerceFieldState(JSON.parse(fs.readFileSync(sp, 'utf8')));
   } catch (_) {
     return null;
   }
@@ -529,9 +595,12 @@ function restoreLatest() {
   if (snap) candidates.push(snap);
   const ledger = _restoreFromLedger();
   if (ledger) candidates.push(ledger);
+  const seed = _restoreFromSeed();
+  if (seed) candidates.push(seed);
   if (candidates.length === 0) return null;
-  candidates.sort((a, b) => (b.updateCount || 0) - (a.updateCount || 0));
-  return candidates[0];
+  // Pick the witness carrying the most history without mutating the
+  // array (Array.sort is in-place) — mirrors living-remembrance._loadOrInit.
+  return candidates.reduce((best, c) => ((c.updateCount || 0) > (best.updateCount || 0)) ? c : best);
 }
 
 /** Test/diagnostic hook — clears the in-memory caches. */
@@ -555,4 +624,10 @@ module.exports = {
   NOVELTY_THRESHOLD,
   SNAPSHOT_BASE,
   _resetCaches,
+  // Durable-witness internals (committed blockchain artifacts) — exposed
+  // for diagnostics and tests; not part of the stable field-memory API.
+  _restoreFromSeed,
+  _restoreFromLedger,
+  _seedPath,
+  _committedLedgerPath,
 };

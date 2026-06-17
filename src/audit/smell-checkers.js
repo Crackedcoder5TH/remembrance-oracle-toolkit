@@ -247,8 +247,9 @@ function smellFiles(files, options = {}) {
   try {
     const filesScanned = files ? files.length : 0;
     const coh = Math.max(0, Math.min(1, 1 - (totalFindings / Math.max(1, filesScanned))));
-    const { contribute } = require('../core/field-coupling');
+    const { contribute, recordCost } = require('../core/field-coupling');
     contribute({ cost: Math.max(1, filesScanned), coherence: coh, source: 'smell' });
+    if (totalFindings > 0) recordCost({ units: totalFindings, source: 'smell:findings', kind: 'disorder' });
   } catch (_) { /* best-effort */ }
 
   return {

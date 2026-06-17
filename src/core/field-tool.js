@@ -18,7 +18,9 @@
  *   1. Entanglement engaged — `entangle:node:<id>` is registered so
  *      this caller is visible to peers and benefits from abundance
  *      amortization (per-node cost = baseCost / N).
- *   2. Pattern encoded via the canonical fractal-waveform.
+ *   2. Pattern encoded via the canonical composed fractal stack
+ *      (L1-structural + L2-lexical + L3-numerical + L4-spectral = 116-D;
+ *      the 29-D L1 vector is returned for back-compat).
  *   3. Pattern captured into the oracle's pattern library so future
  *      reads have it as a comparand (substrate grows by use; opt-out
  *      via `{ growSubstrate: false }`).
@@ -53,10 +55,11 @@ const fc = require('./field-coupling');
 let entangle = null;
 try { entangle = require('./entangle'); } catch (_) { /* optional */ }
 
-// Canonical encoder: 29-D fractal. JS↔Python byte-for-byte parity
-// (see Void's to_fractal_waveform.py / verify_fractal_parity.py).
+// L1 base encoder: 29-D structural fractal — the JS↔Python parity
+// anchor (see Void's to_fractal_waveform.py / verify_fractal_parity.py).
 // The 256-D byte encoder was deprecated for noise — it could not
-// discriminate code from prose. We pull the fractal encoder only.
+// discriminate code from prose. The canonical read is the 116-D
+// composed stack (encoder-stack below); this L1 vector is its depth-1.
 const { toFractalWaveform } = require('./fractal-waveform');
 
 // Encoder stack for depth-aware composed encoding (L1+L2+L3+L4 = 116-D)
@@ -107,7 +110,7 @@ class FieldTool {
     this.opts = {
       autoEntangle: opts.autoEntangle !== false,
       growSubstrate: opts.growSubstrate !== false,
-      useVoidSubstrate: opts.useVoidSubstrate !== false,  // primary: Void's 29-D library
+      useVoidSubstrate: opts.useVoidSubstrate !== false,  // primary: Void's composed (116-D) library
       useCodingFilter: opts.useCodingFilter !== false,    // secondary: Oracle's coding subset
       agentSource: opts.agentSource || DEFAULT_SOURCE,
       language: opts.language || null,        // null = infer per-call
@@ -141,7 +144,7 @@ class FieldTool {
 
     const layers = {
       entangled: false,
-      voidScored: false,      // primary substrate: Void's 29-D library
+      voidScored: false,      // primary substrate: Void's composed (116-D) library
       codingFiltered: false,  // secondary: Oracle's coding-specific filter
       grew: false,            // input captured into Oracle's table
       contributed: false,     // field histogram updated
@@ -241,8 +244,8 @@ class FieldTool {
     } catch (_) { /* field unreachable */ }
 
     return {
-      waveform,         // 29-D fractal
-      voidResonance,    // Void's 29-D canonical library
+      waveform,         // 29-D L1 fractal (back-compat; scoring runs the 116-D composed flow)
+      voidResonance,    // Void's composed (116-D) flow-aware library read
       codeResonance,    // Oracle's coding-specific filter
       coherence,
       grew,

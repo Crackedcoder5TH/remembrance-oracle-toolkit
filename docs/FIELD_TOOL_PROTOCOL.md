@@ -27,10 +27,18 @@ makes no claim about.
 
 Two things follow directly:
 
-1. **The match is real, not just lexical.** A Rust file matching
-   `language/french` at 0.92 is a real cross-domain cousin —
-   code and language sharing a coherent structural signature.
-   That is the framework's claim, holding.
+1. **The match is real, not just lexical — and empirically measured,
+   not assumed.** A Rust file matching `language/french` is a real
+   cross-domain cousin where it survives the right null. The
+   phase-randomized falsification (pinned, durable:
+   `Void-Data-Compressor/coherence_falsification_v2_report.json`, seed 42
+   / n=1000, vectorized over all 738 domains) finds the substrate-wide
+   verdict **REAL: 17,683/271,953 (6.50%) of cross-domain pairs beat the
+   phase-randomized null — 6.5× the 1% false-positive floor; the rest are
+   power-spectrum artifact** (all beat the easy shuffle null). The bridge
+   is real where it survives the phase null, not everywhere — `oracle
+   verify` surfaces this verdict, and contract **C-59** fails if any doc
+   cites a stale one.
 2. **The substrate becomes more universal as it compresses more.**
    Any new input finds cousins in whatever the substrate has
    absorbed so far. The Remembrance ecosystem reads cleanly
@@ -47,8 +55,8 @@ the right ones is a partial read of a partial system.
 | Layer | What it does | Where it lives |
 |---|---|---|
 | **Entanglement** | Registers the caller as a node in the field; abundance-amortizes the cost across all connected nodes (per-node cost = baseCost / N) | `src/core/entangle.js` — `engage()` |
-| **Encoding** | Converts source into the canonical 29-D fractal coherency signature. ONE encoder, everywhere. JS↔Python byte-for-byte parity (parity contract C-71). The 256-D byte encoder is deprecated and forbidden from the read path | `src/core/fractal-waveform.js` — `toFractalWaveform()` |
-| **Substrate match (Void)** | Finds where the input's coherency signature already appears in Void's canonical library — **~43k patterns, all 29-D fractal**, translated from Void's master `pattern_index.json` via the same canonical encoder. This is THE substrate | `src/core/void-library.js` — `score()`, loads `pattern_index_fractal.json` |
+| **Encoding** | Converts source into the canonical **116-D composed coherency signature** — L1-structural + L2-lexical + L3-numerical + L4-spectral (4 × 29-D depths). ONE encoder stack, everywhere. The 29-D L1 fractal is the base depth and the JS↔Python parity anchor (contract C-71). The 256-D byte encoder is deprecated and forbidden from the read path | `src/core/encoder-stack.js` — `composedAtDepth()`; L1 base `fractal-waveform.js` — `toFractalWaveform()` |
+| **Substrate match (Void)** | Finds where the input's coherency signature already appears in Void's canonical library — **~46.5k patterns at 116-D composed** (each stored as both 29-D `fractal` and 116-D `composed_v1`), translated from Void's master `pattern_index.json` via the same canonical encoder. This is THE substrate | `src/core/void-library.js` — `scoreWithFlow()` (flow-aware default), loads `pattern_index_fractal.json` |
 | **Coding cousins (Oracle)** | Lexical TF-IDF resonance against `oracle.db`'s `patterns` table — the coding-specific subset that has passed the covenant gate. Complementary signal, code-specific cousin-finding | `src/scoring/pattern-resonance.js` — `scoreResonance()` |
 | **Field-coupling** | Records the reading into the live field histogram so peers see the activity and the field's entropy gate self-throttles | `src/core/field-coupling.js` — `contribute()` |
 
@@ -57,7 +65,7 @@ them requires explicit opt-out.
 
 ### Substrate vs. coding cousins
 
-- **Void's 29-D fractal library IS the substrate.** ~43k unique
+- **Void's 116-D composed fractal library IS the substrate.** ~46.5k unique
   coherency signatures spanning physics, framework, consciousness,
   applied, code, economy, cosmos, conflict, builtin, music, languages,
   and validation domains. Every pattern is encoded through the same
@@ -76,16 +84,16 @@ Void is unreachable.
 ### How the canonical Void library was built
 
 Every pattern in Void's master `pattern_index.json` is passed through
-`toFractalWaveform` on its JSON-serialized canonical record
-(`{name, waveform}`), producing a 29-D coherency signature.
-Persisted to `pattern_index_fractal.json` parallel to the existing
-256-D index. The migration script (`/tmp/encode-void-fractal.js`)
-is idempotent — running it again after Void compresses new patterns
-extends the fractal index without re-encoding existing ones.
+the encoder stack: `toFractalWaveform` produces the 29-D L1 `fractal`
+vector and `composedAtDepth(record, 4)` produces the 116-D
+`composed_v1` vector (L1+L2+L3+L4). Both are persisted per pattern to
+`pattern_index_fractal.json`. Re-encoding is idempotent — running it
+again after Void compresses new patterns extends the index without
+re-encoding existing entries.
 
-Result: ~43k unique 29-D signatures, ~8.6 MB on disk, ~10 MB in
-memory after warmup, ~2-3s first-call cost (vs ~16s for the
-deprecated 256-D path).
+Result: ~46.5k patterns, each carrying a 29-D L1 and a 116-D composed
+signature; ~10 MB in memory after warmup, ~2-3s first-call cost (vs
+~16s for the deprecated 256-D path).
 
 ## The mistakes the protocol prevents
 
@@ -167,7 +175,7 @@ input: string                                   // source code
 opts: {
   source?:            string,     // default 'field-tool:read'
   growSubstrate?:     boolean,    // default true
-  useVoidSubstrate?:  boolean,    // default true (Void's 29-D primary)
+  useVoidSubstrate?:  boolean,    // default true (Void's 116-D composed primary)
   useCodingFilter?:   boolean,    // default true (Oracle's coding filter)
   language?:          string,     // overrides input.language
   topK?:              number,     // default 5
@@ -176,7 +184,7 @@ opts: {
 }
 
 returns: {
-  waveform:        number[],   // 29-D fractal (length 29, values in [0,1])
+  waveform:        number[],   // 29-D L1 fractal (back-compat; scoring runs the 116-D composed flow)
   voidResonance:   {score, meanTopK, bestMatch, topMatches, librarySize, filteredSize} | null,
   codeResonance:   {score, meanTopK, bestMatch, topMatches} | null,
   coherence:       number,     // voidResonance.meanTopK (primary) or codeResonance fallback
@@ -186,7 +194,7 @@ returns: {
 }
 ```
 
-**First Void read costs ~2-3 seconds** (29-D library load, much
+**First Void read costs ~2-3 seconds** (composed library load, much
 faster than the deprecated 256-D path). Subsequent reads are fast.
 Tests that don't need the Void substrate can pass `{ useVoidSubstrate: false }`
 to skip warmup.

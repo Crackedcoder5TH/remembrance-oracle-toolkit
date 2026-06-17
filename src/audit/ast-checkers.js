@@ -738,12 +738,14 @@ function auditFiles(files, options = {}) {
     const weighted = (bySeverity.high || 0) * 1.0 + (bySeverity.medium || 0) * 0.5 + (bySeverity.low || 0) * 0.25;
     const severityScale = Math.max(1, filesScanned);
     const coherence = Math.max(0, Math.min(1, 1 - (weighted / severityScale)));
-    const { contribute } = require('../core/field-coupling');
+    const { contribute, recordCost } = require('../core/field-coupling');
     contribute({
       cost: Math.max(1, filesScanned),
       coherence,
       source: 'audit',
     });
+    // entropy side: severity-weighted findings are disorder — route as cost.
+    if (weighted > 0) recordCost({ units: weighted, source: 'audit:findings', kind: 'disorder' });
   } catch (_) { /* field unavailable — best-effort */ }
 
   return {

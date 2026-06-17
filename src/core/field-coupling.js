@@ -752,15 +752,65 @@ function learnedShapesByDomain() {
 const _DIRECTION_HISTORY_MAX = 30;
 const _directionHistory = [];   // [{ ts, coherence, entropy, cascade }]
 
+// Durable backing so the flow trajectory survives across processes — without
+// it, fieldDirection() only ever sees the current process's snapshots and
+// returns 'insufficient-history' on a fresh run. The substrate's flow is read
+// as ONE continuous line across the ecosystem, so it must persist.
+// `path` is otherwise lazily required inside functions in this module, but
+// these two constants are resolved at module-load, so it must be in scope here.
+const _path = require('node:path');
+const _DIRECTION_PATH = process.env.FIELD_DIRECTION_PATH
+  || _path.join(__dirname, '..', '..', '.remembrance', 'field-direction.jsonl');
+// Committed durable copy in the blockchain repo's data/ — survives a container
+// reclaim (the .remembrance/ working file is gitignored and does not).
+const _DIRECTION_SEED = process.env.FIELD_DIRECTION_SEED
+  || _path.join(__dirname, '..', '..', '..', 'REMEMBRANCE-BLOCKCHAIN', 'data', 'field-direction.seed.jsonl');
+let _directionLoaded = false;
+
+function _readDirectionLines(p) {
+  try {
+    const raw = fs.readFileSync(p, 'utf8').trim();
+    if (!raw) return [];
+    const out = [];
+    for (const ln of raw.split('\n').slice(-_DIRECTION_HISTORY_MAX)) {
+      try {
+        const s = JSON.parse(ln);
+        if (s && typeof s.coherence === 'number') out.push(s);
+      } catch (_) { /* skip malformed line */ }
+    }
+    return out;
+  } catch (_) { return []; }
+}
+
+function _loadDirectionHistory() {
+  if (_directionLoaded) return;
+  _directionLoaded = true;
+  // Prefer the live working file; fall back to the committed durable seed so a
+  // fresh container restores the flow line instead of starting blind.
+  let lines = _readDirectionLines(_DIRECTION_PATH);
+  if (lines.length === 0) lines = _readDirectionLines(_DIRECTION_SEED);
+  for (const s of lines) _directionHistory.push(s);
+}
+
 function _captureDirectionSnapshot(state) {
   if (!state) return;
-  _directionHistory.push({
+  _loadDirectionHistory();
+  const snap = {
     ts: Date.now(),
     coherence: state.coherence,
     entropy: state.globalEntropy,
     cascade: state.cascadeFactor,
-  });
+  };
+  _directionHistory.push(snap);
   if (_directionHistory.length > _DIRECTION_HISTORY_MAX) _directionHistory.shift();
+  // Durable append, bounded to the last MAX snapshots. Best-effort: a write
+  // failure never breaks a field read.
+  try {
+    const dir = path.dirname(_DIRECTION_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(_DIRECTION_PATH,
+      _directionHistory.map((s) => JSON.stringify(s)).join('\n') + '\n');
+  } catch (_) { /* best-effort persistence */ }
 }
 
 /**

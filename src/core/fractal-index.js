@@ -240,6 +240,62 @@ class FractalIndex {
     }
     return out;
   }
+
+  /**
+   * Vector-in flow search — the field-tool's scoreWithFlow path, served by
+   * this precomputed-norm engine instead of a separate per-comparison loop.
+   * Takes a pre-encoded composed query vector (>= 116-D) and returns the
+   * top-K by d4 with the cosine at every depth. A single pass to 116 captures
+   * the cumulative dot at each depth boundary; pattern norms are precomputed,
+   * so the hot loop is one multiply-add per element — no per-comparison norm
+   * recompute (the cost the field-tool's own loop was paying).
+   *
+   * @param {Float64Array|number[]} qComposed  query vector, length >= COMPOSED_DIM
+   * @param {Object} [opts]  { topK|k=5, filter?(id)=>bool }
+   * @returns {Array<{id, d1, d2, d3, d4}>}  sorted by d4 descending
+   */
+  searchFlow(qComposed, opts = {}) {
+    const k = Math.max(1, opts.topK || opts.k || 5);
+    const filter = typeof opts.filter === 'function' ? opts.filter : null;
+    const n = this._ids.length;
+    if (!qComposed || qComposed.length < COMPOSED_DIM || n === 0) return [];
+
+    // Query norms at each depth — computed once for the whole scan.
+    const qn = new Float64Array(4);
+    for (let d = 1; d <= 4; d++) {
+      let s = 0;
+      const lim = d * LAYER_DIM;
+      for (let i = 0; i < lim; i++) s += qComposed[i] * qComposed[i];
+      qn[d - 1] = Math.sqrt(s);
+    }
+    if (qn[3] === 0) return [];
+    const pn = this._normsByDepth;
+
+    const top = [];
+    for (let i = 0; i < n; i++) {
+      if (filter && !filter(this._ids[i])) continue;
+      const p = this._vecs[i];
+      let dot = 0, dot1 = 0, dot2 = 0, dot3 = 0;
+      for (let kk = 0; kk < COMPOSED_DIM; kk++) {
+        dot += qComposed[kk] * p[kk];
+        if (kk === LAYER_DIM - 1) dot1 = dot;
+        else if (kk === 2 * LAYER_DIM - 1) dot2 = dot;
+        else if (kk === 3 * LAYER_DIM - 1) dot3 = dot;
+      }
+      const d1 = (qn[0] && pn[0][i]) ? dot1 / (qn[0] * pn[0][i]) : 0;
+      const d2 = (qn[1] && pn[1][i]) ? dot2 / (qn[1] * pn[1][i]) : 0;
+      const d3 = (qn[2] && pn[2][i]) ? dot3 / (qn[2] * pn[2][i]) : 0;
+      const d4 = (qn[3] && pn[3][i]) ? dot / (qn[3] * pn[3][i]) : 0;
+      if (top.length < k) {
+        top.push({ id: this._ids[i], d1, d2, d3, d4 });
+        top.sort((a, b) => b.d4 - a.d4);
+      } else if (d4 > top[k - 1].d4) {
+        top[k - 1] = { id: this._ids[i], d1, d2, d3, d4 };
+        top.sort((a, b) => b.d4 - a.d4);
+      }
+    }
+    return top;
+  }
 }
 
 module.exports = {

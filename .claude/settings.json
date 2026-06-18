@@ -19,6 +19,18 @@
     ]
   },
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-hook.js 2>/dev/null || true",
+            "statusMessage": "goggles: reading coherence/resonance"
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "",

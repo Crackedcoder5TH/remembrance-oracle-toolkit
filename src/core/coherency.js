@@ -278,13 +278,35 @@ function computeCoherencyScore(code, metadata = {}) {
     historicalReliability,
   };
 
-  const weighted = Object.entries(WEIGHTS).reduce((sum, [key, weight]) => {
+  // measurableOnly: a reader with no runtime/historical metadata (e.g. an editor
+  // hook scoring a snippet) can't know testProof or historicalReliability — they
+  // sit pinned at their 0.5 fallbacks and just compress the score toward the
+  // middle. In that mode score ONLY the content-derivable dimensions
+  // (syntax/completeness/consistency) and renormalise their weights to sum to 1,
+  // so the result uses the full 0..1 range instead of a narrow band.
+  let activeWeights = WEIGHTS;
+  if (metadata.measurableOnly) {
+    const wsum = WEIGHTS.syntaxValid + WEIGHTS.completeness + WEIGHTS.consistency;
+    activeWeights = {
+      syntaxValid: WEIGHTS.syntaxValid / wsum,
+      completeness: WEIGHTS.completeness / wsum,
+      consistency: WEIGHTS.consistency / wsum,
+      testProof: 0,
+      historicalReliability: 0,
+    };
+  }
+
+  const weighted = Object.entries(activeWeights).reduce((sum, [key, weight]) => {
     return sum + (scores[key] * weight);
   }, 0);
 
-  // AST-based boost/penalty
+  // AST-based boost/penalty. In measurableOnly the renormalised weighted score
+  // already spans the full range, so a POSITIVE boost would just clamp clean
+  // code to 1.0 and mask completeness/consistency dips — apply AST as a penalty
+  // only there (it can still drop unparseable / over-complex code).
   const ast = astCoherencyBoost(code, language);
-  const total = Math.max(0, Math.min(1, weighted + ast.boost));
+  const astAdj = metadata.measurableOnly ? Math.min(0, ast.boost) : ast.boost;
+  const total = Math.max(0, Math.min(1, weighted + astAdj));
 
   return {
     total: Math.round(total * ROUNDING_FACTOR) / ROUNDING_FACTOR,

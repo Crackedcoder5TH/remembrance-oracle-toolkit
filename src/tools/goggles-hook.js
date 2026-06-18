@@ -179,6 +179,17 @@ try {
   }
 } catch (_) { /* audit layer unavailable — skip */ }
 
+// ── (6) Learning loop: feed findings through the quantum debug-oracle. It
+// learns which finding classes are worth surfacing (resolved → reinforced,
+// dismissed/persisting → decayed) and suppresses ones that have decayed below
+// the floor — so a false-positive class self-suppresses instead of needing a
+// hand-patch. Proven fixes promote into the shared void pattern library.
+try {
+  const learning = require(path.join(__dirname, '..', 'debug', 'goggles-learning'));
+  const res = learning.processFindings({ filePath: fp, findings: debugFindings, content, language: lang });
+  if (res && Array.isArray(res.surface)) debugFindings = res.surface;
+} catch (_) { /* learning optional — surface everything */ }
+
 // ── (3) Exception-only: speak when it matters, stay silent otherwise ───────
 // The scored region is brace-balanced (a syntactic whole, pre and post scored
 // independently), so a structure-neutral edit yields Δ≈0 — measured: a clean

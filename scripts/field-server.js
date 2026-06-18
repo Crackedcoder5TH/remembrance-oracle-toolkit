@@ -366,40 +366,72 @@ function _legacyStore() {
     store.db.prepare(
       'CREATE TABLE IF NOT EXISTS legacies (id TEXT PRIMARY KEY, name TEXT, content TEXT, tags TEXT, author TEXT, coherence REAL, created_at TEXT)',
     ).run();
+    // Safe migration — add later columns to a table created by an earlier build.
+    for (const col of ['meta TEXT', 'waveform TEXT', 'updated_at TEXT']) {
+      try { store.db.prepare('ALTER TABLE legacies ADD COLUMN ' + col).run(); } catch (_) { /* already present */ }
+    }
     _legacyStoreCache = store;
   } catch (_) { _legacyStoreCache = null; }
   return _legacyStoreCache;
 }
 function _legacyRow(r) {
   let tags = []; try { tags = JSON.parse(r.tags || '[]'); } catch (_) { /* */ }
-  return { id: r.id, name: r.name, content: r.content, tags, author: r.author, coherence: r.coherence, createdAt: r.created_at };
+  let meta = {}; try { meta = JSON.parse(r.meta || '{}'); } catch (_) { /* */ }
+  return { id: r.id, name: r.name, content: r.content, tags, meta, author: r.author, coherence: r.coherence, createdAt: r.created_at, updatedAt: r.updated_at };
+}
+// Encode a record the way the field encodes everything: a coherence score plus
+// the substrate's own waveform, so resonance search is just cosine over these.
+function _legacyEncode(name, content) {
+  let coherence = 0; let waveform = null;
+  const ft = _ft();
+  if (ft) { try { coherence = (ft.read({ content, name, language: 'text' }, { source: 'field-server:legacy', growSubstrate: false }).coherence) || 0; } catch (_) { /* */ } }
+  try { waveform = Array.from(codeToWaveform(name + '\n' + content)); } catch (_) { waveform = null; }
+  return { coherence, waveform };
 }
 function legacyOp(args) {
   const store = _legacyStore();
   if (!store) return { ok: false, error: 'legacy store unavailable' };
   const db = store.db;
   const action = args.action || 'list';
-  if (action === 'store') {
+
+  if (action === 'store' || action === 'update') {
     const name = String(args.name || '').trim();
     const content = String(args.content || '');
     if (!name || !content) return { ok: false, error: 'name and content are required' };
     const crypto = require('node:crypto');
-    const id = args.id ? String(args.id)
-      : crypto.createHash('sha256').update(name + '\n' + content).digest('hex').slice(0, 16);
+    let id = args.id ? String(args.id) : null;
+    if (action === 'update') {
+      if (!id) return { ok: false, error: 'id is required for update' };
+      if (!db.prepare('SELECT 1 FROM legacies WHERE id = ?').get(id)) return { ok: false, error: 'no legacy with id ' + id };
+    }
+    if (!id) id = crypto.createHash('sha256').update(name + '\n' + content).digest('hex').slice(0, 16);
     const tags = Array.isArray(args.tags) ? args.tags : [];
     const author = args.author ? String(args.author) : null;
-    let coherence = 0;
-    const ft = _ft();
-    if (ft) { try { coherence = ft.read({ content, name, language: 'text' }, { source: 'field-server:legacy', growSubstrate: false }).coherence || 0; } catch (_) { /* */ } }
+    const meta = (args.meta && typeof args.meta === 'object') ? args.meta : {};
+    const { coherence, waveform } = _legacyEncode(name, content);
     const now = new Date().toISOString();
-    db.prepare('INSERT OR REPLACE INTO legacies (id, name, content, tags, author, coherence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(id, name, content, JSON.stringify(tags), author, coherence, now);
+    const wf = waveform ? JSON.stringify(waveform) : null;
+    if (action === 'update') {
+      db.prepare('UPDATE legacies SET name=?, content=?, tags=?, author=?, meta=?, coherence=?, waveform=?, updated_at=? WHERE id=?')
+        .run(name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, id);
+      return { ok: true, id, name, coherence, updatedAt: now };
+    }
+    db.prepare('INSERT OR REPLACE INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, now);
     return { ok: true, id, name, coherence, createdAt: now };
   }
+
+  if (action === 'delete') {
+    const id = String(args.id || '');
+    if (!id) return { ok: false, error: 'id is required' };
+    return { ok: true, deleted: db.prepare('DELETE FROM legacies WHERE id = ?').run(id).changes };
+  }
+
   if (action === 'get') {
     const row = db.prepare('SELECT * FROM legacies WHERE id = ?').get(String(args.id || ''));
     return { ok: true, legacy: row ? _legacyRow(row) : null };
   }
+
   if (action === 'list') {
     const limit = Math.min(200, Math.max(1, Number(args.limit) || 50));
     const offset = Math.max(0, Number(args.offset) || 0);
@@ -407,9 +439,32 @@ function legacyOp(args) {
     const rows = q
       ? db.prepare('SELECT * FROM legacies WHERE name LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all('%' + q + '%', '%' + q + '%', limit, offset)
       : db.prepare('SELECT * FROM legacies ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
-    const total = db.prepare('SELECT COUNT(*) AS c FROM legacies').get().c;
-    return { ok: true, legacies: rows.map(_legacyRow), total };
+    return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total: db.prepare('SELECT COUNT(*) AS c FROM legacies').get().c };
   }
+
+  if (action === 'resonant') {
+    // Which legacies are kin? Cosine over the stored waveforms — the field's own
+    // similarity. Seed from an existing legacy (id) or from free text (q/content).
+    const k = Math.min(25, Math.max(1, Number(args.k) || 5));
+    let queryWf = null;
+    if (args.id) {
+      const seed = db.prepare('SELECT waveform FROM legacies WHERE id = ?').get(String(args.id));
+      if (seed && seed.waveform) { try { queryWf = JSON.parse(seed.waveform); } catch (_) { /* */ } }
+    } else if (args.q || args.content) {
+      try { queryWf = Array.from(codeToWaveform(String(args.q || args.content))); } catch (_) { /* */ }
+    }
+    if (!queryWf) return { ok: false, error: 'provide q/content (text) or id (an existing legacy) to resonate against' };
+    const scored = [];
+    for (const r of db.prepare('SELECT * FROM legacies WHERE waveform IS NOT NULL').all()) {
+      if (args.id && r.id === String(args.id)) continue;
+      let wf; try { wf = JSON.parse(r.waveform); } catch (_) { continue; }
+      let score = 0; try { score = cosine(queryWf, wf); } catch (_) { score = 0; }
+      scored.push({ ..._legacyRow(r), resonance: score });
+    }
+    const ranked = [...scored].sort((a, b) => b.resonance - a.resonance);
+    return { ok: true, legacies: ranked.slice(0, k), total: scored.length };
+  }
+
   return { ok: false, error: 'unknown action: ' + action };
 }
 

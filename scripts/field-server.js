@@ -211,6 +211,35 @@ const TOOLS = [
       required: ['code'],
     },
   },
+  {
+    name: 'goggles',
+    description: 'The goggles dual-vision read of code: FOCUS (intrinsic structural coherence + verdict) AND META (pattern resonance against the substrate + verdict + nearest cross-repo neighbours), plus the meta-debug audit (high-severity findings with fix suggestions) — everything the goggles produce, in one call. Offline read, no field write.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to read' },
+        language: { type: 'string', description: 'optional language hint (default javascript)' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'audit',
+    description: 'Meta-debug: run the AST audit checkers and return HIGH-severity findings (security/type/concurrency/edge-case) as { bugClass, line, reality, suggestion } — the defect axis coherence and resonance cannot see. Offline read, no field write.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to audit' },
+        language: { type: 'string', description: 'optional language hint' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'goggles_params',
+    description: "The goggles' consolidated tuning numbers, read from the Living Remembrance Engine (the single source of truth) so a consumer mirrors the same thresholds. Offline read, no field write.",
+    inputSchema: { type: 'object', properties: {} },
+  },
 ];
 
 // Delegates to the canonical waveformCosine (gated fractal coherency).
@@ -243,6 +272,64 @@ function isPrivilegedTool(name, action) {
 }
 function isPrivilegedEvaluate(args) {
   return args && args.execute === true;
+}
+
+// ─── goggles surface: the dual-vision read (FOCUS coherence + META resonance)
+// plus the meta-debug audit, so the interface can read everything the goggles
+// produce over the wire. Lazy-loaded — a missing module degrades the tool, never
+// the server boot. All reads, open like the other non-mutating tools. ───
+function _ft() { try { return require('../src/core/field-tool'); } catch (_) { return null; } }
+function _auditMod() {
+  try { return require('../src/audit/ast-checkers'); }
+  catch (_) { try { return require('../src/audit/static-checkers'); } catch (_) { return null; } }
+}
+function gogglesCfg() {
+  try { return require('../src/core/living-remembrance').gogglesParams() || {}; } catch (_) { return {}; }
+}
+function auditFindings(code, language) {
+  const a = _auditMod();
+  if (!a || typeof a.auditCode !== 'function') return [];
+  try { return (a.auditCode(code, { minSeverity: 'high', language }) || {}).findings || []; }
+  catch (_) { return []; }
+}
+function gogglesRead(code, language) {
+  const cfg = gogglesCfg();
+  const ft = _ft();
+  let coherence = null; let resonance = null; let nearest = []; let lexical = [];
+  if (ft && typeof ft.read === 'function') {
+    try {
+      const r = ft.read(
+        { content: code, name: 'goggles', language: language || 'javascript' },
+        { source: 'field-server:goggles', growSubstrate: false, topK: 7 },
+      );
+      coherence = (typeof r.coherence === 'number') ? r.coherence : null;
+      const vr = r.voidResonance || {};
+      resonance = (typeof vr.meanTopK === 'number') ? vr.meanTopK : null;
+      nearest = (vr.topMatches || []).slice(0, 5).map((x) => ({ name: x.name, score: x.d4 ?? x.similarity ?? 0 }));
+      const lf = cfg.lexFloor ?? 0.20;
+      lexical = ((r.codeResonance && r.codeResonance.topMatches) || [])
+        .filter((x) => (x.similarity ?? 0) >= lf).slice(0, 3)
+        .map((x) => ({ name: x.name, score: x.similarity ?? 0 }));
+    } catch (_) { /* degrade to nulls */ }
+  }
+  const band = (v, hi, mid, lo, labels) => (v == null ? null
+    : v >= hi ? labels[0] : v >= mid ? labels[1] : v >= lo ? labels[2] : labels[3]);
+  return {
+    // FOCUS — what you're working at (intrinsic structure, not correctness)
+    focus: {
+      coherence,
+      structure: band(coherence, cfg.structureStrong ?? 0.93, cfg.structureSolid ?? 0.80, cfg.structureLoose ?? 0.70, ['strong', 'solid', 'loose', 'weak']),
+    },
+    // META — where it sits in the whole codebase (pattern resonance)
+    meta: {
+      resonance,
+      verdict: band(resonance, cfg.resonanceConsonant ?? 0.90, cfg.resonanceFamiliar ?? 0.82, cfg.resonanceDistinct ?? 0.70, ['CONSONANT', 'FAMILIAR', 'DISTINCT', 'OUTLIER']),
+      nearest,
+      lexical,
+    },
+    // meta-debug — the defect axis the other two can't see
+    findings: auditFindings(code, language),
+  };
 }
 
 // Dispatch a tool call. Accepts the new tool names AND the legacy "field"
@@ -322,6 +409,18 @@ function callTool(name, args = {}) {
         totalFindings: sec.totalFindings,
       },
     };
+  }
+  if (name === 'goggles') {
+    return gogglesRead(args.code == null ? '' : String(args.code),
+      typeof args.language === 'string' ? args.language : undefined);
+  }
+  if (name === 'audit') {
+    const findings = auditFindings(args.code == null ? '' : String(args.code),
+      typeof args.language === 'string' ? args.language : undefined);
+    return { findings, total: findings.length };
+  }
+  if (name === 'goggles_params') {
+    return gogglesCfg();
   }
   throw new Error('unknown tool: ' + name);
 }
@@ -506,6 +605,26 @@ const server = http.createServer((req, res) => {
     return readBody(req, (raw) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
       try { return send(res, 200, callTool('pattern_resonance', { code: p.code, language: p.language, k: p.k })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/goggles') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('goggles', { code: p.code, language: p.language })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/audit') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('audit', { code: p.code, language: p.language })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/goggles-params') {
+    return readBody(req, () => {
+      try { return send(res, 200, callTool('goggles_params', {})); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
   }

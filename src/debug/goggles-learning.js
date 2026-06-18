@@ -35,12 +35,13 @@ const STATE_PATH = path.join(ROOT, '.remembrance', 'goggles-learning.json');
 // Verified on the debug-oracle: fresh capture ≈ 0.20, decays to ≈0.01 after a
 // handful of dismissals. 0.08 surfaces fresh/real findings and suppresses a
 // class that's been shown and ignored a few times.
-const SUPPRESS_AMPLITUDE = 0.08;
-// Grace window: surface a finding this many edits before a persisting-and-unfixed
-// one is penalised. Gives a real finding time to be fixed before it can be
-// mistaken for a dismissed false positive (reportOutcome(false) decays steeply).
-const PENALIZE_AFTER = 4;
-const PROMOTE_EVERY = 8; // throttle: feed the void library every N resolutions
+// Moving numbers are consolidated in the Living Remembrance Engine (the core).
+let GOG;
+try { GOG = require('../core/living-remembrance').gogglesParams(); }
+catch (_) { GOG = { suppressAmplitude: 0.08, penalizeAfter: 4, promoteEvery: 8, promoteAmplitude: 0.35 }; }
+const SUPPRESS_AMPLITUDE = GOG.suppressAmplitude; // floor below which a finding self-suppresses
+const PENALIZE_AFTER = GOG.penalizeAfter;         // grace-window edits before a persisting finding decays
+const PROMOTE_EVERY = GOG.promoteEvery;           // throttle: feed the void library every N resolutions
 
 let _debug; // DebugOracle | null | undefined (undefined = not yet tried)
 function debugOracle() {
@@ -175,7 +176,7 @@ function promoteToLibrary(debug) {
   // A goggles fix proven by repeated resolution (amplitude well above fresh, and
   // applied a few times) is worth feeding the library — looser than the bridge's
   // default 0.75, which is tuned for runtime debug fixes.
-  return promoteDebugToPatterns(shim, { promoteAmplitude: 0.35, promoteMinApplied: 3 });
+  return promoteDebugToPatterns(shim, { promoteAmplitude: GOG.promoteAmplitude, promoteMinApplied: 3 });
 }
 
 function registerPattern(store, { name, code, language, description, tags }) {

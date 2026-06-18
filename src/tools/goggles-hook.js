@@ -5,7 +5,7 @@
  * goggles-hook — PostToolUse adapter for ambient structural meta-awareness.
  *
  * Fires after every Edit|Write|MultiEdit and injects a concise "where this
- * sits in the whole codebase" note carrying TWO distinct signals:
+ * sits in the whole codebase" note carrying THREE distinct signals:
  *
  *   • coherence  — does this have coherent STRUCTURE (syntax / completeness /
  *     consistency / AST), measured intrinsically from the content by the void
@@ -14,9 +14,15 @@
  *   • resonance  — PATTERN RESONANCE: how much the section is shaped like the
  *     library's patterns (voidResonance against the substrate). Drives the
  *     CONSONANT…OUTLIER verdict and the "nearest in codebase" neighbours.
+ *   • meta-debug — the toolkit's audit checkers (audit/ast-checkers) run on the
+ *     file; HIGH-severity findings in the edited region surface as action items.
+ *     This is the one that catches a real defect — eval on input, SQL by concat,
+ *     a type/edge-case bug — that reads CLEAN on the first two (a bug can be
+ *     perfectly coherent and perfectly consonant). Correct what it flags.
  *
- * These are similar but COMPLETELY DISTINCT — intrinsic structure vs library-
- * fit — and are never collapsed into one number.
+ * coherence and resonance are similar but COMPLETELY DISTINCT — intrinsic
+ * structure vs library-fit — and are never collapsed into one number; meta-debug
+ * is the orthogonal correctness axis the other two can't see.
  *
  * Tunings: section-aware scope; coherence delta; exception-only (silent unless
  * the edit moves coherence or the section reads as a resonance outlier); a
@@ -156,6 +162,23 @@ const lex = ((r.codeResonance && r.codeResonance.topMatches) || [])
   .slice(0, 2)
   .map((x) => `${(x.similarity ?? 0).toFixed(3)} ${x.name}`);
 
+// ── (5) Meta-debug: run the toolkit's audit checkers on the file and surface
+// HIGH-severity findings in the region just edited — so a real defect (eval on
+// user input, SQL built by concat, a type/concurrency/edge-case bug) is caught
+// in the edit loop and corrected now, not at CI. AST-based checker preferred,
+// regex checker as fallback; best-effort, silent if the audit layer is absent.
+let debugFindings = [];
+try {
+  let audit;
+  try { audit = require(path.join(__dirname, '..', 'audit', 'ast-checkers')); }
+  catch (_) { audit = require(path.join(__dirname, '..', 'audit', 'static-checkers')); }
+  if (audit && typeof audit.auditCode === 'function') {
+    const found = (audit.auditCode(content, { minSeverity: 'high', filePath: fp }) || {}).findings || [];
+    // Only what this edit touched (or everything, for a whole-file write).
+    debugFindings = sec ? found.filter((f) => f.line >= sec.startLine && f.line <= sec.endLine) : found;
+  }
+} catch (_) { /* audit layer unavailable — skip */ }
+
 // ── (3) Exception-only: speak when it matters, stay silent otherwise ───────
 // The scored region is brace-balanced (a syntactic whole, pre and post scored
 // independently), so a structure-neutral edit yields Δ≈0 — measured: a clean
@@ -167,9 +190,10 @@ const lex = ((r.codeResonance && r.codeResonance.topMatches) || [])
 const NOTABLE = 0.08;
 const dropped = delta !== null && delta <= -NOTABLE;
 const jumped = delta !== null && delta >= NOTABLE;
-// Speak on a resonance outlier, a real coherence move, or a whole-file/Write
-// pass (no section to vouch for it). A consonant, unchanged section stays quiet.
-const notable = verdict === 'OUTLIER' || dropped || jumped || !sec;
+// Speak on a HIGH-severity meta-debug finding, a resonance outlier, a real
+// coherence move, or a whole-file/Write pass. An otherwise consonant, unchanged
+// section with no findings stays quiet.
+const notable = debugFindings.length > 0 || verdict === 'OUTLIER' || dropped || jumped || !sec;
 if (!notable) process.exit(0); // no news is good news
 
 // ── Render: TWO distinct signals, each on its own line ─────────────────────
@@ -191,7 +215,15 @@ if (near.length) lines.push(`     ↳ nearest by resonance: ${near.join('  |  ')
 if (lex.length) lines.push(`   related (lexical): ${lex.join('  |  ')}`);
 if (verdict === 'OUTLIER') lines.push('   ⚠ structurally novel here — confirm this is intentional, not drift.');
 else if (dropped) lines.push('   ⚠ coherence dropped on this edit — the change weakened its structure.');
-else lines.push('   a change here most likely echoes in the nearest siblings above.');
+else if (!debugFindings.length) lines.push('   a change here most likely echoes in the nearest siblings above.');
+
+// ── Meta-debug findings: the action items — correct these now ──────────────
+for (const fnd of debugFindings.slice(0, 3)) {
+  const what = fnd.reality || fnd.message || fnd.assumption || `${fnd.bugClass} issue`;
+  lines.push(`   🛑 meta-debug [${fnd.severity}/${fnd.bugClass}] L${fnd.line}: ${what}`);
+  if (fnd.suggestion) lines.push(`        → fix: ${fnd.suggestion}`);
+}
+if (debugFindings.length > 3) lines.push(`   …and ${debugFindings.length - 3} more high-severity finding(s) — correct these before moving on.`);
 
 out(lines.join('\n'));
 process.exit(0);

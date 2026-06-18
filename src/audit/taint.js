@@ -251,6 +251,15 @@ function findSinkCalls(fn, tainted, emit) {
     }
     if (!matchedSink) { i += chain.length - 1; continue; }
 
+    // A regex receiver is never a security sink: `someRE.exec(str)` is
+    // RegExp.prototype.exec (a string match), not child_process.exec, db.exec,
+    // or a shell. This was the #1 false positive on real-world parsing code
+    // (axios: tokensRE.exec, DATA_URL_PATTERN.exec, pattern.exec).
+    if (chain.length > 1 && looksLikeRegex(chain[chain.length - 2])) {
+      i += chain.length - 1;
+      continue;
+    }
+
     // Extract call arguments
     const argsStart = chainEnd + 2; // one past the `(`
     const args = extractArgs(tokens, chainEnd + 1);
@@ -286,6 +295,16 @@ function matchesChainSuffix(chain, pattern) {
     if (pattern[pattern.length - 1 - i] !== chain[chain.length - 1 - i]) return false;
   }
   return true;
+}
+
+// Heuristic: does this receiver name denote a RegExp? `re`, `rx`, `pattern`,
+// `tokensRE`, `DATA_URL_PATTERN`, `fooRegex`. Regex method calls (.exec/.test)
+// are string matches, never security sinks. Kept deliberately narrow so it does
+// not swallow db-ish names — `store`, `capture`, `db`, `conn` do NOT match.
+function looksLikeRegex(name) {
+  if (!name) return false;
+  return /(?:[a-z]RE|_RE|REGEXP?|PATTERN|Regexp?|Pattern|Matcher)$/.test(name)
+      || /^(re|rx|regex|regexp|pattern|matcher)$/i.test(name);
 }
 
 /**

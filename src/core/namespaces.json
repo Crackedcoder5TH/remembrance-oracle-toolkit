@@ -1,0 +1,13 @@
+{
+  "_README": "Registry of coh:// namespaces. A fork adds its head's name to 'repos' (and optionally a 'domains' entry) and that namespace becomes mintable via make_uri / makeUri. Entries are MERGED onto the built-ins (never replace them); names must match ^[a-z][a-z0-9_-]*$. Loaded by both coherency_uri.py and src/core/coherency-uri.js. Override the path with COHERENCY_NAMESPACES, or add ephemeral entries via COHERENCY_EXTRA_REPOS / COHERENCY_EXTRA_DOMAINS.",
+  "repos": [
+    "void", "oracle", "interface", "blockchain", "dialer",
+    "reflector", "swarm", "moons", "plugger", "supabase", "clawcode",
+    "valor"
+  ],
+  "domains": [
+    "code", "cosmos", "physics", "framework", "consciousness",
+    "economy", "applied", "conflict", "meta", "builtin", "unknown",
+    "leads"
+  ]
+}

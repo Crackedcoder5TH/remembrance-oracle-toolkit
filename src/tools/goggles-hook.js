@@ -59,6 +59,11 @@ if (!content || content.length < 40) process.exit(0); // too small to read struc
 let ft;
 try { ft = require(path.join(__dirname, '..', 'core', 'field-tool')); } catch (_) { process.exit(0); }
 
+// Moving numbers consolidated in the Living Remembrance Engine (the core).
+let GOG;
+try { GOG = require(path.join(__dirname, '..', 'core', 'living-remembrance')).gogglesParams(); }
+catch (_) { GOG = { notable: 0.08, lexFloor: 0.20, resonanceConsonant: 0.90, resonanceFamiliar: 0.82, resonanceDistinct: 0.70 }; }
+
 const LANG = {
   '.ts': 'typescript', '.tsx': 'typescript', '.js': 'javascript', '.jsx': 'javascript',
   '.mjs': 'javascript', '.cjs': 'javascript', '.py': 'python', '.rs': 'rust', '.go': 'go', '.java': 'java',
@@ -147,7 +152,7 @@ if (sec && postRange) {
 // ── Pattern resonance (library-fit): drives the verdict + neighbours ───────
 const vr = r.voidResonance || r.resonance || {};
 const m = vr.meanTopK ?? 0;
-const verdict = m >= 0.90 ? 'CONSONANT' : m >= 0.82 ? 'FAMILIAR' : m >= 0.70 ? 'DISTINCT' : 'OUTLIER';
+const verdict = m >= GOG.resonanceConsonant ? 'CONSONANT' : m >= GOG.resonanceFamiliar ? 'FAMILIAR' : m >= GOG.resonanceDistinct ? 'DISTINCT' : 'OUTLIER';
 // Exclude the file matching itself (the substrate contains it) — "nearest" is
 // only useful if it points elsewhere.
 const near = (vr.topMatches || [])
@@ -156,7 +161,7 @@ const near = (vr.topMatches || [])
   .map((x) => `${(x.d4 ?? x.similarity ?? 0).toFixed(3)} ${x.name}`);
 
 // ── (4) Lexical floor: keep lexical neighbours only above a relevance floor ─
-const LEX_FLOOR = 0.20;
+const LEX_FLOOR = GOG.lexFloor;
 const lex = ((r.codeResonance && r.codeResonance.topMatches) || [])
   .filter((x) => (x.similarity ?? 0) >= LEX_FLOOR)
   .slice(0, 2)
@@ -198,7 +203,7 @@ try {
 // and leaves minor one-offs alone. Don't lower it much: completeness penalises
 // the incomplete-work marker words, so a tight gate flags docs that merely
 // mention them (this very file did).
-const NOTABLE = 0.08;
+const NOTABLE = GOG.notable;
 const dropped = delta !== null && delta <= -NOTABLE;
 const jumped = delta !== null && delta >= NOTABLE;
 // Speak on a HIGH-severity meta-debug finding, a resonance outlier, a real

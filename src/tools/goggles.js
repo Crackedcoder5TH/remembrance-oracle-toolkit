@@ -26,6 +26,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ft = require('../core/field-tool');
 
+// Moving numbers consolidated in the Living Remembrance Engine (the core).
+let GOG;
+try { GOG = require('../core/living-remembrance').gogglesParams(); }
+catch (_) { GOG = { structureStrong: 0.93, structureSolid: 0.80, structureLoose: 0.70, resonanceConsonant: 0.90, resonanceFamiliar: 0.82, resonanceDistinct: 0.70 }; }
+
 const LANG_BY_EXT = {
   '.js': 'javascript', '.jsx': 'javascript', '.mjs': 'javascript', '.cjs': 'javascript',
   '.ts': 'typescript', '.tsx': 'typescript',
@@ -56,17 +61,17 @@ function bar(x, width = 22) {
 // ~0.66. Thresholds track THAT distribution — re-derive if the coherency
 // weights or the measurableOnly renormalisation change.
 function structureVerdict(c) {
-  if (c >= 0.93) return 'strong structure';
-  if (c >= 0.80) return 'solid structure';
-  if (c >= 0.70) return 'loose structure';
+  if (c >= GOG.structureStrong) return 'strong structure';
+  if (c >= GOG.structureSolid) return 'solid structure';
+  if (c >= GOG.structureLoose) return 'loose structure';
   return 'weak / novel structure';
 }
 
 function consonanceVerdict(meanTopK, best) {
   // How well the section fits the established structure of the whole codebase.
-  if (meanTopK >= 0.90) return ['CONSONANT', 'fits the established structure — well-trodden shape'];
-  if (meanTopK >= 0.82) return ['FAMILIAR', 'broadly in keeping with the codebase'];
-  if (meanTopK >= 0.70) return ['DISTINCT', 'a shape the codebase uses only loosely — worth a second look'];
+  if (meanTopK >= GOG.resonanceConsonant) return ['CONSONANT', 'fits the established structure — well-trodden shape'];
+  if (meanTopK >= GOG.resonanceFamiliar) return ['FAMILIAR', 'broadly in keeping with the codebase'];
+  if (meanTopK >= GOG.resonanceDistinct) return ['DISTINCT', 'a shape the codebase uses only loosely — worth a second look'];
   return ['OUTLIER', 'structurally novel here — either genuinely new, or drifting from the codebase'];
 }
 

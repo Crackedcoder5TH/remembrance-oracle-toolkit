@@ -49,15 +49,16 @@ function bar(x, width = 22) {
   return '█'.repeat(n) + '·'.repeat(width - n);
 }
 
-// Intrinsic coherence runs 0..~0.81 in practice: the scorer caps clean code
-// with no test/history metadata near 0.71 (+ a small AST boost), and real
-// ecosystem files measure min ~0.55 / median ~0.67 / max ~0.81. Thresholds are
-// calibrated to THAT distribution — not the resonance scale (where ~0.9 is
-// typical). Re-derive these if the coherency weights change.
+// Intrinsic coherence (the field-tool reads it measurableOnly: syntax /
+// completeness / consistency renormalised, AST applied as a penalty only) spans
+// the full 0..1 range. Measured over real ecosystem files: median ~0.83, p75
+// ~0.93, ~14% of clean files reach 1.0; a stray TODO lands ~0.95, a broken brace
+// ~0.66. Thresholds track THAT distribution — re-derive if the coherency
+// weights or the measurableOnly renormalisation change.
 function structureVerdict(c) {
-  if (c >= 0.75) return 'strong structure';
-  if (c >= 0.66) return 'solid structure';
-  if (c >= 0.56) return 'loose structure';
+  if (c >= 0.93) return 'strong structure';
+  if (c >= 0.80) return 'solid structure';
+  if (c >= 0.70) return 'loose structure';
   return 'weak / novel structure';
 }
 
@@ -107,7 +108,11 @@ function main() {
   // ── META ──  (pattern resonance — distinct from the FOCUS coherence above)
   console.log('\n  META   (pattern resonance — where it sits in the whole codebase)');
   console.log(`    resonance   ${bar(meanTopK)} ${meanTopK.toFixed(3)}  ${tag} — ${gloss}`);
-  const matches = (vr.topMatches || []).slice(0, top);
+  // Exclude the file matching itself (the substrate contains it).
+  const selfName = path.basename(file);
+  const matches = (vr.topMatches || [])
+    .filter((mm) => path.basename(String(mm.name || '')) !== selfName)
+    .slice(0, top);
   if (matches.length) {
     console.log('    nearest across the ecosystem:');
     for (const m of matches) {

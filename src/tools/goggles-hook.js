@@ -123,7 +123,12 @@ if (sec && newStr && scopeText.includes(newStr)) {
 const vr = r.voidResonance || r.resonance || {};
 const m = vr.meanTopK ?? 0;
 const verdict = m >= 0.90 ? 'CONSONANT' : m >= 0.82 ? 'FAMILIAR' : m >= 0.70 ? 'DISTINCT' : 'OUTLIER';
-const near = (vr.topMatches || []).slice(0, 3).map((x) => `${(x.d4 ?? x.similarity ?? 0).toFixed(3)} ${x.name}`);
+// Exclude the file matching itself (the substrate contains it) — "nearest" is
+// only useful if it points elsewhere.
+const near = (vr.topMatches || [])
+  .filter((x) => path.basename(String(x.name || '')) !== base)
+  .slice(0, 3)
+  .map((x) => `${(x.d4 ?? x.similarity ?? 0).toFixed(3)} ${x.name}`);
 
 // ── (4) Lexical floor: keep lexical neighbours only above a relevance floor ─
 const LEX_FLOOR = 0.20;
@@ -133,7 +138,12 @@ const lex = ((r.codeResonance && r.codeResonance.topMatches) || [])
   .map((x) => `${(x.similarity ?? 0).toFixed(3)} ${x.name}`);
 
 // ── (3) Exception-only: speak when it matters, stay silent otherwise ───────
-const NOTABLE = 0.02;
+// NOTABLE sits above the section-boundary noise floor of the renormalised
+// coherence scale: a blank-snapped section can be brace-unbalanced, so syntax
+// (42% of the measurableOnly weight) can swing ~0.05 just from reshaping the
+// section. 0.08 flags substantial structural moves (broken syntax, several new
+// issues) without crying wolf on a comment edit; micro-slips sit in the noise.
+const NOTABLE = 0.08;
 const dropped = delta !== null && delta <= -NOTABLE;
 const jumped = delta !== null && delta >= NOTABLE;
 // Speak on a resonance outlier, a real coherence move, or a whole-file/Write
@@ -141,7 +151,10 @@ const jumped = delta !== null && delta >= NOTABLE;
 const notable = verdict === 'OUTLIER' || dropped || jumped || !sec;
 if (!notable) process.exit(0); // no news is good news
 
-// ── Render: two distinct signals — intrinsic coherence, pattern resonance ──
+// ── Render: TWO distinct signals, each on its own line ─────────────────────
+//   coherence = intrinsic structure (does this hold together on its own);
+//   resonance = ecosystem-fit + its nearest neighbour (where this sits in the
+//               whole codebase). Never collapsed — they answer different questions.
 const cohStr = (r.coherence ?? 0).toFixed(3);
 const resStr = m.toFixed(3);
 const deltaStr = delta === null
@@ -149,9 +162,11 @@ const deltaStr = delta === null
   : ` Δ ${delta >= 0 ? '+' : ''}${delta.toFixed(3)}${dropped ? ' ↓' : jumped ? ' ↑' : ''}`;
 
 const lines = [
-  `🥽 goggles · ${base} ${scopeLabel} — coherence ${cohStr}${deltaStr} (structure, not correctness) · resonance ${resStr} ${verdict}`,
+  `🥽 goggles · ${base} ${scopeLabel}`,
+  `   coherence ${cohStr}${deltaStr} — intrinsic structure (not correctness)`,
+  `   resonance ${resStr} ${verdict} — fit with the whole ecosystem`,
 ];
-if (near.length) lines.push(`   nearest in codebase: ${near.join('  |  ')}`);
+if (near.length) lines.push(`     ↳ nearest by resonance: ${near.join('  |  ')}`);
 if (lex.length) lines.push(`   related (lexical): ${lex.join('  |  ')}`);
 if (verdict === 'OUTLIER') lines.push('   ⚠ structurally novel here — confirm this is intentional, not drift.');
 else if (dropped) lines.push('   ⚠ coherence dropped on this edit — the change weakened its structure.');

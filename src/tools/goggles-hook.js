@@ -76,22 +76,38 @@ function editPair() {
 }
 const { oldStr, newStr } = editPair();
 
-function sectionAround(text, needle) {
-  if (!needle) return null;
+// Locate the changed lines, then expand to a syntactic whole: pad ±25 lines,
+// snap to blank boundaries, then balance braces so the scored region is an
+// enclosing block, not a fragment. A cut '{'/'}' would tank scoreSyntax and
+// inject noise into the coherence delta. (Brace-less languages like Python keep
+// the blank-snapped window — netBraces stays 0.)
+function lineRangeOf(text, needle) {
   const idx = text.indexOf(needle);
   if (idx < 0) return null;
-  const all = text.split('\n');
   const startLine = text.slice(0, idx).split('\n').length - 1;
-  const endLine = startLine + needle.split('\n').length - 1;
+  return { startLine, endLine: startLine + needle.split('\n').length - 1 };
+}
+
+function regionAt(text, startLine, endLine) {
+  const all = text.split('\n');
   const PAD = 25;
   let s = Math.max(0, startLine - PAD);
-  let e = Math.min(all.length - 1, endLine + PAD);
+  let e = Math.min(all.length - 1, Math.max(startLine, endLine) + PAD);
   while (s > 0 && all[s].trim() !== '') s--;              // snap up to a blank line
   while (e < all.length - 1 && all[e].trim() !== '') e++; // snap down to a blank line
+  const lineNet = (ln) => { let n = 0; for (const ch of ln) { if (ch === '{') n += 1; else if (ch === '}') n -= 1; } return n; };
+  let net = 0;
+  for (let i = s; i <= e; i++) net += lineNet(all[i]);
+  for (let g = 0; g < 400 && net !== 0; g++) {            // extend to a balanced block
+    if (net > 0 && e < all.length - 1) { e += 1; net += lineNet(all[e]); }
+    else if (net < 0 && s > 0) { s -= 1; net += lineNet(all[s]); }
+    else break;
+  }
   return { text: all.slice(s, e + 1).join('\n'), startLine: s + 1, endLine: e + 1 };
 }
 
-const sec = sectionAround(content, newStr);
+const postRange = lineRangeOf(content, newStr);
+const sec = postRange ? regionAt(content, postRange.startLine, postRange.endLine) : null;
 const scopeText = sec ? sec.text : content;
 const scopeLabel = sec ? `§ L${sec.startLine}–${sec.endLine}` : 'whole file';
 
@@ -106,15 +122,18 @@ let r;
 try { r = score(scopeText, base); } catch (_) { process.exit(0); }
 
 // ── (2) Delta: intrinsic coherence now vs before this edit ─────────────────
-// Reconstruct the pre-edit section by swapping new_string back to old_string
-// (read() is stateless, so a second scoring call is safe and side-effect-free).
+// Compare two INDEPENDENTLY balanced regions — the edited block now, and the
+// same block reconstructed before the edit (new_string swapped back to old) —
+// so the delta reflects the change, not a fragment boundary shifting. read() is
+// stateless, so the second scoring call is safe and side-effect-free.
 let delta = null;
-if (sec && newStr && scopeText.includes(newStr)) {
+if (sec && postRange) {
   try {
-    const preText = scopeText.replace(newStr, oldStr);
-    if (preText !== scopeText) {
-      const pre = score(preText, `${base}#pre`);
-      delta = (r.coherence ?? 0) - (pre.coherence ?? 0);
+    const preContent = content.replace(newStr, oldStr);
+    const preEnd = oldStr ? postRange.startLine + oldStr.split('\n').length - 1 : postRange.startLine - 1;
+    const preRegion = regionAt(preContent, postRange.startLine, Math.max(postRange.startLine, preEnd));
+    if (preRegion.text !== scopeText) {
+      delta = (r.coherence ?? 0) - (score(preRegion.text, `${base}#pre`).coherence ?? 0);
     }
   } catch (_) { /* delta is optional */ }
 }
@@ -138,11 +157,13 @@ const lex = ((r.codeResonance && r.codeResonance.topMatches) || [])
   .map((x) => `${(x.similarity ?? 0).toFixed(3)} ${x.name}`);
 
 // ── (3) Exception-only: speak when it matters, stay silent otherwise ───────
-// NOTABLE sits above the section-boundary noise floor of the renormalised
-// coherence scale: a blank-snapped section can be brace-unbalanced, so syntax
-// (42% of the measurableOnly weight) can swing ~0.05 just from reshaping the
-// section. 0.08 flags substantial structural moves (broken syntax, several new
-// issues) without crying wolf on a comment edit; micro-slips sit in the noise.
+// The scored region is brace-balanced (a syntactic whole, pre and post scored
+// independently), so a structure-neutral edit yields Δ≈0 — measured: a clean
+// comment insert is exactly 0.000, no boundary noise. With that margin, 0.08
+// flags substantial weakening (broken syntax ~0.34, several compounding issues)
+// and leaves minor one-offs alone. Don't lower it much: completeness penalises
+// the incomplete-work marker words, so a tight gate flags docs that merely
+// mention them (this very file did).
 const NOTABLE = 0.08;
 const dropped = delta !== null && delta <= -NOTABLE;
 const jumped = delta !== null && delta >= NOTABLE;

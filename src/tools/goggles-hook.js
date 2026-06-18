@@ -14,6 +14,17 @@
  *      edit; speaks on an OUTLIER or a coherence drop. Signal over noise.
  *   4. Lexical floor  — drops the lexical-neighbour line when it's just noise.
  *
+ * Vocabulary: "coherence" = does this have coherent structure (the caveat the
+ * readout prints) — NOT correctness, and NOT pattern resonance. Pattern
+ * resonance = how much it's shaped like the library's patterns; that's the
+ * separate consonance / "nearest in codebase" axis. Similar but distinct.
+ *
+ * Resolution: coherence (voidResonance.meanTopK) resolves at function/file
+ * scale. A few changed lines sit inside its noise floor (~0.02–0.03 — measured:
+ * even pure glyph-soup drops only ~0.025 on its own), so the delta crosses the
+ * threshold only for substantial structural change. Small edits staying silent
+ * is the metric's resolution, not a miss; tightening the scope can't beat it.
+ *
  * Best-effort: any problem exits 0 silently and never interferes with the edit.
  */
 

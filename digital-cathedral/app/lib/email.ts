@@ -75,7 +75,7 @@ const getSiteUrl = () => {
 /**
  * Send an email via SMTP or log to console in dev.
  */
-async function sendEmail(message: EmailMessage): Promise<void> {
+export async function sendEmail(message: EmailMessage): Promise<void> {
   const smtpHost = process.env.SMTP_HOST;
 
   if (!smtpHost) {

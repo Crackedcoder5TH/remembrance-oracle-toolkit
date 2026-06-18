@@ -16,6 +16,7 @@ import type Stripe from "stripe";
 import { createPurchaseGuarded } from "@/app/lib/client-database";
 import type { LeadPurchase } from "@/app/lib/client-database";
 import { stripe } from "@/app/lib/stripe";
+import { emitMoneyEvent } from "@/app/lib/money-ledger";
 
 // Leads can be returned within 72h of purchase.
 const RETURN_WINDOW_MS = 72 * 60 * 60 * 1000;
@@ -69,6 +70,26 @@ export async function fulfillCheckoutSession(
 
   if (guarded.value.outcome === "sold_out") {
     return refundOversoldSession(session);
+  }
+
+  // Transparent decentralized backup (off the charge path): hand the settled
+  // payment to the Remembrance ledger / Solana anchor. PII-free, fire-and-forget
+  // — `void` so it never blocks or fails fulfillment. Only a genuinely new
+  // purchase emits; a redelivered webhook (duplicate) does not re-anchor.
+  if (guarded.value.outcome !== "duplicate") {
+    const paymentRef =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id ?? "";
+    void emitMoneyEvent({
+      purchaseId: guarded.value.purchase.purchaseId,
+      amount: guarded.value.purchase.pricePaid,
+      currency: session.currency ?? "usd",
+      paymentRef,
+      leadRef: guarded.value.purchase.leadId,
+      clientRef: guarded.value.purchase.clientId,
+      at: guarded.value.purchase.purchasedAt,
+    });
   }
 
   return {

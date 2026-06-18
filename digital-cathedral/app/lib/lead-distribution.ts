@@ -48,6 +48,17 @@ export async function distributeLead(
     skipped: [],
   };
 
+  // Revenue model = self-serve Stripe marketplace: buyers log in and purchase
+  // leads with a card. Auto-distribution (auto-assigning a lead to client
+  // accounts and billing them WITHOUT a Stripe payment) is OFF by default and
+  // opt-in via LEAD_AUTO_DISTRIBUTE=true. It is gated here because, when on, it
+  // creates "delivered" purchase rows with no payment and bypasses the
+  // oversell-guarded path — it must be reconciled with marketplace accounting
+  // and routed through the guard before use. Off => leads await self-serve sale.
+  if (process.env.LEAD_AUTO_DISTRIBUTE !== "true") {
+    return result;
+  }
+
   // Get all active clients
   const clientsResult = await getFilteredClients({ status: "active", limit: 200 });
   if (!clientsResult.ok || clientsResult.value.clients.length === 0) {

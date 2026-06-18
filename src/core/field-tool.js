@@ -240,10 +240,12 @@ class FieldTool {
     //    voidResonance.meanTopK (how much the content is shaped like the
     //    library's patterns) is a separate, distinct signal returned alongside.
     //    The two must never be conflated. Falls back to 0, honestly reported.
+    //    measurableOnly: a field read has no test/history metadata, so score
+    //    only the content-derivable dimensions and use the full 0..1 range.
     let coherence = 0;
     if (_coherency && typeof _coherency.computeCoherencyScore === 'function') {
       try {
-        const c = _coherency.computeCoherencyScore(content, { language });
+        const c = _coherency.computeCoherencyScore(content, { language, measurableOnly: true });
         if (c && Number.isFinite(c.total)) coherence = c.total;
       } catch (_) { /* keep 0 */ }
     }

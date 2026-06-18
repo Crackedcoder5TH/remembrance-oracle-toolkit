@@ -125,7 +125,8 @@ function registerOnboardCommands(handlers, _context) {
     console.log('\n' + c.bold('3. Live read') + c.dim('  — what the field says about a debounce():') + '\n');
     if (read) {
       const top = (v.topMatches && v.topMatches[0]) || null;
-      console.log(`    coherence : ${(read.coherence || 0).toFixed(4)}    flowAware: ${v.flowAware}    library: ${v.librarySize}`);
+      console.log(`    coherence : ${(read.coherence || 0).toFixed(4)} (structure)   resonance : ${(v.meanTopK || 0).toFixed(4)} (library-fit)`);
+      console.log(`    flowAware : ${v.flowAware}    library  : ${v.librarySize}`);
       if (top) {
         const f = (x) => (typeof x === 'number' ? x.toFixed(3) : '-');
         console.log(`    best match: ${top.name}`);

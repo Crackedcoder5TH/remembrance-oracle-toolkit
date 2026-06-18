@@ -4,14 +4,18 @@
 /**
  * goggles — structural meta-awareness while you work on a section.
  *
- * Shows BOTH at once, from a single field-tool read():
- *   FOCUS — the section you're editing: its structural coherence (note:
- *           coherence measures STRUCTURE, not correctness — a well-formed
- *           bad file still scores high).
- *   META  — where that section sits in the whole codebase: its nearest
- *           patterns ACROSS the entire Void substrate (cross-file, cross-repo),
- *           a consonant/outlier verdict, the lexical neighbours, and the live
- *           field peers it entangles.
+ * Shows TWO DISTINCT signals at once, from a single field-tool read():
+ *   FOCUS — the section's intrinsic COHERENCE: does it have coherent structure
+ *           (syntax / completeness / consistency / AST), measured from the
+ *           content itself. STRUCTURE, not correctness — a well-formed bad file
+ *           still scores high.
+ *   META  — PATTERN RESONANCE: how much the section is shaped like the library's
+ *           patterns — its nearest patterns ACROSS the entire Void substrate
+ *           (cross-file, cross-repo), a consonant/outlier verdict, the lexical
+ *           neighbours, and the live field peers it entangles.
+ *
+ * Coherence and resonance are similar but COMPLETELY DISTINCT — intrinsic
+ * structure vs library-fit — and are never collapsed into one number.
  *
  * Usage:
  *   node src/tools/goggles.js <file> [--lines A:B] [--top N]
@@ -45,10 +49,15 @@ function bar(x, width = 22) {
   return '█'.repeat(n) + '·'.repeat(width - n);
 }
 
+// Intrinsic coherence runs 0..~0.81 in practice: the scorer caps clean code
+// with no test/history metadata near 0.71 (+ a small AST boost), and real
+// ecosystem files measure min ~0.55 / median ~0.67 / max ~0.81. Thresholds are
+// calibrated to THAT distribution — not the resonance scale (where ~0.9 is
+// typical). Re-derive these if the coherency weights change.
 function structureVerdict(c) {
-  if (c >= 0.92) return 'strong structure';
-  if (c >= 0.85) return 'solid structure';
-  if (c >= 0.75) return 'loose structure';
+  if (c >= 0.75) return 'strong structure';
+  if (c >= 0.66) return 'solid structure';
+  if (c >= 0.56) return 'loose structure';
   return 'weak / novel structure';
 }
 
@@ -95,9 +104,9 @@ function main() {
   console.log(`    coherence   ${bar(r.coherence)} ${(r.coherence).toFixed(3)}  ${structureVerdict(r.coherence)}`);
   console.log('    (coherence = STRUCTURE, not correctness)');
 
-  // ── META ──
-  console.log('\n  META   (where it sits in the whole codebase)');
-  console.log(`    consonance  ${bar(meanTopK)} ${meanTopK.toFixed(3)}  ${tag} — ${gloss}`);
+  // ── META ──  (pattern resonance — distinct from the FOCUS coherence above)
+  console.log('\n  META   (pattern resonance — where it sits in the whole codebase)');
+  console.log(`    resonance   ${bar(meanTopK)} ${meanTopK.toFixed(3)}  ${tag} — ${gloss}`);
   const matches = (vr.topMatches || []).slice(0, top);
   if (matches.length) {
     console.log('    nearest across the ecosystem:');

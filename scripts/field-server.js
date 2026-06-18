@@ -240,6 +240,24 @@ const TOOLS = [
     description: "The goggles' consolidated tuning numbers, read from the Living Remembrance Engine (the single source of truth) so a consumer mirrors the same thresholds. Offline read, no field write.",
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'legacy',
+    description: "Durable record store on the field's SQLite — the Valor Legacies database. action: store (write { name, content, tags?, author? }; bearer-gated, coherence-scored), get ({ id }), list ({ q?, limit?, offset? }). Reads open; store requires the bearer token.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', description: 'store | get | list (default list)' },
+        id: { type: 'string' },
+        name: { type: 'string' },
+        content: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+        author: { type: 'string' },
+        q: { type: 'string', description: 'search text for list' },
+        limit: { type: 'number' },
+        offset: { type: 'number' },
+      },
+    },
+  },
 ];
 
 // Delegates to the canonical waveformCosine (gated fractal coherency).
@@ -268,6 +286,7 @@ function isPrivilegedTool(name, action) {
   // execute:true, treat it as privileged.
   if (isContributeTool(name, action)) return true;
   if (name === 'exec_verify') return true;
+  if (name === 'legacy' && action === 'store') return true;
   return false;
 }
 function isPrivilegedEvaluate(args) {
@@ -330,6 +349,68 @@ function gogglesRead(code, language) {
     // meta-debug — the defect axis the other two can't see
     findings: auditFindings(code, language),
   };
+}
+
+// ─── legacies: a durable record store on the field's OWN SQLite (oracle.db) —
+// the "database" the Valor Legacies site reads/writes through the interface.
+// `store` mutates (privileged, bearer-gated); `list`/`get` are open reads. Each
+// record is coherence-scored by the field tool so it carries the same signal. ──
+let _legacyStoreCache;
+function _legacyStore() {
+  if (_legacyStoreCache !== undefined) return _legacyStoreCache;
+  _legacyStoreCache = null;
+  try {
+    const path = require('node:path');
+    const { SQLiteStore } = require('../src/store/sqlite');
+    const store = new SQLiteStore(path.join(__dirname, '..'));
+    store.db.prepare(
+      'CREATE TABLE IF NOT EXISTS legacies (id TEXT PRIMARY KEY, name TEXT, content TEXT, tags TEXT, author TEXT, coherence REAL, created_at TEXT)',
+    ).run();
+    _legacyStoreCache = store;
+  } catch (_) { _legacyStoreCache = null; }
+  return _legacyStoreCache;
+}
+function _legacyRow(r) {
+  let tags = []; try { tags = JSON.parse(r.tags || '[]'); } catch (_) { /* */ }
+  return { id: r.id, name: r.name, content: r.content, tags, author: r.author, coherence: r.coherence, createdAt: r.created_at };
+}
+function legacyOp(args) {
+  const store = _legacyStore();
+  if (!store) return { ok: false, error: 'legacy store unavailable' };
+  const db = store.db;
+  const action = args.action || 'list';
+  if (action === 'store') {
+    const name = String(args.name || '').trim();
+    const content = String(args.content || '');
+    if (!name || !content) return { ok: false, error: 'name and content are required' };
+    const crypto = require('node:crypto');
+    const id = args.id ? String(args.id)
+      : crypto.createHash('sha256').update(name + '\n' + content).digest('hex').slice(0, 16);
+    const tags = Array.isArray(args.tags) ? args.tags : [];
+    const author = args.author ? String(args.author) : null;
+    let coherence = 0;
+    const ft = _ft();
+    if (ft) { try { coherence = ft.read({ content, name, language: 'text' }, { source: 'field-server:legacy', growSubstrate: false }).coherence || 0; } catch (_) { /* */ } }
+    const now = new Date().toISOString();
+    db.prepare('INSERT OR REPLACE INTO legacies (id, name, content, tags, author, coherence, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(id, name, content, JSON.stringify(tags), author, coherence, now);
+    return { ok: true, id, name, coherence, createdAt: now };
+  }
+  if (action === 'get') {
+    const row = db.prepare('SELECT * FROM legacies WHERE id = ?').get(String(args.id || ''));
+    return { ok: true, legacy: row ? _legacyRow(row) : null };
+  }
+  if (action === 'list') {
+    const limit = Math.min(200, Math.max(1, Number(args.limit) || 50));
+    const offset = Math.max(0, Number(args.offset) || 0);
+    const q = args.q ? String(args.q) : null;
+    const rows = q
+      ? db.prepare('SELECT * FROM legacies WHERE name LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all('%' + q + '%', '%' + q + '%', limit, offset)
+      : db.prepare('SELECT * FROM legacies ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+    const total = db.prepare('SELECT COUNT(*) AS c FROM legacies').get().c;
+    return { ok: true, legacies: rows.map(_legacyRow), total };
+  }
+  return { ok: false, error: 'unknown action: ' + action };
 }
 
 // Dispatch a tool call. Accepts the new tool names AND the legacy "field"
@@ -421,6 +502,9 @@ function callTool(name, args = {}) {
   }
   if (name === 'goggles_params') {
     return gogglesCfg();
+  }
+  if (name === 'legacy') {
+    return legacyOp(args);
   }
   throw new Error('unknown tool: ' + name);
 }
@@ -625,6 +709,16 @@ const server = http.createServer((req, res) => {
   if (path === '/goggles-params') {
     return readBody(req, () => {
       try { return send(res, 200, callTool('goggles_params', {})); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/legacy' || path === '/legacies') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      if ((p.action || 'list') === 'store' && !authed) {
+        return send(res, 401, { error: 'unauthorized — bearer token required to store a legacy' });
+      }
+      try { return send(res, 200, callTool('legacy', p)); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
   }

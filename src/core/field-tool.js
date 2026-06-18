@@ -88,6 +88,15 @@ try {
   _scoreResonance = require('../scoring/pattern-resonance').scoreResonance;
 } catch (_) { /* coding filter unreachable */ }
 
+// Intrinsic coherence scorer: measures whether content has coherent STRUCTURE
+// (syntax validity + completeness + consistency + AST) directly from the
+// content itself — the coherence the void compressor reads by its very nature.
+// DISTINCT from pattern resonance (voidResonance: how much the content is shaped
+// like the library's patterns). Similar but completely distinct signals; the
+// two must never be conflated into one number.
+let _coherency = null;
+try { _coherency = require('./coherency'); } catch (_) { /* intrinsic coherence unreachable */ }
+
 let _SQLiteStore = null;
 try {
   _SQLiteStore = require('../store/sqlite').SQLiteStore;
@@ -131,8 +140,9 @@ class FieldTool {
    *   { source?, growSubstrate?, language?, topK?, name?, id? }
    * @returns {{
    *   waveform: number[],
-   *   resonance: { score, meanTopK, bestMatch, topMatches } | null,
-   *   coherence: number,
+   *   voidResonance: { meanTopK, bestMatch, topMatches } | null, // PATTERN RESONANCE: library-fit
+   *   coherence: number,  // INTRINSIC structural coherence — a separate, distinct signal
+
    *   grew: { ok, reason, id, library_size_after } | { ok: false, reason },
    *   fieldStateAfter: object | null,
    *   layers: { entangled, scored, grew, contributed }
@@ -223,14 +233,19 @@ class FieldTool {
       layers.grew = grew.ok === true;
     }
 
-    // 6. Coherence is the PRIMARY substrate signal (Void). Falls back
-    //    to the coding filter only if Void is unreachable. Both fail =
-    //    0, honestly reported via the layers tracking.
+    // 6. Coherence = the INTRINSIC structural-coherence score: does this have
+    //    coherent STRUCTURE (syntax validity + completeness + consistency +
+    //    AST), measured directly from the content. This is the coherence the
+    //    void compressor reads by its very nature. It is NOT pattern resonance:
+    //    voidResonance.meanTopK (how much the content is shaped like the
+    //    library's patterns) is a separate, distinct signal returned alongside.
+    //    The two must never be conflated. Falls back to 0, honestly reported.
     let coherence = 0;
-    if (voidResonance && Number.isFinite(voidResonance.meanTopK)) {
-      coherence = voidResonance.meanTopK;
-    } else if (codeResonance && Number.isFinite(codeResonance.meanTopK)) {
-      coherence = codeResonance.meanTopK;
+    if (_coherency && typeof _coherency.computeCoherencyScore === 'function') {
+      try {
+        const c = _coherency.computeCoherencyScore(content, { language });
+        if (c && Number.isFinite(c.total)) coherence = c.total;
+      } catch (_) { /* keep 0 */ }
     }
 
     // 7. Contribute the reading to the field

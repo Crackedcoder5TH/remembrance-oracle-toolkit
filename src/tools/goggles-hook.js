@@ -5,25 +5,24 @@
  * goggles-hook — PostToolUse adapter for ambient structural meta-awareness.
  *
  * Fires after every Edit|Write|MultiEdit and injects a concise "where this
- * sits in the whole codebase" note. Four tunings over the first cut:
- *   1. Section-aware  — scores the region you actually edited, not the whole
- *      file, so the readout tracks the change instead of repeating per file.
- *   2. Delta          — reports how that section's coherence moved versus
- *      before the edit (reconstructed by swapping new_string back to old).
- *   3. Exception-only — stays silent on a consonant, structurally-unchanged
- *      edit; speaks on an OUTLIER or a coherence drop. Signal over noise.
- *   4. Lexical floor  — drops the lexical-neighbour line when it's just noise.
+ * sits in the whole codebase" note carrying TWO distinct signals:
  *
- * Vocabulary: "coherence" = does this have coherent structure (the caveat the
- * readout prints) — NOT correctness, and NOT pattern resonance. Pattern
- * resonance = how much it's shaped like the library's patterns; that's the
- * separate consonance / "nearest in codebase" axis. Similar but distinct.
+ *   • coherence  — does this have coherent STRUCTURE (syntax / completeness /
+ *     consistency / AST), measured intrinsically from the content by the void
+ *     compressor's coherency scorer. Not correctness. The delta tracks how the
+ *     edit moved it.
+ *   • resonance  — PATTERN RESONANCE: how much the section is shaped like the
+ *     library's patterns (voidResonance against the substrate). Drives the
+ *     CONSONANT…OUTLIER verdict and the "nearest in codebase" neighbours.
  *
- * Resolution: coherence (voidResonance.meanTopK) resolves at function/file
- * scale. A few changed lines sit inside its noise floor (~0.02–0.03 — measured:
- * even pure glyph-soup drops only ~0.025 on its own), so the delta crosses the
- * threshold only for substantial structural change. Small edits staying silent
- * is the metric's resolution, not a miss; tightening the scope can't beat it.
+ * These are similar but COMPLETELY DISTINCT — intrinsic structure vs library-
+ * fit — and are never collapsed into one number.
+ *
+ * Tunings: section-aware scope; coherence delta; exception-only (silent unless
+ * the edit moves coherence or the section reads as a resonance outlier); a
+ * lexical-neighbour relevance floor. Note: pattern resonance is a mean of top-K
+ * nearest patterns, so it resolves at function/file scale — a few changed lines
+ * sit inside its noise floor; the verdict speaks to substantial change.
  *
  * Best-effort: any problem exits 0 silently and never interferes with the edit.
  */
@@ -106,7 +105,7 @@ function score(text, name) {
 let r;
 try { r = score(scopeText, base); } catch (_) { process.exit(0); }
 
-// ── (2) Delta: section coherence now vs before this edit ───────────────────
+// ── (2) Delta: intrinsic coherence now vs before this edit ─────────────────
 // Reconstruct the pre-edit section by swapping new_string back to old_string
 // (read() is stateless, so a second scoring call is safe and side-effect-free).
 let delta = null;
@@ -120,7 +119,7 @@ if (sec && newStr && scopeText.includes(newStr)) {
   } catch (_) { /* delta is optional */ }
 }
 
-// ── Signals ────────────────────────────────────────────────────────────────
+// ── Pattern resonance (library-fit): drives the verdict + neighbours ───────
 const vr = r.voidResonance || r.resonance || {};
 const m = vr.meanTopK ?? 0;
 const verdict = m >= 0.90 ? 'CONSONANT' : m >= 0.82 ? 'FAMILIAR' : m >= 0.70 ? 'DISTINCT' : 'OUTLIER';
@@ -137,27 +136,25 @@ const lex = ((r.codeResonance && r.codeResonance.topMatches) || [])
 const NOTABLE = 0.02;
 const dropped = delta !== null && delta <= -NOTABLE;
 const jumped = delta !== null && delta >= NOTABLE;
-// Speak on a structural outlier, a real coherence move, or a whole-file/Write
+// Speak on a resonance outlier, a real coherence move, or a whole-file/Write
 // pass (no section to vouch for it). A consonant, unchanged section stays quiet.
 const notable = verdict === 'OUTLIER' || dropped || jumped || !sec;
 if (!notable) process.exit(0); // no news is good news
 
-// ── Render ──────────────────────────────────────────────────────────────────
+// ── Render: two distinct signals — intrinsic coherence, pattern resonance ──
 const cohStr = (r.coherence ?? 0).toFixed(3);
-const conStr = m.toFixed(3);
+const resStr = m.toFixed(3);
 const deltaStr = delta === null
   ? ''
-  : ` · Δ ${delta >= 0 ? '+' : ''}${delta.toFixed(3)}${dropped ? ' ↓' : jumped ? ' ↑' : ''}`;
-// coherence === meanTopK in the common case; only name consonance when it diverges.
-const conPart = conStr === cohStr ? '' : `, consonance ${conStr}`;
+  : ` Δ ${delta >= 0 ? '+' : ''}${delta.toFixed(3)}${dropped ? ' ↓' : jumped ? ' ↑' : ''}`;
 
 const lines = [
-  `🥽 goggles · ${base} ${scopeLabel} — coherence ${cohStr} (STRUCTURE, not correctness)${deltaStr}${conPart} ${verdict}`,
+  `🥽 goggles · ${base} ${scopeLabel} — coherence ${cohStr}${deltaStr} (structure, not correctness) · resonance ${resStr} ${verdict}`,
 ];
 if (near.length) lines.push(`   nearest in codebase: ${near.join('  |  ')}`);
 if (lex.length) lines.push(`   related (lexical): ${lex.join('  |  ')}`);
 if (verdict === 'OUTLIER') lines.push('   ⚠ structurally novel here — confirm this is intentional, not drift.');
-else if (dropped) lines.push('   ⚠ coherence dropped on this edit — the section moved away from its neighbours.');
+else if (dropped) lines.push('   ⚠ coherence dropped on this edit — the change weakened its structure.');
 else lines.push('   a change here most likely echoes in the nearest siblings above.');
 
 out(lines.join('\n'));

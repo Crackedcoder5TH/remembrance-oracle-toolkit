@@ -24,7 +24,12 @@ const DEFAULT_FIELD_URL = "http://127.0.0.1:7787/mcp";
 const TIMEOUT_MS = 1500;
 
 function fieldUrl(): string {
-  return (process.env.REMEMBRANCE_FIELD_URL || DEFAULT_FIELD_URL).trim();
+  let url = (process.env.REMEMBRANCE_FIELD_URL || DEFAULT_FIELD_URL).trim().replace(/\/+$/, "");
+  // The bridge speaks JSON-RPC to the MCP endpoint. Accept either the base URL
+  // (the interface's convention — REMEMBRANCE_FIELD_URL=https://host) or the full
+  // /mcp endpoint, and normalize to /mcp so a single env value works for both apps.
+  if (!/\/mcp$/i.test(url)) url += "/mcp";
+  return url;
 }
 
 function authToken(): string {
@@ -47,17 +52,14 @@ function isLoopbackOrHttps(url: string): boolean {
  * null on any failure (network, timeout, non-2xx, malformed JSON).
  * Never throws.
  */
-async function mcpCall<T = unknown>(action: string, args: Record<string, unknown> = {}): Promise<T | null> {
+async function mcpTool<T = unknown>(toolName: string, args: Record<string, unknown> = {}): Promise<T | null> {
   const url = fieldUrl();
   if (!isLoopbackOrHttps(url) && !url.startsWith("http://")) return null;
   const body = {
     jsonrpc: "2.0",
     id: 1,
     method: "tools/call",
-    params: {
-      name: "field",
-      arguments: { action, ...args },
-    },
+    params: { name: toolName, arguments: args },
   };
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = authToken();
@@ -92,6 +94,11 @@ async function mcpCall<T = unknown>(action: string, args: Record<string, unknown
   }
 }
 
+// Field-dynamics calls use the legacy "field" tool with an action argument.
+async function mcpCall<T = unknown>(action: string, args: Record<string, unknown> = {}): Promise<T | null> {
+  return mcpTool<T>("field", { action, ...args });
+}
+
 // ── Field state read ─────────────────────────────────────────────────
 
 export interface FieldState {
@@ -107,6 +114,40 @@ export interface FieldState {
 
 export async function peekField(opts: { includeSources?: boolean } = {}): Promise<FieldState | null> {
   return mcpCall<FieldState>("state", { includeSources: opts.includeSources === true });
+}
+
+// ── Substrate data store ─────────────────────────────────────────────
+// The cathedral's content lives in the field's legacy store (coherence-scored,
+// resonance-searchable) and is recalled retro-causally. A stable id makes store
+// an upsert-by-key. Best-effort like the rest — null/[] when the field is down.
+
+export interface SubstrateRecord {
+  id: string;
+  name: string;
+  content: string;
+  tags?: string[];
+  coherence?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Upsert a record. Pass a stable `id` to overwrite by key; omit for a content-hash id. */
+export async function storeRecord(
+  rec: { id?: string; name: string; content: string; tags?: string[]; author?: string; meta?: Record<string, unknown> },
+): Promise<{ ok: boolean; id?: string } | null> {
+  return mcpTool<{ ok: boolean; id?: string }>("legacy", { action: "store", ...rec });
+}
+
+/** Fetch a record by id (null if absent or the field is unreachable). */
+export async function getRecord(id: string): Promise<SubstrateRecord | null> {
+  const r = await mcpTool<{ ok: boolean; legacy: SubstrateRecord | null }>("legacy", { action: "get", id });
+  return r && r.ok && r.legacy ? r.legacy : null;
+}
+
+/** Retro-causal recall — the resonant slices for a query. */
+export async function recall(query: string, k = 6): Promise<Array<SubstrateRecord & { score: number }>> {
+  const r = await mcpTool<{ ok: boolean; slices: Array<SubstrateRecord & { score: number }> }>("recall", { query, k });
+  return r && r.ok && r.slices ? r.slices : [];
 }
 
 // ── Cost / benefit contributions ─────────────────────────────────────

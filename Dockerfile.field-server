@@ -23,8 +23,9 @@
 #   (Railway auto-detects the Dockerfile when the directory contains one
 #   named Dockerfile; rename or use --file Dockerfile.field-server)
 #
-# The container persists to /data/.remembrance/entropy.json. Mount a
-# volume there to keep field state across restarts.
+# The container persists BOTH the legacies DB and the field under
+# /data/.remembrance/ (oracle.db + entropy.json). Mount a volume at /data
+# to keep all state across restarts.
 
 # ── Builder stage ───────────────────────────────────────────────────
 FROM node:22-slim AS builder
@@ -50,7 +51,10 @@ RUN groupadd --system --gid 1001 field && \
 WORKDIR /app
 
 # Persistence directory (mount a volume here in production).
+# REMEMBRANCE_STATE_DIR routes BOTH the legacies DB (oracle.db) and the field
+# (entropy.json) under /data, so a single volume at /data persists everything.
 RUN mkdir -p /data/.remembrance && chown -R field:field /data
+ENV REMEMBRANCE_STATE_DIR=/data
 ENV ENTROPY_PATH=/data/.remembrance/entropy.json
 
 # Copy built node_modules + source from the builder.

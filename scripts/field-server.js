@@ -39,6 +39,7 @@ if (REMEMBRANCE_STATE_DIR && !process.env.ENTROPY_PATH) {
 const http = require('node:http');
 const { contribute, peekField } = require('../src/core/field-coupling');
 const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
+const { computeRetrocausalAlignment } = require('../src/atomic/temporal-projection');
 const { scoreResonance, libraryStatus } = require('../src/scoring/pattern-resonance');
 const { covenantCheck } = require('../src/core/covenant');
 const { securityScan } = require('../src/reflector/scoring-analysis-security');
@@ -268,6 +269,19 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'recall',
+    description: "Retro-causal projection retrieval — the ecosystem's own RAG. Resonant retrieval over the field's substrate, re-ranked by the healed-anchor pull (future pulls present) — the same geometry as fractal_retro_search / temporal-projection. Returns the top-k decoded slices to inject as context. { query (or q/content), k? }. Open read — the chat and any agent use this identically.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'the text to recall ecosystem context for' },
+        q: { type: 'string' },
+        content: { type: 'string' },
+        k: { type: 'number', description: 'how many slices to return (default 6)' },
+      },
+    },
+  },
 ];
 
 // Delegates to the canonical waveformCosine (gated fractal coherency).
@@ -480,6 +494,55 @@ function legacyOp(args) {
 
 // Dispatch a tool call. Accepts the new tool names AND the legacy "field"
 // tool (with an `action` argument) so existing webhook producers keep working.
+// ─── retro-causal recall: the retrieval loop the chat AND any agent use ───────
+// A fast resonance pass, then a retro-causal re-rank — "future pulls present" —
+// biasing toward the healed anchors (the highest-coherency, most-complete
+// records that define the 'complete future' the search is pulled toward). This
+// is the same geometry as fractal_retro_search.py and the r_eff modulator;
+// computeRetrocausalAlignment (the exact function reflection-serf uses) applies
+// the temporal projection for any record carrying a time ledger, and is identity
+// (1.0) for the ledger-less — so a plain record degrades cleanly to pure
+// resonance. The returned content IS the decoded slice, ready to inject.
+const RECALL_RETRO_BETA = 0.4; // strength of the healed-anchor pull
+const RECALL_ANCHORS = 5;      // how many healed anchors define the attractor
+function recallOp(args = {}) {
+  const store = _legacyStore();
+  if (!store) return { ok: false, error: 'recall store unavailable' };
+  const db = store.db;
+  const q = String(args.query || args.q || args.content || '').trim();
+  if (!q) return { ok: false, error: 'provide query/q/content text to recall against' };
+  const k = Math.max(1, Math.min(parseInt(args.k, 10) || 6, 50));
+  let queryWf; try { queryWf = Array.from(codeToWaveform(q)); } catch (_) { queryWf = null; }
+  if (!queryWf) return { ok: false, error: 'could not encode the query' };
+
+  const cand = [];
+  for (const r of db.prepare('SELECT * FROM legacies WHERE waveform IS NOT NULL').all()) {
+    let wf; try { wf = JSON.parse(r.waveform); } catch (_) { continue; }
+    cand.push({ row: r, wf, coherence: Number(r.coherence) || 0 });
+  }
+  if (cand.length === 0) return { ok: true, slices: [], total: 0, anchors: 0 };
+
+  // Healed anchors — the highest-coherency records: the 'complete future' state.
+  const anchors = cand.slice().sort((a, b) => b.coherence - a.coherence).slice(0, Math.min(RECALL_ANCHORS, cand.length));
+  const tNow = Date.now();
+  const scored = [];
+  for (const c of cand) {
+    let resonance = 0; try { resonance = cosine(queryWf, c.wf); } catch (_) { resonance = 0; }
+    let pull = 0; let n = 0;
+    for (const a of anchors) {
+      if (a.row.id === c.row.id) continue;
+      try { pull += cosine(c.wf, a.wf); n += 1; } catch (_) { /* skip */ }
+    }
+    pull = n ? pull / n : 0;
+    let alignment = 1;
+    try { alignment = computeRetrocausalAlignment({ waveform: c.wf, ledger: c.row.ledger }, { waveform: queryWf }, { tNow }); } catch (_) { alignment = 1; }
+    const score = resonance * (1 + RECALL_RETRO_BETA * pull) * alignment;
+    scored.push({ ..._legacyRow(c.row), resonance, retroPull: pull, alignment, score });
+  }
+  const ranked = scored.slice().sort((a, b) => b.score - a.score);
+  return { ok: true, slices: ranked.slice(0, k), total: scored.length, anchors: anchors.length };
+}
+
 function callTool(name, args = {}) {
   const action = args.action;
   if (isContributeTool(name, action)) {
@@ -570,6 +633,9 @@ function callTool(name, args = {}) {
   }
   if (name === 'legacy') {
     return legacyOp(args);
+  }
+  if (name === 'recall') {
+    return recallOp(args);
   }
   throw new Error('unknown tool: ' + name);
 }
@@ -784,6 +850,13 @@ const server = http.createServer((req, res) => {
         return send(res, 401, { error: 'unauthorized — bearer token required to store a legacy' });
       }
       try { return send(res, 200, callTool('legacy', p)); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/recall') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('recall', p)); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
   }

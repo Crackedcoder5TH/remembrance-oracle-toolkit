@@ -35,6 +35,10 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 # Production deps only — the field server doesn't need dev tooling.
 RUN npm ci --omit=dev || npm install --omit=dev
+# The toolkit has ZERO runtime deps (stdlib only: node:sqlite, node:http, …), so
+# npm installs nothing and creates no node_modules dir. Ensure it exists so the
+# runtime stage's `COPY --from=builder /app/node_modules` always resolves.
+RUN mkdir -p node_modules
 
 # Bring in the source the field server actually requires.
 # scripts/field-server.js + src/core/* + src/scoring/* + src/reflector/*

@@ -540,7 +540,11 @@ function recallOp(args = {}) {
     scored.push({ ..._legacyRow(c.row), resonance, retroPull: pull, alignment, score });
   }
   const ranked = scored.slice().sort((a, b) => b.score - a.score);
-  return { ok: true, slices: ranked.slice(0, k), total: scored.length, anchors: anchors.length };
+  const out = ranked.slice(0, k);
+  // What the slice cost vs. the whole corpus — fuels the chat's savings counter.
+  const corpusChars = cand.reduce((s, c) => s + ((c.row.content && c.row.content.length) || 0), 0);
+  const sliceChars = out.reduce((s, sl) => s + ((sl.content && sl.content.length) || 0), 0);
+  return { ok: true, slices: out, total: scored.length, anchors: anchors.length, corpusChars, sliceChars };
 }
 
 function callTool(name, args = {}) {

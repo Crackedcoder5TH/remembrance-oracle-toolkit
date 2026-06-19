@@ -92,8 +92,9 @@ function amplitudeById(debug, id) {
  */
 function processFindings({ filePath, findings, language }) {
   const state = loadState();
-  state.patterns = state.patterns || {}; // fingerprint -> { id }
-  state.files = state.files || {};       // filePath -> { present: [{ fp, seen }] last turn }
+  state.patterns = state.patterns || {};             // fingerprint -> { id }
+  state.files = state.files || {};                   // filePath -> { present: [{ fp, seen }] last turn }
+  state.falsePositives = state.falsePositives || {}; // fingerprint -> { at, hits, auto, reason } — remembered mistakes
   state.resolutions = state.resolutions || 0;
 
   const prior = (state.files[filePath] || {}).present || []; // [{ fp, seen }] present last turn
@@ -109,23 +110,38 @@ function processFindings({ filePath, findings, language }) {
   const currentFps = new Set(current.map((c) => c.fp));
 
   // 1. LEARN — a finding present last turn and gone now is a FIX that worked.
-  //    (Tracks ALL findings present, surfaced or suppressed, so a fix to a
-  //    suppressed finding still reinforces and can revive it.)
+  //    If it had been flagged a false positive, the fix proves it was real → forget
+  //    the FP (self-correcting, so a wrong flag can't bury a real bug forever).
   let resolved = 0;
   for (const p of prior) {
     if (!currentFps.has(p.fp)) {
       const id = state.patterns[p.fp] && state.patterns[p.fp].id;
       if (id) { try { debug.reportOutcome(id, true); resolved += 1; state.resolutions += 1; } catch (_) { /* ignore */ } }
+      if (state.falsePositives[p.fp]) {
+        delete state.falsePositives[p.fp];
+        // It was real after all — restore standing (the flag, manual or auto,
+        // had floored the amplitude) so it can surface again next time.
+        if (id) { try { for (let i = 0; i < 6; i++) debug.reportOutcome(id, true); } catch (_) { /* ignore */ } }
+      }
     }
   }
 
-  // 2. GATE — capture unseen findings; after the grace window, penalise ones
-  //    that keep persisting unfixed (decays amplitude → suppression); surface
-  //    only those whose learned amplitude is still above the floor.
+  // 2. GATE — remembered false positives are suppressed outright; otherwise
+  //    capture, penalise persistence past the grace window, and surface only
+  //    findings whose learned amplitude is still above the floor.
   const surface = [];
   const present = [];
   let suppressed = 0;
+  const AUTO_FP_AFTER = PENALIZE_AFTER * 2; // shown this often and never fixed → remember it as a false positive
   for (const { f, fp } of current) {
+    const seen = (priorSeen.get(fp) || 0) + 1;
+    // A remembered mistake — never surface it again, no grace window.
+    if (state.falsePositives[fp]) {
+      state.falsePositives[fp].hits = (state.falsePositives[fp].hits || 0) + 1;
+      suppressed += 1;
+      present.push({ fp, seen });
+      continue;
+    }
     let rec = state.patterns[fp];
     if (!rec) {
       let id = null;
@@ -141,9 +157,11 @@ function processFindings({ filePath, findings, language }) {
       } catch (_) { /* capture optional */ }
       rec = state.patterns[fp] = { id };
     }
-    const seen = (priorSeen.get(fp) || 0) + 1;
     // Past the grace window and still unfixed → a dismissed/false-positive class.
     if (seen >= PENALIZE_AFTER && rec.id) { try { debug.reportOutcome(rec.id, false); } catch (_) { /* ignore */ } }
+    // Persisted well past the grace window, never fixed → flag it a false
+    // positive: record it in the field histogram and stop surfacing it for good.
+    if (seen >= AUTO_FP_AFTER) _recordFalsePositive(state, fp, f, { auto: true });
 
     const amp = rec.id ? amplitudeById(debug, rec.id) : null;
     if (amp != null && amp < SUPPRESS_AMPLITUDE) suppressed += 1;
@@ -194,4 +212,62 @@ function registerPattern(store, { name, code, language, description, tags }) {
   );
 }
 
-module.exports = { processFindings, fingerprint };
+// ─── False-positive memory ──────────────────────────────────────────────────
+// A recognised mistake is remembered HARD: recorded in the learning ledger (so
+// the goggles never surface it again, no grace window) AND in the field's source
+// histogram (so the field itself remembers — the memory persists in entropy.json
+// and is visible via peekField). Distinct from amplitude decay, which is soft and
+// recoverable; this is "it learned its lesson and won't repeat it."
+
+function _recordFalsePositive(state, fp, finding, opts = {}) {
+  state.falsePositives = state.falsePositives || {};
+  const prior = state.falsePositives[fp];
+  if (prior && !opts.force) return;
+  state.falsePositives[fp] = { at: Date.now(), hits: prior ? prior.hits : 0, auto: !!opts.auto, reason: opts.reason || null };
+  try {
+    const fc = require('../core/field-coupling');
+    if (fc && typeof fc.contribute === 'function') {
+      // An FP is incoherent signal — contribute it at low coherence under a source
+      // the histogram keeps, so "what mistakes has it learned" is queryable.
+      fc.contribute({ cost: 1, coherence: 0.05, source: 'goggles:false-positive:' + ((finding && finding.bugClass) || 'unknown') });
+    }
+  } catch (_) { /* histogram contribution optional */ }
+}
+
+/**
+ * Flag a finding (or its fingerprint string) as a false positive — explicitly,
+ * from whoever recognised the mistake. Records it in the ledger + the field
+ * histogram and drives its learned amplitude to the floor, so every signal agrees
+ * and it never surfaces again. Self-corrects: if the finding is later fixed, the
+ * loop forgets the flag (it was real after all).
+ */
+function flagFalsePositive(findingOrFp, opts = {}) {
+  const fp = typeof findingOrFp === 'string' ? findingOrFp : fingerprint(findingOrFp);
+  const finding = (findingOrFp && typeof findingOrFp === 'object') ? findingOrFp : { bugClass: String(fp).split('/')[0] };
+  const state = loadState();
+  state.patterns = state.patterns || {};
+  _recordFalsePositive(state, fp, finding, { reason: opts.reason || 'manual', force: true });
+  const debug = debugOracle();
+  const id = state.patterns[fp] && state.patterns[fp].id;
+  if (debug && id) { try { for (let i = 0; i < 10; i++) debug.reportOutcome(id, false); } catch (_) { /* ignore */ } }
+  saveState(state);
+  return { fp, flagged: true };
+}
+
+/** Flag every learned finding whose fingerprint contains `substr` as a false
+ *  positive — usable when you remember the gist of the noise, not the exact fp. */
+function flagFalsePositivesMatching(substr, opts = {}) {
+  const state = loadState();
+  state.patterns = state.patterns || {};
+  let n = 0;
+  for (const fp of Object.keys(state.patterns)) {
+    if (fp.includes(substr)) {
+      _recordFalsePositive(state, fp, { bugClass: String(fp).split('/')[0] }, { reason: opts.reason || 'manual-match', force: true });
+      n += 1;
+    }
+  }
+  saveState(state);
+  return n;
+}
+
+module.exports = { processFindings, fingerprint, flagFalsePositive, flagFalsePositivesMatching };

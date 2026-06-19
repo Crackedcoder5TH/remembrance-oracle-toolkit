@@ -26,6 +26,16 @@
  * Per-IP rate limit via $RATE_LIMIT_PER_MIN (default 120; 0 disables).
  */
 
+// ── Durable state → one volume. Set REMEMBRANCE_STATE_DIR (or ORACLE_ROOT) to a
+// mounted volume's path and BOTH the LRE field (entropy.json) AND the SQLite
+// store (oracle.db = legacies + substrate) live under <STATE_DIR>/.remembrance/.
+// Done HERE, before the field modules load, because the LRE resolves its persist
+// path at require time. An explicit ENTROPY_PATH still wins.
+const REMEMBRANCE_STATE_DIR = process.env.REMEMBRANCE_STATE_DIR || process.env.ORACLE_ROOT || '';
+if (REMEMBRANCE_STATE_DIR && !process.env.ENTROPY_PATH) {
+  process.env.ENTROPY_PATH = require('node:path').join(REMEMBRANCE_STATE_DIR, '.remembrance', 'entropy.json');
+}
+
 const http = require('node:http');
 const { contribute, peekField } = require('../src/core/field-coupling');
 const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
@@ -362,7 +372,7 @@ function _legacyStore() {
   try {
     const path = require('node:path');
     const { SQLiteStore } = require('../src/store/sqlite');
-    const store = new SQLiteStore(path.join(__dirname, '..'));
+    const store = new SQLiteStore(REMEMBRANCE_STATE_DIR || path.join(__dirname, '..'));
     store.db.prepare(
       'CREATE TABLE IF NOT EXISTS legacies (id TEXT PRIMARY KEY, name TEXT, content TEXT, tags TEXT, author TEXT, coherence REAL, created_at TEXT)',
     ).run();

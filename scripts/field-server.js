@@ -26,6 +26,16 @@
  * Per-IP rate limit via $RATE_LIMIT_PER_MIN (default 120; 0 disables).
  */
 
+// ── Durable state → one volume. Set REMEMBRANCE_STATE_DIR (or ORACLE_ROOT) to a
+// mounted volume's path and BOTH the LRE field (entropy.json) AND the SQLite
+// store (oracle.db = legacies + substrate) live under <STATE_DIR>/.remembrance/.
+// Done HERE, before the field modules load, because the LRE resolves its persist
+// path at require time. An explicit ENTROPY_PATH still wins.
+const REMEMBRANCE_STATE_DIR = process.env.REMEMBRANCE_STATE_DIR || process.env.ORACLE_ROOT || '';
+if (REMEMBRANCE_STATE_DIR && !process.env.ENTROPY_PATH) {
+  process.env.ENTROPY_PATH = require('node:path').join(REMEMBRANCE_STATE_DIR, '.remembrance', 'entropy.json');
+}
+
 const http = require('node:http');
 const { contribute, peekField } = require('../src/core/field-coupling');
 const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
@@ -211,6 +221,53 @@ const TOOLS = [
       required: ['code'],
     },
   },
+  {
+    name: 'goggles',
+    description: 'The goggles dual-vision read of code: FOCUS (intrinsic structural coherence + verdict) AND META (pattern resonance against the substrate + verdict + nearest cross-repo neighbours), plus the meta-debug audit (high-severity findings with fix suggestions) — everything the goggles produce, in one call. Offline read, no field write.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to read' },
+        language: { type: 'string', description: 'optional language hint (default javascript)' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'audit',
+    description: 'Meta-debug: run the AST audit checkers and return HIGH-severity findings (security/type/concurrency/edge-case) as { bugClass, line, reality, suggestion } — the defect axis coherence and resonance cannot see. Offline read, no field write.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'code to audit' },
+        language: { type: 'string', description: 'optional language hint' },
+      },
+      required: ['code'],
+    },
+  },
+  {
+    name: 'goggles_params',
+    description: "The goggles' consolidated tuning numbers, read from the Living Remembrance Engine (the single source of truth) so a consumer mirrors the same thresholds. Offline read, no field write.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'legacy',
+    description: "Durable record store on the field's SQLite — the Valor Legacies database. action: store (write { name, content, tags?, author? }; bearer-gated, coherence-scored), get ({ id }), list ({ q?, limit?, offset? }). Reads open; store requires the bearer token.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', description: 'store | get | list (default list)' },
+        id: { type: 'string' },
+        name: { type: 'string' },
+        content: { type: 'string' },
+        tags: { type: 'array', items: { type: 'string' } },
+        author: { type: 'string' },
+        q: { type: 'string', description: 'search text for list' },
+        limit: { type: 'number' },
+        offset: { type: 'number' },
+      },
+    },
+  },
 ];
 
 // Delegates to the canonical waveformCosine (gated fractal coherency).
@@ -239,10 +296,186 @@ function isPrivilegedTool(name, action) {
   // execute:true, treat it as privileged.
   if (isContributeTool(name, action)) return true;
   if (name === 'exec_verify') return true;
+  if (name === 'legacy' && action === 'store') return true;
   return false;
 }
 function isPrivilegedEvaluate(args) {
   return args && args.execute === true;
+}
+
+// ─── goggles surface: the dual-vision read (FOCUS coherence + META resonance)
+// plus the meta-debug audit, so the interface can read everything the goggles
+// produce over the wire. Lazy-loaded — a missing module degrades the tool, never
+// the server boot. All reads, open like the other non-mutating tools. ───
+function _ft() { try { return require('../src/core/field-tool'); } catch (_) { return null; } }
+function _auditMod() {
+  try { return require('../src/audit/ast-checkers'); }
+  catch (_) { try { return require('../src/audit/static-checkers'); } catch (_) { return null; } }
+}
+function gogglesCfg() {
+  try { return require('../src/core/living-remembrance').gogglesParams() || {}; } catch (_) { return {}; }
+}
+function auditFindings(code, language) {
+  const a = _auditMod();
+  if (!a || typeof a.auditCode !== 'function') return [];
+  try { return (a.auditCode(code, { minSeverity: 'high', language }) || {}).findings || []; }
+  catch (_) { return []; }
+}
+function gogglesRead(code, language) {
+  const cfg = gogglesCfg();
+  const ft = _ft();
+  let coherence = null; let resonance = null; let nearest = []; let lexical = [];
+  if (ft && typeof ft.read === 'function') {
+    try {
+      const r = ft.read(
+        { content: code, name: 'goggles', language: language || 'javascript' },
+        { source: 'field-server:goggles', growSubstrate: false, topK: 7 },
+      );
+      coherence = (typeof r.coherence === 'number') ? r.coherence : null;
+      const vr = r.voidResonance || {};
+      resonance = (typeof vr.meanTopK === 'number') ? vr.meanTopK : null;
+      nearest = (vr.topMatches || []).slice(0, 5).map((x) => ({ name: x.name, score: x.d4 ?? x.similarity ?? 0 }));
+      const lf = cfg.lexFloor ?? 0.20;
+      lexical = ((r.codeResonance && r.codeResonance.topMatches) || [])
+        .filter((x) => (x.similarity ?? 0) >= lf).slice(0, 3)
+        .map((x) => ({ name: x.name, score: x.similarity ?? 0 }));
+    } catch (_) { /* degrade to nulls */ }
+  }
+  const band = (v, hi, mid, lo, labels) => (v == null ? null
+    : v >= hi ? labels[0] : v >= mid ? labels[1] : v >= lo ? labels[2] : labels[3]);
+  return {
+    // FOCUS — what you're working at (intrinsic structure, not correctness)
+    focus: {
+      coherence,
+      structure: band(coherence, cfg.structureStrong ?? 0.93, cfg.structureSolid ?? 0.80, cfg.structureLoose ?? 0.70, ['strong', 'solid', 'loose', 'weak']),
+    },
+    // META — where it sits in the whole codebase (pattern resonance)
+    meta: {
+      resonance,
+      verdict: band(resonance, cfg.resonanceConsonant ?? 0.90, cfg.resonanceFamiliar ?? 0.82, cfg.resonanceDistinct ?? 0.70, ['CONSONANT', 'FAMILIAR', 'DISTINCT', 'OUTLIER']),
+      nearest,
+      lexical,
+    },
+    // meta-debug — the defect axis the other two can't see
+    findings: auditFindings(code, language),
+  };
+}
+
+// ─── legacies: a durable record store on the field's OWN SQLite (oracle.db) —
+// the "database" the Valor Legacies site reads/writes through the interface.
+// `store` mutates (privileged, bearer-gated); `list`/`get` are open reads. Each
+// record is coherence-scored by the field tool so it carries the same signal. ──
+let _legacyStoreCache;
+function _legacyStore() {
+  if (_legacyStoreCache !== undefined) return _legacyStoreCache;
+  _legacyStoreCache = null;
+  try {
+    const path = require('node:path');
+    const { SQLiteStore } = require('../src/store/sqlite');
+    const store = new SQLiteStore(REMEMBRANCE_STATE_DIR || path.join(__dirname, '..'));
+    store.db.prepare(
+      'CREATE TABLE IF NOT EXISTS legacies (id TEXT PRIMARY KEY, name TEXT, content TEXT, tags TEXT, author TEXT, coherence REAL, created_at TEXT)',
+    ).run();
+    // Safe migration — add later columns to a table created by an earlier build.
+    for (const col of ['meta TEXT', 'waveform TEXT', 'updated_at TEXT']) {
+      try { store.db.prepare('ALTER TABLE legacies ADD COLUMN ' + col).run(); } catch (_) { /* already present */ }
+    }
+    _legacyStoreCache = store;
+  } catch (_) { _legacyStoreCache = null; }
+  return _legacyStoreCache;
+}
+function _legacyRow(r) {
+  let tags = []; try { tags = JSON.parse(r.tags || '[]'); } catch (_) { /* */ }
+  let meta = {}; try { meta = JSON.parse(r.meta || '{}'); } catch (_) { /* */ }
+  return { id: r.id, name: r.name, content: r.content, tags, meta, author: r.author, coherence: r.coherence, createdAt: r.created_at, updatedAt: r.updated_at };
+}
+// Encode a record the way the field encodes everything: a coherence score plus
+// the substrate's own waveform, so resonance search is just cosine over these.
+function _legacyEncode(name, content) {
+  let coherence = 0; let waveform = null;
+  const ft = _ft();
+  if (ft) { try { coherence = (ft.read({ content, name, language: 'text' }, { source: 'field-server:legacy', growSubstrate: false }).coherence) || 0; } catch (_) { /* */ } }
+  try { waveform = Array.from(codeToWaveform(name + '\n' + content)); } catch (_) { waveform = null; }
+  return { coherence, waveform };
+}
+function legacyOp(args) {
+  const store = _legacyStore();
+  if (!store) return { ok: false, error: 'legacy store unavailable' };
+  const db = store.db;
+  const action = args.action || 'list';
+
+  if (action === 'store' || action === 'update') {
+    const name = String(args.name || '').trim();
+    const content = String(args.content || '');
+    if (!name || !content) return { ok: false, error: 'name and content are required' };
+    const crypto = require('node:crypto');
+    let id = args.id ? String(args.id) : null;
+    if (action === 'update') {
+      if (!id) return { ok: false, error: 'id is required for update' };
+      if (!db.prepare('SELECT 1 FROM legacies WHERE id = ?').get(id)) return { ok: false, error: 'no legacy with id ' + id };
+    }
+    if (!id) id = crypto.createHash('sha256').update(name + '\n' + content).digest('hex').slice(0, 16);
+    const tags = Array.isArray(args.tags) ? args.tags : [];
+    const author = args.author ? String(args.author) : null;
+    const meta = (args.meta && typeof args.meta === 'object') ? args.meta : {};
+    const { coherence, waveform } = _legacyEncode(name, content);
+    const now = new Date().toISOString();
+    const wf = waveform ? JSON.stringify(waveform) : null;
+    if (action === 'update') {
+      db.prepare('UPDATE legacies SET name=?, content=?, tags=?, author=?, meta=?, coherence=?, waveform=?, updated_at=? WHERE id=?')
+        .run(name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, id);
+      return { ok: true, id, name, coherence, updatedAt: now };
+    }
+    db.prepare('INSERT OR REPLACE INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .run(id, name, content, JSON.stringify(tags), author, JSON.stringify(meta), coherence, wf, now, now);
+    return { ok: true, id, name, coherence, createdAt: now };
+  }
+
+  if (action === 'delete') {
+    const id = String(args.id || '');
+    if (!id) return { ok: false, error: 'id is required' };
+    return { ok: true, deleted: db.prepare('DELETE FROM legacies WHERE id = ?').run(id).changes };
+  }
+
+  if (action === 'get') {
+    const row = db.prepare('SELECT * FROM legacies WHERE id = ?').get(String(args.id || ''));
+    return { ok: true, legacy: row ? _legacyRow(row) : null };
+  }
+
+  if (action === 'list') {
+    const limit = Math.min(200, Math.max(1, Number(args.limit) || 50));
+    const offset = Math.max(0, Number(args.offset) || 0);
+    const q = args.q ? String(args.q) : null;
+    const rows = q
+      ? db.prepare('SELECT * FROM legacies WHERE name LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all('%' + q + '%', '%' + q + '%', limit, offset)
+      : db.prepare('SELECT * FROM legacies ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+    return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total: db.prepare('SELECT COUNT(*) AS c FROM legacies').get().c };
+  }
+
+  if (action === 'resonant') {
+    // Which legacies are kin? Cosine over the stored waveforms — the field's own
+    // similarity. Seed from an existing legacy (id) or from free text (q/content).
+    const k = Math.min(25, Math.max(1, Number(args.k) || 5));
+    let queryWf = null;
+    if (args.id) {
+      const seed = db.prepare('SELECT waveform FROM legacies WHERE id = ?').get(String(args.id));
+      if (seed && seed.waveform) { try { queryWf = JSON.parse(seed.waveform); } catch (_) { /* */ } }
+    } else if (args.q || args.content) {
+      try { queryWf = Array.from(codeToWaveform(String(args.q || args.content))); } catch (_) { /* */ }
+    }
+    if (!queryWf) return { ok: false, error: 'provide q/content (text) or id (an existing legacy) to resonate against' };
+    const scored = [];
+    for (const r of db.prepare('SELECT * FROM legacies WHERE waveform IS NOT NULL').all()) {
+      if (args.id && r.id === String(args.id)) continue;
+      let wf; try { wf = JSON.parse(r.waveform); } catch (_) { continue; }
+      let score = 0; try { score = cosine(queryWf, wf); } catch (_) { score = 0; }
+      scored.push({ ..._legacyRow(r), resonance: score });
+    }
+    const ranked = [...scored].sort((a, b) => b.resonance - a.resonance);
+    return { ok: true, legacies: ranked.slice(0, k), total: scored.length };
+  }
+
+  return { ok: false, error: 'unknown action: ' + action };
 }
 
 // Dispatch a tool call. Accepts the new tool names AND the legacy "field"
@@ -322,6 +555,21 @@ function callTool(name, args = {}) {
         totalFindings: sec.totalFindings,
       },
     };
+  }
+  if (name === 'goggles') {
+    return gogglesRead(args.code == null ? '' : String(args.code),
+      typeof args.language === 'string' ? args.language : undefined);
+  }
+  if (name === 'audit') {
+    const findings = auditFindings(args.code == null ? '' : String(args.code),
+      typeof args.language === 'string' ? args.language : undefined);
+    return { findings, total: findings.length };
+  }
+  if (name === 'goggles_params') {
+    return gogglesCfg();
+  }
+  if (name === 'legacy') {
+    return legacyOp(args);
   }
   throw new Error('unknown tool: ' + name);
 }
@@ -506,6 +754,36 @@ const server = http.createServer((req, res) => {
     return readBody(req, (raw) => {
       let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
       try { return send(res, 200, callTool('pattern_resonance', { code: p.code, language: p.language, k: p.k })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/goggles') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('goggles', { code: p.code, language: p.language })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/audit') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      try { return send(res, 200, callTool('audit', { code: p.code, language: p.language })); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/goggles-params') {
+    return readBody(req, () => {
+      try { return send(res, 200, callTool('goggles_params', {})); }
+      catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
+    });
+  }
+  if (path === '/legacy' || path === '/legacies') {
+    return readBody(req, (raw) => {
+      let p; try { p = JSON.parse(raw || '{}'); } catch { return send(res, 400, { error: 'bad json' }); }
+      if ((p.action || 'list') === 'store' && !authed) {
+        return send(res, 401, { error: 'unauthorized — bearer token required to store a legacy' });
+      }
+      try { return send(res, 200, callTool('legacy', p)); }
       catch (e) { return send(res, 400, { error: String((e && e.message) || e) }); }
     });
   }

@@ -37,7 +37,7 @@ if (REMEMBRANCE_STATE_DIR && !process.env.ENTROPY_PATH) {
 }
 
 const http = require('node:http');
-const { contribute, peekField } = require('../src/core/field-coupling');
+const { contribute, peekField, recordStorageVolume } = require('../src/core/field-coupling');
 const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
 const { computeRetrocausalAlignment } = require('../src/atomic/temporal-projection');
 const { scoreResonance, libraryStatus } = require('../src/scoring/pattern-resonance');
@@ -925,3 +925,14 @@ server.listen(PORT, HOST, () => {
     ` | rate: ${RATE_LIMIT_PER_MIN > 0 ? RATE_LIMIT_PER_MIN + '/min/ip' : 'off'}` +
     ` | persist: ${process.env.ENTROPY_PATH || '.remembrance/entropy.json (ephemeral without a volume)'}`);
 });
+
+// Track the durable volume's fullness as a cost the field auto-balances — the
+// storage volume's pressure flows into the same entropy ledger as every other
+// cost (entropy = cost / coherence). Sampled on boot and on a slow interval;
+// unref'd so it never holds the process open. Best-effort throughout.
+(function trackVolumePressure() {
+  const sample = () => { try { recordStorageVolume({ path: REMEMBRANCE_STATE_DIR || undefined }); } catch (_) { /* best-effort */ } };
+  sample();
+  const timer = setInterval(sample, 5 * 60 * 1000);
+  if (timer && timer.unref) timer.unref();
+})();

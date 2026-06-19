@@ -396,6 +396,38 @@ function recordBenefit({ coherence, source, cost = 1.0 } = {}) {
   return contribute({ cost, coherence, source: label });
 }
 
+/**
+ * Sample how full the durable volume is and record it as a cost — the storage
+ * volume's pressure flowing into the same entropy ledger as every other cost,
+ * auto-balanced against coherency via the master equation. The fuller the
+ * volume, the more the field feels it. Best-effort: a platform without statfs,
+ * or an unreadable path, records nothing and never throws.
+ *
+ * Reported as a [0,1] used-fraction (not raw bytes) so it reads as a gentle,
+ * coherence-balanced load rather than a number that would swamp the field.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.path] — a directory on the volume (defaults to
+ *   REMEMBRANCE_STATE_DIR / the entropy file's dir / cwd)
+ * @returns {object|null} engine result, or null when unmeasurable
+ */
+function recordStorageVolume({ path: dir } = {}) {
+  let fs, nodePath;
+  try { fs = require('node:fs'); nodePath = require('node:path'); } catch (_) { return null; }
+  if (typeof fs.statfsSync !== 'function') return null;
+  const target = dir
+    || process.env.REMEMBRANCE_STATE_DIR
+    || (process.env.ENTROPY_PATH && nodePath.dirname(process.env.ENTROPY_PATH))
+    || process.cwd();
+  try {
+    const st = fs.statfsSync(target);
+    const total = st.blocks * st.bsize;
+    if (!(total > 0)) return null;
+    const usedFraction = Math.max(0, Math.min(1, (st.blocks - st.bfree) / st.blocks));
+    return recordCost({ units: usedFraction, source: 'storage:volume', kind: 'disk' });
+  } catch (_) { return null; }
+}
+
 // ── Meta-observation as a first-class contribution type ──────────────────
 
 /**
@@ -942,6 +974,7 @@ module.exports = {
   recognizedShapeSignatures,
   recordCost,
   recordBenefit,
+  recordStorageVolume,
   recordMetaObservation,
   cognitionTrajectory,
   learnedShapesByDomain,

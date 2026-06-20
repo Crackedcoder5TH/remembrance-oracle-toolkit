@@ -686,6 +686,7 @@ function manifest() {
     mcp: { endpoint: '/mcp', transport: 'streamable-http (JSON-RPC 2.0)', protocolVersion: DEFAULT_PROTOCOL, tools: TOOLS },
     rest: {
       'GET /': 'health + field peek',
+      'GET /health': 'deep readiness self-check (token, durable volume, pattern corpus, field) — each problem carries a plain fix',
       'GET /field': 'read current field state',
       'POST /coherency': '{ a, b } -> { coherency }  (open)',
       'POST /resonance': '{ code, language?, k? } -> { score, bestMatch, topMatches, library }  (open — anti-hallucination signal)',
@@ -698,6 +699,65 @@ function manifest() {
       ? 'public reads; writes (field_contribute / POST /contribute) require Authorization: Bearer <FIELD_TOKEN>'
       : 'open (no FIELD_TOKEN set — anyone can read and write)',
     cors: 'enabled (*)',
+  };
+}
+
+// Deep readiness self-check — the one place that answers "is this field server
+// actually wired?" in plain language. Every failing check carries a `fix` a
+// non-engineer can act on. Best-effort: never throws; an internal error just
+// degrades that single check. GET /health.
+function health() {
+  const checks = [];
+  const add = (name, ok, level, detail, fix) => checks.push(fix ? { name, ok, level, detail, fix } : { name, ok, level, detail });
+
+  // 1) Write auth posture.
+  add('Write token', !!TOKEN, TOKEN ? 'info' : 'warn',
+    TOKEN ? 'FIELD_TOKEN set — reads are open, writes require the bearer.' : 'No FIELD_TOKEN — writes are OPEN to anyone who can reach this URL.',
+    TOKEN ? undefined : 'Set the FIELD_TOKEN env var on the host (Railway → Variables) to require a bearer token for writes.');
+
+  // 2) Durable persistence — is state on a mounted volume, and is it writable?
+  const stateDir = process.env.REMEMBRANCE_STATE_DIR || process.env.ORACLE_ROOT || '';
+  const entropyPath = process.env.ENTROPY_PATH || '';
+  let writable = false, wdetail = '';
+  try {
+    const fs = require('node:fs'); const path = require('node:path');
+    const dir = entropyPath ? path.dirname(entropyPath) : (stateDir || '');
+    if (dir) { fs.mkdirSync(dir, { recursive: true }); fs.accessSync(dir, fs.constants.W_OK); writable = true; wdetail = 'writable at ' + (entropyPath || dir); }
+    else wdetail = 'no persistence path configured';
+  } catch (e) { wdetail = 'NOT writable: ' + ((e && e.message) || e); }
+  if (!stateDir) {
+    add('Durable volume', false, 'warn',
+      'REMEMBRANCE_STATE_DIR is not set — the field and legacies are EPHEMERAL and reset on every restart (' + wdetail + ').',
+      'Mount a persistent volume (e.g. at /data) and set REMEMBRANCE_STATE_DIR=/data so entropy.json and oracle.db survive restarts.');
+  } else {
+    add('Durable volume', writable, writable ? 'info' : 'critical',
+      'REMEMBRANCE_STATE_DIR=' + stateDir + ' — ' + wdetail,
+      writable ? undefined : 'The state directory is not writable. Confirm a volume is mounted there and the process user can write to it.');
+  }
+
+  // 3) Pattern corpus — what resonance and the goggles score against.
+  let lib = null;
+  try { lib = require('../src/scoring/pattern-resonance').libraryStatus(); } catch (_) { /* degrade */ }
+  const libOk = !!(lib && lib.loaded && lib.count > 0);
+  add('Pattern corpus', libOk, libOk ? 'info' : 'warn',
+    libOk ? ('resonance library loaded — ' + lib.count + ' patterns') : ('no pattern corpus — pattern_resonance and goggles will return null' + (lib && lib.error ? ' (' + lib.error + ')' : '')),
+    libOk ? undefined : 'Bundle patterns.json with the server (it is COPYed in Dockerfile.field-server) or seed the SQLite patterns table on the volume.');
+
+  // 4) Field core answering.
+  let field = null;
+  try { field = peekField(); } catch (_) { /* degrade */ }
+  add('Field state', !!field, field ? 'info' : 'critical',
+    field ? ('coherence ' + field.coherence + ', ' + field.updateCount + ' updates, ' + Object.keys(field.sources || {}).length + ' sources') : 'the field core returned nothing.',
+    field ? undefined : 'Check the server logs — the Living Remembrance Engine failed to load.');
+
+  const ok = checks.filter((c) => c.level === 'critical').every((c) => c.ok);
+  return {
+    ok,
+    service: 'remembrance-field',
+    version: '0.2.0',
+    summary: ok ? 'Field server healthy and wired.' : 'Problems: ' + checks.filter((c) => !c.ok && c.level === 'critical').map((c) => c.name).join(', ') + ' — see the fix on each failing check.',
+    checks,
+    field,
   };
 }
 
@@ -803,6 +863,7 @@ const server = http.createServer((req, res) => {
 
   if (req.method === 'GET') {
     if (path === '/mcp') return send(res, 405, { error: 'MCP endpoint — POST JSON-RPC here' });
+    if (path === '/health' || path === '/healthz') return send(res, 200, health());
     if (path === '/.well-known/mcp' || path === '/manifest') return send(res, 200, manifest());
     let field = null; try { field = peekField(); } catch (_e) { /* best-effort */ }
     if (path === '/field') return send(res, 200, { ok: true, field });

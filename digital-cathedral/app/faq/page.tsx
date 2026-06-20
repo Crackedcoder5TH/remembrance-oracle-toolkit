@@ -67,7 +67,7 @@ const FAQS = [
   },
   {
     q: "How much life insurance does a military family need?",
-    a: "Financial advisors typically recommend 10-12 times your annual income in life insurance coverage. For military families, consider your BAH, base pay, special pay, and benefits that would stop if something happened. SGLI covers up to $400,000, but many families need additional coverage — especially those with mortgages, children, or a non-working spouse.",
+    a: "Financial advisors typically recommend 10-12 times your annual income in life insurance coverage. For military families, consider your BAH, base pay, special pay, and benefits that would stop if something happened. SGLI covers up to $500,000, but many families need additional coverage — especially those with mortgages, children, or a non-working spouse.",
   },
   {
     q: "Does Valor Legacies serve all 50 states?",

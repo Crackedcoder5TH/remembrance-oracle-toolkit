@@ -12,9 +12,10 @@
  *  - Delivery filter management
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { US_STATES } from "../../../packages/shared/src/validate-state";
+import { resonance, suggestTerms } from "../../lib/valor/resonance-search";
 
 const COVERAGE_LABELS: Record<string, string> = {
   "mortgage-protection": "Term Life",
@@ -89,6 +90,9 @@ interface Filters {
   distributionMode: string;
 }
 
+interface PricingTier { name: string; maxBuyers: number; basePrice: number; }
+interface PricingData { tiers: PricingTier[]; maxPrice: number; priceFloor: number; }
+
 type Tab = "leads" | "purchases" | "billing" | "filters";
 
 export default function AgentPortal() {
@@ -110,6 +114,9 @@ export default function AgentPortal() {
   // Lead filters
   const [filterState, setFilterState] = useState("");
   const [filterCoverage, setFilterCoverage] = useState("");
+  // Resonance search query + admin-driven pricing.
+  const [query, setQuery] = useState("");
+  const [pricing, setPricing] = useState<PricingData | null>(null);
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -133,7 +140,8 @@ export default function AgentPortal() {
     const params = new URLSearchParams();
     if (filterState) params.set("state", filterState);
     if (filterCoverage) params.set("coverage", filterCoverage);
-    params.set("limit", "25");
+    // Pull a healthy pool so the resonance search has something to rank over.
+    params.set("limit", "100");
 
     const res = await fetch(`/api/client/leads?${params}`);
     if (res.ok) {
@@ -211,6 +219,50 @@ export default function AgentPortal() {
       window.history.replaceState({}, "", "/portal/marketplace");
     }
   }, []);
+
+  // Pricing tiers from the admin-adjustable config — no hardcoded numbers.
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/pricing")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive && d?.tiers) setPricing(d as PricingData); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  // ── Resonance search over the loaded leads ──
+  // Each lead is scored by how strongly its terms (state, coverage, veteran
+  // status, tier) resonate with what the agent typed — the same vocabulary
+  // resonance the field uses — re-ranked live, partial words resonating toward
+  // their completion ("tex" → "texas").
+  const stateName = useCallback(
+    (code: string) => US_STATES.find((s) => s.code === code)?.name || code,
+    [],
+  );
+  const leadText = useCallback(
+    (l: AvailableLead) =>
+      [stateName(l.state), l.state, COVERAGE_LABELS[l.coverageInterest] || l.coverageInterest, l.coverageInterest, l.veteranStatus, l.tier]
+        .join(" ")
+        .replace(/-/g, " "),
+    [stateName],
+  );
+  const ranked = useMemo(() => {
+    if (!query.trim()) return leads;
+    return leads
+      .map((l) => ({ l, r: resonance(query, leadText(l)) }))
+      .filter((x) => x.r > 0)
+      .sort((a, b) => b.r - a.r || b.l.score - a.l.score)
+      .map((x) => x.l);
+  }, [leads, query, leadText]);
+  const vocab = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of leads) {
+      set.add(stateName(l.state));
+      set.add(COVERAGE_LABELS[l.coverageInterest] || l.coverageInterest);
+    }
+    return [...set];
+  }, [leads, stateName]);
+  const suggestions = useMemo(() => suggestTerms(query, vocab), [query, vocab]);
 
   const handlePurchase = async (leadId: string, tierIndex: number) => {
     setMessage("");
@@ -341,6 +393,36 @@ export default function AgentPortal() {
       {/* ─── Available Leads Tab ─── */}
       {tab === "leads" && (
         <>
+          {/* Resonance search — type anything; leads re-rank by how strongly they resonate */}
+          <div className="cathedral-surface p-4 mb-4">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search leads by resonance — e.g. “texas veteran final expense”"
+              aria-label="Search leads by resonance"
+              className="w-full bg-[var(--bg-surface)] text-[var(--text-primary)] border border-indigo-cathedral/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-cathedral/25"
+            />
+            {suggestions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setQuery((q) => { const parts = q.split(/\s+/); parts[parts.length - 1] = s; return parts.join(" ") + " "; })}
+                    className="px-2 py-0.5 rounded text-xs text-teal-cathedral border border-teal-cathedral/20 hover:bg-teal-cathedral/10"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
+            {query.trim() && (
+              <p className="text-[11px] text-[var(--text-muted)] mt-2">
+                {ranked.length} lead{ranked.length === 1 ? "" : "s"} resonate with “{query.trim()}”
+              </p>
+            )}
+          </div>
+
           <div className="cathedral-surface p-4 mb-4">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <select value={filterState} onChange={(e) => setFilterState(e.target.value)}
@@ -353,7 +435,7 @@ export default function AgentPortal() {
                 <option value="">All Coverage</option>
                 {Object.entries(COVERAGE_LABELS).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
               </select>
-              <button onClick={() => { setFilterState(""); setFilterCoverage(""); }} className="text-sm text-teal-cathedral underline py-2">Clear</button>
+              <button onClick={() => { setFilterState(""); setFilterCoverage(""); setQuery(""); }} className="text-sm text-teal-cathedral underline py-2">Clear</button>
             </div>
           </div>
 
@@ -372,10 +454,10 @@ export default function AgentPortal() {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">Loading leads...</td></tr>
-                ) : leads.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">No leads available.</td></tr>
+                ) : ranked.length === 0 ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[var(--text-muted)]">{query.trim() ? `No leads resonate with “${query.trim()}”.` : "No leads available."}</td></tr>
                 ) : (
-                  leads.map((lead) => (
+                  ranked.map((lead) => (
                     <tr key={lead.leadId} className="border-b border-indigo-cathedral/5 hover:bg-[var(--bg-surface)]/50 transition-colors">
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium border ${TIER_STYLES[lead.tier] || ""}`}>
@@ -534,18 +616,29 @@ export default function AgentPortal() {
           <div className="cathedral-surface p-6">
             <h3 className="text-lg font-light text-[var(--text-primary)] mb-4">Lead Pricing Tiers</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { name: "Exclusive", buyers: "1 buyer", price: 12000, cardClass: "metallic-gold-card", labelClass: "metallic-gold" },
-                { name: "Semi-Exclusive", buyers: "2 buyers", price: 10000, cardClass: "metallic-silver-card", labelClass: "metallic-silver" },
-                { name: "Warm Shared", buyers: "3–4 buyers", price: 8000, cardClass: "metallic-bronze-card", labelClass: "metallic-bronze" },
-                { name: "Cool Shared", buyers: "5–6 buyers", price: 6000, cardClass: "metallic-sky-card", labelClass: "metallic-sky" },
-              ].map((t) => (
-                <div key={t.name} className={`rounded-lg p-4 text-center ${t.cardClass}`}>
-                  <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${t.labelClass}`}>{t.name}</p>
-                  <p className={`text-2xl font-bold ${t.labelClass}`}>{formatCents(t.price)}</p>
-                  <p className="text-xs text-[var(--text-muted)] mt-1">{t.buyers}</p>
-                </div>
-              ))}
+              {(() => {
+                const styles = [
+                  { cardClass: "metallic-gold-card", labelClass: "metallic-gold" },
+                  { cardClass: "metallic-silver-card", labelClass: "metallic-silver" },
+                  { cardClass: "metallic-bronze-card", labelClass: "metallic-bronze" },
+                  { cardClass: "metallic-sky-card", labelClass: "metallic-sky" },
+                ];
+                const tiers = pricing?.tiers ?? [];
+                const buyersLabel = (n: number) => (n <= 1 ? "1 buyer" : `up to ${n} buyers`);
+                if (tiers.length === 0) {
+                  return <p className="col-span-2 md:col-span-4 text-sm text-[var(--text-muted)] text-center py-2">Loading pricing…</p>;
+                }
+                return tiers.map((t, i) => {
+                  const s = styles[i % styles.length];
+                  return (
+                    <div key={t.name} className={`rounded-lg p-4 text-center ${s.cardClass}`}>
+                      <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${s.labelClass}`}>{t.name}</p>
+                      <p className={`text-2xl font-bold ${s.labelClass}`}>{formatCents(t.basePrice)}</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">{buyersLabel(t.maxBuyers)}</p>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
 
@@ -566,7 +659,7 @@ export default function AgentPortal() {
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
-                    <p className="text-xl font-bold text-teal-cathedral">$120</p>
+                    <p className="text-xl font-bold text-teal-cathedral">{pricing ? formatCents(pricing.maxPrice) : "$120"}</p>
                     <p className="text-[10px] text-[var(--text-muted)]">Cost per Lead</p>
                   </div>
                   <div>

@@ -17,28 +17,28 @@
 import { useState, useEffect, useCallback } from "react";
 
 // --- Live Activity Counter ---
+// Real verified-request volume from the field's ledger — admissions that passed
+// the covenant gate in the trailing 24h, via /api/coherency-vitals. Honest by
+// construction: when there is no real activity yet it renders nothing, rather
+// than a fabricated number.
 function LiveActivityCounter() {
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState<number | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    // Generate a plausible daily count based on the day of week
-    // Higher on weekdays, lower on weekends
-    const day = new Date().getDay();
-    const isWeekend = day === 0 || day === 6;
-    const base = isWeekend ? 12 : 27;
-    const variance = Math.floor(Math.random() * 15);
-    const hours = new Date().getHours();
-    // Scale by time of day — more activity during business hours
-    const timeScale = hours >= 8 && hours <= 20 ? 1 : 0.4;
-    setCount(Math.floor((base + variance) * timeScale));
+    let alive = true;
+    fetch("/api/coherency-vitals")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (alive) setCount(typeof d?.admitted24h === "number" ? d.admitted24h : 0); })
+      .catch(() => { if (alive) setCount(0); });
 
     // Fade in after mount
     const timer = setTimeout(() => setVisible(true), 300);
-    return () => clearTimeout(timer);
+    return () => { alive = false; clearTimeout(timer); };
   }, []);
 
-  if (count === 0) return null;
+  // Hide until there is a real, non-zero count — never invent social proof.
+  if (count === null || count <= 0) return null;
 
   return (
     <div
@@ -49,7 +49,7 @@ function LiveActivityCounter() {
         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-cathedral"></span>
       </span>
       <p className="text-sm text-[var(--text-muted)]">
-        <span className="font-medium text-[var(--text-primary)]">{count} people</span> requested quotes today
+        <span className="font-medium text-[var(--text-primary)]">{count} {count === 1 ? "person" : "people"}</span> requested a quote in the last 24 hours
       </p>
     </div>
   );

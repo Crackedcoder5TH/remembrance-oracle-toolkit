@@ -8,6 +8,7 @@
  * All exported functions are async (return Promise<Result<...>>).
  */
 import path from "path";
+import { getRecord, storeRecord } from "./valor/remembrance-bridge";
 
 // --- Result type for typed error handling ---
 type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
@@ -1333,11 +1334,26 @@ export async function deleteLeadById(leadId: string): Promise<Result<{ deleted: 
   return getAdapter().deleteLeadById(leadId);
 }
 
+// HYBRID: site content (free-form copy — a clean fit) lives in the SUBSTRATE
+// when the field is configured; relational/transactional data stays on the
+// adapter (Postgres). A stable id ('site:<key>') makes the store an upsert by
+// key. Falls back to the adapter when no field URL is set.
+const SUBSTRATE_FIELD = (process.env.REMEMBRANCE_FIELD_URL || "").trim();
+const siteRecordId = (key: string): string => "site:" + key;
+
 export async function getDbSiteContent(key: string): Promise<Result<string | null, string>> {
+  if (SUBSTRATE_FIELD) {
+    const rec = await getRecord(siteRecordId(key));
+    return Ok(rec ? rec.content : null);
+  }
   return getAdapter().getSiteContent(key);
 }
 
 export async function setDbSiteContent(key: string, value: string): Promise<Result<void, string>> {
+  if (SUBSTRATE_FIELD) {
+    const r = await storeRecord({ id: siteRecordId(key), name: siteRecordId(key), content: value, tags: ["site-content"] });
+    return r && r.ok ? Ok(undefined) : Err("substrate store failed (field unreachable?)");
+  }
   return getAdapter().setSiteContent(key, value);
 }
 

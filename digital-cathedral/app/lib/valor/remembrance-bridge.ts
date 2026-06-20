@@ -25,6 +25,11 @@ const TIMEOUT_MS = 1500;
 
 function fieldUrl(): string {
   let url = (process.env.REMEMBRANCE_FIELD_URL || DEFAULT_FIELD_URL).trim().replace(/\/+$/, "");
+  // Accept a bare host (e.g. "my-field.up.railway.app") as well as a full URL. A
+  // scheme-less value can't be fetched — fetch() throws "Invalid URL" and the
+  // guard in mcpTool() then bails to null, silently making the field unreachable
+  // (the #1 misconfiguration). Default to https:// so a bare host just works.
+  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
   // The bridge speaks JSON-RPC to the MCP endpoint. Accept either the base URL
   // (the interface's convention — REMEMBRANCE_FIELD_URL=https://host) or the full
   // /mcp endpoint, and normalize to /mcp so a single env value works for both apps.

@@ -37,6 +37,12 @@ function fieldUrl(): string {
   return url;
 }
 
+/** The effective MCP endpoint this runtime will call (scheme normalized, /mcp
+ *  appended). Exposed so the field-health probe can show exactly what gets hit. */
+export function fieldEndpoint(): string {
+  return fieldUrl();
+}
+
 function authToken(): string {
   return (process.env.REMEMBRANCE_FIELD_TOKEN || "").trim();
 }

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   createSessionToken,
   ADMIN_SESSION_COOKIE,
-  ADMIN_SESSION_MAX_AGE,
 } from "@/app/lib/admin-session";
+import { sessionCookieOptions } from "@/app/lib/session-cookie";
 import { checkRateLimit, getClientIp } from "@/app/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -62,13 +62,9 @@ export async function POST(req: NextRequest) {
     const token = createSessionToken();
     const response = NextResponse.json({ success: true });
 
-    response.cookies.set(ADMIN_SESSION_COOKIE, token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: ADMIN_SESSION_MAX_AGE,
-    });
+    // Session cookie (no maxAge) — stays valid as the operator navigates and
+    // clears when the browser is closed, per the "until browser closes" choice.
+    response.cookies.set(ADMIN_SESSION_COOKIE, token, sessionCookieOptions("strict"));
 
     return response;
   } catch {

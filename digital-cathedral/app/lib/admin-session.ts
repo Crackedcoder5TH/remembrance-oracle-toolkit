@@ -15,7 +15,11 @@
 import { createHmac } from "crypto";
 
 const COOKIE_NAME = "__admin_session";
-const SESSION_DURATION_S = 8 * 60 * 60; // 8 hours
+// Absolute server-side cap on a session token. The admin cookie itself is now a
+// *session cookie* (cleared when the browser is closed — see session-cookie.ts's
+// sessionCookieOptions), so this is just the ceiling for a browser left open
+// indefinitely, not the everyday logout timer.
+const SESSION_DURATION_S = 30 * 24 * 60 * 60; // 30 days
 
 export interface SessionPayload {
   exp: number;

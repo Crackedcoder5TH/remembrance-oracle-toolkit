@@ -37,7 +37,11 @@ if (REMEMBRANCE_STATE_DIR && !process.env.ENTROPY_PATH) {
 }
 
 const http = require('node:http');
-const { contribute, peekField, recordStorageVolume } = require('../src/core/field-coupling');
+const { contribute, peekField, recordStorageVolume, markFieldServer } = require('../src/core/field-coupling');
+// This process IS the field. Absorb incoming contributions into our own engine
+// and never echo them back out to ourselves over HTTP — prevents a self-feeding
+// loop if REMEMBRANCE_FIELD_URL happens to be set in the server's environment.
+markFieldServer();
 const { codeToWaveform, waveformCosine } = require('../src/core/code-to-waveform');
 const { computeRetrocausalAlignment } = require('../src/atomic/temporal-projection');
 const { scoreResonance, libraryStatus } = require('../src/scoring/pattern-resonance');

@@ -82,8 +82,9 @@ export async function GET(req: NextRequest) {
         };
       }
 
-      // Calculate all tier prices with sold-out status
-      const tierPrices = getAllTierPrices(lead.createdAt, activeBuyerCount);
+      // Calculate all tier prices — coherency-graded (score.total is
+      // coherency×100) so higher-quality leads are priced up, weaker ones down.
+      const tierPrices = getAllTierPrices(lead.createdAt, activeBuyerCount, score.total / 100);
       const ageMs = Date.now() - new Date(lead.createdAt).getTime();
       const ageInDays = Math.max(0, ageMs / (1000 * 60 * 60 * 24));
 

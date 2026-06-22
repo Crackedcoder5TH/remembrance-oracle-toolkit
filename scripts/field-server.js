@@ -464,10 +464,21 @@ function legacyOp(args) {
     const limit = Math.min(200, Math.max(1, Number(args.limit) || 50));
     const offset = Math.max(0, Number(args.offset) || 0);
     const q = args.q ? String(args.q) : null;
-    const rows = q
-      ? db.prepare('SELECT * FROM legacies WHERE name LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all('%' + q + '%', '%' + q + '%', limit, offset)
-      : db.prepare('SELECT * FROM legacies ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
-    return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total: db.prepare('SELECT COUNT(*) AS c FROM legacies').get().c };
+    // Optional collection/facet scoping: every entry in `tags` must be present.
+    // Tags are stored as a JSON-array string, so match the quoted token
+    // (JSON.stringify('lead') === '"lead"' → LIKE '%"lead"%'). Lets a shared
+    // store hold many record kinds (site-content, leads, …) and still return a
+    // correctly-scoped page AND total.
+    const tags = Array.isArray(args.tags) ? args.tags.map(String)
+      : (args.tag ? [String(args.tag)] : []);
+    const where = [];
+    const params = [];
+    if (q) { where.push('(name LIKE ? OR content LIKE ?)'); params.push('%' + q + '%', '%' + q + '%'); }
+    for (const t of tags) { where.push('tags LIKE ?'); params.push('%' + JSON.stringify(t) + '%'); }
+    const clause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
+    const rows = db.prepare('SELECT * FROM legacies ' + clause + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(...params, limit, offset);
+    const total = db.prepare('SELECT COUNT(*) AS c FROM legacies ' + clause).get(...params).c;
+    return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total };
   }
 
   if (action === 'resonant') {

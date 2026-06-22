@@ -155,6 +155,12 @@ export async function getRecord(id: string): Promise<SubstrateRecord | null> {
   return r && r.ok && r.legacy ? r.legacy : null;
 }
 
+/** Delete a record by id. Returns the number deleted (0 if absent / field down). */
+export async function deleteRecord(id: string): Promise<number> {
+  const r = await mcpTool<{ ok: boolean; deleted: number }>("legacy", { action: "delete", id });
+  return r && r.ok && typeof r.deleted === "number" ? r.deleted : 0;
+}
+
 /** Retro-causal recall — the resonant slices for a query. */
 export async function recall(query: string, k = 6): Promise<Array<SubstrateRecord & { score: number }>> {
   const r = await mcpTool<{ ok: boolean; slices: Array<SubstrateRecord & { score: number }> }>("recall", { query, k });
@@ -168,11 +174,11 @@ export async function recall(query: string, k = 6): Promise<Array<SubstrateRecor
  * is what a record-backed admin list (e.g. leads) needs beyond store/get.
  */
 export async function listRecords(
-  opts: { q?: string; limit?: number; offset?: number } = {},
+  opts: { q?: string; tags?: string[]; limit?: number; offset?: number } = {},
 ): Promise<{ records: SubstrateRecord[]; total: number }> {
   const r = await mcpTool<{ ok: boolean; legacies: SubstrateRecord[]; total: number }>(
     "legacy",
-    { action: "list", q: opts.q, limit: opts.limit ?? 50, offset: opts.offset ?? 0 },
+    { action: "list", q: opts.q, tags: opts.tags, limit: opts.limit ?? 50, offset: opts.offset ?? 0 },
   );
   return r && r.ok && Array.isArray(r.legacies)
     ? { records: r.legacies, total: typeof r.total === "number" ? r.total : r.legacies.length }

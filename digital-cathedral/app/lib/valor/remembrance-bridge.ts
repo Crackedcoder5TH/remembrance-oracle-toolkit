@@ -140,6 +140,20 @@ export interface SubstrateRecord {
   coherence?: number;
   createdAt?: string;
   updatedAt?: string;
+  /** Free-form metadata. Carries the retro-causal time-ledger + resolved
+   *  outcome once a record's "future" is known (see recordResolvedOutcome). */
+  meta?: Record<string, unknown>;
+}
+
+/** A resolved outcome attached to a record — its "future", made concrete. */
+export interface ResolvedOutcome {
+  /** What actually happened, e.g. "won" | "lost" for a lead. */
+  outcome: string;
+  /** Coherence measured/known at resolution (0–1). */
+  resolvedCoherence: number;
+  /** ISO timestamp the outcome resolved. */
+  resolvedAt: string;
+  reason?: string;
 }
 
 /** Upsert a record. Pass a stable `id` to overwrite by key; omit for a content-hash id. */
@@ -183,6 +197,36 @@ export async function listRecords(
   return r && r.ok && Array.isArray(r.legacies)
     ? { records: r.legacies, total: typeof r.total === "number" ? r.total : r.legacies.length }
     : { records: [], total: 0 };
+}
+
+/**
+ * Attach a resolved outcome to a record — the write that makes the retro-causal
+ * recall path live. Re-stores the record (store is upsert-by-id) with a
+ * `meta.ledger` (observed_start → observed_end) and `meta.resolved`, so
+ * computeRetrocausalAlignment finally has a real "future" to pull toward.
+ * Best-effort: no-op when the record is absent or the field is unreachable.
+ */
+export async function recordResolvedOutcome(
+  recordId: string,
+  resolution: ResolvedOutcome,
+  observedStart?: string,
+): Promise<{ ok: boolean }> {
+  const existing = await getRecord(recordId);
+  if (!existing) return { ok: false };
+  const start = observedStart || existing.createdAt || resolution.resolvedAt;
+  const tags = Array.from(new Set([...(existing.tags ?? []), "resolved", resolution.outcome]));
+  const r = await storeRecord({
+    id: existing.id,
+    name: existing.name,
+    content: existing.content,
+    tags,
+    meta: {
+      ...(existing.meta ?? {}),
+      resolved: resolution,
+      ledger: { observed_start: start, observed_end: resolution.resolvedAt, cadence: "variable" },
+    },
+  });
+  return { ok: Boolean(r && r.ok) };
 }
 
 // ── Cost / benefit contributions ─────────────────────────────────────

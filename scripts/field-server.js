@@ -549,8 +549,14 @@ function recallOp(args = {}) {
       try { pull += cosine(c.wf, a.wf); n += 1; } catch (_) { /* skip */ }
     }
     pull = n ? pull / n : 0;
+    // The retro-causal time-ledger lives in the record's `meta` (there is no
+    // dedicated column), so read it from there. A record that carries a resolved
+    // ledger (observed_start/observed_end/cadence) now actually pulls; a
+    // ledger-less record stays identity (1.0) and degrades cleanly to resonance.
+    let ledger = c.row.ledger || null;
+    if (!ledger && c.row.meta) { try { ledger = JSON.parse(c.row.meta).ledger || null; } catch (_) { ledger = null; } }
     let alignment = 1;
-    try { alignment = computeRetrocausalAlignment({ waveform: c.wf, ledger: c.row.ledger }, { waveform: queryWf }, { tNow }); } catch (_) { alignment = 1; }
+    try { alignment = computeRetrocausalAlignment({ waveform: c.wf, ledger }, { waveform: queryWf }, { tNow }); } catch (_) { alignment = 1; }
     const score = resonance * (1 + RECALL_RETRO_BETA * pull) * alignment;
     scored.push({ ..._legacyRow(c.row), resonance, retroPull: pull, alignment, score });
   }

@@ -161,6 +161,24 @@ export async function recall(query: string, k = 6): Promise<Array<SubstrateRecor
   return r && r.ok && r.slices ? r.slices : [];
 }
 
+/**
+ * List records newest-first, with optional text search + pagination. Wraps the
+ * legacy store's `list` action ({ q, limit, offset } → { legacies, total }) — the
+ * deterministic, paginated counterpart to `recall`'s resonance retrieval. This
+ * is what a record-backed admin list (e.g. leads) needs beyond store/get.
+ */
+export async function listRecords(
+  opts: { q?: string; limit?: number; offset?: number } = {},
+): Promise<{ records: SubstrateRecord[]; total: number }> {
+  const r = await mcpTool<{ ok: boolean; legacies: SubstrateRecord[]; total: number }>(
+    "legacy",
+    { action: "list", q: opts.q, limit: opts.limit ?? 50, offset: opts.offset ?? 0 },
+  );
+  return r && r.ok && Array.isArray(r.legacies)
+    ? { records: r.legacies, total: typeof r.total === "number" ? r.total : r.legacies.length }
+    : { records: [], total: 0 };
+}
+
 // ── Cost / benefit contributions ─────────────────────────────────────
 
 export async function recordCost(units: number, source: string, kind = "work"): Promise<void> {

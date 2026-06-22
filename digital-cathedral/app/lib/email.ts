@@ -15,6 +15,7 @@
  */
 
 import { withCircuitBreaker, CircuitOpenError } from "./circuit-breaker";
+import { getLeadNotificationTargets } from "./notification-recipients";
 
 // --- Retry with exponential backoff for delivery ---
 async function retry<T>(
@@ -250,8 +251,10 @@ export async function sendAdminNotificationEmail(lead: {
   veteranStatus: string;
   leadId: string;
 }, score?: { total: number; tier: string }): Promise<void> {
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (!adminEmail) return; // No admin email configured — skip silently
+  // Recipients = the admin-managed list (set in /admin/notifications) merged
+  // with the legacy ADMIN_EMAIL env var. Empty → nobody to notify, skip.
+  const recipients = await getLeadNotificationTargets();
+  if (recipients.length === 0) return;
 
   const companyName = getCompanyName();
   const fromAddress = getFromAddress();
@@ -343,10 +346,13 @@ export async function sendAdminNotificationEmail(lead: {
 
   try {
     await withCircuitBreaker(
-      () => sendEmail({ to: adminEmail, from: fromAddress, subject, text, html }),
+      () =>
+        Promise.all(
+          recipients.map((to) => sendEmail({ to, from: fromAddress, subject, text, html })),
+        ),
       { name: "email-admin", failureThreshold: 5, resetTimeout: 60_000 },
     );
-    console.log(`[EMAIL] Admin notification sent for lead ${lead.leadId}`);
+    console.log(`[EMAIL] Admin notification sent for lead ${lead.leadId} to ${recipients.length} recipient(s)`);
   } catch (err) {
     if (err instanceof CircuitOpenError) {
       console.warn(`[EMAIL] Circuit open — skipping admin email for lead ${lead.leadId}. ${err.message}`);

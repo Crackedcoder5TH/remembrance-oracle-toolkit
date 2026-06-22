@@ -158,6 +158,26 @@ function isSessionLikelyValid(token: string): boolean {
   }
 }
 
+/**
+ * Does this request carry a valid admin session? Mirrors the admin-route gate
+ * (legacy __admin_session cookie OR a NextAuth JWT whose email is an admin).
+ * Used both to protect /admin and to let an authenticated admin browse the full
+ * public site on the portal host instead of being funnelled to /admin.
+ */
+async function hasAdminSession(request: NextRequest): Promise<boolean> {
+  const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
+  if (sessionCookie && isSessionLikelyValid(sessionCookie)) return true;
+  try {
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (token?.email && ADMIN_EMAILS.includes((token.email as string).toLowerCase())) {
+      return true;
+    }
+  } catch {
+    // NextAuth not configured — no OAuth admin to recognize.
+  }
+  return false;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -231,7 +251,12 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/_next") ||
       pathname.startsWith("/.well-known") ||
       pathname.includes(".");
-    if (!isPortalRoute) {
+    // A logged-in admin can roam the full public site on the portal host
+    // (About, FAQ, the marketing home, etc.) instead of being bounced to
+    // /admin — "navigate the full website as admin". Everyone else is sent to
+    // the operator surface, keeping the public/operator split intact for
+    // non-admins and crawlers.
+    if (!isPortalRoute && !(await hasAdminSession(request))) {
       const adminUrl = new URL("/admin", request.url);
       return NextResponse.redirect(adminUrl, 301);
     }
@@ -285,24 +310,7 @@ export async function middleware(request: NextRequest) {
     !pathname.startsWith("/api/admin/login") &&
     !pathname.startsWith("/api/admin/google-callback")
   ) {
-    // Method 1: Legacy session cookie
-    const sessionCookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-    const hasLegacySession = sessionCookie && isSessionLikelyValid(sessionCookie);
-
-    // Method 2: NextAuth JWT — Google OAuth admin user
-    let hasOAuthAdmin = false;
-    if (!hasLegacySession) {
-      try {
-        const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-        if (token?.email && ADMIN_EMAILS.includes((token.email as string).toLowerCase())) {
-          hasOAuthAdmin = true;
-        }
-      } catch {
-        // NextAuth not configured — fall through
-      }
-    }
-
-    if (!hasLegacySession && !hasOAuthAdmin) {
+    if (!(await hasAdminSession(request))) {
       const loginUrl = new URL("/admin/login", request.url);
       return NextResponse.redirect(loginUrl);
     }

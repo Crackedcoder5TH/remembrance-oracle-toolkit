@@ -52,7 +52,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   session: {
     strategy: "jwt",
-    maxAge: 8 * 60 * 60, // 8 hours — matches existing session duration
+    // 30 days — the operator stays signed in while navigating. Dashboard data
+    // access is independently gated by the __admin_session cookie (a session
+    // cookie that clears on browser close), so this longer JWT window keeps a
+    // Google admin from being dropped mid-session without weakening the
+    // "until browser closes" behavior of the admin surface itself.
+    maxAge: 30 * 24 * 60 * 60,
   },
   callbacks: {
     /** Inject role into the JWT on first sign-in and on every refresh.

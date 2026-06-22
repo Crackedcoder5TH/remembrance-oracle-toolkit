@@ -14,8 +14,8 @@ import { isAdminEmail } from "@/app/lib/admin-auth";
 import {
   createGoogleSessionToken,
   ADMIN_SESSION_COOKIE,
-  ADMIN_SESSION_MAX_AGE,
 } from "@/app/lib/admin-session";
+import { sessionCookieOptions } from "@/app/lib/session-cookie";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -44,13 +44,8 @@ export async function GET(req: NextRequest) {
   const token = createGoogleSessionToken(email, role);
   const response = NextResponse.redirect(new URL("/admin", baseUrl));
 
-  response.cookies.set(ADMIN_SESSION_COOKIE, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-    maxAge: ADMIN_SESSION_MAX_AGE,
-  });
+  // Session cookie — clears when the browser closes, matching API-key login.
+  response.cookies.set(ADMIN_SESSION_COOKIE, token, sessionCookieOptions("strict"));
 
   return response;
 }

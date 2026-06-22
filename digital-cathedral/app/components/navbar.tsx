@@ -94,6 +94,7 @@ export function Navbar() {
   const menuLinks = isAdmin
     ? [
         { href: adminHref, label: "Admin Dashboard" },
+        { href: `${portalBaseUrl}/admin/patterns`, label: "Pattern Library" },
         { href: `${portalBaseUrl}/portal`, label: "Agent Portal" },
         { href: "/", label: "Public Home" },
         { href: "/about", label: "About Us" },

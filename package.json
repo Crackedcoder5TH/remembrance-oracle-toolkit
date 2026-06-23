@@ -37,6 +37,7 @@
   "bin": {
     "remembrance-oracle": "src/cli.js",
     "oracle": "src/cli.js",
+    "remembrance": "scripts/remembrance.js",
     "reflector": "bin/reflector",
     "remembrance-oracle-toolkit": "src/cli.js",
     "remembrance-field-server": "scripts/field-server.js",
@@ -45,6 +46,7 @@
   "files": [
     "src/",
     "scripts/field-server.js",
+    "scripts/remembrance.js",
     "types/",
     "seeds/",
     "bin/",

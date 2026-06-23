@@ -61,8 +61,8 @@ function recall(queryText, k = 6) {
     let resonance = 0; try { resonance = waveformCosine(qWf, recWf); } catch (_) { resonance = 0; }
     scored.push({ id: r.id, name: r.name, content: r.content, resonance });
   }
-  scored.sort((a, b) => b.resonance - a.resonance);
-  return scored.slice(0, Math.max(1, k));
+  // Copy before sort (don't mutate in place) — mirrors the field-server's recall.
+  return scored.slice().sort((a, b) => b.resonance - a.resonance).slice(0, Math.max(1, k));
 }
 
 // ── remember: store the Q→A back so it's recallable next time ────────────────
@@ -81,6 +81,56 @@ function remember(question, answer, provider, coherence) {
     'INSERT OR REPLACE INTO legacies (id, name, content, tags, author, meta, coherence, waveform, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
   ).run(id, question, answer, JSON.stringify(['remembrance-ask', 'librarian:' + provider]), 'remembrance:ask', meta, coherence, waveform, now, now);
   return id;
+}
+
+// ── daemon mode: when remembranced (the field-server) is running, the CLI plugs
+// into it over HTTP so every tool shares ONE always-on substrate and the daemon
+// is the single writer. Falls back to in-process when REMEMBRANCE_FIELD_URL is
+// unset. (field-coupling.contribute already bridges the LRE write either way.) ─
+function daemonBase() {
+  let url = (process.env.REMEMBRANCE_FIELD_URL || '').trim();
+  if (!url) return null;
+  if (!/^https?:\/\//i.test(url)) url = 'http://' + url; // a local daemon is http
+  return url.replace(/\/(mcp)?\/?$/i, ''); // strip a trailing /mcp and/or slash
+}
+
+async function postJson(url, body) {
+  const token = (process.env.REMEMBRANCE_FIELD_TOKEN || process.env.FIELD_TOKEN || '').trim();
+  const headers = { 'content-type': 'application/json' };
+  if (token) headers.authorization = 'Bearer ' + token;
+  const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+  const text = await res.text();
+  let data; try { data = JSON.parse(text); } catch (_) { data = { raw: text }; }
+  if (!res.ok) throw new Error(`${url} -> ${res.status} ${(data && data.error) || text.slice(0, 160)}`);
+  return data;
+}
+
+async function recallRemote(base, queryText, k) {
+  const data = await postJson(base + '/recall', { query: queryText, k });
+  return (data.slices || []).map((s) => ({
+    id: s.id, name: s.name, content: s.content,
+    resonance: typeof s.resonance === 'number' ? s.resonance : 0,
+  }));
+}
+
+async function rememberRemote(base, question, answer, provider) {
+  const now = new Date().toISOString();
+  const id = 'ask:' + crypto.createHash('sha256').update(question).digest('hex').slice(0, 16);
+  // The daemon coherence-scores + encodes the record itself; we hand it the
+  // ledger so the retro-causal pull stays live through the HTTP path too.
+  await postJson(base + '/legacy', {
+    action: 'store', id, name: question, content: answer, author: 'remembrance:ask',
+    tags: ['remembrance-ask', 'librarian:' + provider],
+    meta: { question, provider, ledger: { observed_start: now, observed_end: now, cadence: 'variable' } },
+  });
+  return id;
+}
+
+async function contributeRemote(base, coherence) {
+  // Daemon mode: contribute straight to the daemon's field (bearer-gated), so the
+  // one always-on engine is updated — no spurious second engine in this process.
+  try { return await postJson(base + '/contribute', { coherence, source: 'remembrance:ask', cost: 1 }); }
+  catch (_) { return null; }
 }
 
 // ── the librarian: swappable. cloud API key, a local model, or none ──────────
@@ -146,7 +196,9 @@ async function cmdAsk(argv) {
     process.exit(1);
   }
 
-  const slices = recall(question, opts.k || 6);
+  const base = daemonBase();
+  const k = opts.k || 6;
+  const slices = base ? await recallRemote(base, question, k) : recall(question, k);
   const context = slices
     .map((s, i) => `[${i + 1}] (${s.resonance.toFixed(3)}) ${s.name}\n${s.content}`)
     .join('\n\n')
@@ -161,17 +213,26 @@ async function cmdAsk(argv) {
     coherence = context ? clamp01(waveformCosine(wf(answer), wf(context))) : clamp01(slices[0] ? slices[0].resonance : 0);
   } catch (_) { /* leave 0 */ }
 
-  const id = remember(question, answer, provider, coherence);
+  let id;
+  try {
+    id = base ? await rememberRemote(base, question, answer, provider) : remember(question, answer, provider, coherence);
+  } catch (e) {
+    id = '(not stored: ' + (e && e.message ? e.message : e) + ')';
+  }
 
   // ── PLUG INTO THE LIVING REMEMBRANCE ENGINE ──────────────────────────────
   // The interaction's grounding coherence becomes a field contribution (and
   // bridges to the shared live field when REMEMBRANCE_FIELD_URL is set), so
   // every question this machine answers leaves the field remembered.
   let field = null;
-  try { field = contribute({ cost: 1, coherence, source: 'remembrance:ask' }); } catch (_) { /* engine optional */ }
+  try {
+    field = base
+      ? await contributeRemote(base, coherence)
+      : contribute({ cost: 1, coherence, source: 'remembrance:ask' });
+  } catch (_) { /* engine optional */ }
 
   console.log('\n' + answer + '\n');
-  console.log(`— recalled ${slices.length} slice(s) · librarian: ${provider}${model ? ' (' + model + ')' : ''}`);
+  console.log(`— recalled ${slices.length} slice(s) · librarian: ${provider}${model ? ' (' + model + ')' : ''} · ${base ? 'daemon ' + base : 'in-process'}`);
   console.log(`— grounding coherence ${coherence.toFixed(3)} · remembered as ${id}`);
   if (field && typeof field.coherence === 'number') {
     console.log(`— field coherence ${field.coherence.toFixed(4)} · updates ${field.updateCount != null ? field.updateCount : '?'}`);
@@ -190,10 +251,25 @@ function parseArgs(argv) {
   return out;
 }
 
+async function cmdField() {
+  const base = daemonBase();
+  if (base) {
+    try {
+      const res = await fetch(base + '/field');
+      const data = await res.json();
+      console.log(JSON.stringify(data.field || data, null, 2));
+      return;
+    } catch (e) {
+      console.error(`daemon unreachable at ${base} (${e && e.message}) — falling back to the local engine`);
+    }
+  }
+  console.log(JSON.stringify(peekField(), null, 2));
+}
+
 async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   if (cmd === 'ask') return cmdAsk(rest);
-  if (cmd === 'field') { console.log(JSON.stringify(peekField(), null, 2)); return; }
+  if (cmd === 'field') return cmdField();
   console.error(
     'remembrance — the local front door to your substrate\n\n' +
     '  remembrance ask "<question>" [--k N] [--librarian anthropic|ollama|none] [--model M]\n' +

@@ -140,6 +140,20 @@ export interface SubstrateRecord {
   coherence?: number;
   createdAt?: string;
   updatedAt?: string;
+  /** Free-form metadata. Carries the retro-causal time-ledger + resolved
+   *  outcome once a record's "future" is known (see recordResolvedOutcome). */
+  meta?: Record<string, unknown>;
+}
+
+/** A resolved outcome attached to a record — its "future", made concrete. */
+export interface ResolvedOutcome {
+  /** What actually happened, e.g. "won" | "lost" for a lead. */
+  outcome: string;
+  /** Coherence measured/known at resolution (0–1). */
+  resolvedCoherence: number;
+  /** ISO timestamp the outcome resolved. */
+  resolvedAt: string;
+  reason?: string;
 }
 
 /** Upsert a record. Pass a stable `id` to overwrite by key; omit for a content-hash id. */
@@ -155,10 +169,64 @@ export async function getRecord(id: string): Promise<SubstrateRecord | null> {
   return r && r.ok && r.legacy ? r.legacy : null;
 }
 
+/** Delete a record by id. Returns the number deleted (0 if absent / field down). */
+export async function deleteRecord(id: string): Promise<number> {
+  const r = await mcpTool<{ ok: boolean; deleted: number }>("legacy", { action: "delete", id });
+  return r && r.ok && typeof r.deleted === "number" ? r.deleted : 0;
+}
+
 /** Retro-causal recall — the resonant slices for a query. */
 export async function recall(query: string, k = 6): Promise<Array<SubstrateRecord & { score: number }>> {
   const r = await mcpTool<{ ok: boolean; slices: Array<SubstrateRecord & { score: number }> }>("recall", { query, k });
   return r && r.ok && r.slices ? r.slices : [];
+}
+
+/**
+ * List records newest-first, with optional text search + pagination. Wraps the
+ * legacy store's `list` action ({ q, limit, offset } → { legacies, total }) — the
+ * deterministic, paginated counterpart to `recall`'s resonance retrieval. This
+ * is what a record-backed admin list (e.g. leads) needs beyond store/get.
+ */
+export async function listRecords(
+  opts: { q?: string; tags?: string[]; limit?: number; offset?: number } = {},
+): Promise<{ records: SubstrateRecord[]; total: number }> {
+  const r = await mcpTool<{ ok: boolean; legacies: SubstrateRecord[]; total: number }>(
+    "legacy",
+    { action: "list", q: opts.q, tags: opts.tags, limit: opts.limit ?? 50, offset: opts.offset ?? 0 },
+  );
+  return r && r.ok && Array.isArray(r.legacies)
+    ? { records: r.legacies, total: typeof r.total === "number" ? r.total : r.legacies.length }
+    : { records: [], total: 0 };
+}
+
+/**
+ * Attach a resolved outcome to a record — the write that makes the retro-causal
+ * recall path live. Re-stores the record (store is upsert-by-id) with a
+ * `meta.ledger` (observed_start → observed_end) and `meta.resolved`, so
+ * computeRetrocausalAlignment finally has a real "future" to pull toward.
+ * Best-effort: no-op when the record is absent or the field is unreachable.
+ */
+export async function recordResolvedOutcome(
+  recordId: string,
+  resolution: ResolvedOutcome,
+  observedStart?: string,
+): Promise<{ ok: boolean }> {
+  const existing = await getRecord(recordId);
+  if (!existing) return { ok: false };
+  const start = observedStart || existing.createdAt || resolution.resolvedAt;
+  const tags = Array.from(new Set([...(existing.tags ?? []), "resolved", resolution.outcome]));
+  const r = await storeRecord({
+    id: existing.id,
+    name: existing.name,
+    content: existing.content,
+    tags,
+    meta: {
+      ...(existing.meta ?? {}),
+      resolved: resolution,
+      ledger: { observed_start: start, observed_end: resolution.resolvedAt, cadence: "variable" },
+    },
+  });
+  return { ok: Boolean(r && r.ok) };
 }
 
 // ── Cost / benefit contributions ─────────────────────────────────────

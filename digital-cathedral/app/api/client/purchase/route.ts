@@ -99,9 +99,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Monthly purchase cap reached." }, { status: 429 });
     }
 
-    // Price calculation — tier base price with time-based depreciation
+    // Price calculation — tier base price, time-depreciated, then scaled by the
+    // lead's coherency grade (score.total is coherency×100, so /100 recovers it).
     const isExclusive = selectedTierIndex === 0;
-    const { price } = getLeadPrice(lead.createdAt, selectedTier.name);
+    const { price } = getLeadPrice(lead.createdAt, selectedTier.name, score.total / 100);
 
     // Create Stripe Checkout Session
     const origin = req.headers.get("origin") || req.headers.get("host") || "";

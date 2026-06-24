@@ -138,6 +138,29 @@ export function getLeadBuyerStatus(activeBuyerCount: number): {
 }
 
 // =============================================================================
+// Coherency-adjusted pricing
+// =============================================================================
+
+// A lead's price scales with its coherency — the covenant-gate quality grade in
+// [0,1] (the same number the admin sees as Score/100). The curve is anchored at
+// FOUNDATION (0.70 → 1.0×): higher-coherency leads earn a premium, lower ones a
+// discount, both clamped so the final price still respects the config
+// floor/ceiling. An unknown grade is neutral (1.0×), so any caller that doesn't
+// supply one is unaffected — this is purely additive.
+const COHERENCY_ANCHOR = 0.70; // multiplier is exactly 1.0 at this coherency
+const COHERENCY_SLOPE = 1.4;   // how strongly price responds to coherency
+const COHERENCY_MULT_MIN = 0.75;
+const COHERENCY_MULT_MAX = 1.4;
+
+/** Price multiplier for a lead's coherency grade (0–1). Neutral (1.0) if unknown. */
+export function coherencyMultiplier(coherency?: number): number {
+  if (typeof coherency !== "number" || !Number.isFinite(coherency)) return 1;
+  const c = Math.max(0, Math.min(1, coherency));
+  const m = 1 + COHERENCY_SLOPE * (c - COHERENCY_ANCHOR);
+  return Math.max(COHERENCY_MULT_MIN, Math.min(COHERENCY_MULT_MAX, m));
+}
+
+// =============================================================================
 // Depreciation calculation
 // =============================================================================
 
@@ -162,6 +185,7 @@ export function calculateDepreciatedPrice(
 export function getLeadPrice(
   createdAt: string,
   tierName: string,
+  coherency?: number,
 ): {
   price: number;
   ageInDays: number;
@@ -173,7 +197,12 @@ export function getLeadPrice(
   const ageMs = Date.now() - new Date(createdAt).getTime();
   const ageInDays = Math.max(0, ageMs / (1000 * 60 * 60 * 24));
 
-  const price = calculateDepreciatedPrice(ageInDays, config);
+  // Time-depreciated base, then scaled by the coherency grade and clamped to the
+  // global floor/ceiling so quality can lift a lead toward the ceiling (or
+  // discount a weak one) without ever leaving the configured band.
+  const base = calculateDepreciatedPrice(ageInDays, config);
+  const adjusted = Math.round(base * coherencyMultiplier(coherency));
+  const price = Math.max(getPriceFloor(), Math.min(getMaxPrice(), adjusted));
   const isHolding = ageInDays <= config.holdDays;
   const stepsDown = isHolding
     ? 0
@@ -187,7 +216,8 @@ export function getLeadPrice(
  */
 export function getAllTierPrices(
   createdAt: string,
-  activeBuyerCount: number
+  activeBuyerCount: number,
+  coherency?: number,
 ): Array<{
   tier: PurchaseTier;
   price: number;
@@ -198,7 +228,7 @@ export function getAllTierPrices(
   const { availableTiers } = getLeadBuyerStatus(activeBuyerCount);
 
   return availableTiers.map((t) => {
-    const { price, isHolding, stepsDown } = getLeadPrice(createdAt, t.name);
+    const { price, isHolding, stepsDown } = getLeadPrice(createdAt, t.name, coherency);
     return {
       tier: { name: t.name, maxBuyers: t.maxBuyers, basePrice: t.basePrice },
       price,

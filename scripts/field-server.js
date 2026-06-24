@@ -464,10 +464,21 @@ function legacyOp(args) {
     const limit = Math.min(200, Math.max(1, Number(args.limit) || 50));
     const offset = Math.max(0, Number(args.offset) || 0);
     const q = args.q ? String(args.q) : null;
-    const rows = q
-      ? db.prepare('SELECT * FROM legacies WHERE name LIKE ? OR content LIKE ? ORDER BY created_at DESC LIMIT ? OFFSET ?').all('%' + q + '%', '%' + q + '%', limit, offset)
-      : db.prepare('SELECT * FROM legacies ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
-    return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total: db.prepare('SELECT COUNT(*) AS c FROM legacies').get().c };
+    // Optional collection/facet scoping: every entry in `tags` must be present.
+    // Tags are stored as a JSON-array string, so match the quoted token
+    // (JSON.stringify('lead') === '"lead"' → LIKE '%"lead"%'). Lets a shared
+    // store hold many record kinds (site-content, leads, …) and still return a
+    // correctly-scoped page AND total.
+    const tags = Array.isArray(args.tags) ? args.tags.map(String)
+      : (args.tag ? [String(args.tag)] : []);
+    const where = [];
+    const params = [];
+    if (q) { where.push('(name LIKE ? OR content LIKE ?)'); params.push('%' + q + '%', '%' + q + '%'); }
+    for (const t of tags) { where.push('tags LIKE ?'); params.push('%' + JSON.stringify(t) + '%'); }
+    const clause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
+    const rows = db.prepare('SELECT * FROM legacies ' + clause + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(...params, limit, offset);
+    const total = db.prepare('SELECT COUNT(*) AS c FROM legacies ' + clause).get(...params).c;
+    return { ok: true, legacies: rows.map((r) => _legacyRow(r)), total };
   }
 
   if (action === 'resonant') {
@@ -538,8 +549,14 @@ function recallOp(args = {}) {
       try { pull += cosine(c.wf, a.wf); n += 1; } catch (_) { /* skip */ }
     }
     pull = n ? pull / n : 0;
+    // The retro-causal time-ledger lives in the record's `meta` (there is no
+    // dedicated column), so read it from there. A record that carries a resolved
+    // ledger (observed_start/observed_end/cadence) now actually pulls; a
+    // ledger-less record stays identity (1.0) and degrades cleanly to resonance.
+    let ledger = c.row.ledger || null;
+    if (!ledger && c.row.meta) { try { ledger = JSON.parse(c.row.meta).ledger || null; } catch (_) { ledger = null; } }
     let alignment = 1;
-    try { alignment = computeRetrocausalAlignment({ waveform: c.wf, ledger: c.row.ledger }, { waveform: queryWf }, { tNow }); } catch (_) { alignment = 1; }
+    try { alignment = computeRetrocausalAlignment({ waveform: c.wf, ledger }, { waveform: queryWf }, { tNow }); } catch (_) { alignment = 1; }
     const score = resonance * (1 + RECALL_RETRO_BETA * pull) * alignment;
     scored.push({ ..._legacyRow(c.row), resonance, retroPull: pull, alignment, score });
   }

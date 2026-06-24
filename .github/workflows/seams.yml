@@ -1,0 +1,51 @@
+name: seams
+
+# The gap-gate. A scheduled check that diffs the wiring contract (seams.json)
+# against the live Remembrance field — if a declared seam stops contributing
+# (silent drift), the run goes red instead of failing silently. Plus a cheap
+# contract lint on every change to the contract.
+
+on:
+  push:
+    branches: [main]
+    paths: ['seams.json', 'scripts/check-seams.js']
+  pull_request:
+    paths: ['seams.json', 'scripts/check-seams.js']
+  schedule:
+    - cron: '7 */6 * * *'   # every 6 hours — the drift alarm
+  workflow_dispatch: {}
+
+jobs:
+  contract:
+    name: contract lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: validate the contract + script
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('seams.json','utf8')); console.log('seams.json parses OK')"
+          node --check scripts/check-seams.js && echo "check-seams.js OK"
+
+  drift:
+    name: field drift monitor
+    runs-on: ubuntu-latest
+    # Only scheduled/manual runs hit the live field — a push has no field to read.
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    env:
+      REMEMBRANCE_FIELD_URL: ${{ secrets.REMEMBRANCE_FIELD_URL }}
+      REMEMBRANCE_FIELD_TOKEN: ${{ secrets.REMEMBRANCE_FIELD_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: check declared seams against the live field
+        run: |
+          if [ -z "$REMEMBRANCE_FIELD_URL" ]; then
+            echo "::notice::REMEMBRANCE_FIELD_URL secret not set — skipping the live drift check. Set it (and REMEMBRANCE_FIELD_TOKEN) to arm the gap-gate."
+            exit 0
+          fi
+          node scripts/check-seams.js --strict --contribute

@@ -9,9 +9,21 @@
  */
 import path from "path";
 import { getRecord, storeRecord } from "./valor/remembrance-bridge";
+import {
+  SUBSTRATE_LEADS,
+  substrateInsertLead,
+  substrateGetLeadById,
+  substrateGetLeadsByEmail,
+  substrateGetRecentLeads,
+  substrateGetLeadCount,
+  substrateGetFilteredLeads,
+  substrateGetLeadStats,
+  substrateDeleteLeadById,
+  substrateDeleteLeadByEmail,
+} from "./substrate-leads";
 
 // --- Result type for typed error handling ---
-type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
+export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
 
 function Ok<T>(value: T): Result<T, never> {
   return { ok: true, value };
@@ -1299,38 +1311,47 @@ function getAdapter(): DbAdapter {
 // =============================================================================
 
 export async function insertLead(lead: LeadRecord): Promise<Result<{ id: number; leadId: string }, string>> {
+  if (SUBSTRATE_LEADS) return substrateInsertLead(lead);
   return getAdapter().insertLead(lead);
 }
 
 export async function getLeadById(leadId: string): Promise<Result<LeadRecord | null, string>> {
+  if (SUBSTRATE_LEADS) return substrateGetLeadById(leadId);
   return getAdapter().getLeadById(leadId);
 }
 
 export async function getLeadsByEmail(email: string): Promise<Result<LeadRecord[], string>> {
+  if (SUBSTRATE_LEADS) return substrateGetLeadsByEmail(email);
   return getAdapter().getLeadsByEmail(email);
 }
 
 export async function getRecentLeads(limit: number = 50): Promise<Result<LeadRecord[], string>> {
+  if (SUBSTRATE_LEADS) return substrateGetRecentLeads(limit);
   return getAdapter().getRecentLeads(limit);
 }
 
 export async function getLeadCount(): Promise<Result<number, string>> {
+  if (SUBSTRATE_LEADS) return substrateGetLeadCount();
   return getAdapter().getLeadCount();
 }
 
 export async function getFilteredLeads(filters: LeadFilters): Promise<Result<{ leads: LeadRecord[]; total: number }, string>> {
+  if (SUBSTRATE_LEADS) return substrateGetFilteredLeads(filters);
   return getAdapter().getFilteredLeads(filters);
 }
 
 export async function getLeadStats(): Promise<Result<LeadStats, string>> {
+  if (SUBSTRATE_LEADS) return substrateGetLeadStats();
   return getAdapter().getLeadStats();
 }
 
 export async function deleteLeadByEmail(email: string): Promise<Result<{ deleted: number }, string>> {
+  if (SUBSTRATE_LEADS) return substrateDeleteLeadByEmail(email);
   return getAdapter().deleteLeadByEmail(email);
 }
 
 export async function deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>> {
+  if (SUBSTRATE_LEADS) return substrateDeleteLeadById(leadId);
   return getAdapter().deleteLeadById(leadId);
 }
 

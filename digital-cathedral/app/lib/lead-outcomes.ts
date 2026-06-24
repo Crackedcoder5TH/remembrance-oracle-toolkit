@@ -18,6 +18,8 @@ import {
   storeRecord,
   listRecords,
   recordResolvedOutcome,
+  recordBenefit,
+  recordCost,
   type ResolvedOutcome,
 } from "./valor/remembrance-bridge";
 
@@ -88,6 +90,16 @@ export async function recordLeadOutcome(input: LeadOutcomeInput): Promise<{ ok: 
   // so when leads live on the substrate a won lead becomes a resolved anchor the
   // retro-causal recall pulls future similar leads toward.
   await recordResolvedOutcome("lead:" + input.leadId, resolution, input.leadCreatedAt).catch(() => ({ ok: false }));
+
+  // Wire the outcome into the Living Remembrance Engine — the external truth
+  // that closes the loop. A won lead is a coherency-positive event (the grade,
+  // validated by a real close); a lost one is an entropy cost. Mirrors the
+  // lead-ledger admit/reject contributions; fire-and-forget.
+  if (input.outcome === "won") {
+    void recordBenefit(resolution.resolvedCoherence, "valor:lead-outcome:won", 1).catch(() => {});
+  } else {
+    void recordCost(1, "valor:lead-outcome", "lost").catch(() => {});
+  }
 
   return { ok: true };
 }

@@ -48,4 +48,4 @@ jobs:
             echo "::notice::REMEMBRANCE_FIELD_URL secret not set — skipping the live drift check. Set it (and REMEMBRANCE_FIELD_TOKEN) to arm the gap-gate."
             exit 0
           fi
-          node scripts/check-seams.js --strict
+          node scripts/check-seams.js --strict --contribute

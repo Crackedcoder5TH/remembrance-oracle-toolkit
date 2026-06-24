@@ -34,6 +34,22 @@
       "match": "exact",
       "owner": "remembrance-oracle-toolkit",
       "describe": "The local recall->librarian->verify->remember loop (the `remembrance` CLI / remembranced)."
+    },
+    {
+      "id": "lead-outcome",
+      "source": "valor:lead-outcome",
+      "match": "prefix",
+      "owner": "digital-cathedral",
+      "maxStaleHours": 336,
+      "describe": "Resolved lead outcomes (won/lost) close the loop into the field — the external truth that validates the coherency grade (lead-outcomes recordBenefit/recordCost)."
+    },
+    {
+      "id": "seams-wiring",
+      "source": "seams:wiring",
+      "match": "exact",
+      "owner": "remembrance-oracle-toolkit",
+      "maxStaleHours": 12,
+      "describe": "The meta seam: `check:seams --contribute` feeds the field its own wiring-coherence. If this goes stale, the watcher itself stopped running — the field stays aware of whether it is being watched."
     }
   ]
 }

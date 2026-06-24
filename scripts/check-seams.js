@@ -28,6 +28,7 @@ if (STATE_DIR && !process.env.ENTROPY_PATH) {
 const argv = process.argv.slice(2);
 const JSON_OUT = argv.includes('--json');
 const STRICT = argv.includes('--strict'); // fail on STALE too (default: fail only on MISSING)
+const CONTRIBUTE = argv.includes('--contribute'); // feed the verdict back into the LRE
 const staleIdx = argv.indexOf('--max-stale-hours');
 const STALE_OVERRIDE = staleIdx >= 0 ? Number(argv[staleIdx + 1]) : null;
 
@@ -47,11 +48,28 @@ async function readField() {
     if (!res.ok) throw new Error(`${url}/field -> ${res.status}`);
     const data = await res.json();
     const f = data.field || data;
-    return { sources: f.sources || {}, where: url };
+    return { sources: f.sources || {}, where: url, base: url };
   }
   const { peekField } = require('../src/core/field-coupling');
   const f = peekField() || {};
-  return { sources: f.sources || {}, where: 'local:' + (process.env.ENTROPY_PATH || '.remembrance/entropy.json') };
+  return { sources: f.sources || {}, where: 'local:' + (process.env.ENTROPY_PATH || '.remembrance/entropy.json'), base: null };
+}
+
+// Complete the meta loop: the act of checking the wiring becomes a contribution
+// to the field — the LRE's per-source histogram exists precisely to answer
+// "what's wired / what's missing", so feeding it the wiring-coherence makes the
+// field aware of its own wiring health. The watcher thereby becomes a watched
+// seam (seams:wiring): if check:seams stops running, its own seam goes stale.
+async function contributeWiring(base, coherence) {
+  const source = 'seams:wiring';
+  if (base) {
+    const token = (process.env.REMEMBRANCE_FIELD_TOKEN || process.env.FIELD_TOKEN || '').trim();
+    const headers = { 'content-type': 'application/json' };
+    if (token) headers.authorization = 'Bearer ' + token;
+    await fetch(base + '/contribute', { method: 'POST', headers, body: JSON.stringify({ coherence, source, cost: 1 }) }).catch(() => {});
+  } else {
+    try { require('../src/core/field-coupling').contribute({ cost: 1, coherence, source }); } catch (_) { /* engine optional */ }
+  }
 }
 
 function matchKeys(sources, seam) {
@@ -63,7 +81,7 @@ function matchKeys(sources, seam) {
 (async () => {
   const contract = loadContract();
   const defaultStale = STALE_OVERRIDE != null ? STALE_OVERRIDE : ((contract.defaults && contract.defaults.maxStaleHours) || 168);
-  const { sources, where } = await readField();
+  const { sources, where, base } = await readField();
   const now = Date.now();
 
   const claimed = new Set();
@@ -115,6 +133,16 @@ function matchKeys(sources, seam) {
     if (untracked.length) console.log(`  untracked (declare in seams.json or ignore): ${untracked.join(', ')}`);
     const flowing = rows.filter((r) => r.status === 'FLOWING').length;
     console.log(`\n${fail ? 'FAIL' : 'OK'} — ${flowing} flowing, ${stale} stale, ${missing} missing`);
+  }
+
+  // Awareness: contribute the wiring-coherence (fraction of declared seams
+  // flowing) back into the LRE, so the field knows how wired it is — and so the
+  // watcher itself shows up as the seams:wiring seam.
+  if (CONTRIBUTE) {
+    const flowing = rows.filter((r) => r.status === 'FLOWING').length;
+    const wiring = rows.length ? flowing / rows.length : 0;
+    await contributeWiring(base, wiring);
+    if (!JSON_OUT) console.log(`— contributed wiring coherence ${wiring.toFixed(3)} to the field (source seams:wiring)`);
   }
 
   process.exit(fail ? 1 : 0);

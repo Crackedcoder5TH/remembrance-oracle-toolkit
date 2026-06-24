@@ -85,6 +85,45 @@ export function Navbar() {
     return () => document.removeEventListener("keydown", handleKey);
   }, [menuOpen]);
 
+  // Admin-aware navigation. useIsAdmin() recognizes BOTH the legacy
+  // __admin_session cookie (API-key login) and a Google-OAuth admin (via
+  // /api/admin/check) — so a signed-in operator is never shown the logged-out
+  // "Admin login" button or bounced to the login form. Their "home" is the
+  // dashboard, and the menu still lets them reach the public pages.
+  const adminHref = `${portalBaseUrl}/admin`;
+  const menuLinks = isAdmin
+    ? [
+        { href: adminHref, label: "Admin Dashboard" },
+        { href: `${portalBaseUrl}/admin/leads`, label: "All Leads" },
+        { href: `${portalBaseUrl}/admin/notifications`, label: "Notifications" },
+        { href: `${portalBaseUrl}/admin/outcomes`, label: "Outcomes" },
+        { href: `${portalBaseUrl}/admin/patterns`, label: "Pattern Library" },
+        { href: `${portalBaseUrl}/portal`, label: "Agent Portal" },
+        { href: "/", label: "Public Home" },
+        { href: "/about", label: "About Us" },
+        { href: "/faq", label: "FAQ" },
+        { href: "/privacy", label: "Privacy Policy" },
+        { href: "/terms", label: "Terms of Service" },
+      ]
+    : isPortalDomain
+      ? PORTAL_NAV_LINKS
+      : NAV_LINKS;
+
+  async function handleAdminSignOut() {
+    // Clear the admin session cookie, then NextAuth too if a Google session is
+    // present, landing back on the login form.
+    try {
+      await fetch("/api/admin/logout", { method: "POST" });
+    } catch {
+      /* best-effort — fall through to the redirect regardless */
+    }
+    if (session?.user) {
+      signOut({ callbackUrl: `${portalBaseUrl}/admin/login` });
+    } else {
+      window.location.href = `${portalBaseUrl}/admin/login`;
+    }
+  }
+
   return (
     <nav className="cathedral-nav w-full text-[var(--text-primary)] relative z-50" aria-label="Main navigation">
       <div className="max-w-6xl mx-auto px-fib-21 flex items-center justify-between h-fib-55">
@@ -158,7 +197,7 @@ export function Navbar() {
               aria-label="Main navigation menu"
               className="absolute left-0 top-full mt-fib-3 w-56 rounded-[13px] py-fib-5 z-50 cathedral-surface"
             >
-              {(isPortalDomain ? PORTAL_NAV_LINKS : NAV_LINKS).map((link) => (
+              {menuLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
@@ -173,8 +212,36 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Right: Auth state */}
-        {session?.user ? (
+        {/* Right: Auth state — admin-aware so a signed-in operator sees their
+            dashboard + sign-out, never the "Admin login" button or a bounce
+            back to the login form. */}
+        {isAdmin ? (
+          <div className="flex items-center gap-fib-8">
+            {session?.user?.image && (
+              <img
+                src={session.user.image}
+                alt={`${session.user.name || "Admin"}'s profile picture`}
+                className="w-7 h-7 rounded-full"
+                referrerPolicy="no-referrer"
+              />
+            )}
+            <span className="text-sm text-[var(--text-primary)] hidden sm:inline">
+              {session?.user?.name?.split(" ")[0] ?? "Admin"}
+            </span>
+            <a
+              href={adminHref}
+              className="flex items-center gap-fib-5 px-fib-13 py-fib-5 text-xs font-medium rounded-fib border border-[var(--teal)]/30 text-[var(--teal)] hover:border-[var(--teal)] transition-all"
+            >
+              Dashboard
+            </a>
+            <button
+              onClick={handleAdminSignOut}
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
+            >
+              Sign Out
+            </button>
+          </div>
+        ) : session?.user ? (
           <div className="flex items-center gap-fib-8">
             {session.user.image && (
               <img
@@ -187,14 +254,6 @@ export function Navbar() {
             <span className="text-sm text-[var(--text-primary)] hidden sm:inline">
               {session.user.name?.split(" ")[0]}
             </span>
-            {isPortalDomain && (
-              <a
-                href={`${portalBaseUrl}/admin`}
-                className="flex items-center gap-fib-5 px-fib-13 py-fib-5 text-xs font-medium rounded-fib border border-[var(--teal)]/30 text-[var(--teal)] hover:border-[var(--teal)] transition-all"
-              >
-                Admin
-              </a>
-            )}
             <button
               onClick={() => signOut({ callbackUrl: isPortalDomain ? "/portal" : "/" })}
               className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"

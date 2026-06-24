@@ -62,11 +62,34 @@ const DEFAULT_ENTROPY_PATH = process.env.ENTROPY_PATH
       : path.join(process.cwd(), '.remembrance', 'entropy.json'));
 
 const PARAMS = {
+  // ── master-equation constants (the physics) ──
   r0:         0.05,    // gentle baseline pull
   alpha:      15.0,    // amplification factor
   delta0:     0.03,    // void donation baseline
   cascadeTau: 60000,   // cascadeFactor relaxation time constant (ms)
   epsilon:    1e-8,
+
+  // ── goggles — structural-meta-awareness instrument tuning ──
+  // The moving numbers consolidated into the core, not scattered across the
+  // goggles modules. These are application tuning (not equation constants), so
+  // they're namespaced to keep the physics above distinct. Empirically derived
+  // (see the calibration runs). A consumer reads them via
+  // getEngine().params('goggles') and falls back to its own copy of these if the
+  // engine is unavailable — so there is one source of truth and no silent drift.
+  goggles: {
+    notable:            0.08,  // hook: coherence-delta gate (above section-boundary noise)
+    lexFloor:           0.20,  // hook/CLI: lexical-neighbour relevance floor
+    suppressAmplitude:  0.08,  // learning: amplitude floor below which a finding self-suppresses
+    penalizeAfter:      4,     // learning: grace-window edits before a persisting finding decays
+    promoteEvery:       8,     // learning: throttle for feeding the void library
+    promoteAmplitude:   0.35,  // learning: amplitude to promote a proven fix into the library
+    structureStrong:    0.93,  // intrinsic-coherence verdict bands (measurableOnly scale)
+    structureSolid:     0.80,
+    structureLoose:     0.70,
+    resonanceConsonant: 0.90,  // pattern-resonance verdict bands
+    resonanceFamiliar:  0.82,
+    resonanceDistinct:  0.70,
+  },
 };
 
 class LivingRemembranceEngine {
@@ -249,6 +272,17 @@ class LivingRemembranceEngine {
   }
 
   /**
+   * Read a consolidated parameter by dotted path (e.g. 'goggles.notable'), or
+   * the whole params object with no argument. The engine is the single source
+   * of truth for the ecosystem's moving numbers — consumers read from here so a
+   * tuning change happens in one place and can't drift between copies.
+   */
+  params(dotted) {
+    if (!dotted) return this._params;
+    return String(dotted).split('.').reduce((o, k) => (o == null ? undefined : o[k]), this._params);
+  }
+
+  /**
    * Project what `contribute({ cost, coherence })` would produce WITHOUT
    * mutating state. The same math the actual contribute() runs, but
    * functional and side-effect-free — used to predict the field's response
@@ -298,9 +332,21 @@ function getEngine(opts) {
   return _instance;
 }
 
+/**
+ * Convenience: the goggles instrument's consolidated tuning, read from the
+ * canonical engine — and always valid (falls back to the PARAMS defaults if the
+ * field is unavailable). The single source for the goggles moving numbers across
+ * the ecosystem; consumers call this instead of hardcoding their own copies.
+ */
+function gogglesParams() {
+  try { return getEngine().params('goggles') || PARAMS.goggles; }
+  catch (_) { return PARAMS.goggles; }
+}
+
 module.exports = {
   LivingRemembranceEngine,
   getEngine,
+  gogglesParams,
   PARAMS,
   DEFAULT_ENTROPY_PATH,
 };

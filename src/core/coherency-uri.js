@@ -10,17 +10,58 @@
  */
 
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
-const VALID_REPOS = new Set([
+// Built-in namespaces — the sets that ALWAYS validate. A fork extends them
+// via a `namespaces.json` registry or env (see _loadNamespaceExtensions), so
+// a new "head" is drop-in. Keep the built-ins in sync with void's
+// coherency_uri.py.
+const _BUILTIN_REPOS = [
   'void', 'oracle', 'interface', 'blockchain', 'dialer',
-  'reflector', 'swarm', 'moons', 'plugger', 'supabase',
-  'clawcode',
-]);
-
-const VALID_DOMAINS = new Set([
+  'reflector', 'swarm', 'moons', 'plugger', 'supabase', 'clawcode',
+];
+const _BUILTIN_DOMAINS = [
   'code', 'cosmos', 'physics', 'framework', 'consciousness',
   'economy', 'applied', 'conflict', 'meta', 'builtin', 'unknown',
-]);
+];
+
+// A registered namespace must be a legal URI segment so an extension can
+// never produce a malformed coh:// URI.
+const _NS_RE = /^[a-z][a-z0-9_-]*$/;
+
+function _loadNamespaceExtensions() {
+  const repos = new Set();
+  const domains = new Set();
+  const candidates = [];
+  if (process.env.COHERENCY_NAMESPACES) candidates.push(process.env.COHERENCY_NAMESPACES);
+  candidates.push(path.join(__dirname, 'namespaces.json'));
+  candidates.push(path.join(process.cwd(), 'namespaces.json'));
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        const data = JSON.parse(fs.readFileSync(p, 'utf8'));
+        for (const r of data.repos || []) repos.add(String(r).toLowerCase());
+        for (const d of data.domains || []) domains.add(String(d).toLowerCase());
+        break; // first registry found wins
+      }
+    } catch (_) { /* malformed registry never blocks URI construction */ }
+  }
+  for (const r of (process.env.COHERENCY_EXTRA_REPOS || '').split(',')) {
+    if (r.trim()) repos.add(r.trim().toLowerCase());
+  }
+  for (const d of (process.env.COHERENCY_EXTRA_DOMAINS || '').split(',')) {
+    if (d.trim()) domains.add(d.trim().toLowerCase());
+  }
+  return {
+    repos: [...repos].filter((r) => _NS_RE.test(r)),
+    domains: [...domains].filter((d) => _NS_RE.test(d)),
+  };
+}
+
+const _ext = _loadNamespaceExtensions();
+const VALID_REPOS = new Set([..._BUILTIN_REPOS, ..._ext.repos]);
+const VALID_DOMAINS = new Set([..._BUILTIN_DOMAINS, ..._ext.domains]);
 
 const URI_RE =
   /^coh:\/\/([a-z][a-z0-9_-]*)\/([a-z][a-z0-9_-]*)\/([A-Za-z0-9_./:-]+?)(?:@([A-Za-z0-9_.-]+))?(?:#h:([0-9a-f]{12}))?$/;

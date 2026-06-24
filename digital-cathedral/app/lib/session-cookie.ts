@@ -28,3 +28,19 @@ export function clearSessionResponse(
   });
   return response;
 }
+
+/**
+ * Cookie options for a session that lasts until the browser is fully closed,
+ * then requires a fresh login. We deliberately omit `maxAge`/`expires` so the
+ * browser treats it as a session cookie. The signed token's own `exp` still
+ * bounds the absolute server-side lifetime (verified on every request), so a
+ * never-closed browser can't hold a session open forever.
+ */
+export function sessionCookieOptions(sameSite: SessionSameSite) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite,
+    path: "/",
+  };
+}

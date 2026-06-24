@@ -23,8 +23,9 @@
 #   (Railway auto-detects the Dockerfile when the directory contains one
 #   named Dockerfile; rename or use --file Dockerfile.field-server)
 #
-# The container persists to /data/.remembrance/entropy.json. Mount a
-# volume there to keep field state across restarts.
+# The container persists BOTH the legacies DB and the field under
+# /data/.remembrance/ (oracle.db + entropy.json). Mount a volume at /data
+# to keep all state across restarts.
 
 # ── Builder stage ───────────────────────────────────────────────────
 FROM node:22-slim AS builder
@@ -34,11 +35,19 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 # Production deps only — the field server doesn't need dev tooling.
 RUN npm ci --omit=dev || npm install --omit=dev
+# The toolkit has ZERO runtime deps (stdlib only: node:sqlite, node:http, …), so
+# npm installs nothing and creates no node_modules dir. Ensure it exists so the
+# runtime stage's `COPY --from=builder /app/node_modules` always resolves.
+RUN mkdir -p node_modules
 
 # Bring in the source the field server actually requires.
 # scripts/field-server.js + src/core/* + src/scoring/* + src/reflector/*
 COPY scripts/ ./scripts/
 COPY src/ ./src/
+# The proven-pattern library export — the field-server's pattern_resonance and
+# goggles use this as the corpus when the mounted volume's SQLite isn't seeded.
+# Without it, resonance has nothing to score against and silently returns null.
+COPY patterns.json ./patterns.json
 
 # ── Runtime stage ───────────────────────────────────────────────────
 FROM node:22-slim AS runtime
@@ -50,7 +59,10 @@ RUN groupadd --system --gid 1001 field && \
 WORKDIR /app
 
 # Persistence directory (mount a volume here in production).
+# REMEMBRANCE_STATE_DIR routes BOTH the legacies DB (oracle.db) and the field
+# (entropy.json) under /data, so a single volume at /data persists everything.
 RUN mkdir -p /data/.remembrance && chown -R field:field /data
+ENV REMEMBRANCE_STATE_DIR=/data
 ENV ENTROPY_PATH=/data/.remembrance/entropy.json
 
 # Copy built node_modules + source from the builder.
@@ -58,6 +70,7 @@ COPY --from=builder --chown=field:field /app/node_modules ./node_modules
 COPY --from=builder --chown=field:field /app/scripts ./scripts
 COPY --from=builder --chown=field:field /app/src ./src
 COPY --from=builder --chown=field:field /app/package.json ./package.json
+COPY --from=builder --chown=field:field /app/patterns.json ./patterns.json
 
 USER field
 

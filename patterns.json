@@ -1,6 +1,6 @@
 {
-  "exported": "2026-04-21T11:05:50.579Z",
-  "count": 567,
+  "exported": "2026-06-20T08:31:14.210Z",
+  "count": 568,
   "patterns": [
     {
       "id": "945a884fc2a57efb",
@@ -35318,6 +35318,76 @@
       "successCount": 0,
       "createdAt": "2026-04-14T22:13:36.714Z",
       "updatedAt": "2026-04-20T17:35:02.579Z"
+    },
+    {
+      "id": "f33c6473ea3d6afe",
+      "name": "ensure-url-scheme",
+      "code": "function ensureHttpScheme(url, fallbackScheme) {\n  if (fallbackScheme === undefined) fallbackScheme = 'https';\n  // A scheme-less value (a bare host like 'api.example.com') is NOT a valid URL:\n  // new URL(raw) -- and therefore fetch(raw) -- throws 'Invalid URL'. Callers that\n  // catch-and-null that error then report the remote unreachable even though the\n  // host is correct and the server is up. Default the scheme so a bare host pasted\n  // into an env var (REMEMBRANCE_FIELD_URL, API_BASE, ...) just works.\n  var raw = String(url == null ? '' : url).trim();\n  if (!raw) return '';\n  var schemed = raw.includes('://') ? raw : fallbackScheme + '://' + raw;\n  while (schemed.endsWith('/')) schemed = schemed.slice(0, -1);\n  return schemed;\n}",
+      "testCode": "var bare = 'cathedralbots-production.up.railway.app';\nif (ensureHttpScheme(bare) !== 'https://' + bare) throw new Error('bare host must gain https://');\nvar threw = false;\ntry { new URL(bare + '/mcp'); } catch (e) { threw = true; }\nif (!threw) throw new Error('scheme-less URL must throw in new URL()/fetch()');\nvar u = new URL(ensureHttpScheme(bare) + '/mcp');\nif (u.protocol !== 'https:' || u.hostname !== bare) throw new Error('normalized URL wrong: ' + u.href);\nif (ensureHttpScheme('http://localhost:7787/') !== 'http://localhost:7787') throw new Error('http preserved + slash trimmed');\nif (ensureHttpScheme('https://x.dev') !== 'https://x.dev') throw new Error('https untouched');\nif (ensureHttpScheme('') !== '' || ensureHttpScheme(null) !== '') throw new Error('empty stays empty');",
+      "language": "javascript",
+      "description": "Default a scheme-less URL to https:// before fetch(). A bare host (e.g. an env var set to 'host.up.railway.app' with no https://) is not a valid URL -- new URL() and fetch() throw 'Invalid URL'. Callers that swallow the error then report the remote unreachable even though the config is set and the server is up: a silent misconfiguration that masquerades as an outage. Normalize by trimming, defaulting the scheme to https when absent, and stripping trailing slashes. Distilled from the Remembrance field bug where REMEMBRANCE_FIELD_URL was the bare Railway host and every field_read/field_contribute silently returned null. The interface field client and the cathedral bridge both apply this.",
+      "tags": [
+        "array",
+        "config",
+        "default",
+        "ensure-http-scheme",
+        "ensure-url-scheme",
+        "env-config",
+        "error-handling",
+        "fail-loud",
+        "fetch",
+        "https",
+        "invalid-url",
+        "javascript"
+      ],
+      "patternType": "utility",
+      "complexity": "composite",
+      "coherencyScore": {
+        "total": 0.986,
+        "breakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 1,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.562
+        },
+        "legacyBreakdown": {
+          "syntaxValid": 1,
+          "completeness": 1,
+          "consistency": 1,
+          "readability": 0,
+          "security": 0,
+          "testProof": 1,
+          "historicalReliability": 0.5,
+          "fractalAlignment": 0.562
+        },
+        "astAnalysis": {
+          "boost": 0.08,
+          "valid": true,
+          "functions": 1,
+          "classes": 0,
+          "complexity": {
+            "cyclomatic": 7,
+            "maxDepth": 1,
+            "lines": 8
+          }
+        },
+        "coverageGate": {
+          "factor": 1,
+          "covered": 1,
+          "total": 1,
+          "reason": "good coverage"
+        },
+        "language": "javascript"
+      },
+      "usageCount": 0,
+      "successCount": 0,
+      "createdAt": "2026-06-20T08:31:14.152Z",
+      "updatedAt": "2026-06-20T08:31:14.152Z",
+      "coherency": 0.986
     }
   ]
 }

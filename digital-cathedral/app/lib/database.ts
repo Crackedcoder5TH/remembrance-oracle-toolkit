@@ -8,9 +8,22 @@
  * All exported functions are async (return Promise<Result<...>>).
  */
 import path from "path";
+import { getRecord, storeRecord } from "./valor/remembrance-bridge";
+import {
+  SUBSTRATE_LEADS,
+  substrateInsertLead,
+  substrateGetLeadById,
+  substrateGetLeadsByEmail,
+  substrateGetRecentLeads,
+  substrateGetLeadCount,
+  substrateGetFilteredLeads,
+  substrateGetLeadStats,
+  substrateDeleteLeadById,
+  substrateDeleteLeadByEmail,
+} from "./substrate-leads";
 
 // --- Result type for typed error handling ---
-type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
+export type Result<T, E = Error> = { ok: true; value: T } | { ok: false; error: E };
 
 function Ok<T>(value: T): Result<T, never> {
   return { ok: true, value };
@@ -1298,46 +1311,70 @@ function getAdapter(): DbAdapter {
 // =============================================================================
 
 export async function insertLead(lead: LeadRecord): Promise<Result<{ id: number; leadId: string }, string>> {
+  if (SUBSTRATE_LEADS) return substrateInsertLead(lead);
   return getAdapter().insertLead(lead);
 }
 
 export async function getLeadById(leadId: string): Promise<Result<LeadRecord | null, string>> {
+  if (SUBSTRATE_LEADS) return substrateGetLeadById(leadId);
   return getAdapter().getLeadById(leadId);
 }
 
 export async function getLeadsByEmail(email: string): Promise<Result<LeadRecord[], string>> {
+  if (SUBSTRATE_LEADS) return substrateGetLeadsByEmail(email);
   return getAdapter().getLeadsByEmail(email);
 }
 
 export async function getRecentLeads(limit: number = 50): Promise<Result<LeadRecord[], string>> {
+  if (SUBSTRATE_LEADS) return substrateGetRecentLeads(limit);
   return getAdapter().getRecentLeads(limit);
 }
 
 export async function getLeadCount(): Promise<Result<number, string>> {
+  if (SUBSTRATE_LEADS) return substrateGetLeadCount();
   return getAdapter().getLeadCount();
 }
 
 export async function getFilteredLeads(filters: LeadFilters): Promise<Result<{ leads: LeadRecord[]; total: number }, string>> {
+  if (SUBSTRATE_LEADS) return substrateGetFilteredLeads(filters);
   return getAdapter().getFilteredLeads(filters);
 }
 
 export async function getLeadStats(): Promise<Result<LeadStats, string>> {
+  if (SUBSTRATE_LEADS) return substrateGetLeadStats();
   return getAdapter().getLeadStats();
 }
 
 export async function deleteLeadByEmail(email: string): Promise<Result<{ deleted: number }, string>> {
+  if (SUBSTRATE_LEADS) return substrateDeleteLeadByEmail(email);
   return getAdapter().deleteLeadByEmail(email);
 }
 
 export async function deleteLeadById(leadId: string): Promise<Result<{ deleted: number }, string>> {
+  if (SUBSTRATE_LEADS) return substrateDeleteLeadById(leadId);
   return getAdapter().deleteLeadById(leadId);
 }
 
+// HYBRID: site content (free-form copy — a clean fit) lives in the SUBSTRATE
+// when the field is configured; relational/transactional data stays on the
+// adapter (Postgres). A stable id ('site:<key>') makes the store an upsert by
+// key. Falls back to the adapter when no field URL is set.
+const SUBSTRATE_FIELD = (process.env.REMEMBRANCE_FIELD_URL || "").trim();
+const siteRecordId = (key: string): string => "site:" + key;
+
 export async function getDbSiteContent(key: string): Promise<Result<string | null, string>> {
+  if (SUBSTRATE_FIELD) {
+    const rec = await getRecord(siteRecordId(key));
+    return Ok(rec ? rec.content : null);
+  }
   return getAdapter().getSiteContent(key);
 }
 
 export async function setDbSiteContent(key: string, value: string): Promise<Result<void, string>> {
+  if (SUBSTRATE_FIELD) {
+    const r = await storeRecord({ id: siteRecordId(key), name: siteRecordId(key), content: value, tags: ["site-content"] });
+    return r && r.ok ? Ok(undefined) : Err("substrate store failed (field unreachable?)");
+  }
   return getAdapter().setSiteContent(key, value);
 }
 

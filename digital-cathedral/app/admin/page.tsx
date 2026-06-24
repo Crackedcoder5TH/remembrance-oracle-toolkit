@@ -378,6 +378,34 @@ export default function AdminDashboard() {
             Substrate Console
           </button>
           <button
+            onClick={() => router.push("/admin/patterns")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
+            title="Browse the void archetype library and pull your leads by pattern"
+          >
+            Pattern Library
+          </button>
+          <button
+            onClick={() => router.push("/admin/leads")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
+            title="The full searchable list of every submitted lead"
+          >
+            All Leads
+          </button>
+          <button
+            onClick={() => router.push("/admin/notifications")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
+            title="Choose who gets emailed when a new lead is submitted"
+          >
+            Notifications
+          </button>
+          <button
+            onClick={() => router.push("/admin/outcomes")}
+            className="px-4 py-2 rounded-lg text-sm transition-all bg-teal-cathedral/80 text-white hover:bg-teal-cathedral"
+            title="Record lead outcomes and see close-rate by coherency"
+          >
+            Outcomes
+          </button>
+          <button
             onClick={handleExport}
             className="px-4 py-2 rounded-lg text-sm font-medium transition-all text-teal-cathedral/70 border border-teal-cathedral/20 hover:border-teal-cathedral/40 hover:text-teal-cathedral"
           >

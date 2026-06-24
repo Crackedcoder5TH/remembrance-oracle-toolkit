@@ -1,0 +1,31 @@
+# remembranced — the Remembrance Field as an always-on local service.
+#
+# This is a TEMPLATE. scripts/remembranced-install.sh fills the __PLACEHOLDERS__
+# and installs it as a systemd --user unit (no root). Bound to loopback and gated
+# by a generated FIELD_TOKEN, so it's a private, machine-local coherency/memory
+# field that the `remembrance` CLI, MCP clients, and your apps all plug into.
+
+[Unit]
+Description=Remembrance Field — local coherency/memory daemon (remembranced)
+Documentation=https://github.com/Crackedcoder5TH/remembrance-oracle-toolkit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=__NODE__ __TOOLKIT__/scripts/field-server.js
+# Loopback-only: the field is private to this machine. Durable state on a real
+# path so the substrate survives restarts. Writes require the bearer token.
+Environment=HOST=127.0.0.1
+Environment=PORT=__PORT__
+Environment=REMEMBRANCE_STATE_DIR=__STATE_DIR__
+__TOKEN_LINE__
+Restart=on-failure
+RestartSec=3
+# Light hardening — a user service already runs unprivileged; this just locks the
+# door behind it. Its only writable area is the state dir.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

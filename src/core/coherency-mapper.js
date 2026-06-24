@@ -191,6 +191,8 @@ function mapProjectCoherency(projectPath, opts = {}) {
 
     results.push({
       rel, category, flags,
+      // intrinsic structural coherence — distinct from the resonance-based
+      // neighbour stats below (sameProject/sameCategory derive from voidResonance)
       coherence: r.coherence,
       sameProject: sameProject.length,
       sameCategory: sameCategory.length,

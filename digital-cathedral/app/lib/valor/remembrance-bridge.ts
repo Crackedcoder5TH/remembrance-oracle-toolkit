@@ -24,7 +24,23 @@ const DEFAULT_FIELD_URL = "http://127.0.0.1:7787/mcp";
 const TIMEOUT_MS = 1500;
 
 function fieldUrl(): string {
-  return (process.env.REMEMBRANCE_FIELD_URL || DEFAULT_FIELD_URL).trim();
+  let url = (process.env.REMEMBRANCE_FIELD_URL || DEFAULT_FIELD_URL).trim().replace(/\/+$/, "");
+  // Accept a bare host (e.g. "my-field.up.railway.app") as well as a full URL. A
+  // scheme-less value can't be fetched — fetch() throws "Invalid URL" and the
+  // guard in mcpTool() then bails to null, silently making the field unreachable
+  // (the #1 misconfiguration). Default to https:// so a bare host just works.
+  if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+  // The bridge speaks JSON-RPC to the MCP endpoint. Accept either the base URL
+  // (the interface's convention — REMEMBRANCE_FIELD_URL=https://host) or the full
+  // /mcp endpoint, and normalize to /mcp so a single env value works for both apps.
+  if (!/\/mcp$/i.test(url)) url += "/mcp";
+  return url;
+}
+
+/** The effective MCP endpoint this runtime will call (scheme normalized, /mcp
+ *  appended). Exposed so the field-health probe can show exactly what gets hit. */
+export function fieldEndpoint(): string {
+  return fieldUrl();
 }
 
 function authToken(): string {
@@ -47,17 +63,14 @@ function isLoopbackOrHttps(url: string): boolean {
  * null on any failure (network, timeout, non-2xx, malformed JSON).
  * Never throws.
  */
-async function mcpCall<T = unknown>(action: string, args: Record<string, unknown> = {}): Promise<T | null> {
+async function mcpTool<T = unknown>(toolName: string, args: Record<string, unknown> = {}): Promise<T | null> {
   const url = fieldUrl();
   if (!isLoopbackOrHttps(url) && !url.startsWith("http://")) return null;
   const body = {
     jsonrpc: "2.0",
     id: 1,
     method: "tools/call",
-    params: {
-      name: "field",
-      arguments: { action, ...args },
-    },
+    params: { name: toolName, arguments: args },
   };
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = authToken();
@@ -92,6 +105,11 @@ async function mcpCall<T = unknown>(action: string, args: Record<string, unknown
   }
 }
 
+// Field-dynamics calls use the legacy "field" tool with an action argument.
+async function mcpCall<T = unknown>(action: string, args: Record<string, unknown> = {}): Promise<T | null> {
+  return mcpTool<T>("field", { action, ...args });
+}
+
 // ── Field state read ─────────────────────────────────────────────────
 
 export interface FieldState {
@@ -107,6 +125,108 @@ export interface FieldState {
 
 export async function peekField(opts: { includeSources?: boolean } = {}): Promise<FieldState | null> {
   return mcpCall<FieldState>("state", { includeSources: opts.includeSources === true });
+}
+
+// ── Substrate data store ─────────────────────────────────────────────
+// The cathedral's content lives in the field's legacy store (coherence-scored,
+// resonance-searchable) and is recalled retro-causally. A stable id makes store
+// an upsert-by-key. Best-effort like the rest — null/[] when the field is down.
+
+export interface SubstrateRecord {
+  id: string;
+  name: string;
+  content: string;
+  tags?: string[];
+  coherence?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  /** Free-form metadata. Carries the retro-causal time-ledger + resolved
+   *  outcome once a record's "future" is known (see recordResolvedOutcome). */
+  meta?: Record<string, unknown>;
+}
+
+/** A resolved outcome attached to a record — its "future", made concrete. */
+export interface ResolvedOutcome {
+  /** What actually happened, e.g. "won" | "lost" for a lead. */
+  outcome: string;
+  /** Coherence measured/known at resolution (0–1). */
+  resolvedCoherence: number;
+  /** ISO timestamp the outcome resolved. */
+  resolvedAt: string;
+  reason?: string;
+}
+
+/** Upsert a record. Pass a stable `id` to overwrite by key; omit for a content-hash id. */
+export async function storeRecord(
+  rec: { id?: string; name: string; content: string; tags?: string[]; author?: string; meta?: Record<string, unknown> },
+): Promise<{ ok: boolean; id?: string } | null> {
+  return mcpTool<{ ok: boolean; id?: string }>("legacy", { action: "store", ...rec });
+}
+
+/** Fetch a record by id (null if absent or the field is unreachable). */
+export async function getRecord(id: string): Promise<SubstrateRecord | null> {
+  const r = await mcpTool<{ ok: boolean; legacy: SubstrateRecord | null }>("legacy", { action: "get", id });
+  return r && r.ok && r.legacy ? r.legacy : null;
+}
+
+/** Delete a record by id. Returns the number deleted (0 if absent / field down). */
+export async function deleteRecord(id: string): Promise<number> {
+  const r = await mcpTool<{ ok: boolean; deleted: number }>("legacy", { action: "delete", id });
+  return r && r.ok && typeof r.deleted === "number" ? r.deleted : 0;
+}
+
+/** Retro-causal recall — the resonant slices for a query. */
+export async function recall(query: string, k = 6): Promise<Array<SubstrateRecord & { score: number }>> {
+  const r = await mcpTool<{ ok: boolean; slices: Array<SubstrateRecord & { score: number }> }>("recall", { query, k });
+  return r && r.ok && r.slices ? r.slices : [];
+}
+
+/**
+ * List records newest-first, with optional text search + pagination. Wraps the
+ * legacy store's `list` action ({ q, limit, offset } → { legacies, total }) — the
+ * deterministic, paginated counterpart to `recall`'s resonance retrieval. This
+ * is what a record-backed admin list (e.g. leads) needs beyond store/get.
+ */
+export async function listRecords(
+  opts: { q?: string; tags?: string[]; limit?: number; offset?: number } = {},
+): Promise<{ records: SubstrateRecord[]; total: number }> {
+  const r = await mcpTool<{ ok: boolean; legacies: SubstrateRecord[]; total: number }>(
+    "legacy",
+    { action: "list", q: opts.q, tags: opts.tags, limit: opts.limit ?? 50, offset: opts.offset ?? 0 },
+  );
+  return r && r.ok && Array.isArray(r.legacies)
+    ? { records: r.legacies, total: typeof r.total === "number" ? r.total : r.legacies.length }
+    : { records: [], total: 0 };
+}
+
+/**
+ * Attach a resolved outcome to a record — the write that makes the retro-causal
+ * recall path live. Re-stores the record (store is upsert-by-id) with a
+ * `meta.ledger` (observed_start → observed_end) and `meta.resolved`, so
+ * computeRetrocausalAlignment finally has a real "future" to pull toward.
+ * Best-effort: no-op when the record is absent or the field is unreachable.
+ */
+export async function recordResolvedOutcome(
+  recordId: string,
+  resolution: ResolvedOutcome,
+  observedStart?: string,
+): Promise<{ ok: boolean }> {
+  const existing = await getRecord(recordId);
+  if (!existing) return { ok: false };
+  const start = observedStart || existing.createdAt || resolution.resolvedAt;
+  const tags = Array.from(new Set([...(existing.tags ?? []), "resolved", resolution.outcome]));
+  const r = await storeRecord({
+    id: existing.id,
+    name: existing.name,
+    content: existing.content,
+    tags,
+    meta: {
+      ...(existing.meta ?? {}),
+      resolved: resolution,
+      ledger: { observed_start: start, observed_end: resolution.resolvedAt, cadence: "variable" },
+    },
+  });
+  return { ok: Boolean(r && r.ok) };
 }
 
 // ── Cost / benefit contributions ─────────────────────────────────────

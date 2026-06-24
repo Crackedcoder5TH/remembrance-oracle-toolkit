@@ -268,5 +268,14 @@
     "description": "React hook for IntersectionObserver — lazy loading, infinite scroll",
     "tags": ["react", "hook", "intersection-observer", "lazy-load"],
     "patternType": "utility"
+  },
+  {
+    "name": "ensure-url-scheme",
+    "code": "function ensureHttpScheme(url, fallbackScheme) {\n  if (fallbackScheme === undefined) fallbackScheme = 'https';\n  // A scheme-less value (a bare host like 'api.example.com') is NOT a valid URL:\n  // new URL(raw) -- and therefore fetch(raw) -- throws 'Invalid URL'. Callers that\n  // catch-and-null that error then report the remote unreachable even though the\n  // host is correct and the server is up. Default the scheme so a bare host pasted\n  // into an env var (REMEMBRANCE_FIELD_URL, API_BASE, ...) just works.\n  var raw = String(url == null ? '' : url).trim();\n  if (!raw) return '';\n  var schemed = raw.includes('://') ? raw : fallbackScheme + '://' + raw;\n  while (schemed.endsWith('/')) schemed = schemed.slice(0, -1);\n  return schemed;\n}",
+    "testCode": "var bare = 'cathedralbots-production.up.railway.app';\nif (ensureHttpScheme(bare) !== 'https://' + bare) throw new Error('bare host must gain https://');\nvar threw = false;\ntry { new URL(bare + '/mcp'); } catch (e) { threw = true; }\nif (!threw) throw new Error('scheme-less URL must throw in new URL()/fetch()');\nvar u = new URL(ensureHttpScheme(bare) + '/mcp');\nif (u.protocol !== 'https:' || u.hostname !== bare) throw new Error('normalized URL wrong: ' + u.href);\nif (ensureHttpScheme('http://localhost:7787/') !== 'http://localhost:7787') throw new Error('http preserved + slash trimmed');\nif (ensureHttpScheme('https://x.dev') !== 'https://x.dev') throw new Error('https untouched');\nif (ensureHttpScheme('') !== '' || ensureHttpScheme(null) !== '') throw new Error('empty stays empty');",
+    "language": "javascript",
+    "description": "Default a scheme-less URL to https:// before fetch(). A bare host (e.g. an env var set to 'host.up.railway.app' with no https://) is not a valid URL -- new URL() and fetch() throw 'Invalid URL'. Callers that swallow the error then report the remote unreachable even though the config is set and the server is up: a silent misconfiguration that masquerades as an outage. Normalize by trimming, defaulting the scheme to https when absent, and stripping trailing slashes. Distilled from the Remembrance field bug where REMEMBRANCE_FIELD_URL was the bare Railway host and every field_read/field_contribute silently returned null. The interface field client and the cathedral bridge both apply this.",
+    "tags": ["url", "fetch", "https", "scheme", "url-normalization", "env-config", "silent-failure", "fail-loud", "resilience", "remembrance-field", "invalid-url", "railway", "vercel"],
+    "patternType": "utility"
   }
 ]

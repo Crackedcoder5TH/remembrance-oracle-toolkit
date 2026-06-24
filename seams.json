@@ -1,0 +1,39 @@
+{
+  "name": "remembrance-seams",
+  "version": "1.0.0",
+  "description": "The wiring contract. Each declared seam is a capability that should be CONTRIBUTING to the Remembrance field (a source in the field's per-source histogram). `npm run check:seams` diffs this against the live field: a declared seam with no recent contribution is silent drift — built but not flowing. This turns the ecosystem's #1 risk into a self-checking property.",
+  "defaults": {
+    "maxStaleHours": 168
+  },
+  "seams": [
+    {
+      "id": "lead-admit",
+      "source": "valor:lead-admit",
+      "match": "prefix",
+      "owner": "digital-cathedral",
+      "describe": "Admitted leads contribute to the field through the covenant gate (lead-ledger recordBenefit). Inert = leads stopped flowing or the gate broke silently."
+    },
+    {
+      "id": "lead-reject",
+      "source": "valor:lead-reject",
+      "match": "prefix",
+      "owner": "digital-cathedral",
+      "describe": "Rejected leads register an entropy cost (lead-ledger recordCost)."
+    },
+    {
+      "id": "lead-shape",
+      "source": "valor:lead-shape",
+      "match": "exact",
+      "owner": "digital-cathedral",
+      "maxStaleHours": 336,
+      "describe": "Dual-oracle lead-shape validation (covenant-gate async, validateContribution)."
+    },
+    {
+      "id": "remembrance-ask",
+      "source": "remembrance:ask",
+      "match": "exact",
+      "owner": "remembrance-oracle-toolkit",
+      "describe": "The local recall->librarian->verify->remember loop (the `remembrance` CLI / remembranced)."
+    }
+  ]
+}

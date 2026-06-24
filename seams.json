@@ -50,6 +50,14 @@
       "owner": "remembrance-oracle-toolkit",
       "maxStaleHours": 12,
       "describe": "The meta seam: `check:seams --contribute` feeds the field its own wiring-coherence. If this goes stale, the watcher itself stopped running — the field stays aware of whether it is being watched."
+    },
+    {
+      "id": "seams-proposal",
+      "source": "seams:proposal",
+      "match": "exact",
+      "owner": "remembrance-oracle-toolkit",
+      "maxStaleHours": 720,
+      "describe": "The self-healing proposer: `propose:wire --contribute` finds each gap's nearest wired sibling by resonance and feeds the field a proposal-confidence. Run it (locally / on a schedule) so the field is aware it can propose its own fixes, not just notice gaps."
     }
   ]
 }

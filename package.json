@@ -48,6 +48,7 @@
     "scripts/field-server.js",
     "scripts/remembrance.js",
     "scripts/check-seams.js",
+    "scripts/propose-wire.js",
     "seams.json",
     "types/",
     "seeds/",
@@ -64,6 +65,7 @@
   "scripts": {
     "gaps": "node scripts/ecosystem-diagnostic.js --parent \"$(cd .. && pwd)\"",
     "check:seams": "node scripts/check-seams.js",
+    "propose:wire": "node scripts/propose-wire.js",
     "field": "node -e \"console.log(JSON.stringify(require('./src/core/field-coupling').peekField(),null,1))\"",
     "sweep": "bash scripts/ecosystem-sweep.sh",
     "unwired": "grep -rL 'field-coupling' --include='*.js' src || true",

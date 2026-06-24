@@ -294,6 +294,8 @@ export default function HomePage() {
     );
   }
 
+  const coverageDesc = COVERAGE_OPTIONS.find((o) => o.value === form.coverageInterest)?.description;
+
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
       {/* Veteran Story — First thing visitors see */}
@@ -493,9 +495,10 @@ export default function HomePage() {
 
             <div className="space-y-1">
               <label htmlFor="coverage" className={LABEL_CLASS}>Coverage Interest</label>
-              <select id="coverage" value={form.coverageInterest} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={selectClass(!!errors.coverageInterest)}>
+              <select id="coverage" value={form.coverageInterest} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : (coverageDesc ? "coverage-desc" : undefined)} className={selectClass(!!errors.coverageInterest)}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value} title={opt.description}>{opt.label}</option>)}
               </select>
+              {coverageDesc && <p id="coverage-desc" className="text-xs text-[var(--text-muted)]">{coverageDesc}</p>}
               {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
             </div>
 

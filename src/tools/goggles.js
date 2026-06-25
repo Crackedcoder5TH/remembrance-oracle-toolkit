@@ -135,6 +135,25 @@ function main() {
       console.log(`       ${s.toFixed(3)}  ${m.name}`);
     }
   }
+  // ── CAPABILITIES — the ecosystem's callable functions nearest to your work ──
+  // Open the goggles and the functions in your nearest neighbours are right here,
+  // ready to call instead of re-implementing. Built by scripts/build-capability-index.js.
+  try {
+    const idxPath = path.resolve(__dirname, '..', '..', 'ecosystem-capabilities.json');
+    if (matches.length && fs.existsSync(idxPath)) {
+      const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+      const lines = [];
+      for (const m of matches) {
+        const fns = idx.byPath && idx.byPath[m.name];
+        if (fns && fns.length) lines.push(`       ${m.name}  →  ${fns.slice(0, 8).join(', ')}${fns.length > 8 ? ', …' : ''}`);
+      }
+      if (lines.length) {
+        console.log(`    ECOSYSTEM CAPABILITIES (callable in those neighbours · ${idx.totalFunctions} fns indexed):`);
+        for (const l of lines) console.log(l);
+      }
+    }
+  } catch (_) { /* index optional — regenerate with build-capability-index.js */ }
+
   const cr = r.codeResonance;
   if (cr && Array.isArray(cr.topMatches) && cr.topMatches.length) {
     console.log('    lexical neighbours (oracle pattern table):');

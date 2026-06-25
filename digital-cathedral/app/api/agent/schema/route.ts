@@ -109,7 +109,7 @@ const SCHEMA = {
                   state: { type: "string", description: "2-letter US state code", minLength: 2, maxLength: 2 },
                   coverageInterest: {
                     type: "string",
-                    enum: ["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "not-sure"],
+                    enum: ["mortgage-protection", "final-expense", "income-replacement", "retirement-savings", "guaranteed-income", "legacy", "newborn-milestones", "not-sure"],
                   },
                   veteranStatus: {
                     type: "string",

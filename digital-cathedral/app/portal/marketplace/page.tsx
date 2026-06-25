@@ -24,6 +24,7 @@ const COVERAGE_LABELS: Record<string, string> = {
   "legacy": "Whole Life",
   "retirement-savings": "IUL",
   "guaranteed-income": "Annuity",
+  "newborn-milestones": "Whole Life (Juvenile)",
   "not-sure": "Undecided",
 };
 

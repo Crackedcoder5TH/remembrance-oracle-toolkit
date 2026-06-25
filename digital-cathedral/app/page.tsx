@@ -55,14 +55,15 @@ const US_STATES = [
   { code: "WY", name: "Wyoming" },
 ];
 
-const COVERAGE_OPTIONS = [
+const COVERAGE_OPTIONS: { value: string; label: string; description?: string }[] = [
   { value: "", label: "What do you need protection for?" },
-  { value: "mortgage-protection", label: "Mortgage / Debt Protection" },
-  { value: "final-expense", label: "Final Expense / Burial" },
+  { value: "mortgage-protection", label: "Equity / Debt Protection" },
+  { value: "final-expense", label: "Final Expense" },
   { value: "income-replacement", label: "Income Replacement" },
-  { value: "retirement-savings", label: "Tax-Free Retirement Savings" },
-  { value: "guaranteed-income", label: "Guaranteed Retirement Income" },
+  { value: "retirement-savings", label: "Tax-Free Retirement Savings", description: "Best for healthier clients who want flexibility, tax-free loans, and a death benefit" },
+  { value: "guaranteed-income", label: "Guaranteed Retirement Income", description: "Excellent option for clients with significant health issues who want guaranteed lifetime income they can\u2019t outlive" },
   { value: "legacy", label: "Leave a Legacy" },
+  { value: "newborn-milestones", label: "Newborn / Future Milestones (Wedding, Car, Home, etc.)" },
   { value: "not-sure", label: "Not sure \u2014 help me decide" },
 ];
 
@@ -293,6 +294,8 @@ export default function HomePage() {
     );
   }
 
+  const coverageDesc = COVERAGE_OPTIONS.find((o) => o.value === form.coverageInterest)?.description;
+
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
       {/* Veteran Story — First thing visitors see */}
@@ -492,9 +495,10 @@ export default function HomePage() {
 
             <div className="space-y-1">
               <label htmlFor="coverage" className={LABEL_CLASS}>Coverage Interest</label>
-              <select id="coverage" value={form.coverageInterest} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : undefined} className={selectClass(!!errors.coverageInterest)}>
-                {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              <select id="coverage" value={form.coverageInterest} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : (coverageDesc ? "coverage-desc" : undefined)} className={selectClass(!!errors.coverageInterest)}>
+                {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value} title={opt.description}>{opt.label}</option>)}
               </select>
+              {coverageDesc && <p id="coverage-desc" className="text-xs text-[var(--text-muted)]">{coverageDesc}</p>}
               {errors.coverageInterest && <p id="coverage-error" className="text-crimson-cathedral text-xs" role="alert">{errors.coverageInterest}</p>}
             </div>
 

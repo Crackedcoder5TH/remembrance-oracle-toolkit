@@ -90,6 +90,7 @@ const COVERAGE_CLARITY: Record<string, number> = {
   'legacy': 0.95,
   'retirement-savings': 0.82,
   'guaranteed-income': 0.78,
+  'newborn-milestones': 0.85,
   'not-sure': 0.30,
 };
 

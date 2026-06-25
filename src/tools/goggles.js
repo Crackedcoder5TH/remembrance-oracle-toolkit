@@ -7,8 +7,15 @@
  * Shows TWO DISTINCT signals at once, from a single field-tool read():
  *   FOCUS — the section's intrinsic COHERENCE: does it have coherent structure
  *           (syntax / completeness / consistency / AST), measured from the
- *           content itself. STRUCTURE, not correctness — a well-formed bad file
- *           still scores high.
+ *           content itself.
+ *
+ *           DISCLAIMER — coherence is NOT a coding trust signal whatsoever. It
+ *           measures STRUCTURE in whatever it is pointed at, never correctness.
+ *           A well-formed wrong file scores high; 1+1=3 in clean syntax still
+ *           reads "solid". The goggles are an OVERLAY that shows how a change
+ *           morphs the shape of the codebase — they do not replace knowing
+ *           whether the code is right. You fill in the content; this shows the
+ *           structure. Never trust the number as a verdict on correctness.
  *   META  — PATTERN RESONANCE: how much the section is shaped like the library's
  *           patterns — its nearest patterns ACROSS the entire Void substrate
  *           (cross-file, cross-repo), a consonant/outlier verdict, the lexical
@@ -108,7 +115,10 @@ function main() {
   // ── FOCUS ──
   console.log('  FOCUS  (the section you are editing)');
   console.log(`    coherence   ${bar(r.coherence)} ${(r.coherence).toFixed(3)}  ${structureVerdict(r.coherence)}`);
-  console.log('    (coherence = STRUCTURE, not correctness)');
+  console.log('    ⚠ coherence is NOT a coding trust signal whatsoever. It measures STRUCTURE');
+  console.log('      in whatever it is pointed at — never correctness. A well-formed wrong');
+  console.log('      answer scores high; 1+1=3 wrapped in clean syntax still reads "solid".');
+  console.log('      It is an overlay to see how your change morphs the shape — you judge the content.');
 
   // ── META ──  (pattern resonance — distinct from the FOCUS coherence above)
   console.log('\n  META   (pattern resonance — where it sits in the whole codebase)');

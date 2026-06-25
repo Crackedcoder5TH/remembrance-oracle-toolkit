@@ -98,6 +98,22 @@
       "owner": "Void-Data-Compressor",
       "maxStaleHours": 720,
       "describe": "The compressor's coherency measurement (void:coherency_v3) feeding the field."
+    },
+    {
+      "id": "complexity",
+      "source": "oracle:scoring-analysis-complexity",
+      "match": "prefix",
+      "owner": "remembrance-oracle-toolkit",
+      "maxStaleHours": 720,
+      "describe": "Complexity/simplicity scoring flows to the field (scoring-analysis-complexity + analytics:complexity). Inert = the ecosystem stopped measuring its own complexity — the weakest coherence axis going blind."
+    },
+    {
+      "id": "analytics-complexity",
+      "source": "oracle:analytics:complexity",
+      "match": "exact",
+      "owner": "remembrance-oracle-toolkit",
+      "maxStaleHours": 720,
+      "describe": "Library-wide aggregate simplicity ratio (atomic/composite/architectural mix) contributed by generateAnalytics. Inert = the analytics complexity readout stopped reaching the field."
     }
   ]
 }

@@ -638,43 +638,40 @@ function findDuplicates(oracle, options = {}) {
   const patterns = oracle.patterns.getAll(language ? { language } : {});
   const duplicates = [];
   const fingerprints = new Map();
+  const seenPairs = new Set();
+  const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
   // Phase 1: Exact fingerprint matches
   for (const p of patterns) {
     const fp = codeFingerprint(p.code);
-    if (fingerprints.has(fp)) {
-      const existing = fingerprints.get(fp);
-      duplicates.push({
-        pattern1: { id: existing.id, name: existing.name },
-        pattern2: { id: p.id, name: p.name },
-        similarity: 1.0,
-        type: 'exact',
-      });
-    } else {
-      fingerprints.set(fp, p);
-    }
+    const existing = fingerprints.get(fp);
+    if (!existing) { fingerprints.set(fp, p); continue; }
+    duplicates.push({
+      pattern1: { id: existing.id, name: existing.name },
+      pattern2: { id: p.id, name: p.name },
+      similarity: 1.0,
+      type: 'exact',
+    });
+    seenPairs.add(pairKey(existing.id, p.id));
   }
 
-  // Phase 2: Near-duplicate detection (only if under 500 patterns to avoid O(n^2) blowup)
+  // Phase 2: Near-duplicate detection (skip above 500 patterns to avoid O(n^2) blowup).
+  // Guard clauses keep this flat; seenPairs is an O(1) lookup, so the pair-already-
+  // found check no longer scans `duplicates` inside the double loop (was O(n^3)).
   if (patterns.length <= 500) {
     for (let i = 0; i < patterns.length; i++) {
       for (let j = i + 1; j < patterns.length; j++) {
-        const sim = codeSimilarity(patterns[i].code, patterns[j].code);
-        if (sim >= threshold && sim < 1.0) {
-          // Check it's not already found as exact
-          const alreadyFound = duplicates.some(d =>
-            (d.pattern1.id === patterns[i].id && d.pattern2.id === patterns[j].id) ||
-            (d.pattern1.id === patterns[j].id && d.pattern2.id === patterns[i].id)
-          );
-          if (!alreadyFound) {
-            duplicates.push({
-              pattern1: { id: patterns[i].id, name: patterns[i].name },
-              pattern2: { id: patterns[j].id, name: patterns[j].name },
-              similarity: Math.round(sim * 1000) / 1000,
-              type: 'near-duplicate',
-            });
-          }
-        }
+        const a = patterns[i], b = patterns[j];
+        const sim = codeSimilarity(a.code, b.code);
+        if (sim < threshold || sim >= 1.0) continue;       // not a near-duplicate
+        if (seenPairs.has(pairKey(a.id, b.id))) continue;  // already recorded (exact)
+        seenPairs.add(pairKey(a.id, b.id));
+        duplicates.push({
+          pattern1: { id: a.id, name: a.name },
+          pattern2: { id: b.id, name: b.name },
+          similarity: Math.round(sim * 1000) / 1000,
+          type: 'near-duplicate',
+        });
       }
     }
   }

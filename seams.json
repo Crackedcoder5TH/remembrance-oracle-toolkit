@@ -50,6 +50,54 @@
       "owner": "remembrance-oracle-toolkit",
       "maxStaleHours": 12,
       "describe": "The meta seam: `check:seams --contribute` feeds the field its own wiring-coherence. If this goes stale, the watcher itself stopped running — the field stays aware of whether it is being watched."
+    },
+    {
+      "id": "seams-proposal",
+      "source": "seams:proposal",
+      "match": "exact",
+      "owner": "remembrance-oracle-toolkit",
+      "maxStaleHours": 720,
+      "describe": "The self-healing proposer: `propose:wire --contribute` finds each gap's nearest wired sibling by resonance and feeds the field a proposal-confidence. Run it (locally / on a schedule) so the field is aware it can propose its own fixes, not just notice gaps."
+    },
+    {
+      "id": "covenant-gate",
+      "source": "covenant",
+      "match": "exact",
+      "owner": "remembrance-oracle-toolkit",
+      "maxStaleHours": 720,
+      "describe": "The covenant gate admits/rejects patterns by coherency. Declared from the field's own histogram — it was flowing untracked."
+    },
+    {
+      "id": "falsification",
+      "source": "falsification",
+      "match": "prefix",
+      "owner": "Void-Data-Compressor",
+      "maxStaleHours": 720,
+      "describe": "The external reality-check — phase-randomized null / coherency / entropy falsification. The one seam whose silence means the system stopped testing itself against the world."
+    },
+    {
+      "id": "blockchain-ledger",
+      "source": "blockchain:ledger",
+      "match": "prefix",
+      "owner": "REMEMBRANCE-BLOCKCHAIN",
+      "maxStaleHours": 720,
+      "describe": "The witness ledger — pattern lifecycle events (REGISTER/PROMOTE/HEAL/PUBLISH/ANCHOR/…). The non-local durability spine recording into the field."
+    },
+    {
+      "id": "swarm-consensus",
+      "source": "swarm:consensus",
+      "match": "exact",
+      "owner": "REMEMBRANCE-AGENT-Swarm-",
+      "maxStaleHours": 720,
+      "describe": "Multi-provider swarm consensus contributing to the field."
+    },
+    {
+      "id": "void-coherency",
+      "source": "void:coherency",
+      "match": "prefix",
+      "owner": "Void-Data-Compressor",
+      "maxStaleHours": 720,
+      "describe": "The compressor's coherency measurement (void:coherency_v3) feeding the field."
     }
   ]
 }

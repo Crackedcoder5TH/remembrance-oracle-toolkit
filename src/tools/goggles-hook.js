@@ -224,7 +224,7 @@ const deltaStr = delta === null
 
 const lines = [
   `🥽 goggles · ${base} ${scopeLabel}`,
-  `   coherence ${cohStr}${deltaStr} — intrinsic structure (not correctness)`,
+  `   coherence ${cohStr}${deltaStr} — STRUCTURE only, NOT a correctness/trust signal`,
   `   resonance ${resStr} ${verdict} — fit with the whole ecosystem`,
 ];
 if (near.length) lines.push(`     ↳ nearest by resonance: ${near.join('  |  ')}`);

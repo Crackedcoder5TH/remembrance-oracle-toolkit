@@ -24,9 +24,14 @@ own; set `ORACLE_TOOLKIT=/path/to/remembrance-oracle-toolkit` to override.
 ## Read the output
 
 - **coherence** (FOCUS) — intrinsic STRUCTURE only (syntax / completeness /
-  consistency / AST), *not* correctness. Rough bands: `<0.70` weak, `0.70–0.80`
-  loose, `0.80–0.93` solid, `≥0.93` strong. A low score is a **decompose** hint
-  (one file doing too much), never proof of a bug.
+  consistency / AST). **⚠ This is NOT a coding trust signal whatsoever.** It
+  measures structure in whatever it is pointed at, *never* correctness — a
+  well-formed wrong file scores high (`1+1=3` in clean syntax still reads
+  "solid"). Treat the goggles as an **overlay** that shows how your change morphs
+  the shape of the codebase; you still fill in — and judge — the content. Rough
+  bands: `<0.70` weak, `0.70–0.80` loose, `0.80–0.93` solid, `≥0.93` strong. A
+  low score is a **decompose** hint (one file doing too much), never proof of a
+  bug; a high score is **never** proof of its absence.
 - **resonance** (META) — how much the code is shaped like the library's
   patterns; `CONSONANT` fits, `OUTLIER` is novel. Read the nearest siblings it
   lists before committing — a change here ripples to them.

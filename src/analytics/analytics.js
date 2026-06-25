@@ -17,7 +17,7 @@ function generateAnalytics(oracle) {
   const patterns = oracle.patterns.getAll();
   const entries = oracle.store.getAll();
 
-  return {
+  const report = {
     overview: computeOverview(patterns, entries),
     coherencyDistribution: computeCoherencyDistribution(patterns),
     languageBreakdown: computeLanguageBreakdown(patterns),
@@ -26,6 +26,29 @@ function generateAnalytics(oracle) {
     healthReport: computeHealthReport(patterns),
     recentActivity: computeRecentActivity(patterns, entries),
   };
+
+  // ── LRE field-coupling — reveal the library's aggregate complexity ──
+  // analytics already computes complexityBreakdown and threw it away; the
+  // simplicity ratio it implies is the field's weakest axis. Contribute it so
+  // the ecosystem-wide complexity becomes a live, watchable field signal
+  // (declared as the `complexity` seam in seams.json).
+  contributeComplexity(report.complexityBreakdown);
+
+  return report;
+}
+
+// Derive a 0..1 simplicity coherence from the ordinal complexity tiers
+// (atomic=simplest, composite=middle, architectural=most complex — see
+// inferComplexity in patterns/library.js) and contribute it to the field.
+// Best-effort: an absent field must never break analytics generation.
+function contributeComplexity(breakdown) {
+  try {
+    const total = Object.values(breakdown).reduce((s, n) => s + n, 0);
+    if (!total) return;
+    const simplicity = ((breakdown.atomic || 0) * 1.0 + (breakdown.composite || 0) * 0.5) / total;
+    const { contribute } = require('../core/field-coupling');
+    contribute({ cost: 1, coherence: Math.max(0, Math.min(1, simplicity)), source: 'oracle:analytics:complexity' });
+  } catch (_) { /* field unreachable — analytics still returns its report */ }
 }
 
 function computeOverview(patterns, entries) {

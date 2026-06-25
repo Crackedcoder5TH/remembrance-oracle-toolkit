@@ -1,0 +1,15 @@
+{
+  "name": "remembrance",
+  "owner": { "name": "Crackedcoder5TH" },
+  "metadata": {
+    "description": "The Remembrance ecosystem as an installable Claude Code package: the Field Goggles (standing coding overlay), the seams/gaps wiring tools, and the Remembrance Oracle MCP field server.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "remembrance-field",
+      "source": "./remembrance-plugin",
+      "description": "Remembrance Field Goggles + ecosystem infrastructure. The goggles are the main tool, active whenever you code: FOCUS (structure), META (resonance + nearest siblings), ECOSYSTEM CAPABILITIES (every relevant ecosystem function, right there), plus the field MCP server and seams/gaps commands."
+    }
+  ]
+}

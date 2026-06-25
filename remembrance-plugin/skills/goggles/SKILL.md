@@ -35,6 +35,10 @@ own; set `ORACLE_TOOLKIT=/path/to/remembrance-oracle-toolkit` to override.
 - **resonance** (META) — how much the code is shaped like the library's
   patterns; `CONSONANT` fits, `OUTLIER` is novel. Read the nearest siblings it
   lists before committing — a change here ripples to them.
+- **ECOSYSTEM CAPABILITIES** — the callable functions in those nearest siblings,
+  printed right under them. Every relevant ecosystem function is carried in the
+  goggles, so reach for an existing one before re-implementing
+  (`node scripts/build-capability-index.js` regenerates the index).
 - **meta-debug** — the audit checkers; a `HIGH` finding is a real defect to fix.
   This is the orthogonal correctness axis the other two can't see (a bug can be
   perfectly coherent *and* perfectly consonant).

@@ -30,6 +30,30 @@ export function clearSessionResponse(
 }
 
 /**
+ * Clear several session cookies in one response. The portal and client cookie
+ * families are minted together (register + login set BOTH), so logout must
+ * clear BOTH — otherwise signing out from the dashboard leaves the client
+ * session (which authorizes the purchasing /api/client/* surface) alive, and
+ * vice-versa from the marketplace. Clearing a cookie the browser doesn't hold
+ * is a harmless no-op, so every logout route can safely clear the full set.
+ */
+export function clearSessionsResponse(
+  specs: Array<{ name: string; sameSite: SessionSameSite }>,
+): NextResponse {
+  const response = NextResponse.json({ success: true });
+  for (const { name, sameSite } of specs) {
+    response.cookies.set(name, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite,
+      path: "/",
+      maxAge: 0,
+    });
+  }
+  return response;
+}
+
+/**
  * Cookie options for a session that lasts until the browser is fully closed,
  * then requires a fresh login. We deliberately omit `maxAge`/`expires` so the
  * browser treats it as a session cookie. The signed token's own `exp` still

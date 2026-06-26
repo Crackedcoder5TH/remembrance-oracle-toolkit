@@ -1,6 +1,9 @@
 'use strict';
 
 /**
+ * @oracle-infrastructure — meta-debug self-optimisation state, bounded to the
+ * debug-oracle/field; internal, not user-input-driven.
+ *
  * goggles-learning — the loop that lets the meta-debug self-optimise.
  *
  * The goggles surface audit findings; this feeds them through the quantum

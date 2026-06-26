@@ -41,7 +41,13 @@ jobs:
           let files = [];
           try {
             files = execSync('git diff HEAD~1 HEAD --name-only', { encoding: 'utf-8' })
-              .split('\n').filter(f => /\.(js|jsx|ts|tsx)$/.test(f));
+              .split('\n')
+              .filter(f => /\.(js|jsx|ts|tsx)$/.test(f))
+              // The fractal/atomic covenant audits the ORACLE SUBSTRATE. The
+              // digital-cathedral website (a separate Next.js app) and its e2e
+              // suite are not substrate elements and have their own gates, so
+              // they're out of scope here.
+              .filter(f => !/^(digital-cathedral|e2e)\//.test(f));
           } catch { files = []; }
           let unhealthy = 0;
           const reports = [];

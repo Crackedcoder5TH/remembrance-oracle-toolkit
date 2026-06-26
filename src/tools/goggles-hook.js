@@ -2,6 +2,9 @@
 'use strict';
 
 /**
+ * @oracle-infrastructure — advisory PostToolUse dev hook; read-only scoring,
+ * internal-state-bounded, never user-input-driven.
+ *
  * goggles-hook — PostToolUse adapter for ambient structural meta-awareness.
  *
  * Fires after every Edit|Write|MultiEdit and injects a concise "where this

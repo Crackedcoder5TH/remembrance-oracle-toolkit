@@ -2,6 +2,9 @@
 'use strict';
 
 /**
+ * @oracle-infrastructure — writes the internal ecosystem capability index;
+ * operational tooling, bounded to internal state, not user-input-driven.
+ *
  * build-capability-index — index every exported coding function across the
  * ecosystem, so the goggles can surface the ones relevant to whatever you are
  * editing. "Open the goggles, and the ecosystem's callable functions nearest to

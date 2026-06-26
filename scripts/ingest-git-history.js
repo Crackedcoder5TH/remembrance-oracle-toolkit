@@ -2,6 +2,9 @@
 'use strict';
 
 /**
+ * @oracle-infrastructure — writes the internal git-history field-histogram seed;
+ * operational tooling, bounded to internal state, not user-input-driven.
+ *
  * ingest-git-history — compress the ecosystem's GitHub history into a field
  * histogram via the field-tool read() engine (the same Void fractal encoder the
  * goggles use).

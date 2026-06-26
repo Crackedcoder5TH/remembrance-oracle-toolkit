@@ -2,6 +2,9 @@
 'use strict';
 
 /**
+ * @oracle-infrastructure — read-only developer overlay (structural scoring +
+ * ecosystem capabilities); internal-state-bounded, not user-input-driven.
+ *
  * goggles — structural meta-awareness while you work on a section.
  *
  * Shows TWO DISTINCT signals at once, from a single field-tool read():

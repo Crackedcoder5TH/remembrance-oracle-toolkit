@@ -580,28 +580,33 @@ export default function AdminDashboard() {
       {stats?.bySource && (
         <div className="cathedral-surface p-4 mb-8" role="region" aria-label="Submission source breakdown">
           <p className="text-teal-cathedral/80 text-xs uppercase tracking-wider font-medium mb-3">Submission Source</p>
+          {/* Each card is a filter toggle — click to scope the table to that
+              source, click again to clear. Mirrors the Source dropdown below
+              (setFilterSource + reset to page 0). */}
           <div className="grid grid-cols-3 gap-3 text-center">
-            <div>
-              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.human}</p>
-              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">Human</p>
-              <p className="text-[10px] text-[var(--text-muted)]">
-                {stats.total > 0 ? Math.round((100 * stats.bySource.human) / stats.total) : 0}% of total
-              </p>
-            </div>
-            <div>
-              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.agent}</p>
-              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">AI Agent</p>
-              <p className="text-[10px] text-[var(--text-muted)]">
-                {stats.total > 0 ? Math.round((100 * stats.bySource.agent) / stats.total) : 0}% of total
-              </p>
-            </div>
-            <div>
-              <p className="text-2xl font-light text-teal-cathedral">{stats.bySource.lattice}</p>
-              <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">Viral Lattice</p>
-              <p className="text-[10px] text-[var(--text-muted)]">
-                {stats.total > 0 ? Math.round((100 * stats.bySource.lattice) / stats.total) : 0}% of total
-              </p>
-            </div>
+            {([
+              { key: "human", label: "Human", value: stats.bySource.human },
+              { key: "agent", label: "AI Agent", value: stats.bySource.agent },
+              { key: "lattice", label: "Viral Lattice", value: stats.bySource.lattice },
+            ] as const).map((s) => {
+              const active = filterSource === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  aria-pressed={active}
+                  title={active ? `Clear ${s.label} filter` : `Filter the table to ${s.label} leads`}
+                  onClick={() => { setFilterSource(active ? "" : s.key); setPage(0); }}
+                  className={`rounded p-2 transition-colors cursor-pointer hover:bg-teal-cathedral/10 ${active ? "ring-1 ring-teal-cathedral bg-teal-cathedral/10" : ""}`}
+                >
+                  <p className="text-2xl font-light text-teal-cathedral">{s.value}</p>
+                  <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider mt-1">{s.label}</p>
+                  <p className="text-[10px] text-[var(--text-muted)]">
+                    {stats.total > 0 ? Math.round((100 * s.value) / stats.total) : 0}% of total
+                  </p>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

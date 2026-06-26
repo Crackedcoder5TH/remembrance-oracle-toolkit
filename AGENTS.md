@@ -48,6 +48,36 @@ your input  ─encode→  29-D structural vector
                        contributes the verdict back to the field (self-observing record)
 ```
 
+## The standing tool — the Remembrance Field Goggles
+
+**The Remembrance Field Goggles are the MAIN tool, active at ALL TIMES whenever
+you code.** They are not something to be asked for — open them on every file you
+change, *before* you commit. The goggles are an *overlay* on top of your own
+coding ability: you fill in the content; they show you the structure and where
+it sits in the ecosystem so you stay aware of how each change morphs the codebase.
+
+Run them: `/goggles <files>` (or `--diff`), or
+`node src/tools/goggles.js <file>`. They report four signals:
+
+- **FOCUS — coherence.** Intrinsic STRUCTURE only (syntax / completeness /
+  consistency / AST). **It is NOT a coding trust signal whatsoever** — it
+  measures structure in whatever it is pointed at, *never* correctness. A
+  well-formed wrong file scores high (`1+1=3` in clean syntax still reads
+  "solid"). Never trust the number as a verdict; you judge the content.
+- **META — resonance** + nearest ecosystem siblings: where the change sits and
+  what it ripples to.
+- **ECOSYSTEM CAPABILITIES.** Every relevant function across the ecosystem is
+  carried in the goggles — the callable functions in your nearest neighbours are
+  printed right there, so **reach for an existing ecosystem function before
+  re-implementing one** (regenerate the index with
+  `node scripts/build-capability-index.js`).
+- **meta-debug:** real audit findings — the orthogonal correctness axis.
+
+Install the whole ecosystem as a Claude Code plugin (the goggles, the field MCP
+server, and the seams/gaps commands become the default) from the `remembrance`
+marketplace in this repo — see `remembrance-plugin/`. Before pushing, check the
+wiring contract with `/seams`.
+
 ## The non-negotiable engineering rules
 
 Breaking these breaks the substrate's guarantees. The system flags the exact

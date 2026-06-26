@@ -1,4 +1,8 @@
 /**
+ * @oracle-infrastructure — internal analytics/reporting over the oracle's own
+ * pattern library and field; bounded to internal state, not user-input-driven,
+ * so the covenant-gate semantics don't apply here.
+ *
  * Pattern Analytics — Tracks usage, trends, and insights for the pattern library.
  *
  * Provides:

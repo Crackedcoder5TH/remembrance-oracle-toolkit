@@ -41,3 +41,9 @@ Thumbs.db
 # Lead ledger — append-only JSONL of every admitted lead. Local to the
 # deployment; never checked in. Override location with LEAD_LEDGER_DIR.
 .valor/
+
+# Playwright E2E
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

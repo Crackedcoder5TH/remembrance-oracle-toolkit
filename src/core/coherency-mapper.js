@@ -65,6 +65,69 @@ const DEFAULT_CATEGORIZER = (rel) => {
   return 'other';
 };
 
+/**
+ * Detect the substrate namespace for a project by resonance
+ * self-identification. The Void substrate indexes repos under short
+ * aliases (rmb-blockchain, oracle, claw, …) that rarely match the
+ * directory basename (REMEMBRANCE-BLOCKCHAIN, …) — so guessing the
+ * namespace from the path misclassifies every file as ORPHAN and turns
+ * self-matches into fake 1.0000 "cross-system bridges". Instead: read a
+ * small sample of the project's files against the substrate, find their
+ * exact self-matches (cosine ≥ selfMatchAt with the same basename), and
+ * take the dominant name prefix. The substrate tells us who we are.
+ *
+ * @param {string[]} files       — absolute file paths from the walk
+ * @param {string}   projectPath — project root (for relative names)
+ * @param {object}   [opts]
+ *   sampleSize?:  number = 8    — how many files to read for detection
+ *   selfMatchAt?: number = 0.999 — cosine floor for a self-match
+ *   sourceTag?:   string        — field-coupling source for the reads
+ * @returns {string|null} the detected namespace, or null when no
+ *   prefix reaches two independent self-matches.
+ */
+function detectSubstrateNamespace(files, projectPath, opts = {}) {
+  const sampleSize = opts.sampleSize || 8;
+  const selfMatchAt = opts.selfMatchAt || 0.999;
+  const sourceTag = opts.sourceTag || 'coherency-map:detect-namespace';
+  // Spread the sample across the walk order rather than taking a block,
+  // so one directory can't dominate the vote.
+  const candidates = files.filter(f => /\.(m?[jt]sx?|c[jt]s|py|rs|go|md)$/.test(f));
+  const step = Math.max(1, Math.floor(candidates.length / sampleSize));
+  const sample = [];
+  for (let i = 0; i < candidates.length && sample.length < sampleSize; i += step) {
+    sample.push(candidates[i]);
+  }
+  const votes = {};
+  for (const f of sample) {
+    let content;
+    try { content = fs.readFileSync(f, 'utf8').slice(0, 12000); } catch { continue; }
+    if (content.length < 60) continue;
+    const rel = path.relative(projectPath, f);
+    let r;
+    try {
+      r = ft.read(
+        { content, name: rel, language: _inferLang(rel) },
+        { source: sourceTag, growSubstrate: false, topK: 3 },
+      );
+    } catch { continue; }
+    const matches = (r && r.voidResonance && r.voidResonance.topMatches) || [];
+    for (const m of matches) {
+      const score = m.d4 !== undefined ? m.d4 : (m.score || 0);
+      const name = String(m.name || '');
+      if (score >= selfMatchAt && name.includes('/')
+          && path.basename(name) === path.basename(rel)) {
+        const prefix = name.split('/')[0];
+        votes[prefix] = (votes[prefix] || 0) + 1;
+      }
+    }
+  }
+  const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+  // Two independent self-matches make a quorum; a single hit could be a
+  // genuine cross-repo duplicate (bootstrap scripts, shared docs).
+  if (ranked.length && ranked[0][1] >= 2) return ranked[0][0];
+  return null;
+}
+
 function _walk(dir, opts) {
   const out = [];
   const stack = [dir];
@@ -121,15 +184,22 @@ function _walk(dir, opts) {
  * }}
  */
 function mapProjectCoherency(projectPath, opts = {}) {
-  const namespace = opts.namespace || path.basename(projectPath);
   const categorize = opts.categorize || DEFAULT_CATEGORIZER;
   const topK = opts.topK || 10;
-  const contentCap = opts.contentCap || 12000;
+  // 64k cap: a 12k cap truncated ordinary source files (~24KB) mid-function,
+  // and the broken syntax read as false "weak structure" in the map. Most
+  // real source fits under 64k; the cap now only guards genuinely huge files.
+  const contentCap = opts.contentCap || 64000;
   const duplicateAt = opts.duplicateAt || 0.999;
-  const sourceTag = opts.sourceTag || ('coherency-map:' + namespace + ':read');
 
   const t0 = Date.now();
   const files = _walk(projectPath, opts);
+  // Resolve the substrate namespace: explicit opt, else resonance
+  // self-identification against the substrate, else the basename.
+  const namespace = opts.namespace
+    || detectSubstrateNamespace(files, projectPath, opts)
+    || path.basename(projectPath);
+  const sourceTag = opts.sourceTag || ('coherency-map:' + namespace + ':read');
   const results = [];
   const before = fc.peekField();
 
@@ -250,19 +320,23 @@ function mapProjectCoherency(projectPath, opts = {}) {
   bridges.sort((a, b) => b.score - a.score);
 
   // ── 5. Aggregate field contributions ─────────────────────────
+  // Only readings that are actually about ALIGNMENT go to the field.
+  // Size metrics (files audited, bridge count) and sparse-coverage
+  // artifacts (well-formed ratios when the substrate holds few patterns
+  // for this namespace, so in-repo cousins can't surface within global
+  // topK) previously contributed as coherence and cratered the field
+  // with false "unhealthy" readings on small or under-indexed repos.
+  // "Small" and "under-indexed" are not "misaligned" — they stay in the
+  // report as diagnostics but are not field observations.
   let contributionsCount = 0;
   function ctr(coh, src) {
     try { fc.contribute({ cost: 1.0, coherence: coh, source: src }); contributionsCount++; } catch {}
   }
-  ctr(Math.min(1, results.length / 1000), 'coherency-map:' + namespace + ':files-audited');
-  ctr(1 - buckets.A_components_incoherent.length / Math.max(1, results.length), 'coherency-map:' + namespace + ':components-health');
-  ctr(1 - buckets.B_api_inconsistent.length / Math.max(1, results.length), 'coherency-map:' + namespace + ':api-health');
-  ctr(1 - buckets.C_lib_drift.length / Math.max(1, results.length), 'coherency-map:' + namespace + ':lib-health');
+  const meanCoherence = results.length
+    ? results.reduce((s, r) => s + (r.coherence || 0), 0) / results.length
+    : 0;
+  ctr(meanCoherence, 'coherency-map:' + namespace + ':structural');
   ctr(1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2), 'coherency-map:' + namespace + ':non-duplication');
-  ctr(bridges.length > 0 ? Math.min(1, bridges.length / 100) : 0, 'coherency-map:' + namespace + ':cross-system-bridges');
-  for (const [cat, c] of Object.entries(perCategory)) {
-    ctr(c.wellFormed / Math.max(1, c.n), 'coherency-map:' + namespace + ':category:' + cat + ':well-formed-ratio');
-  }
 
   return {
     project: namespace,
@@ -270,7 +344,14 @@ function mapProjectCoherency(projectPath, opts = {}) {
     timestamp: new Date().toISOString(),
     durationMs: Date.now() - t0,
     filesAudited: results.length,
+    meanCoherence,
     substrateSize: results[0] && results[0].topCousin ? '~46k+ (per FieldTool)' : 'unknown',
+    // Compact per-file readings — the macro lens (goggles MACRO section)
+    // ranks a focused file against these to place it in the whole map.
+    files: results.map(r => ({
+      rel: r.rel, category: r.category, coherence: r.coherence, flags: r.flags,
+      stableHighSameProject: r.stableHighSameProject,
+    })),
     perCategory,
     buckets,
     crossSystemBridges: bridges.slice(0, 30),
@@ -418,6 +499,7 @@ function formatFlow(f) {
 
 module.exports = {
   mapProjectCoherency,
+  detectSubstrateNamespace,
   formatMap,
   coherencyFlow,
   classifyFlow,

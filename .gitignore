@@ -26,3 +26,6 @@ patterns.json
 
 # regenerated CI artifact (codex-ingest.yml)
 ingest-result.json
+
+# Goggles macro-map cache — runtime state, rebuilt by goggles --map.
+.remembrance/goggles-map.json

@@ -27,9 +27,19 @@
  * Coherence and resonance are similar but COMPLETELY DISTINCT — intrinsic
  * structure vs library-fit — and are never collapsed into one number.
  *
+ *   MACRO — the ZOOMED-OUT lens: the whole codebase compressed into a
+ *           coherency map (per-file structural readings, orphans,
+ *           duplicates, cross-system bridges), with the focused section
+ *           placed inside it — its percentile in the repo's coherence
+ *           distribution and its flags in the map. Built by
+ *           `--map <dir>` (cached at <repo>/.remembrance/goggles-map.json)
+ *           and read back on every per-file goggle, so every focused
+ *           read carries the macro view with it.
+ *
  * Usage:
  *   node src/tools/goggles.js <file> [--lines A:B] [--top N]
  *   node src/tools/goggles.js app/api/leads/route.ts --lines 416:470
+ *   node src/tools/goggles.js --map <projectDir>     # build the macro map
  */
 
 const fs = require('node:fs');
@@ -49,14 +59,113 @@ const LANG_BY_EXT = {
 };
 
 function parseArgs(argv) {
-  const out = { file: null, lines: null, top: 7 };
+  const out = { file: null, lines: null, top: 7, map: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--lines') { out.lines = argv[++i]; }
     else if (a === '--top') { out.top = parseInt(argv[++i], 10) || 7; }
+    else if (a === '--map') { out.map = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : process.cwd(); }
     else if (!out.file) { out.file = a; }
   }
   return out;
+}
+
+// ── MACRO lens — the whole codebase, compressed ─────────────────
+
+function findRepoRoot(startDir) {
+  let d = startDir;
+  for (;;) {
+    if (fs.existsSync(path.join(d, '.git'))) return d;
+    const parent = path.dirname(d);
+    if (parent === d) return null;
+    d = parent;
+  }
+}
+
+function mapCachePath(root) {
+  return path.join(root, '.remembrance', 'goggles-map.json');
+}
+
+/** Build the macro map for a project, print it, and cache it. */
+function runMap(dir) {
+  const { mapProjectCoherency, formatMap } = require('../core/coherency-mapper');
+  const root = path.resolve(dir);
+  const m = mapProjectCoherency(root, {});
+  console.log(formatMap(m));
+  const cohs = (m.files || []).map((f) => f.coherence).sort((a, b) => a - b);
+  if (cohs.length) {
+    const median = cohs[Math.floor(cohs.length / 2)];
+    console.log('\nREPO COHERENCE DISTRIBUTION:');
+    console.log('  mean ' + m.meanCoherence.toFixed(3) + ' · median ' + median.toFixed(3)
+      + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3));
+    const weakest = [...(m.files || [])].sort((a, b) => a.coherence - b.coherence).slice(0, 5);
+    console.log('  weakest structure:');
+    for (const f of weakest) console.log('    ' + f.coherence.toFixed(3) + '  ' + f.rel);
+  }
+  const cachePath = mapCachePath(root);
+  try {
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+    fs.writeFileSync(cachePath, JSON.stringify(m));
+    console.log('\nmacro map cached → ' + cachePath);
+    console.log('every per-file goggle in this repo now carries the MACRO section.');
+  } catch (e) {
+    console.error('could not cache map: ' + e.message);
+  }
+}
+
+/**
+ * Print the MACRO section for a focused file: where it sits inside the
+ * cached whole-codebase map. Zoomed-out + zoomed-in in one read.
+ */
+function printMacro(absFile, fileCoherence) {
+  console.log('\n  MACRO  (the whole codebase, compressed)');
+  const root = findRepoRoot(path.dirname(absFile));
+  if (!root) {
+    console.log('    no repo root found for this file — run: goggles --map <projectDir>');
+    return;
+  }
+  const cp = mapCachePath(root);
+  if (!fs.existsSync(cp)) {
+    console.log('    no macro map cached for this repo yet — run: goggles --map ' + root);
+    return;
+  }
+  let m;
+  try { m = JSON.parse(fs.readFileSync(cp, 'utf8')); }
+  catch { console.log('    map cache unreadable — re-run: goggles --map ' + root); return; }
+
+  const ageMin = Math.max(0, Math.round((Date.now() - Date.parse(m.timestamp)) / 60000));
+  const files = m.files || [];
+  console.log(`    map: ${m.project} · ${m.filesAudited} files · built ${ageMin}m ago`);
+
+  if (files.length) {
+    const cohs = files.map((f) => f.coherence).sort((a, b) => a - b);
+    const median = cohs[Math.floor(cohs.length / 2)];
+    const below = cohs.filter((c) => c <= fileCoherence).length;
+    const pct = Math.round((below / cohs.length) * 100);
+    const stance = fileCoherence >= median ? 'at/above repo median' : 'below repo median';
+    console.log(`    repo coherence  ${bar(m.meanCoherence ?? median)} mean ${(m.meanCoherence ?? 0).toFixed(3)} · median ${median.toFixed(3)}`);
+    console.log(`    this section    ${fileCoherence.toFixed(3)} → p${pct} of the repo (${stance})`);
+  }
+
+  const rel = path.relative(root, absFile);
+  const entry = files.find((f) => f.rel === rel);
+  if (entry) {
+    const flags = entry.flags && entry.flags.length ? entry.flags.join(', ') : '—';
+    console.log(`    in map:         ${entry.category} · flags: ${flags} · ${entry.stableHighSameProject ?? 0} stable-high in-repo siblings`);
+  } else {
+    console.log('    in map:         not present — new since the map was built');
+  }
+
+  const orphans = files.filter((f) => f.flags && f.flags.includes('ORPHAN')).length;
+  const dups = (m.buckets && m.buckets.D_duplicate_pairs || []).length;
+  const bridges = (m.crossSystemBridges || []).length;
+  console.log(`    repo-wide:      ${orphans} orphans · ${dups} duplicate pairs · ${bridges} cross-system bridges`);
+
+  try {
+    if (fs.statSync(absFile).mtimeMs > Date.parse(m.timestamp)) {
+      console.log('    ⚠ this file changed after the map was built — re-run --map for a fresh macro read');
+    }
+  } catch { /* stat best-effort */ }
 }
 
 function bar(x, width = 22) {
@@ -86,9 +195,10 @@ function consonanceVerdict(meanTopK, best) {
 }
 
 function main() {
-  const { file, lines, top } = parseArgs(process.argv.slice(2));
+  const { file, lines, top, map } = parseArgs(process.argv.slice(2));
+  if (map) { runMap(map); return; }
   if (!file) {
-    console.error('usage: goggles <file> [--lines A:B] [--top N]');
+    console.error('usage: goggles <file> [--lines A:B] [--top N] | goggles --map <projectDir>');
     process.exit(2);
   }
   const abs = path.resolve(file);
@@ -169,6 +279,9 @@ function main() {
   if (peers.length) {
     console.log(`    live field peers entangled: ${peers.length}`);
   }
+
+  // ── MACRO ──  (zoomed out: this section inside the whole-codebase map)
+  printMacro(abs, r.coherence);
 
   // ── RIPPLE ──
   console.log('\n  RIPPLE');

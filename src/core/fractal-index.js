@@ -274,11 +274,18 @@ class FractalIndex {
     const k = Math.max(1, opts.topK || opts.k || 5);
     const filter = typeof opts.filter === 'function' ? opts.filter : null;
     const n = this._ids.length;
-    if (!qComposed || qComposed.length < COMPOSED_DIM || n === 0) return [];
+    // Generation-tolerant: accept any whole-block query of at least
+    // depth 4 (116-D composed_v1) up to MAX_DEPTH (145-D composed_v2).
+    // The flow contract is d1..d4; d5 is reported when both sides
+    // carry an L5 block, else 0 — the same zero-block convention the
+    // padded store uses.
+    if (!qComposed || qComposed.length < 4 * LAYER_DIM || n === 0) return [];
+    const qDepth = Math.min(MAX_DEPTH, Math.floor(qComposed.length / LAYER_DIM));
+    const qDims = qDepth * LAYER_DIM;
 
     // Query norms at each depth — computed once for the whole scan.
-    const qn = new Float64Array(4);
-    for (let d = 1; d <= MAX_DEPTH; d++) {
+    const qn = new Float64Array(MAX_DEPTH);
+    for (let d = 1; d <= qDepth; d++) {
       let s = 0;
       const lim = d * LAYER_DIM;
       for (let i = 0; i < lim; i++) s += qComposed[i] * qComposed[i];
@@ -291,22 +298,24 @@ class FractalIndex {
     for (let i = 0; i < n; i++) {
       if (filter && !filter(this._ids[i])) continue;
       const p = this._vecs[i];
-      let dot = 0, dot1 = 0, dot2 = 0, dot3 = 0;
-      for (let kk = 0; kk < COMPOSED_DIM; kk++) {
+      let dot = 0, dot1 = 0, dot2 = 0, dot3 = 0, dot4 = 0;
+      for (let kk = 0; kk < qDims; kk++) {
         dot += qComposed[kk] * p[kk];
         if (kk === LAYER_DIM - 1) dot1 = dot;
         else if (kk === 2 * LAYER_DIM - 1) dot2 = dot;
         else if (kk === 3 * LAYER_DIM - 1) dot3 = dot;
+        else if (kk === 4 * LAYER_DIM - 1) dot4 = dot;
       }
       const d1 = (qn[0] && pn[0][i]) ? dot1 / (qn[0] * pn[0][i]) : 0;
       const d2 = (qn[1] && pn[1][i]) ? dot2 / (qn[1] * pn[1][i]) : 0;
       const d3 = (qn[2] && pn[2][i]) ? dot3 / (qn[2] * pn[2][i]) : 0;
-      const d4 = (qn[3] && pn[3][i]) ? dot / (qn[3] * pn[3][i]) : 0;
+      const d4 = (qn[3] && pn[3][i]) ? dot4 / (qn[3] * pn[3][i]) : 0;
+      const d5 = (qDepth >= 5 && qn[4] && pn[4] && pn[4][i]) ? dot / (qn[4] * pn[4][i]) : 0;
       if (top.length < k) {
-        top.push({ id: this._ids[i], d1, d2, d3, d4 });
+        top.push({ id: this._ids[i], d1, d2, d3, d4, d5 });
         top.sort((a, b) => b.d4 - a.d4);
       } else if (d4 > top[k - 1].d4) {
-        top[k - 1] = { id: this._ids[i], d1, d2, d3, d4 };
+        top[k - 1] = { id: this._ids[i], d1, d2, d3, d4, d5 };
         top.sort((a, b) => b.d4 - a.d4);
       }
     }

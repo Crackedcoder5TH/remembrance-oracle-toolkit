@@ -27,7 +27,20 @@ const { toFractalWaveform } = require('./fractal-waveform');
 // and pass the vector to searchVec().
 
 const LAYER_DIM = 29;
-const COMPOSED_DIM = 116;
+// Depth-agnostic since the L5 migration. Signatures are stored zero-
+// padded to MAX_DEPTH blocks: v1 (116-D) and v2 (145-D) coexist in one
+// index — zero-padding is cosine-clean and the composition gate floors
+// zero blocks by salience.
+const MAX_DEPTH = 5;
+const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 145
+const LEGACY_DIM = 116;                        // composed_v1
+
+function _padToMax(vec) {
+  if (!vec || vec.length === 0 || vec.length % LAYER_DIM !== 0 || vec.length > COMPOSED_DIM) return null;
+  const out = new Float64Array(COMPOSED_DIM);
+  for (let i = 0; i < vec.length; i++) out[i] = vec[i];
+  return out;
+}
 
 function _l1Padded(text) {
   const out = new Float64Array(COMPOSED_DIM);
@@ -53,7 +66,7 @@ class FractalIndex {
   constructor() {
     this._ids = [];
     this._vecs = [];
-    this._normsByDepth = [null, null, null, null];
+    this._normsByDepth = new Array(MAX_DEPTH).fill(null);
     this._idIndex = new Map();
   }
 
@@ -61,7 +74,7 @@ class FractalIndex {
 
   memoryBytes() {
     let s = this._ids.length * COMPOSED_DIM * 8;
-    s += this._ids.length * 8 * 4;
+    s += this._ids.length * 8 * MAX_DEPTH;
     for (const id of this._ids) s += id.length * 2;
     return s;
   }
@@ -77,9 +90,10 @@ class FractalIndex {
     this._idIndex = new Map();
     for (const it of items || []) {
       if (!it || it.id == null || !Array.isArray(it.vec)) continue;
-      if (it.vec.length !== COMPOSED_DIM) continue;
-      const v = new Float64Array(COMPOSED_DIM);
-      for (let i = 0; i < COMPOSED_DIM; i++) v[i] = it.vec[i];
+      // Accept composed_v1 (116-D) and composed_v2 (145-D) — v1 is
+      // zero-padded so both generations live in one index.
+      const v = _padToMax(it.vec);
+      if (!v) continue;
       this._idIndex.set(String(it.id), this._ids.length);
       this._ids.push(String(it.id));
       this._vecs.push(v);
@@ -102,10 +116,10 @@ class FractalIndex {
    * push new patterns into a remote field-tool index.
    */
   addVec(id, vec) {
-    if (!vec || vec.length !== COMPOSED_DIM) {
-      throw new Error(`FractalIndex.addVec: expected ${COMPOSED_DIM}-D vector, got ${vec ? vec.length : 'none'}`);
+    const v = _padToMax(vec);
+    if (!v) {
+      throw new Error(`FractalIndex.addVec: expected a whole-block vector of at most ${COMPOSED_DIM} dims, got ${vec ? vec.length : 'none'}`);
     }
-    const v = vec instanceof Float64Array ? vec : Float64Array.from(vec);
     return this._insert(String(id), v);
   }
 
@@ -141,10 +155,10 @@ class FractalIndex {
 
   _rebuildNorms() {
     const n = this._ids.length;
-    for (let d = 0; d < 4; d++) this._normsByDepth[d] = new Float64Array(n);
+    for (let d = 0; d < MAX_DEPTH; d++) this._normsByDepth[d] = new Float64Array(n);
     for (let i = 0; i < n; i++) {
       const v = this._vecs[i];
-      for (let d = 1; d <= 4; d++) {
+      for (let d = 1; d <= MAX_DEPTH; d++) {
         this._normsByDepth[d - 1][i] = _norm(v, d * LAYER_DIM);
       }
     }
@@ -156,7 +170,7 @@ class FractalIndex {
    * and call searchVec().
    */
   search(text, opts = {}) {
-    const depth = Math.max(1, Math.min(4, opts.depth || 1));
+    const depth = Math.max(1, Math.min(MAX_DEPTH, opts.depth || 1));
     return this.searchVec(_l1Padded(text), { ...opts, depth });
   }
 
@@ -167,7 +181,7 @@ class FractalIndex {
    */
   searchVec(qVec, opts = {}) {
     const topK = opts.topK || 10;
-    const depth = Math.max(1, Math.min(4, opts.depth || 4));
+    const depth = Math.max(1, Math.min(MAX_DEPTH, opts.depth || 4));
     const minScore = opts.minScore || 0;
     const dims = depth * LAYER_DIM;
     if (!qVec || qVec.length < dims) return [];
@@ -197,6 +211,8 @@ class FractalIndex {
 
 module.exports = {
   COMPOSED_DIM,
+  LEGACY_DIM,
+  MAX_DEPTH,
   LAYER_DIM,
   FractalIndex,
 };

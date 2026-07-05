@@ -175,7 +175,12 @@ function _structuralDims(code) {
 
   // Token-class fractions — keywords / identifiers / strings / numbers / operators
   const KW = /\b(?:function|const|let|var|class|if|else|for|while|return|throw|try|catch|async|await|def|class|import|from|fn|let|mut|impl|pub|struct|enum|match|use|func|package|interface|public|private|protected)\b/g;
-  const STR = /(['"`])(?:\\.|(?!\1).)*\1/g;
+  // Disjoint alternatives (escape-pair XOR plain non-backslash char) keep
+  // this linear-time. The previous form (?:\\.|(?!\1).)* let a backslash
+  // match either branch, and an unterminated quote (e.g. content truncated
+  // mid-string by a cap) made the engine retry exponentially many parses —
+  // a single 64KB truncated JSON hung the encoder for 25+ minutes.
+  const STR = /(['"`])(?:\\[^\n]|(?!\1)[^\\\n])*\1/g;
   const NUM = /\b\d+(?:\.\d+)?\b/g;
   const OP = /[=+\-*/%<>!&|^~?:]+/g;
   const IDENT = /\b[A-Za-z_$][A-Za-z0-9_$]*\b/g;

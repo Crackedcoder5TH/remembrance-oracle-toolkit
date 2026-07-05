@@ -28,6 +28,7 @@ const { toFractalWaveform } = require('./fractal-waveform');
 const { toLexicalWaveform } = require('./lexical-waveform');
 const { toNumericalWaveform } = require('./numerical-waveform');
 const { toSpectralWaveform } = require('./spectral-waveform');
+const { toRedundancyWaveform } = require('./redundancy-waveform');
 
 const DEFAULT_DEPTH = 2;
 
@@ -70,7 +71,14 @@ const _registry = [
     seed: 'residual L1+L2+L3 missed: WITHIN-numerical-domain confusion (cascade/* weather, crypto, econ all read as one signature at L3 because L3 captures shape statistics not frequency content). L4 extracts FFT-derived energy distribution across 8 log-frequency bins, spectral shape (centroid, spread, flatness, roll-off), multi-lag autocorrelation (lags 2,4,8,16,32), non-stationarity (variance ratio, trend strength, detrended residual, piecewise heterogeneity, largest gap), and spectral domain markers (1/f-noise-likeness, white-noise-likeness, daily and weekly period spikes). Designed to distinguish weather oscillation from crypto random-walk from economic drift from analytical curves.',
     active: true,
   },
-  // L5+ slots reserved.
+  {
+    id: 'L5-redundancy',
+    dims: 29,
+    encode: toRedundancyWaveform,
+    seed: 'residual L1-L4 leave against an EXTERNAL reference: the four-telescope convergence experiment showed gzip NCD (Kolmogorov approximation) sees domain structure better than the depth-4 stack (kNN purity 0.774 vs 0.528, Spearman 0.731). The gap: (1) redundancy character — how much of a pattern is repetition of itself, the one quantity a dictionary compressor is built to measure and no earlier layer asks about; (2) content identity — WHICH tokens, not just what kinds; the stack is deliberately content-blind. L5 imports the compressor as a sensor: deflate-derived redundancy features (whole/halves/internal-NCD/level-spread), n-gram repetition structure, byte entropy, and a 16-bucket hashed vocabulary sketch. First layer designed against an external instrument rather than internal residual. INACTIVE until it proves itself via the convergence loop and the 116-D consumers (Void parity, field-tool round-trip, classifier DIM map) are deliberately migrated — reachable now via composedAtDepth(text, 5). ACTIVATED after the depth-agnostic index migration (both FractalIndex copies zero-pad and clamp to MAX_DEPTH=5) and the partial Void composed_v2 re-encode.',
+    active: true,
+  },
+  // L6+ slots reserved.
 ];
 
 function currentDepth() {

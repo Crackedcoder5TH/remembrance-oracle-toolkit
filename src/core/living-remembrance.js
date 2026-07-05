@@ -90,6 +90,29 @@ const PARAMS = {
     resonanceFamiliar:  0.82,
     resonanceDistinct:  0.70,
   },
+
+  // ── composition — field-gated layer attention (encoder stack) ──
+  // The last dynamic clause of the master equation implemented: the
+  // encoder's layer weights computed from current state at every
+  // comparison instead of static equal-weight concatenation. Same
+  // one-source-of-truth pattern as `goggles` above: consumers read
+  // getEngine().params('composition') and carry a local fallback.
+  // Calibration record: scripts/l5-residual-experiment.cjs and
+  // scripts/backflow-weighting-experiment.cjs (the inverted-ladder
+  // finding + held-out weighting gains that motivated this gate).
+  composition: {
+    floor:      0.10,  // no layer's weight may reach zero — a silenced
+                       // sense stops contributing to verdicts and can
+                       // never re-earn weight. Irreversibility guard.
+    beta:       2.0,   // global-coherence sharpness: exp(beta*(xi-0.5)).
+                       // Confident field concentrates attention;
+                       // uncertain field flattens and explores. The
+                       // equation's exp(beta*xi_global) at this layer.
+    emaAlpha:   0.10,  // reliability update rate — attention drifts,
+                       // never lurches.
+    neutralReliability: 0.5, // prior before the field has seen a layer
+                             // perform — flat, honest start.
+  },
 };
 
 class LivingRemembranceEngine {

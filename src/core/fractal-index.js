@@ -27,22 +27,38 @@ const { toFractalWaveform } = require('../../packages/field-tool/src/fractal-wav
 const { toLexicalWaveform } = require('./lexical-waveform');
 const { toNumericalWaveform } = require('./numerical-waveform');
 const { toSpectralWaveform } = require('./spectral-waveform');
+const { toRedundancyWaveform } = require('./redundancy-waveform');
 
 const LAYER_DIM = 29;
-const COMPOSED_DIM = 116;
+// Depth-agnostic since the L5 migration: vectors are stored zero-padded
+// to MAX_DEPTH blocks. Zero-padding is mathematically clean for cosine
+// (adds nothing to dot products or norms), and the composition gate's
+// salience term floors any zero block automatically — so v1 (116-D) and
+// v2 (145-D) signatures coexist in one index without bias.
+const MAX_DEPTH = 5;
+const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 145
 
 function _compose(text) {
   const out = new Float64Array(COMPOSED_DIM);
-  const l1 = toFractalWaveform(text);
-  const l2 = toLexicalWaveform(text);
-  const l3 = toNumericalWaveform(text);
-  const l4 = toSpectralWaveform(text);
-  for (let i = 0; i < LAYER_DIM; i++) {
-    out[i] = l1[i];
-    out[LAYER_DIM + i] = l2[i];
-    out[2 * LAYER_DIM + i] = l3[i];
-    out[3 * LAYER_DIM + i] = l4[i];
+  const layers = [
+    toFractalWaveform(text), toLexicalWaveform(text), toNumericalWaveform(text),
+    toSpectralWaveform(text), toRedundancyWaveform(text),
+  ];
+  for (let l = 0; l < layers.length; l++) {
+    for (let i = 0; i < LAYER_DIM; i++) out[l * LAYER_DIM + i] = layers[l][i];
   }
+  return out;
+}
+
+/** Zero-pad any whole-block vector (116-D v1, 145-D v2, or a future
+ *  deeper stack truncated) up to COMPOSED_DIM. Returns null when the
+ *  length is not a positive multiple of LAYER_DIM. */
+function _padToMax(vec) {
+  if (!vec || vec.length === 0 || vec.length % LAYER_DIM !== 0) return null;
+  if (vec.length === COMPOSED_DIM) return vec instanceof Float64Array ? vec : Float64Array.from(vec);
+  if (vec.length > COMPOSED_DIM) return null;
+  const out = new Float64Array(COMPOSED_DIM);
+  for (let i = 0; i < vec.length; i++) out[i] = vec[i];
   return out;
 }
 
@@ -80,7 +96,7 @@ class FractalIndex {
     this._ids = [];                              // parallel arrays — packed
     this._vecs = [];                             // Float64Array(116) per pattern
     this._norms = new Float64Array(0);           // precomputed ||p|| per pattern
-    this._normsByDepth = [null, null, null, null]; // ||p|| at depths 1..4
+    this._normsByDepth = new Array(MAX_DEPTH).fill(null); // ||p|| at depths 1..MAX_DEPTH
     this._idIndex = new Map();                   // id → array position
   }
 
@@ -92,7 +108,7 @@ class FractalIndex {
    */
   memoryBytes() {
     let s = this._ids.length * COMPOSED_DIM * 8;     // vectors
-    s += this._ids.length * 8 * 5;                    // 5 norm arrays
+    s += this._ids.length * 8 * (MAX_DEPTH + 1);      // full + per-depth norm arrays
     for (const id of this._ids) s += id.length * 2;   // UTF-16 id strings
     return s;
   }
@@ -103,9 +119,9 @@ class FractalIndex {
    * to SQLite for cold-start rebuild.
    */
   add(id, text) {
-    const vec = this._encode(text);
-    if (vec.length !== COMPOSED_DIM) {
-      throw new Error(`FractalIndex.add: encoder returned ${vec.length}-D vector, expected ${COMPOSED_DIM}`);
+    const vec = _padToMax(this._encode(text));
+    if (!vec) {
+      throw new Error(`FractalIndex.add: encoder must return a whole-block vector of at most ${COMPOSED_DIM} dims (multiple of ${LAYER_DIM})`);
     }
     const existing = this._idIndex.get(id);
     if (existing !== undefined) {
@@ -128,8 +144,8 @@ class FractalIndex {
     this._vecs = [];
     this._idIndex = new Map();
     for (const { id, text, vec } of items) {
-      const v = vec || this._encode(text);
-      if (v.length !== COMPOSED_DIM) continue;
+      const v = _padToMax(vec || this._encode(text));
+      if (!v) continue;
       this._idIndex.set(id, this._ids.length);
       this._ids.push(id);
       this._vecs.push(v);
@@ -157,13 +173,13 @@ class FractalIndex {
   _rebuildNorms() {
     const n = this._ids.length;
     this._norms = new Float64Array(n);
-    for (let d = 0; d < 4; d++) this._normsByDepth[d] = new Float64Array(n);
+    for (let d = 0; d < MAX_DEPTH; d++) this._normsByDepth[d] = new Float64Array(n);
     for (let i = 0; i < n; i++) {
       const v = this._vecs[i];
       this._norms[i] = _norm(v);
       // Precompute partial norms at each depth so depth-aware queries
       // also avoid recomputing ||p|| on the fly.
-      for (let d = 1; d <= 4; d++) {
+      for (let d = 1; d <= MAX_DEPTH; d++) {
         let s = 0;
         const lim = d * LAYER_DIM;
         for (let k = 0; k < lim; k++) s += v[k] * v[k];
@@ -177,7 +193,7 @@ class FractalIndex {
    * @param {string} text          query text — encoded fresh
    * @param {Object} [opts]
    * @param {number} [opts.topK=10]
-   * @param {number} [opts.depth=4]  1..4 — which sub-stack to search.
+   * @param {number} [opts.depth=4]  1..MAX_DEPTH — which sub-stack to search.
    *   Depth 1 (29-D) is fastest and matches field-tool's L1 mode.
    *   Depth 4 (116-D, default) is the full stack and discriminates best.
    * @param {number} [opts.minScore=0]  drop matches below this cosine
@@ -185,7 +201,7 @@ class FractalIndex {
    */
   search(text, opts = {}) {
     const topK = opts.topK || 10;
-    const depth = Math.max(1, Math.min(4, opts.depth || 4));
+    const depth = Math.max(1, Math.min(MAX_DEPTH, opts.depth || 4));
     const minScore = opts.minScore || 0;
     const dims = depth * LAYER_DIM;
 
@@ -227,7 +243,7 @@ class FractalIndex {
     const qVec = this._encode(text);
     const pVec = this._vecs[idx];
     const out = {};
-    for (let d = 1; d <= 4; d++) {
+    for (let d = 1; d <= MAX_DEPTH; d++) {
       const dims = d * LAYER_DIM;
       let qn = 0, pn = 0, dot = 0;
       for (let k = 0; k < dims; k++) {
@@ -258,11 +274,18 @@ class FractalIndex {
     const k = Math.max(1, opts.topK || opts.k || 5);
     const filter = typeof opts.filter === 'function' ? opts.filter : null;
     const n = this._ids.length;
-    if (!qComposed || qComposed.length < COMPOSED_DIM || n === 0) return [];
+    // Generation-tolerant: accept any whole-block query of at least
+    // depth 4 (116-D composed_v1) up to MAX_DEPTH (145-D composed_v2).
+    // The flow contract is d1..d4; d5 is reported when both sides
+    // carry an L5 block, else 0 — the same zero-block convention the
+    // padded store uses.
+    if (!qComposed || qComposed.length < 4 * LAYER_DIM || n === 0) return [];
+    const qDepth = Math.min(MAX_DEPTH, Math.floor(qComposed.length / LAYER_DIM));
+    const qDims = qDepth * LAYER_DIM;
 
     // Query norms at each depth — computed once for the whole scan.
-    const qn = new Float64Array(4);
-    for (let d = 1; d <= 4; d++) {
+    const qn = new Float64Array(MAX_DEPTH);
+    for (let d = 1; d <= qDepth; d++) {
       let s = 0;
       const lim = d * LAYER_DIM;
       for (let i = 0; i < lim; i++) s += qComposed[i] * qComposed[i];
@@ -275,22 +298,24 @@ class FractalIndex {
     for (let i = 0; i < n; i++) {
       if (filter && !filter(this._ids[i])) continue;
       const p = this._vecs[i];
-      let dot = 0, dot1 = 0, dot2 = 0, dot3 = 0;
-      for (let kk = 0; kk < COMPOSED_DIM; kk++) {
+      let dot = 0, dot1 = 0, dot2 = 0, dot3 = 0, dot4 = 0;
+      for (let kk = 0; kk < qDims; kk++) {
         dot += qComposed[kk] * p[kk];
         if (kk === LAYER_DIM - 1) dot1 = dot;
         else if (kk === 2 * LAYER_DIM - 1) dot2 = dot;
         else if (kk === 3 * LAYER_DIM - 1) dot3 = dot;
+        else if (kk === 4 * LAYER_DIM - 1) dot4 = dot;
       }
       const d1 = (qn[0] && pn[0][i]) ? dot1 / (qn[0] * pn[0][i]) : 0;
       const d2 = (qn[1] && pn[1][i]) ? dot2 / (qn[1] * pn[1][i]) : 0;
       const d3 = (qn[2] && pn[2][i]) ? dot3 / (qn[2] * pn[2][i]) : 0;
-      const d4 = (qn[3] && pn[3][i]) ? dot / (qn[3] * pn[3][i]) : 0;
+      const d4 = (qn[3] && pn[3][i]) ? dot4 / (qn[3] * pn[3][i]) : 0;
+      const d5 = (qDepth >= 5 && qn[4] && pn[4] && pn[4][i]) ? dot / (qn[4] * pn[4][i]) : 0;
       if (top.length < k) {
-        top.push({ id: this._ids[i], d1, d2, d3, d4 });
+        top.push({ id: this._ids[i], d1, d2, d3, d4, d5 });
         top.sort((a, b) => b.d4 - a.d4);
       } else if (d4 > top[k - 1].d4) {
-        top[k - 1] = { id: this._ids[i], d1, d2, d3, d4 };
+        top[k - 1] = { id: this._ids[i], d1, d2, d3, d4, d5 };
         top.sort((a, b) => b.d4 - a.d4);
       }
     }

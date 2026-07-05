@@ -25,11 +25,14 @@ const {
   fractalCoherency, fractalCoherencyOf,
 } = require('./fractal-waveform');
 const { COMPOSED_DIM, FractalIndex } = require('./fractal-index');
+const { composed, composedCosine, composedCosineOf } = require('./compose');
 const { Field, DEFAULT_FIELD_URL } = require('./field');
 const { VoidClient, DEFAULT_VOID_URL } = require('./void');
 const { confirm } = require('./prompt');
 
 module.exports = {
+  // Full 5-layer telescope — the standalone instrument (145-D).
+  composed, composedCosine, composedCosineOf,
   // Canonical encoder is the structural fractal version (DIM = 29).
   // `toWaveform`/`coherency`/`coherencyOf` now ARE the fractal versions.
   DIM, toWaveform, coherency, coherencyOf,

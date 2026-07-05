@@ -27,9 +27,19 @@
  * Coherence and resonance are similar but COMPLETELY DISTINCT — intrinsic
  * structure vs library-fit — and are never collapsed into one number.
  *
+ *   MACRO — the ZOOMED-OUT lens: the whole codebase compressed into a
+ *           coherency map (per-file structural readings, orphans,
+ *           duplicates, cross-system bridges), with the focused section
+ *           placed inside it — its percentile in the repo's coherence
+ *           distribution and its flags in the map. Built by
+ *           `--map <dir>` (cached at <repo>/.remembrance/goggles-map.json)
+ *           and read back on every per-file goggle, so every focused
+ *           read carries the macro view with it.
+ *
  * Usage:
  *   node src/tools/goggles.js <file> [--lines A:B] [--top N]
  *   node src/tools/goggles.js app/api/leads/route.ts --lines 416:470
+ *   node src/tools/goggles.js --map <projectDir>     # build the macro map
  */
 
 const fs = require('node:fs');
@@ -49,14 +59,249 @@ const LANG_BY_EXT = {
 };
 
 function parseArgs(argv) {
-  const out = { file: null, lines: null, top: 7 };
+  const out = { file: null, lines: null, top: 7, map: null, deep: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--lines') { out.lines = argv[++i]; }
     else if (a === '--top') { out.top = parseInt(argv[++i], 10) || 7; }
+    else if (a === '--map') { out.map = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : process.cwd(); }
+    else if (a === '--deep') { out.deep = true; }
     else if (!out.file) { out.file = a; }
   }
   return out;
+}
+
+// ── MACRO lens — the whole codebase, compressed ─────────────────
+
+function findRepoRoot(startDir) {
+  let d = startDir;
+  for (;;) {
+    if (fs.existsSync(path.join(d, '.git'))) return d;
+    const parent = path.dirname(d);
+    if (parent === d) return null;
+    d = parent;
+  }
+}
+
+function mapCachePath(root) {
+  return path.join(root, '.remembrance', 'goggles-map.json');
+}
+
+/**
+ * Build the macro map for a project, print it, and cache it.
+ *
+ * Substrate-native by default: the Void already compressed every
+ * ingested file into vectors, so the map is a READ over that
+ * compression (seconds, no re-encoding). --deep forces the live
+ * re-encode path (mapProjectCoherency) — use it for repos the
+ * substrate hasn't ingested, or to add intrinsic per-file coherence
+ * to the map.
+ */
+function runMap(dir, { deep = false } = {}) {
+  const { mapProjectCoherency, mapFromSubstrate, formatMap } = require('../core/coherency-mapper');
+  const root = path.resolve(dir);
+  let m = null;
+  if (!deep) {
+    m = mapFromSubstrate(root, {});
+    if (!m) {
+      console.log('substrate has no vectors for this repo — falling back to the deep (re-encode) path.');
+    }
+  }
+  if (!m) m = mapProjectCoherency(root, {});
+
+  console.log(formatMap(m));
+  if (m.mode === 'substrate') {
+    console.log('\nSUBSTRATE MODE (read from existing compression, nothing re-encoded):');
+    console.log('  substrate: ' + m.substrateSize + ' patterns · map built in ' + (m.durationMs / 1000).toFixed(1) + 's');
+    const cov = m.coverage || {};
+    console.log('  coverage:  ' + cov.indexedFiles + ' indexed of ' + cov.walkedFiles + ' on disk'
+      + ' · ' + cov.unindexedCount + ' unindexed · ' + cov.ghostCount + ' ghosts (indexed, no longer on disk)');
+    if (cov.unindexedCount > 0) {
+      console.log('  unindexed (not yet witnessed by the substrate — run --deep or re-harvest):');
+      for (const u of (cov.unindexed || []).slice(0, 8)) console.log('    ' + u);
+    }
+  }
+  const cohs = (m.files || []).map((f) => f.coherence).filter((c) => typeof c === 'number').sort((a, b) => a - b);
+  if (cohs.length) {
+    const median = cohs[Math.floor(cohs.length / 2)];
+    console.log('\nREPO COHERENCE DISTRIBUTION:');
+    console.log('  mean ' + (m.meanCoherence ?? 0).toFixed(3) + ' · median ' + median.toFixed(3)
+      + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3));
+    const weakest = (m.files || []).filter((f) => typeof f.coherence === 'number')
+      .sort((a, b) => a.coherence - b.coherence).slice(0, 5);
+    console.log('  weakest structure:');
+    for (const f of weakest) console.log('    ' + f.coherence.toFixed(3) + '  ' + f.rel);
+  }
+  const cachePath = mapCachePath(root);
+  try {
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+    fs.writeFileSync(cachePath, JSON.stringify(m));
+    console.log('\nmacro map cached → ' + cachePath);
+    console.log('every per-file goggle in this repo now carries the MACRO section.');
+  } catch (e) {
+    console.error('could not cache map: ' + e.message);
+  }
+}
+
+// One 116-dim sweep computing d1..d4 cosines at the depth checkpoints —
+// same reading the mapper uses (mirrored here so the engine stays
+// runnable even when only the map cache, not the mapper, is at hand).
+function _flowCosines(a, b) {
+  const CHECK = [29, 58, 87, 116];
+  const out = [0, 0, 0, 0];
+  let dot = 0, na = 0, nb = 0, c = 0;
+  const n = Math.min(116, a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a[i] || 0, y = b[i] || 0;
+    dot += x * y; na += x * x; nb += y * y;
+    if (i + 1 === CHECK[c]) {
+      out[c] = (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
+      c++;
+    }
+  }
+  for (; c < 4; c++) out[c] = c > 0 ? out[c - 1] : 0;
+  return out;
+}
+
+function _flowLabel(f) {
+  try { return require('../core/coherency-mapper').classifyFlow({ d1: f[0], d2: f[1], d3: f[2], d4: f[3] }); }
+  catch { return ''; }
+}
+
+function _fmtFlow(f) {
+  return f.map((x) => x.toFixed(2)).join('→');
+}
+
+/**
+ * Print the MACRO section for a focused file: where it sits inside the
+ * cached whole-codebase map. Zoomed-out + zoomed-in in one read.
+ *
+ * @param {string} absFile
+ * @param {number} fileCoherence — FOCUS coherence of the goggled section
+ * @param {string|null} sectionText — when goggling --lines A:B, the
+ *   section's text, so the section can be placed inside the file and
+ *   the file's neighborhood (the lines-in-codebase reading).
+ * @param {string} fullText — the whole file's current content (for the
+ *   substrate-drift reading and as the section's home reference).
+ */
+function printMacro(absFile, fileCoherence, sectionText, fullText) {
+  console.log('\n  MACRO  (the whole codebase, compressed)');
+  const root = findRepoRoot(path.dirname(absFile));
+  if (!root) {
+    console.log('    no repo root found for this file — run: goggles --map <projectDir>');
+    return;
+  }
+  const cp = mapCachePath(root);
+  if (!fs.existsSync(cp)) {
+    console.log('    no macro map cached for this repo yet — run: goggles --map ' + root);
+    return;
+  }
+  let m;
+  try { m = JSON.parse(fs.readFileSync(cp, 'utf8')); }
+  catch { console.log('    map cache unreadable — re-run: goggles --map ' + root); return; }
+
+  const ageMin = Math.max(0, Math.round((Date.now() - Date.parse(m.timestamp)) / 60000));
+  const files = m.files || [];
+  const modeTag = m.mode === 'substrate' ? ' · substrate-read' : '';
+  console.log(`    map: ${m.project} · ${m.filesAudited} files · built ${ageMin}m ago${modeTag}`);
+
+  const cohs = files.map((f) => f.coherence).filter((c) => typeof c === 'number').sort((a, b) => a - b);
+  if (cohs.length) {
+    // Deep-mode map: place this section in the repo's coherence distribution.
+    const median = cohs[Math.floor(cohs.length / 2)];
+    const below = cohs.filter((c) => c <= fileCoherence).length;
+    const pct = Math.round((below / cohs.length) * 100);
+    const stance = fileCoherence >= median ? 'at/above repo median' : 'below repo median';
+    console.log(`    repo coherence  ${bar(m.meanCoherence ?? median)} mean ${(m.meanCoherence ?? 0).toFixed(3)} · median ${median.toFixed(3)}`);
+    console.log(`    this section    ${fileCoherence.toFixed(3)} → p${pct} of the repo (${stance})`);
+  }
+
+  const rel = path.relative(root, absFile);
+  const entry = files.find((f) => f.rel === rel);
+  if (entry) {
+    const flags = entry.flags && entry.flags.length ? entry.flags.join(', ') : '—';
+    console.log(`    in map:         ${entry.category} · flags: ${flags} · ${entry.stableHighSameProject ?? 0} stable-high in-repo siblings`);
+    // The NEIGHBORHOOD — where this file lives inside the codebase:
+    // its nearest in-repo siblings with the depth-flow shape of each bond.
+    if (entry.siblings && entry.siblings.length) {
+      console.log('    neighborhood (nearest in-repo, from the map):');
+      for (const s of entry.siblings.slice(0, 4)) {
+        console.log(`       ${s.d4.toFixed(3)}  ${(s.shape || '').padEnd(12)} ${s.rel}`);
+      }
+    }
+  } else {
+    console.log('    in map:         not present — new since the map was built');
+  }
+
+  const orphans = files.filter((f) => f.flags && f.flags.includes('ORPHAN')).length;
+  const dups = (m.buckets && m.buckets.D_duplicate_pairs || []).length;
+  const bridges = (m.crossSystemBridges || []).length;
+  console.log(`    repo-wide:      ${orphans} orphans · ${dups} duplicate pairs · ${bridges} cross-system bridges`);
+
+  // ── Live depth-flow readings: the working copy vs the substrate's
+  //    memory, and (when goggling --lines) the section vs its home. ──
+  let composedAtDepth = null;
+  try { composedAtDepth = require('../core/encoder-stack').composedAtDepth; } catch { /* engine-only install */ }
+  if (composedAtDepth && fullText) {
+    const liveFileVec = composedAtDepth(fullText, 4);
+
+    // Substrate drift: how far has the working copy moved from what the
+    // substrate last witnessed?
+    try {
+      const { VoidLibrary } = require('../core/void-library');
+      const lib = new VoidLibrary();
+      if (lib.size() > 0 && lib._composed) {
+        const memoryVec = lib._composed.get((m.project || '') + '/' + rel);
+        if (memoryVec) {
+          const f = _flowCosines(liveFileVec, memoryVec);
+          const label = _flowLabel(f);
+          const drifted = Math.min(...f) < 0.98;
+          console.log(`    vs substrate:   ${_fmtFlow(f)}  [${label}]`
+            + (drifted ? ' — working copy has drifted from the substrate memory (re-harvest to re-witness)' : ' — substrate memory is current'));
+        } else {
+          console.log('    vs substrate:   not yet witnessed by the substrate (new file)');
+        }
+      }
+    } catch { /* void library unavailable — skip the drift reading */ }
+
+    // Section-in-file: when goggling --lines, place the LINES inside the
+    // file and the file inside its neighborhood — all zoom levels in one
+    // read. sectionText === null means the whole file was goggled.
+    if (sectionText && sectionText.length >= 60 && sectionText.length < (fullText.length - 30)) {
+      const sectionVec = composedAtDepth(sectionText, 4);
+      const inFile = _flowCosines(sectionVec, liveFileVec);
+      const inFileLabel = _flowLabel(inFile);
+      console.log(`    section-in-file: ${_fmtFlow(inFile)}  [${inFileLabel}]`
+        + (Math.min(...inFile) >= 0.90 ? ' — the section is representative of its file'
+          : inFile[3] >= 0.90 ? ' — deep kinship, different surface (added texture, same structure)'
+          : ' — the section diverges from the file it lives in'));
+      // Does the section pull toward a neighbor more than toward home?
+      if (entry && entry.siblings && entry.siblings.length && composedAtDepth) {
+        try {
+          const { VoidLibrary } = require('../core/void-library');
+          const lib = new VoidLibrary();
+          if (lib.size() > 0 && lib._composed) {
+            let pull = null;
+            for (const s of entry.siblings.slice(0, 4)) {
+              const sv = lib._composed.get((m.project || '') + '/' + s.rel);
+              if (!sv) continue;
+              const f = _flowCosines(sectionVec, sv);
+              if (!pull || f[3] > pull.d4) pull = { rel: s.rel, d4: f[3] };
+            }
+            if (pull && pull.d4 > inFile[3] + 0.02) {
+              console.log(`    section pull:   leans toward ${pull.rel} (${pull.d4.toFixed(3)}) more than its own file (${inFile[3].toFixed(3)}) — consider whether it belongs there`);
+            }
+          }
+        } catch { /* best-effort */ }
+      }
+    }
+  }
+
+  try {
+    if (fs.statSync(absFile).mtimeMs > Date.parse(m.timestamp)) {
+      console.log('    ⚠ this file changed after the map was built — re-run --map for a fresh macro read');
+    }
+  } catch { /* stat best-effort */ }
 }
 
 function bar(x, width = 22) {
@@ -86,21 +331,25 @@ function consonanceVerdict(meanTopK, best) {
 }
 
 function main() {
-  const { file, lines, top } = parseArgs(process.argv.slice(2));
+  const { file, lines, top, map, deep } = parseArgs(process.argv.slice(2));
+  if (map) { runMap(map, { deep }); return; }
   if (!file) {
-    console.error('usage: goggles <file> [--lines A:B] [--top N]');
+    console.error('usage: goggles <file> [--lines A:B] [--top N] | goggles --map <projectDir> [--deep]');
     process.exit(2);
   }
   const abs = path.resolve(file);
   let content;
   try { content = fs.readFileSync(abs, 'utf8'); }
   catch (e) { console.error('cannot read ' + abs + ': ' + e.message); process.exit(1); }
+  const fullText = content; // whole-file text — MACRO's home reference
 
   let section = `${file}`;
+  let sectionText = null; // non-null only when goggling a line range
   if (lines) {
     const [a, b] = lines.split(':').map((n) => parseInt(n, 10));
     const all = content.split('\n');
     content = all.slice(Math.max(0, a - 1), b).join('\n');
+    sectionText = content;
     section = `${file}:${a}-${b}`;
   }
 
@@ -169,6 +418,9 @@ function main() {
   if (peers.length) {
     console.log(`    live field peers entangled: ${peers.length}`);
   }
+
+  // ── MACRO ──  (zoomed out: this section inside the whole-codebase map)
+  printMacro(abs, r.coherence, sectionText, fullText);
 
   // ── RIPPLE ──
   console.log('\n  RIPPLE');

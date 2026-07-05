@@ -1,9 +1,19 @@
 #!/usr/bin/env node
 'use strict';
 // Runner for the `goggles` skill. Locates the remembrance-oracle-toolkit (the
-// goggles engine lives at src/tools/goggles.js there) and runs it on each file,
-// from the toolkit dir so its core requires resolve. Accepts explicit paths or
-// `--diff` to goggle everything changed vs HEAD in the current repo.
+// goggles engine lives at src/tools/goggles.js there) and runs it, from the
+// toolkit dir so its core requires resolve.
+//
+// Modes:
+//   run.mjs --map [dir]       build the MACRO map — substrate-native: read
+//                             from the Void's existing compressed vectors,
+//                             seconds, nothing re-encoded; cached at
+//                             <repo>/.remembrance/goggles-map.json
+//   run.mjs --map [dir] --deep  force the live re-encode path (for repos the
+//                             substrate hasn't ingested, or to add intrinsic
+//                             per-file coherence to the map)
+//   run.mjs <file> [...]      goggle files (FOCUS + META + MACRO per file)
+//   run.mjs --diff            goggle everything changed vs HEAD in this repo
 
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -29,6 +39,21 @@ if (!toolkit) {
 const engine = join(toolkit, 'src/tools/goggles.js');
 
 const argv = process.argv.slice(2);
+
+// MACRO mode — read the whole-codebase coherency map from the substrate's
+// existing compression (or rebuild live with --deep) and cache it.
+if (argv[0] === '--map') {
+  const rest = argv.slice(1).filter((a) => a !== '--deep');
+  const deep = argv.includes('--deep');
+  const dir = resolve(process.cwd(), rest[0] || '.');
+  try {
+    execFileSync('node', [engine, '--map', dir, ...(deep ? ['--deep'] : [])], { cwd: toolkit, stdio: 'inherit' });
+    process.exit(0);
+  } catch (e) {
+    process.exit(e.status || 1);
+  }
+}
+
 let files = [];
 if (argv[0] === '--diff') {
   const out = execFileSync('git', ['diff', '--name-only', '--diff-filter=ACMR', 'HEAD'], { encoding: 'utf8' });
@@ -39,7 +64,7 @@ if (argv[0] === '--diff') {
 }
 
 if (!files.length) {
-  console.error('goggles: no files to read. Pass file paths, or --diff for changed files.');
+  console.error('goggles: no files to read. Pass file paths, --diff for changed files, or --map [dir] for the macro map.');
   process.exit(1);
 }
 

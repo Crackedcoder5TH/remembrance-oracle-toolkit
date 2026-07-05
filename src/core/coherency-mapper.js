@@ -204,7 +204,17 @@ function mapProjectCoherency(projectPath, opts = {}) {
   const before = fc.peekField();
 
   // ── 1. Per-file reads through the canonical protocol ─────────
+  // Progress is reported on stderr (stdout stays the report) so a long
+  // map over a big repo shows where it is — and where it stalls.
+  const onProgress = opts.onProgress || ((i, n, rel, ms) => {
+    if (i % 50 === 0 || ms > 2000) {
+      process.stderr.write(`  [coherency-map] ${i}/${n} ${rel}${ms > 2000 ? ' (slow: ' + ms + 'ms)' : ''}\n`);
+    }
+  });
+  let fileIdx = 0;
   for (const f of files) {
+    fileIdx++;
+    const tFile = Date.now();
     let content;
     try { content = fs.readFileSync(f, 'utf8').slice(0, contentCap); } catch { continue; }
     if (content.length < 60) continue;
@@ -258,6 +268,8 @@ function mapProjectCoherency(projectPath, opts = {}) {
     if (duplicates.length > 0) flags.push('DUPLICATE');
     if (category.startsWith('api/') && stableHighSameCategory.length === 0 && stableHighSameProject.length > 0) flags.push('INCONSISTENT');
     if (stableHighSameProject.length >= 3 && stableHighSameCategory.length >= 1) flags.push('WELL-FORMED');
+
+    try { onProgress(fileIdx, files.length, rel, Date.now() - tFile); } catch { /* progress is best-effort */ }
 
     results.push({
       rel, category, flags,
@@ -361,6 +373,278 @@ function mapProjectCoherency(projectPath, opts = {}) {
   };
 }
 
+// ── Substrate-native map — read the compression, don't rebuild it ───
+//
+// The Void substrate already holds the encoded signature of every
+// ingested file (fractal 29-D + composed_v1 116-D). A coherency map is
+// therefore a READ over existing vectors — pure math, seconds — not a
+// re-encode of the repo. mapProjectCoherency() above (which re-reads
+// every file through the live encoder) remains as the deep/refresh
+// path for repos the substrate hasn't ingested yet.
+
+/**
+ * Detect the substrate namespace with zero encoding: one pass over the
+ * index names, voting for the prefix whose entries' relative paths
+ * coincide with the repo's walked files.
+ *
+ * @param {string[]} rels — repo-relative file paths
+ * @param {Iterable<string>} indexNames — substrate pattern names
+ * @returns {string|null}
+ */
+function namespaceFromIndexNames(rels, indexNames) {
+  const relSet = new Set(rels);
+  const votes = {};
+  for (const name of indexNames) {
+    const i = name.indexOf('/');
+    if (i <= 0) continue;
+    if (relSet.has(name.slice(i + 1))) {
+      const prefix = name.slice(0, i);
+      votes[prefix] = (votes[prefix] || 0) + 1;
+    }
+  }
+  const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+  // Three coinciding paths make a quorum; one or two could be shared
+  // boilerplate (bootstrap scripts, AGENTS.md) living in several repos.
+  if (ranked.length && ranked[0][1] >= 3) return ranked[0][0];
+  return null;
+}
+
+// One pass over 116 dims accumulating partial dot products at the four
+// depth checkpoints (29/58/87/116) — d1..d4 cosines in a single sweep.
+function _flowCosines(a, b) {
+  const CHECK = [29, 58, 87, 116];
+  const out = [0, 0, 0, 0];
+  let dot = 0, na = 0, nb = 0, c = 0;
+  const n = Math.min(116, a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a[i] || 0, y = b[i] || 0;
+    dot += x * y; na += x * x; nb += y * y;
+    if (i + 1 === CHECK[c]) {
+      out[c] = (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
+      c++;
+    }
+  }
+  // Vectors shorter than a checkpoint reuse the deepest reading available.
+  for (; c < 4; c++) out[c] = c > 0 ? out[c - 1] : 0;
+  return out;
+}
+
+/**
+ * Build the macro coherency map from the substrate's existing vectors.
+ *
+ * No file content is read and nothing is encoded (except nothing at
+ * all — even namespace detection is index-name matching). The map is
+ * assembled from what the Void already compressed:
+ *   - orphans / stable-high siblings / flow shapes: in-namespace
+ *     pairwise depth-flow over composed_v1
+ *   - duplicates: min-depth cosine ≥ duplicateAt across all 4 depths
+ *   - cross-system bridges: L1 scan of flagged entries vs the rest of
+ *     the substrate
+ *   - coverage: which repo files the substrate has / hasn't ingested
+ *
+ * Intrinsic per-file coherence is deliberately NOT here — it's a
+ * content property the per-file goggle (FOCUS) computes live. Use
+ * mapProjectCoherency (--deep) when you need it in the map.
+ *
+ * @param {string} projectPath
+ * @param {object} [opts] — namespace?, voidRoot?, duplicateAt?=0.999,
+ *   stableHighAt?=0.90, bridgeAt?=0.99, bridgeScope?='flagged'|'all'
+ * @returns {object|null} same shape as mapProjectCoherency (files[].coherence
+ *   is null), or null when the substrate index is unavailable.
+ */
+function mapFromSubstrate(projectPath, opts = {}) {
+  const t0 = Date.now();
+  const { VoidLibrary } = require('./void-library');
+  const lib = opts.voidLibrary
+    || new VoidLibrary(opts.voidRoot ? { voidRoot: opts.voidRoot } : {});
+  if (lib.size() === 0) return null;
+  const composed = lib._composed;
+  const fractals = lib._fractals;
+  if (!composed || composed.size === 0) return null;
+
+  const categorize = opts.categorize || DEFAULT_CATEGORIZER;
+  const duplicateAt = opts.duplicateAt || 0.999;
+  const stableHighAt = opts.stableHighAt || 0.90;
+  const bridgeAt = opts.bridgeAt || 0.99;
+  const bridgeScope = opts.bridgeScope === 'all' ? 'all' : 'flagged';
+
+  // 1. Repo walk — names only, no content reads.
+  const walked = _walk(projectPath, opts).map(f => path.relative(projectPath, f));
+  const walkedSet = new Set(walked);
+
+  // 2. Namespace: pure index math, resonance detection only as fallback.
+  const namespace = opts.namespace
+    || namespaceFromIndexNames(walked, composed.keys())
+    || path.basename(projectPath);
+
+  // 3. Collect this namespace's entries with their pre-encoded vectors.
+  const prefix = namespace + '/';
+  const entries = [];
+  for (const [name, vec] of composed) {
+    if (name.startsWith(prefix)) {
+      entries.push({ rel: name.slice(prefix.length), name, vec });
+    }
+  }
+  if (entries.length === 0) return null;
+
+  const entryRels = new Set(entries.map(e => e.rel));
+  const unindexed = walked.filter(r => !entryRels.has(r));
+  // Entries whose rel is not a file on disk: either files deleted since
+  // ingestion, or older-vintage pattern-style entries (name:language).
+  // They stay in the sibling pool (a file's duplicate may live there)
+  // but are excluded from the per-file health table — a map of the repo
+  // should count the repo's files, not the substrate's history.
+  const ghosts = entries.filter(e => !walkedSet.has(e.rel)).map(e => e.rel);
+
+  // 4. In-namespace pairwise depth-flow: nearest sibling, stable-high
+  //    count, duplicates. One 116-dim sweep per pair. Flags are
+  //    computed for on-disk files only; the full entry set (including
+  //    ghosts) remains the sibling pool being compared against.
+  const n = entries.length;
+  const results = [];
+  for (let i = 0; i < n; i++) {
+    const e = entries[i];
+    if (!walkedSet.has(e.rel)) continue; // ghost — pool member, not a map row
+    let best = null, bestD4 = -1, stableHigh = 0;
+    const duplicates = [];
+    for (let j = 0; j < n; j++) {
+      if (j === i) continue;
+      const [d1, d2, d3, d4] = _flowCosines(e.vec, entries[j].vec);
+      const shape = classifyFlow({ d1, d2, d3, d4 });
+      if (shape === 'STABLE-HIGH') {
+        stableHigh++;
+        const minDepth = Math.min(d1, d2, d3, d4);
+        if (minDepth >= duplicateAt) {
+          duplicates.push({ name: entries[j].rel, score: d4, minDepth, shape });
+        }
+      }
+      if (d4 > bestD4) { bestD4 = d4; best = { name: entries[j].rel, d4, shape }; }
+    }
+    const category = categorize(e.rel);
+    const flags = [];
+    if (stableHigh === 0) flags.push('ORPHAN');
+    if (duplicates.length > 0) flags.push('DUPLICATE');
+    if (stableHigh >= 3) flags.push('WELL-FORMED');
+    results.push({
+      rel: e.rel, category, flags,
+      coherence: null, // intrinsic coherence is FOCUS's job (live read)
+      stableHighSameProject: stableHigh,
+      nearestSibling: best ? { ...best, score: bestD4 } : null,
+      duplicates,
+      _vecIdx: i,
+    });
+  }
+
+  // 5. Cross-system bridges — two-stage. Stage 1: fast L1 scan for the
+  //    nearest external candidate. Stage 2: confirm with the full
+  //    depth-flow — a bridge must hold at EVERY depth (min-depth ≥
+  //    bridgeAt), because L1 alone saturates on structurally-flat
+  //    content (the known noise floor: a JS util and a stock series can
+  //    read 1.0 at 29-D while diverging completely at depth).
+  //    'flagged' scope (default) scans orphans + duplicates — the files
+  //    whose identity questions the bridges answer; 'all' scans everything.
+  const scan = bridgeScope === 'all'
+    ? results
+    : results.filter(r => r.flags.includes('ORPHAN') || r.flags.includes('DUPLICATE'));
+  const bridges = [];
+  for (const r of scan) {
+    const l1 = fractals.get(prefix + r.rel);
+    const cv = composed.get(prefix + r.rel);
+    if (!l1) continue;
+    let bestName = null, bestScore = -1;
+    for (const [name, vec] of fractals) {
+      if (name.startsWith(prefix)) continue;
+      let dot = 0, na = 0, nb = 0;
+      for (let k = 0; k < 29; k++) {
+        const x = l1[k] || 0, y = vec[k] || 0;
+        dot += x * y; na += x * x; nb += y * y;
+      }
+      const s = (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
+      if (s > bestScore) { bestScore = s; bestName = name; }
+    }
+    if (!bestName || bestScore < bridgeAt) continue;
+    // Stage 2: depth-flow confirmation over composed vectors.
+    const candidate = composed.get(bestName);
+    if (cv && candidate) {
+      const [d1, d2, d3, d4] = _flowCosines(cv, candidate);
+      const minDepth = Math.min(d1, d2, d3, d4);
+      if (minDepth < bridgeAt) continue; // L1 saturation, not a bridge
+      bridges.push({ from: r.rel, to: bestName, score: d4, minDepth });
+      r.topExternal = { name: bestName, score: d4 };
+    } else {
+      // No composed vector to confirm with — report but mark unconfirmed.
+      bridges.push({ from: r.rel, to: bestName, score: bestScore, unconfirmed: true });
+      r.topExternal = { name: bestName, score: bestScore };
+    }
+  }
+  bridges.sort((a, b) => b.score - a.score);
+
+  // 6. Per-category health.
+  const perCategory = {};
+  for (const r of results) {
+    if (!perCategory[r.category]) {
+      perCategory[r.category] = { n: 0, wellFormed: 0, orphan: 0, inconsistent: 0, duplicate: 0 };
+    }
+    const c = perCategory[r.category];
+    c.n++;
+    if (r.flags.includes('WELL-FORMED')) c.wellFormed++;
+    if (r.flags.includes('ORPHAN')) c.orphan++;
+    if (r.flags.includes('DUPLICATE')) c.duplicate++;
+  }
+
+  const buckets = {
+    A_components_incoherent: results.filter(r => r.category === 'components' && !r.flags.includes('WELL-FORMED')),
+    B_api_inconsistent: results.filter(r => r.category.startsWith('api/') && r.flags.includes('INCONSISTENT')),
+    C_lib_drift: results.filter(r => r.category === 'lib' && r.flags.includes('ORPHAN')),
+    D_duplicate_pairs: _dedupePairs(results),
+    E_other_orphans: results.filter(r =>
+      r.flags.includes('ORPHAN')
+      && !['components', 'lib'].includes(r.category)
+      && !r.category.startsWith('api/')
+    ),
+  };
+
+  // 7. Field contribution — only what the vectors honestly witness.
+  let contributionsCount = 0;
+  try {
+    fc.contribute({
+      cost: 1.0,
+      coherence: 1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2),
+      source: 'coherency-map:' + namespace + ':non-duplication',
+    });
+    contributionsCount++;
+  } catch { /* best-effort */ }
+
+  for (const r of results) delete r._vecIdx;
+
+  return {
+    project: namespace,
+    projectPath,
+    mode: 'substrate',
+    timestamp: new Date().toISOString(),
+    durationMs: Date.now() - t0,
+    filesAudited: results.length,
+    meanCoherence: null,
+    substrateSize: composed.size,
+    coverage: {
+      walkedFiles: walked.length,
+      indexedFiles: results.length,
+      unindexed: unindexed.slice(0, 30),
+      unindexedCount: unindexed.length,
+      ghosts: ghosts.slice(0, 30),
+      ghostCount: ghosts.length,
+    },
+    files: results.map(r => ({
+      rel: r.rel, category: r.category, coherence: r.coherence, flags: r.flags,
+      stableHighSameProject: r.stableHighSameProject,
+    })),
+    perCategory,
+    buckets,
+    crossSystemBridges: bridges.slice(0, 30),
+    contributionsCount,
+  };
+}
+
 function _dedupePairs(results) {
   const seen = new Map();
   for (const r of results) {
@@ -393,8 +677,10 @@ function formatMap(m) {
   lines.push('  audited:       ' + m.filesAudited + ' files');
   lines.push('  duration:      ' + (m.durationMs / 1000).toFixed(1) + 's');
   lines.push('  contributions: ' + m.contributionsCount + ' to field');
-  lines.push('  field Δ:       coh ' + (m.fieldStateAfter.coherence - m.fieldStateBefore.coherence).toFixed(4) +
-    '  sources +' + (m.fieldStateAfter.sources - m.fieldStateBefore.sources));
+  if (m.fieldStateAfter && m.fieldStateBefore) {
+    lines.push('  field Δ:       coh ' + (m.fieldStateAfter.coherence - m.fieldStateBefore.coherence).toFixed(4) +
+      '  sources +' + (m.fieldStateAfter.sources - m.fieldStateBefore.sources));
+  }
   lines.push('');
   lines.push('PER-CATEGORY HEALTH:');
   const cats = Object.entries(m.perCategory).sort((a, b) => b[1].n - a[1].n);
@@ -499,6 +785,8 @@ function formatFlow(f) {
 
 module.exports = {
   mapProjectCoherency,
+  mapFromSubstrate,
+  namespaceFromIndexNames,
   detectSubstrateNamespace,
   formatMap,
   coherencyFlow,

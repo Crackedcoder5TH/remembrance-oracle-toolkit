@@ -59,12 +59,13 @@ const LANG_BY_EXT = {
 };
 
 function parseArgs(argv) {
-  const out = { file: null, lines: null, top: 7, map: null };
+  const out = { file: null, lines: null, top: 7, map: null, deep: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--lines') { out.lines = argv[++i]; }
     else if (a === '--top') { out.top = parseInt(argv[++i], 10) || 7; }
     else if (a === '--map') { out.map = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : process.cwd(); }
+    else if (a === '--deep') { out.deep = true; }
     else if (!out.file) { out.file = a; }
   }
   return out;
@@ -86,19 +87,48 @@ function mapCachePath(root) {
   return path.join(root, '.remembrance', 'goggles-map.json');
 }
 
-/** Build the macro map for a project, print it, and cache it. */
-function runMap(dir) {
-  const { mapProjectCoherency, formatMap } = require('../core/coherency-mapper');
+/**
+ * Build the macro map for a project, print it, and cache it.
+ *
+ * Substrate-native by default: the Void already compressed every
+ * ingested file into vectors, so the map is a READ over that
+ * compression (seconds, no re-encoding). --deep forces the live
+ * re-encode path (mapProjectCoherency) — use it for repos the
+ * substrate hasn't ingested, or to add intrinsic per-file coherence
+ * to the map.
+ */
+function runMap(dir, { deep = false } = {}) {
+  const { mapProjectCoherency, mapFromSubstrate, formatMap } = require('../core/coherency-mapper');
   const root = path.resolve(dir);
-  const m = mapProjectCoherency(root, {});
+  let m = null;
+  if (!deep) {
+    m = mapFromSubstrate(root, {});
+    if (!m) {
+      console.log('substrate has no vectors for this repo — falling back to the deep (re-encode) path.');
+    }
+  }
+  if (!m) m = mapProjectCoherency(root, {});
+
   console.log(formatMap(m));
-  const cohs = (m.files || []).map((f) => f.coherence).sort((a, b) => a - b);
+  if (m.mode === 'substrate') {
+    console.log('\nSUBSTRATE MODE (read from existing compression, nothing re-encoded):');
+    console.log('  substrate: ' + m.substrateSize + ' patterns · map built in ' + (m.durationMs / 1000).toFixed(1) + 's');
+    const cov = m.coverage || {};
+    console.log('  coverage:  ' + cov.indexedFiles + ' indexed of ' + cov.walkedFiles + ' on disk'
+      + ' · ' + cov.unindexedCount + ' unindexed · ' + cov.ghostCount + ' ghosts (indexed, no longer on disk)');
+    if (cov.unindexedCount > 0) {
+      console.log('  unindexed (not yet witnessed by the substrate — run --deep or re-harvest):');
+      for (const u of (cov.unindexed || []).slice(0, 8)) console.log('    ' + u);
+    }
+  }
+  const cohs = (m.files || []).map((f) => f.coherence).filter((c) => typeof c === 'number').sort((a, b) => a - b);
   if (cohs.length) {
     const median = cohs[Math.floor(cohs.length / 2)];
     console.log('\nREPO COHERENCE DISTRIBUTION:');
-    console.log('  mean ' + m.meanCoherence.toFixed(3) + ' · median ' + median.toFixed(3)
+    console.log('  mean ' + (m.meanCoherence ?? 0).toFixed(3) + ' · median ' + median.toFixed(3)
       + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3));
-    const weakest = [...(m.files || [])].sort((a, b) => a.coherence - b.coherence).slice(0, 5);
+    const weakest = (m.files || []).filter((f) => typeof f.coherence === 'number')
+      .sort((a, b) => a.coherence - b.coherence).slice(0, 5);
     console.log('  weakest structure:');
     for (const f of weakest) console.log('    ' + f.coherence.toFixed(3) + '  ' + f.rel);
   }
@@ -135,10 +165,12 @@ function printMacro(absFile, fileCoherence) {
 
   const ageMin = Math.max(0, Math.round((Date.now() - Date.parse(m.timestamp)) / 60000));
   const files = m.files || [];
-  console.log(`    map: ${m.project} · ${m.filesAudited} files · built ${ageMin}m ago`);
+  const modeTag = m.mode === 'substrate' ? ' · substrate-read' : '';
+  console.log(`    map: ${m.project} · ${m.filesAudited} files · built ${ageMin}m ago${modeTag}`);
 
-  if (files.length) {
-    const cohs = files.map((f) => f.coherence).sort((a, b) => a - b);
+  const cohs = files.map((f) => f.coherence).filter((c) => typeof c === 'number').sort((a, b) => a - b);
+  if (cohs.length) {
+    // Deep-mode map: place this section in the repo's coherence distribution.
     const median = cohs[Math.floor(cohs.length / 2)];
     const below = cohs.filter((c) => c <= fileCoherence).length;
     const pct = Math.round((below / cohs.length) * 100);
@@ -195,10 +227,10 @@ function consonanceVerdict(meanTopK, best) {
 }
 
 function main() {
-  const { file, lines, top, map } = parseArgs(process.argv.slice(2));
-  if (map) { runMap(map); return; }
+  const { file, lines, top, map, deep } = parseArgs(process.argv.slice(2));
+  if (map) { runMap(map, { deep }); return; }
   if (!file) {
-    console.error('usage: goggles <file> [--lines A:B] [--top N] | goggles --map <projectDir>');
+    console.error('usage: goggles <file> [--lines A:B] [--top N] | goggles --map <projectDir> [--deep]');
     process.exit(2);
   }
   const abs = path.resolve(file);

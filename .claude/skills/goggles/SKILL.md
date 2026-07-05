@@ -22,6 +22,13 @@ From the repo you're working in:
     node .claude/skills/goggles/run.mjs <file> [...]      # 2. focused reads while working
     node .claude/skills/goggles/run.mjs --diff            # 3. changed-vs-HEAD before commit
 
+`--map` is **substrate-native**: the Void already compressed every ingested
+file into vectors, so the map is a read over that existing compression —
+seconds for any repo, nothing re-encoded. Its coverage section also names the
+files the substrate hasn't witnessed yet (your new work). Add `--deep` to
+force the live re-encode path (un-ingested repos, or to add intrinsic
+per-file coherence to the map).
+
 The map is cached at `<repo>/.remembrance/goggles-map.json`; per-file goggles
 read it back automatically and warn when it's stale. The runner finds the
 `remembrance-oracle-toolkit` (the goggles engine) on its own; set

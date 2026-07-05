@@ -5,8 +5,13 @@
 // toolkit dir so its core requires resolve.
 //
 // Modes:
-//   run.mjs --map [dir]       build the MACRO map (whole codebase compressed,
-//                             cached at <repo>/.remembrance/goggles-map.json)
+//   run.mjs --map [dir]       build the MACRO map — substrate-native: read
+//                             from the Void's existing compressed vectors,
+//                             seconds, nothing re-encoded; cached at
+//                             <repo>/.remembrance/goggles-map.json
+//   run.mjs --map [dir] --deep  force the live re-encode path (for repos the
+//                             substrate hasn't ingested, or to add intrinsic
+//                             per-file coherence to the map)
 //   run.mjs <file> [...]      goggle files (FOCUS + META + MACRO per file)
 //   run.mjs --diff            goggle everything changed vs HEAD in this repo
 
@@ -35,11 +40,14 @@ const engine = join(toolkit, 'src/tools/goggles.js');
 
 const argv = process.argv.slice(2);
 
-// MACRO mode — compress the whole codebase into a coherency map and cache it.
+// MACRO mode — read the whole-codebase coherency map from the substrate's
+// existing compression (or rebuild live with --deep) and cache it.
 if (argv[0] === '--map') {
-  const dir = resolve(process.cwd(), argv[1] || '.');
+  const rest = argv.slice(1).filter((a) => a !== '--deep');
+  const deep = argv.includes('--deep');
+  const dir = resolve(process.cwd(), rest[0] || '.');
   try {
-    execFileSync('node', [engine, '--map', dir], { cwd: toolkit, stdio: 'inherit' });
+    execFileSync('node', [engine, '--map', dir, ...(deep ? ['--deep'] : [])], { cwd: toolkit, stdio: 'inherit' });
     process.exit(0);
   } catch (e) {
     process.exit(e.status || 1);

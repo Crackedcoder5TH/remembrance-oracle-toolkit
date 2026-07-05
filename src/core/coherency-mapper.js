@@ -505,8 +505,12 @@ function mapFromSubstrate(projectPath, opts = {}) {
   for (let i = 0; i < n; i++) {
     const e = entries[i];
     if (!walkedSet.has(e.rel)) continue; // ghost — pool member, not a map row
-    let best = null, bestD4 = -1, stableHigh = 0;
+    let stableHigh = 0;
     const duplicates = [];
+    // The file's NEIGHBORHOOD: its top in-repo siblings by full-depth
+    // cosine, each with its flow shape. This is what lets a per-file
+    // goggle show WHERE the file sits in the codebase, not just counts.
+    const siblings = []; // kept sorted desc by d4, capped at 5
     for (let j = 0; j < n; j++) {
       if (j === i) continue;
       const [d1, d2, d3, d4] = _flowCosines(e.vec, entries[j].vec);
@@ -518,7 +522,11 @@ function mapFromSubstrate(projectPath, opts = {}) {
           duplicates.push({ name: entries[j].rel, score: d4, minDepth, shape });
         }
       }
-      if (d4 > bestD4) { bestD4 = d4; best = { name: entries[j].rel, d4, shape }; }
+      if (siblings.length < 5 || d4 > siblings[siblings.length - 1].d4) {
+        siblings.push({ rel: entries[j].rel, d4, shape });
+        siblings.sort((a, b) => b.d4 - a.d4);
+        if (siblings.length > 5) siblings.pop();
+      }
     }
     const category = categorize(e.rel);
     const flags = [];
@@ -529,7 +537,8 @@ function mapFromSubstrate(projectPath, opts = {}) {
       rel: e.rel, category, flags,
       coherence: null, // intrinsic coherence is FOCUS's job (live read)
       stableHighSameProject: stableHigh,
-      nearestSibling: best ? { ...best, score: bestD4 } : null,
+      nearestSibling: siblings[0] ? { name: siblings[0].rel, d4: siblings[0].d4, shape: siblings[0].shape, score: siblings[0].d4 } : null,
+      siblings,
       duplicates,
       _vecIdx: i,
     });
@@ -637,6 +646,7 @@ function mapFromSubstrate(projectPath, opts = {}) {
     files: results.map(r => ({
       rel: r.rel, category: r.category, coherence: r.coherence, flags: r.flags,
       stableHighSameProject: r.stableHighSameProject,
+      siblings: r.siblings, // the file's in-repo neighborhood (top 5 + shapes)
     })),
     perCategory,
     buckets,

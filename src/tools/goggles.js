@@ -143,11 +143,48 @@ function runMap(dir, { deep = false } = {}) {
   }
 }
 
+// One 116-dim sweep computing d1..d4 cosines at the depth checkpoints —
+// same reading the mapper uses (mirrored here so the engine stays
+// runnable even when only the map cache, not the mapper, is at hand).
+function _flowCosines(a, b) {
+  const CHECK = [29, 58, 87, 116];
+  const out = [0, 0, 0, 0];
+  let dot = 0, na = 0, nb = 0, c = 0;
+  const n = Math.min(116, a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    const x = a[i] || 0, y = b[i] || 0;
+    dot += x * y; na += x * x; nb += y * y;
+    if (i + 1 === CHECK[c]) {
+      out[c] = (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
+      c++;
+    }
+  }
+  for (; c < 4; c++) out[c] = c > 0 ? out[c - 1] : 0;
+  return out;
+}
+
+function _flowLabel(f) {
+  try { return require('../core/coherency-mapper').classifyFlow({ d1: f[0], d2: f[1], d3: f[2], d4: f[3] }); }
+  catch { return ''; }
+}
+
+function _fmtFlow(f) {
+  return f.map((x) => x.toFixed(2)).join('→');
+}
+
 /**
  * Print the MACRO section for a focused file: where it sits inside the
  * cached whole-codebase map. Zoomed-out + zoomed-in in one read.
+ *
+ * @param {string} absFile
+ * @param {number} fileCoherence — FOCUS coherence of the goggled section
+ * @param {string|null} sectionText — when goggling --lines A:B, the
+ *   section's text, so the section can be placed inside the file and
+ *   the file's neighborhood (the lines-in-codebase reading).
+ * @param {string} fullText — the whole file's current content (for the
+ *   substrate-drift reading and as the section's home reference).
  */
-function printMacro(absFile, fileCoherence) {
+function printMacro(absFile, fileCoherence, sectionText, fullText) {
   console.log('\n  MACRO  (the whole codebase, compressed)');
   const root = findRepoRoot(path.dirname(absFile));
   if (!root) {
@@ -184,6 +221,14 @@ function printMacro(absFile, fileCoherence) {
   if (entry) {
     const flags = entry.flags && entry.flags.length ? entry.flags.join(', ') : '—';
     console.log(`    in map:         ${entry.category} · flags: ${flags} · ${entry.stableHighSameProject ?? 0} stable-high in-repo siblings`);
+    // The NEIGHBORHOOD — where this file lives inside the codebase:
+    // its nearest in-repo siblings with the depth-flow shape of each bond.
+    if (entry.siblings && entry.siblings.length) {
+      console.log('    neighborhood (nearest in-repo, from the map):');
+      for (const s of entry.siblings.slice(0, 4)) {
+        console.log(`       ${s.d4.toFixed(3)}  ${(s.shape || '').padEnd(12)} ${s.rel}`);
+      }
+    }
   } else {
     console.log('    in map:         not present — new since the map was built');
   }
@@ -192,6 +237,65 @@ function printMacro(absFile, fileCoherence) {
   const dups = (m.buckets && m.buckets.D_duplicate_pairs || []).length;
   const bridges = (m.crossSystemBridges || []).length;
   console.log(`    repo-wide:      ${orphans} orphans · ${dups} duplicate pairs · ${bridges} cross-system bridges`);
+
+  // ── Live depth-flow readings: the working copy vs the substrate's
+  //    memory, and (when goggling --lines) the section vs its home. ──
+  let composedAtDepth = null;
+  try { composedAtDepth = require('../core/encoder-stack').composedAtDepth; } catch { /* engine-only install */ }
+  if (composedAtDepth && fullText) {
+    const liveFileVec = composedAtDepth(fullText, 4);
+
+    // Substrate drift: how far has the working copy moved from what the
+    // substrate last witnessed?
+    try {
+      const { VoidLibrary } = require('../core/void-library');
+      const lib = new VoidLibrary();
+      if (lib.size() > 0 && lib._composed) {
+        const memoryVec = lib._composed.get((m.project || '') + '/' + rel);
+        if (memoryVec) {
+          const f = _flowCosines(liveFileVec, memoryVec);
+          const label = _flowLabel(f);
+          const drifted = Math.min(...f) < 0.98;
+          console.log(`    vs substrate:   ${_fmtFlow(f)}  [${label}]`
+            + (drifted ? ' — working copy has drifted from the substrate memory (re-harvest to re-witness)' : ' — substrate memory is current'));
+        } else {
+          console.log('    vs substrate:   not yet witnessed by the substrate (new file)');
+        }
+      }
+    } catch { /* void library unavailable — skip the drift reading */ }
+
+    // Section-in-file: when goggling --lines, place the LINES inside the
+    // file and the file inside its neighborhood — all zoom levels in one
+    // read. sectionText === null means the whole file was goggled.
+    if (sectionText && sectionText.length >= 60 && sectionText.length < (fullText.length - 30)) {
+      const sectionVec = composedAtDepth(sectionText, 4);
+      const inFile = _flowCosines(sectionVec, liveFileVec);
+      const inFileLabel = _flowLabel(inFile);
+      console.log(`    section-in-file: ${_fmtFlow(inFile)}  [${inFileLabel}]`
+        + (Math.min(...inFile) >= 0.90 ? ' — the section is representative of its file'
+          : inFile[3] >= 0.90 ? ' — deep kinship, different surface (added texture, same structure)'
+          : ' — the section diverges from the file it lives in'));
+      // Does the section pull toward a neighbor more than toward home?
+      if (entry && entry.siblings && entry.siblings.length && composedAtDepth) {
+        try {
+          const { VoidLibrary } = require('../core/void-library');
+          const lib = new VoidLibrary();
+          if (lib.size() > 0 && lib._composed) {
+            let pull = null;
+            for (const s of entry.siblings.slice(0, 4)) {
+              const sv = lib._composed.get((m.project || '') + '/' + s.rel);
+              if (!sv) continue;
+              const f = _flowCosines(sectionVec, sv);
+              if (!pull || f[3] > pull.d4) pull = { rel: s.rel, d4: f[3] };
+            }
+            if (pull && pull.d4 > inFile[3] + 0.02) {
+              console.log(`    section pull:   leans toward ${pull.rel} (${pull.d4.toFixed(3)}) more than its own file (${inFile[3].toFixed(3)}) — consider whether it belongs there`);
+            }
+          }
+        } catch { /* best-effort */ }
+      }
+    }
+  }
 
   try {
     if (fs.statSync(absFile).mtimeMs > Date.parse(m.timestamp)) {
@@ -237,12 +341,15 @@ function main() {
   let content;
   try { content = fs.readFileSync(abs, 'utf8'); }
   catch (e) { console.error('cannot read ' + abs + ': ' + e.message); process.exit(1); }
+  const fullText = content; // whole-file text — MACRO's home reference
 
   let section = `${file}`;
+  let sectionText = null; // non-null only when goggling a line range
   if (lines) {
     const [a, b] = lines.split(':').map((n) => parseInt(n, 10));
     const all = content.split('\n');
     content = all.slice(Math.max(0, a - 1), b).join('\n');
+    sectionText = content;
     section = `${file}:${a}-${b}`;
   }
 
@@ -313,7 +420,7 @@ function main() {
   }
 
   // ── MACRO ──  (zoomed out: this section inside the whole-codebase map)
-  printMacro(abs, r.coherence);
+  printMacro(abs, r.coherence, sectionText, fullText);
 
   // ── RIPPLE ──
   console.log('\n  RIPPLE');

@@ -172,6 +172,99 @@ function _fmtFlow(f) {
   return f.map((x) => x.toFixed(2)).join('→');
 }
 
+// ── META-DEBUG — the orthogonal correctness axis ────────────────────
+// Runs the toolkit's audit checkers on the goggled file and feeds the
+// findings through the goggles-learning loop (debug-oracle amplitudes:
+// fixed findings reinforce, dismissed ones decay and self-suppress,
+// proven fixes promote into the shared void pattern library). This is
+// the signal that catches a real defect — tainted exec, eval on input,
+// an off-by-one — that reads CLEAN on coherence and resonance.
+function runMetaDebug(absFile, fullText, sectionRange, language) {
+  let audit = null;
+  try { audit = require('../audit/ast-checkers'); }
+  catch (_) { try { audit = require('../audit/static-checkers'); } catch (_) { /* none */ } }
+  if (!audit || typeof audit.auditCode !== 'function') return null;
+
+  let findings = [];
+  try {
+    findings = (audit.auditCode(fullText, { filePath: absFile }) || {}).findings || [];
+  } catch (_) { return null; }
+
+  const high = findings.filter((f) => f.severity === 'high');
+  const medium = findings.filter((f) => f.severity === 'medium');
+
+  // Learning loop: high findings go through the debug-oracle so the
+  // field learns which classes matter. surface = what survives learned
+  // suppression (false-positive classes decay out on their own).
+  let surfaced = high;
+  let suppressed = 0;
+  let resolved = 0;
+  try {
+    const learning = require('../debug/goggles-learning');
+    const out = learning.processFindings({ filePath: absFile, findings: high, content: fullText, language });
+    if (out && Array.isArray(out.surface)) {
+      surfaced = out.surface;
+      suppressed = out.suppressed || 0;
+      resolved = out.resolved || 0;
+    }
+  } catch (_) { /* learning optional — surface everything */ }
+
+  console.log('\n  META-DEBUG  (audit checkers + learning loop — correctness axis)');
+  if (!surfaced.length && !medium.length) {
+    console.log('    clean — no high/medium findings'
+      + (suppressed ? ` · ${suppressed} learned-noise suppressed` : '')
+      + (resolved ? ` · ${resolved} prior finding(s) resolved by your edits (reinforced in the field)` : ''));
+  } else {
+    const inSection = (f) => !sectionRange || (f.line >= sectionRange[0] && f.line <= sectionRange[1]);
+    for (const f of surfaced.slice(0, 6)) {
+      const mark = inSection(f) ? '🛑' : '·';
+      console.log(`    ${mark} [${f.severity}/${f.bugClass}] L${f.line}: ${(f.reality || f.message || f.assumption || '').slice(0, 100)}`);
+      if (f.suggestion) console.log(`         → fix: ${String(f.suggestion).slice(0, 100)}`);
+    }
+    if (surfaced.length > 6) console.log(`    …and ${surfaced.length - 6} more high finding(s)`);
+    if (medium.length) console.log(`    medium: ${medium.length} finding(s) (goggle with the audit tool for the list)`);
+    if (suppressed) console.log(`    learned-noise suppressed: ${suppressed}`);
+    if (resolved) console.log(`    resolved since last read: ${resolved} (reinforced in the field)`);
+  }
+  return { high: surfaced.length, medium: medium.length, suppressed, resolved };
+}
+
+// ── Reading history — how the edits changed everything ─────────────
+// Every goggle read persists its numbers; the next read of the same
+// file prints the delta. This is the longitudinal lens: not just where
+// the code sits, but which direction your edits are moving it.
+function readingsPath(root) {
+  return path.join(root, '.remembrance', 'goggles-readings.json');
+}
+
+function loadReadings(root) {
+  try { return JSON.parse(fs.readFileSync(readingsPath(root), 'utf8')); } catch (_) { return {}; }
+}
+
+function printAndRecordDelta(root, rel, current) {
+  const all = loadReadings(root);
+  const prev = all[rel];
+  if (prev) {
+    const dc = current.coherence - prev.coherence;
+    const dr = current.resonance - prev.resonance;
+    const df = (current.findingsHigh ?? 0) - (prev.findingsHigh ?? 0);
+    const agoMin = Math.max(0, Math.round((Date.now() - prev.at) / 60000));
+    const fmt = (d) => `${d >= 0 ? '+' : ''}${d.toFixed(3)}`;
+    console.log('\n  Δ SINCE LAST READ  (' + agoMin + 'm ago — what your edits did)');
+    console.log(`    coherence ${fmt(dc)} · resonance ${fmt(dr)}`
+      + (df !== 0 ? ` · high findings ${prev.findingsHigh ?? 0}→${current.findingsHigh ?? 0}` : '')
+      + (Math.abs(dc) < 0.005 && Math.abs(dr) < 0.005 && df === 0 ? ' — shape held steady' :
+         dc < -0.05 ? ' — ⚠ this edit weakened the structure' :
+         df < 0 ? ' — defects fixed, the field learned from it' :
+         df > 0 ? ' — ⚠ new high finding(s) since last read' : ''));
+  }
+  all[rel] = { ...current, at: Date.now() };
+  try {
+    fs.mkdirSync(path.dirname(readingsPath(root)), { recursive: true });
+    fs.writeFileSync(readingsPath(root), JSON.stringify(all));
+  } catch (_) { /* history is best-effort */ }
+}
+
 /**
  * Print the MACRO section for a focused file: where it sits inside the
  * cached whole-codebase map. Zoomed-out + zoomed-in in one read.
@@ -344,12 +437,14 @@ function main() {
   const fullText = content; // whole-file text — MACRO's home reference
 
   let section = `${file}`;
-  let sectionText = null; // non-null only when goggling a line range
+  let sectionText = null;    // non-null only when goggling a line range
+  let sectionRange = null;   // [a, b] 1-indexed, for meta-debug filtering
   if (lines) {
     const [a, b] = lines.split(':').map((n) => parseInt(n, 10));
     const all = content.split('\n');
     content = all.slice(Math.max(0, a - 1), b).join('\n');
     sectionText = content;
+    sectionRange = [a, b];
     section = `${file}:${a}-${b}`;
   }
 
@@ -421,6 +516,21 @@ function main() {
 
   // ── MACRO ──  (zoomed out: this section inside the whole-codebase map)
   printMacro(abs, r.coherence, sectionText, fullText);
+
+  // ── META-DEBUG ──  (correctness axis + substrate learning loop)
+  const md = runMetaDebug(abs, fullText, sectionRange, language);
+
+  // ── Δ ──  (how the edits changed everything since the last read)
+  {
+    const root = findRepoRoot(path.dirname(abs));
+    if (root) {
+      printAndRecordDelta(root, path.relative(root, abs), {
+        coherence: r.coherence ?? 0,
+        resonance: meanTopK,
+        findingsHigh: md ? md.high : null,
+      });
+    }
+  }
 
   // ── RIPPLE ──
   console.log('\n  RIPPLE');

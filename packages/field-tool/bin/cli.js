@@ -6,6 +6,12 @@ const { toWaveform, coherency, coherencyOf, Field, VoidClient, confirm, DIM } = 
 
 const HELP = `remembrance-field — the Remembrance Field tool
 
+Run it yourself (offline, ~2s, no network — the fastest way to see it work):
+  remembrance-field demo                list the demos
+  remembrance-field demo convergence    three unrelated instruments agree — the structure is REAL
+  remembrance-field demo dna            DNA sequence families cluster by biological function
+  remembrance-field demo self [text]    encode your input, find its nearest kin
+
 Standalone (no network, offline structural reading):
   remembrance-field encode <text|@file> [--json]
       Encode input into the fractal waveform — a 29-D structural vector
@@ -104,6 +110,14 @@ async function main() {
   const [cmd, ...rest] = process.argv.slice(2);
   if (!cmd || cmd === 'help' || cmd === '--help' || cmd === '-h') { process.stdout.write(HELP); return; }
   const { flags, pos } = parseFlags(rest);
+
+  // Reproducible "run it yourself" demos — the fastest way to see the
+  // instrument work. Self-contained, offline, ~2 seconds. `demo` alone
+  // lists them; `demo <name>` runs one.
+  if (cmd === 'demo') {
+    require('../src/demo').run(pos[0], pos.slice(1).join(' ') || undefined);
+    return;
+  }
 
   if (cmd === 'encode') {
     const wf = toWaveform(readInput(pos[0]));

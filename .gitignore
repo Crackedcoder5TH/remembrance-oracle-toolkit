@@ -29,3 +29,5 @@ ingest-result.json
 
 # Goggles macro-map cache — runtime state, rebuilt by goggles --map.
 .remembrance/goggles-map.json
+.remembrance/goggles-readings.json
+.remembrance/goggles-learning.json

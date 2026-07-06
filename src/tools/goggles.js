@@ -180,24 +180,73 @@ function _fmtFlow(f) {
 // the signal that catches a real defect — tainted exec, eval on input,
 // an off-by-one — that reads CLEAN on coherence and resonance.
 function runMetaDebug(absFile, fullText, sectionRange, language) {
-  // The audit checkers parse JS/TS. On any other language they return
-  // empty — which must read as "not covered", never as "clean": a
-  // blind spot reported as a pass is worse than no reading at all.
+  // Two channels, one view:
+  //   PARSE — the AST audit checkers: per-language precision (taint,
+  //     type, edge-case analysis). JS/TS only.
+  //   SHAPE — defect-resonance: known defects encoded through the same
+  //     5-layer encoder as the whole substrate; a block resonating with
+  //     a defect signature at every depth is a finding. Language-blind
+  //     by construction, and every PARSE finding TEACHES it, so parser
+  //     precision where we have it sharpens shape recall everywhere.
   const AUDITABLE = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx']);
-  if (!AUDITABLE.has(path.extname(absFile).toLowerCase())) {
-    console.log('\n  META-DEBUG  (audit checkers + learning loop — correctness axis)');
-    console.log('    n/a — the audit checkers cover JS/TS only; this file is not audited (not clean, not dirty: unread)');
-    return null;
-  }
-  let audit = null;
-  try { audit = require('../audit/ast-checkers'); }
-  catch (_) { try { audit = require('../audit/static-checkers'); } catch (_) { /* none */ } }
-  if (!audit || typeof audit.auditCode !== 'function') return null;
+  const parseable = AUDITABLE.has(path.extname(absFile).toLowerCase());
 
   let findings = [];
+  let channels = [];
+
+  if (parseable) {
+    let audit = null;
+    try { audit = require('../audit/ast-checkers'); }
+    catch (_) { try { audit = require('../audit/static-checkers'); } catch (_) { /* none */ } }
+    if (audit && typeof audit.auditCode === 'function') {
+      try {
+        findings = (audit.auditCode(fullText, { filePath: absFile }) || {}).findings || [];
+        channels.push('parse');
+      } catch (_) { /* parse channel unavailable for this content */ }
+    }
+  }
+
+  // SHAPE channel — runs for every language.
+  let shape = null;
   try {
-    findings = (audit.auditCode(fullText, { filePath: absFile }) || {}).findings || [];
-  } catch (_) { return null; }
+    const dr = require('../debug/defect-resonance');
+    shape = dr.scan(fullText, { language });
+    if (shape) {
+      channels.push('shape:' + shape.librarySize + ' sigs');
+      // Merge: a shape finding whose range already contains a parse
+      // finding is the same defect seen twice — keep the parse one
+      // (it names the rule and the exact line).
+      const parseLines = new Set(findings.map((f) => f.line));
+      for (const f of shape.findings) {
+        let dup = false;
+        for (let ln = f.line; ln <= (f.endLine || f.line); ln++) {
+          if (parseLines.has(ln)) { dup = true; break; }
+        }
+        if (!dup) findings.push(f);
+      }
+      // TEACH: every high parse finding's block becomes a shape
+      // signature the resonance channel recognises in every language.
+      if (parseable) {
+        const linesArr = fullText.split('\n');
+        for (const f of findings) {
+          if (f.severity !== 'high' || f.via === 'resonance' || !f.line) continue;
+          const s = Math.max(0, f.line - 5), e = Math.min(linesArr.length, f.line + 5);
+          dr.teach({
+            label: f.ruleId || f.bugClass,
+            bugClass: f.bugClass,
+            language,
+            code: linesArr.slice(s, e).join('\n'),
+          });
+        }
+      }
+    }
+  } catch (_) { /* shape channel optional */ }
+
+  if (!channels.length) {
+    console.log('\n  META-DEBUG  (audit checkers + learning loop — correctness axis)');
+    console.log('    n/a — no channel could read this file (parse: JS/TS only; shape: encoder unavailable)');
+    return null;
+  }
 
   const high = findings.filter((f) => f.severity === 'high');
   const medium = findings.filter((f) => f.severity === 'medium');
@@ -218,7 +267,7 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
     }
   } catch (_) { /* learning optional — surface everything */ }
 
-  console.log('\n  META-DEBUG  (audit checkers + learning loop — correctness axis)');
+  console.log('\n  META-DEBUG  (channels: ' + channels.join(' + ') + ' — correctness axis)');
   if (!surfaced.length && !medium.length) {
     console.log('    clean — no high/medium findings'
       + (suppressed ? ` · ${suppressed} learned-noise suppressed` : '')

@@ -180,6 +180,15 @@ function _fmtFlow(f) {
 // the signal that catches a real defect — tainted exec, eval on input,
 // an off-by-one — that reads CLEAN on coherence and resonance.
 function runMetaDebug(absFile, fullText, sectionRange, language) {
+  // The audit checkers parse JS/TS. On any other language they return
+  // empty — which must read as "not covered", never as "clean": a
+  // blind spot reported as a pass is worse than no reading at all.
+  const AUDITABLE = new Set(['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx']);
+  if (!AUDITABLE.has(path.extname(absFile).toLowerCase())) {
+    console.log('\n  META-DEBUG  (audit checkers + learning loop — correctness axis)');
+    console.log('    n/a — the audit checkers cover JS/TS only; this file is not audited (not clean, not dirty: unread)');
+    return null;
+  }
   let audit = null;
   try { audit = require('../audit/ast-checkers'); }
   catch (_) { try { audit = require('../audit/static-checkers'); } catch (_) { /* none */ } }

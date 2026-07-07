@@ -59,16 +59,41 @@ const LANG_BY_EXT = {
 };
 
 function parseArgs(argv) {
-  const out = { file: null, lines: null, top: 7, map: null, deep: false };
+  const out = { file: null, lines: null, top: 7, map: null, deep: false, memory: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--lines') { out.lines = argv[++i]; }
     else if (a === '--top') { out.top = parseInt(argv[++i], 10) || 7; }
     else if (a === '--map') { out.map = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : process.cwd(); }
     else if (a === '--deep') { out.deep = true; }
+    else if (a === '--checkpoint-memory') { out.memory = 'checkpoint'; }
+    else if (a === '--restore-memory') { out.memory = 'restore'; }
     else if (!out.file) { out.file = a; }
   }
   return out;
+}
+
+// Checkpoint the goggles' learned memory to the chain, or restore it.
+// The ledger becomes the memory of what the instrument learned, so a
+// fresh oracle inherits every taught defect shape and learned amplitude.
+async function runMemory(action) {
+  let mem;
+  try { mem = require('../debug/goggles-memory'); }
+  catch (e) { console.error('goggles-memory unavailable: ' + e.message); process.exit(1); }
+  if (action === 'checkpoint') {
+    const r = await mem.checkpoint();
+    if (!r.ok) { console.error('checkpoint: ' + r.reason); process.exit(1); }
+    console.log('goggles memory checkpointed to the chain:');
+    console.log('  ' + r.signatureCount + ' defect signatures + amplitude ledger');
+    console.log('  ledger block #' + r.ledgerIndex + ' · digest ' + String(r.digest).slice(0, 16) + '…');
+    console.log('  chain write: ' + r.bridgeStatus + (r.signature ? ' · ' + r.signature : ''));
+  } else {
+    const r = mem.restore();
+    if (!r.ok) { console.error('restore: ' + r.reason); process.exit(1); }
+    console.log('goggles memory restored from the chain:');
+    console.log('  ' + r.signatureCount + ' defect signatures now local (' + (r.added >= 0 ? '+' + r.added : r.added) + ' inherited)');
+    console.log('  from checkpoint ' + r.from + ' · digest ' + String(r.digest).slice(0, 16) + '…');
+  }
 }
 
 // ── MACRO lens — the whole codebase, compressed ─────────────────
@@ -224,19 +249,21 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
         }
         if (!dup) findings.push(f);
       }
-      // TEACH: every high parse finding's block becomes a shape
-      // signature the resonance channel recognises in every language.
+      // Attach each high parse finding's surrounding block, so the
+      // learning loop can TEACH the shape to the resonance channel —
+      // but only when the finding is later CONFIRMED by being fixed.
+      // Teaching at detection would enshrine false positives (guarded
+      // code the checker misreads) as defect shapes and propagate them
+      // across languages; teaching on resolution means only defects a
+      // human actually fixed become signatures. (Caught by wearing the
+      // goggles on this very file — the checker flagged two guarded
+      // null-derefs; had those been taught, they'd have misfired.)
       if (parseable) {
         const linesArr = fullText.split('\n');
         for (const f of findings) {
           if (f.severity !== 'high' || f.via === 'resonance' || !f.line) continue;
           const s = Math.max(0, f.line - 5), e = Math.min(linesArr.length, f.line + 5);
-          dr.teach({
-            label: f.ruleId || f.bugClass,
-            bugClass: f.bugClass,
-            language,
-            code: linesArr.slice(s, e).join('\n'),
-          });
+          f.block = linesArr.slice(s, e).join('\n');
         }
       }
     }
@@ -482,7 +509,8 @@ function consonanceVerdict(meanTopK, best) {
 }
 
 function main() {
-  const { file, lines, top, map, deep } = parseArgs(process.argv.slice(2));
+  const { file, lines, top, map, deep, memory } = parseArgs(process.argv.slice(2));
+  if (memory) { runMemory(memory); return; }
   if (map) { runMap(map, { deep }); return; }
   if (!file) {
     console.error('usage: goggles <file> [--lines A:B] [--top N] | goggles --map <projectDir> [--deep]');

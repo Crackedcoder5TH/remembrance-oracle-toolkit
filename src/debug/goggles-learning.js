@@ -118,8 +118,24 @@ function processFindings({ filePath, findings, language }) {
   let resolved = 0;
   for (const p of prior) {
     if (!currentFps.has(p.fp)) {
-      const id = state.patterns[p.fp] && state.patterns[p.fp].id;
+      const rec = state.patterns[p.fp];
+      const id = rec && rec.id;
       if (id) { try { debug.reportOutcome(id, true); resolved += 1; state.resolutions += 1; } catch (_) { /* ignore */ } }
+      // TEACH the resonance channel — but ONLY here, on confirmation. A
+      // finding that was present and is now gone was really fixed, so its
+      // shape is a genuine defect worth recognising in every language.
+      // Teaching at detection would enshrine false positives; teaching on
+      // resolution means only fixed defects become signatures.
+      if (rec && rec.block && !state.falsePositives[p.fp]) {
+        try {
+          require('./defect-resonance').teach({
+            label: rec.label || (p.fp.split(':')[0]),
+            bugClass: rec.bugClass || String(p.fp).split('/')[0],
+            language: rec.language || 'unknown',
+            code: rec.block,
+          });
+        } catch (_) { /* teaching optional */ }
+      }
       if (state.falsePositives[p.fp]) {
         delete state.falsePositives[p.fp];
         // It was real after all — restore standing (the flag, manual or auto,
@@ -159,6 +175,15 @@ function processFindings({ filePath, findings, language }) {
         id = cap && cap.pattern && cap.pattern.id;
       } catch (_) { /* capture optional */ }
       rec = state.patterns[fp] = { id };
+    }
+    // Stash the offending block + labels so that IF this finding is later
+    // fixed (confirmed real), its shape can be taught to the resonance
+    // channel. Kept on every turn so a fix seen next turn still has it.
+    if (f.block) {
+      rec.block = f.block;
+      rec.label = f.ruleId || f.bugClass;
+      rec.bugClass = f.bugClass;
+      rec.language = language || 'unknown';
     }
     // Past the grace window and still unfixed → a dismissed/false-positive class.
     if (seen >= PENALIZE_AFTER && rec.id) { try { debug.reportOutcome(rec.id, false); } catch (_) { /* ignore */ } }

@@ -128,6 +128,21 @@ function ensureLibrary() {
   if (!enc) return null;
   let lib = _load();
   if (lib && Array.isArray(lib.signatures) && lib.signatures.length) return lib;
+
+  // Blank-oracle inheritance: before seeding from scratch, try to pull
+  // the collected remembrance from the chain. A fresh host (or one whose
+  // learned state was wiped by a restart) inherits every taught shape
+  // and every learned amplitude from everyone who came before it —
+  // abundance as knowledge first. Best-effort: no chain → seed locally.
+  try {
+    const mem = require('./goggles-memory');
+    const r = mem.restore({ merge: false });
+    if (r && r.ok && r.signatureCount > 0) {
+      const restored = _load();
+      if (restored && restored.signatures && restored.signatures.length) return restored;
+    }
+  } catch (_) { /* no chain reachable — seed locally */ }
+
   lib = { version: 1, signatures: [] };
   for (const s of SEEDS) {
     try {

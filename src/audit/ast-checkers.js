@@ -248,7 +248,18 @@ function isProducedByCopy(receiverTokens) {
   return (
     text.includes('.slice(') ||
     text.includes('.concat(') ||
+    // map/filter/flat/flatMap provably return a FRESH array, so a
+    // .sort()/.reverse() chained onto their result mutates the throwaway
+    // intermediate, never a caller-owned array — e.g. a.map(...).sort()
+    // is the standard "decorate-sort-undecorate" idiom and is safe.
+    text.includes('.map(') ||
+    text.includes('.filter(') ||
+    text.includes('.flatMap(') ||
+    text.includes('.flat(') ||
     text.includes('Array.from(') ||
+    text.includes('Object.keys(') ||
+    text.includes('Object.values(') ||
+    text.includes('Object.entries(') ||
     text.includes('structuredClone(') ||
     /\[\.\.\./.test(text)
   );

@@ -94,10 +94,12 @@ const cos = (a, b) => { let d = 0, na = 0, nb = 0; for (let i = 0; i < a.length;
 
 function spearman(x, y) {
   const rank = (a) => { const idx = a.map((v, i) => [v, i]).sort((p, q) => p[0] - q[0]); const r = []; for (let k = 0; k < idx.length; k++) r[idx[k][1]] = k; return r; };
-  const rx = rank(x), ry = rank(y); let d2 = 0; for (let i = 0; i < x.length; i++) d2 += (rx[i] - ry[i]) ** 2; return 1 - 6 * d2 / (x.length * (x.length ** 2 - 1));
+  const rx = rank(x), ry = rank(y); let d2 = 0; for (let i = 0; i < x.length; i++) d2 += (rx[i] - ry[i]) ** 2;
+  const denom = x.length * (x.length ** 2 - 1);
+  return denom === 0 ? 0 : 1 - 6 * d2 / denom;
 }
 function pairs(V, fn) { const p = []; for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) p.push(fn ? fn(i, j) : cos(V[i], V[j])); return p; }
-function purity(V) { const K = 5; let h = 0, t = 0; for (let i = 0; i < N; i++) { const nn = []; for (let j = 0; j < N; j++) if (j !== i) nn.push([cos(V[i], V[j]), j]); nn.sort((a, b) => b[0] - a[0]); for (let k = 0; k < K; k++) { if (corpus[nn[k][1]].domain === corpus[i].domain) h++; t++; } } return h / t; }
+function purity(V) { const K = 5; let h = 0, t = 0; for (let i = 0; i < N; i++) { const nn = []; for (let j = 0; j < N; j++) if (j !== i) nn.push([cos(V[i], V[j]), j]); const ranked = [...nn].sort((a, b) => b[0] - a[0]); for (let k = 0; k < K; k++) { if (corpus[ranked[k][1]].domain === corpus[i].domain) h++; t++; } } return t === 0 ? 0 : h / t; }
 
 const telP = TELESCOPES.map(([, fn]) => pairs(null, fn));
 
@@ -109,8 +111,8 @@ const telP = TELESCOPES.map(([, fn]) => pairs(null, fn));
 function calibrate(label, vectorsPrev, vectorsCand) {
   const prevAgree = TELESCOPES.map((_, t) => spearman(pairs(vectorsPrev), telP[t]));
   const candAgree = TELESCOPES.map((_, t) => spearman(pairs(vectorsCand), telP[t]));
-  const prevMean = prevAgree.reduce((a, x) => a + x, 0) / prevAgree.length;
-  const candMean = candAgree.reduce((a, x) => a + x, 0) / candAgree.length;
+  const prevMean = prevAgree.reduce((a, x) => a + x, 0) / (prevAgree.length || 1);
+  const candMean = candAgree.reduce((a, x) => a + x, 0) / (candAgree.length || 1);
   const pPrev = purity(vectorsPrev), pCand = purity(vectorsCand);
   const earns = candMean > prevMean && pCand >= pPrev - 1e-9;
   console.log(`\n── ${label} ──`);
@@ -138,7 +140,7 @@ const L7LM = [
   '[500,480,460,455,470,490,510,505,495,485,475,465,472,488]',
 ];
 const lmS = L7LM.map(gz);
-function projL7(text) { const cx = gz(text); let v = L7LM.map((lm, k) => { const c = gz(text + lm); return 1 - (c - Math.min(cx, lmS[k])) / Math.max(cx, lmS[k]); }); const m = v.reduce((a, x) => a + x, 0) / v.length; v = v.map((x) => x - m); let s = Math.sqrt(v.reduce((a, x) => a + x * x, 0)) || 1; return v.map((x) => x / s); }
+function projL7(text) { const cx = gz(text); let v = L7LM.map((lm, k) => { const c = gz(text + lm); return 1 - (c - Math.min(cx, lmS[k])) / Math.max(cx, lmS[k]); }); const m = v.reduce((a, x) => a + x, 0) / (v.length || 1); v = v.map((x) => x - m); let s = Math.sqrt(v.reduce((a, x) => a + x * x, 0)) || 1; return v.map((x) => x / s); }
 const A7 = corpus.map((c, i) => [...A6[i], ...projL7(c.text)]);
 calibrate('L7 candidate: expanded projection (depth-6 → depth-7)', A6, A7);
 

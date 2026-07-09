@@ -30,6 +30,7 @@ const { toNumericalWaveform } = require('./numerical-waveform');
 const { toSpectralWaveform } = require('./spectral-waveform');
 const { toRedundancyWaveform } = require('./redundancy-waveform');
 const { toContentProjection } = require('./content-projection');
+const { toDimensionalWaveform } = require('./dimensional-waveform');
 
 const DEFAULT_DEPTH = 2;
 
@@ -86,7 +87,14 @@ const _registry = [
     seed: 'residual L1-L5 leave: CONTENT IDENTITY. The residual monitor at depth 5 surfaced its last unexplained residual as false-equivalence between distinct sources of similar shape — two prose docs, two different functions, two distinct numeric series — because the structural stack (L1-L4) is content-blind by design and L5 reads redundancy, not subject. The four-telescope experiment localized the missing signal: the gzip-NCD (compression) telescope sees domain/content structure the structural stack does not (kNN domain purity: stack 0.60 vs gzip 0.83). L6 imports that view by PATTERN PROJECTION onto a fixed compression basis — each coordinate is 1-NCD against a canonical landmark pattern, mean-centered so the discriminating relative profile is the signal. CALIBRATED, not asserted: scripts/encoder-layer-calibration.cjs confirms L6 moves the fractal telescope toward the gzip telescope — Spearman 0.778 → ~0.81 and kNN purity 0.60 → 0.71 with FIXED landmarks, closing over half the structure-to-compression gap. This is the layer the attribution use-case requires: you cannot track a pattern back to its source if the encoder cannot tell two sources apart. INACTIVE pending the deliberate composed_v3 migration (same discipline as L5 before its activation): reachable now via composedAtDepth(text, 6); activating it re-encodes the 116/145-D consumers to 174-D.',
     active: false,
   },
-  // L7+ slots reserved.
+  {
+    id: 'L7-dimensional',
+    dims: 29,
+    encode: toDimensionalWaveform,
+    seed: 'residual L1-L6 leave: the SECOND DIMENSION. L1-L6 are dominantly 1D — they read the data as a sequence. Absent from the stack is autoregressive / row-to-row structure, the property that makes two different series of the same generative process kin despite different values (a 1D compressor scatters them; a 2D predictive filter clusters them). The telescope-2d experiment confirmed this axis is real and independent of gzip (Spearman 0.34, purity 0.67 vs chance 0.15). L7 imports it, SELF-GATED on intrinsic dimensionality: it parses a numeric series out of the text (the substrate stores series as text — the 2D structure is in the VALUES, not the digit bytes), detects the period by autocorrelation (as L4 does), reshapes to a PERIOD-MATCHED grid (a fixed sqrt-width misses arbitrary-period structure — a sine of period 44 gives gain 0 at width 20, gain 0.24 at width 44), and emits a 2D-NCD projection onto numeric archetypes SCALED BY THE 2D-GAIN. Text/code/non-series input has zero gain → L7 contributes nothing and defers to L1-L6; periodic numeric data contributes fully; hybrid proportionally. This is the layer that answers "know where the data becomes 2D." Under the multi-telescope consensus (now including the 2D-Paeth telescope) the self-gated 2D layer earns its place where every flat 1D candidate was refused — it adds signal only where 2D structure exists and stays neutral elsewhere. First build was silent on real data (fixed-width, byte-level) — caught by testing text-encoded numbers; the period-aware, parse-first version fires (sine 0.24, modulated 0.37) and stays silent on code/prose (0.0). INACTIVE pending the deliberate composed_v4 migration (same discipline as L5/L6): reachable via composedAtDepth(text, 7).',
+    active: false,
+  },
+  // L8+ slots reserved.
 ];
 
 function currentDepth() {

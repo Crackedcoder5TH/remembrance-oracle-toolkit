@@ -70,6 +70,18 @@ try {
   _encoderStack = require('./encoder-stack');
 } catch (_) { /* stack unreachable — read falls back to L1 only */ }
 
+// New-layer meta-awareness. The encoder layers are pure functions (L1-L7
+// alike never touch the field directly), so the LRE coupling lives here,
+// at the once-per-read boundary: every read feeds the field the readings
+// the new dimensions detect — L7's 2D-gain (how autoregressive/2D the
+// pattern is) — so the field histogram always carries the substrate's
+// DIMENSIONAL profile, not just its coherence. Best-effort: a missing
+// module degrades to "no dimensional signal", never breaks a read.
+let _dimensionalGain = null;
+try {
+  _dimensionalGain = require('./dimensional-waveform').dimensionalGain;
+} catch (_) { /* dimensional layer unreachable */ }
+
 // Canonical substrate: Void's fractal library (~43k+ patterns,
 // translated from the master pattern_index.json via the same
 // canonical encoder). Now holds both L1 (29-D) and composed_v1
@@ -259,6 +271,21 @@ class FieldTool {
       });
       layers.contributed = true;
     } catch (_) { /* field unreachable */ }
+
+    // 7b. Dimensional meta-awareness: feed the field the new layers'
+    // reading so the LRE is always aware of the dimensional structure
+    // flowing through it. L7's 2D-gain becomes its own field source, so
+    // the histogram records how much of what the substrate sees is
+    // autoregressive/2D — the meta-signal the new layers add.
+    if (_dimensionalGain) {
+      try {
+        const gain = _dimensionalGain(content);
+        if (gain > 0) {
+          fc.contribute({ cost: 1.0, coherence: Math.min(1, gain), source: 'oracle:encoder:dimensional-2d' });
+          layers.dimensionalGain = +gain.toFixed(4);
+        }
+      } catch (_) { /* dimensional coupling optional */ }
+    }
 
     return {
       waveform,         // 29-D L1 fractal (back-compat; scoring runs the 116-D composed flow)

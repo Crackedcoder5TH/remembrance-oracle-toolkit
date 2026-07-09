@@ -93,12 +93,44 @@ function cosine116(a, b) {
   return (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
 }
 
+// Fast, encode-free drift check: how many walked files are missing from
+// the index, by name alone. CI-friendly — exits non-zero when drift
+// exceeds --max (default 0), so a pipeline can gate on "substrate current"
+// without the cost of a full harvest.
+function checkDrift(targets, index, maxDrift) {
+  let totalDrift = 0;
+  const perRepo = [];
+  for (const { ns, dir } of targets) {
+    if (!fs.existsSync(dir)) continue;
+    const files = walk(dir);
+    let drift = 0;
+    for (const f of files) {
+      const key = ns + '/' + path.relative(dir, f);
+      if (!index[key]) drift++;
+    }
+    perRepo.push({ ns, drift, total: files.length });
+    totalDrift += drift;
+  }
+  console.log('substrate drift check:');
+  for (const r of perRepo) console.log(`  ${r.ns.padEnd(16)} ${r.drift} unindexed of ${r.total}`);
+  console.log(`  total drift: ${totalDrift} (threshold ${maxDrift})`);
+  if (totalDrift > maxDrift) {
+    console.log(`  DRIFTED — run: node scripts/harvest-repo-to-substrate.js <repo>`);
+    process.exit(1);
+  }
+  console.log('  substrate is current.');
+  process.exit(0);
+}
+
 function main() {
   const args = process.argv.slice(2);
   const dry = args.includes('--dry');
-  const targetArg = args.find((a) => !a.startsWith('--'));
+  const check = args.includes('--check');
+  const maxIdx = args.indexOf('--max');
+  const maxDrift = maxIdx >= 0 ? (parseInt(args[maxIdx + 1], 10) || 0) : 0;
+  const targetArg = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--max');
   if (!targetArg) {
-    console.error('usage: harvest-repo-to-substrate.js <repo-name-or-path|all> [--dry]');
+    console.error('usage: harvest-repo-to-substrate.js <repo-name-or-path|all> [--dry|--check [--max N]]');
     process.exit(2);
   }
 
@@ -109,6 +141,7 @@ function main() {
 
   const idx = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8'));
   const index = idx.index;
+  if (check) return checkDrift(targets, index, maxDrift);
   const now = new Date().toISOString();
   const beforeTotal = Object.keys(index).length;
 

@@ -29,6 +29,7 @@ const { toLexicalWaveform } = require('./lexical-waveform');
 const { toNumericalWaveform } = require('./numerical-waveform');
 const { toSpectralWaveform } = require('./spectral-waveform');
 const { toRedundancyWaveform } = require('./redundancy-waveform');
+const { toContentProjection } = require('./content-projection');
 
 const DEFAULT_DEPTH = 2;
 
@@ -78,7 +79,14 @@ const _registry = [
     seed: 'residual L1-L4 leave against an EXTERNAL reference: the four-telescope convergence experiment showed gzip NCD (Kolmogorov approximation) sees domain structure better than the depth-4 stack (kNN purity 0.774 vs 0.528, Spearman 0.731). The gap: (1) redundancy character — how much of a pattern is repetition of itself, the one quantity a dictionary compressor is built to measure and no earlier layer asks about; (2) content identity — WHICH tokens, not just what kinds; the stack is deliberately content-blind. L5 imports the compressor as a sensor: deflate-derived redundancy features (whole/halves/internal-NCD/level-spread), n-gram repetition structure, byte entropy, and a 16-bucket hashed vocabulary sketch. First layer designed against an external instrument rather than internal residual. INACTIVE until it proves itself via the convergence loop and the 116-D consumers (Void parity, field-tool round-trip, classifier DIM map) are deliberately migrated — reachable now via composedAtDepth(text, 5). ACTIVATED after the depth-agnostic index migration (both FractalIndex copies zero-pad and clamp to MAX_DEPTH=5) and the partial Void composed_v2 re-encode.',
     active: true,
   },
-  // L6+ slots reserved.
+  {
+    id: 'L6-content-projection',
+    dims: 29,
+    encode: toContentProjection,
+    seed: 'residual L1-L5 leave: CONTENT IDENTITY. The residual monitor at depth 5 surfaced its last unexplained residual as false-equivalence between distinct sources of similar shape — two prose docs, two different functions, two distinct numeric series — because the structural stack (L1-L4) is content-blind by design and L5 reads redundancy, not subject. The four-telescope experiment localized the missing signal: the gzip-NCD (compression) telescope sees domain/content structure the structural stack does not (kNN domain purity: stack 0.60 vs gzip 0.83). L6 imports that view by PATTERN PROJECTION onto a fixed compression basis — each coordinate is 1-NCD against a canonical landmark pattern, mean-centered so the discriminating relative profile is the signal. CALIBRATED, not asserted: scripts/encoder-layer-calibration.cjs confirms L6 moves the fractal telescope toward the gzip telescope — Spearman 0.778 → ~0.81 and kNN purity 0.60 → 0.71 with FIXED landmarks, closing over half the structure-to-compression gap. This is the layer the attribution use-case requires: you cannot track a pattern back to its source if the encoder cannot tell two sources apart. INACTIVE pending the deliberate composed_v3 migration (same discipline as L5 before its activation): reachable now via composedAtDepth(text, 6); activating it re-encodes the 116/145-D consumers to 174-D.',
+    active: false,
+  },
+  // L7+ slots reserved.
 ];
 
 function currentDepth() {

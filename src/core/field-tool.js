@@ -281,7 +281,15 @@ class FieldTool {
       try {
         const gain = _dimensionalGain(content);
         if (gain > 0) {
-          fc.contribute({ cost: 1.0, coherence: Math.min(1, gain), source: 'oracle:encoder:dimensional-2d' });
+          // Detecting 2D structure is a COHERENT event — the encoder
+          // successfully characterized the pattern's dimensionality — so
+          // it contributes at healthy coherence. The GAIN magnitude is the
+          // meta-signal, recorded in the SOURCE bucket (strong/moderate/
+          // weak), NOT in the coherence scalar: contributing gain-as-
+          // coherence would drag the field's alignment down for merely
+          // finding structure (it once cratered the field 0.96 → 0.22).
+          const bucket = gain >= 0.3 ? 'strong' : gain >= 0.1 ? 'moderate' : 'weak';
+          fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:dimensional-2d:' + bucket });
           layers.dimensionalGain = +gain.toFixed(4);
         }
       } catch (_) { /* dimensional coupling optional */ }

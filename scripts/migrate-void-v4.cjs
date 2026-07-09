@@ -102,10 +102,19 @@ for (const id of ids) {
   }
   done++;
 
-  // LRE: feed the field this pattern's 2D-gain.
+  // LRE: feed the field this pattern's 2D structure — as a COHERENT
+  // detection event (healthy coherence), with the gain magnitude in the
+  // source bucket, NOT as coherence (which would drag the field's
+  // alignment down for merely finding structure).
   if (fc) {
-    try { const g = dimensionalGain(text); if (g > 0) { fired++; fc.contribute({ cost: 1.0, coherence: Math.min(1, g), source: 'oracle:encoder:migrate-dimensional' }); } }
-    catch (_) { /* field optional */ }
+    try {
+      const g = dimensionalGain(text);
+      if (g > 0) {
+        fired++;
+        const bucket = g >= 0.3 ? 'strong' : g >= 0.1 ? 'moderate' : 'weak';
+        fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:migrate-dimensional:' + bucket });
+      }
+    } catch (_) { /* field optional */ }
   }
   if (done % 2000 === 0) console.log(`  ${done} re-encoded (${fired} fired L7)…`);
 }

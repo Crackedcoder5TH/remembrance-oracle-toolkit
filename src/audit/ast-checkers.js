@@ -704,10 +704,24 @@ function findDereferences(tokens, startIdx, varName, window) {
 function hasInlineGuardBefore(tokens, idx, varName) {
   // Optional-chain access `varName?.x` is itself the guard
   if (tokens[idx + 1]?.value === '?.') return true;
-  // Ternary in last 8 tokens: `x ? x.y : z`
+  // Positive short-circuit / ternary in last 8 tokens: `x && x.y`, `x ? x.y : z`
   for (let j = idx - 1; j >= Math.max(0, idx - 8); j--) {
     if (tokens[j]?.value === '?' && tokens[j - 1]?.type === 'identifier' && tokens[j - 1].value === varName) return true;
     if (tokens[j]?.value === '&&' && tokens[j - 1]?.type === 'identifier' && tokens[j - 1].value === varName) return true;
+  }
+  // Negative short-circuit OR: `!x || x.y`, `x == null || x.y`, `x === null || x.y`.
+  // When the deref sits in the RIGHT operand of an `||` whose LEFT operand
+  // proves x is falsy/null, the deref only runs when x is truthy — the
+  // standard null-safe-access idiom. Scan back for the `||` and confirm
+  // its left side is a null-test of THIS var.
+  for (let j = idx - 1; j >= Math.max(0, idx - 12); j--) {
+    if (tokens[j]?.value !== '||') continue;
+    // `! x ||`  → tokens[j-1] = x, tokens[j-2] = '!'
+    if (tokens[j - 1]?.type === 'identifier' && tokens[j - 1].value === varName && tokens[j - 2]?.value === '!') return true;
+    // `x == null ||` / `x === null|undefined ||`
+    if (tokens[j - 3]?.type === 'identifier' && tokens[j - 3].value === varName &&
+        (tokens[j - 2]?.value === '==' || tokens[j - 2]?.value === '===') &&
+        (tokens[j - 1]?.value === 'null' || tokens[j - 1]?.value === 'undefined')) return true;
   }
   return false;
 }

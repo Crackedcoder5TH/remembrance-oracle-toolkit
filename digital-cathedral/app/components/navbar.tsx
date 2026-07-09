@@ -35,10 +35,10 @@ function usePortalDomain(): { isPortal: boolean; portalBaseUrl: string } {
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
-  { href: "/about", label: "About Us" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/privacy", label: "Privacy Policy" },
-  { href: "/terms", label: "Terms of Service" },
+  { href: "/#life-events", label: "Life Events" },
+  { href: "/resources", label: "Resources" },
+  { href: "/about", label: "About" },
+  { href: "/#protect-family-form", label: "Contact" },
 ];
 
 const PORTAL_NAV_LINKS = [

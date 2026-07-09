@@ -176,8 +176,9 @@ function main() {
   }
 
   // "Anything interesting" — the strongest unexpected cross-repo bonds.
-  arose.sort((a, b) => b.score - a.score);
-  const cross = arose.filter((a) => a.to.split('/')[0] !== a.from.split('/')[0]);
+  const cross = [...arose]
+    .sort((a, b) => b.score - a.score)
+    .filter((a) => a.to.split('/')[0] !== a.from.split('/')[0]);
   if (cross.length) {
     console.log('\n  strongest cross-repo resonances the harvest surfaced:');
     for (const a of cross.slice(0, 12)) {

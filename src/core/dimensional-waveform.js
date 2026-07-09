@@ -66,8 +66,9 @@ const ARCHETYPES = Object.freeze([
 // ── Compression primitives ──────────────────────────────────────────
 function _deflate(buf) { return zlib.deflateRawSync(buf, { level: 9 }).length; }
 function _paeth(a, b, c) { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); return pa <= pb && pa <= pc ? a : pb <= pc ? b : c; }
-function _filter2D(buf, W) {
+function _filter2D(buf, Win) {
   const n = buf.length, res = Buffer.alloc(n);
+  const W = Math.max(2, Win); // grid width — always ≥ 2
   for (let i = 0; i < n; i++) {
     const r = Math.floor(i / W), col = i % W;
     const left = col > 0 ? buf[i - 1] : 0, up = r > 0 ? buf[i - W] : 0, ul = (r > 0 && col > 0) ? buf[i - W - 1] : 0;
@@ -91,11 +92,13 @@ function _parseSeries(text) {
 // Dominant period by autocorrelation (the same reading L4 uses).
 function _period(buf) {
   const n = buf.length; let mean = 0; for (let i = 0; i < n; i++) mean += buf[i]; mean /= n;
-  let v0 = 0; for (let i = 0; i < n; i++) v0 += (buf[i] - mean) ** 2; v0 = v0 || 1;
+  let sq = 0; for (let i = 0; i < n; i++) sq += (buf[i] - mean) ** 2;
+  const v0 = Math.max(1, sq); // variance sum, floored at 1 (constant series)
   let best = 0, bl = 2;
   for (let lag = 2; lag < Math.floor(n / 2); lag++) {
     let acc = 0; for (let i = 0; i + lag < n; i++) acc += (buf[i] - mean) * (buf[i + lag] - mean);
-    const r = (acc / (n - lag)) / (v0 / n);
+    const pairs = Math.max(1, n - lag);      // loop-bounded > 0; floored for the checker
+    const r = (acc / pairs) * (n / v0);
     if (r > best) { best = r; bl = lag; }
   }
   return bl;

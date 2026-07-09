@@ -252,7 +252,12 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
       const parseCovers = new Set(findings.map((f) => f.bugClass));
       // Classes the AST checker structurally vets whenever it parses a
       // file, even if it emitted nothing this run (silence = cleared).
-      const AST_COVERED = new Set(['state-mutation', 'security', 'type', 'error-handling', 'edge-case', 'concurrency']);
+      // This MUST match ast-checkers BUG_CLASSES exactly: too few leaves
+      // shape false-positives unsuppressed (integration/nullable-deref was
+      // missing); too many suppresses shape findings for classes the
+      // parser does NOT cover (error-handling — the shape channel's own,
+      // e.g. rust unwrap-chain — must survive).
+      const AST_COVERED = new Set(['state-mutation', 'security', 'concurrency', 'type', 'integration', 'edge-case']);
       for (const f of shape.findings) {
         let dup = false;
         for (let ln = f.line; ln <= (f.endLine || f.line); ln++) {

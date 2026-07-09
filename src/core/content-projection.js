@@ -98,9 +98,13 @@ function toContentProjection(text) {
   let mean = 0; for (let k = 0; k < raw.length; k++) mean += raw[k];
   mean /= raw.length;
   let s = 0; for (let k = 0; k < raw.length; k++) { raw[k] -= mean; s += raw[k] * raw[k]; }
-  if (s < 1e-12) return out;
-  s = Math.sqrt(s);
-  for (let k = 0; k < raw.length && k < DIM_TARGET; k++) out[k] = raw[k] / s;
+  // Guard the actual divisor (norm), not its square upstream — the
+  // guard-then-reassign form (`if (s<eps) …; s = sqrt(s)`) was correct
+  // but opaque to readers and flow-insensitive checkers alike.
+  // norm < 1e-6 ⇔ s < 1e-12: mathematically identical, byte-identical output.
+  const norm = Math.sqrt(s);
+  if (norm < 1e-6) return out;
+  for (let k = 0; k < raw.length && k < DIM_TARGET; k++) out[k] = raw[k] / norm;
   return out;
 }
 

@@ -469,12 +469,18 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
     }
   }
   // Backward: early-exit guard clause
-  //   if (divisor === 0) return <whatever>;
-  //   if (divisor === 0) throw ...;
-  //   if (divisor === 0) continue;
+  //   if (divisor === 0) return <whatever>;      (exact-zero test)
+  //   if (divisor < 1e-6) return ...;            (epsilon threshold)
+  //   if (divisor <= 0) throw ...;               (non-positive test)
+  //   if (!divisor) continue;                    (truthiness)
   // When the guard's body is a terminator, the continuation (where our
-  // division lives) is guaranteed to have divisor !== 0.
-  for (let i = Math.max(0, idx - 40); i < idx; i++) {
+  // division lives) is guaranteed to have divisor !== 0 — UNLESS the
+  // divisor is reassigned between the guard and the division, which
+  // voids the proof (the reassigned value is unvetted). The window is
+  // 160 tokens: a guard is often separated from the division by a loop
+  // header + body, which alone exceeds the old 40-token window and made
+  // every early-return guard in the codebase read as unguarded.
+  for (let i = Math.max(0, idx - 160); i < idx; i++) {
     const t = tokens[i];
     if (t.type !== 'keyword' || t.value !== 'if') continue;
     if (tokens[i + 1]?.value !== '(') continue;
@@ -487,7 +493,17 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
       if (tokens[j].type === 'identifier' && tokens[j].value === divisor) {
         const op = tokens[j + 1]?.value;
         const rhs = tokens[j + 2];
+        // Exact-zero test: `x === 0` / `x == 0`
         if ((op === '===' || op === '==') && rhs?.type === 'number' && parseFloat(rhs.value) === 0) {
+          matchedDivisor = true;
+        }
+        // Epsilon / non-positive threshold: `x < 1e-6`, `x < 0.001`,
+        // `x <= 0` — exiting when small-or-negative proves the
+        // continuation has x above the threshold (in particular, non-zero).
+        if (op === '<' && rhs?.type === 'number' && parseFloat(rhs.value) > 0) {
+          matchedDivisor = true;
+        }
+        if (op === '<=' && rhs?.type === 'number' && parseFloat(rhs.value) >= 0) {
           matchedDivisor = true;
         }
         if ((op === '!==' || op === '!=') && rhs?.type === 'number' && parseFloat(rhs.value) === 0) {
@@ -496,6 +512,10 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
           // Skip — the primary non-null scope tracker handles block cases.
         }
       }
+      // Truthiness negation: `!x` anywhere in the condition
+      if (tokens[j].value === '!' && tokens[j + 1]?.type === 'identifier' && tokens[j + 1].value === divisor) {
+        matchedDivisor = true;
+      }
       j++;
     }
     if (!matchedDivisor) continue;
@@ -503,13 +523,22 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
     // / continue) — possibly inside a `{ }` single-line block.
     const bodyStart = tokens[j + 1];
     if (!bodyStart) continue;
-    if (bodyStart.type === 'keyword' && (bodyStart.value === 'return' || bodyStart.value === 'throw' || bodyStart.value === 'continue' || bodyStart.value === 'break')) {
-      return true;
+    const isExit = (tok) => tok?.type === 'keyword' &&
+      (tok.value === 'return' || tok.value === 'throw' || tok.value === 'continue' || tok.value === 'break');
+    if (!isExit(bodyStart) && !(bodyStart.value === '{' && isExit(tokens[j + 2]))) continue;
+    // Soundness: the guard only holds if the divisor is NOT reassigned
+    // between the guard body and the division. `s = sqrt(s)` after
+    // `if (s < eps) return` re-binds the name to an unvetted value —
+    // the exact case that must stay flagged.
+    let reassigned = false;
+    for (let k = j; k < idx; k++) {
+      if (tokens[k]?.type !== 'identifier' || tokens[k].value !== divisor) continue;
+      const nx = tokens[k + 1]?.value;
+      if ((nx === '=' && tokens[k + 2]?.value !== '=') ||
+          nx === '+=' || nx === '-=' || nx === '*=' || nx === '/=' ||
+          nx === '++' || nx === '--') { reassigned = true; break; }
     }
-    if (bodyStart.value === '{' && tokens[j + 2]?.type === 'keyword' &&
-        (tokens[j + 2].value === 'return' || tokens[j + 2].value === 'throw' || tokens[j + 2].value === 'continue')) {
-      return true;
-    }
+    if (!reassigned) return true;
   }
   // Look backward for `if (divisor !== 0)` in the enclosing 30 tokens
   for (let i = Math.max(0, idx - 30); i < idx; i++) {

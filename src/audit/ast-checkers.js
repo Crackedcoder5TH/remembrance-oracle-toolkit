@@ -393,6 +393,10 @@ function checkTypeInFn(fn, scope, emit) {
       // or the structural guard sees the check.
       if (scope.nonNullAt(i).has(divisorHead)) continue;
       if (hasDivisorGuardAround(tokens, i, divisorChain)) continue;
+      // Divisor assigned from `Math.max(<positive-literal>, …)` earlier in
+      // the function is provably ≥ that literal, hence non-zero — the
+      // standard "clamp a divisor to a floor" idiom (W = Math.max(2, …)).
+      if (divisorAssignedPositive(tokens, divisorHead, i)) continue;
       if (divisorChain !== divisorHead && hasDivisorGuardAround(tokens, i, divisorHead)) continue;
       emit({
         line: t.line, column: t.column,
@@ -422,6 +426,28 @@ function checkTypeInFn(fn, scope, emit) {
       suggestion: 'Wrap in try/catch or use a safeParse helper',
     });
   }
+}
+
+// True when `<divisor>` was assigned from `Math.max(<positive-number>, …)`
+// anywhere before `idx` in this token stream — which pins it at or above a
+// positive floor, so it can never be zero. Sound: a later plain
+// reassignment (`divisor = …` to something else) after such a clamp voids
+// the proof, so we take the LAST assignment before idx as authoritative.
+function divisorAssignedPositive(tokens, divisor, idx) {
+  let proven = false;
+  for (let i = 0; i < idx; i++) {
+    if (tokens[i]?.type !== 'identifier' || tokens[i].value !== divisor) continue;
+    if (tokens[i + 1]?.value !== '=' || tokens[i + 2]?.value === '=') continue; // assignment, not ==
+    // Pattern: divisor = Math . max ( <number > 0>
+    if (tokens[i + 2]?.value === 'Math' && tokens[i + 3]?.value === '.' &&
+        tokens[i + 4]?.value === 'max' && tokens[i + 5]?.value === '(' &&
+        tokens[i + 6]?.type === 'number' && parseFloat(tokens[i + 6].value) > 0) {
+      proven = true;
+    } else {
+      proven = false; // a different assignment supersedes the clamp
+    }
+  }
+  return proven;
 }
 
 function hasDivisorGuardAround(tokens, idx, divisor) {

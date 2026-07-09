@@ -238,16 +238,30 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
     shape = dr.scan(fullText, { language });
     if (shape) {
       channels.push('shape:' + shape.librarySize + ' sigs');
-      // Merge: a shape finding whose range already contains a parse
-      // finding is the same defect seen twice — keep the parse one
-      // (it names the rule and the exact line).
+      // Merge — with the PARSE channel authoritative on JS/TS. The shape
+      // channel is coarse (a defect is a shape): it cannot distinguish
+      // `[...a].sort()` (safe copy) from `a.sort()` (mutation) because the
+      // shapes are near-identical. The AST parse channel CAN, and does.
+      // So on a parseable file, for the bug classes the parser covers,
+      // the parser is the authority: a shape finding is kept only when it
+      // is NOT a class the parser already vets (it would be either a dup
+      // of a parse finding, or a case the parser looked at and cleared).
+      // The shape channel earns its keep on the languages the parser
+      // cannot read (rust, go, …), and on classes the parser lacks.
       const parseLines = new Set(findings.map((f) => f.line));
+      const parseCovers = new Set(findings.map((f) => f.bugClass));
+      // Classes the AST checker structurally vets whenever it parses a
+      // file, even if it emitted nothing this run (silence = cleared).
+      const AST_COVERED = new Set(['state-mutation', 'security', 'type', 'error-handling', 'edge-case', 'concurrency']);
       for (const f of shape.findings) {
         let dup = false;
         for (let ln = f.line; ln <= (f.endLine || f.line); ln++) {
           if (parseLines.has(ln)) { dup = true; break; }
         }
-        if (!dup) findings.push(f);
+        if (dup) continue;
+        // On JS/TS, defer to the parser for the classes it owns.
+        if (parseable && (AST_COVERED.has(f.bugClass) || parseCovers.has(f.bugClass))) continue;
+        findings.push(f);
       }
       // Attach each high parse finding's surrounding block, so the
       // learning loop can TEACH the shape to the resonance channel —

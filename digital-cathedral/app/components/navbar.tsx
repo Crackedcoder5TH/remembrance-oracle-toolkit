@@ -13,13 +13,13 @@ import { useIsAdmin } from "../protect/hooks/use-is-admin";
  */
 function usePortalDomain(): { isPortal: boolean; portalBaseUrl: string } {
   const [state, setState] = useState<{ isPortal: boolean; portalBaseUrl: string }>({
-    isPortal: true, // default true to avoid flash
+    isPortal: false, // consumer site should never flash portal/admin links
     portalBaseUrl: "",
   });
   useEffect(() => {
     const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL;
     if (!portalUrl) {
-      setState({ isPortal: true, portalBaseUrl: "" });
+      setState({ isPortal: false, portalBaseUrl: "" });
       return;
     }
     try {
@@ -27,7 +27,7 @@ function usePortalDomain(): { isPortal: boolean; portalBaseUrl: string } {
       const isPortal = window.location.hostname.toLowerCase() === portalHost;
       setState({ isPortal, portalBaseUrl: isPortal ? "" : portalUrl.replace(/\/$/, "") });
     } catch {
-      setState({ isPortal: true, portalBaseUrl: "" });
+      setState({ isPortal: false, portalBaseUrl: "" });
     }
   }, []);
   return state;
@@ -35,10 +35,10 @@ function usePortalDomain(): { isPortal: boolean; portalBaseUrl: string } {
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
-  { href: "/about", label: "About Us" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/privacy", label: "Privacy Policy" },
-  { href: "/terms", label: "Terms of Service" },
+  { href: "/#life-chapters", label: "Life Chapters" },
+  { href: "/#guides", label: "Guides" },
+  { href: "/about", label: "About" },
+  { href: "/#protection-path", label: "Get Started" },
 ];
 
 const PORTAL_NAV_LINKS = [

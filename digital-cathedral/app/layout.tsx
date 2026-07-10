@@ -13,9 +13,9 @@ import { AEODefinitions, AEOHowTo } from "./components/aeo-schema";
 const BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
 
 const SITE_URL = BASE_URL;
-const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Valor Legacies";
+const SITE_TITLE = "Valor Legacies | Life Insurance for Every Chapter of Life";
 const SITE_DESCRIPTION =
-  "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.";
+  "Valor Legacies helps families explore life insurance options for new babies, new homes, marriage, income protection, retirement, final expenses, veterans, and legacy planning.";
 
 export const metadata: Metadata = {
   title: {
@@ -41,7 +41,6 @@ export const metadata: Metadata = {
     "term life insurance",
     "whole life insurance",
     "military family coverage",
-    "ai agent api",
   ],
   authors: [{ name: "Valor Legacies" }],
   creator: "Valor Legacies",

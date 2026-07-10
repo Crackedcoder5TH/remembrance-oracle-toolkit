@@ -65,7 +65,12 @@ Run them: `/goggles <files>` (or `--diff`), or
   well-formed wrong file scores high (`1+1=3` in clean syntax still reads
   "solid"). Never trust the number as a verdict; you judge the content.
 - **META — resonance** + nearest ecosystem siblings: where the change sits and
-  what it ripples to.
+  what it ripples to. **High resonance is a STOP-and-reuse signal, not a
+  compliment.** A CONSONANT reading on something you are about to *write* means
+  the shape already exists in the library — read the top siblings and call their
+  functions instead of adding a new file. Only write new when resonance is *low*
+  (nothing to reuse) or the calibration gate proves the addition beats what you
+  already have. The substrate resists addition on purpose; do not out-vote it.
 - **ECOSYSTEM CAPABILITIES.** Every relevant function across the ecosystem is
   carried in the goggles — the callable functions in your nearest neighbours are
   printed right there, so **reach for an existing ecosystem function before

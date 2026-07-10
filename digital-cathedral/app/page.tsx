@@ -15,7 +15,7 @@
  *   Step 3 — Consent:   TCPA + Privacy → submit
  */
 
-import { useEffect, useRef, useState, ChangeEvent } from "react";
+import { useEffect, useRef, ChangeEvent } from "react";
 import { useLeadForm, FIELD_STEP } from "./protect/hooks/use-lead-form";
 import { TcpaConsent } from "./protect/components/tcpa-consent";
 import { StepProgress } from "./protect/components/step-progress";
@@ -56,15 +56,50 @@ const US_STATES = [
 ];
 
 const COVERAGE_OPTIONS: { value: string; label: string; description?: string }[] = [
-  { value: "", label: "What do you need protection for?" },
-  { value: "mortgage-protection", label: "Equity / Debt Protection" },
-  { value: "final-expense", label: "Final Expense" },
-  { value: "income-replacement", label: "Income Replacement" },
-  { value: "retirement-savings", label: "Tax-Free Retirement Savings", description: "Best for healthier clients who want flexibility, tax-free loans, and a death benefit" },
-  { value: "guaranteed-income", label: "Guaranteed Retirement Income", description: "Excellent option for clients with significant health issues who want guaranteed lifetime income they can\u2019t outlive" },
-  { value: "legacy", label: "Leave a Legacy" },
-  { value: "newborn-milestones", label: "Newborn / Future Milestones (Wedding, Car, Home, etc.)" },
-  { value: "not-sure", label: "Not sure \u2014 help me decide" },
+  { value: "", label: "What prompted you to look into coverage today?" },
+  { value: "new-baby", label: "We recently had a baby" },
+  { value: "bought-home", label: "We bought a home" },
+  { value: "recently-married", label: "We recently got married" },
+  { value: "protect-spouse-family", label: "I want to protect my spouse/family" },
+  { value: "income-replacement", label: "I want to protect my income" },
+  { value: "college-planning", label: "I want to prepare for college costs" },
+  { value: "retirement-planning", label: "I am planning for retirement" },
+  { value: "legacy", label: "I want to leave a legacy" },
+  { value: "final-expense", label: "I want help with final expenses" },
+  { value: "veteran-military-family", label: "I am a veteran or military family member" },
+  { value: "work-benefits", label: "I am comparing my work benefits" },
+  { value: "not-sure", label: "I’m not sure yet" },
+];
+
+const LIFE_EVENTS = [
+  { title: "Just Had a Baby", desc: "Your family just grew. Now is the perfect time to make sure their future is protected.", cta: "Learn About Family Protection", value: "new-baby" },
+  { title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s future is being built.", cta: "Protect My Home", value: "bought-home" },
+  { title: "Recently Married", desc: "Marriage means building a future together. Protection helps make sure that future stays secure.", cta: "Start Planning Together", value: "recently-married" },
+  { title: "Protecting My Income", desc: "If your income supports someone you love, protecting it matters.", cta: "Review Income Protection", value: "income-replacement" },
+  { title: "Preparing for College", desc: "Help prepare for tomorrow’s education goals while protecting today’s family needs.", cta: "Explore Education Planning", value: "college-planning" },
+  { title: "Planning Retirement", desc: "Life insurance can play a role in creating flexibility, protection, and confidence in retirement.", cta: "Plan for Retirement", value: "retirement-planning" },
+  { title: "Leaving a Legacy", desc: "Leave more than memories. Create a plan that reflects your love, values, and intentions.", cta: "Build My Legacy", value: "legacy" },
+  { title: "Final Expense Planning", desc: "Help protect your family from the financial burden of funeral and final expenses.", cta: "Plan Final Expenses", value: "final-expense" },
+  { title: "Veteran & Military Family Protection", desc: "From service to civilian life, your family deserves protection beyond basic benefits.", cta: "Review Veteran Options", value: "veteran-military-family" },
+];
+
+const SOLUTIONS = [
+  "Term Life Insurance",
+  "Whole Life Insurance",
+  "Final Expense Insurance",
+  "Mortgage Protection",
+  "Indexed Universal Life",
+  "Income Protection",
+  "Legacy Planning",
+];
+
+const RESOURCE_GUIDES = [
+  "New Parent Protection Checklist",
+  "Homeowner Protection Guide",
+  "Employer Life Insurance: Is It Enough?",
+  "Final Expense Planning Guide",
+  "Veteran Life Insurance Benefits Explained",
+  "Life Insurance for Retirement Planning",
 ];
 
 const PURCHASE_INTENT_OPTIONS = [
@@ -157,29 +192,9 @@ const FOOTER_LINKS = [
   { href: "/terms", label: "Terms of Service" },
 ];
 
-const DEFAULT_VETERAN_STORY = [
-  "As a veteran, I know what it means to carry responsibility both while you\u2019re wearing the uniform and long after it\u2019s folded away. During my time in service and especially after I transitioned to civilian life, I saw something that really bothered me. A lot of military families believed their standard coverage was enough\u2026 but they were never given the full picture about the life insurance options actually available to them.",
-  "Too many of us were left in the dark. That\u2019s why I created this platform.",
-  "My mission is simple: to make sure every service member and their families finally get clear, honest information so they can make the best decisions for the people they love.",
-  "When you request a review, we\u2019ll connect you with trusted, independent, licensed professionals who truly understand the unique needs of military families. No pressure. Just real guidance and options that actually fit your life.",
-  "Because the service we gave our country doesn\u2019t end when we take the uniform off, and neither should the protection we give our families.",
-].join("\n");
-
 export default function HomePage() {
   const utm = useUtmTracking();
 
-  // Fetch editable veteran story from API
-  const [veteranStory, setVeteranStory] = useState(DEFAULT_VETERAN_STORY);
-  useEffect(() => {
-    fetch("/api/site-content")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.content?.veteranStory) {
-          setVeteranStory(data.content.veteranStory);
-        }
-      })
-      .catch(() => {}); // fallback to default on error
-  }, []);
   const {
     form, errors, loading, submitted, confirmationMessage, leadId, coherency, serverError,
     step, totalSteps, submitAttempted, missingFields,
@@ -298,132 +313,92 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen flex flex-col items-center px-4 py-12">
-      {/* Veteran Story — First thing visitors see */}
-      <section className="w-full max-w-2xl mb-16 px-4" aria-labelledby="veteran-founded-heading-top">
-        <h2 id="veteran-founded-heading-top" className={`${SECTION_HEADING} mb-6 text-center`}>
-          Dedicated to Serving Those Who Served.
-        </h2>
+      {/* Hero — life-event-first positioning */}
+      <header id="home" className="w-full max-w-5xl text-center mb-14 px-4 pt-8" aria-labelledby="hero-heading">
+        <p className="text-teal-cathedral text-sm md:text-base tracking-[0.28em] uppercase mb-4 pulse-gentle">
+          Whatever chapter of life you&rsquo;re entering, we help you protect it.
+        </p>
+        <h1 id="hero-heading" className="text-4xl md:text-6xl font-light text-[var(--text-primary)] mb-5 leading-tight">
+          Every New Chapter Deserves Protection.
+        </h1>
+        <p className="metallic-gold max-w-3xl mx-auto text-base md:text-lg leading-relaxed mb-8">
+          Whether you&rsquo;re growing your family, buying a home, getting married, planning for retirement,
+          or preparing your legacy, Valor Legacies helps you protect what matters most.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <a href="#protect-family-form" className="px-7 py-3 rounded-lg bg-teal-cathedral text-white font-medium hover:bg-teal-cathedral/90 transition-all">
+            Protect My Family
+          </a>
+          <a href="#life-events" className="px-7 py-3 rounded-lg border border-teal-cathedral/35 text-teal-cathedral font-medium hover:border-teal-cathedral transition-all">
+            Explore My Options
+          </a>
+        </div>
+      </header>
 
-        {/* Veteran group photo — display only (upload via admin portal) */}
-        <ImageUpload
-          slot="veteran-group"
-          alt="Military service members group photo"
-          editable={false}
-          className="w-full max-w-xl mx-auto mb-8 rounded-lg bg-[var(--bg-surface)] border border-teal-cathedral/20 flex items-center justify-center overflow-hidden"
-          imgClassName="w-full h-auto object-cover rounded-lg"
-          fallback={
-            <div className="w-full h-48 flex items-center justify-center">
-              <svg className="w-12 h-12 text-[var(--text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
-              </svg>
-            </div>
-          }
-        />
+      <CoherencyVitals />
 
-        <div className="text-sm leading-relaxed max-w-xl mx-auto text-center">
-          <div className="metallic-gold">
-            {veteranStory.split("\n").filter(Boolean).map((para: string, i: number) => (
-              <p key={i} className="mb-4 last:mb-0">{para}</p>
-            ))}
-          </div>
-          <p className="text-xs text-[var(--text-muted)] mt-4 pt-4 border-t border-indigo-cathedral/8">
-            We are not affiliated with the U.S. Government or Department of Defense. We connect
-            individuals with independent, licensed insurance professionals.
+      {/* Life-event cards */}
+      <section id="life-events" className="w-full max-w-6xl mb-16 px-4" aria-labelledby="life-events-heading">
+        <div className="text-center mb-8">
+          <h2 id="life-events-heading" className={`${SECTION_HEADING} mb-3`}>What Brings You Here Today?</h2>
+          <p className="text-sm md:text-base text-[var(--text-muted)] max-w-2xl mx-auto">
+            Start with the moment you&rsquo;re living through. We&rsquo;ll help translate that into clear protection options.
           </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {LIFE_EVENTS.map((event) => (
+            <a
+              key={event.title}
+              href="#protect-family-form"
+              onClick={() => updateField("coverageInterest", event.value)}
+              className="cathedral-surface p-6 rounded-[13px] border border-teal-cathedral/15 hover:border-teal-cathedral/50 hover:-translate-y-1 transition-all group"
+            >
+              <h3 className="text-lg font-medium text-[var(--text-primary)] mb-3">{event.title}</h3>
+              <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-5">{event.desc}</p>
+              <span className="text-sm text-teal-cathedral font-medium group-hover:underline">{event.cta}</span>
+            </a>
+          ))}
         </div>
       </section>
 
-      {/* The Gap Most Don't Realize Exists */}
-      <section className="w-full max-w-2xl mb-16 px-4 text-center" aria-labelledby="gap-heading">
-        <h2 id="gap-heading" className="text-lg md:text-xl font-light text-red-500 mb-6">
-          Your Service Protects Others. But Is Your Family Fully Protected?
-        </h2>
-        <div className="text-sm text-[var(--text-muted)] leading-relaxed text-left max-w-xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4 text-center text-[var(--text-primary)]">
-            <p>
-              Many service members rely solely on SGLI or assume their coverage will always be enough.
-            </p>
-            <p>
-              But coverage limits, conversion timelines, and post-service changes can create unexpected gaps.
-            </p>
-          </div>
-
-          {/* Serving Every Stage of Service */}
-          <h3 className="text-xl md:text-2xl font-light tracking-wide text-teal-cathedral text-center mt-14 mb-6">
-            Serving Every Stage of Service.
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {[
-              "Active Duty Service Members",
-              "National Guard",
-              "Reserve Members",
-              "Veterans",
-              "Military Families",
-              "Transitioning Service Members",
-            ].map((category) => (
-              <div key={category} className="cathedral-surface border-2 border-teal-cathedral/40 p-4 text-center">
-                <p className="text-sm text-[var(--text-primary)] font-medium">{category}</p>
-              </div>
-            ))}
-          </div>
-          <p className="text-sm metallic-gold text-center font-medium mt-6">
-            If you&rsquo;ve served — this is for you.
-          </p>
-
-        </div>
-      </section>
-
-      {/* Section 3: How It Works */}
-      <section className="w-full max-w-2xl mb-16 px-4 text-center" aria-labelledby="how-it-works-heading">
-        <h2 id="how-it-works-heading" className={`${SECTION_HEADING} mb-8`}>
-          Simple. Structured. Secure.
-        </h2>
+      {/* Simple process */}
+      <section className="w-full max-w-4xl mb-16 px-4 text-center" aria-labelledby="how-it-works-heading">
+        <h2 id="how-it-works-heading" className={`${SECTION_HEADING} mb-8`}>Simple, Human Guidance</h2>
         <div className="grid md:grid-cols-3 gap-6">
           {[
-            { step: "1", title: "Submit", desc: "Submit a short, secure form." },
-            { step: "2", title: "Connect", desc: "We connect you with a licensed professional experienced in military family coverage." },
-            { step: "3", title: "Review", desc: "Review your options and decide what\u2019s right for your family." },
+            { step: "1", title: "Share Your Chapter", desc: "Tell us what prompted you to look into protection today." },
+            { step: "2", title: "Compare Options", desc: "An independent licensed professional can review solutions from multiple highly rated carriers." },
+            { step: "3", title: "Choose Confidently", desc: "Move forward only if the coverage fits your life, budget, and goals." },
           ].map((item) => (
             <div key={item.step} className="cathedral-surface p-6 text-center">
-              <div className="w-10 h-10 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-sm font-medium mx-auto mb-3">
-                {item.step}
-              </div>
+              <div className="w-10 h-10 rounded-full bg-teal-cathedral text-white flex items-center justify-center text-sm font-medium mx-auto mb-3">{item.step}</div>
               <h3 className="text-sm font-medium text-[var(--text-primary)] mb-2">{item.title}</h3>
               <p className="text-xs text-[var(--text-muted)] leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </div>
-        <p className="text-sm text-[var(--text-muted)] mt-6 italic">
-          No pressure. No obligation. Just clarity.
-        </p>
       </section>
 
-      {/* Live substrate vitals — degrades gracefully if endpoint unavailable */}
-      <CoherencyVitals />
-
-      {/* Hero — Above the Form */}
-      <header className="text-center mb-10">
+      {/* Lead form intro */}
+      <header id="protect-family-form" className="text-center mb-6 scroll-mt-24">
         <div className="text-teal-cathedral text-lg tracking-[0.3em] uppercase mb-3 pulse-gentle">
           Protect What Matters Most
         </div>
-        <h1 className={`${SECTION_HEADING} mb-4`}>
-          Protect Your Family Beyond Basic Military Coverage.
-        </h1>
+        <h2 className={`${SECTION_HEADING} mb-4`}>Tell Us What Chapter You&rsquo;re Protecting.</h2>
         <p className="metallic-gold max-w-lg mx-auto text-sm leading-relaxed mb-3">
-          Life insurance options for Active Duty, National Guard, Reserve, and Veterans
-          — made clear and simple.
+          Valor Legacies helps families protect every chapter of life through life insurance solutions
+          designed around real-life moments, not confusing insurance products.
         </p>
         <p className="text-teal-cathedral text-xs tracking-wide font-medium">
-          Founded by a Veteran. Built to Serve Military Families.
+          Veteran-founded. Family-focused. Independent.
         </p>
       </header>
 
       {/* Disclaimer — above form */}
       <div className="w-full max-w-lg mb-6 text-xs text-[var(--text-muted)] text-center leading-relaxed">
         <p>
-          This website is not an insurance company and does not provide insurance quotes,
-          bind coverage, or offer insurance advice. We connect consumers with licensed
-          insurance professionals. All coverage is subject to underwriting approval.
+          Valor Legacies is not an insurance company. We are an independent life insurance resource
+          and may connect consumers with licensed insurance professionals.
         </p>
       </div>
 
@@ -494,7 +469,7 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-1">
-              <label htmlFor="coverage" className={LABEL_CLASS}>Coverage Interest</label>
+              <label htmlFor="coverage" className={LABEL_CLASS}>What prompted you to look into coverage today?</label>
               <select id="coverage" value={form.coverageInterest} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("coverageInterest", e.target.value)} aria-required="true" aria-invalid={!!errors.coverageInterest} aria-describedby={errors.coverageInterest ? "coverage-error" : (coverageDesc ? "coverage-desc" : undefined)} className={selectClass(!!errors.coverageInterest)}>
                 {COVERAGE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value} title={opt.description}>{opt.label}</option>)}
               </select>
@@ -703,6 +678,64 @@ export default function HomePage() {
           coverage. No guarantee of specific rates or coverage is implied.
         </p>
       </div>
+
+      {/* Solutions remain available, but secondary to life events */}
+      <section id="solutions" className="w-full max-w-5xl mt-16 mb-16 px-4" aria-labelledby="solutions-heading">
+        <div className="text-center mb-8">
+          <h2 id="solutions-heading" className={`${SECTION_HEADING} mb-3`}>Solutions We May Review</h2>
+          <p className="text-sm text-[var(--text-muted)] max-w-2xl mx-auto">
+            You do not need to know which product is right before you reach out. These are examples of solutions that may be discussed based on your goals.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {SOLUTIONS.map((solution) => (
+            <div key={solution} className="cathedral-surface p-4 text-center border border-indigo-cathedral/8">
+              <p className="text-sm text-[var(--text-primary)] font-medium">{solution}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section id="resources" className="w-full max-w-5xl mb-16 px-4" aria-labelledby="resources-heading">
+        <div className="text-center mb-8">
+          <h2 id="resources-heading" className={`${SECTION_HEADING} mb-3`}>Helpful Guides for Life&rsquo;s Biggest Moments</h2>
+          <p className="text-sm text-[var(--text-muted)] max-w-2xl mx-auto">
+            Educational resources to help families understand coverage decisions without jargon or pressure.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {RESOURCE_GUIDES.map((guide) => (
+            <a key={guide} href="/resources" className="cathedral-surface p-5 rounded-[13px] hover:border-teal-cathedral/45 transition-all">
+              <h3 className="text-sm font-medium text-[var(--text-primary)] mb-3">{guide}</h3>
+              <span className="text-xs text-teal-cathedral font-medium">Read the guide</span>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <section id="about" className="w-full max-w-4xl mb-16 px-4" aria-labelledby="about-heading">
+        <div className="cathedral-surface p-6 md:p-8 text-center">
+          <h2 id="about-heading" className={`${SECTION_HEADING} mb-5`}>Veteran-Founded. Family-Focused. Independent.</h2>
+          <ImageUpload
+            slot="veteran-group"
+            alt="Valor Legacies veteran-founded mission photo"
+            editable={false}
+            className="w-full max-w-xl mx-auto mb-6 rounded-lg bg-[var(--bg-surface)] border border-teal-cathedral/20 flex items-center justify-center overflow-hidden"
+            imgClassName="w-full h-auto object-cover rounded-lg"
+            fallback={
+              <div className="w-full h-40 flex items-center justify-center text-center px-6">
+                <p className="text-sm metallic-gold">Founded by a veteran. Built to help families protect every chapter.</p>
+              </div>
+            }
+          />
+          <p className="text-sm md:text-base text-[var(--text-muted)] leading-relaxed max-w-3xl mx-auto">
+            Valor Legacies was created to help families make confident decisions during life&rsquo;s most important transitions.
+            Founded by a veteran, our mission is rooted in service, protection, and legacy. We are independent, which means
+            we are not limited to one insurance company. We help families compare options from multiple highly rated carriers
+            to find protection that fits their life, budget, and goals.
+          </p>
+        </div>
+      </section>
 
       {/* Do Not Sell Link — CCPA Compliance */}
       <div className="w-full max-w-lg mt-4 text-center">

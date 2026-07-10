@@ -148,6 +148,29 @@ function buildSummary(findings) {
 // ─── State mutation checker ─────────────────────────────────────────────────
 
 /**
+ * True when `name` was declared `const|let <name> = [` in this token
+ * stream before `idx` and never reassigned afterwards — a function-local
+ * accumulator array the function owns outright. Sound: a later plain
+ * reassignment (`name = other`) voids the proof, because the identifier
+ * may now alias an array a caller can see.
+ */
+function declaredEmptyLocal(tokens, name, idx) {
+  let declared = false;
+  for (let i = 0; i < idx; i++) {
+    const t = tokens[i];
+    if (t?.type !== 'identifier' || t.value !== name) continue;
+    const prev = tokens[i - 1];
+    const isDecl = prev && (prev.value === 'const' || prev.value === 'let' || prev.value === 'var');
+    if (isDecl && tokens[i + 1]?.value === '=' && tokens[i + 2]?.value === '[' && tokens[i + 3]?.value === ']') {
+      declared = true;
+    } else if (!isDecl && tokens[i + 1]?.value === '=' && tokens[i + 2]?.value !== '=') {
+      declared = false; // reassigned to something we can't prove local
+    }
+  }
+  return declared;
+}
+
+/**
  * A .sort()/.reverse()/.splice() on a variable that wasn't produced by a
  * copy (slice, spread, Array.from, concat, structuredClone) is a mutation
  * of the source array. For private class fields (#name) we allow it —
@@ -177,7 +200,15 @@ function checkStateMutation(fn, scope, emit) {
     // Private field mutation is typically intentional
     const isPrivateField = receiverText.includes('this.#') || receiverText.includes('#');
 
-    if (!produced && !isPrivateField) {
+    // A local accumulator (`const xs = []` declared in THIS function and
+    // never reassigned) is owned by the function — sorting it in place
+    // is the canonical build-then-sort pattern, not a caller-visible
+    // mutation. Only a bare identifier qualifies: any member chain
+    // (this.xs, a.b) can alias external state.
+    const isLocalAccumulator = receiverRange.length === 1
+      && declaredEmptyLocal(tokens, receiverText, i);
+
+    if (!produced && !isPrivateField && !isLocalAccumulator) {
       emit({
         line: t.line,
         column: t.column,

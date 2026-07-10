@@ -350,6 +350,7 @@ class FieldTool {
 
     return {
       waveform,         // 29-D L1 fractal (back-compat; scoring runs the 116-D composed flow)
+      composed,         // 116-D composed vector (null when the encoder stack is unreachable)
       voidResonance,    // Void's composed (116-D) flow-aware library read
       codeResonance,    // Oracle's coding-specific filter
       coherence,

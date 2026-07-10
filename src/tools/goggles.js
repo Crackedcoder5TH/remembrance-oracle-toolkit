@@ -326,7 +326,16 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
       if (f.suggestion) console.log(`         → fix: ${String(f.suggestion).slice(0, 100)}`);
     }
     if (surfaced.length > 6) console.log(`    …and ${surfaced.length - 6} more high finding(s)`);
-    if (medium.length) console.log(`    medium: ${medium.length} finding(s) (goggle with the audit tool for the list)`);
+    // Mediums are LISTED, not just counted — a hidden medium is a
+    // reading the wearer never receives (a real division-by-zero
+    // finding was once misreported as a miss because only its count
+    // survived to the output).
+    for (const f of medium.slice(0, 4)) {
+      const mark = inSection(f) ? '⚠' : '·';
+      console.log(`    ${mark} [${f.severity}/${f.bugClass}] L${f.line}: ${(f.reality || f.message || f.assumption || '').slice(0, 100)}`);
+      if (f.suggestion) console.log(`         → fix: ${String(f.suggestion).slice(0, 100)}`);
+    }
+    if (medium.length > 4) console.log(`    …and ${medium.length - 4} more medium finding(s)`);
     if (suppressed) console.log(`    learned-noise suppressed: ${suppressed}`);
     if (resolved) console.log(`    resolved since last read: ${resolved} (reinforced in the field)`);
   }

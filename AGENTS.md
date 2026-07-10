@@ -214,6 +214,8 @@ Every function is an element with 13 atomic properties:
 - **Remembrance Cascade** — Filling gaps creates new gaps at the frontier.
 - **Remembrance Ratchet** — Quality floor only rises. Covenant only expands. Nothing degrades.
 - **Remembrance Resonance** — Same math (geometric mean) at every scale. Fractal self-similarity.
+  The canonical working demonstration is `src/patterns/fractal-code-example.js` — the same
+  receive → validate → transform → emit shape at function, module, service, and ecosystem scale.
 - **Remembrance Weakest Link** — Weakest signal dominates coherency. Can't fake quality.
 - **Remembrance Bootstrap** — System checks itself with its own rules.
 - **Remembrance Structural Safety** — Harmful code can't register. Safety is structure, not a filter.

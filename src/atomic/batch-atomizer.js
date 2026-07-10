@@ -151,3 +151,17 @@ module.exports = {
   batchAtomize,
   batchAtomizeFiles,
 };
+
+// CLI: node src/atomic/batch-atomizer.js <file...> [--write]
+// Dry by default — prints what each file WOULD gain; --write applies.
+if (require.main === module) {
+  const args = process.argv.slice(2);
+  const write = args.includes('--write');
+  const files = args.filter(a => !a.startsWith('--'));
+  if (!files.length) {
+    console.log('usage: node src/atomic/batch-atomizer.js <file...> [--write]');
+    process.exit(0);
+  }
+  const results = batchAtomizeFiles(files, { dryRun: !write });
+  console.log(JSON.stringify(results, null, 2));
+}

@@ -238,16 +238,35 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
     shape = dr.scan(fullText, { language });
     if (shape) {
       channels.push('shape:' + shape.librarySize + ' sigs');
-      // Merge: a shape finding whose range already contains a parse
-      // finding is the same defect seen twice — keep the parse one
-      // (it names the rule and the exact line).
+      // Merge — with the PARSE channel authoritative on JS/TS. The shape
+      // channel is coarse (a defect is a shape): it cannot distinguish
+      // `[...a].sort()` (safe copy) from `a.sort()` (mutation) because the
+      // shapes are near-identical. The AST parse channel CAN, and does.
+      // So on a parseable file, for the bug classes the parser covers,
+      // the parser is the authority: a shape finding is kept only when it
+      // is NOT a class the parser already vets (it would be either a dup
+      // of a parse finding, or a case the parser looked at and cleared).
+      // The shape channel earns its keep on the languages the parser
+      // cannot read (rust, go, …), and on classes the parser lacks.
       const parseLines = new Set(findings.map((f) => f.line));
+      const parseCovers = new Set(findings.map((f) => f.bugClass));
+      // Classes the AST checker structurally vets whenever it parses a
+      // file, even if it emitted nothing this run (silence = cleared).
+      // This MUST match ast-checkers BUG_CLASSES exactly: too few leaves
+      // shape false-positives unsuppressed (integration/nullable-deref was
+      // missing); too many suppresses shape findings for classes the
+      // parser does NOT cover (error-handling — the shape channel's own,
+      // e.g. rust unwrap-chain — must survive).
+      const AST_COVERED = new Set(['state-mutation', 'security', 'concurrency', 'type', 'integration', 'edge-case']);
       for (const f of shape.findings) {
         let dup = false;
         for (let ln = f.line; ln <= (f.endLine || f.line); ln++) {
           if (parseLines.has(ln)) { dup = true; break; }
         }
-        if (!dup) findings.push(f);
+        if (dup) continue;
+        // On JS/TS, defer to the parser for the classes it owns.
+        if (parseable && (AST_COVERED.has(f.bugClass) || parseCovers.has(f.bugClass))) continue;
+        findings.push(f);
       }
       // Attach each high parse finding's surrounding block, so the
       // learning loop can TEACH the shape to the resonance channel —
@@ -307,7 +326,16 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
       if (f.suggestion) console.log(`         → fix: ${String(f.suggestion).slice(0, 100)}`);
     }
     if (surfaced.length > 6) console.log(`    …and ${surfaced.length - 6} more high finding(s)`);
-    if (medium.length) console.log(`    medium: ${medium.length} finding(s) (goggle with the audit tool for the list)`);
+    // Mediums are LISTED, not just counted — a hidden medium is a
+    // reading the wearer never receives (a real division-by-zero
+    // finding was once misreported as a miss because only its count
+    // survived to the output).
+    for (const f of medium.slice(0, 4)) {
+      const mark = inSection(f) ? '⚠' : '·';
+      console.log(`    ${mark} [${f.severity}/${f.bugClass}] L${f.line}: ${(f.reality || f.message || f.assumption || '').slice(0, 100)}`);
+      if (f.suggestion) console.log(`         → fix: ${String(f.suggestion).slice(0, 100)}`);
+    }
+    if (medium.length > 4) console.log(`    …and ${medium.length - 4} more medium finding(s)`);
     if (suppressed) console.log(`    learned-noise suppressed: ${suppressed}`);
     if (resolved) console.log(`    resolved since last read: ${resolved} (reinforced in the field)`);
   }

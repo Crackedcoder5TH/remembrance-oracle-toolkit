@@ -90,7 +90,19 @@ function buildEvent(parsed) {
 
 async function runIngest() {
   if (!TOKEN) throw new Error('GITHUB_TOKEN or ECOSYSTEM_PAT required');
-  const issues = await gh(`/repos/${OWNER}/${BLOCKCHAIN_REPO}/issues?state=open&labels=ledger-queue&per_page=30`);
+  // A 404 here means the queue does not exist to be drained — the repo
+  // has issues disabled (GitHub 404s the issues API in that case) or the
+  // repo is unreachable. An absent queue is an EMPTY queue, not a crash:
+  // the scheduled drain must stay green when there is nothing to drain.
+  let issues;
+  try {
+    issues = await gh(`/repos/${OWNER}/${BLOCKCHAIN_REPO}/issues?state=open&labels=ledger-queue&per_page=30`);
+  } catch (e) {
+    if (String(e.message).includes(': 404')) {
+      return { ingested: 0, reason: 'queue unreachable (issues disabled or repo missing) — treated as empty' };
+    }
+    throw e;
+  }
   if (issues.length === 0) return { ingested: 0, reason: 'queue empty' };
   const parsed = issues.map(parseIssue).filter(p => p.repo && p.pr);
   const events = parsed.map(buildEvent);

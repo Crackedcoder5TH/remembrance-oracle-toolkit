@@ -32,7 +32,8 @@
     "./audit": "./src/audit/ast-checkers.js",
     "./lint": "./src/audit/lint-checkers.js",
     "./smell": "./src/audit/smell-checkers.js",
-    "./reflector": "./src/reflector/bridge.js"
+    "./reflector": "./src/reflector/bridge.js",
+    "./bridge": "./src/fractal-bridge.js"
   },
   "bin": {
     "remembrance-oracle": "src/cli.js",
@@ -82,7 +83,8 @@
     "analytics": "node src/cli.js analytics --json",
     "postinstall": "node -e \"try{require('fs').mkdirSync('.remembrance',{recursive:true})}catch{}\"",
     "dev:cathedral": "npm run dev --prefix digital-cathedral",
-    "build:cathedral": "npm run build --prefix digital-cathedral"
+    "build:cathedral": "npm run build --prefix digital-cathedral",
+    "atomize": "node src/atomic/batch-atomizer.js"
   },
   "keywords": [
     "ai",

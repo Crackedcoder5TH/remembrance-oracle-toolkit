@@ -289,7 +289,43 @@ function mapProjectCoherency(projectPath, opts = {}) {
       })),
       topCousin: others[0] || null,
       topExternal,
+      _vec: r.composed || null, // for the in-repo pairwise pass below
     });
+  }
+
+  // ── 1b. In-repo pairwise pass — the same sibling engine substrate
+  // mode uses (pairwiseFlow), run over the vectors just encoded. The
+  // substrate-topK stats above are EMPTY for a repo the substrate has
+  // not witnessed (every file misread as ORPHAN — the supabase
+  // degeneracy) and truncated at topK for a witnessed one; the repo's
+  // own files compared to each other are the ground truth for in-repo
+  // wiring. Substrate matches remain authoritative for what they truly
+  // measure: external bridges and ecosystem placement.
+  {
+    const pool = results.filter(r => Array.isArray(r._vec) && r._vec.length > 0);
+    if (pool.length >= 2) {
+      const flow = pairwiseFlow(pool.map(r => ({ rel: r.rel, vec: r._vec })), { duplicateAt });
+      for (let i = 0; i < pool.length; i++) {
+        const r = pool[i];
+        const { stableHigh, duplicates, siblings } = flow[i];
+        const stableHighSameCategory = siblings.filter(
+          s => s.shape === 'STABLE-HIGH' && categorize(s.rel) === r.category).length;
+        r.stableHighSameProject = stableHigh;
+        r.stableHighSameCategory = stableHighSameCategory;
+        r.duplicates = duplicates.map(d => ({ name: d.name, score: d.score, minDepth: d.minDepth, shape: d.shape }));
+        r.siblings = siblings;
+        r.nearestSibling = siblings[0]
+          ? { name: siblings[0].rel, d4: siblings[0].d4, shape: siblings[0].shape, score: siblings[0].d4 }
+          : null;
+        const flags = [];
+        if (stableHigh === 0) flags.push('ORPHAN');
+        if (duplicates.length > 0) flags.push('DUPLICATE');
+        if (r.category.startsWith('api/') && stableHighSameCategory === 0 && stableHigh > 0) flags.push('INCONSISTENT');
+        if (stableHigh >= 3) flags.push('WELL-FORMED');
+        r.flags = flags;
+      }
+    }
+    for (const r of results) delete r._vec;
   }
 
   // ── 2. Per-category health ───────────────────────────────────
@@ -349,6 +385,14 @@ function mapProjectCoherency(projectPath, opts = {}) {
     : 0;
   ctr(meanCoherence, 'coherency-map:' + namespace + ':structural');
   ctr(1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2), 'coherency-map:' + namespace + ':non-duplication');
+  // Orphan-rate meta-signal — same rule as the residual and dimensional
+  // couplings: a completed wiring measurement is a COHERENT event (the
+  // instrument worked), so it contributes at healthy coherence with the
+  // RATE in the source bucket, never in the coherence scalar.
+  const orphanRate = results.length
+    ? results.filter(r => r.flags.includes('ORPHAN')).length / results.length : 0;
+  ctr(0.9, 'coherency-map:' + namespace + ':orphan-rate:'
+    + (orphanRate >= 0.5 ? 'high' : orphanRate >= 0.15 ? 'elevated' : 'low'));
 
   return {
     project: namespace,
@@ -500,34 +544,15 @@ function mapFromSubstrate(projectPath, opts = {}) {
   //    count, duplicates. One 116-dim sweep per pair. Flags are
   //    computed for on-disk files only; the full entry set (including
   //    ghosts) remains the sibling pool being compared against.
-  const n = entries.length;
+  // The file's NEIGHBORHOOD comes from pairwiseFlow — the ONE sibling
+  // engine both map modes share: top in-repo siblings by full-depth
+  // cosine with flow shapes, stable-high counts, duplicates.
+  const flow = pairwiseFlow(entries, { duplicateAt });
   const results = [];
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     if (!walkedSet.has(e.rel)) continue; // ghost — pool member, not a map row
-    let stableHigh = 0;
-    const duplicates = [];
-    // The file's NEIGHBORHOOD: its top in-repo siblings by full-depth
-    // cosine, each with its flow shape. This is what lets a per-file
-    // goggle show WHERE the file sits in the codebase, not just counts.
-    const siblings = []; // kept sorted desc by d4, capped at 5
-    for (let j = 0; j < n; j++) {
-      if (j === i) continue;
-      const [d1, d2, d3, d4] = _flowCosines(e.vec, entries[j].vec);
-      const shape = classifyFlow({ d1, d2, d3, d4 });
-      if (shape === 'STABLE-HIGH') {
-        stableHigh++;
-        const minDepth = Math.min(d1, d2, d3, d4);
-        if (minDepth >= duplicateAt) {
-          duplicates.push({ name: entries[j].rel, score: d4, minDepth, shape });
-        }
-      }
-      if (siblings.length < 5 || d4 > siblings[siblings.length - 1].d4) {
-        siblings.push({ rel: entries[j].rel, d4, shape });
-        siblings.sort((a, b) => b.d4 - a.d4);
-        if (siblings.length > 5) siblings.pop();
-      }
-    }
+    const { stableHigh, duplicates, siblings } = flow[i];
     const category = categorize(e.rel);
     const flags = [];
     if (stableHigh === 0) flags.push('ORPHAN');
@@ -767,6 +792,51 @@ function coherencyFlow(a, b) {
     d2 = d3 = d4 = d1;
   }
   return { d1, d2, d3, d4, shape: classifyFlow({ d1, d2, d3, d4 }) };
+}
+
+/**
+ * In-repo pairwise depth-flow — the ONE sibling engine both map modes
+ * share. For every entry, sweep the whole pool: stable-high count,
+ * duplicates (min-depth ≥ duplicateAt), and the top-5 sibling
+ * neighbourhood with flow shapes. Extracted from mapFromSubstrate so
+ * the deep path can run the exact same comparison over vectors it just
+ * encoded — deep mode previously derived in-repo stats from substrate
+ * topK matches, which are EMPTY for an unwitnessed repo (every file
+ * misread as ORPHAN — the supabase degeneracy) and truncated for a
+ * witnessed one.
+ *
+ * @param {Array<{rel: string, vec: number[]}>} entries — the pool
+ * @param {object} [opts] duplicateAt?: number = 0.999
+ * @returns {Array<{stableHigh, duplicates, siblings}>} per-entry stats
+ */
+function pairwiseFlow(entries, opts = {}) {
+  const duplicateAt = opts.duplicateAt || 0.999;
+  const n = entries.length;
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    let stableHigh = 0;
+    const duplicates = [];
+    const siblings = []; // kept sorted desc by d4, capped at 5
+    for (let j = 0; j < n; j++) {
+      if (j === i) continue;
+      const [d1, d2, d3, d4] = _flowCosines(entries[i].vec, entries[j].vec);
+      const shape = classifyFlow({ d1, d2, d3, d4 });
+      if (shape === 'STABLE-HIGH') {
+        stableHigh++;
+        const minDepth = Math.min(d1, d2, d3, d4);
+        if (minDepth >= duplicateAt) {
+          duplicates.push({ name: entries[j].rel, score: d4, minDepth, shape });
+        }
+      }
+      if (siblings.length < 5 || d4 > siblings[siblings.length - 1].d4) {
+        siblings.push({ rel: entries[j].rel, d4, shape });
+        siblings.sort((a, b) => b.d4 - a.d4);
+        if (siblings.length > 5) siblings.pop();
+      }
+    }
+    out[i] = { stableHigh, duplicates, siblings };
+  }
+  return out;
 }
 
 function classifyFlow(f) {

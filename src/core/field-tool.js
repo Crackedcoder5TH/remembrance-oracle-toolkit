@@ -70,6 +70,34 @@ try {
   _encoderStack = require('./encoder-stack');
 } catch (_) { /* stack unreachable — read falls back to L1 only */ }
 
+// New-layer meta-awareness. The encoder layers are pure functions (L1-L7
+// alike never touch the field directly), so the LRE coupling lives here,
+// at the once-per-read boundary: every read feeds the field the readings
+// the new dimensions detect — L7's 2D-gain (how autoregressive/2D the
+// pattern is) — so the field histogram always carries the substrate's
+// DIMENSIONAL profile, not just its coherence. Best-effort: a missing
+// module degrades to "no dimensional signal", never breaks a read.
+let _dimensionalGain = null;
+try {
+  _dimensionalGain = require('./dimensional-waveform').dimensionalGain;
+} catch (_) { /* dimensional layer unreachable */ }
+
+// Residual meta-awareness. The residual monitor measures what the current
+// encoder stack FAILS to explain (false-equivalence rate: distinct-domain
+// patterns the stack reads as near-identical). It was built to be invoked
+// by the compression flow, so the coupling lives here too: every
+// RESIDUAL_CHECK_EVERY successful substrate grows, one measurement runs
+// and its rate is contributed to the field as its own source bucket —
+// the LRE always carries the stack's unexplained-residual signal.
+// Measurement only: auto-activating the next layer is deliberately NOT
+// wired, because activation changes composed-vector dimensionality and
+// must pass the multi-telescope calibration gate first (an operator act,
+// via residual-monitor.checkAndSpawn). Best-effort like every coupling.
+let _residualMonitor = null;
+try { _residualMonitor = require('./residual-monitor'); } catch (_) { /* monitor unreachable */ }
+const RESIDUAL_CHECK_EVERY = 250;
+const RESIDUAL_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'residual-check.json');
+
 // Canonical substrate: Void's fractal library (~43k+ patterns,
 // translated from the master pattern_index.json via the same
 // canonical encoder). Now holds both L1 (29-D) and composed_v1
@@ -233,6 +261,43 @@ class FieldTool {
       layers.grew = grew.ok === true;
     }
 
+    // 5b. Residual meta-awareness: after every RESIDUAL_CHECK_EVERY
+    // successful grows, measure the stack's false-equivalence residual
+    // and feed the rate to the field. Growth invokes the check — the
+    // entanglement the monitor was built for (its own docstring:
+    // "every compression pass computes residual against the current
+    // depth"). See the coupling note at _residualMonitor above for why
+    // this measures but never auto-spawns a layer. Reading the rate:
+    // without a sourceLookup the monitor compares L1 vectors only (the
+    // substrate stores L1 for every pattern; composed depths need
+    // source text), so on a host where most sources are unlocatable
+    // the rate reads high — it is measuring how much L1 ALONE leaves
+    // unresolved, the residual the composed layers exist to explain.
+    if (grew.ok === true && _residualMonitor) {
+      try {
+        const st = fs.existsSync(RESIDUAL_COUNTER_PATH)
+          ? JSON.parse(fs.readFileSync(RESIDUAL_COUNTER_PATH, 'utf8')) : { grows: 0 };
+        st.grows = (st.grows | 0) + 1;
+        if (st.grows >= RESIDUAL_CHECK_EVERY) {
+          const m = _residualMonitor.measureResidual({ probeCount: 60 });
+          st.grows = 0;
+          st.lastMeasurement = {
+            depth: m.depth, residualRate: +m.residualRate.toFixed(4),
+            triggers: m.triggers, probes: m.probesExamined,
+          };
+          // A completed residual measurement is a COHERENT event (the
+          // instrument worked); the RATE is the meta-signal and lives in
+          // the source bucket, never in the coherence scalar (same rule
+          // as the dimensional coupling in 7b below).
+          const bucket = m.triggers ? 'triggered' : m.residualRate >= 0.02 ? 'elevated' : 'low';
+          fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:residual:' + bucket });
+          layers.residual = st.lastMeasurement;
+        }
+        fs.mkdirSync(path.dirname(RESIDUAL_COUNTER_PATH), { recursive: true });
+        fs.writeFileSync(RESIDUAL_COUNTER_PATH, JSON.stringify(st));
+      } catch (_) { /* residual coupling optional — never break a read */ }
+    }
+
     // 6. Coherence = the INTRINSIC structural-coherence score: does this have
     //    coherent STRUCTURE (syntax validity + completeness + consistency +
     //    AST), measured directly from the content. This is the coherence the
@@ -260,8 +325,32 @@ class FieldTool {
       layers.contributed = true;
     } catch (_) { /* field unreachable */ }
 
+    // 7b. Dimensional meta-awareness: feed the field the new layers'
+    // reading so the LRE is always aware of the dimensional structure
+    // flowing through it. L7's 2D-gain becomes its own field source, so
+    // the histogram records how much of what the substrate sees is
+    // autoregressive/2D — the meta-signal the new layers add.
+    if (_dimensionalGain) {
+      try {
+        const gain = _dimensionalGain(content);
+        if (gain > 0) {
+          // Detecting 2D structure is a COHERENT event — the encoder
+          // successfully characterized the pattern's dimensionality — so
+          // it contributes at healthy coherence. The GAIN magnitude is the
+          // meta-signal, recorded in the SOURCE bucket (strong/moderate/
+          // weak), NOT in the coherence scalar: contributing gain-as-
+          // coherence would drag the field's alignment down for merely
+          // finding structure (it once cratered the field 0.96 → 0.22).
+          const bucket = gain >= 0.3 ? 'strong' : gain >= 0.1 ? 'moderate' : 'weak';
+          fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:dimensional-2d:' + bucket });
+          layers.dimensionalGain = +gain.toFixed(4);
+        }
+      } catch (_) { /* dimensional coupling optional */ }
+    }
+
     return {
       waveform,         // 29-D L1 fractal (back-compat; scoring runs the 116-D composed flow)
+      composed,         // 116-D composed vector (null when the encoder stack is unreachable)
       voidResonance,    // Void's composed (116-D) flow-aware library read
       codeResonance,    // Oracle's coding-specific filter
       coherence,

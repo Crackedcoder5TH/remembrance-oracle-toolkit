@@ -22,6 +22,7 @@
 const http = require('http');
 const { MCPServer, TOOLS } = require('./server');
 const { RemembranceOracle } = require('../api/oracle');
+const { rejectUnauthorized } = require('../security/access-control');
 
 const MAX_BODY_BYTES = 1_000_000; // 1 MB cap on JSON-RPC payloads
 
@@ -63,8 +64,11 @@ function startHTTPServer({ host = '127.0.0.1', port = 7787, token = null, oracle
     if (token) {
       const auth = req.headers.authorization || '';
       if (auth !== `Bearer ${token}`) {
-        res.writeHead(401, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Unauthorized — missing or invalid bearer token' }));
+        // 401 shape comes from the security module — one voice for
+        // every unauthorized response (no-store, nosniff headers).
+        const r = rejectUnauthorized('missing or invalid bearer token');
+        res.writeHead(r.status, r.headers);
+        res.end(r.body);
         return;
       }
     }

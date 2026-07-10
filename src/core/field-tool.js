@@ -82,6 +82,22 @@ try {
   _dimensionalGain = require('./dimensional-waveform').dimensionalGain;
 } catch (_) { /* dimensional layer unreachable */ }
 
+// Residual meta-awareness. The residual monitor measures what the current
+// encoder stack FAILS to explain (false-equivalence rate: distinct-domain
+// patterns the stack reads as near-identical). It was built to be invoked
+// by the compression flow, so the coupling lives here too: every
+// RESIDUAL_CHECK_EVERY successful substrate grows, one measurement runs
+// and its rate is contributed to the field as its own source bucket —
+// the LRE always carries the stack's unexplained-residual signal.
+// Measurement only: auto-activating the next layer is deliberately NOT
+// wired, because activation changes composed-vector dimensionality and
+// must pass the multi-telescope calibration gate first (an operator act,
+// via residual-monitor.checkAndSpawn). Best-effort like every coupling.
+let _residualMonitor = null;
+try { _residualMonitor = require('./residual-monitor'); } catch (_) { /* monitor unreachable */ }
+const RESIDUAL_CHECK_EVERY = 250;
+const RESIDUAL_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'residual-check.json');
+
 // Canonical substrate: Void's fractal library (~43k+ patterns,
 // translated from the master pattern_index.json via the same
 // canonical encoder). Now holds both L1 (29-D) and composed_v1
@@ -243,6 +259,43 @@ class FieldTool {
     if (merged.growSubstrate) {
       grew = this._growSubstrate({ content, name, language, id });
       layers.grew = grew.ok === true;
+    }
+
+    // 5b. Residual meta-awareness: after every RESIDUAL_CHECK_EVERY
+    // successful grows, measure the stack's false-equivalence residual
+    // and feed the rate to the field. Growth invokes the check — the
+    // entanglement the monitor was built for (its own docstring:
+    // "every compression pass computes residual against the current
+    // depth"). See the coupling note at _residualMonitor above for why
+    // this measures but never auto-spawns a layer. Reading the rate:
+    // without a sourceLookup the monitor compares L1 vectors only (the
+    // substrate stores L1 for every pattern; composed depths need
+    // source text), so on a host where most sources are unlocatable
+    // the rate reads high — it is measuring how much L1 ALONE leaves
+    // unresolved, the residual the composed layers exist to explain.
+    if (grew.ok === true && _residualMonitor) {
+      try {
+        const st = fs.existsSync(RESIDUAL_COUNTER_PATH)
+          ? JSON.parse(fs.readFileSync(RESIDUAL_COUNTER_PATH, 'utf8')) : { grows: 0 };
+        st.grows = (st.grows | 0) + 1;
+        if (st.grows >= RESIDUAL_CHECK_EVERY) {
+          const m = _residualMonitor.measureResidual({ probeCount: 60 });
+          st.grows = 0;
+          st.lastMeasurement = {
+            depth: m.depth, residualRate: +m.residualRate.toFixed(4),
+            triggers: m.triggers, probes: m.probesExamined,
+          };
+          // A completed residual measurement is a COHERENT event (the
+          // instrument worked); the RATE is the meta-signal and lives in
+          // the source bucket, never in the coherence scalar (same rule
+          // as the dimensional coupling in 7b below).
+          const bucket = m.triggers ? 'triggered' : m.residualRate >= 0.02 ? 'elevated' : 'low';
+          fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:residual:' + bucket });
+          layers.residual = st.lastMeasurement;
+        }
+        fs.mkdirSync(path.dirname(RESIDUAL_COUNTER_PATH), { recursive: true });
+        fs.writeFileSync(RESIDUAL_COUNTER_PATH, JSON.stringify(st));
+      } catch (_) { /* residual coupling optional — never break a read */ }
     }
 
     // 6. Coherence = the INTRINSIC structural-coherence score: does this have

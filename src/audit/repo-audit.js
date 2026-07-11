@@ -35,8 +35,24 @@ const CHECKER_EXTENSIONS = new Set(['.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx'
 const DEFAULT_MAX_CHECKER_FILES = 400;
 const DEFAULT_MAX_FINDINGS = 60;
 
+// Only these clone transports are allowed. git's `ext::`, `fd::`,
+// `file://`, and scp-style paths can execute commands or read the local
+// disk, so a client-supplied target that isn't plainly http(s)/git/ssh
+// is refused. This is the audit tool's front door — it takes untrusted
+// input, so the allowlist is positive, not a blocklist.
+const ALLOWED_GIT_URL = /^(https:\/\/|http:\/\/|git:\/\/|ssh:\/\/|git@[\w.-]+:)[\w./~@:-]+$/;
+
 function _isGitUrl(target) {
-  return /^(https?:\/\/|git@|ssh:\/\/)/.test(target) || /\.git$/.test(target);
+  // A leading '-' would be read by git as an option (argument injection),
+  // and only the allowlisted transports may clone.
+  return typeof target === 'string' && !target.startsWith('-') && ALLOWED_GIT_URL.test(target);
+}
+
+// A target that looks URL-ish (has a scheme or user@host:) but is NOT an
+// allowed git URL is a rejected clone attempt, not a local path — catch
+// it so `ext::…` never silently falls through to "treat as directory".
+function _looksLikeRemote(target) {
+  return typeof target === 'string' && (/^[a-z][a-z0-9+.-]*::/i.test(target) || /:\/\//.test(target) || /^[\w.-]+@[\w.-]+:/.test(target) || target.startsWith('-'));
 }
 
 function _walkSources(dir) {
@@ -77,8 +93,30 @@ function auditRepo(target, opts = {}) {
   let cloned = false;
   if (_isGitUrl(target)) {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), 'remembrance-audit-'));
-    execFileSync('git', ['clone', '--depth', '1', target, dir], { stdio: 'pipe', timeout: 300000 });
+    // '--' stops git from reading the target as an option even if the
+    // allowlist ever regresses; GIT_ALLOW_PROTOCOL pins transports at
+    // the git level (belt and suspenders with the URL allowlist); the
+    // prompt/askpass envs stop any credential prompt from hanging a
+    // headless run (a phone-triggered audit has no TTY).
+    try {
+      execFileSync('git', ['clone', '--depth', '1', '--', target, dir], {
+        stdio: 'pipe',
+        timeout: 300000,
+        env: { ...process.env, GIT_ALLOW_PROTOCOL: 'https:http:git:ssh', GIT_TERMINAL_PROMPT: '0', GIT_ASKPASS: '/bin/true' },
+      });
+    } catch (e) {
+      // A clone failure (unreachable host, private repo, timeout, bad
+      // ref) is a clean negative result, not a crash — a bad URL must
+      // never 500 the MCP server serving a phone.
+      try { fs.rmSync(dir, { recursive: true, force: true }); } catch (_e) { /* best-effort */ }
+      const detail = (e && (e.stderr ? e.stderr.toString() : e.message) || '').trim().split('\n').pop();
+      return { ok: false, error: `clone failed: ${String(detail).slice(0, 120)}` };
+    }
     cloned = true;
+  } else if (_looksLikeRemote(target)) {
+    // Remote-shaped but not an allowed transport — refuse rather than
+    // fall through to "treat as local path".
+    return { ok: false, error: `refused: '${String(target).slice(0, 60)}' is not an allowed clone URL (https/http/git/ssh only)` };
   }
   if (!fs.existsSync(dir)) {
     return { ok: false, error: `target not found: ${target}` };

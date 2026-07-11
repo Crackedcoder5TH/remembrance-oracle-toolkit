@@ -64,3 +64,24 @@ test('formatReport renders both outcomes', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('auditRepo refuses dangerous clone transports (argument-injection / RCE guard)', () => {
+  const attacks = [
+    'ext::sh -c touch /tmp/pwned',
+    '--upload-pack=touch /tmp/pwned',
+    'file:///etc/passwd',
+    'fd::17/foo',
+    '-oProxyCommand=evil',
+  ];
+  for (const a of attacks) {
+    const r = auditRepo(a, {});
+    assert.equal(r.ok, false, `must refuse: ${a}`);
+    assert.match(r.error, /refused|not found|not an allowed/, `clean refusal for: ${a}`);
+  }
+});
+
+test('auditRepo returns a clean error (never throws) on an unreachable clone', () => {
+  const r = auditRepo('https://example.invalid/nope.git', {});
+  assert.equal(r.ok, false);
+  assert.match(r.error, /clone failed/);
+});

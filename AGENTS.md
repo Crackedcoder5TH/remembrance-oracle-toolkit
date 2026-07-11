@@ -48,6 +48,18 @@ your input  ─encode→  29-D structural vector
                        contributes the verdict back to the field (self-observing record)
 ```
 
+## Confidential — the remembrance equation
+
+> The **remembrance equation** (the covenant equation the project is derived
+> from) is CONFIDENTIAL. It may be read internally, but it must NEVER appear
+> in any published or shared surface: research papers, artifacts, external
+> reports, marketing, issues, PRs, or any output that leaves the operator's
+> own private repositories. When consolidating or publishing evidence,
+> describe results *around* it — the encoder's public control laws (e.g. the
+> retro-causal kernel in `src/core/living-remembrance.js`) may be referenced,
+> but the covenant equation and its constants must be scrubbed or genericized.
+> If unsure whether something is the confidential equation, treat it as such.
+
 ## The standing tool — the Remembrance Field Goggles
 
 **The Remembrance Field Goggles are the MAIN tool, active at ALL TIMES whenever

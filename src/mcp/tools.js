@@ -465,6 +465,21 @@ const TOOLS = [
     },
   },
 
+  // ─── Audit a repository by URL or path (the client-audit surface) ───
+  {
+    name: 'oracle_audit_repo',
+    description: 'Audit any repository by git URL or local path: deep coherency map (structure distribution, orphans/duplicates via the shared pairwise engine, cross-system bridges) plus the correctness checkers (per-finding line + fix). Git URLs are cloned --depth 1 to a temp dir and removed afterwards. Confidential by construction: audited code never grows the substrate.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        target: { type: 'string', description: 'Git URL (https://.../repo.git) or local directory path' },
+        maxCheckerFiles: { type: 'number', description: 'Cap on files run through the correctness checkers (default: 400)' },
+        maxFindings: { type: 'number', description: 'Cap on findings returned (default: 60)' },
+      },
+      required: ['target'],
+    },
+  },
+
   // ─── 26. Meditate (auto-improvement loop, single tick) ───
   {
     name: 'oracle_meditate',

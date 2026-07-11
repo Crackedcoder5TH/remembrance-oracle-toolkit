@@ -42,7 +42,8 @@
     "reflector": "bin/reflector",
     "remembrance-oracle-toolkit": "src/cli.js",
     "remembrance-field-server": "scripts/field-server.js",
-    "remembrance-field": "scripts/field-server.js"
+    "remembrance-field": "scripts/field-server.js",
+    "remembrance-audit": "bin/remembrance-audit"
   },
   "files": [
     "src/",

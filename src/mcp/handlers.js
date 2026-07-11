@@ -1585,6 +1585,17 @@ const HANDLERS = {
     }
     return { ...base, document: doc };
   },
+
+  // ─── Audit a repository by URL or path (the client-audit surface) ───
+  // Thin dispatch over src/audit/repo-audit.js — the same engine behind
+  // the remembrance-audit CLI, so phone/chat/terminal produce one report.
+  oracle_audit_repo(oracle, args) {
+    const { auditRepo } = require('../audit/repo-audit');
+    return auditRepo(args.target, {
+      maxCheckerFiles: args.maxCheckerFiles,
+      maxFindings: args.maxFindings,
+    });
+  },
 };
 
 module.exports = { HANDLERS };

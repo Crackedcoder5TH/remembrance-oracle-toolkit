@@ -244,8 +244,23 @@ export default function HomePage() {
   return (
     <main className="overflow-hidden bg-[#f6f0e6] text-[#241d15]">
       <section id="home" className="relative flex min-h-[92vh] items-center px-4 py-24 text-white md:px-8" aria-labelledby="hero-heading">
+        {/* Static base — shown while the video loads and for reduced-motion visitors */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(214,179,95,0.34),transparent_28%),linear-gradient(120deg,rgba(19,16,13,0.96),rgba(31,25,19,0.82)_45%,rgba(65,45,24,0.5)),url('/og-image.svg')] bg-cover bg-center" aria-hidden="true" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/20 to-[#f6f0e6]" aria-hidden="true" />
+        {/* Cinematic brand-story montage — silent, autoplaying, looping */}
+        <video
+          className="absolute inset-0 h-full w-full object-cover motion-reduce:hidden"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+        >
+          <source src="/assets/valor/life-chapters-montage.mp4" type="video/mp4" />
+        </video>
+        {/* Warmth + legibility overlay over the video (keeps the brand palette and readable text) */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(214,179,95,0.30),transparent_30%),linear-gradient(120deg,rgba(19,16,13,0.90),rgba(31,25,19,0.66)_45%,rgba(65,45,24,0.40))]" aria-hidden="true" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-[#f6f0e6]" aria-hidden="true" />
         <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="animate-valor-rise max-w-4xl">
             <p className="mb-5 text-sm font-semibold uppercase tracking-[0.35em] text-[#d6b35f]">Life changes. Love lives on.</p>
@@ -262,7 +277,7 @@ export default function HomePage() {
             <div className="rounded-[1.5rem] bg-gradient-to-br from-[#f6e5c4]/95 to-[#b58b3b]/80 p-8 text-[#211a13]">
               <p className="text-xs font-semibold uppercase tracking-[0.28em]">Guided protection</p>
               <p className="mt-16 font-serif text-4xl leading-tight">A quiet plan for the people who matter most.</p>
-              <p className="mt-6 text-sm leading-7 text-[#4b3a25]">Video-ready hero area: replace this panel or background with a silent brand story montage when assets are available.</p>
+              <p className="mt-6 text-sm leading-7 text-[#4b3a25]">From the first heartbeat to the final wish, we help families protect every chapter in between — quietly, and without pressure.</p>
             </div>
           </div>
         </div>

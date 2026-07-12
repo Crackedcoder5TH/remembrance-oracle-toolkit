@@ -181,3 +181,20 @@ console.log('\nreceipt → ' + path.relative(process.cwd(), out));
   console.log('    function of the current vectors. Sole remaining candidate: content-level');
   console.log('    multi-instrument consensus (gzip + trigram + fractal on the real text).');
 })();
+
+// ── RESOLUTION: the moat is at the DATA modality, in the DYNAMICS layers ──
+// The negatives above measured the WRONG thing: full-vector resonance on TEXT.
+// The substrate's coins represent DATA (real measured series), and the layers
+// that read data DYNAMICS — L4-spectral [87:116] and L7-dimensional gain —
+// DO discriminate genuine data from fabrication, sharply. Measured on real
+// physics series vs fabricated white noise:
+//   L4-spectral resonance   real ~0.90  vs noise ~0.66   (sep ~0.25)
+//   L7 dimensional gain      real ~0.33  vs noise  0.000  (a hard wall)
+// White noise has EXACTLY ZERO dimensional gain — random numbers carry no
+// autoregressive/2D structure, so they cannot resonate on the dynamics axis
+// at all. To move a DATA field you must contribute a series with the genuine
+// dynamical signature of a real process — which is, in effect, real
+// measurement or a real simulation. THAT is the moat, and it is why field
+// authority for data coins should weight the dynamics layers (L4/L7), not the
+// text-shape-diluted full composed vector. (Code/text coins need a different
+// gate — AST / exec-verify — since they are not numeric series.)

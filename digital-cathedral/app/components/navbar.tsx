@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import { ImageUpload } from "./image-upload";
 import { useIsAdmin } from "../protect/hooks/use-is-admin";
 
 /**
@@ -137,19 +136,10 @@ export function Navbar() {
             className="flex items-center gap-fib-8 text-sm font-medium tracking-wide hover:text-[var(--teal)] transition-colors"
           >
             {/* Logo icon — uploadable when admin */}
-            <ImageUpload
-              slot="logo"
+            <img
+              src="/assets/valor/logo.webp"
               alt="Valor Legacies logo"
-              editable={isAdmin}
-              className="shrink-0 h-9 w-9"
-              imgClassName="h-full w-full object-contain"
-              fallback={
-                <img
-                  src="/assets/valor/logo.webp"
-                  alt="Valor Legacies logo"
-                  className="h-full w-full object-contain"
-                />
-              }
+              className="shrink-0 h-9 w-9 object-contain"
             />
             <span className="text-[var(--teal)]">Valor Legacies</span>
             {/* Chevron */}

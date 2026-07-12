@@ -62,13 +62,13 @@ const COVERAGE_OPTIONS: { value: string; label: string; description?: string }[]
 
 const LIFE_CHAPTERS: { icon: string; title: string; desc: string; cta: string; value: string; video?: string }[] = [
   { icon: "✦", title: "Just Had a Baby", desc: "Your family just grew. Now is the time to protect the future they’re just beginning.", cta: "Protect My Growing Family", value: "new-baby", video: "newborn-parents.mp4" },
-  { icon: "⌂", title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s life is being built.", cta: "Protect My Home", value: "bought-home" },
-  { icon: "∞", title: "Recently Married", desc: "You’re building a future together. Protection helps keep that future secure.", cta: "Start Planning Together", value: "recently-married" },
-  { icon: "❤", title: "Protecting My Spouse", desc: "If someone depends on your income, love means having a plan.", cta: "Protect My Person", value: "protect-spouse-family" },
-  { icon: "$", title: "Protecting My Income", desc: "Your income supports your life. Protecting it protects the people who rely on you.", cta: "Review Income Protection", value: "income-replacement" },
+  { icon: "⌂", title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s life is being built.", cta: "Protect My Home", value: "bought-home", video: "new-home.mp4" },
+  { icon: "∞", title: "Recently Married", desc: "You’re building a future together. Protection helps keep that future secure.", cta: "Start Planning Together", value: "recently-married", video: "newly-married.mp4" },
+  { icon: "❤", title: "Protecting My Spouse", desc: "If someone depends on your income, love means having a plan.", cta: "Protect My Person", value: "protect-spouse-family", video: "protect-spouse.mp4" },
+  { icon: "$", title: "Protecting My Income", desc: "Your income supports your life. Protecting it protects the people who rely on you.", cta: "Review Income Protection", value: "income-replacement", video: "protect-income.mp4" },
   { icon: "◈", title: "Preparing for College", desc: "Plan for tomorrow’s dreams while protecting today’s responsibilities.", cta: "Explore Education Planning", value: "college-planning" },
   { icon: "☼", title: "Planning Retirement", desc: "Retirement should come with confidence, flexibility, and peace of mind.", cta: "Plan With Confidence", value: "retirement-planning" },
-  { icon: "✧", title: "Leaving a Legacy", desc: "Leave more than memories. Leave love, direction, and protection.", cta: "Build My Legacy", value: "legacy" },
+  { icon: "✧", title: "Leaving a Legacy", desc: "Leave more than memories. Leave love, direction, and protection.", cta: "Build My Legacy", value: "legacy", video: "leaving-legacy.mp4" },
   { icon: "☾", title: "Final Expense Planning", desc: "Protect your family from the financial weight of funeral and final expenses.", cta: "Plan Final Expenses", value: "final-expense" },
   { icon: "★", title: "Veteran & Military Family Protection", desc: "Your service protected others. Now let’s help protect the people you love most.", cta: "Review Veteran Options", value: "veteran-military-family", video: "military-family.mp4" },
 ];

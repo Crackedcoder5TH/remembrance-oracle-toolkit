@@ -73,15 +73,6 @@ const LIFE_CHAPTERS: { icon: string; title: string; desc: string; cta: string; v
   { icon: "★", title: "Veteran & Military Family Protection", desc: "Your service protected others. Now let’s help protect the people you love most.", cta: "Review Veteran Options", value: "veteran-military-family", video: "military-family.mp4" },
 ];
 
-const STORY_TIMELINE = [
-  ["First heartbeat", "For the first heartbeat."],
-  ["First front door", "For the first front door."],
-  ["First promise", "For the promise you made."],
-  ["First graduation", "For the dreams ahead."],
-  ["Retirement chapter", "For the years you’ve built."],
-  ["Final wishes", "For the love you leave."],
-];
-
 const TRUST_PILLARS = [
   ["Veteran-Founded", "Rooted in service, protection, and responsibility."],
   ["Family-Focused", "Every conversation begins with the people you love most."],
@@ -292,47 +283,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-[#211a13] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="story-heading">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <p className={SECTION_LABEL}>Valor Legacies</p>
-            <h2 id="story-heading" className="font-serif text-4xl font-light leading-tight md:text-6xl">Life changes. Love lives on.</h2>
-            <p className="mt-6 text-lg leading-8 text-[#eadcc7]">From the first heartbeat to the first home, from wedding vows to retirement plans, every chapter carries love, responsibility, and meaning. Valor Legacies helps families protect what matters today while preparing for what comes tomorrow.</p>
-            <p className="mt-8 font-serif text-3xl text-[#d6b35f]">Valor Legacies.</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {STORY_TIMELINE.map(([title, caption], index) => (
-              <div key={title} className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
-                <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-full border border-[#d6b35f]/55 text-sm text-[#d6b35f]">{index + 1}</div>
-                <h3 className="font-serif text-2xl">{title}</h3>
-                <p className="mt-2 text-sm text-[#eadcc7]">{caption}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="how-heading">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className={SECTION_LABEL}>A calmer way forward</p>
-          <h2 id="how-heading" className={SECTION_HEADING}>You Don’t Have to Figure This Out Alone.</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {[
-              ["Tell us what changed.", "Choose the life event or concern that brought you here."],
-              ["Understand your options.", "We help make life insurance simple, clear, and relatable."],
-              ["Get guidance that fits your life.", "A licensed professional can help review options based on your needs, goals, health, and budget."],
-            ].map(([title, desc], index) => (
-              <div key={title} className="rounded-[1.75rem] bg-white p-8 text-left shadow-[0_20px_70px_rgba(61,43,24,0.08)]">
-                <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-full bg-[#d6b35f] font-bold text-white">{index + 1}</div>
-                <h3 className="font-serif text-2xl text-[#241d15]">{title}</h3>
-                <p className="mt-4 leading-7 text-[#6a5c4b]">{desc}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mx-auto mt-8 max-w-2xl rounded-full bg-white/70 px-6 py-3 text-sm text-[#6a5c4b]">Every request is carefully reviewed before a licensed professional follows up, so families receive thoughtful, relevant guidance.</p>
-        </div>
-      </section>
-
       <section className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="trust-heading">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
@@ -366,6 +316,27 @@ export default function HomePage() {
               </a>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="how-heading">
+        <div className="mx-auto max-w-6xl text-center">
+          <p className={SECTION_LABEL}>A calmer way forward</p>
+          <h2 id="how-heading" className={SECTION_HEADING}>You Don’t Have to Figure This Out Alone.</h2>
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {[
+              ["Tell us what changed.", "Choose the life event or concern that brought you here."],
+              ["Understand your options.", "We help make life insurance simple, clear, and relatable."],
+              ["Get guidance that fits your life.", "A licensed professional can help review options based on your needs, goals, health, and budget."],
+            ].map(([title, desc], index) => (
+              <div key={title} className="rounded-[1.75rem] bg-white p-8 text-left shadow-[0_20px_70px_rgba(61,43,24,0.08)]">
+                <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-full bg-[#d6b35f] font-bold text-white">{index + 1}</div>
+                <h3 className="font-serif text-2xl text-[#241d15]">{title}</h3>
+                <p className="mt-4 leading-7 text-[#6a5c4b]">{desc}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mx-auto mt-8 max-w-2xl rounded-full bg-white/70 px-6 py-3 text-sm text-[#6a5c4b]">Every request is carefully reviewed before a licensed professional follows up, so families receive thoughtful, relevant guidance.</p>
         </div>
       </section>
 

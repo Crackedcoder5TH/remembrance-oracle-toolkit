@@ -265,7 +265,13 @@ function contribute(obs) {
   // the memory layer — previously the engine received a sanitized cost
   // while field-memory got the raw, unchecked obs.cost.
   const cost = (typeof obs.cost === 'number' && isFinite(obs.cost)) ? Math.max(0, obs.cost) : 1.0;
-  const result = engine.contribute({ cost, coherence: clamped, source: obs.source || null });
+  // Resonance-weighted authority (optional, default full): how much this
+  // contribution resonates with the substrate governs how much it can move
+  // the field. Callers on the canonical read path (field-tool) pass the
+  // measured substrate resonance; a fabricated low-resonance flood is
+  // therefore near-powerless against the field.
+  const resonance = (typeof obs.resonance === 'number' && isFinite(obs.resonance)) ? Math.max(0, Math.min(1, obs.resonance)) : null;
+  const result = engine.contribute({ cost, coherence: clamped, source: obs.source || null, resonance });
   _localUpdateCount += 1;
   _pushRecent(clamped);
 

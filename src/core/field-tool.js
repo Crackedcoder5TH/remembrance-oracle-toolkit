@@ -315,14 +315,23 @@ class FieldTool {
       } catch (_) { /* keep 0 */ }
     }
 
-    // 7. Contribute the reading to the field
+    // 7. Contribute the reading to the field — resonance-weighted. The
+    //    contribution's authority over the field is its measured resonance
+    //    with the substrate (voidResonance.meanTopK): content shaped like the
+    //    library moves the field; content that resonates only with itself
+    //    barely does. A fabricated low-resonance flood is thus near-powerless,
+    //    and the resistance grows with the substrate.
+    const _res = voidResonance && Number.isFinite(voidResonance.meanTopK)
+      ? Math.max(0, Math.min(1, voidResonance.meanTopK)) : null;
     try {
       fc.contribute({
         cost: 1.0,
         coherence,
         source: merged.source || merged.agentSource,
+        resonance: _res,
       });
       layers.contributed = true;
+      if (_res !== null) layers.resonanceWeight = +_res.toFixed(4);
     } catch (_) { /* field unreachable */ }
 
     // 7b. Dimensional meta-awareness: feed the field the new layers'

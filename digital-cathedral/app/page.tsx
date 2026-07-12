@@ -260,7 +260,7 @@ export default function HomePage() {
         {/* Warmth + legibility overlay over the video (keeps the brand palette and readable text) */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(214,179,95,0.30),transparent_30%),linear-gradient(120deg,rgba(19,16,13,0.90),rgba(31,25,19,0.66)_45%,rgba(65,45,24,0.40))]" aria-hidden="true" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-[#f6f0e6]" aria-hidden="true" />
-        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="relative mx-auto w-full max-w-7xl">
           <div className="animate-valor-rise max-w-4xl">
             <p className="mb-5 text-sm font-semibold uppercase tracking-[0.35em] text-[#d6b35f]">Life changes. Love lives on.</p>
             <p className="font-serif text-2xl text-[#f6e5c4] md:text-4xl">For the life you live...</p>
@@ -270,13 +270,6 @@ export default function HomePage() {
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <a href="#protection-path" className={BTN_PRIMARY}>Find My Protection Path</a>
               <a href="#life-chapters" className={BTN_SECONDARY}>Explore Life Chapters</a>
-            </div>
-          </div>
-          <div className="animate-valor-rise hidden rounded-[2rem] border border-white/15 bg-white/10 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.28)] backdrop-blur md:block">
-            <div className="rounded-[1.5rem] bg-gradient-to-br from-[#f6e5c4]/95 to-[#b58b3b]/80 p-8 text-[#211a13]">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em]">Guided protection</p>
-              <p className="mt-16 font-serif text-4xl leading-tight">A quiet plan for the people who matter most.</p>
-              <p className="mt-6 text-sm leading-7 text-[#4b3a25]">From the first heartbeat to the final wish, we help families protect every chapter in between — quietly, and without pressure.</p>
             </div>
           </div>
         </div>

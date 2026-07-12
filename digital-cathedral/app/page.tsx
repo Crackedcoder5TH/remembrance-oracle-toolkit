@@ -64,12 +64,12 @@ const LIFE_CHAPTERS: { icon: string; title: string; desc: string; cta: string; v
   { icon: "✦", title: "Just Had a Baby", desc: "Your family just grew. Now is the time to protect the future they’re just beginning.", cta: "Protect My Growing Family", value: "new-baby", video: "newborn-parents.mp4" },
   { icon: "⌂", title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s life is being built.", cta: "Protect My Home", value: "bought-home", video: "new-home.mp4" },
   { icon: "∞", title: "Recently Married", desc: "You’re building a future together. Protection helps keep that future secure.", cta: "Start Planning Together", value: "recently-married", video: "newly-married.mp4" },
-  { icon: "❤", title: "Protecting My Spouse", desc: "If someone depends on your income, love means having a plan.", cta: "Protect My Person", value: "protect-spouse-family" },
-  { icon: "$", title: "Protecting My Income", desc: "Your income supports your life. Protecting it protects the people who rely on you.", cta: "Review Income Protection", value: "income-replacement" },
-  { icon: "◈", title: "Preparing for College", desc: "Plan for tomorrow’s dreams while protecting today’s responsibilities.", cta: "Explore Education Planning", value: "college-planning" },
-  { icon: "☼", title: "Planning Retirement", desc: "Retirement should come with confidence, flexibility, and peace of mind.", cta: "Plan With Confidence", value: "retirement-planning" },
-  { icon: "✧", title: "Leaving a Legacy", desc: "Leave more than memories. Leave love, direction, and protection.", cta: "Build My Legacy", value: "legacy" },
-  { icon: "☾", title: "Final Expense Planning", desc: "Protect your family from the financial weight of funeral and final expenses.", cta: "Plan Final Expenses", value: "final-expense" },
+  { icon: "❤", title: "Protecting My Spouse", desc: "If someone depends on your income, love means having a plan.", cta: "Protect My Person", value: "protect-spouse-family", video: "protect-spouse.mp4" },
+  { icon: "$", title: "Protecting My Income", desc: "Your income supports your life. Protecting it protects the people who rely on you.", cta: "Review Income Protection", value: "income-replacement", video: "protect-income.mp4" },
+  { icon: "◈", title: "Preparing for College", desc: "Plan for tomorrow’s dreams while protecting today’s responsibilities.", cta: "Explore Education Planning", value: "college-planning", video: "preparing-college.mp4" },
+  { icon: "☼", title: "Planning Retirement", desc: "Retirement should come with confidence, flexibility, and peace of mind.", cta: "Plan With Confidence", value: "retirement-planning", video: "planning-retirement.mp4" },
+  { icon: "✧", title: "Leaving a Legacy", desc: "Leave more than memories. Leave love, direction, and protection.", cta: "Build My Legacy", value: "legacy", video: "leaving-legacy.mp4" },
+  { icon: "☾", title: "Final Expense Planning", desc: "Protect your family from the financial weight of funeral and final expenses.", cta: "Plan Final Expenses", value: "final-expense", video: "final-expense.mp4" },
   { icon: "★", title: "Veteran & Military Family Protection", desc: "Your service protected others. Now let’s help protect the people you love most.", cta: "Review Veteran Options", value: "veteran-military-family", video: "military-family.mp4" },
 ];
 
@@ -134,7 +134,6 @@ const MILITARY_STATUS_OPTIONS = [
   { value: "civilian", label: "Civilian" },
 ];
 
-const AGE_RANGE_OPTIONS = ["", "18-29", "30-39", "40-49", "50-59", "60-69", "70+"];
 const CONTACT_TIME_OPTIONS = ["", "Morning", "Afternoon", "Evening", "No preference"];
 const BRANCH_PLACEHOLDER = { value: "", label: "Select branch of service..." };
 const BRANCHES_FULL = [BRANCH_PLACEHOLDER, { value: "army", label: "U.S. Army" }, { value: "navy", label: "U.S. Navy" }, { value: "air-force", label: "U.S. Air Force" }, { value: "marine-corps", label: "U.S. Marine Corps" }, { value: "space-force", label: "U.S. Space Force" }, { value: "coast-guard", label: "Coast Guard" }];
@@ -261,7 +260,7 @@ export default function HomePage() {
         {/* Warmth + legibility overlay over the video (keeps the brand palette and readable text) */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_20%,rgba(214,179,95,0.30),transparent_30%),linear-gradient(120deg,rgba(19,16,13,0.90),rgba(31,25,19,0.66)_45%,rgba(65,45,24,0.40))]" aria-hidden="true" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/10 to-[#f6f0e6]" aria-hidden="true" />
-        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="relative mx-auto w-full max-w-7xl">
           <div className="animate-valor-rise max-w-4xl">
             <p className="mb-5 text-sm font-semibold uppercase tracking-[0.35em] text-[#d6b35f]">Life changes. Love lives on.</p>
             <p className="font-serif text-2xl text-[#f6e5c4] md:text-4xl">For the life you live...</p>
@@ -271,13 +270,6 @@ export default function HomePage() {
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <a href="#protection-path" className={BTN_PRIMARY}>Find My Protection Path</a>
               <a href="#life-chapters" className={BTN_SECONDARY}>Explore Life Chapters</a>
-            </div>
-          </div>
-          <div className="animate-valor-rise hidden rounded-[2rem] border border-white/15 bg-white/10 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.28)] backdrop-blur md:block">
-            <div className="rounded-[1.5rem] bg-gradient-to-br from-[#f6e5c4]/95 to-[#b58b3b]/80 p-8 text-[#211a13]">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em]">Guided protection</p>
-              <p className="mt-16 font-serif text-4xl leading-tight">A quiet plan for the people who matter most.</p>
-              <p className="mt-6 text-sm leading-7 text-[#4b3a25]">From the first heartbeat to the final wish, we help families protect every chapter in between — quietly, and without pressure.</p>
             </div>
           </div>
         </div>
@@ -448,19 +440,11 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label htmlFor="ageRange" className={LABEL_CLASS}>Age Range</label>
-                    <select id="ageRange" value={form.ageRange} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("ageRange", e.target.value)} className={selectClass(false)}>
-                      {AGE_RANGE_OPTIONS.map((opt) => <option key={opt || "blank"} value={opt}>{opt || "Select age range..."}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="dateOfBirth" className={LABEL_CLASS}>Date of Birth</label>
-                    <input id="dateOfBirth" type="date" value={form.dateOfBirth} onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("dateOfBirth", e.target.value)} autoComplete="bday" aria-required="true" aria-invalid={!!errors.dateOfBirth} className={inputClass(!!errors.dateOfBirth)} />
-                    <p className="text-xs text-[#8a6a3a]">Required to route accurate life insurance guidance. You must be at least 18.</p>
-                    {errors.dateOfBirth && <p className="text-xs text-red-600" role="alert">{errors.dateOfBirth}</p>}
-                  </div>
+                <div className="space-y-2">
+                  <label htmlFor="dateOfBirth" className={LABEL_CLASS}>Date of Birth</label>
+                  <input id="dateOfBirth" type="date" value={form.dateOfBirth} onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("dateOfBirth", e.target.value)} autoComplete="bday" aria-required="true" aria-invalid={!!errors.dateOfBirth} className={inputClass(!!errors.dateOfBirth)} />
+                  <p className="text-xs text-[#8a6a3a]">Required to route accurate life insurance guidance. You must be at least 18.</p>
+                  {errors.dateOfBirth && <p className="text-xs text-red-600" role="alert">{errors.dateOfBirth}</p>}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -546,7 +530,7 @@ export default function HomePage() {
                   <p className="font-semibold text-[#241d15]">{form.firstName} {form.lastName}</p>
                   <p>{COVERAGE_OPTIONS.find(o => o.value === form.coverageInterest)?.label}</p>
                   <p>{form.phone} · {form.email}</p>
-                  <p>{US_STATES.find(s => s.code === form.state)?.name} {form.ageRange ? `· Age ${form.ageRange}` : ""}</p>
+                  <p>{US_STATES.find(s => s.code === form.state)?.name}</p>
                   <button type="button" onClick={() => prevStep()} className="mt-2 text-sm font-semibold text-[#9f782f] underline">Edit information</button>
                 </div>
 

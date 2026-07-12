@@ -60,17 +60,17 @@ const COVERAGE_OPTIONS: { value: string; label: string; description?: string }[]
   { value: "not-sure", label: "I’m not sure yet" },
 ];
 
-const LIFE_CHAPTERS = [
-  { icon: "✦", title: "Just Had a Baby", desc: "Your family just grew. Now is the time to protect the future they’re just beginning.", cta: "Protect My Growing Family", value: "new-baby" },
-  { icon: "⌂", title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s life is being built.", cta: "Protect My Home", value: "bought-home" },
-  { icon: "∞", title: "Recently Married", desc: "You’re building a future together. Protection helps keep that future secure.", cta: "Start Planning Together", value: "recently-married" },
-  { icon: "❤", title: "Protecting My Spouse", desc: "If someone depends on your income, love means having a plan.", cta: "Protect My Person", value: "protect-spouse-family" },
+const LIFE_CHAPTERS: { icon: string; title: string; desc: string; cta: string; value: string; video?: string }[] = [
+  { icon: "✦", title: "Just Had a Baby", desc: "Your family just grew. Now is the time to protect the future they’re just beginning.", cta: "Protect My Growing Family", value: "new-baby", video: "newborn-parents.mp4" },
+  { icon: "⌂", title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s life is being built.", cta: "Protect My Home", value: "bought-home", video: "new-home.mp4" },
+  { icon: "∞", title: "Recently Married", desc: "You’re building a future together. Protection helps keep that future secure.", cta: "Start Planning Together", value: "recently-married", video: "newly-married.mp4" },
+  { icon: "❤", title: "Protecting My Spouse", desc: "If someone depends on your income, love means having a plan.", cta: "Protect My Person", value: "protect-spouse-family", video: "family-embracing.mp4" },
   { icon: "$", title: "Protecting My Income", desc: "Your income supports your life. Protecting it protects the people who rely on you.", cta: "Review Income Protection", value: "income-replacement" },
   { icon: "◈", title: "Preparing for College", desc: "Plan for tomorrow’s dreams while protecting today’s responsibilities.", cta: "Explore Education Planning", value: "college-planning" },
   { icon: "☼", title: "Planning Retirement", desc: "Retirement should come with confidence, flexibility, and peace of mind.", cta: "Plan With Confidence", value: "retirement-planning" },
   { icon: "✧", title: "Leaving a Legacy", desc: "Leave more than memories. Leave love, direction, and protection.", cta: "Build My Legacy", value: "legacy" },
   { icon: "☾", title: "Final Expense Planning", desc: "Protect your family from the financial weight of funeral and final expenses.", cta: "Plan Final Expenses", value: "final-expense" },
-  { icon: "★", title: "Veteran & Military Family Protection", desc: "Your service protected others. Now let’s help protect the people you love most.", cta: "Review Veteran Options", value: "veteran-military-family" },
+  { icon: "★", title: "Veteran & Military Family Protection", desc: "Your service protected others. Now let’s help protect the people you love most.", cta: "Review Veteran Options", value: "veteran-military-family", video: "military-family.mp4" },
 ];
 
 const STORY_TIMELINE = [
@@ -292,7 +292,14 @@ export default function HomePage() {
           </div>
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {LIFE_CHAPTERS.map((chapter) => (
-              <button key={chapter.title} type="button" onClick={() => chooseChapter(chapter.value)} className="group rounded-[1.5rem] border border-[#decda9] bg-white/80 p-5 text-left shadow-[0_18px_60px_rgba(61,43,24,0.08)] transition-all hover:-translate-y-1 hover:border-[#c8a85d] hover:bg-white hover:shadow-[0_26px_70px_rgba(61,43,24,0.14)] focus-visible:outline-[#b58b3b]">
+              <button key={chapter.title} type="button" onClick={() => chooseChapter(chapter.value)} className="group overflow-hidden rounded-[1.5rem] border border-[#decda9] bg-white/80 p-5 text-left shadow-[0_18px_60px_rgba(61,43,24,0.08)] transition-all hover:-translate-y-1 hover:border-[#c8a85d] hover:bg-white hover:shadow-[0_26px_70px_rgba(61,43,24,0.14)] focus-visible:outline-[#b58b3b]">
+                {chapter.video && (
+                  <div className="-mx-5 -mt-5 mb-5 h-36 overflow-hidden motion-reduce:hidden">
+                    <video className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" autoPlay muted loop playsInline preload="metadata" aria-hidden="true">
+                      <source src={`/assets/valor/${chapter.video}`} type="video/mp4" />
+                    </video>
+                  </div>
+                )}
                 <span className="mb-6 flex h-11 w-11 items-center justify-center rounded-full bg-[#241d15] text-lg text-[#d6b35f]">{chapter.icon}</span>
                 <h3 className="font-serif text-xl leading-tight text-[#241d15]">{chapter.title}</h3>
                 <p className="mt-3 min-h-[84px] text-sm leading-6 text-[#6a5c4b]">{chapter.desc}</p>
@@ -587,13 +594,16 @@ export default function HomePage() {
           <div>
             <p className={SECTION_LABEL}>Our story</p>
             <h2 id="about-heading" className="font-serif text-4xl font-light md:text-6xl">Veteran-Founded. Family-Focused. Independent.</h2>
-            <p className="mt-6 text-lg leading-8 text-[#eadcc7]">Valor Legacies was created to help families make confident decisions during life’s most important transitions. Founded by a veteran, our mission is rooted in service, protection, and legacy. We are independent, which means we are not limited to one insurance company. We help families understand options that fit their life, budget, and goals.</p>
+            <p className="mt-6 text-lg leading-8 text-[#eadcc7]">Valor Legacies was created to help families make confident decisions during life’s most important transitions. Founded by Andrea Golden, a veteran, our mission is rooted in service, protection, and legacy. We are independent, which means we are not limited to one insurance company. We help families understand options that fit their life, budget, and goals.</p>
             <a href="/about" className="mt-8 inline-flex rounded-full bg-[#d6b35f] px-7 py-3 text-sm font-semibold text-[#241d15]">Our Story</a>
           </div>
-          <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6">
-            <p className="font-serif text-3xl text-[#f6e5c4]">For the life you live and the love you leave.</p>
-            <p className="mt-5 text-sm leading-7 text-[#eadcc7]">Independent guidance, rooted in service, for families across life’s biggest chapters.</p>
-          </div>
+          <figure className="overflow-hidden rounded-[1.5rem] border border-[#d6b35f]/40 bg-gradient-to-br from-[#f6e5c4]/15 to-[#b58b3b]/10 p-3 shadow-[0_30px_90px_rgba(0,0,0,0.35)]">
+            <img src="/assets/valor/founder-andrea-military.jpg" alt="Andrea Golden, veteran and founder of Valor Legacies" className="aspect-[4/5] w-full rounded-[1.15rem] object-cover object-top" loading="lazy" />
+            <figcaption className="px-2 pb-1 pt-4 text-center">
+              <p className="font-serif text-2xl text-[#f6e5c4]">Andrea Golden</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.24em] text-[#d6b35f]">Founder · Veteran</p>
+            </figcaption>
+          </figure>
         </div>
       </section>
 

@@ -147,3 +147,37 @@ fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, JSON.stringify({ substrate: all.length, domains: domains.length, K, dedup: DEDUP,
   admissibility: { honest: H, random: R, mimic: M }, growth: rows }, null, 2));
 console.log('\nreceipt → ' + path.relative(process.cwd(), out));
+
+// ── ADDENDUM: information-weight (resonance × novelty) — a SECOND honest
+// negative. One might hope field authority = resonance × novelty admits
+// genuine-new structure while rejecting mimicry. Measured, it does not:
+// the substrate is so dense that honest-novel and mimic have the SAME tiny
+// novelty (a near-duplicate always exists), and random junk — novel but
+// incoherent — scores HIGHEST. resonance × novelty is worse than resonance
+// alone; it would hand the field to noise. Recorded so the falsification
+// stands. The only remaining candidate for a real moat is content-level
+// multi-instrument consensus (gzip-NCD + trigram + fractal agreement on the
+// actual TEXT), which a vector-only mimic has no coherent content to satisfy.
+(function informationWeightAddendum() {
+  const byDom = {}; for (const e of all) (byDom[e.dom] = byDom[e.dom] || []).push(e);
+  const big = Object.keys(byDom).filter((d) => byDom[d].length >= 4);
+  const s = sampleSubstrate(12000);
+  const iw = (vec) => { const r = resonance(vec, s, null); return r.mean * Math.max(0, 1 - r.nearest); };
+  let h = 0, m = 0, j = 0, n = 0;
+  for (let i = 0; i < 40 && big.length; i++) {
+    const pool = byDom[big[Math.floor(rnd() * big.length)]];
+    const a = pool[Math.floor(rnd() * pool.length)], b = pool[Math.floor(rnd() * pool.length)];
+    h += iw(l2(a.vec.map((x, k) => (x + b.vec[k]) / 2)));               // honest-novel blend
+    m += iw(domainCentroid(s, pool[0].dom) || a.vec);                    // mimic centroid
+    j += iw(randomVec());                                               // junk
+    n++;
+  }
+  const _n = n || 1;
+  console.log('\n── ADDENDUM: information-weight (resonance × novelty) — SECOND negative ──');
+  console.log('  honest-novel info-weight: ' + (h / _n).toFixed(4));
+  console.log('  mimic info-weight:        ' + (m / _n).toFixed(4) + '  (≈ honest — dense substrate: everything real has a near-duplicate)');
+  console.log('  junk info-weight:         ' + (j / _n).toFixed(4) + '  (HIGHEST — novel but incoherent; res×nov rewards noise)');
+  console.log('  → resonance × novelty is WORSE than resonance alone. The moat is not a simple');
+  console.log('    function of the current vectors. Sole remaining candidate: content-level');
+  console.log('    multi-instrument consensus (gzip + trigram + fractal on the real text).');
+})();

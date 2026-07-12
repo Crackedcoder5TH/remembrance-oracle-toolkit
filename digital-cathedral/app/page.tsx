@@ -283,7 +283,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="trust-heading">
+      <section className="bg-gradient-to-b from-[#e4e6ea] to-[#33363d] px-4 py-20 md:px-8 md:py-28" aria-labelledby="trust-heading">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
             <p className={SECTION_LABEL}>Trust pillars</p>
@@ -291,7 +291,7 @@ export default function HomePage() {
           </div>
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {TRUST_PILLARS.map(([title, desc]) => (
-              <div key={title} className="rounded-[1.5rem] border border-[#decda9] bg-white/80 p-6">
+              <div key={title} className="rounded-[1.5rem] border border-white/60 bg-white p-6 shadow-[0_12px_34px_rgba(0,0,0,0.12)]">
                 <h3 className="font-serif text-2xl text-[#241d15]">{title}</h3>
                 <p className="mt-3 leading-7 text-[#6a5c4b]">{desc}</p>
               </div>
@@ -340,7 +340,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="protection-path" className="bg-[#211a13] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="form-heading">
+      <section id="protection-path" className="bg-[#0F1026] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="form-heading">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1fr] lg:items-start">
           <div className="lg:sticky lg:top-24">
             <p className={SECTION_LABEL}>Protection path</p>

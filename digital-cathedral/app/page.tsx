@@ -319,24 +319,24 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="how-heading">
+      <section className="bg-[#211a13] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="how-heading">
         <div className="mx-auto max-w-6xl text-center">
           <p className={SECTION_LABEL}>A calmer way forward</p>
-          <h2 id="how-heading" className={SECTION_HEADING}>You Don’t Have to Figure This Out Alone.</h2>
+          <h2 id="how-heading" className="font-serif text-3xl font-light leading-tight text-white md:text-5xl">You Don’t Have to Figure This Out Alone.</h2>
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {[
               ["Tell us what changed.", "Choose the life event or concern that brought you here."],
               ["Understand your options.", "We help make life insurance simple, clear, and relatable."],
               ["Get guidance that fits your life.", "A licensed professional can help review options based on your needs, goals, health, and budget."],
             ].map(([title, desc], index) => (
-              <div key={title} className="rounded-[1.75rem] bg-white p-8 text-left shadow-[0_20px_70px_rgba(61,43,24,0.08)]">
+              <div key={title} className="rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-8 text-left backdrop-blur">
                 <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-full bg-[#d6b35f] font-bold text-white">{index + 1}</div>
-                <h3 className="font-serif text-2xl text-[#241d15]">{title}</h3>
-                <p className="mt-4 leading-7 text-[#6a5c4b]">{desc}</p>
+                <h3 className="font-serif text-2xl text-white">{title}</h3>
+                <p className="mt-4 leading-7 text-[#eadcc7]">{desc}</p>
               </div>
             ))}
           </div>
-          <p className="mx-auto mt-8 max-w-2xl rounded-full bg-white/70 px-6 py-3 text-sm text-[#6a5c4b]">Every request is carefully reviewed before a licensed professional follows up, so families receive thoughtful, relevant guidance.</p>
+          <p className="mx-auto mt-8 max-w-2xl rounded-full border border-white/10 bg-white/[0.06] px-6 py-3 text-sm text-[#eadcc7]">Every request is carefully reviewed before a licensed professional follows up, so families receive thoughtful, relevant guidance.</p>
         </div>
       </section>
 

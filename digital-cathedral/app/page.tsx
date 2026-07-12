@@ -62,7 +62,7 @@ const COVERAGE_OPTIONS: { value: string; label: string; description?: string }[]
 
 const LIFE_CHAPTERS: { icon: string; title: string; desc: string; cta: string; value: string; video?: string }[] = [
   { icon: "✦", title: "Just Had a Baby", desc: "Your family just grew. Now is the time to protect the future they’re just beginning.", cta: "Protect My Growing Family", value: "new-baby", video: "newborn-parents.mp4" },
-  { icon: "⌂", title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s life is being built.", cta: "Protect My Home", value: "bought-home", video: "new-home.mp4" },
+  { icon: "⌂", title: "Bought a Home", desc: "Your home is more than a mortgage. It’s where your family’s life is being built.", cta: "Protect My Home", value: "bought-home" },
   { icon: "∞", title: "Recently Married", desc: "You’re building a future together. Protection helps keep that future secure.", cta: "Start Planning Together", value: "recently-married", video: "newly-married.mp4" },
   { icon: "❤", title: "Protecting My Spouse", desc: "If someone depends on your income, love means having a plan.", cta: "Protect My Person", value: "protect-spouse-family" },
   { icon: "$", title: "Protecting My Income", desc: "Your income supports your life. Protecting it protects the people who rely on you.", cta: "Review Income Protection", value: "income-replacement" },
@@ -134,7 +134,6 @@ const MILITARY_STATUS_OPTIONS = [
   { value: "civilian", label: "Civilian" },
 ];
 
-const AGE_RANGE_OPTIONS = ["", "18-29", "30-39", "40-49", "50-59", "60-69", "70+"];
 const CONTACT_TIME_OPTIONS = ["", "Morning", "Afternoon", "Evening", "No preference"];
 const BRANCH_PLACEHOLDER = { value: "", label: "Select branch of service..." };
 const BRANCHES_FULL = [BRANCH_PLACEHOLDER, { value: "army", label: "U.S. Army" }, { value: "navy", label: "U.S. Navy" }, { value: "air-force", label: "U.S. Air Force" }, { value: "marine-corps", label: "U.S. Marine Corps" }, { value: "space-force", label: "U.S. Space Force" }, { value: "coast-guard", label: "Coast Guard" }];
@@ -448,19 +447,11 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label htmlFor="ageRange" className={LABEL_CLASS}>Age Range</label>
-                    <select id="ageRange" value={form.ageRange} onChange={(e: ChangeEvent<HTMLSelectElement>) => updateField("ageRange", e.target.value)} className={selectClass(false)}>
-                      {AGE_RANGE_OPTIONS.map((opt) => <option key={opt || "blank"} value={opt}>{opt || "Select age range..."}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="dateOfBirth" className={LABEL_CLASS}>Date of Birth</label>
-                    <input id="dateOfBirth" type="date" value={form.dateOfBirth} onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("dateOfBirth", e.target.value)} autoComplete="bday" aria-required="true" aria-invalid={!!errors.dateOfBirth} className={inputClass(!!errors.dateOfBirth)} />
-                    <p className="text-xs text-[#8a6a3a]">Required to route accurate life insurance guidance. You must be at least 18.</p>
-                    {errors.dateOfBirth && <p className="text-xs text-red-600" role="alert">{errors.dateOfBirth}</p>}
-                  </div>
+                <div className="space-y-2">
+                  <label htmlFor="dateOfBirth" className={LABEL_CLASS}>Date of Birth</label>
+                  <input id="dateOfBirth" type="date" value={form.dateOfBirth} onChange={(e: ChangeEvent<HTMLInputElement>) => updateField("dateOfBirth", e.target.value)} autoComplete="bday" aria-required="true" aria-invalid={!!errors.dateOfBirth} className={inputClass(!!errors.dateOfBirth)} />
+                  <p className="text-xs text-[#8a6a3a]">Required to route accurate life insurance guidance. You must be at least 18.</p>
+                  {errors.dateOfBirth && <p className="text-xs text-red-600" role="alert">{errors.dateOfBirth}</p>}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -546,7 +537,7 @@ export default function HomePage() {
                   <p className="font-semibold text-[#241d15]">{form.firstName} {form.lastName}</p>
                   <p>{COVERAGE_OPTIONS.find(o => o.value === form.coverageInterest)?.label}</p>
                   <p>{form.phone} · {form.email}</p>
-                  <p>{US_STATES.find(s => s.code === form.state)?.name} {form.ageRange ? `· Age ${form.ageRange}` : ""}</p>
+                  <p>{US_STATES.find(s => s.code === form.state)?.name}</p>
                   <button type="button" onClick={() => prevStep()} className="mt-2 text-sm font-semibold text-[#9f782f] underline">Edit information</button>
                 </div>
 

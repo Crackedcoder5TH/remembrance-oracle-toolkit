@@ -73,25 +73,6 @@ const LIFE_CHAPTERS: { icon: string; title: string; desc: string; cta: string; v
   { icon: "★", title: "Veteran & Military Family Protection", desc: "Your service protected others. Now let’s help protect the people you love most.", cta: "Review Veteran Options", value: "veteran-military-family", video: "military-family.mp4" },
 ];
 
-const STORY_TIMELINE = [
-  ["First heartbeat", "For the first heartbeat."],
-  ["First front door", "For the first front door."],
-  ["First promise", "For the promise you made."],
-  ["First graduation", "For the dreams ahead."],
-  ["Retirement chapter", "For the years you’ve built."],
-  ["Final wishes", "For the love you leave."],
-];
-
-const SOLUTIONS = [
-  ["Term Life Insurance", "Affordable protection for a specific period of time, often used for income, family, or mortgage protection."],
-  ["Whole Life Insurance", "Permanent coverage with fixed premiums and lifelong protection."],
-  ["Final Expense Insurance", "Coverage designed to help protect loved ones from funeral and final costs."],
-  ["Mortgage Protection", "Life insurance designed to help your family keep or pay off the home if something happens to you."],
-  ["Indexed Universal Life", "Life insurance that can provide protection while building cash value with growth potential."],
-  ["Income Protection", "Coverage designed around replacing income your family depends on."],
-  ["Legacy Planning", "Protection designed to help pass love, values, and financial support to the people who matter most."],
-];
-
 const TRUST_PILLARS = [
   ["Veteran-Founded", "Rooted in service, protection, and responsibility."],
   ["Family-Focused", "Every conversation begins with the people you love most."],
@@ -302,65 +283,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-[#211a13] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="story-heading">
-        <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <p className={SECTION_LABEL}>Valor Legacies</p>
-            <h2 id="story-heading" className="font-serif text-4xl font-light leading-tight md:text-6xl">Life changes. Love lives on.</h2>
-            <p className="mt-6 text-lg leading-8 text-[#eadcc7]">From the first heartbeat to the first home, from wedding vows to retirement plans, every chapter carries love, responsibility, and meaning. Valor Legacies helps families protect what matters today while preparing for what comes tomorrow.</p>
-            <p className="mt-8 font-serif text-3xl text-[#d6b35f]">Valor Legacies.</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {STORY_TIMELINE.map(([title, caption], index) => (
-              <div key={title} className="rounded-3xl border border-white/10 bg-white/[0.06] p-5 backdrop-blur">
-                <div className="mb-8 flex h-10 w-10 items-center justify-center rounded-full border border-[#d6b35f]/55 text-sm text-[#d6b35f]">{index + 1}</div>
-                <h3 className="font-serif text-2xl">{title}</h3>
-                <p className="mt-2 text-sm text-[#eadcc7]">{caption}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="how-heading">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className={SECTION_LABEL}>A calmer way forward</p>
-          <h2 id="how-heading" className={SECTION_HEADING}>You Don’t Have to Figure This Out Alone.</h2>
-          <div className="mt-12 grid gap-6 md:grid-cols-3">
-            {[
-              ["Tell us what changed.", "Choose the life event or concern that brought you here."],
-              ["Understand your options.", "We help make life insurance simple, clear, and relatable."],
-              ["Get guidance that fits your life.", "A licensed professional can help review options based on your needs, goals, health, and budget."],
-            ].map(([title, desc], index) => (
-              <div key={title} className="rounded-[1.75rem] bg-white p-8 text-left shadow-[0_20px_70px_rgba(61,43,24,0.08)]">
-                <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-full bg-[#d6b35f] font-bold text-white">{index + 1}</div>
-                <h3 className="font-serif text-2xl text-[#241d15]">{title}</h3>
-                <p className="mt-4 leading-7 text-[#6a5c4b]">{desc}</p>
-              </div>
-            ))}
-          </div>
-          <p className="mx-auto mt-8 max-w-2xl rounded-full bg-white/70 px-6 py-3 text-sm text-[#6a5c4b]">Every request is carefully reviewed before a licensed professional follows up, so families receive thoughtful, relevant guidance.</p>
-        </div>
-      </section>
-
-      <section id="solutions" className="bg-white px-4 py-20 md:px-8 md:py-28" aria-labelledby="solutions-heading">
-        <div className="mx-auto max-w-7xl">
-          <div className="max-w-3xl">
-            <p className={SECTION_LABEL}>Not product-first</p>
-            <h2 id="solutions-heading" className={SECTION_HEADING}>Protection Designed Around Your Life</h2>
-            <p className="mt-5 text-lg leading-8 text-[#6a5c4b]">You do not need to know which policy fits before reaching out. That is exactly what guidance is for.</p>
-          </div>
-          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-            {SOLUTIONS.map(([title, desc]) => (
-              <div key={title} className="rounded-[1.5rem] border border-[#eadfce] bg-[#fbf7f0] p-6 transition-all hover:-translate-y-1 hover:border-[#d6b35f]">
-                <h3 className="font-serif text-2xl text-[#241d15]">{title}</h3>
-                <p className="mt-4 text-sm leading-7 text-[#6a5c4b]">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="trust-heading">
         <div className="mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
@@ -397,14 +319,35 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="protection-path" className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="form-heading">
+      <section className="px-4 py-20 md:px-8 md:py-28" aria-labelledby="how-heading">
+        <div className="mx-auto max-w-6xl text-center">
+          <p className={SECTION_LABEL}>A calmer way forward</p>
+          <h2 id="how-heading" className={SECTION_HEADING}>You Don’t Have to Figure This Out Alone.</h2>
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {[
+              ["Tell us what changed.", "Choose the life event or concern that brought you here."],
+              ["Understand your options.", "We help make life insurance simple, clear, and relatable."],
+              ["Get guidance that fits your life.", "A licensed professional can help review options based on your needs, goals, health, and budget."],
+            ].map(([title, desc], index) => (
+              <div key={title} className="rounded-[1.75rem] bg-white p-8 text-left shadow-[0_20px_70px_rgba(61,43,24,0.08)]">
+                <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-full bg-[#d6b35f] font-bold text-white">{index + 1}</div>
+                <h3 className="font-serif text-2xl text-[#241d15]">{title}</h3>
+                <p className="mt-4 leading-7 text-[#6a5c4b]">{desc}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mx-auto mt-8 max-w-2xl rounded-full bg-white/70 px-6 py-3 text-sm text-[#6a5c4b]">Every request is carefully reviewed before a licensed professional follows up, so families receive thoughtful, relevant guidance.</p>
+        </div>
+      </section>
+
+      <section id="protection-path" className="bg-[#211a13] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="form-heading">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1fr] lg:items-start">
           <div className="lg:sticky lg:top-24">
             <p className={SECTION_LABEL}>Protection path</p>
-            <h2 id="form-heading" className={SECTION_HEADING}>Find Your Protection Path</h2>
-            <p className="mt-5 text-lg leading-8 text-[#6a5c4b]">Start with what changed in your life. We’ll help guide the next step.</p>
-            <div className="mt-8 rounded-[1.5rem] border border-[#decda9] bg-white/75 p-6 text-sm leading-7 text-[#6a5c4b]">
-              <strong className="text-[#241d15]">Privacy-minded guidance.</strong> By submitting this form, you agree to be contacted by Valor Legacies or a licensed insurance professional regarding life insurance options. Message and data rates may apply. Submission does not guarantee coverage or approval.
+            <h2 id="form-heading" className="font-serif text-3xl font-light leading-tight text-white md:text-5xl">Find Your Protection Path</h2>
+            <p className="mt-5 text-lg leading-8 text-[#eadcc7]">Start with what changed in your life. We’ll help guide the next step.</p>
+            <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6 text-sm leading-7 text-[#eadcc7]">
+              <strong className="text-white">Privacy-minded guidance.</strong> By submitting this form, you agree to be contacted by Valor Legacies or a licensed insurance professional regarding life insurance options. Message and data rates may apply. Submission does not guarantee coverage or approval.
             </div>
           </div>
 
@@ -578,7 +521,9 @@ export default function HomePage() {
           <div>
             <p className={SECTION_LABEL}>Our story</p>
             <h2 id="about-heading" className="font-serif text-4xl font-light md:text-6xl">Veteran-Founded. Family-Focused. Independent.</h2>
-            <p className="mt-6 text-lg leading-8 text-[#eadcc7]">Valor Legacies was created to help families make confident decisions during life’s most important transitions. Founded by Andrea Golden, a veteran, our mission is rooted in service, protection, and legacy. We are independent, which means we are not limited to one insurance company. We help families understand options that fit their life, budget, and goals.</p>
+            <p className="mt-6 text-lg leading-8 text-[#eadcc7]">Valor Legacies was created for the families who are building, growing, planning, grieving, dreaming, and trying to make the right decisions for the people they love most.</p>
+            <p className="mt-5 text-lg leading-8 text-[#eadcc7]">As a veteran, service has always meant more to me than a title. It means showing up with purpose. It means protecting others. It means doing the right thing even when no one is watching. That same spirit is the foundation of Valor Legacies. I didn’t build this brand to make life insurance feel complicated or intimidating. I built it to make protection feel personal, understandable, and rooted in real life. Whether someone just had a baby, bought a home, got married, started thinking about retirement, or simply wants to make sure their family is not left with a financial burden, Valor Legacies exists to help them take the next step with confidence.</p>
+            <p className="mt-6 font-serif text-2xl leading-snug text-[#d6b35f]">For the life you live, and the love you leave, this is why Valor Legacies exists.</p>
             <a href="/about" className="mt-8 inline-flex rounded-full bg-[#d6b35f] px-7 py-3 text-sm font-semibold text-[#241d15]">Our Story</a>
           </div>
           <figure className="overflow-hidden rounded-[1.5rem] border border-[#d6b35f]/40 bg-gradient-to-br from-[#f6e5c4]/15 to-[#b58b3b]/10 p-3 shadow-[0_30px_90px_rgba(0,0,0,0.35)]">

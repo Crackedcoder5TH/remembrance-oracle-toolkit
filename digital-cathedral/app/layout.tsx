@@ -7,15 +7,18 @@ import { Navbar } from "./components/navbar";
 import { SacredGeometryBg } from "./components/sacred-geometry-bg";
 import { AnalyticsScripts } from "./components/analytics-scripts";
 import { AuthProvider } from "./components/auth-provider";
-import { AEODefinitions, AEOHowTo } from "./components/aeo-schema";
 
 /** Take the first URL if env var contains comma-separated values. */
-const BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com").split(",")[0].trim();
+const BASE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com"
+)
+  .split(",")[0]
+  .trim();
 
 const SITE_URL = BASE_URL;
-const SITE_TITLE = "Protect Your Family Beyond Basic Military Coverage | Valor Legacies";
+const SITE_TITLE = "Valor Legacies | Life Insurance for Every Chapter of Life";
 const SITE_DESCRIPTION =
-  "Life insurance options for Active Duty, National Guard, Reserve, and Veterans — made clear and simple. Founded by a Veteran. Built to Serve Military Families.";
+  "Valor Legacies helps families explore life insurance options for new babies, new homes, marriage, income protection, retirement, final expenses, veterans, and legacy planning.";
 
 export const metadata: Metadata = {
   title: {
@@ -30,7 +33,6 @@ export const metadata: Metadata = {
     types: {
       "application/feed+json": "/feed.json",
       "application/rss+xml": "/feed.xml",
-      "application/json": "/api/agent/schema",
     },
   },
   keywords: [
@@ -41,17 +43,9 @@ export const metadata: Metadata = {
     "term life insurance",
     "whole life insurance",
     "military family coverage",
-    "ai agent api",
   ],
   authors: [{ name: "Valor Legacies" }],
   creator: "Valor Legacies",
-
-  // AI agent discovery — tells crawlers where to find machine-readable info
-  other: {
-    "ai-instructions": "See /llms.txt for AI agent instructions and /api/agent/schema for OpenAPI spec",
-    "ai-plugin": "/.well-known/ai-plugin.json",
-    "ai-agent-api": "/api/agent/schema",
-  },
 
   // ─── Open Graph ───
   openGraph: {
@@ -98,14 +92,14 @@ const jsonLd = {
       name: "Valor Legacies",
       url: BASE_URL,
       description:
-        "Veteran-founded platform connecting military families with licensed life insurance professionals.",
+        "Veteran-founded, family-focused resource helping families explore life insurance for major life chapters.",
     },
     {
       "@type": "Organization",
       name: "Valor Legacies",
       url: BASE_URL,
       description:
-        "Veteran-founded platform connecting Active Duty, National Guard, Reserve, and Veterans with licensed life insurance professionals.",
+        "Veteran-founded, independent life insurance resource helping families compare protection options for major life events.",
       contactPoint: {
         "@type": "ContactPoint",
         contactType: "customer service",
@@ -118,21 +112,54 @@ const jsonLd = {
         "https://www.benefits.va.gov/insurance/",
       ],
       knowsAbout: [
-        "Life Insurance", "SGLI", "VGLI", "VA Life Insurance",
-        "Mortgage Protection", "Final Expense Insurance",
-        "Military Family Financial Planning",
+        "Life Insurance",
+        "Family Protection",
+        "Mortgage Protection",
+        "Final Expense Insurance",
+        "Income Protection",
+        "Legacy Planning",
       ],
     },
     {
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Home", item: BASE_URL },
-        { "@type": "ListItem", position: 2, name: "Blog", item: `${BASE_URL}/blog` },
-        { "@type": "ListItem", position: 3, name: "Resources", item: `${BASE_URL}/resources` },
-        { "@type": "ListItem", position: 4, name: "About", item: `${BASE_URL}/about` },
-        { "@type": "ListItem", position: 5, name: "FAQ", item: `${BASE_URL}/faq` },
-        { "@type": "ListItem", position: 6, name: "Privacy Policy", item: `${BASE_URL}/privacy` },
-        { "@type": "ListItem", position: 7, name: "Terms of Service", item: `${BASE_URL}/terms` },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Blog",
+          item: `${BASE_URL}/blog`,
+        },
+        {
+          "@type": "ListItem",
+          position: 3,
+          name: "Resources",
+          item: `${BASE_URL}/resources`,
+        },
+        {
+          "@type": "ListItem",
+          position: 4,
+          name: "About",
+          item: `${BASE_URL}/about`,
+        },
+        {
+          "@type": "ListItem",
+          position: 5,
+          name: "FAQ",
+          item: `${BASE_URL}/faq`,
+        },
+        {
+          "@type": "ListItem",
+          position: 6,
+          name: "Privacy Policy",
+          item: `${BASE_URL}/privacy`,
+        },
+        {
+          "@type": "ListItem",
+          position: 7,
+          name: "Terms of Service",
+          item: `${BASE_URL}/terms`,
+        },
       ],
     },
     {
@@ -142,11 +169,13 @@ const jsonLd = {
         "@type": "Organization",
         name: "Valor Legacies",
       },
-      description: "Free, no-obligation life insurance coverage review for veterans, active duty, National Guard, Reserve, and military families. Connects consumers with licensed insurance professionals.",
+      description:
+        "Free, no-obligation life insurance coverage review for families across life's major chapters. Connects consumers with licensed insurance professionals.",
       areaServed: "US",
       audience: {
         "@type": "Audience",
-        audienceType: "Military families, veterans, active duty service members",
+        audienceType:
+          "Families, veterans, homeowners, parents, spouses, and legacy planners",
       },
       offers: {
         "@type": "Offer",
@@ -154,28 +183,6 @@ const jsonLd = {
         priceCurrency: "USD",
         description: "Free coverage review — no cost, no obligation",
       },
-    },
-    {
-      "@type": "SoftwareApplication",
-      name: "Valor Legacies Agent API",
-      applicationCategory: "BusinessApplication",
-      operatingSystem: "Web",
-      description:
-        "AI agent API for submitting life insurance leads on behalf of veterans and military families. Supports consent-based lead submission, account registration, and OpenAPI discovery.",
-      url: `${BASE_URL}/api/agent/schema`,
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-        description: "Free API access for authorized AI agents",
-      },
-      featureList: [
-        "Consent-based lead submission",
-        "Account registration",
-        "OpenAPI 3.1 schema discovery",
-        "MCP protocol support",
-        "TCPA/CCPA/FCC 2025 compliant",
-      ],
     },
   ],
 };
@@ -188,21 +195,28 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* AI agent discovery links */}
-        <link rel="ai-instructions" href="/llms.txt" />
-        <link rel="ai-plugin" href="/.well-known/ai-plugin.json" />
-        <link rel="mcp-discovery" href="/.well-known/mcp.json" />
-        <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Valor Legacies Search" />
-        <link rel="alternate" type="application/feed+json" href="/feed.json" title="Valor Legacies JSON Feed" />
-        <link rel="alternate" type="application/rss+xml" href="/feed.xml" title="Valor Legacies RSS Feed" />
-        <link rel="alternate" type="application/json" href="/api/agent/schema" title="Agent API Schema" />
+        <link
+          rel="search"
+          type="application/opensearchdescription+xml"
+          href="/opensearch.xml"
+          title="Valor Legacies Search"
+        />
+        <link
+          rel="alternate"
+          type="application/feed+json"
+          href="/feed.json"
+          title="Valor Legacies JSON Feed"
+        />
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          href="/feed.xml"
+          title="Valor Legacies RSS Feed"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {/* AEO: Answer Engine Optimization — invisible to humans, machine-readable for AI */}
-        <AEODefinitions />
-        <AEOHowTo />
       </head>
       <body className="min-h-screen bg-[var(--bg-deep)]">
         <AuthProvider>
@@ -215,7 +229,8 @@ export default function RootLayout({
         <AnalyticsScripts />
         <script
           dangerouslySetInnerHTML={{
-            __html: "if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js')",
+            __html:
+              "if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js')",
           }}
         />
       </body>

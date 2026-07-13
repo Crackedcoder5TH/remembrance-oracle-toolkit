@@ -12,22 +12,28 @@ import { useIsAdmin } from "../protect/hooks/use-is-admin";
  * Returns { isPortal, portalBaseUrl } so links can target the portal domain.
  */
 function usePortalDomain(): { isPortal: boolean; portalBaseUrl: string } {
-  const [state, setState] = useState<{ isPortal: boolean; portalBaseUrl: string }>({
-    isPortal: true, // default true to avoid flash
+  const [state, setState] = useState<{
+    isPortal: boolean;
+    portalBaseUrl: string;
+  }>({
+    isPortal: false, // consumer site should never flash portal/admin links
     portalBaseUrl: "",
   });
   useEffect(() => {
-    const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL;
-    if (!portalUrl) {
-      setState({ isPortal: true, portalBaseUrl: "" });
-      return;
-    }
+    const portalUrl = (
+      process.env.NEXT_PUBLIC_PORTAL_URL || "https://valorlegacies.xyz"
+    ).replace(/\/$/, "");
     try {
-      const portalHost = new URL(portalUrl).hostname.toLowerCase();
-      const isPortal = window.location.hostname.toLowerCase() === portalHost;
-      setState({ isPortal, portalBaseUrl: isPortal ? "" : portalUrl.replace(/\/$/, "") });
+      const portalHost = new URL(portalUrl).hostname
+        .toLowerCase()
+        .replace(/^www\./, "");
+      const currentHost = window.location.hostname
+        .toLowerCase()
+        .replace(/^www\./, "");
+      const isPortal = currentHost === portalHost;
+      setState({ isPortal, portalBaseUrl: isPortal ? "" : portalUrl });
     } catch {
-      setState({ isPortal: true, portalBaseUrl: "" });
+      setState({ isPortal: false, portalBaseUrl: "" });
     }
   }, []);
   return state;
@@ -35,15 +41,17 @@ function usePortalDomain(): { isPortal: boolean; portalBaseUrl: string } {
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
-  { href: "/about", label: "About Us" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/privacy", label: "Privacy Policy" },
-  { href: "/terms", label: "Terms of Service" },
+  { href: "/#life-chapters", label: "Life Chapters" },
+  { href: "/#guides", label: "Guides" },
+  { href: "/about", label: "About" },
+  { href: "/#protection-path", label: "Get Started" },
 ];
 
 const PORTAL_NAV_LINKS = [
-  { href: "/portal", label: "Home" },
+  { href: "/portal", label: "Portal Home" },
   { href: "/portal/marketplace", label: "Leads Marketplace" },
+  { href: "/admin", label: "Admin Dashboard" },
+  { href: "/developers", label: "Developers" },
   { href: "/portal/terms", label: "Terms of Service" },
   { href: "/portal/privacy", label: "Privacy Policy" },
 ];
@@ -95,7 +103,10 @@ export function Navbar() {
     ? [
         { href: adminHref, label: "Admin Dashboard" },
         { href: `${portalBaseUrl}/admin/leads`, label: "All Leads" },
-        { href: `${portalBaseUrl}/admin/notifications`, label: "Notifications" },
+        {
+          href: `${portalBaseUrl}/admin/notifications`,
+          label: "Notifications",
+        },
         { href: `${portalBaseUrl}/admin/outcomes`, label: "Outcomes" },
         { href: `${portalBaseUrl}/admin/patterns`, label: "Pattern Library" },
         { href: `${portalBaseUrl}/portal`, label: "Agent Portal" },
@@ -125,7 +136,10 @@ export function Navbar() {
   }
 
   return (
-    <nav className="cathedral-nav w-full text-[var(--text-primary)] relative z-50" aria-label="Main navigation">
+    <nav
+      className="cathedral-nav w-full text-[var(--text-primary)] relative z-50"
+      aria-label="Main navigation"
+    >
       <div className="max-w-6xl mx-auto px-fib-21 flex items-center justify-between h-fib-55">
         {/* Left: Home dropdown */}
         <div className="relative">
@@ -152,28 +166,116 @@ export function Navbar() {
                   aria-hidden="true"
                 >
                   <defs>
-                    <linearGradient id="nav-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <linearGradient
+                      id="nav-gold"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
                       <stop offset="0%" stopColor="#B8860B" />
                       <stop offset="50%" stopColor="#FFD700" />
                       <stop offset="100%" stopColor="#DAA520" />
                     </linearGradient>
                   </defs>
-                  <line x1="24" y1="4" x2="24" y2="10" stroke="#FFD700" strokeWidth="0.7" opacity="0.4" />
-                  <line x1="14" y1="7" x2="17" y2="12" stroke="#FFD700" strokeWidth="0.5" opacity="0.3" />
-                  <line x1="34" y1="7" x2="31" y2="12" stroke="#FFD700" strokeWidth="0.5" opacity="0.3" />
-                  <line x1="8" y1="14" x2="13" y2="16" stroke="#FFD700" strokeWidth="0.5" opacity="0.2" />
-                  <line x1="40" y1="14" x2="35" y2="16" stroke="#FFD700" strokeWidth="0.5" opacity="0.2" />
-                  <path d="M22 18 Q16 10 6 12 Q4 13 5 15 Q8 16 11 18 Q14 20 18 22 Z" fill="url(#nav-gold)" opacity="0.7" />
-                  <path d="M20 20 Q14 14 8 15 Q10 17 14 20 Z" fill="#B8860B" opacity="0.3" />
-                  <path d="M26 18 Q32 10 42 12 Q44 13 43 15 Q40 16 37 18 Q34 20 30 22 Z" fill="url(#nav-gold)" opacity="0.7" />
-                  <path d="M28 20 Q34 14 40 15 Q38 17 34 20 Z" fill="#B8860B" opacity="0.3" />
-                  <path d="M24 38 Q18 32 16 28 Q14 24 16 21 Q18 18 21 19 Q23 20 24 23 Q25 20 27 19 Q30 18 32 21 Q34 24 32 28 Q30 32 24 38 Z" fill="none" stroke="url(#nav-gold)" strokeWidth="1.5" strokeLinejoin="round" />
-                  <line x1="24" y1="24" x2="24" y2="30" stroke="#FFD700" strokeWidth="1" opacity="0.8" />
-                  <line x1="21.5" y1="26.5" x2="26.5" y2="26.5" stroke="#FFD700" strokeWidth="1" opacity="0.8" />
+                  <line
+                    x1="24"
+                    y1="4"
+                    x2="24"
+                    y2="10"
+                    stroke="#FFD700"
+                    strokeWidth="0.7"
+                    opacity="0.4"
+                  />
+                  <line
+                    x1="14"
+                    y1="7"
+                    x2="17"
+                    y2="12"
+                    stroke="#FFD700"
+                    strokeWidth="0.5"
+                    opacity="0.3"
+                  />
+                  <line
+                    x1="34"
+                    y1="7"
+                    x2="31"
+                    y2="12"
+                    stroke="#FFD700"
+                    strokeWidth="0.5"
+                    opacity="0.3"
+                  />
+                  <line
+                    x1="8"
+                    y1="14"
+                    x2="13"
+                    y2="16"
+                    stroke="#FFD700"
+                    strokeWidth="0.5"
+                    opacity="0.2"
+                  />
+                  <line
+                    x1="40"
+                    y1="14"
+                    x2="35"
+                    y2="16"
+                    stroke="#FFD700"
+                    strokeWidth="0.5"
+                    opacity="0.2"
+                  />
+                  <path
+                    d="M22 18 Q16 10 6 12 Q4 13 5 15 Q8 16 11 18 Q14 20 18 22 Z"
+                    fill="url(#nav-gold)"
+                    opacity="0.7"
+                  />
+                  <path
+                    d="M20 20 Q14 14 8 15 Q10 17 14 20 Z"
+                    fill="#B8860B"
+                    opacity="0.3"
+                  />
+                  <path
+                    d="M26 18 Q32 10 42 12 Q44 13 43 15 Q40 16 37 18 Q34 20 30 22 Z"
+                    fill="url(#nav-gold)"
+                    opacity="0.7"
+                  />
+                  <path
+                    d="M28 20 Q34 14 40 15 Q38 17 34 20 Z"
+                    fill="#B8860B"
+                    opacity="0.3"
+                  />
+                  <path
+                    d="M24 38 Q18 32 16 28 Q14 24 16 21 Q18 18 21 19 Q23 20 24 23 Q25 20 27 19 Q30 18 32 21 Q34 24 32 28 Q30 32 24 38 Z"
+                    fill="none"
+                    stroke="url(#nav-gold)"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  <line
+                    x1="24"
+                    y1="24"
+                    x2="24"
+                    y2="30"
+                    stroke="#FFD700"
+                    strokeWidth="1"
+                    opacity="0.8"
+                  />
+                  <line
+                    x1="21.5"
+                    y1="26.5"
+                    x2="26.5"
+                    y2="26.5"
+                    stroke="#FFD700"
+                    strokeWidth="1"
+                    opacity="0.8"
+                  />
                 </svg>
               }
             />
-            <span className="text-[var(--teal)]">Valor Legacies</span>
+            <span className="text-[var(--teal)]">
+              {isPortalDomain
+                ? "Valor Legacies Agent & Admin Portal"
+                : "Valor Legacies"}
+            </span>
             {/* Chevron */}
             <svg
               width="13"
@@ -255,7 +357,9 @@ export function Navbar() {
               {session.user.name?.split(" ")[0]}
             </span>
             <button
-              onClick={() => signOut({ callbackUrl: isPortalDomain ? "/portal" : "/" })}
+              onClick={() =>
+                signOut({ callbackUrl: isPortalDomain ? "/portal" : "/" })
+              }
               className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
             >
               Sign Out

@@ -6,13 +6,29 @@ export const metadata: Metadata = {
   description:
     "Integrate AI agents with Valor Legacies. Bearer-key auth, consent-based lead submission, structured diagnostic on rejection, tier-aware visibility, and provenance-anchored submissions.",
   alternates: {
-    canonical: "/developers/agents",
+    canonical: "https://valorlegacies.xyz/developers/agents",
+  },
+  robots: {
+    index: false,
+    follow: false,
   },
 };
 
-const BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://valorlegacies.com")
+const BASE_URL = (
+  process.env.NEXT_PUBLIC_PORTAL_URL || "https://valorlegacies.xyz"
+)
   .split(",")[0]
-  .trim();
+  .trim()
+  .replace(/\/$/, "");
+
+const AGENT_ENDPOINTS = {
+  access: "/api/agent/access",
+  consent: "/api/agent/consent",
+  host: "/api/agent/host",
+  leads: "/api/agent/leads",
+  register: "/api/agent/register",
+  schema: "/api/agent/schema",
+};
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -38,6 +54,9 @@ export default function AgentDevPage() {
           >
             &larr; Developer Portal
           </Link>
+          <p className="text-xs uppercase tracking-[0.24em] text-teal-cathedral mb-3">
+            Valor Legacies Agent & Admin Portal
+          </p>
           <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
             Agent API
           </h1>
@@ -55,25 +74,38 @@ export default function AgentDevPage() {
           <ul className="list-disc list-inside space-y-2">
             <li>
               Submit life insurance leads on behalf of human users via{" "}
-              <code className="text-teal-cathedral">/api/agent/leads</code>.
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.leads}
+              </code>
+              .
             </li>
             <li>
               Initiate confirmed-consent flows via{" "}
-              <code className="text-teal-cathedral">/api/agent/consent</code>.
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.consent}
+              </code>
+              .
             </li>
             <li>
               Discover endpoints + schemas via{" "}
-              <code className="text-teal-cathedral">/api/agent/schema</code>{" "}
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.schema}
+              </code>
               (no auth) and{" "}
               <code className="text-teal-cathedral">/llms.txt</code>.
             </li>
             <li>
               Read your tier and promotion progress at{" "}
-              <code className="text-teal-cathedral">/api/agent/access</code>.
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.access}
+              </code>
+              .
             </li>
             <li>
               Opt in as an Abundance Host at{" "}
-              <code className="text-teal-cathedral">/api/agent/host</code>{" "}
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.host}
+              </code>{" "}
               (merit tier required).
             </li>
           </ul>
@@ -124,12 +156,12 @@ Content-Type: application/json
           <ol className="list-decimal list-inside space-y-2">
             <li>
               Agent calls{" "}
-              <code className="text-teal-cathedral">POST /api/agent/consent</code>{" "}
+              <code className="text-teal-cathedral">
+                {`POST ${AGENT_ENDPOINTS.consent}`}
+              </code>{" "}
               with the human&apos;s email and a description of the action.
             </li>
-            <li>
-              Human receives a confirmation link and explicitly confirms.
-            </li>
+            <li>Human receives a confirmation link and explicitly confirms.</li>
             <li>
               Agent receives a confirmed{" "}
               <code className="text-teal-cathedral">consentToken</code> and
@@ -151,8 +183,8 @@ Content-Type: application/json
             Unlike the public web form (which silently rejects bots so they
             can&apos;t tune), authenticated agents receive a full diagnostic on
             both rejection AND admission. This is intentional — agents are
-            partners, not adversaries, and the gate exists to be learnable
-            so partners can improve their submissions.
+            partners, not adversaries, and the gate exists to be learnable so
+            partners can improve their submissions.
           </p>
           <pre className="bg-black/30 border border-teal-cathedral/10 rounded p-4 overflow-x-auto text-xs">
             <code>{`{
@@ -186,7 +218,10 @@ Content-Type: application/json
           </pre>
           <p>
             See{" "}
-            <Link href="/how-we-score" className="text-teal-cathedral hover:underline">
+            <Link
+              href="/how-we-score"
+              className="text-teal-cathedral hover:underline"
+            >
               How We Score Quality
             </Link>{" "}
             for the plain-language explanation of the dimensions.
@@ -205,16 +240,17 @@ Content-Type: application/json
             5 at coherency ≥ 0.70, and zero covenant rejections.
           </p>
           <p>
-            <strong>Basic</strong> agents have a 7-day visibility delay on
-            their own activity feed — submissions are live for everyone else
+            <strong>Basic</strong> agents have a 7-day visibility delay on their
+            own activity feed — submissions are live for everyone else
             immediately, but the submitter doesn&apos;t see downstream
             attribution for a week. <strong>Merit</strong> agents get the live
-            feed and can opt in as Abundance Hosts to receive routed
-            submissions from other agents.
+            feed and can opt in as Abundance Hosts to receive routed submissions
+            from other agents.
           </p>
           <p>
             Read your current tier and promotion progress with{" "}
-            <code className="text-teal-cathedral">GET /api/agent/access</code>.
+            <code className="text-teal-cathedral">{`GET ${AGENT_ENDPOINTS.access}`}</code>
+            .
           </p>
         </section>
 
@@ -235,11 +271,10 @@ X-Via-Subject: agent:<host_label>
 { ... lead body ... }`}</code>
           </pre>
           <p>
-            Routing is honored when the named host is currently merit AND
-            opted in AND not the originator. Bad routing never rejects the
-            submission — it just isn&apos;t attributed to a host. Hosts are
-            abundance nodes, not gatekeepers; basic agents can always submit
-            directly.
+            Routing is honored when the named host is currently merit AND opted
+            in AND not the originator. Bad routing never rejects the submission
+            — it just isn&apos;t attributed to a host. Hosts are abundance
+            nodes, not gatekeepers; basic agents can always submit directly.
           </p>
         </section>
 
@@ -250,9 +285,9 @@ X-Via-Subject: agent:<host_label>
           <p>
             Every submission gets a self-verifying{" "}
             <code className="text-teal-cathedral">provenanceId</code> in the
-            response — a ULID + HMAC-16 hex. This is the join key for any
-            future royalty events tied to income downstream-attributable to
-            the submission. Records are append-only and tamper-evident.
+            response — a ULID + HMAC-16 hex. This is the join key for any future
+            royalty events tied to income downstream-attributable to the
+            submission. Records are append-only and tamper-evident.
           </p>
         </section>
 
@@ -261,11 +296,36 @@ X-Via-Subject: agent:<host_label>
             Rate limits
           </h2>
           <ul className="list-disc list-inside space-y-1">
-            <li><code className="text-teal-cathedral">/api/agent/leads</code> — 10 req/min per agent key</li>
-            <li><code className="text-teal-cathedral">/api/agent/consent</code> — 10 req/min</li>
-            <li><code className="text-teal-cathedral">/api/agent/register</code> — 5 req/min</li>
-            <li><code className="text-teal-cathedral">/api/agent/access</code> — 30 req/min, NOT counted against quota</li>
-            <li><code className="text-teal-cathedral">/api/agent/host</code> — 10 req/min</li>
+            <li>
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.leads}
+              </code>{" "}
+              — 10 requests per minute per agent key
+            </li>
+            <li>
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.consent}
+              </code>{" "}
+              — 10 requests per minute
+            </li>
+            <li>
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.register}
+              </code>{" "}
+              — 5 requests per minute
+            </li>
+            <li>
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.access}
+              </code>{" "}
+              — 30 requests per minute, NOT counted against quota
+            </li>
+            <li>
+              <code className="text-teal-cathedral">
+                {AGENT_ENDPOINTS.host}
+              </code>{" "}
+              — 10 requests per minute
+            </li>
           </ul>
         </section>
 
@@ -276,25 +336,33 @@ X-Via-Subject: agent:<host_label>
           <ul className="list-disc list-inside space-y-1">
             <li>
               <code className="text-teal-cathedral">
-                <Link href="/api/agent/schema" className="hover:underline">/api/agent/schema</Link>
+                <Link href="/api/agent/schema" className="hover:underline">
+                  /api/agent/schema
+                </Link>
               </code>{" "}
               — OpenAPI 3.1 spec
             </li>
             <li>
               <code className="text-teal-cathedral">
-                <a href="/llms.txt" className="hover:underline">/llms.txt</a>
+                <a href="/llms.txt" className="hover:underline">
+                  /llms.txt
+                </a>
               </code>{" "}
               — AI-readable instructions
             </li>
             <li>
               <code className="text-teal-cathedral">
-                <a href="/.well-known/mcp.json" className="hover:underline">/.well-known/mcp.json</a>
+                <a href="/.well-known/mcp.json" className="hover:underline">
+                  /.well-known/mcp.json
+                </a>
               </code>{" "}
               — MCP discovery
             </li>
             <li>
               <code className="text-teal-cathedral">
-                <a href="/.well-known/agent.json" className="hover:underline">/.well-known/agent.json</a>
+                <a href="/.well-known/agent.json" className="hover:underline">
+                  /.well-known/agent.json
+                </a>
               </code>{" "}
               — agent capability descriptor
             </li>

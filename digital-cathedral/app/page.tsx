@@ -340,14 +340,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="protection-path" className="bg-[#0C4A4A] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="form-heading">
+      <section id="protection-path" className="bg-[#00A8A8] px-4 py-20 text-[#06312e] md:px-8 md:py-28" aria-labelledby="form-heading">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1fr] lg:items-start">
           <div className="lg:sticky lg:top-24">
             <p className={SECTION_LABEL}>Protection path</p>
-            <h2 id="form-heading" className="font-serif text-3xl font-light leading-tight text-white md:text-5xl">Find Your Protection Path</h2>
-            <p className="mt-5 text-lg leading-8 text-[#eadcc7]">Start with what changed in your life. We’ll help guide the next step.</p>
-            <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-6 text-sm leading-7 text-[#eadcc7]">
-              <strong className="text-white">Privacy-minded guidance.</strong> By submitting this form, you agree to be contacted by Valor Legacies or a licensed insurance professional regarding life insurance options. Message and data rates may apply. Submission does not guarantee coverage or approval.
+            <h2 id="form-heading" className="font-serif text-3xl font-light leading-tight text-[#06312e] md:text-5xl">Find Your Protection Path</h2>
+            <p className="mt-5 text-lg leading-8 text-[#0b3a37]">Start with what changed in your life. We’ll help guide the next step.</p>
+            <div className="mt-8 rounded-[1.5rem] border border-black/10 bg-white/70 p-6 text-sm leading-7 text-[#0b3a37]">
+              <strong className="text-[#06312e]">Privacy-minded guidance.</strong> By submitting this form, you agree to be contacted by Valor Legacies or a licensed insurance professional regarding life insurance options. Message and data rates may apply. Submission does not guarantee coverage or approval.
             </div>
           </div>
 

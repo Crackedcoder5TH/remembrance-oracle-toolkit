@@ -28,27 +28,27 @@ const { toLexicalWaveform } = require('./lexical-waveform');
 const { toNumericalWaveform } = require('./numerical-waveform');
 const { toSpectralWaveform } = require('./spectral-waveform');
 const { toRedundancyWaveform } = require('./redundancy-waveform');
+const { toContentProjection } = require('./content-projection');
+const { toDimensionalWaveform } = require('./dimensional-waveform');
 
 const LAYER_DIM = 29;
-// Depth-agnostic since the L5 migration: vectors are stored zero-padded
-// to MAX_DEPTH blocks. Zero-padding is mathematically clean for cosine
-// (adds nothing to dot products or norms), and the composition gate's
-// salience term floors any zero block automatically — so v1 (116-D) and
-// v2 (145-D) signatures coexist in one index without bias. This index stays
-// at MAX_DEPTH=5 until the deliberate composed_v3/v4 migration (Phase 2):
-// the encoder-stack is already 7-layer, but bumping COMPOSED_DIM here would
-// zero-pad every EXPORTED signature to 203-D and break the 116-D substrate
-// round-trip before the substrate itself is re-encoded. Index + substrate +
-// flow-scorer migrate together, so a deep vector is never produced into a
-// consumer that cannot yet read it.
-const MAX_DEPTH = 5;
-const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 145
+// Depth-agnostic since the L5 migration, extended to depth 7 on the L6+L7
+// activation: vectors are stored zero-padded to MAX_DEPTH blocks. Zero-padding
+// is mathematically clean for cosine (adds nothing to dot products or norms),
+// and the composition gate's salience term floors any zero block automatically
+// — so v1 (116-D), v2 (145-D), and v3/v4 (174/203-D) signatures coexist in one
+// index without bias. A legacy 116-D vector padded to 203 has zero energy in
+// L5-L7, so it compares cleanly at its shared depth against a full 203-D query
+// (nothing must be re-encoded for correctness — only for deep discrimination).
+const MAX_DEPTH = 7;
+const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 203
 
 function _compose(text) {
   const out = new Float64Array(COMPOSED_DIM);
   const layers = [
     toFractalWaveform(text), toLexicalWaveform(text), toNumericalWaveform(text),
     toSpectralWaveform(text), toRedundancyWaveform(text),
+    toContentProjection(text), toDimensionalWaveform(text),
   ];
   for (let l = 0; l < layers.length; l++) {
     for (let i = 0; i < LAYER_DIM; i++) out[l * LAYER_DIM + i] = layers[l][i];
@@ -304,24 +304,30 @@ class FractalIndex {
     for (let i = 0; i < n; i++) {
       if (filter && !filter(this._ids[i])) continue;
       const p = this._vecs[i];
-      let dot = 0, dot1 = 0, dot2 = 0, dot3 = 0, dot4 = 0;
+      // One pass to qDims, capturing the cumulative dot at each block boundary.
+      // `dot` ends holding the full dot at the query's DEEPEST depth (qDims).
+      let dot = 0, dot1 = 0, dot2 = 0, dot3 = 0;
       for (let kk = 0; kk < qDims; kk++) {
         dot += qComposed[kk] * p[kk];
         if (kk === LAYER_DIM - 1) dot1 = dot;
         else if (kk === 2 * LAYER_DIM - 1) dot2 = dot;
         else if (kk === 3 * LAYER_DIM - 1) dot3 = dot;
-        else if (kk === 4 * LAYER_DIM - 1) dot4 = dot;
       }
       const d1 = (qn[0] && pn[0][i]) ? dot1 / (qn[0] * pn[0][i]) : 0;
       const d2 = (qn[1] && pn[1][i]) ? dot2 / (qn[1] * pn[1][i]) : 0;
       const d3 = (qn[2] && pn[2][i]) ? dot3 / (qn[2] * pn[2][i]) : 0;
-      const d4 = (qn[3] && pn[3][i]) ? dot4 / (qn[3] * pn[3][i]) : 0;
-      const d5 = (qDepth >= 5 && qn[4] && pn[4] && pn[4][i]) ? dot / (qn[4] * pn[4][i]) : 0;
+      // d4 = cosine at the DEEPEST available depth (qDepth) — it consumes every
+      // active layer L1..Lk. For a depth-4 query this is exactly the 116-D
+      // cosine (unchanged); for a depth-7 query it folds in L5-L7. Legacy 116-D
+      // patterns padded to COMPOSED_DIM carry zero energy in the deep blocks, so
+      // they compare cleanly at the shared depth and top-K ranking is preserved.
+      const dd = qDepth - 1;
+      const d4 = (qn[dd] && pn[dd] && pn[dd][i]) ? dot / (qn[dd] * pn[dd][i]) : 0;
       if (top.length < k) {
-        top.push({ id: this._ids[i], d1, d2, d3, d4, d5 });
+        top.push({ id: this._ids[i], d1, d2, d3, d4 });
         top.sort((a, b) => b.d4 - a.d4);
       } else if (d4 > top[k - 1].d4) {
-        top[k - 1] = { id: this._ids[i], d1, d2, d3, d4, d5 };
+        top[k - 1] = { id: this._ids[i], d1, d2, d3, d4 };
         top.sort((a, b) => b.d4 - a.d4);
       }
     }

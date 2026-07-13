@@ -169,7 +169,10 @@ class VoidLibrary {
         const lenA = Math.min(inputComposed.length, cVec.length);
         if (lenA >= 58) d2 = _cosineN(inputComposed, cVec, 58);
         if (lenA >= 87) d3 = _cosineN(inputComposed, cVec, 87);
-        if (lenA >= 116) d4 = _cosineN(inputComposed, cVec, 116);
+        // d4 = cosine at the DEEPEST shared whole-block depth (29-D blocks) —
+        // 116 when either side is legacy composed_v1, up to 203 when both carry
+        // the full 7-layer stack (L5-L7 fold in automatically post re-encode).
+        if (lenA >= 116) d4 = _cosineN(inputComposed, cVec, Math.floor(lenA / 29) * 29);
       } else {
         composedMisses++;
       }

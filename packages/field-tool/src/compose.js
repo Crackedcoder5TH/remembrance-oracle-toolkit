@@ -24,12 +24,14 @@ const { toDimensionalWaveform } = require('./dimensional-waveform');
 const LAYER_DIM = 29;
 const DEPTHS = [toFractalWaveform, toLexicalWaveform, toNumericalWaveform, toSpectralWaveform, toRedundancyWaveform, toContentProjection, toDimensionalWaveform];
 
-/** Compose to the given depth (1..7). Default 7 — the full stack. */
-function composed(text, depth = 7) {
+/** Compose to the given depth (1..7). Default 7 — the full stack.
+ *  `input` is the serialized signal to encode (source text OR a retained
+ *  waveform/series) — the substrate feeds the compressed form, not source. */
+function composed(input, depth = 7) {
   const k = Math.max(1, Math.min(DEPTHS.length, depth));
   const out = new Float64Array(k * LAYER_DIM);
   for (let l = 0; l < k; l++) {
-    const v = DEPTHS[l](text);
+    const v = DEPTHS[l](input);
     for (let i = 0; i < LAYER_DIM; i++) out[l * LAYER_DIM + i] = v[i];
   }
   return out;

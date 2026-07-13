@@ -15,7 +15,7 @@
  * histograms and L2's lexical/stylistic features both flatline.
  *
  * L3 extracts the **numerical sequence character** of the input. For
- * any text, find all numeric literals and compute:
+ * any input, find all numeric literals and compute:
  *   - distribution statistics (mean, variance, skew, kurtosis, range)
  *   - sequence dynamics (autocorrelation, zero-crossings, trend,
  *     monotonicity, change magnitudes)
@@ -48,11 +48,11 @@ function _safe(x, fallback = 0) {
   return Number.isFinite(x) ? x : fallback;
 }
 
-function _extractNumbers(text) {
+function _extractNumbers(input) {
   const out = [];
   let m;
   _NUM_RE.lastIndex = 0;
-  while ((m = _NUM_RE.exec(text)) !== null) {
+  while ((m = _NUM_RE.exec(input)) !== null) {
     const v = parseFloat(m[0]);
     if (Number.isFinite(v)) out.push(v);
   }
@@ -200,16 +200,16 @@ function _distributionShape(nums, st) {
   return { medRatio, logScale, dominantBin, tailHeavy, uniqueFrac };
 }
 
-function _structuralSequence(text) {
-  // Positional structure on text characters
-  const len = text.length;
+function _structuralSequence(input) {
+  // Positional structure on input characters
+  const len = input.length;
   if (len === 0) {
     return { charEntropy: 0, firstNonWS: 0, lineLenEntropy: 0, periodic: 0, runlen: 0 };
   }
   // Character entropy
   const charCount = new Map();
   for (let i = 0; i < len; i++) {
-    const c = text.charCodeAt(i);
+    const c = input.charCodeAt(i);
     charCount.set(c, (charCount.get(c) || 0) + 1);
   }
   let cE = 0;
@@ -220,10 +220,10 @@ function _structuralSequence(text) {
   // Normalize by max possible entropy (~8 bits for byte chars)
   const charEntropy = Math.min(1, cE / 8);
   // Position of first non-whitespace (normalized)
-  const firstNS = text.search(/\S/);
+  const firstNS = input.search(/\S/);
   const firstNonWS = firstNS < 0 ? 0 : Math.min(1, firstNS / Math.max(1, len));
   // Line-length entropy
-  const lines = text.split('\n');
+  const lines = input.split('\n');
   const lineLens = lines.map(l => l.length);
   const lenCount = new Map();
   for (const l of lineLens) lenCount.set(l, (lenCount.get(l) || 0) + 1);
@@ -236,7 +236,7 @@ function _structuralSequence(text) {
   // Periodic pattern: fraction of length that repeats with stride 4..32
   let bestPeriod = 0;
   const sampleLen = Math.min(len, 1000);
-  const sample = text.slice(0, sampleLen);
+  const sample = input.slice(0, sampleLen);
   for (const stride of [4, 8, 16, 32]) {
     if (sampleLen <= stride) break;
     let matches = 0;
@@ -250,8 +250,8 @@ function _structuralSequence(text) {
   let runs = 0;
   let prev = -1;
   for (let i = 0; i < len; i++) {
-    if (text.charCodeAt(i) !== prev) runs++;
-    prev = text.charCodeAt(i);
+    if (input.charCodeAt(i) !== prev) runs++;
+    prev = input.charCodeAt(i);
   }
   const runlen = 1 - runs / len;
   return { charEntropy, firstNonWS, lineLenEntropy, periodic: bestPeriod, runlen };
@@ -281,15 +281,15 @@ function _domainMarkers(nums) {
   return { timestamp, ratio, coordinate };
 }
 
-function toNumericalWaveform(text) {
+function toNumericalWaveform(input) {
   const out = new Float64Array(LAYER_DIM);
-  if (typeof text !== 'string' || text.length === 0) return out;
+  if (typeof input !== 'string' || input.length === 0) return out;
 
-  const nums = _extractNumbers(text);
+  const nums = _extractNumbers(input);
   const st = _stats(nums);
   const seq = _sequenceDynamics(nums);
   const dist = st ? _distributionShape(nums, st) : { medRatio: 0, logScale: 0, dominantBin: 0, tailHeavy: 0, uniqueFrac: 0 };
-  const strct = _structuralSequence(text);
+  const strct = _structuralSequence(input);
   const dom = _domainMarkers(nums);
 
   // ── Numeric statistics (dims 0..7) ───────────────────────────
@@ -347,8 +347,8 @@ function numericalCoherency(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-function inspectNumericalWaveform(text) {
-  const v = toNumericalWaveform(text);
+function inspectNumericalWaveform(input) {
+  const v = toNumericalWaveform(input);
   return {
     stats: {
       mean: v[0], cv: v[1], skew: v[2], kurt: v[3],

@@ -4,7 +4,7 @@
  * fractal-waveform.js — structural, language-aware encoder.
  *
  * Built to address a real limitation in `toWaveform`: the byte-stretch
- * encoder maps any sufficiently long text into a similar-looking 256-D
+ * encoder maps any sufficiently long input into a similar-looking 256-D
  * vector, so a JS source file and a markdown README can score higher
  * coherency than two unrelated JS files. That's not a bug in the byte
  * encoder — it's the consequence of encoding bytes, not structure.
@@ -253,7 +253,7 @@ function _structurality(code) {
 // ─── Public API ──────────────────────────────────────────────────────────
 
 /**
- * Encode arbitrary text into the fractal waveform — a 29-D Float64Array
+ * Encode arbitrary input into the fractal waveform — a 29-D Float64Array
  * whose dimensions ARE the ecosystem's structural vocabulary. Order:
  *   [0..11]  atomic properties (charge, valence, mass, spin, phase,
  *            reactivity, electronegativity, group, period, safety,
@@ -266,17 +266,17 @@ function _structurality(code) {
  * Pure, deterministic, side-effect-free. Empty input → all zeros.
  * Non-code input (prose) → degenerate atomic signature + structurality ≈ 0.
  *
- * @param {string} text
+ * @param {string} input
  * @param {object} [opts] reserved for future language-specific routing
  * @returns {Float64Array} length 29
  */
-function toFractalWaveform(text, _opts = {}) {
+function toFractalWaveform(input, _opts = {}) {
   const out = new Float64Array(FRACTAL_DIM);
-  if (typeof text !== 'string' || text.length === 0) return out;
-  const p = _atomicProps(text);
+  if (typeof input !== 'string' || input.length === 0) return out;
+  const p = _atomicProps(input);
   const adims = _atomicDims(p);
-  const sdims = _structuralDims(text);
-  const sig = _structurality(text);
+  const sdims = _structuralDims(input);
+  const sig = _structurality(input);
   for (let i = 0; i < 12; i++) out[i] = adims[i];
   for (let i = 0; i < 16; i++) out[12 + i] = sdims[i];
   out[28] = sig;
@@ -287,8 +287,8 @@ function toFractalWaveform(text, _opts = {}) {
  * Inspect the fractal waveform's named dimensions — diagnostic helper.
  * Returns the same data as `toFractalWaveform` but with dimension names.
  */
-function inspectFractalWaveform(text, opts = {}) {
-  const v = toFractalWaveform(text, opts);
+function inspectFractalWaveform(input, opts = {}) {
+  const v = toFractalWaveform(input, opts);
   return {
     atomic: {
       charge: v[0], valence: v[1], mass: v[2], spin: v[3], phase: v[4],

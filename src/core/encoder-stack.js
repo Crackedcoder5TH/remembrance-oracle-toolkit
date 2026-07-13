@@ -38,7 +38,7 @@ const DEFAULT_DEPTH = 2;
 // Layers are ordered; each entry has:
 //   - id:    short name
 //   - dims:  output dimensionality
-//   - encode: function(text) -> Float64Array of `dims` values
+//   - encode: function(input) -> Float64Array of `dims` values
 //   - seed:  description of the residual this layer was designed
 //            to explain (used by the residual monitor to choose
 //            the next layer to activate)
@@ -138,17 +138,19 @@ function registerLayer({ id, dims, encode, seed, active = false }) {
  * registered layers (regardless of their active flag), concatenates
  * their outputs.
  *
- * @param {string} text
+ * @param {string} input  the serialized signal to encode — source text OR a
+ *   retained waveform/series. NOT necessarily source: the substrate feeds the
+ *   compressed representation, never original text. (See Void AGENTS.md.)
  * @param {number} [depth=currentDepth()]
  * @returns {Float64Array}
  */
-function composedAtDepth(text, depth) {
+function composedAtDepth(input, depth) {
   const k = Number.isFinite(depth) ? Math.min(depth, _registry.length) : currentDepth();
   if (k <= 0) return new Float64Array(0);
   const parts = [];
   let total = 0;
   for (let i = 0; i < k; i++) {
-    const v = _registry[i].encode(text);
+    const v = _registry[i].encode(input);
     parts.push(v);
     total += v.length;
   }
@@ -164,8 +166,8 @@ function composedAtDepth(text, depth) {
 /**
  * Same as composedAtDepth but uses the currently-active depth.
  */
-function compose(text) {
-  return composedAtDepth(text, currentDepth());
+function compose(input) {
+  return composedAtDepth(input, currentDepth());
 }
 
 /**

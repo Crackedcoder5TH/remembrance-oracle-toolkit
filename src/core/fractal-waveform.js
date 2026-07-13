@@ -15,7 +15,7 @@
  *
  * Replaces the byte-stretch in src/core/code-to-waveform.js as the
  * canonical encoder. Byte-stretch remains available under explicit
- * `byte*` names for binary / non-text inputs.
+ * `byte*` names for binary / non-textual inputs.
  */
 
 const FRACTAL_DIM = 29;
@@ -209,21 +209,21 @@ function _structurality(code) {
   return Math.min(1, (braceCount / windows) + (kwCount / windows) * 0.25);
 }
 
-function toFractalWaveform(text, _opts = {}) {
+function toFractalWaveform(input, _opts = {}) {
   const out = new Float64Array(FRACTAL_DIM);
-  if (typeof text !== 'string' || text.length === 0) return out;
-  const p = _atomicProps(text);
+  if (typeof input !== 'string' || input.length === 0) return out;
+  const p = _atomicProps(input);
   const adims = _atomicDims(p);
-  const sdims = _structuralDims(text);
-  const sig = _structurality(text);
+  const sdims = _structuralDims(input);
+  const sig = _structurality(input);
   for (let i = 0; i < 12; i++) out[i] = adims[i];
   for (let i = 0; i < 16; i++) out[12 + i] = sdims[i];
   out[28] = sig;
   return out;
 }
 
-function inspectFractalWaveform(text, opts = {}) {
-  const v = toFractalWaveform(text, opts);
+function inspectFractalWaveform(input, opts = {}) {
+  const v = toFractalWaveform(input, opts);
   return {
     atomic: {
       charge: v[0], valence: v[1], mass: v[2], spin: v[3], phase: v[4],
@@ -270,9 +270,9 @@ function fractalCoherencyOf(textA, textB) {
 // vector. Mirrors the cascade architecture: when one layer's
 // resolution is exhausted, recurse to the next zoom.
 //
-//   F^0(text) = toFractalWaveform(text)                    — 29-D shape
-//   F^1(text) = F(stringify(F^0(text)))                    — shape of shape
-//   F^k(text) = F^1 applied k times                        — structure at depth k
+//   F^0(input) = toFractalWaveform(input)                    — 29-D shape
+//   F^1(input) = F(stringify(F^0(input)))                    — shape of shape
+//   F^k(input) = F^1 applied k times                        — structure at depth k
 //
 // Cost: linear in k (each level is one fractal encode of ~250-char
 // JSON serialization). Resolution: compounds across levels because
@@ -327,16 +327,16 @@ function _stringifyFractal(v) {
 }
 
 /**
- * Encode `text` through `depth` recursive applications of
+ * Encode `input` through `depth` recursive applications of
  * toFractalWaveform. depth=0 returns the standard fractal vector;
  * depth=k applies the encoder k+1 times total.
  *
- * @param {string} text
+ * @param {string} input
  * @param {number} [depth=0]   — recursion depth (0 = standard encoder)
  * @returns {Float64Array}     — 29-D vector at the requested depth
  */
-function toFractalWaveformRecursive(text, depth = 0) {
-  let v = toFractalWaveform(text);
+function toFractalWaveformRecursive(input, depth = 0) {
+  let v = toFractalWaveform(input);
   for (let i = 0; i < depth; i++) {
     v = toFractalWaveform(_stringifyFractal(v));
   }
@@ -364,9 +364,9 @@ function fractalCoherencyOfRecursive(textA, textB, depth = 0) {
  * inputs into a smaller subspace at each level. The honestly-useful
  * fractal property is `toFractalMultiScale` below.
  */
-function toFractalLadder(text, maxDepth = 3) {
+function toFractalLadder(input, maxDepth = 3) {
   const out = [];
-  let v = toFractalWaveform(text);
+  let v = toFractalWaveform(input);
   out.push(v);
   for (let i = 0; i < maxDepth; i++) {
     v = toFractalWaveform(_stringifyFractal(v));
@@ -380,7 +380,7 @@ function toFractalLadder(text, maxDepth = 3) {
 // The structurally-honest "fractal" property of the encoder: apply it
 // at different scales (chunk sizes) of the input, not recursively
 // against its own output. Each scale captures nuance the others miss.
-// Whole-text encoding sees overall shape; line-level sees local
+// Whole-input encoding sees overall shape; line-level sees local
 // structure; token-level sees micro-grammar. Concatenated vectors
 // preserve all scales' signatures.
 //
@@ -390,21 +390,21 @@ function toFractalLadder(text, maxDepth = 3) {
 // output.
 
 /**
- * Encode `text` at multiple scales and concatenate into a single
+ * Encode `input` at multiple scales and concatenate into a single
  * vector. Default scales: `[whole, halves, quarters, lines]`. Each
  * scale contributes 29 dims, so default output is 4 * 29 = 116-D.
  *
- * @param {string} text
+ * @param {string} input
  * @param {object} [opts]
  *   scales?: ('whole'|'halves'|'quarters'|'lines'|'sentences')[]
  *            default ['whole', 'halves', 'quarters', 'lines']
  * @returns {Float64Array}     — 29 * scales.length dimensions
  */
-function toFractalMultiScale(text, opts = {}) {
+function toFractalMultiScale(input, opts = {}) {
   const scales = opts.scales || ['whole', 'halves', 'quarters', 'lines'];
   const parts = [];
   for (const scale of scales) {
-    parts.push(_encodeAtScale(text, scale));
+    parts.push(_encodeAtScale(input, scale));
   }
   const out = new Float64Array(parts.length * FRACTAL_DIM);
   for (let i = 0; i < parts.length; i++) {
@@ -415,23 +415,23 @@ function toFractalMultiScale(text, opts = {}) {
   return out;
 }
 
-function _encodeAtScale(text, scale) {
-  if (scale === 'whole') return toFractalWaveform(text);
-  if (scale === 'halves') return _meanAcross(_chunks(text, 2));
-  if (scale === 'quarters') return _meanAcross(_chunks(text, 4));
-  if (scale === 'lines') return _meanAcross(text.split('\n').filter(s => s.trim().length > 0));
-  if (scale === 'sentences') return _meanAcross(text.split(/[.!?]\s+/).filter(s => s.trim().length > 0));
-  return toFractalWaveform(text);
+function _encodeAtScale(input, scale) {
+  if (scale === 'whole') return toFractalWaveform(input);
+  if (scale === 'halves') return _meanAcross(_chunks(input, 2));
+  if (scale === 'quarters') return _meanAcross(_chunks(input, 4));
+  if (scale === 'lines') return _meanAcross(input.split('\n').filter(s => s.trim().length > 0));
+  if (scale === 'sentences') return _meanAcross(input.split(/[.!?]\s+/).filter(s => s.trim().length > 0));
+  return toFractalWaveform(input);
 }
 
-function _chunks(text, n) {
-  if (n <= 1) return [text];
-  const size = Math.max(1, Math.ceil(text.length / n));
+function _chunks(input, n) {
+  if (n <= 1) return [input];
+  const size = Math.max(1, Math.ceil(input.length / n));
   const out = [];
   for (let i = 0; i < n; i++) {
     const start = i * size;
-    if (start >= text.length) break;
-    out.push(text.slice(start, start + size));
+    if (start >= input.length) break;
+    out.push(input.slice(start, start + size));
   }
   return out;
 }
@@ -485,13 +485,13 @@ try {
  * fractal (29-D) into a single 58-D signature. If L2 is unreachable,
  * returns just the 29-D L1 vector.
  *
- * @param {string} text
+ * @param {string} input
  * @returns {Float64Array}    — 58-D when L2 available, 29-D otherwise
  */
-function toComposedWaveform(text) {
-  const l1 = toFractalWaveform(text);
+function toComposedWaveform(input) {
+  const l1 = toFractalWaveform(input);
   if (!_toLexicalWaveform) return l1;
-  const l2 = _toLexicalWaveform(text);
+  const l2 = _toLexicalWaveform(input);
   const out = new Float64Array(l1.length + l2.length);
   for (let i = 0; i < l1.length; i++) out[i] = l1[i];
   for (let i = 0; i < l2.length; i++) out[l1.length + i] = l2[i];

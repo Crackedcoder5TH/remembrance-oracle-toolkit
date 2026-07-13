@@ -43,12 +43,12 @@ const LAYER_DIM = 29;
 const MAX_DEPTH = 7;
 const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 203
 
-function _compose(text) {
+function _compose(input) {
   const out = new Float64Array(COMPOSED_DIM);
   const layers = [
-    toFractalWaveform(text), toLexicalWaveform(text), toNumericalWaveform(text),
-    toSpectralWaveform(text), toRedundancyWaveform(text),
-    toContentProjection(text), toDimensionalWaveform(text),
+    toFractalWaveform(input), toLexicalWaveform(input), toNumericalWaveform(input),
+    toSpectralWaveform(input), toRedundancyWaveform(input),
+    toContentProjection(input), toDimensionalWaveform(input),
   ];
   for (let l = 0; l < layers.length; l++) {
     for (let i = 0; i < LAYER_DIM; i++) out[l * LAYER_DIM + i] = layers[l][i];

@@ -49,11 +49,11 @@ const _TEMPLATE_RE = /`[^`]*`/g;
 const _TEST_KW_RE = /\b(?:test|describe|it|expect|beforeEach|afterEach|beforeAll|afterAll)\b/g;
 const _CONSOLE_RE = /\bconsole\.(?:log|warn|error|info|debug)\b/g;
 
-function _identifiers(text) {
+function _identifiers(input) {
   const out = [];
   let m;
   _ID_RE.lastIndex = 0;
-  while ((m = _ID_RE.exec(text)) !== null) out.push(m[0]);
+  while ((m = _ID_RE.exec(input)) !== null) out.push(m[0]);
   return out;
 }
 
@@ -81,15 +81,15 @@ function _ratio(num, denom) {
 
 // ── Encoder ─────────────────────────────────────────────────────
 
-function toLexicalWaveform(text) {
+function toLexicalWaveform(input) {
   const out = new Float64Array(LEXICAL_DIM);
-  if (typeof text !== 'string' || text.length === 0) return out;
+  if (typeof input !== 'string' || input.length === 0) return out;
 
-  const ids = _identifiers(text);
+  const ids = _identifiers(input);
   const totalIds = ids.length;
-  const lines = text.split('\n');
+  const lines = input.split('\n');
   const totalLines = lines.length;
-  const totalChars = text.length;
+  const totalChars = input.length;
 
   // ── Naming conventions (dims 0..3) ───────────────────────────
   let snake = 0, camel = 0, pascal = 0, upper = 0;
@@ -145,13 +145,13 @@ function toLexicalWaveform(text) {
   out[12] = _clip(indentLines > 0 ? (indentSum / indentLines) / 16 : 0);
 
   // ── Stylistic markers (dims 13..18) ──────────────────────────
-  const arrowCount = (text.match(_ARROW_RE) || []).length;
-  const fnKwCount = (text.match(_FN_KW_RE) || []).length;
-  const constCount = (text.match(_CONST_RE) || []).length;
-  const letVarCount = (text.match(_LET_VAR_RE) || []).length;
-  const asyncCount = (text.match(_ASYNC_RE) || []).length;
-  const ternaryCount = (text.match(_TERNARY_RE) || []).length;
-  const importCount = (text.match(_IMPORT_RE) || []).length;
+  const arrowCount = (input.match(_ARROW_RE) || []).length;
+  const fnKwCount = (input.match(_FN_KW_RE) || []).length;
+  const constCount = (input.match(_CONST_RE) || []).length;
+  const letVarCount = (input.match(_LET_VAR_RE) || []).length;
+  const asyncCount = (input.match(_ASYNC_RE) || []).length;
+  const ternaryCount = (input.match(_TERNARY_RE) || []).length;
+  const importCount = (input.match(_IMPORT_RE) || []).length;
 
   out[13] = _clip(_ratio(arrowCount, arrowCount + fnKwCount));
   out[14] = _clip(_ratio(constCount, constCount + letVarCount));
@@ -167,10 +167,10 @@ function toLexicalWaveform(text) {
   out[18] = _clip(_ratio(semiEolLines, totalLines));
 
   // ── Content character (dims 19..23) ──────────────────────────
-  const strings = text.match(_STR_RE) || [];
-  const numbers = text.match(_NUM_RE) || [];
-  const templates = text.match(_TEMPLATE_RE) || [];
-  const docBlocks = text.match(_DOC_BLOCK_RE) || [];
+  const strings = input.match(_STR_RE) || [];
+  const numbers = input.match(_NUM_RE) || [];
+  const templates = input.match(_TEMPLATE_RE) || [];
+  const docBlocks = input.match(_DOC_BLOCK_RE) || [];
 
   const totalStrChars = strings.reduce((s, t) => s + t.length, 0);
   const meanStrLen = strings.length > 0 ? totalStrChars / strings.length : 0;
@@ -186,15 +186,15 @@ function toLexicalWaveform(text) {
   out[23] = _clip(_ratio(magicNums, numbers.length));
 
   // ── Content type markers (dims 24..28) ───────────────────────
-  const testKw = (text.match(_TEST_KW_RE) || []).length;
-  const consoleKw = (text.match(_CONSOLE_RE) || []).length;
+  const testKw = (input.match(_TEST_KW_RE) || []).length;
+  const consoleKw = (input.match(_CONSOLE_RE) || []).length;
   const docBlockChars = docBlocks.reduce((s, t) => s + t.length, 0);
 
   out[24] = _clip(testKw / Math.max(1, totalLines / 50));   // per 50 lines
   out[25] = _clip(consoleKw / Math.max(1, totalLines / 50));
   out[26] = _clip(_ratio(docBlockChars, totalChars));
   // JSON-ish density: count of `key:` patterns vs total
-  const jsonKey = (text.match(/[\"\']\w+[\"\']\s*:/g) || []).length;
+  const jsonKey = (input.match(/[\"\']\w+[\"\']\s*:/g) || []).length;
   out[27] = _clip(jsonKey / Math.max(1, totalLines));
   // Shebang/prelude marker (binary)
   out[28] = lines[0] && lines[0].startsWith('#!') ? 1 : 0;
@@ -222,8 +222,8 @@ function lexicalCoherencyOf(textA, textB) {
 /**
  * Diagnostic — return the 29-D vector with dim names.
  */
-function inspectLexicalWaveform(text) {
-  const v = toLexicalWaveform(text);
+function inspectLexicalWaveform(input) {
+  const v = toLexicalWaveform(input);
   return {
     naming: {
       snake_case: v[0], camel_case: v[1], pascal_case: v[2], upper_case: v[3],

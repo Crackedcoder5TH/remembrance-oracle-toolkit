@@ -70,17 +70,17 @@ const _lmSizes = LANDMARKS.map((l) => _gz(l));
 function _gz(t) { return zlib.gzipSync(Buffer.from(t, 'utf8'), { level: 9 }).length; }
 
 /**
- * Project `text` onto the compression basis: coordinate k = 1 - NCD(text,
+ * Project `input` onto the compression basis: coordinate k = 1 - NCD(input,
  * landmark_k), L2-normalised, padded/truncated to 29-D.
  *
- * @param {string} text
+ * @param {string} input
  * @returns {Float64Array} 29-D content-projection fingerprint
  */
-function toContentProjection(text) {
+function toContentProjection(input) {
   const out = new Float64Array(DIM_TARGET);
-  if (typeof text !== 'string' || text.length < 3) return out;
-  const buf = Buffer.from(text, 'utf8');
-  const cx = _gz(text);
+  if (typeof input !== 'string' || input.length < 3) return out;
+  const buf = Buffer.from(input, 'utf8');
+  const cx = _gz(input);
   const raw = new Float64Array(LANDMARKS.length);
   for (let k = 0; k < LANDMARKS.length; k++) {
     const cxy = zlib.gzipSync(Buffer.concat([buf, Buffer.from(LANDMARKS[k], 'utf8')]), { level: 9 }).length;

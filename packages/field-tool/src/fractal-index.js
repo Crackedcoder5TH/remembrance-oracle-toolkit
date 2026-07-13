@@ -45,9 +45,9 @@ function _padToMax(vec) {
   return out;
 }
 
-function _l1Padded(text) {
+function _l1Padded(input) {
   const out = new Float64Array(COMPOSED_DIM);
-  const l1 = toFractalWaveform(text);
+  const l1 = toFractalWaveform(input);
   for (let i = 0; i < LAYER_DIM; i++) out[i] = l1[i];
   return out;
 }

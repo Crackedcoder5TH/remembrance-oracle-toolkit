@@ -15,7 +15,7 @@
  * failure caught only by testing text-encoded numbers instead of raw
  * bytes):
  *   1. PARSE, don't byte-read. The substrate stores series as JSON/CSV
- *      text; the 2D structure is in the VALUES, not the digit characters.
+ *      input; the 2D structure is in the VALUES, not the digit characters.
  *      L7 parses the numbers out and quantises them to bytes.
  *   2. PERIOD-AWARE reshape. A 2D filter only finds row-to-row structure
  *      when the grid WIDTH matches the data's period. A fixed √n width is
@@ -77,10 +77,10 @@ function _filter2D(buf, Win) {
   return res;
 }
 
-// Parse a numeric series out of text and quantise to bytes; null when the
-// text is not a series (fewer than MIN_SERIES numbers) — i.e. it is 1D.
-function _parseSeries(text) {
-  const m = text.match(/-?\d+(?:\.\d+)?/g);
+// Parse a numeric series out of input and quantise to bytes; null when the
+// input is not a series (fewer than MIN_SERIES numbers) — i.e. it is 1D.
+function _parseSeries(input) {
+  const m = input.match(/-?\d+(?:\.\d+)?/g);
   if (!m || m.length < MIN_SERIES) return null;
   const v = m.map(Number);
   let lo = Infinity, hi = -Infinity;
@@ -108,13 +108,13 @@ function _period(buf) {
 function _compress2DAt(buf, W) { return _deflate(_filter2D(buf, Math.max(2, W))); }
 
 /**
- * Encode the period-aware 2D-structural identity of `text`, self-gated
+ * Encode the period-aware 2D-structural identity of `input`, self-gated
  * on how 2D the input actually is. 29-D; ≈0 for non-series / 1D input.
  */
-function toDimensionalWaveform(text) {
+function toDimensionalWaveform(input) {
   const out = new Float64Array(DIM_TARGET);
-  if (typeof text !== 'string' || text.length < 8) return out;
-  const buf = _parseSeries(text);
+  if (typeof input !== 'string' || input.length < 8) return out;
+  const buf = _parseSeries(input);
   if (!buf || buf.length < MIN_SERIES) return out; // not a series → 1D, defer
 
   const W = _period(buf);
@@ -141,9 +141,9 @@ function toDimensionalWaveform(text) {
 }
 
 /** The measured period-aware 2D-gain of an input in [0, 1) — how 2D it is. */
-function dimensionalGain(text) {
-  if (typeof text !== 'string' || text.length < 8) return 0;
-  const buf = _parseSeries(text);
+function dimensionalGain(input) {
+  if (typeof input !== 'string' || input.length < 8) return 0;
+  const buf = _parseSeries(input);
   if (!buf) return 0;
   const W = _period(buf);
   const s1 = _deflate(buf);

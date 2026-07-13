@@ -294,20 +294,22 @@ function runMetaDebug(absFile, fullText, sectionRange, language) {
     return null;
   }
 
-  const high = findings.filter((f) => f.severity === 'high');
-  const medium = findings.filter((f) => f.severity === 'medium');
-
-  // Learning loop: high findings go through the debug-oracle so the
-  // field learns which classes matter. surface = what survives learned
-  // suppression (false-positive classes decay out on their own).
-  let surfaced = high;
+  // Learning loop: BOTH severities go through the debug-oracle so the field
+  // learns which classes matter, and learned suppression — including false
+  // positives fed by hand — reaches mediums too. Previously only highs were
+  // gated: a medium false positive bypassed the ledger entirely and could
+  // never be closed by feeding the field, re-surfacing on every read. surface
+  // = what survives learned suppression (false-positive classes decay out).
+  let surfaced = findings.filter((f) => f.severity === 'high');
+  let medium = findings.filter((f) => f.severity === 'medium');
   let suppressed = 0;
   let resolved = 0;
   try {
     const learning = require('../debug/goggles-learning');
-    const out = learning.processFindings({ filePath: absFile, findings: high, content: fullText, language });
+    const out = learning.processFindings({ filePath: absFile, findings: surfaced.concat(medium), content: fullText, language });
     if (out && Array.isArray(out.surface)) {
-      surfaced = out.surface;
+      surfaced = out.surface.filter((f) => f.severity === 'high');
+      medium = out.surface.filter((f) => f.severity === 'medium');
       suppressed = out.suppressed || 0;
       resolved = out.resolved || 0;
     }

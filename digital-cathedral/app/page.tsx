@@ -340,8 +340,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="protection-path" className="bg-[#0F1026] px-4 py-20 text-white md:px-8 md:py-28" aria-labelledby="form-heading">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.8fr_1fr] lg:items-start">
+      <section id="protection-path" className="bg-[#00A8A8] px-4 py-20 md:px-8 md:py-28" aria-labelledby="form-heading">
+        <div className="mx-auto grid max-w-7xl gap-10 rounded-[2rem] bg-[#0C4A4A] p-6 text-white shadow-[0_30px_90px_rgba(0,0,0,0.28)] md:p-10 lg:grid-cols-[0.8fr_1fr] lg:items-start">
           <div className="lg:sticky lg:top-24">
             <p className={SECTION_LABEL}>Protection path</p>
             <h2 id="form-heading" className="font-serif text-3xl font-light leading-tight text-white md:text-5xl">Find Your Protection Path</h2>

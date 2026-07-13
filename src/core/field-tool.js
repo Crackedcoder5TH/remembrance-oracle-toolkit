@@ -98,6 +98,13 @@ try { _residualMonitor = require('./residual-monitor'); } catch (_) { /* monitor
 const RESIDUAL_CHECK_EVERY = 250;
 const RESIDUAL_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'residual-check.json');
 
+// Information-density fuel (the retro module's power source), kept LIVE: read
+// on every field read, re-fit lazily as the substrate grows. See step 5c.
+let _substrateDensity = null;
+try { _substrateDensity = require('./substrate-density'); } catch (_) { /* density module unreachable */ }
+const DENSITY_REFRESH_EVERY = 500;
+const DENSITY_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'density-refresh.json');
+
 // Canonical substrate: Void's fractal library (~43k+ patterns,
 // translated from the master pattern_index.json via the same
 // canonical encoder). Now holds both L1 (29-D) and composed_v1
@@ -296,6 +303,36 @@ class FieldTool {
         fs.mkdirSync(path.dirname(RESIDUAL_COUNTER_PATH), { recursive: true });
         fs.writeFileSync(RESIDUAL_COUNTER_PATH, JSON.stringify(st));
       } catch (_) { /* residual coupling optional — never break a read */ }
+    }
+
+    // 5c. Information-density meta-awareness (the retro fuel, kept LIVE).
+    // Every read feeds the field the substrate's current density factor —
+    // its whitened effective dimensionality relative to the reference — so
+    // the LRE histogram always carries the fuel the retro module runs on, and
+    // the number never freezes into a dead measurement. Like the residual
+    // above, the fit is refreshed lazily every DENSITY_REFRESH_EVERY grows
+    // (bounded whitening fit, ~1-2s), while the per-read contribution just
+    // reads the cached factor (fast). The FACTOR is the meta-signal, in the
+    // source bucket, never the coherence scalar.
+    if (_substrateDensity) {
+      try {
+        const factor = _substrateDensity.getDensityFactor();
+        if (grew.ok === true) {
+          const dc = fs.existsSync(DENSITY_COUNTER_PATH)
+            ? JSON.parse(fs.readFileSync(DENSITY_COUNTER_PATH, 'utf8')) : { grows: 0 };
+          dc.grows = (dc.grows | 0) + 1;
+          if (dc.grows >= DENSITY_REFRESH_EVERY) {
+            const e = _substrateDensity.refreshDensity();
+            dc.grows = 0;
+            if (e) dc.last = { effectiveDim: e.effectiveDim, factor: e.factor, patterns: e.patterns };
+          }
+          fs.mkdirSync(path.dirname(DENSITY_COUNTER_PATH), { recursive: true });
+          fs.writeFileSync(DENSITY_COUNTER_PATH, JSON.stringify(dc));
+        }
+        const bucket = factor >= 1.3 ? 'high' : factor >= 1.05 ? 'rising' : 'baseline';
+        fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:density:' + bucket });
+        layers.densityFactor = +factor.toFixed(4);
+      } catch (_) { /* density coupling optional — never break a read */ }
     }
 
     // 6. Coherence = the INTRINSIC structural-coherence score: does this have

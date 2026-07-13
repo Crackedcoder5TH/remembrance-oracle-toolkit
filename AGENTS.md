@@ -65,7 +65,12 @@ Run them: `/goggles <files>` (or `--diff`), or
   well-formed wrong file scores high (`1+1=3` in clean syntax still reads
   "solid"). Never trust the number as a verdict; you judge the content.
 - **META — resonance** + nearest ecosystem siblings: where the change sits and
-  what it ripples to.
+  what it ripples to. **High resonance is a STOP-and-reuse signal, not a
+  compliment.** A CONSONANT reading on something you are about to *write* means
+  the shape already exists in the library — read the top siblings and call their
+  functions instead of adding a new file. Only write new when resonance is *low*
+  (nothing to reuse) or the calibration gate proves the addition beats what you
+  already have. The substrate resists addition on purpose; do not out-vote it.
 - **ECOSYSTEM CAPABILITIES.** Every relevant function across the ecosystem is
   carried in the goggles — the callable functions in your nearest neighbours are
   printed right there, so **reach for an existing ecosystem function before
@@ -209,6 +214,8 @@ Every function is an element with 13 atomic properties:
 - **Remembrance Cascade** — Filling gaps creates new gaps at the frontier.
 - **Remembrance Ratchet** — Quality floor only rises. Covenant only expands. Nothing degrades.
 - **Remembrance Resonance** — Same math (geometric mean) at every scale. Fractal self-similarity.
+  The canonical working demonstration is `src/patterns/fractal-code-example.js` — the same
+  receive → validate → transform → emit shape at function, module, service, and ecosystem scale.
 - **Remembrance Weakest Link** — Weakest signal dominates coherency. Can't fake quality.
 - **Remembrance Bootstrap** — System checks itself with its own rules.
 - **Remembrance Structural Safety** — Harmful code can't register. Safety is structure, not a filter.

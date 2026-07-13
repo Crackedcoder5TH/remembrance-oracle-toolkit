@@ -93,7 +93,7 @@ function amplitudeById(debug, id) {
  * @param {{ filePath:string, findings:Array, content:string, language:string }} input
  * @returns {{ surface:Array, suppressed:number, resolved:number }}
  */
-function processFindings({ filePath, findings, language }) {
+function processFindings({ filePath, findings, language, content }) {
   const state = loadState();
   state.patterns = state.patterns || {};             // fingerprint -> { id }
   state.files = state.files || {};                   // filePath -> { present: [{ fp, seen }] last turn }
@@ -121,12 +121,18 @@ function processFindings({ filePath, findings, language }) {
       const rec = state.patterns[p.fp];
       const id = rec && rec.id;
       if (id) { try { debug.reportOutcome(id, true); resolved += 1; state.resolutions += 1; } catch (_) { /* ignore */ } }
-      // TEACH the resonance channel — but ONLY here, on confirmation. A
-      // finding that was present and is now gone was really fixed, so its
-      // shape is a genuine defect worth recognising in every language.
-      // Teaching at detection would enshrine false positives; teaching on
-      // resolution means only fixed defects become signatures.
-      if (rec && rec.block && !state.falsePositives[p.fp]) {
+      // TEACH the resonance channel — but ONLY on a genuine CODE fix. A
+      // finding can disappear for three reasons: the code was fixed (teach
+      // it — a real defect shape), it was flagged a false positive (never
+      // teach), or the CHECKER was changed to stop flagging it (never teach
+      // — the code is unchanged and safe). The last case is the trap: it
+      // taught a guarded null-check as a defect shape when the nullable-
+      // deref checker was fixed. The distinguisher is the block itself —
+      // if the offending block is still present VERBATIM in the file, the
+      // code was not fixed, so the finding's disappearance is a checker
+      // change or an FP, and we must not teach.
+      const blockChanged = rec && rec.block && (typeof content !== 'string' || !content.includes(rec.block));
+      if (rec && rec.block && blockChanged && !state.falsePositives[p.fp]) {
         try {
           require('./defect-resonance').teach({
             label: rec.label || (p.fp.split(':')[0]),

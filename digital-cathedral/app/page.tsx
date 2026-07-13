@@ -281,7 +281,7 @@ export default function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </header>
 
       <section className="bg-gradient-to-b from-[#e4e6ea] to-[#33363d] px-4 py-20 md:px-8 md:py-28" aria-labelledby="trust-heading">
         <div className="mx-auto max-w-7xl">

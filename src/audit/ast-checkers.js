@@ -148,6 +148,29 @@ function buildSummary(findings) {
 // ─── State mutation checker ─────────────────────────────────────────────────
 
 /**
+ * True when `name` was declared `const|let <name> = [` in this token
+ * stream before `idx` and never reassigned afterwards — a function-local
+ * accumulator array the function owns outright. Sound: a later plain
+ * reassignment (`name = other`) voids the proof, because the identifier
+ * may now alias an array a caller can see.
+ */
+function declaredEmptyLocal(tokens, name, idx) {
+  let declared = false;
+  for (let i = 0; i < idx; i++) {
+    const t = tokens[i];
+    if (t?.type !== 'identifier' || t.value !== name) continue;
+    const prev = tokens[i - 1];
+    const isDecl = prev && (prev.value === 'const' || prev.value === 'let' || prev.value === 'var');
+    if (isDecl && tokens[i + 1]?.value === '=' && tokens[i + 2]?.value === '[' && tokens[i + 3]?.value === ']') {
+      declared = true;
+    } else if (!isDecl && tokens[i + 1]?.value === '=' && tokens[i + 2]?.value !== '=') {
+      declared = false; // reassigned to something we can't prove local
+    }
+  }
+  return declared;
+}
+
+/**
  * A .sort()/.reverse()/.splice() on a variable that wasn't produced by a
  * copy (slice, spread, Array.from, concat, structuredClone) is a mutation
  * of the source array. For private class fields (#name) we allow it —
@@ -177,7 +200,15 @@ function checkStateMutation(fn, scope, emit) {
     // Private field mutation is typically intentional
     const isPrivateField = receiverText.includes('this.#') || receiverText.includes('#');
 
-    if (!produced && !isPrivateField) {
+    // A local accumulator (`const xs = []` declared in THIS function and
+    // never reassigned) is owned by the function — sorting it in place
+    // is the canonical build-then-sort pattern, not a caller-visible
+    // mutation. Only a bare identifier qualifies: any member chain
+    // (this.xs, a.b) can alias external state.
+    const isLocalAccumulator = receiverRange.length === 1
+      && declaredEmptyLocal(tokens, receiverText, i);
+
+    if (!produced && !isPrivateField && !isLocalAccumulator) {
       emit({
         line: t.line,
         column: t.column,
@@ -248,7 +279,18 @@ function isProducedByCopy(receiverTokens) {
   return (
     text.includes('.slice(') ||
     text.includes('.concat(') ||
+    // map/filter/flat/flatMap provably return a FRESH array, so a
+    // .sort()/.reverse() chained onto their result mutates the throwaway
+    // intermediate, never a caller-owned array — e.g. a.map(...).sort()
+    // is the standard "decorate-sort-undecorate" idiom and is safe.
+    text.includes('.map(') ||
+    text.includes('.filter(') ||
+    text.includes('.flatMap(') ||
+    text.includes('.flat(') ||
     text.includes('Array.from(') ||
+    text.includes('Object.keys(') ||
+    text.includes('Object.values(') ||
+    text.includes('Object.entries(') ||
     text.includes('structuredClone(') ||
     /\[\.\.\./.test(text)
   );
@@ -382,6 +424,10 @@ function checkTypeInFn(fn, scope, emit) {
       // or the structural guard sees the check.
       if (scope.nonNullAt(i).has(divisorHead)) continue;
       if (hasDivisorGuardAround(tokens, i, divisorChain)) continue;
+      // Divisor assigned from `Math.max(<positive-literal>, …)` earlier in
+      // the function is provably ≥ that literal, hence non-zero — the
+      // standard "clamp a divisor to a floor" idiom (W = Math.max(2, …)).
+      if (divisorAssignedPositive(tokens, divisorHead, i)) continue;
       if (divisorChain !== divisorHead && hasDivisorGuardAround(tokens, i, divisorHead)) continue;
       emit({
         line: t.line, column: t.column,
@@ -411,6 +457,28 @@ function checkTypeInFn(fn, scope, emit) {
       suggestion: 'Wrap in try/catch or use a safeParse helper',
     });
   }
+}
+
+// True when `<divisor>` was assigned from `Math.max(<positive-number>, …)`
+// anywhere before `idx` in this token stream — which pins it at or above a
+// positive floor, so it can never be zero. Sound: a later plain
+// reassignment (`divisor = …` to something else) after such a clamp voids
+// the proof, so we take the LAST assignment before idx as authoritative.
+function divisorAssignedPositive(tokens, divisor, idx) {
+  let proven = false;
+  for (let i = 0; i < idx; i++) {
+    if (tokens[i]?.type !== 'identifier' || tokens[i].value !== divisor) continue;
+    if (tokens[i + 1]?.value !== '=' || tokens[i + 2]?.value === '=') continue; // assignment, not ==
+    // Pattern: divisor = Math . max ( <number > 0>
+    if (tokens[i + 2]?.value === 'Math' && tokens[i + 3]?.value === '.' &&
+        tokens[i + 4]?.value === 'max' && tokens[i + 5]?.value === '(' &&
+        tokens[i + 6]?.type === 'number' && parseFloat(tokens[i + 6].value) > 0) {
+      proven = true;
+    } else {
+      proven = false; // a different assignment supersedes the clamp
+    }
+  }
+  return proven;
 }
 
 function hasDivisorGuardAround(tokens, idx, divisor) {
@@ -469,12 +537,18 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
     }
   }
   // Backward: early-exit guard clause
-  //   if (divisor === 0) return <whatever>;
-  //   if (divisor === 0) throw ...;
-  //   if (divisor === 0) continue;
+  //   if (divisor === 0) return <whatever>;      (exact-zero test)
+  //   if (divisor < 1e-6) return ...;            (epsilon threshold)
+  //   if (divisor <= 0) throw ...;               (non-positive test)
+  //   if (!divisor) continue;                    (truthiness)
   // When the guard's body is a terminator, the continuation (where our
-  // division lives) is guaranteed to have divisor !== 0.
-  for (let i = Math.max(0, idx - 40); i < idx; i++) {
+  // division lives) is guaranteed to have divisor !== 0 — UNLESS the
+  // divisor is reassigned between the guard and the division, which
+  // voids the proof (the reassigned value is unvetted). The window is
+  // 160 tokens: a guard is often separated from the division by a loop
+  // header + body, which alone exceeds the old 40-token window and made
+  // every early-return guard in the codebase read as unguarded.
+  for (let i = Math.max(0, idx - 160); i < idx; i++) {
     const t = tokens[i];
     if (t.type !== 'keyword' || t.value !== 'if') continue;
     if (tokens[i + 1]?.value !== '(') continue;
@@ -487,7 +561,17 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
       if (tokens[j].type === 'identifier' && tokens[j].value === divisor) {
         const op = tokens[j + 1]?.value;
         const rhs = tokens[j + 2];
+        // Exact-zero test: `x === 0` / `x == 0`
         if ((op === '===' || op === '==') && rhs?.type === 'number' && parseFloat(rhs.value) === 0) {
+          matchedDivisor = true;
+        }
+        // Epsilon / non-positive threshold: `x < 1e-6`, `x < 0.001`,
+        // `x <= 0` — exiting when small-or-negative proves the
+        // continuation has x above the threshold (in particular, non-zero).
+        if (op === '<' && rhs?.type === 'number' && parseFloat(rhs.value) > 0) {
+          matchedDivisor = true;
+        }
+        if (op === '<=' && rhs?.type === 'number' && parseFloat(rhs.value) >= 0) {
           matchedDivisor = true;
         }
         if ((op === '!==' || op === '!=') && rhs?.type === 'number' && parseFloat(rhs.value) === 0) {
@@ -496,6 +580,10 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
           // Skip — the primary non-null scope tracker handles block cases.
         }
       }
+      // Truthiness negation: `!x` anywhere in the condition
+      if (tokens[j].value === '!' && tokens[j + 1]?.type === 'identifier' && tokens[j + 1].value === divisor) {
+        matchedDivisor = true;
+      }
       j++;
     }
     if (!matchedDivisor) continue;
@@ -503,13 +591,22 @@ function hasDivisorGuardAround(tokens, idx, divisor) {
     // / continue) — possibly inside a `{ }` single-line block.
     const bodyStart = tokens[j + 1];
     if (!bodyStart) continue;
-    if (bodyStart.type === 'keyword' && (bodyStart.value === 'return' || bodyStart.value === 'throw' || bodyStart.value === 'continue' || bodyStart.value === 'break')) {
-      return true;
+    const isExit = (tok) => tok?.type === 'keyword' &&
+      (tok.value === 'return' || tok.value === 'throw' || tok.value === 'continue' || tok.value === 'break');
+    if (!isExit(bodyStart) && !(bodyStart.value === '{' && isExit(tokens[j + 2]))) continue;
+    // Soundness: the guard only holds if the divisor is NOT reassigned
+    // between the guard body and the division. `s = sqrt(s)` after
+    // `if (s < eps) return` re-binds the name to an unvetted value —
+    // the exact case that must stay flagged.
+    let reassigned = false;
+    for (let k = j; k < idx; k++) {
+      if (tokens[k]?.type !== 'identifier' || tokens[k].value !== divisor) continue;
+      const nx = tokens[k + 1]?.value;
+      if ((nx === '=' && tokens[k + 2]?.value !== '=') ||
+          nx === '+=' || nx === '-=' || nx === '*=' || nx === '/=' ||
+          nx === '++' || nx === '--') { reassigned = true; break; }
     }
-    if (bodyStart.value === '{' && tokens[j + 2]?.type === 'keyword' &&
-        (tokens[j + 2].value === 'return' || tokens[j + 2].value === 'throw' || tokens[j + 2].value === 'continue')) {
-      return true;
-    }
+    if (!reassigned) return true;
   }
   // Look backward for `if (divisor !== 0)` in the enclosing 30 tokens
   for (let i = Math.max(0, idx - 30); i < idx; i++) {
@@ -638,10 +735,24 @@ function findDereferences(tokens, startIdx, varName, window) {
 function hasInlineGuardBefore(tokens, idx, varName) {
   // Optional-chain access `varName?.x` is itself the guard
   if (tokens[idx + 1]?.value === '?.') return true;
-  // Ternary in last 8 tokens: `x ? x.y : z`
+  // Positive short-circuit / ternary in last 8 tokens: `x && x.y`, `x ? x.y : z`
   for (let j = idx - 1; j >= Math.max(0, idx - 8); j--) {
     if (tokens[j]?.value === '?' && tokens[j - 1]?.type === 'identifier' && tokens[j - 1].value === varName) return true;
     if (tokens[j]?.value === '&&' && tokens[j - 1]?.type === 'identifier' && tokens[j - 1].value === varName) return true;
+  }
+  // Negative short-circuit OR: `!x || x.y`, `x == null || x.y`, `x === null || x.y`.
+  // When the deref sits in the RIGHT operand of an `||` whose LEFT operand
+  // proves x is falsy/null, the deref only runs when x is truthy — the
+  // standard null-safe-access idiom. Scan back for the `||` and confirm
+  // its left side is a null-test of THIS var.
+  for (let j = idx - 1; j >= Math.max(0, idx - 12); j--) {
+    if (tokens[j]?.value !== '||') continue;
+    // `! x ||`  → tokens[j-1] = x, tokens[j-2] = '!'
+    if (tokens[j - 1]?.type === 'identifier' && tokens[j - 1].value === varName && tokens[j - 2]?.value === '!') return true;
+    // `x == null ||` / `x === null|undefined ||`
+    if (tokens[j - 3]?.type === 'identifier' && tokens[j - 3].value === varName &&
+        (tokens[j - 2]?.value === '==' || tokens[j - 2]?.value === '===') &&
+        (tokens[j - 1]?.value === 'null' || tokens[j - 1]?.value === 'undefined')) return true;
   }
   return false;
 }

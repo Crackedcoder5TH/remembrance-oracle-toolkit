@@ -1,95 +1,164 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getAllLandingPages } from "../lib/landing-pages";
 import { ServiceSchema } from "../components/schema-markup";
+import { GUIDE_CATEGORIES, getGuidesByCategory } from "../guides/data";
+import { getAllLandingPages } from "../lib/landing-pages";
 
 export const metadata: Metadata = {
-  title: "Military Life Insurance Resources",
+  title: "Helpful Guides for Life’s Biggest Moments",
   description:
-    "Explore life insurance options for veterans, active duty, National Guard, and military families. Free coverage reviews from licensed professionals.",
+    "Explore consumer-friendly life insurance guides for new parents, homeowners, work benefits, final expense planning, retirement, legacy planning, and veteran families.",
   keywords: [
-    "veteran life insurance",
-    "military life insurance",
-    "SGLI alternatives",
-    "military family coverage",
-    "veteran insurance options",
+    "life insurance guides",
+    "new parent life insurance",
+    "homeowner protection",
+    "employer life insurance",
+    "final expense planning",
+    "veteran life insurance benefits",
   ],
   openGraph: {
-    title: "Military Life Insurance Resources",
-    description: "Explore life insurance options for veterans, active duty, National Guard, and military families.",
-    type: "article",
-    modifiedTime: "2026-03-12T00:00:00Z",
+    title: "Helpful Guides for Life’s Biggest Moments",
+    description:
+      "Consumer-friendly Valor Legacies guides for life insurance decisions around family, home, work benefits, retirement, final expenses, and veteran benefits.",
+    type: "website",
   },
 };
 
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  "New Parents":
+    "Protection questions that often come up after welcoming a baby.",
+  Homeowners: "Guidance for protecting the home and the people who live there.",
+  "Work Benefits":
+    "Plain-English help comparing employer coverage with personally owned protection.",
+  "Final Expense":
+    "Calm planning resources for funeral, cremation, burial, and final costs.",
+  "Retirement & Legacy":
+    "Careful education for retirement, legacy, and coverage amount conversations.",
+  "Veterans & Military Families":
+    "Military and veteran benefit resources, plus private coverage considerations.",
+};
+
 export default function ResourcesIndex() {
-  const pages = getAllLandingPages();
+  const veteranResources = getAllLandingPages();
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-12">
+    <main className="min-h-screen bg-[#fbf7f0] px-4 py-12 text-[#241d15] md:px-8 md:py-16">
       <ServiceSchema />
 
-      <article className="w-full max-w-4xl space-y-8">
-        <header>
+      <article className="mx-auto max-w-7xl space-y-12">
+        <header className="rounded-[2rem] bg-[#241d15] p-8 text-white shadow-[0_24px_80px_rgba(36,29,21,0.18)] md:p-12">
           <Link
             href="/"
-            className="text-teal-cathedral text-xs tracking-[0.2em] uppercase mb-6 inline-block hover:opacity-80 transition-opacity"
+            className="mb-8 inline-flex text-xs font-semibold uppercase tracking-[0.24em] text-[#d6b35f] transition-opacity hover:opacity-80"
           >
             &larr; Back Home
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-light text-[var(--text-primary)] mb-2">
-            Military Life Insurance Resources
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#d6b35f]">
+            Resource Center
+          </p>
+          <h1 className="mt-4 max-w-4xl font-serif text-4xl font-light leading-tight md:text-6xl">
+            Helpful Guides for Life’s Biggest Moments
           </h1>
-          <p className="text-sm text-[var(--text-muted)] max-w-2xl">
-            Explore coverage options tailored to your military service. Each guide includes
-            FAQs, coverage details, and a free review from licensed professionals who
-            specialize in military-family insurance.
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-[#eadcc7]">
+            Start with the moment that brought you here. These guides are
+            written for families, not insurance insiders, and each one points to
+            reliable references for deeper reading.
           </p>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {pages.map((page) => (
-            <Link
-              key={page.slug}
-              href={`/resources/${page.slug}`}
-              className="cathedral-surface p-6 hover:border-teal-cathedral/30 transition-all group"
-            >
-              <h2 className="text-base font-medium text-[var(--text-primary)] group-hover:text-teal-cathedral transition-colors mb-2">
-                {page.title}
-              </h2>
-              <p className="text-sm text-[var(--text-muted)] leading-relaxed">
-                {page.metaDescription}
-              </p>
-              <span className="inline-block mt-3 text-xs text-teal-cathedral">
-                Learn more &rarr;
-              </span>
-            </Link>
-          ))}
+        <div className="space-y-12">
+          {GUIDE_CATEGORIES.map((category) => {
+            const guides = getGuidesByCategory(category);
+            return (
+              <section
+                key={category}
+                className="space-y-5"
+                aria-labelledby={`${category.toLowerCase().replaceAll(" ", "-").replaceAll("&", "and")}-heading`}
+              >
+                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#9f782f]">
+                      {category}
+                    </p>
+                    <h2
+                      id={`${category.toLowerCase().replaceAll(" ", "-").replaceAll("&", "and")}-heading`}
+                      className="mt-2 font-serif text-3xl font-light text-[#241d15] md:text-4xl"
+                    >
+                      {category}
+                    </h2>
+                  </div>
+                  <p className="max-w-2xl text-sm leading-6 text-[#6a5c4b]">
+                    {CATEGORY_DESCRIPTIONS[category]}
+                  </p>
+                </div>
+
+                <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                  {guides.map((guide) => (
+                    <Link
+                      key={guide.slug}
+                      href={`/guides/${guide.slug}`}
+                      className="group rounded-[1.5rem] bg-white p-6 shadow-[0_18px_60px_rgba(61,43,24,0.08)] transition-all hover:-translate-y-1 hover:shadow-[0_24px_70px_rgba(61,43,24,0.14)]"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9f782f]">
+                        Guide
+                      </p>
+                      <h3 className="mt-3 text-xl font-semibold text-[#241d15] transition-colors group-hover:text-[#9f782f]">
+                        {guide.title}
+                      </h3>
+                      <p className="mt-3 text-sm leading-6 text-[#6a5c4b]">
+                        {guide.purpose}
+                      </p>
+                      <span className="mt-5 inline-flex text-sm font-semibold text-[#9f782f]">
+                        Read Guide &rarr;
+                      </span>
+                    </Link>
+                  ))}
+
+                  {category === "Veterans & Military Families" &&
+                    veteranResources.map((page) => (
+                      <Link
+                        key={page.slug}
+                        href={`/resources/${page.slug}`}
+                        className="group rounded-[1.5rem] border border-[#decda9] bg-white/75 p-6 transition-all hover:-translate-y-1 hover:border-[#d6b35f]"
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9f782f]">
+                          Veteran resource
+                        </p>
+                        <h3 className="mt-3 text-xl font-semibold text-[#241d15] transition-colors group-hover:text-[#9f782f]">
+                          {page.title}
+                        </h3>
+                        <p className="mt-3 text-sm leading-6 text-[#6a5c4b]">
+                          {page.metaDescription}
+                        </p>
+                        <span className="mt-5 inline-flex text-sm font-semibold text-[#9f782f]">
+                          Read Resource &rarr;
+                        </span>
+                      </Link>
+                    ))}
+                </div>
+              </section>
+            );
+          })}
         </div>
 
-        <div className="text-center pt-8">
+        <section className="rounded-[2rem] bg-[#241d15] p-8 text-center text-white md:p-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#d6b35f]">
+            Not sure where to start?
+          </p>
+          <h2 className="mt-3 font-serif text-3xl font-light">
+            Tell us what changed in your life.
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[#eadcc7]">
+            The protection path starts with your life chapter, then helps guide
+            the next conversation.
+          </p>
           <Link
-            href="/"
-            className="inline-block px-8 py-3 rounded-lg font-medium text-sm transition-all bg-teal-cathedral text-white hover:bg-teal-cathedral/90"
+            href="/#protection-path"
+            className="mt-7 inline-flex rounded-full bg-[#d6b35f] px-8 py-3 text-sm font-semibold text-[#241d15] transition-transform hover:-translate-y-0.5"
           >
-            Start My Free Coverage Review
+            Start My Protection Path
           </Link>
-          <p className="text-xs text-[var(--text-muted)] mt-2">
-            Takes less than 60 seconds. No obligation.
-          </p>
-        </div>
-
-        <footer className="pt-8 border-t border-teal-cathedral/10 text-center">
-          <nav className="flex gap-4 justify-center mb-3">
-            <Link href="/blog" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Blog</Link>
-            <Link href="/faq" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">FAQ</Link>
-            <Link href="/about" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">About</Link>
-            <Link href="/privacy" className="text-teal-cathedral/70 hover:text-teal-cathedral text-xs">Privacy</Link>
-          </nav>
-          <p className="text-xs text-[var(--text-muted)]">
-            &copy; {new Date().getFullYear()} Valor Legacies. All rights reserved.
-          </p>
-        </footer>
+        </section>
       </article>
     </main>
   );

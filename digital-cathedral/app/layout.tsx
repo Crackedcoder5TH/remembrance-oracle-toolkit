@@ -16,9 +16,6 @@ const SITE_URL = BASE_URL;
 const SITE_TITLE = "Valor Legacies | Life Insurance for Every Chapter of Life";
 const SITE_DESCRIPTION =
   "Valor Legacies helps families explore life insurance options for new babies, new homes, marriage, income protection, retirement, final expenses, veterans, and legacy planning.";
-const SITE_TITLE = "Every New Chapter Deserves Protection | Valor Legacies";
-const SITE_DESCRIPTION =
-  "Valor Legacies helps families protect every chapter of life through life insurance solutions designed around real-life moments. Veteran-founded, family-focused, and independent.";
 
 export const metadata: Metadata = {
   title: {

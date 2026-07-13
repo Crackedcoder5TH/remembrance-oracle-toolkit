@@ -38,10 +38,6 @@ const NAV_LINKS = [
   { href: "/#guides", label: "Guides" },
   { href: "/about", label: "About" },
   { href: "/#protection-path", label: "Get Started" },
-  { href: "/#life-events", label: "Life Events" },
-  { href: "/resources", label: "Resources" },
-  { href: "/about", label: "About" },
-  { href: "/#protect-family-form", label: "Contact" },
 ];
 
 const PORTAL_NAV_LINKS = [

@@ -30,7 +30,10 @@ const LAYER_DIM = 29;
 // Depth-agnostic since the L5 migration. Signatures are stored zero-
 // padded to MAX_DEPTH blocks: v1 (116-D) and v2 (145-D) coexist in one
 // index — zero-padding is cosine-clean and the composition gate floors
-// zero blocks by salience.
+// zero blocks by salience. This STANDALONE package stays at its own depth-5
+// contract (compose.js clamps to 5); it is parity-bound to the oracle
+// encoder-stack only at shared depths 1-5, so the oracle's L6+L7 activation
+// does not bind this artifact until it is migrated on its own cadence.
 const MAX_DEPTH = 5;
 const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 145
 const LEGACY_DIM = 116;                        // composed_v1

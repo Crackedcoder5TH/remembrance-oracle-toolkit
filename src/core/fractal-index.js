@@ -34,7 +34,13 @@ const LAYER_DIM = 29;
 // to MAX_DEPTH blocks. Zero-padding is mathematically clean for cosine
 // (adds nothing to dot products or norms), and the composition gate's
 // salience term floors any zero block automatically — so v1 (116-D) and
-// v2 (145-D) signatures coexist in one index without bias.
+// v2 (145-D) signatures coexist in one index without bias. This index stays
+// at MAX_DEPTH=5 until the deliberate composed_v3/v4 migration (Phase 2):
+// the encoder-stack is already 7-layer, but bumping COMPOSED_DIM here would
+// zero-pad every EXPORTED signature to 203-D and break the 116-D substrate
+// round-trip before the substrate itself is re-encoded. Index + substrate +
+// flow-scorer migrate together, so a deep vector is never produced into a
+// consumer that cannot yet read it.
 const MAX_DEPTH = 5;
 const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 145
 

@@ -20,14 +20,15 @@ const { toSpectralWaveform } = require('./spectral-waveform');
 const { toRedundancyWaveform } = require('./redundancy-waveform');
 const { toContentProjection } = require('./content-projection');
 const { toDimensionalWaveform } = require('./dimensional-waveform');
+const { toDynamicalWaveform } = require('./dynamical-waveform');
 
 const LAYER_DIM = 29;
-const DEPTHS = [toFractalWaveform, toLexicalWaveform, toNumericalWaveform, toSpectralWaveform, toRedundancyWaveform, toContentProjection, toDimensionalWaveform];
+const DEPTHS = [toFractalWaveform, toLexicalWaveform, toNumericalWaveform, toSpectralWaveform, toRedundancyWaveform, toContentProjection, toDimensionalWaveform, toDynamicalWaveform];
 
-/** Compose to the given depth (1..7). Default 7 — the full stack.
+/** Compose to the given depth (1..8). Default 8 — the full stack.
  *  `input` is the serialized signal to encode (source text OR a retained
  *  waveform/series) — the substrate feeds the compressed form, not source. */
-function composed(input, depth = 7) {
+function composed(input, depth = 8) {
   const k = Math.max(1, Math.min(DEPTHS.length, depth));
   const out = new Float64Array(k * LAYER_DIM);
   for (let l = 0; l < k; l++) {
@@ -45,7 +46,7 @@ function composedCosine(a, b) {
   return (na > 1e-12 && nb > 1e-12) ? d / Math.sqrt(na * nb) : 0;
 }
 
-function composedCosineOf(a, b, depth = 7) {
+function composedCosineOf(a, b, depth = 8) {
   return composedCosine(composed(a, depth), composed(b, depth));
 }
 

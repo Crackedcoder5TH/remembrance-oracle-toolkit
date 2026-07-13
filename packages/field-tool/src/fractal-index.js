@@ -34,8 +34,8 @@ const LAYER_DIM = 29;
 // by salience. compose.js now emits the full 7-layer 203-D signature; this
 // index accepts and stores it, and legacy shallow vectors compare cleanly at
 // their shared depth (a 116-D vector padded to 203 has zero energy in L5-L7).
-const MAX_DEPTH = 7;
-const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 203
+const MAX_DEPTH = 8;
+const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 232
 const LEGACY_DIM = 116;                        // composed_v1
 
 function _padToMax(vec) {

@@ -30,6 +30,7 @@ const { toSpectralWaveform } = require('./spectral-waveform');
 const { toRedundancyWaveform } = require('./redundancy-waveform');
 const { toContentProjection } = require('./content-projection');
 const { toDimensionalWaveform } = require('./dimensional-waveform');
+const { toDynamicalWaveform } = require('./dynamical-waveform');
 
 const LAYER_DIM = 29;
 // Depth-agnostic since the L5 migration, extended to depth 7 on the L6+L7
@@ -40,15 +41,15 @@ const LAYER_DIM = 29;
 // index without bias. A legacy 116-D vector padded to 203 has zero energy in
 // L5-L7, so it compares cleanly at its shared depth against a full 203-D query
 // (nothing must be re-encoded for correctness — only for deep discrimination).
-const MAX_DEPTH = 7;
-const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 203
+const MAX_DEPTH = 8;
+const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 232
 
 function _compose(input) {
   const out = new Float64Array(COMPOSED_DIM);
   const layers = [
     toFractalWaveform(input), toLexicalWaveform(input), toNumericalWaveform(input),
     toSpectralWaveform(input), toRedundancyWaveform(input),
-    toContentProjection(input), toDimensionalWaveform(input),
+    toContentProjection(input), toDimensionalWaveform(input), toDynamicalWaveform(input),
   ];
   for (let l = 0; l < layers.length; l++) {
     for (let i = 0; i < LAYER_DIM; i++) out[l * LAYER_DIM + i] = layers[l][i];

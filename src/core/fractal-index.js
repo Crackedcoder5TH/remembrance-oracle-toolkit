@@ -103,6 +103,7 @@ class FractalIndex {
     this._vecs = [];                             // Float64Array(116) per pattern
     this._norms = new Float64Array(0);           // precomputed ||p|| per pattern
     this._normsByDepth = new Array(MAX_DEPTH).fill(null); // ||p|| at depths 1..MAX_DEPTH
+    this._realDepths = [];                       // pre-pad whole-block depth per pattern (4=116-D … 7=203-D)
     this._idIndex = new Map();                   // id → array position
   }
 
@@ -125,17 +126,21 @@ class FractalIndex {
    * to SQLite for cold-start rebuild.
    */
   add(id, text) {
-    const vec = _padToMax(this._encode(text));
+    const raw = this._encode(text);
+    const vec = _padToMax(raw);
     if (!vec) {
       throw new Error(`FractalIndex.add: encoder must return a whole-block vector of at most ${COMPOSED_DIM} dims (multiple of ${LAYER_DIM})`);
     }
+    const realDepth = Math.floor(raw.length / LAYER_DIM);   // pre-pad whole-block depth
     const existing = this._idIndex.get(id);
     if (existing !== undefined) {
       this._vecs[existing] = vec;
+      this._realDepths[existing] = realDepth;
     } else {
       this._idIndex.set(id, this._ids.length);
       this._ids.push(id);
       this._vecs.push(vec);
+      this._realDepths.push(realDepth);
     }
     this._rebuildNorms();
     return vec;
@@ -148,13 +153,16 @@ class FractalIndex {
   rebuild(items) {
     this._ids = [];
     this._vecs = [];
+    this._realDepths = [];
     this._idIndex = new Map();
     for (const { id, text, vec } of items) {
-      const v = _padToMax(vec || this._encode(text));
+      const raw = vec || this._encode(text);
+      const v = _padToMax(raw);
       if (!v) continue;
       this._idIndex.set(id, this._ids.length);
       this._ids.push(id);
       this._vecs.push(v);
+      this._realDepths.push(Math.floor(raw.length / LAYER_DIM)); // pre-pad depth
     }
     this._rebuildNorms();
   }
@@ -167,10 +175,12 @@ class FractalIndex {
     if (idx !== last) {
       this._ids[idx] = this._ids[last];
       this._vecs[idx] = this._vecs[last];
+      this._realDepths[idx] = this._realDepths[last];
       this._idIndex.set(this._ids[idx], idx);
     }
     this._ids.pop();
     this._vecs.pop();
+    this._realDepths.pop();
     this._idIndex.delete(id);
     this._rebuildNorms();
     return true;
@@ -280,11 +290,10 @@ class FractalIndex {
     const k = Math.max(1, opts.topK || opts.k || 5);
     const filter = typeof opts.filter === 'function' ? opts.filter : null;
     const n = this._ids.length;
-    // Generation-tolerant: accept any whole-block query of at least
-    // depth 4 (116-D composed_v1) up to MAX_DEPTH (145-D composed_v2).
-    // The flow contract is d1..d4; d5 is reported when both sides
-    // carry an L5 block, else 0 — the same zero-block convention the
-    // padded store uses.
+    // Generation-tolerant: accept any whole-block query of at least depth 4
+    // (116-D composed_v1) up to MAX_DEPTH (203-D composed_v4). The flow contract
+    // is d1..d4, where d4 is the cosine at each pattern's OWN shared real depth
+    // (see below) — so a 203-D query and a 116-D pattern meet at 116 with no bias.
     if (!qComposed || qComposed.length < 4 * LAYER_DIM || n === 0) return [];
     const qDepth = Math.min(MAX_DEPTH, Math.floor(qComposed.length / LAYER_DIM));
     const qDims = qDepth * LAYER_DIM;
@@ -301,28 +310,28 @@ class FractalIndex {
     const pn = this._normsByDepth;
 
     const top = [];
+    const dotsAt = new Float64Array(MAX_DEPTH);   // cumulative dot at each 29-D boundary
     for (let i = 0; i < n; i++) {
       if (filter && !filter(this._ids[i])) continue;
       const p = this._vecs[i];
-      // One pass to qDims, capturing the cumulative dot at each block boundary.
-      // `dot` ends holding the full dot at the query's DEEPEST depth (qDims).
-      let dot = 0, dot1 = 0, dot2 = 0, dot3 = 0;
+      // One pass to qDims, capturing the cumulative dot at every block boundary.
+      let dot = 0, b = 0;
       for (let kk = 0; kk < qDims; kk++) {
         dot += qComposed[kk] * p[kk];
-        if (kk === LAYER_DIM - 1) dot1 = dot;
-        else if (kk === 2 * LAYER_DIM - 1) dot2 = dot;
-        else if (kk === 3 * LAYER_DIM - 1) dot3 = dot;
+        if (kk + 1 === (b + 1) * LAYER_DIM) dotsAt[b++] = dot;
       }
-      const d1 = (qn[0] && pn[0][i]) ? dot1 / (qn[0] * pn[0][i]) : 0;
-      const d2 = (qn[1] && pn[1][i]) ? dot2 / (qn[1] * pn[1][i]) : 0;
-      const d3 = (qn[2] && pn[2][i]) ? dot3 / (qn[2] * pn[2][i]) : 0;
-      // d4 = cosine at the DEEPEST available depth (qDepth) — it consumes every
-      // active layer L1..Lk. For a depth-4 query this is exactly the 116-D
-      // cosine (unchanged); for a depth-7 query it folds in L5-L7. Legacy 116-D
-      // patterns padded to COMPOSED_DIM carry zero energy in the deep blocks, so
-      // they compare cleanly at the shared depth and top-K ranking is preserved.
-      const dd = qDepth - 1;
-      const d4 = (qn[dd] && pn[dd] && pn[dd][i]) ? dot / (qn[dd] * pn[dd][i]) : 0;
+      const d1 = (qn[0] && pn[0][i]) ? dotsAt[0] / (qn[0] * pn[0][i]) : 0;
+      const d2 = (qn[1] && pn[1][i]) ? dotsAt[1] / (qn[1] * pn[1][i]) : 0;
+      const d3 = (qn[2] && pn[2][i]) ? dotsAt[2] / (qn[2] * pn[2][i]) : 0;
+      // d4 = cosine at each pattern's OWN shared real depth = min(query depth,
+      // pattern's pre-pad depth). A depth-4 (116-D) pattern is ALWAYS read at 116,
+      // even against a depth-7 query, so it scores EXACTLY as before — no penalty
+      // for not being re-encoded yet. A depth-7 (composed_v4) pattern folds in
+      // L5-L7. This is what removes mixed-depth bias: every pattern is read at
+      // its true depth, so re-encoded and legacy patterns rank fairly together.
+      const sd = Math.min(qDepth, this._realDepths[i] || qDepth);
+      const dd = sd - 1;
+      const d4 = (qn[dd] && pn[dd] && pn[dd][i]) ? dotsAt[dd] / (qn[dd] * pn[dd][i]) : 0;
       if (top.length < k) {
         top.push({ id: this._ids[i], d1, d2, d3, d4 });
         top.sort((a, b) => b.d4 - a.d4);

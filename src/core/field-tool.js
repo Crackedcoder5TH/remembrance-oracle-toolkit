@@ -210,15 +210,14 @@ class FieldTool {
     let composed = null;
     if (_encoderStack) {
       try {
-        // Encode at depth 4 (116-D) — the depth the flow SCORER consumes.
-        // The encoder is now a 7-layer stack (L6-content + L7-dimensional
-        // active), but the flow model here reports 4 depths (d1..d4), so
-        // encoding deeper in this hot read would compute L5-L7 blocks the
-        // scorer discards — a wasted, half-consumed number. field-tool moves
-        // to the active depth as ONE unit with the flow-model extension and
-        // the composed_v3/v4 substrate re-encode (Phase 2), so the deep
-        // layers are produced and CONSUMED together, never produced-and-dropped.
-        composed = Array.from(_encoderStack.composedAtDepth(content, 4));
+        // Encode at the ACTIVE depth (now 7 / 203-D). The scorer reads each
+        // substrate pattern at its OWN real depth (fractal-index searchFlow), so
+        // a legacy 116-D pattern still meets this query at 116 (unchanged), while
+        // a re-encoded composed_v4 (203-D) pattern folds in its L5-L7 residual
+        // layers. The deep query blocks are thus produced AND consumed — never
+        // dropped — everywhere the substrate carries them.
+        const depth = _encoderStack.currentDepth ? _encoderStack.currentDepth() : 4;
+        composed = Array.from(_encoderStack.composedAtDepth(content, depth));
       } catch (_) { /* fall back to L1-only resonance */ }
     }
 

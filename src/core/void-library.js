@@ -241,9 +241,19 @@ class VoidLibrary {
         if (entry && Array.isArray(entry.fractal) && entry.fractal.length === 29) {
           fractals.set(name, Float64Array.from(entry.fractal));
         }
-        if (entry && Array.isArray(entry.composed_v1) && entry.composed_v1.length >= 29) {
-          composed.set(name, Float64Array.from(entry.composed_v1));
-        }
+        // Load the DEEPEST available composed signature per pattern:
+        // composed_v4 (203-D, full 7-layer) > composed_v2 (145-D) > composed_v1
+        // (116-D). A re-encoded pattern (composed_v4[0:116] === composed_v1
+        // exactly — verified) lights up L5-L7; the rest keep their identical
+        // 116-D base. Each is compared at its OWN real depth (fractal-index
+        // searchFlow), so shallow patterns score exactly as before and deep
+        // ones fold in the residual layers — no mixing bias.
+        const deep = entry && (
+          (Array.isArray(entry.composed_v4) && entry.composed_v4.length % 29 === 0 && entry.composed_v4)
+          || (Array.isArray(entry.composed_v2) && entry.composed_v2.length % 29 === 0 && entry.composed_v2)
+          || (Array.isArray(entry.composed_v1) && entry.composed_v1.length >= 29 && entry.composed_v1)
+        );
+        if (deep) composed.set(name, Float64Array.from(deep));
       }
       this._fractals = fractals;
       this._composed = composed;

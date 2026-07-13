@@ -4,6 +4,13 @@
  * void-library.js — reader for Void-Data-Compressor's canonical
  * pattern library at the composed fractal layer.
  *
+ * AGENTS: patterns here are COMPRESSED, not text. Each entry is `fractal`
+ * (29-D) + `composed_v1…v4` vectors — there is NO source text. The library
+ * was built by running input through the void compressor once; the encoder
+ * layers on the compressed waveform to catch residual. Never assume you need
+ * (or that the substrate retained) the raw text. See Void-Data-Compressor's
+ * AGENTS.md "READ THIS FIRST" block.
+ *
  * The 256-D byte-stretch layer is deprecated. It gave false positives
  * (any text input scored ~0.9 against any text-derived library, the
  * encoder's known noise floor). The canonical encoder is the composed

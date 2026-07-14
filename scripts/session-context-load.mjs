@@ -20,6 +20,12 @@ const firstComment = (file) => { try { const l = fs.readFileSync(file, 'utf8').s
 const out = [];
 const say = (s = '') => out.push(s);
 
+// 0) STANDING DIRECTIVES — the rigor gate, loaded first, held every session.
+try { const sd = fs.readFileSync(R('STANDING-DIRECTIVES.md'), 'utf8');
+  const gate = sd.split('\n').filter(l => /^\d+\.\s\*\*/.test(l.trim())).map(l => '  ' + l.trim().replace(/\*\*/g, ''));
+  if (gate.length) { say('=== STANDING DIRECTIVES — the rigor gate (run the control BEFORE you report) ==='); gate.forEach(say); say(''); }
+} catch {}
+
 say('=== SUBSTRATE MEMORY — PRIOR-SESSION CONTEXT (compressed) ===');
 
 // 1) what was recently BUILT

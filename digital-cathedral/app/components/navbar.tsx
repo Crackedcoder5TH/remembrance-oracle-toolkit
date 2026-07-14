@@ -11,20 +11,26 @@ import { useIsAdmin } from "../protect/hooks/use-is-admin";
  * Returns { isPortal, portalBaseUrl } so links can target the portal domain.
  */
 function usePortalDomain(): { isPortal: boolean; portalBaseUrl: string } {
-  const [state, setState] = useState<{ isPortal: boolean; portalBaseUrl: string }>({
+  const [state, setState] = useState<{
+    isPortal: boolean;
+    portalBaseUrl: string;
+  }>({
     isPortal: false, // consumer site should never flash portal/admin links
     portalBaseUrl: "",
   });
   useEffect(() => {
-    const portalUrl = process.env.NEXT_PUBLIC_PORTAL_URL;
-    if (!portalUrl) {
-      setState({ isPortal: false, portalBaseUrl: "" });
-      return;
-    }
+    const portalUrl = (
+      process.env.NEXT_PUBLIC_PORTAL_URL || "https://valorlegacies.xyz"
+    ).replace(/\/$/, "");
     try {
-      const portalHost = new URL(portalUrl).hostname.toLowerCase();
-      const isPortal = window.location.hostname.toLowerCase() === portalHost;
-      setState({ isPortal, portalBaseUrl: isPortal ? "" : portalUrl.replace(/\/$/, "") });
+      const portalHost = new URL(portalUrl).hostname
+        .toLowerCase()
+        .replace(/^www\./, "");
+      const currentHost = window.location.hostname
+        .toLowerCase()
+        .replace(/^www\./, "");
+      const isPortal = currentHost === portalHost;
+      setState({ isPortal, portalBaseUrl: isPortal ? "" : portalUrl });
     } catch {
       setState({ isPortal: false, portalBaseUrl: "" });
     }
@@ -41,8 +47,10 @@ const NAV_LINKS = [
 ];
 
 const PORTAL_NAV_LINKS = [
-  { href: "/portal", label: "Home" },
+  { href: "/portal", label: "Portal Home" },
   { href: "/portal/marketplace", label: "Leads Marketplace" },
+  { href: "/admin", label: "Admin Dashboard" },
+  { href: "/developers", label: "Developers" },
   { href: "/portal/terms", label: "Terms of Service" },
   { href: "/portal/privacy", label: "Privacy Policy" },
 ];
@@ -94,7 +102,10 @@ export function Navbar() {
     ? [
         { href: adminHref, label: "Admin Dashboard" },
         { href: `${portalBaseUrl}/admin/leads`, label: "All Leads" },
-        { href: `${portalBaseUrl}/admin/notifications`, label: "Notifications" },
+        {
+          href: `${portalBaseUrl}/admin/notifications`,
+          label: "Notifications",
+        },
         { href: `${portalBaseUrl}/admin/outcomes`, label: "Outcomes" },
         { href: `${portalBaseUrl}/admin/patterns`, label: "Pattern Library" },
         { href: `${portalBaseUrl}/portal`, label: "Agent Portal" },
@@ -124,7 +135,10 @@ export function Navbar() {
   }
 
   return (
-    <nav className="cathedral-nav w-full text-[var(--text-primary)] relative z-50" aria-label="Main navigation">
+    <nav
+      className="cathedral-nav w-full text-[var(--text-primary)] relative z-50"
+      aria-label="Main navigation"
+    >
       <div className="max-w-6xl mx-auto px-fib-21 flex items-center justify-between h-fib-55">
         {/* Left: Home dropdown */}
         <div className="relative">
@@ -141,7 +155,11 @@ export function Navbar() {
               alt="Valor Legacies logo"
               className="shrink-0 h-9 w-9 object-contain"
             />
-            <span className="text-[var(--teal)]">Valor Legacies</span>
+            <span className="text-[var(--teal)]">
+              {isPortalDomain
+                ? "Valor Legacies Agent & Admin Portal"
+                : "Valor Legacies"}
+            </span>
             {/* Chevron */}
             <svg
               width="13"
@@ -223,7 +241,9 @@ export function Navbar() {
               {session.user.name?.split(" ")[0]}
             </span>
             <button
-              onClick={() => signOut({ callbackUrl: isPortalDomain ? "/portal" : "/" })}
+              onClick={() =>
+                signOut({ callbackUrl: isPortalDomain ? "/portal" : "/" })
+              }
               className="text-xs text-[var(--text-muted)] hover:text-[var(--teal)] transition-colors"
             >
               Sign Out

@@ -58,10 +58,10 @@ export default function PortalDashboardPage() {
   const [msgSuccess, setMsgSuccess] = useState("");
 
   useEffect(() => {
-    // Contextual tab title — the layout default is "Agent Portal | Valor
-    // Legacies"; this overrides for the dashboard specifically so an open
+    // Contextual tab title — the layout default is "Valor Legacies Agent &
+    // Admin Portal"; this overrides for the dashboard specifically so an open
     // tab is identifiable at a glance.
-    document.title = "Agent Dashboard | Valor Legacies";
+    document.title = "Agent Dashboard | Valor Legacies Agent & Admin Portal";
 
     fetch("/api/portal/session")
       .then((res) => {
@@ -119,14 +119,18 @@ export default function PortalDashboardPage() {
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <div className="text-[var(--text-muted)] text-sm">Loading your portal...</div>
+        <div className="text-[var(--text-muted)] text-sm">
+          Loading your portal...
+        </div>
       </main>
     );
   }
 
   if (!user) return null;
 
-  const unreadCount = messages.filter((m) => m.direction === "outbound" && !m.read).length;
+  const unreadCount = messages.filter(
+    (m) => m.direction === "outbound" && !m.read,
+  ).length;
 
   const tabs: { key: Tab; label: string; badge?: number }[] = [
     { key: "quotes", label: "Quotes & Status" },
@@ -182,12 +186,14 @@ export default function PortalDashboardPage() {
             role="status"
             className="px-4 py-3 rounded-lg text-sm bg-amber-50 text-amber-800 border border-amber-200"
           >
-            <strong className="block mb-0.5">Awaiting license verification.</strong>
+            <strong className="block mb-0.5">
+              Awaiting license verification.
+            </strong>
             <span>
-              We&apos;re reviewing your insurance license. You&apos;ll get an email once
-              your account is activated — typical turnaround is one business day.
-              The marketplace and lead purchase will unlock automatically when
-              that happens.
+              We&apos;re reviewing your insurance license. You&apos;ll get an
+              email once your account is activated — typical turnaround is one
+              business day. The marketplace and lead purchase will unlock
+              automatically when that happens.
             </span>
           </div>
         )}
@@ -196,7 +202,9 @@ export default function PortalDashboardPage() {
             role="alert"
             className="px-4 py-3 rounded-lg text-sm bg-amber-50 text-amber-800 border border-amber-200"
           >
-            <strong className="block mb-0.5">Account temporarily suspended.</strong>
+            <strong className="block mb-0.5">
+              Account temporarily suspended.
+            </strong>
             <span>
               Your account is on hold pending review. Reach out to support and
               we&apos;ll resolve it as quickly as we can.
@@ -241,11 +249,14 @@ export default function PortalDashboardPage() {
         {/* Tab content */}
         {activeTab === "quotes" && (
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-[var(--text-primary)]">Your Quotes & Submissions</h2>
+            <h2 className="text-lg font-medium text-[var(--text-primary)]">
+              Your Quotes & Submissions
+            </h2>
             {leads.length === 0 ? (
               <div className="cathedral-surface p-8 text-center">
                 <p className="text-[var(--text-muted)] text-sm">
-                  No leads yet. Browse the marketplace to find leads matching your criteria.
+                  No leads yet. Browse the marketplace to find leads matching
+                  your criteria.
                 </p>
                 <Link
                   href="/portal/marketplace"
@@ -257,14 +268,18 @@ export default function PortalDashboardPage() {
             ) : (
               <div className="space-y-3">
                 {leads.map((lead) => (
-                  <div key={lead.leadId} className="cathedral-surface p-4 flex items-center justify-between">
+                  <div
+                    key={lead.leadId}
+                    className="cathedral-surface p-4 flex items-center justify-between"
+                  >
                     <div>
                       <div className="text-sm font-medium text-[var(--text-primary)]">
                         {lead.coverageInterest || "Life Insurance Quote"}
                       </div>
                       <div className="text-xs text-[var(--text-muted)] mt-1">
                         {lead.state && `${lead.state} · `}
-                        Submitted {new Date(lead.createdAt).toLocaleDateString()}
+                        Submitted{" "}
+                        {new Date(lead.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                     <span className="px-3 py-1 text-xs rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
@@ -279,17 +294,23 @@ export default function PortalDashboardPage() {
 
         {activeTab === "documents" && (
           <div className="space-y-4">
-            <h2 className="text-lg font-medium text-[var(--text-primary)]">Your Documents</h2>
+            <h2 className="text-lg font-medium text-[var(--text-primary)]">
+              Your Documents
+            </h2>
             {documents.length === 0 ? (
               <div className="cathedral-surface p-8 text-center">
                 <p className="text-[var(--text-muted)] text-sm">
-                  No documents yet. Once your policy is set up, documents will appear here for download.
+                  No documents yet. Once your policy is set up, documents will
+                  appear here for download.
                 </p>
               </div>
             ) : (
               <div className="space-y-3">
                 {documents.map((doc) => (
-                  <div key={doc.id} className="cathedral-surface p-4 flex items-center justify-between">
+                  <div
+                    key={doc.id}
+                    className="cathedral-surface p-4 flex items-center justify-between"
+                  >
                     <div className="flex items-center gap-3">
                       <svg
                         width="20"
@@ -303,9 +324,12 @@ export default function PortalDashboardPage() {
                         <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                       </svg>
                       <div>
-                        <div className="text-sm font-medium text-[var(--text-primary)]">{doc.name}</div>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">
+                          {doc.name}
+                        </div>
                         <div className="text-xs text-[var(--text-muted)]">
-                          {doc.type} · Uploaded {new Date(doc.createdAt).toLocaleDateString()}
+                          {doc.type} · Uploaded{" "}
+                          {new Date(doc.createdAt).toLocaleDateString()}
                         </div>
                       </div>
                     </div>
@@ -326,11 +350,18 @@ export default function PortalDashboardPage() {
 
         {activeTab === "messages" && (
           <div className="space-y-6">
-            <h2 className="text-lg font-medium text-[var(--text-primary)]">Messages</h2>
+            <h2 className="text-lg font-medium text-[var(--text-primary)]">
+              Messages
+            </h2>
 
             {/* Compose form */}
-            <form onSubmit={handleSendMessage} className="cathedral-surface p-4 space-y-3">
-              <div className="text-sm font-medium text-[var(--text-primary)]">Send a Message</div>
+            <form
+              onSubmit={handleSendMessage}
+              className="cathedral-surface p-4 space-y-3"
+            >
+              <div className="text-sm font-medium text-[var(--text-primary)]">
+                Send a Message
+              </div>
               <input
                 type="text"
                 placeholder="Subject (optional)"
@@ -373,12 +404,16 @@ export default function PortalDashboardPage() {
                   <div
                     key={msg.id}
                     className={`cathedral-surface p-4 ${
-                      msg.direction === "outbound" && !msg.read ? "border-l-2 border-teal-cathedral" : ""
+                      msg.direction === "outbound" && !msg.read
+                        ? "border-l-2 border-teal-cathedral"
+                        : ""
                     }`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium text-[var(--text-muted)]">
-                        {msg.direction === "inbound" ? "You" : "Valor Legacies Team"}
+                        {msg.direction === "inbound"
+                          ? "You"
+                          : "Valor Legacies Team"}
                       </span>
                       <span className="text-xs text-[var(--text-muted)]">
                         {new Date(msg.createdAt).toLocaleString()}
@@ -389,7 +424,9 @@ export default function PortalDashboardPage() {
                         {msg.subject}
                       </div>
                     )}
-                    <p className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">{msg.body}</p>
+                    <p className="text-sm text-[var(--text-muted)] whitespace-pre-wrap">
+                      {msg.body}
+                    </p>
                   </div>
                 ))}
               </div>

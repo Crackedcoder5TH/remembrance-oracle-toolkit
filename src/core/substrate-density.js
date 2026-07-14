@@ -32,7 +32,9 @@ try { _whit = require('./whitening'); } catch (_) { /* whitening unreachable */ 
 
 const CACHE_PATH = path.join(__dirname, '..', '..', '.remembrance', 'substrate-density.json');
 const DEFAULT_SUBSTRATE = path.join(__dirname, '..', '..', '..', 'Void-Data-Compressor', 'pattern_index_fractal.json');
-const FIT_SAMPLE = 2500;     // bounded fit so a lazy refresh costs ~1-2s, not minutes
+const FIT_SAMPLE = 60000;    // fit the FULLY-FILLED maximum library (covers all ~47.6k patterns).
+                            // The R-term (retro pull) is anchored to the whole library's capacity,
+                            // not a subsample — completing the meta-loop: Ψ_healed = the full substrate.
 const DIM = 116;
 
 // The cache path is overridable ($VOID_DENSITY_CACHE or opts.cachePath) so

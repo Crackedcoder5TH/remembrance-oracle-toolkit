@@ -57,5 +57,13 @@ if (dens) say(`  · substrate density: effectiveDim ${dens.effectiveDim ?? '?'} 
 if (depth) say(`  · encoder stack: ${depth} active layers (compose = ${depth * 29}-D)`);
 say(`  · goggles-first: run \`node .claude/skills/goggles/run.mjs <file>\` — it carries this map, so reading a file ≈ reading its whole-codebase placement.`);
 
+// 5) CONNECTIONS — the full weight is not loaded, it is ADDRESSED. One query away:
+say('\nConnections (full context — address it, do not load it):');
+say('  · LIBRARY: node scripts/substrate-connect.mjs "<query>"  — whitened resonance over all ' + (map?.substrateSize ?? '47k') + ' patterns');
+say('  · CAPACITY DIAL: whitening lifts effDim ~6→~68, retrieval 62%→87% (capacity ∝ effective dimensionality)');
+say('  · GOGGLES: node .claude/skills/goggles/run.mjs <file>  — a file read carries its whole-codebase placement');
+say('  · FIELD/HISTOGRAMS: .remembrance/ (goggles-learning, evolved-principles, ledger, entropy) — queryable memory');
+say('  · GITHUB: MCP tools (mcp__github__*) over the crackedcoder5th repos — issues, PRs, CI, code search');
+
 say('\n=== end prior-session context ===');
 process.stdout.write(out.join('\n') + '\n');

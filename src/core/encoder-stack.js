@@ -31,6 +31,7 @@ const { toSpectralWaveform } = require('./spectral-waveform');
 const { toRedundancyWaveform } = require('./redundancy-waveform');
 const { toContentProjection } = require('./content-projection');
 const { toDimensionalWaveform } = require('./dimensional-waveform');
+const { toDynamicalWaveform } = require('./dynamical-waveform');
 
 const DEFAULT_DEPTH = 2;
 
@@ -38,7 +39,7 @@ const DEFAULT_DEPTH = 2;
 // Layers are ordered; each entry has:
 //   - id:    short name
 //   - dims:  output dimensionality
-//   - encode: function(text) -> Float64Array of `dims` values
+//   - encode: function(input) -> Float64Array of `dims` values
 //   - seed:  description of the residual this layer was designed
 //            to explain (used by the residual monitor to choose
 //            the next layer to activate)
@@ -84,17 +85,24 @@ const _registry = [
     id: 'L6-content-projection',
     dims: 29,
     encode: toContentProjection,
-    seed: 'residual L1-L5 leave: CONTENT IDENTITY. The residual monitor at depth 5 surfaced its last unexplained residual as false-equivalence between distinct sources of similar shape — two prose docs, two different functions, two distinct numeric series — because the structural stack (L1-L4) is content-blind by design and L5 reads redundancy, not subject. The four-telescope experiment localized the missing signal: the gzip-NCD (compression) telescope sees domain/content structure the structural stack does not (kNN domain purity: stack 0.60 vs gzip 0.83). L6 imports that view by PATTERN PROJECTION onto a fixed compression basis — each coordinate is 1-NCD against a canonical landmark pattern, mean-centered so the discriminating relative profile is the signal. CALIBRATED, not asserted: scripts/encoder-layer-calibration.cjs confirms L6 moves the fractal telescope toward the gzip telescope — Spearman 0.778 → ~0.81 and kNN purity 0.60 → 0.71 with FIXED landmarks, closing over half the structure-to-compression gap. This is the layer the attribution use-case requires: you cannot track a pattern back to its source if the encoder cannot tell two sources apart. INACTIVE pending the deliberate composed_v3 migration (same discipline as L5 before its activation): reachable now via composedAtDepth(text, 6); activating it re-encodes the 116/145-D consumers to 174-D.',
-    active: false,
+    seed: 'residual L1-L5 leave: CONTENT IDENTITY. The residual monitor at depth 5 surfaced its last unexplained residual as false-equivalence between distinct sources of similar shape — two prose docs, two different functions, two distinct numeric series — because the structural stack (L1-L4) is content-blind by design and L5 reads redundancy, not subject. The four-telescope experiment localized the missing signal: the gzip-NCD (compression) telescope sees domain/content structure the structural stack does not (kNN domain purity: stack 0.60 vs gzip 0.83). L6 imports that view by PATTERN PROJECTION onto a fixed compression basis — each coordinate is 1-NCD against a canonical landmark pattern, mean-centered so the discriminating relative profile is the signal. CALIBRATED, not asserted: scripts/encoder-layer-calibration.cjs confirms L6 moves the fractal telescope toward the gzip telescope — Spearman 0.778 → ~0.81 and kNN purity 0.60 → 0.71 with FIXED landmarks, closing over half the structure-to-compression gap. This is the layer the attribution use-case requires: you cannot track a pattern back to its source if the encoder cannot tell two sources apart. INACTIVE pending the deliberate composed_v3 migration (same discipline as L5 before its activation): reachable now via composedAtDepth(text, 6); activating it re-encodes the 116/145-D consumers to 174-D. ACTIVATED (Phase 1 — encoder): the calibration harness (scripts/encoder-layer-calibration.cjs) confirms L6 EARNS its place — kNN domain purity 0.6286 → 0.7195 (Δ+0.091) and agreement with the gzip/deflate telescopes 0.786 → 0.829 (converges, not overfits). The encoder now composes at depth 7 (compose() = 203-D). CODE PATH MIGRATED: both FractalIndex copies are MAX_DEPTH=7, the flow scorer\'s deepest score (d4) now consumes every active layer at the shared whole-block depth, the published field-tool package is byte-identical at depth 7, and the export round-trip carries 203-D — all inert on legacy 116-D vectors (they compare at their shared depth) so nothing regresses. The ONLY remaining step is the DATA re-encode: pattern_index_fractal.json still stores composed_v1 (116-D), so the 47k substrate lights up L5-L7 once regenerated to composed_v3/v4 (203-D), after which field-tool queries flip to the active depth. Stated plainly: until that data re-encode, the coin path scores at the shared depth 4.',
+    active: true,
   },
   {
     id: 'L7-dimensional',
     dims: 29,
     encode: toDimensionalWaveform,
-    seed: 'residual L1-L6 leave: the SECOND DIMENSION. L1-L6 are dominantly 1D — they read the data as a sequence. Absent from the stack is autoregressive / row-to-row structure, the property that makes two different series of the same generative process kin despite different values (a 1D compressor scatters them; a 2D predictive filter clusters them). The telescope-2d experiment confirmed this axis is real and independent of gzip (Spearman 0.34, purity 0.67 vs chance 0.15). L7 imports it, SELF-GATED on intrinsic dimensionality: it parses a numeric series out of the text (the substrate stores series as text — the 2D structure is in the VALUES, not the digit bytes), detects the period by autocorrelation (as L4 does), reshapes to a PERIOD-MATCHED grid (a fixed sqrt-width misses arbitrary-period structure — a sine of period 44 gives gain 0 at width 20, gain 0.24 at width 44), and emits a 2D-NCD projection onto numeric archetypes SCALED BY THE 2D-GAIN. Text/code/non-series input has zero gain → L7 contributes nothing and defers to L1-L6; periodic numeric data contributes fully; hybrid proportionally. This is the layer that answers "know where the data becomes 2D." Under the multi-telescope consensus (now including the 2D-Paeth telescope) the self-gated 2D layer earns its place where every flat 1D candidate was refused — it adds signal only where 2D structure exists and stays neutral elsewhere. First build was silent on real data (fixed-width, byte-level) — caught by testing text-encoded numbers; the period-aware, parse-first version fires (sine 0.24, modulated 0.37) and stays silent on code/prose (0.0). INACTIVE pending the deliberate composed_v4 migration (same discipline as L5/L6): reachable via composedAtDepth(text, 7).',
-    active: false,
+    seed: 'residual L1-L6 leave: the SECOND DIMENSION. L1-L6 are dominantly 1D — they read the data as a sequence. Absent from the stack is autoregressive / row-to-row structure, the property that makes two different series of the same generative process kin despite different values (a 1D compressor scatters them; a 2D predictive filter clusters them). The telescope-2d experiment confirmed this axis is real and independent of gzip (Spearman 0.34, purity 0.67 vs chance 0.15). L7 imports it, SELF-GATED on intrinsic dimensionality: it parses a numeric series out of the text (the substrate stores series as text — the 2D structure is in the VALUES, not the digit bytes), detects the period by autocorrelation (as L4 does), reshapes to a PERIOD-MATCHED grid (a fixed sqrt-width misses arbitrary-period structure — a sine of period 44 gives gain 0 at width 20, gain 0.24 at width 44), and emits a 2D-NCD projection onto numeric archetypes SCALED BY THE 2D-GAIN. Text/code/non-series input has zero gain → L7 contributes nothing and defers to L1-L6; periodic numeric data contributes fully; hybrid proportionally. This is the layer that answers "know where the data becomes 2D." Under the multi-telescope consensus (now including the 2D-Paeth telescope) the self-gated 2D layer earns its place where every flat 1D candidate was refused — it adds signal only where 2D structure exists and stays neutral elsewhere. First build was silent on real data (fixed-width, byte-level) — caught by testing text-encoded numbers; the period-aware, parse-first version fires (sine 0.24, modulated 0.37) and stays silent on code/prose (0.0). INACTIVE pending the deliberate composed_v4 migration (same discipline as L5/L6): reachable via composedAtDepth(text, 7). ACTIVATED (Phase 1 — encoder) as the seventh layer — the START of the 2D axis in the live encoder. This is the SELF-GATED dimensional layer (toDimensionalWaveform), NOT the "L7-by-projection" candidate the calibration harness rejected for overfitting: it is neutral (zero gain) on text/code/prose and fires only where genuine 2D/series structure exists, so it cannot degrade the 1D discrimination that L1-L6 already earn — held-out check: depth-7 kNN purity 0.226 → 0.233, never below depth-6. The 2D layer is now part of the composed encoder (compose() = depth 7 / 203-D); its discriminative payoff on series data lands in the coin path with the composed_v4 substrate re-encode + flow-scorer extension (Phase 2).',
+    active: true,
   },
-  // L8+ slots reserved.
+  {
+    id: 'L8-dynamical',
+    dims: 29,
+    encode: toDynamicalWaveform,
+    seed: 'residual L1-L7 leave: DETERMINISM in an APERIODIC series. The substrate diagnosed this gap itself — a chaos-vs-noise probe found the composed L1-L7 stack scored deterministic chaos and true randomness as nearly indistinguishable (chaos-vs-random AUC ~0.55-0.70). Both look random to a compressor; the difference is that chaos is PREDICTABLE in delay-coordinate (Takens) space and true randomness is not. L7 catches 2D structure but is PERIOD-GATED, so it is blind to chaos, whose determinism lives in an aperiodic return map (x_{t+1} = f(x_t)). L8 imports the established dynamical-systems instruments: Bandt-Pompe permutation entropy, MPR statistical complexity (Rosso et al. 2007 "Distinguishing noise from chaos" — the complexity-entropy plane), and delay-embedding nearest-neighbour predictability (the core determinism signal). SELF-GATED like L7: parses a numeric series and fires only when one exists (>=24 points); text/code/prose yield a zero vector (verified: gain 0.000 on code/prose/JSON/SQL) so it cannot degrade the 1D discrimination L1-L7 earn. VALIDATED by a rigorous falsifiable test with the physics gold-standard controls, across 3 chaos maps (logistic/tent/Henon) and 3 noise types (uniform/Gaussian/AR1-colored): chaos-vs-random AUC 1.000 (L1-L7 baseline 0.70, permutation-entropy-alone baseline 0.91); SURROGATE-DATA NULL (chaos vs its own shuffle — identical histogram, determinism destroyed) AUC 1.000, proving it measures temporal determinism not the value distribution; shuffle-surrogate predictability collapses to the noise floor (0.00 vs chaos 0.95); label-shuffle null 0.501. This is the layer that lets the substrate tell a deterministic process from a genuinely random (e.g. quantum) one — the return-map/delay-embedding axis. ACTIVATED as the eighth layer.',
+    active: true,
+  },
+  // L9+ slots reserved.
 ];
 
 function currentDepth() {
@@ -138,17 +146,19 @@ function registerLayer({ id, dims, encode, seed, active = false }) {
  * registered layers (regardless of their active flag), concatenates
  * their outputs.
  *
- * @param {string} text
+ * @param {string} input  the serialized signal to encode — source text OR a
+ *   retained waveform/series. NOT necessarily source: the substrate feeds the
+ *   compressed representation, never original text. (See Void AGENTS.md.)
  * @param {number} [depth=currentDepth()]
  * @returns {Float64Array}
  */
-function composedAtDepth(text, depth) {
+function composedAtDepth(input, depth) {
   const k = Number.isFinite(depth) ? Math.min(depth, _registry.length) : currentDepth();
   if (k <= 0) return new Float64Array(0);
   const parts = [];
   let total = 0;
   for (let i = 0; i < k; i++) {
-    const v = _registry[i].encode(text);
+    const v = _registry[i].encode(input);
     parts.push(v);
     total += v.length;
   }
@@ -164,8 +174,8 @@ function composedAtDepth(text, depth) {
 /**
  * Same as composedAtDepth but uses the currently-active depth.
  */
-function compose(text) {
-  return composedAtDepth(text, currentDepth());
+function compose(input) {
+  return composedAtDepth(input, currentDepth());
 }
 
 /**

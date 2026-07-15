@@ -37,7 +37,7 @@
  * Deterministic. Pure. Only stdlib (node:zlib) — no dependencies.
  *
  * Registered in encoder-stack.js with active:false — reachable via
- * composedAtDepth(text, 5) for experiments, but NOT part of the
+ * composedAtDepth(input, 5) for experiments, but NOT part of the
  * default 116-D composition until it proves itself and the 116-D
  * consumers (Void parity, field-tool round-trip, classifier DIM map)
  * are deliberately migrated. Covenant before persistence.
@@ -66,12 +66,12 @@ function _ratio(buf, level) {
   return _clip(1 - _deflateLen(buf, level) / buf.length);
 }
 
-function _ngramStats(text, n) {
-  const total = Math.max(0, text.length - n + 1);
+function _ngramStats(input, n) {
+  const total = Math.max(0, input.length - n + 1);
   if (total === 0) return { distinctFrac: 0, topRepeatFrac: 0 };
   const seen = new Map();
   for (let i = 0; i < total; i++) {
-    const g = text.slice(i, i + n);
+    const g = input.slice(i, i + n);
     seen.set(g, (seen.get(g) || 0) + 1);
   }
   let maxCount = 0;
@@ -82,12 +82,12 @@ function _ngramStats(text, n) {
   };
 }
 
-function _byteEntropy(text) {
-  const len = text.length;
+function _byteEntropy(input) {
+  const len = input.length;
   if (len === 0) return 0;
   const counts = new Map();
   for (let i = 0; i < len; i++) {
-    const c = text.charCodeAt(i);
+    const c = input.charCodeAt(i);
     counts.set(c, (counts.get(c) || 0) + 1);
   }
   let h = 0;
@@ -111,11 +111,11 @@ function _fnv(tok) {
   return h >>> 0;
 }
 
-function toRedundancyWaveform(text) {
+function toRedundancyWaveform(input) {
   const out = new Float64Array(LAYER_DIM);
-  if (typeof text !== 'string' || text.length === 0) return out;
+  if (typeof input !== 'string' || input.length === 0) return out;
 
-  const sample = text.slice(0, SAMPLE_CHARS);
+  const sample = input.slice(0, SAMPLE_CHARS);
   const buf = Buffer.from(sample, 'utf8');
   const mid = buf.length >> 1;
   const a = buf.subarray(0, mid);
@@ -182,8 +182,8 @@ function redundancyCoherency(x, y) {
   return dot / (Math.sqrt(nx) * Math.sqrt(ny));
 }
 
-function inspectRedundancyWaveform(text) {
-  const v = toRedundancyWaveform(text);
+function inspectRedundancyWaveform(input) {
+  const v = toRedundancyWaveform(input);
   return {
     deflate: {
       deepRatio: v[0], shallowRatio: v[1], levelSpread: v[2],

@@ -27,12 +27,15 @@ const { toFractalWaveform } = require('./fractal-waveform');
 // and pass the vector to searchVec().
 
 const LAYER_DIM = 29;
-// Depth-agnostic since the L5 migration. Signatures are stored zero-
-// padded to MAX_DEPTH blocks: v1 (116-D) and v2 (145-D) coexist in one
-// index — zero-padding is cosine-clean and the composition gate floors
-// zero blocks by salience.
-const MAX_DEPTH = 5;
-const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 145
+// Depth-agnostic since the L5 migration, extended to depth 7 on the L6+L7
+// activation. Signatures are stored zero-padded to MAX_DEPTH blocks: v1
+// (116-D), v2 (145-D), and v3/v4 (174/203-D) coexist in one index —
+// zero-padding is cosine-clean and the composition gate floors zero blocks
+// by salience. compose.js now emits the full 7-layer 203-D signature; this
+// index accepts and stores it, and legacy shallow vectors compare cleanly at
+// their shared depth (a 116-D vector padded to 203 has zero energy in L5-L7).
+const MAX_DEPTH = 8;
+const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 232
 const LEGACY_DIM = 116;                        // composed_v1
 
 function _padToMax(vec) {
@@ -42,9 +45,9 @@ function _padToMax(vec) {
   return out;
 }
 
-function _l1Padded(text) {
+function _l1Padded(input) {
   const out = new Float64Array(COMPOSED_DIM);
-  const l1 = toFractalWaveform(text);
+  const l1 = toFractalWaveform(input);
   for (let i = 0; i < LAYER_DIM; i++) out[i] = l1[i];
   return out;
 }

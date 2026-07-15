@@ -38,6 +38,11 @@
           {
             "type": "command",
             "command": "sh ./scripts/ecosystem-orient.sh"
+          },
+          {
+            "type": "command",
+            "command": "node ./scripts/session-context-load.mjs 2>/dev/null || true",
+            "statusMessage": "loading prior-session substrate memory"
           }
         ]
       }

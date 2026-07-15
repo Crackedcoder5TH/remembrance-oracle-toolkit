@@ -20,11 +20,25 @@
  */
 
 const http = require('http');
+const crypto = require('crypto');
 const { MCPServer, TOOLS } = require('./server');
 const { RemembranceOracle } = require('../api/oracle');
 const { rejectUnauthorized } = require('../security/access-control');
 
 const MAX_BODY_BYTES = 1_000_000; // 1 MB cap on JSON-RPC payloads
+
+// Constant-time bearer check. A plain `a !== b` string compare returns
+// as soon as the first byte differs, leaking the token one character at
+// a time via response timing. timingSafeEqual compares in fixed time;
+// the length pre-check is itself constant-time-safe because it reveals
+// only the (non-secret) length, never the content.
+function _bearerOk(header, token) {
+  const expected = 'Bearer ' + token;
+  const a = Buffer.from(String(header || ''));
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 function startHTTPServer({ host = '127.0.0.1', port = 7787, token = null, oracle } = {}) {
   const mcpServer = new MCPServer(oracle || new RemembranceOracle());
@@ -63,7 +77,7 @@ function startHTTPServer({ host = '127.0.0.1', port = 7787, token = null, oracle
 
     if (token) {
       const auth = req.headers.authorization || '';
-      if (auth !== `Bearer ${token}`) {
+      if (!_bearerOk(auth, token)) {
         // 401 shape comes from the security module — one voice for
         // every unauthorized response (no-store, nosniff headers).
         const r = rejectUnauthorized('missing or invalid bearer token');

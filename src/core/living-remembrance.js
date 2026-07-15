@@ -227,18 +227,29 @@ class LivingRemembranceEngine {
    * @param {string} [obs.source]  — caller name for the audit trail
    * @returns {object} new state snapshot
    */
-  contribute({ cost = 1.0, coherence = null, source = null } = {}) {
+  contribute({ cost = 1.0, coherence = null, source = null, resonance = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
     const { r0, alpha, delta0, cascadeTau, epsilon } = this._params;
 
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
     const delta_void = delta0 * Math.max(0, 1 - p);
 
+    // RESONANCE-WEIGHTED AUTHORITY: a contribution moves the field only in
+    // proportion to how much it resonates with the accumulated substrate.
+    // w=1 (the default, and every legacy caller) reproduces the prior update
+    // EXACTLY; a low-resonance contribution (junk that resonates only with
+    // itself) has w→0 and barely moves the field — so no burst of fabricated
+    // low-coherence inputs can crater it, and the resistance strengthens as
+    // the substrate grows (faking resonance against more patterns is harder).
+    // This is the field defending itself with the substrate's own property.
+    const w = (typeof resonance === 'number' && isFinite(resonance)) ? Math.max(0, Math.min(1, resonance)) : 1;
+    const target = p + r_eff * 0.1 + delta_void * 0.15;
+    const prev = this._state.coherence;
     // Coherence cap at 0.999 — Void contract C-56. The Python LRE
     // (living_remembrance.py) and the TS LRE (core/living-remembrance-
     // engine.ts) both enforce this. The hub JS LRE had drifted from
     // that invariant; one-line fix restores parity.
-    const newCoherence = Math.max(0, Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15));
+    const newCoherence = Math.max(0, Math.min(0.999, prev + (target - prev) * w));
 
     // cascadeFactor is a recent-load gauge, not a running tally. It
     // relaxes toward the 1.0 baseline as time passes since the last
@@ -271,7 +282,7 @@ class LivingRemembranceEngine {
       coherence:         newCoherence,
       // ∫p accumulates the input coherence p(t) per the master equation,
       // not the post-update newCoherence.
-      coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost,
+      coherenceIntegral: (this._state.coherenceIntegral || 0) + p * cost * w,
       globalEntropy:     cost / (newCoherence + epsilon),
       cascadeFactor,
       updateCount:       this._state.updateCount + 1,

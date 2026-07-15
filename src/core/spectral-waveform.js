@@ -41,11 +41,11 @@ function _clip(x) {
   return x;
 }
 
-function _extractNumbers(text) {
+function _extractNumbers(input) {
   const out = [];
   let m;
   _NUM_RE.lastIndex = 0;
-  while ((m = _NUM_RE.exec(text)) !== null) {
+  while ((m = _NUM_RE.exec(input)) !== null) {
     const v = parseFloat(m[0]);
     if (Number.isFinite(v)) out.push(v);
   }
@@ -333,16 +333,16 @@ function _spectralDomainMarkers(power, samples) {
 
 // ── Main encoder ──────────────────────────────────────────────────
 
-function toSpectralWaveform(text) {
+function toSpectralWaveform(input) {
   const out = new Float64Array(LAYER_DIM);
-  if (typeof text !== 'string' || text.length === 0) return out;
+  if (typeof input !== 'string' || input.length === 0) return out;
 
-  let samples = _extractNumbers(text);
+  let samples = _extractNumbers(input);
   if (samples.length < 16) {
     // Fall back to character codes for inputs without enough numbers
     samples = [];
-    const lim = Math.min(text.length, FFT_SIZE);
-    for (let i = 0; i < lim; i++) samples.push(text.charCodeAt(i));
+    const lim = Math.min(input.length, FFT_SIZE);
+    for (let i = 0; i < lim; i++) samples.push(input.charCodeAt(i));
   }
 
   const power = _powerSpectrum(samples);
@@ -403,8 +403,8 @@ function spectralCoherency(a, b) {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-function inspectSpectralWaveform(text) {
-  const v = toSpectralWaveform(text);
+function inspectSpectralWaveform(input) {
+  const v = toSpectralWaveform(input);
   return {
     bins: { f0: v[0], f1: v[1], f2: v[2], f3: v[3], f4: v[4], f5: v[5], f6: v[6], f7: v[7] },
     summary: { dominantFreq: v[8], spectralEntropy: v[9] },

@@ -115,7 +115,7 @@ describe('oracle.exportSignatures — round-trip into field-tool', () => {
     for (const s of sigs) {
       assert.ok(typeof s.id === 'string');
       assert.ok(Array.isArray(s.vec));
-      assert.equal(s.vec.length, 116);
+      assert.equal(s.vec.length, 232);   // full 8-layer composed signature
       for (const x of s.vec) assert.ok(Number.isFinite(x));
     }
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -135,7 +135,7 @@ describe('oracle.exportSignatures — round-trip into field-tool', () => {
     assert.equal(ft.size(), SAMPLES.length);
 
     // For each indexed pattern, encode it via the oracle's index to
-    // get the depth-4 query vector, hand that vector to the field-tool
+    // get the full 8-layer (232-D) query vector, hand that vector to the field-tool
     // index, and confirm the SAME id wins. This is the round-trip
     // covenant: same vectors in, same top-K out, across packages.
     for (const sig of sigs) {

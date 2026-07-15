@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+'use strict';
+
+// remembrance-audit — audit any repository by git URL or local path.
+//   remembrance-audit <git-url-or-path> [--json] [--max-files N]
+// Thin CLI over src/audit/repo-audit.js (the same engine the
+// oracle_audit_repo MCP tool serves).
+
+const { auditRepo, formatReport } = require('../src/audit/repo-audit');
+
+const args = process.argv.slice(2);
+const json = args.includes('--json');
+const mfIdx = args.indexOf('--max-files');
+const maxCheckerFiles = mfIdx >= 0 ? parseInt(args[mfIdx + 1], 10) || undefined : undefined;
+const target = args.find((a) => !a.startsWith('--') && a !== String(maxCheckerFiles));
+
+if (!target) {
+  console.log('usage: remembrance-audit <git-url-or-path> [--json] [--max-files N]');
+  process.exit(0);
+}
+
+const report = auditRepo(target, { maxCheckerFiles });
+console.log(json ? JSON.stringify(report, null, 2) : formatReport(report));
+process.exit(report.ok ? 0 : 1);

@@ -127,7 +127,7 @@ function runConvergence() {
   console.log('\n  ═══ CONVERGENCE — is the structure real, or just my instrument? ═══\n');
   console.log(`  corpus: ${N} items, 6 domains (js, python, prose, oscillation, walk, json)`);
   console.log(`  three UNRELATED instruments read "what is similar to what":`);
-  console.log(`    A. fractal   — this tool's 5-layer encoder (145-D)`);
+  console.log(`    A. fractal   — this tool's 7-layer encoder (203-D)`);
   console.log(`    B. NCD       — gzip compression distance (Kolmogorov approx)`);
   console.log(`    C. trigram   — raw character statistics\n`);
   console.log(`  Spearman rank agreement (1.0 = identical ordering of all ${FR.length} pairs):`);
@@ -188,8 +188,8 @@ function runSelf(userText) {
     .sort((a, b) => b.score - a.score);
   console.log('\n  ═══ SELF — encode your input, find its nearest kin ═══\n');
   console.log(`  input: ${text.slice(0, 70)}${text.length > 70 ? '…' : ''}\n`);
-  const v = composed(text, 5);
-  console.log(`  145-D signature (5 layers; first 8 dims): [${Array.from(v.slice(0, 8), x => x.toFixed(2)).join(', ')}…]\n`);
+  const v = composed(text, 7);
+  console.log(`  203-D signature (7 layers; first 8 dims): [${Array.from(v.slice(0, 8), x => x.toFixed(2)).join(', ')}…]\n`);
   console.log('  nearest neighbours in the demo corpus:');
   for (const s of scored.slice(0, 5)) console.log(`    ${s.score.toFixed(3)}  [${s.domain.padEnd(6)}] ${s.id}`);
   console.log('\n  Same encoder, byte-identical to the substrate. Deterministic:');

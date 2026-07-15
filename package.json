@@ -42,7 +42,8 @@
     "reflector": "bin/reflector",
     "remembrance-oracle-toolkit": "src/cli.js",
     "remembrance-field-server": "scripts/field-server.js",
-    "remembrance-field": "scripts/field-server.js"
+    "remembrance-field": "scripts/field-server.js",
+    "remembrance-audit": "bin/remembrance-audit"
   },
   "files": [
     "src/",
@@ -84,7 +85,8 @@
     "postinstall": "node -e \"try{require('fs').mkdirSync('.remembrance',{recursive:true})}catch{}\"",
     "dev:cathedral": "npm run dev --prefix digital-cathedral",
     "build:cathedral": "npm run build --prefix digital-cathedral",
-    "atomize": "node src/atomic/batch-atomizer.js"
+    "atomize": "node src/atomic/batch-atomizer.js",
+    "density:refresh": "node -e \"require('./src/core/substrate-density').refreshDensity()\""
   },
   "keywords": [
     "ai",

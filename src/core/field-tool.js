@@ -98,6 +98,13 @@ try { _residualMonitor = require('./residual-monitor'); } catch (_) { /* monitor
 const RESIDUAL_CHECK_EVERY = 250;
 const RESIDUAL_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'residual-check.json');
 
+// Information-density fuel (the retro module's power source), kept LIVE: read
+// on every field read, re-fit lazily as the substrate grows. See step 5c.
+let _substrateDensity = null;
+try { _substrateDensity = require('./substrate-density'); } catch (_) { /* density module unreachable */ }
+const DENSITY_REFRESH_EVERY = 500;
+const DENSITY_COUNTER_PATH = path.join(__dirname, '..', '..', '.remembrance', 'density-refresh.json');
+
 // Canonical substrate: Void's fractal library (~43k+ patterns,
 // translated from the master pattern_index.json via the same
 // canonical encoder). Now holds both L1 (29-D) and composed_v1
@@ -203,7 +210,14 @@ class FieldTool {
     let composed = null;
     if (_encoderStack) {
       try {
-        composed = Array.from(_encoderStack.composedAtDepth(content, 4));
+        // Encode at the ACTIVE depth (now 7 / 203-D). The scorer reads each
+        // substrate pattern at its OWN real depth (fractal-index searchFlow), so
+        // a legacy 116-D pattern still meets this query at 116 (unchanged), while
+        // a re-encoded composed_v4 (203-D) pattern folds in its L5-L7 residual
+        // layers. The deep query blocks are thus produced AND consumed — never
+        // dropped — everywhere the substrate carries them.
+        const depth = _encoderStack.currentDepth ? _encoderStack.currentDepth() : 4;
+        composed = Array.from(_encoderStack.composedAtDepth(content, depth));
       } catch (_) { /* fall back to L1-only resonance */ }
     }
 
@@ -298,6 +312,36 @@ class FieldTool {
       } catch (_) { /* residual coupling optional — never break a read */ }
     }
 
+    // 5c. Information-density meta-awareness (the retro fuel, kept LIVE).
+    // Every read feeds the field the substrate's current density factor —
+    // its whitened effective dimensionality relative to the reference — so
+    // the LRE histogram always carries the fuel the retro module runs on, and
+    // the number never freezes into a dead measurement. Like the residual
+    // above, the fit is refreshed lazily every DENSITY_REFRESH_EVERY grows
+    // (bounded whitening fit, ~1-2s), while the per-read contribution just
+    // reads the cached factor (fast). The FACTOR is the meta-signal, in the
+    // source bucket, never the coherence scalar.
+    if (_substrateDensity) {
+      try {
+        const factor = _substrateDensity.getDensityFactor();
+        if (grew.ok === true) {
+          const dc = fs.existsSync(DENSITY_COUNTER_PATH)
+            ? JSON.parse(fs.readFileSync(DENSITY_COUNTER_PATH, 'utf8')) : { grows: 0 };
+          dc.grows = (dc.grows | 0) + 1;
+          if (dc.grows >= DENSITY_REFRESH_EVERY) {
+            const e = _substrateDensity.refreshDensity();
+            dc.grows = 0;
+            if (e) dc.last = { effectiveDim: e.effectiveDim, factor: e.factor, patterns: e.patterns };
+          }
+          fs.mkdirSync(path.dirname(DENSITY_COUNTER_PATH), { recursive: true });
+          fs.writeFileSync(DENSITY_COUNTER_PATH, JSON.stringify(dc));
+        }
+        const bucket = factor >= 1.3 ? 'high' : factor >= 1.05 ? 'rising' : 'baseline';
+        fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:density:' + bucket });
+        layers.densityFactor = +factor.toFixed(4);
+      } catch (_) { /* density coupling optional — never break a read */ }
+    }
+
     // 6. Coherence = the INTRINSIC structural-coherence score: does this have
     //    coherent STRUCTURE (syntax validity + completeness + consistency +
     //    AST), measured directly from the content. This is the coherence the
@@ -315,14 +359,23 @@ class FieldTool {
       } catch (_) { /* keep 0 */ }
     }
 
-    // 7. Contribute the reading to the field
+    // 7. Contribute the reading to the field — resonance-weighted. The
+    //    contribution's authority over the field is its measured resonance
+    //    with the substrate (voidResonance.meanTopK): content shaped like the
+    //    library moves the field; content that resonates only with itself
+    //    barely does. A fabricated low-resonance flood is thus near-powerless,
+    //    and the resistance grows with the substrate.
+    const _res = voidResonance && Number.isFinite(voidResonance.meanTopK)
+      ? Math.max(0, Math.min(1, voidResonance.meanTopK)) : null;
     try {
       fc.contribute({
         cost: 1.0,
         coherence,
         source: merged.source || merged.agentSource,
+        resonance: _res,
       });
       layers.contributed = true;
+      if (_res !== null) layers.resonanceWeight = +_res.toFixed(4);
     } catch (_) { /* field unreachable */ }
 
     // 7b. Dimensional meta-awareness: feed the field the new layers'

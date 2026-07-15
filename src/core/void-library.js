@@ -4,6 +4,13 @@
  * void-library.js — reader for Void-Data-Compressor's canonical
  * pattern library at the composed fractal layer.
  *
+ * AGENTS: patterns here are COMPRESSED, not text. Each entry is `fractal`
+ * (29-D) + `composed_v1…v4` vectors — there is NO source text. The library
+ * was built by running input through the void compressor once; the encoder
+ * layers on the compressed waveform to catch residual. Never assume you need
+ * (or that the substrate retained) the raw text. See Void-Data-Compressor's
+ * AGENTS.md "READ THIS FIRST" block.
+ *
  * The 256-D byte-stretch layer is deprecated. It gave false positives
  * (any text input scored ~0.9 against any text-derived library, the
  * encoder's known noise floor). The canonical encoder is the composed
@@ -169,7 +176,10 @@ class VoidLibrary {
         const lenA = Math.min(inputComposed.length, cVec.length);
         if (lenA >= 58) d2 = _cosineN(inputComposed, cVec, 58);
         if (lenA >= 87) d3 = _cosineN(inputComposed, cVec, 87);
-        if (lenA >= 116) d4 = _cosineN(inputComposed, cVec, 116);
+        // d4 = cosine at the DEEPEST shared whole-block depth (29-D blocks) —
+        // 116 when either side is legacy composed_v1, up to 203 when both carry
+        // the full 7-layer stack (L5-L7 fold in automatically post re-encode).
+        if (lenA >= 116) d4 = _cosineN(inputComposed, cVec, Math.floor(lenA / 29) * 29);
       } else {
         composedMisses++;
       }
@@ -238,9 +248,19 @@ class VoidLibrary {
         if (entry && Array.isArray(entry.fractal) && entry.fractal.length === 29) {
           fractals.set(name, Float64Array.from(entry.fractal));
         }
-        if (entry && Array.isArray(entry.composed_v1) && entry.composed_v1.length >= 29) {
-          composed.set(name, Float64Array.from(entry.composed_v1));
-        }
+        // Load the DEEPEST available composed signature per pattern:
+        // composed_v4 (203-D, full 7-layer) > composed_v2 (145-D) > composed_v1
+        // (116-D). A re-encoded pattern (composed_v4[0:116] === composed_v1
+        // exactly — verified) lights up L5-L7; the rest keep their identical
+        // 116-D base. Each is compared at its OWN real depth (fractal-index
+        // searchFlow), so shallow patterns score exactly as before and deep
+        // ones fold in the residual layers — no mixing bias.
+        const deep = entry && (
+          (Array.isArray(entry.composed_v4) && entry.composed_v4.length % 29 === 0 && entry.composed_v4)
+          || (Array.isArray(entry.composed_v2) && entry.composed_v2.length % 29 === 0 && entry.composed_v2)
+          || (Array.isArray(entry.composed_v1) && entry.composed_v1.length >= 29 && entry.composed_v1)
+        );
+        if (deep) composed.set(name, Float64Array.from(deep));
       }
       this._fractals = fractals;
       this._composed = composed;

@@ -18,7 +18,12 @@
  *     fractal:     29-D  (L1 structural, the JS↔Python parity anchor)
  *     composed_v1: 116-D (depth-4 composed — what mapFromSubstrate reads)
  *     composed_v2: 145-D (depth-5 composed — the current canonical)
- *     source_file, ingested_from, ingested_at
+ *     source_file, ingested_from
+ *     ledger:      { ingested_at, sequence, observed_start, observed_end, cadence }
+ *                  — the TIME DIMENSION: when this datum joined the substrate + the
+ *                    shared monotonic clock (see src/core/substrate-ledger.js)
+ *     coherence:   0..1 coherency reading stamped at ingest
+ *     tokens:      token count of the compressed datum
  *   }
  *
  * Encoding uses the CURRENT encoder (post the catastrophic-backtracking
@@ -37,6 +42,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { toFractalWaveform } = require('../src/core/fractal-waveform');
 const { composedAtDepth } = require('../src/core/encoder-stack');
+const SL = require('../src/core/substrate-ledger');
 const {
   DEFAULT_EXTENSIONS, DEFAULT_SKIP_DIRS,
 } = require('../src/core/coherency-mapper');
@@ -139,7 +145,9 @@ function main() {
     : [resolveTarget(targetArg)].filter(Boolean);
   if (!targets.length) { console.error('unknown repo: ' + targetArg); process.exit(1); }
 
-  const idx = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8'));
+  let idx;
+  try { idx = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8')); }
+  catch (e) { console.error(`cannot read substrate index at ${INDEX_PATH}: ${e.message}`); process.exit(1); }
   const index = idx.index;
   if (check) return checkDrift(targets, index, maxDrift);
   const now = new Date().toISOString();
@@ -153,6 +161,7 @@ function main() {
   }
 
   let added = 0, skipped = 0;
+  let seq = SL.nextSequence(index);          // the substrate's own clock, shared across all ingest paths
   const arose = [];
 
   for (const { ns, dir } of targets) {
@@ -171,14 +180,18 @@ function main() {
       const composed_v2 = Array.from(composedAtDepth(content, 5));
 
       if (!dry) {
-        index[key] = {
+        const entry = {
           fractal,
           source_file: key,
           ingested_from: dir,
-          ingested_at: now,
           composed_v1,
           composed_v2,
         };
+        // TIME DIMENSION: stamp when this datum joined the substrate (ingest-instant
+        // window for a static artifact) + its coherency reading (structural, from the
+        // fractal waveform) + token count. One shared clock across all ingest paths.
+        SL.stamp(entry, { sequence: seq++, now, content, coherence: SL.seriesCoherence(fractal) });
+        index[key] = entry;
       }
       added++;
 

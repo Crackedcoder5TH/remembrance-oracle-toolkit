@@ -17,7 +17,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 const require = createRequire(import.meta.url);
 const { crawlMany } = require('../src/market/market-crawler');
-const { encodeFlow, cosine } = require('../src/market/market-encode');
+const { encodeFlow, cosine, flows, patternFlow } = require('../src/market/market-encode');
+const { ledgerFromCandles } = require('../src/market/temporal-signature');
+const SL = require('../src/core/substrate-ledger');
 
 const argv = process.argv.slice(2);
 const opts = { range: '6mo', interval: '1d', source: 'auto' };
@@ -60,21 +62,33 @@ if (ok.length >= 2) {
   }
 }
 
-// --harvest: add the flow vectors to the Void pattern library under a market/ namespace
+// --harvest: add the flow vectors to the Void pattern library under a market/
+// namespace — every entry stamped with the substrate TIME DIMENSION (real
+// observed window from the candle timestamps, ingest time + monotonic sequence,
+// coherency reading, token count) and its raw waveform, so the retro-causal
+// projector has a genuine ledger to work off of.
 if (flags.has('harvest')) {
   const INDEX_PATH = process.env.SUBSTRATE_PATH || path.join(process.env.HARVEST_HOME || '/home/user', 'Void-Data-Compressor', 'pattern_index_fractal.json');
   const store = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8'));
   const idx = store.index || store;
   let added = 0;
-  const now = new Date(0).toISOString().replace('1970', String(2026)); // deterministic stamp (no Date.now in-script convention)
+  let seq = SL.nextSequence(idx);                        // the substrate's own clock
+  const now = new Date().toISOString();                 // when this data joins the substrate
   for (const e of ok) {
+    const candles = e.feed.candles;
+    const led = ledgerFromCandles(candles, opts.interval);   // real observed_start/end + cadence
+    const f = flows(candles);
+    const series = { close: f.close, ret: f.ret, body: f.body, range: f.range, patternPressure: patternFlow(candles) };
     for (const [flow, vec] of Object.entries(e.vectors)) {
       const key = `market/${e.source}/${e.symbol}/${flow}`;
       if (idx[key]) continue;
-      idx[key] = { composed_v2: vec, source: 'market-crawl', symbol: e.symbol, flow, bars: e.bars, interval: opts.interval, ingested_at: now };
+      const raw = series[flow] || [];
+      const entry = { composed_v2: vec, waveform: raw, source: 'market-crawl', symbol: e.symbol, flow, bars: e.bars, interval: opts.interval };
+      SL.stamp(entry, { sequence: seq++, now, series: raw, observedStart: led && led.observed_start, observedEnd: led && led.observed_end, cadence: led && led.cadence });
+      idx[key] = entry;
       added++;
     }
   }
   fs.writeFileSync(INDEX_PATH, JSON.stringify(store));
-  console.log(`\nHARVEST: added ${added} market flow vectors to ${path.basename(INDEX_PATH)} (namespace market/).`);
+  console.log(`\nHARVEST: added ${added} market flow vectors to ${path.basename(INDEX_PATH)} (namespace market/), each time-stamped (seq up to ${seq - 1}, ingested_at ${now}).`);
 }

@@ -41,7 +41,6 @@ function mul(a){let s=a;return()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>1
 const cos = (a, b) => { let d = 0, na = 0, nb = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return (na > 1e-12 && nb > 1e-12) ? d / Math.sqrt(na * nb) : 0; };
 function shuffle(arr, seed) { let s = seed; const r = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 function purity(vecs, labels, k = 7) { let hit = 0, tot = 0; for (let i = 0; i < vecs.length; i++) { const idx = [...vecs.keys()].filter((j) => j !== i).sort((a, b) => cos(vecs[i], vecs[b]) - cos(vecs[i], vecs[a])).slice(0, k); const v = {}; for (const j of idx) v[labels[j]] = (v[labels[j]] || 0) + 1; if (Object.keys(v).sort((a, b) => v[b] - v[a])[0] === labels[i]) hit++; tot++; } return tot ? hit / tot : 0; }
-function zmat(rows) { const D = rows[0].length, n = rows.length; const mu = new Array(D).fill(0), sd = new Array(D).fill(0); for (const r of rows) for (let d = 0; d < D; d++) mu[d] += r[d] / n; for (const r of rows) for (let d = 0; d < D; d++) sd[d] += (r[d] - mu[d]) ** 2 / n; for (let d = 0; d < D; d++) sd[d] = Math.sqrt(sd[d]) || 1; return rows.map((r) => r.map((v, d) => (v - mu[d]) / sd[d])); }
 const ser = (ys) => { const m = Math.max(...ys.map(Math.abs)) || 1; return ys.map((y) => (y / m).toFixed(5)).join(','); };
 const encode = (win) => Array.from(composedAtDepth(ser(win), 8));
 
@@ -49,21 +48,27 @@ const encode = (win) => Array.from(composedAtDepth(ser(win), 8));
 const items = [];
 for (const [src, meta] of Object.entries(SOURCES)) { const stream = raw[src] || []; for (let w = 0; w < capWindows; w++) { const win = stream.slice(w * WIN, (w + 1) * WIN); if (win.length < WIN) break; items.push({ src, cls: meta.cls, mech: meta.mech, prov: meta.prov, vec: encode(win) }); } }
 const N = items.length;
-const zv = zmat(items.map((x) => x.vec));            // cone-removed compression space
+// coherency-unified view = the substrate's OWN capacity dial (ZCA whitening, the
+// same transform substrate-connect uses to lift resonance out of the encoder cone).
+// Not a bespoke analysis — this is the established pipeline's way of looking.
+const Wm = W.fitWhitening(items.map((x) => x.vec), { epsilon: 1e-2 });
+const zv = items.map((x) => Array.from(W.applyWhitening(x.vec, Wm)));
 console.log('INCOMPRESSIBLE RESIDUAL — signature in the substrate COMPRESSION of raw physical entropy');
-console.log(`  ${Object.keys(SOURCES).length} sources × ${capWindows} windows = ${N} compressed at depth 8 (no stripping; cone removed by per-dim z-score)`);
+console.log(`  ${Object.keys(SOURCES).length} sources × ${capWindows} windows = ${N} compressed at depth 8 (no stripping; cone removed by ZCA whitening — the substrate capacity dial)`);
 console.log('  physical mechanisms: quantum(ANU,NIST) · atmospheric · thermal(CPU jitter)   [decay: paid key, absent]\n');
 
 // POSITIVE CONTROL FIRST — is this lens sensitive? two streams sharing a planted ARCH
 // signature vs white, run through the identical compress→z-score→cosine pipeline.
-function archStream(seed) { const rnd = mul(seed); const g = () => { let u = 0, v = 0; while (u < 1e-9) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283185307 * v); }; const o = []; let prev = 0; for (let i = 0; i < capWindows * WIN; i++) { const s2 = 0.3 + 0.65 * Math.min(4, prev * prev); const x = 3 * Math.sqrt(s2) * g(); prev = x / 3; o.push(x); } return o; }
-function whiteStream(seed) { const rnd = mul(seed); const g = () => { let u = 0, v = 0; while (u < 1e-9) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283185307 * v); }; return Array.from({ length: capWindows * WIN }, g); }
-function windowsOf(st) { const o = []; for (let w = 0; w < capWindows; w++) o.push(encode(st.slice(w * WIN, (w + 1) * WIN))); return o; }
-const pcRows = [...windowsOf(archStream(1001)), ...windowsOf(archStream(2002)), ...windowsOf(whiteStream(3003))];
-const pcZ = zmat(pcRows); const nW = capWindows; const gA = pcZ.slice(0, nW), gB = pcZ.slice(nW, 2 * nW), gW = pcZ.slice(2 * nW);
+const PCW = 90;  // synthetic → generate plenty so the whitening fit is well-conditioned (n > D)
+function archStream(seed, len) { const rnd = mul(seed); const g = () => { let u = 0, v = 0; while (u < 1e-9) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283185307 * v); }; const o = []; let prev = 0; for (let i = 0; i < len; i++) { const s2 = 0.3 + 0.65 * Math.min(4, prev * prev); const x = 3 * Math.sqrt(s2) * g(); prev = x / 3; o.push(x); } return o; }
+function whiteStream(seed, len) { const rnd = mul(seed); const g = () => { let u = 0, v = 0; while (u < 1e-9) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.283185307 * v); }; return Array.from({ length: len }, g); }
+function windowsOf(st) { const o = []; for (let w = 0; w * WIN + WIN <= st.length; w++) o.push(encode(st.slice(w * WIN, (w + 1) * WIN))); return o; }
+const pcRows = [...windowsOf(archStream(1001, PCW * WIN)), ...windowsOf(archStream(2002, PCW * WIN)), ...windowsOf(whiteStream(3003, PCW * WIN))];
+const pcWm = W.fitWhitening(pcRows, { epsilon: 1e-2 }); const pcZ = pcRows.map((v) => Array.from(W.applyWhitening(v, pcWm)));
+const gA = pcZ.slice(0, PCW), gB = pcZ.slice(PCW, 2 * PCW), gW = pcZ.slice(2 * PCW);
 function mc(X, Y, guard) { let s = 0, n = 0; for (let i = 0; i < X.length; i++) for (let j = 0; j < Y.length; j++) { if (guard && X === Y && i === j) continue; s += cos(X[i], Y[j]); n++; } return n ? s / n : 0; }
 const pcGap = mc(gA, gB) - mc(gA, gW); const sensitive = pcGap > 0.03;
-console.log('=== POSITIVE CONTROL (lens sensitivity, run FIRST) — planted ARCH signature through compress→z-score ===');
+console.log('=== POSITIVE CONTROL (lens sensitivity, run FIRST) — planted ARCH via established whitening pipeline ===');
 console.log('  planted-A ↔ planted-B ' + mc(gA, gB).toFixed(3) + '   planted-A ↔ white ' + mc(gA, gW).toFixed(3) + '   gap ' + pcGap.toFixed(3));
 console.log('  → the cone-removed compression ' + (sensitive ? 'DETECTS' : 'does NOT detect') + ' a planted shared signature — physics reads below are ' + (sensitive ? 'trustworthy' : 'INCONCLUSIVE (lens too blind at this n)') + '\n');
 
@@ -98,7 +103,7 @@ function permTest(statFn, seeds = 500) {
   const real = statFn(mechArr);
   const nulls = [];
   for (let s = 0; s < seeds; s++) { const sh = shuffle(mechArr, 1000 + s * 7); nulls.push(statFn(sh)); }
-  const mu = nulls.reduce((a, b) => a + b, 0) / nulls.length;
+  const mu = nulls.reduce((a, b) => a + b, 0) / (nulls.length || 1);
   const sd = Math.sqrt(nulls.reduce((a, b) => a + (b - mu) ** 2, 0) / nulls.length) || 1e-9;
   const ge = nulls.filter((v) => v >= real).length;
   return { real, mu, z: (real - mu) / sd, p: (ge + 1) / (seeds + 1) };
@@ -131,6 +136,14 @@ const Hb = items.map((x, i) => ({ ...x, i })).filter((x) => x.src === 'hotbits_p
 console.log('\n  diagnostic sources (which pole do the off-diagonal cells join?):');
 console.log('    thermal (local·PHYSICAL):     ↔network-physical ' + meanCos(Th, netPhys).toFixed(3) + '   ↔local-algorithmic ' + meanCos(Th, locAlg).toFixed(3) + '  → ' + (meanCos(Th, netPhys) > meanCos(Th, locAlg) ? 'joins PHYSICAL (⇒ physics)' : 'joins LOCAL (⇒ provenance)'));
 console.log('    hotbits (network·ALGORITHMIC): ↔network-physical ' + meanCos(Hb, netPhys).toFixed(3) + '   ↔local-algorithmic ' + meanCos(Hb, locAlg).toFixed(3) + '  → ' + (meanCos(Hb, netPhys) > meanCos(Hb, locAlg) ? 'joins NETWORK (⇒ provenance)' : 'joins ALGORITHMIC (⇒ physics)'));
+// stratified: does physics separate WITHIN a provenance stratum? if not, provenance is the axis.
+const netIdx = items.map((x, i) => ({ ...x, i })).filter((x) => x.prov === 'network');
+const locIdx = items.map((x, i) => ({ ...x, i })).filter((x) => x.prov === 'local');
+const withinNetPurV = netIdx.map((x) => zv[x.i]); const withinNetL = netIdx.map((x) => x.cls); const withinNetS = shuffle(withinNetL, 61);
+const withinLocPurV = locIdx.filter((x) => x.cls !== 'chaotic').map((x) => zv[x.i]); const withinLocL = locIdx.filter((x) => x.cls !== 'chaotic').map((x) => x.cls); const withinLocS = shuffle(withinLocL, 63);
+console.log('\n  STRATIFIED — physical vs algorithmic, holding provenance CONSTANT (kills the collinearity):');
+console.log('    within NETWORK only: physical(anu,nist,atmos) vs algorithmic(hotbits) purity real ' + (purity(withinNetPurV, withinNetL) * 100).toFixed(1) + '%  shuffle ' + (purity(withinNetPurV, withinNetS) * 100).toFixed(1) + '%');
+console.log('    within LOCAL only:   physical(thermal) vs algorithmic(csprng,prng,gauss) purity real ' + (purity(withinLocPurV, withinLocL) * 100).toFixed(1) + '%  shuffle ' + (purity(withinLocPurV, withinLocS) * 100).toFixed(1) + '%');
 
 console.log('\n(reported as measured. The substrate COMPRESSES the raw entropy — nothing stripped; the cone is removed so the');
 console.log(' lens can see. Read the physics ONLY if the positive control says the lens is sensitive at this n.)');

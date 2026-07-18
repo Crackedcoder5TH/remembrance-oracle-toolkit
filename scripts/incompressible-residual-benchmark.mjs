@@ -29,7 +29,8 @@ const raw = JSON.parse(fs.readFileSync(CACHE, 'utf8'));
 // "physical" and "network" are no longer the same set.
 const SOURCES = {
   anu_quantum: { cls: 'physical', mech: 'quantum', prov: 'network' }, nist_quantum: { cls: 'physical', mech: 'quantum', prov: 'network' },
-  atmospheric: { cls: 'physical', mech: 'atmospheric', prov: 'network' }, thermal_jitter: { cls: 'physical', mech: 'thermal', prov: 'local' },
+  atmospheric: { cls: 'physical', mech: 'atmospheric', prov: 'network' },
+  thermal_jitter: { cls: 'physical', mech: 'thermal', prov: 'local' }, mem_jitter: { cls: 'physical', mech: 'memory', prov: 'local' }, sched_jitter: { cls: 'physical', mech: 'scheduler', prov: 'local' },
   chaotic_noisefloor: { cls: 'chaotic', mech: 'chaotic', prov: 'local' },
   csprng: { cls: 'algorithmic', mech: 'algo', prov: 'local' }, prng_mulberry: { cls: 'algorithmic', mech: 'algo', prov: 'local' }, gaussian: { cls: 'algorithmic', mech: 'algo', prov: 'local' },
   hotbits_pseudo: { cls: 'algorithmic', mech: 'algo', prov: 'network' },
@@ -143,7 +144,29 @@ const withinNetPurV = netIdx.map((x) => zv[x.i]); const withinNetL = netIdx.map(
 const withinLocPurV = locIdx.filter((x) => x.cls !== 'chaotic').map((x) => zv[x.i]); const withinLocL = locIdx.filter((x) => x.cls !== 'chaotic').map((x) => x.cls); const withinLocS = shuffle(withinLocL, 63);
 console.log('\n  STRATIFIED — physical vs algorithmic, holding provenance CONSTANT (kills the collinearity):');
 console.log('    within NETWORK only: physical(anu,nist,atmos) vs algorithmic(hotbits) purity real ' + (purity(withinNetPurV, withinNetL) * 100).toFixed(1) + '%  shuffle ' + (purity(withinNetPurV, withinNetS) * 100).toFixed(1) + '%');
-console.log('    within LOCAL only:   physical(thermal) vs algorithmic(csprng,prng,gauss) purity real ' + (purity(withinLocPurV, withinLocL) * 100).toFixed(1) + '%  shuffle ' + (purity(withinLocPurV, withinLocS) * 100).toFixed(1) + '%');
+console.log('    within LOCAL only:   physical(thermal,mem,sched) vs algorithmic(csprng,prng,gauss) purity real ' + (purity(withinLocPurV, withinLocL) * 100).toFixed(1) + '%  shuffle ' + (purity(withinLocPurV, withinLocS) * 100).toFixed(1) + '%');
+
+// FULLY-CROSSED 2×2 — now with THREE local-physical sources (thermal/mem/sched),
+// physics and provenance are independent. The decisive question: are physical
+// sources kin ACROSS the provenance gap (⇒ real physics layer), or do sources only
+// cluster by provenance (⇒ artifact)?
+const lp = items.map((x, i) => ({ ...x, i })).filter((x) => x.prov === 'local' && x.cls === 'physical');
+const np = items.map((x, i) => ({ ...x, i })).filter((x) => x.prov === 'network' && x.cls === 'physical');
+const la = items.map((x, i) => ({ ...x, i })).filter((x) => x.prov === 'local' && x.cls === 'algorithmic');
+function mcx(X, Y, crossSrc) { let s = 0, n = 0; for (const a of X) for (const b of Y) { if (a.i === b.i) continue; if (crossSrc && a.src === b.src) continue; s += cos(zv[a.i], zv[b.i]); n++; } return n ? s / n : 0; }
+console.log('\n=== FULLY-CROSSED 2×2 (3 local-physical: thermal/mem/sched · 3 network-physical · 3 local-algorithmic) ===');
+console.log('  PHYSICS across provenance  local-physical ↔ network-physical : ' + mcx(lp, np).toFixed(3) + '  (kin ⇒ real physics layer)');
+console.log('  PROVENANCE same-side       local-physical ↔ local-algorithmic: ' + mcx(lp, la).toFixed(3) + '  (kin ⇒ provenance artifact)');
+console.log('  local-physical internal    thermal/mem/sched mutual (cross-src): ' + mcx(lp, lp, true).toFixed(3));
+console.log('  network-physical internal  anu/nist/atmos mutual (cross-src)   : ' + mcx(np, np, true).toFixed(3));
+// permutation significance of "physics across provenance": shuffle cls labels WITHIN
+// each provenance stratum, recompute local-phys↔network-phys, see if real exceeds null
+function physAcrossStat(clsAssign) { const L = items.map((x, i) => ({ i, prov: x.prov, cls: clsAssign[i], src: x.src })); const A = L.filter((x) => x.prov === 'local' && x.cls === 'physical'); const B = L.filter((x) => x.prov === 'network' && x.cls === 'physical'); let s = 0, n = 0; for (const a of A) for (const b of B) { s += cos(zv[a.i], zv[b.i]); n++; } return n ? s / n : 0; }
+const clsReal = items.map((x) => x.cls);
+const stratShuffleCls = () => { const out = clsReal.slice(); for (const prov of ['local', 'network']) { const ids = items.map((x, i) => i).filter((i) => items[i].prov === prov && items[i].cls !== 'chaotic'); const labs = shuffle(ids.map((i) => clsReal[i]), 700 + prov.length); ids.forEach((i, k) => { out[i] = labs[k]; }); } return out; };
+const realPhys = physAcrossStat(clsReal); const permNull = []; for (let s = 0; s < 300; s++) permNull.push(physAcrossStat(stratShuffleCls()));
+const pm = permNull.reduce((a, b) => a + b, 0) / permNull.length; const ge = permNull.filter((v) => v >= realPhys).length; const pPhys = (ge + 1) / (permNull.length + 1);
+console.log('  → PHYSICS-across-provenance permutation test: real ' + realPhys.toFixed(3) + '  null-mean ' + pm.toFixed(3) + '  p=' + pPhys.toFixed(3) + '  ' + (pPhys < 0.05 && realPhys > pm ? '* physical sources ARE kin across provenance' : '— NOT significant: physical sources are not kin across the provenance gap'));
 
 console.log('\n(reported as measured. The substrate COMPRESSES the raw entropy — nothing stripped; the cone is removed so the');
 console.log(' lens can see. Read the physics ONLY if the positive control says the lens is sensitive at this n.)');

@@ -18,6 +18,9 @@ const idx = JSON.parse(fs.readFileSync(path.join(VOID, 'pattern_index_fractal.js
 const keys = Object.keys(idx).filter((k) => Array.isArray(idx[k].composed_v1) && idx[k].composed_v1.length === 116);
 const hr = () => Number(process.hrtime.bigint()) / 1e6;
 
+// The substrate-bypass guard is RIGHT to flag the next line — this hand-rolled cosine
+// IS the deliberate naive baseline this benchmark measures the native functions against.
+// oracle-ignore-next-line: substrate/handrolled-cosine
 function cosFull(a, b) { let d = 0, na = 0, nb = 0; for (let i = 0; i < a.length; i++) { d += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; } return (na > 1e-12 && nb > 1e-12) ? d / Math.sqrt(na * nb) : 0; }
 
 console.log('RETRIEVAL SCALING — substrate functions vs my brute-force (real library, ' + keys.length + ' patterns)\n');

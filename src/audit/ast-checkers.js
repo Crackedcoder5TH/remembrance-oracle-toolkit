@@ -39,6 +39,7 @@ const BUG_CLASSES = {
   TYPE: 'type',
   INTEGRATION: 'integration',
   EDGE_CASE: 'edge-case',
+  SUBSTRATE_BYPASS: 'substrate-bypass',
 };
 
 const SEVERITY = { HIGH: 'high', MEDIUM: 'medium', LOW: 'low' };
@@ -111,6 +112,7 @@ function auditCode(source, options = {}) {
 
   // File-level checks that don't need a function context
   if (isEnabled(BUG_CLASSES.EDGE_CASE)) checkEdgeCase(program, emit);
+  if (isEnabled(BUG_CLASSES.SUBSTRATE_BYPASS)) checkSubstrateBypass(source, emit, options.filePath);
 
   // Sort by severity then line. Use an immutable copy so consumers
   // that captured the findings array earlier aren't surprised by
@@ -871,10 +873,52 @@ function auditFiles(files, options = {}) {
   };
 }
 
+// ─── Substrate-bypass checker ───────────────────────────────────────────────
+//
+// The failure mode this catches: reimplementing the substrate's own primitives
+// (cosine/resonance, nearest-neighbour retrieval, whitening) by hand instead of
+// calling them — which then gets benchmarked and mistaken for the substrate's
+// behaviour. Flags hand-rolled cosine loops and kNN linear scans and points to
+// the built path. The canonical implementations legitimately contain these, so
+// they are exempt; a deliberate naive baseline can be suppressed with the usual
+// goggles-disable comment.
+const _SUBSTRATE_PRIMITIVE_FILES = /core[\\/]whitening|compression[\\/]holographic|core[\\/]fractal-index|core[\\/]field-tool|search[\\/]|scoring[\\/]pattern-resonance|waveform|audit[\\/]ast-checkers/;
+function checkSubstrateBypass(source, emit, filePath) {
+  if (_SUBSTRATE_PRIMITIVE_FILES.test(String(filePath || ''))) return;
+  const lines = source.split('\n');
+  // (1) hand-rolled cosine similarity — the twin norm-accumulator fingerprint
+  const hasNa = /\bn(?:a|orm[aA])\s*\+=/.test(source);
+  const hasNb = /\bn(?:b|orm[bB])\s*\+=/.test(source);
+  if (hasNa && hasNb && /Math\.sqrt/.test(source)) {
+    let ln = lines.findIndex((l) => /\bn(?:a|orm[aA])\s*\+=/.test(l));
+    emit({
+      line: (ln < 0 ? 1 : ln + 1),
+      bugClass: BUG_CLASSES.SUBSTRATE_BYPASS, ruleId: 'substrate/handrolled-cosine',
+      assumption: 'a hand-written cosine/similarity loop',
+      reality: 'the substrate already computes resonance (whitening + holoSearch / fractal-index searchFlow)',
+      severity: SEVERITY.MEDIUM,
+      suggestion: 'Route through the substrate: whitening.applyWhitening + holoSearch / FractalIndex.searchFlow — measure THROUGH the system, not a hand-rolled scan.',
+    });
+  }
+  // (2) hand-rolled nearest-neighbour scan — sort-by-cosine then slice(0, k)
+  const knnLine = lines.findIndex((l) => /\.sort\([^;]*\bcos\w*\b[^;]*\)\s*\.slice\(\s*0\s*,/.test(l));
+  if (knnLine >= 0) {
+    emit({
+      line: knnLine + 1,
+      bugClass: BUG_CLASSES.SUBSTRATE_BYPASS, ruleId: 'substrate/handrolled-knn',
+      assumption: 'a hand-written nearest-neighbour scan (sort-by-cosine, O(N))',
+      reality: 'holoSearch addresses pages sub-linearly; FractalIndex.searchFlow is the built lean path (~5ms/10k)',
+      severity: SEVERITY.MEDIUM,
+      suggestion: 'Use holoSearch (sub-linear page addressing) or FractalIndex.searchFlow — do not reimplement retrieval beside the substrate.',
+    });
+  }
+}
+
 module.exports = {
   auditCode,
   auditFile,
   auditFiles,
+  checkSubstrateBypass,
   BUG_CLASSES,
   SEVERITY,
 };

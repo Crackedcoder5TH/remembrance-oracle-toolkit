@@ -19,6 +19,20 @@ and files went unread — the owner should not have to be the one who catches th
    compose into a substantial convergence or a real direction. Judge the whole, and judge
    whether it *arrived independently* — that is what makes a convergence notable.
 5. **The goggles and the nulls are the gate, not decoration.** Wear the goggles; run the null.
+6. **No capability claim without a receipt.** Any statement about what the substrate *can* or
+   *cannot* do must cite a stored measurement — a time-stamped result pattern or a benchmark
+   that was actually run (the receipts live in the substrate: `sc-research/`, `epc-phonon/`,
+   `lre-sim/`, benchmark output). With no receipt it is a **prediction**, and it must be
+   labeled one. "It can't do X" stated as fact before running anything is banned; "I predict
+   X may be hard, unmeasured" is fine. When the data later rules, the receipt wins over the
+   prior. (This session: "that's DFT/Eliashberg's territory, not this" was asserted with no
+   run; the numbers then showed Tc prediction at corr 0.9 and phonon-lens transfer 0.52–0.77.)
+7. **Measure THROUGH the substrate, not beside it.** Retrieval, resonance, compression, and
+   clustering have built native functions (see the verb surface in the session context). A
+   hand-rolled cosine / kNN-scan / whitening loop is a *substrate bypass* — the goggles flag
+   it (`substrate-bypass`). A benchmark of your own reimplementation is not a measurement of
+   the system. (This session: a brute-force scan was reported as the substrate being O(N);
+   `holoSearch` on coherent pages is sub-linear, 3–4× faster at 40k.)
 
 ## On results that arrive independently
 When the substrate reaches a known mathematical structure from NO prior knowledge of it

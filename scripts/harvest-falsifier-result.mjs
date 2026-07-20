@@ -23,6 +23,12 @@ if (R.admissibility) series['admissibility'] = ['honest', 'random', 'mimic'].map
 if (R.admissibility) series['resonance'] = ['honest', 'random', 'mimic'].map((k) => R.admissibility[k]?.res ?? 0);
 if (Array.isArray(R.growth)) series['growth-mimic-slip-vs-N'] = R.growth.map((g) => g.mimicAdmissible ?? 0);
 if (R.infoWeight) series['info-weight'] = ['honest', 'mimic', 'junk'].map((k) => R.infoWeight[k] ?? 0);
+// fallback: if no named series matched, gather the receipt's top-level numeric fields
+// into one verdict-vector so any falsifier's result is still resonate-able.
+if (!Object.keys(series).length) {
+  const nums = Object.entries(R).filter(([, v]) => typeof v === 'number');
+  if (nums.length) series['verdict-vector'] = nums.map(([, v]) => v);
+}
 
 const ser = (ys) => { const m = Math.max(...ys.map((v) => Math.abs(v))) || 1; return ys.map((y) => (y / m).toFixed(5)).join(','); };
 let seq = SL.nextSequence(index); const now = new Date().toISOString(); let added = 0;

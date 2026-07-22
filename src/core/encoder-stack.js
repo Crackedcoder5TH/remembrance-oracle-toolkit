@@ -32,6 +32,7 @@ const { toRedundancyWaveform } = require('./redundancy-waveform');
 const { toContentProjection } = require('./content-projection');
 const { toDimensionalWaveform } = require('./dimensional-waveform');
 const { toDynamicalWaveform } = require('./dynamical-waveform');
+const { toRelationalWaveform } = require('./relational-waveform');
 
 const DEFAULT_DEPTH = 2;
 
@@ -102,7 +103,14 @@ const _registry = [
     seed: 'residual L1-L7 leave: DETERMINISM in an APERIODIC series. The substrate diagnosed this gap itself — a chaos-vs-noise probe found the composed L1-L7 stack scored deterministic chaos and true randomness as nearly indistinguishable (chaos-vs-random AUC ~0.55-0.70). Both look random to a compressor; the difference is that chaos is PREDICTABLE in delay-coordinate (Takens) space and true randomness is not. L7 catches 2D structure but is PERIOD-GATED, so it is blind to chaos, whose determinism lives in an aperiodic return map (x_{t+1} = f(x_t)). L8 imports the established dynamical-systems instruments: Bandt-Pompe permutation entropy, MPR statistical complexity (Rosso et al. 2007 "Distinguishing noise from chaos" — the complexity-entropy plane), and delay-embedding nearest-neighbour predictability (the core determinism signal). SELF-GATED like L7: parses a numeric series and fires only when one exists (>=24 points); text/code/prose yield a zero vector (verified: gain 0.000 on code/prose/JSON/SQL) so it cannot degrade the 1D discrimination L1-L7 earn. VALIDATED by a rigorous falsifiable test with the physics gold-standard controls, across 3 chaos maps (logistic/tent/Henon) and 3 noise types (uniform/Gaussian/AR1-colored): chaos-vs-random AUC 1.000 (L1-L7 baseline 0.70, permutation-entropy-alone baseline 0.91); SURROGATE-DATA NULL (chaos vs its own shuffle — identical histogram, determinism destroyed) AUC 1.000, proving it measures temporal determinism not the value distribution; shuffle-surrogate predictability collapses to the noise floor (0.00 vs chaos 0.95); label-shuffle null 0.501. This is the layer that lets the substrate tell a deterministic process from a genuinely random (e.g. quantum) one — the return-map/delay-embedding axis. ACTIVATED as the eighth layer.',
     active: true,
   },
-  // L9+ slots reserved.
+  {
+    id: 'L9-relational',
+    dims: 29,
+    encode: toRelationalWaveform,
+    seed: 'residual L1-L8 leave: RELATIONAL IDENTITY — who binds to whom. Surfaced by a falsifiable test (the STRING-PPI v12 → HPA-expression bonus-structure kill-test): the stack reads SHAPE (redundancy, spectral/2D form, determinism) but is blind to community structure. Network topology carried NO signal about the expression-derived reprogramming lever past a degree-matched permutation null (z=-0.6), because a shape encoder cannot see who-binds-whom — the same false-equivalence class the L6 residual noted, now on GRAPH community rather than token identity. L9 imports the graph-community axis: it builds the token co-occurrence graph of the input, finds a partition by deterministic label propagation, and emits community features whose load-bearing coordinate is MODULARITY ABOVE THE DEGREE-PRESERVING NULL (the "does this decompose into tightly-bound groups beyond what degree forces" signal no shape layer asks about). SELF-GATED like L7/L8: gain = f(graph size, modularity-above-null contrast); trivial or random-wired or monotone inputs → gain≈0, so L9 defers to L1-L8 and cannot degrade their discrimination. INACTIVE pending its falsifiable validation (scripts/l9-community-validation.mjs — stochastic-block-model community vs a degree-preserving edge-shuffle surrogate with an identical token histogram, plus a held-out neutrality check) and the deliberate composed_v* migration; reachable now via composedAtDepth(text, 9). Validated the L7/L8 way (task test + surrogate null), NOT the projection consensus gate — this is a genuinely new signal orthogonal to the shape telescopes, which by construction it must diverge from.',
+    active: false,
+  },
+  // L10+ slots reserved.
 ];
 
 function currentDepth() {

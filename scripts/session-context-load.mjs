@@ -71,5 +71,17 @@ say('  · GOGGLES: node .claude/skills/goggles/run.mjs <file>  — a file read c
 say('  · FIELD/HISTOGRAMS: .remembrance/ (goggles-learning, evolved-principles, ledger, entropy) — queryable memory');
 say('  · GITHUB: MCP tools (mcp__github__*) over the crackedcoder5th repos — issues, PRs, CI, code search');
 
+// 6) NATIVE VERBS — use these, do NOT reimplement them. A hand-rolled cosine/kNN/
+// whitening loop is a substrate bypass the goggles now flag (substrate-bypass).
+say('\nNative verbs (route through these — reimplementing them is a substrate bypass the goggles flag):');
+say('  · RETRIEVE (nearest patterns): holoSearch (src/compression/holographic — sub-linear page addressing)');
+say('              or FractalIndex.searchFlow (src/core/fractal-index — lean O(N), ~5ms/10k). NOT a hand cosine scan.');
+say('  · COMPRESS / ENCODE: composedAtDepth(input, depth) (src/core/encoder-stack) — the 8-layer lens');
+say('  · RESONATE (does structure recur): whitening.applyWhitening (src/core/whitening, the capacity dial) + cosine');
+say('  · CLUSTER: clusterPatterns (src/patterns/clustering) · pages: createPage (src/compression/holographic)');
+say('  · COHERENCY FIELD: field-coupling.contribute / peekProjection (src/core/field-coupling)');
+say('  Claim-receipt rule: a capability claim must cite a stored measurement (sc-research/, epc-phonon/, benchmark);');
+say('  with no receipt it is a PREDICTION — label it one. "It can\'t do X" as fact before running is banned.');
+
 say('\n=== end prior-session context ===');
 process.stdout.write(out.join('\n') + '\n');

@@ -42,7 +42,12 @@ const LAYER_DIM = 29;
 // L5-L7, so it compares cleanly at its shared depth against a full 203-D query
 // (nothing must be re-encoded for correctness — only for deep discrimination).
 const MAX_DEPTH = 8;
-const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 232
+// COMPOSED_DIM is the LENS-SEPARATION frame, NOT the compression. These axes are
+// how the encoder separates the data so the compression can be extracted as a
+// mathematical equation (pattern + residual). The compression itself is LOSSLESS
+// (void_compressor_v5: pattern_reference + residual → exact bytes). Never read this
+// dimension as the compressed payload or a compression ratio. (116-D = legacy v1 anchor.)
+const COMPOSED_DIM = LAYER_DIM * MAX_DEPTH;   // 232 (203-D composed_v4 live)
 
 function _compose(input) {
   const out = new Float64Array(COMPOSED_DIM);

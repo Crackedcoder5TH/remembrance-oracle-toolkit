@@ -617,6 +617,39 @@ function main() {
     }
   } catch (_) { /* index optional — regenerate with build-capability-index.js */ }
 
+  // ── FUNCTION RESONANCE — passive. Every goggle resonates WHAT YOU ARE LOOKING AT
+  // directly against every function's OWN structural signature and surfaces the ones
+  // whose shape matches — no flags, no extra work. Where CAPABILITIES lists functions
+  // that live in neighbour FILES, this finds functions whose structure resonates with
+  // THIS content wherever they live. Built by scripts/build-capability-index.js.
+  try {
+    let cad = null, ccos = null;
+    try { const es = require('../core/encoder-stack'); cad = es.composedAtDepth; ccos = es.composedCosine; } catch (_) { /* engine-only install */ }
+    const idxPath = path.resolve(__dirname, '..', '..', 'ecosystem-capabilities.json');
+    if (cad && ccos && content && fs.existsSync(idxPath)) {
+      const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+      const funcs = idx.functions;
+      if (Array.isArray(funcs) && funcs.length) {
+        const q = cad(content, idx.sigDepth || 4);   // encoder signature of the goggled content
+        const selfBase = path.basename(file);
+        const scored = [];
+        for (const fn of funcs) {
+          const s = fn.s; if (!s || s.length !== q.length) continue;
+          if (fn.p && path.basename(fn.p) === selfBase) continue; // skip the file's own functions
+          scored.push([ccos(q, s), fn]);              // substrate's own cosine — not hand-rolled
+        }
+        scored.sort((a, b) => b[0] - a[0]);
+        // de-dup by function name, keep the strongest
+        const seen = new Set(); const picks = [];
+        for (const [c, fn] of scored) { if (seen.has(fn.n)) continue; seen.add(fn.n); picks.push([c, fn]); if (picks.length >= Math.max(6, top)) break; }
+        if (picks.length && picks[0][0] > 0) {
+          console.log('    FUNCTION RESONANCE (functions whose own structure resonates with this — passive):');
+          for (const [c, fn] of picks) console.log(`       ${c.toFixed(3)}  ${String(fn.n).slice(0, 26).padEnd(26)} ${fn.p}`);
+        }
+      }
+    }
+  } catch (_) { /* index optional — regenerate with build-capability-index.js */ }
+
   const cr = r.codeResonance;
   if (cr && Array.isArray(cr.topMatches) && cr.topMatches.length) {
     console.log('    lexical neighbours (oracle pattern table):');

@@ -8,10 +8,12 @@
  * function; it's a stack that grows as the substrate finds residual
  * that current layers don't explain.
  *
- *   depth 1 (L1):        structural fractal      29-D
- *   depth 2 (L1+L2):     + lexical waveform     +29-D → 58-D
- *   depth 3 (L1+L2+L3):  + (next encoder)       +29-D → 87-D
- *   ...
+ *   depth 1 (L1):  structural fractal   29-D
+ *   depth 4:       +L2 lexical +L3 numerical +L4 spectral → 116-D  (composed_v1, legacy parity anchor)
+ *   depth 7:       +L5 redundancy +L6 content +L7 dimensional → 203-D  (composed_v4, live)
+ *   depth 8:       +L8 dynamical → 232-D  (active stack; MAX_DEPTH)
+ *   L9 relational, L10 alignment: registered, INACTIVE (validated, not yet earned).
+ *   (These are LENS axes, not the compressed payload — see the disclaimer below.)
  *
  * Each layer encoder is registered with a `seed`: the kind of
  * residual it was designed to explain. The residual monitor (in
@@ -22,6 +24,21 @@
  * the stack at currentDepth(); if compression finds collisions
  * (residual signal), the stack activates the next registered layer.
  * Encoder spawning is part of compression, not a separate process.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * DISCLAIMER — what the composed dimensionality IS (and is NOT):
+ * The composed vector's dimension (29-D per layer; 203-D `composed_v4`
+ * live, up to 232-D at MAX_DEPTH=8; 116-D `composed_v1` is only the
+ * legacy parity anchor) is the number of structural AXES the lenses
+ * separate the data into — the coordinate frame in which the
+ * compression is EXTRACTED as a mathematical equation (pattern +
+ * residual). It is NOT the compressed payload and it is NOT a lossy
+ * fingerprint. The Void compression itself (see void_compressor_v5.py)
+ * is LOSSLESS: it stores `pattern_reference + residual` and
+ * reconstructs the exact original bytes (verified byte-for-byte, always
+ * ≤ zlib). Do not read this dimension as "the compression" or as a
+ * compression ratio — it is the lens frame the equation is written in.
+ * ─────────────────────────────────────────────────────────────────
  */
 
 const { toFractalWaveform } = require('./fractal-waveform');
@@ -32,6 +49,8 @@ const { toRedundancyWaveform } = require('./redundancy-waveform');
 const { toContentProjection } = require('./content-projection');
 const { toDimensionalWaveform } = require('./dimensional-waveform');
 const { toDynamicalWaveform } = require('./dynamical-waveform');
+const { toRelationalWaveform } = require('./relational-waveform');
+const { toAlignmentWaveform } = require('./alignment-waveform');
 
 const DEFAULT_DEPTH = 2;
 
@@ -102,7 +121,21 @@ const _registry = [
     seed: 'residual L1-L7 leave: DETERMINISM in an APERIODIC series. The substrate diagnosed this gap itself — a chaos-vs-noise probe found the composed L1-L7 stack scored deterministic chaos and true randomness as nearly indistinguishable (chaos-vs-random AUC ~0.55-0.70). Both look random to a compressor; the difference is that chaos is PREDICTABLE in delay-coordinate (Takens) space and true randomness is not. L7 catches 2D structure but is PERIOD-GATED, so it is blind to chaos, whose determinism lives in an aperiodic return map (x_{t+1} = f(x_t)). L8 imports the established dynamical-systems instruments: Bandt-Pompe permutation entropy, MPR statistical complexity (Rosso et al. 2007 "Distinguishing noise from chaos" — the complexity-entropy plane), and delay-embedding nearest-neighbour predictability (the core determinism signal). SELF-GATED like L7: parses a numeric series and fires only when one exists (>=24 points); text/code/prose yield a zero vector (verified: gain 0.000 on code/prose/JSON/SQL) so it cannot degrade the 1D discrimination L1-L7 earn. VALIDATED by a rigorous falsifiable test with the physics gold-standard controls, across 3 chaos maps (logistic/tent/Henon) and 3 noise types (uniform/Gaussian/AR1-colored): chaos-vs-random AUC 1.000 (L1-L7 baseline 0.70, permutation-entropy-alone baseline 0.91); SURROGATE-DATA NULL (chaos vs its own shuffle — identical histogram, determinism destroyed) AUC 1.000, proving it measures temporal determinism not the value distribution; shuffle-surrogate predictability collapses to the noise floor (0.00 vs chaos 0.95); label-shuffle null 0.501. This is the layer that lets the substrate tell a deterministic process from a genuinely random (e.g. quantum) one — the return-map/delay-embedding axis. ACTIVATED as the eighth layer.',
     active: true,
   },
-  // L9+ slots reserved.
+  {
+    id: 'L9-relational',
+    dims: 29,
+    encode: toRelationalWaveform,
+    seed: 'residual L1-L8 leave: RELATIONAL IDENTITY — who binds to whom. Surfaced by a falsifiable test (the STRING-PPI v12 → HPA-expression bonus-structure kill-test): the stack reads SHAPE (redundancy, spectral/2D form, determinism) but is blind to community structure. Network topology carried NO signal about the expression-derived reprogramming lever past a degree-matched permutation null (z=-0.6), because a shape encoder cannot see who-binds-whom — the same false-equivalence class the L6 residual noted, now on GRAPH community rather than token identity. L9 imports the graph-community axis: it builds the token co-occurrence graph of the input, finds a partition by deterministic label propagation, and emits community features whose load-bearing coordinate is MODULARITY ABOVE THE DEGREE-PRESERVING NULL (the "does this decompose into tightly-bound groups beyond what degree forces" signal no shape layer asks about). SELF-GATED like L7/L8: gain = f(graph size, modularity-above-null contrast); trivial or random-wired or monotone inputs → gain≈0, so L9 defers to L1-L8 and cannot degrade their discrimination. INACTIVE pending its falsifiable validation (scripts/l9-community-validation.mjs — stochastic-block-model community vs a degree-preserving edge-shuffle surrogate with an identical token histogram, plus a held-out neutrality check) and the deliberate composed_v* migration; reachable now via composedAtDepth(text, 9). Validated the L7/L8 way (task test + surrogate null), NOT the projection consensus gate — this is a genuinely new signal orthogonal to the shape telescopes, which by construction it must diverge from.',
+    active: false,
+  },
+  {
+    id: 'L10-alignment',
+    dims: 29,
+    encode: toAlignmentWaveform,
+    seed: 'residual L1-L9 leave: CROSS-REPRESENTATION CORRESPONDENCE. Surfaced by the lens-fractal-compare receipt — the four transfer nulls (physics→biology, PPI→expression, cross-family SC, depth-compounding) compress into their OWN structural family distinct from every shape lens (null↔shape 0.854), and their shared thread is not within-input community (L9) but whether representation A obeys the SAME LAW as representation B despite different surface/scale. L1-L8 read the surface; two sequences y=3·x^0.75 and y=1000·x^0.75 are the same 3/4 power law but a shape encoder scatters them. L10 fingerprints an input by WHICH FIXED LAWS it obeys (Ajani\'s Structural Compressor v3 as the law library + calibration oracle: fixed power laws 3/4·1/2·1·2/3·4/3·2·3·-1·-2, recursive fibonacci/doubling/halving, harmonic 1/2/3-cycle, and RELATIONAL power laws between the input\'s own field-pairs — how Kleiber is caught, metabolic~mass^3/4). Each coordinate is coherence (R²×signal-reduction) against one law; same-law inputs align across domains regardless of surface. SELF-GATED like L7/L8/L9: gain = strongest law-conformance; noise / lawless / non-numeric input → gain≈0 so it defers to L1-L9 and cannot degrade them. This is the ALIGNMENT/binding axis the null-family asked for — and the one the superconductor frame needs (bind the pattern to the host = correspondence between two representations). INACTIVE pending its validation (scripts/l10-alignment-validation.mjs — calibrate against v3\'s HIGH/NOISE calls, a same-law/different-scale alignment task where shape genuinely cannot fake it, and a run through the transfer nulls) and the composed_v* migration; reachable now via composedAtDepth(text, 10).',
+    active: false,
+  },
+  // L11+ slots reserved.
 ];
 
 function currentDepth() {

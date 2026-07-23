@@ -26,6 +26,32 @@ const path = require('node:path');
 const ORACLE = path.resolve(__dirname, '..');
 const PARENT = path.resolve(ORACLE, '..');
 
+// the label-blind encoder — gives each function its OWN structural signature so the
+// goggles can resonate what you're looking at directly against functions (not just files).
+let composedAtDepth = null;
+try { composedAtDepth = require('../src/core/encoder-stack').composedAtDepth; } catch (_) { /* engine-only */ }
+const SIG_DEPTH = 4; // composed_v1 (116-D) — matches the depth the goggles query at
+
+// extract a function's definition snippet from source for encoding its shape
+function bodyOf(src, name) {
+  const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pats = [
+    new RegExp('(?:async\\s+)?function\\s+' + esc + '\\b'),
+    new RegExp('(?:const|let|var)\\s+' + esc + '\\s*=\\s*(?:async\\s*)?(?:function|\\()'),
+    new RegExp('class\\s+' + esc + '\\b'),
+    new RegExp('\\b' + esc + '\\s*[:=]\\s*(?:async\\s*)?(?:function|\\()'),
+  ];
+  let at = -1;
+  for (const p of pats) { const m = p.exec(src); if (m && (at < 0 || m.index < at)) at = m.index; }
+  if (at < 0) return null;
+  return src.slice(at, at + 1600); // ~structural window; enough for the encoder to read shape
+}
+function sigOf(snippet) {
+  if (!composedAtDepth || !snippet) return null;
+  try { return Array.from(composedAtDepth(snippet, SIG_DEPTH)).map((x) => Math.round(x * 1e4) / 1e4); }
+  catch (_) { return null; }
+}
+
 // prefix (as the goggles print it) -> repo dir under the ecosystem parent.
 const REPOS = {
   'oracle': 'remembrance-oracle-toolkit',
@@ -80,7 +106,8 @@ function exportsOf(src) {
 }
 
 const byPath = {};
-let totalFunctions = 0;
+const functions = [];   // [{ n: name, p: path, s: signature }] — per-function structural signatures
+let totalFunctions = 0, signed = 0;
 const repoStats = {};
 
 for (const [prefix, rel] of Object.entries(REPOS)) {
@@ -96,6 +123,10 @@ for (const [prefix, rel] of Object.entries(REPOS)) {
     const key = prefix + '/' + path.relative(root, f).split(path.sep).join('/');
     byPath[key] = fns;
     n += fns.length;
+    for (const name of fns) {
+      const s = sigOf(bodyOf(src, name));
+      if (s) { functions.push({ n: name, p: key, s }); signed++; }
+    }
   }
   repoStats[prefix] = { files: Object.keys(byPath).filter((k) => k.startsWith(prefix + '/')).length, functions: n };
   totalFunctions += n;
@@ -105,10 +136,13 @@ const out = {
   generatedAt: new Date().toISOString(),
   repos: repoStats,
   totalFunctions,
+  signedFunctions: signed,
+  sigDepth: SIG_DEPTH,
   paths: Object.keys(byPath).length,
   byPath,
+  functions,   // per-function signatures for direct FUNCTION RESONANCE in the goggles
 };
 const dest = path.join(ORACLE, 'ecosystem-capabilities.json');
 fs.writeFileSync(dest, JSON.stringify(out, null, 0));
-console.error(`indexed ${totalFunctions} exported functions across ${Object.keys(byPath).length} modules -> ${dest}`);
+console.error(`indexed ${totalFunctions} exported functions (${signed} with signatures, depth ${SIG_DEPTH}) across ${Object.keys(byPath).length} modules -> ${dest}`);
 for (const [p, s] of Object.entries(repoStats)) console.error(`  ${p.padEnd(14)} ${s.functions} fns in ${s.files} modules`);

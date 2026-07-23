@@ -882,7 +882,11 @@ function auditFiles(files, options = {}) {
 // the built path. The canonical implementations legitimately contain these, so
 // they are exempt; a deliberate naive baseline can be suppressed with the usual
 // goggles-disable comment.
-const _SUBSTRATE_PRIMITIVE_FILES = /core[\\/]whitening|compression[\\/]holographic|core[\\/]fractal-index|core[\\/]field-tool|search[\\/]|scoring[\\/]pattern-resonance|waveform|audit[\\/]ast-checkers/;
+// The primitive tier — the substrate's OWN cosine/resonance/retrieval machinery. These files
+// ARE the thing other code is told to route through (composedCosine is the encoder's cosine;
+// the goggle is the measurement surface itself), so they cannot "route through the substrate"
+// — they are it. Consumers (sims, benchmarks) are still flagged.
+const _SUBSTRATE_PRIMITIVE_FILES = /core[\\/]whitening|compression[\\/]holographic|core[\\/]fractal-index|core[\\/]field-tool|core[\\/]encoder-stack|search[\\/]|scoring[\\/]pattern-resonance|waveform|tools[\\/]goggles|audit[\\/]ast-checkers/;
 function checkSubstrateBypass(source, emit, filePath) {
   if (_SUBSTRATE_PRIMITIVE_FILES.test(String(filePath || ''))) return;
   const lines = source.split('\n');

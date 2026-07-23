@@ -623,23 +623,20 @@ function main() {
   // that live in neighbour FILES, this finds functions whose structure resonates with
   // THIS content wherever they live. Built by scripts/build-capability-index.js.
   try {
-    let cad = null;
-    try { cad = require('../core/encoder-stack').composedAtDepth; } catch (_) { /* engine-only install */ }
+    let cad = null, ccos = null;
+    try { const es = require('../core/encoder-stack'); cad = es.composedAtDepth; ccos = es.composedCosine; } catch (_) { /* engine-only install */ }
     const idxPath = path.resolve(__dirname, '..', '..', 'ecosystem-capabilities.json');
-    if (cad && content && fs.existsSync(idxPath)) {
+    if (cad && ccos && content && fs.existsSync(idxPath)) {
       const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
       const funcs = idx.functions;
       if (Array.isArray(funcs) && funcs.length) {
-        const q = Array.from(cad(content, idx.sigDepth || 4));
-        let qn = 0; for (let i = 0; i < q.length; i++) qn += q[i] * q[i]; qn = Math.sqrt(qn) || 1;
+        const q = cad(content, idx.sigDepth || 4);   // encoder signature of the goggled content
         const selfBase = path.basename(file);
         const scored = [];
         for (const fn of funcs) {
           const s = fn.s; if (!s || s.length !== q.length) continue;
           if (fn.p && path.basename(fn.p) === selfBase) continue; // skip the file's own functions
-          let d = 0, sn = 0; for (let i = 0; i < q.length; i++) { d += q[i] * s[i]; sn += s[i] * s[i]; }
-          const c = sn > 1e-12 ? d / (qn * Math.sqrt(sn)) : 0;
-          scored.push([c, fn]);
+          scored.push([ccos(q, s), fn]);              // substrate's own cosine — not hand-rolled
         }
         scored.sort((a, b) => b[0] - a[0]);
         // de-dup by function name, keep the strongest

@@ -82,13 +82,13 @@ function _rSquared(y, pred) {
   let vt = 0, ve = 0; for (let i = 0; i < y.length; i++) { vt += (y[i] - m) ** 2; ve += (y[i] - pred[i]) ** 2; }
   vt /= n; ve /= n;
   if (vt < EPS) return ve < EPS ? 1 : 0;
-  return 1 - ve / vt;
+  return 1 - ve / (vt || 1);
 }
 function _reduction(y, resid) {
   let om = 0; for (const v of y) om += v * v; om = Math.sqrt(om / (y.length || 1));
   let rm = 0; for (const v of resid) rm += v * v; rm = Math.sqrt(rm / (resid.length || 1));
   if (om < EPS) return 0;
-  return 1 - rm / om;
+  return 1 - rm / (om || 1);
 }
 // coherence of a fit = clamp(r² × signal-reduction), only when r² clears the bar (else 0)
 function _coh(y, pred) {
@@ -121,9 +121,10 @@ function _recursiveCoh(y, a, b) {
 // harmonic: fixed period T=n/cycles; solve [sin,cos,1] by 3×3 normal equations
 function _harmonicCoh(y, cycles) {
   const n = y.length; if (n < 6) return 0;
-  const T = n / cycles;
-  const S = y.map((_, i) => Math.sin(2 * Math.PI * i / T));
-  const C = y.map((_, i) => Math.cos(2 * Math.PI * i / T));
+  const T = n / (cycles || 1);
+  const w = (2 * Math.PI) / (T || 1);   // guarded angular step; T>=2 by construction
+  const S = y.map((_, i) => Math.sin(w * i));
+  const C = y.map((_, i) => Math.cos(w * i));
   // normal equations M c = r, M = A^T A (3×3), A cols [S, C, 1]
   let m00 = 0, m01 = 0, m02 = 0, m11 = 0, m12 = 0, m22 = n, r0 = 0, r1 = 0, r2 = 0;
   for (let i = 0; i < n; i++) { m00 += S[i] * S[i]; m01 += S[i] * C[i]; m02 += S[i]; m11 += C[i] * C[i]; m12 += C[i]; r0 += S[i] * y[i]; r1 += C[i] * y[i]; r2 += y[i]; }
@@ -131,9 +132,9 @@ function _harmonicCoh(y, cycles) {
   const M = [[m00, m01, m02], [m01, m11, m12], [m02, m12, m22]];
   const det = M[0][0] * (M[1][1] * M[2][2] - M[1][2] * M[2][1]) - M[0][1] * (M[1][0] * M[2][2] - M[1][2] * M[2][0]) + M[0][2] * (M[1][0] * M[2][1] - M[1][1] * M[2][0]);
   if (Math.abs(det) < EPS) return 0;
-  const solve = (col) => { const A = M.map((row) => row.slice()); for (let i = 0; i < 3; i++) A[i][col === 0 ? 0 : col === 1 ? 1 : 2] = [r0, r1, r2][i]; return A; };
+  const dn = det || 1;   // det != 0 here by the guard above
   const dcol = (rep) => { const A = [[m00, m01, m02], [m01, m11, m12], [m02, m12, m22]]; for (let i = 0; i < 3; i++) A[i][rep] = [r0, r1, r2][i]; return A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]); };
-  const cs = dcol(0) / det, cc = dcol(1) / det, co = dcol(2) / det;
+  const cs = dcol(0) / dn, cc = dcol(1) / dn, co = dcol(2) / dn;
   const pred = y.map((_, i) => cs * S[i] + cc * C[i] + co);
   return _coh(y, pred);
 }

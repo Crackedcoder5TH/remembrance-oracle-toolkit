@@ -33,6 +33,7 @@ const { toContentProjection } = require('./content-projection');
 const { toDimensionalWaveform } = require('./dimensional-waveform');
 const { toDynamicalWaveform } = require('./dynamical-waveform');
 const { toRelationalWaveform } = require('./relational-waveform');
+const { toAlignmentWaveform } = require('./alignment-waveform');
 
 const DEFAULT_DEPTH = 2;
 
@@ -110,7 +111,14 @@ const _registry = [
     seed: 'residual L1-L8 leave: RELATIONAL IDENTITY — who binds to whom. Surfaced by a falsifiable test (the STRING-PPI v12 → HPA-expression bonus-structure kill-test): the stack reads SHAPE (redundancy, spectral/2D form, determinism) but is blind to community structure. Network topology carried NO signal about the expression-derived reprogramming lever past a degree-matched permutation null (z=-0.6), because a shape encoder cannot see who-binds-whom — the same false-equivalence class the L6 residual noted, now on GRAPH community rather than token identity. L9 imports the graph-community axis: it builds the token co-occurrence graph of the input, finds a partition by deterministic label propagation, and emits community features whose load-bearing coordinate is MODULARITY ABOVE THE DEGREE-PRESERVING NULL (the "does this decompose into tightly-bound groups beyond what degree forces" signal no shape layer asks about). SELF-GATED like L7/L8: gain = f(graph size, modularity-above-null contrast); trivial or random-wired or monotone inputs → gain≈0, so L9 defers to L1-L8 and cannot degrade their discrimination. INACTIVE pending its falsifiable validation (scripts/l9-community-validation.mjs — stochastic-block-model community vs a degree-preserving edge-shuffle surrogate with an identical token histogram, plus a held-out neutrality check) and the deliberate composed_v* migration; reachable now via composedAtDepth(text, 9). Validated the L7/L8 way (task test + surrogate null), NOT the projection consensus gate — this is a genuinely new signal orthogonal to the shape telescopes, which by construction it must diverge from.',
     active: false,
   },
-  // L10+ slots reserved.
+  {
+    id: 'L10-alignment',
+    dims: 29,
+    encode: toAlignmentWaveform,
+    seed: 'residual L1-L9 leave: CROSS-REPRESENTATION CORRESPONDENCE. Surfaced by the lens-fractal-compare receipt — the four transfer nulls (physics→biology, PPI→expression, cross-family SC, depth-compounding) compress into their OWN structural family distinct from every shape lens (null↔shape 0.854), and their shared thread is not within-input community (L9) but whether representation A obeys the SAME LAW as representation B despite different surface/scale. L1-L8 read the surface; two sequences y=3·x^0.75 and y=1000·x^0.75 are the same 3/4 power law but a shape encoder scatters them. L10 fingerprints an input by WHICH FIXED LAWS it obeys (Ajani\'s Structural Compressor v3 as the law library + calibration oracle: fixed power laws 3/4·1/2·1·2/3·4/3·2·3·-1·-2, recursive fibonacci/doubling/halving, harmonic 1/2/3-cycle, and RELATIONAL power laws between the input\'s own field-pairs — how Kleiber is caught, metabolic~mass^3/4). Each coordinate is coherence (R²×signal-reduction) against one law; same-law inputs align across domains regardless of surface. SELF-GATED like L7/L8/L9: gain = strongest law-conformance; noise / lawless / non-numeric input → gain≈0 so it defers to L1-L9 and cannot degrade them. This is the ALIGNMENT/binding axis the null-family asked for — and the one the superconductor frame needs (bind the pattern to the host = correspondence between two representations). INACTIVE pending its validation (scripts/l10-alignment-validation.mjs — calibrate against v3\'s HIGH/NOISE calls, a same-law/different-scale alignment task where shape genuinely cannot fake it, and a run through the transfer nulls) and the composed_v* migration; reachable now via composedAtDepth(text, 10).',
+    active: false,
+  },
+  // L11+ slots reserved.
 ];
 
 function currentDepth() {

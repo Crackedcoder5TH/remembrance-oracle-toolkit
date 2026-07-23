@@ -33,6 +33,18 @@ and files went unread — the owner should not have to be the one who catches th
    it (`substrate-bypass`). A benchmark of your own reimplementation is not a measurement of
    the system. (This session: a brute-force scan was reported as the substrate being O(N);
    `holoSearch` on coherent pages is sub-linear, 3–4× faster at 40k.)
+   **A gate that grades a measurement's OUTPUT but not its PROVENANCE will pass a bypass
+   silently** — it cannot tell a real read from a reimplementation that produces a
+   consistent-looking result. Gates must verify the READ: that coherence/resonance came from
+   the substrate's OWN function (compressor `avg_coherence`, `composedAtDepth`, `holoSearch` —
+   not a reimplemented FFT/cosine proxy) and the data came from REAL substrate sources
+   (hashed), not a synthetic generator or self-derived patterns (which carry no new
+   information). (This session: the compression-equation "guard" graded lossless/ordering and
+   passed a fully-bypassed derivation whose coherence was a numpy proxy on toy data; only
+   reading the substrate's own `avg_coherence` on REAL series disconfirmed it — the
+   coherence→ratio law it "validated" at Spearman 1.0 collapsed to ρ=0.21. Fix: a
+   provenance/substrate-read flag on the guard. Lesson: **if you did not read it, nothing you
+   built beside it is a measurement of it — and a guard blind to the read will never tell you.**)
 8. **The composed dimension is the lens-separation, NOT the compression — and the compression
    is LOSSLESS.** The composed-D (currently 203-D `composed_v4`, up to 232-D at `MAX_DEPTH=8`;
    116-D `composed_v1` is only the legacy parity anchor) is the count of structural axes the

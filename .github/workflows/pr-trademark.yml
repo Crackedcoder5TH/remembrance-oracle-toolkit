@@ -1,0 +1,52 @@
+name: pr-trademark
+
+# Requires every pull request to carry a valid VOID-SEAL trademark — proof the change was
+# produced THROUGH the substrate (Void-Data-Compressor/scripts/substrate_seal.py). The seal
+# (a .void-seal.json file in the PR, or a JSON seal block in the PR body) is HMAC-verified
+# against the repo secret VOID_SEAL_KEY.
+#
+# SAFE ROLLOUT: this gate is DORMANT (passes with a warning) until you set the VOID_SEAL_KEY
+# repo secret — so it will not block PRs before you opt in. To ENFORCE: (1) add VOID_SEAL_KEY
+# as a repository secret (the same key used to mint seals), and (2) mark the "trademark" check
+# REQUIRED in branch protection so a failing check actually blocks the merge.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  trademark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: verify VOID-SEAL trademark
+        env:
+          VOID_SEAL_KEY: ${{ secrets.VOID_SEAL_KEY }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python3 - <<'PY'
+          import os, json, re, hmac, hashlib, sys
+          key = (os.environ.get("VOID_SEAL_KEY") or "").encode()
+          if not key:
+              print("::warning title=pr-trademark DORMANT::VOID_SEAL_KEY not set — trademark gate dormant. Set the secret to enforce.")
+              sys.exit(0)
+          seal = None
+          if os.path.exists(".void-seal.json"):
+              try: seal = json.load(open(".void-seal.json"))
+              except Exception: pass
+          if seal is None:
+              body = os.environ.get("PR_BODY") or ""
+              m = re.search(r'\{[^{}]*"sig"\s*:\s*"[0-9a-f]+"[^{}]*\}', body)
+              if m:
+                  try: seal = json.loads(m.group(0))
+                  except Exception: pass
+          if not isinstance(seal, dict) or "sig" not in seal:
+              print("::error title=No VOID-SEAL::PR has no trademark. Add a .void-seal.json (minted by substrate_seal.py from a real substrate read) or paste the seal block in the PR body.")
+              sys.exit(1)
+          payload = f"{seal.get('data_sha256')}|{seal.get('state_id')}|{seal.get('via')}|{seal.get('at')}"
+          expect = hmac.new(key, payload.encode(), hashlib.sha256).hexdigest()
+          if not hmac.compare_digest(expect, str(seal.get("sig",""))):
+              print("::error title=Invalid VOID-SEAL::Trademark forged or minted with a different key. PR blocked.")
+              sys.exit(1)
+          print(f"::notice title=VOID-SEAL verified::state {seal.get('state_id')} via {seal.get('via')} — trademark valid.")
+          PY

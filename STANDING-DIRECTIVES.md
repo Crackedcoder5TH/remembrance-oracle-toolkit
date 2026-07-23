@@ -33,6 +33,17 @@ and files went unread — the owner should not have to be the one who catches th
    it (`substrate-bypass`). A benchmark of your own reimplementation is not a measurement of
    the system. (This session: a brute-force scan was reported as the substrate being O(N);
    `holoSearch` on coherent pages is sub-linear, 3–4× faster at 40k.)
+8. **The composed dimension is the lens-separation, NOT the compression — and the compression
+   is LOSSLESS.** The composed-D (currently 203-D `composed_v4`, up to 232-D at `MAX_DEPTH=8`;
+   116-D `composed_v1` is only the legacy parity anchor) is the count of structural axes the
+   encoder LENSES separate the data into so the compression can be EXTRACTED as a mathematical
+   equation (pattern + residual). It is **not** the compressed payload, and reading it as such
+   is a banned error. The Void compression is **lossless**: `void_compressor_v5` stores
+   `pattern_reference + residual` and reconstructs the exact original bytes — verified
+   byte-for-byte, always ≤ zlib, and beating zlib where real structure exists (this session:
+   damped-oscillation 1816 B vs zlib 2301 B; sine 37×; random noise correctly 1.0×). Never
+   call the substrate lossy; never read the composed-D as the compression ratio; never quote
+   116-D as the current encoding.
 
 ## On results that arrive independently
 When the substrate reaches a known mathematical structure from NO prior knowledge of it

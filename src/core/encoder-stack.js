@@ -8,10 +8,12 @@
  * function; it's a stack that grows as the substrate finds residual
  * that current layers don't explain.
  *
- *   depth 1 (L1):        structural fractal      29-D
- *   depth 2 (L1+L2):     + lexical waveform     +29-D → 58-D
- *   depth 3 (L1+L2+L3):  + (next encoder)       +29-D → 87-D
- *   ...
+ *   depth 1 (L1):  structural fractal   29-D
+ *   depth 4:       +L2 lexical +L3 numerical +L4 spectral → 116-D  (composed_v1, legacy parity anchor)
+ *   depth 7:       +L5 redundancy +L6 content +L7 dimensional → 203-D  (composed_v4, live)
+ *   depth 8:       +L8 dynamical → 232-D  (active stack; MAX_DEPTH)
+ *   L9 relational, L10 alignment: registered, INACTIVE (validated, not yet earned).
+ *   (These are LENS axes, not the compressed payload — see the disclaimer below.)
  *
  * Each layer encoder is registered with a `seed`: the kind of
  * residual it was designed to explain. The residual monitor (in
@@ -22,6 +24,21 @@
  * the stack at currentDepth(); if compression finds collisions
  * (residual signal), the stack activates the next registered layer.
  * Encoder spawning is part of compression, not a separate process.
+ *
+ * ─────────────────────────────────────────────────────────────────
+ * DISCLAIMER — what the composed dimensionality IS (and is NOT):
+ * The composed vector's dimension (29-D per layer; 203-D `composed_v4`
+ * live, up to 232-D at MAX_DEPTH=8; 116-D `composed_v1` is only the
+ * legacy parity anchor) is the number of structural AXES the lenses
+ * separate the data into — the coordinate frame in which the
+ * compression is EXTRACTED as a mathematical equation (pattern +
+ * residual). It is NOT the compressed payload and it is NOT a lossy
+ * fingerprint. The Void compression itself (see void_compressor_v5.py)
+ * is LOSSLESS: it stores `pattern_reference + residual` and
+ * reconstructs the exact original bytes (verified byte-for-byte, always
+ * ≤ zlib). Do not read this dimension as "the compression" or as a
+ * compression ratio — it is the lens frame the equation is written in.
+ * ─────────────────────────────────────────────────────────────────
  */
 
 const { toFractalWaveform } = require('./fractal-waveform');

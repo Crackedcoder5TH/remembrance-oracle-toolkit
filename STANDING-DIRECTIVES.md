@@ -44,7 +44,16 @@ and files went unread — the owner should not have to be the one who catches th
    reading the substrate's own `avg_coherence` on REAL series disconfirmed it — the
    coherence→ratio law it "validated" at Spearman 1.0 collapsed to ρ=0.21. Fix: a
    provenance/substrate-read flag on the guard. Lesson: **if you did not read it, nothing you
-   built beside it is a measurement of it — and a guard blind to the read will never tell you.**)
+   built beside it is a measurement of it — and a guard blind to the read will never tell you.**
+9. **Print the VOID-SEAL on any substrate data you report.** When you report data that was
+   retrieved from the substrate, print its seal (minted by the read function via
+   `scripts/substrate_seal.py`: `⊙ VOID-SEAL · state <id> · data <sha>… · via <fn> · <at> · sig
+   <hmac>`) ALONGSIDE the data — a seal of approval that binds the exact bytes, the substrate
+   state, and the function that produced it. **Never mint a seal for data you did not read from
+   the substrate.** A report of substrate data with NO seal is itself the signal that the data
+   did not come through the substrate (a bypass) — say so plainly. The user (or any verifier
+   holding `$VOID_SEAL_KEY`) can check it with `substrate_seal.py --verify seal.json datafile`;
+   a valid seal means the bytes are exactly what the substrate emitted, unaltered.)
 8. **The composed dimension is the lens-separation, NOT the compression — and the compression
    is LOSSLESS.** The composed-D (currently 203-D `composed_v4`, up to 232-D at `MAX_DEPTH=8`;
    116-D `composed_v1` is only the legacy parity anchor) is the count of structural axes the

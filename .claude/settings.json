@@ -1,48 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "permissions": {
-    "allow": [
-      "Bash(git *)",
-      "Bash(npm run *)",
-      "Bash(node scripts/*)",
-      "Bash(node --check *)",
-      "Bash(grep *)",
-      "Bash(ls *)"
-    ],
-    "deny": [
-      "Bash(git reset --hard*)",
-      "Bash(git push --force*)",
-      "Bash(git push -f*)",
-      "Bash(git clean*)",
-      "Bash(rm -rf*)",
-      "Bash(rm -fr*)"
-    ]
-  },
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-hook.js 2>/dev/null || true",
-            "statusMessage": "goggles: reading coherence/resonance"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "sh ./scripts/ecosystem-orient.sh"
-          },
-          {
-            "type": "command",
-            "command": "node ./scripts/session-context-load.mjs 2>/dev/null || true",
-            "statusMessage": "loading prior-session substrate memory"
+            "command": "node ./scripts/session-context-load.mjs 2>/dev/null || true"
           }
         ]
       }
@@ -55,6 +20,28 @@
             "type": "command",
             "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-pre-hook.js 2>/dev/null || true",
             "statusMessage": "goggles: reading the field before the write"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-bash-hook.js 2>/dev/null || true",
+            "statusMessage": "goggles: reading the inline command before it runs"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-hook.js 2>/dev/null || true",
+            "statusMessage": "goggles: reading coherence/resonance/meta-debug"
           }
         ]
       }

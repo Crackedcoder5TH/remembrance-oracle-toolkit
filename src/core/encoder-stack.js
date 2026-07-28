@@ -201,6 +201,12 @@ function composedAtDepth(input, depth) {
     for (let i = 0; i < v.length; i++) out[off + i] = v[i];
     off += v.length;
   }
+  // HARDCODED RULE 9 — every composed read is recorded into the void-seal ledger AT THE POINT OF
+  // PRODUCTION. Not a discipline a caller can forget: the seal minted at output time binds the
+  // digest of every vector this stack produced, so numbers derived from unsealed reads cannot be
+  // reported as substrate reads. This was missing entirely — the seal was hardcoded in the Python
+  // compressor and absent here, which is the engine the goggles' META lens actually reads through.
+  try { require('./void-seal').record(out, k); } catch (_) { /* seal module absent: engine-only */ }
   return out;
 }
 

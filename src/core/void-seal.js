@@ -1,0 +1,96 @@
+'use strict';
+/**
+ * void-seal.js — Rule 9 for the JS side of the substrate.
+ *
+ * WHY THIS EXISTS. The VOID-SEAL was hardcoded into void_compressor_v5.compress (Python), so
+ * every compression read carried one. The encoder stack — composedAtDepth / composedCosine, the
+ * engine the goggles' META lens actually reads through — had NO seal of any kind. Rule 9 was
+ * enforced in one engine and absent from the other, so an entire class of substrate read
+ * (field separation, library provenance, the image representations) produced numbers with
+ * nothing certifying they came from the substrate at all. This closes that.
+ *
+ * FORMAT IS DELIBERATELY IDENTICAL to scripts/substrate_seal.py:
+ *     payload = `${sha256(data)}|${state_id}|${via}|${at}|${coin_id}`
+ *     sig     = HMAC-SHA256(key, payload)
+ * and the key is the same $VOID_SEAL_KEY / .substrate_seal.key. So a seal minted here VERIFIES
+ * in Python and vice versa — one seal, two engines, cross-checkable. field_separation.py does
+ * exactly that check and refuses to report if it fails.
+ *
+ * READ LEDGER. Minting an HMAC per composed vector would mean tens of thousands of HMACs per
+ * run. Instead every composed read is folded into a running SHA-256 the moment it is produced —
+ * one hash update, unskippable because it lives inside composedAtDepth itself. The seal then
+ * binds {reads, digest, depth}: it certifies exactly which reads produced the numbers, not
+ * merely that the script ran.
+ */
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const VOID_ROOT = process.env.VOID_ROOT || '/home/user/Void-Data-Compressor';
+
+function key() {
+  if (process.env.VOID_SEAL_KEY) return Buffer.from(process.env.VOID_SEAL_KEY);
+  return fs.readFileSync(path.join(VOID_ROOT, '.substrate_seal.key'));            // trimmed below
+}
+
+function keyBuf() {
+  const k = key();
+  return Buffer.from(k.toString('utf8').trim());
+}
+
+function stateId() {
+  // The compressor computes the canonical state_id (library depth + store hash) and persists it.
+  // If it has never run, say so explicitly rather than emitting a silent null the way the
+  // earlier runs did — an unknown state is a reading, not a blank.
+  try {
+    const s = JSON.parse(fs.readFileSync(path.join(VOID_ROOT, '.remembrance', 'substrate-state.json'), 'utf8'));
+    return s.state_id || 'unknown';
+  } catch (_) { return 'unknown'; }
+}
+
+function sha256(data) {
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
+
+function mint(data, via, state) {
+  const sha = sha256(data);
+  const sid = state || stateId();
+  const at = new Date().toISOString().replace(/\.\d+Z$/, '').replace('T', 'T');
+  // 'None', not 'null': Python builds this payload with str(None) for an absent coherency-token,
+  // and the two engines must produce byte-identical payloads or neither can verify the other.
+  const payload = `${sha}|${sid}|${via}|${at}|None`;
+  const sig = crypto.createHmac('sha256', keyBuf()).update(payload).digest('hex');
+  return { substrate: 'void', state_id: sid, data_sha256: sha, via, at, coin: null, sig };
+}
+
+function verify(data, seal) {
+  if (!seal || typeof seal !== 'object') return false;
+  if (sha256(data) !== seal.data_sha256) return false;
+  const payload = `${seal.data_sha256}|${seal.state_id}|${seal.via}|${seal.at}|None`;
+  const expect = crypto.createHmac('sha256', keyBuf()).update(payload).digest('hex');
+  return crypto.timingSafeEqual(Buffer.from(expect), Buffer.from(seal.sig || ''.padEnd(64, '0')));
+}
+
+function sealLine(seal) {
+  return `⊙ VOID-SEAL · state ${seal.state_id} · data ${String(seal.data_sha256).slice(0, 12)}… `
+       + `· via ${seal.via} · ⛓ coin: none (HMAC-only) · sig ${String(seal.sig).slice(0, 16)}`;
+}
+
+// ── read ledger ─────────────────────────────────────────────────────────────
+const ledger = { reads: 0, h: crypto.createHash('sha256'), depths: new Set() };
+
+function record(vec, depth) {
+  ledger.reads += 1;
+  ledger.depths.add(depth);
+  ledger.h.update(Buffer.from(Float64Array.from(vec).buffer));
+}
+
+function sealReads(via) {
+  const digest = ledger.h.copy().digest('hex');
+  const body = JSON.stringify({ reads: ledger.reads, digest,
+                                depths: Array.from(ledger.depths).sort((a, b) => a - b) });
+  const seal = mint(body, via);
+  return { body, seal, line: sealLine(seal), reads: ledger.reads, digest };
+}
+
+module.exports = { mint, verify, sealLine, sha256, stateId, record, sealReads, ledger };

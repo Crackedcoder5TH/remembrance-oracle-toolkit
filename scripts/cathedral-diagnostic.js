@@ -272,8 +272,17 @@ function formatMarkdown(report) {
 async function main() {
   const args = process.argv.slice(2);
   const jsonOnly = args.includes('--json-only');
-  const doFix = args.includes('--fix');
-  const dryFix = args.includes('--dry-fix');
+  // Auto-fix WRITES are disabled: the division-guard generator rewrote
+  // JSX prose ("Credit / Debit Card" → a broken ternary) because the
+  // token parser reads text-node slashes as division operators. Until
+  // the generators are JSX-safe and regression-tested, --fix downgrades
+  // to a dry run; ORACLE_AUTOFIX=1 is the explicit escape hatch.
+  const fixRequested = args.includes('--fix');
+  const doFix = fixRequested && process.env.ORACLE_AUTOFIX === '1';
+  const dryFix = args.includes('--dry-fix') || (fixRequested && !doFix);
+  if (fixRequested && !doFix) {
+    console.log('[diagnostic] auto-fix writes are DISABLED (JSX prose corruption risk) — running dry. Set ORACLE_AUTOFIX=1 to force.');
+  }
   const suggestSup = args.includes('--suggest-suppressions');
   const pathArg = args.indexOf('--path');
   const scanRoot = pathArg >= 0 && args[pathArg + 1]

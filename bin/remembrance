@@ -8,7 +8,7 @@
 # Subcommands:
 #   remembrance status        — ecosystem health + ratchet verdict
 #   remembrance audit         — run cathedral + ecosystem diagnostics
-#   remembrance fix           — auto-fix mechanical findings
+#   remembrance fix           — preview mechanical fixes (writes disabled)
 #   remembrance ratchet       — covenant + ecosystem ratchet checks
 #   remembrance baseline      — stamp current state as covenant baseline
 #   remembrance cathedral     — start the Valor Legacies dev server
@@ -113,7 +113,7 @@ Usage: remembrance <command> [...args]
 Commands:
   status       Ecosystem health + ratchet verdict (quick glance)
   audit        Run cathedral + cross-repo diagnostics
-  fix          Auto-fix mechanical findings in the cathedral
+  fix          Preview mechanical fixes (dry-run; writes disabled — ORACLE_AUTOFIX=1 to force)
   ratchet      Enforce the covenant ratchet (fails on regression)
   baseline     Stamp current state as the covenant baseline
   cathedral    Start Valor Legacies dev server (npm run dev)

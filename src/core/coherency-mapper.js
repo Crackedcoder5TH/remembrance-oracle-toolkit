@@ -42,6 +42,26 @@ const DEFAULT_SKIP_DIRS = new Set([
   'coverage', '.nyc_output', '.remembrance', '.cache',
 ]);
 
+// Substrate namespaces that are THIS repo's subtrees under an older
+// name. The cathedral was ingested standalone as `website/*` before it
+// moved into the oracle repo at digital-cathedral/ — without the alias,
+// every cathedral file's own substrate memory reads as a 1.000
+// "cross-system bridge" to a phantom sibling project (the misreading
+// that once diagnosed a nonexistent site fork). Bridge scans treat an
+// aliased self-match as identity, not bridge; drift lenses use it to
+// find a file's memory. (propose-wire.js keeps the inverse map for
+// path resolution.)
+const SUBSTRATE_PATH_ALIASES = { website: 'digital-cathedral' };
+
+/** Substrate names under which rel's own memory may live, aliases included. */
+function substrateSelfNames(namespace, rel) {
+  const names = [namespace + '/' + rel];
+  for (const [ns, subtree] of Object.entries(SUBSTRATE_PATH_ALIASES)) {
+    if (rel.startsWith(subtree + '/')) names.push(ns + '/' + rel.slice(subtree.length + 1));
+  }
+  return names;
+}
+
 const DEFAULT_CATEGORIZER = (rel) => {
   if (rel.startsWith('app/api/')) {
     if (rel.includes('/portal/') || rel.includes('/client/')) return 'api/portal';
@@ -601,9 +621,13 @@ function mapFromSubstrate(projectPath, opts = {}) {
     const l1 = fractals.get(prefix + r.rel);
     const cv = composed.get(prefix + r.rel);
     if (!l1) continue;
+    // The file's own memory under an aliased namespace is identity,
+    // never a bridge.
+    const selfAliases = new Set(substrateSelfNames(namespace, r.rel).slice(1));
     let bestName = null, bestScore = -1;
     for (const [name, vec] of fractals) {
       if (name.startsWith(prefix)) continue;
+      if (selfAliases.has(name)) continue;
       let dot = 0, na = 0, nb = 0;
       for (let k = 0; k < 29; k++) {
         const x = l1[k] || 0, y = vec[k] || 0;
@@ -899,4 +923,6 @@ module.exports = {
   DEFAULT_EXTENSIONS,
   DEFAULT_SKIP_DIRS,
   DEFAULT_CATEGORIZER,
+  SUBSTRATE_PATH_ALIASES,
+  substrateSelfNames,
 };

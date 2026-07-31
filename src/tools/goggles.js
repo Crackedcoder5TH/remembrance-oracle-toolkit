@@ -459,7 +459,18 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
       const { VoidLibrary } = require('../core/void-library');
       const lib = new VoidLibrary();
       if (lib.size() > 0 && lib._composed) {
-        const memoryVec = lib._composed.get((m.project || '') + '/' + rel);
+        // A file's memory may live under an aliased namespace (e.g. the
+        // cathedral's pre-move ingestion as website/*) — try all self-names.
+        let memoryVec = null;
+        try {
+          const { substrateSelfNames } = require('../core/coherency-mapper');
+          for (const n of substrateSelfNames(m.project || '', rel)) {
+            memoryVec = lib._composed.get(n);
+            if (memoryVec) break;
+          }
+        } catch {
+          memoryVec = lib._composed.get((m.project || '') + '/' + rel);
+        }
         if (memoryVec) {
           const f = _flowCosines(liveFileVec, memoryVec);
           const label = _flowLabel(f);

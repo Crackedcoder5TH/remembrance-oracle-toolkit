@@ -366,6 +366,22 @@ if [ "$ORACLE_ENABLED" = "false" ]; then
   exit 0
 fi
 
+# Every stage below is advisory — nothing here can block a commit that
+# already happened — so the pipeline runs DETACHED: git returns
+# immediately, the field-feeding continues in the background, output
+# lands in .remembrance/post-commit.log. ORACLE_HOOK_SYNC=1 restores
+# the old foreground behavior (CI, debugging). A lockfile serializes
+# rapid consecutive commits; a stale lock (>30 min) is swept.
+HOOK_LOG="$REPO_ROOT/.remembrance/post-commit.log"
+HOOK_LOCK="$REPO_ROOT/.remembrance/post-commit.lock"
+mkdir -p "$REPO_ROOT/.remembrance" 2>/dev/null
+find "$HOOK_LOCK" -mmin +30 -delete 2>/dev/null
+if [ -z "$ORACLE_HOOK_SYNC" ] && [ -f "$HOOK_LOCK" ]; then
+  echo "Oracle: post-commit pipeline already running — this commit's sweep skipped (next commit re-feeds)"
+  exit 0
+fi
+
+run_pipeline() {
 ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
   try {
     const path = require('path');
@@ -540,6 +556,19 @@ ORACLE_REPO_ROOT="$REPO_ROOT" node -e "
     } catch(_) {}
   }
 " 2>/dev/null || true
+}
+
+if [ -n "$ORACLE_HOOK_SYNC" ]; then
+  run_pipeline
+else
+  (
+    touch "$HOOK_LOCK"
+    trap 'rm -f "$HOOK_LOCK"' EXIT
+    run_pipeline
+  ) >"$HOOK_LOG" 2>&1 &
+  echo "Oracle: post-commit pipeline detached (log: .remembrance/post-commit.log)"
+fi
+exit 0
 `;
 }
 

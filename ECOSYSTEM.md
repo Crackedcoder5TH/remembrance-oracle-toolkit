@@ -77,15 +77,20 @@ reconcile — divergence means one of them is wrong.
 ### d. Swarm review (touching > 1 file or > 50 lines)
 ```
 cd <path-to>/REMEMBRANCE-AGENT-Swarm-
-node src/cli.js dispatch review --target <repo>/<branch>
+node src/swarm-cli.js review <changed-file>
 ```
-The swarm runs N independent agents and returns consensus. Solo changes ship
-without; multi-file changes must pass.
+The swarm runs N independent agents and returns consensus (readiness:
+`node src/swarm-cli.js status`; needs ≥ minAgents providers). With no
+provider quorum, inject candidates instead — the swarm scores them
+keylessly: `node src/swarm-cli.js run "<task>" --candidate @answer.md`.
+Solo changes ship without; multi-file changes must pass.
 
 ### e. Compress into the data substrate (for reusable patterns)
 ```
+cd <path-to>/remembrance-oracle-toolkit
+node scripts/export-oracle-patterns.js     # stage patterns → void_inbox
 cd <path-to>/Void-Data-Compressor
-python3 src/cli.py absorb --pattern-id <quantum-field-id>
+python3 oracle_inbox.py                    # absorb staged patterns
 ```
 Substrate is the long-term store. Patterns not absorbed decay out of the
 quantum field via temporal decoherence.
@@ -93,7 +98,7 @@ quantum field via temporal decoherence.
 ### f. Commit to the ledger (for covenant-sealed, test-proof changes)
 ```
 cd <path-to>/REMEMBRANCE-BLOCKCHAIN
-node src/cli.js publish --hash <fix-pattern-hash> --coherency <0..1>
+node src/cli.js publish <pattern-json-or-file>
 ```
 Public verifiable record. Required for any change that touches
 `harmPotential` or alters covenant validators.

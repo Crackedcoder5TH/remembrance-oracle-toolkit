@@ -139,8 +139,17 @@ function runMap(dir, { deep = false } = {}) {
     console.log('\nSUBSTRATE MODE (read from existing compression, nothing re-encoded):');
     console.log('  substrate: ' + m.substrateSize + ' patterns · map built in ' + (m.durationMs / 1000).toFixed(1) + 's');
     const cov = m.coverage || {};
+    const gb = cov.ghostBreakdown;
     console.log('  coverage:  ' + cov.indexedFiles + ' indexed of ' + cov.walkedFiles + ' on disk'
-      + ' · ' + cov.unindexedCount + ' unindexed · ' + cov.ghostCount + ' ghosts (indexed, no longer on disk)');
+      + ' · ' + cov.unindexedCount + ' unindexed');
+    if (gb) {
+      console.log('  index-only entries: ' + gb.seededPatternCount + ' seeded patterns (never files)'
+        + ' · ' + gb.walkInvisibleCount + ' on disk but outside walk rules'
+        + ' · ' + gb.deletedCount + ' deleted since ingestion');
+      for (const d of (gb.deleted || []).slice(0, 5)) console.log('    deleted: ' + d);
+    } else {
+      console.log('  index-only entries: ' + cov.ghostCount);
+    }
     if (cov.unindexedCount > 0) {
       console.log('  unindexed (not yet witnessed by the substrate — run --deep or re-harvest):');
       for (const u of (cov.unindexed || []).slice(0, 8)) console.log('    ' + u);
@@ -149,9 +158,13 @@ function runMap(dir, { deep = false } = {}) {
   const cohs = (m.files || []).map((f) => f.coherence).filter((c) => typeof c === 'number').sort((a, b) => a - b);
   if (cohs.length) {
     const median = cohs[Math.floor(cohs.length / 2)];
+    const truncCount = (m.files || []).filter((f) => f.flags && f.flags.includes('TRUNCATED')).length;
     console.log('\nREPO COHERENCE DISTRIBUTION:');
     console.log('  mean ' + (m.meanCoherence ?? 0).toFixed(3) + ' · median ' + median.toFixed(3)
       + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3));
+    if (truncCount) {
+      console.log('  ' + truncCount + ' file(s) over the encode cap: coherence withheld (TRUNCATED), siblings still counted');
+    }
     const weakest = (m.files || []).filter((f) => typeof f.coherence === 'number')
       .sort((a, b) => a.coherence - b.coherence).slice(0, 5);
     console.log('  weakest structure:');

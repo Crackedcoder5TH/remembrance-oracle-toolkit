@@ -33,6 +33,7 @@ const DEFAULT_EXTENSIONS = [
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
   '.py', '.rs', '.go', '.rb', '.java',
   '.md', '.json', '.toml', '.yaml', '.yml', '.css', '.html',
+  '.sh', // harvest ingests shell scripts — walk parity, else they read as ghosts
 ];
 
 const DEFAULT_SKIP_DIRS = new Set([
@@ -216,8 +217,16 @@ function mapProjectCoherency(projectPath, opts = {}) {
     fileIdx++;
     const tFile = Date.now();
     let content;
-    try { content = fs.readFileSync(f, 'utf8').slice(0, contentCap); } catch { continue; }
+    try { content = fs.readFileSync(f, 'utf8'); } catch { continue; }
     if (content.length < 60) continue;
+    // Files beyond the cap are encoded from a truncated prefix. The cut
+    // lands mid-function, so the *intrinsic coherence* of the truncated
+    // text is a reading of the truncation, not the file — withhold it
+    // (TRUNCATED flag) rather than let clipped files masquerade as the
+    // repo's weakest structure. Sibling/duplicate vectors still count:
+    // a 64k prefix is plenty of signal for kinship.
+    const truncated = content.length > contentCap;
+    if (truncated) content = content.slice(0, contentCap);
 
     const rel = path.relative(projectPath, f);
     const category = categorize(rel);
@@ -264,6 +273,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
     }
 
     const flags = [];
+    if (truncated) flags.push('TRUNCATED');
     if (stableHighSameProject.length === 0) flags.push('ORPHAN');
     if (duplicates.length > 0) flags.push('DUPLICATE');
     if (category.startsWith('api/') && stableHighSameCategory.length === 0 && stableHighSameProject.length > 0) flags.push('INCONSISTENT');
@@ -274,8 +284,10 @@ function mapProjectCoherency(projectPath, opts = {}) {
     results.push({
       rel, category, flags,
       // intrinsic structural coherence — distinct from the resonance-based
-      // neighbour stats below (sameProject/sameCategory derive from voidResonance)
-      coherence: r.coherence,
+      // neighbour stats below (sameProject/sameCategory derive from voidResonance).
+      // Withheld (null) for TRUNCATED files: the clipped text's structure
+      // is not the file's structure.
+      coherence: truncated ? null : r.coherence,
       sameProject: sameProject.length,
       sameCategory: sameCategory.length,
       stableHighSameProject: stableHighSameProject.length,
@@ -318,6 +330,9 @@ function mapProjectCoherency(projectPath, opts = {}) {
           ? { name: siblings[0].rel, d4: siblings[0].d4, shape: siblings[0].shape, score: siblings[0].d4 }
           : null;
         const flags = [];
+        // Preserve content-derived flags (TRUNCATED) — this rebuild only
+        // owns the resonance-derived ones.
+        if (r.flags.includes('TRUNCATED')) flags.push('TRUNCATED');
         if (stableHigh === 0) flags.push('ORPHAN');
         if (duplicates.length > 0) flags.push('DUPLICATE');
         if (r.category.startsWith('api/') && stableHighSameCategory === 0 && stableHigh > 0) flags.push('INCONSISTENT');
@@ -380,8 +395,11 @@ function mapProjectCoherency(projectPath, opts = {}) {
   function ctr(coh, src) {
     try { fc.contribute({ cost: 1.0, coherence: coh, source: src }); contributionsCount++; } catch {}
   }
-  const meanCoherence = results.length
-    ? results.reduce((s, r) => s + (r.coherence || 0), 0) / results.length
+  // Mean over SCORED files only — TRUNCATED files carry coherence:null
+  // and must not enter the average as zeros.
+  const scored = results.filter(r => typeof r.coherence === 'number');
+  const meanCoherence = scored.length
+    ? scored.reduce((s, r) => s + r.coherence, 0) / scored.length
     : 0;
   ctr(meanCoherence, 'coherency-map:' + namespace + ':structural');
   ctr(1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2), 'coherency-map:' + namespace + ':non-duplication');
@@ -533,12 +551,25 @@ function mapFromSubstrate(projectPath, opts = {}) {
 
   const entryRels = new Set(entries.map(e => e.rel));
   const unindexed = walked.filter(r => !entryRels.has(r));
-  // Entries whose rel is not a file on disk: either files deleted since
-  // ingestion, or older-vintage pattern-style entries (name:language).
-  // They stay in the sibling pool (a file's duplicate may live there)
-  // but are excluded from the per-file health table — a map of the repo
-  // should count the repo's files, not the substrate's history.
-  const ghosts = entries.filter(e => !walkedSet.has(e.rel)).map(e => e.rel);
+  // Entries the walk didn't see are NOT one population, and reporting
+  // them under one "ghosts (no longer on disk)" label misreads 98% of
+  // them. Split by what each entry actually is:
+  //   seededPatterns — pattern-style names (`lru-cache-rs:rust`), seeded
+  //     library entries that were never repo files;
+  //   walkInvisible  — files that EXIST on disk but the walk skips
+  //     (extension/dir outside the walk rules);
+  //   deleted        — path-style entries genuinely absent from disk.
+  // All three stay in the sibling pool (a file's duplicate may live
+  // there) but are excluded from the per-file health table — a map of
+  // the repo should count the repo's files, not the substrate's history.
+  const ghostBreakdown = { seededPatterns: [], walkInvisible: [], deleted: [] };
+  for (const e of entries) {
+    if (walkedSet.has(e.rel)) continue;
+    if (e.rel.includes(':')) ghostBreakdown.seededPatterns.push(e.rel);
+    else if (fs.existsSync(path.join(projectPath, e.rel))) ghostBreakdown.walkInvisible.push(e.rel);
+    else ghostBreakdown.deleted.push(e.rel);
+  }
+  const ghosts = [].concat(ghostBreakdown.seededPatterns, ghostBreakdown.walkInvisible, ghostBreakdown.deleted);
 
   // 4. In-namespace pairwise depth-flow: nearest sibling, stable-high
   //    count, duplicates. One 116-dim sweep per pair. Flags are
@@ -667,6 +698,13 @@ function mapFromSubstrate(projectPath, opts = {}) {
       unindexedCount: unindexed.length,
       ghosts: ghosts.slice(0, 30),
       ghostCount: ghosts.length,
+      ghostBreakdown: {
+        seededPatternCount: ghostBreakdown.seededPatterns.length,
+        walkInvisibleCount: ghostBreakdown.walkInvisible.length,
+        walkInvisible: ghostBreakdown.walkInvisible.slice(0, 10),
+        deletedCount: ghostBreakdown.deleted.length,
+        deleted: ghostBreakdown.deleted.slice(0, 10),
+      },
     },
     files: results.map(r => ({
       rel: r.rel, category: r.category, coherence: r.coherence, flags: r.flags,
@@ -700,6 +738,7 @@ function _inferLang(rel) {
     '.py': 'python', '.rs': 'rust', '.go': 'go', '.rb': 'ruby', '.java': 'java',
     '.md': 'markdown', '.json': 'json', '.toml': 'toml',
     '.yaml': 'yaml', '.yml': 'yaml', '.css': 'css', '.html': 'html',
+    '.sh': 'bash',
   })[ext] || 'unknown';
 }
 

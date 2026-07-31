@@ -201,6 +201,12 @@ function composedAtDepth(input, depth) {
     for (let i = 0; i < v.length; i++) out[off + i] = v[i];
     off += v.length;
   }
+  // HARDCODED RULE 9 — every composed read is recorded into the void-seal
+  // ledger AT THE POINT OF PRODUCTION, not as a caller discipline: the seal
+  // minted at output time binds the digest of every vector this stack
+  // produced, so numbers derived from unsealed reads cannot be reported as
+  // substrate reads. (Harvested from the audit-remembrance-ecosystem branch.)
+  try { require('./void-seal').record(out, k); } catch (_) { /* seal module absent: engine-only */ }
   return out;
 }
 

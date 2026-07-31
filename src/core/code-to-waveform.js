@@ -22,10 +22,11 @@
  * Field-memory entries with legacy `waveform: [256 floats]` will simply
  * not match new queries until re-encoded.
  *
- * Cross-language parity: Void's `to_waveform.py` is still the byte
- * version (contracts C-49/C-50). Until `to_fractal_waveform.py` lands
- * (proposed C-71, see docs/FRACTAL_WAVEFORM_SPEC.md), JS↔Python parity
- * holds only for the byte encoder, NOT the canonical fractal one.
+ * Cross-language parity: Void's legacy `to_waveform.py` was DELETED
+ * (2026-07, ECOSYSTEM §7) — Python reaches the canonical fractal stack
+ * through Void's `fractal_encoder.py` node bridge, so JS↔Python parity
+ * now holds for the canonical encoder itself. `byteCodeToWaveform`
+ * below remains only for raw-byte similarity on binary inputs.
  */
 
 const {

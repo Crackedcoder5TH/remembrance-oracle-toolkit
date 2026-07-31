@@ -170,17 +170,14 @@ How a non-JS consumer reaches the encoder:
   hub, or hit the hub's HTTP service. The point is they don't
   re-implement the math.
 
-**DEPRECATED — the 256-D `to_waveform` encoder.** Void's
-`to_waveform.py` (256-D Float64 waveforms) is the previous
-generation and is OBSOLETE. It must not appear in new code. It
-remains on disk only because Void's legacy consumers
-(`void_compressor_v3.py`, `compressor_service.py`,
-`oracle_bridge.py`, `seed_language_substrate.py`,
-`score_v2_records.py`, `register_bug_patterns.py`,
-`scripts/resonance-server.py`) and the historic waveform store
-still read it; that surface is a scheduled migration to the fractal
-stack, after which `to_waveform.py` is deleted. Treat any NEW
-import of it as a covenant violation.
+**REMOVED — the 256-D `to_waveform` encoder.** Void's
+`to_waveform.py` (256-D Float64 byte-shape waveforms) was the
+previous generation. Its seven consumers migrated to the fractal
+stack via Void's `fractal_encoder.py` bridge, the pattern store was
+recompressed to 232-D (77,596 rows → 45,547 unique patterns), and
+the module was deleted (2026-07). Archived copies under
+`archive/` are historical record only. Re-introducing a byte-shape
+encoder, or any parallel encoder, is a covenant violation.
 
 What this means for the rest of the contract:
 

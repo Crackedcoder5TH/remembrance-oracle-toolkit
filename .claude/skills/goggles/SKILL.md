@@ -45,6 +45,23 @@ From the repo you're working in:
     node .claude/skills/goggles/run.mjs <file> [...]      # 2. focused reads while working
     node .claude/skills/goggles/run.mjs --diff            # 3. changed-vs-HEAD before commit
 
+## Drive it — the goggles are the ONE surface
+
+Reading and DRIVING the substrate are the same tool. The read modes above
+SEE it; `--do <verb>` runs the substrate's operations, each routed to its
+canonical script across the ecosystem so you never need to know where the
+operation physically lives:
+
+    run.mjs --do field                 # peek the Living Remembrance field state
+    run.mjs --do drift [repo|all]      # substrate drift check (no encoding)
+    run.mjs --do harvest [repo|all]    # witness files (sanitized at the doorway)
+    run.mjs --do absorb                # hub patterns → Void (export → inbox)
+    run.mjs --do publish <json>        # publish a pattern/coin to the ledger
+    run.mjs --do coin [--publish]      # mint the git-history recovery coin
+    run.mjs --do export <drive-path>   # export the data plane to a mounted drive
+    run.mjs --do verify <snapshot>     # re-check an export's integrity
+
+
 `--map` is **substrate-native**: the Void already compressed every ingested
 file into vectors, so the map is a read over that existing compression —
 seconds for any repo, nothing re-encoded. Its coverage section also names the

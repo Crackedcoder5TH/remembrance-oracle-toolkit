@@ -40,6 +40,46 @@ const engine = join(toolkit, 'src/tools/goggles.js');
 
 const argv = process.argv.slice(2);
 
+// ── CONTROL modes — the goggles as the ONE surface over the substrate ──
+// Reading was already unified (FOCUS/META/MACRO/META-DEBUG/Δ from a single
+// read). These verbs close the loop: the same tool that SEES the substrate
+// also DRIVES it, routing to each canonical script so no one has to know
+// where witnessing, absorption, publishing, export, or the recovery coin
+// physically live. `goggles --do <verb> [args]`.
+if (argv[0] === '--do') {
+  const HOME = process.env.ECOSYSTEM_HOME || resolve(toolkit, '..');
+  const verb = argv[1];
+  const rest = argv.slice(2);
+  const run = (cmd, cmdArgs, cwd) => {
+    try { execFileSync(cmd, cmdArgs, { cwd, stdio: 'inherit' }); return 0; }
+    catch (e) { return e.status || 1; }
+  };
+  const VERBS = {
+    // witness files into the substrate (sanitized at the doorway)
+    harvest: () => run('node', [join(toolkit, 'scripts/harvest-repo-to-substrate.js'), ...(rest.length ? rest : ['all'])], toolkit),
+    // check substrate drift without encoding
+    drift: () => run('node', [join(toolkit, 'scripts/harvest-repo-to-substrate.js'), rest[0] || 'all', '--check'], toolkit),
+    // absorb the hub's patterns into Void (export → inbox)
+    absorb: () => run('node', [join(toolkit, 'scripts/export-oracle-patterns.js')], toolkit)
+      || run('python3', ['oracle_inbox.py'], join(HOME, 'Void-Data-Compressor')),
+    // publish a pattern/coin to the ledger
+    publish: () => run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/src/cli.js'), 'publish', ...rest], join(HOME, 'REMEMBRANCE-BLOCKCHAIN')),
+    // mint the git-history recovery coin (+--publish to anchor on chain)
+    coin: () => run('node', [join(HOME, 'REMEMBRANCE-BLOCKCHAIN/scripts/git-history-coin.js'), ...rest], join(HOME, 'REMEMBRANCE-BLOCKCHAIN')),
+    // export the data plane to a mounted drive (verify with `--do verify <snap>`)
+    export: () => run('bash', [join(toolkit, 'scripts/export-data-plane.sh'), ...rest], toolkit),
+    verify: () => run('bash', [join(toolkit, 'scripts/export-data-plane.sh'), '--verify', ...rest], toolkit),
+    // peek the Living Remembrance field state
+    field: () => run('node', ['-e', "console.log(JSON.stringify(require('./src/core/field-coupling').peekField(),null,1))"], toolkit),
+  };
+  if (!verb || !VERBS[verb]) {
+    console.error('goggles --do <verb>: ' + Object.keys(VERBS).join(' · '));
+    console.error('  the goggles are the one surface — see the substrate (--map/--diff/<file>) AND drive it (--do <verb>)');
+    process.exit(verb ? 1 : 0);
+  }
+  process.exit(VERBS[verb]());
+}
+
 // MACRO mode — read the whole-codebase coherency map from the substrate's
 // existing compression (or rebuild live with --deep) and cache it.
 if (argv[0] === '--map') {

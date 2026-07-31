@@ -410,7 +410,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
       r.flags.includes('ORPHAN') ||
       (!r.flags.includes('WELL-FORMED') && r.topExternal && r.topExternal.score >= 0.95)
     )),
-    D_duplicate_pairs: _dedupePairs(results),
+    D_duplicate_pairs: annotateDataPairs(_dedupePairs(results), projectPath),
     E_other_orphans: results.filter(r =>
       r.flags.includes('ORPHAN') &&
       !['components', 'lib'].includes(r.category) &&
@@ -695,7 +695,7 @@ function mapFromSubstrate(projectPath, opts = {}) {
     A_components_incoherent: results.filter(r => r.category === 'components' && !r.flags.includes('WELL-FORMED')),
     B_api_inconsistent: results.filter(r => r.category.startsWith('api/') && r.flags.includes('INCONSISTENT')),
     C_lib_drift: results.filter(r => r.category === 'lib' && r.flags.includes('ORPHAN')),
-    D_duplicate_pairs: _dedupePairs(results),
+    D_duplicate_pairs: annotateDataPairs(_dedupePairs(results), projectPath),
     E_other_orphans: results.filter(r =>
       r.flags.includes('ORPHAN')
       && !['components', 'lib'].includes(r.category)
@@ -765,6 +765,51 @@ function _dedupePairs(results) {
   return [...seen.values()];
 }
 
+/**
+ * Annotate duplicate pairs of data files with payload identity.
+ *
+ * Vector duplicate detection reads files as TEXT — two data JSONs that
+ * share a serialization schema (language substrates, versioned covenant
+ * snapshots) can score ≥0.999 while their PAYLOADS differ entirely.
+ * That shape-echo once misdiagnosed six distinct language substrates as
+ * one corrupted vector. For .json↔.json pairs this stamps
+ * `payloadIdentical` (canonicalized-JSON hash equality) so a reader can
+ * tell a true content duplicate from a format echo. Non-JSON pairs and
+ * unreadable payloads are left unannotated (vector verdict stands).
+ */
+function annotateDataPairs(pairs, projectPath) {
+  const crypto = require('node:crypto');
+  const cache = new Map();
+  const payloadHash = (rel) => {
+    if (cache.has(rel)) return cache.get(rel);
+    let h = null;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(path.join(projectPath, rel), 'utf8'));
+      h = crypto.createHash('md5')
+        .update(JSON.stringify(sortKeysDeep(parsed))).digest('hex');
+    } catch { /* unreadable or not valid JSON — no verdict */ }
+    cache.set(rel, h);
+    return h;
+  };
+  for (const p of pairs) {
+    if (!p.a.endsWith('.json') || !p.b.endsWith('.json')) continue;
+    const ha = payloadHash(p.a);
+    const hb = payloadHash(p.b);
+    if (ha && hb) p.payloadIdentical = ha === hb;
+  }
+  return pairs;
+}
+
+function sortKeysDeep(v) {
+  if (Array.isArray(v)) return v.map(sortKeysDeep);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const k of Object.keys(v).sort()) out[k] = sortKeysDeep(v[k]);
+    return out;
+  }
+  return v;
+}
+
 function _inferLang(rel) {
   const ext = path.extname(rel).toLowerCase();
   return ({
@@ -804,7 +849,15 @@ function formatMap(m) {
   lines.push('  A  components incoherent : ' + m.buckets.A_components_incoherent.length);
   lines.push('  B  api inconsistent      : ' + m.buckets.B_api_inconsistent.length);
   lines.push('  C  lib drift             : ' + m.buckets.C_lib_drift.length);
-  lines.push('  D  duplicate pairs       : ' + m.buckets.D_duplicate_pairs.length);
+  {
+    const dp = m.buckets.D_duplicate_pairs;
+    const fmtEcho = dp.filter(p => p.payloadIdentical === false).length;
+    const trueDup = dp.filter(p => p.payloadIdentical === true).length;
+    lines.push('  D  duplicate pairs       : ' + dp.length
+      + (fmtEcho || trueDup
+        ? `  (${trueDup} payload-identical · ${fmtEcho} data-format echo · ${dp.length - fmtEcho - trueDup} unverified)`
+        : ''));
+  }
   lines.push('  E  other orphans         : ' + m.buckets.E_other_orphans.length);
   lines.push('  TOTAL flagged            : ' +
     (m.buckets.A_components_incoherent.length + m.buckets.B_api_inconsistent.length +

@@ -43,15 +43,15 @@ const DEFAULT_SKIP_DIRS = new Set([
 ]);
 
 // Substrate namespaces that are THIS repo's subtrees under an older
-// name. The cathedral was ingested standalone as `website/*` before it
-// moved into the oracle repo at digital-cathedral/ — without the alias,
-// every cathedral file's own substrate memory reads as a 1.000
-// "cross-system bridge" to a phantom sibling project (the misreading
-// that once diagnosed a nonexistent site fork). Bridge scans treat an
-// aliased self-match as identity, not bridge; drift lenses use it to
-// find a file's memory. (propose-wire.js keeps the inverse map for
-// path resolution.)
-const SUBSTRATE_PATH_ALIASES = { website: 'digital-cathedral' };
+// name. Without an alias, a renamed subtree's substrate memory reads as
+// a 1.000 "cross-system bridge" to a phantom sibling project (the
+// misreading that once diagnosed a nonexistent site fork from the
+// cathedral's pre-move `website/*` entries — since re-ingested under
+// oracle/digital-cathedral/* and retired from the index). Bridge scans
+// treat an aliased self-match as identity, not bridge; drift lenses use
+// it to find a file's memory. Empty today; register future renames here
+// the moment they happen, not after the misreadings start.
+const SUBSTRATE_PATH_ALIASES = {};
 
 /** Substrate names under which rel's own memory may live, aliases included. */
 function substrateSelfNames(namespace, rel) {

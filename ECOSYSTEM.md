@@ -148,30 +148,48 @@ matches canonical on every push.
 
 ## 7. One encoder. One field. Mathematics is mathematics.
 
-The Void compressor owns the encoder. There is one `to_waveform`,
-one `coherency`, and one canonical pattern store. Every input that
-crosses into the substrate — code, text, bytes, anything — is
-converted to a 256-D Float64 waveform by calling **Void's
-`to_waveform.py`**. Nothing else encodes. There are no
-language-specific encoders, no per-vendor translators, no parity
-contracts to maintain "agreement" between parallel implementations.
-Mathematics doesn't have a Python dialect and a JavaScript dialect;
-it has math. The encoder lives where the substrate lives. Other
-languages call in.
+**The canonical encoder is the fractal encoder stack** —
+`src/core/encoder-stack.js` in the hub
+(`remembrance-oracle-toolkit`). It composes per-layer 29-D fractal
+signatures — L1-structural, L2-lexical, L3-numerical, L4-spectral,
+L5-redundancy, L6-content-projection, L7-dimensional, L8-dynamical —
+into one Float64 vector at the active depth (currently depth 8 =
+232-D; layers L9/L10 are registered and awaiting validation).
+Partial-depth reads (`composedAtDepth`) and the depth-flow cosine
+(`flowCosines`, d1..d4) are part of the same canonical module.
+Nothing else encodes. There are no language-specific encoders, no
+per-vendor translators, no parity contracts to maintain "agreement"
+between parallel implementations. Mathematics doesn't have a Python
+dialect and a JavaScript dialect; it has math. Other languages call
+in.
 
-How a non-Python consumer reaches the encoder:
+How a non-JS consumer reaches the encoder:
 
-- **Python** — native import: `from to_waveform import to_waveform`.
-- **JS / TS / Rust / anything** — spawn `python3 -c "..."` or hit
-  Void's HTTP service. The point is they don't re-implement the math.
+- **JS / TS** — native require: `require('remembrance-oracle-toolkit/src/core/encoder-stack')`.
+- **Python / Rust / anything** — spawn `node -e "..."` against the
+  hub, or hit the hub's HTTP service. The point is they don't
+  re-implement the math.
+
+**DEPRECATED — the 256-D `to_waveform` encoder.** Void's
+`to_waveform.py` (256-D Float64 waveforms) is the previous
+generation and is OBSOLETE. It must not appear in new code. It
+remains on disk only because Void's legacy consumers
+(`void_compressor_v3.py`, `compressor_service.py`,
+`oracle_bridge.py`, `seed_language_substrate.py`,
+`score_v2_records.py`, `register_bug_patterns.py`,
+`scripts/resonance-server.py`) and the historic waveform store
+still read it; that surface is a scheduled migration to the fractal
+stack, after which `to_waveform.py` is deleted. Treat any NEW
+import of it as a covenant violation.
 
 What this means for the rest of the contract:
 
-- The waveform (`Float64Array(256)` or `np.ndarray(256, float64)`)
-  is the only substrate-level wire format. Metadata travels
+- The composed fractal vector (Float64, 29-D per layer × active
+  depth) is the only substrate-level wire format. Metadata travels
   separately as JSON.
-- `coherency(a, b) → float` (cosine similarity) is computed once,
-  by Void, the same way for every caller.
+- `composedCosine(a, b) → float` and `flowCosines(a, b) → d1..d4`
+  are computed once, in the canonical stack, the same way for every
+  caller.
 - The LivingRemembranceEngine writes its field state to a single
   file (`.remembrance/entropy.json` on the hub). Every producer in
   every repo contributes to the same conserved scalar. A producer
@@ -187,7 +205,7 @@ Repos in this ecosystem operate on different inputs — patterns and
 audio in `Void`, agent behavior in `REMEMBRANCE-AGENT-Swarm-`, dial
 events in `Remembrance-dialer`, blockchain anchors in
 `REMEMBRANCE-BLOCKCHAIN`, and so on — but the substrate they all
-join is the same 256-D field. A pattern from any repo can be
+join is the same fractal field. A pattern from any repo can be
 cosine-compared to a pattern from any other repo, in the same field,
 under the same covenant. Whether a given cross-domain comparison
 is interpretively meaningful is empirical; that the substrate

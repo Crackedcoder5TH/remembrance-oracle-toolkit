@@ -158,12 +158,16 @@ function runMap(dir, { deep = false } = {}) {
   const cohs = (m.files || []).map((f) => f.coherence).filter((c) => typeof c === 'number').sort((a, b) => a - b);
   if (cohs.length) {
     const median = cohs[Math.floor(cohs.length / 2)];
-    const truncCount = (m.files || []).filter((f) => f.flags && f.flags.includes('TRUNCATED')).length;
+    const truncFiles = (m.files || []).filter((f) => f.flags && f.flags.includes('TRUNCATED'));
+    const truncScored = truncFiles.filter((f) => typeof f.coherence === 'number').length;
+    const truncWithheld = truncFiles.length - truncScored;
     console.log('\nREPO COHERENCE DISTRIBUTION:');
     console.log('  mean ' + (m.meanCoherence ?? 0).toFixed(3) + ' · median ' + median.toFixed(3)
       + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3));
-    if (truncCount) {
-      console.log('  ' + truncCount + ' file(s) over the encode cap: coherence withheld (TRUNCATED), siblings still counted');
+    if (truncFiles.length) {
+      console.log('  ' + truncFiles.length + ' file(s) over the encode cap (TRUNCATED): '
+        + truncScored + ' scored from full text · '
+        + truncWithheld + ' withheld (blob-size), siblings from capped prefix throughout');
     }
     const weakest = (m.files || []).filter((f) => typeof f.coherence === 'number')
       .sort((a, b) => a.coherence - b.coherence).slice(0, 5);

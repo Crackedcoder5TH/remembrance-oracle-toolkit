@@ -53,6 +53,12 @@ const DEFAULT_SKIP_DIRS = new Set([
 // the moment they happen, not after the misreadings start.
 const SUBSTRATE_PATH_ALIASES = {};
 
+// Ceiling for the full-text coherence re-read of over-cap files. Source
+// files beyond the encode cap (64k) still deserve a real intrinsic
+// reading; multi-MB data blobs (patterns.json …) do not — their
+// "structure" is a serialization format, and the read cost is real.
+const FULL_COHERENCE_CAP = 512000;
+
 /** Substrate names under which rel's own memory may live, aliases included. */
 function substrateSelfNames(namespace, rel) {
   const names = [namespace + '/' + rel];
@@ -241,10 +247,13 @@ function mapProjectCoherency(projectPath, opts = {}) {
     if (content.length < 60) continue;
     // Files beyond the cap are encoded from a truncated prefix. The cut
     // lands mid-function, so the *intrinsic coherence* of the truncated
-    // text is a reading of the truncation, not the file — withhold it
-    // (TRUNCATED flag) rather than let clipped files masquerade as the
-    // repo's weakest structure. Sibling/duplicate vectors still count:
-    // a 64k prefix is plenty of signal for kinship.
+    // text is a reading of the truncation, not the file. Sibling and
+    // duplicate vectors still come from the capped prefix (plenty of
+    // signal for kinship, bounded cost) — but coherence is re-read from
+    // the FULL text below, exactly as the focused goggle reads it, so
+    // the map and FOCUS agree. Only blobs beyond FULL_COHERENCE_CAP
+    // keep coherence withheld (TRUNCATED, coherence null).
+    const fullText = content;
     const truncated = content.length > contentCap;
     if (truncated) content = content.slice(0, contentCap);
 
@@ -301,13 +310,29 @@ function mapProjectCoherency(projectPath, opts = {}) {
 
     try { onProgress(fileIdx, files.length, rel, Date.now() - tFile); } catch { /* progress is best-effort */ }
 
+    // Over-cap files: re-read coherence from the full text (the focused
+    // goggle has no cap and handles these fine) so the map carries the
+    // same number FOCUS would show. Genuine blobs stay withheld.
+    let coherence = r.coherence;
+    if (truncated) {
+      coherence = null;
+      if (fullText.length <= FULL_COHERENCE_CAP) {
+        try {
+          const rFull = ft.read(
+            { content: fullText, name: rel, language: _inferLang(rel) },
+            { source: sourceTag + ':full-coherence', growSubstrate: false, topK: 1 },
+          );
+          if (rFull && typeof rFull.coherence === 'number') coherence = rFull.coherence;
+        } catch { /* stays withheld */ }
+      }
+    }
+
     results.push({
       rel, category, flags,
       // intrinsic structural coherence — distinct from the resonance-based
       // neighbour stats below (sameProject/sameCategory derive from voidResonance).
-      // Withheld (null) for TRUNCATED files: the clipped text's structure
-      // is not the file's structure.
-      coherence: truncated ? null : r.coherence,
+      // For TRUNCATED files this is the full-text reading (or null for blobs).
+      coherence,
       sameProject: sameProject.length,
       sameCategory: sameCategory.length,
       stableHighSameProject: stableHighSameProject.length,

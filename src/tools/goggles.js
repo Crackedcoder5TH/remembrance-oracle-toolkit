@@ -181,24 +181,11 @@ function runMap(dir, { deep = false } = {}) {
   }
 }
 
-// One 116-dim sweep computing d1..d4 cosines at the depth checkpoints —
-// same reading the mapper uses (mirrored here so the engine stays
-// runnable even when only the map cache, not the mapper, is at hand).
+// Canonical depth-flow cosine from the encoder stack (§7: one cosine).
+// Every call site sits behind a composedAtDepth guard, so encoder-stack
+// is always loadable exactly when a flow reading is possible.
 function _flowCosines(a, b) {
-  const CHECK = [29, 58, 87, 116];
-  const out = [0, 0, 0, 0];
-  let dot = 0, na = 0, nb = 0, c = 0;
-  const n = Math.min(116, a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    const x = a[i] || 0, y = b[i] || 0;
-    dot += x * y; na += x * x; nb += y * y;
-    if (i + 1 === CHECK[c]) {
-      out[c] = (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
-      c++;
-    }
-  }
-  for (; c < 4; c++) out[c] = c > 0 ? out[c - 1] : 0;
-  return out;
+  return require('../core/encoder-stack').flowCosines(a, b);
 }
 
 function _flowLabel(f) {

@@ -471,25 +471,10 @@ function namespaceFromIndexNames(rels, indexNames) {
   return null;
 }
 
-// One pass over 116 dims accumulating partial dot products at the four
-// depth checkpoints (29/58/87/116) — d1..d4 cosines in a single sweep.
-function _flowCosines(a, b) {
-  const CHECK = [29, 58, 87, 116];
-  const out = [0, 0, 0, 0];
-  let dot = 0, na = 0, nb = 0, c = 0;
-  const n = Math.min(116, a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    const x = a[i] || 0, y = b[i] || 0;
-    dot += x * y; na += x * x; nb += y * y;
-    if (i + 1 === CHECK[c]) {
-      out[c] = (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
-      c++;
-    }
-  }
-  // Vectors shorter than a checkpoint reuse the deepest reading available.
-  for (; c < 4; c++) out[c] = c > 0 ? out[c - 1] : 0;
-  return out;
-}
+// Canonical depth-flow cosine — ONE implementation, in the encoder
+// stack (ECOSYSTEM §7: one encoder, one cosine; consumers route to
+// canonical instead of mirroring the math).
+const { flowCosines: _flowCosines } = require('./encoder-stack');
 
 /**
  * Build the macro coherency map from the substrate's existing vectors.

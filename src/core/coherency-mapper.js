@@ -791,7 +791,16 @@ function annotateDataPairs(pairs, projectPath) {
     cache.set(rel, h);
     return h;
   };
+  const versionBase = (rel) => {
+    const m = rel.match(/^(.*?)(?:_v\d+)?(\.[a-z]+)$/i);
+    return m ? m[1] + m[2] : rel;
+  };
   for (const p of pairs) {
+    // Versioned-snapshot series (derived_covenant_v1..v7, …): members of
+    // one series are EXPECTED to resemble each other — that is what a
+    // snapshot is. Convention: same base name modulo _vN ⇒ versionSeries,
+    // reported separately from organic duplication.
+    if (versionBase(p.a) === versionBase(p.b) && p.a !== p.b) p.versionSeries = true;
     if (!p.a.endsWith('.json') || !p.b.endsWith('.json')) continue;
     const ha = payloadHash(p.a);
     const hb = payloadHash(p.b);
@@ -851,11 +860,14 @@ function formatMap(m) {
   lines.push('  C  lib drift             : ' + m.buckets.C_lib_drift.length);
   {
     const dp = m.buckets.D_duplicate_pairs;
-    const fmtEcho = dp.filter(p => p.payloadIdentical === false).length;
-    const trueDup = dp.filter(p => p.payloadIdentical === true).length;
+    const series = dp.filter(p => p.versionSeries).length;
+    const organic = dp.filter(p => !p.versionSeries);
+    const fmtEcho = organic.filter(p => p.payloadIdentical === false).length;
+    const trueDup = organic.filter(p => p.payloadIdentical === true).length;
+    const unverified = organic.length - fmtEcho - trueDup;
     lines.push('  D  duplicate pairs       : ' + dp.length
-      + (fmtEcho || trueDup
-        ? `  (${trueDup} payload-identical · ${fmtEcho} data-format echo · ${dp.length - fmtEcho - trueDup} unverified)`
+      + (series || fmtEcho || trueDup
+        ? `  (${series} version-series · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
         : ''));
   }
   lines.push('  E  other orphans         : ' + m.buckets.E_other_orphans.length);

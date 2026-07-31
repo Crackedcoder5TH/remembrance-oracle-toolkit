@@ -1,7 +1,7 @@
 {
   "name": "@crackedcoder5th/remembrance-field",
   "version": "0.3.0",
-  "description": "The Remembrance Field tool — canonical 256-D waveform encoder + cosine coherency, standalone, with an optional connection to your Void compressor for substrate-backed scoring and consent-gated pattern contribution. Zero dependencies.",
+  "description": "The Remembrance Field tool — canonical fractal encoder stack (29-D layers, composed) + cosine coherency, standalone, with an optional connection to your Void compressor for substrate-backed scoring and consent-gated pattern contribution. Zero dependencies.",
   "type": "commonjs",
   "main": "src/index.js",
   "publishConfig": {

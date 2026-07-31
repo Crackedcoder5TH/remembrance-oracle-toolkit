@@ -19,6 +19,28 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-pre-hook.js 2>/dev/null || true",
+            "statusMessage": "goggles: reading the field before the write"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-bash-hook.js 2>/dev/null || true",
+            "statusMessage": "goggles: reading the inline command before it runs"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",

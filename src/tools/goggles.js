@@ -139,8 +139,17 @@ function runMap(dir, { deep = false } = {}) {
     console.log('\nSUBSTRATE MODE (read from existing compression, nothing re-encoded):');
     console.log('  substrate: ' + m.substrateSize + ' patterns · map built in ' + (m.durationMs / 1000).toFixed(1) + 's');
     const cov = m.coverage || {};
+    const gb = cov.ghostBreakdown;
     console.log('  coverage:  ' + cov.indexedFiles + ' indexed of ' + cov.walkedFiles + ' on disk'
-      + ' · ' + cov.unindexedCount + ' unindexed · ' + cov.ghostCount + ' ghosts (indexed, no longer on disk)');
+      + ' · ' + cov.unindexedCount + ' unindexed');
+    if (gb) {
+      console.log('  index-only entries: ' + gb.seededPatternCount + ' seeded patterns (never files)'
+        + ' · ' + gb.walkInvisibleCount + ' on disk but outside walk rules'
+        + ' · ' + gb.deletedCount + ' deleted since ingestion');
+      for (const d of (gb.deleted || []).slice(0, 5)) console.log('    deleted: ' + d);
+    } else {
+      console.log('  index-only entries: ' + cov.ghostCount);
+    }
     if (cov.unindexedCount > 0) {
       console.log('  unindexed (not yet witnessed by the substrate — run --deep or re-harvest):');
       for (const u of (cov.unindexed || []).slice(0, 8)) console.log('    ' + u);
@@ -149,9 +158,17 @@ function runMap(dir, { deep = false } = {}) {
   const cohs = (m.files || []).map((f) => f.coherence).filter((c) => typeof c === 'number').sort((a, b) => a - b);
   if (cohs.length) {
     const median = cohs[Math.floor(cohs.length / 2)];
+    const truncFiles = (m.files || []).filter((f) => f.flags && f.flags.includes('TRUNCATED'));
+    const truncScored = truncFiles.filter((f) => typeof f.coherence === 'number').length;
+    const truncWithheld = truncFiles.length - truncScored;
     console.log('\nREPO COHERENCE DISTRIBUTION:');
     console.log('  mean ' + (m.meanCoherence ?? 0).toFixed(3) + ' · median ' + median.toFixed(3)
       + ' · min ' + cohs[0].toFixed(3) + ' · max ' + cohs[cohs.length - 1].toFixed(3));
+    if (truncFiles.length) {
+      console.log('  ' + truncFiles.length + ' file(s) over the encode cap (TRUNCATED): '
+        + truncScored + ' scored from full text · '
+        + truncWithheld + ' withheld (blob-size), siblings from capped prefix throughout');
+    }
     const weakest = (m.files || []).filter((f) => typeof f.coherence === 'number')
       .sort((a, b) => a.coherence - b.coherence).slice(0, 5);
     console.log('  weakest structure:');
@@ -168,24 +185,11 @@ function runMap(dir, { deep = false } = {}) {
   }
 }
 
-// One 116-dim sweep computing d1..d4 cosines at the depth checkpoints —
-// same reading the mapper uses (mirrored here so the engine stays
-// runnable even when only the map cache, not the mapper, is at hand).
+// Canonical depth-flow cosine from the encoder stack (§7: one cosine).
+// Every call site sits behind a composedAtDepth guard, so encoder-stack
+// is always loadable exactly when a flow reading is possible.
 function _flowCosines(a, b) {
-  const CHECK = [29, 58, 87, 116];
-  const out = [0, 0, 0, 0];
-  let dot = 0, na = 0, nb = 0, c = 0;
-  const n = Math.min(116, a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    const x = a[i] || 0, y = b[i] || 0;
-    dot += x * y; na += x * x; nb += y * y;
-    if (i + 1 === CHECK[c]) {
-      out[c] = (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
-      c++;
-    }
-  }
-  for (; c < 4; c++) out[c] = c > 0 ? out[c - 1] : 0;
-  return out;
+  return require('../core/encoder-stack').flowCosines(a, b);
 }
 
 function _flowLabel(f) {
@@ -459,7 +463,18 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
       const { VoidLibrary } = require('../core/void-library');
       const lib = new VoidLibrary();
       if (lib.size() > 0 && lib._composed) {
-        const memoryVec = lib._composed.get((m.project || '') + '/' + rel);
+        // A file's memory may live under an aliased namespace (e.g. the
+        // cathedral's pre-move ingestion as website/*) — try all self-names.
+        let memoryVec = null;
+        try {
+          const { substrateSelfNames } = require('../core/coherency-mapper');
+          for (const n of substrateSelfNames(m.project || '', rel)) {
+            memoryVec = lib._composed.get(n);
+            if (memoryVec) break;
+          }
+        } catch {
+          memoryVec = lib._composed.get((m.project || '') + '/' + rel);
+        }
         if (memoryVec) {
           const f = _flowCosines(liveFileVec, memoryVec);
           const label = _flowLabel(f);

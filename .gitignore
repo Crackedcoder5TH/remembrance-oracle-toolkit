@@ -32,3 +32,14 @@ ingest-result.json
 .remembrance/goggles-readings.json
 .remembrance/goggles-learning.json
 .remembrance/defect-signatures.json
+
+# Pattern store & capability index — live data, not source (2026-07 decision).
+# patterns.json: the SQLite store (.remembrance/*.db) is the live backend;
+#   this file is its cross-session export. It grew in git history every
+#   session; now untracked. Fresh clones seed from seeds/ + `oracle init`
+#   auto-import; cross-machine durability via `oracle sync push` (personal
+#   store). Re-track deliberately if a versioned corpus snapshot is wanted.
+# ecosystem-capabilities.json: fully regenerable —
+#   node scripts/build-capability-index.js
+patterns.json
+ecosystem-capabilities.json

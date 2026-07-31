@@ -33,6 +33,7 @@ const DEFAULT_EXTENSIONS = [
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs',
   '.py', '.rs', '.go', '.rb', '.java',
   '.md', '.json', '.toml', '.yaml', '.yml', '.css', '.html',
+  '.sh', // harvest ingests shell scripts — walk parity, else they read as ghosts
 ];
 
 const DEFAULT_SKIP_DIRS = new Set([
@@ -40,6 +41,32 @@ const DEFAULT_SKIP_DIRS = new Set([
   'vendor', '__pycache__', '.venv', 'venv', '.pytest_cache',
   'coverage', '.nyc_output', '.remembrance', '.cache',
 ]);
+
+// Substrate namespaces that are THIS repo's subtrees under an older
+// name. Without an alias, a renamed subtree's substrate memory reads as
+// a 1.000 "cross-system bridge" to a phantom sibling project (the
+// misreading that once diagnosed a nonexistent site fork from the
+// cathedral's pre-move `website/*` entries — since re-ingested under
+// oracle/digital-cathedral/* and retired from the index). Bridge scans
+// treat an aliased self-match as identity, not bridge; drift lenses use
+// it to find a file's memory. Empty today; register future renames here
+// the moment they happen, not after the misreadings start.
+const SUBSTRATE_PATH_ALIASES = {};
+
+// Ceiling for the full-text coherence re-read of over-cap files. Source
+// files beyond the encode cap (64k) still deserve a real intrinsic
+// reading; multi-MB data blobs (patterns.json …) do not — their
+// "structure" is a serialization format, and the read cost is real.
+const FULL_COHERENCE_CAP = 512000;
+
+/** Substrate names under which rel's own memory may live, aliases included. */
+function substrateSelfNames(namespace, rel) {
+  const names = [namespace + '/' + rel];
+  for (const [ns, subtree] of Object.entries(SUBSTRATE_PATH_ALIASES)) {
+    if (rel.startsWith(subtree + '/')) names.push(ns + '/' + rel.slice(subtree.length + 1));
+  }
+  return names;
+}
 
 const DEFAULT_CATEGORIZER = (rel) => {
   if (rel.startsWith('app/api/')) {
@@ -216,8 +243,19 @@ function mapProjectCoherency(projectPath, opts = {}) {
     fileIdx++;
     const tFile = Date.now();
     let content;
-    try { content = fs.readFileSync(f, 'utf8').slice(0, contentCap); } catch { continue; }
+    try { content = fs.readFileSync(f, 'utf8'); } catch { continue; }
     if (content.length < 60) continue;
+    // Files beyond the cap are encoded from a truncated prefix. The cut
+    // lands mid-function, so the *intrinsic coherence* of the truncated
+    // text is a reading of the truncation, not the file. Sibling and
+    // duplicate vectors still come from the capped prefix (plenty of
+    // signal for kinship, bounded cost) — but coherence is re-read from
+    // the FULL text below, exactly as the focused goggle reads it, so
+    // the map and FOCUS agree. Only blobs beyond FULL_COHERENCE_CAP
+    // keep coherence withheld (TRUNCATED, coherence null).
+    const fullText = content;
+    const truncated = content.length > contentCap;
+    if (truncated) content = content.slice(0, contentCap);
 
     const rel = path.relative(projectPath, f);
     const category = categorize(rel);
@@ -264,6 +302,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
     }
 
     const flags = [];
+    if (truncated) flags.push('TRUNCATED');
     if (stableHighSameProject.length === 0) flags.push('ORPHAN');
     if (duplicates.length > 0) flags.push('DUPLICATE');
     if (category.startsWith('api/') && stableHighSameCategory.length === 0 && stableHighSameProject.length > 0) flags.push('INCONSISTENT');
@@ -271,11 +310,29 @@ function mapProjectCoherency(projectPath, opts = {}) {
 
     try { onProgress(fileIdx, files.length, rel, Date.now() - tFile); } catch { /* progress is best-effort */ }
 
+    // Over-cap files: re-read coherence from the full text (the focused
+    // goggle has no cap and handles these fine) so the map carries the
+    // same number FOCUS would show. Genuine blobs stay withheld.
+    let coherence = r.coherence;
+    if (truncated) {
+      coherence = null;
+      if (fullText.length <= FULL_COHERENCE_CAP) {
+        try {
+          const rFull = ft.read(
+            { content: fullText, name: rel, language: _inferLang(rel) },
+            { source: sourceTag + ':full-coherence', growSubstrate: false, topK: 1 },
+          );
+          if (rFull && typeof rFull.coherence === 'number') coherence = rFull.coherence;
+        } catch { /* stays withheld */ }
+      }
+    }
+
     results.push({
       rel, category, flags,
       // intrinsic structural coherence — distinct from the resonance-based
-      // neighbour stats below (sameProject/sameCategory derive from voidResonance)
-      coherence: r.coherence,
+      // neighbour stats below (sameProject/sameCategory derive from voidResonance).
+      // For TRUNCATED files this is the full-text reading (or null for blobs).
+      coherence,
       sameProject: sameProject.length,
       sameCategory: sameCategory.length,
       stableHighSameProject: stableHighSameProject.length,
@@ -318,6 +375,9 @@ function mapProjectCoherency(projectPath, opts = {}) {
           ? { name: siblings[0].rel, d4: siblings[0].d4, shape: siblings[0].shape, score: siblings[0].d4 }
           : null;
         const flags = [];
+        // Preserve content-derived flags (TRUNCATED) — this rebuild only
+        // owns the resonance-derived ones.
+        if (r.flags.includes('TRUNCATED')) flags.push('TRUNCATED');
         if (stableHigh === 0) flags.push('ORPHAN');
         if (duplicates.length > 0) flags.push('DUPLICATE');
         if (r.category.startsWith('api/') && stableHighSameCategory === 0 && stableHigh > 0) flags.push('INCONSISTENT');
@@ -350,7 +410,7 @@ function mapProjectCoherency(projectPath, opts = {}) {
       r.flags.includes('ORPHAN') ||
       (!r.flags.includes('WELL-FORMED') && r.topExternal && r.topExternal.score >= 0.95)
     )),
-    D_duplicate_pairs: _dedupePairs(results),
+    D_duplicate_pairs: annotateDataPairs(_dedupePairs(results), projectPath),
     E_other_orphans: results.filter(r =>
       r.flags.includes('ORPHAN') &&
       !['components', 'lib'].includes(r.category) &&
@@ -380,8 +440,11 @@ function mapProjectCoherency(projectPath, opts = {}) {
   function ctr(coh, src) {
     try { fc.contribute({ cost: 1.0, coherence: coh, source: src }); contributionsCount++; } catch {}
   }
-  const meanCoherence = results.length
-    ? results.reduce((s, r) => s + (r.coherence || 0), 0) / results.length
+  // Mean over SCORED files only — TRUNCATED files carry coherence:null
+  // and must not enter the average as zeros.
+  const scored = results.filter(r => typeof r.coherence === 'number');
+  const meanCoherence = scored.length
+    ? scored.reduce((s, r) => s + r.coherence, 0) / scored.length
     : 0;
   ctr(meanCoherence, 'coherency-map:' + namespace + ':structural');
   ctr(1 - buckets.D_duplicate_pairs.length / Math.max(1, results.length / 2), 'coherency-map:' + namespace + ':non-duplication');
@@ -453,25 +516,10 @@ function namespaceFromIndexNames(rels, indexNames) {
   return null;
 }
 
-// One pass over 116 dims accumulating partial dot products at the four
-// depth checkpoints (29/58/87/116) — d1..d4 cosines in a single sweep.
-function _flowCosines(a, b) {
-  const CHECK = [29, 58, 87, 116];
-  const out = [0, 0, 0, 0];
-  let dot = 0, na = 0, nb = 0, c = 0;
-  const n = Math.min(116, a.length, b.length);
-  for (let i = 0; i < n; i++) {
-    const x = a[i] || 0, y = b[i] || 0;
-    dot += x * y; na += x * x; nb += y * y;
-    if (i + 1 === CHECK[c]) {
-      out[c] = (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
-      c++;
-    }
-  }
-  // Vectors shorter than a checkpoint reuse the deepest reading available.
-  for (; c < 4; c++) out[c] = c > 0 ? out[c - 1] : 0;
-  return out;
-}
+// Canonical depth-flow cosine — ONE implementation, in the encoder
+// stack (ECOSYSTEM §7: one encoder, one cosine; consumers route to
+// canonical instead of mirroring the math).
+const { flowCosines: _flowCosines } = require('./encoder-stack');
 
 /**
  * Build the macro coherency map from the substrate's existing vectors.
@@ -533,12 +581,25 @@ function mapFromSubstrate(projectPath, opts = {}) {
 
   const entryRels = new Set(entries.map(e => e.rel));
   const unindexed = walked.filter(r => !entryRels.has(r));
-  // Entries whose rel is not a file on disk: either files deleted since
-  // ingestion, or older-vintage pattern-style entries (name:language).
-  // They stay in the sibling pool (a file's duplicate may live there)
-  // but are excluded from the per-file health table — a map of the repo
-  // should count the repo's files, not the substrate's history.
-  const ghosts = entries.filter(e => !walkedSet.has(e.rel)).map(e => e.rel);
+  // Entries the walk didn't see are NOT one population, and reporting
+  // them under one "ghosts (no longer on disk)" label misreads 98% of
+  // them. Split by what each entry actually is:
+  //   seededPatterns — pattern-style names (`lru-cache-rs:rust`), seeded
+  //     library entries that were never repo files;
+  //   walkInvisible  — files that EXIST on disk but the walk skips
+  //     (extension/dir outside the walk rules);
+  //   deleted        — path-style entries genuinely absent from disk.
+  // All three stay in the sibling pool (a file's duplicate may live
+  // there) but are excluded from the per-file health table — a map of
+  // the repo should count the repo's files, not the substrate's history.
+  const ghostBreakdown = { seededPatterns: [], walkInvisible: [], deleted: [] };
+  for (const e of entries) {
+    if (walkedSet.has(e.rel)) continue;
+    if (e.rel.includes(':')) ghostBreakdown.seededPatterns.push(e.rel);
+    else if (fs.existsSync(path.join(projectPath, e.rel))) ghostBreakdown.walkInvisible.push(e.rel);
+    else ghostBreakdown.deleted.push(e.rel);
+  }
+  const ghosts = [].concat(ghostBreakdown.seededPatterns, ghostBreakdown.walkInvisible, ghostBreakdown.deleted);
 
   // 4. In-namespace pairwise depth-flow: nearest sibling, stable-high
   //    count, duplicates. One 116-dim sweep per pair. Flags are
@@ -585,9 +646,13 @@ function mapFromSubstrate(projectPath, opts = {}) {
     const l1 = fractals.get(prefix + r.rel);
     const cv = composed.get(prefix + r.rel);
     if (!l1) continue;
+    // The file's own memory under an aliased namespace is identity,
+    // never a bridge.
+    const selfAliases = new Set(substrateSelfNames(namespace, r.rel).slice(1));
     let bestName = null, bestScore = -1;
     for (const [name, vec] of fractals) {
       if (name.startsWith(prefix)) continue;
+      if (selfAliases.has(name)) continue;
       let dot = 0, na = 0, nb = 0;
       for (let k = 0; k < 29; k++) {
         const x = l1[k] || 0, y = vec[k] || 0;
@@ -630,7 +695,7 @@ function mapFromSubstrate(projectPath, opts = {}) {
     A_components_incoherent: results.filter(r => r.category === 'components' && !r.flags.includes('WELL-FORMED')),
     B_api_inconsistent: results.filter(r => r.category.startsWith('api/') && r.flags.includes('INCONSISTENT')),
     C_lib_drift: results.filter(r => r.category === 'lib' && r.flags.includes('ORPHAN')),
-    D_duplicate_pairs: _dedupePairs(results),
+    D_duplicate_pairs: annotateDataPairs(_dedupePairs(results), projectPath),
     E_other_orphans: results.filter(r =>
       r.flags.includes('ORPHAN')
       && !['components', 'lib'].includes(r.category)
@@ -667,6 +732,13 @@ function mapFromSubstrate(projectPath, opts = {}) {
       unindexedCount: unindexed.length,
       ghosts: ghosts.slice(0, 30),
       ghostCount: ghosts.length,
+      ghostBreakdown: {
+        seededPatternCount: ghostBreakdown.seededPatterns.length,
+        walkInvisibleCount: ghostBreakdown.walkInvisible.length,
+        walkInvisible: ghostBreakdown.walkInvisible.slice(0, 10),
+        deletedCount: ghostBreakdown.deleted.length,
+        deleted: ghostBreakdown.deleted.slice(0, 10),
+      },
     },
     files: results.map(r => ({
       rel: r.rel, category: r.category, coherence: r.coherence, flags: r.flags,
@@ -693,6 +765,60 @@ function _dedupePairs(results) {
   return [...seen.values()];
 }
 
+/**
+ * Annotate duplicate pairs of data files with payload identity.
+ *
+ * Vector duplicate detection reads files as TEXT — two data JSONs that
+ * share a serialization schema (language substrates, versioned covenant
+ * snapshots) can score ≥0.999 while their PAYLOADS differ entirely.
+ * That shape-echo once misdiagnosed six distinct language substrates as
+ * one corrupted vector. For .json↔.json pairs this stamps
+ * `payloadIdentical` (canonicalized-JSON hash equality) so a reader can
+ * tell a true content duplicate from a format echo. Non-JSON pairs and
+ * unreadable payloads are left unannotated (vector verdict stands).
+ */
+function annotateDataPairs(pairs, projectPath) {
+  const crypto = require('node:crypto');
+  const cache = new Map();
+  const payloadHash = (rel) => {
+    if (cache.has(rel)) return cache.get(rel);
+    let h = null;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(path.join(projectPath, rel), 'utf8'));
+      h = crypto.createHash('md5')
+        .update(JSON.stringify(sortKeysDeep(parsed))).digest('hex');
+    } catch { /* unreadable or not valid JSON — no verdict */ }
+    cache.set(rel, h);
+    return h;
+  };
+  const versionBase = (rel) => {
+    const m = rel.match(/^(.*?)(?:_v\d+)?(\.[a-z]+)$/i);
+    return m ? m[1] + m[2] : rel;
+  };
+  for (const p of pairs) {
+    // Versioned-snapshot series (derived_covenant_v1..v7, …): members of
+    // one series are EXPECTED to resemble each other — that is what a
+    // snapshot is. Convention: same base name modulo _vN ⇒ versionSeries,
+    // reported separately from organic duplication.
+    if (versionBase(p.a) === versionBase(p.b) && p.a !== p.b) p.versionSeries = true;
+    if (!p.a.endsWith('.json') || !p.b.endsWith('.json')) continue;
+    const ha = payloadHash(p.a);
+    const hb = payloadHash(p.b);
+    if (ha && hb) p.payloadIdentical = ha === hb;
+  }
+  return pairs;
+}
+
+function sortKeysDeep(v) {
+  if (Array.isArray(v)) return v.map(sortKeysDeep);
+  if (v && typeof v === 'object') {
+    const out = {};
+    for (const k of Object.keys(v).sort()) out[k] = sortKeysDeep(v[k]);
+    return out;
+  }
+  return v;
+}
+
 function _inferLang(rel) {
   const ext = path.extname(rel).toLowerCase();
   return ({
@@ -700,6 +826,7 @@ function _inferLang(rel) {
     '.py': 'python', '.rs': 'rust', '.go': 'go', '.rb': 'ruby', '.java': 'java',
     '.md': 'markdown', '.json': 'json', '.toml': 'toml',
     '.yaml': 'yaml', '.yml': 'yaml', '.css': 'css', '.html': 'html',
+    '.sh': 'bash',
   })[ext] || 'unknown';
 }
 
@@ -731,7 +858,18 @@ function formatMap(m) {
   lines.push('  A  components incoherent : ' + m.buckets.A_components_incoherent.length);
   lines.push('  B  api inconsistent      : ' + m.buckets.B_api_inconsistent.length);
   lines.push('  C  lib drift             : ' + m.buckets.C_lib_drift.length);
-  lines.push('  D  duplicate pairs       : ' + m.buckets.D_duplicate_pairs.length);
+  {
+    const dp = m.buckets.D_duplicate_pairs;
+    const series = dp.filter(p => p.versionSeries).length;
+    const organic = dp.filter(p => !p.versionSeries);
+    const fmtEcho = organic.filter(p => p.payloadIdentical === false).length;
+    const trueDup = organic.filter(p => p.payloadIdentical === true).length;
+    const unverified = organic.length - fmtEcho - trueDup;
+    lines.push('  D  duplicate pairs       : ' + dp.length
+      + (series || fmtEcho || trueDup
+        ? `  (${series} version-series · ${trueDup} payload-identical · ${fmtEcho} format echo · ${unverified} unverified)`
+        : ''));
+  }
   lines.push('  E  other orphans         : ' + m.buckets.E_other_orphans.length);
   lines.push('  TOTAL flagged            : ' +
     (m.buckets.A_components_incoherent.length + m.buckets.B_api_inconsistent.length +
@@ -875,4 +1013,6 @@ module.exports = {
   DEFAULT_EXTENSIONS,
   DEFAULT_SKIP_DIRS,
   DEFAULT_CATEGORIZER,
+  SUBSTRATE_PATH_ALIASES,
+  substrateSelfNames,
 };

@@ -54,6 +54,8 @@ const REPOS = [
   ['moons', 'MOONS-OF-REMEMBRANCE'],
   ['rmb-dialer', 'Remembrance-dialer'],
   ['rmb-plugger', 'REMEMBRANCE-API-Key-Plugger'],
+  ['rmb-interface', 'REMEMBRANCE-Interface'],
+  ['reflector', 'Reflector-oracle-'],
 ];
 const LIMIT = process.env.LIMIT ? Number(process.env.LIMIT) : 0; // 0 = all
 const SEED = process.env.GIT_HISTORY_SEED ||

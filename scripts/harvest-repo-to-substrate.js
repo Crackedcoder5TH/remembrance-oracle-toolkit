@@ -92,6 +92,44 @@ function walk(dir) {
   return out;
 }
 
+// ── Entry sanitization ──────────────────────────────────────────
+// smoke-exec: does the file parse in its own language? (node --check
+// for JS/CJS; py_compile for Python; other types skip — no verdict.)
+// META-DEBUG: the AST audit checkers where they exist (JS/TS), high
+// and medium counts recorded on the entry.
+const { spawnSync } = require('node:child_process');
+
+function sanitizeAtEntry(absFile, content) {
+  const ext = path.extname(absFile).toLowerCase();
+  const out = { checkedAt: new Date().toISOString() };
+  let any = false;
+
+  if (['.js', '.cjs'].includes(ext)) {
+    const r = spawnSync('node', ['--check', absFile], { timeout: 10000 });
+    out.syntaxOk = r.status === 0;
+    any = true;
+  } else if (ext === '.py') {
+    const r = spawnSync('python3', ['-m', 'py_compile', absFile], { timeout: 10000 });
+    out.syntaxOk = r.status === 0;
+    any = true;
+  } else if (ext === '.json') {
+    try { JSON.parse(content); out.syntaxOk = true; } catch { out.syntaxOk = false; }
+    any = true;
+  }
+
+  if (['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx'].includes(ext)) {
+    try {
+      const audit = require('../src/audit/ast-checkers');
+      const r = audit.auditCode(content, { filePath: absFile });
+      const findings = (r && r.findings) || [];
+      out.findingsHigh = findings.filter((x) => x.severity === 'high').length;
+      out.findingsMedium = findings.filter((x) => x.severity === 'medium').length;
+      any = true;
+    } catch (_) { /* checker unavailable — smoke verdict stands alone */ }
+  }
+  return any ? out : null;
+}
+
 function cosine116(a, b) {
   let dot = 0, na = 0, nb = 0;
   const n = Math.min(a.length, b.length, 116);
@@ -179,6 +217,20 @@ function main() {
       const composed_v1 = Array.from(composedAtDepth(content, 4));
       const composed_v2 = Array.from(composedAtDepth(content, 5));
 
+      // ── Sanitize at the doorway ────────────────────────────────
+      // Witnessing and sanitizing happen at the same entry point:
+      // every file the substrate accepts gets a smoke-exec (does it
+      // even parse?) and, where a checker exists, a META-DEBUG pass.
+      // Files are still witnessed either way — memory is not a merge
+      // gate — but the verdict rides ON the entry, so downstream
+      // consumers (resolve/PULL, goggles) can see what entered dirty.
+      const sanitize = sanitizeAtEntry(f, content);
+      if (sanitize && (sanitize.syntaxOk === false || sanitize.findingsHigh > 0)) {
+        console.log(`    ⚠ entered dirty: ${key}`
+          + (sanitize.syntaxOk === false ? ' [syntax]' : '')
+          + (sanitize.findingsHigh ? ` [${sanitize.findingsHigh} high]` : ''));
+      }
+
       if (!dry) {
         const entry = {
           fractal,
@@ -186,6 +238,7 @@ function main() {
           ingested_from: dir,
           composed_v1,
           composed_v2,
+          sanitize,
         };
         // TIME DIMENSION: stamp when this datum joined the substrate (ingest-instant
         // window for a static artifact) + its coherency reading (structural, from the

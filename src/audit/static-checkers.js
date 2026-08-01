@@ -480,14 +480,29 @@ function checkIntegration(code, lines) {
       if (callMatch) {
         const resultVar = callMatch[1];
         // Check if there's a null check within 5 lines
+        // The guard list used to require an explicit comparison — ===, !==,
+        // !x, ?., &&. It omitted the commonest guard in JavaScript, a bare
+        // truthiness test:
+        //
+        //   const err = validateName(b.firstName);
+        //   if (err) errors.push(`First name: ${err}`);
+        //
+        // so correctly-guarded code was reported as "callers must check"
+        // while the check sat on the very next line. That was 34 of the high
+        // findings this repo carried as accepted debt, across 19 files —
+        // every one of them already guarded.
+        const esc = resultVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const GUARD = new RegExp(
+          `if\\s*\\(\\s*!?\\s*${esc}\\s*[)&|]`      // if (x) / if (!x) / if (x &&
+          + `|!${esc}\\b`                            // !x anywhere
+          + `|\\b${esc}\\s*(?:===|!==|==|!=)`        // explicit comparison
+          + `|\\b${esc}\\s*(?:\\?\\.|\\?\\?|&&|\\|\\|)` // ?. ?? && ||
+          + `|\\b${esc}\\s*\\?`                      // ternary guard
+          + `|\\breturn\\s+${esc}\\s*(?:\\?|&&|\\|\\|)`,
+        );
         let hasNullCheck = false;
         for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-          if (lines[j].includes(`${resultVar} ===`) || lines[j].includes(`${resultVar} !==`) ||
-              lines[j].includes(`!${resultVar}`) || lines[j].includes(`${resultVar} ==`) ||
-              lines[j].includes(`${resultVar}?`) || lines[j].includes(`${resultVar} &&`)) {
-            hasNullCheck = true;
-            break;
-          }
+          if (GUARD.test(lines[j])) { hasNullCheck = true; break; }
         }
         if (!hasNullCheck) {
           findings.push({

@@ -333,12 +333,23 @@ class LivingRemembranceEngine {
    * @param {{cost?:number, coherence:number}} obs
    * @returns {number} projected coherence
    */
-  peekProjection({ cost = 1.0, coherence = null } = {}) {
+  peekProjection({ cost = 1.0, coherence = null, resonance = null } = {}) {
     const p = (typeof coherence === 'number') ? coherence : this._state.coherence;
     const { r0, alpha, delta0 } = this._params;
     const r_eff      = r0 * (1 + alpha * Math.pow(Math.max(0, 1 - p), 4));
     const delta_void = delta0 * Math.max(0, 1 - p);
-    return Math.max(0, Math.min(0.999, p + r_eff * 0.1 + delta_void * 0.15));
+    // Must apply the SAME authority weight and the SAME prev-anchored EMA as
+    // contribute(), or the projection answers a different question than the
+    // call it claims to project. It previously returned the bare target,
+    // which equals the real result only when w === 1 — true of every caller
+    // until resonance was wired, and false the moment one passes it. A
+    // predictor that silently stops matching the thing it predicts is worse
+    // than no predictor.
+    const w = (typeof resonance === 'number' && isFinite(resonance))
+      ? Math.max(0, Math.min(1, resonance)) : 1;
+    const target = p + r_eff * 0.1 + delta_void * 0.15;
+    const prev = this._state.coherence;
+    return Math.max(0, Math.min(0.999, prev + (target - prev) * w));
   }
 
   /** Reset state — primarily for tests / fresh runs. */

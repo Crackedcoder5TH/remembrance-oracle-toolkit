@@ -671,6 +671,42 @@ function consonanceVerdict(meanTopK, best) {
   return ['OUTLIER', 'structurally novel here — either genuinely new, or drifting from the codebase'];
 }
 
+/**
+ * Is auto-ingest on for this read? Default ON — looking witnesses.
+ *
+ * Resolution order is most-specific-wins so the toggle exists at every level
+ * someone would reasonably want it: a single command, a shell or hook, or a
+ * whole repo. Returns a boolean; never throws.
+ */
+function resolveAutoIngest(absFile) {
+  const argv = process.argv.slice(2);
+  if (argv.includes('--no-ingest')) return false;
+  if (argv.includes('--ingest')) return true;
+
+  const env = process.env.GOGGLES_AUTO_INGEST;
+  if (env !== undefined && env !== '') {
+    return !/^(0|false|no|off)$/i.test(String(env).trim());
+  }
+
+  // Per-repo config: walk up from the file for .remembrance/goggles.json.
+  try {
+    let dir = path.dirname(path.resolve(absFile || process.cwd()));
+    for (let i = 0; i < 8; i++) {
+      const cfg = path.join(dir, '.remembrance', 'goggles.json');
+      if (fs.existsSync(cfg)) {
+        const j = JSON.parse(fs.readFileSync(cfg, 'utf8'));
+        if (typeof j.autoIngest === 'boolean') return j.autoIngest;
+        break;
+      }
+      const up = path.dirname(dir);
+      if (up === dir) break;
+      dir = up;
+    }
+  } catch (_) { /* unreadable config must not disable witnessing */ }
+
+  return true;   // default ON
+}
+
 function main() {
   const { file, lines, top, map, deep, memory } = parseArgs(process.argv.slice(2));
   if (memory) { runMemory(memory); return; }
@@ -698,7 +734,23 @@ function main() {
   }
 
   const language = LANG_BY_EXT[path.extname(abs)] || 'text';
-  const r = ft.read({ content, name: file, language }, { source: 'goggles', growSubstrate: false, topK: top });
+  // AUTO-INGEST — on by default. Looking at a file WITNESSES it.
+  //
+  // This was hardcoded `growSubstrate: false`, so reading never grew the
+  // substrate: goggling a file moved updateCount by exactly 0 and every file
+  // read "drifted from substrate memory — re-harvest to re-witness". The
+  // substrate only learned when explicitly harvested, which meant the act of
+  // looking and the act of remembering were separate chores.
+  //
+  // Now the read ingests unless told otherwise. Precedence, most specific
+  // first, so a turn-off is always available at the level you need it:
+  //   --no-ingest / --ingest      per invocation
+  //   GOGGLES_AUTO_INGEST=0/1     per shell or per hook
+  //   .remembrance/goggles.json   { "autoIngest": false }  per repo
+  //   default                     ON
+  const autoIngest = resolveAutoIngest(abs);
+  const r = ft.read({ content, name: file, language },
+    { source: 'goggles', growSubstrate: autoIngest, topK: top });
   const vr = r.voidResonance || r.resonance || {};
   const meanTopK = vr.meanTopK ?? 0;
   const [tag, gloss] = consonanceVerdict(meanTopK, vr.bestMatch);

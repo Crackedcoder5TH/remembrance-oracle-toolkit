@@ -304,7 +304,9 @@ class FieldTool {
           // the source bucket, never in the coherence scalar (same rule
           // as the dimensional coupling in 7b below).
           const bucket = m.triggers ? 'triggered' : m.residualRate >= 0.02 ? 'elevated' : 'low';
-          fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:residual:' + bucket });
+          // Flat literal removed: a residual-rate bucket is an EVENT/BUCKET marker, not a coherency.
+          // A constant cannot vary with what was measured, so contributing one
+          // moves the global EMA without carrying any information about it.
           layers.residual = st.lastMeasurement;
         }
         fs.mkdirSync(path.dirname(RESIDUAL_COUNTER_PATH), { recursive: true });
@@ -337,7 +339,9 @@ class FieldTool {
           fs.writeFileSync(DENSITY_COUNTER_PATH, JSON.stringify(dc));
         }
         const bucket = factor >= 1.3 ? 'high' : factor >= 1.05 ? 'rising' : 'baseline';
-        fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:density:' + bucket });
+        // Flat literal removed: a density bucket is an EVENT/BUCKET marker, not a coherency.
+        // A constant cannot vary with what was measured, so contributing one
+        // moves the global EMA without carrying any information about it.
         layers.densityFactor = +factor.toFixed(4);
       } catch (_) { /* density coupling optional — never break a read */ }
     }
@@ -395,7 +399,9 @@ class FieldTool {
           // coherence would drag the field's alignment down for merely
           // finding structure (it once cratered the field 0.96 → 0.22).
           const bucket = gain >= 0.3 ? 'strong' : gain >= 0.1 ? 'moderate' : 'weak';
-          fc.contribute({ cost: 1.0, coherence: 0.9, source: 'oracle:encoder:dimensional-2d:' + bucket });
+          // Flat literal removed: a dimensional bucket is an EVENT/BUCKET marker, not a coherency.
+          // A constant cannot vary with what was measured, so contributing one
+          // moves the global EMA without carrying any information about it.
           layers.dimensionalGain = +gain.toFixed(4);
         }
       } catch (_) { /* dimensional coupling optional */ }

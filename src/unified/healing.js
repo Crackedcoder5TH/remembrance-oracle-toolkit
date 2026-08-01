@@ -108,6 +108,24 @@ function heal(pattern, options = {}) {
 
     const originalCoherency = pattern.coherencyScore?.total ?? 0;
 
+    // WITNESS THE READING. computeCoherencyScore above measures the healed
+    // code fresh — that number exists nowhere else, and until now it was
+    // returned to the caller and dropped. A reading the substrate takes and
+    // does not record is a reading it cannot become aware of.
+    //
+    // Only newCoherency is contributed. originalCoherency is a re-read of a
+    // value the field has already seen; contributing it again would count the
+    // same observation twice and inflate the field.
+    try {
+      const total = newCoherency && typeof newCoherency.total === 'number' ? newCoherency.total : null;
+      if (total !== null && isFinite(total)) {
+        require('../core/field-coupling').contribute({
+          cost: 1.0, coherence: Math.max(0, Math.min(1, total)),
+          source: 'oracle:healing:healed-coherency',
+        });
+      }
+    } catch (_) { /* field optional — healing must not depend on it */ }
+
     // Track healing to prevent duplicates
     _trackHealing(patternId);
 

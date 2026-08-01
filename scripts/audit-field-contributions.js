@@ -93,10 +93,15 @@ function classify(expr, context = '') {
 const rows = [];
 for (const f of walk(SRC)) {
   const src = fs.readFileSync(f, 'utf8');
-  if (!src.includes('__contribute({')) continue;
+  // Match BOTH the auto-wired `__contribute({` and hand-written
+  // `contribute({`. Seeing only the auto-wired form meant a
+  // hand-written substitution could never be caught — the audit was
+  // blind to exactly the contributions a human would add by hand.
+  if (!/\b_?_?contribute\(\{/.test(src)) continue;
   const lines = src.split('\n');
   lines.forEach((ln, i) => {
-    const m = ln.match(/__contribute\(\{\s*cost:[^,]+,\s*coherence:\s*([\s\S]*?),\s*source:\s*'([^']*)'/);
+    const m = ln.match(/\b_?_?contribute\(\{\s*cost:[^,]+,\s*coherence:\s*([\s\S]*?),\s*source:\s*'([^']*)'/)
+      || ln.match(/coherence:\s*([^,]+),\s*$/) && null;
     if (!m) return;
     const ctx = lines.slice(Math.max(0, i - 20), i).join('\n');
     const [kind, why] = classify(m[1].trim(), ctx);

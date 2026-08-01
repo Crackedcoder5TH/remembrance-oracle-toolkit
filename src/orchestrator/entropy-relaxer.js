@@ -122,6 +122,25 @@ async function relaxIfHot(opts = {}) {
     //    recomputes globalEntropy = cost / (coherence + ε) on this LAST
     //    contribution, cost:1 over discovered≈0.99 yields entropy ≈ 1.0,
     //    far below the hot threshold. The field relaxes.
+    // ⚠ THIS IS CONTROL, NOT MEASUREMENT — the one deliberate exception.
+    //
+    // `discovered` is the mean of the top-K RESONANCE scores from the Void
+    // /resonance endpoint. Resonance is a real substrate reading, but it is
+    // not a coherency, and this call passes it as one. The step above is
+    // explicit that the point is to move the number: globalEntropy is
+    // recomputed as cost/(coherence+ε) on the LAST contribution, so a high
+    // value here drops reported entropy below the hot threshold.
+    //
+    // Left in place because it is intentional, documented orchestrator
+    // behaviour and removing it changes when the swarm throttles. But it is
+    // the single site where the field is written to CHANGE what it reports
+    // rather than to record what was seen, and audit-field-contributions.js
+    // will keep flagging it as SUBSTITUTED — correctly.
+    //
+    // The honest redesign, if this is ever revisited: the LRE now accepts
+    // `resonance` as an authority weight, so a low-resonance relaxation could
+    // move the field a little and a high-resonance one a lot, without any
+    // value entering under a name it does not have.
     contribute({ cost: 1, coherence: discovered, source: 'orchestrator:entropy-relax' });
     lastFiredAt = Date.now();
 

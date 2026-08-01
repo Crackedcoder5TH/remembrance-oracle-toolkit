@@ -235,9 +235,24 @@ if (!noContribute) {
     if (typeof read.coherency !== 'number' || !Number.isFinite(read.coherency)) {
       throw new Error('no measured coherency — nothing to contribute');
     }
+    // AUTHORITY WEIGHT — this reading's measured resonance against the
+    // accumulated substrate. The LRE has accepted `resonance` as w all along
+    // (field-coupling.js threads it, living-remembrance.js applies it as
+    // prev + (target-prev)*w) but NO caller was passing it, so every
+    // contribution arrived with w=1 — full authority — including readings of
+    // pages the substrate recognises not at all.
+    //
+    // We measure meanTop5 a few lines above and were discarding it. Passing
+    // it means a page that resonates with the substrate moves the field, and
+    // one that resonates with nothing barely does. Omitted rather than
+    // defaulted when resonance could not be computed: w=1 is then the
+    // engine's own documented default, not a number invented here.
+    const authority = resonance && Number.isFinite(resonance.meanTop5)
+      ? { resonance: resonance.meanTop5 } : {};
     require('../src/core/field-coupling').contribute({
       cost: 1.0, coherence: read.coherency,
       source: 'goggles:web:' + read.domain + ':' + new URL(url).host,
+      ...authority,
     });
     contributed = true;
   } catch (_) { /* field optional */ }

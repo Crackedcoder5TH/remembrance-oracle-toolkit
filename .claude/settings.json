@@ -78,6 +78,18 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/precompact-digest.js 2>/dev/null || true",
+            "statusMessage": "substrate: marking what is load-bearing before compaction"
+          }
+        ]
+      }
     ]
   }
 }

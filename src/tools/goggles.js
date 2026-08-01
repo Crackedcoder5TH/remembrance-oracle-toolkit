@@ -570,6 +570,81 @@ function printCanonicalStatus(absFile) {
   }
 }
 
+/**
+ * DOC CAVEATS — surface a document's own warnings BEFORE its content.
+ *
+ * The failure this prevents, observed repeatedly: a reader opens a doc
+ * hunting one thing (a formula), extracts it, and skims past the document's
+ * own ⚠ CORRECTION saying that very thing is unconfirmed. In
+ * COMPRESSION-EQUATION.md the correction sits at line 26 and the
+ * contradicting "🟢 HOLDS" at line 133 — Spearman 0.21 vs 0.98, same metric,
+ * same file. Partial-read-plus-inference cannot catch that; a reader must
+ * see the caveats first, so they are printed before any reading.
+ *
+ * Also flags INTERNAL CONTRADICTIONS: the same named metric asserted with
+ * materially different values in one document.
+ */
+function printDocCaveats(absFile) {
+  if (!/\.(md|markdown|txt)$/i.test(absFile)) return;
+  let text;
+  try { text = fs.readFileSync(absFile, 'utf8'); } catch { return; }
+  const lines = text.split('\n');
+
+  const CAVEAT = /(⚠|🛑|\bCORRECTION\b|\bDEPRECATED\b|\bSUPERSEDED\b|\bUNCONFIRMED\b|\bdoes NOT\b|\bis NOT\b|\bno longer\b|\bstale\b|\bDO NOT\b)/;
+  const caveats = [];
+  lines.forEach((ln, i) => {
+    if (CAVEAT.test(ln) && ln.trim().length > 12) {
+      caveats.push({ line: i + 1, text: ln.replace(/^[>#\s*-]+/, '').trim().slice(0, 96) });
+    }
+  });
+
+  // same metric name, materially different asserted values
+  const METRIC = /\b(spearman|pearson|auc|ratio|coherence|coherency|correlation|r²|rho|ρ)\b[^0-9\-\n]{0,24}(-?\d+\.\d+)/gi;
+  // A line that states a THRESHOLD or a TOLERANCE ("Spearman < 0.70",
+  // "1.0 ± 0.1") is not asserting a measurement — it is declaring a bound.
+  // Counting those as claims manufactures contradictions that aren't there.
+  // A comparator only signals a bound when it sits against a NUMBER — the
+  // leading `>` of a markdown blockquote must not silence the whole line
+  // (the sharpest corrections in this ecosystem are written as blockquotes).
+  const BOUND = /[<>≤≥]\s*\d|±\s*\d|\bthreshold\b|\bbound\b|\bat least\b|\bat most\b/i;
+  const byMetric = new Map();
+  lines.forEach((ln, i) => {
+    let m;
+    if (BOUND.test(ln.replace(/^[>#\s*-]+/, ''))) return;
+    METRIC.lastIndex = 0;
+    while ((m = METRIC.exec(ln)) !== null) {
+      const key = m[1].toLowerCase();
+      const val = parseFloat(m[2]);
+      if (!Number.isFinite(val)) continue;
+      if (!byMetric.has(key)) byMetric.set(key, []);
+      byMetric.get(key).push({ val, line: i + 1 });
+    }
+  });
+  const conflicts = [];
+  for (const [key, vals] of byMetric) {
+    if (vals.length < 2) continue;
+    const lo = vals.reduce((a, b) => (a.val <= b.val ? a : b));
+    const hi = vals.reduce((a, b) => (a.val >= b.val ? a : b));
+    // Two values on the SAME line are a range, not a disagreement.
+    if (lo.line === hi.line) continue;
+    if (hi.val - lo.val >= 0.30) {
+      conflicts.push({ key, lo, hi });
+    }
+  }
+
+  if (!caveats.length && !conflicts.length) return;
+  console.log('  ── THIS DOCUMENT CARRIES ITS OWN WARNINGS (read these first) ──');
+  for (const c of caveats.slice(0, 4)) {
+    console.log(`     ⚠ L${c.line}: ${c.text}`);
+  }
+  if (caveats.length > 4) console.log(`     …and ${caveats.length - 4} more caveat line(s)`);
+  for (const c of conflicts.slice(0, 3)) {
+    console.log(`     ⛔ INTERNAL CONTRADICTION — "${c.key}" asserted as `
+      + `${c.lo.val} (L${c.lo.line}) and ${c.hi.val} (L${c.hi.line})`);
+  }
+  console.log('     Do not quote this document without reconciling the above.');
+}
+
 function bar(x, width = 22) {
   const n = Math.max(0, Math.min(width, Math.round((x || 0) * width)));
   return '█'.repeat(n) + '·'.repeat(width - n);
@@ -633,6 +708,7 @@ function main() {
   console.log('  GOGGLES   ' + section);
   console.log('═'.repeat(W));
   printCanonicalStatus(abs);
+  printDocCaveats(abs);
 
   // ── FOCUS ──
   console.log('  FOCUS  (the section you are editing)');

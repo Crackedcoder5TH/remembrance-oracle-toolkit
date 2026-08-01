@@ -50,21 +50,34 @@ function readJSON(p) {
 }
 
 // ── TRAPS ──────────────────────────────────────────────────────────────
-function printTraps(target) {
+
+/** Traps whose match terms appear in `target`. Returns the raw entries. */
+function trapsFor(target) {
   const db = readJSON(path.join(ROOT, '.remembrance', 'traps.json'));
-  if (!db || !Array.isArray(db.traps)) return 0;
-  const t = target.toLowerCase();
-  const hits = db.traps.filter((x) => (x.match || []).some((m) => t.includes(m.toLowerCase())));
-  if (!hits.length) return 0;
-  console.log('\n╔══ TRAPS — mistakes already made here. Read before calling. ══');
+  if (!db || !Array.isArray(db.traps)) return [];
+  const t = String(target || '').toLowerCase();
+  return db.traps.filter((x) => (x.match || []).some((m) => t.includes(m.toLowerCase())));
+}
+
+/** Render traps as text so callers that are not a terminal can carry them. */
+function renderTraps(hits) {
+  if (!hits.length) return '';
+  const L = ['╔══ TRAPS — mistakes already made here. Read before calling. ══'];
   for (const h of hits) {
-    console.log(`║`);
-    console.log(`║ [${(h.severity || '?').toUpperCase()}]  ✗ WRONG: ${h.wrong}`);
-    console.log(`║        ✓ TRUTH: ${h.truth}`);
-    if (h.tell) console.log(`║        ⚑ TELL:  ${h.tell}`);
-    if (h.correct) console.log(`║        → DO:    ${h.correct}`);
+    L.push('║');
+    L.push(`║ [${(h.severity || '?').toUpperCase()}]  ✗ WRONG: ${h.wrong}`);
+    L.push(`║        ✓ TRUTH: ${h.truth}`);
+    if (h.tell) L.push(`║        ⚑ TELL:  ${h.tell}`);
+    if (h.correct) L.push(`║        → DO:    ${h.correct}`);
   }
-  console.log('╚' + '═'.repeat(62));
+  L.push('╚' + '═'.repeat(62));
+  return L.join('\n');
+}
+
+function printTraps(target) {
+  const hits = trapsFor(target);
+  if (!hits.length) return 0;
+  console.log('\n' + renderTraps(hits));
   return hits.length;
 }
 
@@ -238,4 +251,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { printTraps, printIdentity, printContract };
+module.exports = { printTraps, printIdentity, printContract, trapsFor, renderTraps };

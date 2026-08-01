@@ -707,6 +707,18 @@ function main() {
   console.log('\n' + '═'.repeat(W));
   console.log('  GOGGLES   ' + section);
   console.log('═'.repeat(W));
+
+  // ── BRIEF, folded in ──
+  // Traps and canonical status belong to the same act as looking at a file:
+  // you are about to touch it, so what has already gone wrong here and
+  // whether this is even the live version come FIRST, before the structural
+  // read. Keeping them in a separate tool meant they were a second call, and
+  // the second call is the one that gets skipped.
+  try {
+    const brief = require('./brief');
+    brief.printTraps(abs);
+    brief.printIdentity(abs);
+  } catch (_) { /* brief optional — never break a read */ }
   printCanonicalStatus(abs);
   printDocCaveats(abs);
 

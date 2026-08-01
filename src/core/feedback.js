@@ -9,13 +9,35 @@
 const { findPatternLocation, FIX_SUGGESTIONS, covenantFeedback } = require('./feedback-covenant');
 const { COHERENCY_ADVICE, coherencyFeedback } = require('./feedback-coherency');
 
+// FIELD: every validation is a reading. A pass contributes 1.0; a rejection
+// contributes the FRACTION of gates that still held, so the field records
+// how close the code came rather than a flat failure. Best-effort.
+function _contributeValidation(validationResult, passed) {
+  try {
+    let coherence = 1.0;
+    if (!passed) {
+      const gates = [
+        !(validationResult.covenantResult && !validationResult.covenantResult.sealed),
+        !(validationResult.coherencyScore && validationResult.coherencyScore.total < 0.6),
+        validationResult.testPassed !== false,
+      ];
+      coherence = gates.filter(Boolean).length / gates.length;
+    }
+    require('./field-coupling').contribute({
+      cost: 1.0, coherence, source: 'core:feedback:validation-gates',
+    });
+  } catch (_) { /* field optional */ }
+}
+
 function actionableFeedback(code, validationResult) {
   const result = { summary: '', covenantFeedback: [], coherencyFeedback: [], suggestions: [] };
 
   if (validationResult.valid) {
+    _contributeValidation(validationResult, true);
     result.summary = 'Code passed all checks.';
     return result;
   }
+  _contributeValidation(validationResult, false);
 
   const issues = [];
 

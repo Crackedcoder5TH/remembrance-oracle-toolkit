@@ -47,7 +47,7 @@ try {
   // detached node->node spawn silently produced nothing (log stayed empty)
   // while the identical bash-wrapped form survives the parent's exit.
   const script = path.join(ROOT, 'scripts', 'goggle-web.js');
-  const child = spawn('bash', ['-c', `node ${JSON.stringify(script)} ${JSON.stringify(url)} --json`], {
+  const child = spawn('bash', ['-c', `node ${JSON.stringify(script)} ${JSON.stringify(url)} --fast --json`], {
     cwd: ROOT, detached: true, stdio: ['ignore', out, out],
   });
   child.unref();

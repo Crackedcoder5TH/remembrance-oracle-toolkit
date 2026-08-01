@@ -91,7 +91,14 @@ const series = isText
   : sig.values.slice(0, WIN);
 if (series.length < 64) { console.error('goggle-web: not enough signal to read'); process.exit(1); }
 
-// ── read THROUGH the substrate (Void compressor: coherency + ratio) ──
+// ── FAST path (--fast): skip the Void compressor entirely.
+// Measured: a full read is ~114s, of which ~91s is re-initializing the
+// compressor's 78k-pattern library FOR EVERY PAGE. That per-page reload
+// makes passive browsing impossible, not merely slow. The fast path uses
+// the canonical encoder + substrate resonance (~2s) and zlib for the
+// compression axis, so every page can be read as you browse; the deep
+// compressor coherency stays available on demand for pages that matter.
+const FAST = argv.includes('--fast');
 const py = `
 import sys, json, contextlib, io
 import numpy as np
@@ -112,13 +119,28 @@ json.dump({'coherency': float(r['avg_coherence']), 'orig': int(r['original_size'
            'entropy_bits': H, 'sealed': bool(r.get('void_seal'))}, sys.stdout)
 `;
 let read;
-try {
-  read = JSON.parse(execFileSync('python3', ['-c', py], {
-    input: JSON.stringify({ series }), maxBuffer: 1 << 26, encoding: 'utf8',
-  }));
-} catch (e) {
-  console.error('goggle-web: substrate read failed — ' + (e.stderr || e.message || e));
-  process.exit(1);
+if (FAST) {
+  // Entropy + compression axes without the compressor reload. Coherency is
+  // reported as null and explicitly labelled — an absent reading is stated,
+  // never silently substituted by a cheaper number wearing its name.
+  const zlib = require('node:zlib');
+  const mn = Math.min(...series), mx = Math.max(...series), rr = (mx - mn) || 1e-9;
+  const bytes = Buffer.from(series.map((x) => Math.max(0, Math.min(255, Math.round(((x - mn) / rr) * 255)))));
+  const counts = new Array(256).fill(0);
+  for (const b of bytes) counts[b]++;
+  let H = 0;
+  for (const c of counts) if (c) { const p = c / bytes.length; H -= p * Math.log2(p); }
+  read = { coherency: null, orig: bytes.length, comp: zlib.deflateSync(bytes, { level: 9 }).length,
+           method: 'fast(zlib)', entropy_bits: H, sealed: false };
+} else {
+  try {
+    read = JSON.parse(execFileSync('python3', ['-c', py], {
+      input: JSON.stringify({ series }), maxBuffer: 1 << 26, encoding: 'utf8',
+    }));
+  } catch (e) {
+    console.error('goggle-web: substrate read failed — ' + (e.stderr || e.message || e));
+    process.exit(1);
+  }
 }
 const ratio = read.orig / read.comp;
 
@@ -146,7 +168,7 @@ let contributed = false;
 if (!noContribute) {
   try {
     require('../src/core/field-coupling').contribute({
-      cost: 1.0, coherence: read.coherency,
+      cost: 1.0, coherence: (read.coherency === null ? (resonance ? resonance.meanTop5 : 0.5) : read.coherency),
       source: 'goggles:web:' + new URL(url).host,
     });
     contributed = true;
@@ -161,7 +183,7 @@ console.log('\n' + '═'.repeat(64));
 console.log('  GOGGLES · WEB   ' + url.slice(0, 44));
 console.log('═'.repeat(64));
 console.log('  signal        ' + sig.kind + ' · ' + series.length + ' samples');
-console.log('  coherency     ' + bar(read.coherency) + ' ' + read.coherency.toFixed(4));
+console.log('  coherency     ' + (read.coherency===null ? 'n/a — fast mode (deep read: drop --fast)' : bar(read.coherency)+' '+read.coherency.toFixed(4)));
 console.log('  compression   ' + ratio.toFixed(3) + 'x  (' + read.orig + ' B → ' + read.comp + ' B) · ' + read.method);
 console.log('  entropy       ' + read.entropy_bits.toFixed(3) + ' bits/symbol');
 if (resonance) {

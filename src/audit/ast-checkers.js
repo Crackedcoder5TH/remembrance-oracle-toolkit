@@ -28,7 +28,7 @@
 
 const { parseProgram, walkFunctions } = require('./parser');
 const { buildScope } = require('./scope');
-const { computeTainted, findSinkCalls } = require('./taint');
+const { computeTainted, findSinkCalls, collectRegexIdents } = require('./taint');
 const { inferNullability } = require('./type-inference');
 const { parseComments, isSuppressed } = require('./suppressions');
 
@@ -97,6 +97,11 @@ function auditCode(source, options = {}) {
     : null;
   const isEnabled = (cls) => !enabled || enabled.has(cls);
 
+  // Which identifiers this file binds to a regex — read once, so the
+  // security checker can tell `SEAL.exec(s)` (RegExp) from `cp.exec(s)`
+  // (a shell) by the binding rather than by how the name is spelled.
+  const regexIdents = collectRegexIdents(source);
+
   // Walk every function and run per-function checkers
   walkFunctions(program, (fn) => {
     if (!fn.bodyTokens) return;
@@ -104,7 +109,7 @@ function auditCode(source, options = {}) {
     const tainted = computeTainted(fn);
 
     if (isEnabled(BUG_CLASSES.STATE_MUTATION)) checkStateMutation(fn, scope, emit);
-    if (isEnabled(BUG_CLASSES.SECURITY))       checkSecurityInFn(fn, tainted, emit);
+    if (isEnabled(BUG_CLASSES.SECURITY))       checkSecurityInFn(fn, tainted, emit, regexIdents);
     if (isEnabled(BUG_CLASSES.CONCURRENCY))    checkConcurrencyInFn(fn, emit);
     if (isEnabled(BUG_CLASSES.TYPE))           checkTypeInFn(fn, scope, emit);
     if (isEnabled(BUG_CLASSES.INTEGRATION))    checkIntegrationInFn(fn, nullability, scope, emit);
@@ -300,8 +305,8 @@ function isProducedByCopy(receiverTokens) {
 
 // ─── Security checker ──────────────────────────────────────────────────────
 
-function checkSecurityInFn(fn, tainted, emit) {
-  findSinkCalls(fn, tainted, emit);
+function checkSecurityInFn(fn, tainted, emit, regexIdents) {
+  findSinkCalls(fn, tainted, emit, regexIdents);
 }
 
 // ─── Concurrency checker ───────────────────────────────────────────────────

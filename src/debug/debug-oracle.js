@@ -641,18 +641,9 @@ class DebugOracle {
       this._collapsePattern(result.id, now);
     }
 
-    // ── LRE field-coupling (auto-wired) ──
-  try {
-    const __lre_enginePaths = ['./../core/field-coupling',
-      require('path').join(__dirname, '../core/field-coupling')];
-    for (const __p of __lre_enginePaths) {
-      try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, (results[0] && results[0].matchScore) || 0)), source: 'oracle:debug-oracle:search' });
-        break;
-      } catch (_) { /* try next */ }
-    }
-  } catch (_) { /* best-effort */ }
+    // field contribution removed: contributed matchScore, not a coherency.
+    // Auto-wired by scripts/wire-field-couplings.js, whose NUMERIC_FIELDS
+    // list treated any numeric-looking return field as a coherence signal.
     return results;
   }
 
@@ -702,18 +693,9 @@ class DebugOracle {
       newVariants = this._cascadeGrow(pattern);
     }
 
-    // ── LRE field-coupling (auto-wired) ──
-  try {
-    const __lre_enginePaths = ['./../core/field-coupling',
-      require('path').join(__dirname, '../core/field-coupling')];
-    for (const __p of __lre_enginePaths) {
-      try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, amplitude || 0)), source: 'oracle:debug-oracle:reportOutcome' });
-        break;
-      } catch (_) { /* try next */ }
-    }
-  } catch (_) { /* best-effort */ }
+    // field contribution removed: contributed amplitude, not a coherency.
+    // Auto-wired by scripts/wire-field-couplings.js, whose NUMERIC_FIELDS
+    // list treated any numeric-looking return field as a coherence signal.
     return {
       success: true,
       confidence: amplitude,
@@ -903,18 +885,9 @@ class DebugOracle {
       entangledPairs += entangled.length;
     }
 
-    // ── LRE field-coupling (auto-wired) ──
-  try {
-    const __lre_enginePaths = ['./../core/field-coupling',
-      require('path').join(__dirname, '../core/field-coupling')];
-    for (const __p of __lre_enginePaths) {
-      try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, all.length > 0 ? totalConfidence / all.length : 0)), source: 'oracle:debug-oracle:stats' });
-        break;
-      } catch (_) { /* try next */ }
-    }
-  } catch (_) { /* best-effort */ }
+    // field contribution removed: contributed confidence (via totalConfidence), not a coherency.
+    // Auto-wired by scripts/wire-field-couplings.js, whose NUMERIC_FIELDS
+    // list treated any numeric-looking return field as a coherence signal.
     return {
       totalPatterns: all.length,
       avgConfidence: all.length > 0 ? Math.round(totalConfidence / all.length * 1000) / 1000 : 0,
@@ -1361,18 +1334,9 @@ class DebugOracle {
       entangledWith: safeParse(row.entangled_with, []),
       observationCount: row.observation_count || 0,
     };
-    // ── LRE field-coupling (auto-wired) ──
-  try {
-    const __lre_enginePaths = ['./../core/field-coupling',
-      require('path').join(__dirname, '../core/field-coupling')];
-    for (const __p of __lre_enginePaths) {
-      try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.confidence || 0)), source: 'oracle:debug-oracle:_rowToDebugPattern' });
-        break;
-      } catch (_) { /* try next */ }
-    }
-  } catch (_) { /* best-effort */ }
+    // field contribution removed: contributed confidence, not a coherency.
+    // Auto-wired by scripts/wire-field-couplings.js, whose NUMERIC_FIELDS
+    // list treated any numeric-looking return field as a coherence signal.
     return __retVal;
   }
 }

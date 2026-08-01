@@ -27,18 +27,9 @@ class TestScorer {
         dimensions: { assertions: 0, coverage: 0, edgeCases: 0, errorHandling: 0, diversity: 0 },
         suggestions: ['No test code provided — generate tests first'],
       };
-      // ── LRE field-coupling (auto-wired) ──
-  try {
-    const __lre_enginePaths = ['./../core/field-coupling',
-      require('path').join(__dirname, '../core/field-coupling')];
-    for (const __p of __lre_enginePaths) {
-      try {
-        const { contribute: __contribute } = require(__p);
-        __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:scorer:score' });
-        break;
-      } catch (_) { /* try next */ }
-    }
-  } catch (_) { /* best-effort */ }
+      // field contribution removed: contributed score, not a coherency.
+      // Auto-wired by scripts/wire-field-couplings.js, whose NUMERIC_FIELDS
+      // list treated any numeric-looking return field as a coherence signal.
       return __retVal;
     }
 

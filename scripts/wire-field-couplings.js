@@ -39,13 +39,32 @@ const HUB = path.resolve(__dirname, '..');
 const SRC = path.join(HUB, 'src');
 const CANONICAL_FIELD_COUPLING = path.join(SRC, 'core', 'field-coupling');
 
-// Numeric-shaped __retVal fields the auto-wirer can use as a coherence
-// signal. Functions whose return doesn't have one of these are skipped.
+// ⚠ THIS LIST CAUSED 41 FALSE CONTRIBUTIONS. It used to read:
+//
+//   ['score', 'coherency', 'coherence', 'confidence', 'reliability',
+//    'quality', 'composite', 'total', 'agreement', 'density', 'ratio',
+//    'similarity', 'unified', 'matchScore']
+//
+// Fourteen names, of which three denote a coherency. The wirer took any
+// return field with one of those names and emitted it as `coherence:`. A
+// confidence, a match score, a density, a running total — all became
+// coherency readings. Math.max(0, Math.min(1, x)) made every one of them
+// type-correct, so nothing ever failed and the field silently averaged
+// quantities that measure different things. 41 of 67 sites were wrong.
+//
+// Narrowed to names that can only mean a coherency. A field named for what
+// it MEANS rather than what it IS does not belong here — if a new signal
+// deserves to reach the field, wire it deliberately and name it.
 const NUMERIC_FIELDS = [
-  'score', 'coherency', 'coherence', 'confidence', 'reliability',
-  'quality', 'composite', 'total', 'agreement', 'density', 'ratio',
-  'similarity', 'unified', 'matchScore',
+  'coherency', 'coherence', 'globalCoherency', 'unified',
 ];
+
+// Hard stop. Auto-instrumentation is what produced the drift: it wrote 67
+// call sites from a name-shape heuristic with no reviewer per site. The
+// narrowed list above makes a rerun less wrong, not right. Re-enabling
+// requires deciding, per function, that the number means a coherency —
+// which is the judgement a batch pass cannot make.
+const DISABLED = !process.argv.includes('--i-have-reviewed-every-site');
 
 function* walkJsFiles(dir) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -177,6 +196,28 @@ function wire({ dryRun }) {
 }
 
 if (require.main === module) {
+  if (DISABLED) {
+    console.error([
+      'wire-field-couplings is DISABLED.',
+      '',
+      'This script auto-instrumented 67 functions from a name-shape heuristic.',
+      '41 of them contributed something that was not a coherency — confidence,',
+      'matchScore, density, a running total, a zlib savings ratio — into the',
+      'coherency field. The [0,1] clamp made each one type-correct, so nothing',
+      'ever failed and the drift went unnoticed until the field was audited.',
+      '',
+      'Inspect first:  node scripts/audit-field-contributions.js',
+      'Clean up:       node scripts/unwire-substituted-couplings.js',
+      '',
+      'A coherency must come from the Void compressor. If a number did not come',
+      'from there, it is measuring something else and does not belong in this',
+      'field under this name.',
+      '',
+      'Override only after reviewing every site it would touch:',
+      '  --i-have-reviewed-every-site',
+    ].join('\n'));
+    process.exit(2);
+  }
   const argv = process.argv.slice(2);
   const dryRun = argv.includes('--dry-run');
   const verify = argv.includes('--verify');

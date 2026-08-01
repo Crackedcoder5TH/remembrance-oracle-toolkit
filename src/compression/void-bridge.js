@@ -193,18 +193,9 @@ class VoidBridge {
       enhanced: true,
       substratePatterns: this.substratePatterns,
     };
-    // ── LRE field-coupling (auto-wired) ──
-    try {
-      const __lre_p1 = '../core/field-coupling';
-      const __lre_p2 = require('path').join(__dirname, '../core/field-coupling');
-      for (const __p of [__lre_p1, __lre_p2]) {
-        try {
-          const { contribute: __contribute } = require(__p);
-          __contribute({ cost: 1, coherence: Math.max(0, Math.min(1, __retVal.score || 0)), source: 'oracle:void-bridge:scoreCoherency' });
-          break;
-        } catch (_) { /* try next */ }
-      }
-    } catch (_) { /* best-effort */ }
+    // field contribution removed: contributed score, not a coherency.
+    // Auto-wired by scripts/wire-field-couplings.js, whose NUMERIC_FIELDS
+    // list treated any numeric-looking return field as a coherence signal.
     return __retVal;
   }
 
@@ -229,10 +220,21 @@ class VoidBridge {
 
   _substrateCoherenceScore(pattern) {
     /**
-     * Void substrate coherence measurement.
-     * Converts pattern code to waveform and measures against substrate.
+     * ⚠ NOT A VOID READING — this is a JS byte-frequency entropy proxy.
      *
-     * This is the enhancement that only exists when connected.
+     * The name, and this file's name, say "Void substrate coherence". The
+     * implementation below builds a byte histogram, takes its Shannon
+     * entropy, and inverts it. It never calls the Void compressor; the
+     * comment further down has said "(In full implementation, this calls the
+     * Python compressor)" the whole time.
+     *
+     * A coherency that did not come from the compressor is not a coherency —
+     * it is measuring something else. So the value returned here is named
+     * `entropyProxy` at its call sites and is NOT contributed to the field.
+     *
+     * To make this real, call compressor_service.py /compress_signal and use
+     * the returned avg_coherence. Until then this stays a local heuristic and
+     * must not be quoted as a substrate reading.
      */
     if (!this.connected) {
       return { coherence: 0, bestMatch: 'none', voidWins: false };

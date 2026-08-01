@@ -34,9 +34,14 @@ const ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(ROOT, 'src');
 
 // Names that genuinely denote a substrate coherency reading.
-const MEASURED = /\b(coherency|coherence|globalCoherency|avg_coherence|unified)\b/;
+// Case-insensitive and NOT word-bounded on the left: the real readings are
+// written camelCase — newCoherency, coherencyScore, substrateCoherence,
+// avgCoherence. \bcoherency\b matched none of them, so a genuine
+// coherency aggregation read as an unnamed scalar and was queued for
+// deletion. Same spelling-over-substance failure this cleanup exists for.
+const MEASURED = /(coherenc|unified)/i;
 // Names that denote something else entirely.
-const OTHER = /\b(confidence|matchScore|amplitude|composite|score|ratio|evidence|length|count|size|probability|weight|strength|similarity)\b/i;
+const OTHER = /\b(confidence|matchScore|amplitude|composite|score|ratio|evidence|length|count|size|probability|weight|strength|similarity|density|agreement|total|reliability|quality)\b/i;
 
 function walk(dir, out = []) {
   let ents;
@@ -51,16 +56,39 @@ function walk(dir, out = []) {
   return out;
 }
 
-function classify(expr) {
-  // A bare literal or a clamp of one cannot vary with the data.
+/**
+ * Classify what a contribution actually carries.
+ *
+ * `context` is the ~20 lines preceding the call. It is not optional. An
+ * expression like `__c / __n` names nothing, but two lines above sits
+ * `__c += __u.coherencyScore` — so the contribution IS a coherency and
+ * judging the expression alone would delete a real reading. The first
+ * version of this function did exactly that, which is the same
+ * name-shape-matching that produced the bug it is here to clean up.
+ */
+function classify(expr, context = '') {
   const inner = expr.replace(/^Math\.max\(0,\s*Math\.min\(1,\s*/, '').replace(/\)\s*\)$/, '');
   if (/^[\d.]+$/.test(inner.trim())) return ['CONSTANT', 'literal value'];
   if (/1\s*-\s*\(?\w*compressedSize/.test(inner)) return ['SUBSTITUTED', 'compression savings ratio'];
-  const m = inner.match(OTHER);
-  if (m && !MEASURED.test(inner)) return ['SUBSTITUTED', m[0]];
   if (MEASURED.test(inner)) return ['MEASURED', 'coherency'];
+
+  // The expression names nothing recognisable — resolve its local variables.
+  const locals = [...new Set((inner.match(/[A-Za-z_$][\w$]*/g) || []))]
+    .filter((v) => !['Math', 'max', 'min', 'Number', 'reduce', 'length'].includes(v));
+  for (const v of locals) {
+    const re = new RegExp(`\\b${v.replace(/[$]/g, '\\$')}\\s*(?:=|\\+=)([^;\\n]+)`, 'g');
+    let m;
+    while ((m = re.exec(context)) !== null) {
+      if (MEASURED.test(m[1])) return ['MEASURED', 'coherency (via ' + v + ')'];
+      const o = m[1].match(OTHER);
+      if (o) return ['SUBSTITUTED', o[0] + ' (via ' + v + ')'];
+    }
+  }
+  const m2 = inner.match(OTHER);
+  if (m2) return ['SUBSTITUTED', m2[0]];
   return ['SUBSTITUTED', 'unnamed scalar'];
 }
+
 
 const rows = [];
 for (const f of walk(SRC)) {
@@ -70,7 +98,8 @@ for (const f of walk(SRC)) {
   lines.forEach((ln, i) => {
     const m = ln.match(/__contribute\(\{\s*cost:[^,]+,\s*coherence:\s*([\s\S]*?),\s*source:\s*'([^']*)'/);
     if (!m) return;
-    const [kind, why] = classify(m[1].trim());
+    const ctx = lines.slice(Math.max(0, i - 20), i).join('\n');
+    const [kind, why] = classify(m[1].trim(), ctx);
     rows.push({ file: path.relative(ROOT, f), line: i + 1, kind, why, source: m[2] });
   });
 }

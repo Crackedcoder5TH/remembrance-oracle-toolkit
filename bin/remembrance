@@ -27,6 +27,14 @@ GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[0;33m'; RED='\033[0;31m'; NC
 cmd="${1:-help}"; shift || true
 
 case "$cmd" in
+  brief)
+    # One call, full debrief. Run this BEFORE calling anything you have not
+    # read end to end: recorded traps for the area, whether the file is the
+    # canonical entry point, what its body actually does with its input,
+    # whether the services and data it needs are live, and any warnings the
+    # document carries about itself.
+    node "$ORACLE_ROOT/src/tools/brief.js" "$@"
+    ;;
   status)
     echo -e "${BLUE}Ecosystem status:${NC}"
     echo "  Oracle root: $ORACLE_ROOT"
@@ -111,6 +119,8 @@ remembrance — unified CLI for the Remembrance ecosystem
 Usage: remembrance <command> [...args]
 
 Commands:
+  brief <x>    FULL DEBRIEF before you call anything — traps, canonical
+               status, real input contract, live services, doc warnings
   status       Ecosystem health + ratchet verdict (quick glance)
   audit        Run cathedral + cross-repo diagnostics
   fix          Preview mechanical fixes (dry-run; writes disabled — ORACLE_AUTOFIX=1 to force)
@@ -121,6 +131,7 @@ Commands:
   help         Show this message
 
 Examples:
+  remembrance brief void_compressor_v5.py
   remembrance status
   remembrance audit
   remembrance fix

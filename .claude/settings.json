@@ -39,6 +39,16 @@
             "statusMessage": "goggles: reading the inline command before it runs"
           }
         ]
+      },
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /home/user/remembrance-oracle-toolkit/src/tools/goggles-web-hook.js 2>/dev/null || true",
+            "statusMessage": "goggles: reading the page through the substrate"
+          }
+        ]
       }
     ],
     "PostToolUse": [

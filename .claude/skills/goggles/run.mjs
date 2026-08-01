@@ -71,6 +71,10 @@ if (argv[0] === '--do') {
     verify: () => run('bash', [join(toolkit, 'scripts/export-data-plane.sh'), '--verify', ...rest], toolkit),
     // peek the Living Remembrance field state
     field: () => run('node', ['-e', "console.log(JSON.stringify(require('./src/core/field-coupling').peekField(),null,1))"], toolkit),
+    // READ THE WEB through the substrate: fetch a URL, compress + score it,
+    // contribute the reading to the field. Browsing was the last blind spot
+    // (WebFetch matches no hook, so a fetched page was never witnessed).
+    browse: () => run('node', [join(toolkit, 'scripts/goggle-web.js'), ...rest], toolkit),
   };
   if (!verb || !VERBS[verb]) {
     console.error('goggles --do <verb>: ' + Object.keys(VERBS).join(' · '));

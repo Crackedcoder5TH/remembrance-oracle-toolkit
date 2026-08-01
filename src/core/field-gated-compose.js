@@ -41,6 +41,32 @@
  * (lurching), external re-anchoring left to the convergence scripts
  * (echo chamber), best-effort field access (a missing engine degrades
  * to neutral weights = today's static behaviour, never throws).
+ *
+ * ⚠ DO NOT SWAP THIS IN FOR composedCosine WITHOUT RECALIBRATING THE BANDS.
+ *
+ * The docstring above says a detached field "degrades to neutral weights =
+ * today's static behaviour". That is true of the RELIABILITY term only.
+ * Salience still varies per layer, so the weights are never actually equal
+ * and the gated score is on a DIFFERENT SCALE from the flat cosine — not a
+ * refinement of the same one.
+ *
+ * Measured 2026-08-02 over 1,225 real pairs from src/, at neutral
+ * reliability:
+ *
+ *   mean |gated - static|      0.037
+ *   max  |gated - static|      0.115
+ *   resonance verdict CHANGED  568 pairs = 46.4%
+ *   direction                  566 of 568 read LOWER
+ *
+ * The goggles' bands (resonanceConsonant 0.90 / Familiar 0.82 / Distinct
+ * 0.70, in PARAMS.goggles) were calibrated against the flat cosine. Swapping
+ * the formula underneath them would push almost half of all verdicts down a
+ * band and make the ecosystem read as newly incoherent — a measurement
+ * artefact that would look exactly like real drift.
+ *
+ * Wiring this into the encoder is therefore a two-part job: switch the
+ * formula AND recalibrate the bands against the gated distribution, with
+ * held-out validation. Not a one-line default change.
  */
 
 const crypto = require('node:crypto');
@@ -124,13 +150,25 @@ function fieldStamp(state) {
   return crypto.createHash('sha256').update(JSON.stringify(core)).digest('hex').slice(0, 16);
 }
 
-/** Read a layer's reliability from the field's sources histogram.
- *  Sources are tagged `encoder:L<n>` by contributeLayerAgreement. */
+/**
+ * Read a layer's reliability from the engine's dedicated reliability store.
+ *
+ * This used to read state.sources['encoder:L<n>'].lastCoherence — i.e. the
+ * coherency field being used as a key-value store, with an AGREEMENT score
+ * written in under the name `coherence`. That is the same substitution that
+ * put 41 wrong contributions into this field; closing the learning loop that
+ * way would have reintroduced it eight layers at a time.
+ *
+ * Reliability now has its own home (engine.getLayerReliability), so learning
+ * the attention weights moves no equation term.
+ */
 function _layerReliability(state, layerIdx, neutral) {
-  if (!state || !state.sources) return neutral;
-  const src = state.sources['encoder:L' + (layerIdx + 1)];
-  if (!src || typeof src.lastCoherence !== 'number') return neutral;
-  return Math.max(0, Math.min(1, src.lastCoherence));
+  // Prefer the dedicated store, whether handed a state snapshot or not.
+  if (state && state.layerReliability) {
+    const v = state.layerReliability['L' + (layerIdx + 1)];
+    if (typeof v === 'number' && isFinite(v)) return Math.max(0, Math.min(1, v));
+  }
+  return neutral;
 }
 
 /**
@@ -237,12 +275,20 @@ function contributeLayerAgreement(layerCosines, referenceScore, opts = {}) {
     const agreement = Math.max(0, Math.min(1, 1 - Math.abs(layerCosines[l] - referenceScore)));
     const prev = _layerReliability(state, l, neutral);
     const eased = prev + alpha * (agreement - prev);
-    const r = _contribute({
-      cost: 0.1,
-      coherence: eased,
-      source: 'encoder:L' + (l + 1),
-    });
-    if (r) contributed++;
+    // Store as a reliability, not as a coherency contribution. See
+    // _layerReliability above for why this is not _contribute().
+    let stored = null;
+    try {
+      const eng = require('./living-remembrance').getEngine();
+      stored = eng.setLayerReliability(l, eased);
+      // Keep the snapshot fresh so the EMA within this loop compounds
+      // correctly rather than re-reading a stale `prev` for every layer.
+      if (state) {
+        state.layerReliability = state.layerReliability || {};
+        state.layerReliability['L' + (l + 1)] = eased;
+      }
+    } catch (_) { /* detached field — nothing to learn into */ }
+    if (stored !== null) contributed++;
   }
   return contributed;
 }

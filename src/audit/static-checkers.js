@@ -178,6 +178,34 @@ function literalOnlyIdents(code) {
   return lits;
 }
 
+/**
+ * Does this text guard `v` against null?
+ *
+ * ONE definition, shared by every nullable-return rule. Three separate rules
+ * each carried their own hand-rolled list and each omitted different forms —
+ * bare truthiness in one, assertions in another — so correctly-guarded code
+ * was reported as unguarded by whichever rule happened to run. A guard is a
+ * guard; the rules should not disagree about what one looks like.
+ *
+ * Covers: if (x) / if (!x) / if (x && …), bare !x, explicit null comparison,
+ * ?. ?? && ||, ternary, guarded return, and the assertion idioms that stand
+ * in for a guard inside a test (assert.ok(x), assert(x), expect(x)…).
+ */
+function guardsVar(text, v) {
+  const e = String(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(
+    `if\\s*\\(\\s*!?\\s*${e}\\s*[)&|]`
+    + `|!${e}\\b`
+    + `|\\b${e}\\s*(?:===|!==|==|!=)`
+    + `|\\b${e}\\s*(?:\\?\\.|\\?\\?|&&|\\|\\|)`
+    + `|\\b${e}\\s*\\?`
+    + `|\\breturn\\s+${e}\\s*(?:\\?|&&|\\|\\|)`
+    + `|\\bassert\\s*\\(\\s*!?${e}\\b`
+    + `|\\bassert\\.(?:ok|truthy|notEqual|notStrictEqual)\\s*\\(\\s*!?${e}\\b`
+    + `|\\bexpect\\s*\\(\\s*${e}\\s*\\)`,
+  ).test(text);
+}
+
 function checkSecurity(code, lines) {
   const findings = [];
   const literalIdents = literalOnlyIdents(code);
@@ -491,18 +519,9 @@ function checkIntegration(code, lines) {
         // while the check sat on the very next line. That was 34 of the high
         // findings this repo carried as accepted debt, across 19 files —
         // every one of them already guarded.
-        const esc = resultVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const GUARD = new RegExp(
-          `if\\s*\\(\\s*!?\\s*${esc}\\s*[)&|]`      // if (x) / if (!x) / if (x &&
-          + `|!${esc}\\b`                            // !x anywhere
-          + `|\\b${esc}\\s*(?:===|!==|==|!=)`        // explicit comparison
-          + `|\\b${esc}\\s*(?:\\?\\.|\\?\\?|&&|\\|\\|)` // ?. ?? && ||
-          + `|\\b${esc}\\s*\\?`                      // ternary guard
-          + `|\\breturn\\s+${esc}\\s*(?:\\?|&&|\\|\\|)`,
-        );
         let hasNullCheck = false;
         for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-          if (GUARD.test(lines[j])) { hasNullCheck = true; break; }
+          if (guardsVar(lines[j], resultVar)) { hasNullCheck = true; break; }
         }
         if (!hasNullCheck) {
           findings.push({
@@ -527,9 +546,7 @@ function checkIntegration(code, lines) {
         if (new RegExp(`${resultVar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.\\w+`).test(lines[j])) {
           // Check if there was a null check in between
           const between = lines.slice(i + 1, j).join('\n');
-          if (!between.includes(`!${resultVar}`) && !between.includes(`${resultVar} !==`) &&
-              !between.includes(`${resultVar}?`) && !between.includes(`${resultVar} &&`) &&
-              !between.includes(`${resultVar} ==`)) {
+          if (!guardsVar(between, resultVar)) {
             findings.push({
               line: j + 1,
               bugClass: BUG_CLASSES.INTEGRATION,

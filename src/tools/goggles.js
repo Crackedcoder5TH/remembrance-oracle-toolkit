@@ -527,6 +527,49 @@ function printMacro(absFile, fileCoherence, sectionText, fullText) {
   } catch { /* stat best-effort */ }
 }
 
+/**
+ * VERSION PROVENANCE — the first thing a reader must know.
+ *
+ * Version families (void_compressor_v3/v4/v5, coherency_v1..v3,
+ * derived_covenant_v1..v7) coexist on disk with nothing marking which is
+ * live. A reader tracing behaviour lands in v3 and reports on "the
+ * compressor" while the entry point is v5 — a mistake made in this very
+ * session, twice. CANONICAL.json (scripts/build_canonical_manifest.py)
+ * records the roles; this prints them at the TOP of every read, before any
+ * number, so the reading can never be attributed to the wrong file.
+ */
+function printCanonicalStatus(absFile) {
+  let dir = path.dirname(absFile);
+  let manifest = null;
+  for (let i = 0; i < 6; i++) {
+    const p = path.join(dir, 'CANONICAL.json');
+    if (fs.existsSync(p)) {
+      try { manifest = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { /* unreadable */ }
+      break;
+    }
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  if (!manifest || !manifest.families) return;
+  const base = path.basename(absFile);
+  for (const [fam, info] of Object.entries(manifest.families)) {
+    const me = (info.members || []).find((m) => m.file === base);
+    if (!me) continue;
+    if (me.role === 'entry-point') {
+      console.log(`  ✓ CANONICAL — this is the live entry point of the "${fam}" family`);
+    } else if (me.role === 'load-bearing-internal') {
+      console.log(`  ⚠ NOT THE ENTRY POINT — "${fam}" family. This file still EXECUTES`);
+      console.log(`    (called by the live path) but the API is ${info.canonical}.`);
+      console.log(`    Behaviour you read here is real; do not report it as "the ${fam.replace(/\.[a-z]+$/, '')}".`);
+    } else {
+      console.log(`  ⛔ SUPERSEDED — "${fam}" family. Live version is ${info.canonical}.`);
+      console.log(`    Do not analyse this as current.`);
+    }
+    return;
+  }
+}
+
 function bar(x, width = 22) {
   const n = Math.max(0, Math.min(width, Math.round((x || 0) * width)));
   return '█'.repeat(n) + '·'.repeat(width - n);
@@ -589,6 +632,7 @@ function main() {
   console.log('\n' + '═'.repeat(W));
   console.log('  GOGGLES   ' + section);
   console.log('═'.repeat(W));
+  printCanonicalStatus(abs);
 
   // ── FOCUS ──
   console.log('  FOCUS  (the section you are editing)');

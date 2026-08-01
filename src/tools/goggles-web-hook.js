@@ -47,7 +47,14 @@ try {
   // detached node->node spawn silently produced nothing (log stayed empty)
   // while the identical bash-wrapped form survives the parent's exit.
   const script = path.join(ROOT, 'scripts', 'goggle-web.js');
-  const child = spawn('bash', ['-c', `node ${JSON.stringify(script)} ${JSON.stringify(url)} --fast --json`], {
+  // No --fast. That flag substituted zlib for the Void compressor, and a
+  // reading that skipped the compressor is not a substrate reading — it
+  // also used to inject a fabricated coherency into the field. The reader
+  // now goes through compressor_service.py, which holds the pattern library
+  // warm and answers in ~1.5s, so passive browsing stays viable without a
+  // bypass. The spawn is detached, so a cold first start costs the browse
+  // nothing.
+  const child = spawn('bash', ['-c', `node ${JSON.stringify(script)} ${JSON.stringify(url)} --json`], {
     cwd: ROOT, detached: true, stdio: ['ignore', out, out],
   });
   child.unref();

@@ -24,6 +24,7 @@ const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
 const VOID = process.env.VOID_ROOT || path.resolve(__dirname, '..', '..', 'Void-Data-Compressor');
+const SVC_PORT = parseInt(process.env.VOID_SERVICE_PORT, 10) || 8765;
 const argv = process.argv.slice(2);
 const url = argv.find((a) => !a.startsWith('--'));
 const asJson = argv.includes('--json');
@@ -91,57 +92,116 @@ const series = isText
   : sig.values.slice(0, WIN);
 if (series.length < 64) { console.error('goggle-web: not enough signal to read'); process.exit(1); }
 
-// ── FAST path (--fast): skip the Void compressor entirely.
-// Measured: a full read is ~114s, of which ~91s is re-initializing the
-// compressor's 78k-pattern library FOR EVERY PAGE. That per-page reload
-// makes passive browsing impossible, not merely slow. The fast path uses
-// the canonical encoder + substrate resonance (~2s) and zlib for the
-// compression axis, so every page can be read as you browse; the deep
-// compressor coherency stays available on demand for pages that matter.
-const FAST = argv.includes('--fast');
-const py = `
-import sys, json, contextlib, io
-import numpy as np
-sys.path.insert(0, ${JSON.stringify(VOID)})
-req = json.load(sys.stdin)
-v = np.asarray(req['series'], float)
-mn, mx = v.min(), v.max()
-b = np.clip(np.round((v - mn) / ((mx - mn) or 1e-9) * 255), 0, 255).astype(np.uint8)
-c = np.bincount(b, minlength=256).astype(float)
-p = c[c > 0] / c.sum()
-H = float(-(p * np.log2(p)).sum())
-with contextlib.redirect_stdout(io.StringIO()):
-    from void_compressor_v5 import AdaptiveVoidCompressor
-    comp = AdaptiveVoidCompressor(enable_learning=False)
-    r = comp.compress(b.tobytes())
-json.dump({'coherency': float(r['avg_coherence']), 'orig': int(r['original_size']),
-           'comp': int(r['compressed_size']), 'method': str(r['method']),
-           'entropy_bits': H, 'sealed': bool(r.get('void_seal'))}, sys.stdout)
-`;
-let read;
-if (FAST) {
-  // Entropy + compression axes without the compressor reload. Coherency is
-  // reported as null and explicitly labelled — an absent reading is stated,
-  // never silently substituted by a cheaper number wearing its name.
-  const zlib = require('node:zlib');
-  const mn = Math.min(...series), mx = Math.max(...series), rr = (mx - mn) || 1e-9;
-  const bytes = Buffer.from(series.map((x) => Math.max(0, Math.min(255, Math.round(((x - mn) / rr) * 255)))));
-  const counts = new Array(256).fill(0);
-  for (const b of bytes) counts[b]++;
-  let H = 0;
-  for (const c of counts) if (c) { const p = c / bytes.length; H -= p * Math.log2(p); }
-  read = { coherency: null, orig: bytes.length, comp: zlib.deflateSync(bytes, { level: 9 }).length,
-           method: 'fast(zlib)', entropy_bits: H, sealed: false };
-} else {
+// ── NOTHING BYPASSES THE VOID COMPRESSOR ──
+//
+// There used to be a --fast path here that skipped the compressor and
+// substituted zlib, because a cold read was ~114s of which ~91s was
+// re-initialising the 78k-pattern library FOR EVERY PAGE. That made passive
+// browsing impossible, so the bypass was the pragmatic fix.
+//
+// It was the wrong fix, for a reason worse than speed: data that never went
+// through the compressor is not substrate data. A zlib ratio is not a Void
+// ratio, and any reading taken from it is not a substrate reading. Worse,
+// the field contribution below used to substitute resonance.meanTop5 — or a
+// literal 0.5 — whenever coherency was null, so every fast page injected a
+// fabricated coherency into the shared field wearing a real one's name.
+//
+// The reload is now solved properly rather than dodged: compressor_service.py
+// holds the library warm and answers /compress_signal in ~1.5s against ~114s
+// cold, a 75x speedup. The bypass has no remaining justification and is gone.
+//
+// If the service is down we start it and wait. We do not fall back to zlib.
+// The series goes to the service AS A SERIES. /compress_signal quantises it
+// to a uint8 waveform the way the substrate expects; /compress would utf-8
+// encode the digits and hand the compressor the ASCII of a waveform, which
+// matches nothing in a 78k waveform library and silently falls back to zlib.
+function readThroughVoid(series) {
+  const body = JSON.stringify({ series });
+  const post = () => execFileSync('curl', [
+    '-s', '--noproxy', '127.0.0.1', '--max-time', '120',
+    '-H', 'Content-Type: application/json', '--data-binary', '@-',
+    `http://127.0.0.1:${SVC_PORT}/compress_signal`,
+  ], { input: body, maxBuffer: 1 << 26, encoding: 'utf8' });
+
+  let raw;
   try {
-    read = JSON.parse(execFileSync('python3', ['-c', py], {
-      input: JSON.stringify({ series }), maxBuffer: 1 << 26, encoding: 'utf8',
-    }));
-  } catch (e) {
-    console.error('goggle-web: substrate read failed — ' + (e.stderr || e.message || e));
+    raw = post();
+  } catch (_) {
+    raw = '';
+  }
+  if (!raw) {
+    // Service down — start it and wait. Never substitute a cheaper codec.
+    console.error('goggle-web: compressor service not up — starting it '
+      + '(first start loads the pattern library, ~65s; subsequent reads ~1.5s)');
+    try {
+      require('node:child_process').spawn('python3',
+        [require('node:path').join(VOID, 'compressor_service.py'),
+          '--host', '127.0.0.1', '--port', String(SVC_PORT)],
+        { cwd: VOID, detached: true, stdio: 'ignore' }).unref();
+    } catch (e) {
+      console.error('goggle-web: could not start compressor service — ' + e.message);
+      process.exit(1);
+    }
+    const deadline = Date.now() + 180000;
+    while (Date.now() < deadline) {
+      try { execFileSync('sleep', ['3']); } catch (_) { /* pacing only */ }
+      try { raw = post(); } catch (_) { raw = ''; }
+      if (raw) break;
+    }
+  }
+  if (!raw) {
+    console.error('goggle-web: compressor service did not come up; refusing to '
+      + 'read this page. A reading that skipped the Void compressor is not a '
+      + 'substrate reading.');
     process.exit(1);
   }
+  let r;
+  try { r = JSON.parse(raw); } catch (_) {
+    console.error('goggle-web: bad service response: ' + raw.slice(0, 200));
+    process.exit(1);
+  }
+  if (r.error) {
+    console.error('goggle-web: substrate refused this input — ' + r.error);
+    process.exit(1);
+  }
+  return r;
 }
+
+const svc = readThroughVoid(series);
+// Entropy is computed here on the same quantised bytes the substrate saw.
+const _mn = Math.min(...series), _mx = Math.max(...series), _rr = (_mx - _mn) || 1e-9;
+const _q = series.map((x) => Math.max(0, Math.min(255, Math.round(((x - _mn) / _rr) * 255))));
+const _counts = new Array(256).fill(0);
+for (const b of _q) _counts[b]++;
+let _H = 0;
+for (const c of _counts) if (c) { const p = c / _q.length; _H -= p * Math.log2(p); }
+
+// MISREAD GUARD. The compressor matches its input against a library of
+// waveforms; it reads patterns, not prose. A numeric series is its domain. A
+// text page has no series, so we hand it the page's raw bytes — which IS a
+// uint8 waveform, but a waveform of ASCII, not of a measured quantity. The
+// coherency that comes back is real and reproducible, and it is NOT a signal
+// coherency. Both facts have to travel with the number or it gets quoted as
+// something it is not — exactly the mistake made when a text corpus was
+// benchmarked through this compressor and reported as a Void ratio.
+const domain = isText ? 'text-bytes' : 'signal';
+const read = {
+  input_kind: sig.kind,
+  domain,
+  domain_note: isText
+    ? 'coherency measured on ASCII bytes read as a waveform — NOT a signal '
+      + 'coherency; comparable only to other text-bytes readings'
+    : 'numeric series quantised to a uint8 waveform — the compressor\'s domain',
+  coherency: svc.avg_coherence,
+  orig: svc.original_size,
+  comp: svc.compressed_size,
+  method: svc.method,
+  strategy: svc.strategy,
+  lossless: svc.lossless,
+  entropy_bits: _H,
+  sealed: !!svc.sealed,
+  via: 'void:compress_signal',
+};
 const ratio = read.orig / read.comp;
 
 // ── canonical encoder signature + nearest substrate neighbours ──
@@ -167,9 +227,17 @@ try {
 let contributed = false;
 if (!noContribute) {
   try {
+    // Only a real measured coherency reaches the field. This previously read
+    //   coherence: read.coherency === null ? (resonance?.meanTop5 : 0.5)
+    // so every --fast page contributed either a resonance score or a literal
+    // 0.5 under the name "coherency". Those are different quantities; feeding
+    // one as the other silently corrupts the field it is meant to witness.
+    if (typeof read.coherency !== 'number' || !Number.isFinite(read.coherency)) {
+      throw new Error('no measured coherency — nothing to contribute');
+    }
     require('../src/core/field-coupling').contribute({
-      cost: 1.0, coherence: (read.coherency === null ? (resonance ? resonance.meanTop5 : 0.5) : read.coherency),
-      source: 'goggles:web:' + new URL(url).host,
+      cost: 1.0, coherence: read.coherency,
+      source: 'goggles:web:' + read.domain + ':' + new URL(url).host,
     });
     contributed = true;
   } catch (_) { /* field optional */ }
@@ -183,8 +251,14 @@ console.log('\n' + '═'.repeat(64));
 console.log('  GOGGLES · WEB   ' + url.slice(0, 44));
 console.log('═'.repeat(64));
 console.log('  signal        ' + sig.kind + ' · ' + series.length + ' samples');
-console.log('  coherency     ' + (read.coherency===null ? 'n/a — fast mode (deep read: drop --fast)' : bar(read.coherency)+' '+read.coherency.toFixed(4)));
-console.log('  compression   ' + ratio.toFixed(3) + 'x  (' + read.orig + ' B → ' + read.comp + ' B) · ' + read.method);
+console.log('  coherency     ' + bar(read.coherency) + ' ' + read.coherency.toFixed(4) + '  · via ' + read.via);
+if (read.domain === 'text-bytes') {
+  console.log('    ⚠ TEXT-BYTES READING — this page carried no numeric series, so the');
+  console.log('      compressor was handed ASCII read as a waveform. The number above is');
+  console.log('      real and reproducible but it is NOT a signal coherency. Compare it');
+  console.log('      only to other text-bytes readings, never to a signal one.');
+}
+console.log('  compression   ' + ratio.toFixed(3) + 'x  (' + read.orig + ' B → ' + read.comp + ' B) · ' + read.method + (read.strategy && read.strategy !== '?' ? ' [' + read.strategy + ']' : '') + (read.lossless ? ' · lossless' : ' · LOSSY'));
 console.log('  entropy       ' + read.entropy_bits.toFixed(3) + ' bits/symbol');
 if (resonance) {
   console.log('  resonance     ' + bar(resonance.meanTop5) + ' ' + resonance.meanTop5.toFixed(4) + ' (mean top-5 vs substrate)');

@@ -119,7 +119,20 @@ const HARM_PATTERNS = [
   // strip function preserves `${...}` markers. Removing keywordOnly is a
   // no-op — the behavior is the same under the new default.
   { pattern: new RegExp("['\"`][^'\"`]*\\$\\{[^}]+\\}[^'\"`]*" + sqlKw), principle: 11, reason: _k('SQL ', 'injection via template literal'), rawOnly: true },
-  { pattern: new RegExp(sqlKw + "[^'\"`]*\\$\\{[^}]+\\}"), principle: 11, reason: _k('SQL ', 'injection via template literal'), rawOnly: true },
+  // DDL is exempted, matching what src/audit/static-checkers.js already
+  // skips. `ALTER TABLE ${table}` / `CREATE INDEX` / `PRAGMA table_info` name
+  // a SCHEMA OBJECT, and SQL has no placeholder for an identifier — you
+  // cannot parameterise a table name, so interpolation is the only way to
+  // write it. Flagging it demands an impossible fix.
+  //
+  // Surfaced by quantum-field.js, whose migration is guarded twice over: the
+  // name comes from the QUANTUM_TABLES constant, an allowlist check rejects
+  // anything else, and sqlite_master is queried to confirm the table exists.
+  // Correct code the covenant could only tell you to stop writing.
+  //
+  // The DATA rules above are untouched — a value interpolated into a WHERE
+  // clause is still an injection, and that one does have a placeholder.
+  { pattern: new RegExp("(?!.*(?:ALTER\\s+TABLE|CREATE\\s+(?:INDEX|TABLE)|PRAGMA\\s+table_info|ADD\\s+COLUMN))" + sqlKw + "[^'\"`]*\\$\\{[^}]+\\}"), principle: 11, reason: _k('SQL ', 'injection via template literal'), rawOnly: true },
   // Matches `child_process` as a literal word, which only exists inside
   // the require('child_process') import string — needs raw scanning.
   { pattern: buildCmdInjectionPattern(), principle: 11, reason: _k('Command ', 'injection via dynamic execution'), rawOnly: true },

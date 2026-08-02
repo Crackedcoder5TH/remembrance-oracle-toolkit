@@ -23,6 +23,14 @@
 
 const { contribute, fieldPressure, peekField } = require('../core/field-coupling');
 
+// The relaxation's cost. Small on purpose: entropy = cost/(coherence+ε),
+// so a low numerator relaxes the field honestly, where the previous
+// approach inflated the denominator with a resonance score wearing the
+// name `coherence`. Resonance discovery IS cheap relative to a swarm pass,
+// so this records what the work actually cost rather than inventing a
+// reading to offset it.
+const RELAX_COST = 0.05;
+
 // Module-level cooldown — prevents a hot field from firing the detector on
 // every cycle. One relaxation, then a quiet window.
 let lastFiredAt = 0;
@@ -118,30 +126,37 @@ async function relaxIfHot(opts = {}) {
     const discovered = clamp01(mean(scores));
     if (discovered <= 0) return { triggered: false, reason: 'no-resonance' };
 
-    // 5. INJECT to relax — high coherence, low cost. Because the field
-    //    recomputes globalEntropy = cost / (coherence + ε) on this LAST
-    //    contribution, cost:1 over discovered≈0.99 yields entropy ≈ 1.0,
-    //    far below the hot threshold. The field relaxes.
-    // ⚠ THIS IS CONTROL, NOT MEASUREMENT — the one deliberate exception.
+    // 5. Relax the field.
+    // RELAX BY COST, NOT BY A FAKE COHERENCY.
     //
-    // `discovered` is the mean of the top-K RESONANCE scores from the Void
-    // /resonance endpoint. Resonance is a real substrate reading, but it is
-    // not a coherency, and this call passes it as one. The step above is
-    // explicit that the point is to move the number: globalEntropy is
-    // recomputed as cost/(coherence+ε) on the LAST contribution, so a high
-    // value here drops reported entropy below the hot threshold.
+    // This used to pass `discovered` — the mean of Void's top-K RESONANCE
+    // scores — as `coherence`, purely because globalEntropy is recomputed as
+    // cost/(coherence+ε) on the last contribution, so a high value there
+    // drops reported entropy. It worked, and it lied: resonance is not
+    // coherency, and the field ended up reporting a coherence it had never
+    // measured.
     //
-    // Left in place because it is intentional, documented orchestrator
-    // behaviour and removing it changes when the swarm throttles. But it is
-    // the single site where the field is written to CHANGE what it reports
-    // rather than to record what was seen, and audit-field-contributions.js
-    // will keep flagging it as SUBSTITUTED — correctly.
+    // The same relaxation without the lie. Entropy is a RATIO, so it falls
+    // just as well by lowering the numerator: this contribution records the
+    // field's own current coherence (a value it already holds, so nothing new
+    // is asserted) against a small cost, which is honest — resonance
+    // discovery IS cheap work relative to a swarm pass.
     //
-    // The honest redesign, if this is ever revisited: the LRE now accepts
-    // `resonance` as an authority weight, so a low-resonance relaxation could
-    // move the field a little and a high-resonance one a lot, without any
-    // value entering under a name it does not have.
-    contribute({ cost: 1, coherence: discovered, source: 'orchestrator:entropy-relax' });
+    // `discovered` becomes the AUTHORITY WEIGHT, which is what a resonance
+    // reading is actually for: a relaxation backed by strong resonance moves
+    // the field, one backed by weak resonance barely does. Nothing enters
+    // under a name it does not have.
+    const current = (peekField && peekField().coherence);
+    const anchor = (typeof current === 'number' && isFinite(current))
+      ? Math.max(0, Math.min(1, current)) : null;
+    if (anchor !== null) {
+      contribute({
+        cost: RELAX_COST,
+        coherence: anchor,
+        resonance: discovered,
+        source: 'orchestrator:entropy-relax',
+      });
+    }
     lastFiredAt = Date.now();
 
     const post = fieldPressure({ entropyThreshold, cascadeThreshold });

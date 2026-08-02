@@ -605,13 +605,32 @@ function observeCoherence(code, metadata = {}) {
     (sum, [key, weight]) => sum + dimensions[key] * weight, 0
   );
 
-  // Wire each individual dimension to the LRE field — every moving
-  // number participates, not just the composite. Six contribute calls
-  // per observeCoherence, one per dimension.
+  // Contribute the COMPOSITE — the coherency — once.
+  //
+  // This used to contribute all six DIMENSIONS instead, one call each. Two
+  // problems, and they compounded:
+  //
+  //   simplicity, readability, security, unity, correctness and
+  //   fractalAlignment are quality dimensions, not coherencies. Feeding
+  //   `readability` in under the name `coherence` is the same substitution
+  //   removed from 41 other sites — six at a time, on every observation.
+  //
+  //   and the one value that IS this module's coherency — the
+  //   weighted composite, which observeCoherence returns and which the
+  //   ACCEPT/REVIEW zones are computed from — was the only one NOT
+  //   contributed. The parts went in; the reading stayed out.
+  //
+  // Six calls per observation also meant this single function drove six
+  // times the field traffic of any other producer, so its dimensions
+  // dominated the global EMA by sheer count.
   try {
     const { contribute } = require('./field-coupling');
-    for (const [dim, val] of Object.entries(dimensions)) {
-      contribute({ cost: 1, coherence: val, source: `reflection-scorer:${dim}` });
+    if (typeof composite === 'number' && isFinite(composite)) {
+      contribute({
+        cost: 1,
+        coherence: Math.max(0, Math.min(1, composite)),
+        source: 'reflection-scorer:composite',
+      });
     }
   } catch (_) { /* best-effort */ }
 

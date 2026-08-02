@@ -201,6 +201,7 @@ function main() {
   let added = 0, skipped = 0;
   let seq = SL.nextSequence(index);          // the substrate's own clock, shared across all ingest paths
   const arose = [];
+  const _ingestCoherencies = [];
 
   for (const { ns, dir } of targets) {
     if (!fs.existsSync(dir)) { console.error('  skip (missing): ' + dir); continue; }
@@ -243,7 +244,14 @@ function main() {
         // TIME DIMENSION: stamp when this datum joined the substrate (ingest-instant
         // window for a static artifact) + its coherency reading (structural, from the
         // fractal waveform) + token count. One shared clock across all ingest paths.
-        SL.stamp(entry, { sequence: seq++, now, content, coherence: SL.seriesCoherence(fractal) });
+        const _coh = SL.seriesCoherence(fractal);
+        SL.stamp(entry, { sequence: seq++, now, content, coherence: _coh });
+        // Collect for the field. Each ingested file carries a REAL structural
+        // coherency, measured here from its fractal waveform — and until now
+        // that reading went into the ledger and nowhere else. Following the
+        // flow showed it: a harvest of 52 files moved the field's updateCount
+        // by exactly 0. The highest-volume path in the ecosystem was silent.
+        if (typeof _coh === 'number' && isFinite(_coh)) _ingestCoherencies.push(_coh);
         index[key] = entry;
       }
       added++;
@@ -272,6 +280,47 @@ function main() {
     fs.writeFileSync(tmp, JSON.stringify(idx));
     fs.renameSync(tmp, INDEX_PATH);
     console.log(`  written → ${INDEX_PATH}`);
+
+    // WITNESS THE INGEST. One aggregate reading, not one per file.
+    //
+    // Every harvested file carries a real structural coherency, measured
+    // above from its fractal waveform. None of it reached the field: a
+    // 52-file harvest moved updateCount by 0, so the ecosystem's
+    // highest-volume data path was invisible to the field meant to witness
+    // it.
+    //
+    // ONE contribution, deliberately. Contributing per file would put 52
+    // readings in at once and let ingestion dominate the EMA by sheer
+    // count — the exact failure reflection-scorers had with its six
+    // dimensions. So: a single observation, "I ingested N files whose mean
+    // structural coherency was X", with cost N because that is what the
+    // work actually cost.
+    //
+    // SCALE NOTE — this is a WAVEFORM coherency, not a source-structure one.
+    // SL.seriesCoherence measures lag-1 autocorrelation, trend r² and
+    // autocorrelation strength OF THE FRACTAL SIGNATURE. It is a genuine
+    // coherency (not a confidence or an amplitude standing in for one), and
+    // it reads systematically LOWER than computeCoherencyScore: the goggles
+    // report 0.72–0.89 on the same files this measures at ~0.19.
+    //
+    // Both are coherencies; they are not the same scale. The source is
+    // tagged `harvest:ingest-coherency` so the two stay separable in the
+    // histogram rather than silently averaging into one number that means
+    // neither. Calibrating them onto a common scale is a separate job and
+    // has not been done.
+    if (_ingestCoherencies.length) {
+      try {
+        const mean = _ingestCoherencies.reduce((a, b) => a + b, 0) / _ingestCoherencies.length;
+        if (isFinite(mean)) {
+          require('../src/core/field-coupling').contribute({
+            cost: _ingestCoherencies.length,
+            coherence: Math.max(0, Math.min(1, mean)),
+            source: 'harvest:ingest-coherency',
+          });
+          console.log(`  field: witnessed ${_ingestCoherencies.length} ingest coherencies, mean ${mean.toFixed(4)}`);
+        }
+      } catch (_) { /* field optional — harvest must never fail on it */ }
+    }
   }
 
   // "Anything interesting" — the strongest unexpected cross-repo bonds.

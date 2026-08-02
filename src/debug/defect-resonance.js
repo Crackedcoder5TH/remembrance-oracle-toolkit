@@ -97,7 +97,19 @@ const SEEDS = [
     code: `def save(data):\n    try:\n        db.write(data)\n    except Exception:\n        pass\n    return True`,
   },
   {
-    label: 'unwrap-chain-panic', bugClass: 'error-handling', language: 'rust',
+    // languageBound: `.unwrap()` panicking on None/Err is a Rust CONSTRUCT,
+    // not a universal concept. Its FORM — a short chain of method calls whose
+    // results are used unchecked — is most of JavaScript, so this seed matched
+    // `this.status(x); this.type('txt'); return this.send(body)` in express at
+    // min-depth 0.926-0.936 and reported it HIGH. Three such findings across
+    // two express files, every one a false positive.
+    //
+    // Contrast eval-of-input and sql-by-concat, which carry per-language
+    // variants: those name concepts that exist everywhere. Cross-language
+    // transfer through form is this channel's design and stays on; a seed
+    // whose MEANING is bound to one language must not claim a defect outside
+    // it.
+    label: 'unwrap-chain-panic', bugClass: 'error-handling', language: 'rust', languageBound: true,
     code: `fn read_config(path: &str) -> Config {\n    let text = std::fs::read_to_string(path).unwrap();\n    let cfg: Config = serde_json::from_str(&text).unwrap();\n    cfg\n}`,
   },
 ];
@@ -151,6 +163,7 @@ function ensureLibrary() {
         label: s.label,
         bugClass: s.bugClass,
         language: s.language,
+        languageBound: s.languageBound === true,
         excerpt: s.code.slice(0, 200),
         vec: Array.from(enc(s.code, ENCODE_DEPTH)),
         taughtBy: 'seed',
@@ -255,6 +268,11 @@ function scan(source, opts = {}) {
   const lib = ensureLibrary();
   if (!enc || !lib || !lib.signatures.length) return null;
   const threshold = Number.isFinite(opts.threshold) ? opts.threshold : DEFAULT_THRESHOLD;
+  // The scanned file's language, normalised. Passed in by the goggles and
+  // previously unused — the reason a Rust-only shape could fire on JS.
+  const _L = { js: 'javascript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript',
+    ts: 'javascript', tsx: 'javascript', typescript: 'javascript', py: 'python', rs: 'rust' };
+  const lang = opts.language ? (_L[String(opts.language).toLowerCase()] || String(opts.language).toLowerCase()) : null;
 
   const findings = [];
   const blocks = _blocks(source);
@@ -268,6 +286,11 @@ function scan(source, opts = {}) {
     try { vec = enc(b.text.replace(/^\s*\n+|\n+\s*$/g, ''), ENCODE_DEPTH); } catch (_) { continue; }
     let best = null;
     for (const sig of lib.signatures) {
+      // A language-bound signature only speaks about its own language. See the
+      // unwrap-chain-panic seed: cross-language transfer through form is this
+      // channel's purpose, but a shape whose meaning is a language construct
+      // has nothing to say about a file that has no such construct.
+      if (sig.languageBound && sig.language && lang && sig.language !== lang) continue;
       const flow = _flow(vec, sig.vec);
       const minDepth = Math.min(...flow);
       if (minDepth >= threshold && (!best || minDepth > best.minDepth)) {

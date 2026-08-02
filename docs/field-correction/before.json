@@ -1,0 +1,90 @@
+{
+ "capturedAt": "2026-08-02T20:12:47.872Z",
+ "stage": "BEFORE — data pipeline re-run",
+ "coherence": 0.7810261426291311,
+ "coherenceIntegral": 855462.1244956396,
+ "globalEntropy": 1.280366856645898,
+ "cascadeFactor": 1.632559459875828,
+ "updateCount": 964328,
+ "distinctSources": 686,
+ "fromCompressor": 5591,
+ "fromElsewhere": 958535,
+ "pctFromCompressor": 0.58,
+ "topSources": [
+  {
+   "source": "covenant",
+   "count": 154574,
+   "lastCoherence": 0.999
+  },
+  {
+   "source": "oracle:coherency:computeCoherencyScore",
+   "count": 141208,
+   "lastCoherence": 0.7782286752192
+  },
+  {
+   "source": "reflection-scorer:simplicity",
+   "count": 85156,
+   "lastCoherence": 0.3561481481481482
+  },
+  {
+   "source": "reflection-scorer:readability",
+   "count": 85156,
+   "lastCoherence": 0.820920351296875
+  },
+  {
+   "source": "reflection-scorer:security",
+   "count": 85155,
+   "lastCoherence": 0.7069574999999999
+  },
+  {
+   "source": "reflection-scorer:unity",
+   "count": 85155,
+   "lastCoherence": 0.880580810546875
+  },
+  {
+   "source": "reflection-scorer:correctness",
+   "count": 85155,
+   "lastCoherence": 0.9054575
+  },
+  {
+   "source": "reflection-scorer:fractalAlignment",
+   "count": 85155,
+   "lastCoherence": 0.746512732
+  },
+  {
+   "source": "oracle:oracle-core-search:search",
+   "count": 34935,
+   "lastCoherence": 0.805026918060075
+  },
+  {
+   "source": "core:feedback:validation-gates",
+   "count": 21824,
+   "lastCoherence": 0.35614814814814816
+  },
+  {
+   "source": "reflect",
+   "count": 18128,
+   "lastCoherence": 0.751464618796875
+  },
+  {
+   "source": "oracle:encoder:migrate-dimensional:strong",
+   "count": 17837,
+   "lastCoherence": 0.9054575
+  },
+  {
+   "source": "reflection-scorer:composite",
+   "count": 12120,
+   "lastCoherence": 0.7510519048876976
+  },
+  {
+   "source": "oracle:encoder:migrate-dimensional:moderate",
+   "count": 9960,
+   "lastCoherence": 0.9054575
+  },
+  {
+   "source": "oracle:pattern-resonance:score",
+   "count": 7237,
+   "lastCoherence": 0.6795274179116757
+  }
+ ]
+}

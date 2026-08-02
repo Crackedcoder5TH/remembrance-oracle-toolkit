@@ -97,11 +97,22 @@ test('object input form with same content produces same id', () => {
   assert.equal(r1.grew.id, r2.grew.id);
 });
 
-test('coherence falls back to coding filter when Void disabled', () => {
+test('coherency NEVER falls back to a resonance', () => {
+  // This asserted `r.coherence === r.codeResonance.meanTopK` — that a
+  // coherency may fall back to the coding filter's resonance. It may not.
+  // Resonance is how much content is shaped like the library's patterns;
+  // coherency comes from one place only, the Void compressor. A fallback
+  // between them is the conflation the ecosystem's design constraint forbids,
+  // so the old assertion was pinning a defect in place.
   const r = read(uniquePattern('fallback'), { ...FAST, language: 'js' });
-  if (r.layers.codingFiltered && r.codeResonance) {
-    assert.equal(r.coherence, r.codeResonance.meanTopK);
+  if (r.coherence !== null && r.codeResonance
+      && Number.isFinite(r.codeResonance.meanTopK)) {
+    assert.notEqual(r.coherence, r.codeResonance.meanTopK,
+      'coherency must not be a copy of the coding filter resonance');
   }
+  // Whatever it is, it is either a real reading or an explicit absence.
+  assert.ok(r.coherence === null || typeof r.coherence === 'number');
+  assert.equal(r.coherenceSource, r.coherence === null ? null : 'void:compress_signal');
 });
 
 test('layers tracking is honest about what engaged', () => {
@@ -145,8 +156,23 @@ test('Void 29-D substrate engages and exposes >40k patterns', () => {
   assert.ok(Number.isFinite(r.voidResonance.meanTopK));
   assert.ok(r.voidResonance.librarySize > 40_000,
     `Void library should have >40k 29-D fractal patterns, got ${r.voidResonance.librarySize}`);
-  assert.equal(r.coherence, r.voidResonance.meanTopK,
-    'coherence must come from Void when Void is engaged');
+
+  // This asserted `r.coherence === r.voidResonance.meanTopK` under the message
+  // "coherence must come from Void when Void is engaged". The intent was
+  // right, the assertion was not: meanTopK is Void's RESONANCE (library-fit),
+  // not its coherency. Reading a resonance and calling it a coherency is the
+  // conflation the design constraint forbids — coherency is produced only by
+  // the compressor. The intent is now asserted against the actual source.
+  assert.ok(r.coherence === null || typeof r.coherence === 'number',
+    'coherency is a reading or an explicit absence, never a substitute');
+  if (r.coherence !== null) {
+    assert.equal(r.coherenceSource, 'void:compress_signal',
+      'coherency must come from the Void compressor');
+    assert.ok(r.coherence >= 0 && r.coherence <= 1,
+      `the law of coherency: a reading lives in [0,1], got ${r.coherence}`);
+    assert.notEqual(r.coherence, r.voidResonance.meanTopK,
+      'coherency and resonance are distinct signals, never the same number');
+  }
 });
 
 test('Void resonance is in honest middle-band (not byte-encoder noise floor)', () => {

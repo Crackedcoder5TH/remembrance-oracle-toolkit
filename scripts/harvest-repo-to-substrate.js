@@ -142,37 +142,21 @@ function sanitizeAtEntry(absFile, content) {
 // vector (mean 0.582) correlates r = -0.229 with its reading on the same
 // files' bytes (mean 0.186). The bytes are the artifact; the feature vector
 // is a description of it.
-const SVC_PORT = process.env.VOID_SVC_PORT || '8765';
-let _svcDown = false;
+// One client for the instrument, shared with field-tool and anything else that
+// needs a reading (src/core/void-service.js). It starts the service when cold,
+// caches by content hash, and returns null rather than a substitute. Files
+// still enter the substrate when no reading is available — memory is not gated
+// on the instrument — they simply enter without a coherency, which is honest.
+const _voidService = require('../src/core/void-service');
+let _warnedNoReading = false;
 
 function voidCoherenceOf(content) {
-  if (_svcDown) return null;
-  const bytes = Buffer.from(content, 'utf8').slice(0, 16384);
-  if (bytes.length < 8) return null;
-  const series = Array.from(bytes);
-  let raw = '';
-  try {
-    raw = require('node:child_process').execFileSync('curl', [
-      '-s', '--noproxy', '127.0.0.1', '--max-time', '120',
-      '-H', 'Content-Type: application/json', '--data-binary', '@-',
-      `http://127.0.0.1:${SVC_PORT}/compress_signal`,
-    ], { input: JSON.stringify({ series }), maxBuffer: 1 << 26, encoding: 'utf8' });
-  } catch (_) { raw = ''; }
-  if (!raw) {
-    // Say it once, then stop retrying per-file. Files still enter the
-    // substrate — memory is not gated on the service — they just enter
-    // without a coherency, which is honest, rather than with a made-up one.
-    _svcDown = true;
-    console.error('  ⚠ compressor service unreachable on port ' + SVC_PORT
-      + ' — files will be witnessed WITHOUT a coherency reading.');
-    console.error('    start it: python3 ' + path.join(HOME, 'Void-Data-Compressor', 'compressor_service.py'));
-    return null;
+  const c = _voidService.coherencyOf(content);
+  if (c === null && !_warnedNoReading) {
+    _warnedNoReading = true;
+    console.error('  ⚠ no coherency reading available — files will be witnessed WITHOUT one.');
   }
-  try {
-    const r = JSON.parse(raw);
-    const c = r && r.avg_coherence;
-    return (typeof c === 'number' && isFinite(c)) ? c : null;
-  } catch (_) { return null; }
+  return c;
 }
 
 function cosine116(a, b) {
@@ -458,24 +442,29 @@ function main() {
     // structural coherency was X", with cost N because that is what the
     // work actually cost.
     //
-    // SCALE NOTE — this is the Void compressor's own reading, taken off each
-    // file's bytes: avg_coherence, the variance of the signal explained by the
-    // library's best 2-pattern blend (void_compressor_v3.py:1016, R² not |r|).
-    // Same quantisation as goggle-web.js, so ingest and live reads share one
-    // scale by construction and need no calibration between them.
+    // SOURCE NOTE — this is the Void compressor's reading, taken off each
+    // file's bytes, using the same quantisation goggle-web.js uses so ingest
+    // and live reads are the same measurement.
     //
-    // An earlier version of this note claimed the ingest reading and the
-    // goggles' 0.72–0.89 were "two coherencies on different scales" awaiting
-    // calibration. That premise was wrong. The ingest reading was
-    // seriesCoherence applied to the 29-slot fractal FEATURE VECTOR, which
-    // correlates r = -0.025 with the compressor's reading of the same files —
-    // there was no scale to calibrate, because one of the two was measuring
-    // the encoder's slot ordering. It is now the compressor's reading.
+    // The compressor is the ONLY producer of coherency in this ecosystem.
+    // avg_coherence is not "a kind of" coherency to be reconciled with others;
+    // it is the number. How the instrument computes it internally is the
+    // instrument's business — quoting its internals as though they DEFINED
+    // coherency is a category error, and an earlier version of this note made
+    // it. Everything downstream transforms this number to see where coherency
+    // is, how it behaves and how it flows; nothing downstream produces one.
     //
-    // The goggles' computeCoherencyScore remains a genuinely different
-    // quantity (a composite over the substrate's own structure, not a
-    // compression residual), so the source stays tagged
-    // `harvest:ingest-coherency` to keep the two separable in the histogram.
+    // An even earlier version claimed the ingest reading and the goggles'
+    // 0.72–0.89 were "two coherencies on different scales" awaiting
+    // calibration. There were never two. The ingest reading was
+    // seriesCoherence over the 29-slot fractal FEATURE VECTOR, correlating
+    // r = -0.025 with the compressor on the same files — not a rival scale, a
+    // number that was not coherency at all.
+    //
+    // computeCoherencyScore is likewise NOT a coherency: it scores structural
+    // validity (syntax, completeness, consistency, AST) and reads r = -0.313
+    // against the compressor. Tagged `harvest:ingest-coherency` so the true
+    // reading stays identifiable in the histogram.
     if (_ingestCoherencies.length) {
       try {
         const mean = _ingestCoherencies.reduce((a, b) => a + b, 0) / _ingestCoherencies.length;

@@ -253,29 +253,30 @@ class LivingRemembranceEngine {
     const w = (typeof resonance === 'number' && isFinite(resonance)) ? Math.max(0, Math.min(1, resonance)) : 1;
     const target = p + r_eff * 0.1 + delta_void * 0.15;
     const prev = this._state.coherence;
-    // Coherence cap at 0.999. The Python LRE (living_remembrance.py) and the
-    // TS LRE (core/living-remembrance-engine.ts) both enforce this, and the
-    // hub JS LRE was brought back to parity with them.
+    // THE LAW OF COHERENCY. A coherency reading lives in [0, 1] — always,
+    // however capable the instrument that produced it. The cap enforces the
+    // law. The Python LRE (living_remembrance.py) and the TS LRE
+    // (core/living-remembrance-engine.ts) enforce the same bound; the hub JS
+    // LRE was brought back to parity with them.
     //
-    // ⚠ This comment used to cite "Void contract C-56" as the AUTHORITY for
-    // the cap. C-56 says the exact opposite: "coherency RATCHETS UP — never
-    // capped above. Falsifies if a ceiling is reintroduced (e.g.
-    // Math.min(0.999, ...))". So the cap is not implementing C-56, it is
-    // violating it, and the citation pointed at its own contradiction.
+    // The ratchet and the bound are not in tension. Coherency climbs and is
+    // never artificially stopped — that is the ratchet, and it is unbounded in
+    // the sense of never being switched off. It is NOT unbounded in magnitude:
+    // the climb happens inside [0, 1]. The one term that grows without end is
+    // coherenceIntegral below, and it does so because it is a SUM of readings
+    // rather than a reading.
     //
-    // The cap is nonetheless correct, and C-58's docstring is where the
-    // design actually settled: "Per-reading coherence stays the bounded
-    // backdrop; the integral is the dimension in which the field grows
-    // without end." Coherence is now a compression residual (R², bounded
-    // [0,1] by construction) — a fraction of variance explained cannot
-    // exceed 1. Unbounded growth lives in coherenceIntegral below.
+    // ⚠ This comment used to cite "Void contract C-56" as the cap's authority
+    // while C-56 demanded the opposite — no ceiling, growth past 1.0. That is
+    // why the two looked contradictory. C-56 has since been RETIRED in
+    // Void/verify_capabilities.py: its ratchet half was the law, its
+    // no-ceiling half broke the law, and satisfying it meant violating what it
+    // existed to protect. C-58 now states both quantities.
     //
-    // This matters beyond bookkeeping: globalEntropy = cost/(coherence+eps),
-    // so an uncapped coherence lets the field drive its own entropy toward
-    // zero by inflating the denominator. A field whose coherence only ever
-    // ratchets up would report improvement no matter what it was fed —
-    // self-optimisation guaranteed by construction rather than measured.
-    // C-56 is stale and should be retired against C-58; see the audit note.
+    // Load-bearing, not bookkeeping: globalEntropy = cost/(coherence+eps), so
+    // a coherency allowed past 1 lets the field drive its own entropy toward
+    // zero by inflating the denominator — improvement reported no matter what
+    // was fed in. The bound is what keeps the field's own readings honest.
     const newCoherence = Math.max(0, Math.min(0.999, prev + (target - prev) * w));
 
     // cascadeFactor is a recent-load gauge, not a running tally. It

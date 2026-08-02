@@ -130,6 +130,51 @@ function sanitizeAtEntry(absFile, content) {
   return any ? out : null;
 }
 
+// ── The coherency reading ────────────────────────────────────────────────
+// Every coherency the substrate stores comes off the Void compressor, reading
+// the artifact's OWN BYTES as a uint8 waveform — the same quantisation
+// goggle-web.js uses, so ingest and live reads land on one scale.
+//
+// Not the fractal vector: 29 heterogeneous feature slots are not 29 samples,
+// and the compressor resamples every chunk to 256, so a 29-slot input is
+// upsampled ~9× and the interpolation manufactures the smoothness it then
+// reports. Measured on 48 files, the compressor's reading on the fractal
+// vector (mean 0.582) correlates r = -0.229 with its reading on the same
+// files' bytes (mean 0.186). The bytes are the artifact; the feature vector
+// is a description of it.
+const SVC_PORT = process.env.VOID_SVC_PORT || '8765';
+let _svcDown = false;
+
+function voidCoherenceOf(content) {
+  if (_svcDown) return null;
+  const bytes = Buffer.from(content, 'utf8').slice(0, 16384);
+  if (bytes.length < 8) return null;
+  const series = Array.from(bytes);
+  let raw = '';
+  try {
+    raw = require('node:child_process').execFileSync('curl', [
+      '-s', '--noproxy', '127.0.0.1', '--max-time', '120',
+      '-H', 'Content-Type: application/json', '--data-binary', '@-',
+      `http://127.0.0.1:${SVC_PORT}/compress_signal`,
+    ], { input: JSON.stringify({ series }), maxBuffer: 1 << 26, encoding: 'utf8' });
+  } catch (_) { raw = ''; }
+  if (!raw) {
+    // Say it once, then stop retrying per-file. Files still enter the
+    // substrate — memory is not gated on the service — they just enter
+    // without a coherency, which is honest, rather than with a made-up one.
+    _svcDown = true;
+    console.error('  ⚠ compressor service unreachable on port ' + SVC_PORT
+      + ' — files will be witnessed WITHOUT a coherency reading.');
+    console.error('    start it: python3 ' + path.join(HOME, 'Void-Data-Compressor', 'compressor_service.py'));
+    return null;
+  }
+  try {
+    const r = JSON.parse(raw);
+    const c = r && r.avg_coherence;
+    return (typeof c === 'number' && isFinite(c)) ? c : null;
+  } catch (_) { return null; }
+}
+
 function cosine116(a, b) {
   let dot = 0, na = 0, nb = 0;
   const n = Math.min(a.length, b.length, 116);
@@ -137,27 +182,114 @@ function cosine116(a, b) {
   return (na > 1e-12 && nb > 1e-12) ? dot / (Math.sqrt(na) * Math.sqrt(nb)) : 0;
 }
 
+// Is this file too small to carry a waveform? The harvest floor. Under
+// MIN_CHARS there is no signal to compress: the compressor chunks and
+// resamples to 256, so a ~30-byte file is upsampled ~8× and the reading
+// reports the interpolation rather than the artifact. Shared by the harvest
+// loop and the drift check so BOTH use one definition of "will never be
+// indexed" — otherwise `--check` counts files a harvest will never add.
+function belowFloor(absFile) {
+  try {
+    return fs.readFileSync(absFile, 'utf8').slice(0, CONTENT_CAP).length < MIN_CHARS;
+  } catch {
+    return false;   // unreadable is a real problem, not a floor case
+  }
+}
+
 // Fast, encode-free drift check: how many walked files are missing from
 // the index, by name alone. CI-friendly — exits non-zero when drift
 // exceeds --max (default 0), so a pipeline can gate on "substrate current"
 // without the cost of a full harvest.
+//
+// DRIFT IS WHAT A HARVEST WOULD FIX. This used to count every walked file
+// absent from the index, which folded in files that are absent BY DESIGN:
+// the 30-byte AI-tool pointer stubs (`CLAUDE.md` → "See AGENTS.md") and
+// empty `__init__.py` sit under the MIN_CHARS floor, so no harvest will
+// ever index them. Counting them as drift made the two counters contradict
+// each other — `--check` reported "15 unindexed" while a harvest of the
+// same repos reported "+0 witnessed", and neither was wrong. They were
+// answering different questions under the same word. Actionable drift is
+// now the gate; below-floor files are reported separately and never gate.
+// Re-take the coherency on entries that are ALREADY in the substrate.
+//
+// The harvest loop is idempotent by key, so a file whose reading was taken
+// the wrong way is never revisited — the bad number is sticky. Every entry
+// harvested before the compressor became the source carries
+// `seriesCoherence(fractal)`, which measures the encoder's slot ordering
+// rather than the file (r = -0.025 against the compressor's reading of the
+// same bytes). This re-reads those files through the compressor in place.
+//
+// Only the coherency changes; the fractal/composed vectors and the ledger
+// sequence are untouched, so nothing downstream re-indexes.
+function restamp(targets, idx, index) {
+  let done = 0, gone = 0, floored = 0, unread = 0;
+  const before = [], after = [];
+  for (const { ns, dir } of targets) {
+    if (!fs.existsSync(dir)) { console.error('  skip (missing): ' + dir); continue; }
+    for (const f of walk(dir)) {
+      const key = ns + '/' + path.relative(dir, f);
+      const entry = index[key];
+      if (!entry) continue;
+      let content;
+      try { content = fs.readFileSync(f, 'utf8').slice(0, CONTENT_CAP); } catch { gone++; continue; }
+      if (content.length < MIN_CHARS) { floored++; continue; }
+      const c = voidCoherenceOf(content);
+      if (c == null) { unread++; continue; }
+      if (typeof entry.coherence === 'number') before.push(entry.coherence);
+      entry.coherence = SL.clamp01(c);
+      entry.coherence_source = 'void:compress_signal';
+      after.push(entry.coherence);
+      done++;
+      if (done % 250 === 0) console.log(`    …${done} re-read`);
+    }
+  }
+  const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : NaN);
+  console.log(`restamp: ${done} entries re-read through the compressor`);
+  if (gone) console.log(`  ${gone} indexed file(s) no longer on disk — left as-is`);
+  if (floored) console.log(`  ${floored} below floor — left as-is`);
+  if (unread) console.log(`  ${unread} unread (service down) — left as-is, NOT zeroed`);
+  if (before.length) console.log(`  mean coherence  ${mean(before).toFixed(4)} → ${mean(after).toFixed(4)}`);
+  if (done) {
+    idx.ingestion_log = idx.ingestion_log || [];
+    idx.ingestion_log.push({
+      at: new Date().toISOString(), restamped: done,
+      targets: targets.map((t) => t.ns), tool: 'harvest-repo-to-substrate --restamp',
+      note: 'coherency re-read off the Void compressor (was seriesCoherence on the fractal feature vector)',
+    });
+    const tmp = INDEX_PATH + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(idx));
+    fs.renameSync(tmp, INDEX_PATH);
+    console.log(`  written → ${INDEX_PATH}`);
+  }
+  process.exit(0);
+}
+
 function checkDrift(targets, index, maxDrift) {
   let totalDrift = 0;
+  let totalFloor = 0;
   const perRepo = [];
   for (const { ns, dir } of targets) {
     if (!fs.existsSync(dir)) continue;
     const files = walk(dir);
-    let drift = 0;
+    let drift = 0, floor = 0;
     for (const f of files) {
       const key = ns + '/' + path.relative(dir, f);
-      if (!index[key]) drift++;
+      if (index[key]) continue;
+      if (belowFloor(f)) floor++; else drift++;
     }
-    perRepo.push({ ns, drift, total: files.length });
+    perRepo.push({ ns, drift, floor, total: files.length });
     totalDrift += drift;
+    totalFloor += floor;
   }
   console.log('substrate drift check:');
-  for (const r of perRepo) console.log(`  ${r.ns.padEnd(16)} ${r.drift} unindexed of ${r.total}`);
+  for (const r of perRepo) {
+    console.log(`  ${r.ns.padEnd(16)} ${r.drift} unindexed of ${r.total}`
+      + (r.floor ? `  (+${r.floor} below floor, not harvestable)` : ''));
+  }
   console.log(`  total drift: ${totalDrift} (threshold ${maxDrift})`);
+  if (totalFloor) {
+    console.log(`  below floor: ${totalFloor} file(s) under ${MIN_CHARS} chars — no waveform to measure, excluded by design`);
+  }
   if (totalDrift > maxDrift) {
     console.log(`  DRIFTED — run: node scripts/harvest-repo-to-substrate.js <repo>`);
     process.exit(1);
@@ -170,11 +302,12 @@ function main() {
   const args = process.argv.slice(2);
   const dry = args.includes('--dry');
   const check = args.includes('--check');
+  const doRestamp = args.includes('--restamp');
   const maxIdx = args.indexOf('--max');
   const maxDrift = maxIdx >= 0 ? (parseInt(args[maxIdx + 1], 10) || 0) : 0;
   const targetArg = args.find((a, i) => !a.startsWith('--') && args[i - 1] !== '--max');
   if (!targetArg) {
-    console.error('usage: harvest-repo-to-substrate.js <repo-name-or-path|all> [--dry|--check [--max N]]');
+    console.error('usage: harvest-repo-to-substrate.js <repo-name-or-path|all> [--dry|--check [--max N]|--restamp]');
     process.exit(2);
   }
 
@@ -188,6 +321,7 @@ function main() {
   catch (e) { console.error(`cannot read substrate index at ${INDEX_PATH}: ${e.message}`); process.exit(1); }
   const index = idx.index;
   if (check) return checkDrift(targets, index, maxDrift);
+  if (doRestamp) return restamp(targets, idx, index);
   const now = new Date().toISOString();
   const beforeTotal = Object.keys(index).length;
 
@@ -198,7 +332,7 @@ function main() {
     if (e.composed_v1) composedAll.push([name, e.composed_v1]);
   }
 
-  let added = 0, skipped = 0;
+  let added = 0, skipped = 0, floored = 0;
   let seq = SL.nextSequence(index);          // the substrate's own clock, shared across all ingest paths
   const arose = [];
   const _ingestCoherencies = [];
@@ -212,7 +346,10 @@ function main() {
       if (index[key]) { skipped++; continue; }
       let content;
       try { content = fs.readFileSync(f, 'utf8').slice(0, CONTENT_CAP); } catch { continue; }
-      if (content.length < MIN_CHARS) { skipped++; continue; }
+      // Below the floor is NOT "already indexed". Counting it as `skipped`
+      // is what made a harvest report "+0 witnessed · N already indexed"
+      // for files the index had never seen.
+      if (content.length < MIN_CHARS) { floored++; continue; }
 
       const fractal = Array.from(toFractalWaveform(content));
       const composed_v1 = Array.from(composedAtDepth(content, 4));
@@ -242,15 +379,39 @@ function main() {
           sanitize,
         };
         // TIME DIMENSION: stamp when this datum joined the substrate (ingest-instant
-        // window for a static artifact) + its coherency reading (structural, from the
-        // fractal waveform) + token count. One shared clock across all ingest paths.
-        const _coh = SL.seriesCoherence(fractal);
+        // window for a static artifact) + its coherency reading + token count.
+        // One shared clock across all ingest paths.
+        //
+        // THE COHERENCY COMES OFF THE COMPRESSOR, READING THE FILE'S BYTES.
+        //
+        // This used to be `SL.seriesCoherence(fractal)` — and that was a
+        // category error, not a scale difference. The 29-slot fractal vector is
+        // not a waveform: its slots are NAMED, HETEROGENEOUS FEATURES (charge,
+        // valence, mass, spin, phase, … structurality) in whatever order
+        // fractal-waveform.js lists them. Slot 7 (`group`) is the constant 11
+        // for every file in the ecosystem. seriesCoherence reads lag-1
+        // autocorrelation and fits a trend over the slot INDEX, so on a feature
+        // vector it measures the encoder's authoring order, not the file.
+        //
+        // Measured, 48 repo files (scratchpad permutation test):
+        //   • permuting the slot order — the same relabeling for every file —
+        //     changed the reading by 0.115 on average, LARGER than the metric's
+        //     whole spread across files (sd 0.113); r(before, after) = 0.036.
+        //   • r(seriesCoherence(fractal), compressor-on-file-bytes) = -0.025.
+        //     Not a noisy proxy for the real reading. Unrelated to it.
+        //
+        // It read ~0.19–0.23, and the compressor reads ~0.186 on the same
+        // files, which is why this survived so long: the right magnitude by
+        // coincidence. seriesCoherence is CORRECT on a genuine time series
+        // (against synthetic controls it tracks the compressor within ~0.1 from
+        // pure sine 1.000 down to white noise 0.152) — it was simply pointed at
+        // something that is not one.
+        const _coh = voidCoherenceOf(content);
         SL.stamp(entry, { sequence: seq++, now, content, coherence: _coh });
-        // Collect for the field. Each ingested file carries a REAL structural
-        // coherency, measured here from its fractal waveform — and until now
-        // that reading went into the ledger and nowhere else. Following the
-        // flow showed it: a harvest of 52 files moved the field's updateCount
-        // by exactly 0. The highest-volume path in the ecosystem was silent.
+        // Collect for the field — but only real readings. If the compressor is
+        // unreachable, `voidCoherenceOf` returns null and this file enters the
+        // substrate with NO coherency rather than a fabricated one. A reading
+        // that did not come off the compressor is not a coherency.
         if (typeof _coh === 'number' && isFinite(_coh)) _ingestCoherencies.push(_coh);
         index[key] = entry;
       }
@@ -269,7 +430,8 @@ function main() {
   }
 
   console.log(`harvest ${dry ? '(dry run) ' : ''}complete:`);
-  console.log(`  +${added} files witnessed · ${skipped} already indexed`);
+  console.log(`  +${added} files witnessed · ${skipped} already indexed`
+    + (floored ? ` · ${floored} below floor (<${MIN_CHARS} chars, no waveform)` : ''));
   console.log(`  substrate: ${beforeTotal} → ${beforeTotal + (dry ? 0 : added)} entries`);
 
   if (!dry) {
@@ -296,18 +458,24 @@ function main() {
     // structural coherency was X", with cost N because that is what the
     // work actually cost.
     //
-    // SCALE NOTE — this is a WAVEFORM coherency, not a source-structure one.
-    // SL.seriesCoherence measures lag-1 autocorrelation, trend r² and
-    // autocorrelation strength OF THE FRACTAL SIGNATURE. It is a genuine
-    // coherency (not a confidence or an amplitude standing in for one), and
-    // it reads systematically LOWER than computeCoherencyScore: the goggles
-    // report 0.72–0.89 on the same files this measures at ~0.19.
+    // SCALE NOTE — this is the Void compressor's own reading, taken off each
+    // file's bytes: avg_coherence, the variance of the signal explained by the
+    // library's best 2-pattern blend (void_compressor_v3.py:1016, R² not |r|).
+    // Same quantisation as goggle-web.js, so ingest and live reads share one
+    // scale by construction and need no calibration between them.
     //
-    // Both are coherencies; they are not the same scale. The source is
-    // tagged `harvest:ingest-coherency` so the two stay separable in the
-    // histogram rather than silently averaging into one number that means
-    // neither. Calibrating them onto a common scale is a separate job and
-    // has not been done.
+    // An earlier version of this note claimed the ingest reading and the
+    // goggles' 0.72–0.89 were "two coherencies on different scales" awaiting
+    // calibration. That premise was wrong. The ingest reading was
+    // seriesCoherence applied to the 29-slot fractal FEATURE VECTOR, which
+    // correlates r = -0.025 with the compressor's reading of the same files —
+    // there was no scale to calibrate, because one of the two was measuring
+    // the encoder's slot ordering. It is now the compressor's reading.
+    //
+    // The goggles' computeCoherencyScore remains a genuinely different
+    // quantity (a composite over the substrate's own structure, not a
+    // compression residual), so the source stays tagged
+    // `harvest:ingest-coherency` to keep the two separable in the histogram.
     if (_ingestCoherencies.length) {
       try {
         const mean = _ingestCoherencies.reduce((a, b) => a + b, 0) / _ingestCoherencies.length;

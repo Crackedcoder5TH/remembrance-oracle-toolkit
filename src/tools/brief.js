@@ -51,12 +51,34 @@ function readJSON(p) {
 
 // ── TRAPS ──────────────────────────────────────────────────────────────
 
-/** Traps whose match terms appear in `target`. Returns the raw entries. */
+/**
+ * Traps whose match terms appear in `target` — OR in the body of the file
+ * `target` names. Returns the raw entries.
+ *
+ * Matching the typed string alone is not enough. A trap keyed on
+ * `seriesCoherence` did not fire on `brief src/core/substrate-ledger.js`, the
+ * file that DEFINES seriesCoherence, because the term is not in the path. That
+ * inverts the point: the trap reaches you only when you already know the name
+ * to type, and the person who needs it most is the one opening the file
+ * cold. So the file's own contents are part of the haystack.
+ */
 function trapsFor(target) {
   const db = readJSON(path.join(ROOT, '.remembrance', 'traps.json'));
   if (!db || !Array.isArray(db.traps)) return [];
-  const t = String(target || '').toLowerCase();
-  return db.traps.filter((x) => (x.match || []).some((m) => t.includes(m.toLowerCase())));
+  let hay = String(target || '').toLowerCase();
+  // Any path-like token in the target contributes its body, capped so a huge
+  // file cannot slow the brief down. Best-effort: unreadable → path only.
+  for (const tok of String(target || '').split(/\s+/)) {
+    if (!tok || !/[/.]/.test(tok)) continue;
+    for (const base of [tok, path.join(ROOT, tok), path.join(VOID, tok)]) {
+      try {
+        if (!fs.statSync(base).isFile()) continue;
+        hay += '\n' + fs.readFileSync(base, 'utf8').slice(0, 200000).toLowerCase();
+        break;
+      } catch { /* not this one */ }
+    }
+  }
+  return db.traps.filter((x) => (x.match || []).some((m) => hay.includes(m.toLowerCase())));
 }
 
 /** Render traps as text so callers that are not a terminal can carry them. */

@@ -360,13 +360,39 @@ class FieldTool {
 
     // 6. Coherence = the INTRINSIC structural-coherence score: does this have
     //    coherent STRUCTURE (syntax validity + completeness + consistency +
-    //    AST), measured directly from the content. This is the coherence the
-    //    void compressor reads by its very nature. It is NOT pattern resonance:
-    //    voidResonance.meanTopK (how much the content is shaped like the
-    //    library's patterns) is a separate, distinct signal returned alongside.
-    //    The two must never be conflated. Falls back to 0, honestly reported.
-    //    measurableOnly: a field read has no test/history metadata, so score
-    //    only the content-derivable dimensions and use the full 0..1 range.
+    //    AST), measured directly from the content. It is NOT pattern
+    //    resonance: voidResonance.meanTopK (how much the content is shaped
+    //    like the library's patterns) is a separate, distinct signal returned
+    //    alongside. The two must never be conflated. Falls back to 0, honestly
+    //    reported. measurableOnly: a field read has no test/history metadata,
+    //    so score only the content-derivable dimensions and use the full 0..1
+    //    range.
+    //
+    //    ⚠ THIS IS NOT THE COMPRESSOR'S COHERENCY, AND IT IS WHAT WE CONTRIBUTE.
+    //
+    //    This comment used to assert that the intrinsic score "is the coherence
+    //    the void compressor reads by its very nature". That was an assertion,
+    //    never a measurement, and it is false. Measured over 60 src files
+    //    against the compressor reading the same files' bytes through
+    //    /compress_signal:
+    //
+    //      computeCoherencyScore   mean 0.874  sd 0.075  range 0.654–1.000
+    //      void avg_coherence      mean 0.155  sd 0.049  range 0.074–0.353
+    //      pearson r = -0.313   spearman rho = -0.271
+    //
+    //    Not merely a different scale — mildly INVERTED, and the rank
+    //    correlation agrees, so it is not a nonlinearity artifact. They measure
+    //    different things: this scores whether source parses and is internally
+    //    consistent; the compressor scores how much of the artifact's signal
+    //    its pattern library can reconstruct.
+    //
+    //    Both are worth having. But the standing rule for this ecosystem is
+    //    that a coherency comes off the compressor, so what flows into the
+    //    shared field below is currently a structural-validity score wearing
+    //    the name `coherence`. Routing the compressor in here instead is a real
+    //    change to the hottest read path (a warm /compress_signal read is
+    //    ~1.5s against this function's ~0.04s), so it is a deliberate decision,
+    //    not a silent edit. Until it is made, this is labelled for what it is.
     let coherence = 0;
     if (_coherency && typeof _coherency.computeCoherencyScore === 'function') {
       try {
@@ -425,6 +451,14 @@ class FieldTool {
       voidResonance,    // Void's composed (116-D) flow-aware library read
       codeResonance,    // Oracle's coding-specific filter
       coherence,
+      // Same number as `coherence`, under the name of what it actually
+      // measures. Measured r = -0.313 against the compressor's reading of the
+      // same files, so a caller that needs a COMPRESSION coherency must not
+      // read `coherence` here — it must go to /compress_signal. Kept as a
+      // separate key rather than a rename so nothing downstream breaks while
+      // the name still tells the truth.
+      structuralValidity: coherence,
+      coherenceSource: 'oracle:computeCoherencyScore (NOT the Void compressor)',
       grew,
       fieldStateAfter: this._safePeek(),
       layers,

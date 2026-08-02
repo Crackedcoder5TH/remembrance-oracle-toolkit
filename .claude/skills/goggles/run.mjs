@@ -88,6 +88,10 @@ if (argv[0] === '--do') {
     // tell the goggles a META-DEBUG finding was a false positive.
     // `--match "<substring>"` for a class, or an exact fingerprint.
     fp: () => run('node', [join(toolkit, 'src/tools/goggles-fp.js'), ...rest], toolkit),
+    // replay the coherencies the compressor already produced into the field.
+    // A data-pipeline fix does not need a recomputation — every witnessed file
+    // already carries its reading. ~2s for the whole substrate.
+    replay: () => run('node', [join(toolkit, 'scripts/replay-substrate-readings.js'), ...rest], toolkit),
     // RUN a capability the goggles surfaced. Every function they list prints
     // its own `<path>#<fn>` reference; this invokes it, so seeing a capability
     // and using it are the same surface. Args are JSON, one per parameter.

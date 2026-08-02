@@ -804,13 +804,28 @@ function main() {
     const idxPath = path.resolve(__dirname, '..', '..', 'ecosystem-capabilities.json');
     if (matches.length && fs.existsSync(idxPath)) {
       const idx = JSON.parse(fs.readFileSync(idxPath, 'utf8'));
+      // Show HOW TO CALL, not just that it exists. A bare name tells you a
+      // function is there and where it lives; it does not tell you what to
+      // pass. That gap is paid in wrong invocations — `orchestrate diagnose`
+      // took three tries before someone read its arg parsing. The parameter
+      // list (and the first line of its JSDoc) is what makes a listed
+      // capability actually callable from here.
       const lines = [];
       for (const m of matches) {
         const fns = idx.byPath && idx.byPath[m.name];
-        if (fns && fns.length) lines.push(`       ${m.name}  →  ${fns.slice(0, 8).join(', ')}${fns.length > 8 ? ', …' : ''}`);
+        if (!fns || !fns.length) continue;
+        lines.push(`       ${m.name}`);
+        const sigs = (idx.callSigs && idx.callSigs[m.name]) || {};
+        for (const fn of fns.slice(0, 6)) {
+          const c = sigs[fn];
+          const call = c ? `${fn}(${c.params})` : `${fn}(?)`;
+          lines.push(`          ${call}${c && c.doc ? `   — ${c.doc}` : ''}`);
+        }
+        if (fns.length > 6) lines.push(`          … +${fns.length - 6} more`);
       }
       if (lines.length) {
-        console.log(`    ECOSYSTEM CAPABILITIES (callable in those neighbours · ${idx.totalFunctions} fns indexed):`);
+        console.log(`    ECOSYSTEM CAPABILITIES (callable in those neighbours · ${idx.totalFunctions} fns indexed`
+          + `${idx.callableFunctions ? `, ${idx.callableFunctions} with signatures` : ''}):`);
         for (const l of lines) console.log(l);
       }
     }

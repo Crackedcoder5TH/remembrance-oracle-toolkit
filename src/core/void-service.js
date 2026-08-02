@@ -104,7 +104,11 @@ function ensureUp(opts = {}) {
  * THE coherency reading for a piece of content.
  *
  * @param {string} content
- * @param {object} [opts] — { autoStart?: boolean (default true), quiet?: boolean }
+ * @param {object} [opts]
+ *   autoStart?  — start the service if cold (default true)
+ *   quiet?      — suppress the cold-start notice
+ *   cachedOnly? — NEVER block. Return a reading only if one is already held;
+ *                 otherwise null. For hot paths (see below).
  * @returns {number|null} the compressor's reading, or null if none was taken.
  */
 function coherencyOf(content, opts = {}) {
@@ -112,6 +116,21 @@ function coherencyOf(content, opts = {}) {
 
   const key = crypto.createHash('sha1').update(content).digest('hex');
   if (CACHE.has(key)) return CACHE.get(key);
+
+  // HOT PATHS MUST NOT PAY FOR A ROUND TRIP.
+  //
+  // A warm read is ~1.5-2s. That is fine when an artifact is being witnessed
+  // and catastrophic inside a scorer called per pattern: wiring a blocking
+  // read into computeCoherencyScore took a 20-pattern compression pass from
+  // under 5s to 39.7s, which its own performance test caught.
+  //
+  // `cachedOnly` is how a hot caller stays honest without paying: it uses a
+  // reading if the instrument has already produced one for this exact content
+  // (the goggles, field-tool and harvest all populate this cache when they
+  // witness an artifact), and otherwise contributes NOTHING. Sparse real
+  // readings beat dense invented ones — the alternative was never "fast and
+  // correct", it was "fast and fabricated".
+  if (opts.cachedOnly) return null;
   if (_unavailable) return null;
 
   const bytes = Buffer.from(content, 'utf8').slice(0, 16384);

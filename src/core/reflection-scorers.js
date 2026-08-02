@@ -623,13 +623,28 @@ function observeCoherence(code, metadata = {}) {
   // Six calls per observation also meant this single function drove six
   // times the field traffic of any other producer, so its dimensions
   // dominated the global EMA by sheer count.
+  //
+  // AND THE NUMBER ITSELF NOW COMES FROM THE INSTRUMENT.
+  //
+  // Removing the six dimensions fixed WHAT was contributed but not WHERE it
+  // came from: `composite` is still a weighted blend of six local quality
+  // scorers, computed here, and this module does not produce coherency — the
+  // Void compressor does. The blend is unchanged and still drives the
+  // ACCEPT/REVIEW/VETO zones, which is its job. What reaches the field is the
+  // compressor's reading of the same code, so the numbers crunched downstream
+  // are coherency by lineage; the composite rides along as the authority
+  // weight, which is what a quality blend legitimately governs.
   try {
     const { contribute } = require('./field-coupling');
-    if (typeof composite === 'number' && isFinite(composite)) {
+    const { coherencyOf } = require('./void-service');
+    const measured = coherencyOf(code, { cachedOnly: true });
+    if (typeof measured === 'number' && isFinite(measured)) {
       contribute({
         cost: 1,
-        coherence: Math.max(0, Math.min(1, composite)),
-        source: 'reflection-scorer:composite',
+        coherence: measured,
+        resonance: (typeof composite === 'number' && isFinite(composite))
+          ? Math.max(0, Math.min(1, composite)) : null,
+        source: 'void:compress_signal:reflection-scorer',
       });
     }
   } catch (_) { /* best-effort */ }

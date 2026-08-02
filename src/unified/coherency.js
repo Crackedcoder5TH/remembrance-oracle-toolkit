@@ -499,19 +499,39 @@ function computeCoherencyScore(code, metadata = {}) {
   // interference from the scoring function creating persistent state.
 
   const __retVal_total = Math.round(emergentTotal * ROUNDING_FACTOR) / ROUNDING_FACTOR;
-  // ─── Field-coupling — the master scorer is now wired ─────────────
-  // computeCoherencyScore is the canonical coherency reading for the
-  // entire ecosystem. Every score read SHOULD reach the field — this
-  // is what makes the field's per-source histogram reflect what's
-  // actually being scored, vs. only the producers that already
-  // remembered to contribute.
+  // ─── Field-coupling — WHAT REACHES THE FIELD MUST COME FROM THE INSTRUMENT ──
+  //
+  // This block used to contribute `__retVal_total` — this function's own
+  // structural score — under the claim that computeCoherencyScore "is the
+  // canonical coherency reading for the entire ecosystem". It is not. The Void
+  // compressor is the only producer of coherency. Measured over 60 src files,
+  // this score reads mean 0.874 where the compressor reads 0.155 on the same
+  // bytes, pearson r = -0.313. It was the field's second-largest source at
+  // 137,531 contributions, none of them coherency.
+  //
+  // The scoring above is unchanged and still returned to callers — it is a
+  // real signal about syntax, completeness, consistency and AST shape. What
+  // changed is the INPUT to the field: the number contributed is the
+  // compressor's reading of this same code, so every figure crunched
+  // downstream is a coherency by lineage. This function's own score becomes
+  // the AUTHORITY WEIGHT on that contribution — well-formed code speaks with
+  // more authority, which is what a structural score is actually good for —
+  // rather than entering as a coherency it is not.
+  //
+  // No reading, no contribution. The field must never accumulate while its one
+  // instrument is silent.
   try {
     const { contribute } = require('../core/field-coupling');
-    contribute({
-      cost: 1,
-      coherence: Math.max(0, Math.min(1, __retVal_total || 0)),
-      source: 'oracle:coherency:computeCoherencyScore',
-    });
+    const { coherencyOf } = require('../core/void-service');
+    const measured = coherencyOf(code, { cachedOnly: true });
+    if (typeof measured === 'number' && isFinite(measured)) {
+      contribute({
+        cost: 1,
+        coherence: measured,
+        resonance: Math.max(0, Math.min(1, __retVal_total || 0)),
+        source: 'void:compress_signal:coherency-scorer',
+      });
+    }
   } catch (_) { /* best-effort */ }
 
   return {

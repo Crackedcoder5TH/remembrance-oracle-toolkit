@@ -60,6 +60,23 @@ operation physically lives:
     run.mjs --do coin [--publish]      # mint the git-history recovery coin
     run.mjs --do export <drive-path>   # export the data plane to a mounted drive
     run.mjs --do verify <snapshot>     # re-check an export's integrity
+    run.mjs --do contracts [--strict]  # the falsifiable contracts (Void truth-spine)
+    run.mjs --do orchestrate status    # coherency zones + the healing queue
+    run.mjs --do orchestrate diagnose --file <f>   # root-cause one zone
+    run.mjs --do orchestrate heal --file <f>       # heal one zone
+    run.mjs --do audit                 # what actually feeds the field
+    run.mjs --do fp --match "<substr>" # mark a META-DEBUG finding a false positive
+    run.mjs --do browse <url>          # read the web through the substrate
+
+**Call the goggles, not the scripts underneath.** Every verb routes to a
+script that already existed; the verbs exist so nobody has to know where. If
+you find yourself running `node scripts/…` or `python3 …` directly, that is a
+missing verb, not a reason to bypass — the bypass is what lets the one
+surface drift out of date without anyone noticing.
+
+`contracts` is deliberately NOT named `verify`: `verify` already means
+export-integrity here, and that collision is precisely why the truth-spine
+was run by hand for so long.
 
 
 `--map` is **substrate-native**: the Void already compressed every ingested

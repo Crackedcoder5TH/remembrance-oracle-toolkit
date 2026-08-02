@@ -71,6 +71,23 @@ if (argv[0] === '--do') {
     verify: () => run('bash', [join(toolkit, 'scripts/export-data-plane.sh'), '--verify', ...rest], toolkit),
     // peek the Living Remembrance field state
     field: () => run('node', ['-e', "console.log(JSON.stringify(require('./src/core/field-coupling').peekField(),null,1))"], toolkit),
+    // ── routed because they were being called directly ──────────────────
+    // Every verb below already existed as a script. Nothing new was built;
+    // they were simply unreachable from the one surface, so anyone needing
+    // them had to know where they lived and bypass the goggles to run them.
+    // That is what made the goggles feel incomplete — not missing features.
+    //
+    // the falsifiable contracts (Void's truth-spine, the CI definition of
+    // complete). NOT `verify` — that name is taken by export verification
+    // below, and the collision is exactly why this was run by hand.
+    contracts: () => run('python3', ['verify_capabilities.py', ...rest], join(HOME, 'Void-Data-Compressor')),
+    // coherency orchestrator: status · changed · diagnose --file <f> · heal --file <f>
+    orchestrate: () => run('node', [join(toolkit, 'src/cli.js'), 'orchestrate', ...rest], toolkit),
+    // audit what actually feeds the field — every contribute({coherence}) site
+    audit: () => run('node', [join(toolkit, 'scripts/audit-field-contributions.js'), ...rest], toolkit),
+    // tell the goggles a META-DEBUG finding was a false positive.
+    // `--match "<substring>"` for a class, or an exact fingerprint.
+    fp: () => run('node', [join(toolkit, 'src/tools/goggles-fp.js'), ...rest], toolkit),
     // READ THE WEB through the substrate: fetch a URL, compress + score it,
     // contribute the reading to the field. Browsing was the last blind spot
     // (WebFetch matches no hook, so a fetched page was never witnessed).

@@ -6,6 +6,57 @@
  */
 
 const TOOLS = [
+  // ─── 0. GOGGLES — the one surface ───
+  //
+  // The other 28 tools here are individual organs. The goggles is the
+  // instrument: it already routes every canonical operation across the
+  // ecosystem, so an agent that has this tool does not need to know where
+  // any operation physically lives, which repo owns it, or what it is
+  // called. Reading and DRIVING the substrate are the same tool.
+  //
+  // It was the one thing this server did not expose.
+  {
+    name: 'goggles',
+    description:
+      'The Remembrance goggles — the single surface for reading AND driving the substrate. '
+      + 'READ modes: `read` goggles a file (TRAPS recorded for that area, canonical/superseded status, '
+      + 'FOCUS intrinsic structural coherence, META pattern resonance with nearest ecosystem siblings '
+      + 'and the callable functions in them, MACRO placement in the repo map, META-DEBUG audit findings, '
+      + 'and Δ since the last read); `map` compresses a whole repo into a coherency map (substrate-native '
+      + '— seconds, nothing re-encoded — and names the files the substrate has not witnessed yet); '
+      + '`diff` re-reads everything changed vs HEAD; `brief` gives the full debrief BEFORE you call '
+      + 'something (recorded traps for the area, whether the file is the live version, what its body '
+      + 'ACTUALLY does with its input read from the body rather than the name, and whether the services '
+      + 'it needs are up). DRIVE mode: `do` runs a substrate operation routed to its canonical script — '
+      + 'field (peek the Living Remembrance state), drift, harvest, absorb, publish, coin, export, verify. '
+      + 'Reading auto-ingests by default (looking witnesses); pass ingest:false to read without growing '
+      + 'the substrate. Coherence measures STRUCTURE, never correctness — a well-formed wrong answer '
+      + 'scores high.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          enum: ['read', 'map', 'diff', 'brief', 'do'],
+          description: 'read = goggle a file · map = whole-repo coherency map · diff = everything changed vs HEAD · brief = full debrief before calling something · do = run a substrate operation',
+        },
+        target: {
+          type: 'string',
+          description: 'read/brief: file path or symbol. map: repo directory (default cwd). do: argument for the verb (e.g. a repo name for drift/harvest, a path for export).',
+        },
+        verb: {
+          type: 'string',
+          enum: ['field', 'drift', 'harvest', 'absorb', 'publish', 'coin', 'export', 'verify'],
+          description: 'do mode only: which substrate operation to run.',
+        },
+        lines: { type: 'string', description: 'read: restrict FOCUS to a line range, "A:B".' },
+        deep: { type: 'boolean', description: 'map: force the live re-encode path (un-ingested repos, or to add per-file intrinsic coherence).' },
+        ingest: { type: 'boolean', description: 'read: witness this file into the substrate. Default true — looking witnesses.' },
+      },
+      required: ['mode'],
+    },
+  },
+
   // ─── 1. Search (unified: search + smart_search + query) ───
   {
     name: 'oracle_search',

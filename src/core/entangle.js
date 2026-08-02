@@ -92,6 +92,23 @@ function engage() {
 
   // Register this node so peers can count N for abundance amortization.
   try {
+    // ⚠ LOAD-BEARING LITERAL — do not simply delete.
+    //
+    // coherence: 0.9 is a flat constant, so this moves the global EMA while
+    // carrying no information about the node. By the rule applied to the
+    // seven other flat literals removed today it should go.
+    //
+    // It cannot go yet: _nodeCount() above counts sources starting with
+    // `entangle:node:`, so this contribution IS the node registry. Deleting
+    // it silently drops the census to zero.
+    //
+    // Same shape as the encoder-layer reliability that used to live in the
+    // sources histogram — a registry riding inside the coherency field. The
+    // fix is the same one applied there: give node presence its own store on
+    // the engine (beside layerReliability), then this contribution can be
+    // removed rather than merely tolerated. Recorded here so the next reader
+    // does not remove it and break the count, or leave it and assume it is
+    // a reading.
     fc.contribute({ cost: _abundanceCost(), coherence: 0.9, source: `entangle:node:${nodeId}` });
   } catch (_) { /* best-effort */ }
 

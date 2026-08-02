@@ -100,8 +100,12 @@ for (const f of walk(SRC)) {
   if (!/\b_?_?contribute\(\{/.test(src)) continue;
   const lines = src.split('\n');
   lines.forEach((ln, i) => {
-    const m = ln.match(/\b_?_?contribute\(\{\s*cost:[^,]+,\s*coherence:\s*([\s\S]*?),\s*source:\s*'([^']*)'/)
-      || ln.match(/coherence:\s*([^,]+),\s*$/) && null;
+    // Source may be a single-quoted literal OR a template literal
+    // (`entangle:${kind}:${id}`). Matching only the quoted form hid every
+    // contribution whose source is built dynamically — which is most of
+    // the ones that carry an id, i.e. the ones firing most often.
+    const m = ln.match(/\b_?_?contribute\(\{\s*cost:[^,]+,\s*coherence:\s*([\s\S]*?),\s*source:\s*(?:'([^']*)'|`([^`]*)`|"([^"]*)")/);
+    if (m && !m[2]) m[2] = m[3] || m[4] || '(dynamic)';
     if (!m) return;
     const ctx = lines.slice(Math.max(0, i - 20), i).join('\n');
     const [kind, why] = classify(m[1].trim(), ctx);

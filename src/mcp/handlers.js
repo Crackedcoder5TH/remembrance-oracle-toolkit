@@ -90,6 +90,64 @@ function _scanJsZones(dir) {
 }
 
 const HANDLERS = {
+  // ─── 0. GOGGLES — the one surface ───
+  //
+  // Shells out to the canonical runner rather than re-implementing any of
+  // it. That is deliberate: the goggles already routes every operation to
+  // its canonical script across the ecosystem, and a second in-process copy
+  // of that routing is exactly the kind of duplicate that drifts. One
+  // implementation, reached two ways (CLI and MCP).
+  goggles(oracle, args) {
+    const { execFileSync } = require('node:child_process');
+    const path = require('node:path');
+    const ROOT = path.resolve(__dirname, '..', '..');
+    const mode = String(args.mode || 'read');
+
+    const argv = [];
+    let script = path.join(ROOT, 'src', 'tools', 'goggles.js');
+
+    if (mode === 'brief') {
+      script = path.join(ROOT, 'src', 'tools', 'brief.js');
+      if (!args.target) return { error: 'brief requires a target (file, symbol or topic)' };
+      argv.push(String(args.target));
+    } else if (mode === 'map') {
+      argv.push('--map', String(args.target || process.cwd()));
+      if (args.deep) argv.push('--deep');
+    } else if (mode === 'diff') {
+      script = path.join(ROOT, '.claude', 'skills', 'goggles', 'run.mjs');
+      argv.push('--diff');
+    } else if (mode === 'do') {
+      if (!args.verb) return { error: 'do requires a verb (field, drift, harvest, absorb, publish, coin, export, verify)' };
+      script = path.join(ROOT, '.claude', 'skills', 'goggles', 'run.mjs');
+      argv.push('--do', String(args.verb));
+      if (args.target) argv.push(String(args.target));
+    } else {
+      if (!args.target) return { error: 'read requires a target file' };
+      argv.push(String(args.target));
+      if (args.lines) argv.push('--lines', String(args.lines));
+      // Auto-ingest is ON by default — looking witnesses. Only an explicit
+      // false turns it off, so an omitted flag never silently stops the
+      // substrate from learning.
+      if (args.ingest === false) argv.push('--no-ingest');
+    }
+
+    try {
+      const out = execFileSync('node', [script, ...argv], {
+        cwd: ROOT, encoding: 'utf8', maxBuffer: 1 << 26, timeout: 300000,
+      });
+      return { mode, target: args.target || null, verb: args.verb || null, reading: out };
+    } catch (e) {
+      // A goggle that fails still reports — an absent reading is itself a
+      // reading, and swallowing it would hide that the substrate went quiet.
+      return {
+        mode,
+        error: (e.message || String(e)).slice(0, 400),
+        stderr: (e.stderr ? String(e.stderr) : '').slice(0, 1200),
+        stdout: (e.stdout ? String(e.stdout) : '').slice(0, 4000),
+      };
+    }
+  },
+
   // ─── 1. Search (unified) ───
   oracle_search(oracle, args) {
     const mode = args.mode || 'hybrid';
